@@ -8,6 +8,12 @@ from app.llm.provider_facade import (
     CHAT_PARAMETERS, RESPONSES_PARAMETERS, RequestParameterPolicy,
     register_request_parameter_policy, compatible_parameter_policy,
     ProviderResponsesPolicy, register_provider, register_responses_policy,
+    register_embedding_provider, register_resource_discovery,
+    register_transcription_provider, register_speech_provider, register_image_generation_provider,
+)
+from .resources import HuggingFaceResources
+from .inference import (
+    HuggingFaceEmbeddings, HuggingFaceTranscription, HuggingFaceSpeech, HuggingFaceImageGeneration,
 )
 
 
@@ -35,9 +41,16 @@ PROFILE = ProviderProfile(
     color="amber",
     models_dev_id="huggingface",
     supports_responses=True,
+    supports_transcription=True,
+    capabilities=("chat", "vision", "embedding", "transcription", "speech", "image_generation"),
 )
 
 register_provider(PROFILE)
+register_resource_discovery(PROFILE.code, HuggingFaceResources())
+register_embedding_provider(PROFILE.code, HuggingFaceEmbeddings())
+register_transcription_provider(PROFILE.code, HuggingFaceTranscription())
+register_speech_provider(PROFILE.code, HuggingFaceSpeech())
+register_image_generation_provider(PROFILE.code, HuggingFaceImageGeneration())
 register_request_parameter_policy(PROFILE.code, _request_parameters)
 register_responses_policy(
     PROFILE.code,

@@ -142,6 +142,27 @@ class ModelMetadata(Protocol):
     ) -> LLMModelInfo | None: ...
 
 
+class EmbeddingProvider(Protocol):
+    """Translate native vector APIs into the canonical indexed embedding payload."""
+
+    async def embed(
+        self, connection: ProviderConnection, *, model: str, texts: list[str],
+        dimensions: int | None, timeout: float,
+    ) -> dict[str, Any]: ...
+
+
+_embedding_providers: dict[str, EmbeddingProvider] = {}
+
+
+def register_embedding_provider(code: str, service: EmbeddingProvider) -> None:
+    _embedding_providers[code] = service
+
+
+def embedding_provider_for(connection: ProviderConnection) -> EmbeddingProvider | None:
+    profile = resolve_provider_profile(catalog_code=connection.catalog_code, base_url=connection.base_url)
+    return _embedding_providers.get(profile.code if profile else _service_key(connection) or "")
+
+
 class ModelCatalogMetadata(Protocol):
     """Optional third-party metadata catalog for model enrichment."""
 
@@ -885,6 +906,9 @@ def usage_accounting_for(code: str | None) -> ProviderUsageAccounting | None:
 
 
 __all__ = [
+    "EmbeddingProvider",
+    "embedding_provider_for",
+    "register_embedding_provider",
     "PublicVoiceCatalog",
     "ProviderQuota", "ProviderQuotaWindow", "ProviderQuotaReader",
     "register_provider_quota_reader", "provider_quota_reader_for",

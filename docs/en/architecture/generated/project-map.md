@@ -11,7 +11,7 @@ tests remain authoritative for behavior.
 
 - 79 declared backend modules;
 - 40 declared frontend modules;
-- 643 backend dependency edges;
+- 644 backend dependency edges;
 - 228 frontend dependency edges;
 - 307 edges between `app`/`bridge` domains;
 - 30 directly bidirectional domain pairs;
@@ -97,7 +97,7 @@ tests remain authoritative for behavior.
 | `bridge.google` | bridge | yes | yes | — |
 | `bridge.xai` | bridge | yes | yes | — |
 | `bridge.nvidia` | bridge | yes | yes | — |
-| `bridge.huggingface` | bridge | yes | yes | — |
+| `bridge.huggingface` | bridge | yes | yes | `tests/` |
 | `bridge.cohere` | bridge | yes | yes | — |
 | `bridge.perplexity` | bridge | yes | yes | — |
 | `bridge.elevenlabs` | bridge | yes | yes | — |
@@ -668,7 +668,8 @@ tests remain authoritative for behavior.
 | `bridge.hermes` | `core.i18n` | `back/bridge/hermes/client.py`, `back/bridge/hermes/config_service.py`, `back/bridge/hermes/executor.py`, `back/bridge/hermes/kanban.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/router.py` |
 | `bridge.hermes` | `core.params` | `back/bridge/hermes/executor.py`, `back/bridge/hermes/harness_provider.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/session_binding.py` |
 | `bridge.hermes` | `core.util` | `back/bridge/hermes/client.py`, `back/bridge/hermes/config_service.py`, `back/bridge/hermes/dbadmin.py`, `back/bridge/hermes/executor.py`, `back/bridge/hermes/harness_provider.py`, `back/bridge/hermes/kanban.py`, `back/bridge/hermes/manager.py`, `back/bridge/hermes/session_binding.py` |
-| `bridge.huggingface` | `app.llm` | `back/bridge/huggingface/__init__.py` |
+| `bridge.huggingface` | `app.llm` | `back/bridge/huggingface/__init__.py`, `back/bridge/huggingface/inference.py`, `back/bridge/huggingface/resources.py` |
+| `bridge.huggingface` | `core.util` | `back/bridge/huggingface/inference.py`, `back/bridge/huggingface/resources.py` |
 | `bridge.mail` | `app.agent` | `back/bridge/mail/approvals.py`, `back/bridge/mail/browser_service.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `app.connection` | `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/messenger.py`, `back/bridge/mail/router.py` |
 | `bridge.mail` | `app.contact` | `back/bridge/mail/inbound.py` |

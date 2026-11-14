@@ -293,6 +293,15 @@ Its synthetic users explicitly hold model-creation privileges; provider-configur
 alone do not grant that action. These synthetic scenarios do not measure eligibility or
 acceleration with a real OpenAI account.
 
+## Hugging Face specialist services
+
+`bridge/huggingface/tests/test_resources.py` covers task catalogs, pagination, live-provider
+filtering, native routes, MP3, invalid vectors and HTTP errors with entirely synthetic
+responses. The capability scenario fails before correcting the chat-only profile.
+`tests/test_profile_gateway.py` also exercises Hugging Face embeddings through HTTP and
+PostgreSQL: ordering, dimensions, usage and durable traces. These tests do not qualify
+paid inference on a real Hugging Face account.
+
 ## Nightly model pricing
 
 `app/llm/tests/test_pricing_sync.py` exercises real HTTP bridges against synthetic

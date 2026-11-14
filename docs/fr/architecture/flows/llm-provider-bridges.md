@@ -26,6 +26,7 @@ API / agents / messagerie / mémoire
 | `ResourceDiscovery` | Lister modèles, voix ou autres ressources |
 | `ModelManagement` | Installer ou supprimer un modèle géré |
 | `ModelMetadata` | Enrichir les métadonnées propres au fournisseur |
+| `EmbeddingProvider` | Adapter les vecteurs natifs avant validation commune ; conserver le protocole OpenAI par défaut |
 | `TranscriptionProvider` | Adapter le STT batch |
 | `RealtimeTranscriptionProvider` | Ouvrir une session STT PCM |
 | `SpeechProvider` | Produire un MP3 ou un stream PCM |
@@ -41,6 +42,16 @@ persistance de ses jetons.
 Le proxy applique la politique de paramètres après résolution du modèle et de l’effort,
 avant l’envoi Chat ou Responses. Voir la [matrice auditée](../../dev/provider-parameters.md)
 pour les règles de compatibilité et leur validation.
+
+## Services spécialisés Hugging Face
+
+Hugging Face conserve `/v1/models` pour le chat et la vision. Ses catalogues spécialisés
+utilisent l'API Hub par tâche et les fournisseurs d'inférence actifs : embeddings et
+transcription via HF Inference ou DeepInfra, voix MP3 via DeepInfra, images via HF Inference.
+Les modèles uniquement téléchargeables et les protocoles non implémentés restent exclus.
+Le jeton HF existant sert aux appels routés ; aucun compte DeepInfra séparé n'est requis.
+Les embeddings partagent la même validation et les mêmes identités d'index que les autres
+fournisseurs, y compris via l'API de profils. Voir la [décision 0290](../../../../project/decisions/0290-native-provider-embeddings.md).
 
 ## Ajouter un fournisseur
 

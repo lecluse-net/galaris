@@ -657,7 +657,8 @@ Sources : [décisions par profil](../../../back/app/llm/profile_decisions.py),
 | **Fireworks** | Modèles texte, vision, images et embeddings déclarés. |
 | **Groq** | Inférence texte/vision et transcription déclarées. |
 | **Mistral** | Texte, vision et embeddings déclarés. |
-| **Together, Cerebras, xAI, NVIDIA, Hugging Face, Cohere, Perplexity** | Bridges dédiés pour découverte, adaptation des modèles et capacités propres à chacun. |
+| **Hugging Face** | Chat et vision, embeddings, transcription, synthèse vocale et images selon les modèles servis et les routes intégrées. |
+| **Together, Cerebras, xAI, NVIDIA, Cohere, Perplexity** | Bridges dédiés pour découverte, adaptation des modèles et capacités propres à chacun. |
 | **ElevenLabs** | Synthèse, transcription, génération musicale et bruitages selon le service sélectionné. |
 | **SunoAPI.org** | Service tiers de génération musicale et sonore ; compte distinct d’un abonnement Suno. |
 | **BytePlus LAS** | Génération vidéo, notamment via Seedance. |
@@ -667,6 +668,15 @@ Sources : [décisions par profil](../../../back/app/llm/profile_decisions.py),
 
 Les intégrations sont détaillées dans les [bridges fournisseurs](../architecture/flows/llm-provider-bridges.md).
 Les capacités commerciales, quotas et modèles disponibles restent ceux du compte externe configuré.
+
+Pour Hugging Face, ouvrir **Modèles → Fournisseurs**, sélectionner la connexion existante,
+puis la catégorie Embeddings, Transcription, Synthèse vocale ou Images. Ajouter un modèle
+du catalogue et l'affecter à l'usage correspondant dans un profil. Le jeton doit autoriser
+Inference Providers. Les catalogues suivent les modèles actifs des routes intégrées :
+HF Inference et DeepInfra pour les embeddings/transcriptions, DeepInfra pour la voix MP3,
+HF Inference pour les images. La voix temps réel, la musique, la vidéo et l'édition
+d'images ne sont pas proposées par ce bridge. Une liste vide signifie qu'aucun modèle
+actif n'est disponible sur les routes intégrées pour cette catégorie.
 
 ### Utiliser Galaris comme passerelle de modèles
 

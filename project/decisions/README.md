@@ -413,3 +413,4 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0284 — Server-owned document batch moves](0284-server-owned-document-batch-moves.md)
 - [0285 — Calendar providers and account authorization](0285-calendar-provider-authorization.md)
 - [0288 — Document format contributions and qualification](0288-document-format-contributions.md)
+- [0290 — Native provider embeddings through the shared LLM boundary](0290-native-provider-embeddings.md)

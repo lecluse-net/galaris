@@ -537,7 +537,8 @@ Sources: [profile decisions](../../../back/app/llm/profile_decisions.py),
 | **Fireworks** | Declared text, vision, images and embeddings |
 | **Groq** | Declared text/vision and transcription |
 | **Mistral** | Declared text, vision and embeddings |
-| **Together, Cerebras, xAI, NVIDIA, Hugging Face, Cohere, Perplexity** | Dedicated discovery/adaptation bridges and their own capabilities |
+| **Hugging Face** | Chat and vision, embeddings, transcription, speech and images according to served models and integrated routes |
+| **Together, Cerebras, xAI, NVIDIA, Cohere, Perplexity** | Dedicated discovery/adaptation bridges and their own capabilities |
 | **ElevenLabs** | Synthesis, transcription, music and sound effects by selected service |
 | **SunoAPI.org** | Third-party music/sound generation; account separate from a Suno subscription |
 | **BytePlus LAS** | Video generation, notably Seedance |
@@ -547,6 +548,14 @@ Sources: [profile decisions](../../../back/app/llm/profile_decisions.py),
 
 See [provider bridges](../architecture/flows/llm-provider-bridges.md). Commercial capabilities,
 quotas and models remain those of the configured external account.
+
+For Hugging Face, open **Models → Providers**, select the existing connection, then choose
+Embeddings, Transcription, Speech or Images. Add a catalog model and assign it to the
+matching profile usage. The token needs Inference Providers permission. Catalogs follow
+live models on integrated routes: HF Inference and DeepInfra for embeddings/transcription,
+DeepInfra for MP3 speech, HF Inference for images. Realtime voice, music, video and image
+editing are not offered by this bridge. An empty list means no live model is available
+on integrated routes for that category.
 
 ### Using Galaris as a model gateway
 

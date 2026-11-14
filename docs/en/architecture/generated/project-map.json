@@ -5544,10 +5544,20 @@
       },
       {
         "files": [
-          "back/bridge/huggingface/__init__.py"
+          "back/bridge/huggingface/__init__.py",
+          "back/bridge/huggingface/inference.py",
+          "back/bridge/huggingface/resources.py"
         ],
         "source": "bridge.huggingface",
         "target": "app.llm"
+      },
+      {
+        "files": [
+          "back/bridge/huggingface/inference.py",
+          "back/bridge/huggingface/resources.py"
+        ],
+        "source": "bridge.huggingface",
+        "target": "core.util"
       },
       {
         "files": [
@@ -13662,7 +13672,9 @@
         "path": "back/bridge/nvidia"
       },
       {
-        "capabilities": [],
+        "capabilities": [
+          "tests/"
+        ],
         "conditional": true,
         "exists": true,
         "layer": "bridge",

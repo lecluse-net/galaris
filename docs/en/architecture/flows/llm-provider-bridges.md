@@ -26,6 +26,7 @@ API / agents / messaging / memory
 | `ResourceDiscovery` | List models, voices, or other resources |
 | `ModelManagement` | Install or remove a managed model |
 | `ModelMetadata` | Enrich provider-specific metadata |
+| `EmbeddingProvider` | Adapt native vectors before shared validation; retain OpenAI as the default protocol |
 | `TranscriptionProvider` | Adapt batch STT |
 | `RealtimeTranscriptionProvider` | Open a PCM STT session |
 | `SpeechProvider` | Produce an MP3 or a PCM stream |
@@ -41,6 +42,15 @@ persistence of its tokens.
 The proxy applies the parameter policy after model and effort resolution, before sending
 Chat or Responses requests. See the [audited matrix](../../dev/provider-parameters.md)
 for compatibility rules and validation.
+
+## Hugging Face specialist services
+
+Hugging Face keeps `/v1/models` for chat and vision. Specialist catalogs use the task-based
+Hub API and live inference providers: embeddings and transcription through HF Inference
+or DeepInfra, MP3 speech through DeepInfra, images through HF Inference. Download-only
+models and unimplemented protocols remain excluded. Routed requests use the existing HF
+token without a separate DeepInfra account. Embeddings retain shared validation and index
+identities, including through the profile API. See [decision 0290](../../../../project/decisions/0290-native-provider-embeddings.md).
 
 ## Add a Provider
 

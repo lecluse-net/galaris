@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from collections.abc import Sequence
 
 from . import embedding_service, llm_provider_service, llm_service, model_usages
-from .provider_facade import openai_protocol_base_url
+from .provider_facade import ProviderConnection, openai_protocol_base_url
 from .resource_discovery import provider_connection
 
 
@@ -26,6 +26,7 @@ class ConfiguredEmbeddingModel:
     model_name: str
     base_url: str
     api_key: str | None = field(default=None, repr=False)
+    connection: ProviderConnection | None = field(default=None, repr=False)
 
     @property
     def endpoint(self) -> embedding_service.EmbeddingEndpoint:
@@ -33,6 +34,7 @@ class ConfiguredEmbeddingModel:
             model_name=self.model_name,
             base_url=self.base_url,
             api_key=self.api_key,
+            connection=self.connection,
         )
 
     async def embed(self, texts: list[str], *, timeout: float = 5.0) -> list[list[float]]:
@@ -68,12 +70,14 @@ async def require_configured_embedding_model() -> ConfiguredEmbeddingModel:
         sort_keys=True,
         separators=(",", ":"),
     )
+    api_key = llm_provider_service.decrypt_api_key(llm.provider.api_key)
     return ConfiguredEmbeddingModel(
         key=hashlib.sha256(payload.encode("utf-8")).hexdigest(),
         code=llm.code,
         model_name=llm.llm_name,
         base_url=base_url,
-        api_key=llm_provider_service.decrypt_api_key(llm.provider.api_key),
+        api_key=api_key,
+        connection=provider_connection(llm.provider, api_key),
     )
 
 

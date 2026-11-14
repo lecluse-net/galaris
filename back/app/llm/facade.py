@@ -21,16 +21,18 @@ from .provider_facade import (
     ProviderQuotaWindow,
     managed_runtime_authentication_for,
 )
-from .resource_discovery import provider_connection
+from .resource_discovery import provider_connection, openai_compatible_resources
 from .provider_quota import amount_window, quota_number, quota_reset, read_quota_payload
 from .subscription_policy import ensure_subscription_confirmation
 from .media_transport import GenerationProvider, media_http, media_json
 from .media_facade import SelectedMediaResource, start_media_call, finish_media_call, analyze_input_video as analyze_input_video
 from .media_contracts import MediaRequestRejected
-from .capabilities import AICapability, with_capability
+from .capabilities import AICapability, with_capability, default_modalities
 from .handlers import LLMModelInfo
 from .provider_catalog import ProviderProfile, resolve_provider_profile
 from .provider_facade import (
+    ImageGenerationResult, NativeImageSize, ProviderTranscriptionError, RealtimeSpeechStream,
+    SpeechOptions, SpeechResult, TranscriptionResult,
     ProviderResponsesPolicy,
     register_image_generation_provider,
     register_model_metadata,
@@ -360,6 +362,8 @@ async def get_managed_runtime_credential(
 
 
 __all__ = [
+    "ImageGenerationResult", "NativeImageSize", "ProviderTranscriptionError", "RealtimeSpeechStream",
+    "SpeechOptions", "SpeechResult", "TranscriptionResult", "default_modalities", "openai_compatible_resources",
     'retrieve_prepared_document', 'DocumentRagResult',
     'document_input_budget', 'document_tokens', 'text_tokens',
     "acquired_document_evidence", "document_evidence_revision", "document_evidence_access_clause", "AcquiredDocumentEvidence",

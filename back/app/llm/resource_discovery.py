@@ -37,7 +37,7 @@ def provider_connection(
     )
 
 
-async def _openai_compatible_resources(
+async def openai_compatible_resources(
     connection: ProviderConnection,
     capability: AICapability,
 ) -> list[LLMModelInfo]:
@@ -65,10 +65,10 @@ async def list_resources(
     if service is not None:
         return await service.list_resources(connection, capability)
     if provider.provider_type == "openai_compatible":
-        return await _openai_compatible_resources(connection, capability)
+        return await openai_compatible_resources(connection, capability)
     raise ValueError(
         f"No resource-discovery bridge is registered for {provider.name}"
     )
 
 
-__all__ = ["list_resources", "provider_connection"]
+__all__ = ["list_resources", "provider_connection", "openai_compatible_resources"]

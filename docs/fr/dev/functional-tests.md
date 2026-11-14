@@ -319,6 +319,15 @@ mobile et bureau. Ses utilisateurs synthétiques possèdent explicitement le dro
 un modèle ; le seul droit de configurer un fournisseur ne le permet pas.
 Ces scénarios synthétiques ne mesurent ni l'éligibilité ni l'accélération du compte OpenAI réel.
 
+## Services spécialisés Hugging Face
+
+`bridge/huggingface/tests/test_resources.py` couvre les catalogues par tâche, pagination,
+filtrage des fournisseurs actifs, routes natives, MP3, vecteurs invalides et erreurs HTTP
+sur des réponses entièrement synthétiques. Le scénario de capacités échoue avant la
+correction du profil limité au chat. `tests/test_profile_gateway.py` exerce aussi les
+embeddings Hugging Face via HTTP et PostgreSQL : ordre, dimensions, usage et trace durable.
+Ces tests ne qualifient pas une inférence payante sur un compte Hugging Face réel.
+
 ## Tarification nocturne des modèles
 
 `app/llm/tests/test_pricing_sync.py` exerce les vrais bridges HTTP sur des réponses

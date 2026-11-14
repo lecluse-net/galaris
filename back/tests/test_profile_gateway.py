@@ -281,16 +281,32 @@ async def test_decisions_use_the_named_profile_and_its_fallback_policy(gateway, 
 
 
 @pytest.mark.asyncio
-async def test_embeddings_preserve_batch_order_usage_and_profile_trace(gateway, monkeypatch):
+@pytest.mark.parametrize("provider_code", [None, "huggingface"])
+async def test_embeddings_preserve_batch_order_usage_and_profile_trace(gateway, monkeypatch, provider_code):
     client, db, llm, _, profile, _ = gateway
     token = await use_api_token(client)
     llm.primary_capability = "embedding"
     llm.service_capabilities = ["embedding"]
     profile.vector_llm_id = llm.id
+    if provider_code == "huggingface":
+        from core.util import get_encryption_service
+
+        llm.provider.catalog_code = provider_code
+        llm.provider.base_url = "https://router.huggingface.co/v1"
+        llm.provider.api_key = get_encryption_service().encrypt("synthetic-hf-token")
+        llm.llm_name = "synthetic/vector"
     await db.commit()
     requests = []
 
     async def respond(request):
+        if request.method == "GET":
+            assert request.url.host == "huggingface.co"
+            return httpx.Response(200, json={"inferenceProviderMapping": {
+                "deepinfra": {"status": "live", "task": "feature-extraction", "providerId": "synthetic/mapped-vector"},
+            }})
+        if provider_code == "huggingface":
+            assert str(request.url) == "https://router.huggingface.co/deepinfra/v1/openai/embeddings"
+            assert request.headers["Authorization"] == "Bearer synthetic-hf-token"
         requests.append(json.loads(request.content))
         return httpx.Response(200, json={"model": "vector-resolved", "data": [
             {"index": 1, "embedding": [0.0, 1.0]}, {"index": 0, "embedding": [1.0, 0.0]},
@@ -310,7 +326,10 @@ async def test_embeddings_preserve_batch_order_usage_and_profile_trace(gateway, 
     assert struct.unpack("<2f", base64.b64decode(result["data"][0]["embedding"])) == (1.0, 0.0)
     assert result["usage"]["prompt_tokens"] == 8
     assert result["model"] == "qualite/embedding/default"
-    assert requests == [{"model": llm.llm_name, "input": ["Hello", "World"], "dimensions": 2}]
+    assert requests == ([{"model": "synthetic/mapped-vector", "input": ["Hello", "World"],
+                         "dimensions": 2, "encoding_format": "float"}] if provider_code else [
+        {"model": llm.llm_name, "input": ["Hello", "World"], "dimensions": 2},
+    ])
     trace = await db.get(LLMCall, UUID(response.headers["X-Galaris-LLM-Call-Id"]))
     assert trace.requested_model == result["model"] and trace.effective_model == "vector-resolved"
     assert trace.status == "completed"

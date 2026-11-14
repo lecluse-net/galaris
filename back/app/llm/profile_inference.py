@@ -65,10 +65,12 @@ async def profile_embeddings(body: ProfileEmbeddingRequest) -> tuple[dict[str, A
     requester = await enforce_subscription_access(
         llm.provider, task_id=None, conversation_round_id=None, process_run_id=None,
     )
+    api_key = llm_provider_service.decrypt_api_key(llm.provider.api_key)
     endpoint = embedding_service.EmbeddingEndpoint(
         model_name=llm.llm_name,
         base_url=openai_protocol_base_url(provider_connection(llm.provider, None)),
-        api_key=llm_provider_service.decrypt_api_key(llm.provider.api_key),
+        api_key=api_key,
+        connection=provider_connection(llm.provider, api_key),
     )
     call = await llm_call_service.create_running_call(
         purpose="profile.embedding", task_id=None, agent_run_id=None, agent_id=None,

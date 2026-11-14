@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import math
 from dataclasses import dataclass, field
 from typing import Any
@@ -9,6 +10,7 @@ from typing import Any
 import httpx
 
 from core.util import as_dict, as_list
+from .provider_facade import ProviderConnection, embedding_provider_for
 
 
 MAX_EMBEDDING_DIMENSIONS = 16_000
@@ -23,6 +25,7 @@ class EmbeddingEndpoint:
     model_name: str
     base_url: str
     api_key: str | None = field(default=None, repr=False)
+    connection: ProviderConnection | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True)
@@ -109,14 +112,30 @@ async def embed_many_with_usage(
     if dimensions is not None:
         body["dimensions"] = dimensions
     try:
-        async with httpx.AsyncClient(timeout=timeout_seconds) as client:
-            response = await client.post(
-                f"{endpoint.base_url.rstrip('/')}/embeddings",
-                headers=headers,
-                json=body,
-            )
-            response.raise_for_status()
-            payload = response.json()
+        connection = endpoint.connection or ProviderConnection(
+            id=None, name="Embedding", catalog_code=None, provider_type="openai_compatible",
+            base_url=endpoint.base_url, api_key=endpoint.api_key,
+        )
+        bridge = embedding_provider_for(connection)
+        if bridge is not None:
+            async with asyncio.timeout(timeout_seconds):
+                payload = await bridge.embed(
+                    connection, model=endpoint.model_name, texts=normalized,
+                    dimensions=dimensions, timeout=timeout_seconds,
+                )
+        else:
+            async with httpx.AsyncClient(timeout=timeout_seconds) as client:
+                response = await client.post(
+                    f"{endpoint.base_url.rstrip('/')}/embeddings",
+                    headers=headers,
+                    json=body,
+                )
+                response.raise_for_status()
+                payload = response.json()
+    except TimeoutError:
+        raise EmbeddingError("The embedding provider timed out.") from httpx.ReadTimeout(
+            "The embedding request exceeded its deadline."
+        )
     except httpx.HTTPStatusError as exc:
         raise EmbeddingError(
             f"The embedding provider rejected the request ({exc.response.status_code})."
@@ -133,7 +152,10 @@ async def embed_many_with_usage(
         raise EmbeddingError(
             "The embedding provider returned an invalid payload."
         )
-    embeddings = _parse_response(as_dict(payload))
+    try:
+        embeddings = _parse_response(as_dict(payload))
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise EmbeddingError("The embedding provider returned invalid vectors.") from exc
     _validate(embeddings, expected_count=len(normalized))
     if dimensions is not None and any(len(vector) != dimensions for vector in embeddings):
         raise EmbeddingError("The embedding provider returned unexpected dimensions.")
