@@ -50,7 +50,7 @@ async def documentation_search(agent_id: int, query: str, *, language: str = "",
     from app.connection import facade as connections
 
     await require_documentation_access(agent_id)
-    if not await connections.has_active_tool_function(agent_id, "galaris_admin", "documentation_search"):
+    if not await connections.has_active_tool_function(agent_id, "platform_admin", "documentation_search"):
         raise PermissionError("The documentation_search function is disabled.")
     if not query.strip() or len(query) > 1000 or not 1 <= limit <= 50:
         raise ValueError("Use a query of 1–1000 characters and a limit of 1–50 results.")
@@ -86,7 +86,7 @@ async def refresh_documentation_index() -> None:
         return
 
     # The scheduler owns this callback's session and transaction.
-    if not await connections.has_any_active_tool_connection("galaris_admin"):
+    if not await connections.has_any_active_tool_connection("platform_admin"):
         return
     model = await configured_embedding_model()
     if model is None:

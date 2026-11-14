@@ -443,7 +443,7 @@ Pour le navigateur, une action bloquée attend une nouvelle tentative après vot
 formulaires ne sont pas resoumis automatiquement.
 
 Pour donner la connaissance du produit à un agent, partez de **Connexions**, trouvez sa
-connexion **Galaris Admin**, puis suivez le [guide de connaissance produit](../admin/product-knowledge.md).
+connexion **Administration**, puis suivez le [guide de connaissance produit](../admin/product-knowledge.md).
 Une compétence fournit des instructions ; l’accès effectif aux fonctions dépend aussi
 des Tools et connexions autorisés.
 
@@ -825,7 +825,7 @@ Quelques distinctions utiles :
   parcours, lancer une indexation, l'annuler ou relancer les réparations.
 - **Superviser → Journal des échecs** (`/incident`) sert au diagnostic ;
   **Préférences → Journaux** (`/params/logs`) configure la conservation et les purges.
-  Un agent autorisé peut consulter ce journal via **Galaris Admin** : `incidents_list`
+  Un agent autorisé peut consulter ce journal via **Administration** : `incidents_list`
   filtre et pagine les erreurs, puis `incident_get` ouvre la trace d'une occurrence.
   Activez la connexion et déléguez le périmètre personnel, équipe ou tous selon le besoin.
   Seul « tous » donne accès aux incidents sans agent et aux diagnostics globaux des motifs.

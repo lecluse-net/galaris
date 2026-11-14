@@ -70,7 +70,7 @@ async def provision(db):
         if definition.tool_code == "lab":
             db.add(ConnectionFunctionState(connection_id=connection.id,
                 function_name=definition.name, state="enabled", enabled=True))
-    inspection = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == agent.id, Tool.code == "galaris_admin"))
+    inspection = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == agent.id, Tool.code == "platform_admin"))
     for name in ("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls"):
         db.add(ConnectionFunctionState(connection_id=inspection.id, function_name=name, state="enabled", enabled=True))
     await db.flush()
@@ -576,7 +576,7 @@ async def test_capture_confirmation_survives_real_mcp_and_requires_source_access
             admin = await db.scalar(
                 select(Connection)
                 .join(Tool)
-                .where(Connection.agent_id == agent_id, Tool.code == "galaris_admin")
+                .where(Connection.agent_id == agent_id, Tool.code == "platform_admin")
             )
             admin.active = True
             from app.connection.facade import set_params_bulk
@@ -635,7 +635,7 @@ async def test_async_task_diagnosis_uses_real_evidence_and_persisted_diagnosis(d
     ctx, _ = actor
     _, llm, _ = benchmark
     monkeypatch.setattr(analysis_service.llm_service, "get_profile_llm_for_agent_id", AsyncMock(return_value=llm))
-    admin = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == ctx.agent_id, Tool.code == "galaris_admin"))
+    admin = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == ctx.agent_id, Tool.code == "platform_admin"))
     admin.active = True
     from app.connection.facade import set_params_bulk
     await set_params_bulk(admin.id, {"tools.management_scope": "all"}, commit=False, scope_edit_authorized=True)

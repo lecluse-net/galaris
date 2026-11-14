@@ -65,7 +65,7 @@ When navigation changes, regenerate the map and update affected FR/EN workflows.
 generated map covers declared menus, not every button, modal tab or installation-specific
 record: those workflows remain in the user guide, verified against actual components.
 
-The documentation corpus ships these files with the product version. Galaris Admin exposes
+The documentation corpus ships these files with the product version. Administration exposes
 them to search and generic reading; `documentation_catalog` advertises the guide and map
 as entrypoints. The `galaris-knowledge` skill consults them to provide
 **section → screen → tab → action** guidance. No session snapshots, user content or

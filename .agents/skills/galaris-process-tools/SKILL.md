@@ -190,7 +190,7 @@ limitées au contrôleur conversationnel, y compris les réponses aux activités
 `repository_show` appartient au même Tool et accepte aussi les Tasks explicitement liées
 au Chat interne ; il ne clone, ne committe et ne publie aucun dépôt.
 `conversation_round_get`, `voice_turn_get`, `llm_call` et
-`llm_calls` appartiennent à `galaris_admin`, optionnel, avec vérification de sa connexion active
+`llm_calls` appartiennent à `platform_admin`, optionnel, avec vérification de sa connexion active
 à chaque appel. Ne pas exposer les inspections LLM dans le service système `galaris`.
 
 ## Sécurité et observabilité

@@ -60,11 +60,32 @@ def _merge_global_defaults(existing: object | None, desired: object) -> object:
     return merged
 
 
+async def _tool_name_rows(session: AsyncSession) -> tuple[dict[str, object], ...]:
+    """Rename the installed administrative Tool without changing its identity.
+
+    The primary key is deliberately used for this dataset: the code itself is
+    being renamed, while connections, function policies and credentials refer
+    to the existing Tool identity.
+    """
+    legacy = await session.scalar(select(Tool).where(Tool.code == "galaris_admin"))
+    if legacy is None:
+        return ()
+    target = await session.scalar(select(Tool.id).where(Tool.code == "platform_admin"))
+    if target is not None:
+        raise ValueError("Cannot rename the legacy administration Tool: platform_admin already exists")
+    return ({"id": legacy.id, "code": "platform_admin", "label": "Administration"},)
+
+
 async def _tool_rows(
     session: AsyncSession,
 ) -> tuple[dict[str, object], ...]:
     rows: list[dict[str, object]] = []
-    existing = {record.code: record for record in await session.scalars(select(Tool))}
+    # The preceding naming dataset updates the table directly. Refresh any Tool
+    # already present in this session before deriving administrator-owned defaults.
+    existing = {
+        record.code: record
+        for record in await session.scalars(select(Tool).execution_options(populate_existing=True))
+    }
     existing_codes = set(existing)
     for raw in mandatory_tool_rows():
         row = dict(raw)
@@ -151,6 +172,13 @@ def datasets(*, agent_id: int | None = None) -> tuple[DbAdminDataset, ...]:
 
     return (
         DbAdminDataset(
+            key="app.tools.builtin_names",
+            table=cast(Table, Tool.__table__),
+            natural_key=("id",),
+            rows=_tool_name_rows,
+            update_columns=("code", "label"),
+        ),
+        DbAdminDataset(
             key="app.tools.mandatory.tools",
             table=cast(Table, Tool.__table__),
             natural_key=("code",),
@@ -170,7 +198,7 @@ def datasets(*, agent_id: int | None = None) -> tuple[DbAdminDataset, ...]:
                 "task_config",
             ),
             column_mergers={"global_params": _merge_global_defaults},
-            depends_on=("core.params.declarations",),
+            depends_on=("core.params.declarations", "app.tools.builtin_names"),
         ),
         DbAdminDataset(
             key="app.tools.mandatory.connections",

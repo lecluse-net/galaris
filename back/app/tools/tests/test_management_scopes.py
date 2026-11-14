@@ -52,7 +52,7 @@ async def delegate(db, agent, code, level):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("code", ["process_admin", "tool_admin", "goal_management", "galaris_admin", "skills"])
+@pytest.mark.parametrize("code", ["process_admin", "tool_admin", "goal_management", "platform_admin", "skills"])
 async def test_scope_is_local_live_and_never_granted_by_membership(db, scope_agents, code):
     (caller, peer, outsider), team = scope_agents
     assert (await administration_scope(caller.id, code)).agent_ids == frozenset()
@@ -73,7 +73,7 @@ async def test_scope_is_local_live_and_never_granted_by_membership(db, scope_age
     # Neither a globally forced parameter nor another administration Tool may widen this scope.
     tool = await db.get(Tool, connection.tool_id)
     tool.global_params = {"tools.management_scope": {"value": "all", "forced": True}}
-    await delegate(db, caller, "galaris_admin" if code != "galaris_admin" else "tool_admin", "all")
+    await delegate(db, caller, "platform_admin" if code != "platform_admin" else "tool_admin", "all")
     await connections.set_connection_active(connection.id, False)
     assert (await administration_scope(caller.id, code)).agent_ids == frozenset()
 
@@ -195,7 +195,7 @@ async def test_galaris_scope_protects_tasks_and_llm_ids_before_pagination(db, sc
                   status=TaskStatus.CREATE) for agent in (caller, peer, outsider)]
     db.add_all([*calls, *tasks])
     await db.commit()
-    await delegate(db, caller, "galaris_admin", "team")
+    await delegate(db, caller, "platform_admin", "team")
     ctx = McpToolContext(caller.id, "internal")
     ids = json.loads(await llm.mcp_llm_calls(ctx, now - timedelta(seconds=1), now + timedelta(seconds=5), limit=1))
     assert ids == [str(calls[1].id)]
@@ -237,13 +237,13 @@ async def test_incident_inspection_scopes_pagination_traces_and_live_revocation(
                       lambda: incidents.incident_get(ctx, records[0].id)):
         with pytest.raises(PermissionError):
             await operation()
-    grant = await delegate(db, caller, "galaris_admin", "personal")
+    grant = await delegate(db, caller, "platform_admin", "personal")
     page = await incidents.incidents_list(ctx)
     assert page["page_size"] == 50 and page["total"] == 1
     assert [item["id"] for item in page["items"]] == [str(records[0].id)]
     assert "trace" not in page["items"][0]
     assert "pattern_occurrence_count" not in page["items"][0]
-    await delegate(db, caller, "galaris_admin", "team")
+    await delegate(db, caller, "platform_admin", "team")
     page = await incidents.incidents_list(ctx, page_size=1)
     assert page["total"] == 2
     assert page["items"][0]["id"] == str(records[1].id)
@@ -261,7 +261,7 @@ async def test_incident_inspection_scopes_pagination_traces_and_live_revocation(
     with pytest.raises(ValueError, match="not found"):
         await incidents.incident_get(ctx, records[1].id)
     assert (await incidents.incidents_list(ctx))["total"] == 1
-    await delegate(db, caller, "galaris_admin", "all")
+    await delegate(db, caller, "platform_admin", "all")
     page = await incidents.incidents_list(ctx, page_size=500)
     assert page["total"] == 4 and page["items"][0]["id"] == str(records[3].id)
     detail = await incidents.incident_get(ctx, records[2].id)
@@ -302,10 +302,10 @@ async def test_incident_tools_work_over_mcp_and_recheck_function_permissions(db,
         trace={"diagnostic": "Synthetic transport trace"},
     ))
     await db.commit()
-    grant = await delegate(db, caller, "galaris_admin", "personal")
+    grant = await delegate(db, caller, "platform_admin", "personal")
     for name in ("incidents_list", "incident_get"):
         await connections.set_connection_function_state(grant.id, name, "enabled")
-    server = build_galaris_fastmcp(caller.id, runtime="internal", enabled_tool_codes={"galaris_admin"})
+    server = build_galaris_fastmcp(caller.id, runtime="internal", enabled_tool_codes={"platform_admin"})
     async with Client(server) as client:
         tools = {tool.name: tool for tool in await client.list_tools()}
         assert {"incidents_list", "incident_get"} <= tools.keys()

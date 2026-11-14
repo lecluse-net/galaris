@@ -447,7 +447,7 @@ those still `running` are closed as `cancelled`, with their counters, costs, and
 intact.
 
 The unique identifier of a text or voice processing is `ConversationRound.id`. The modals display
-this primary UUID and copy it to the clipboard when clicked. The optional `galaris_admin` MCP
+this primary UUID and copy it to the clipboard when clicked. The optional `platform_admin` MCP
 package, inactive by default, exposes `conversation_round_get`. Each function still requires an
 active connection at call time and returns all data persisted directly for that turn, as well as
 all correlated LLM calls. A voice turn does not contain audio bytes, which are not persisted in

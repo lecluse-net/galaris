@@ -411,8 +411,8 @@ suit le **profil LLM courant** et dépend du premier administrateur actif. Sur u
 vierge, sa création attend l’inscription de cet administrateur ; une installation existante
 reçoit également la proposition à la synchronisation de la base.
 
-Ses connexions et compétences ordinaires sont initialisées. Ses connexions **Galaris Admin**,
-**AgentAdmin** et **ToolAdmin** sont activées lors de cette création. Galaris Admin permet
+Ses connexions et compétences ordinaires sont initialisées. Ses connexions **Administration**,
+**AgentAdmin** et **ToolAdmin** sont activées lors de cette création. Administration permet
 notamment de consulter la documentation ; cette connexion peut aussi
 autoriser les inspections d’exécution selon les fonctions accordées. Ce cas diffère du défaut
 inactif de cette connexion pour les autres agents. Les compétences `galaris-knowledge` et `galaris-lab`
@@ -3328,7 +3328,7 @@ l’activation obligatoire ne lève ni les ACL métier ni les restrictions de ha
 
 Les commandes `conversation_*` d’admission, de suivi et de contrôle appartiennent
 au Tool **Conversation**, avec `document_show`. Les inspections `conversation_round_get`,
-`voice_turn_get`, `llm_call` et `llm_calls` appartiennent à **Galaris Admin**, optionnel et inactif
+`voice_turn_get`, `llm_call` et `llm_calls` appartiennent à **Administration**, optionnel et inactif
 par défaut. Chaque inspection revérifie sa connexion administrative au moment de l’appel,
 même si le catalogue a été construit avant sa révocation.
 
@@ -3406,7 +3406,7 @@ Sources : [parcours REST et OAuth](../admin/tool-administration.md),
 La **portée de gestion** (`tools.management_scope`) est locale à chaque connexion administrative :
 `usage` n’accorde aucune administration, `personal` vise les ressources de l’agent, `team`
 l’union de ses équipes actives et `all` le périmètre global. Elle concerne notamment ToolAdmin,
-Galaris Admin, les objectifs, les processus et les compétences. Connexion, portée, fonctions et
+Administration, les objectifs, les processus et les compétences. Connexion, portée, fonctions et
 appartenances sont revérifiées à chaque appel. Seul un humain habilité peut changer cette
 délégation ; un paramètre global ne peut pas l’élargir. Une ancienne connexion sans portée
 explicite doit être configurée. AgentAdmin propose `usage`, `team`, `all` et conserve en plus
@@ -3514,7 +3514,7 @@ nommé, activé/désactivé et révoqué. Le secret est présenté à la créati
 MCP externes accèdent au périmètre réellement autorisé, pas à une administration implicite de
 l’ensemble de Galaris.
 
-Les outils **AgentAdmin**, **ToolAdmin**, **Galaris Admin**, **Lab Galaris**, **Gestion des objectifs**, **Compétences**,
+Les outils **AgentAdmin**, **ToolAdmin**, **Administration**, **Lab**, **Gestion des objectifs**, **Compétences**,
 **Topics** et **Administration des processus** séparent les fonctions spécialisées des usages
 ordinaires. La connexion Lab reste inactive par défaut ; ses fonctions sont détaillées
 dans [le Lab](#lab) et [l’inventaire MCP](#mcp).
@@ -3539,7 +3539,7 @@ d’architecture, ainsi que les décisions et les plans du projet.
   Avec un modèle configuré, l’index s’enrichit progressivement et la recherche devient hybride ;
   l’absence de modèle, une panne ou un index incomplet sont signalés, sans supprimer la voie texte.
 
-L’activation requiert la connexion **Galaris Admin**, les fonctions documentaires autorisées et,
+L’activation requiert la connexion **Administration**, les fonctions documentaires autorisées et,
 pour le Chat, le mode conversation du Tool. La compétence `galaris-knowledge` apporte les concepts et
 la méthode de recherche ; sa projection exige aussi `documentation_catalog` et les autorisations
 de compétence/catégorie. Il peut guider par **section → écran → onglet → action**, à partir des
@@ -3595,7 +3595,7 @@ contrôle l’accès** ; le nom affiché ne remplace pas son identité.
 | `galaris://contact/<uuid>` | Fiche courante du carnet privé de l’agent ; lecture/export et édition contrôlée du nom et des coordonnées. |
 | `galaris://code/<uuid>` | Référence d’un dépôt Git dans la Console ; ouverture de son checkout courant avec droits propres. |
 | `galaris://processes/runs/<uuid>` | Snapshot autorisé d’un run natif ; sous-ressources `data` et `attachments/` sous les règles du profil et du processus. |
-| `galaris://documentation/` | Corpus officiel installé, en lecture seule, soumis à la connexion Galaris Admin et à `documentation_catalog`. |
+| `galaris://documentation/` | Corpus officiel installé, en lecture seule, soumis à la connexion Administration et à `documentation_catalog`. |
 | URI d’un Tool de fichiers connecté | Fichiers et collections du provider, par exemple Nextcloud ou Samba / SMB 2–3. Le code exact du Tool constitue le schéma. |
 | URI d’une pièce jointe Messenger | Fichier conservant le Tool et le salon d’origine ; lecture selon l’accès à la conversation. |
 | `mail://` | Dossiers IMAP, messages et pièces jointes ; lecture et copie, sans mutation générique et avec des règles distinctes pour la consultation humaine et le traitement agentique. |
@@ -4653,7 +4653,7 @@ complémentaires.
 
 ### Confier une campagne à un agent
 
-La connexion **Lab Galaris** donne accès aux fonctions MCP pour découvrir les dix mécanismes,
+La connexion **Lab** donne accès aux fonctions MCP pour découvrir les dix mécanismes,
 lire leurs contrats et rubriques, préparer les jeux et cas, régler leurs prompts expérimentaux,
 lancer les benchmarks et examiner leurs preuves. La connexion et la compétence système **Galaris Lab**
 (`galaris-lab`) sont **désactivées globalement par défaut** et s’activent séparément. La compétence est
@@ -4673,7 +4673,7 @@ les modèles de production.
 | Diagnostic | Inscrire une tâche existante dans le Lab, analyser ses preuves et relire les diagnostics sans rejouer la tâche |
 | Évaluation | Déposer une appréciation attribuée à l’agent, distincte de la revue humaine et du score du juge |
 
-Les sources réelles et diagnostics demandent **en plus** Galaris Admin et les quatre fonctions
+Les sources réelles et diagnostics demandent **en plus** Administration et les quatre fonctions
 d’inspection des exécutions. Un accès limité à la documentation ne suffit pas. Les captures
 conservent leur provenance ; des paramètres de source différents exigent la confirmation des
 écarts. Une plage de messages tronquée est refusée plutôt qu’importée comme complète.
@@ -5219,7 +5219,7 @@ juge. Une preuve absente reste inconnue.
 
 ### Demander à un agent comment utiliser Galaris
 
-Un agent équipé de la connexion Galaris Admin et de l’accès documentaire recherche la question,
+Un agent équipé de la connexion Administration et de l’accès documentaire recherche la question,
 lit les passages de la version installée, puis indique le parcours **section → écran → onglet →
 action** avec sa source. Il distingue une fonction implémentée d’un plan et vérifie séparément
 les droits ou réglages du compte. L’assistant Galaris proposé à l’installation peut remplir cette
@@ -5227,7 +5227,7 @@ mission ; un agent métier existant peut aussi recevoir cette capacité sans cha
 
 ### Organiser une comparaison autonome dans le Lab
 
-Un agent équipé de Lab Galaris et de la compétence associée lit le contrat du mécanisme, prépare ou clone
+Un agent équipé de Lab et de la compétence associée lit le contrat du mécanisme, prépare ou clone
 un jeu, puis fait générer des cas synthétiques adaptés à son contexte. Les brouillons sont revus
 avant benchmark. Il fait varier un axe, lance les essais avec des modèles et budgets explicites,
 suit les références durables, compare les résultats et dépose son appréciation attribuée.
@@ -5250,7 +5250,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 |---|---|
 | Fonction intégrée | Peut nécessiter un privilège, une connexion active, des credentials et une ressource compatible. |
 | Services système | Galaris, Conversation, Document, Memory et File Sharing sont obligatoires ; cette activation n’accorde pas de nouveaux droits sur les ressources. |
-| Assistant initial | Galaris est proposé une seule fois, avec le harnais interne et Galaris Admin, AgentAdmin et ToolAdmin actifs à sa création ; modifications, révocations et suppression sont conservées. Un modèle utilisable reste requis. |
+| Assistant initial | Galaris est proposé une seule fois, avec le harnais interne et Administration, AgentAdmin et ToolAdmin actifs à sa création ; modifications, révocations et suppression sont conservées. Un modèle utilisable reste requis. |
 | Administration déléguée | La portée locale de chaque connexion borne la délégation ; AgentAdmin vérifie aussi les droits du responsable. ToolAdmin exige `all` pour le catalogue global. L’agent ne peut s’attribuer de capacité administrative. |
 | Autorisation permanente | Active une seule fonction sur une connexion, sans lever les ACL, blocages ou préconditions de la ressource. |
 | Indexation des fichiers | Catalogue privé par agent, accès source actuel, regroupement des copies par SHA-256 ; découverte dépendante du provider, sans garantie de couverture exhaustive d’un parcours partiel. |
@@ -5295,7 +5295,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Collections de plan | Inventaire figé et exécution séquentielle par vagues ; jusqu’à 1 000 éléments par collection, sans promesse de parallélisme. |
 | Permissions navigateur | Réseau local interdit par défaut ; un accord mémorisé ne contourne pas les filtres de la connexion. |
 | Sujet précoce | Classement parallèle si Décision et texte Dream sont configurés ; aucune attente d’admission, aucun droit supplémentaire et aucun rejeu automatique d’une recherche déjà faite. |
-| Documentation produit | Accès Galaris Admin et fonctions documentaires nécessaires ; lecture seule, recherche lexicale disponible immédiatement, enrichissement vectoriel et recherche hybride si configurés ; plans prospectifs et configuration réelle à vérifier séparément. |
+| Documentation produit | Accès Administration et fonctions documentaires nécessaires ; lecture seule, recherche lexicale disponible immédiatement, enrichissement vectoriel et recherche hybride si configurés ; plans prospectifs et configuration réelle à vérifier séparément. |
 | Lab agentique | Connexion et compétence optionnelles, inactives globalement par défaut ; seule la compétence est attribuée individuellement à l’assistant Galaris initial. Les benchmarks IA n’appliquent pas automatiquement leurs réglages à la production. Les campagnes Process exécutent de vrais runs et leurs effets. Captures et diagnostics exigent l’inspection Admin. |
 | Génération synthétique | De 1 à 20 cas adaptés au mécanisme et éventuellement au contexte d’un jeu ; tous restent brouillons et le jeu est enregistré intégralement ou pas du tout. |
 | Notes et revues du Lab | Une note absente ne vaut pas zéro ; avis agents, revues humaines et juge restent distincts. Les comparaisons descriptives ne prouvent pas une supériorité statistique. |
@@ -5333,9 +5333,9 @@ fonctions natives dans cette table.
 
 Les familles sont celles du catalogue effectif : les commandes conversationnelles appartiennent
 à **Conversation** ; les inspections détaillées des rounds, tours vocaux et appels LLM à
-**Galaris Admin**, optionnel et inactif par défaut, sauf pour l’assistant Galaris à sa création.
-Les fonctions documentaires appartiennent aussi à Galaris Admin ; le pilotage des expériences
-appartient au Tool optionnel **Lab Galaris**. Les commandes système restent soumises à
+**Administration**, optionnel et inactif par défaut, sauf pour l’assistant Galaris à sa création.
+Les fonctions documentaires appartiennent aussi à Administration ; le pilotage des expériences
+appartient au Tool optionnel **Lab**. Les commandes système restent soumises à
 leur contexte : un service obligatoire n’expose pas ses fonctions de conversation aux tâches.
 Les colonnes « Famille » indiquent le namespace déclaré ou le Tool Topics qui sélectionne ses
 fonctions explicitement. Pour Messenger, la connexion de transport détermine le Tool concret.
@@ -5360,7 +5360,7 @@ fonctions explicitement. Pour Messenger, la connexion de transport détermine le
 | `conversation_choice_resolve` | `conversation` | Résoudre une interaction en attente à partir d’une réponse humaine comprise sans ambiguïté. |
 | `conversation_process_start` | `conversation` | Lancer un processus affecté et le rattacher à la conversation sans attendre sa fin. |
 | `document_show` | `conversation` | Demander l’ouverture d’un document lisible dans le salon texte interne courant de l’agent, après contrôle des droits et de la fraîcheur ; ne partage rien et ne s’exécute pas dans une tâche. |
-| `conversation_round_get` | `galaris_admin` | Inspection administrative complète d’un round : messages, tentatives, tâches créées/amendées, processus, résultat et appels. |
+| `conversation_round_get` | `platform_admin` | Inspection administrative complète d’un round : messages, tentatives, tâches créées/amendées, processus, résultat et appels. |
 
 ### Conversation : code et activités humaines
 
@@ -5569,7 +5569,7 @@ l’interface humaine et ne sont pas exposés comme fonctions MCP.
 | `voice_call_start` | `voice` | Démarrer un appel via le provider vocal de la connexion. |
 | `voice_call_stop` | `voice` | Terminer l’appel concerné, avec contrôle du périmètre. |
 | `voice_call_list` | `voice` | Lister les appels vocaux accessibles. |
-| `voice_turn_get` | `galaris_admin` | Lire le dossier administratif complet d’un tour vocal et ses appels corrélés. |
+| `voice_turn_get` | `platform_admin` | Lire le dossier administratif complet d’un tour vocal et ses appels corrélés. |
 
 ### Médias
 
@@ -5671,8 +5671,8 @@ l’interface humaine et ne sont pas exposés comme fonctions MCP.
 
 | Fonction | Famille | Action et résultat |
 |---|---|---|
-| `documentation_catalog` | `galaris_admin` | Découvrir version, langues, domaines et points d’entrée ; son autorisation ouvre aussi la lecture du corpus sous `galaris://documentation/`. |
-| `documentation_search` | `galaris_admin` | Rechercher une question dans le corpus installé avec filtres, extraits, URI, sections, statuts et provenance ; repli textuel lorsque la recherche sémantique manque. |
+| `documentation_catalog` | `platform_admin` | Découvrir version, langues, domaines et points d’entrée ; son autorisation ouvre aussi la lecture du corpus sous `galaris://documentation/`. |
+| `documentation_search` | `platform_admin` | Rechercher une question dans le corpus installé avec filtres, extraits, URI, sections, statuts et provenance ; repli textuel lorsque la recherche sémantique manque. |
 
 ### Lab : campagnes de processus
 
@@ -5713,7 +5713,7 @@ appartiennent toutes au Tool optionnel `lab`.
 
 ### Lab : capture de preuves réelles
 
-Ces fonctions exigent également les autorisations d’inspection de Galaris Admin.
+Ces fonctions exigent également les autorisations d’inspection de Administration.
 
 | Fonction | Famille | Action et résultat |
 |---|---|---|
@@ -5769,8 +5769,8 @@ Ces fonctions exigent également les autorisations d’inspection de Galaris Adm
 
 | Fonction | Famille | Action et résultat |
 |---|---|---|
-| `llm_calls` | `galaris_admin` | Obtenir les identifiants des appels récents dans une période horodatée. |
-| `llm_call` | `galaris_admin` | Inspecter un appel par UUID ou préfixe unique : requête, réponse, outils, usage, coût, erreurs et contexte associé. |
+| `llm_calls` | `platform_admin` | Obtenir les identifiants des appels récents dans une période horodatée. |
+| `llm_call` | `platform_admin` | Inspecter un appel par UUID ou préfixe unique : requête, réponse, outils, usage, coût, erreurs et contexte associé. |
 
 <a id="couverture"></a>
 ## 31. Couverture des modules et sources

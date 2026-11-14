@@ -87,7 +87,7 @@ Process campaigns use their separate `lab_process_*` functions.
 Use the dedicated `galaris-lab` skill for datasets, experimental prompts, benchmarks,
 comparisons and attributed agent assessments. Start mechanism evaluation with `lab_list`
 and `lab_get`; its generation and analysis return durable operations. Real-source capture
-additionally requires the execution-inspection functions of `galaris_admin`. These tools operate canonical Lab
+additionally requires the execution-inspection functions of `platform_admin`. These tools operate canonical Lab
 records and do not promote experimental settings to production.
 
 For native Process benchmarks, `lab_process_dataset_create` saves entirely invented input
@@ -118,7 +118,7 @@ visual evidence, OCR uncertainty, conversion limits and partial results honestly
 
 ## Official product knowledge
 
-When authorized, `documentation_catalog` and `documentation_search` under Galaris Admin provide
+When authorized, `documentation_catalog` and `documentation_search` under Administration provide
 the documentation shipped with this installation. Read returned source URIs under
 `galaris://documentation/` with `file_read`; these sources remain read-only Markdown, JSON or
 HTML. The `galaris-knowledge` system skill explains the product concepts and support workflow.
@@ -170,7 +170,7 @@ connection alone never implies global administration. The bundled Galaris assist
 it active on first creation; other agents start inactive, and later deactivations remain preserved.
 Conversation access is initially disabled. Every read and mutation checks its live grant. ToolAdmin and AgentAdmin
 have separate delegations. Mandatory services remain software-owned; integrated definitions
-are read-only. Only humans delegate ToolAdmin, AgentAdmin, Galaris Admin, Process Admin,
+are read-only. Only humans delegate ToolAdmin, AgentAdmin, Administration, Process Admin,
 Lab, Goal management, Skill management and Console. Do not try to grant these through another Tool.
 
 Use `tool_admin_list(search="...", offset=0, limit=50)` and `tool_admin_get(tool_id=...,
@@ -794,11 +794,11 @@ mean the colleague is unknown or unreachable. Contact permissions still apply.
 
 ### Restricted execution inspection
 
-The `galaris_admin` package is a separately granted administration surface and is inactive by
+The `platform_admin` package is a separately granted administration surface and is inactive by
 default. Its tools inspect persisted execution data for diagnosis; they do not grant access to
 ordinary agents merely because an identifier is known. Always reuse an exact UUID copied from the
 Galaris interface or another trusted result, and never guess one. The server rechecks the active
-`galaris_admin` connection on every call, including `llm_call` and `llm_calls`.
+`platform_admin` connection on every call, including `llm_call` and `llm_calls`.
 
 - `llm_call(llm_call_id: str) -> str` returns a complete LLM call as JSON text, including request
   messages and prompts, response, reasoning, tool calls, token usage, cost, errors, timings, and
@@ -1111,7 +1111,7 @@ user explicitly requests another method. Use `process_list` to refresh the catal
   Run data and files inherit the parent Process's existing read/edit rights, including
   immediate sharing and revocation for existing runs. No separate Dataset or run grant is
   needed. An active dedicated `process_admin` connection grants global run administration;
-  `galaris_admin` alone does not. Process readers inspect; Process editors control the run:
+  `platform_admin` alone does not. Process readers inspect; Process editors control the run:
   pause stops new admissions while admitted work finishes, resume keeps the same run,
   and stop cascades to active Tasks/children and closes human requests.
   A stopping run remains pending until termination is confirmed; a terminal run cannot

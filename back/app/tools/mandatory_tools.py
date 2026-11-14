@@ -63,7 +63,7 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
         default_active=False,
     ),
     IntegratedToolSpec(
-        code="lab", label="Lab Galaris", description=DESCRIPTIONS["lab"],
+        code="lab", label="Lab", description=DESCRIPTIONS["lab"],
         mcp_tools=(
             "lab_list",
             "lab_get",
@@ -303,10 +303,10 @@ INTEGRATED_TOOL_SPECS: tuple[IntegratedToolSpec, ...] = (
         default_active=True,
     ),
     IntegratedToolSpec(
-        code="galaris_admin",
+        code="platform_admin",
         management_scopes=("usage", "personal", "team", "all"),
-        label="Galaris Admin",
-        description=DESCRIPTIONS["galaris_admin"],
+        label="Administration",
+        description=DESCRIPTIONS["platform_admin"],
         mcp_tools=("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls",
                    "documentation_catalog", "documentation_search", "incidents_list", "incident_get"),
         default_active=False,
@@ -697,7 +697,7 @@ async def sync_integrated_tool_connections(agent_id: int | None = None) -> int:
     from core.dbadmin import reconcile_dataset
     from .dbadmin import datasets
 
-    dataset = datasets(agent_id=agent_id)[1]
+    dataset = next(item for item in datasets(agent_id=agent_id) if item.key == "app.tools.mandatory.connections")
     result = await reconcile_dataset(get_db(), dataset)
     if result.inserted:
         logger.info("{} built-in connection(s) created for agents", result.inserted)

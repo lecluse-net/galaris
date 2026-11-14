@@ -43,10 +43,10 @@ async def authorize(ctx: McpToolContext, action: str, *, sources: bool = False) 
         await require_galaris_admin_access(ctx.agent_id)
         for function in ("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls"):
             if not await connections.has_active_tool_function(
-                ctx.agent_id, "galaris_admin", function
+                ctx.agent_id, "platform_admin", function
             ):
                 raise PermissionError(
-                    "Real Lab sources require the execution-inspection functions of galaris_admin."
+                    "Real Lab sources require the execution-inspection functions of platform_admin."
                 )
 
 

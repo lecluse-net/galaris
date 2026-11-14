@@ -1257,11 +1257,11 @@ agent's model. Attributed facts, decisions, commitments and open questions are s
 HTML through Memory acquisition. The ineffective `replace_existing` argument is removed; normal
 deduplication rules apply. Model failures store neither a raw transcript nor a partial memory.
 
-`galaris_admin` is a fourth management package, also inactive by default. It exposes
+`platform_admin` is a fourth management package, also inactive by default. It exposes
 `conversation_round_get` and `voice_turn_get`, two primary-UUID reads intended for
 complete analysis of text and voice conversational datasets, plus `llm_call` and `llm_calls` for
 model-call inspection. They include execution traces and
-all correlated `LLMCall`s. Each wrapper rechecks the active `galaris_admin` connection at call
+all correlated `LLMCall`s. Each wrapper rechecks the active `platform_admin` connection at call
 time; prior function discovery alone is not durable authorization.
 
 The failure journal is also exposed through `incidents_list` (paginated list with inclusive

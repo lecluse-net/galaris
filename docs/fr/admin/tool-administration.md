@@ -2,6 +2,12 @@
 
 # Déléguer l’administration des Tools
 
+Le code `galaris` et le libellé **Galaris** sont réservés au seul Tool système Galaris.
+Aucun autre code ou libellé de Tool ne peut contenir ce nom, quelle que soit sa casse.
+Le Tool d’administration utilise `platform_admin` / **Administration** et le laboratoire
+`lab` / **Lab**. La mise à jour conserve l’identité, les connexions et les autorisations
+de l’ancien Tool d’administration lors de son renommage.
+
 Un Tool représente un fournisseur, par exemple **Ionos**. Dans son formulaire, **Protocoles** et le bouton **Ajouter un protocole** sont placés au-dessus des onglets.
 Choisir **IMAP & SMTP** sous **Mail**, puis renseigner les serveurs dans les sections IMAP et SMTP.
 Les champs de compte référencent les paramètres standards, créés uniquement sur demande explicite : `email`, `login`, `password`, `folders`, `user_id`.
@@ -33,7 +39,7 @@ AgentAdmin propose seulement `usage`, `team`, `all` et intersecte la délégatio
 droits et le périmètre du responsable humain ; il interdit les modifications de l'appelant.
 ToolAdmin exige `all` pour les définitions, paramètres et permissions partagés ; `personal`
 et `team` ne délèguent que les connexions concernées. Goal management suit l'agent responsable,
-Galaris Admin l'agent propriétaire des traces et Process Admin les règles de son domaine.
+Administration l'agent propriétaire des traces et Process Admin les règles de son domaine.
 Les [compétences](../user/skills.md) conservent leur propre distinction entre usage et gestion.
 
 Seul un humain en session web avec `CONNECTION_EDIT` et gestion globale des agents peut
@@ -86,7 +92,7 @@ Les lectures comme les mutations vérifient la connexion active et la permission
 chaque appel. Les définitions intégrées restent non modifiables. Les services obligatoires
 Galaris, Conversation, Document, Memory et File Sharing sont consultables, mais leurs réglages et
 connexions restent gérés par le logiciel. Seul un humain peut attribuer ou modifier ToolAdmin,
-AgentAdmin, Galaris Admin, Process Admin, Lab, Goal management, Compétences et Console.
+AgentAdmin, Administration, Process Admin, Lab, Goal management, Compétences et Console.
 Une chaîne de commandes agentiques ne permet pas de s’attribuer une capacité administrative.
 
 ## Connecter un serveur MCP avec OAuth

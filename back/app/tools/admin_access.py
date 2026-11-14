@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 
-GALARIS_ADMIN_TOOL_CODE = "galaris_admin"
+GALARIS_ADMIN_TOOL_CODE = "platform_admin"
 
 
 async def has_documentation_access(agent_id: int) -> bool:
@@ -15,7 +15,7 @@ async def has_documentation_access(agent_id: int) -> bool:
 
 async def require_documentation_access(agent_id: int) -> None:
     if not await has_documentation_access(agent_id):
-        raise PermissionError("An active galaris_admin connection with documentation_catalog enabled is required.")
+        raise PermissionError("An active platform_admin connection with documentation_catalog enabled is required.")
 
 
 async def has_galaris_admin_access(agent_id: int, *, target_agent_id: int | None = None) -> bool:
@@ -30,7 +30,7 @@ async def require_galaris_admin_access(agent_id: int) -> None:
 
     if not await has_galaris_admin_access(agent_id):
         raise PermissionError(
-            "An active galaris_admin connection with global management scope is required to inspect global execution datasets."
+            "An active platform_admin connection with global management scope is required to inspect global execution datasets."
         )
 
 

@@ -499,7 +499,7 @@ The central `app/chat/tests/test_authorization.py` check also covers Document pr
 conversation listing and creation while preserving the room access assertion.
 
 `app/tools/tests/test_management_scopes.py` protects connection-local Process,
-ToolAdmin, Goal and Galaris Admin scopes: no implicit delegation, filtering before
+ToolAdmin, Goal and Administration scopes: no implicit delegation, filtering before
 pagination, denial of out-of-scope assignments and revocation after team removal.
 `app/agent/tests/test_agent_admin.py` covers team creation and the ban on self-mutation;
 avatar, connection and Harness journeys now target a separate managed agent.

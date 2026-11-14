@@ -3,7 +3,7 @@
 # Teams and dialogue permissions
 
 Task management belongs to the owning agent, its human managers and global administrators.
-An agent with an active **Galaris Admin** connection can operate on Tasks within its
+An agent with an active **Administration** connection can operate on Tasks within its
 delegated scope; only `all` opens global scope.
 The requester of a delegated task can follow its result without gaining management of the
 recipient’s other tasks.

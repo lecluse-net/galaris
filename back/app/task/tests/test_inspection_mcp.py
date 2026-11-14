@@ -78,7 +78,7 @@ async def test_task_access_separates_delegated_reads_from_management_and_live_ad
         await mcp_stop_task(ctx, uri)
     target.requester_agent_id = None
 
-    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris_admin"))
+    tool = await db.scalar(select(ToolModel).where(ToolModel.code == "platform_admin"))
     connection = Connection(agent_id=peer.id, tool_id=tool.id, active=False)
     db.add(connection)
     await db.flush()
@@ -335,7 +335,7 @@ async def test_llm_call_and_llm_calls_return_complete_json_and_ids(db: AsyncSess
     from sqlalchemy import select
     from app.connection import Connection
     from app.tools import ToolModel
-    admin_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris_admin"))
+    admin_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "platform_admin"))
     assert admin_tool is not None
     ctx = McpToolContext(agent_id=agent.id, runtime="internal")
     with pytest.raises(PermissionError):

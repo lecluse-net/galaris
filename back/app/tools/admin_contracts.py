@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from .schemas import ToolCreate, ToolMcpTestRequest, ToolUpdate
 
 HUMAN_ONLY_TOOL_CODES = frozenset({
-    "tool_admin", "agent_admin", "galaris_admin", "process_admin", "lab",
+    "tool_admin", "agent_admin", "platform_admin", "process_admin", "lab",
     "goal_management", "skills", "console",
 })
 

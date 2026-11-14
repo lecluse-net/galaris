@@ -1,6 +1,6 @@
 ---
 name: galaris-knowledge
-description: Explain Galaris features and guide users through the application using the official documentation shipped with their installation. Use for product questions, choosing a workflow, permissions, setup and usage troubleshooting. This knowledge complements the agent's existing role and requires authorized Galaris Admin documentation functions.
+description: Explain Galaris features and guide users through the application using the official documentation shipped with their installation. Use for product questions, choosing a workflow, permissions, setup and usage troubleshooting. This knowledge complements the agent's existing role and requires authorized Administration documentation functions.
 ---
 
 # Understand and explain Galaris

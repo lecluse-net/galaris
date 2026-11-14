@@ -14,7 +14,7 @@ system skill. It reuses Workbench services and records. Short commands have atom
 idempotent receipts; long operations outside benchmarks use `LabOperation` and the Lab
 worker. Agent assessments retain their
 identity separately from human reviews. Real-source
-access also requires the execution-inspection functions of `galaris_admin`.
+access also requires the execution-inspection functions of `platform_admin`.
 [ADR 0134](../../../project/decisions/0134-agent-lab-control.md) documents authorization,
 durable publication, pagination and comparison limits.
 

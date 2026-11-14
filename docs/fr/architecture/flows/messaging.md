@@ -458,7 +458,7 @@ coûts et sorties partielles intacts.
 
 L’identifiant unique d’un traitement textuel ou vocal est `ConversationRound.id`. Les modales
 affichent cet UUID primaire et le copient dans le presse-papiers au clic.
-Le package MCP optionnel `galaris_admin`, inactif par défaut, expose `conversation_round_get`.
+Le package MCP optionnel `platform_admin`, inactif par défaut, expose `conversation_round_get`.
 Chaque fonction exige encore une connexion active au moment de l’appel et retourne toutes les données
 persistées directement pour ce tour ainsi que tous ses appels LLM corrélés. Le tour vocal ne
 contient pas les octets audio, qui ne sont pas persistés dans ce jeu de données conversationnel.

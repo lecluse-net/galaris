@@ -104,7 +104,7 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     assert await has_documentation_access(agent.id)
     assert await has_active_tool_function(agent.id, "tool_admin", "tool_admin_list")
     assert await has_active_tool_function(agent.id, "agent_admin", "agent_options")
-    scoped_tools = {"galaris_admin", "tool_admin", "agent_admin", "skills",
+    scoped_tools = {"platform_admin", "tool_admin", "agent_admin", "skills",
                     "process_admin", "goal_management", "chat"}
     for tool_code in scoped_tools:
         assert await get_management_scope(agent.id, tool_code) == "all", tool_code

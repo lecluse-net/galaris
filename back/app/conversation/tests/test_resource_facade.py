@@ -100,7 +100,7 @@ async def test_conversation_round_resources_are_scoped_by_connection_owner(
     db.add_all(memberships)
     await db.flush()
     assert await read_conversation_round_resource(foreign_round.id, actor_agent_id=owner.id) is None
-    tool = await db.scalar(select(Tool).where(Tool.code == "galaris_admin"))
+    tool = await db.scalar(select(Tool).where(Tool.code == "platform_admin"))
     connection = await connection_service.get_or_create_connection(tool.id, owner.id, active=True)
     await connection_service.set_param(connection.id, "tools.management_scope", "team", scope_edit_authorized=True)
     assert {row["id"] for row in await list_conversation_round_resources(actor_agent_id=owner.id)} == {

@@ -336,8 +336,8 @@ Sources: [AgentAdmin contract](../dev/agent-admin.md),
 **internal harness**, follows the **current LLM profile** and belongs to the first active
 administrator. Fresh installs wait for registration; existing installs receive the offer at DB sync.
 
-Ordinary skills/connections are initialized. **Galaris Admin**, **AgentAdmin** and **ToolAdmin**
-are enabled at creation. Galaris Admin covers product documentation and permitted execution
+Ordinary skills/connections are initialized. **Administration**, **AgentAdmin** and **ToolAdmin**
+are enabled at creation. Administration covers product documentation and permitted execution
 inspections, unlike its inactive default for other
 agents. The assistant individually receives `galaris-knowledge` and `galaris-lab` at creation,
 while both remain globally disabled. The Lab connection stays inactive: having its skill does
@@ -2623,7 +2623,7 @@ archived during migration. Mandatory activation never bypasses business ACLs or 
 
 The admission/status/control `conversation_*` commands and `document_show` belong to Conversation.
 `conversation_round_get`, `voice_turn_get`, `llm_call` and `llm_calls` belong to optional, initially
-inactive Galaris Admin. Each inspection rechecks the Admin connection even if discovery preceded
+inactive Administration. Each inspection rechecks the Admin connection even if discovery preceded
 revocation. Synchronisation fills missing standard descriptions, updates recognised old defaults
 and preserves custom descriptions.
 
@@ -2687,7 +2687,7 @@ Sources: [REST/OAuth journey](../admin/tool-administration.md),
 
 The **management scope** (`tools.management_scope`) is local to each administrative connection:
 `usage` grants no administration, `personal` covers the agent's resources, `team` the union of
-its active teams and `all` the global scope. It applies to ToolAdmin, Galaris Admin, Goals,
+its active teams and `all` the global scope. It applies to ToolAdmin, Administration, Goals,
 Processes and Skills. Each call rechecks connection, scope, functions and membership. Only an
 authorised human can change delegation; global parameters cannot widen it. Older connections
 without an explicit scope need configuration. AgentAdmin offers `usage`, `team`, `all`, also
@@ -2780,7 +2780,7 @@ identity. The UI supplies URL/client configuration and named per-client tokens w
 revocation. Secrets appear at creation and are subsequently masked. External clients receive only
 the agent's permitted scope, not implicit global administration.
 
-AgentAdmin, ToolAdmin, Galaris Admin, Galaris Lab, Goal Management, Skill Management, Topics and Process Administration
+AgentAdmin, ToolAdmin, Administration, Lab, Goal Management, Skill Management, Topics and Process Administration
 separate specialised functions. Lab is initially inactive; its functions are inventoried below.
 
 ### Installed product documentation for agents
@@ -2800,7 +2800,7 @@ cursors are invalidated when the corpus changes.
 
 Text/exact search needs no embedding model. A configured model progressively adds hybrid search;
 missing models, errors or incomplete indexes are reported while text search remains available.
-Access requires Galaris Admin, permitted documentation functions and, for chat, conversation mode.
+Access requires Administration, permitted documentation functions and, for chat, conversation mode.
 `galaris-knowledge` additionally requires `documentation_catalog` and skill/category permissions.
 It can guide section → screen → tab → action from documented journeys/menus without presuming
 user rights.
@@ -3683,7 +3683,7 @@ evaluate audio recognition. External-service qualification remains complementary
 
 ### Agent-operated experiments
 
-Optional Galaris Lab connection exposes 50 MCP functions over the same UI objects; both connection
+Optional Lab connection exposes 50 MCP functions over the same UI objects; both connection
 and `galaris-lab` system skill are independently off by default globally. The initial Galaris
 assistant receives the skill individually at creation, without activating its Lab connection.
 Experiment edits never change
@@ -3699,7 +3699,7 @@ production prompts/models. Authorised agents can:
 - Register existing Tasks, analyse/reread evidence without replay and submit attributed agent reviews
   separate from human and automatic judgement.
 
-Real evidence/diagnosis additionally requires Galaris Admin and all four execution-inspection functions;
+Real evidence/diagnosis additionally requires Administration and all four execution-inspection functions;
 documentation-only access is insufficient. Captures retain provenance and require confirmation of
 source-setting differences. Truncated ranges cannot masquerade as complete captures.
 
@@ -4154,7 +4154,7 @@ for subsequent calls without editing client files. Logs retain token name and ac
 |---|---|
 | Integrated capability | May require a privilege, active connection, credentials and compatible resource. |
 | System services | Galaris, Conversation, Document, Memory and File Sharing are mandatory without granting new resource rights. |
-| Initial assistant | Created once with internal harness, Galaris Admin, AgentAdmin and ToolAdmin; later edits/revocation/deletion persist. A usable model is still required. |
+| Initial assistant | Created once with internal harness, Administration, AgentAdmin and ToolAdmin; later edits/revocation/deletion persist. A usable model is still required. |
 | Delegated administration | Each connection's local scope bounds delegation; AgentAdmin also checks the manager's rights. ToolAdmin requires `all` for the global catalogue. Agents cannot grant themselves administrative capabilities. |
 | Permanent consent | Enables one connection function without bypassing ACLs, blocks or resource preconditions. |
 | File indexing | Private per-agent catalogue with current source access and SHA-256 copy identity; discovery depends on providers and partial traversals are not exhaustive. |
@@ -4256,7 +4256,7 @@ selects the concrete Tool.
 | `conversation_choice_resolve` | `conversation` | Resolve a pending interaction from an unambiguous human reply. |
 | `conversation_process_start` | `conversation` | Start an assigned Process linked to the conversation without awaiting completion. |
 | `document_show` | `conversation` | Request opening of a readable document in the current internal text room after rights/freshness checks; no sharing or Task invocation. |
-| `conversation_round_get` | `galaris_admin` | Full administrative round dossier: messages, attempts, created/amended Tasks, Processes, result and calls. |
+| `conversation_round_get` | `platform_admin` | Full administrative round dossier: messages, attempts, created/amended Tasks, Processes, result and calls. |
 
 ### Conversation: code and human activities
 
@@ -4463,7 +4463,7 @@ application–Dataset consent is managed in the human UI, not exposed through MC
 | `voice_call_start` | `voice` | Start through the connection's voice provider. |
 | `voice_call_stop` | `voice` | Stop within the authorised scope. |
 | `voice_call_list` | `voice` | List accessible calls. |
-| `voice_turn_get` | `galaris_admin` | Full administrative voice-turn dossier and correlated calls. |
+| `voice_turn_get` | `platform_admin` | Full administrative voice-turn dossier and correlated calls. |
 
 ### Media
 
@@ -4565,8 +4565,8 @@ application–Dataset consent is managed in the human UI, not exposed through MC
 
 | Function | Family | Action/result |
 |---|---|---|
-| `documentation_catalog` | `galaris_admin` | Discover version/languages/domains/entry points; also permits corpus reads under `galaris://documentation/`. |
-| `documentation_search` | `galaris_admin` | Search installed sources with filters, excerpts, URIs, sections, status/provenance and text fallback when semantic search is unavailable. |
+| `documentation_catalog` | `platform_admin` | Discover version/languages/domains/entry points; also permits corpus reads under `galaris://documentation/`. |
+| `documentation_search` | `platform_admin` | Search installed sources with filters, excerpts, URIs, sections, status/provenance and text fallback when semantic search is unavailable. |
 
 ### Lab: Process campaigns
 
@@ -4662,8 +4662,8 @@ These functions additionally require Admin inspection permissions.
 
 | Function | Family | Action/result |
 |---|---|---|
-| `llm_calls` | `galaris_admin` | Obtain recent call identifiers within a timestamped period. |
-| `llm_call` | `galaris_admin` | Inspect UUID/unique-prefix calls: request, response, tools, usage, cost, errors and context. |
+| `llm_calls` | `platform_admin` | Obtain recent call identifiers within a timestamped period. |
+| `llm_call` | `platform_admin` | Inspect UUID/unique-prefix calls: request, response, tools, usage, cost, errors and context. |
 
 <a id="couverture"></a>
 ## 31. Module coverage and sources

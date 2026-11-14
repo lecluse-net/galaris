@@ -139,7 +139,7 @@ async def test_process_sharing_and_revocable_dedicated_admin_apply_to_every_run_
                       lambda: run_metrics(run_id, observer.id), lambda: children(run_id, observer.id)):
         with pytest.raises(PermissionError):
             await operation()
-    global_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris_admin"))
+    global_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "platform_admin"))
     global_connection = Connection(agent_id=observer.id, tool_id=global_tool.id, active=True)
     db.add(global_connection)
     await db.flush()

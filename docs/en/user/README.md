@@ -370,7 +370,7 @@ remains an agent action. Personal packages cannot be shared.
 ### Delegating administration to an agent
 
 When first created, the **Galaris** assistant receives global scope (`all`) on all its
-built-in connections offering a scope: Galaris Admin, ToolAdmin, AgentAdmin, Process
+built-in connections offering a scope: Administration, ToolAdmin, AgentAdmin, Process
 administration, Goal management, Skills and Chat. These connections start active.
 Other internal tools without a separately configured external account, including Topics,
 also start active, with native functions enabled. Model prerequisites and resource permissions
@@ -384,14 +384,14 @@ survives renaming; naming another agent “Galaris” does not protect that agen
 
 In **Tools → Connections → edit a connection → Management scope**,
 `tools.management_scope` also configures Process administration, ToolAdmin,
-Goal management, Galaris Admin and AgentAdmin. Levels are `usage` (no administration),
+Goal management, Administration and AgentAdmin. Levels are `usage` (no administration),
 `personal` (own resources), `team` (agents sharing an active team) and `all` (global).
 Only a human with connection editing and global agent management may change this local
 value. Function permissions still apply. Team removals take effect on the next call.
 
 ToolAdmin limits personal and team scopes to connections; shared definitions and global
 settings require `all`. Process definitions follow their assigned agent, runs their
-launcher and Goals their responsible agent. Galaris Admin scopes Tasks, conversations
+launcher and Goals their responsible agent. Administration scopes Tasks, conversations
 and LLM traces without widening Document or private-memory permissions.
 
 AgentAdmin only offers `usage`, `team`, `all`. Team scope allows creation in an explicitly

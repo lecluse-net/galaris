@@ -39,7 +39,7 @@ def _turn_id(value: str) -> UUID:
         raise ValueError(f"Invalid voice conversation turn UUID: {value}") from exc
 
 
-@mcp_tool("galaris_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
+@mcp_tool("platform_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
 
     name="voice_turn_get",
     description=(
@@ -60,7 +60,7 @@ async def voice_turn_get(
 
     identifier = _turn_id(turn_id)
     from app.tools.facade import administration_scope
-    scope = await administration_scope(ctx.agent_id, "galaris_admin")
+    scope = await administration_scope(ctx.agent_id, "platform_admin")
     scope.require_administration()
     payload = await inspect_turn(identifier, agent_ids=scope.agent_ids)
     if payload is None:

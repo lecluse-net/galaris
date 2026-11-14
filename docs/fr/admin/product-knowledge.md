@@ -19,7 +19,7 @@ permet de qualifier ces choix.
 ## Activation
 
 1. Dans **Configurer → Outils & connexions → Connexions** (`/tools?tab=connections`),
-   activer la connexion **Galaris Admin** de l'agent.
+   activer la connexion **Administration** de l'agent.
 2. Dans les autorisations de cette connexion, conserver `documentation_catalog` et
    `documentation_search` autorisés.
 3. Pour un accès documentaire seul, désactiver `conversation_round_get`, `voice_turn_get`,
@@ -30,7 +30,7 @@ permet de qualifier ces choix.
    défaut global est désactivé ; les réglages de compétence et de catégorie restent applicables.
    Sa projection effective exige également l'autorisation `documentation_catalog`.
 
-La connexion Galaris Admin reste inactive par défaut. L'activation seule conserve la cascade
+La connexion Administration reste inactive par défaut. L'activation seule conserve la cascade
 habituelle d'autorisations des fonctions : désactiver explicitement les inspections pour un
 agent chargé uniquement d'aider les utilisateurs.
 

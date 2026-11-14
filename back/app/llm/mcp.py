@@ -57,7 +57,7 @@ async def document_analysis_cancel(ctx: McpToolContext, run_id: str) -> dict[str
     return await cancel_analysis(ctx.agent_id, UUID(run_id), runtime=ctx.runtime)
 
 
-@mcp_tool("galaris_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
+@mcp_tool("platform_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
 
     name="llm_call",
     description=(
@@ -71,13 +71,13 @@ async def mcp_llm_call(ctx: McpToolContext, llm_call_id: str) -> str:  # noqa: A
     """Return the complete JSON representation of an LLM call."""
 
     from app.tools.facade import administration_scope
-    scope = await administration_scope(ctx.agent_id, "galaris_admin")
+    scope = await administration_scope(ctx.agent_id, "platform_admin")
     scope.require_administration()
     payload = await inspect_llm_call(llm_call_id, agent_ids=scope.agent_ids)
     return json.dumps(payload, ensure_ascii=False)
 
 
-@mcp_tool("galaris_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
+@mcp_tool("platform_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
 
     name="llm_calls",
     description=(
@@ -94,7 +94,7 @@ async def mcp_llm_calls(
     """Return LLM-call IDs in an inclusive datetime range as JSON text."""
 
     from app.tools.facade import administration_scope
-    scope = await administration_scope(ctx.agent_id, "galaris_admin")
+    scope = await administration_scope(ctx.agent_id, "platform_admin")
     scope.require_administration()
     payload = await inspect_llm_calls(date_debut, date_fin, limit=limit, agent_ids=scope.agent_ids)
     return json.dumps(payload, ensure_ascii=False)

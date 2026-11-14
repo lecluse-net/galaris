@@ -71,7 +71,7 @@ FR/EN concernés. La carte générée couvre les menus déclarés, pas l’ensem
 onglets de modales ou données propres à l’installation : ces parcours restent documentés
 dans le guide utilisateur après lecture des composants réels.
 
-Le corpus documentaire embarque ces fichiers avec la version du produit. Galaris Admin
+Le corpus documentaire embarque ces fichiers avec la version du produit. Administration
 les expose à la recherche et à la lecture générique, et `documentation_catalog` annonce
 le guide et la carte comme points d’entrée. La compétence `galaris-knowledge` les consulte
 pour guider l’utilisateur avec **section → écran → onglet → action**. Aucun compte rendu

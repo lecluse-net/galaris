@@ -124,7 +124,7 @@ async def test_system_definitions_are_immutable_and_function_modes_are_editable(
 
 def test_native_function_families_have_their_expected_owners():
     names = mcp_tool_names_by_tool_code()
-    assert {"llm_call", "llm_calls"} <= set(names["galaris_admin"])
+    assert {"llm_call", "llm_calls"} <= set(names["platform_admin"])
     assert not {"llm_call", "llm_calls"} & set(names["galaris"])
     conversation_names = {
         name
@@ -166,7 +166,7 @@ async def test_bridge_descriptions_fill_gaps_and_preserve_custom_prose(db):
     db.add_all(tools)
     await db.commit()
     for _ in range(2):
-        await reconcile_dataset(db, datasets()[2])
+        await reconcile_dataset(db, next(item for item in datasets() if item.key == "app.tools.bridge_descriptions"))
         await db.commit()
     for tool in tools:
         await db.refresh(tool)

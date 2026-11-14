@@ -227,7 +227,7 @@ async def test_task_run_returns_canonical_task_uri(
     from app.connection import Connection
     from app.tools import ToolModel
 
-    admin_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "galaris_admin"))
+    admin_tool = await db.scalar(select(ToolModel).where(ToolModel.code == "platform_admin"))
     connection = Connection(agent_id=7, tool_id=admin_tool.id, active=True)
     db.add(connection)
     await db.flush()

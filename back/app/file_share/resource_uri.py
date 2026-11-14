@@ -75,7 +75,7 @@ SYSTEM_TOOL_CODES = frozenset(
         "browser",
         "calendar",
         "file_sharing",
-        "galaris_admin",
+        "platform_admin",
         "goal_management",
         "image",
         "mail",

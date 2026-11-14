@@ -1291,12 +1291,12 @@ stockés en HTML éditorial par l'acquisition Memory. L'ancien argument inopéra
 est supprimé ; les règles normales de déduplication s'appliquent. Une erreur du modèle ne stocke
 ni transcription brute ni mémoire partielle.
 
-`galaris_admin` est un quatrième package de management, également inactif par défaut. Il expose
+`platform_admin` est un quatrième package de management, également inactif par défaut. Il expose
 `conversation_round_get` et `voice_turn_get`, deux lectures par UUID primaire destinées à
 l’analyse complète des jeux de données conversationnels texte et voix, ainsi que `llm_call` et
 `llm_calls` pour inspecter les appels de modèles. Elles incluent les traces
 d’exécution et tous les `LLMCall` corrélés. Chaque wrapper revérifie la connexion
-`galaris_admin` active au moment de l’appel ; la seule découverte préalable de la fonction ne
+`platform_admin` active au moment de l’appel ; la seule découverte préalable de la fonction ne
 constitue pas une autorisation durable.
 
 Le journal des échecs est aussi exposé par `incidents_list` (liste paginée, filtres de dates

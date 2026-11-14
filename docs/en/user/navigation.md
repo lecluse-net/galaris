@@ -408,7 +408,7 @@ to prevent duplicate execution and support task recovery; this page does not pre
 For browser access, a blocked action requires a new attempt after your reply; forms are not
 resubmitted automatically.
 
-To give an agent product knowledge, start in **Connections**, find its **Galaris Admin**
+To give an agent product knowledge, start in **Connections**, find its **Administration**
 connection, then follow the [product knowledge guide](../admin/product-knowledge.md).
 A skill provides instructions; actual function access also depends on authorized Tools and connections.
 
@@ -760,7 +760,7 @@ Useful distinctions:
   start or cancel indexing, and retry repairs.
 - **Monitor → Failure journal** (`/incident`) supports diagnosis; **Preferences → Logs**
   (`/params/logs`) configures retention and purges.
-  An authorized agent can read this journal through **Galaris Admin**: `incidents_list`
+  An authorized agent can read this journal through **Administration**: `incidents_list`
   filters and paginates errors, then `incident_get` opens one occurrence's trace.
   Activate the connection and delegate personal, team or all scope as needed.
   Only all scope exposes incidents without an agent and global pattern diagnostics.

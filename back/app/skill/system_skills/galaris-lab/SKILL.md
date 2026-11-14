@@ -7,7 +7,7 @@ description: Evaluate Galaris mechanisms, models and prompts, diagnose Tasks and
 
 Use the exact tool names exposed by your runtime. `lab_*` requires the optional Lab connection;
 this skill grants no access. Real source discovery, capture and Task diagnosis additionally
-require the execution-inspection functions of `galaris_admin`. Explain a missing capability
+require the execution-inspection functions of `platform_admin`. Explain a missing capability
 without trying to bypass it with SQL, a console, another identity or a direct provider call.
 Check the current inventory when needed: an authorized function absent from this run requires
 a new compatible context, not a guessed call or an administrative grant inferred from this skill.

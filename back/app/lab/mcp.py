@@ -388,7 +388,7 @@ async def lab_input_preview(
 @mcp_tool("lab", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
 
     name="lab_source_list",
-    description="Discover real capture sources. Requires an active galaris_admin connection.",
+    description="Discover real capture sources. Requires an active platform_admin connection.",
     effect_policy="read",
 )
 @lab_call(mutation=False, sources=True)
@@ -401,7 +401,7 @@ async def lab_source_list(
 @mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="lab_case_import",
-    description="Import a typed real source. galaris_admin required. If parameters differ, inspect the error and explicitly resubmit its confirmation_token.",
+    description="Import a typed real source. platform_admin required. If parameters differ, inspect the error and explicitly resubmit its confirmation_token.",
     effect_policy="idempotent",
 )
 @lab_call(mutation=True, sources=True)
@@ -702,7 +702,7 @@ async def lab_run_analyze(
 @mcp_tool("lab", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="lab_task_analyze",
-    description="Analyze a registered Task asynchronously using real evidence. Requires galaris_admin.",
+    description="Analyze a registered Task asynchronously using real evidence. Requires platform_admin.",
     effect_policy="idempotent",
 )
 @lab_call(mutation=False, sources=True)

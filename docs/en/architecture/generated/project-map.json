@@ -9105,70 +9105,6 @@
         "namespace": "galaris"
       },
       {
-        "file": "back/app/conversation/mcp.py",
-        "handler": "conversation_round_get",
-        "line": 248,
-        "module": "app.conversation",
-        "name": "conversation_round_get",
-        "namespace": "galaris_admin"
-      },
-      {
-        "file": "back/app/tools/mcp.py",
-        "handler": "documentation_catalog",
-        "line": 37,
-        "module": "app.tools",
-        "name": "documentation_catalog",
-        "namespace": "galaris_admin"
-      },
-      {
-        "file": "back/app/tools/mcp.py",
-        "handler": "documentation_search",
-        "line": 50,
-        "module": "app.tools",
-        "name": "documentation_search",
-        "namespace": "galaris_admin"
-      },
-      {
-        "file": "back/app/incident/mcp.py",
-        "handler": "incident_get",
-        "line": 76,
-        "module": "app.incident",
-        "name": "incident_get",
-        "namespace": "galaris_admin"
-      },
-      {
-        "file": "back/app/incident/mcp.py",
-        "handler": "incidents_list",
-        "line": 31,
-        "module": "app.incident",
-        "name": "incidents_list",
-        "namespace": "galaris_admin"
-      },
-      {
-        "file": "back/app/llm/mcp.py",
-        "handler": "mcp_llm_call",
-        "line": 70,
-        "module": "app.llm",
-        "name": "llm_call",
-        "namespace": "galaris_admin"
-      },
-      {
-        "file": "back/app/llm/mcp.py",
-        "handler": "mcp_llm_calls",
-        "line": 88,
-        "module": "app.llm",
-        "name": "llm_calls",
-        "namespace": "galaris_admin"
-      },
-      {
-        "file": "back/app/voice/mcp.py",
-        "handler": "voice_turn_get",
-        "line": 52,
-        "module": "app.voice",
-        "name": "voice_turn_get",
-        "namespace": "galaris_admin"
-      },
-      {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_complete",
         "line": 419,
@@ -9911,6 +9847,70 @@
         "module": "app.multimedia",
         "name": "video_read",
         "namespace": "multimedia"
+      },
+      {
+        "file": "back/app/conversation/mcp.py",
+        "handler": "conversation_round_get",
+        "line": 248,
+        "module": "app.conversation",
+        "name": "conversation_round_get",
+        "namespace": "platform_admin"
+      },
+      {
+        "file": "back/app/tools/mcp.py",
+        "handler": "documentation_catalog",
+        "line": 37,
+        "module": "app.tools",
+        "name": "documentation_catalog",
+        "namespace": "platform_admin"
+      },
+      {
+        "file": "back/app/tools/mcp.py",
+        "handler": "documentation_search",
+        "line": 50,
+        "module": "app.tools",
+        "name": "documentation_search",
+        "namespace": "platform_admin"
+      },
+      {
+        "file": "back/app/incident/mcp.py",
+        "handler": "incident_get",
+        "line": 76,
+        "module": "app.incident",
+        "name": "incident_get",
+        "namespace": "platform_admin"
+      },
+      {
+        "file": "back/app/incident/mcp.py",
+        "handler": "incidents_list",
+        "line": 31,
+        "module": "app.incident",
+        "name": "incidents_list",
+        "namespace": "platform_admin"
+      },
+      {
+        "file": "back/app/llm/mcp.py",
+        "handler": "mcp_llm_call",
+        "line": 70,
+        "module": "app.llm",
+        "name": "llm_call",
+        "namespace": "platform_admin"
+      },
+      {
+        "file": "back/app/llm/mcp.py",
+        "handler": "mcp_llm_calls",
+        "line": 88,
+        "module": "app.llm",
+        "name": "llm_calls",
+        "namespace": "platform_admin"
+      },
+      {
+        "file": "back/app/voice/mcp.py",
+        "handler": "voice_turn_get",
+        "line": 52,
+        "module": "app.voice",
+        "name": "voice_turn_get",
+        "namespace": "platform_admin"
       },
       {
         "file": "back/app/process/mcp.py",

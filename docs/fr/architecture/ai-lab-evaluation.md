@@ -14,7 +14,7 @@ compétence système facultative `galaris-lab`. Elle réutilise les services et 
 Les commandes courtes ont un reçu idempotent et une transaction unique ; les traitements
 longs hors benchmarks sont suivis par `LabOperation` et le worker du Lab. Les avis d'agents
 sont attribués et stockés séparément des revues humaines. L'accès aux sources réelles
-nécessite également les fonctions d'inspection de `galaris_admin`.
+nécessite également les fonctions d'inspection de `platform_admin`.
 L'[ADR 0134](../../../project/decisions/0134-agent-lab-control.md) décrit les autorisations,
 la publication durable, la pagination et les limites des comparaisons.
 

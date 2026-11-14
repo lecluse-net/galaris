@@ -60,7 +60,7 @@ test('five administrative Tools retain a human-selected scope and enforce it on 
     { code: 'tool_admin', label: 'ToolAdmin', function: 'tool_admin_connection_list', args: { agent_id: peer.id } },
     { code: 'process_admin', label: 'Administration des processus', function: 'process_admin_get', args: { process_id: process.id } },
     { code: 'goal_management', label: 'Gestion des objectifs', function: 'goal_update', args: { goal_id: goal.id, expected_revision: goal.revision, title: 'Synthetic updated Goal' } },
-    { code: 'galaris_admin', label: 'Administration Galaris', function: 'llm_calls', args: { date_debut: '2026-01-01T00:00:00Z', date_fin: '2026-12-31T23:59:59Z' } },
+    { code: 'platform_admin', label: 'Administration', function: 'llm_calls', args: { date_debut: '2026-01-01T00:00:00Z', date_fin: '2026-12-31T23:59:59Z' } },
   ]
   const invoke = async domain => {
     if (domain.code === 'goal_management') {
@@ -107,7 +107,7 @@ test('five administrative Tools retain a human-selected scope and enforce it on 
       expect(self.is_error).toBe(true)
     }
     await checked(await request.put(`/api/agents/teams/${team.id}/members/${peer.id}`, { headers, data: { present: false } }))
-    if (domain.code !== 'galaris_admin') expect((await invoke(domain)).is_error, `${domain.code}: removed teammate`).toBe(true)
+    if (domain.code !== 'platform_admin') expect((await invoke(domain)).is_error, `${domain.code}: removed teammate`).toBe(true)
     await scope('all')
     expect((await invoke(domain)).is_error, `${domain.code}: global scope`).toBe(false)
     await checked(await request.put(`/api/agents/teams/${team.id}/members/${peer.id}`, { headers, data: { present: true } }))

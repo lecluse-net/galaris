@@ -18,7 +18,7 @@ supports qualification of those choices.
 ## Enable access
 
 1. In **Configure → Tools & connections → Connections** (`/tools?tab=connections`),
-   enable the agent's **Galaris Admin** connection.
+   enable the agent's **Administration** connection.
 2. Keep `documentation_catalog` and `documentation_search` enabled in its function permissions.
 3. For documentation-only access, disable `conversation_round_get`, `voice_turn_get`, `llm_call`
    and `llm_calls`. These inspection functions expose sensitive execution data and are not
@@ -28,7 +28,7 @@ supports qualification of those choices.
    disabled; skill and category overrides still apply. Its effective projection additionally
    requires `documentation_catalog` permission.
 
-Galaris Admin remains inactive by default. Enabling a connection preserves the usual function
+Administration remains inactive by default. Enabling a connection preserves the usual function
 authorization cascade: explicitly disable inspections for agents intended only to guide users.
 
 The skill supplies core concepts, retrieval guidance and assistance boundaries. It is available

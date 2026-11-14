@@ -243,6 +243,10 @@ materialization is neither durable nor addressable by the agent. Consult the
 
 ### Tools and processes
 
+Reserve `galaris` / `Galaris` exclusively for the built-in Galaris Tool. No other Tool
+code or label may contain that name, regardless of case or Unicode compatibility forms.
+Use service or domain names, such as `platform_admin` / `Administration` and `lab` / `Lab`.
+
 MCP tools, connections, and files use the contracts of `app.tools`, `app.mcp`,
 `app.connection`, and `app.file_share`. Business workflows use `app.process`: external
 workflows can execute through the n8n bridge, and the native engine executes BPMN processes. See

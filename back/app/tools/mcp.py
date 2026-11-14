@@ -29,7 +29,7 @@ from core.i18n import render_prompt, t
 _MCP_TOOL_MAX_RETRIES = 3
 
 
-@mcp_tool("galaris_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="documentation_catalog", description=(
+@mcp_tool("platform_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="documentation_catalog", description=(
     "Discover the official Galaris documentation shipped with this installation: version, languages, "
     "domains and entrypoints. This function also grants read-only file access below galaris://documentation/. "
     "Use documentation_search for questions and file_read to verify sources."
@@ -41,7 +41,7 @@ async def documentation_catalog(ctx: McpToolContext) -> str:
     return json.dumps(await documentation_service.documentation_catalog(ctx.agent_id), ensure_ascii=False)
 
 
-@mcp_tool("galaris_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="documentation_search", description=(
+@mcp_tool("platform_admin", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="documentation_search", description=(
     "Search official Galaris product knowledge to explain features, guide users and troubleshoot usage. "
     "Returns source URIs, sections, excerpts and character offsets for file_read. "
     "Hybrid retrieval falls back to text search without embeddings. Filters: language fr/en, domain user/admin/dev/architecture, "

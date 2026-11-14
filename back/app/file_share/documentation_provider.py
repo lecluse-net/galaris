@@ -1,4 +1,4 @@
-"""Read-only product documentation with live, function-level Galaris Admin grants."""
+"""Read-only product documentation with live, function-level Administration grants."""
 
 from __future__ import annotations
 

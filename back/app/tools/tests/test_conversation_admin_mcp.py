@@ -34,7 +34,7 @@ async def test_text_round_admin_tool_maps_uuid_to_complete_inspection(
     )
 
     assert result == {"round": {"id": str(identifier)}}
-    authorize.assert_awaited_once_with(7, "galaris_admin")
+    authorize.assert_awaited_once_with(7, "platform_admin")
     inspect.assert_awaited_once_with(identifier, agent_ids=frozenset({7}))
 
 
@@ -55,7 +55,7 @@ async def test_voice_turn_admin_tool_maps_uuid_to_complete_inspection(
     )
 
     assert result == {"turn": {"id": str(identifier)}}
-    authorize.assert_awaited_once_with(7, "galaris_admin")
+    authorize.assert_awaited_once_with(7, "platform_admin")
     inspect.assert_awaited_once_with(identifier, agent_ids=frozenset({7}))
 
 

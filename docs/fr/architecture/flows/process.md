@@ -167,7 +167,7 @@ Le package `process_admin`, inactif par défaut, constitue une surface distincte
 les agents. Ses connexions sont créées inactives afin qu’aucun droit global ne soit accordé
 implicitement.
 
-Le package `galaris_admin` suit la même règle d’attribution explicite. Ses connexions sont créées
+Le package `platform_admin` suit la même règle d’attribution explicite. Ses connexions sont créées
 inactives et ses deux fonctions de lecture, `conversation_round_get` et `voice_turn_get`,
 revérifient la connexion active côté serveur. Elles servent à analyser un tour textuel ou vocal
 complet avec son état durable, sa trace d’exécution et tous ses appels LLM, sans rendre ce jeu de

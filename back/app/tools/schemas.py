@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, computed_field, field_validator, model_va
 from .rest_contracts import RestConfig
 from .protocols import ProtocolConfig
 from .capabilities import validate_capabilities
+from .naming import validate_custom_tool_name
 
 
 # =============================================================================
@@ -256,13 +257,19 @@ class ToolBase(BaseModel):
 
 
 class ToolCreate(ToolBase):
-    pass
+    _validate_names = field_validator("code", "label")(validate_custom_tool_name)
 
 
 class ToolUpdate(BaseModel):
     capabilities: list[str] | None = None
     _validate_capabilities = field_validator("capabilities")(validate_capabilities)
     label: Optional[str] = None
+
+    @field_validator("label")
+    @classmethod
+    def validate_label(cls, value: str | None) -> str | None:
+        return validate_custom_tool_name(value) if value is not None else None
+
     description: Optional[str] = None
     mcp_config: Optional[McpConfig] = None
     rest_config: RestConfig | None = None

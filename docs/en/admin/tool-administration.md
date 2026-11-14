@@ -2,6 +2,12 @@
 
 # Delegate Tool administration
 
+The `galaris` code and **Galaris** label are reserved exclusively for the Galaris system Tool.
+No other Tool code or label may contain this name, regardless of case.
+The administration Tool uses `platform_admin` / **Administration** and the laboratory uses
+`lab` / **Lab**. Updates preserve the identity, connections and permissions of the former
+administration Tool when renaming it.
+
 A Tool represents a provider, such as **Ionos**. Its editor places **Protocols** and **Add protocol** above the configuration tabs.
 Choose **IMAP & SMTP** under **Mail**, then configure the servers in the IMAP and SMTP sections.
 Account fields reference standard parameters created only on explicit request: `email`, `login`, `password`, `folders`, `user_id`.
@@ -32,7 +38,7 @@ Scope is local, without a global value or inheritance. AgentAdmin offers only `u
 and `all`, intersects delegation with its human manager's rights/scope and forbids modifying
 the caller. ToolAdmin requires `all` for shared definitions, parameters and permissions;
 `personal` and `team` delegate only the relevant connections. Goal management follows the
-responsible agent, Galaris Admin the trace owner, and Process Admin its domain rules.
+responsible agent, Administration the trace owner, and Process Admin its domain rules.
 [Skills](../user/skills.md) retain their distinction between usage and administration.
 
 Only a human web session with `CONNECTION_EDIT` and global agent management may save this
@@ -81,7 +87,7 @@ the normal conversation deferral rules.
 Reads and mutations check the active connection and exact function permission on every call.
 Integrated definitions are read-only. Mandatory Galaris, Conversation, Document, Memory and File Sharing
 services can be inspected, but their settings and connections remain software-owned.
-Only humans can delegate or modify ToolAdmin, AgentAdmin, Galaris Admin, Process Admin, Lab,
+Only humans can delegate or modify ToolAdmin, AgentAdmin, Administration, Process Admin, Lab,
 Goal management, Skills and Console. A sequence of agent commands cannot grant
 administrative capabilities to its caller.
 

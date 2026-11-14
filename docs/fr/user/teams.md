@@ -41,7 +41,7 @@ Partager une équipe ne permet pas d’administrer
 un agent, de se faire passer pour lui ni de lire les conversations d’autres humains.
 
 Les tâches sont administrées par leur agent, ses managers et les administrateurs globaux.
-Un agent équipé d’une connexion active **Galaris Admin** peut intervenir sur les tâches des
+Un agent équipé d’une connexion active **Administration** peut intervenir sur les tâches des
 agents de sa portée déléguée ; seule `all` ouvre la portée globale. Le demandeur d’une délégation peut en consulter le résultat sans obtenir
 la gestion des autres tâches du destinataire.
 

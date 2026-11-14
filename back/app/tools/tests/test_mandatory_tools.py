@@ -18,8 +18,8 @@ async def test_sync_integrated_connections_delegates_to_dbadmin_merge(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     db = object()
-    tools_dataset = object()
-    connections_dataset = object()
+    tools_dataset = SimpleNamespace(key="app.tools.mandatory.tools")
+    connections_dataset = SimpleNamespace(key="app.tools.mandatory.connections")
     reconcile = AsyncMock(return_value=SimpleNamespace(inserted=1))
     monkeypatch.setattr(mandatory_tools, "get_db", lambda: db)
     monkeypatch.setattr(
@@ -149,9 +149,9 @@ def test_tool_defaults_enable_personal_skills_and_keep_other_administration_inac
     assert specs["skills"].default_active is True
     assert specs["process_admin"].auto_connect_agents is True
     assert specs["process_admin"].default_active is False
-    assert specs["galaris_admin"].auto_connect_agents is True
-    assert specs["galaris_admin"].default_active is False
-    assert set(specs["galaris_admin"].mcp_tools) == {
+    assert specs["platform_admin"].auto_connect_agents is True
+    assert specs["platform_admin"].default_active is False
+    assert set(specs["platform_admin"].mcp_tools) == {
         "conversation_round_get",
         "voice_turn_get",
         "llm_call",
@@ -164,7 +164,7 @@ def test_tool_defaults_enable_personal_skills_and_keep_other_administration_inac
     assert {
         "goal_management",
         "process_admin",
-        "galaris_admin",
+        "platform_admin",
     } <= (
         mandatory_tools.DEFAULT_INACTIVE_INTEGRATED_TOOL_CODES
     )
@@ -274,7 +274,7 @@ def test_administration_scopes_are_explicit_local_and_domain_bounded() -> None:
         "tool_admin": ["usage", "personal", "team", "all"],
         "process_admin": ["usage", "personal", "team", "all"],
         "goal_management": ["usage", "personal", "team", "all"],
-        "galaris_admin": ["usage", "personal", "team", "all"],
+        "platform_admin": ["usage", "personal", "team", "all"],
         "agent_admin": ["usage", "team", "all"],
     }
     for row in mandatory_tools.mandatory_tool_rows():

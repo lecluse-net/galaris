@@ -41,7 +41,7 @@ il ne mesure pas la reconnaissance ou la synthèse audio.
 
 ## Confier les Labs à un agent
 
-Activez sa connexion **Lab Galaris**, puis attribuez-lui la compétence système **Galaris Lab**
+Activez sa connexion **Lab**, puis attribuez-lui la compétence système **Galaris Lab**
 (`galaris-lab`) dans les autorisations des compétences. La compétence est déjà autorisée pour
 l’agent **Galaris** créé à l’installation. Pour les autres agents, elle reste désactivée
 par défaut ; la connexion Lab reste à activer explicitement dans tous les cas.
@@ -50,7 +50,7 @@ copier leurs jeux, modifier les prompts expérimentaux, lancer, suivre, arrêter
 rejuger et comparer les benchmarks, puis déposer ses propres évaluations.
 
 Pour capturer des tâches, messages, conversations, tours vocaux ou appels LLM réels,
-activez également **Galaris Admin** avec ses fonctions d'inspection des exécutions.
+activez également **Administration** avec ses fonctions d'inspection des exécutions.
 L'accès à la seule documentation produit ne suffit pas. Les diagnostics de tâches
 nécessitent ce même accès supplémentaire.
 

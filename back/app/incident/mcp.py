@@ -17,7 +17,7 @@ _PATTERN_FIELDS = {"pattern", "pattern_status", "pattern_occurrence_count"}
 
 
 @mcp_tool(
-    "galaris_admin", name="incidents_list", approval="ask",
+    "platform_admin", name="incidents_list", approval="ask",
     approval_reason="Sensitive failure diagnostics within the delegated administration scope",
     effect_policy="read", concurrency_policy="safe",
     description=(
@@ -39,7 +39,7 @@ async def incidents_list(
     recovered: bool | None = None,
     search: Annotated[str | None, Field(max_length=300)] = None,
 ) -> dict[str, Any]:
-    scope = await administration_scope(ctx.agent_id, "galaris_admin")
+    scope = await administration_scope(ctx.agent_id, "platform_admin")
     scope.require_administration()
     if page < 1 or not 1 <= page_size <= 500:
         raise ValueError("page must be positive and page_size must be between 1 and 500")
@@ -62,7 +62,7 @@ async def incidents_list(
 
 
 @mcp_tool(
-    "galaris_admin", name="incident_get", approval="ask",
+    "platform_admin", name="incident_get", approval="ask",
     approval_reason="Sensitive failure trace within the delegated administration scope",
     effect_policy="read", concurrency_policy="safe",
     description=(
@@ -74,7 +74,7 @@ async def incidents_list(
     ),
 )
 async def incident_get(ctx: McpToolContext, incident_id: UUID) -> dict[str, Any]:
-    scope = await administration_scope(ctx.agent_id, "galaris_admin")
+    scope = await administration_scope(ctx.agent_id, "platform_admin")
     scope.require_administration()
     row = await service.get_incident(incident_id, agent_ids=scope.agent_ids)
     if row is None:

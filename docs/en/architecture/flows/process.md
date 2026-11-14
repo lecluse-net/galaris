@@ -160,7 +160,7 @@ The `process_admin` package, inactive by default, constitutes a separate surface
 Agents. Its connections are created inactive so that no global rights are granted
 implicitly.
 
-The `galaris_admin` package follows the same explicit attribution rule. Its connections are
+The `platform_admin` package follows the same explicit attribution rule. Its connections are
 created inactive, and its two read functions, `conversation_round_get` and `voice_turn_get`,
 recheck the active connection on the server side. They are used to analyze a complete text or
 voice turn with its durable state, execution trace, and all its LLM calls, without making this

@@ -608,7 +608,7 @@ les confirmations mobiles plein écran. Les scénarios de dialogue partagés cou
 la fermeture par l’arrière-plan lorsqu’il est visible.
 
 `app/tools/tests/test_management_scopes.py` protège les portées locales des connexions
-Process, ToolAdmin, Goals et Galaris Admin : absence de délégation implicite, filtrage
+Process, ToolAdmin, Goals et Administration : absence de délégation implicite, filtrage
 avant pagination, refus des réaffectations hors périmètre et révocation après retrait
 d'une équipe. `app/agent/tests/test_agent_admin.py` vérifie la création en équipe et
 l'interdiction de s'automodifier ; les scénarios d'avatar, connexion et harnais ciblent

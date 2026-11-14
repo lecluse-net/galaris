@@ -40,7 +40,7 @@ evaluates transcribed text, not speech recognition or audio synthesis.
 
 ## Assign the Labs to an agent
 
-Enable the agent's **Lab Galaris** connection and assign the **Galaris Lab** system skill
+Enable the agent's **Lab** connection and assign the **Galaris Lab** system skill
 (`galaris-lab`) in its skill authorizations. The **Galaris** agent created during installation
 already has this skill enabled. Other agents inherit its disabled default; the Lab connection
 still requires explicit activation in every case. Fifty tools
@@ -49,7 +49,7 @@ prompts, start, monitor, cancel, resume, rejudge and compare benchmarks, and sub
 attributed agent assessments.
 
 Capturing real Tasks, messages, conversations, voice turns or LLM calls also requires
-**Galaris Admin** with its execution-inspection functions. Documentation-only access
+**Administration** with its execution-inspection functions. Documentation-only access
 does not grant this permission. Real Task diagnoses require the same additional access.
 
 The agent operates the same datasets and results as the Workbench. Synthetic datasets

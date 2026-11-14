@@ -355,7 +355,7 @@ async def test_batches_are_atomic_and_secret_literals_never_replace_values(deleg
 @pytest.mark.asyncio
 async def test_delegation_cannot_be_self_assigned_and_sync_preserves_disable(delegated, db):
     ctx, _, grant_id = delegated
-    for code in ("tool_admin", "agent_admin", "galaris_admin", "process_admin", "goal_management", "console", "galaris"):
+    for code in ("tool_admin", "agent_admin", "platform_admin", "process_admin", "goal_management", "console", "galaris"):
         tool = await db.scalar(select(Tool).where(Tool.code == code))
         before = result(await mcp.tool_admin_get(ctx, tool.id))
         denied = json.loads(await mcp.tool_admin_conversation_set(ctx, tool.id, True, before["version"]))

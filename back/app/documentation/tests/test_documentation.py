@@ -394,7 +394,7 @@ async def indexing_agent(committed_database, monkeypatch):
         agent_id = agent.id
         await mandatory_tools.sync_integrated_tool_connections(agent_id)
         connection = await db.scalar(select(Connection).join(Tool).where(
-            Connection.agent_id == agent_id, Tool.code == "galaris_admin"))
+            Connection.agent_id == agent_id, Tool.code == "platform_admin"))
         connection.active = True
     return agent_id
 
@@ -566,7 +566,7 @@ async def test_documentation_access_can_exclude_audits_and_is_revoked_live(db, s
     db.add(agent)
     await db.flush()
     await mandatory_tools.sync_integrated_tool_connections(agent.id)
-    connection = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == agent.id, Tool.code == "galaris_admin"))
+    connection = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == agent.id, Tool.code == "platform_admin"))
     ctx = ResourceContext(agent_id=agent.id, runtime="internal")
     uri = "galaris://documentation/docs/fr/user/documents.md"
     with pytest.raises(PermissionError):
@@ -647,7 +647,7 @@ async def test_mcp_documentation_only_search_read_and_live_revocation(committed_
         await db.flush()
         agent_id = agent.id
         await mandatory_tools.sync_integrated_tool_connections(agent_id)
-        connection = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == agent_id, Tool.code == "galaris_admin"))
+        connection = await db.scalar(select(Connection).join(Tool).where(Connection.agent_id == agent_id, Tool.code == "platform_admin"))
         connection.active = True
         connection_id = connection.id
         tool = await db.get(Tool, connection.tool_id)
