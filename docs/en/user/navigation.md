@@ -50,6 +50,12 @@ The rest of the page stays usable. If loading fails, **Retry** attempts to open 
 again without reloading the page or discarding current input. A persistent error leaves
 that view unavailable; other actions remain accessible.
 
+Data trees group branches with more than 100 entries into numbered virtual folders,
+identified by a cyan zipped-folder icon. Expand the required range to display its
+entries. Very large collections add grouping levels. Skill files and Mail folders remain
+directly accessible, without numbered groups. The file browser (`/files`) also displays
+real directories directly and loads further entries as you scroll.
+
 ## Opening the menus
 
 The **About** page (`/about`) shows the version, features and a **Technologies and

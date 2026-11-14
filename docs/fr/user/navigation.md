@@ -55,6 +55,13 @@ peut apparaître brièvement. Le reste de la page reste utilisable. Si le charge
 **Réessayer** relance l'ouverture sans recharger la page ni effacer les saisies en cours.
 Une erreur persistante laisse la vue en échec ; les autres actions restent accessibles.
 
+Les arborescences de données regroupent les branches de plus de 100 entrées en
+répertoires virtuels numérotés, avec une icône de dossier compressé cyan. Dépliez la
+tranche souhaitée pour afficher ses éléments. Les très grandes collections ajoutent
+des niveaux de regroupement. Les fichiers des Skills et les dossiers Mail restent accessibles
+directement, sans regroupement numéroté. Le navigateur de fichiers (`/files`) affiche aussi
+les répertoires réels directement et charge la suite au défilement.
+
 ## Ouvrir les menus
 
 La page **À propos** (`/about`) présente la version, les fonctionnalités et une rubrique

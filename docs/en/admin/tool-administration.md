@@ -8,16 +8,57 @@ The administration Tool uses `platform_admin` / **Administration** and the labor
 `lab` / **Lab**. Updates preserve the identity, connections and permissions of the former
 administration Tool when renaming it.
 
-A Tool represents a provider, such as **Ionos**. Its editor places **Protocols** and **Add protocol** above the configuration tabs.
-Choose **IMAP & SMTP** under **Mail**, then configure the servers in the IMAP and SMTP sections.
-Account fields reference standard parameters created only on explicit request: `email`, `login`, `password`, `folders`, `user_id`.
-Fields and protocols may share references. Create one connection per mailbox, including several for the same agent and provider.
-The red **Delete protocol** button appears below its configuration and requires confirmation; changes apply when saving.
-**Export as YAML** exports the saved definition, using the same action as the list.
-Allowed folders are selected in connection parameters after authentication. Passwords stay encrypted and are never exported.
-DbAdmin converts the legacy `mail` Tool to a custom provider while preserving connections, rights, secrets and history. Fresh installations no longer seed it.
-MCP functions retain their `mail_*` names and select accounts through `connection_id`.
-Published Calendar behavior remains unchanged in this delivery; its extensions are independent.
+A **Tool** represents a service, for example **Ionos**. Its **protocols** are grouped
+by purpose: MCP, API, file sharing, messaging, Listener, Mail and Calendar.
+Each group uses a single protocol on that Tool: HTTP or SSE for MCP,
+REST for API, AFFiNE/Nextcloud/Samba for file sharing, IMAP & SMTP for Mail, CalDAV for
+Calendar. The catalogue shows each group as a heading followed by its protocols.
+Mail and CalDAV are optional provider protocols. The **Personal agenda** system service is available
+to every agent by default without an external account; its functions use ordinary permissions.
+The agenda holds appointments and reminders, while Goals retain their own scheduled cycles.
+
+For an Ionos mailbox, create a custom Tool named **Ionos**, click **+**, then choose
+**IMAP & SMTP** under **Mail** in the menu. Enter IMAP/SMTP hosts, ports, security and other
+settings in the IMAP section followed by SMTP. Map account fields to standard connection
+parameters, created only through **New parameter…** or the usual editor. One `login` holding
+an email address and one `password` can serve several fields and protocols; SMTP may also
+reference different parameters. Save the Tool, then create an **Ionos** connection for each
+agent with these values. The allowed-folders parameter displays a tree with multiple selection
+after saving and authenticating the connection. Forced values and overrides follow ordinary connection rules. Enable **Calendar** on the
+same Tool when needed: its **CalDAV** tab provides source kind, time zone, working hours and slot step fields.
+Map the CalDAV URL to a standard password parameter (it may contain a private token),
+and optional HTTP credentials to `login` and `password`, which may also serve Mail.
+Enter values in the agent’s ordinary connection parameters; no additional source form is needed.
+CalDAV provides discovery and bidirectional synchronization of iCalendar events. Source kind
+`ical` selects a read-only subscription. Reads and mutations are local; a `pending` write awaits
+remote confirmation. Conflicts and failures remain inspectable without automatic overwrites.
+Browsing files through a custom Mail Tool retains the generic Files privileges as well as
+the Mail domain checks. Existing `mail://` URIs retain their Mail checks.
+
+During upgrades, DbAdmin converts the former built-in `mail` and `calendar` Tools into
+custom Tools carrying the matching protocol. Their codes and identities, connections,
+activation states, encrypted parameters, permissions and history are preserved. Rename
+their labels to identify the provider when appropriate. Fresh installations create neither
+former Tool; subsequent synchronizations do not recreate them or restore a protocol disabled
+after migration.
+The old `mail` code retains `mail://` URIs and cannot host file sharing or another messaging
+transport: create a named provider Tool for those combinations.
+
+In **Tools → Connections**, **Test** checks the connection’s saved settings without changing
+activation or permissions. Save changes before testing them. Results distinguish success,
+failure and incomplete verification for each protocol: MCP discovers functions, Mail checks
+IMAP and SMTP, the console checks SSH, messaging checks its provider and calendars discover
+their remote source. Messaging protocol checks require an active connection.
+Compatible file providers check a bounded metadata listing. REST, listeners and transports
+without a probe explicitly report that availability is unverified.
+For an internal service, the test checks only whether its functions are available.
+The connection editor’s **Permissions** tab appears for connections exposing functions and
+reuses the Permissions page’s table for that connection alone, including inactive ones.
+Decisions save immediately with the same privileges and global inheritance. The catalogue
+loads when the tab opens; its refresh button reloads it.
+**Global (all)** and **Local (this connection)** set the Tool’s global policy or a local
+override. Global changes require managing all agents; they return the current connection
+to inheritance while preserving other connections’ overrides.
 
 **ToolAdmin** (`tool_admin`) administers the global Tool catalogue, shared parameters,
 agent connections and function permissions. Its connection starts active when the bundled
@@ -57,9 +98,19 @@ their definitions remain protected. A dedicated bridge does not create a standar
 Tools using Nextcloud, AFFiNE or a messaging bridge remain custom. n8n is no longer created
 automatically; an existing entry remains custom, with its process references and history.
 
-In the **New tool** form, add at least one protocol (MCP, API, file sharing,
-messaging or listener) before creating the Tool. Without an enabled capability, **Create**
-is disabled and a message explains what is missing.
+The Tool list shows only capabilities as transparent badges with matching colored text and outlines,
+without their protocols. Tabs distinguish custom Tools from Galaris Tools, without an extra
+origin badge.
+In the **New tool** form, a full **Add protocol** button appears while there are no tabs.
+After the first selection, it becomes a **+** button next to the tabs. Clicking it opens a
+dropdown menu with protocols listed under their groups. Choosing a protocol adds and activates its
+tab. Other protocols in that group become unavailable. Remove its tab to choose another
+protocol in the same group. **Create** stays disabled without a protocol.
+Standard labels are translated; custom extensions retain their literal strings.
+There is no free-form protocol entry: future plugins will populate the same catalogue.
+The migration derives selections from existing configurations without changing access settings.
+Protocol fields come from the catalogue and use shared input controls. Failed saves retain
+the draft; an empty password preserves the existing secret, and the clear action removes it explicitly.
 
 ### Delete a custom tool
 

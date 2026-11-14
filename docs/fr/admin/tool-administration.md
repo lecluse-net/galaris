@@ -8,16 +8,62 @@ Le Tool d’administration utilise `platform_admin` / **Administration** et le l
 `lab` / **Lab**. La mise à jour conserve l’identité, les connexions et les autorisations
 de l’ancien Tool d’administration lors de son renommage.
 
-Un Tool représente un fournisseur, par exemple **Ionos**. Dans son formulaire, **Protocoles** et le bouton **Ajouter un protocole** sont placés au-dessus des onglets.
-Choisir **IMAP & SMTP** sous **Mail**, puis renseigner les serveurs dans les sections IMAP et SMTP.
-Les champs de compte référencent les paramètres standards, créés uniquement sur demande explicite : `email`, `login`, `password`, `folders`, `user_id`.
-Plusieurs champs ou protocoles peuvent partager les mêmes références. Créer ensuite une connexion par boîte, y compris plusieurs pour un même agent et fournisseur.
-Le bouton rouge **Supprimer le protocole** est sous sa configuration et demande confirmation ; les modifications s’appliquent à l’enregistrement.
-**Exporter en YAML** dans le formulaire exporte la version enregistrée, comme dans la liste.
-Les dossiers autorisés se choisissent dans les paramètres de connexion après authentification. Les mots de passe restent chiffrés et ne sont jamais exportés.
-DbAdmin convertit l’ancien Tool `mail` en fournisseur personnalisé en conservant connexions, droits, secrets et historiques. Les nouvelles installations ne le créent plus automatiquement.
-Les fonctions MCP conservent leurs noms `mail_*` et sélectionnent la boîte par `connection_id`.
-Le fonctionnement Agenda publié reste inchangé dans cette livraison ; ses évolutions sont indépendantes.
+Un **Tool** représente un service, par exemple **Ionos**. Ses **protocoles** sont regroupés
+par usage : MCP, API, partage, messagerie, Listener, Mail et Calendrier.
+Chaque groupe utilise un seul protocole sur cet outil : HTTP ou SSE pour MCP,
+REST pour API, AFFiNE/Nextcloud/Samba pour le partage, IMAP & SMTP pour Mail, CalDAV pour
+Calendrier. Le catalogue présente chaque groupe comme un en-tête, suivi de ses protocoles.
+Mail et CalDAV sont des protocoles de fournisseurs optionnels. Le service système **Agenda personnel**
+est disponible par défaut pour chaque agent, sans compte externe ; ses fonctions suivent les
+permissions ordinaires. L’agenda porte les rendez-vous et rappels, les Goals conservent leurs cycles.
+
+Dans **Tools → Connexions**, le bouton **Tester** vérifie les paramètres enregistrés de la
+connexion sans modifier son activation ni ses autorisations. Enregistrer les modifications
+avant de les tester. Le résultat distingue réussite, échec et vérification incomplète par
+protocole : MCP découvre les fonctions, Mail vérifie IMAP et SMTP, la console vérifie SSH,
+les messageries interrogent leur fournisseur et les agendas découvrent leur source distante.
+Le test d’un protocole de messagerie exige une connexion active.
+Les partages compatibles vérifient une liste de métadonnées bornée. REST, les listeners et
+les transports sans sonde indiquent explicitement que leur disponibilité n’est pas vérifiée.
+Pour un service interne, le test vérifie uniquement la disponibilité de ses fonctions.
+Dans la fiche d’une connexion exposant des fonctions, l’onglet **Permissions** reprend le
+tableau de la page Permissions pour cette seule connexion, y compris inactive. Les décisions
+sont enregistrées immédiatement, sous les mêmes droits et avec le même héritage global.
+Les colonnes **Global (tous)** et **Local (cette connexion)** permettent de définir la règle
+globale du Tool ou une exception locale. Modifier le global exige la gestion de tous les agents ;
+ce choix remet la connexion courante en héritage sans supprimer les exceptions des autres connexions.
+Le catalogue est chargé à l’ouverture de l’onglet ; le bouton de rafraîchissement le recharge.
+
+Pour une boîte Ionos, créer un outil personnalisé nommé **Ionos**, cliquer sur **+**,
+puis choisir **IMAP & SMTP** sous **Mail** dans le menu. Renseigner les hôtes IMAP/SMTP,
+ports et sécurité dans la section IMAP puis SMTP. Associer les champs d'identification aux
+paramètres standards de connexion, créés uniquement via **Nouveau paramètre…** ou l'éditeur
+habituel. Un même `login` contenant une adresse mail et un même `password` peuvent servir
+à plusieurs champs et protocoles ; SMTP peut aussi utiliser d'autres références.
+Enregistrer le Tool, puis créer une connexion **Ionos** pour chaque agent avec ces valeurs.
+Le paramètre des dossiers autorisés affiche une arborescence à choix multiples après
+enregistrement et authentification de la connexion. Les valeurs imposées et surcharges suivent les
+règles ordinaires des connexions. Ajouter aussi **CalDAV** sous **Calendrier** si nécessaire :
+son onglet propose le type de source, le fuseau, les horaires et le pas des créneaux.
+Associer l’URL CalDAV à un paramètre standard de type mot de passe (l’URL peut contenir
+un jeton privé), et les identifiants HTTP éventuels à `login` et `password`, réutilisables avec Mail.
+Renseigner ensuite les valeurs dans les paramètres ordinaires de la connexion de l’agent :
+aucun formulaire de source supplémentaire n’est nécessaire. CalDAV fournit la découverte et la
+synchronisation bidirectionnelle des événements iCalendar. Le type `ical` permet un abonnement
+en lecture seule. Consultations et modifications sont locales ; une écriture `pending` attend
+sa confirmation distante. Les conflits et échecs restent consultables sans écrasement automatique.
+La navigation dans les fichiers d'un Tool Mail personnalisé conserve les droits Fichiers
+génériques, auxquels s'ajoutent les droits Mail. Les anciennes URI `mail://` conservent
+leurs contrôles Mail.
+
+Lors d'une mise à jour, DbAdmin convertit les anciens Tools intégrés `mail` et `calendar`
+en Tools personnalisés portant le protocole correspondant. Leurs codes et identifiants,
+connexions, activations, paramètres chiffrés, autorisations et historiques restent conservés.
+Le libellé peut ensuite être renommé pour désigner le fournisseur. Une installation neuve
+ne crée aucun de ces deux anciens Tools ; les synchronisations suivantes ne les recréent pas
+et ne rétablissent pas un protocole désactivé après migration.
+L'ancien code `mail` conserve les URI `mail://` et ne peut pas héberger un partage de
+fichiers ou une autre messagerie : créer un Tool fournisseur nommé pour ces combinaisons.
 
 **ToolAdmin** (`tool_admin`) administre le catalogue global des Tools, leurs paramètres partagés,
 les connexions des agents et les permissions des fonctions. Sa connexion est active dès la
@@ -59,9 +105,21 @@ reste protégée. Un bridge dédié ne crée pas de Tool standard : les Tools ut
 AFFiNE ou un bridge de messagerie restent personnalisés. n8n n’est plus créé automatiquement ;
 une entrée existante reste personnalisée, avec ses références de processus et son historique.
 
-Dans le formulaire **Nouvel outil**, ajouter au moins un protocole (MCP, API, partage,
-messagerie, listener ou Mail) avant de créer l'outil. Sans capacité active, le bouton **Créer**
-est désactivé et un message explique ce qui manque.
+La liste des outils affiche uniquement les capacités en badges à texte et bordure colorés,
+sur fond transparent, sans leurs protocoles. Les onglets distinguent les outils personnalisés
+des outils Galaris, sans badge d'origine supplémentaire.
+Dans le formulaire **Nouvel outil**, le bouton **Ajouter un protocole** apparaît lorsqu'aucun
+onglet n'existe. Après un premier choix, il devient un bouton **+** à côté des onglets.
+Cliquer sur ce bouton ouvre un menu déroulant avec les protocoles rangés sous leurs groupes.
+Choisir un protocole ajoute et active son onglet. Les autres protocoles du même groupe deviennent
+indisponibles. Retirer son onglet permet de choisir un autre protocole de ce groupe.
+Sans protocole, le bouton **Créer** reste désactivé.
+Les libellés standards sont traduits ; les extensions personnalisées conservent leur chaîne.
+Il n'y a pas de saisie libre de protocole : les futurs plugins alimenteront le même catalogue.
+La migration déduit les sélections des configurations existantes sans modifier les accès.
+Les champs des protocoles sont décrits par le catalogue et utilisent les contrôles communs.
+Le formulaire conserve les saisies après une erreur ; un mot de passe laissé vide préserve
+le secret existant, et l'action d'effacement permet de le supprimer explicitement.
 
 ### Supprimer un outil personnalisé
 

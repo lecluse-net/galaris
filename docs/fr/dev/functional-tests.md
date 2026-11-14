@@ -2,6 +2,14 @@
 
 # Catalogue des garanties fonctionnelles
 
+Les diagnostics des connexions et leurs permissions ciblées sont couverts par
+`app/tools/tests/test_connection_diagnostics.py` et le scénario HTTP de portée de
+`app/connection/tests/test_connections.py` : secrets enregistrés, inactivité préservée,
+sources indépendantes, erreurs assainies et refus hors périmètre. Les scénarios
+`front/browser-tests/connection-actions.spec.mjs` et `connections-loading.spec.mjs`
+vérifient test, échec/reprise, réponses tardives, droits de décision, sauvegarde,
+réouverture et isolation entre connexions, avec le tableau partagé de Permissions.
+
 `make tests-document-formats` regroupe les garanties documentaires et leurs parcours
 navigateur. `app/document/tests/test_formats.py` vérifie l'enregistrement de contributions,
 la qualification par preuves exactes, le cycle commun Texte/Data/format synthétique,
@@ -11,11 +19,71 @@ le téléchargement de source et le catalogue avec erreur/retry ; les suites exi
 conservent les garanties d'aperçu, d'impression et d'export PDF. Voir le
 [contrat des formats](document-formats.md) pour distinguer capacité déclarée et qualification.
 
+`app/calendar/tests/test_contacts.py` protège la référence facultative vers un contact privé
+de l’agent : création et modification MCP, retrait explicite, conservation lors des éditions
+et rafraîchissements distants, historique, fusion/oubli, découpage des récurrences et contexte
+de la Task à l’échéance sans extension de ses droits. Le scénario de création de
+`front/browser-tests/calendar.spec.mjs` conserve aussi le contact choisi après un échec de sauvegarde.
+
+`app/calendar/tests/test_context.py` protège le résumé automatique borné des agendas et
+l’accès aux fonctions de l’agenda personnel depuis les tâches et les conversations, avec
+application des permissions courantes. Le scénario échoue si le fournisseur personnel ou
+les politiques de conversation retirent les fonctions `calendar_*` du catalogue.
+
+`app/calendar/tests/test_providers.py` exerce Google Calendar et Microsoft Graph sur une
+frontière HTTP synthétique : découverte et lecture seule, allers-retours en base, création
+sans doublon après perte de réponse, ETag, conservation sur réponse incomplète, journées
+entières et exceptions récurrentes au changement d’heure. `test_mcp_oauth.py` couvre aussi
+les autorisations agenda Google/Microsoft/CalDAV, la rotation des refresh tokens et
+l’indépendance des grants MCP. `mcp-oauth.spec.mjs` exerce les deux autorisations côte à
+côte, la reprise d’erreur et la déconnexion ciblée dans les vrais composants.
+
+`app/goal/tests/test_calendar.py` protège l’identité des passages, leur lien à la Task exacte,
+les changements de planning limités au futur, les reprises après interruption, les retards,
+la pause/reprise et les limites de fuseau. `goals.spec.mjs` vérifie l’enregistrement puis la
+réouverture d’une récurrence fixe. `calendar.spec.mjs` vérifie les passages prévisionnels puis
+liés à leur cycle, les liens Goal/Task et l’absence d’action Agenda concurrente, en mobile et
+desktop, clair et sombre. Les contrôles HTTP restent séparés par privilèges et portée d’agents.
+
+`front/browser-tests/calendar.spec.mjs` exerce l’Agenda complet : création et réouverture,
+fuseaux, dates de journée entière, récurrences, déplacements, conservation des brouillons
+sur conflit ou échec, actions et accès aux Tasks, réglages, conflits CalDAV et réponses tardives.
+Les menus d’agendas couvrent clic droit, bouton, clavier, copie du lien, visibilité et synchronisation.
+`app/calendar/tests/test_resources.py` protège les références stables, la recherche, les aperçus
+sans miniature et l’isolation par agent ; les pièces jointes conservent le contrôle du privilège Agenda.
+`e2e/specs/calendar.spec.mjs` vérifie le même parcours principal avec le vrai backend,
+la persistance de l’événement et du lancement et l’action Créer dans le shell assemblé.
+`app/calendar/tests/test_native.py` protège aussi les états groupés par occurrence et
+la sauvegarde idempotente d’une action après perte de réponse. Les contrôles de droits
+existants couvrent les privilèges, connexions et limites de la lecture groupée.
+
+`app/tools/tests/test_protocols.py` couvre les protocoles Mail/Calendrier sur un Tool fournisseur,
+l'isolation des connexions et secrets, la sélection explicite et la migration idempotente des
+anciens Tools sans perte des identités et calendriers. `system-tools.spec.mjs` vérifie leur
+création, champs fixes et références aux paramètres dans les onglets Mail/CalDAV, reprise après erreur,
+réouverture et désactivation indépendante en composants réels. Le parcours HTTP de
+`test_capabilities.py` vérifie l'enregistrement atomique des réglages et références avec le Tool et les refus de droits.
+
 `app/calendar/tests/test_service.py` exerce le véritable adaptateur CalDAV sur une frontière HTTP
 synthétique avec état : paramètres standards, découverte, diff et multiget, écritures conditionnelles,
 perte d'accusé, jeton expiré, conflits, réponses invalides et droits distants. Des sessions PostgreSQL
 indépendantes vérifient le bail et le rejet d'une réponse après changement de configuration.
 Les échecs conservent le cache, le curseur et leur journal sans secret.
+Les scénarios de synchronisation protègent l’intervalle commun des agendas d’une connexion
+(2 h par défaut), les anciennes échéances courtes, les écritures en attente et les reprises
+après erreur ou interruption sans polling anticipé. Les contrôles HTTP couvrent les valeurs
+entières, la persistance et les droits. `connections-loading.spec.mjs` exerce le paramètre
+standard de la connexion, sa réouverture et l’absence de lecture des agendas. L’ancien
+diagnostic listant agendas et tâches dans la connexion est retiré ; les liens et historiques
+restent couverts sur la page Agenda par `calendar.spec.mjs`, y compris les tentatives en
+direct, leur conservation et la réouverture après erreur, sur mobile et bureau.
+La découverte depuis la racine DAV suit le compte puis son espace de calendriers, sans
+confondre les espaces des groupes de délégation, quel que soit l’ordre des réponses.
+Le même scénario protège les écritures et la reprise après une redirection DAV.
+Le fournisseur synthétique utilise une IPv4 privée via le véritable résolveur du transport.
+`test_transport.py` vérifie les lectures HTTPS sur IPv4/IPv6 publiques et privées, l’épinglage
+DNS, les redirections et la confidentialité des identifiants. Les adresses spéciales restent
+refusées, y compris en IPv4 mappée et parmi des réponses DNS mixtes.
 `test_native.py` couvre CRUD local, historique, révisions, exceptions et scission de série,
 indépendance entre navigation et actions, admissions perdues, résultats et relances idempotentes.
 `test_ical.py` couvre annulation, dates exclusives et fuseaux lors des changements d'heure.
@@ -26,9 +94,11 @@ privilège et périmètre. Les anciennes attentes de lecture réseau directe, de
 natif et de compatibilité des anciens réglages sont retirées : le contrat est désormais local,
 sans données historiques à migrer. La qualification d'un serveur Nextcloud réel est distincte.
 
-`app/connection/tests/test_mail_accounts.py` protège plusieurs boîtes sur un même Tool, la sélection MCP par connexion et les droits propres à chaque compte.
-`bridge/mail/tests/test_browser.py` couvre les URI de comptes, les pièces jointes et les restrictions de dossiers.
-`system-tools.spec.mjs` et `connections-loading.spec.mjs` vérifient le formulaire de protocoles, la sauvegarde atomique Mail, la sélection des dossiers, les erreurs et les réponses tardives.
+`app/tools/tests/test_capabilities.py` vérifie l'unicité du protocole par capacité,
+la cohérence avec les configurations, les identifiants personnalisés conservés lors des
+modifications et exports/imports, et la migration idempotente de la liste des sélections.
+`system-tools.spec.mjs` couvre aussi le sélecteur avec bouton « + », le refus des doublons,
+la reprise après échec du catalogue et la réouverture d'une entrée de plugin issue du catalogue.
 
 `app/agent/tests/test_operating_instructions.py` vérifie l'édition, la désactivation et la
 réinitialisation du guide commun aux tâches, conversations et voix, la conservation des
@@ -70,21 +140,6 @@ sa réouverture, les cartes de pièces jointes, le téléchargement et le refus 
 `chat-internal-attachments.spec.mjs` vérifie que les valeurs et les cartes fichier/document
 de la réponse restent visibles ensemble sur mobile et bureau.
 
-Les scénarios de synchronisation protègent l’intervalle commun des agendas d’une connexion
-(2 h par défaut), les anciennes échéances courtes, les écritures en attente et les reprises
-après erreur ou interruption sans polling anticipé. Les contrôles HTTP couvrent les valeurs
-entières, la persistance et les droits. `connections-loading.spec.mjs` exerce le paramètre
-standard de la connexion, sa réouverture et l’absence de lecture des agendas. L’ancien
-diagnostic listant agendas et tâches dans la connexion est retiré ; les liens et historiques
-restent couverts sur la page Agenda par `calendar.spec.mjs`, y compris les tentatives en
-direct, leur conservation et la réouverture après erreur, sur mobile et bureau.
-La découverte depuis la racine DAV suit le compte puis son espace de calendriers, sans
-confondre les espaces des groupes de délégation, quel que soit l’ordre des réponses.
-Le même scénario protège les écritures et la reprise après une redirection DAV.
-Le fournisseur synthétique utilise une IPv4 privée via le véritable résolveur du transport.
-`test_transport.py` vérifie les lectures HTTPS sur IPv4/IPv6 publiques et privées, l’épinglage
-DNS, les redirections et la confidentialité des identifiants. Les adresses spéciales restent
-refusées, y compris en IPv4 mappée et parmi des réponses DNS mixtes.
 `app/conversation/tests/test_direct_process_inputs.py` couvre les contributions structurées,
 droits HTTP, révisions dépassées, dépôts réels, conservation des autres données après disparition
 d'un fichier, confirmation d'une valeur inchangée après erreur, reprise par l'agent et lancement unique sans
@@ -116,6 +171,9 @@ fournisseur synthétique : une demande, deux relectures, un complément de valeu
 et rejeu. Il borne les lectures SQL et les appels auxiliaires IA. Les ressources partagées
 par 1, 10, 50 et 200 champs ne nécessitent qu'une lecture de métadonnées par lot ; l'appel
 suivant revérifie les droits. Ces mesures ne qualifient pas la latence d'un fournisseur réel.
+
+La reprise de l’historique dans `goals.spec.mjs` vérifie aussi les preuves conservées et
+l’accès à la Task de revue selon les privilèges, sans navigation ni fermeture de l’objectif.
 
 Les tests du store Goals vérifient le chargement différé des cycles, le regroupement des
 événements en lots sans chevauchement, la récupération après erreur, les réponses tardives,
@@ -173,9 +231,6 @@ base réelle : noms et coordonnées actuels, export JSON, isolation entre agents
 déplacements et suppressions, oubli et pagination/recherche sur 501 fiches. Le parcours HTTP vérifie
 `CONTACT_ACCESS`/`CONTACT_EDIT`, le refus avec Fichiers seul et le périmètre des agents gérés.
 Les écritures et éditions contrôlent le JSON, les champs protégés, les coordonnées omises et
-La reprise de l’historique dans `goals.spec.mjs` vérifie aussi les preuves conservées et
-l’accès à la Task de revue selon les privilèges, sans navigation ni fermeture de l’objectif.
-
 le jeton de concurrence. `app/contact/tests/test_file_resource_concurrency.py` vérifie, dans
 deux transactions indépendantes, qu'une seule écriture d'un même snapshot est acceptée.
 Le scénario Contacts de `front/browser-tests/file-browser.spec.mjs` ouvre désormais la modale
@@ -1763,6 +1818,11 @@ sans accord de modification, et refuse cette lecture après révocation du conte
 Les scénarios MCP Mail refusent `has_attachments=false` avant IMAP et une mutation de
 flags vide avant la demande d'accord ; les filtres `true`/`null` et l'effacement explicite
 d'un flag conservent leurs chemins normaux.
+`bridge/mail/tests/test_browser.py` vérifie aussi la découverte administrative des dossiers
+exclus, sans lecture de message, avec refus hors périmètre ou sans droit de modification.
+`front/browser-tests/connections-loading.spec.mjs` couvre le choix des dossiers par cases à
+cocher, la sauvegarde, le retour à tous les dossiers, les erreurs, la sélection vide et les
+réponses tardives après changement de boîte, sur mobile et bureau.
 `bridge/mail/tests/test_common_authorizations.py` vérifie aussi la copie du MIME accepté dans
 Sent, sa réparation après panne IMAP ou perte de réponse APPEND et l'absence de second envoi
 SMTP. `test_imap_client.py` couvre la relecture par Message-ID et la déduplication d'une copie
@@ -1940,6 +2000,10 @@ sur notification ; il couvre plusieurs lecteurs et un commit entre lecture et at
 `core/tests/test_commit_notifications.py` vérifie commits, savepoints et rollbacks.
 `tests/test_scheduler_wakeups.py` vérifie les réveils après mutations durables, les délais
 de retry et l'absence de scans des files au repos malgré une maintenance périodique.
+`app/task/tests/test_scheduler.py` protège la priorité des discussions devant les travaux
+d’agenda et d’objectifs, avec ancienneté, équité, canal de livraison et reprise rapide,
+ainsi que la capacité réservée aux demandes interactives. `test_task_service.py` vérifie
+la provenance d’agenda des nouvelles sous-tâches et délégations, sans perte de leurs données.
 Il vérifie aussi la prise en charge d'un round pendant une actualisation Chat qui
 verrouille sa Room, sans rattrapage périodique. Le scénario de sérialisation dans
 `app/conversation/tests/test_service.py` utilise des claims simultanés sur plusieurs
@@ -2006,10 +2070,6 @@ Son attente suit les événements de fin ou d'échec des requêtes en cours, pui
 déclenchées par leurs réponses, jusqu'à la fin de cette séquence. Elle exclut le long polling
 Socket.IO et couvre aussi la navigation juste après connexion.
 Lors d'une navigation complète, les requêtes du document quitté ne participent plus à
-`app/task/tests/test_scheduler.py` protège la priorité des discussions devant les travaux
-d’agenda et d’objectifs, avec ancienneté, équité, canal de livraison et reprise rapide,
-ainsi que la capacité réservée aux demandes interactives. `test_task_service.py` vérifie
-la provenance d’agenda des nouvelles sous-tâches et délégations, sans perte de leurs données.
 cette attente : une requête lancée pendant son remplacement peut disparaître sans événement
 de fin. Les erreurs restent observées et les requêtes du nouveau document sont suivies.
 Les parcours de crédits attendent chaque résultat visible ; ils n'attendent pas les lectures
@@ -2263,6 +2323,7 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | Benchmark mémoire apparié (opt-in) | Versions figées sur les mêmes fixtures synthétiques ; admission courante ou de référence cohérente jusqu'au brief ; état réinitialisé et ordre alterné ; rappel retrouvé/injecté, erreurs, latence et SQL ; lots jusqu'à 500 résultats sur 6 000 souvenirs, révisions et chemins invalidés volontairement | `back/tests/test_memory_benchmark_campaign.py`, `back/tests/test_memory_admission_benchmark.py`, protocole : `back/scripts/memory_benchmark/README.md` |
 | Preuves du rappel conversationnel | Noms et surnoms avec accents composés/décomposés ou formes Unicode compatibles ; projection actualisée à l'édition ; nom complet distinct de mots répartis entre plusieurs personnes ; profils et événement présents dans un petit budget, jusque dans le contexte préparé ; rôles de plusieurs personnes conservés ; cible indirecte et relation en rappel lexical/hybride sans contourner accès, contact, validité ou temporalité ; répétitions rétrogradées sans perdre chiffres, dates ou contradictions | `test_document_retrieval.py`, `test_recall_admission.py` |
 | Temporalité mémoire | Dates partielles dans le fuseau global Galaris et changements d'heure ; nettoyage des anciens fuseaux sans perte de dates, d'historique ni d'acquisition ; correction, droits et portée contact ; contexte sans requête, pagination et budget ; recherche à date cible combinée aux filtres, parcours HTTP et refus d'accès ; filtre obligatoire dès la première recherche, saisie et affichage indépendants du fuseau du navigateur, reprise après erreur sur mobile/bureau | `back/app/memory/tests/test_temporal.py`, `back/app/memory/tests/test_browse_filters.py`, `front/browser-tests/memory.spec.mjs`, `e2e/specs/memory-temporal.spec.mjs` |
+| Agenda mémoire informatif | Occurrences récurrentes et périodes précises, identités stables, droits et contact, validité actuelle ; aucune création d’événement ni de déclencheur ; chronologie agent commune sans double injection, repli après erreur ; horizon et nombre d’événements configurables, sauvegarde et réouverture ; source sélectionnable et ouverture du souvenir sur mobile/bureau | `back/app/memory/tests/test_agenda.py`, `back/app/calendar/tests/test_context.py`, `front/browser-tests/calendar.spec.mjs`, `front/browser-tests/params-layout.spec.mjs`, `e2e/specs/calendar.spec.mjs` |
 | Miniatures des documents | Réutiliser l’instantané d’impression et ses images pour la première page entière ; produire un WebP sans perte de 320 × 320 maximum, avec proportions conservées ; enregistrer `Document.thumbnail_id` et conserver un seul fichier courant, sans JSON ni historique de miniatures ; nettoyer les anciens caches ; invalider le pointeur après modification et refuser les captures tardives ; revérifier les droits sans relire le contenu ni l’historique ; différer les aperçus hors écran, borner les chargements et annuler les travaux obsolètes sans empêcher l’ouverture du document | `back/core/preview/tests/test_thumbnails.py`, `back/app/memory/tests/test_document_thumbnails.py`, `front/browser-tests/document-thumbnails.spec.mjs`, `front/core/util/previewQueue.test.mjs`, `browser-executor/pdf.test.mjs` |
 | Miniatures Office et tableurs | Convertir la première page des fichiers Office et la première page imprimée des tableurs ; éviter OCR et extraction analytique ; séparer les checkpoints de l’analyse complète ; préserver l’original, les droits et le cache partagé ; reprendre après échec et nettoyer les temporaires après annulation ; afficher et télécharger sur desktop et mobile, y compris après réouverture ; proposer uniquement le téléchargement de l’original sans plein écran pour les formats sans lecteur, dans les pièces jointes, fichiers indexés et discussions | `back/app/memory/tests/test_document_thumbnails.py`, `front/browser-tests/document-thumbnails.spec.mjs`, `attachment-previews.spec.mjs`, `e2e/specs/office-thumbnails.spec.mjs` |
 | `contact` | Périmètre agent et `CONTACT_EDIT` (oubli : aussi `MEMORY_EDIT`) ; nom unique, regroupement par sélection/fusion et scission atomique sans suppression d’identité, avec conservation de l’historique ; création de contacts mail indépendants des utilisateurs/agents, validation et doublons concurrents ; rollback des projections lors d’une erreur de scission ; rejet du rattachement direct par API ; Chat interne représenté uniquement par l’utilisateur Galaris et nettoyage idempotent ; brouillon, annulation, reprise et réponses tardives sur mobile/bureau | `test_service.py`, `test_router.py`, `app/memory/tests/test_messenger_contact.py`, `app/memory/tests/test_source_projection.py`, `front/browser-tests/contacts.spec.mjs` |
@@ -2329,7 +2390,6 @@ en chargeant des pages de 50 messages, sur desktop et mobile, puis se rouvrent e
 Chaque page ancienne est demandée une seule fois ; les rafraîchissements légitimes de
 la première page et sa relecture à la réouverture restent permis. La navigation pendant
 la restauration initiale ne doit pas être perdue.
-| Agenda mémoire informatif | Occurrences récurrentes et périodes précises, identités stables, droits et contact, validité actuelle ; aucune création d’événement ni de déclencheur ; chronologie agent commune sans double injection, repli après erreur ; horizon et nombre d’événements configurables, sauvegarde et réouverture ; source sélectionnable et ouverture du souvenir sur mobile/bureau | `back/app/memory/tests/test_agenda.py`, `back/app/calendar/tests/test_context.py`, `front/browser-tests/calendar.spec.mjs`, `front/browser-tests/params-layout.spec.mjs`, `e2e/specs/calendar.spec.mjs` |
 Les scénarios conservent l’ancre avec des hauteurs variables, des ajouts d’historique,
 le streaming et le redimensionnement, y compris lorsqu’un contenu tardif agrandit le
 message partiellement visible en cours de lecture ; ils couvrent aussi le focus, la sélection,
@@ -2614,6 +2674,20 @@ droits restent vérifiés ; un budget d'accès aux pages PostgreSQL détecte les
 imbriquées des droits, même lorsque les données sont en cache. Les mesures sont écrites dans
 `artifacts/memory-tree-benchmark*.json`. Le corpus synthétique est analysé avant ces mesures
 pour ne pas dépendre des statistiques laissées par les autres tests ou du passage d'autovacuum.
+Sur 600 puis 6 000 documents synthétiques, il borne aussi les lignes transférées par les
+catalogues Sujets/Agents au nombre de groupes, les lectures des tranches nommées à celles
+de la page autorisée et les relectures lors de vingt classements. Les résultats, les mots-clés
+avec des casses différentes, les comptes sans étiquette et une révocation restent vérifiés.
+Les mesures médianes et pics mémoire sont conservés sous `artifacts/document-optimization/`.
+`test_bulk_moves.py` mesure aussi les modifications d’étiquettes et de propriétaire sur
+40 documents avec des corps de 32 octets puis 400 ko. Il protège un coût mémoire des
+étiquettes indépendant du corps, une vérification groupée des propriétaires et la conservation
+exacte du contenu, de son empreinte et de sa révision. Les mesures SQL et mémoire restent
+agrégées sous `artifacts/document-optimization/bulk-*.json`.
+`test_topic_library.py` vérifie avec deux transactions PostgreSQL distinctes qu’un classement
+attendant un verrou refuse une version modifiée entre-temps, sans écraser les données validées.
+`librarySnapshot.test.mjs` protège l’identité des lignes inchangées et l’application des
+modifications, de l’ordre et des suppressions lors des mises à jour incrémentales.
 Les scénarios de classement vérifient que les filtres
 « tous » et « classés » donnent les mêmes branches, avec les mêmes droits et la même pagination ;
 le filtre « non classés » continue d'exclure ces documents.
@@ -2666,7 +2740,9 @@ réel : authentification, délai et statuts serveur gardent leur sens sans divul
 - `front/core/util/treePages.test.mjs` vérifie la couverture contiguë des tranches et la
   limite de 100 branches par niveau, jusqu’à un million d’entrées.
   `front/browser-tests/tree-pages.spec.mjs` exerce le maintien de la sélection dans les
-  sélecteurs et l’ouverture des sous-documents par tranches. Les scénarios de tranches de `document-topics.spec.mjs`
+  sélecteurs, la sélection directe des fichiers Skills, le filtrage des dossiers Mail sans
+  perdre les choix précédents et l’ouverture des sous-documents par tranches.
+  Les scénarios de tranches de `document-topics.spec.mjs`
   et `document-classification.spec.mjs` vérifient les offsets demandés, les reprises et
   l’absence de chargement de la collection complète.
 - `front/browser-tests/document-batch-moves.spec.mjs` vérifie qu’une sélection de 210

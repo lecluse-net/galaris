@@ -92,20 +92,30 @@ The sidebar shows only the screens authorized by your role:
 
 The **Tools** list opens on **Custom tools**, followed by **Galaris built-in tools**.
 A connection's **Tool** field also groups choices under **Galaris** and **Custom**.
-In **New tool**, add at least one protocol to make **Create** available.
-For several Ionos mailboxes, create one provider Tool **Ionos**, choose **IMAP & SMTP** under
-**Mail**, and configure server settings and standard connection parameter references.
-Then create a separate connection for each mailbox and agent with its address and credentials.
-One agent may have several connections to the same Mail Tool. The MCP `tools_list` catalogue
-provides mailbox addresses, `connection_id` values and authorized functions.
+In **New tool**, enable at least one protocol to make **Create** available.
+A Tool represents the provider, for example **Ionos**, and can combine API, MCP, file sharing,
+messaging, listener, Mail and Calendar. Mail and CalDAV are optional provider protocols.
+Every agent also has a default internal **Personal agenda** without an external connection.
+Ask the agent to book an appointment or set a reminder; it uses its authorized agenda functions.
+Goals retain durable outcome tracking and their own reviews: a reminder must not duplicate an
+already scheduled Goal cycle.
+For Ionos Mail, create **Ionos**, enable **Mail**, enter servers in its global parameters,
+then create an Ionos connection for each agent with its email address and password.
+Existing Mail and Calendar connections migrate automatically to custom Tools while keeping
+their parameters and history.
 
-
-Every agent has a **Personal agenda** without an external account. Ask it to create an appointment
-or dated reminder using its authorized calendar functions. A reminder creates a tracked Task;
-creation does not yet mean that execution succeeded. External appointments use a local replica
-synchronized in the background through CalDAV, or a read-only iCalendar subscription. A pending
-write is not yet confirmed by the provider. Goals retain their own scheduled reviews without
-duplicating them as agenda reminders.
+For a **CalDAV** source, map its URL and HTTP credentials to standard `url`, `login` and
+`password` parameters in the protocol tab, then enter their values in the agent connection.
+The URL uses the password type because it may contain a private token.
+**Knowledge → Agenda** offers Month, Week, Day and Schedule views, event creation and editing,
+recurrences and Task launches per event. See [Agenda and Task launches](calendar.md).
+Appointments are read from a local replica; remote changes synchronize in the background.
+A pending write is not yet confirmed by the provider. Source kind iCalendar also permits a
+read-only subscription. External calendar actions require explicit activation. Each due action,
+including activated VALARM alarms, creates a Task containing the event information; an event
+without an action creates no Task. **Execution history** follows each occurrence separately with
+its Task link and state. Only a successfully completed Task is marked processed. The Task
+may start a Process when needed, subject to its ordinary tool permissions.
 
 To configure a REST integration, an administrator enables **API** on the Tool, then
 enters its address directly in the **REST API** tab. All Tool connections share this address.
@@ -275,6 +285,13 @@ for the reply. An already recorded decision should be read from its source; a fa
 to make the choice should be checked before asking. Waiting does not mean the Goal is achieved.
 
 In **Goals**, the list shows the responsible Agent’s avatar and name.
+In **Cycles**, each cycle shows its assessment and recorded evidence. When a review Task
+exists, **Open review** opens its details in an overlay, subject to Task privileges. Closing
+the review returns to the same Goal and cycle history.
+**Fixed dates in the agenda** supports recurrence in a chosen timezone. The **Goals** layer
+in the [Agenda](calendar.md) shows future passages, then the exact cycle
+and Task for each elapsed passage. Configuration changes preserve the past and replace
+only future planning.
 Opening details does not load the full history: the **Cycles** tab retrieves its page when
 opened. Live updates preserve the selection and previously displayed information. If loading
 fails, an error message and **Retry** let you recover. A concurrent edit does not replace your
@@ -285,13 +302,6 @@ the **Category** filter to find classified Goals or **Uncategorized**. Each Goal
 one category. The list groups Goals under category headings, always in alphabetical order,
 with **Uncategorized** last. Clicking the **Agent** column sorts Agents within each category
 without changing the category order, including across result pages.
-In **Cycles**, each cycle shows its assessment and recorded evidence. When a review Task
-exists, **Open review** opens its details in an overlay, subject to Task privileges. Closing
-the review returns to the same Goal and cycle history.
-**Fixed dates in the agenda** supports recurrence in a chosen timezone. The **Goals** layer
-in the [Agenda](calendar.md) shows future passages, then the exact cycle
-and Task for each elapsed passage. Configuration changes preserve the past and replace
-only future planning.
 Only its creator can see and edit a category, including between administrators;
 classification does not change access to the Goal. Category deletion is audited and retains
 the Goals while removing their classification.
@@ -575,7 +585,7 @@ An Agent can consult the agent directory during a conversation to identify a col
 their role, without creating a Task. Asking for a colleague's contribution follows the usual
 action policy and contact permissions; reading a profile does not itself contact that Agent.
 
-On initialization, **Console SSH**, **Image**, **Mail**, and **Multimedia** are unavailable
+On initialization, **Console SSH**, **Image**, and **Multimedia** are unavailable
 in conversation mode by default. An administrator can enable each Tool for conversations
 in the Tool catalog. This setting does not change access in Tasks; updates preserve
 previously saved choices.
@@ -583,8 +593,17 @@ previously saved choices.
 If a Task waits for your consent to read an email, answer its authorization request.
 The Harness continues reading the same message once the Task resumes; denial keeps
 its content private. Reading consent does not authorize sending an email.
-To browse an agent’s mailbox yourself, open **Knowledge → Files**, then its Mail provider and account, then an IMAP folder
+To browse an agent’s mailbox yourself, open **Knowledge → Files**, select the provider Tool
+with the Mail protocol, then an IMAP folder
 and a message. Your reading does not authorize the agent to process the email.
+
+In a connection with the **Mail** protocol, **Allowed mail folders** lists the saved mailbox's folders with
+checkboxes. Select the accessible folders or enable **Access to all folders** (the default).
+**Reload folders** refreshes the list; the filter finds folders by name. Select each subfolder
+separately. Save the connection to apply your selection. Loading failures preserve your choices.
+The global setting can be overridden per connection unless forced.
+Excluding `INBOX` suspends automatic polling. To archive sent messages, also
+allow your server's Sent folder.
 
 Reading a Skill already available in the DeepSeek Harness does not request mutation consent.
 Operations that modify files retain their authorization requirement.

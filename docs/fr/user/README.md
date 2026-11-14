@@ -103,20 +103,32 @@ La barre latérale ne montre que les écrans autorisés par votre rôle :
 
 La liste **Outils** s'ouvre sur **Outils personnalisés** ; **Outils internes à Galaris** suit.
 Le champ **Outil** d'une connexion regroupe aussi les choix sous **Galaris** et **Personnalisé**.
-Dans **Nouvel outil**, ajouter au moins un protocole pour rendre le bouton **Créer** disponible.
-Pour plusieurs boîtes Ionos, créer un Tool fournisseur **Ionos**, choisir **IMAP & SMTP** sous
-**Mail**, puis configurer les serveurs et les références aux paramètres standards. Créer
-ensuite une connexion par boîte et par agent, avec son adresse et ses identifiants.
-Un agent peut avoir plusieurs connexions au même Tool Mail. Le catalogue MCP `tools_list`
-indique les adresses, les `connection_id` et les fonctions autorisées.
+Dans **Nouvel outil**, activer au moins un protocole pour rendre le bouton **Créer** disponible.
+Un Tool représente le fournisseur, par exemple **Ionos**, et peut cumuler API, MCP, partage,
+messagerie, écouteur, Mail et Calendrier. Mail et CalDAV sont des protocoles de fournisseurs optionnels.
+Chaque agent dispose aussi d’un **Agenda personnel** interne par défaut, sans connexion externe.
+Demander à l’agent de prendre un rendez-vous ou de prévoir un rappel suffit ; il utilise les
+fonctions autorisées de son agenda. Les objectifs conservent le suivi durable et leurs propres revues :
+un rappel ne doit pas dupliquer un cycle d’objectif déjà programmé.
+Pour Ionos Mail, créer **Ionos**, activer **Mail**, renseigner les serveurs dans ses paramètres
+globaux, puis créer une connexion Ionos par agent avec son adresse et son mot de passe.
+Les anciennes connexions Mail et Calendrier sont migrées automatiquement vers des Tools
+personnalisés, sans perte de leurs paramètres et historiques.
 
-
-Chaque agent dispose d'un **Agenda personnel** sans compte externe. Demandez-lui de créer un
-rendez-vous ou un rappel daté ; les fonctions autorisées de son agenda sont utilisées.
-Un rappel crée une Task suivie ; sa création ne signifie pas encore qu'elle a réussi.
-Les rendez-vous externes utilisent une copie locale synchronisée en arrière-plan par CalDAV,
-ou un abonnement iCalendar en lecture seule. Une écriture en attente n'est pas confirmée chez
-le fournisseur. Les Goals conservent leurs revues planifiées sans rappel dupliqué dans l'agenda.
+Pour une source **CalDAV**, associer dans l’onglet du protocole l’URL et les identifiants HTTP
+aux paramètres standards `url`, `login` et `password`, puis saisir leurs valeurs dans la
+connexion de l’agent. L’URL utilise le type mot de passe car elle peut contenir un jeton privé.
+**Connaissances → Agenda** propose les vues Mois, Semaine, Jour et Planning, la création
+et l’édition des rendez-vous, leurs répétitions et les lancements de Tasks par événement.
+Voir [Agenda et lancements de tâches](calendar.md).
+Les rendez-vous sont consultés dans une copie locale ; les modifications externes sont synchronisées
+en arrière-plan. Une écriture en attente n'est pas encore confirmée chez le fournisseur.
+Le type de source iCalendar permet également un abonnement en lecture seule. Les actions d'un
+agenda externe doivent être activées explicitement. Chaque action arrivée à échéance, dont les
+alarmes VALARM activées, crée une tâche avec les informations de l’événement ; un événement
+sans action ne crée aucune tâche. L’**Historique d’exécution** suit séparément chaque occurrence,
+avec le lien vers sa tâche et son état. Seule une tâche terminée avec succès est marquée traitée.
+Elle peut lancer un processus si nécessaire, avec les autorisations ordinaires de ses outils.
 
 Pour configurer une intégration REST, un responsable active **API** sur le Tool, puis
 saisit directement l'adresse dans l'onglet **API REST**. Cette adresse est commune à toutes
@@ -323,6 +335,10 @@ source ; un fait nécessaire au choix doit être vérifié avant de poser la que
 L'attente ne signifie pas que l'objectif est atteint.
 
 Dans **Objectifs**, la liste affiche l’avatar et le nom de l’agent responsable.
+Le mode **À dates fixes dans l’agenda** permet une récurrence dans un fuseau choisi.
+La couche **Objectifs** de l’[Agenda](calendar.md) montre les passages
+futurs puis le cycle et la Task exacts de chaque passage arrivé à échéance. Les changements
+de configuration conservent le passé et ne remplacent que la planification future.
 Le détail s’ouvre sans charger tout l’historique : l’onglet **Cycles** récupère sa page lors
 de son ouverture. Chaque cycle affiche son bilan et ses preuves enregistrées. Lorsqu’une
 tâche de revue existe, **Ouvrir la revue** permet de la consulter dans une modale superposée,
@@ -338,10 +354,6 @@ pour retrouver les objectifs classés ou **Sans catégorie**. Chaque objectif a 
 catégorie. La liste est regroupée sous les titres des catégories, toujours classées par ordre
 alphabétique ; **Sans catégorie** apparaît à la fin. Cliquer sur la colonne **Agent** trie les
 agents à l’intérieur de chaque catégorie, sans changer l’ordre des catégories, y compris
-Le mode **À dates fixes dans l’agenda** permet une récurrence dans un fuseau choisi.
-La couche **Objectifs** de l’[Agenda](calendar.md) montre les passages
-futurs puis le cycle et la Task exacts de chaque passage arrivé à échéance. Les changements
-de configuration conservent le passé et ne remplacent que la planification future.
 entre les pages de résultats. Une catégorie n’est visible et modifiable que par son créateur, même entre
 administrateurs ; elle ne change pas les droits d’accès à l’objectif. Sa suppression est
 historisée et conserve les objectifs en retirant leur classement.
@@ -672,8 +684,18 @@ dans les tâches ; les mises à jour conservent les choix déjà enregistrés.
 Si une tâche attend votre accord pour lire un mail, répondez à la demande d’autorisation.
 Le harnais reprend la lecture du même message après la reprise de la tâche ; un refus
 laisse son contenu privé. Cet accord de lecture n’autorise pas l’envoi d’un mail.
-Pour consulter vous-même la boîte d’un agent, ouvrez **Connaissances → Fichiers**, puis son fournisseur Mail et le compte concerné,
+Pour consulter vous-même la boîte d’un agent, ouvrez **Connaissances → Fichiers** et le Tool
+du fournisseur portant le protocole Mail,
 puis un dossier IMAP et un message. Cette lecture ne donne aucun accord de traitement à l’agent.
+
+Dans une connexion portant le protocole **Mail**, **Dossiers de messagerie autorisés** affiche les dossiers de la
+boîte enregistrée avec des cases à cocher. Cochez les dossiers accessibles, ou activez
+**Accès à tous les dossiers** (le défaut). **Recharger les dossiers** actualise la liste ;
+le filtre retrouve un dossier par son nom. Chaque sous-dossier se choisit séparément.
+Enregistrez la connexion pour appliquer la sélection. Une erreur de chargement conserve vos choix.
+Le réglage global peut être personnalisé par connexion sauf s'il est imposé.
+Sans `INBOX`, la relève automatique est suspendue. Pour archiver les envois, autorisez aussi
+le dossier Envoyés de votre serveur.
 
 La consultation d'une compétence déjà disponible dans le harnais DeepSeek ne demande pas
 d'accord de modification. Les opérations qui modifient des fichiers conservent leur autorisation.
