@@ -20,7 +20,7 @@ async def catalog(scope: AgentManagementScope) -> list[DocumentAgentBranch]:
     title = func.coalesce(func.nullif(func.trim(func.concat(Agent.first_name, " ", Agent.last_name)), ""), Agent.code, "")
     visible = select(Document.owner_agent_id, Document.keywords).where(
             or_(readable_item_for_agents_clause(scope.agent_ids), human_document_clause(scope.user_id)),
-            Document.node_kind == "document", Document.document_type.in_(("text", "data")),
+            Document.node_kind == "document", Document.document_format.not_in(("dataset", "process")),
             Document.owner_agent_id.is_not(None),
             or_(Document.valid_from.is_(None), Document.valid_from <= now),
             or_(Document.valid_until.is_(None), Document.valid_until > now),

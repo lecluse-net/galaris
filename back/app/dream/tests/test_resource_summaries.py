@@ -28,7 +28,7 @@ def body(kind, text):
 async def create(kind, owner, text):
     if kind in {"document", "data"}:
         return await document_service.create_document(owner_agent_id=owner.id, title="Synthetic source",
-            content=body(kind, text), task_id=None, document_type="data" if kind == "data" else "text")
+            content=body(kind, text), task_id=None, document_format="data" if kind == "data" else "text")
     item = await datasets.create(owner.id, title="Synthetic source", content=body(kind, text))
     await get_db().commit()
     return item

@@ -33,7 +33,7 @@ async def text_document_snapshot(connection, identity, folder, file):
         "share_grants": "share_id IN (SELECT share_id FROM documents WHERE id=:id UNION SELECT share_id FROM document_tags WHERE id=:folder)",
     }
     excluded = {
-        "documents": ["document_type", "storage_kind", "file_id", "creation_key", "creation_fingerprint", "summary_media_type",
+        "documents": ["document_type", "document_format", "storage_kind", "file_id", "creation_key", "creation_fingerprint", "summary_media_type",
                       "summary_generated", "summary_pending", "summary_source_text"],
         "document_revisions": ["author_user_id", "storage_kind", "file_id", "document_source_revision_id"],
         "document_list_positions": ["at_root"],
@@ -76,7 +76,7 @@ async def test_old_dataset_schema_upgrades_and_resumes_without_losing_sources(co
         session.add(LegacyDataset(id=identity, owner_user_id=owner.id, title="Synthetic old data",
             content=source, revision=1, keywords=["preserved"], metadata_={"synthetic": True}))
         session.add(Document(id=text_identity, owner_user_id=owner.id, title="Synthetic old HTML",
-            stored_document_type="html", provider_code="native", resource_id=str(text_identity),
+            document_format="html", provider_code="native", resource_id=str(text_identity),
             content=prose_source, content_hash=sha256(prose_source.encode()).hexdigest(), size_bytes=len(prose_source.encode()), revision=2,
             keywords=["synthétique", "manuel"], metadata_={"synthetic": {"nested": [1, False, None]}},
             summary_content=prose_summary, summary_resource_id=str(uuid4()), summary_content_hash=sha256(prose_summary.encode()).hexdigest(),
@@ -132,9 +132,12 @@ async def test_old_dataset_schema_upgrades_and_resumes_without_losing_sources(co
         await connection.execute(text("ALTER TABLE document_list_positions DROP COLUMN at_root"))
         for column in ("author_user_id", "storage_kind", "file_id", "document_source_revision_id"):
             await connection.execute(text(f"ALTER TABLE document_revisions DROP COLUMN {column} CASCADE"))
+        await connection.execute(text("ALTER TABLE documents RENAME COLUMN document_format TO document_type"))
         before_text = await text_document_snapshot(connection, text_identity, text_folder, text_file)
     registry = DbAdminRegistry()
     register(registry)
+    from app.document.format_migration import register as register_format_column
+    register_format_column(registry)
     from app.document.summary_retirement import register as register_summary_retirement
     register_summary_retirement(registry)
     if interrupted:
@@ -171,10 +174,10 @@ async def test_old_dataset_schema_upgrades_and_resumes_without_losing_sources(co
         async with get_db_session() as session:
             document = await session.get(Dataset, identity)
             assert document is not None and document.content == source
-            assert document.document_type == "data" and document.storage_kind == "text"
+            assert document.document_format == "data" and document.storage_kind == "text"
             assert document.keywords == ["preserved"] and document.metadata_ == {"synthetic": True}
             prose = await session.get(Document, text_identity)
-            assert prose.stored_document_type == "text" and prose.content == prose_source
+            assert prose.document_format == "text" and prose.content == prose_source
             revision = await session.scalar(select(DocumentRevision).where(DocumentRevision.document_id == identity))
             assert revision.content == source and revision.author_user_id is not None
             folder = await session.get(DocumentTag, uuid5(NAMESPACE_URL, f"galaris:data-folder:{folder_identity}"))

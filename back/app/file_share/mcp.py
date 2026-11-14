@@ -124,7 +124,9 @@ def _decode_content(
 async def file_schemes(ctx: McpToolContext) -> str:
     """Return native and connected virtual-file providers."""
 
-    return _json_model({"schemes": await list_schemes(await _resource_context(ctx))})
+    from app.document import document_format_catalogue
+    return _json_model({"schemes": await list_schemes(await _resource_context(ctx)),
+        "document_formats": document_format_catalogue()})
 
 
 @mcp_tool("file_sharing", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
@@ -349,8 +351,8 @@ async def file_to_pdf(ctx: McpToolContext, source: str, destination: str) -> str
         "its canonical URI is data://UUID and its content remains free JSON. "
         "Dataset creation requires the content argument containing complete valid JSON, "
         "for example '[]' or '{}'; omitting content is rejected before creation. "
-        "Document types are text (HTML) and data (JSON); document_type remains immutable. "
-        "The data option at document:// returns data://; html/dataset remain compatibility spellings. "
+        "Document formats include text (HTML) and data (JSON); document_format remains immutable. "
+        "The data format at document:// returns data://. file_schemes lists the available formats. "
         "For an HTML document, content must be an editorial HTML fragment "
         "with encoding='utf-8', for example '<h1>Report</h1><p>Findings.</p>', not Markdown "
         "or a full HTML page with html/head/body tags. Documents accept ordinary form, style and script elements, "
@@ -379,7 +381,7 @@ async def create_file(
     content: str = "",
     encoding: Literal["utf-8", "base64"] = "utf-8",
     name: str = "",
-    document_type: Literal["text", "data", "html", "dataset"] | None = None,
+    document_format: str | None = None,
 ) -> str:
     """Create a complete resource without overwriting an existing one."""
 
@@ -387,7 +389,7 @@ async def create_file(
     if not payload.strip():
         reference = parse_resource_uri(path, allow_empty=True)
         if ((reference.scheme == "data" and not reference.locator)
-                or (reference.scheme == "document" and not reference.locator and document_type in {"data", "dataset"})):
+                or (reference.scheme == "document" and not reference.locator and document_format in {"data", "dataset"})):
             raise ToolCallRejectedError(
                 "Dataset creation requires the content argument containing valid JSON, "
                 "for example content='[]' or content='{}'. Create at path='data://' "
@@ -399,7 +401,7 @@ async def create_file(
             path,
             payload,
             name=name,
-            document_type=document_type,
+            document_format=document_format,
         )
     )
 
@@ -415,7 +417,7 @@ async def create_file(
         "file_read (mandatory for Documents and Datasets); Dataset replacements must remain valid JSON. "
         "For prose documents, read all content needed for a complete replacement first; "
         "prefer file_edit for a focused update. Galaris document-content changes retain prior revisions. "
-        "Document types cannot change. Use file_create for new resources. Skill definitions are validated and "
+        "Document formats cannot change. Use file_create for new resources. Skill definitions are validated and "
         "system skills remain read-only."
         " For Nextcloud, pass expected_etag from file_read to reject stale replacements."
         " For galaris://contact/<uuid>, expected_etag from file_read/file_info is mandatory. "

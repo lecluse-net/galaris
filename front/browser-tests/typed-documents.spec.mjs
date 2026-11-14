@@ -4,7 +4,7 @@ import { agent, document as fixture } from './data.mjs'
 for (const width of [1440, 390]) {
   test(`Data documents preserve invalid drafts and reopen saved JSON in the common editor (${width}px)`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 })
-    let item = { ...fixture, document_type: 'data', media_type: 'application/json', content_profile: 'document',
+    let item = { ...fixture, document_format: 'data', media_type: 'application/json', content_profile: 'document',
       title: 'Synthetic values', payload: { text: ' {"value": 1}\n' } }
     const writes = []
     await jsonRoute(page, '**/api/agents?*', [agent])
@@ -45,15 +45,15 @@ test('New document opens the shared type menu before creating a record', async (
   await page.route('**/api/documents', route => { requests.push(route.request().postDataJSON()); return route.fulfill({ status: 500 }) })
   await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   await page.getByRole('button', { name: 'Create a document at the root', exact: true }).click()
-  await expect(page.getByRole('menuitem', { name: 'Text', exact: true })).toBeVisible()
-  await expect(page.getByRole('menuitem', { name: 'Data', exact: true })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Text format', exact: true })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Data format', exact: true })).toBeVisible()
   await page.getByRole('menu').screenshot({ path: testInfo.outputPath('document-types.png') })
   await page.screenshot({ path: testInfo.outputPath('new-document-menu.png'), animations: 'disabled' })
   // Initial library selection can update the query while the chooser is open.
   await page.evaluate(() => window.testApp.router.replace({ query: { selection: 'synthetic' } }))
-  await expect(page.getByRole('menuitem', { name: 'Data', exact: true })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Data format', exact: true })).toBeVisible()
   expect(requests).toHaveLength(0)
-  await page.getByRole('menuitem', { name: 'Data', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Data format', exact: true }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
   await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
@@ -61,10 +61,10 @@ test('New document opens the shared type menu before creating a record', async (
     if (name.startsWith('New')) await page.getByText('Synthetic folder', { exact: true }).hover()
     await page.getByRole('button', { name, exact: true }).focus()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('menuitem', { name: 'Data', exact: true })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'Data format', exact: true })).toBeVisible()
     await page.getByRole('menu').screenshot({ path: testInfo.outputPath(name.startsWith('New') ? 'folder-types.png' : 'root-types.png') })
     await page.screenshot({ path: testInfo.outputPath(name.startsWith('New') ? 'folder-document-menu.png' : 'root-document-menu.png'), animations: 'disabled' })
-    await page.getByRole('menuitem', { name: 'Data', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Data format', exact: true }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
     if (name.startsWith('New')) await expect(page.getByRole('dialog')).toContainText('New document in Synthetic folder')
     await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
@@ -130,7 +130,7 @@ for (const width of [1440, 390]) test(`file import uses the resource picker and 
   await expect(page.getByRole('dialog')).toHaveCount(0)
   // Ordinary creation after dismissing an import must not reuse its source.
   await page.getByRole('button', { name: 'Create a document at the root', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'Text', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Text format', exact: true }).click()
   await page.getByRole('textbox', { name: 'Title', exact: true }).fill('Synthetic blank document')
   await page.getByRole('button', { name: 'Create', exact: true }).click()
   await expect.poll(() => requests.length).toBe(2)
@@ -152,7 +152,7 @@ test('a native document is selectable as a source and retains its type regardles
   // The picker may read native content to prepare its thumbnail before selection.
   await page.route(`**/api/documents/${sourceId}?*`, route => route.request().method() === 'GET'
     ? route.fulfill({ json: { item: { ...fixture, id: sourceId, title: 'Synthetic report.json',
-      document_type: 'text', media_type: 'text/html', payload: { text: '<p>Synthetic report.</p>' } }, agent_id: 7 } })
+      document_format: 'text', media_type: 'text/html', payload: { text: '<p>Synthetic report.</p>' } }, agent_id: 7 } })
     : route.fallback())
   await jsonRoute(page, '**/api/file-share/browser/entries?*', { entries: [{ uri, name: 'Synthetic report.json', is_collection: false, media_type: 'text/html', size: 25, capabilities: ['read', 'info'] }], next_cursor: null, truncated: false })
   await page.route('**/api/documents', route => {
@@ -172,5 +172,5 @@ test('a native document is selectable as a source and retains its type regardles
   await dialog.getByRole('button', { name: 'Import (1)', exact: true }).click()
   await expect.poll(() => requests.length).toBe(1)
   expect(requests[0].import_from).toEqual({ uri, agent_id: 7 })
-  expect(requests[0].document_type).not.toBe('data')
+  expect(requests[0].document_format).not.toBe('data')
 })

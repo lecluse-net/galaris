@@ -46,7 +46,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import type { DocumentCreationMode } from '../documentTypes'
+import type { DocumentCreationMode } from '../documentFormats'
 import { computed } from 'vue'
 import { TreePageGroups } from '@/core/util'
 import { useI18n } from 'vue-i18n'

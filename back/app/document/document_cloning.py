@@ -27,19 +27,22 @@ class PreparedDocumentClone:
 
 
 @asynccontextmanager
-async def prepare_document_clone(source: DocumentCloneSource, content: str) -> AsyncGenerator[PreparedDocumentClone]:
+async def prepare_document_clone(source: DocumentCloneSource, content: str, *, document_format: str = "text") -> AsyncGenerator[PreparedDocumentClone]:
     from . import document_attachment_service as attachments
     from . import resource_service as service
     identity = uuid4()
     storage = get_attachment_storage()
     copied: list[DocumentAttachmentPublic] = []
     retained: set[UUID] = set()
+    mapping: dict[str, str] = {}
+    from .formats import document_format_definition
+    references = set(document_format_definition(document_format).references(content))
     try:
         item, _access = await service.get_item_metadata(source.identity, agent_id=source.actor)
         active = {attachment.id for attachment in attachments.attachments_from_item(item)}
         for attachment in attachments.attachments_from_item(item, include_retained=True):
             source_uri = f"document://{source.identity}/attachments/{attachment.id}"
-            if attachment.id not in active and source_uri not in content:
+            if attachment.id not in active and source_uri not in references:
                 continue
             current, raw = await attachments.read_document_attachment(source.identity, attachment.id, actor_agent_id=source.actor)
             new_id = UUID(await storage.create(raw))
@@ -47,8 +50,9 @@ async def prepare_document_clone(source: DocumentCloneSource, content: str) -> A
                 size_bytes=len(raw), created_at=datetime.now(timezone.utc)))
             if attachment.id not in active:
                 retained.add(new_id)
-            content = content.replace(source_uri,
-                                      f"document://{identity}/attachments/{new_id}")
+            mapping[source_uri] = f"document://{identity}/attachments/{new_id}"
+        from .format_facade import remap_document_references
+        content = remap_document_references(document_format, content, mapping)
         yield PreparedDocumentClone(identity, content, tuple(copied), frozenset(retained))
     except BaseException:
         # Registered files may already have been committed after an interrupted response;

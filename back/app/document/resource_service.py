@@ -27,7 +27,7 @@ from .contracts import DocumentAccess
 from .access import effective_access, managed_item_agent_ids, readable_item_clause
 from .content_diff import content_diff_hunks as _content_diff_hunks
 from .document_apps import document_apps
-from .document_types import validate_document_content
+from .content_validation import validate_document_content
 from .lifecycle import notify_document
 from .item_projection import item_to_public
 from .safety import assert_safe_text, assert_safe_value
@@ -62,7 +62,7 @@ def _assert_not_source_managed(item: Document, *, allow_catalogue: bool = False)
 
 def _assert_not_deletion_protected(item: Document) -> None:
     if item.deletion_protected or (
-        item.document_type == "process" and item.metadata_.get("process_code")
+        item.document_format == "process" and item.metadata_.get("process_code")
     ):
         raise DocumentPermissionError(
             "This document is owned by another Galaris resource and cannot be forgotten."
@@ -77,7 +77,7 @@ def _is_goal_document(item: Document) -> bool:
 
 def can_rename_document(item: Document, access: DocumentAccess) -> bool:
     """Expose title editability without confusing content rights with Goal ownership."""
-    return access.can_write and item.node_kind == "document" and item.document_type in {"text", "html", "data"} and not _is_goal_document(item)
+    return access.can_write and item.node_kind == "document" and item.document_format not in {"dataset", "process"} and not _is_goal_document(item)
 
 def decode_payload(payload: DocumentPayload) -> bytes:
     if payload.text is not None:
@@ -156,7 +156,7 @@ async def list_document_content_revisions(
     await assert_item_access(item, actor_agent_id)
     from .dataset_port import dataset_compatibility
     adapter = dataset_compatibility()
-    if item.document_type == "dataset" and adapter is not None and await adapter.contains(item_id):
+    if item.document_format == "dataset" and adapter is not None and await adapter.contains(item_id):
         if before_revision is not None:
             raise ValueError("Bounded history is only available for native documents.")
         return DocumentContentRevisionPage.model_validate(await adapter.history(item_id, actor_agent_id, limit, offset))
@@ -164,7 +164,7 @@ async def list_document_content_revisions(
 
     rows, total = await content_revision_page(item_id, limit=limit, offset=offset, before_revision=before_revision)
     return DocumentContentRevisionPage(
-        items=[DocumentContentRevisionPublic.model_validate(entry) for entry in rows],
+        items=[DocumentContentRevisionPublic.model_validate(entry).model_copy(update={"document_format": item.document_format}) for entry in rows],
         total=total,
         limit=limit,
         offset=offset,
@@ -201,7 +201,7 @@ async def get_document_content_revision(
         raise DocumentNotFoundError("Document not found")
     from .dataset_port import dataset_compatibility
     adapter = dataset_compatibility()
-    if item.document_type == "dataset" and adapter is not None and await adapter.contains(item_id):
+    if item.document_format == "dataset" and adapter is not None and await adapter.contains(item_id):
         state = await adapter.read(item_id, actor_agent_id, revision)
         return DocumentContentRevisionDetail(**state["revision_detail"], content=state["content"])
 
@@ -211,8 +211,9 @@ async def get_document_content_revision(
         actor_agent_id=actor_agent_id,
     )
     return DocumentContentRevisionDetail(
-        **DocumentContentRevisionPublic.model_validate(entry).model_dump(),
-        content=content.decode("utf-8"),
+        **DocumentContentRevisionPublic.model_validate(entry).model_copy(update={"document_format": _item.document_format}).model_dump(),
+        content=content.decode("utf-8") if entry.content_type == "text" else "",
+        payload=encode_payload(content, content_type=entry.content_type, media_type=entry.media_type),
     )
 
 async def diff_document_content_revision(
@@ -227,7 +228,7 @@ async def diff_document_content_revision(
         raise DocumentNotFoundError("Document not found")
     from .dataset_port import dataset_compatibility
     adapter = dataset_compatibility()
-    if item.document_type == "dataset" and adapter is not None and await adapter.contains(item_id):
+    if item.document_format == "dataset" and adapter is not None and await adapter.contains(item_id):
         previous = await adapter.read(item_id, actor_agent_id, revision)
         current = await adapter.read(item_id, actor_agent_id)
         hunks, additions, deletions = _content_diff_hunks(previous["content"], current["content"])
@@ -240,6 +241,9 @@ async def diff_document_content_revision(
         actor_agent_id=actor_agent_id,
     )
     current_content = await get_storage(item.provider_code).read(item.resource_id)
+    if entry.content_type == "binary" or item.content_type == "binary":
+        return DocumentContentDiff(revision=revision, current_revision=item.revision,
+            additions=0, deletions=0, hunks=[], binary_changed=entry.content_hash != item.content_hash)
     hunks, additions, deletions = _content_diff_hunks(
         visible_text(previous_content.decode("utf-8"))
         if entry.media_type == "text/html"
@@ -273,7 +277,7 @@ async def restore_document_content_revision(
         raise DocumentNotFoundError("Document not found")
     from .dataset_port import dataset_compatibility
     adapter = dataset_compatibility()
-    if current.document_type == "dataset" and adapter is not None and await adapter.contains(item_id):
+    if current.document_format == "dataset" and adapter is not None and await adapter.contains(item_id):
         await adapter.restore(item_id, actor_agent_id, revision, expected_revision)
         await _commit_with_conflict("The document changed while restoring its content")
         loaded = await _get_item_record(item_id)
@@ -299,15 +303,24 @@ async def restore_document_content_revision(
         from .content import bind_binary_content
         item.revision += 1
         await bind_binary_content(item, entry.file_id)
+        item.format_version = entry.format_version
+        item.thumbnail_id = None
+        from .formats import document_format_definition
+        try:
+            item.search_text = document_format_definition(item.document_format).extract_content(content)[:2_000_000]
+        except ValueError:
+            item.search_text = ""
         get_db().add(revision_for(item, author_agent_id=actor_agent_id if isinstance(actor_agent_id, int) else None))
         await _commit_with_conflict("The document changed while restoring its content")
+        await _emit_document_event("update", item)
+        await notify_document(item_id, "content")
         return item
     return await update_item(
         item_id,
         DocumentUpdate(
             expected_revision=expected_revision,
             payload=DocumentPayload(
-                text=content.decode("utf-8") if item.document_type not in {"text", "html"} else convert_to_html(
+                text=content.decode("utf-8") if item.document_format not in {"text", "html"} else convert_to_html(
                     archived_document_html(content.decode("utf-8"))
                     if entry.media_type == "text/html" and item.content_profile == "document"
                     else content.decode("utf-8"),
@@ -315,7 +328,7 @@ async def restore_document_content_revision(
                     limit_length=not _is_goal_document(item),
                 )
             ),
-            media_type=item.media_type if item.document_type not in {"text", "html"} else "text/html",
+            media_type=item.media_type if item.document_format not in {"text", "html"} else "text/html",
         ),
         actor_agent_id=actor_agent_id,
         document_revision_author_agent_id=None,
@@ -335,7 +348,7 @@ async def set_item_grant(
     item = await _get_item_record(item_id, revisions=include_revisions)
     if item is None:
         raise DocumentNotFoundError("Document not found.")
-    if item.document_type == "dataset":
+    if item.document_format == "dataset":
         from .dataset_port import dataset_compatibility
         if adapter := dataset_compatibility():
             await adapter.adopt(item.id)
@@ -454,7 +467,7 @@ async def remove_item_grant(
     item = await _get_item_record(item_id, revisions=include_revisions)
     if item is None:
         raise DocumentNotFoundError("Document not found.")
-    if item.document_type == "dataset":
+    if item.document_format == "dataset":
         from .dataset_port import dataset_compatibility
         if adapter := dataset_compatibility():
             await adapter.adopt(item.id)
@@ -723,15 +736,24 @@ async def update_item(
     include_revisions: bool = True,
 ) -> Document:
     item = await _get_item_record(item_id, revisions=include_revisions)
-    if item is not None and item.document_type == "data" and data.payload is not None:
+    if item is not None and (item.document_format == "data" or item.storage_kind == "file") and data.payload is not None:
         await get_db().execute(select(Document.id).where(Document.id == item_id).with_for_update())
         item = await _get_item_record(item_id, revisions=include_revisions)
     if item is None:
         raise DocumentNotFoundError("Document not found.")
     await assert_item_access(item, actor_agent_id, write=True, administrative=administrative)
-    if item.document_type == "data" and data.payload is not None and data.expected_revision is None:
+    if data.payload is not None and item.document_format not in {"dataset", "process"}:
+        from .formats import document_format_definition
+        definition = document_format_definition(item.document_format)
+        if item.format_version != definition.version:
+            raise DocumentConflictError("This document format version requires a compatible editor")
+        if data.media_type not in (None, definition.media_type) and item.document_format != "text":
+            raise DocumentConflictError("Content media type does not match its document format")
+        if item.document_format != "text" and data.expected_revision is None:
+            raise DocumentConflictError("Read the document revision before writing its format")
+    if item.document_format == "data" and data.payload is not None and data.expected_revision is None:
         raise DocumentConflictError("Read the current Data document revision before writing")
-    if item.document_type == "dataset" and actor_agent_id is not None:
+    if item.document_format == "dataset" and actor_agent_id is not None:
         from .dataset_port import dataset_compatibility
         if adapter := dataset_compatibility():
             await adapter.adopt(item.id)
@@ -757,7 +779,7 @@ async def update_item(
         protected_workflow = ("creation_command", "process_code", "topic_assignment")
         if any(data.metadata.get(key) != item.metadata_.get(key) for key in protected_workflow):
             raise DocumentPermissionError("Workflow metadata is server-owned")
-    if item.document_type == "process" and "metadata" in fields and data.metadata is not None and data.metadata.get("process_code") != item.metadata_.get("process_code"):
+    if item.document_format == "process" and "metadata" in fields and data.metadata is not None and data.metadata.get("process_code") != item.metadata_.get("process_code"):
         raise DocumentPermissionError("The process code is immutable")
     if item.node_kind == "memory" and not item.source_managed:
         if "title" in fields:
@@ -797,13 +819,13 @@ async def update_item(
                 "and cannot be changed directly."
             )
     if item.node_kind == "document":
-        if data.content_type not in (None, "text"):
-            raise DocumentConflictError("A document must contain text.")
-        if item.document_type == "dataset" and data.media_type not in (None, "application/json"):
+        if data.content_type not in (None, item.content_type):
+            raise DocumentConflictError("Document content storage is immutable")
+        if item.document_format == "dataset" and data.media_type not in (None, "application/json"):
             raise DocumentConflictError("A Dataset document must retain its application/json format.")
-        if item.document_type == "process" and data.media_type not in (None, "application/bpmn+xml"):
+        if item.document_format == "process" and data.media_type not in (None, "application/bpmn+xml"):
             raise DocumentConflictError("A Process document must retain its BPMN format.")
-        if item.document_type in {"text", "html"} and data.media_type is not None and not data.media_type.startswith("text/"):
+        if item.document_format in {"text", "html"} and data.media_type is not None and not data.media_type.startswith("text/"):
             raise DocumentConflictError("A document must contain text.")
         if data.visibility == "public":
             raise DocumentConflictError("A document must be shared through explicit agent grants.")
@@ -843,15 +865,16 @@ async def update_item(
     previous_provider_code = item.provider_code
     previous_resource_id = item.resource_id
     new_resource_id: str | None = None
+    new_file: UUID | None = None
     document_content: bytes | None = None
     content_changed = False
     provider = get_storage(item.provider_code)
     if "payload" in fields and data.payload is not None:
         content = decode_payload(data.payload)
-        if item.document_type == "data" and (data.content_type not in (None, "text") or data.media_type not in (None, "application/json")):
+        if item.document_format == "data" and (data.content_type not in (None, "text") or data.media_type not in (None, "application/json")):
             raise DocumentConflictError("A Data document remains JSON")
         if item.node_kind == "document":
-            validate_document_content(item.document_type, content)
+            validate_document_content(item.document_format, content)
         future_content_type = data.content_type or item.content_type
         future_media_type = data.media_type or item.media_type
         if future_content_type == "text" and future_media_type in {
@@ -915,20 +938,15 @@ async def update_item(
         document_content = content
         content_changed = item.content_hash != digest
         if content_changed:
-            if item.document_type == "data" and isinstance(actor_agent_id, HumanActor):
+            from .formats import document_format_definition
+            extracted = document_format_definition(item.document_format).extract_content(content)[:2_000_000]
+            if item.document_format == "data" and isinstance(actor_agent_id, HumanActor):
                 from .data.service import reserve_budget
                 await reserve_budget(actor_agent_id.user_id, item.id, len(content))
-            new_resource_id, inline = await prepare_content(content, provider.code, content_type=future_content_type)
-            item.resource_id = new_resource_id
-            item.content = inline
-            item.storage_kind, item.file_id = "text", None
+            item.storage_kind = "file" if future_content_type == "binary" else "text"
             item.content_hash = digest
             item.size_bytes = len(content)
-            item.search_text = _search_text(
-                content,
-                content_type=future_content_type,
-                media_type=future_media_type,
-            )
+            item.search_text = extracted
 
     scalar_fields = (
         "title",
@@ -1011,24 +1029,34 @@ async def update_item(
         item.revision += 1
     db = get_db()
     revision: DocumentRevision | None = None
-    batch_revision = item.node_kind == "document"
-    if content_changed or (item.node_kind != "document" and changed):
-        revision = revision_for(
-            item,
-            author_agent_id=(
-                document_revision_author_agent_id
-                if item.node_kind == "document"
-                else (actor_agent_id if isinstance(actor_agent_id, int) else None)
-            ),
-            task_id=actor_task_id,
-            author_user_id=actor_agent_id.user_id if isinstance(actor_agent_id, HumanActor) else None,
-            document_content_version=(True if item.node_kind == "document" else None),
-            document_append=document_append if item.node_kind == "document" else False,
-        )
+    # Registering immutable bytes releases a savepoint and expires SQL expression
+    # properties. Keep this invariant before that flush; never trigger lazy async IO.
+    document_node = item.node_kind == "document"
+    batch_revision = document_node and item.storage_kind != "file"
     try:
+        if content_changed:
+            assert document_content is not None
+            if item.content_type == "binary":
+                from .content import prepare_binary_content
+                new_file = await prepare_binary_content(document_content, name=item.filename or item.title,
+                    media_type=item.media_type, document_id=item.id, revision=item.revision)
+                new_resource_id, inline = str(new_file), None
+            else:
+                new_resource_id, inline = await prepare_content(document_content, provider.code, content_type=item.content_type)
+            item.resource_id, item.content, item.file_id = new_resource_id, inline, new_file
+        if content_changed or (not document_node and changed):
+            revision = revision_for(
+                item,
+                author_agent_id=(document_revision_author_agent_id if document_node
+                    else (actor_agent_id if isinstance(actor_agent_id, int) else None)),
+                task_id=actor_task_id,
+                author_user_id=actor_agent_id.user_id if isinstance(actor_agent_id, HumanActor) else None,
+                document_content_version=(True if document_node else None),
+                document_append=document_append if document_node else False,
+            )
         if revision is not None and not batch_revision:
             db.add(revision)
-        if item.node_kind == "document" and (content_changed or document_format_changed or any(
+        if document_node and (content_changed or document_format_changed or any(
             previous_metadata.get(key) != item.metadata_.get(key)
             for key in ("document_attachments", "retained_document_attachments")
         )):
@@ -1043,15 +1071,23 @@ async def update_item(
         await db.commit()
     except StaleDataError as exc:
         await db.rollback()
-        if new_resource_id is not None:
+        if new_file is not None:
+            from core.storage import discard_unregistered_file
+            await discard_unregistered_file(new_file)
+        elif new_resource_id is not None:
             await provider.delete(new_resource_id)
         raise DocumentConflictError(
             "The document changed while it was being edited; reload and retry."
         ) from exc
-    except Exception:
-        await db.rollback()
-        if new_resource_id is not None:
-            await provider.delete(new_resource_id)
+    except BaseException:
+        async def compensate_binary_update() -> None:
+            await db.rollback()
+            if new_file is not None:
+                from core.storage import discard_unregistered_file
+                await discard_unregistered_file(new_file)
+            elif new_resource_id is not None:
+                await provider.delete(new_resource_id)
+        await complete_await(compensate_binary_update())
         raise
     loaded = await _get_item_record(item.id, revisions=include_revisions)
     assert loaded is not None
@@ -1219,7 +1255,7 @@ async def get_item(item_id: UUID, *, agent_id: int | HumanActor, revision: int |
         return item, content, access, entry.content_type, entry.media_type
     from .dataset_port import dataset_compatibility
     adapter = dataset_compatibility()
-    if item.document_type == "dataset" and adapter is not None and await adapter.contains(item_id):
+    if item.document_format == "dataset" and adapter is not None and await adapter.contains(item_id):
         state = await adapter.read(item_id, agent_id)
         return item, str(state["content"]).encode(), access, "text", "application/json"
     content = await get_storage(item.provider_code).read(item.resource_id)
@@ -1239,14 +1275,12 @@ def revision_for(item: Document, *, author_agent_id: int | None, task_id: UUID |
     if author_agent_id is None and author_user_id is None:
         from core.user import get_current_user_id
         author_user_id = get_current_user_id() or item.owner_user_id
-    return DocumentRevision(document_id=item.id, revision=item.revision, provider_code=item.provider_code, resource_id=item.resource_id, content=item.content, file_id=item.file_id, storage_kind=item.storage_kind, content_hash=item.content_hash, content_type=item.content_type, media_type=item.media_type, content_profile_version=item.content_profile_version, filename=item.filename, title=item.title, metadata_=dict(item.metadata_), temporal=item.temporal, task_id=task_id, author_agent_id=author_agent_id, author_user_id=author_user_id, document_content_version=document_content_version, document_append=document_append)
+    return DocumentRevision(document_id=item.id, revision=item.revision, provider_code=item.provider_code, resource_id=item.resource_id, content=item.content, file_id=item.file_id, storage_kind=item.storage_kind, content_hash=item.content_hash, content_type=item.content_type, media_type=item.media_type, content_profile_version=item.content_profile_version, format_version=item.format_version, filename=item.filename, title=item.title, metadata_=dict(item.metadata_), temporal=item.temporal, task_id=task_id, author_agent_id=author_agent_id, author_user_id=author_user_id, document_content_version=document_content_version, document_append=document_append)
 
 
 async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = None, deletion_protected: bool = False, deduplicate: bool = False, owner_user_id: int | None = None, initial_editor_agent_id: int | None = None, workflow_metadata: bool = False, clone_source: DocumentCloneSource | None = None, prepared_clone: PreparedDocumentClone | None = None) -> tuple[Document, bool]:
     if clone_source is not None:
-        if data.document_type not in {"text", "html"}:
-            raise ValueError("Attachment cloning requires a Text document")
-        async with prepare_document_clone(clone_source, decode_payload(data.payload).decode("utf-8")) as prepared:
+        async with prepare_document_clone(clone_source, decode_payload(data.payload).decode("utf-8"), document_format=data.document_format) as prepared:
             copied = data.model_copy(update={"payload": DocumentPayload(text=prepared.content)})
             return await create_item(copied, actor_task_id=actor_task_id, deletion_protected=deletion_protected,
                 deduplicate=deduplicate, owner_user_id=owner_user_id, initial_editor_agent_id=initial_editor_agent_id,
@@ -1260,9 +1294,11 @@ async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = 
     if data.visibility != "private" or data.read_only:
         raise DocumentPermissionError("A new document is private and editable")
     content = decode_payload(data.payload)
-    validate_document_content(data.document_type, content)
+    validate_document_content(data.document_format, content)
+    from .formats import document_format_definition
+    definition = document_format_definition(data.document_format)
     media_type = data.media_type
-    if data.document_type in {"text", "html"} and media_type in {"text/html", "text/markdown", "text/plain"}:
+    if data.document_format in {"text", "html"} and media_type in {"text/html", "text/markdown", "text/plain"}:
         content = convert_to_html(
             content.decode(), media_type,
             profile="rich-text" if deletion_protected else "document",
@@ -1270,15 +1306,27 @@ async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = 
         ).encode()
         media_type = "text/html"
     permitted_images = {f"document://{prepared_clone.identity}/attachments/{attachment.id}" for attachment in prepared_clone.attachments} if prepared_clone else set[str]()
-    if data.document_type in {"text", "html"} and image_references(content.decode("utf-8", errors="replace")) - permitted_images:
+    if data.document_format in {"text", "html"} and image_references(content.decode("utf-8", errors="replace")) - permitted_images:
         raise DocumentPermissionError("The image must belong to this document's attachments")
-    assert_safe_text(content.decode("utf-8", errors="replace"))
+    if definition.storage_kind == "text":
+        assert_safe_text(content.decode("utf-8", errors="replace"))
     assert_safe_value(data.model_dump(exclude={"payload", "source"}))
-    if deletion_protected and data.document_type in {"text", "html"} and document_apps(content.decode()):
+    if deletion_protected and data.document_format in {"text", "html"} and document_apps(content.decode()):
         raise ValueError("Managed editorial documents cannot contain applications")
-    pointer, inline = await prepare_content(content, data.provider_code, content_type=data.content_type)
+    identity = prepared_clone.identity if prepared_clone else uuid4()
+    extracted = definition.extract_content(content)[:2_000_000]
+    binary_file: UUID | None = None
+    if definition.storage_kind == "file":
+        from .content import prepare_binary_content
+        if data.provider_code != "native":
+            raise ValueError("Binary documents use immutable native storage")
+        binary_file = await prepare_binary_content(content, name=data.filename or data.title,
+            media_type=media_type, document_id=identity, revision=1)
+        pointer, inline = str(binary_file), None
+    else:
+        pointer, inline = await prepare_content(content, data.provider_code, content_type=data.content_type)
     from .data.models import Dataset
-    model = Dataset if data.document_type == "data" else Document
+    model = Dataset if data.document_format == "data" else Document
     initial_metadata = dict(data.metadata)
     if prepared_clone and prepared_clone.attachments:
         initial_metadata["document_attachments"] = [attachment.model_dump(mode="json", exclude={"memory_item_id"})
@@ -1287,7 +1335,7 @@ async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = 
             for attachment in prepared_clone.attachments if attachment.id in prepared_clone.retained_attachment_ids]
         if retained:
             initial_metadata["retained_document_attachments"] = retained
-    item = model(id=prepared_clone.identity if prepared_clone else uuid4(), owner_agent_id=None if owner_user_id is not None else data.owner_agent_id, owner_user_id=owner_user_id, title=data.title.strip(), provider_code=data.provider_code, resource_id=pointer, content=inline, revision=1, content_hash=_content_hash(content), size_bytes=len(content), content_type=data.content_type, media_type=media_type, content_profile_version=1 if media_type == "text/html" else None, filename=data.filename, document_type=data.document_type, keywords=_keywords(data.keywords), metadata_=initial_metadata, deletion_protected=deletion_protected, valid_from=data.valid_from, valid_until=data.valid_until, temporal=data.temporal.model_dump(mode="json") if data.temporal else None, search_text=_search_text(content, content_type=data.content_type, media_type=media_type))
+    item = model(id=identity, file_id=binary_file, storage_kind=definition.storage_kind, owner_agent_id=None if owner_user_id is not None else data.owner_agent_id, owner_user_id=owner_user_id, title=data.title.strip(), provider_code=data.provider_code, resource_id=pointer, content=inline, revision=1, content_hash=_content_hash(content), size_bytes=len(content), content_type=data.content_type, media_type=media_type, content_profile_version=1 if media_type == "text/html" else None, format_version=definition.version, filename=data.filename, document_format=data.document_format, keywords=_keywords(data.keywords), metadata_=initial_metadata, deletion_protected=deletion_protected, valid_from=data.valid_from, valid_until=data.valid_until, temporal=data.temporal.model_dump(mode="json") if data.temporal else None, search_text=extracted)
     db=get_db()
     try:
         db.add(item)
@@ -1313,7 +1361,11 @@ async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = 
     except BaseException:
         async def compensate() -> None:
             await db.rollback()
-            await _delete_resource_if_unreferenced(data.provider_code, pointer)
+            if binary_file is not None:
+                from core.storage import discard_unregistered_file
+                await discard_unregistered_file(binary_file)
+            else:
+                await _delete_resource_if_unreferenced(data.provider_code, pointer)
         try:
             await complete_await(compensate())
         except Exception:
@@ -1344,7 +1396,11 @@ async def _source_targets(kind: str, reference: str) -> tuple[UUID | None, UUID 
 async def refresh_document_search(item: Document, *, content: bytes | None = None) -> None:
     if content is None:
         content=await get_storage(item.provider_code).read(item.resource_id)
-    text=_search_text(content, content_type=item.content_type, media_type=item.media_type)
+    if item.node_kind == "document" and item.document_format not in {"text", "data", "dataset", "process"}:
+        from .formats import document_format_definition
+        text = document_format_definition(item.document_format).extract_content(content)[:2_000_000]
+    else:
+        text=_search_text(content, content_type=item.content_type, media_type=item.media_type)
     if item.summary_resource_id:
         text += "\n" + visible_text((await get_storage(item.summary_provider_code).read(item.summary_resource_id)).decode())
     item.search_text=text
@@ -1383,7 +1439,7 @@ async def invalidate_document_views() -> None:
 async def commit_item_sharing(item: Document) -> None:
     from .dataset_port import dataset_compatibility
     adapter = dataset_compatibility()
-    if item.document_type == "dataset" and adapter and await adapter.contains(item.id):
+    if item.document_format == "dataset" and adapter and await adapter.contains(item.id):
         db = get_db()
         await db.flush()
         grants = await db.execute(select(
@@ -1412,7 +1468,7 @@ async def delete_document(item_id: UUID, *, actor_agent_id: int | HumanActor | N
     item=await _get_item_record(item_id)
     if item is None:
         raise DocumentNotFoundError("Document not found")
-    if item.document_type == "data" and actor_agent_id is not None:
+    if item.document_format == "data" and actor_agent_id is not None:
         from .data.service import remove
         await remove(item_id, actor_agent_id, expected_lock_version=item.lock_version)
         await get_db().commit()
@@ -1491,7 +1547,7 @@ async def delete_process_content_revision(
 ) -> None:
     """Erase an old process snapshot without changing its current content or ACLs."""
     item = await document_record(item_id, revisions=False)
-    if item is None or item.document_type != "process":
+    if item is None or item.document_format != "process":
         raise DocumentNotFoundError("Process not found.")
     await assert_item_access(item, actor_agent_id, write=True)
     if revision >= item.revision:

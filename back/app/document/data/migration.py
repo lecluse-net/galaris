@@ -26,10 +26,10 @@ async def adopt_legacy(identity: UUID) -> Dataset:
         return existing
     source = await legacy_dataset_snapshot(identity)
     original = await db.get(Document, identity, execution_options={"include_historized": True})
-    if original is None or original.document_type != "dataset":
+    if original is None or original.document_format != "dataset":
         raise ValueError("No verified historical Data document exists")
     await db.execute(cast(Table, Document.__table__).update().where(Document.id == identity).values(
-        document_type="data", provider_code="native", resource_id=str(uuid4()),
+        document_format="data", provider_code="native", resource_id=str(uuid4()),
         content=source["content"], content_hash=hashlib.sha256(source["content"].encode()).hexdigest(),
         size_bytes=len(source["content"].encode()), content_profile_version=None,
         search_text=source["content"]))

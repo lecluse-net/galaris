@@ -988,8 +988,8 @@ test(`variable resource constraints save and reopen with localized selectors (${
   await rows.nth(0).getByRole('textbox', { name: locale === 'fr' ? 'Description métier' : 'Business description', exact: true }).fill('The beneficiary’s portrait, not the requester’s.')
   await mime.fill('application/pdf')
   await page.getByRole('option', { name: 'PDF (application/pdf)', exact: true }).click()
-  await rows.nth(1).getByRole('combobox', { name: locale === 'fr' ? 'Type de document (facultatif)' : 'Document type (optional)', exact: true }).click()
-  await page.getByRole('option', { name: locale === 'fr' ? 'Données' : 'Data', exact: true }).click()
+  await rows.nth(1).getByRole('combobox', { name: locale === 'fr' ? 'Format de document (facultatif)' : 'Document format (optional)', exact: true }).click()
+  await page.getByRole('option', { name: locale === 'fr' ? 'Format Data' : 'Data format', exact: true }).click()
   await rows.nth(2).getByRole('combobox', { name: 'Type', exact: true }).fill('Agent')
   await page.getByRole('option', { name: 'Agent', exact: true }).click()
   for (const [index, label] of [[3, 'Date'], [4, locale === 'fr' ? 'Date et heure' : 'Date and time']]) {
@@ -1000,11 +1000,11 @@ test(`variable resource constraints save and reopen with localized selectors (${
   await page.getByRole('button', { name: locale === 'fr' ? 'Enregistrer' : 'Save', exact: true }).click()
   await expect.poll(() => writes.length).toBe(1)
   expect(writes[0].graph.variables).toEqual([
-    { ...variables[0], label: 'Beneficiary portrait', description: 'The beneficiary’s portrait, not the requester’s.', mime_type: 'application/pdf' }, { ...variables[1], document_type: 'data' }, { ...variables[2], type: 'Agent' },
+    { ...variables[0], label: 'Beneficiary portrait', description: 'The beneficiary’s portrait, not the requester’s.', mime_type: 'application/pdf' }, { ...variables[1], document_format: 'data' }, { ...variables[2], type: 'Agent' },
     { ...variables[3], type: 'date' }, { ...variables[4], type: 'datetime' },
   ])
   await expect(rows.nth(0)).toContainText('PDF')
-  await expect(rows.nth(1)).toContainText(locale === 'fr' ? 'Données' : 'Data')
+  await expect(rows.nth(1)).toContainText(locale === 'fr' ? 'Format Data' : 'Data format')
   await expect(page.locator('.q-notification')).toHaveCount(0)
   await page.screenshot({ path: test.info().outputPath(`process-variable-layout-${locale}.png`), fullPage: true, animations: 'disabled' })
   await region.screenshot({ path: test.info().outputPath(`variable-resource-types-${locale}-light.png`), animations: 'disabled' })

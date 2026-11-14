@@ -126,7 +126,9 @@
             <q-separator />
             <div class="document-history-content scroll col">
               <div v-if="viewMode === 'preview'" class="q-pa-md">
-                <CodeEditor v-if="detail.media_type === 'application/json' || detail.media_type === 'application/bpmn+xml'" :model-value="detail.content" :language="detail.media_type === 'application/json' ? 'json' : 'xml'" readonly :min-lines="20" :label="t('documents.historyPreview')" />
+                <component :is="historyContribution.preview" v-if="historyContribution?.preview" :model-value="detail.content" :content="detail.content" :source="historySource" :media-type="detail.media_type" profile="document" :resolve-image="resolveHistoricalImage" readonly />
+                <q-banner v-else-if="detail.payload?.base64" dense>{{ t('document.binaryContent') }}</q-banner>
+                <CodeEditor v-else-if="detail.media_type !== 'text/html' && detail.media_type !== 'text/markdown'" :model-value="detail.content" :language="detail.media_type?.includes('json') ? 'json' : 'xml'" readonly :min-lines="20" :label="t('documents.historyPreview')" />
                 <EditorialContent
                   v-else
                   :content="detail.content"
@@ -138,6 +140,7 @@
                   min-height="420px"
                 />
               </div>
+              <q-banner v-else-if="diff.binary_changed" dense>{{ t('documents.binaryChanged') }}</q-banner>
               <div v-else-if="diff.structure_changed" class="row q-col-gutter-md q-pa-md"><EditorialContent class="col-12 col-md-6" :content="diff.previous_html ?? detail.content" :media-type="diff.previous_html ? 'text/html' : (detail.media_type ?? 'text/markdown')" profile="document" :resolve-image="resolveHistoricalImage" /><RichText class="col-12 col-md-6" :content="diff.current_html ?? ''" profile="document" :resolve-image="resolveHistoricalImage" /></div>
               <div v-else-if="!diff.hunks.length" class="document-history-state text-grey-7">
                 <q-icon name="check_circle" color="positive" size="30px" />
@@ -201,6 +204,7 @@ import { useQuasar } from 'quasar'
 import { AgentAvatar, useAgentStore } from '@/app/agent'
 import { CodeEditor, EditorialContent, RichText } from '@/core/util'
 import { documentService } from '../services/documentService'
+import { findDocumentFormat, type DocumentContentSource } from '../documentFormats'
 import type {
   DocumentContentDiff,
   DocumentContentDiffLineKind,
@@ -228,6 +232,13 @@ const agentStore = useAgentStore()
 const revisions = ref<DocumentContentRevision[]>([])
 const selectedRevision = ref<number | null>(null)
 const detail = ref<DocumentContentRevisionDetail | null>(null)
+const historyContribution = computed(() => detail.value?.document_format
+  ? findDocumentFormat(detail.value.document_format, detail.value.format_version) : undefined)
+const historySource = computed<DocumentContentSource | null>(() => detail.value ? {
+  key: `${props.documentId}:${detail.value.revision}`, revision: detail.value.revision, readonly: true,
+  load: signal => documentService.source(props.documentId, props.agentId ?? null, signal, detail.value!.revision),
+  save: async () => { throw new Error('Historical document content is read-only') },
+} : null)
 const diff = ref<DocumentContentDiff | null>(null)
 const loadingList = ref(false)
 const loadingDetail = ref(false)

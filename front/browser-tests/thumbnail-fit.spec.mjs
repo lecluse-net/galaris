@@ -90,7 +90,7 @@ for (const width of [1920, 390]) for (const [shape, sourceWidth, sourceHeight] o
   let reads = 0
   if (shape === 'document') {
     await jsonRoute(page, '**/api/documents/document?*', {
-      item: { id: 'document', title: 'Synthetic document', document_type: 'html', revision: 1, lock_version: 1,
+      item: { id: 'document', title: 'Synthetic document', document_format: 'text', revision: 1, lock_version: 1,
         payload: { text: '<h1>Synthetic document</h1>' } }, agent_id: 7,
     })
     await page.route('**/api/documents/document/thumbnail?*', route => {

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { isAxiosError } from 'axios'
 import test from 'node:test'
 import { loadTypescript, deferred } from '../../test-support/load-typescript.mjs'
+import * as documentFormatRegistry from '../document/formatRegistry.ts'
 import { sessionReadCache } from '../../test-support/session-read-cache.mjs'
 
 function setup() {
@@ -26,7 +27,7 @@ function setup() {
   const valueContracts = loadTypescript(new URL('../dataset/contracts.ts', import.meta.url), {
     './types': loadTypescript(new URL('../dataset/types.ts', import.meta.url), {}),
   })
-  const dependencies = { axios: { isAxiosError }, '@/core/api': apiModule, '@/app/share/facade': shared, '@/app/dataset/contracts': valueContracts,
+  const dependencies = { '../formatRegistry': documentFormatRegistry, axios: { isAxiosError }, '@/core/api': apiModule, '@/app/share/facade': shared, '@/app/dataset/contracts': valueContracts,
     '@/core/util/facade': { thumbnailReady: () => assert.fail('An owner catalogue must not load thumbnails') } }
   const documents = loadTypescript(new URL('../document/services/documentService.ts', import.meta.url), dependencies).documentService
   const process = loadTypescript(new URL('../process/services/nativeProcessService.ts', import.meta.url), dependencies).nativeProcessService

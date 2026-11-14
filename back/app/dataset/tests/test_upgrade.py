@@ -54,7 +54,7 @@ async def test_upgrade_preserves_dataset_app_references_and_resumes_after_expans
         session.add_all([owner, reader])
         await session.flush()
         document = Document(id=uuid4(), owner_user_id=owner.id, title="Synthetic historical JSON",
-            document_type="dataset", provider_code="native", resource_id=pointer, content=inline,
+            document_format="dataset", provider_code="native", resource_id=pointer, content=inline,
             content_type="text", media_type="application/json", content_hash=sha256(content.encode()).hexdigest(),
             size_bytes=len(content.encode()), keywords=[], metadata_={})
         session.add(document)

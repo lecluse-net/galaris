@@ -195,7 +195,7 @@ class Dataset(Document):
     def __init__(self, **kwargs: Any) -> None:
         content = str(kwargs.get("content", "[]"))
         defaults: dict[str, Any] = dict(
-            id=uuid4(), stored_document_type="data", provider_code="native",
+            id=uuid4(), document_format="data", provider_code="native",
             resource_id=str(uuid4()), content=content, content_type="text",
             media_type="application/json", content_hash=sha256(content.encode()).hexdigest(),
             size_bytes=len(content.encode()), revision=1, lock_version=1,

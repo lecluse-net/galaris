@@ -36,7 +36,7 @@ from app.document import Document
 from core.util import ContentProfile
 
 from .vector import Vector
-from app.document.interface import DocumentType
+from app.document.interface import DocumentFormat
 from .lexical_normalization import folded_vector_sql
 
 
@@ -97,9 +97,6 @@ def _document_attribute[T](name: str, memory_name: str, default: T) -> hybrid_pr
         document = item.__dict__.get("document") if item.node_kind == "document" else None
         value = getattr(document if document is not None else item,
                         name if document is not None else memory_name, default)
-        # Retired forms contain HTML; retain their bytes and stable identity.
-        if name == "document_type" and value == "form":
-            return cast(T, "html")
         return cast(T, value)
 
     @attribute.inplace.setter
@@ -120,7 +117,7 @@ def _document_attribute[T](name: str, memory_name: str, default: T) -> hybrid_pr
             ), else_="private")
         elif memory_name == "memory_filename":
             memory_value = cls.metadata_["memory_filename"].astext
-        elif memory_name == "memory_document_type":
+        elif memory_name == "memory_document_format":
             memory_value = literal(default)
         else:
             memory_value = getattr(cls, memory_name)
@@ -134,8 +131,6 @@ def _document_attribute[T](name: str, memory_name: str, default: T) -> hybrid_pr
             resolved = case((document_exists, document_value), else_=memory_value)
         else:
             resolved = func.coalesce(document_value, memory_value)
-        if name == "document_type":
-            resolved = case((resolved == "form", "html"), else_=resolved)
         return cast(ColumnElement[T], case(
             (cls.node_kind == "document", resolved),
             else_=memory_value,
@@ -286,7 +281,7 @@ class MemoryItem(HistoryMixin, Base):
 
     # Transient construction inputs. Once persisted, ACLs belong exclusively to
     # Document; structural visibility follows ownership and source provenance.
-    memory_document_type = "html"
+    memory_document_format = "text"
     _initial_visibility = ""
 
     @property
@@ -322,7 +317,7 @@ class MemoryItem(HistoryMixin, Base):
     resource_id = _document_attribute("resource_id", "memory_resource_id", "")
     content = _document_attribute("content", "memory_content", cast(str | None, None))
     title = _document_attribute("title", "search_title", "")
-    document_type = _document_attribute("document_type", "memory_document_type", cast(DocumentType, "html"))
+    document_format = _document_attribute("document_format", "memory_document_format", cast(DocumentFormat, "text"))
     content_type = _document_attribute("content_type", "memory_content_type", "text")
     media_type = _document_attribute("media_type", "memory_media_type", "text/html")
     content_profile_version = _document_attribute("content_profile_version", "memory_content_profile_version", cast(int | None, None))

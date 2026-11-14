@@ -10,6 +10,11 @@
 
 ## 1. Résultat attendu et choix retenus
 
+Le socle des [formats de document](../../docs/fr/dev/document-formats.md) est désormais
+disponible : façade de contributions, catalogue de capacités, TCK, sources binaires,
+lecteurs de fichiers et points d'intégration. Le format Carte mentale et son éditeur
+restent à réaliser et à qualifier ; ce socle ne démontre pas leur parité documentaire.
+
 Créer une carte dans la bibliothèque Documents, construire ses branches au clavier ou
 à la souris, enrichir ses nœuds avec les mêmes contenus que les documents Texte et
 retrouver l'ensemble après fermeture et réouverture. Galaris calcule la disposition :
@@ -44,9 +49,9 @@ documentaires. Relire ces surfaces avant l'implémentation ; préserver ces trav
 
 | Surface existante | Conséquence pour le chantier |
 |---|---|
-| `back/app/document/type_registry.py`, `document_types.py`, `schemas.py` | Les formats publics actuels sont Texte/Données. Étendre validation, valeurs initiales, extraction et contrats ; le registre seul ne suffit pas. |
+| `back/app/document/formats.py`, `content_validation.py`, `schemas.py` | Les formats publics actuels sont Texte/Données. Étendre validation, valeurs initiales, extraction et contrats ; le registre seul ne suffit pas. |
 | `back/app/document/models.py` | Contraintes de type/contenu et discriminant ORM distinguent encore Texte/Données. Une nouvelle valeur exige une évolution explicite, avec DbAdmin. |
-| `front/app/document/documentTypes.ts`, `components/DocumentEditor.vue` | Contributions asynchrones éditeur/aperçu ; des sélections explicites de types restent à élargir. |
+| `front/app/document/documentFormats.ts`, `components/DocumentEditor.vue` | Contributions asynchrones éditeur/aperçu ; des sélections explicites de formats restent à élargir. |
 | `front/core/util/components/RichTextEditor.vue`, `RichText.vue`, `tiptapContent.ts` | Réutiliser le modèle éditorial, les ressources et interactions existants ; le lecteur générique reste inerte pour les scripts. |
 | `front/resourcePicker.vue`, `resourceEmbeds.vue`, `resourceDetails.vue`, `front/core/util/richText.ts` | Réutiliser sélection, URI canoniques, rendu des références, détails et navigation, sans nouveau catalogue parallèle. |
 | `front/app/document/components/DocumentApplicationBlock.vue`, `back/app/document/document_app_service.py` | Runtime et accès applicatif sont aujourd'hui liés au HTML documentaire ; accueillir du HTML dans un nœud ne rend pas ce contrat compatible automatiquement. |

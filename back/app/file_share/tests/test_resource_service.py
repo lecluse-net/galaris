@@ -805,7 +805,8 @@ async def test_resource_create_assigns_a_document_uri_without_a_name(
         "task_id": None,
         "title": "Document",
         "content": "draft",
-        "document_type": "html",
+        "document_format": "text",
+        "binary_content": None,
     }
 
 

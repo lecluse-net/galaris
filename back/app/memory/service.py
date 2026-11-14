@@ -85,7 +85,7 @@ def _assert_not_source_managed(item: MemoryItem, *, allow_catalogue: bool = Fals
 
 def _assert_not_deletion_protected(item: MemoryItem) -> None:
     if item.deletion_protected or (
-        item.document_type == "process" and item.metadata_.get("process_code")
+        item.document_format == "process" and item.metadata_.get("process_code")
     ):
         raise MemoryPermissionError(
             "This document is owned by another Galaris resource and cannot be forgotten."
@@ -257,7 +257,7 @@ def graph_item_filters(
 ) -> list[ColumnElement[bool]]:
     filters: list[ColumnElement[bool]] = [
         readable_item_clause(request.agent_id),
-        MemoryItem.document_type.not_in(("data", "dataset", "process")),
+        MemoryItem.document_format.not_in(("data", "dataset", "process")),
         or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
         or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
         or_(
@@ -583,7 +583,7 @@ async def assert_item_access(
 ) -> MemoryAccess:
     if write:
         _assert_not_source_managed(item, allow_catalogue=True)
-    if item.document_type == "process" and not await get_db().scalar(select(MemoryItem.id).where(
+    if item.document_format == "process" and not await get_db().scalar(select(MemoryItem.id).where(
         MemoryItem.id == item.id,
         document_policy_clause(agent_id.user_id if isinstance(agent_id, HumanActor) else None),
     )):
@@ -742,7 +742,7 @@ async def create_item(data: MemoryItemCreate, *, actor_task_id: UUID | None=None
             return (existing, False)
     provider = get_storage(data.provider_code)
     resource_id, inline = await prepare_content(content, provider.code, content_type=data.content_type)
-    item = MemoryItem(owner_agent_id=None if owner_user_id is not None else data.owner_agent_id, owner_user_id=owner_user_id, provider_code=provider.code, resource_id=resource_id, content=inline, title=data.title.strip(), node_kind=data.node_kind, document_type=data.document_type, content_type=data.content_type, media_type=data.media_type, content_profile_version=1 if data.content_type == 'text' and data.media_type == 'text/html' else None, filename=data.filename, keywords=_keywords(data.keywords), metadata_=dict(data.metadata), visibility=data.visibility, read_only=data.read_only, deletion_protected=deletion_protected, content_hash=digest, size_bytes=len(content), search_text=_search_text(content, content_type=data.content_type, media_type=data.media_type), valid_from=data.valid_from, temporal=data.temporal.model_dump(mode='json') if data.temporal else None, valid_until=data.valid_until)
+    item = MemoryItem(owner_agent_id=None if owner_user_id is not None else data.owner_agent_id, owner_user_id=owner_user_id, provider_code=provider.code, resource_id=resource_id, content=inline, title=data.title.strip(), node_kind=data.node_kind, document_format=data.document_format, content_type=data.content_type, media_type=data.media_type, content_profile_version=1 if data.content_type == 'text' and data.media_type == 'text/html' else None, filename=data.filename, keywords=_keywords(data.keywords), metadata_=dict(data.metadata), visibility=data.visibility, read_only=data.read_only, deletion_protected=deletion_protected, content_hash=digest, size_bytes=len(content), search_text=_search_text(content, content_type=data.content_type, media_type=data.media_type), valid_from=data.valid_from, temporal=data.temporal.model_dump(mode='json') if data.temporal else None, valid_until=data.valid_until)
     item.document = None
     item.search_title = item.search_text[:120]
     _set_semantic_fingerprint(item)
@@ -1074,7 +1074,7 @@ async def get_item(
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
     access = await assert_item_access(item, agent_id, administrative=administrative)
-    if item.document_type == "dataset" and not memory_content:
+    if item.document_format == "dataset" and not memory_content:
         from app.document.interface import dataset_compatibility
         if adapter := dataset_compatibility():
             await adapter.adopt(item.id)
@@ -1166,7 +1166,7 @@ async def get_item_metadata(
     if item is None:
         raise MemoryNotFoundError("Memory not found.")
     access = await assert_item_access(item, agent_id, administrative=administrative)
-    if item.document_type == "dataset":
+    if item.document_format == "dataset":
         # Legacy document aliases must still adopt and authorize through the
         # Dataset owner. Their compatibility projection is not an authority.
         item, _content, access, _content_type, _media_type = await get_item(
@@ -1363,7 +1363,7 @@ async def update_item(item_id: UUID, data: MemoryItemUpdate, *, actor_agent_id: 
         protected_workflow = ('creation_command', 'process_code', 'topic_assignment')
         if any((data.metadata.get(key) != item.metadata_.get(key) for key in protected_workflow)):
             raise MemoryPermissionError('Workflow metadata is server-owned')
-    if item.document_type == 'process' and 'metadata' in fields and (data.metadata is not None) and (data.metadata.get('process_code') != item.metadata_.get('process_code')):
+    if item.document_format == 'process' and 'metadata' in fields and (data.metadata is not None) and (data.metadata.get('process_code') != item.metadata_.get('process_code')):
         raise MemoryPermissionError('The process code is immutable')
     if item.node_kind == 'memory' and (not item.source_managed):
         if 'title' in fields:
@@ -1772,7 +1772,7 @@ async def forget_resource_memories(
 async def forget_deleted_dataset_projection(document_id: UUID) -> None:
     """Erase a legacy projection in its Dataset owner's deletion transaction."""
     item = await _get_item_record(document_id)
-    if item is not None and item.document_type == "dataset":
+    if item is not None and item.document_format == "dataset":
         await _forget_item_record(item, forget_kind="retention", commit=False)
 
 
@@ -2064,7 +2064,7 @@ async def search_items(
         .options(*_item_options(revisions=False, contents=False))
         .where(
             readable_item_clause(request.agent_id),
-            MemoryItem.document_type.not_in(("data", "dataset", "process")),
+            MemoryItem.document_format.not_in(("data", "dataset", "process")),
             or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
             or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
         )

@@ -21,9 +21,9 @@ async def library_filters(request: DocumentLibraryRequest, user_id: int | None, 
         filters.append(Document.owner_agent_id.is_(None) if request.agent_classification == "unclassified" else Document.owner_agent_id.is_not(None))
     if request.without_keywords:
         filters.append(func.jsonb_array_length(Document.keywords) == 0)
-    if request.document_type is not None:
-        kind = "text" if request.document_type in {"html", "form"} else request.document_type
-        filters.append(Document.document_type == kind)
+    if request.document_format is not None:
+        kind = request.document_format
+        filters.append(Document.document_format == kind)
     assignments = select(DocumentTagAssignment.document_id).join(DocumentTag).where(DocumentTag.user_id == user_id)
     nesting = select(DocumentNesting.document_id).where(
         DocumentNesting.user_id == user_id, DocumentNesting.parent_document_id.in_(visible_ids),

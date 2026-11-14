@@ -13,7 +13,7 @@ from app.agent import AgentManagementScope
 from core.util import convert_to_html
 from core.user import HumanActor
 from .data.content import validate as validate_json
-from .type_registry import DocumentKind
+from .formats import DocumentFormat, document_format_definition, document_formats
 from . import resource_service as service
 from .content_limits import validate_document_size
 from .document_cloning import DocumentCloneSource, PreparedDocumentClone
@@ -24,7 +24,7 @@ class DocumentImportSource:
     name: str
     media_type: str
     content: bytes
-    document_type: DocumentKind | None = None
+    document_format: DocumentFormat | None = None
     clone_source: DocumentCloneSource | None = None
 
 
@@ -38,10 +38,11 @@ class UnsupportedDocumentImport(ValueError):
 
 @dataclass(frozen=True)
 class PreparedDocumentImport:
-    kind: DocumentKind
+    kind: DocumentFormat
     content: str
     clone_source: DocumentCloneSource | None = None
     prepared_clone: PreparedDocumentClone | None = None
+    binary_content: bytes | None = None
 
 
 class _HtmlImport(HTMLParser):
@@ -124,15 +125,31 @@ def register_document_import_reader(reader: ImportReader) -> None:
     _reader = reader
 
 
-def convert_document_import(source: DocumentImportSource) -> tuple[DocumentKind, str]:
-    """Determine the document type without retaining a source URI or attachment."""
+def convert_document_import(source: DocumentImportSource) -> tuple[DocumentFormat, str]:
+    """Determine the document format without retaining a source URI or attachment."""
     validate_document_size(source.content)
+    if source.document_format is not None and source.document_format not in {"text", "html", "data"}:
+        definition = document_format_definition(source.document_format)
+        content = source.content.decode("utf-8-sig")
+        definition.validate(content)
+        return definition.code, content
+    if source.document_format is None:
+        suffix = PurePosixPath(source.name).suffix.lower()
+        mime = source.media_type.split(";", 1)[0].strip().lower()
+        matches = [definition for definition in document_formats() if definition.code not in {"text", "data"}
+                   and (suffix in definition.import_extensions or mime == definition.media_type)]
+        if len(matches) > 1:
+            raise ValueError("Ambiguous document import format")
+        if matches:
+            content = source.content.decode("utf-8-sig")
+            matches[0].validate(content)
+            return matches[0].code, content
     formats = {".json": "application/json", ".html": "text/html", ".htm": "text/html",
                ".md": "text/markdown", ".markdown": "text/markdown", ".txt": "text/plain"}
     suffix = PurePosixPath(source.name).suffix.lower()
     media_type = source.media_type.split(";", 1)[0].strip().lower()
     # Providers may return generic MIME types. A known filename then supplies the format.
-    if source.document_type is None:
+    if source.document_format is None:
         media_type = formats.get(suffix, media_type)
     if media_type not in {*formats.values(), "text/x-markdown"}:
         raise UnsupportedDocumentImport("File format is not supported for import")
@@ -142,7 +159,7 @@ def convert_document_import(source: DocumentImportSource) -> tuple[DocumentKind,
     if media_type == "application/json":
         validate_json(content)
         return "data", content
-    if media_type == "text/html" and source.document_type is None:
+    if media_type == "text/html" and source.document_format is None:
         parser = _HtmlImport()
         parser.feed(content)
         parser.close()
@@ -173,8 +190,18 @@ async def read_document_import_source(uri: str, agent_id: int, scope: AgentManag
 async def prepare_document_import(source: DocumentImportSource) -> AsyncGenerator[PreparedDocumentImport]:
     from .converted_import import converted_import_name, prepare_converted_import
     validate_document_size(source.content)
+    matches = [definition for definition in document_formats() if definition.storage_kind == "file"
+        and (source.document_format == definition.code or (source.document_format is None and (
+            PurePosixPath(source.name).suffix.lower() in definition.import_extensions
+            or source.media_type.split(";", 1)[0].strip().lower() == definition.media_type)))]
+    if len(matches) > 1:
+        raise ValueError("Ambiguous document import format")
+    if matches:
+        matches[0].validate_content(source.content)
+        yield PreparedDocumentImport(matches[0].code, "", binary_content=source.content)
+        return
     name = converted_import_name(source.name, source.media_type, source.content)
-    if name is None or source.document_type is not None:
+    if name is None or source.document_format is not None:
         try:
             kind, content = convert_document_import(source)
         except UnsupportedDocumentImport:
@@ -192,9 +219,10 @@ async def prepare_document_import(source: DocumentImportSource) -> AsyncGenerato
 
 def supported_import_formats() -> dict[str, list[str]]:
     from .converted_import import CONVERTED_IMPORT_EXTENSIONS
-    extensions = CONVERTED_IMPORT_EXTENSIONS | {".json", ".html", ".htm", ".md", ".markdown", ".txt"}
+    extensions = CONVERTED_IMPORT_EXTENSIONS | {extension for definition in document_formats() for extension in definition.import_extensions}
     media_types = {mime for extension in extensions if (mime := mimetypes.guess_type("source" + extension)[0])}
     media_types.update({"text/markdown", "text/x-markdown", "application/rtf"})
+    media_types.update(definition.media_type for definition in document_formats() if definition.import_extensions)
     return {"extensions": sorted(extensions), "media_types": sorted(media_types)}
 
 
@@ -210,6 +238,6 @@ async def read_native_document_import(identity: UUID, scope: AgentManagementScop
             raise service.DocumentNotFoundError("Source document unavailable")
         actor = readable[0]
     item, content, _access, _content_type, media_type = await service.get_item(identity, agent_id=actor)
-    kind = "data" if item.document_type == "data" else "text"
+    kind = item.document_format
     return DocumentImportSource(item.title, media_type, content, kind,
-        DocumentCloneSource(identity, actor) if kind == "text" else None)
+        DocumentCloneSource(identity, actor) if kind != "data" and item.storage_kind == "text" else None)

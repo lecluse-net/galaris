@@ -8,6 +8,20 @@ from core.storage import StoredFile, register_file
 from .models import Document
 
 
+async def prepare_binary_content(content: bytes, *, name: str, media_type: str, document_id: UUID, revision: int) -> UUID:
+    from core.storage import get_attachment_storage
+    storage = get_attachment_storage()
+    file_id = UUID(await storage.create(content))
+    try:
+        async with get_db().begin_nested():
+            await register_file(file_id, name=name, media_type=media_type,
+                alias=f"document://{document_id}/content-revisions/{revision}")
+    except BaseException:
+        await storage.delete(str(file_id))
+        raise
+    return file_id
+
+
 async def bind_binary_content(document: Document, file_id: UUID) -> None:
     """Bind an already authorized immutable file inside the caller's transaction.
 

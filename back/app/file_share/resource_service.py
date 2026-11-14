@@ -1246,6 +1246,7 @@ async def resource_read(
         )
         values = dict(
             uri=str(reference), content=str(data.get("content") or ""),
+            encoding=str(data.get("encoding") or "utf-8"),
             media_type=str(data.get("media_type") or "text/plain"),
             start=_as_int(data.get("start")), end=_as_int(data.get("end")),
             total=_as_int(data.get("total")), next_offset=_as_optional_int(data.get("next_offset")),
@@ -1470,18 +1471,18 @@ async def resource_create(
     content: bytes = b"",
     *,
     name: str = "",
-    document_type: Literal["text", "data", "html", "dataset"] | None = None,
+    document_format: str | None = None,
     max_bytes: int = _FILE_WRITE_LIMIT,
 ) -> ResourceMutation:
     """Create a new resource and return the provider's complete canonical URI."""
     require_complete_content(content)
     return await _create_complete_resource(ctx, path, content, name=name,
-        document_type=document_type, max_bytes=max_bytes)
+        document_format=document_format, max_bytes=max_bytes)
 
 
 async def _create_complete_resource(
     ctx: ResourceContext, path: object, content: bytes = b"", *, name: str = "",
-    document_type: Literal["text", "data", "html", "dataset"] | None = None,
+    document_format: str | None = None,
     max_bytes: int = _FILE_WRITE_LIMIT,
 ) -> ResourceMutation:
     """Create from complete bytes; callers validate model-authored content separately."""
@@ -1489,9 +1490,9 @@ async def _create_complete_resource(
     if len(content) > limit:
         raise ValueError(f"File content exceeds {limit} bytes.")
     reference = await resolve_native_alias(ctx, parse_resource_uri(path, allow_empty=True))
-    if document_type is not None and (reference.scheme != "document" or reference.locator):
-        raise ValueError("document_type is only accepted when creating at document://.")
-    if document_type in {"data", "dataset"} and (provider := native_provider("data")):
+    if document_format is not None and (reference.scheme != "document" or reference.locator):
+        raise ValueError("document_format is only accepted when creating at document://.")
+    if document_format in {"data", "dataset"} and (provider := native_provider("data")):
         return await provider.create(ctx, parse_resource_uri("data://", allow_empty=True), content, name=name)
     if provider := _resource_provider(reference):
         return await provider.create(ctx, reference, content, name=name)
@@ -1541,10 +1542,12 @@ async def _create_complete_resource(
             raise ResourceUriError(
                 "file_create accepts document:// without an identifier; the server assigns it."
             )
+        from app.document import document_format_definition
+        binary_format = document_format_definition(document_format or "text").storage_kind == "file"
         try:
-            text = content.decode("utf-8")
+            text = "" if binary_format else content.decode("utf-8")
         except UnicodeDecodeError as exc:
-            raise ValueError("document:// resources contain UTF-8 text only.") from exc
+            raise ValueError("Text-based document formats require UTF-8 content") from exc
         from app.document import create_document_file_resource
 
         data = await create_document_file_resource(
@@ -1552,7 +1555,8 @@ async def _create_complete_resource(
             task_id=ctx.task_id,
             title=clean_name or "Document",
             content=text,
-            document_type=document_type or "html",
+            document_format=document_format or "text",
+            binary_content=content if binary_format else None,
         )
         return ResourceMutation(
             uri=_uri("document", str(data["id"])),
@@ -1693,20 +1697,13 @@ async def _write_complete_resource(
             raise PermissionError(
                 "Document attachments are immutable; create a new attachment instead."
             )
-        try:
-            text = content.decode("utf-8")
-        except UnicodeDecodeError as exc:
-            raise ResourceValidationError(
-                "document:// stores UTF-8 text only; write binary content to console:// "
-                "or a connected file provider."
-            ) from exc
         from app.document import write_document_resource_text
 
         data = await write_document_resource_text(
             UUID(reference.locator),
             agent_id=ctx.agent_id,
             task_id=ctx.task_id,
-            content=text,
+            content=content,
             expected_revision=expected_revision,
         )
         return ResourceMutation(
@@ -2197,7 +2194,7 @@ async def resource_copy(
                 task_id=ctx.task_id,
                 title=title,
                 content=text,
-                document_type="dataset" if dataset else "html",
+                document_format="data" if dataset else "text",
             )
             return ResourceTransfer(
                 source_uri=str(source_ref),
@@ -2481,7 +2478,7 @@ async def resource_rename(
         if reference.scheme == "data":
             raise PermissionError("The Dataset provider is unavailable")
         descriptor = await resource_info(ctx, reference)
-        if descriptor.metadata.get("document_type") not in {"text", "html"}:
+        if descriptor.metadata.get("document_format") not in {"text", "html"}:
             raise PermissionError("Use the owning domain to rename this resource; only editorial Document titles can be renamed here")
         from app.document import DocumentUpdate, update_item
 

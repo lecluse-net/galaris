@@ -53,13 +53,13 @@ async def test_file_import_http_preserves_independent_content_and_enforces_both_
         imported = await client.post("/api/documents", headers=headers, json=body)
         assert imported.status_code == 201, imported.text
         item = imported.json()
-        assert item["document_type"] == kind and item["owner_user_id"] == user_id and item["revision"] == 1
+        assert item["document_format"] == kind and item["owner_user_id"] == user_id and item["revision"] == 1
         # A human-owned document can itself be a source, without granting it to the selected Agent.
         source_uri = f"{'data' if kind == 'data' else 'document'}://{item['id']}"
         clone = await client.post("/api/documents", headers=headers, json={**request,
             "import_from": {"uri": source_uri, "agent_id": agent_id}})
         assert clone.status_code == 201, clone.text
-        assert clone.json()["id"] != item["id"] and clone.json()["document_type"] == kind
+        assert clone.json()["id"] != item["id"] and clone.json()["document_format"] == kind
         clone_detail = await client.get(f"/api/documents/{clone.json()['id']}", headers=headers)
         assert clone_detail.status_code == 200, clone_detail.text
         assert clone_detail.json()["item"]["payload"]["text"] == expected
@@ -70,7 +70,10 @@ async def test_file_import_http_preserves_independent_content_and_enforces_both_
         assert detail.json()["item"]["payload"]["text"] == expected
         assert (await client.post("/api/documents", headers=headers, json=body)).status_code == 404
 
-    for name, content, mime, status in (("source.png", b"synthetic", "image/png", 415),
+    # PNG is a supported conversion input; corrupt bytes are a conversion error,
+    # not an unsupported-format response. Valid image conversion is covered by
+    # Document's owned-media import scenarios.
+    for name, content, mime, status in (("source.png", b"synthetic", "image/png", 422),
                                        ("invalid.json", b"{", "application/json", 422)):
         uploaded = await client.post("/api/file-share/files", headers=headers, params={"agent_id": agent_id}, files={"upload": (name, content, mime)})
         assert uploaded.status_code == 201, uploaded.text

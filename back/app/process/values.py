@@ -121,7 +121,7 @@ async def validate_resource_constraints(variables: list[Variable], values: dict[
     context = ResourceContext(agent_id=agent_id, runtime="internal")
     media_types: dict[str, str] = {}
     for variable in variables:
-        if variable.mime_type is None and variable.document_type is None:
+        if variable.mime_type is None and variable.document_format is None:
             continue
         envelope = values.get(variable.name)
         if envelope is None or envelope["value"] is None:
@@ -131,7 +131,7 @@ async def validate_resource_constraints(variables: list[Variable], values: dict[
             descriptor = await resource_info(context, uri)
             media_types[uri] = descriptor.media_type.split(";", 1)[0].strip().lower()
         actual = media_types[uri]
-        expected = variable.mime_type or ("application/json" if variable.document_type == "data" else "text/html")
+        expected = variable.mime_type or ("application/json" if variable.document_format == "data" else "text/html")
         if actual != expected and not (expected.endswith("/*") and actual.startswith(expected[:-1])):
             raise ValueContractError(f"process.{variable.name}: expected media type {expected}, received {actual}")
 

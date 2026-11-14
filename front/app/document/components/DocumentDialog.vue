@@ -5,7 +5,7 @@
         <DocumentNavigationButtons class="q-mr-sm" :can-go-back="!busy && history.canGoBack.value" :can-go-forward="!busy && history.canGoForward.value" @back="navigateHistory(-1)" @forward="navigateHistory(1)" />
         <div ref="heading" class="document-dialog-heading">
           <div class="document-dialog-heading-fallback row items-center no-wrap">
-            <DocumentIcon v-if="current" :document-id="current.id" :document-type="current.document_type" :title="currentTitle" size="24px" class="q-mr-sm" />
+            <DocumentIcon v-if="current" :document-id="current.id" :document-format="current.document_format" :title="currentTitle" size="24px" class="q-mr-sm" />
             <div class="text-h6 ellipsis">{{ currentTitle }}</div>
           </div>
         </div>

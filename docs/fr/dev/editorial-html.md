@@ -91,13 +91,13 @@ et le [contrat Données](datasets.md).
 Créer directement avec
 `file_create(path="data://", name="Scénarios", content='{"scenarios": []}')`.
 Le champ `content` doit contenir le JSON complet ; une omission ou un contenu vide est refusé
-avant création. L'ancienne option `document_type="dataset"` sur `document://` reste un
+avant création. L'ancienne option `document_format="dataset"` sur `document://` reste un
 adaptateur vers un document Données et renvoie aussi `data://`.
 Pour un Dataset, `file_read` pagine en caractères et `file_edit` édite des lignes ; le JSON
 complet après modification doit être valide. `file_write`, `file_edit` et `file_append`
 exigent la révision lue. Préférer remplacement ou édition à la concaténation de JSON.
 Copier une source `application/json` vers `data://` crée un nouveau Dataset privé.
-Les exports PDF/HTML restent propres aux documents HTML. Les autres types de documents
+Les exports PDF/HTML restent propres aux documents HTML. Les autres formats de documents
 restent hors périmètre. Le [HTML interactif](document-apps.md) permet désormais
 aux documents HTML de contenir des formulaires et d'accéder à des datasets déclarés via un
 runtime isolé ; l'historique et les exports restent inertes.

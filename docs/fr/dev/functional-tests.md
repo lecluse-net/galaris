@@ -2,6 +2,15 @@
 
 # Catalogue des garanties fonctionnelles
 
+`make tests-document-formats` regroupe les garanties documentaires et leurs parcours
+navigateur. `app/document/tests/test_formats.py` vérifie l'enregistrement de contributions,
+la qualification par preuves exactes, le cycle commun Texte/Data/format synthétique,
+les copies avec assets, les imports, la conservation binaire et la récupération sans plugin.
+`front/browser-tests/document-formats.spec.mjs` couvre l'éditeur contribué, le repli inerte,
+le téléchargement de source et le catalogue avec erreur/retry ; les suites existantes
+conservent les garanties d'aperçu, d'impression et d'export PDF. Voir le
+[contrat des formats](document-formats.md) pour distinguer capacité déclarée et qualification.
+
 `app/calendar/tests/test_service.py` exerce le véritable adaptateur CalDAV sur une frontière HTTP
 synthétique avec état : paramètres standards, découverte, diff et multiget, écritures conditionnelles,
 perte d'accusé, jeton expiré, conflits, réponses invalides et droits distants. Des sessions PostgreSQL

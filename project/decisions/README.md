@@ -412,3 +412,4 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0282 — Calendar workspace and per-occurrence Task launches](0282-calendar-workspace-and-task-launches.md)
 - [0284 — Server-owned document batch moves](0284-server-owned-document-batch-moves.md)
 - [0285 — Calendar providers and account authorization](0285-calendar-provider-authorization.md)
+- [0288 — Document format contributions and qualification](0288-document-format-contributions.md)

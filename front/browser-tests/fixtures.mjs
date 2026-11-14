@@ -11,6 +11,12 @@ export const test = base.extend({
       await route.fulfill({ status: 500, json: { detail: 'Missing component test fixture' } })
     })
     // Documents have no sharing in ordinary editor fixtures. Dedicated sharing tests override this route.
+    await page.route('**/api/documents/formats', route => route.fulfill({ json: ['text', 'data'].map(code => ({
+      code, version: 1, contract_version: 1, provider: 'galaris', storage_kind: 'text',
+      media_type: code === 'text' ? 'text/html' : 'application/json', icon: code === 'text' ? 'description' : 'data_object',
+      capabilities: { editor: 'native', preview: 'native', embed: 'fallback', thumbnail: 'fallback', pdf: 'fallback', native_export: 'native', import: 'native' },
+      capability_complete: true, qualification: 'not_run', import_extensions: [],
+    })) }))
     // Help starts unread; persistence/error scenarios override this read-only fixture.
     await page.route('**/api/auth/me/help-dismissals', route => route.fulfill({ json: [] }))
     // Private chat drafts start empty. Dedicated recovery scenarios override failures/concurrency.
@@ -143,7 +149,7 @@ export async function jsonRoute(page, url, json) {
 // Read-only fixtures for Data links opened in the shared Document editor.
 // Unexpected writes still reach the fixture guard and fail the scenario.
 export async function dataDocumentRoutes(page, source, agentId = 7) {
-  const item = { ...documentFixture, ...source, document_type: 'data', media_type: 'application/json',
+  const item = { ...documentFixture, ...source, document_format: 'data', media_type: 'application/json',
     content_profile: 'document', content_profile_version: null,
     payload: { text: source.content }, access: { can_read: true, can_write: source.can_write === true } }
   await page.route(new RegExp(`/api/documents/${source.id}(?:\\?.*)?$`), route => route.request().method() === 'GET'

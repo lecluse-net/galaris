@@ -343,14 +343,14 @@ for (const surface of ['chat', 'library']) test(`rendered thumbnail keeps the ${
 test('Data thumbnails render exact JSON as literal text without executing embedded markup', async ({ page, context }) => {
   const id = '00000000-0000-4000-8000-000000000909'
   const source = '{"note":"<img src=x onerror=alert(1)>","large":9007199254740993}'
-  const item = { ...documentFixture, id, document_type: 'data', media_type: 'application/json', payload: { text: source } }
+  const item = { ...documentFixture, id, document_format: 'data', media_type: 'application/json', payload: { text: source } }
   await jsonRoute(page, `**/api/documents/${id}`, { item, agent_id: null })
   let html
   await page.route(`**/api/documents/${id}/thumbnail*`, route => {
     html = route.request().postDataJSON().html
     return route.fulfill({ contentType: 'image/webp', body: png })
   })
-  await mount(page, 'app/document/components/DocumentThumbnail.vue', { props: { documentId: id, documentType: 'data' } })
+  await mount(page, 'app/document/components/DocumentThumbnail.vue', { props: { documentId: id, documentFormat: 'data' } })
   await expect(page.locator('.document-thumbnail img')).toHaveJSProperty('naturalWidth', 1)
   const preview = await context.newPage()
   await preview.setContent(html)

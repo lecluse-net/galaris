@@ -14,8 +14,8 @@ export class DatasetDocumentRedirect extends Error {
 function editorialDocument(detail: ManagedDocumentDetail | DocumentResourceRedirect): ManagedDocumentDetail {
   if ('resource_type' in detail) throw new DatasetDocumentRedirect(detail.resource_uri)
   // Also handle responses/seeds retained by a client during the transition.
-  if (detail.item.document_type === 'dataset') throw new DatasetDocumentRedirect(`data://${detail.item.id}`)
-  if (!['text', 'html', 'data'].includes(detail.item.document_type)) throw new Error('This resource is not an HTML Document.')
+  if (detail.item.document_format === 'dataset') throw new DatasetDocumentRedirect(`data://${detail.item.id}`)
+  if (detail.item.document_format === 'process') throw new Error('Process definitions belong to Process.')
   return detail
 }
 
@@ -42,6 +42,20 @@ export interface DocumentFolderPage {
 const ownerOptionsCache = createOwnerOptionsCache<DocumentOwnerOptions>()
 
 export const documentService = {
+  async updateBinaryDocument(id: string, agentId: number | null, base64: string, expectedRevision: number, signal: AbortSignal): Promise<DocumentRecord> {
+    return (await api.patch<DocumentRecord>(`/documents/${id}`, { payload: { base64 }, expected_revision: expectedRevision },
+      { params: { actor_agent_id: agentId }, signal })).data
+  },
+  async source(id: string, agentId: number | null, signal: AbortSignal, revision?: number): Promise<Blob> {
+    return (await api.get<Blob>(`/documents/${id}/source`, { responseType: 'blob', signal, params: { agent_id: agentId, revision } })).data
+  },
+  async formats(signal?: AbortSignal): Promise<import('../formatRegistry').DocumentFormatDescriptor[]> {
+    const catalogue = (await api.get<import('../formatRegistry').DocumentFormatDescriptor[]>('/documents/formats', { signal })).data
+    if (!Array.isArray(catalogue)) throw new Error('Invalid document format catalogue')
+    const { setDocumentFormatCatalogue } = await import('../documentFormats')
+    setDocumentFormatCatalogue(catalogue)
+    return catalogue
+  },
   async moveDocumentBatch(documentIds: string[], target: Omit<DocumentOrderMove, 'node'>): Promise<void> {
     await api.post('/documents/order/batch', { ...target, node: { kind: 'document', id: documentIds[0] }, document_ids: documentIds }, { timeout: 0 })
   },
@@ -133,11 +147,15 @@ async documentThumbnailSnapshot(id: string, agentId: number | null, signal: Abor
     const detail = (await api.get<ManagedDocumentDetail | DocumentResourceRedirect>(`/documents/${id}`, {
       params: { agent_id: agentId ?? undefined }, signal,
     })).data
-    if ('resource_type' in detail || detail.item.document_type === 'dataset') return null
+    if ('resource_type' in detail) return null
     const item = detail.item
-    const { documentType } = await import('../documentTypes')
-    const html = await documentType(item.document_type).snapshot(item.payload.text ?? '', item.title, signal,
-      (documentId, attachmentId) => documentService.documentAttachmentBlob(documentId, attachmentId, detail.agent_id, signal))
+    if (item.document_format === 'dataset') return null
+    const { documentFormat } = await import('../documentFormats')
+    const html = await documentFormat(item.document_format, item.format_version).snapshot(item.payload.text ?? '', item.title, signal,
+      (documentId, attachmentId) => documentService.documentAttachmentBlob(documentId, attachmentId, detail.agent_id, signal), undefined,
+      { key: `${item.id}:${item.revision}:${detail.agent_id}`, revision: item.revision, readonly: true,
+        load: pending => documentService.source(item.id, detail.agent_id, pending, item.revision),
+        save: async () => { throw new Error('Document snapshots are read-only') } })
     return { html, revision: item.revision, lock_version: item.lock_version }
   },
 
@@ -434,10 +452,10 @@ async documentAttachmentInfo(id: string, attachmentId: string, agentId: number |
     return response.data
   },
 
-async documentAttachmentBlob(id: string, attachmentId: string, agentId: number | null, signal?: AbortSignal): Promise<Blob> {
+async documentAttachmentBlob(id: string, attachmentId: string, agentId: number | null, signal?: AbortSignal, preview = false): Promise<Blob> {
     const response = await api.get<Blob>(
       `/documents/${id}/attachments/${attachmentId}`,
-      { params: { agent_id: agentId }, responseType: 'blob', signal },
+      { params: { agent_id: agentId, preview: preview || undefined }, responseType: 'blob', signal },
     )
     return response.data
   },
@@ -462,9 +480,9 @@ async renameDocumentAttachment(id: string, attachmentId: string, agentId: number
     return (await api.patch<DocumentAttachment>(`/documents/${id}/attachments/${attachmentId}`, { name }, { params: { actor_agent_id: agentId } })).data
   },
 
-async getDocument(id: string, agentId?: number | null): Promise<DocumentDetail> {
+async getDocument(id: string, agentId?: number | null, signal?: AbortSignal): Promise<DocumentDetail> {
     return editorialDocument((await api.get<ManagedDocumentDetail | DocumentResourceRedirect>(`/documents/${id}`, {
-      params: { agent_id: agentId ?? undefined },
+      params: { agent_id: agentId ?? undefined }, signal,
     })).data).item
   },
 

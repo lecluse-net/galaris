@@ -72,7 +72,7 @@ il ne modifie aucune variable métier, même une variable du registre portant ce
 Les sélections du processus et de ses étapes sont figées dans le snapshot de lancement.
 
 Une déclaration `Document` accepte `document://<uuid>` ou `data://<uuid>` et peut préciser
-`document_type: "text" | "data"`. Une déclaration `File` peut préciser `mime_type`, exact
+son code dans `document_format` (`text`, `data` ou un autre format installé). Une déclaration `File` peut préciser `mime_type`, exact
 ou par famille (`image/*`). Les contraintes ne conviennent qu'à leur type respectif.
 La validation syntaxique et des défauts intervient à la sauvegarde. Au lancement et avant
 les écritures, Process vérifie les métadonnées via File Sharing avec l'identité de l'exécutant,

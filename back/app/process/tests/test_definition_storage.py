@@ -1,6 +1,7 @@
 """BPMN persistence never creates an editorial Document, including upgrades."""
 
 from hashlib import sha256
+from app.document.tests.revision_helpers import revision_clock as revision_clock
 from uuid import uuid4
 
 import pytest
@@ -27,7 +28,7 @@ from core.dbadmin import SchemaTransitionSet
 
 def test_memory_document_creation_cannot_be_used_for_bpmn():
     with pytest.raises(ValidationError):
-        MemoryItemCreate(node_kind="document", document_type="process", media_type="application/bpmn+xml",
+        MemoryItemCreate(node_kind="document", document_format="process", media_type="application/bpmn+xml",
             owner_agent_id=1, title="Synthetic workflow", payload=MemoryPayload(text="<definitions/>"))
 
 
@@ -49,16 +50,17 @@ async def test_native_bpmn_is_owned_by_process_rows_and_never_by_documents(db, n
         await read(record.code, reader.id)
 
 
-async def legacy_definition(db, owner, reader, *, valid=True):
+async def legacy_definition(db, owner, reader, revision_clock, *, valid=True):
     """Synthetic pre-upgrade rows written through the old physical representation."""
     source = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic legacy workflow",
         content="<p>Synthetic fixture</p>", task_id=None)
     await documents.set_item_grant(source.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
     await documents.update_item(source.id, DocumentUpdate(expected_revision=1,
         payload=DocumentPayload(text="<p>Synthetic second revision</p>")), actor_agent_id=owner.id)
+    await revision_clock.settle()
     code = "synthetic_" + uuid4().hex
     content = to_bpmn(graph("Synthetic saved instructions"), code) if valid else "<invalid/>"
-    source.document_type, source.media_type, source.content_profile_version = "process", "application/bpmn+xml", None
+    source.document_format, source.media_type, source.content_profile_version = "process", "application/bpmn+xml", None
     source.content, source.content_hash, source.size_bytes = content, sha256(content.encode()).hexdigest(), len(content.encode())
     source.metadata_ = {"process_code": code}
     for entry in await db.scalars(select(DocumentRevision).where(DocumentRevision.document_id == source.id)):
@@ -83,9 +85,9 @@ def test_definition_transfer_is_triggered_only_by_its_schema_expansion():
 
 
 @pytest.mark.asyncio
-async def test_existing_bpmn_rights_history_and_source_retirement_transfer_idempotently(db, native):
+async def test_existing_bpmn_rights_history_and_source_retirement_transfer_idempotently(db, native, revision_clock):
     owner, reader = native
-    source, record, content = await legacy_definition(db, owner, reader)
+    source, record, content = await legacy_definition(db, owner, reader, revision_clock)
     source_id = source.id
     delta = SchemaTransitionSet()
     assert not await transfer_complete(db, delta)
@@ -109,10 +111,10 @@ async def test_existing_bpmn_rights_history_and_source_retirement_transfer_idemp
 
 
 @pytest.mark.asyncio
-async def test_invalid_bpmn_prevents_partial_source_retirement(db, native):
+async def test_invalid_bpmn_prevents_partial_source_retirement(db, native, revision_clock):
     owner, reader = native
-    first, first_definition, _ = await legacy_definition(db, owner, reader)
-    second, second_definition, _ = await legacy_definition(db, owner, reader, valid=False)
+    first, first_definition, _ = await legacy_definition(db, owner, reader, revision_clock)
+    second, second_definition, _ = await legacy_definition(db, owner, reader, revision_clock, valid=False)
     definition_ids, document_ids = [first_definition.id, second_definition.id], [first.id, second.id]
     with pytest.raises(ValueError):
         await transfer_definitions(db, SchemaTransitionSet())

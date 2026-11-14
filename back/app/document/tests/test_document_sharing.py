@@ -123,8 +123,8 @@ async def grant(item, scope, kind, identity, can_write):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(("node_kind", "document_type"), [("document", "html"), ("document", "dataset")])
-async def test_mcp_sharing_uses_live_team_membership_and_preserves_other_grants(db, agents, memory_storage, node_kind, document_type):
+@pytest.mark.parametrize(("node_kind", "document_format"), [("document", "text"), ("document", "dataset")])
+async def test_mcp_sharing_uses_live_team_membership_and_preserves_other_grants(db, agents, memory_storage, node_kind, document_format):
     from app.document import mcp
     from app.tools.mcp_loader import McpToolContext
     from core.team.service import set_human_membership
@@ -135,8 +135,8 @@ async def test_mcp_sharing_uses_live_team_membership_and_preserves_other_grants(
     team = TeamModel(name="Research group")
     db.add(team)
     await db.flush()
-    body = '{"evidence":"<h2>Evidence</h2>"}' if document_type == "dataset" else "<h2>Evidence</h2><p>Verified fact.</p>"
-    if document_type == "dataset":
+    body = '{"evidence":"<h2>Evidence</h2>"}' if document_format == "dataset" else "<h2>Evidence</h2><p>Verified fact.</p>"
+    if document_format == "dataset":
         from .legacy_fixtures import legacy_dataset
         item = await legacy_dataset(owner_agent_id=owner.id, title="Team knowledge", content=body)
     else:

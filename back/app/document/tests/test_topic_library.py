@@ -32,7 +32,7 @@ async def setup_library(db, agents):
         ("Synthetic inbox", owner, None, ["inbox"], "text"),
     ):
         item, _ = await documents.create_item(DocumentItemCreate(owner_agent_id=agent.id,
-            title=title, document_type=kind, media_type="application/json" if kind == "data" else "text/html",
+            title=title, document_format=kind, media_type="application/json" if kind == "data" else "text/html",
             keywords=keywords, payload=DocumentPayload(text="{}" if kind == "data" else "<p>Synthetic content</p>")))
         item.topic_id = topic.id if topic else None
         items.append(item)

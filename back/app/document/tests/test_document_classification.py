@@ -95,11 +95,11 @@ async def test_subdocuments_recheck_both_accesses_and_survive_missing_parents(db
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("document_type", ["html", "dataset"])
-async def test_document_icons_are_private_durable_and_preserve_read_only_content_and_classification(db, agents, memory_storage, document_type):
+@pytest.mark.parametrize("document_format", ["text", "dataset"])
+async def test_document_icons_are_private_durable_and_preserve_read_only_content_and_classification(db, agents, memory_storage, document_format):
     owner, reader = agents
     user, other = await human(db), await human(db)
-    item = await document(owner, "Illustrated document", document_type)
+    item = await document(owner, "Illustrated document", document_format)
     await service.set_item_grant(item.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
     scope = AgentManagementScope(user_id=user.id, agent_ids=frozenset({reader.id}))
     peer = AgentManagementScope(user_id=other.id, agent_ids=scope.agent_ids)
@@ -137,15 +137,15 @@ def test_document_icon_contract_rejects_untrusted_icons_and_unbounded_batches():
         DocumentIconRequest(document_ids=[uuid4() for _ in range(501)])
 
 
-async def document(owner, title, document_type="html"):
-    if document_type == "dataset":
+async def document(owner, title, document_format="text"):
+    if document_format == "dataset":
         from .legacy_fixtures import legacy_dataset
         return await legacy_dataset(owner_agent_id=owner.id, title=title, content='{"label":"Searchable report"}')
     item, _ = await service.create_item(DocumentItemCreate(
         owner_agent_id=owner.id, title=title, node_kind="document",
-        document_type=document_type,
-        media_type="application/json" if document_type == "dataset" else "text/html",
-        payload=DocumentPayload(text='{"label":"Searchable report"}' if document_type == "dataset" else "<p>Searchable report</p>"),
+        document_format=document_format,
+        media_type="application/json" if document_format == "dataset" else "text/html",
+        payload=DocumentPayload(text='{"label":"Searchable report"}' if document_format == "dataset" else "<p>Searchable report</p>"),
     ))
     return item
 

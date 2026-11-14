@@ -5,7 +5,7 @@ async function library(page, kind = 'text') {
   const items = ['Alpha', 'Beta', 'Gamma'].map((title, index) => ({
     ...documentFixture, id: `00000000-0000-4000-8000-00000000000${index + 1}`,
     title, owner_agent_id: null, owner_user_id: 1,
-    document_type: kind, media_type: kind === 'data' ? 'application/json' : 'text/html',
+    document_format: kind, media_type: kind === 'data' ? 'application/json' : 'text/html',
     content_profile: 'document', payload: { text: kind === 'data' ? JSON.stringify({ value: title }) : `<p>${title} content</p>` },
   }))
   const state = { items, refuseSave: false, writes: [] }

@@ -58,7 +58,7 @@ for (const width of [1440, 390]) test(`shared folders stay live in Documents and
   const documents = []
   for (const title of ['Synthetic permitted note', 'Synthetic collection guide']) {
     const document = await checked(await request.post('/api/documents', { headers, data: {
-      title, owner_kind: 'user', owner_id: owner, actor_agent_id: fixture.agent_id, document_type: 'html', folder: '',
+      title, owner_kind: 'user', owner_id: owner, actor_agent_id: fixture.agent_id, document_format: 'text', folder: '',
     } }))
     await checked(await request.patch(`/api/documents/${document.id}`, { headers, data: {
       expected_revision: document.revision, payload: { text: '<p>Synthetic collection content.</p>' },

@@ -80,7 +80,7 @@ async def transfer(session: AsyncSession) -> None:
     # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     while rows := (await session.execute(text(f"SELECT id FROM datasets WHERE (CAST(:cursor AS uuid) IS NULL OR id>CAST(:cursor AS uuid)) AND NOT EXISTS(SELECT 1 FROM {_TRANSFERS} t WHERE t.identity=datasets.id) ORDER BY id LIMIT 100"), {"cursor": cursor})).scalars().all():
         for identity in rows:
-            collision = await session.scalar(text("SELECT document_type NOT IN ('dataset','data') FROM documents WHERE id=:id"), {"id": identity})
+            collision = await session.scalar(text("SELECT document_format NOT IN ('dataset','data') FROM documents WHERE id=:id"), {"id": identity})
             if collision:
                 raise ValueError("Dataset transfer conflicts with an unrelated Document identity")
             share_id = uuid5(NAMESPACE_URL, f"galaris:typed-document:{identity}")
@@ -92,7 +92,7 @@ async def transfer(session: AsyncSession) -> None:
                 key = next(f"{k}:{v}" for k, v in grant.items() if k.endswith("_id") and v is not None)
                 await session.execute(text("INSERT INTO share_grants(id,share_id,agent_id,user_id,team_id,can_write) VALUES(:grant,:share,:agent_id,:user_id,:team_id,:can_write) ON CONFLICT DO NOTHING"), {"grant": uuid5(share_id, key), "share": share_id, **grant})
             await session.execute(text("""INSERT INTO documents(id,title,owner_agent_id,owner_user_id,topic_id,
-                provider_code,resource_id,content,revision,lock_version,document_type,content_type,media_type,
+                provider_code,resource_id,content,revision,lock_version,document_format,content_type,media_type,
                 content_hash,size_bytes,keywords,metadata,read_only,visibility,share_id,share_kind,summary_content,
                 summary_generated,summary_pending,summary_source_text,search_text,
                 created_at,created_by,updated_at,updated_by,deleted_at,deleted_by)
@@ -104,7 +104,7 @@ async def transfer(session: AsyncSession) -> None:
                 summary_source_text,content,created_at,created_by,updated_at,updated_by,deleted_at,deleted_by FROM datasets WHERE id=:id
                 ON CONFLICT(id) DO UPDATE SET title=excluded.title,owner_agent_id=excluded.owner_agent_id,
                 owner_user_id=excluded.owner_user_id,topic_id=excluded.topic_id,provider_code='native',resource_id=excluded.resource_id,
-                content=excluded.content,revision=excluded.revision,lock_version=excluded.lock_version,document_type='dataset',
+                content=excluded.content,revision=excluded.revision,lock_version=excluded.lock_version,document_format='dataset',
                 content_type='text',media_type='application/json',content_profile_version=NULL,
                 content_hash=excluded.content_hash,size_bytes=excluded.size_bytes,keywords=excluded.keywords,
                 metadata=excluded.metadata,read_only=excluded.read_only,visibility=excluded.visibility,share_id=excluded.share_id,share_kind='document',
@@ -159,10 +159,10 @@ async def finalize(session: AsyncSession, delta: SchemaTransitionSet) -> None:
     if not await exists(session, _TRANSFERS):
         await preserve(session, delta)
     await transfer(session)
-    await session.execute(text("UPDATE documents SET document_type='text' WHERE document_type IN ('html','form')"))
+    await session.execute(text("UPDATE documents SET document_format='text' WHERE document_format IN ('html','form')"))
     # SQL uses fixed migration names and closed source/placement tuples; values are bound.
     # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
-    await session.execute(text(f"""UPDATE documents d SET document_type='data',creation_key=s.creation_key,
+    await session.execute(text(f"""UPDATE documents d SET document_format='data',creation_key=s.creation_key,
         summary_media_type='text/plain',
         summary_resource_id=md5('summary:' || d.id::text)::uuid::text,
         summary_size_bytes=octet_length(coalesce(d.summary_content,'')),
@@ -226,7 +226,7 @@ async def complete(session: AsyncSession, delta: SchemaTransitionSet) -> bool:
         # SQL uses fixed migration names and closed source/placement tuples; values are bound.
         # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         and bool(await session.scalar(text(f"SELECT classified FROM {_STATE}")))
-        and not await session.scalar(text("SELECT EXISTS(SELECT 1 FROM documents WHERE document_type IN ('html','form'))"))
+        and not await session.scalar(text("SELECT EXISTS(SELECT 1 FROM documents WHERE document_format IN ('html','form'))"))
         # Every retained Dataset must have reached the canonical destination.
         # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         and not await session.scalar(text(f"SELECT EXISTS(SELECT 1 FROM datasets s WHERE NOT EXISTS(SELECT 1 FROM {_TRANSFERS} t WHERE t.identity=s.id))"))
@@ -264,10 +264,10 @@ def register(registry: DbAdminRegistry) -> None:
         compatible_checksums=frozenset({"preserve-and-verify-dataset-content-history-acls-v1"}), predicate=needed,
         handler=preserve, postcondition=preserved))
     registry.register_action(DbAdminAction(key="app.document.typed_documents", phase=DbAdminPhase.AFTER_EXPAND,
-        checksum="transfer-expanded-typed-documents-and-personal-classification-v2",
-        compatible_checksums=frozenset({"typed-documents-and-personal-classification-v1"}), predicate=needed,
+        checksum="typed-documents-canonical-format-column-v3",
+        compatible_checksums=frozenset({"typed-documents-and-personal-classification-v1", "transfer-expanded-typed-documents-and-personal-classification-v2"}), predicate=needed,
         handler=finalize, postcondition=complete,
-        requires_schema=frozenset({"documents.storage_kind", "documents.summary_generated",
+        requires_schema=frozenset({"documents.document_format", "documents.storage_kind", "documents.summary_generated",
                                    "datasets.summary_content", "datasets.summary_generated",
                                    "datasets.summary_pending", "datasets.summary_source_text"})))
     registry.register_action(DbAdminAction(key="app.document.typed_role_capabilities", phase=DbAdminPhase.AFTER_DATASET,

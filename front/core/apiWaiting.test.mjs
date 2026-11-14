@@ -4,6 +4,7 @@ import axios from 'axios'
 import { deferred, loadTypescript } from '../test-support/load-typescript.mjs'
 import * as thumbnailEvents from './util/resourceThumbnailEvents.ts'
 import { sessionReadCache } from '../test-support/session-read-cache.mjs'
+import * as documentFormatRegistry from '../app/document/formatRegistry.ts'
 
 function setup() {
   const entered = deferred()
@@ -45,6 +46,7 @@ function setup() {
     '@/core/api': loaded, './sessionReadCache': cacheHelpers, './previewQueue': cacheHelpers,
   })
   const dependencies = {
+    '../formatRegistry': documentFormatRegistry,
     axios: { isAxiosError: axios.isAxiosError },
     '@/app/share/facade': loadTypescript(new URL('../app/share/ownerCache.ts', import.meta.url), {
       '@/core/util/facade': { ...cacheHelpers, ...resources },

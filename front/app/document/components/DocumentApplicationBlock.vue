@@ -11,7 +11,7 @@ import DocumentApplication from '@/app/document/components/DocumentApplication.v
 import type { AppMediaResolver } from '@/app/document/documentAppResources'
 const { source, language, documentId, revision, ready, registerSnapshot, resolveMedia } = defineProps<{ source: string; language: string; documentId: string; revision: number; ready: boolean; registerSnapshot?: RegisterDocumentCapture; resolveMedia?: AppMediaResolver }>()
 const { t } = useI18n()
-const app = computed(() => language === 'galaris-raw-html' ? { id: 'document-html', title: t('documents.types.html'), html: source, datasets: rawDatasets(source) } : parseDocumentApp(source))
+const app = computed(() => language === 'galaris-raw-html' ? { id: 'document-html', title: t('documents.formats.html'), html: source, datasets: rawDatasets(source) } : parseDocumentApp(source))
 function rawDatasets(html: string): NonNullable<import('@/app/document/documentApps').DocumentApp['datasets']> {
   const doc = new DOMParser().parseFromString(html, 'text/html')
   return Object.fromEntries([...doc.querySelectorAll('[data-dataset]')].map(element => [

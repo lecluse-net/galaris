@@ -47,7 +47,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { documentTypes, type DocumentCreationMode } from '../documentTypes'
+import { documentFormats, type DocumentCreationMode } from '../documentFormats'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
@@ -109,10 +109,10 @@ function openPointerMenu(event: MouseEvent): void {
 const shortcuts = computed<LibraryShortcuts>(() => props.busy || renaming.value ? {} : {
   F2: startRename, F3: () => emit('createDocument'), F4: () => emit('browse'), F7: () => { void createChild() }, Delete: () => emit('confirmDelete'),
 })
-const contextActions = computed(() => [
+const contextActions = computed<(Omit<import('@/core/util').ContextAction, 'run'> & { run: () => void | Promise<void> })[]>(() => [
   { key: 'browse', icon: 'view_list', label: t('documents.library.openFolderAction'), shortcut: 'F4', run: () => emit('browse') },
   { key: 'copy-url', icon: 'link', label: t('documents.library.copyFolderUrl'), run: () => copy(`document://folders/${props.tag.id}/`) },
-  ...documentTypes.filter(() => canCreateDocument.value).map(type => ({ key: 'document-' + type.code, icon: type.icon, label: t('documents.createTypedDocument', { type: t(type.label) }), disabled: props.busy, run: () => emit('createDocument', type.code) })),
+  ...documentFormats.filter(() => canCreateDocument.value).map(type => ({ key: 'document-' + type.code, icon: type.icon, label: t('documents.createFormattedDocument', { format: t(type.label) }), disabled: props.busy, run: () => emit('createDocument', type.code) })),
   ...(canCreateDocument.value ? [{ key: 'import', icon: 'file_open', label: t('documents.importFrom'), disabled: props.busy, run: () => emit('createDocument', 'import') }] : []),
   { key: 'child', icon: 'create_new_folder', label: t('documents.library.newSubtagAction'), shortcut: 'F7', disabled: props.busy, run: createChild },
   { key: 'sibling', icon: 'playlist_add', label: t('documents.library.newSiblingAction'), disabled: props.busy, run: createSibling },

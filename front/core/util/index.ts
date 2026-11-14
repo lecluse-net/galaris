@@ -72,6 +72,7 @@ export { resolveWorkingDocument } from './workingDocumentEditor'
 export { default as WorkingDocumentIcon } from './components/WorkingDocumentIcon.vue'
 export { default as WorkingDocumentThumbnail } from './components/WorkingDocumentThumbnail.vue'
 export { searchWorkingDocuments } from './workingDocumentEditor'
+export { workingDocumentFormats } from './workingDocumentEditor'
 export type {
   WorkingDocumentReference,
   WorkingDocumentEditorContribution,
@@ -91,6 +92,8 @@ export {
   shouldOpenInline,
 } from './resourceViewer'
 export type { BrowserResourceKind, NavigationClick } from './resourceViewer'
+export { registerResourceViewer, findResourceViewer } from './resourceViewers'
+export type { ResourceViewerContribution, ResourceViewerSource } from './resourceViewers'
 export type { StatusBadgeTone } from './statusBadge'
 // Reading a document or using a utility must not initialize the editing engine.
 export const RichTextEditor = defineAsyncComponent(() => import('./components/RichTextEditor.vue'))

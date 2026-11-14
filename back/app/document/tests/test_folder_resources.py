@@ -95,7 +95,7 @@ async def test_file_navigation_follows_folders_with_stable_document_uris(db, age
     assert classified_entry.size == classified.size_bytes
     assert classified_entry.revision == classified.revision
     assert classified_entry.checksum == classified.content_hash
-    assert classified_entry.metadata["document_type"] == classified.document_type
+    assert classified_entry.metadata["document_format"] == classified.document_format
     await document_tags.move_document(scope, classified.id, None)
     assert f"document://{classified.id}" in await contents("document://")
     assert await contents(child_uri) == []
@@ -264,7 +264,7 @@ async def test_folder_http_authorization_and_independent_attachment_membership(c
     # Linking an authorized collection creates no grants and no binary copy.
     agents = (await client.get("/api/agents/selection", headers=headers)).json()
     agent = agents[0]["id"]
-    doc = await client.post("/api/documents", headers=headers, json={"title": "Synthetic carrier", "owner_kind": "agent", "owner_id": agent, "actor_agent_id": agent, "document_type": "html", "folder": ""})
+    doc = await client.post("/api/documents", headers=headers, json={"title": "Synthetic carrier", "owner_kind": "agent", "owner_id": agent, "actor_agent_id": agent, "document_format": "text", "folder": ""})
     assert doc.status_code == 201, doc.text
     identity = doc.json()["id"]
     attached = await client.put(f"/api/documents/{identity}/internal-attachments", headers=headers, params={"actor_agent_id": agent},

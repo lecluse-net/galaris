@@ -46,7 +46,7 @@ async def test_uploaded_import_http_preserves_content_and_enforces_validation_an
         response = await client.post(path, headers=headers, data={"data": json.dumps(data)}, files={"file": (name, content, mime)})
         assert response.status_code == 201, response.text
         item = response.json()
-        assert item["document_type"] == kind and item["owner_user_id"] == owner_id
+        assert item["document_format"] == kind and item["owner_user_id"] == owner_id
         detail = await client.get(f"/api/documents/{item['id']}", headers=headers)
         assert detail.status_code == 200, detail.text
         converted = name.endswith((".pdf", ".docx"))
@@ -113,7 +113,7 @@ def test_supported_import_formats(name, mime, content, kind, expected):
     assert convert_document_import(DocumentImportSource(name, mime, content)) == (kind, expected)
 
 
-def test_native_document_type_takes_precedence_over_its_title_extension():
+def test_native_document_format_takes_precedence_over_its_title_extension():
     assert convert_document_import(DocumentImportSource("Report.json", "text/html", b"<p>Report</p>", "text")) == ("text", "<p>Report</p>")
     native = '<p>Native application</p><script>window.synthetic = 1</script>'
     assert convert_document_import(DocumentImportSource("Report.html", "text/html", native.encode(), "text")) == ("text", native)
@@ -164,7 +164,7 @@ async def test_creation_is_a_snapshot_without_source_link(db, agents, memory_sto
     # Losing the source after creation cannot change the imported document or its history.
     monkeypatch.setattr(file_import, "_reader", None)
     item, content, *_ = await resource_service.get_item(created.id, agent_id=owner.id)
-    assert item.document_type == kind and item.revision == 1
+    assert item.document_format == kind and item.revision == 1
     attached_only = name.endswith(".zip")
     assert content.decode() == ("" if attached_only else convert_document_import(DocumentImportSource(name, mime, source))[1])
     assert "synthetic://source" not in str(item.metadata_)
@@ -325,7 +325,7 @@ async def test_converted_import_preserves_editable_text_owned_images_and_origina
     monkeypatch.setattr(file_import, "_reader", None)
     item, raw, *_ = await resource_service.get_item(created.id, agent_id=actor)
     html = raw.decode()
-    assert item.document_type == "text" and item.revision == 1 and sentinel in html
+    assert item.document_format == "text" and item.revision == 1 and sentinel in html
     assert "synthetic://binary" not in html and "data:image" not in html and "/tmp/" not in html
     visible = await attachments.list_document_attachments(created.id, actor_agent_id=actor)
     assert len(visible) == 1 and visible[0].name == "source" + suffix

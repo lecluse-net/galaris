@@ -2,9 +2,11 @@ import { defineAsyncComponent } from 'vue'
 
 const DocumentEditor = defineAsyncComponent(() => import('@/app/document/components/DocumentEditor.vue'))
 import type { WorkingDocumentEditorContribution } from '@/core/util'
+import { documentFormats } from './documentFormats'
 const service = async () => (await import('./services/documentService')).documentService
 
 export default {
+  formats: () => documentFormats,
   component: DocumentEditor,
   dialogComponent: defineAsyncComponent(() => import('@/app/document/components/DocumentDialog.vue')),
   iconComponent: defineAsyncComponent(() => import('@/app/document/components/DocumentIcon.vue')),

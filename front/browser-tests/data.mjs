@@ -9,7 +9,7 @@ export const call = {
 }
 export const result = { prompt: 'Objective', system_prompt: 'Instructions', messages: [], execution_time: 1, result: 'Done', cost: 0, tools_used: [], metadata: {}, success: true }
 export const document = {
-  document_type: 'html',
+  document_format: 'text',
   id: 'doc-a', revision: 3, lock_version: 3, owner_agent_id: 7, owner_user_id: null, provider_code: 'galaris', title: 'Test document',
   node_kind: 'document', content_type: 'text', media_type: 'text/markdown', filename: null, keywords: [], metadata: { folder: 'Reports' },
   visibility: 'private', global_access: 0, read_only: false, deletion_protected: false, source_managed: false, managed_source_kind: null, managed_source_ref: null,

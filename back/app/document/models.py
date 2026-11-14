@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, cast
+from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import (
@@ -25,14 +25,11 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship, column_property, synonym
-from sqlalchemy.ext.hybrid import hybrid_property
-from sqlalchemy.sql.elements import ColumnElement
 
 from core.database import Base, HistoryMixin
 from app.share import Shareable, ShareReference, ShareGrant
 from core.util import ContentProfile
 
-from .document_types import DocumentType
 
 
 class DocumentSharingIntent(Base):
@@ -188,10 +185,11 @@ class Document(Shareable, HistoryMixin, Base):
     creation_key: Mapped[str | None] = mapped_column(String(255), unique=True)
     creation_fingerprint: Mapped[str | None] = mapped_column(String(64))
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1, server_default="1")
-    stored_document_type: Mapped[str] = mapped_column("document_type", String(30), nullable=False, default="text", server_default="text")
+    document_format: Mapped[str] = mapped_column(String(80), nullable=False, default="text", server_default="text")
     content_type: Mapped[str] = mapped_column(String(50), nullable=False, default="text", server_default="text")
     media_type: Mapped[str] = mapped_column(String(255), nullable=False, default="text/html", server_default="text/html")
     content_profile_version: Mapped[int | None] = mapped_column(Integer)
+    format_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     filename: Mapped[str | None] = mapped_column(String(500))
     # UUID of a disposable WebP file in the document thumbnail cache.
     thumbnail_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
@@ -240,20 +238,7 @@ class Document(Shareable, HistoryMixin, Base):
     def content_profile(self) -> ContentProfile:
         return "rich-text" if self.deletion_protected else "document"
 
-    @hybrid_property
-    def document_type(self) -> DocumentType:
-        return cast(DocumentType, "text" if self.stored_document_type in {"html", "form"} else self.stored_document_type)
-
-    @document_type.inplace.setter
-    def _document_type_set(self, value: str) -> None:
-        self.stored_document_type = "text" if value in {"html", "form"} else value
-
-    @document_type.inplace.expression
-    @classmethod
-    def _document_type_expression(cls) -> ColumnElement[DocumentType]:
-        return cast(ColumnElement[DocumentType], case((cls.stored_document_type.in_(("html", "form")), "text"), else_=cls.stored_document_type))
-
-    type_discriminator: Mapped[str] = column_property(case((stored_document_type == "data", "data"), else_="text"))
+    type_discriminator: Mapped[str] = column_property(case((document_format == "data", "data"), else_="text"))
 
     __mapper_args__ = {
         "version_id_col": lock_version,
@@ -265,11 +250,11 @@ class Document(Shareable, HistoryMixin, Base):
         *ShareReference.share_constraints("documents", "document"),
         Index("ix_documents_search_vector_gin", "search_vector", postgresql_using="gin"),
         Index("ix_documents_native_content", "resource_id", postgresql_where=sql_text("provider_code = 'native' AND content IS NOT NULL")),
-        CheckConstraint("document_type IN ('text', 'data', 'html', 'dataset', 'process', 'form')", name="ck_documents_type"),
+        CheckConstraint("length(document_format) BETWEEN 1 AND 80", name="ck_documents_format"),
         # Legacy shared memories may contain non-editorial text or binary bytes.
         # Preserve their format and retired form archives; APIs enforce current types.
         CheckConstraint("content_type IN ('text', 'binary')", name="ck_documents_text"),
-        CheckConstraint("(document_type = 'dataset' AND content_type = 'text' AND media_type = 'application/json' AND content_profile_version IS NULL) OR (document_type = 'process' AND content_type = 'text' AND media_type = 'application/bpmn+xml' AND content_profile_version IS NULL) OR document_type IN ('text', 'html', 'form') OR (document_type='data' AND content_type='text' AND media_type='application/json' AND content_profile_version IS NULL)", name="ck_documents_content_type"),
+        CheckConstraint("(document_format IN ('data', 'dataset') AND content_type='text' AND media_type='application/json' AND content_profile_version IS NULL) OR (document_format='process' AND content_type='text' AND media_type='application/bpmn+xml' AND content_profile_version IS NULL) OR document_format NOT IN ('data','dataset','process')", name="ck_documents_content_type"),
         CheckConstraint("storage_kind IN ('text','file') AND ((storage_kind='text' AND file_id IS NULL) OR (storage_kind='file' AND file_id IS NOT NULL AND content IS NULL))", name="ck_documents_storage"),
         CheckConstraint("visibility IN ('private', 'shared')", name="ck_documents_visibility"),
     )
@@ -322,6 +307,7 @@ class DocumentRevision(Base):
     content_type: Mapped[str] = mapped_column(String(50), nullable=False)
     media_type: Mapped[str] = mapped_column(String(255), nullable=False)
     content_profile_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    format_version: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     filename: Mapped[str | None] = mapped_column(String(500), nullable=True)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     metadata_: Mapped[dict[str, Any]] = mapped_column(

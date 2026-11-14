@@ -37,10 +37,10 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 | Plan | Statut | Portée |
 |---|---|---|
 | [connexions-personnelles-et-partagees.md](connexions-personnelles-et-partagees.md) | `design` | Propriété humaine ou agentique, partage commun identique aux Documents, permissions par couple connexion/agent et migration DbAdmin conservant comptes, OAuth, droits et identités ; reprise et consommateurs à qualifier avant réalisation. |
-| [cartes-mentales-documentaires.md](cartes-mentales-documentaires.md) | `design` | Éditeur natif Galaris à placement automatique, contenus documentaires complets, thèmes Solaire, aperçus et insertion avec barre contextuelle. Référence Planner à préciser ; contrats, prototype et qualifications restent à réaliser. |
+| [cartes-mentales-documentaires.md](cartes-mentales-documentaires.md) | `design` | Socle des formats disponible ; éditeur natif à placement automatique, contenus complets, thèmes et qualifications restent à réaliser. Référence Planner à préciser. |
 | [migration-progressive-rust.md](migration-progressive-rust.md) | `design` | Prototypes de runtimes, protocole d'hôte et qualification sans régression ; Pydantic AI conservé comme référence. Aucun driver Rust intégré ni gain démontré. |
 | [supervision-execution-llm.md](supervision-execution-llm.md) | `design` | Pilote petit/gros exécuteur, vérification métier indépendante, attente fournisseur, parcours persistant, puis supervision et escalade expérimentales. |
-| [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `design` | Bundle, SDK/TCK, activation par génération et store signé ; intégrations externes et conservation des ressources après retrait. |
+| [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `design` | Ports des formats et TCK disponibles ; bundle, installation, activation par génération, certification et store signé restent à réaliser. |
 | [controle-distant-vnc.md](controle-distant-vnc.md) | `design` | Connexion VNC, captures MCP, simulation clavier/souris, sessions isolées et reprise humaine ; client RFB et compatibilité OS/serveurs à qualifier. |
 | [consolidation-parametrique-lora.md](consolidation-parametrique-lora.md) | `design` | Gain à mesurer, corpus gouverné, trainer/serving à qualifier, invalidation et promotion dépendant des gardes du Lab. |
 | [cible.md](cible.md) | `design` | Distribution publique, gouvernance d'effets, releases d'agents, autonomie événementielle, collaboration, interopérabilité, flotte et écosystème. |

@@ -18,7 +18,7 @@ async def test_forced_summary_replaces_manual_summary_even_for_short_documents(d
     owner, reader = agents
     content = '<p>Synthetic short source.</p>' if kind == 'text' else '{"synthetic": true}'
     item = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic source",
-        content=content, task_id=None, document_type=kind)
+        content=content, task_id=None, document_format=kind)
     await service.set_item_grant(item.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
     manual = await summaries.edit_summary(item.id, DocumentUpdate(payload=DocumentPayload(text="<p>Manual summary.</p>"),
         keywords=["preserved"], expected_lock_version=item.lock_version), actor=owner.id)

@@ -29,7 +29,7 @@ test('topic/tag moves persist while preserving the editor, other tags and manual
   expect(account.document_library_mode).toBe('folders')
   const personal = await checked(await request.post('/api/documents', { headers, data: {
     title: `Synthetic personal document ${fixture.agent_id}`, owner_kind: 'user', owner_id: account.id,
-    actor_agent_id: null, document_type: 'text',
+    actor_agent_id: null, document_format: 'text',
   } }))
   for (const [index, topic] of topics.entries()) await checked(await request.put(`/api/topics/resources/document/${items[index].id}`, {
     headers, data: { topic_id: topic.id, expected_topic_id: null, expected_lock_version: items[index].lock_version },

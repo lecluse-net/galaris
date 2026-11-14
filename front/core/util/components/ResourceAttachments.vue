@@ -107,7 +107,7 @@
   <FullscreenPreview
     v-model="previewOpen"
     :immersive="previewIsImmersive"
-    :interactive="previewKind === 'html' || previewKind === 'model3d' || previewKind === 'markdown' || previewKind === 'text'"
+    :interactive="Boolean(extensionViewer) || previewKind === 'html' || previewKind === 'model3d' || previewKind === 'markdown' || previewKind === 'text'"
     :spatial="previewKind === 'model3d'"
     :viewer-label="previewAttachment
       ? t('documents.openAttachment', { name: previewAttachment.name })
@@ -130,8 +130,9 @@
       </q-btn>
     </template>
     <div v-if="previewLoading" class="q-pa-xl text-center"><q-spinner color="primary" size="48px" /><div>{{ t('documents.loadingAttachment') }}</div></div>
-    <template v-if="!previewLoading && previewAttachment && (previewKind === 'model3d' || objectUrls[previewAttachment.id])" #default="{ fit }">
-      <Model3dViewer v-if="previewKind === 'model3d'" :source="modelSource(previewAttachment)" />
+    <template v-if="!previewLoading && previewAttachment && (extensionViewer || previewKind === 'model3d' || objectUrls[previewAttachment.id])" #default="{ fit }">
+      <component :is="extensionViewer.component" v-if="extensionViewer" :source="viewerSource(previewAttachment)" :fit="fit" />
+      <Model3dViewer v-else-if="previewKind === 'model3d'" :source="modelSource(previewAttachment)" />
       <TextResourcePreview
         v-else-if="previewKind === 'markdown' || previewKind === 'text'"
         :content="textContents[previewAttachment.id]"
@@ -225,6 +226,7 @@ import {
 } from '@/core/util'
 import type { BrowserResourceKind, Model3dSource } from '@/core/util'
 import type { AttachmentSource, ResourceAttachment } from '../resourceAttachments'
+import { findResourceViewer, type ResourceViewerSource } from '../resourceViewers'
 import type { ContextAction } from '../contextActions'
 import RenameFileButton from './RenameFileButton.vue'
 import FileContextMenu from './FileContextMenu.vue'
@@ -296,7 +298,7 @@ const attachmentKind = (attachment: T): BrowserResourceKind | null => (
   browserResourceKind(attachment.media_type, attachment.name)
 )
 const canPreview = (attachment: T): boolean => (
-  attachmentKind(attachment) !== null && attachmentKind(attachment) !== 'audio'
+  Boolean(findResourceViewer(attachment.media_type, attachment.name)) || (attachmentKind(attachment) !== null && attachmentKind(attachment) !== 'audio')
 )
 const canThumbnail = (attachment: T): boolean => {
   if (attachmentKind(attachment) === 'model3d') return false
@@ -313,9 +315,12 @@ const canThumbnail = (attachment: T): boolean => {
     || /\.(doc|docx|odt|rtf|odg|odp|ppt|pptx|xls|xlsx|ods)$/.test(name)
 }
 const previewKind = computed(() => previewAttachment.value ? attachmentKind(previewAttachment.value) : null)
+const extensionViewer = computed(() => previewAttachment.value ? findResourceViewer(previewAttachment.value.media_type, previewAttachment.value.name) : undefined)
 const previewIsImmersive = computed(() => previewKind.value !== null && previewKind.value !== 'audio')
 
 function attachmentIcon(attachment: T): string {
+  const extension = findResourceViewer(attachment.media_type, attachment.name)
+  if (extension) return extension.icon
   switch (attachmentKind(attachment)) {
     case 'image': return 'image'
     case 'video': return 'movie'
@@ -325,6 +330,12 @@ function attachmentIcon(attachment: T): string {
     case 'model3d': return 'view_in_ar'
     default: return 'draft'
   }
+}
+
+function viewerSource(attachment: T): ResourceViewerSource {
+  const source = resourceSource
+  return { key: `${resourceId}:${agentId}:${attachment.id}`, uri: attachment.uri, name: attachment.name,
+    mediaType: attachment.media_type, size: attachment.size_bytes, load: signal => source.content(attachment, true, signal) }
 }
 
 function modelSource(attachment: T): Model3dSource {
@@ -495,9 +506,10 @@ async function openPreview(attachment: T): Promise<void> {
   audioOpen.value = false
   const request = ++previewGeneration
   previewAttachment.value = attachment
-  previewLoading.value = attachmentKind(attachment) !== 'model3d'
+  const custom = findResourceViewer(attachment.media_type, attachment.name)
+  previewLoading.value = !custom && attachmentKind(attachment) !== 'model3d'
   previewOpen.value = true
-  const loaded = attachmentKind(attachment) === 'model3d' || await loadPreviewContent(attachment)
+  const loaded = custom || attachmentKind(attachment) === 'model3d' || await loadPreviewContent(attachment)
   if (request !== previewGeneration) return
   previewLoading.value = false
   if (!loaded) { previewOpen.value = false; $q.notify({ type: 'negative', message: t('documents.attachmentError') }) }

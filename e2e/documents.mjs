@@ -5,7 +5,7 @@ export async function createDocument(request, { headers, data }) {
   const agent = data.owner_agent_id
   const created = await request.post('/api/documents', { headers, data: {
     owner_kind: 'agent', owner_id: agent, actor_agent_id: agent, title: data.title,
-    document_type: data.document_type ?? 'html', folder: data.folder ?? '',
+    document_format: data.document_format ?? 'html', folder: data.folder ?? '',
   } })
   if (!created.ok() || !data.payload) return created
   const document = await created.json()

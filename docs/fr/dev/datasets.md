@@ -5,7 +5,7 @@
 `app.document` possède l'identité, le contenu courant, les métadonnées, le partage,
 le classement et les révisions de tous les documents. `app.document.text` fournit
 le comportement HTML ; `app.document.data` fournit le comportement JSON. Le registre
-`app.document.type_registry` décrit les types disponibles et leur validation.
+`app.document.formats` décrit les formats disponibles et leur validation.
 La façade JSON publique est `app.document.data.facade`. Les anciens imports
 `app.dataset` et `app.dataset.facade` délèguent à cette implémentation ; ils ne
 possèdent plus une seconde copie du contenu.
@@ -36,7 +36,7 @@ est commune. La contribution Texte utilise l'éditeur HTML ; Données utilise
 `CodeEditor` JSON, y compris pour l'aperçu historique. L'autosauvegarde conserve un
 brouillon invalide et bloque le départ tant qu'il n'est pas enregistré ou abandonné.
 
-`POST /documents` accepte `document_type="text"` ou `"data"`. Les routes `/datasets`
+`POST /documents` accepte `document_format="text"` ou `"data"`. Les routes `/datasets`
 et les URI `data://` restent compatibles et accèdent aux mêmes enregistrements.
 Les anciens liens `/dataset/:id` ouvrent le document dans `/documents`.
 Un lien entre documents ne transmet aucun droit. Les applications HTML gardent

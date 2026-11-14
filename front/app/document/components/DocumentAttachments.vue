@@ -54,7 +54,7 @@ const source = computed<AttachmentSource<DocumentAttachment>>(() => {
   const id = props.documentId, agent = props.agentId
   return {
     ...props.resourceSource ?? {
-      content: (attachment, _preview, signal) => documentService.documentAttachmentBlob(id, attachment.id, agent, signal),
+      content: (attachment, preview, signal) => documentService.documentAttachmentBlob(id, attachment.id, agent, signal, preview),
       thumbnail: (attachment, signal) => documentService.documentAttachmentThumbnailBlob(id, attachment.id, agent, signal),
     },
     add: (file, signal, progress) => documentService.addDocumentAttachment(id, agent, file, signal, progress),

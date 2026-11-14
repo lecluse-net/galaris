@@ -37,7 +37,7 @@
           <span class="memory-section-title">{{ t('memory.keywords') }}</span>
           <q-chip v-for="keyword in detail.keywords" :key="keyword" dense size="sm">{{ keyword }}</q-chip>
         </div>
-        <CodeEditor v-if="detail.document_type === 'dataset' && detail.payload.text != null" :model-value="detail.payload.text" language="json" readonly :label="t('memory.content')" />
+        <CodeEditor v-if="detail.document_format === 'dataset' && detail.payload.text != null" :model-value="detail.payload.text" language="json" readonly :label="t('memory.content')" />
         <EditorialContent v-else-if="detail.payload.text != null" class="memory-history-content"
           :content="detail.payload.text" :media-type="detail.media_type" />
         <q-banner v-else dense>{{ t('memory.binaryContent') }}</q-banner>

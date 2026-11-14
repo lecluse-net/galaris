@@ -87,13 +87,13 @@ and the [Data contract](datasets.md).
 Create directly with
 `file_create(path="data://", name="Scenarios", content='{"scenarios": []}')`.
 The `content` argument must contain complete JSON; omitted or empty content is rejected before
-creation. The old `document_type="dataset"` option at `document://` remains an adapter and
+creation. The old `document_format="dataset"` option at `document://` remains an adapter and
 creates a Data document and also returns `data://`.
 Dataset `file_read` offsets count characters; `file_edit` ranges count lines. The complete
 result must remain valid JSON. `file_write`, `file_edit` and `file_append` require the observed
 revision. Prefer replacement or line editing to JSON concatenation. Copying an
 `application/json` source to `data://` creates a new private Dataset.
-PDF/HTML exports remain specific to HTML documents. Other document types remain out of scope.
+PDF/HTML exports remain specific to HTML documents. Other document formats remain out of scope.
 [Interactive HTML](document-apps.md) now allows forms and declared Dataset access inside
 an isolated document runtime; history and exports remain inert.
 

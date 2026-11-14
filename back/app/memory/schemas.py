@@ -10,7 +10,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
-from app.document.interface import DocumentType
+from app.document.interface import DocumentFormat
 
 
 MemoryNodeKind = Literal["memory", "document", "attachment", "folder", "file", "directory"]
@@ -100,7 +100,7 @@ class MemoryItemCreate(BaseModel):
     title: str = Field(default="", max_length=500)
     payload: MemoryPayload
     node_kind: Literal["memory"] = "memory"
-    document_type: Literal["html"] = "html"
+    document_format: Literal["text"] = "text"
     content_type: str = Field(default="text", max_length=50)
     media_type: str = Field(default="text/markdown", max_length=255)
     filename: str | None = Field(default=None, max_length=500)
@@ -145,7 +145,7 @@ class MemoryItemPublic(BaseModel):
     document_revision: int | None = None
     summary_outdated: bool = False
     temporal: MemoryTemporalAnchor | None = None
-    document_type: DocumentType = "html"
+    document_format: DocumentFormat = "text"
     semantic_fingerprint: str | None = Field(default=None, exclude=True)
     content_profile: Literal["rich-text", "document"] = "rich-text"
     content_profile_version: int | None = None

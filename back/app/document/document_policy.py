@@ -11,7 +11,7 @@ from .models import Document
 
 
 def orphan_process_clause() -> ColumnElement[bool]:
-    process = Document.document_type == "process"
+    process = Document.document_format == "process"
     owned = or_(
         exists(select(Agent.id).where(Agent.id == Document.owner_agent_id, Agent.deleted_at.is_(None)).correlate(Document)),
         exists(select(UserModel.id).where(UserModel.id == Document.owner_user_id, UserModel.is_active.is_(True)).correlate(Document)),

@@ -94,7 +94,7 @@ for (const mode of ['read', 'edit']) for (const width of [1440, 390]) test(`docu
   const html = `<blockquote class="galaris-link-card"><p><a href="document://${id}"><strong>${title}</strong></a></p>${mode === 'edit' ? `<p>${id}</p>` : ''}</blockquote>`
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])
   await page.setViewportSize({ width, height: 900 })
-  await jsonRoute(page, `**/api/documents/${id}`, { item: { ...documentFixture, id, title, media_type: 'text/html', document_type: 'html', payload: { text: '<h1>Illustrated source</h1>' } }, agent_id: null })
+  await jsonRoute(page, `**/api/documents/${id}`, { item: { ...documentFixture, id, title, media_type: 'text/html', document_format: 'text', payload: { text: '<h1>Illustrated source</h1>' } }, agent_id: null })
   await page.route(`**/api/documents/${id}/thumbnail*`, route => route.fulfill({ contentType: 'image/webp', body: Buffer.from('UklGRh4AAABXRUJQVlA4TBEAAAAvAAAAAAfQ//73v/+BiOh/AAA=', 'base64') }))
   await mount(page, `core/util/components/${mode === 'edit' ? 'RichTextEditor' : 'RichText'}.vue`, { privileges: ['DOCUMENT_ACCESS'], props: { profile: 'document', ...(mode === 'edit' ? { modelValue: html } : { content: html }) } })
   const card = page.locator('.galaris-link-card')

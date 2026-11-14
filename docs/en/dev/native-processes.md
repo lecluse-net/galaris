@@ -69,7 +69,7 @@ updates a business variable, including a registry variable with that name.
 Process and step selections are frozen in the launch snapshot.
 
 A `Document` declaration accepts `document://<uuid>` or `data://<uuid>` and may specify
-`document_type: "text" | "data"`. A `File` declaration may specify an exact `mime_type`
+its code in `document_format` (`text`, `data` or another installed format). A `File` declaration may specify an exact `mime_type`
 or a family (`image/*`). Constraints apply only to their corresponding types.
 Syntax and defaults are validated when saving. At launch and before updates, Process checks
 metadata through File Sharing with the executing identity, without downloading content.

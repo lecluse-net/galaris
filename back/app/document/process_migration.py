@@ -16,7 +16,7 @@ from core.storage import get_storage
 async def legacy_process_snapshot(identity: UUID) -> dict[str, Any]:
     item = await get_db().scalar(select(Document).where(Document.id == identity).with_for_update()
         .execution_options(include_historized=True, populate_existing=True))
-    if item is None or item.document_type != "process" or item.provider_code != "native":
+    if item is None or item.document_format != "process" or item.provider_code != "native":
         raise ValueError("Process transfer requires a native BPMN source")
     revisions: list[dict[str, Any]] = []
     rows = await get_db().scalars(select(DocumentRevision)
@@ -41,7 +41,7 @@ async def legacy_process_snapshot(identity: UUID) -> dict[str, Any]:
 async def retire_legacy_process_document(identity: UUID) -> None:
     """Archive the source in the caller's transfer transaction, without destroying it."""
     document=await get_db().scalar(select(Document).where(Document.id==identity).execution_options(include_historized=True))
-    if document is None or document.document_type!="process":
+    if document is None or document.document_format!="process":
         raise ValueError("BPMN transfer source missing")
     if document.deleted_at is None:
         document.soft_delete()

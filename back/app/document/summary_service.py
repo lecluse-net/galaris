@@ -49,8 +49,8 @@ async def regenerate_summary(identity: UUID, *, expected_lock_version: int, acto
     await service.assert_item_access(item, actor, write=True)
     if item.lock_version != expected_lock_version:
         raise service.DocumentConflictError("Document or synthesis changed; reload and retry")
-    if item.document_type not in {"text", "html", "data"} or item.content_type != "text":
-        raise ValueError("This document does not support summary generation")
+    from .formats import document_format_definition
+    document_format_definition(item.document_format)
     title, owner = item.title, item.owner_agent_id
     baseline = await normalized_content(item)
     if not baseline.strip():

@@ -270,13 +270,13 @@ test('a visually edited native process runs its saved Task and retains its own g
   for (const kind of ['process', 'dataset']) {
     const invalidDocument = await request.post('/api/documents', { headers, data: {
       title: 'Synthetic invalid resource', owner_kind: 'agent', owner_id: fixture.agent_id,
-      actor_agent_id: fixture.agent_id, document_type: kind,
+      actor_agent_id: fixture.agent_id, document_format: kind,
     } })
     expect(invalidDocument.status()).toBe(422)
   }
   const invalidMemory = await request.post('/api/memory/items', { headers: { ...headers, 'X-Editorial-Profile-Version': '1' }, data: {
     owner_agent_id: fixture.agent_id, title: 'Synthetic invalid JSON document', node_kind: 'document',
-    document_type: 'dataset', media_type: 'application/json', payload: { text: '{}' },
+    document_format: 'dataset', media_type: 'application/json', payload: { text: '{}' },
   } })
   expect(invalidMemory.status()).toBe(422)
   const documents = await request.post('/api/documents/library', { headers, data: { query: definition.title, limit: 50 } })

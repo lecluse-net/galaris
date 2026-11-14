@@ -22,6 +22,7 @@ from core.document import OFFICE_EXTENSIONS, prepare_document
 from core.preview import render_html_pdf, thumbnails
 from core.preview import render_model_thumbnail, supports_model
 from core.preview import render_svg_thumbnail
+from core.preview import PreviewFile, prepare_preview
 from core.params import runtime_settings
 from core.util import source_code_media_type
 
@@ -58,7 +59,7 @@ async def read_document_thumbnail(
     await service.assert_item_access(item, actor_agent_id)
     if item.node_kind != "document":
         raise service.DocumentNotFoundError("Document not found.")
-    if item.document_type == "dataset":
+    if item.document_format == "dataset":
         return None
     if (snapshot.revision, snapshot.lock_version) != (item.revision, item.lock_version):
         raise service.DocumentConflictError("The document changed while preparing its thumbnail.")
@@ -179,6 +180,11 @@ def _pdf_thumbnail(path: Path) -> bytes | None:
 
 async def render_file_thumbnail(path: Path, name: str, media_type: str) -> bytes | None:
     """Reuse bounded attachment renderers for an authorized catalogue source."""
+    async with prepare_preview(PreviewFile(path, name, media_type)) as prepared:
+        return await _render_file_thumbnail(prepared.path, prepared.name, prepared.media_type)
+
+
+async def _render_file_thumbnail(path: Path, name: str, media_type: str) -> bytes | None:
     async with _document_capture_slots:
         media_type = media_type.split(";", 1)[0].strip().casefold()
         if source_code_media_type(name, media_type):

@@ -29,7 +29,7 @@ async def old_schema(session):
     identity,folder_node,private_id=uuid4(),uuid4(),uuid4()
     content,summary="<p>Preserved source body.</p>","<p>Preserved shared abstract.</p>"
     body_pointer,summary_pointer=str(uuid4()),str(uuid4())
-    document=Document(id=identity,owner_agent_id=owner.id,title="Synthetic durable document",stored_document_type="html",provider_code="native",resource_id=body_pointer,content=content,revision=2,content_hash=digest(content),size_bytes=len(content),keywords=["retained"],metadata_={"synthetic":True},content_type="text",media_type="text/html",content_profile_version=1)
+    document=Document(id=identity,owner_agent_id=owner.id,title="Synthetic durable document",document_format="html",provider_code="native",resource_id=body_pointer,content=content,revision=2,content_hash=digest(content),size_bytes=len(content),keywords=["retained"],metadata_={"synthetic":True},content_type="text",media_type="text/html",content_profile_version=1)
     folder=DocumentTag(user_id=manager.id,name="Synthetic retained folder",position=1)
     session.add_all([document,folder]);await session.flush()
     node=MemoryItem(id=identity,node_kind="document",owner_agent_id=owner.id,memory_provider_code="native",memory_resource_id=summary_pointer,memory_content=summary,memory_content_hash=digest(summary),memory_size_bytes=len(summary),memory_revision=3,memory_content_type="text",memory_media_type="text/html",memory_content_profile_version=1,search_title=document.title,search_text="Preserved source body. Preserved shared abstract.",keywords=["retained"],metadata_={"synthetic":True},summary_document_revision=2)
@@ -105,7 +105,7 @@ async def old_schema(session):
         if column.name not in legacy_columns:
             await session.execute(text(f'ALTER TABLE document_revisions DROP COLUMN "{column.name}" CASCADE'))
     await session.execute(text("ALTER TABLE document_revisions ADD CONSTRAINT synthetic_legacy_revision_resource FOREIGN KEY(id) REFERENCES memory_revisions(id) ON DELETE CASCADE"))
-    moved=("owner_agent_id","owner_user_id","lock_version","keywords","metadata","deletion_protected","valid_from","valid_until","temporal","last_accessed_at","access_count","search_text","summary_provider_code","summary_resource_id","summary_content","summary_content_hash","summary_size_bytes")
+    moved=("format_version","owner_agent_id","owner_user_id","lock_version","keywords","metadata","deletion_protected","valid_from","valid_until","temporal","last_accessed_at","access_count","search_text","summary_provider_code","summary_resource_id","summary_content","summary_content_hash","summary_size_bytes")
     # The generated search column depends on the fields that used to live in Memory.
     await session.execute(text("ALTER TABLE documents DROP COLUMN search_vector"))
     for column in moved:
@@ -173,6 +173,8 @@ async def test_real_upgrade_preserves_current_summary_content_history_policies_a
             document=await session.get(Document,expected["id"])
             assert document is not None
             assert (document.content,document.resource_id,document.revision)==(expected["content"],expected["body_pointer"],2)
+            assert document.format_version == 1
+            assert set(await session.scalars(select(DocumentRevision.format_version).where(DocumentRevision.document_id == document.id))) == {1}
             assert (document.owner_agent_id,document.keywords,document.metadata_)==(expected["owner"],["retained"],{"synthetic":True})
             assert (document.summary_content,document.summary_resource_id)==(expected["summary"],expected["summary_pointer"])
             assert document.share_id==expected["document_policy"]

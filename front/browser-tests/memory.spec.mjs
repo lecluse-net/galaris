@@ -95,7 +95,7 @@ for (const width of [1440, 390]) for (const nodeKind of ['document', 'file']) {
   test(`Dream thumbnail regeneration updates an existing ${nodeKind} preview at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 })
     const { item } = await memoryItemFixtures(page)
-    Object.assign(item, { node_kind: nodeKind, document_type: 'html', media_type: 'text/html',
+    Object.assign(item, { node_kind: nodeKind, document_format: 'text', media_type: 'text/html',
       access: { can_read: true, can_write: true } })
     const images = await page.evaluate(() => [80, 120, 160].map(width => {
       const canvas = document.createElement('canvas')

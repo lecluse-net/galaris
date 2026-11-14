@@ -175,7 +175,7 @@ async def reconcile_sharing() -> int:
     # Scalar projections deliberately avoid loading document payloads or histories.
     documents = select(Document.id, Document.share_id, Document.owner_user_id,
         Document.owner_agent_id, literal("document"), Document.read_only, literal(False),
-        Document.document_type, Document.visibility)
+        Document.document_format, Document.visibility)
     folders_query = select(DocumentTag.id, DocumentTag.share_id, DocumentTag.user_id,
         literal(None), literal("folder"), literal(False), literal(False), literal("html"), literal("private"))
     rows = (await db.execute(union_all(documents, folders_query))).all()

@@ -64,7 +64,7 @@ async def test_obsolete_process_markers_do_not_override_dataset_deletion_rights(
     legacy = surface != "native"
     if legacy:
         source = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic former run data",
-            content=content, task_id=None, document_type="dataset", metadata=markers, workflow_metadata=True)
+            content=content, task_id=None, document_format="dataset", metadata=markers, workflow_metadata=True)
         uri = f"document://{source.id}"
         await resource_info(ResourceContext(agent_id=owner.id, runtime="internal"), uri)
         dataset = await service.record(source.id, owner.id)
@@ -121,7 +121,7 @@ async def test_obsolete_process_markers_do_not_override_dataset_deletion_rights(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("path,options", [("data://", {}), ("document://", {"document_type": "dataset"}), ("document://", {"document_type": "data"})])
+@pytest.mark.parametrize("path,options", [("data://", {}), ("document://", {"document_format": "dataset"}), ("document://", {"document_format": "data"})])
 @pytest.mark.parametrize("empty", [None, "   "])
 async def test_missing_dataset_content_is_rejected_then_corrected_without_extra_resources(db, agents, path, options, empty):
     from sqlalchemy import func
@@ -175,7 +175,7 @@ async def test_dataset_uri_lifecycle_preserves_exact_json_revisions_and_denies_o
 async def test_explicit_legacy_alias_preserves_identity_content_and_uses_one_authority(db, agents, memory_storage):
     owner, _ = agents
     legacy = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic legacy Dataset",
-        content='{"kept":false}', task_id=None, document_type="dataset")
+        content='{"kept":false}', task_id=None, document_format="dataset")
     ordinary = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic prose", content="<p>Prose</p>", task_id=None)
     ctx = ResourceContext(agent_id=owner.id, runtime="internal")
     info = await resource_info(ctx, f"document://{legacy.id}")
@@ -212,7 +212,7 @@ async def test_legacy_public_sharing_and_revocation_apply_to_the_canonical_uri(d
     from app.document.schemas import DocumentGlobalAccessUpdate
     owner, other = agents
     legacy = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic public data",
-        content='{"synthetic":true}', task_id=None, document_type="dataset")
+        content='{"synthetic":true}', task_id=None, document_format="dataset")
     await memory.set_document_global_access(legacy.id, DocumentGlobalAccessUpdate(expected_revision=1, global_access=1), actor_agent_id=owner.id)
     assert (await service.record(legacy.id, other.id)).global_access == 1
     await memory.set_document_global_access(legacy.id, DocumentGlobalAccessUpdate(expected_revision=1, global_access=0), actor_agent_id=owner.id)
@@ -252,7 +252,7 @@ async def test_cancelled_dataset_deletion_preserves_document_and_canonical_histo
 
     owner, _other = agents
     legacy = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic rollback data",
-        content='{"synthetic":"preserved"}', task_id=None, document_type="dataset")
+        content='{"synthetic":"preserved"}', task_id=None, document_format="dataset")
     dataset = await service.record(legacy.id, owner.id)
     identity, version = dataset.id, dataset.lock_version
     await db.commit()

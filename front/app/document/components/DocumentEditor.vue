@@ -17,7 +17,7 @@
         <q-toolbar-title>
           <Teleport :to="headingTarget ?? 'body'" :disabled="!headingInDialog">
             <div class="document-editor-heading" :class="{ 'document-editor-heading--dialog': headingInDialog }">
-              <DocumentIcon class="document-editor-heading-icon" :document-id="currentDocument.id" :document-type="currentDocument.document_type" :title="editorTitle || currentDocument.title" :size="headingInDialog ? '32px' : '64px'" plain />
+              <DocumentIcon class="document-editor-heading-icon" :document-id="currentDocument.id" :document-format="currentDocument.document_format" :title="editorTitle || currentDocument.title" :size="headingInDialog ? '32px' : '64px'" plain />
               <q-input
                 ref="titleInput"
                 v-model="editorTitle"
@@ -105,6 +105,8 @@
           </div>
         </q-toolbar-title>
         <div class="document-editor-live-status column items-center no-wrap q-gutter-y-xs">
+          <q-btn v-if="currentDocument.document_format !== 'text'" flat round dense icon="picture_as_pdf" :loading="formatExportBusy" :aria-label="t('documents.exportFormatPdf')" @click="exportFormatPdf"><q-tooltip>{{ t('documents.exportFormatPdf') }}</q-tooltip></q-btn>
+          <q-btn flat round dense icon="download" :loading="formatExportBusy" :aria-label="t('documents.downloadSource')" @click="downloadFormatSource"><q-tooltip>{{ t('documents.downloadSource') }}</q-tooltip></q-btn>
           <div class="row items-center" :class="realtimeStatusClass" role="status" tabindex="0"
             :aria-label="t(realtimeConnected ? 'documents.realtimeActive' : 'documents.realtimeConnecting')">
             <q-icon :name="realtimeConnected ? 'wifi' : 'wifi_off'" size="16px" />
@@ -165,11 +167,8 @@
           </q-select>
         </div>
         <div class="col-12 document-editor-content">
-          <q-banner v-if="currentDocument.content_type !== 'text'" dense>{{ t('document.binaryContent') }}</q-banner>
-          <q-input v-else-if="!['text', 'html', 'data'].includes(currentDocument.document_type)"
-            :model-value="editorContent" type="textarea" outlined readonly autogrow :label="t('documents.content')" />
-          <component :is="documentType(currentDocument.document_type).editor"
-            v-else-if="currentDocument.content_type === 'text'"
+          <component :is="documentFormat(currentDocument.document_format, currentDocument.format_version).editor"
+            :source="currentDocument.content_type === 'binary' ? formatContentSource : undefined"
             ref="richEditor"
             :key="documentId + ':' + agentId"
             v-model="editorContent"
@@ -203,7 +202,7 @@
         <div class="col-12 document-editor-attachments">
           <DocumentAttachments
             @insert="insertAttachment"
-            :allow-insertion="currentDocument.document_type !== 'data'"
+            :allow-insertion="currentDocument.document_format === 'text'"
             ref="attachmentPanel"
             :content="editorContent"
             :content-media-type="currentDocument.media_type"
@@ -269,12 +268,12 @@ import { useI18n } from 'vue-i18n'
 import { copyToClipboard, useQuasar, type QInput } from 'quasar'
 import type { DocumentRowAction } from '@/app/document/libraryShortcuts'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import { RichTextEditor, richLinkHref, documentResourceHtml, documentResourceHref, useDocumentFocus, type DocumentFocus } from '@/core/util'
+import { richLinkHref, documentResourceHtml, documentResourceHref, useDocumentFocus, saveBlobAsResource, type DocumentFocus } from '@/core/util'
 import { websocket } from '@/core/websocket'
 import { useAgentChoices } from '@/app/agent'
 import { OwnerSelect, type OwnerOption } from '@/app/share'
 import { ResourceTopicBadge, reassignResourceTopic } from '@/core/util'
-import { documentType } from '../documentTypes'
+import { documentFormat, findDocumentFormat, type DocumentContentSource, type DocumentFormatEditorHandle } from '../documentFormats'
 import { DatasetDocumentRedirect, documentService } from '../services/documentService'
 import { useDocumentMutations } from '@/app/document/stores/documentMutations'
 import { reconcileLibrarySnapshot } from '@/app/document/librarySnapshot'
@@ -409,9 +408,9 @@ const listedAttachments = computed(() => {
   return attachments.value.filter(attachment => !identifiers.has(attachment.id))
 })
 const route = useRoute(), router = useRouter()
-const richEditor = ref<InstanceType<typeof RichTextEditor>>()
+const richEditor = ref<DocumentFormatEditorHandle>()
 function insertAttachment(attachment: DocumentAttachment): void {
-  richEditor.value?.insertResource(documentResourceHtml({ uri: 'document://' + props.documentId + '/attachments/' + attachment.id, name: attachment.name, size: attachment.size_bytes, mediaType: attachment.media_type }))
+  richEditor.value?.insertResource?.(documentResourceHtml({ uri: 'document://' + props.documentId + '/attachments/' + attachment.id, name: attachment.name, size: attachment.size_bytes, mediaType: attachment.media_type }))
 }
 const attachmentPanel = ref<InstanceType<typeof DocumentAttachments>>()
 const internalPickerOpen = ref(false)
@@ -515,6 +514,7 @@ const canEditDocument = computed(() => Boolean(
   props.editable
   && isCurrentEditorSession()
   && currentDocument.value?.access.can_write
+  && findDocumentFormat(currentDocument.value.document_format, currentDocument.value.format_version)
   && !currentDocument.value.read_only
   && !currentDocument.value.source_managed
   && privilegeStore.hasPrivilege(privileges.DOCUMENT_EDIT),
@@ -811,6 +811,10 @@ async function closeDocumentSummary(): Promise<void> {
   } catch { refreshError.value = true }
 }
 async function flushEditor(): Promise<boolean> {
+  if (currentDocument.value?.content_type === 'binary' && richEditor.value?.flush && !await richEditor.value.flush()) return false
+  return flushMetadata()
+}
+async function flushMetadata(): Promise<boolean> {
   preserveDraft()
   if (summaryPanel.value && !await summaryPanel.value.flush()) return false
   return await flushAutosave()
@@ -835,8 +839,8 @@ async function loadDocument(): Promise<void> {
     initialDocument = null
     const document = seed?.id === props.documentId ? seed : await documentService.getDocument(props.documentId, requestAgentId.value)
     if (generation !== loadGeneration) return
-    if (document.document_type === 'dataset') throw new DatasetDocumentRedirect(`data://${document.id}`)
-    if (!['text', 'html', 'data'].includes(document.document_type)) throw new Error('This resource is not an HTML Document.')
+    if (document.document_format === 'dataset') throw new DatasetDocumentRedirect(`data://${document.id}`)
+    if (document.document_format === 'process') throw new Error('Process definitions belong to Process.')
     if (document.node_kind !== 'document') throw new Error('The resource is not a document.')
     applyDocument(document, 'loaded')
     // Ancillary catalogues must not keep the current document behind a loading screen.
@@ -1030,9 +1034,7 @@ async function persistAutosave(): Promise<void> {
     return
   }
 
-  if (document.document_type === 'data') {
-    try { JSON.parse(draft.content) } catch { autosaveState.value = 'invalid'; return }
-  }
+  if (!documentFormat(document.document_format, document.format_version).validateDraft(draft.content)) { autosaveState.value = 'invalid'; return }
   saveInFlight = true
   autosaveState.value = 'saving'
   let persisted = cloneDraft(base)
@@ -1340,6 +1342,7 @@ function captureFocus(): DocumentFocus | null {
   return documentFocus.capture(currentDocument.value.revision)
 }
 async function discardDraft(): Promise<void> {
+  await richEditor.value?.discardDraft?.()
   if (autosaveTimer) { clearTimeout(autosaveTimer); autosaveTimer = undefined }
   await waitForActiveSave()
   saveQueued = false
@@ -1364,6 +1367,50 @@ async function exportCurrentDocumentPdf(html: string, signal: AbortSignal): Prom
   if (!document) throw new Error('Document unavailable')
   return documentService.exportDocumentPdf(document.id, html, signal)
 }
+const formatExportBusy = ref(false)
+const formatContentSource = computed<DocumentContentSource | null>(() => {
+  const document = currentDocument.value, agent = requestAgentId.value
+  if (!document) return null
+  return {
+    key: `${document.id}:${document.revision}:${agent}`, revision: document.revision, readonly: !canEditDocument.value,
+    load: signal => documentService.source(document.id, agent, signal),
+    save: async (content, expectedRevision, signal) => {
+      if (!canEditDocument.value || currentDocument.value?.id !== document.id || requestAgentId.value !== agent || !isCurrentEditorSession()) throw new Error('Document changed')
+      if (!await flushMetadata()) throw new Error('Unsaved document metadata')
+      signal.throwIfAborted()
+      if (currentDocument.value?.id !== document.id || requestAgentId.value !== agent || !isCurrentEditorSession()) throw new Error('Document changed')
+      const bytes = new Uint8Array(await content.arrayBuffer())
+      let binary = ''
+      for (let offset = 0; offset < bytes.length; offset += 8192) binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192))
+      const updated = await documentService.updateBinaryDocument(document.id, agent, btoa(binary), expectedRevision, signal)
+      if (currentDocument.value?.id === document.id && requestAgentId.value === agent && isCurrentEditorSession()) await mergeLatestDocument(document.id)
+      return updated.revision
+    },
+  }
+})
+let formatExportRequest: AbortController | undefined
+async function runFormatExport(pdf: boolean): Promise<void> {
+  const document = currentDocument.value, agent = requestAgentId.value
+  if (!document || formatExportBusy.value) return
+  const request = new AbortController(); formatExportRequest = request
+  formatExportBusy.value = true
+  try {
+    const blob = pdf
+      ? await documentService.exportDocumentPdf(document.id, await documentFormat(document.document_format, document.format_version).snapshot(editorContent.value, editorTitle.value, request.signal, resolveInlineImage, undefined,
+        { key: `${document.id}:${document.revision}:${agent}`, revision: document.revision, readonly: true,
+          load: signal => documentService.source(document.id, agent, signal, document.revision),
+          save: async () => { throw new Error('Document snapshots are read-only') } }), request.signal)
+      : await documentService.source(document.id, agent, request.signal)
+    if (!request.signal.aborted && currentDocument.value?.id === document.id && requestAgentId.value === agent) {
+      saveBlobAsResource(blob, document.title.replace(/[\\/:*?"<>|]/g, '-') + (pdf ? '.pdf' : document.document_format === 'data' ? '.json' : document.document_format === 'text' ? '.html' : ''))
+    }
+  } catch { if (!request.signal.aborted) $q.notify({ type: 'negative', message: t('documents.formatExportFailed') }) }
+  finally { if (formatExportRequest === request) { formatExportBusy.value = false; formatExportRequest = undefined } }
+}
+function exportFormatPdf(): void { void runFormatExport(true) }
+function downloadFormatSource(): void { void runFormatExport(false) }
+watch(() => [props.documentId, currentDocument.value?.revision, requestAgentId.value, editorContent.value, editorTitle.value, sessionActive.value], () => { formatExportRequest?.abort(); formatExportRequest = undefined; formatExportBusy.value = false })
+onBeforeUnmount(() => formatExportRequest?.abort())
 async function uploadInlineImage(file: File, signal: AbortSignal, progress: (value: number) => void): Promise<string> {
   const document = currentDocument.value
   const agentId = requestAgentId.value

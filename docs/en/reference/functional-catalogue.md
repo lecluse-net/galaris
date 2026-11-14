@@ -2082,8 +2082,8 @@ depends on the configured vector model and Dream indexing, with incomplete cover
 Agents create one with `file_create(path="data://", name="Responses",
 content="[]")`, then read/edit through file operations using the expected revision.
 Reads count characters and edits address actual JSON lines, not HTML. Copying JSON to `data://`
-creates a Dataset; existing targets validate incoming content. The old `document_type="dataset"`
-option at `document://` remains an adapter returning `data://`. Only verified old Document aliases
+creates a Dataset; existing targets validate incoming content. Selecting `document_format="data"`
+at `document://` also returns `data://`. Only verified old Document aliases
 remain valid: replacing a URI's scheme does not create an alias.
 
 Agents may reuse a relevant Dataset for structured data shared across documents, calculations or

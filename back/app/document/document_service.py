@@ -5,6 +5,7 @@ from .models import Document
 from .document_cloning import DocumentCloneSource, PreparedDocumentClone
 
 import re
+import base64
 from typing import Literal
 from uuid import UUID
 
@@ -17,7 +18,7 @@ from core.util import normalize_html, read_html_page, replace_visible_text, html
 
 from . import resource_service as service
 from .models import DocumentRevision
-from .document_types import DocumentType, document_media_type
+from .content_validation import DocumentFormat, document_media_type
 from .schemas import (
     DocumentGrantUpdate,
     DocumentItemCreate,
@@ -34,6 +35,17 @@ _EDIT_MATCH_MAX_CHARS = 100_000
 _EDIT_CONTENT_MAX_CHARS = 500_000
 _QUERY_MAX_CHARS = 500
 _TOKEN_RE = re.compile(r"\w+", flags=re.UNICODE)
+
+
+def format_payload(code: str, content: str, binary_content: bytes | None = None) -> DocumentPayload:
+    from .formats import document_format_definition
+    definition = document_format_definition(code)
+    if definition.storage_kind == "file":
+        source = binary_content if binary_content is not None else definition.initial_binary
+        if source is None:
+            raise ValueError("Binary format content is required")
+        return DocumentPayload(base64=base64.b64encode(source).decode("ascii"))
+    return DocumentPayload(text=content)
 
 
 def _assert_document(item: Document) -> None:
@@ -160,13 +172,14 @@ async def create_document(
     keywords: list[str] | None = None,
     metadata: dict[str, object] | None = None,
     deletion_protected: bool = False,
-    document_type: DocumentType = "text",
+    document_format: DocumentFormat = "text",
     workflow_metadata: bool = False,
     clone_source: DocumentCloneSource | None = None,
     prepared_clone: PreparedDocumentClone | None = None,
+    binary_content: bytes | None = None,
 ) -> Document:
     """Create a private, mutable, non-deduplicated working document."""
-    if document_type in {"data", "dataset"}:
+    if document_format in {"data", "dataset"}:
         from .data.service import create
         values = dict(metadata or {})
         normalized_folder = _normalize_document_path(folder)
@@ -175,7 +188,7 @@ async def create_document(
         creation_key = values.pop("creation_command", None) if workflow_metadata else None
         created = await create(owner_agent_id, title=title, content=content or "[]", metadata=values,
             creation_key=str(creation_key) if creation_key else None, keywords=keywords)
-        if document_type == "dataset":
+        if document_format == "dataset":
             from .data.models import DatasetAlias
             get_db().add(DatasetAlias(legacy_document_id=created.id, dataset_id=created.id,
                 source_revision=created.revision, source_hash=created.content_hash, manifest={}))
@@ -183,8 +196,8 @@ async def create_document(
         loaded = await service.item_record(created.id)
         assert loaded is not None
         return loaded
-    if document_type not in {"text", "html"}:
-        raise ValueError("Unsupported document type")
+    from .formats import document_format_definition
+    document_format_definition(document_format)
 
     normalized_title = title.strip()
     if not normalized_title:
@@ -204,11 +217,10 @@ async def create_document(
         DocumentItemCreate(
             owner_agent_id=owner_agent_id,
             title=normalized_title,
-            payload=DocumentPayload(text=content),
+            payload=format_payload(document_format, content, binary_content),
             node_kind="document",
-            content_type="text",
-            document_type=document_type,
-            media_type=document_media_type(document_type),
+            document_format=document_format,
+            media_type=document_media_type(document_format),
             keywords=keywords or [],
             metadata={
                 **(metadata or {}),
@@ -238,12 +250,13 @@ async def create_user_document(
     title: str,
     content: str,
     folder: str = "",
-    document_type: DocumentType = "text",
+    document_format: DocumentFormat = "text",
     clone_source: DocumentCloneSource | None = None,
     prepared_clone: PreparedDocumentClone | None = None,
+    binary_content: bytes | None = None,
 ) -> Document:
     """Create a private User-owned document without an implicit Agent grant."""
-    if document_type == "data":
+    if document_format == "data":
         from core.user import HumanActor
         from .data.service import create
         normalized_folder = _normalize_document_path(folder)
@@ -262,11 +275,10 @@ async def create_user_document(
         DocumentItemCreate(
             owner_agent_id=editor_agent_id,
             title=normalized_title,
-            payload=DocumentPayload(text=content),
+            payload=format_payload(document_format, content, binary_content),
             node_kind="document",
-            content_type="text",
-            document_type=document_type,
-            media_type=document_media_type(document_type),
+            document_format=document_format,
+            media_type=document_media_type(document_format),
             keywords=[],
             metadata=(
                 {"document_path": normalized_folder}
@@ -310,7 +322,7 @@ async def read_document(
             start_block = next((index for index, block in enumerate(blocks) if query.casefold() in visible_text(block).casefold()), 0)
         return {
             "document_id": str(item.id), "title": item.title, "revision": item.revision,
-            "document_type": item.document_type,
+            "document_format": item.document_format,
             "can_write": access.can_write, "content_profile": item.content_profile,
             **read_html_page(content, offset=start_block, max_chars=max(1, min(max_chars, _READ_MAX_CHARS))),
         }
@@ -323,7 +335,7 @@ async def read_document(
         "title": item.title,
         "revision": item.revision,
         "content": content[start:end],
-        "document_type": item.document_type,
+        "document_format": item.document_format,
         "media_type": _media_type,
         "offset_unit": "character",
         "start": start,

@@ -2,9 +2,8 @@
 
 import json
 from collections.abc import Callable
-from typing import Literal, NoReturn
-
-DocumentType = Literal["text", "data", "html", "dataset", "process"]
+from typing import NoReturn
+from .formats import DocumentFormat as DocumentFormat, document_format_definition
 _validators: dict[str, Callable[[str], object]] = {}
 
 
@@ -13,20 +12,21 @@ def register_document_validator(kind: str, validator: Callable[[str], object]) -
 
 
 def validate_document_content(kind: str, content: bytes) -> None:
-    if kind in {"text", "html", "data"}:
-        from .type_registry import document_type_definition
-        document_type_definition(kind).validate(content.decode("utf-8"))
-    elif kind == "dataset":
+    if kind == "dataset":
         validate_dataset(content)
     elif kind == "process":
         validator = _validators.get(kind)
         if validator is None:
             raise ValueError(f"The {kind} document validator is unavailable")
         validator(content.decode("utf-8"))
+    else:
+        document_format_definition(kind).validate_content(content)
 
 
-def document_media_type(kind: DocumentType) -> str:
-    return {"text": "text/html", "data": "application/json", "html": "text/html", "dataset": "application/json", "process": "application/bpmn+xml"}[kind]
+def document_media_type(kind: DocumentFormat) -> str:
+    if kind in {"dataset", "process"}:
+        return "application/json" if kind == "dataset" else "application/bpmn+xml"
+    return document_format_definition(kind).media_type
 
 
 def validate_dataset(content: bytes) -> None:

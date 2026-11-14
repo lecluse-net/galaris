@@ -462,6 +462,11 @@ tests-front-components: ## Exercise actual Vue/Quasar components in an isolated 
 	@bash bin/test-front-components.sh $(ARGS)
 .PHONY: tests-front-components
 
+tests-document-formats: ## Qualify document formats, common workflows, imports, previews and exports
+	@$(MAKE) tests ARGS='app/document/tests app/dataset/tests app/file_share/tests/test_pdf_export.py app/file_share/tests/test_document_import_http.py app/file_share/tests/test_resource_service.py app/file_share/tests/test_mcp_paths.py app/file_share/tests/test_managed_http.py app/process/tests/test_typed_values.py app/process/tests/test_input_preparation_contract.py'
+	@$(MAKE) tests-front-components ARGS='document-formats.spec.mjs typed-documents.spec.mjs dataset-documents.spec.mjs document-print.spec.mjs attachment-previews.spec.mjs --project chromium'
+.PHONY: tests-document-formats
+
 tests-code: ## Qualify IDE confinement and Git using a synthetic SSH forge
 	@bash bin/test-code.sh
 .PHONY: tests-code

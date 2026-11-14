@@ -30,7 +30,7 @@ Les familles ci-dessous sont une cible de conception, pas des extensions déjà 
 | Tools et préréglages | Outils natifs, adaptateurs MCP/HTTP et définitions de Tools préconfigurées pour un service. Un préréglage peut être purement déclaratif. | `app.tools`, `app.mcp` et `app.connection` ; installation, connexion et autorisation d'appel sont distinctes. |
 | Visualisation de fichiers | Lecteurs pour formats spécialisés, miniatures, inspection de métadonnées, navigation dans une archive ou un assemblage, rendu 2D/3D. | Extension des aperçus et lecteurs ; la source peut appartenir à n'importe quel provider File Share autorisé. |
 | Édition de fichiers | Éditeurs spécialisés d'image, audio, vidéo, CAO ou scène 3D, opérant sur une URI externe sans imposer son import dans Documents. | Sauvegarde par le provider propriétaire ; capacités et contrôle de concurrence vérifiés avant de proposer l'édition. |
-| Types de Documents | Types créables et éditables dans la bibliothèque : CAO, MAO, image, vidéo, scène 3D et autres projets spécialisés. | `app.document` conserve identité, métadonnées, ACL, classification et révisions ; le plugin apporte le format et ses comportements. |
+| Formats de document | Types créables et éditables dans la bibliothèque : CAO, MAO, image, vidéo, scène 3D et autres projets spécialisés. | `app.document` conserve identité, métadonnées, ACL, classification et révisions ; le plugin apporte le format et ses comportements. |
 | Import, export et analyse | Convertisseurs de formats, OCR, extraction de texte/structure, indexation spécialisée et export d'un projet ou d'un rendu. | Ports des domaines Document, aperçu et acquisition/recherche ; dérivés traçables, bornés et soumis aux droits de la source. |
 | Exécution agentique | Drivers, harnais, capacités et adaptateurs de runtimes externes. | Contrat `app.agent` ; persistance, transitions et leases restent dans `app.task`. |
 | Canaux et événements externes | Bridges Messenger/voix, calendriers, webhooks et sources d'événements. | Traduction vers les façades canoniques, sans workflow Task parallèle dans le plugin. |
@@ -38,7 +38,7 @@ Les familles ci-dessous sont une cible de conception, pas des extensions déjà 
 | Interfaces et packages métier | Vues, panneaux spécialisés, tableaux de bord, skills, modèles d'agents ou packs métier combinant plusieurs contributions. | Slots SDK et façades des domaines concernés ; aucun accès implicite aux données ou aux Tools du fait du pack. |
 
 Priorité de qualification : File Share, fournisseurs, Tools préconfigurés,
-visualisation, puis édition et types documentaires. Les autres familles constituent
+visualisation, puis édition et formats documentaires. Les autres familles constituent
 un inventaire des points d'extension possibles, sans imposer leur livraison au premier palier.
 
 ### Réemploi de connecteurs de stockage
@@ -85,7 +85,7 @@ les services système obligatoires ne peuvent pas être remplacés ou désactiv�
 Un Tool existant ne devient pas nécessairement un plugin : le plugin est son mode facultatif
 de distribution et de configuration.
 
-### Lecteurs, éditeurs et types documentaires
+### Lecteurs, éditeurs et formats documentaires
 
 Séparer trois contrats composables : **visualiser une ressource**, **éditer son format**
 et **créer un type de Document révisé**. Un lecteur seul reste utile sans éditeur ; un éditeur
@@ -101,10 +101,11 @@ lecteurs/éditeurs est déterministe, respecte le choix utilisateur et ne rempla
 les formats natifs. Définir un port d'édition pour l'UI et, si pertinent, des opérations typées
 utilisables par les agents, soumises aux mêmes validations et autorisations.
 
-Pour les nouveaux Documents, concevoir un registre extensible sous l'autorité de `app.document`.
-Le registre actuel de types Texte/Données et ses discriminants/contraintes ne constituent pas
-encore ce contrat d'extension. Prévoir leur évolution via DbAdmin et les contrats API/frontend ;
-ne pas persister arbitrairement un code de plugin dans les champs actuels. Les nouveaux types
+Les [formats de document](../../docs/fr/dev/document-formats.md) disposent désormais d'une
+façade extensible sous l'autorité de `app.document`, avec catalogue de capacités et TCK.
+Le chargeur de plugins devra utiliser ces mêmes ports et associer les preuves à son bundle
+effectif ; aucune installation dynamique ni certification de code tiers n'est livrée par ce socle.
+Les nouveaux formats
 apparaissent dans la bibliothèque commune et réutilisent partage, classification, recherche,
 historique et révisions ; ne pas créer une bibliothèque ou des ACL parallèles par format.
 
@@ -245,7 +246,7 @@ Cartographie du dépôt déterministe ; release externe avec son propre rapport 
 Arbitrages avant implémentation : autorités de signature, partage des runtimes frontend,
 inventaire de schéma après retrait du code, dépendances entre plugins, superviseur borné,
 slots SDK stables, sauvegardes/purges et catalogues autorisés.
-Pour les formats spécialisés : registre et migration des types, identité des assets,
+Pour les formats spécialisés : registre et migration des formats, identité des assets,
 snapshot multifichier, choix de lecteur/éditeur, récupération sans plugin, licences des
 codecs et répartition frontend/worker/service externe. La collaboration temps réel et les
 formats couverts seront qualifiés séparément, sans prérequis implicite pour tout plugin.

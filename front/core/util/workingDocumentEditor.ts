@@ -16,6 +16,7 @@ export interface WorkingDocumentEditorContribution {
   dialogComponent?: Component
   iconComponent?: Component
   thumbnailComponent?: Component
+  formats?: () => readonly { code: string; label: string }[]
   search: (query: string, limit: number, offset: number) => Promise<WorkingDocumentSearchPage>
   resolve: (id: string) => Promise<{ item: WorkingDocumentSnapshot; agentId: number | null }>
 }
@@ -58,4 +59,8 @@ export async function searchWorkingDocuments(query: string, limit = 50, offset =
   const provider = Object.values(modules)[0]?.default
   if (!provider) throw new Error('Document provider unavailable')
   return provider.search(query, limit, offset)
+}
+
+export function workingDocumentFormats(): readonly { code: string; label: string }[] {
+  return Object.values(modules)[0]?.default.formats?.() ?? []
 }

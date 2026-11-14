@@ -26,7 +26,7 @@ async def _applications(document_id: UUID, scope: AgentManagementScope) -> tuple
     await db.scalar(select(Document.id).where(Document.id == document_id).with_for_update())
     actor = await document_sharing.document_actor(document_id, scope)
     document, source, *_ = await service.get_item(document_id, agent_id=actor)
-    if document.document_type not in {"text", "html"} or document.content_profile != "document":
+    if document.document_format not in {"text", "html"} or document.content_profile != "document":
         raise service.DocumentPermissionError("This document cannot run applications.")
     return document, document_apps(source.decode())
 
@@ -83,7 +83,7 @@ async def set_app_permission(
     if data.access is not None:
         await document_sharing.document_actor(binding.document_id, scope, write=data.access == "write")
         dataset = await db.get(Document, binding.document_id)
-        if dataset is None or dataset.document_type != "dataset":
+        if dataset is None or dataset.document_format != "dataset":
             raise ValueError("Application bindings must target Dataset documents.")
     grant = await _grant(document_id, app_key, alias, scope.user_id)
     if grant is None:
@@ -122,12 +122,12 @@ async def app_dataset(
         raise AppConsentRequired("Approve this application's Dataset access in document permissions.")
     dataset_actor = await document_sharing.document_actor(identity, scope, write=data.operation != "read")
     locked = await db.scalar(select(Document.id).where(
-        Document.id == identity, Document.document_type == "dataset",
+        Document.id == identity, Document.document_format == "dataset",
     ).with_for_update())
     if locked is None:
         raise ValueError("Application bindings must target Dataset documents.")
     dataset, content, *_ = await service.get_item(identity, agent_id=dataset_actor)
-    if dataset.document_type != "dataset":
+    if dataset.document_format != "dataset":
         raise ValueError("Application bindings must target Dataset documents.")
     value = _json.validate_json(content)
     if data.operation != "read":

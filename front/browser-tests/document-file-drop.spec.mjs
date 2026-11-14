@@ -18,7 +18,7 @@ async function library(page, target, options = {}) {
   const folder = { id: 'synthetic-folder', name: 'Synthetic folder', parent_id: null, position: 0, icon: null }
   const folders = [folder], createdFolders = []
   let folderFailed = false
-  const parent = { ...fixture, title: 'Synthetic parent', document_type: 'data', media_type: 'application/json', payload: { text: '{}' } }
+  const parent = { ...fixture, title: 'Synthetic parent', document_format: 'data', media_type: 'application/json', payload: { text: '{}' } }
   const records = new Map([[parent.id, parent]])
   const uploads = [], placements = []
   await jsonRoute(page, '**/api/agents?*', [agent])
@@ -68,7 +68,7 @@ async function library(page, target, options = {}) {
     if (file.name === 'Rejected.json' && uploads.filter(value => value.name === file.name).length === 1) return route.fulfill({ status: 422, json: { detail: 'Synthetic validation failure' } })
     const attachmentOnly = file.name.endsWith('.zip')
     const item = { ...fixture, id: `imported-${uploads.length}`, title: data.title, owner_agent_id: null, owner_user_id: 1,
-      document_type: attachmentOnly ? 'text' : 'data', media_type: attachmentOnly ? 'text/html' : 'application/json', payload: { text: attachmentOnly ? '' : await file.text() } }
+      document_format: attachmentOnly ? 'text' : 'data', media_type: attachmentOnly ? 'text/html' : 'application/json', payload: { text: attachmentOnly ? '' : await file.text() } }
     records.set(item.id, item)
     return route.fulfill({ status: 201, json: item })
   })

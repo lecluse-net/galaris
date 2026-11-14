@@ -51,7 +51,7 @@ const en = {
     title: 'Process variables', value: 'Run value', unset: 'Not set',
     dateHint: 'YYYY-MM-DD, without a time zone. JSON example: "2000-02-29".',
     datetimeHint: 'Date and time with seconds and a time zone. JSON example: "2026-11-08T14:30:00+01:00".',
-    documentType: 'Document type (optional)', anyDocument: 'Any document type',
+    documentFormat: 'Document format (optional)', anyDocument: 'Any document format',
     invalid: 'Check variable names, default values and file formats.',
     mimeType: 'Expected file format (optional)', anyMime: 'Any file format', invalidMime: 'Enter a MIME type such as application/pdf or image/*.',
     types: {
@@ -166,7 +166,7 @@ const fr: typeof en = {
     title: 'Variables du processus', value: 'Valeur du run', unset: 'Non renseignée',
     dateHint: 'AAAA-MM-JJ, sans fuseau horaire. Exemple JSON : "2000-02-29".',
     datetimeHint: 'Date et heure avec secondes et fuseau horaire. Exemple JSON : "2026-11-08T14:30:00+01:00".',
-    documentType: 'Type de document (facultatif)', anyDocument: 'Tout type de document',
+    documentFormat: 'Format de document (facultatif)', anyDocument: 'Tout format de document',
     invalid: 'Vérifiez les noms des variables, les valeurs par défaut et les formats de fichier.',
     mimeType: 'Format de fichier attendu (facultatif)', anyMime: 'Tout format de fichier', invalidMime: 'Saisissez un type MIME comme application/pdf ou image/*.',
     types: {

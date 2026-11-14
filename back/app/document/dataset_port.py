@@ -68,7 +68,7 @@ async def refresh_dataset_projection(identity: UUID, state: DatasetDocumentProje
     from .models import Document
 
     item = await get_db().scalar(select(Document).where(Document.id == identity).with_for_update())
-    if item is None or item.document_type != "dataset":
+    if item is None or item.document_format != "dataset":
         return
     if state is None:
         from . import resource_service as service

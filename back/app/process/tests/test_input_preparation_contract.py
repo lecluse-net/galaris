@@ -49,6 +49,24 @@ async def test_strict_input_validation_preserves_permission_errors(db, native):
         await validate_launch_input_patch(owner.id, declarations, {"scan": file.uri})
 
 
+@pytest.mark.asyncio
+async def test_document_format_constraints_distinguish_formats_sharing_a_media_type(db, native, monkeypatch):
+    from app.document import formats, DocumentFormatDefinition, DocumentFormatRegistry, register_document_format
+    monkeypatch.setattr(formats, "registry", DocumentFormatRegistry())
+    monkeypatch.setattr(formats, "_native_registered", False)
+    for code in ("example.first", "example.second"):
+        register_document_format(DocumentFormatDefinition(code, "application/x-synthetic-shared", "", "description",
+            lambda _: None, lambda source: source, provider="example"))
+    owner, _ = native
+    item = await resource_create(ResourceContext(agent_id=owner.id, runtime="internal"), "document://",
+        b"Synthetic structured content", name="Synthetic format input", document_format="example.first")
+    declarations = [Variable(name=name, type="Document", nullable=False, document_format=code).model_dump(mode="json")
+        for name, code in (("matching", "example.first"), ("different", "example.second"))]
+    valid, issues = await validate_launch_input_fields(owner.id, declarations,
+        {"matching": item.uri, "different": item.uri})
+    assert set(valid) == {"matching"} and set(issues) == {"different"}
+
+
 async def definition(owner):
     return await create(actor_agent_id=owner.id, title="Synthetic selected inputs", graph=Workflow(schema_version="galaris.bpmn/v2",
         variables=[Variable(name="name", type="string", nullable=True),

@@ -964,7 +964,7 @@ async def test_ai_task_receives_selected_input_values_resource_uris_and_output_e
             "file": {"type": "File", "value": file_uri}, "items": {"type": "array", "value": []}}}),
         Variable(name="private_note", type="string", nullable=False, default={"type": "string", "value": "Synthetic excluded context"}),
         Variable(name="report", type="File", nullable=False, mime_type="application/pdf"),
-        Variable(name="summary", type="Document", nullable=False, document_type="text"),
+        Variable(name="summary", type="Document", nullable=False, document_format="text"),
     ])
     graph.nodes[1].inputs = ["amount", "accepted", "invoice", "source_doc", "optional_value", "missing", "nested"]
     graph.nodes[1].outputs = ["accepted", "report", "summary"]
@@ -991,7 +991,7 @@ async def test_ai_task_receives_selected_input_values_resource_uris_and_output_e
     assert contract["output_variables"] == [
         {"name": "accepted", "type": "bool", "nullable": False},
         {"name": "report", "type": "File", "nullable": False, "mime_type": "application/pdf"},
-        {"name": "summary", "type": "Document", "nullable": False, "document_type": "text"},
+        {"name": "summary", "type": "Document", "nullable": False, "document_format": "text"},
     ]
     assert "private_note" not in attempt.prompt and "Synthetic excluded context" not in attempt.prompt
     assert "control_result" not in contract

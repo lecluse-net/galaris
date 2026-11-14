@@ -21,6 +21,6 @@ def test_data_documents_keep_their_uri_and_can_be_selected_as_a_document_subtype
     nested = {"type": "object", "value": {"data": {"type": "Document", "value": uri}}}
     assert process_value(nested) == nested
     value = {"answer": {"type": "Document", "value": uri}}
-    assert normalize([Variable(name="answer", type="Document", nullable=True, document_type="data")], value, path="values") == value
+    assert normalize([Variable(name="answer", type="Document", nullable=True, document_format="data")], value, path="values") == value
     with pytest.raises(ValueContractError, match="expected a text document"):
-        normalize([Variable(name="answer", type="Document", nullable=True, document_type="text")], value, path="values")
+        normalize([Variable(name="answer", type="Document", nullable=True, document_format="text")], value, path="values")

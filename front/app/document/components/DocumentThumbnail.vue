@@ -2,13 +2,13 @@
   <span ref="container" class="document-thumbnail" :class="{ 'document-thumbnail--fill': fill }" :aria-busy="loading" aria-hidden="true">
     <img v-if="url" :src="url" alt="" @error="clearImage" />
     <q-spinner v-else-if="loading" color="primary" size="22px" />
-    <q-icon v-else :name="getDocumentType(props.documentType).icon" size="28px" />
+    <q-icon v-else :name="getDocumentFormat(props.documentFormat).icon" size="28px" />
   </span>
 </template>
 
 <script setup lang="ts">
-import type { DocumentType } from '../types'
-import { documentType as getDocumentType } from '../documentTypes'
+import type { DocumentFormat } from '../types'
+import { documentFormat as getDocumentFormat } from '../documentFormats'
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
@@ -19,7 +19,7 @@ import { onThumbnailReady } from '@/core/util'
 
 const props = defineProps<{
   documentId: string
-  documentType?: DocumentType
+  documentFormat?: DocumentFormat
   revision?: number | null
   updatedAt?: string | null
   agentId?: number | null

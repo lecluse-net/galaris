@@ -47,7 +47,7 @@ async def item_actor(
 async def can_manage(item: Document, scope: AgentManagementScope) -> bool:
     if item.node_kind != "document" or item.source_managed or item.read_only:
         return False
-    if item.document_type == "process":
+    if item.document_format == "process":
         from .document_policy import orphan_process_clause
         orphan = await get_db().scalar(select(Document.id).where(Document.id == item.id, orphan_process_clause()))
         if orphan:

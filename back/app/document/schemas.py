@@ -6,7 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from core.util import TemporalAnchor as DocumentTemporalAnchor
 from .contracts import DocumentAccess
-from .document_types import DocumentType
+from .formats import DocumentFormat
 from .tag_icons import validate_icon
 from .content_limits import validate_document_size
 from app.share import Collaborator, SharingState, GrantUpdate, SharingUpdate, SingleGrantUpdate
@@ -55,7 +55,7 @@ class DocumentItemCreate(BaseModel):
     title: str = Field(default="", max_length=500)
     payload: DocumentPayload
     node_kind: Literal["document"] = "document"
-    document_type: DocumentType = "text"
+    document_format: DocumentFormat = "text"
     content_type: str = Field(default="text", max_length=50)
     media_type: str = Field(default="text/html", max_length=255)
     filename: str | None = Field(default=None, max_length=500)
@@ -71,17 +71,22 @@ class DocumentItemCreate(BaseModel):
 
     @model_validator(mode="after")
     def validate_document(self) -> "DocumentItemCreate":
-        if self.document_type not in {"text", "html", "data"}:
-            raise ValueError("Unsupported document type; Process definitions use their own domain")
-        if self.document_type == "data":
-            if "media_type" not in self.model_fields_set:
-                self.media_type = "application/json"
-            if self.media_type != "application/json":
-                raise ValueError("A Data document must contain JSON")
+        if self.document_format in {"dataset", "process", "form"}:
+            raise ValueError("Unsupported document format; Process definitions use their own domain")
+        from .formats import document_format_definition
+        definition = document_format_definition(self.document_format)
+        if "content_type" not in self.model_fields_set:
+            self.content_type = "binary" if definition.storage_kind == "file" else "text"
+        if "media_type" not in self.model_fields_set:
+            self.media_type = definition.media_type
+        if self.document_format not in {"text", "html"} and self.media_type != definition.media_type:
+            raise ValueError("Content media type does not match its document format")
         if not self.title.strip():
             raise ValueError("A document title is required.")
-        if self.content_type != "text" or (self.document_type in {"text", "html"} and not self.media_type.startswith("text/")):
-            raise ValueError("A document must contain text.")
+        if self.content_type != ("binary" if definition.storage_kind == "file" else "text"):
+            raise ValueError("Payload storage does not match its document format")
+        if self.document_format in {"text", "html"} and not self.media_type.startswith("text/"):
+            raise ValueError("A Text document must contain text")
         if self.visibility != "private":
             raise ValueError("A document must be private when created.")
         if self.read_only:
@@ -147,7 +152,9 @@ class DocumentPublic(BaseModel):
     document_revision: int | None = None
     summary_outdated: bool = False
     temporal: DocumentTemporalAnchor | None = None
-    document_type: DocumentType = "text"
+    document_format: DocumentFormat = "text"
+    format_version: int = 1
+
     semantic_fingerprint: str | None = Field(default=None, exclude=True)
     content_profile: Literal["rich-text", "document"] = "rich-text"
     content_profile_version: int | None = None
@@ -199,6 +206,8 @@ class DocumentSummaryRegenerate(BaseModel):
 class DocumentContentRevisionPublic(BaseModel):
     media_type: str = "text/markdown"
     content_profile_version: int | None = None
+    document_format: str = "text"
+    format_version: int = 1
     revision: int
     task_id: UUID | None
     content_hash: str
@@ -210,6 +219,7 @@ class DocumentContentRevisionPublic(BaseModel):
 
 class DocumentContentRevisionDetail(DocumentContentRevisionPublic):
     content: str
+    payload: DocumentPayload | None = None
 
 class DocumentContentRevisionPage(BaseModel):
     items: list[DocumentContentRevisionPublic]
@@ -234,6 +244,7 @@ class DocumentContentDiffHunk(BaseModel):
     lines: list[DocumentContentDiffLine]
 
 class DocumentContentDiff(BaseModel):
+    binary_changed: bool = False
     structure_changed: bool = False
     previous_html: str | None = None
     current_html: str | None = None
@@ -370,7 +381,7 @@ class DocumentLibraryRequest(BaseModel):
     topic_classification: Literal["all", "classified", "unclassified"] = "all"
     agent_classification: Literal["all", "classified", "unclassified"] = "all"
     without_keywords: bool = False
-    document_type: DocumentType | None = None
+    document_format: DocumentFormat | None = None
     limit: int = Field(default=50, ge=1, le=500)
     offset: int = Field(default=0, ge=0)
 
@@ -388,7 +399,7 @@ class DocumentLibraryRequest(BaseModel):
     created_until: datetime | None = None
     updated_from: datetime | None = None
     updated_until: datetime | None = None
-    sort_by: Literal["position", "title", "created_at", "updated_at", "document_type"] = "title"
+    sort_by: Literal["position", "title", "created_at", "updated_at", "document_format"] = "title"
     sort_desc: bool = False
 
     @model_validator(mode="after")
@@ -594,12 +605,16 @@ class DocumentCreate(BaseModel):
     owner_id: int = Field(gt=0)
     actor_agent_id: int | None = Field(default=None, gt=0)
     title: str = Field(min_length=1, max_length=500)
-    document_type: Literal["text", "data", "html"] = "text"
+    document_format: DocumentFormat = "text"
     folder: str = Field(default="", max_length=500)
     import_from: DocumentImportReference | None = None
 
     @model_validator(mode="after")
     def validate_owner_and_editor(self) -> "DocumentCreate":
+        from .formats import document_format_definition
+        if self.document_format in {"dataset", "process", "form"}:
+            raise ValueError("Unsupported document format")
+        document_format_definition(self.document_format)
         if self.owner_kind == "agent" and self.owner_id != self.actor_agent_id:
             raise ValueError("The owner Agent must also be the initial editor.")
         return self

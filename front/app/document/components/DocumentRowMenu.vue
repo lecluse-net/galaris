@@ -9,7 +9,7 @@
   </ActionContextMenu>
 </template>
 <script setup lang="ts">
-import { documentTypes, type DocumentCreationMode } from '../documentTypes'
+import { documentFormats, type DocumentCreationMode } from '../documentFormats'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
@@ -32,8 +32,8 @@ const actions = computed<ContextAction[]>(() => {
     return run ? [{ ...action, run }] : []
   })
   const creations = allowCreate && shortcuts.F3 && privilegeStore.hasAnyPrivilege([privileges.DOCUMENT_EDIT, privileges.DOCUMENT_ADMIN]) ? [
-    ...documentTypes.map(type => ({ key: 'new-' + type.code, icon: type.icon,
-      label: t('documents.createTypedDocument', { type: t(type.label) }), run: () => emit('create', type.code) })),
+    ...documentFormats.map(type => ({ key: 'new-' + type.code, icon: type.icon,
+      label: t('documents.createFormattedDocument', { format: t(type.label) }), run: () => emit('create', type.code) })),
     { key: 'import', icon: 'file_open', label: t('documents.importFrom'), run: () => emit('create', 'import') },
   ] : []
   return [...standard, ...extraActions, { ...copyAction(`document://${entry.item.id}`), label: t('documents.copyUrl') }, ...creations]

@@ -4,7 +4,7 @@
   <div v-else-if="agent !== null" ref="avatar" class="agent-citation-avatar"><ResourceThumbnail :uri="uri" :title="title" /></div>
   <div v-else-if="folderId" ref="folderThumbnail" class="folder-citation-thumbnail"><ResourceThumbnail :uri="uri" :agent-id="agentId" :title="title" /></div>
   <div v-else-if="documentId" class="document-citation-preview">
-    <div ref="documentThumbnail" class="document-citation-thumbnail" aria-hidden="true"><WorkingDocumentThumbnail :document-id="documentId" fill /></div>
+    <div class="document-citation-thumbnail" aria-hidden="true"><DocumentResourceEmbed ref="documentEmbed" :document-id="documentId" :agent-id="agentId" /></div>
     <q-btn flat dense no-caps class="document-citation-identifier" :label="documentId" :aria-label="t('common.copy')" @click.stop.prevent="copyIdentifier"><q-tooltip>{{ t('common.copy') }}</q-tooltip></q-btn>
   </div>
 </template>
@@ -12,7 +12,8 @@
 import { computed, onMounted, onBeforeUnmount, useTemplateRef } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { defineAsyncView, ResourceThumbnail, WorkingDocumentThumbnail, documentIdFromResourceUri, documentFolderId, captureElementRendering, type RegisterDocumentCapture, type RenderedDocumentCapture } from '@/core/util'
+import { defineAsyncView, ResourceThumbnail, documentIdFromResourceUri, documentFolderId, captureElementRendering, type RegisterDocumentCapture, type RenderedDocumentCapture } from '@/core/util'
+import { DocumentResourceEmbed } from '@/app/document'
 import { agentResourceId } from '@/app/agent'
 import { processResourceTarget } from '@/app/process/interface'
 import { contactResourceId } from '@/app/memory'
@@ -27,7 +28,7 @@ const documentId = computed(() => documentIdFromResourceUri(uri))
 const folderId = computed(() => documentFolderId(uri))
 const folderThumbnail = useTemplateRef<HTMLElement>('folderThumbnail')
 const { t } = useI18n(), $q = useQuasar()
-const documentThumbnail = useTemplateRef<HTMLElement>('documentThumbnail')
+const documentEmbed = useTemplateRef<{ capture: RenderedDocumentCapture }>('documentEmbed')
 async function copyIdentifier(): Promise<void> {
   if (!documentId.value) return
   try { await copyToClipboard(documentId.value); $q.notify({ type: 'positive', message: t('common.copied') }) }
@@ -38,7 +39,7 @@ async function capture(signal: AbortSignal): Promise<string> {
   if (contactId.value && contactCard.value) return contactCard.value.capture(signal)
   if (folderId.value && folderThumbnail.value) return captureElementRendering(folderThumbnail.value, signal)
   if (target.value && process.value) return process.value.capture(signal)
-  if (documentId.value && documentThumbnail.value) return captureElementRendering(documentThumbnail.value, signal)
+  if (documentId.value && documentEmbed.value) return documentEmbed.value.capture(signal)
   const element = avatar.value?.querySelector<HTMLElement>('.q-avatar')
   if (!element) throw new Error('Agent rendering unavailable')
   return captureElementRendering(element, signal)

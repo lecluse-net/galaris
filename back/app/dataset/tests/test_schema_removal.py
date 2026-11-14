@@ -30,6 +30,13 @@ async def test_dbadmin_removes_populated_schema_bindings_without_changing_datase
         actor = HumanActor(owner.id)
         dataset = await service.create(actor, title="Synthetic legacy constrained data", content='{\n "accepted": false\n}\n')
         await service.replace(dataset.id, actor, content='{\n "accepted": true\n}\n', expected_revision=1)
+        # History is sealed after the quiet period; migration must preserve that
+        # durable checkpoint, rather than assuming each immediate save creates one.
+        from datetime import datetime, timedelta, timezone
+        from app.document import revision_batching
+        future = datetime.now(timezone.utc) + timedelta(seconds=301)
+        monkeypatch.setattr(revision_batching, "utcnow", lambda: future)
+        assert await revision_batching.seal_revision(dataset.id, dataset.revision)
         await service.set_grant(dataset.id, actor, kind="user", principal=reader.id, can_write=False, expected_lock_version=2)
         session.add(DatasetAttachment(dataset_id=dataset.id, uri="https://example.test/synthetic.pdf",
             name="Synthetic external attachment", media_type="application/pdf"))

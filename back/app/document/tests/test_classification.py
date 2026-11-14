@@ -60,11 +60,11 @@ async def test_subdocuments_are_personal_read_only_safe_and_follow_their_parent(
         await db.refresh(item)
     assert [(item.revision, item.lock_version, item.updated_at) for item in (parent, child, grandchild)] == before
 
-async def document(owner, title, document_type="html"):
+async def document(owner, title, document_format="text"):
     item, _ = await service.create_item(DocumentItemCreate(
         owner_agent_id=owner.id, title=title, node_kind="document",
-        document_type=document_type,
-        media_type="application/json" if document_type == "dataset" else "text/html",
-        payload=DocumentPayload(text='{"label":"Searchable report"}' if document_type == "dataset" else "<p>Searchable report</p>"),
+        document_format=document_format,
+        media_type="application/json" if document_format == "dataset" else "text/html",
+        payload=DocumentPayload(text='{"label":"Searchable report"}' if document_format == "dataset" else "<p>Searchable report</p>"),
     ))
     return item

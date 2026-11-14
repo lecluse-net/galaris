@@ -92,18 +92,27 @@ sont pas réimportés et les dossiers déjà créés sont réutilisés. Les ZIP 
 ne sont pas décompressés automatiquement. Le quota de ressources s’applique aussi au volume
 décompressé ; une archive accepte au maximum 2 000 entrées et 32 niveaux de répertoires.
 
-## Choisir le type de document
+## Choisir le format de document
 
-Chaque icône **Nouveau document** ouvre le menu des types sous l’icône cliquée, avant toute création. Choisissez **Texte**
-ou **Données**, puis le titre et le propriétaire. Les menus contextuels des documents et
+Les noms affichés sont **Format Texte** et **Format Data**. Le bouton **Formats de document**
+présente les formats disponibles, leurs capacités natives et les replis Galaris. Une
+capacité déclarée ne signifie pas qu'un plugin a passé sa qualification.
+
+Chaque icône **Nouveau document** ouvre le menu des formats sous l’icône cliquée, avant toute création. Choisissez **Format Texte**
+ou **Format Data**, puis le titre et le propriétaire. Les menus contextuels des documents et
 des dossiers proposent aussi ces deux créations, dans le classement courant. Fermer le
 menu ou la fenêtre de création ne crée aucun document.
 
-Le filtre **Type de document** permet de retrouver tous les types, seulement les Textes
-ou seulement les Données. Il se combine avec la recherche et les autres filtres avant
-pagination. Les deux types ont des icônes distinctes, un éditeur et un aperçu adaptés.
+Le filtre **Format de document** permet de retrouver tous les formats, seulement Texte
+ou seulement Data. Il se combine avec la recherche et les autres filtres avant
+pagination. Les deux formats ont des icônes distinctes, un éditeur et un aperçu adaptés.
 Titre, propriétaire, partage, sujet, mots-clés, résumé et historique suivent les mêmes règles.
-L'éditeur Données conserve un brouillon JSON invalide sans l'enregistrer ni quitter le document.
+L'éditeur du Format Data conserve un brouillon JSON invalide sans l'enregistrer ni quitter le document.
+
+Le bouton **Télécharger la source** récupère la version enregistrée, y compris lorsque
+le lecteur d'un format est indisponible. Les documents existants et leurs droits sont
+conservés. Les formats autres que Texte disposent aussi d'une commande d'export PDF dans
+l'enveloppe commune ; un rendu de repli ne promet pas la mise en page d'un lecteur spécialisé.
 Si vous utilisez le retour du navigateur pour fermer sa fenêtre, une confirmation permet
 de conserver le brouillon ou de l'abandonner. L'abandon restaure le dernier contenu enregistré.
 

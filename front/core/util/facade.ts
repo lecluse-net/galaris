@@ -18,6 +18,8 @@ export { referenceId, referenceCardHtml, referenceDate, referenceStatus } from '
 export { documentIdFromResourceUri } from './documentResource'
 export { documentFolderId, documentFolderHref, canonicalFolderLink } from './documentFolderResource'
 export { browserResourceKind } from './resourceViewer'
+export { registerResourceViewer, findResourceViewer } from './resourceViewers'
+export type { ResourceViewerContribution, ResourceViewerSource } from './resourceViewers'
 export { defineAsyncView } from './asyncView'
 
 /** Keep document export independent of the utility component catalogue. */

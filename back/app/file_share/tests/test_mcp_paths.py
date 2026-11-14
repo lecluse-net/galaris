@@ -268,10 +268,10 @@ async def test_file_write_decodes_complete_base64_binary_content(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("document_type,content", [(None, "<p>First draft</p>"), ("dataset", '{"amount":1200}')])
+@pytest.mark.parametrize("document_format,content", [(None, "<p>First draft</p>"), ("dataset", '{"amount":1200}')])
 async def test_file_create_returns_the_assigned_complete_uri(
     monkeypatch: pytest.MonkeyPatch,
-    document_type,
+    document_format,
     content,
 ) -> None:
     resource_context = ResourceContext(agent_id=7, runtime="internal")
@@ -286,9 +286,9 @@ async def test_file_create_returns_the_assigned_complete_uri(
         content: bytes,
         *,
         name: str,
-        document_type: str | None,
+        document_format: str | None,
     ) -> ResourceMutation:
-        captured.update(ctx=ctx, path=path, content=content, name=name, document_type=document_type)
+        captured.update(ctx=ctx, path=path, content=content, name=name, document_format=document_format)
         return ResourceMutation(
             uri="document://34ccf9d6-6ea2-49b8-a8c4-4ca9f85e0458",
             operation="create",
@@ -305,7 +305,7 @@ async def test_file_create_returns_the_assigned_complete_uri(
         "document://",
         content,
         name="Release plan",
-        document_type=document_type,
+        document_format=document_format,
     )
 
     assert captured == {
@@ -313,7 +313,7 @@ async def test_file_create_returns_the_assigned_complete_uri(
         "path": "document://",
         "content": content.encode(),
         "name": "Release plan",
-        "document_type": document_type,
+        "document_format": document_format,
     }
     assert '"uri": "document://34ccf9d6-6ea2-49b8-a8c4-4ca9f85e0458"' in result
 

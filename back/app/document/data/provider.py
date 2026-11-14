@@ -93,7 +93,8 @@ class DatasetProvider:
         return ResourceDescriptor(uri=f"data://{dataset.id}", name=dataset.title, media_type="application/json",
             size=state["size"], revision=dataset.revision, lock_version=dataset.lock_version, checksum=state["checksum"],
             capabilities=["info", "read", "copy", *(["write", "append", "edit", "rename"] if state["can_write"] else []), *(["delete"] if state["can_delete"] else [])],
-            metadata={"resource_type": "dataset", "document_type": "dataset",
+            metadata={"resource_type": "dataset",
+                "document_format": "data", "format_version": dataset.format_version,
                 "lock_version": dataset.lock_version, "can_manage": state["can_manage"], "can_write": state["can_write"]})
 
     async def rename(self, ctx: ResourceContext, uri: ResourceUri, name: str,

@@ -11,6 +11,7 @@ from core.dbadmin import SchemaTransitionSet
 
 from .bpmn import compile_bpmn
 from .models import ProcessDefinition, ProcessDefinitionRevision
+from .document_format_migration import rename_bpmn
 
 
 def needs_transfer(delta: SchemaTransitionSet) -> bool:
@@ -35,10 +36,11 @@ async def transfer_definitions(session: AsyncSession, _delta: SchemaTransitionSe
             assert record.document_id is not None
             source_id = record.document_id
             source = await legacy_process_snapshot(source_id)
-            compile_bpmn(source["content"])
+            content = rename_bpmn(source["content"])
+            compile_bpmn(content)
             if record.bpmn_xml is not None:
                 raise ValueError("Process already owns content; refusing to overwrite it with a legacy source")
-            record.bpmn_xml = source["content"]
+            record.bpmn_xml = content
             record.label = source["title"]
             record.revision, record.lock_version = source["revision"], source["lock_version"]
             record.agent_id, record.owner_user_id = source["owner_agent_id"], source["owner_user_id"]
@@ -47,7 +49,7 @@ async def transfer_definitions(session: AsyncSession, _delta: SchemaTransitionSe
                 record.archived = True
             for entry in source["revisions"]:
                 session.add(ProcessDefinitionRevision(id=entry["id"], process_id=record.id, revision=entry["revision"],
-                    bpmn_xml=entry["content"], author_agent_id=entry["author_agent_id"], created_at=entry["created_at"]))
+                    bpmn_xml=rename_bpmn(entry["content"]), author_agent_id=entry["author_agent_id"], created_at=entry["created_at"]))
             for grant in source["grants"]:
                 session.add(ShareGrant(share_id=record.share_id, **grant))
             record.document_id = None

@@ -97,7 +97,7 @@ async def test_managed_file_http_upload_download_rename_and_scope_denials(client
     assert {hit["resource"]["uri"] for hit in search.json()["hits"]} == {uri, second.json()["uri"]}
     assert (await client.get(f"{browser}/search", params={"agent_id": other_id, "uri": "file://", "query": "Official"}, headers=human)).status_code == 404
     document = await client.post("/api/documents", headers=human, json={"owner_kind": "agent", "owner_id": owner_id,
-        "actor_agent_id": owner_id, "document_type": "html", "title": "Synthetic internal attachments"})
+        "actor_agent_id": owner_id, "document_format": "text", "title": "Synthetic internal attachments"})
     assert document.status_code == 201, document.text
     endpoint = f"/api/documents/{document.json()['id']}/internal-attachments"
     body = {"uris": [uri, second.json()["uri"]], "resource_agent_id": owner_id,

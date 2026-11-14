@@ -25,7 +25,7 @@ async def human(db):
 
 async def document(agent, owner, title, kind="text"):
     item, _ = await service.create_item(DocumentItemCreate(owner_agent_id=agent.id,
-        title=title, document_type=kind, node_kind="document",
+        title=title, document_format=kind, node_kind="document",
         payload=DocumentPayload(text='{"synthetic":true}' if kind == "data" else "<p>Synthetic content</p>")), owner_user_id=owner.id)
     return item
 

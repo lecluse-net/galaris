@@ -125,7 +125,7 @@ import { useAuthStore, type DocumentLibraryMode } from '@/core/user'
 import { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration as authSessionGeneration } from '@/core/api'
 import type { DocumentLibraryEntry, DocumentLibraryFilters as LibraryRequest, DocumentOwnerOption, DocumentTag, DocumentOrderNode, DocumentOrderMove, DocumentRecord } from '../types'
 import { documentService } from '../services/documentService'
-import type { DocumentCreationMode } from '../documentTypes'
+import type { DocumentCreationMode } from '../documentFormats'
 import { defaultLibraryFilters, libraryRequestFilters } from '@/app/document/libraryFilterState'
 import DocumentLibraryFilters from '@/app/document/components/DocumentLibraryFilters.vue'
 import DocumentTagCreateButton from '@/app/document/components/DocumentTagCreateButton.vue'
@@ -216,7 +216,7 @@ const pageSize = ref(50)
 const filters = ref(defaultLibraryFilters())
 let preserveSelectionOnSort = false
 const initialType = new URLSearchParams(window.location.search).get('type')
-if (initialType === 'text' || initialType === 'data') filters.value.document_type = initialType
+if (initialType === 'text' || initialType === 'data') filters.value.document_format = initialType
 const loading = ref(false)
 const loadError = ref(false)
 const tagError = ref(false)

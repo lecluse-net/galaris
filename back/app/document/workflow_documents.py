@@ -16,13 +16,13 @@ from core.user import HumanActor
 from . import document_service, document_sharing, resource_service as service
 from .access import effective_access, readable_workflow_document_clause
 from .query_policy import prepare_document_read
-from .document_types import DocumentType
+from .content_validation import DocumentFormat
 from .models import Document
 from .schemas import DocumentUpdate, DocumentPayload, DocumentContentRevisionPage, DocumentSharing, DocumentSharingLevelUpdate
 
 
 async def create_workflow_document(*, owner_agent_id: int, title: str, content: str,
-                                   kind: DocumentType, command: str,
+                                   kind: DocumentFormat, command: str,
                                    owner_user_id: int | None = None,
                                    process_code: str | None = None) -> Document:
     """The creation marker and content commit together; lost replies do not duplicate."""
@@ -31,7 +31,7 @@ async def create_workflow_document(*, owner_agent_id: int, title: str, content: 
     item = await get_db().scalar(select(Document).where(Document.metadata_["creation_command"].astext == command))
     if item is not None:
         expected_agent = owner_agent_id if owner_user_id is None else None
-        if item.document_type != kind or item.owner_user_id != owner_user_id or item.owner_agent_id != expected_agent:
+        if item.document_format != kind or item.owner_user_id != owner_user_id or item.owner_agent_id != expected_agent:
             raise service.DocumentConflictError("Workflow creation identity belongs to a different principal or document kind")
         actor = HumanActor(owner_user_id) if owner_user_id is not None else owner_agent_id
         existing = await read_workflow_document(item.id, actor)
@@ -40,22 +40,22 @@ async def create_workflow_document(*, owner_agent_id: int, title: str, content: 
         return item
     if owner_user_id is not None:
         from .schemas import DocumentItemCreate
-        from .document_types import document_media_type
+        from .content_validation import document_media_type
         item, _ = await service.create_item(DocumentItemCreate(owner_agent_id=owner_agent_id, title=title,
-            payload=DocumentPayload(text=content), node_kind="document", document_type=kind,
+            payload=DocumentPayload(text=content), node_kind="document", document_format=kind,
             media_type=document_media_type(kind), visibility="private",
             metadata={"creation_command": command, "process_code": process_code}),
             owner_user_id=owner_user_id, deduplicate=False, workflow_metadata=True)
         return item
     return await document_service.create_document(owner_agent_id=owner_agent_id, title=title, content=content,
-        task_id=None, document_type=kind, metadata={"creation_command": command, "process_code": process_code}, workflow_metadata=True)
+        task_id=None, document_format=kind, metadata={"creation_command": command, "process_code": process_code}, workflow_metadata=True)
 
 
 async def read_workflow_document(document_id: UUID, actor: int | HumanActor,
                                  *, administrative: bool = False) -> dict[str, Any]:
     item, content, access, _, _ = await service.get_item(document_id, agent_id=actor, administrative=administrative)
     return {"id": str(item.id), "title": item.title, "revision": item.revision,
-            "type": item.document_type, "content": content.decode("utf-8"), "can_write": access.can_write}
+            "type": item.document_format, "content": content.decode("utf-8"), "can_write": access.can_write}
 
 
 async def write_workflow_document(document_id: UUID, actor: int | HumanActor, content: str,

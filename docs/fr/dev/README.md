@@ -12,6 +12,7 @@ font foi ; les plans décrivent les extensions encore ouvertes.
 | Comprendre les choix structurels | [Décisions acceptées](../../../project/decisions/README.md) |
 | Stocker du texte et préserver les migrations | [Contenus en PostgreSQL](memory-text-storage.md) |
 | Manipuler fichiers et pièces jointes | [Registre `file://`](file-storage.md) |
+| Ajouter et qualifier un format de document | [Façade des formats](document-formats.md) |
 | Manipuler du JSON et le codec typé | [Documents Données](datasets.md) |
 | Exécuter un workflow interne | [Profil BPMN natif](native-processes.md) |
 | Partager des ressources | [Contrats et migration des ACL](sharing.md) |

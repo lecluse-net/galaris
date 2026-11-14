@@ -9,7 +9,7 @@ export const valueTypes = sharedValueTypes.filter(type => type !== 'Dataset')
 export type ValueType = typeof valueTypes[number]
 export type { JsonValue, TypedValue } from '@/app/dataset'
 import type { TypedValue } from '@/app/dataset'
-export interface ProcessVariable { name: string; label?: string; description?: string; type: ValueType; nullable: boolean; default?: TypedValue; document_type?: 'text' | 'data'; mime_type?: string }
+export interface ProcessVariable { name: string; label?: string; description?: string; type: ValueType; nullable: boolean; default?: TypedValue; document_format?: string; mime_type?: string }
 export interface ProcessActor { id: string; name: string; kind: 'agent' | 'human'; agent_id: number | null; user_id: number | null }
 export interface ProcessAgentOption { id: number; label: string; has_avatar?: boolean }
 export interface ProcessDecisionModel { id: number; label: string; provider: string; decision: boolean }

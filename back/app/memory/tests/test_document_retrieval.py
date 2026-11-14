@@ -1,5 +1,6 @@
 from app.document.schemas import DocumentPayload
 from app.document.schemas import DocumentItemCreate
+from app.document.tests.revision_helpers import revision_clock as revision_clock
 from app.memory.tests.document_fixtures import create_document_reference, edit_document_summary
 """Documents stay findable, addressable and covered through canonical search."""
 
@@ -130,7 +131,7 @@ async def test_a_document_question_mentioning_my_email_does_not_become_a_contact
 
 
 @pytest.mark.asyncio
-async def test_typed_data_reference_reads_current_summary_but_keeps_native_retrieval(db, agents, memory_storage, vectors):
+async def test_typed_data_reference_reads_current_summary_but_keeps_native_retrieval(db, agents, memory_storage, vectors, revision_clock):
     from app.dataset import service as datasets, resource_summaries
     from app.memory.document_projection import refresh
     from app.memory.item_projection import item_to_public
@@ -143,6 +144,7 @@ async def test_typed_data_reference_reads_current_summary_but_keeps_native_retri
     await refresh(source.id)
     await db.commit()
     assert (await service.get_item(source.id, agent_id=owner.id, memory_content=True))[1] == b""
+    await revision_clock.settle()
     assert await resource_summaries.apply(f"{source.id}:{source.lock_version}", "QUARTZ data description", ["quartz"])
     await db.commit()
     await refresh(source.id)
@@ -150,7 +152,7 @@ async def test_typed_data_reference_reads_current_summary_but_keeps_native_retri
     node, content, access, _kind, media_type = await service.get_item(source.id, agent_id=owner.id, memory_content=True)
     assert content.decode() == source.summary_content
     assert media_type == "text/plain"
-    assert item_to_public(node, access).document_type == "data"
+    assert item_to_public(node, access).document_format == "data"
     assert item_to_public(node, access, memory_content=True).media_type == "text/plain"
     assert not (await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id, query="QUARTZ"))).hits
     assert source.id not in {node.id for node in (await service.list_graph_roots(MemoryGraphRootsRequest(agent_id=owner.id))).nodes}

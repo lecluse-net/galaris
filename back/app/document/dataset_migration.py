@@ -14,11 +14,11 @@ from core.storage import get_storage
 
 
 async def legacy_dataset_exists(identity: UUID) -> bool:
-    return await get_db().scalar(select(Document.id).where(Document.id == identity, Document.document_type == "dataset")) is not None
+    return await get_db().scalar(select(Document.id).where(Document.id == identity, Document.document_format == "dataset")) is not None
 
 
 async def legacy_dataset_ids(*, after: UUID | None = None, limit: int = 50) -> list[UUID]:
-    query = select(Document.id).where(Document.document_type == "dataset").execution_options(include_historized=True)
+    query = select(Document.id).where(Document.document_format == "dataset").execution_options(include_historized=True)
     if after is not None:
         query = query.where(Document.id > after)
     return list(await get_db().scalars(query.order_by(Document.id).limit(limit)))
@@ -28,7 +28,7 @@ async def legacy_dataset_snapshot(identity: UUID) -> dict[str, Any]:
     db = get_db()
     item = await db.scalar(select(Document).where(Document.id == identity).with_for_update()
         .execution_options(include_historized=True, populate_existing=True))
-    if item is None or item.document_type != "dataset":
+    if item is None or item.document_format != "dataset":
         raise ValueError("Migration requires an existing Dataset source")
     if item.provider_code != "native":
         raise ValueError("Dataset migration never downloads an external resource")

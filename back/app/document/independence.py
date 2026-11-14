@@ -268,8 +268,11 @@ async def transfer(session: AsyncSession, delta: SchemaTransitionSet) -> None:
         'summary_size_bytes',CASE WHEN doc IS NULL THEN 0 ELSE coalesce((node->>'size_bytes')::bigint,0) END,
         'visibility',CASE WHEN coalesce(doc->>'visibility',node->>'visibility','private')='public' THEN 'shared' ELSE coalesce(doc->>'visibility',node->>'visibility','private') END,
         'read_only',coalesce((doc->>'read_only')::boolean,false),
-        'document_type',coalesce(doc->>'document_type','text'),
+        'document_format',CASE coalesce(doc->>'document_format',doc->>'document_type','text')
+            WHEN 'html' THEN 'text' WHEN 'form' THEN 'text' WHEN 'dataset' THEN 'data'
+            ELSE coalesce(doc->>'document_format',doc->>'document_type','text') END,
         'storage_kind',coalesce(doc->>'storage_kind','text'),
+        'format_version',coalesce((doc->>'format_version')::integer,1),
         'summary_media_type',coalesce(doc->>'summary_media_type','text/html'),
         'revision',coalesce((doc->>'revision')::integer,(node->>'revision')::integer,1),
         'summary_initialized',true) AS value FROM sources)
@@ -330,7 +333,7 @@ async def transfer(session: AsyncSession, delta: SchemaTransitionSet) -> None:
         names=",".join(f'"{column}"' for column in columns)
         values=",".join(f'record."{column}"' for column in columns)
         table=model.__tablename__
-        extra=",'storage_kind',coalesce(a.snapshot->>'storage_kind','text'),'document_append',coalesce((a.snapshot->>'document_append')::boolean,false) OR coalesce(a.snapshot->>'reason'='Document content appended',false)" if model is DocumentRevision else ""
+        extra=",'format_version',coalesce((a.snapshot->>'format_version')::integer,1),'storage_kind',coalesce(a.snapshot->>'storage_kind','text'),'document_append',coalesce((a.snapshot->>'document_append')::boolean,false) OR coalesce(a.snapshot->>'reason'='Document content appended',false)" if model is DocumentRevision else ""
         conflict=",".join(f'"{column}"=EXCLUDED."{column}"' for column in columns if column!='id')
         # SQL fragments use module constants, closed legacy-column lists or declared model names.
         # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
@@ -444,8 +447,8 @@ def register_independence(registry: DbAdminRegistry) -> None:
         ("retire_policies",DbAdminPhase.AFTER_CONTRACT,retire_policies,retired_policies),
     ):
         registry.register_action(DbAdminAction(key=f"app.document.independence_{key}",phase=phase,
-            checksum="autonomous-documents-current-summaries-v2" if key == "transfer" else "autonomous-document-resources-and-owned-shared-summaries-v1",
-            compatible_checksums=frozenset({"autonomous-document-resources-and-owned-shared-summaries-v1"}) if key == "transfer" else frozenset(),
+            checksum="autonomous-documents-canonical-format-column-v4" if key == "transfer" else "autonomous-document-resources-and-owned-shared-summaries-v1",
+            compatible_checksums=frozenset({"autonomous-document-resources-and-owned-shared-summaries-v1", "autonomous-documents-current-summaries-v2", "autonomous-documents-format-versions-v3"}) if key == "transfer" else frozenset(),
             predicate=needs_independence,
             handler=handler,postcondition=postcondition))
 

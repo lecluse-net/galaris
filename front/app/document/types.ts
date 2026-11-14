@@ -28,7 +28,7 @@ export interface DocumentAttachment {
   created_at: string
 }
 
-export type DocumentType = 'text' | 'data' | 'html' | 'dataset' | 'process'
+export type DocumentFormat = string
 
 export interface DocumentRecord {
   topic_id?: string | null
@@ -41,7 +41,8 @@ export interface DocumentRecord {
   primary_url?: string | null
   urls?: string[]
   temporal?: DocumentTemporalAnchor | null
-  document_type: DocumentType
+  document_format: DocumentFormat
+  format_version?: number
   content_profile?: 'rich-text' | 'document'
   content_profile_version?: number | null
   id: string
@@ -149,7 +150,7 @@ export interface DocumentLibraryFilters {
   topic_classification?: 'all' | 'classified' | 'unclassified'
   agent_classification?: 'all' | 'classified' | 'unclassified'
   without_keywords?: boolean
-  document_type?: DocumentType | null
+  document_format?: DocumentFormat | null
   query?: string
   keyword?: string | null
   limit?: number
@@ -168,7 +169,7 @@ export interface DocumentLibraryFilters {
   created_until?: string | null
   updated_from?: string | null
   updated_until?: string | null
-  sort_by?: 'position' | 'title' | 'created_at' | 'updated_at' | 'document_type'
+  sort_by?: 'position' | 'title' | 'created_at' | 'updated_at' | 'document_format'
   sort_desc?: boolean
 }
 
@@ -242,7 +243,7 @@ export interface DocumentOwnerOptions {
 
 export interface DocumentCreate {
   import_from?: { uri: string; agent_id: number }
-  document_type?: 'text' | 'data' | 'html'
+  document_format?: DocumentFormat
   owner_kind: DocumentOwnerKind
   owner_id: number
   actor_agent_id: number | null
@@ -280,6 +281,8 @@ export interface DocumentTemporalAnchor {
 }
 
 export interface DocumentContentRevision {
+  document_format?: DocumentFormat
+  format_version?: number
   media_type?: string
   content_profile_version?: number | null
   revision: number
@@ -292,6 +295,7 @@ export interface DocumentContentRevision {
 
 export interface DocumentContentRevisionDetail extends DocumentContentRevision {
   content: string
+  payload?: DocumentPayload
 }
 
 export interface DocumentContentRevisionPage {
@@ -320,6 +324,7 @@ export interface DocumentContentDiffHunk {
 }
 
 export interface DocumentContentDiff {
+  binary_changed?: boolean
   structure_changed?: boolean
   previous_html?: string | null
   current_html?: string | null

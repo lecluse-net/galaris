@@ -63,6 +63,8 @@ async def verify_historical_transfer(session: AsyncSession, delta: SchemaTransit
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    from .format_migration import register as register_format_migration
+    register_format_migration(registry)
     from .unification import register as register_typed_documents
     register_typed_documents(registry)
     from .summary_retirement import register

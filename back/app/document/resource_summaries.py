@@ -18,11 +18,15 @@ from .revision_batching import settled_clause
 async def normalized_content(item: Document, content: bytes | None = None) -> str:
     if content is None:
         content = item.content.encode("utf-8") if item.content is not None else await get_storage(item.provider_code).read(item.resource_id)
-    return normalize_source(content.decode("utf-8"), "json" if item.document_type == "data" else "html")
+    if item.document_format in {"text", "data"}:
+        return normalize_source(content.decode("utf-8"), "json" if item.document_format == "data" else "html")
+    from .formats import document_format_definition
+    return " ".join(document_format_definition(item.document_format).extract_content(content).split())
 
 
 async def refresh_pending(item: Document, content: bytes | None = None) -> None:
-    if item.document_type not in {"text", "html", "data"}:
+    from .formats import document_format_codes
+    if item.document_format not in document_format_codes():
         item.summary_pending = False
         return
     item.summary_pending = needs_summary(
@@ -35,8 +39,9 @@ async def refresh_pending(item: Document, content: bytes | None = None) -> None:
 
 
 def pending(handled: Select[tuple[str]]) -> Select[tuple[Document]]:
+    from .formats import document_format_codes
     return select(Document).where(Document.summary_pending.is_(True),
-        Document.document_type == "text", settled_clause(),
+        Document.document_format.in_(tuple(code for code in document_format_codes() if code != "data")), settled_clause(),
         ~func.concat(Document.id, ":", Document.lock_version).in_(handled))
 
 
@@ -88,7 +93,8 @@ async def reconcile() -> None:
     """Re-evaluate existing resources after schema or summary-policy changes."""
     cursor: UUID | None = None
     while True:
-        query = select(Document).where(Document.document_type == "text")
+        from .formats import document_format_codes
+        query = select(Document).where(Document.document_format.in_(tuple(code for code in document_format_codes() if code != "data")))
         if cursor is not None:
             query = query.where(Document.id > cursor)
         items = list(await get_db().scalars(query.order_by(Document.id).limit(100)

@@ -7,7 +7,7 @@ const dataset = { id, uri, title: 'Synthetic linked Dataset', content: '{"amount
   lock_version: 1, can_write: true, can_manage: true, can_delete: true, read_only: false,
   global_access: 0, group_access: 0, keywords: [], created_at: '2026-01-01T00:00:00Z' }
 async function fixtures(page) {
-  const item = { ...documentFixture, id, title: dataset.title, document_type: 'data', media_type: 'application/json', payload: { text: dataset.content } }
+  const item = { ...documentFixture, id, title: dataset.title, document_format: 'data', media_type: 'application/json', payload: { text: dataset.content } }
   await jsonRoute(page, '**/api/agents?*', [agent])
   await jsonRoute(page, '**/api/documents/owner-options?*', { agents: [], users: [] })
   await jsonRoute(page, '**/api/documents/keywords?*', [])

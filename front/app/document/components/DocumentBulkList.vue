@@ -39,7 +39,7 @@
         :draggable="!busy && !loading" @dragstart.stop="startDrag($event, entry)" @dragend="emit('dragend')"
         @click="selectRow(entry, $event)" @mousedown="preventTextSelection">
         <q-item-section side class="bulk-thumbnail">
-          <DocumentThumbnail :document-id="entry.item.id" :document-type="entry.item.document_type" :revision="entry.item.revision" :updated-at="entry.item.updated_at" :agent-id="documentEntryActor(entry)" />
+          <DocumentThumbnail :document-id="entry.item.id" :document-format="entry.item.document_format" :revision="entry.item.revision" :updated-at="entry.item.updated_at" :agent-id="documentEntryActor(entry)" />
         </q-item-section>
         <q-item-section>
           <q-item-label><a :href="documentResourceHref(entry.item.id)" draggable="false" class="bulk-document-link" @click.stop.prevent="openDocument(entry, $event)">{{ entry.item.title }}</a></q-item-label>
@@ -70,7 +70,7 @@ import { websocket } from '@/core/websocket'
 import { documentService } from '../services/documentService'
 import { applyDocumentBulkOperation, applyDocumentOwnerBatch, documentEntryActor, type DocumentBulkOperation } from '@/app/document/services/documentBulkService'
 import { useDocumentMutations } from '@/app/document/stores/documentMutations'
-import type { DocumentCreationMode } from '../documentTypes'
+import type { DocumentCreationMode } from '../documentFormats'
 import type { DocumentLibraryEntry, DocumentTag } from '../types'
 import DocumentBulkDialog from '@/app/document/components/DocumentBulkDialog.vue'
 import DocumentThumbnail from '@/app/document/components/DocumentThumbnail.vue'

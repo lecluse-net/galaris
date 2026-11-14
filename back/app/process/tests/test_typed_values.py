@@ -158,10 +158,10 @@ def test_process_defaults_initialize_once_and_partial_updates_preserve_omissions
 
 
 @pytest.mark.parametrize("options", [
-    {"type": "File", "document_type": "text"}, {"type": "Document", "mime_type": "application/pdf"},
+    {"type": "File", "document_format": "text"}, {"type": "Document", "mime_type": "application/pdf"},
     {"type": "File", "mime_type": "image"}, {"type": "File", "mime_type": "text/html; charset=utf-8"},
-    {"type": "Document", "document_type": "process"},
-    {"type": "Document", "document_type": "data", "default": {"type": "Document", "value": "document://00000000-0000-4000-8000-000000000001"}},
+    {"type": "Document", "document_format": "process"},
+    {"type": "Document", "document_format": "data", "default": {"type": "Document", "value": "document://00000000-0000-4000-8000-000000000001"}},
 ])
 def test_variable_constraints_cannot_be_applied_to_an_unrelated_type(options):
     with pytest.raises(ValidationError):
@@ -171,7 +171,7 @@ def test_variable_constraints_cannot_be_applied_to_an_unrelated_type(options):
 def test_resource_constraints_survive_bpmn_save_and_reload():
     definition = Workflow(schema_version="galaris.bpmn/v2", variables=[
         Variable(name="attachment", type="File", nullable=True, mime_type="image/*"),
-        Variable(name="report", type="Document", nullable=True, document_type="data")],
+        Variable(name="report", type="Document", nullable=True, document_format="data")],
         nodes=[Node(id="start", kind="start"), Node(id="end", kind="end")], flows=[Flow(id="a", source="start", target="end")])
     assert compile_bpmn(to_bpmn(definition)).model_dump() == definition.model_dump()
 

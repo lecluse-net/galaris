@@ -182,8 +182,13 @@ async def validate_launch_input_fields(agent_id: int, declarations: list[dict[st
                     raise descriptor
                 if descriptor.is_collection:
                     raise ValueContractError(f"process.input.{name}: expected a resource, not a directory")
-                expected = variable.mime_type or ("application/json" if variable.document_type == "data" else
-                    "text/html" if variable.document_type == "text" else None)
+                from app.document import document_format_definition
+                expected = variable.mime_type or (document_format_definition(variable.document_format).media_type
+                    if variable.document_format is not None else None)
+                if variable.document_format is not None:
+                    actual_format = descriptor.metadata.get("document_format")
+                    if actual_format != variable.document_format:
+                        raise ValueContractError(f"process.input.{name}: expected document format {variable.document_format}")
                 actual = descriptor.media_type.split(";", 1)[0].strip().lower()
                 if expected and actual != expected and not (expected.endswith("/*") and actual.startswith(expected[:-1])):
                     raise ValueContractError(f"process.input.{name}: expected media type {expected}, received {actual}")

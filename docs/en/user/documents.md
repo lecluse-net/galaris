@@ -80,15 +80,24 @@ current file's path. After an error, successful files are not imported again and
 created folders are reused. Nested ZIP files are not automatically decompressed. The resource
 quota also applies to expanded bytes; an archive accepts at most 2,000 entries and 32 folder levels.
 
-## Choose a document type
+## Choose a document format
 
-Each **New document** icon opens the type menu below the clicked icon before creating any record. Choose **Text** or
-**Data**, then the title and owner. Document and folder context menus also offer both
+The displayed names are **Text format** and **Data format**. **Document formats** lists
+available formats, native capabilities and Galaris fallbacks. A capability declaration
+does not mean a plugin has passed qualification.
+
+**Download source** retrieves the saved version, including when its format viewer is
+unavailable. Existing documents and their rights remain intact. Formats other than Text
+also expose PDF export in the common envelope; fallback rendering does not promise a
+specialized viewer's layout.
+
+Each **New document** icon opens the format menu below the clicked icon before creating any record. Choose **Text format** or
+**Data format**, then the title and owner. Document and folder context menus also offer both
 creation actions in the current classification. Closing the menu or creation dialog
 creates no document.
 
-The **Document type** filter selects all types, Text or Data. It combines with search
-and the other filters before pagination. Each type has a distinct icon, editor and
+The **Document format** filter selects all formats, Text or Data. It combines with search
+and the other filters before pagination. Each format has a distinct icon, editor and
 preview. Title, owner, sharing, Topic, keywords, summary and history follow common rules.
 The Data editor preserves invalid JSON drafts without saving them or leaving the document.
 Using the browser Back action to close its window asks whether to keep or discard the draft.

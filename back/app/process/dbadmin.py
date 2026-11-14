@@ -53,6 +53,8 @@ async def _purge_technical_processes(session: AsyncSession, tool_code: str, oper
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    from .document_format_migration import register as register_document_formats
+    register_document_formats(registry)
     from .definition_migration import needs_transfer, transfer_complete, transfer_definitions
     registry.register_action(DbAdminAction(
         key="app.process.native_definition_storage", phase=DbAdminPhase.AFTER_EXPAND,

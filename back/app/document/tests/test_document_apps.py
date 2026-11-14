@@ -29,7 +29,7 @@ async def setup(db, agents):
     human = UserModel(email=f"apps-{uuid4()}@example.test", hashed_password="unused", is_active=True)
     db.add(human)
     await db.flush()
-    dataset = await legacy_dataset(owner_agent_id=owner.id, task_id=None, title="Responses", content="[]", document_type="dataset")
+    dataset = await legacy_dataset(owner_agent_id=owner.id, task_id=None, title="Responses", content="[]", document_format="dataset")
     document = await document_service.create_document(owner_agent_id=owner.id, task_id=None, title="Form", content=block(dataset.id))
     scope = AgentManagementScope(user_id=human.id, agent_ids=frozenset({owner.id}))
     viewer_scope = AgentManagementScope(user_id=human.id, agent_ids=frozenset({viewer.id}))
@@ -61,7 +61,7 @@ async def test_html_reads_current_data_document_values_with_independent_permissi
     await datasets.replace(dataset.id, owner.id, content='{"amount":200}', expected_revision=1)
     assert (await app_dataset(document.id, "document-html", "budget", AppDatasetRequest(document_revision=1), scope)).data == {"amount": 200}
     assert document.revision == 1
-    assert (await db.get(Document, dataset.id)).document_type == "data"
+    assert (await db.get(Document, dataset.id)).document_format == "data"
 
 
 @pytest.mark.asyncio
@@ -293,7 +293,7 @@ async def test_consent_is_personal_revocable_and_cannot_be_forged_or_transferred
 async def test_cross_dataset_exfiltration_needs_separate_consent_for_each_binding(db, agents, memory_storage):
     document, secret, scope, _ = await setup(db, agents)
     sink = await legacy_dataset(owner_agent_id=agents[0].id, task_id=None,
-        title="Shared collection", content="[]", document_type="dataset")
+        title="Shared collection", content="[]", document_format="dataset")
     source = block(secret.id, datasets={
         "secret": {"uri": f"document://{secret.id}", "access": "read"},
         "sink": {"uri": f"document://{sink.id}", "access": "write"},
@@ -386,7 +386,7 @@ async def test_concurrent_workers_share_the_same_durable_write_budget(committed_
         db.add(owner)
         await db.flush()
         scope = AgentManagementScope(user_id=human.id, agent_ids=frozenset({owner.id}))
-        dataset = await legacy_dataset(owner_agent_id=owner.id, task_id=None, title="Concurrent data", content="[]", document_type="dataset")
+        dataset = await legacy_dataset(owner_agent_id=owner.id, task_id=None, title="Concurrent data", content="[]", document_format="dataset")
         documents = []
         for index in range(2):
             document = await document_service.create_document(owner_agent_id=owner.id, task_id=None, title=f"Concurrent form {index}", content=block(dataset.id))

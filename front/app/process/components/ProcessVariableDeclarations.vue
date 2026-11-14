@@ -39,12 +39,12 @@
               {{ t(`nativeProcesses.variables.${variable.type}Hint`) }}
             </div>
             <template v-if="variable.type === 'Document'">
-              <div class="text-caption q-mt-xs">{{ t('nativeProcesses.variables.documentType') }}</div>
-              <q-select :model-value="variable.document_type ?? null" :options="documentOptions"
+              <div class="text-caption q-mt-xs">{{ t('nativeProcesses.variables.documentFormat') }}</div>
+              <q-select :model-value="variable.document_format ?? null" :options="documentOptions"
                 emit-value map-options clearable dense outlined hide-bottom-space :readonly="readonly"
-                :aria-label="t('nativeProcesses.variables.documentType')"
-                :display-value="variable.document_type ? t(`documents.types.${variable.document_type}`) : t('nativeProcesses.variables.anyDocument')"
-                @update:model-value="setConstraint(index, 'document_type', $event)" />
+                :aria-label="t('nativeProcesses.variables.documentFormat')"
+                :display-value="variable.document_format ? t(`documents.formats.${variable.document_format}`) : t('nativeProcesses.variables.anyDocument')"
+                @update:model-value="setConstraint(index, 'document_format', $event)" />
             </template>
             <template v-if="variable.type === 'File'">
               <div class="text-caption q-mt-xs">{{ t('nativeProcesses.variables.mimeType') }}</div>
@@ -75,6 +75,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { workingDocumentFormats } from '@/core/util'
 import { valueTypes, type ValueType, type ProcessVariable, type JsonValue } from '../services/nativeProcessService'
 import { mimeTypes, mimeTypePattern, integerReferenceTypes, hiddenValueTypes } from '../variableTypes'
 const props = defineProps<{ modelValue: ProcessVariable[]; label: string; readonly?: boolean; draftValues?: Record<number, string> }>()
@@ -83,7 +84,7 @@ const { t } = useI18n()
 const typeSearch = ref(''), mimeSearch = ref('')
 const typeOptions = computed(() => valueTypes.filter(value => !hiddenValueTypes.includes(value)).map(value => ({ value, label: t(`nativeProcesses.variables.types.${value}`) }))
   .filter(option => `${option.label} ${option.value}`.toLocaleLowerCase().includes(typeSearch.value.toLocaleLowerCase())))
-const documentOptions = computed(() => ['text', 'data'].map(value => ({ value, label: t(`documents.types.${value}`) })))
+const documentOptions = computed(() => workingDocumentFormats().map(format => ({ value: format.code, label: t(format.label) })))
 const mimeOptions = computed(() => mimeTypes.map(([value, key]) => ({ value, label: `${t(`nativeProcesses.variables.mimes.${key}`)} (${value})` }))
   .filter(option => option.label.toLocaleLowerCase().includes(mimeSearch.value.toLocaleLowerCase())))
 function filterTypes(value: string, updateOptions: (callback: () => void) => void): void { updateOptions(() => { typeSearch.value = value }) }
@@ -168,13 +169,13 @@ function changeType(index: number, value: ValueType): void {
   emit('update:modelValue', props.modelValue.map((variable, at) => {
     if (at !== index) return variable
     const next = { ...variable, type: value }
-    delete next.document_type; delete next.mime_type; delete next.default
+    delete next.document_format; delete next.mime_type; delete next.default
     if (variable.default !== undefined && ['int', 'float', 'bool', 'string', 'array', 'object', ...integerReferenceTypes].includes(value))
       next.default = { type: value, value: initial(value) }
     return next
   }))
 }
-function setConstraint(index: number, key: 'document_type' | 'mime_type', value: string | null): void {
+function setConstraint(index: number, key: 'document_format' | 'mime_type', value: string | null): void {
   emit('update:modelValue', props.modelValue.map((variable, at) => {
     if (at !== index) return variable
     const next = { ...variable }

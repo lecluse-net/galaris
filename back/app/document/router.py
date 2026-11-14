@@ -11,6 +11,7 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, File, Form, HTTPException, Query, Response, UploadFile, status
 from pydantic import Json
 from fastapi.responses import FileResponse, StreamingResponse
+from starlette.background import BackgroundTask
 from loguru import logger
 
 from core.authorize import Privileges, authorize, check_privilege
@@ -91,12 +92,11 @@ from .schemas import DocumentArchiveExpand
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 
-@router.get("/types")
+@router.get("/formats")
 @authorize(privileges=[Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN])
-async def read_document_types() -> list[dict[str, str]]:
-    from .type_registry import DOCUMENT_TYPES
-    return [{"code": definition.code, "media_type": definition.media_type,
-             "storage_kind": definition.storage_kind, "icon": definition.icon} for definition in DOCUMENT_TYPES]
+async def read_document_formats() -> list[dict[str, object]]:
+    from .format_facade import document_format_catalogue
+    return document_format_catalogue()
 
 
 @router.get("/folder-collections")
@@ -319,7 +319,9 @@ async def _create_managed_document(data: DocumentCreate, upload: DocumentImportS
     try:
         scope = await _require_agent_scope(data.actor_agent_id) if data.actor_agent_id is not None else await current_management_scope()
         async with AsyncExitStack() as imports:
-            imported = PreparedDocumentImport("text" if data.document_type == "html" else data.document_type, "")
+            from .formats import document_format_definition
+            definition = document_format_definition(data.document_format)
+            imported = PreparedDocumentImport(definition.code, definition.initial_content, binary_content=definition.initial_binary)
             if upload is not None:
                 imported = await imports.enter_async_context(prepare_document_import(upload))
             elif data.import_from is not None:
@@ -329,12 +331,13 @@ async def _create_managed_document(data: DocumentCreate, upload: DocumentImportS
                 item = await document_service.create_document(
                     owner_agent_id=data.owner_id,
                     title=data.title,
-                    document_type=imported.kind,
+                    document_format=imported.kind,
                     content=imported.content,
                     task_id=None,
                     folder=data.folder,
                     clone_source=imported.clone_source,
                     prepared_clone=imported.prepared_clone,
+                    binary_content=imported.binary_content,
                 )
             else:
                 current_user = await get_user_record(scope.user_id)
@@ -353,11 +356,12 @@ async def _create_managed_document(data: DocumentCreate, upload: DocumentImportS
                     owner_user_id=data.owner_id,
                     editor_agent_id=data.actor_agent_id,
                     title=data.title,
-                    document_type=imported.kind,
+                    document_format=imported.kind,
                     content=imported.content,
                     folder=data.folder,
                     clone_source=imported.clone_source,
                     prepared_clone=imported.prepared_clone,
+                    binary_content=imported.binary_content,
                 )
             return service.item_to_public(
                 item,
@@ -925,14 +929,29 @@ async def read_managed_document(document_id: UUID, agent_id: Annotated[int | Non
         item, content, access, content_type, media_type = await service.get_item(
             document_id, agent_id=actor, include_revisions=False,
         )
-        if item.document_type == "dataset":
+        if item.document_format == "dataset":
             return DocumentResourceRedirect(resource_uri=f"data://{item.id}")
-        if item.document_type not in {"text", "html", "data"}:
-            raise service.DocumentNotFoundError("HTML Document not found")
+        if item.document_format == "process":
+            raise service.DocumentNotFoundError("Document not found")
         return ManagedDocumentDetail(
             item=await service.item_to_detail(item, content, access, content_type=content_type, media_type=media_type),
             agent_id=actor if isinstance(actor, int) else None,
         )
+    except Exception as exc:
+        raise _http_error(exc) from exc
+
+
+@router.get("/{document_id}/source")
+@authorize(privileges=[Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN])
+async def read_document_source(document_id: UUID, agent_id: int | None = Query(default=None, gt=0),
+    revision: int | None = Query(default=None, ge=1)) -> Response:
+    """Recover an authorized native source even when its format plugin is absent."""
+    try:
+        from .format_facade import document_source
+        actor = await _document_request_actor(document_id, agent_id)
+        content, media_type = await document_source(document_id, actor, revision=revision)
+        return Response(content, media_type=media_type,
+            headers={"Content-Disposition": 'attachment; filename="document-source"'})
     except Exception as exc:
         raise _http_error(exc) from exc
 
@@ -1292,6 +1311,7 @@ async def read_document_attachment(
     document_id: UUID,
     attachment_id: UUID,
     agent_id: int | None = Query(default=None, gt=0),
+    preview: bool = False,
 ) -> FileResponse:
     try:
         actor = await _document_request_actor(document_id, agent_id)
@@ -1300,6 +1320,19 @@ async def read_document_attachment(
             attachment_id,
             actor_agent_id=actor,
         )
+        if preview:
+            from core.preview import PreviewFile, prepare_preview
+            manager = prepare_preview(PreviewFile(path, attachment.name, attachment.media_type))
+            prepared = await manager.__aenter__()
+            try:
+                await document_attachment_service.document_attachment_path(document_id, attachment_id, actor_agent_id=actor)
+                return FileResponse(prepared.path, media_type=prepared.media_type, filename=prepared.name,
+                    background=BackgroundTask(manager.__aexit__, None, None, None),
+                    headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+                             **source_code_response_headers(prepared.name, prepared.media_type)})
+            except BaseException:
+                await manager.__aexit__(None, None, None)
+                raise
         return FileResponse(
             path,
             media_type=attachment.media_type,

@@ -26,10 +26,10 @@ async def test_dataset_file_lifecycle_keeps_json_rights_and_history(agents, memo
     owner, reader = agents
     ctx = ResourceContext(agent_id=owner.id, runtime="internal")
     source = '{\n  "label": "<strong>Literal HTML</strong>",\n  "amount": 1200\n}\n'
-    created = await files.resource_create(ctx, "document://", source.encode(), name="Scenarios", document_type="dataset")
+    created = await files.resource_create(ctx, "document://", source.encode(), name="Scenarios", document_format="dataset")
     identity = UUID(created.uri.removeprefix("data://"))
     info = await files.resource_info(ctx, created.uri)
-    assert info.metadata["document_type"] == "dataset"
+    assert info.metadata["document_format"] == "data"
     assert info.media_type == "application/json"
     first = await files.resource_read(ctx, created.uri, max_chars=15)
     second = await files.resource_read(ctx, created.uri, offset=first.next_offset, max_chars=2000)
@@ -65,7 +65,7 @@ async def test_dataset_file_lifecycle_keeps_json_rights_and_history(agents, memo
 
     copied = await files.resource_copy(ctx, created.uri, "document://")
     assert copied.uri != created.uri
-    assert (await files.resource_info(ctx, copied.uri)).metadata["document_type"] == "dataset"
+    assert (await files.resource_info(ctx, copied.uri)).metadata["document_format"] == "data"
     assert (await files.resource_read(ctx, copied.uri)).content == source
     with pytest.raises(datasets.DatasetNotFoundError):
         await files.resource_read(reader_ctx, copied.uri)
@@ -77,7 +77,7 @@ async def test_dataset_file_lifecycle_keeps_json_rights_and_history(agents, memo
     assert (await files.resource_read(ctx, created.uri)).content == source + "\n"
     overwritten = await files.resource_copy(ctx, copied.uri, created.uri, overwrite=True)
     assert overwritten.uri == created.uri
-    assert (await files.resource_info(ctx, created.uri)).metadata["document_type"] == "dataset"
+    assert (await files.resource_info(ctx, created.uri)).metadata["document_format"] == "data"
     assert (await files.resource_read(ctx, created.uri)).content == source
     current = await datasets.record(identity, owner.id)
     await datasets.set_grant(identity, owner.id, kind="agent", principal=reader.id, can_write=None, expected_lock_version=current.lock_version)
@@ -91,8 +91,8 @@ async def test_invalid_dataset_never_creates_or_replaces_a_revision(agents, memo
     owner, _ = agents
     ctx = ResourceContext(agent_id=owner.id, runtime="internal")
     with pytest.raises(ValueError):
-        await files.resource_create(ctx, "document://", invalid, document_type="dataset")
-    created = await files.resource_create(ctx, "document://", b'{"safe":true}', document_type="dataset")
+        await files.resource_create(ctx, "document://", invalid, document_format="dataset")
+    created = await files.resource_create(ctx, "document://", b'{"safe":true}', document_format="dataset")
     with pytest.raises(ValueError):
         await files.resource_write(ctx, created.uri, invalid, expected_revision=1)
     current = await files.resource_read(ctx, created.uri)
@@ -106,15 +106,15 @@ async def test_adopted_dataset_type_is_fixed_and_appears_in_the_common_document_
     html = await document_service.create_document(owner_agent_id=owner.id, title="A report", content="<p>Report</p>", task_id=None)
     dataset = await legacy_dataset(owner_agent_id=owner.id, title="Z scenarios", content='{"amount":1200}')
     await project_document(html.id)
-    assert html.document_type == "text"
+    assert html.document_format == "text"
     for item, media, content in [(html, "application/json", "{}"), (dataset, "text/html", "<p>Invalid</p>")]:
         with pytest.raises(DocumentConflictError):
             await documents.update_item(item.id, DocumentUpdate(expected_revision=1, media_type=media, payload=DocumentPayload(text=content)), actor_agent_id=owner.id)
         with pytest.raises(ValidationError):
-            MemoryItemUpdate.model_validate({"document_type": "html" if item == dataset else "dataset"})
-    page = await documents.browse_document_library(DocumentLibraryRequest(sort_by="document_type"), managed_agent_ids=frozenset({owner.id}))
+            MemoryItemUpdate.model_validate({"document_format": "text" if item == dataset else "dataset"})
+    page = await documents.browse_document_library(DocumentLibraryRequest(sort_by="document_format"), managed_agent_ids=frozenset({owner.id}))
     assert {entry.item.id for entry in page.entries} == {html.id, dataset.id}
-    filtered = await documents.browse_document_library(DocumentLibraryRequest(document_type="data"), managed_agent_ids=frozenset({owner.id}))
+    filtered = await documents.browse_document_library(DocumentLibraryRequest(document_format="data"), managed_agent_ids=frozenset({owner.id}))
     assert filtered.total == 1
     assert [entry.item.id for entry in filtered.entries] == [dataset.id]
     searched = await service.search_items(MemorySearchRequest(agent_id=owner.id, query="", node_kinds=["document"]))
@@ -124,26 +124,26 @@ async def test_adopted_dataset_type_is_fixed_and_appears_in_the_common_document_
     assert dataset.id not in {entry.id for entry in graph.nodes}
     updated = await documents.update_item(dataset.id, DocumentUpdate(title="Renamed scenarios", keywords=["finance"]), actor_agent_id=owner.id)
     assert updated.revision == 1
-    assert updated.document_type == "data"
+    assert updated.document_format == "data"
 
 
 @pytest.mark.asyncio
-async def test_document_type_option_is_rejected_outside_document_creation(agents, memory_storage):
+async def test_document_format_option_is_rejected_outside_document_creation(agents, memory_storage):
     owner, _ = agents
     ctx = ResourceContext(agent_id=owner.id, runtime="internal")
-    with pytest.raises(ValueError, match="document_type"):
-        await files.resource_create(ctx, "console://sample.json", b"{}", document_type="dataset")
+    with pytest.raises(ValueError, match="document_format"):
+        await files.resource_create(ctx, "console://sample.json", b"{}", document_format="dataset")
 
 
 @pytest.mark.parametrize("source", [b"null", b"true", b"42", b'"value"', b"[1,2]", b"{}"])
 def test_datasets_accept_every_json_root_type(source):
-    from app.document.document_types import validate_dataset
+    from app.document.content_validation import validate_dataset
 
     validate_dataset(source)
 
 
 def test_dataset_limit_rejects_oversized_json():
-    from app.document.document_types import validate_dataset
+    from app.document.content_validation import validate_dataset
 
     with pytest.raises(ValueError, match="exceeds"):
         validate_dataset(b'"' + b"x" * 2_000_000 + b'"')

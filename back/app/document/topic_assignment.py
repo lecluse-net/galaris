@@ -10,12 +10,11 @@ from sqlalchemy.orm import defer, raiseload
 
 from app.agent import AgentManagementScope
 from core.database import get_db
-from core.util import visible_text
 
 from .access import readable_workflow_document_clause
 from .models import Document
+from .formats import document_format_codes
 from .revision_batching import settled_clause
-from core.storage import get_storage
 
 
 async def assignment(identity: UUID, scope: AgentManagementScope) -> tuple[UUID | None, bool]:
@@ -24,7 +23,7 @@ async def assignment(identity: UUID, scope: AgentManagementScope) -> tuple[UUID 
 
     await document_actor(identity, scope)
     item = await item_record(identity, revisions=False, contents=False)
-    if item is None or item.document_type not in {"text", "html", "data"}:
+    if item is None or item.document_format in {"dataset", "process"}:
         raise DocumentNotFoundError("Document not found")
     topic_id = item.topic_id
     return topic_id, item.metadata_.get("topic_assignment") == {
@@ -56,7 +55,7 @@ async def change_assignment(
     item = await get_db().scalar(select(Document).options(
         defer(Document.content), defer(Document.summary_content), raiseload("*"),
     ).where(Document.id == identity).with_for_update().execution_options(populate_existing=True))
-    if item is None or item.document_type not in {"text", "html", "data"}:
+    if item is None or item.document_format in {"dataset", "process"}:
         raise DocumentNotFoundError("Document not found")
     await assert_item_access(item, actor, write=True)
     # Compare against the fresh values obtained while holding the row lock.
@@ -98,7 +97,7 @@ def _pending(handled: Select[tuple[str]]) -> Select[tuple[str]]:
         select(_identity())
         .where(
             Document.topic_id.is_(None),
-            Document.document_type == "text",
+            Document.document_format.in_(tuple(code for code in document_format_codes() if code != "data")),
             settled_clause(),
             Document.deleted_at.is_(None),
             Document.deleted_at.is_(None),
@@ -127,31 +126,25 @@ async def source(identity: str) -> tuple[str, int | None, str | None] | None:
         await get_db().execute(
             select(
                 Document.title,
-                func.left(Document.content, 80_000),
+                func.left(Document.search_text, 80_000),
                 Document.owner_agent_id,
                 Document.metadata_,
-                Document.provider_code,
-                Document.resource_id,
             )
             .where(
                 _identity() == identity,
                 Document.topic_id.is_(None),
                 Document.deleted_at.is_(None),
                 Document.deleted_at.is_(None),
-                Document.document_type == "text",
+                Document.document_format.in_(tuple(code for code in document_format_codes() if code != "data")),
                 settled_clause(),
             )
         )
     ).one_or_none()
     if row is None:
         return None
-    title, content, agent_id, metadata, provider, resource = row
-    if content is None:
-        content = (await get_storage(provider).read(resource))[:80_000].decode(
-            "utf-8", errors="replace"
-        )
+    title, content, agent_id, metadata = row
     return (
-        f"Document: {title}\n\n{visible_text(content or '')[:18_000]}",
+        f"Document: {title}\n\n{(content or '')[:18_000]}",
         agent_id,
         metadata.get("language"),
     )
@@ -166,7 +159,7 @@ async def is_current(identity: str) -> bool:
                 Document.topic_id.is_(None),
                 Document.deleted_at.is_(None),
                 Document.deleted_at.is_(None),
-                Document.document_type == "text",
+                Document.document_format.in_(tuple(code for code in document_format_codes() if code != "data")),
                 settled_clause(),
             )
         )
@@ -181,7 +174,7 @@ async def assign(identity: str, topic_id: UUID) -> bool:
             _identity() == identity,
             Document.topic_id.is_(None),
             Document.deleted_at.is_(None),
-            Document.document_type == "text",
+            Document.document_format.in_(tuple(code for code in document_format_codes() if code != "data")),
             settled_clause(),
             Document.id.in_(
                 select(Document.id).where(Document.deleted_at.is_(None))
@@ -206,7 +199,7 @@ async def list_related(
         .where(
             Document.topic_id.in_(topic_ids),
             Document.deleted_at.is_(None),
-            Document.document_type == "text",
+            Document.document_format.in_(tuple(code for code in document_format_codes() if code != "data")),
         )
     )
     if scope is not None:

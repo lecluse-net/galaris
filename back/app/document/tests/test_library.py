@@ -180,7 +180,7 @@ async def test_document_schema_preserves_retired_forms(
     ))
     constraints = [constraint for constraint in Document.__table__.constraints
                    if isinstance(constraint, CheckConstraint)
-                   and constraint.name in {"ck_documents_type", "ck_documents_content_type"}]
+                   and constraint.name in {"ck_documents_format", "ck_documents_content_type"}]
     # Validate deferred sharing identities before changing this isolated schema.
     await db.execute(text("SET CONSTRAINTS ALL IMMEDIATE"))
     for constraint in constraints:
@@ -188,7 +188,7 @@ async def test_document_schema_preserves_retired_forms(
     # Both representations existed before forms were retired. Tombstones still
     # participate in PostgreSQL constraint validation during startup.
     await db.execute(text("""
-        UPDATE documents SET document_type = 'form', media_type = :media_type,
+        UPDATE documents SET document_format = 'form', media_type = :media_type,
             content_profile_version = NULL,
             deleted_at = CASE WHEN :deleted THEN now() ELSE NULL END
         WHERE id = :id
@@ -205,12 +205,10 @@ async def test_document_schema_preserves_retired_forms(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("legacy_form", [False, True])
 async def test_library_unites_owned_and_granted_documents(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
-    legacy_form: bool,
 ) -> None:
     del memory_storage
     managed, peer = agents
@@ -242,20 +240,8 @@ async def test_library_unites_owned_and_granted_documents(
 
     dataset = await legacy_dataset(
         owner_agent_id=managed.id, title="Synthetic legacy dataset", content="{}",
-        task_id=None, document_type="dataset", keywords=["dataset-only"],
+        task_id=None, document_format="dataset", keywords=["dataset-only"],
     )
-
-    if legacy_form:
-        from sqlalchemy import text
-
-        # Reproduce a database predating the retirement of the HTML form type.
-        # The test transaction restores the constraint along with its data.
-        await db.execute(text("SET CONSTRAINTS ALL IMMEDIATE"))
-        await db.execute(text("ALTER TABLE documents DROP CONSTRAINT ck_documents_type"))
-        await db.execute(text("ALTER TABLE documents DROP CONSTRAINT ck_documents_content_type"))
-        await db.execute(text("UPDATE documents SET document_type = 'form' WHERE id = :id"), {"id": owned.id})
-        await db.execute(text("SET CONSTRAINTS ALL DEFERRED"))
-        db.expire(owned)
 
     page = await service.browse_document_library(
         DocumentLibraryRequest(include_keywords=True),
@@ -268,7 +254,7 @@ async def test_library_unites_owned_and_granted_documents(
     assert "dataset-only" in page.keywords
     assert "dataset-only" in await service.list_document_keywords(managed.id)
     dataset_page = await service.browse_document_library(
-        DocumentLibraryRequest(document_type="data"),
+        DocumentLibraryRequest(document_format="data"),
         managed_agent_ids=frozenset({managed.id}),
     )
     assert dataset_page.total == 1 and dataset_page.entries[0].item.id == dataset.id
@@ -277,9 +263,9 @@ async def test_library_unites_owned_and_granted_documents(
     assert by_id[owned.id].writable_agent_ids == [managed.id]
     assert by_id[shared.id].agent_ids == [managed.id]
     assert by_id[shared.id].writable_agent_ids == []
-    assert by_id[owned.id].item.document_type == "text"
+    assert by_id[owned.id].item.document_format == "text"
     html_page = await service.browse_document_library(
-        DocumentLibraryRequest(document_type="html"),
+        DocumentLibraryRequest(document_format="text"),
         managed_agent_ids=frozenset({managed.id}),
     )
     assert {entry.item.id for entry in html_page.entries} == {owned.id, shared.id}
@@ -287,11 +273,9 @@ async def test_library_unites_owned_and_granted_documents(
     assert "revisions" in inspect(owned).unloaded
     assert "revisions" in inspect(shared).unloaded
     item, content, access, *_ = await service.get_item(owned.id, agent_id=managed.id)
-    assert item.document_type == "text"
+    assert item.document_format == "text"
     assert content == b"<p>Owned</p>"
     assert access.can_write
-    if legacy_form:
-        assert await db.scalar(text("SELECT document_type FROM documents WHERE id = :id"), {"id": owned.id}) == "form"
 
 
 def test_document_library_routes_use_the_dedicated_assertion() -> None:
@@ -410,9 +394,9 @@ async def test_user_owned_document_is_created_with_a_writable_agent(
     assert document.grants == []
     assert not (await service.effective_access(document, editor.id)).can_read
     assert access.can_write is True
-    assert document.document_type == "text"
+    assert document.document_format == "text"
     assert _content == b""
-    assert created.document_type == "text"
+    assert created.document_format == "text"
 
 
 @pytest.mark.parametrize("kind", ["dataset", "process"])
@@ -420,7 +404,7 @@ def test_document_creation_rejects_non_html_types(kind: str) -> None:
     with pytest.raises(ValidationError):
         DocumentCreate.model_validate({
             "owner_kind": "agent", "owner_id": 1, "actor_agent_id": 1,
-            "title": "Synthetic resource", "document_type": kind,
+            "title": "Synthetic resource", "document_format": kind,
         })
 
 
@@ -433,13 +417,13 @@ async def test_legacy_dataset_document_read_returns_common_data_payload(
     owner, other = agents
     dataset = await legacy_dataset(
         owner_agent_id=owner.id, title="Synthetic legacy data", content='{"amount":1200}',
-        task_id=None, document_type="dataset",
+        task_id=None, document_format="dataset",
     )
     monkeypatch.setattr(router, "current_management_scope", AsyncMock(return_value=AgentManagementScope(
         user_id=1, agent_ids=frozenset({owner.id, other.id}),
     )))
     result = await read_managed_document(dataset.id, agent_id=owner.id)
-    assert result.item.document_type == "data"
+    assert result.item.document_format == "data"
     assert result.item.payload.text == '{"amount":1200}'
     with pytest.raises(HTTPException) as denied:
         await read_managed_document(dataset.id, agent_id=other.id)

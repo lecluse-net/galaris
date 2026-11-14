@@ -2,6 +2,14 @@
 
 # Functional guarantees catalogue
 
+`make tests-document-formats` groups documentary guarantees and browser workflows.
+`app/document/tests/test_formats.py` covers contribution registration, exact-evidence
+qualification, the common Text/Data/synthetic lifecycle, owned asset copies, imports,
+binary retention and recovery without a plugin. `front/browser-tests/document-formats.spec.mjs`
+covers contributed editing, inert fallback, source downloads and catalogue retry;
+existing suites retain preview, printing and PDF export guarantees. See the
+[format contract](document-formats.md) for declarations versus qualification.
+
 `app/calendar/tests/test_service.py` runs the actual CalDAV adapter against a stateful synthetic
 HTTP boundary: standard parameters, discovery, differential reads/multiget, conditional writes,
 lost acknowledgements, token expiry, conflicts, malformed responses and remote permissions.

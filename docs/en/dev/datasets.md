@@ -4,8 +4,8 @@
 
 `app.document` owns every document's identity, current content, metadata, sharing,
 classification and revisions. `app.document.text` supplies HTML behavior;
-`app.document.data` supplies JSON behavior. `app.document.type_registry` describes
-the available types and their validation. The public JSON facade is
+`app.document.data` supplies JSON behavior. `app.document.formats` describes
+the available formats and their validation. The public JSON facade is
 `app.document.data.facade`. Historical `app.dataset` and `app.dataset.facade`
 imports delegate to this implementation and own no second content copy.
 
@@ -32,7 +32,7 @@ the same types. The editor shell is shared. Text supplies the HTML editor; Data 
 JSON `CodeEditor`, including historical previews. Autosave preserves invalid drafts
 and blocks leaving until a draft is saved or abandoned.
 
-`POST /documents` accepts `document_type="text"` or `"data"`. `/datasets` routes and
+`POST /documents` accepts `document_format="text"` or `"data"`. `/datasets` routes and
 `data://` URIs remain compatible and access the same records. Historical `/dataset/:id`
 links open the document in `/documents`. Document references grant no access. HTML
 applications retain personal consent bound to the page revision and their write budget.

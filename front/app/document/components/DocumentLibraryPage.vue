@@ -1,6 +1,7 @@
 <template>
   <q-page class="documents-page q-pa-md" :class="{ 'viewport-page--desktop': !$q.screen.lt.md }">
     <PageHeader help-key="documents" :help-text="$t('contextHelpPages.documents')" :icon="navigationIcon('description')" :title="t('nav.documents')" :description="t('nav.documents_desc')">
+      <template #actions><q-btn outline color="primary" icon="widgets" :label="t('documents.formatCatalogue.title')" @click="formatsOpen = true" /></template>
       <template #title-after>
         <div class="row items-center q-gutter-xs">
           <q-btn v-if="!$q.screen.lt.md" flat round :icon="libraryOpen ? fullDocumentIcon : libraryDocumentIcon" :aria-label="t('documents.toggleLibrary')" :aria-expanded="libraryOpen" @click="libraryOpen = !libraryOpen"><q-tooltip>{{ t('documents.toggleLibrary') }}</q-tooltip></q-btn>
@@ -10,6 +11,7 @@
       </template>
     </PageHeader>
 
+    <DocumentFormatsDialog v-if="formatsOpen" v-model="formatsOpen" />
     <q-banner v-if="importingFileName" dense role="status" class="q-mb-sm">
       <template #avatar><q-spinner color="primary" /></template>
       {{ t('documents.importingFile', { name: importingFileName }) }}
@@ -73,7 +75,7 @@
           <DocumentNavigationButtons class="q-mr-sm" :can-go-back="canGoBack" :can-go-forward="canGoForward" @back="navigateHistory(-1)" @forward="navigateHistory(1)" />
           <div ref="mobileHeading" class="documents-mobile-heading">
             <div class="documents-mobile-heading-fallback row items-center no-wrap">
-              <DocumentIcon v-if="mobileDocumentId" :document-id="mobileDocumentId" :document-type="mobileInitialDocument?.document_type" :title="mobileDocumentTitle" size="32px" class="q-mr-sm" />
+              <DocumentIcon v-if="mobileDocumentId" :document-id="mobileDocumentId" :document-format="mobileInitialDocument?.document_format" :title="mobileDocumentTitle" size="32px" class="q-mr-sm" />
               <div class="text-h6 ellipsis">{{ mobileDocumentTitle }}</div>
             </div>
           </div>
@@ -109,8 +111,8 @@
     </q-dialog>
 
     <q-menu ref="typeMenu" v-model="createMenuOpen" :target="createMenuTarget" no-parent-event no-route-dismiss anchor="bottom left" self="top left">
-      <q-list dense role="menu" :aria-label="t('documents.documentType')">
-        <q-item v-for="type in documentTypes" :key="type.code" v-close-popup clickable role="menuitem" @click="chooseDocumentType(type.code)">
+      <q-list dense role="menu" :aria-label="t('documents.documentFormat')">
+        <q-item v-for="type in documentFormats" :key="type.code" v-close-popup clickable role="menuitem" @click="chooseDocumentFormat(type.code)">
           <q-item-section avatar><q-icon :name="type.icon" /></q-item-section>
           <q-item-section>{{ t(type.label) }}</q-item-section>
         </q-item>
@@ -127,7 +129,7 @@
       <q-card class="documents-create-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="note_add" size="24px" class="q-mr-sm" />
-          <q-icon :name="documentTypes.find(type => type.code === createDocumentType)?.icon" size="24px" class="q-mr-sm" />
+          <q-icon :name="documentFormats.find(type => type.code === createDocumentFormat)?.icon" size="24px" class="q-mr-sm" />
           <div class="text-h6">{{ createDocumentParent ? t('documents.library.newSubdocument', { name: createDocumentParent.item.title }) : createDocumentTag ? t('documents.library.newDocument', { name: createDocumentTag.name }) : t('documents.createDocument') }}</div>
           <q-space />
           <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
@@ -161,11 +163,11 @@
 
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
-import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, useTemplateRef, watch } from 'vue'
+import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useQuasar, type QMenu } from 'quasar'
-import { documentTypes, type DocumentCreationMode, type DocumentKind } from '../documentTypes'
+import { documentFormats, type DocumentCreationMode, type DocumentFormatCode } from '../documentFormats'
 import { useAgentChoices } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { AgentConversationPanel as DocumentConversationPanel, conversationPanel, type DocumentFocus } from '@/core/util'
@@ -189,6 +191,8 @@ import DocumentLibraryNavigation from '@/app/document/components/DocumentLibrary
 import DocumentSplitterHandle from '@/app/document/components/DocumentSplitterHandle.vue'
 import DocumentBulkList from '@/app/document/components/DocumentBulkList.vue'
 import DocumentImportDialog from '@/app/document/components/DocumentImportDialog.vue'
+const DocumentFormatsDialog = defineAsyncComponent(() => import('./DocumentFormatsDialog.vue'))
+const formatsOpen = ref(false)
 
 interface MemoryRealtimeEvent { data: { id: string; node_kind: DocumentNodeKind } }
 
@@ -247,7 +251,7 @@ const canGoForward = computed(() => !navigatingHistory.value && history.canGoFor
 const typeMenu = useTemplateRef<QMenu>('typeMenu')
 const createMenuOpen = ref(false)
 const createMenuTarget = shallowRef<HTMLElement | false>(false)
-const createDocumentType = ref<DocumentKind>('text')
+const createDocumentFormat = ref<DocumentFormatCode>('text')
 const importDialogOpen = ref(false)
 const importFiles = shallowRef<File[]>([])
 const lastImportedDocument = shallowRef<{ document: DocumentRecord; actor: number | null } | null>(null)
@@ -390,14 +394,14 @@ function openCreateDocument(tag?: DocumentTag, parent?: DocumentLibraryEntry, at
   createDocumentParent.value = parent ?? null
   createDocumentAtRoot.value = atRoot
   if (type === 'import') { openDocumentImport(); return }
-  if (type) { void chooseDocumentType(type); return }
+  if (type) { void chooseDocumentFormat(type); return }
   const target = event?.currentTarget ?? window.document.activeElement
   if (!(target instanceof HTMLElement)) return
   createMenuTarget.value = target
   void nextTick(() => typeMenu.value?.show())
 }
-async function chooseDocumentType(type: DocumentKind): Promise<void> {
-  createDocumentType.value = type
+async function chooseDocumentFormat(type: DocumentFormatCode): Promise<void> {
+  createDocumentFormat.value = type
   await prepareCreateDocument(createDocumentTag.value ?? undefined, createDocumentParent.value ?? undefined, createDocumentAtRoot.value)
 }
 function openDocumentImport(): void {
@@ -482,7 +486,7 @@ async function createDocument(): Promise<void> {
   creatingDocument.value = true
   try {
     const document = await documentService.createDocument({
-      document_type: createDocumentType.value,
+      document_format: createDocumentFormat.value,
       owner_kind: owner.kind,
       owner_id: owner.id,
       actor_agent_id: actorAgentId,
@@ -585,6 +589,7 @@ onBeforeRouteLeave(async () => {
   }
 })
 onMounted(async () => {
+  void documentService.formats().catch(() => { /* The catalogue dialog exposes retry without blocking document recovery. */ })
   void agentStore.fetchAgents().catch(() => { /* Optional agent labels must not block the library. */ })
   if (disposed) return
   const routeId = documentIdFromRouteQuery(route.query.document_id)

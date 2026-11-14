@@ -23,7 +23,7 @@ async def test_saves_are_immediate_but_only_quiet_content_enters_history(db, age
     owner = agents[0]
     body = (lambda value: f'<p>{value}</p>') if kind == "text" else (lambda value: f'{{"text":"{value}"}}')
     item = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic draft",
-        content=body("initial"), task_id=None, document_type=kind)
+        content=body("initial"), task_id=None, document_format=kind)
     for value in ("first edit", "second edit", "final edit"):
         revision_clock.advance(200)
         if kind == "text":

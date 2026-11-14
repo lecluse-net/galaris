@@ -53,7 +53,7 @@ async def describe_file_resource(
         "updated_at": item.updated_at.isoformat() if item.updated_at else None,
         "metadata": {
             "temporal": item.temporal,
-            "document_type": item.document_type,
+            "document_format": item.document_format,
             "folder": str(item.metadata_.get("document_path") or ""),
             "content_profile": item.content_profile,
             "content_profile_version": item.content_profile_version,
@@ -191,7 +191,7 @@ async def search_file_resources(
                 "score": hit.score,
                 "excerpt": hit.excerpt,
                 "can_write": hit.item.access.can_write,
-                "metadata": {**({} if name_only else hit.item.metadata), "document_type": hit.item.document_type,
+                "metadata": {**({} if name_only else hit.item.metadata), "document_format": hit.item.document_format,
                              "temporal": hit.item.temporal.model_dump(mode="json") if hit.item.temporal else None},
                 "retrieval_sources": hit.retrieval_sources,
                 "source_refs": hit.source_refs,

@@ -13,7 +13,7 @@ async def test_attached_dataset_remains_independent_live_and_does_not_inherit_do
     owner, reader = agents
     document = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic report", content="<p>Report</p>", task_id=None)
     dataset = await datasets.create(owner.id, title="Synthetic live budget", content='{"amount":100}')
-    assert (await db.get(Document, dataset.id)).document_type == "data"
+    assert (await db.get(Document, dataset.id)).document_format == "data"
     before = document.revision
     refs, version = await dataset_attachments.change_reference(document.id, dataset.id, owner.id,
         dataset_actor=owner.id, expected_lock_version=document.lock_version)

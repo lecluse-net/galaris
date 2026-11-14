@@ -9,11 +9,11 @@ from core.storage import prepare_content
 
 
 async def legacy_dataset(*, owner_agent_id: int, title: str, content: str,
-    keywords: list[str] | None = None, task_id: object = None, document_type: str = "dataset") -> Document:
+    keywords: list[str] | None = None, task_id: object = None, document_format: str = "dataset") -> Document:
     pointer, inline = await prepare_content(content.encode())
     row = Document(id=uuid4(), owner_agent_id=owner_agent_id, title=title,
         provider_code="native", resource_id=pointer, content=inline,
-        document_type="dataset", content_type="text", media_type="application/json",
+        document_format="dataset", content_type="text", media_type="application/json",
         content_hash=sha256(content.encode()).hexdigest(), size_bytes=len(content.encode()),
         keywords=keywords or [], metadata_={})
     get_db().add(row)

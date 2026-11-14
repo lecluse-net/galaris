@@ -44,7 +44,7 @@ async def scope_collection_contains(collection: str, target: str, actor: int) ->
     return bool(await get_db().scalar(select(exists(select(Document.id).where(
         Document.id == document_identity, Document.id.in_(select(members.c.id)),
         Document.deleted_at.is_(None), readable_item_clause(actor),
-        Document.document_type.in_(("data",) if target_match[1] == "data" else ("html", "text", "data")),
+        Document.document_format == "data" if target_match[1] == "data" else Document.document_format.not_in(("dataset", "process")),
     )))))
 
 
@@ -59,11 +59,11 @@ def navigable_folder_clause(actor: int | HumanActor) -> ColumnElement[bool]:
     assigned = select(Document.id.label("id"), DocumentTag.user_id).join(
         DocumentTagAssignment, DocumentTagAssignment.document_id == Document.id).join(
         DocumentTag, DocumentTag.id == DocumentTagAssignment.tag_id).where(
-        Document.deleted_at.is_(None), Document.document_type.in_(("text", "data")),
+        Document.deleted_at.is_(None), Document.document_format.not_in(("dataset", "process")),
         DocumentTag.deleted_at.is_(None), acl)
     nested = select(Document.id.label("id"), DocumentNesting.user_id).join(
         DocumentNesting, DocumentNesting.document_id == Document.id).where(Document.deleted_at.is_(None),
-            Document.document_type.in_(("text", "data")), acl)
+            Document.document_format.not_in(("dataset", "process")), acl)
     seeds = assigned.union(nested).subquery()
     documents = select(seeds.c.id, seeds.c.user_id).cte(recursive=True)
     documents = documents.union(select(DocumentNesting.parent_document_id, DocumentNesting.user_id).join(
@@ -117,7 +117,7 @@ async def list_folder(identity: UUID | None, actor: int | HumanActor, *,
     folder_acl = navigable_folder_clause(actor) if navigation else readable_folder_clause(actor)
     folder_query = select(DocumentTag.id.label("id"), DocumentTag.name.label("name"),
         DocumentTag.icon.label("icon"), literal(True).label("is_collection"),
-        literal("inode/directory").label("media_type"), literal("folder").label("document_type"),
+        literal("inode/directory").label("media_type"), literal("folder").label("document_format"),
         literal(False).label("can_write"), literal(None).label("size"), literal(None).label("revision"),
         literal(None).label("checksum"), literal(None).label("updated_at"), literal(None).label("temporal")).where(
         DocumentTag.deleted_at.is_(None), folder_acl)
@@ -151,10 +151,10 @@ async def list_folder(identity: UUID | None, actor: int | HumanActor, *,
         membership = Document.id.in_(select(documents.c.id))
         document_query = select(Document.id.label("id"), Document.title.label("name"),
             literal(None).label("icon"), literal(False).label("is_collection"), Document.media_type,
-            Document.document_type, write_acl.label("can_write"), Document.size_bytes.label("size"),
+            Document.document_format, write_acl.label("can_write"), Document.size_bytes.label("size"),
             Document.revision, Document.content_hash.label("checksum"), Document.updated_at, Document.temporal).where(
             membership if folder else ~membership, Document.deleted_at.is_(None),
-            Document.document_type.in_(("text", "data")), acl, Document.title.ilike(pattern, escape="\\"))
+            Document.document_format.not_in(("dataset", "process")), acl, Document.title.ilike(pattern, escape="\\"))
         entries = union_all(folder_query, document_query).subquery()
     else:
         entries = folder_query.subquery()
@@ -165,7 +165,7 @@ async def list_folder(identity: UUID | None, actor: int | HumanActor, *,
     values: list[dict[str, object]] = []
     for row in rows:
         collection = bool(row["is_collection"])
-        scheme = "data" if navigation and row["document_type"] == "data" else "document"
+        scheme = "data" if navigation and row["document_format"] == "data" else "document"
         capabilities = ["info", "read", "copy"]
         if navigation:
             capabilities.append("search")
@@ -178,7 +178,7 @@ async def list_folder(identity: UUID | None, actor: int | HumanActor, *,
                 if navigation and not collection else {}),
             capabilities=["info", "list", "read"] if collection else capabilities,
             metadata={"document_folder": True, "icon": row["icon"], "offset_unit": "item", "read_page_size": 200} if collection
-                else {"document_type": row["document_type"], "temporal": row["temporal"]} if navigation else {}))
+                else {"document_format": row["document_format"], "temporal": row["temporal"]} if navigation else {}))
     more = offset + len(values) < total
     return dict(uri=folder_uri(identity), entries=values, total=total, truncated=more,
         **({"ancestors": await navigation_ancestors(folder, actor)} if navigation else {}),

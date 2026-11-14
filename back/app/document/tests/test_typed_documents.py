@@ -23,11 +23,11 @@ async def test_types_share_library_content_history_and_current_metadata(db, agen
     prose = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic prose",
         content="<p>Notes</p>", task_id=None)
     values = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic values",
-        content=' {"value": 1}\n', task_id=None, document_type="data")
-    assert prose.document_type == "text" and values.document_type == "data"
+        content=' {"value": 1}\n', task_id=None, document_format="data")
+    assert prose.document_format == "text" and values.document_format == "data"
     assert Dataset.__table__ is Document.__table__
     for kind, identity in (("text", prose.id), ("data", values.id)):
-        result = await browse_document_library(DocumentLibraryRequest(document_type=kind),
+        result = await browse_document_library(DocumentLibraryRequest(document_format=kind),
             managed_agent_ids=(owner.id,), user_id=owner.user_id)
         assert [entry.item.id for entry in result.entries] == [identity]
     identity = values.id
@@ -62,7 +62,7 @@ async def test_migration_preserves_exact_sources_rights_history_and_replay(db, a
         metadata_={"preserved": True}, summary_content="Synthetic current description")
     db.add(old)
     if projection:
-        db.add(Document(id=identity, owner_agent_id=owner_id, title="Synthetic old projection", document_type="dataset",
+        db.add(Document(id=identity, owner_agent_id=owner_id, title="Synthetic old projection", document_format="dataset",
             provider_code="native", resource_id=str(identity), content="{}", content_hash="0"*64,
             content_type="text", media_type="application/json", revision=1))
     await db.flush()
@@ -135,7 +135,7 @@ async def test_common_http_data_creation_restore_and_write_budget_share_one_reco
     login = await client.post("/api/auth/login-json", json=credentials)
     headers = {"Authorization": "Bearer " + login.json()["access_token"], "X-Editorial-Profile-Version": "1"}
     created = await client.post("/api/documents", headers=headers, json={
-        "owner_kind": "user", "owner_id": registered.json()["id"], "title": "Synthetic common Data", "document_type": "data"})
+        "owner_kind": "user", "owner_id": registered.json()["id"], "title": "Synthetic common Data", "document_format": "data"})
     assert created.status_code == 201, created.text
     identity = created.json()["id"]
     path = f"/api/documents/{identity}"

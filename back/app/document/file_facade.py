@@ -3,9 +3,10 @@ from __future__ import annotations
 from typing import Literal, cast
 from uuid import UUID
 from . import document_attachment_service, document_service, resource_service as service
-from .document_types import DocumentType
+from .content_validation import DocumentFormat
 from .schemas import DocumentUpdate,DocumentPayload
 from core.util import read_html_page, visible_text
+import base64
 from core.database import get_db
 from sqlalchemy import select, func, or_
 from .models import Document
@@ -18,8 +19,17 @@ async def read_file_resource_text(
 ) -> dict[str, object]:
     item, body, _, _, _ = await service.get_item(item_id, agent_id=agent_id,
         record_llm_access=True, task_id=task_id, include_revisions=False)
-    return {**read_html_page(body.decode(), offset=offset, max_chars=max_chars),
-        "revision": item.revision, "content_profile": item.content_profile}
+    if item.media_type == "text/html":
+        return {**read_html_page(body.decode(), offset=offset, max_chars=max_chars),
+            "revision": item.revision, "content_profile": item.content_profile}
+    source = body if item.content_type == "binary" else body.decode("utf-8")
+    start = min(max(0, offset), len(source))
+    end = min(len(source), start + max_chars)
+    fragment = source[start:end]
+    content = base64.b64encode(fragment).decode("ascii") if isinstance(fragment, bytes) else fragment
+    return dict(content=content, encoding="base64" if isinstance(fragment, bytes) else "utf-8",
+        media_type=item.media_type, start=start, end=end, total=len(source),
+        next_offset=end if end < len(source) else None, revision=item.revision)
 
 
 async def search_file_resources(
@@ -44,12 +54,12 @@ async def search_file_resources(
         if candidates:
             identities = [UUID(str(hit["id"])) for hit in candidates]
             rows = (await get_db().execute(select(Document.id, Document.revision).where(
-                Document.id.in_(identities), readable_item_clause(agent_id), Document.document_type.in_(("text", "data")),
+                Document.id.in_(identities), readable_item_clause(agent_id), Document.document_format.not_in(("dataset", "process")),
             ))).all()
             versions = {identity: revision for identity, revision in rows}
             if all(versions.get(identity) == hit["revision"] for identity, hit in zip(identities, candidates, strict=True)):
                 return indexed
-    filters = [readable_item_clause(agent_id), Document.document_type.in_(("text", "data"))]
+    filters = [readable_item_clause(agent_id), Document.document_format.not_in(("dataset", "process"))]
     if query.strip():
         pattern = "%" + query.strip().replace("%", "\\%").replace("_", "\\_") + "%"
         filters.append(Document.title.ilike(pattern, escape="\\") if mode == "name" else or_(
@@ -64,12 +74,13 @@ async def search_file_resources(
     hits: list[dict[str, object]] = []
     for item in rows:
         access = await service.assert_item_access(item, agent_id)
-        hits.append(dict(id=str(item.id), uri=f"{'data' if item.document_type == 'data' else 'document'}://{item.id}", node_kind="document",
+        hits.append(dict(id=str(item.id), uri=f"{'data' if item.document_format == 'data' else 'document'}://{item.id}", node_kind="document",
             title=item.title, filename=item.filename, media_type=item.media_type,
             size=item.size_bytes, revision=item.revision, checksum=item.content_hash,
             updated_at=item.updated_at.isoformat() if item.updated_at is not None else None, score=1.0,
             excerpt="" if mode == "name" else visible_text(item.search_text)[:500], can_write=access.can_write,
-            metadata={"document_type": item.document_type, "temporal": item.temporal},
+            metadata={"document_format": item.document_format,
+                "format_version": item.format_version, "temporal": item.temporal},
             source_refs=await service.source_refs(item.id), retrieval_sources=["document_lexical"], passages=[]))
     more = offset + len(hits) < total
     return dict(hits=hits, total=total, has_more=more, next_offset=offset+len(hits) if more else None,
@@ -82,7 +93,8 @@ async def create_document_file_resource(
     task_id: UUID | None,
     title: str,
     content: str,
-    document_type: DocumentType = "text",
+    document_format: DocumentFormat = "text",
+    binary_content: bytes | None = None,
 ) -> dict[str, object]:
     """Create a private working document from an explicit text-file copy."""
 
@@ -90,8 +102,9 @@ async def create_document_file_resource(
         owner_agent_id=agent_id,
         title=title,
         content=content,
-        document_type=document_type,
+        document_format=document_format,
         task_id=task_id,
+        binary_content=binary_content,
     )
     return {"id": str(item.id), "size": item.size_bytes, "revision": item.revision}
 
@@ -204,11 +217,12 @@ async def describe_file_resource(
         "updated_at": item.updated_at.isoformat() if item.updated_at else None,
         "metadata": {
             "temporal": item.temporal,
-            "document_type": item.document_type,
+            "document_format": item.document_format,
+            "format_version": item.format_version,
             "folder": str(item.metadata_.get("document_path") or ""),
             "content_profile": item.content_profile,
             "content_profile_version": item.content_profile_version,
-            "offset_unit": "block" if media_type == "text/html" else "character",
+            "offset_unit": "byte" if item.content_type == "binary" else "block" if media_type == "text/html" else "character",
             "node_kind": item.node_kind,
         },
     }
@@ -218,7 +232,7 @@ async def write_document_resource_text(
     *,
     agent_id: int,
     task_id: UUID | None,
-    content: str,
+    content: str | bytes,
     expected_revision: int | None,
 ) -> dict[str, object]:
     """Replace an authorized document with optimistic concurrency."""
@@ -237,7 +251,8 @@ async def write_document_resource_text(
         item_id,
         DocumentUpdate(
             expected_revision=expected_revision,
-            payload=DocumentPayload(text=content),
+            payload=DocumentPayload(base64=base64.b64encode(content).decode("ascii")) if isinstance(content, bytes)
+                else DocumentPayload(text=content),
         ),
         actor_agent_id=agent_id,
         actor_task_id=task_id,

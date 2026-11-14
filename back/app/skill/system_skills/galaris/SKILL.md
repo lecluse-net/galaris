@@ -470,7 +470,7 @@ for authored HTML and Datasets for editable JSON when those are the requested re
   max_results: int = 50, cursor: str = "") -> str`
 - `file_read(uri: str, offset: int = 0, max_chars: int = 20000) -> str`
 - `file_create(path: str, content: str = "", encoding: "utf-8" | "base64" = "utf-8",
-  name: str = "", document_type: "text" | "data" | "html" | "dataset" | None = None) -> str`
+  name: str = "", document_format: str | None = None) -> str`
 - `file_write(uri: str, content: str, encoding: "utf-8" | "base64" = "utf-8",
   expected_revision: int | None = None, expected_etag: str | None = None) -> str`
 - `file_append(uri: str, content: str, expected_revision: int | None = None,
@@ -1073,7 +1073,7 @@ external workflows and internal BPMN definitions you may read. Internal process
 creation, editing and execution also require the corresponding enabled or approved Tool function.
 Process definition and run-data permissions remain authoritative, including for administration agents.
 Process owns BPMN definitions, history and sharing: use `process_create`, `process_update`,
-`process_definition_read` and `process_history`, never `document://` or a Document type for BPMN.
+`process_definition_read` and `process_history`, never `document://` or a Document format for BPMN.
 Documents contain editorial HTML; Datasets contain JSON and retain their own `data://` identity.
 
 The same assigned catalog is available as paginated read-only resources through
@@ -1176,7 +1176,7 @@ Contact, ConversationRound, VoiceConversation and CodeWorkspace use their canoni
 `galaris://` references (`task`, `goal`, `goal_cycle`, `contact`, `text`, `voice`, `code`).
 Process uses `galaris://process/<code>`; ProcessRun uses `galaris://processes/runs/<uuid>`;
 Memory uses `memory://<uuid>`. File values are file_share URIs. Document values are
-`document://<uuid>` or `data://<uuid>`, with optional `document_type: "text" | "data"`.
+`document://<uuid>` or `data://<uuid>`, with optional `document_format`.
 File declarations may set `mime_type`, such as `application/pdf` or `image/*`. The engine
 checks constrained resource metadata and live permissions before admitting their values.
 They do not grant access or change execution identity. Every type can hold null; a notnull
@@ -1578,8 +1578,8 @@ the durable identity.
 - `file_create(path="document://", content=..., name=...)` creates a private mutable HTML
   Document and returns `document://<uuid>`.
 - `file_create(path="data://", content='[]', name=...)` creates an independent private JSON
-  Dataset and returns `data://<uuid>`, with its own rights and history. The deprecated
-  `document_type="dataset"` option at `document://` also returns `data://`; new callers use
+  Dataset and returns `data://<uuid>`, with its own rights and history. The compatibility
+  `document_format="data"` option at `document://` also returns `data://`; new callers use
   `data://` directly. Verified legacy aliases remain readable, but changing a URI's scheme
   does not create an alias or grant access.
 - Use `file_search("document://", query, mode="name")` to find a title; use `mode="semantic"`
@@ -1728,7 +1728,7 @@ For collaboration on a document:
 **Audio and video can play directly inside an HTML working document**, in both editing and
 reading views. The MCP workflow uses the same file tools as image insertion. Inserting an
 existing media file does not require a Multimedia model, generation or transcription.
-This workflow requires `document_type="html"`, `content_profile="document"` and edit access;
+This workflow requires `document_format="text"`, `content_profile="document"` and edit access;
 it does not apply to Dataset bodies or Goal documents with the `rich-text` profile.
 
 1. Read the target with `file_read(DOCUMENT_URI)` and retain its current `revision` and profile.

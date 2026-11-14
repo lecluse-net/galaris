@@ -1,6 +1,6 @@
 import type { DocumentLibraryFilters, DocumentOwnerKind } from './types'
 export interface LibraryFilterState {
-  document_type: 'text' | 'data' | null
+  document_format: string | null
   keyword: string | null
   owner_kind: DocumentOwnerKind | null
   owner: number | null
@@ -12,7 +12,7 @@ export interface LibraryFilterState {
   sort_desc: boolean
 }
 export function defaultLibraryFilters(): LibraryFilterState {
-  return { document_type: null, keyword: null, owner_kind: null, owner: null, created_from: '', created_until: '', updated_from: '', updated_until: '', sort_by: 'position', sort_desc: false }
+  return { document_format: null, keyword: null, owner_kind: null, owner: null, created_from: '', created_until: '', updated_from: '', updated_until: '', sort_by: 'position', sort_desc: false }
 }
 export function libraryRequestFilters(filters: LibraryFilterState): DocumentLibraryFilters {
   function boundary(value: string, exclusive: boolean): string | null {

@@ -2632,8 +2632,8 @@ Les agents créent par exemple un Dataset avec
 Ils utilisent ensuite les opérations de fichiers existantes pour lire ou modifier son contenu,
 avec la révision attendue. La lecture pagine en caractères et l’édition porte sur les lignes JSON
 réelles, sans conversion en HTML. Une copie JSON vers `data://` crée un Dataset ; une cible
-existante valide le contenu reçu. Le paramètre historique `document_type="dataset"` sur
-`document://` reste un adaptateur qui renvoie `data://`. Seuls les anciens alias documentaires
+existante valide le contenu reçu. Le choix `document_format="data"` sur
+`document://` renvoie aussi `data://`. Seuls les anciens alias documentaires
 vérifiés restent valides : remplacer le schéma d’une URI ne crée pas un alias.
 
 Pour des données structurées réutilisées entre documents, calculs ou tâches, les agents peuvent

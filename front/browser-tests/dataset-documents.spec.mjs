@@ -2,7 +2,7 @@ import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 import { agent, document } from './data.mjs'
 
 async function fixture(page, { writable = true } = {}) {
-  let current = { ...document, document_type: 'dataset', media_type: 'application/json',
+  let current = { ...document, document_format: 'dataset', media_type: 'application/json',
     content_profile_version: null, payload: { text: '{\n  "amount": 1200,\n  "label": "<b>Literal</b>"\n}' },
     access: { can_read: true, can_write: writable } }
   const writes = []
@@ -22,7 +22,7 @@ async function fixture(page, { writable = true } = {}) {
 
 test('Documents creates Text through its type menu and exposes the common type filter', async ({ page }) => {
   const state = await fixture(page)
-  state.remote({ document_type: 'html', media_type: 'text/html', content_profile_version: 1,
+  state.remote({ document_format: 'text', media_type: 'text/html', content_profile_version: 1,
     payload: { text: '<p>Synthetic document</p>' } })
   // Creation must work even before the page's independent Agent catalogue arrives.
   let releaseAgents
@@ -50,25 +50,25 @@ test('Documents creates Text through its type menu and exposes the common type f
   await mount(page, 'app/document/components/DocumentLibraryPage.vue', { privileges: ['DOCUMENT_EDIT'] })
   // The root creation action replaced the old page-header button; keep the creation guarantee.
   await page.getByRole('button', { name: 'Create a document at the root', exact: true }).click()
-  await page.getByRole('menuitem', { name: 'Text', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Text format', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Scenarios')
-  await expect(dialog.getByRole('combobox', { name: 'Document type', exact: true })).toHaveCount(0)
+  await expect(dialog.getByRole('combobox', { name: 'Document format', exact: true })).toHaveCount(0)
   try {
     await dialog.getByRole('button', { name: 'Create', exact: true }).click()
     await expect.poll(() => creations).toHaveLength(1)
-    expect(creations[0]).toMatchObject({ document_type: 'text', title: 'Scenarios', owner_kind: 'user', owner_id: 1, actor_agent_id: 7 })
+    expect(creations[0]).toMatchObject({ document_format: 'text', title: 'Scenarios', owner_kind: 'user', owner_id: 1, actor_agent_id: 7 })
   } finally { releaseAgents() }
   await expect(page.locator('[data-editor-surface]')).toContainText('Synthetic document')
   expect(placements).toEqual([{ tag_id: null, at_root: true }])
   await page.getByRole('button', { name: 'Filters', exact: true }).click()
-  await expect(page.getByRole('combobox', { name: 'Document type', exact: true })).toBeVisible()
+  await expect(page.getByRole('combobox', { name: 'Document format', exact: true })).toBeVisible()
   await page.getByRole('combobox', { name: 'Sort by', exact: true }).click()
-  await expect(page.getByRole('option', { name: 'Document type', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('option', { name: 'Document format', exact: true })).toHaveCount(0)
   await page.getByRole('option', { name: 'Title', exact: true }).click()
   await page.getByRole('button', { name: 'Apply', exact: true }).click()
   await expect.poll(() => requests.at(-1)).toMatchObject({ sort_by: 'title', offset: 0 })
-  expect(requests.at(-1).document_type).toBeNull()
+  expect(requests.at(-1).document_format).toBeNull()
 })
 
 for (const component of ['DocumentEditor', 'DocumentLibraryPage', 'DocumentDialog']) {
@@ -91,7 +91,7 @@ test('a cached Dataset seed cannot render inside the Document editor', async ({ 
   const id = '00000000-0000-4000-8000-000000000002'
   await jsonRoute(page, '**/api/agents?*', [agent])
   await mount(page, 'app/document/components/DocumentEditor.vue', {
-    props: { documentId: id, agentId: null, initialDocument: { ...document, id, document_type: 'dataset' } },
+    props: { documentId: id, agentId: null, initialDocument: { ...document, id, document_format: 'dataset' } },
   })
   await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe(`/dataset/${id}`)
   await expect(page.locator('.document-editor-fields')).toHaveCount(0)
@@ -107,7 +107,7 @@ test('an unauthorized legacy reference stays denied without exposing a Dataset t
 
 test('internal insertion preserves citations and existing files without creating attachments', async ({ page }) => {
   const editorState = await fixture(page)
-  editorState.remote({ document_type: 'html', media_type: 'text/html', content_profile_version: 1,
+  editorState.remote({ document_format: 'text', media_type: 'text/html', content_profile_version: 1,
     payload: { text: '<p>Synthetic document</p>' },
     metadata: { dataset_attachments: ['00000000-0000-4000-8000-000000000003'], process_attachments: ['galaris://processes/legacy'] } })
   const uri = 'data://00000000-0000-4000-8000-000000000003'

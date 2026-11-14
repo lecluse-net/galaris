@@ -267,7 +267,7 @@ async def test_collection_journey_survives_restart_and_retries_only_failed_items
         from app.document import document_service
         legacy = await document_service.create_document(owner_agent_id=worker.id,
             title="Synthetic legacy inventory", content=json.dumps(manifest),
-            task_id=discovery.id, document_type="dataset")
+            task_id=discovery.id, document_format="dataset")
         inventory_uri = f"document://{legacy.id}"
     # The harness records successful file operations in the canonical Working Set.
     await upsert_working_resource(discovery.id, WorkingResource(

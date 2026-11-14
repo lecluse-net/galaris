@@ -177,7 +177,8 @@ class Variable(BaseModel):
     type: ValueType
     nullable: bool
     default: TypedValue | None = Field(default=None, exclude_if=lambda value: value is None)
-    document_type: Literal["text", "data"] | None = Field(default=None, exclude_if=lambda value: value is None)
+    document_format: str | None = Field(default=None, max_length=80,
+        exclude_if=lambda value: value is None)
     mime_type: str | None = Field(default=None, max_length=255,
         pattern=r"^[a-z0-9!#$&^_.+-]+/(?:[a-z0-9!#$&^_.+-]+|\*)$", exclude_if=lambda value: value is None)
 
@@ -185,8 +186,11 @@ class Variable(BaseModel):
     def check_default(self) -> Variable:
         if self.name != self.name.strip():
             raise _error(self.name, "variable names cannot start or end with whitespace")
-        if self.document_type is not None and self.type != "Document":
-            raise _error(self.name, "document_type applies only to Document variables")
+        if self.document_format is not None and (self.document_format in {"process", "dataset", "html", "form"}
+                or not re.fullmatch(r"[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*", self.document_format)):
+            raise _error(self.name, "invalid document format constraint")
+        if self.document_format is not None and self.type != "Document":
+            raise _error(self.name, "document_format applies only to Document variables")
         if self.mime_type is not None and self.type != "File":
             raise _error(self.name, "mime_type applies only to File variables")
         if "default" in self.model_fields_set:
@@ -196,10 +200,10 @@ class Variable(BaseModel):
                 raise _error(self.name, "default type differs from the variable type")
             if self.default.value is None and not self.nullable:
                 raise _error(self.name, "a notnull variable cannot have a null default")
-            if self.default.value is not None and self.document_type is not None:
-                scheme = "data://" if self.document_type == "data" else "document://"
+            if self.default.value is not None and self.document_format is not None:
+                scheme = "data://" if self.document_format == "data" else "document://"
                 if not str(self.default.value).startswith(scheme):
-                    raise _error(self.name, f"expected a {self.document_type} document default")
+                    raise _error(self.name, f"expected a {self.document_format} document default")
         return self
 
 
@@ -258,10 +262,10 @@ def normalize(variables: list[Variable], values: object, *, path: str,
             raise _error(location, f"expected type {variable.type}")
         if value["value"] is None and not variable.nullable:
             raise _error(location, "null is not allowed")
-        if value["value"] is not None and variable.document_type is not None:
-            scheme = "data://" if variable.document_type == "data" else "document://"
+        if value["value"] is not None and variable.document_format is not None:
+            scheme = "data://" if variable.document_format == "data" else "document://"
             if not str(value["value"]).startswith(scheme):
-                raise _error(location, f"expected a {variable.document_type} document")
+                raise _error(location, f"expected a {variable.document_format} document")
         result[variable.name] = value
     return validate_values(result, path=path)
 

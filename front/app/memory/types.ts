@@ -1,4 +1,4 @@
-import type { DocumentAttachment, DocumentType } from '@/app/document/types'
+import type { DocumentAttachment, DocumentFormat } from '@/app/document/types'
 
 export type MemoryNodeKind = 'memory' | 'document' | 'attachment' | 'folder' | 'file' | 'directory'
 
@@ -126,7 +126,7 @@ export interface MemoryItem {
   primary_url?: string | null
   urls?: string[]
   temporal?: MemoryTemporalAnchor | null
-  document_type: DocumentType
+  document_format: DocumentFormat
   content_profile?: 'rich-text' | 'document'
   content_profile_version?: number | null
   id: string
@@ -173,7 +173,7 @@ export interface ManagedDocumentDetail {
 
 export interface MemoryItemCreate {
   temporal?: MemoryTemporalAnchor | null
-  document_type?: DocumentType
+  document_format?: DocumentFormat
   owner_agent_id: number
   title?: string
   payload: MemoryPayload
