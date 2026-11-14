@@ -26,6 +26,7 @@ from core.user import get_current_user_id
 
 from .document_store import GoalMarkdown, get_goal_document_store
 from . import category_service, settings_service
+from . import calendar as goal_calendar
 from .contact_port import contact_directory_port
 from .lifecycle import notify_goal
 from .hierarchy import goal_hierarchy
@@ -109,12 +110,13 @@ def _assert_automatic_trigger_configuration(
     cycle_delay_seconds: int | None,
     parent_goal_id: UUID | None,
     schedule_enabled: bool,
+    recurrence: object = None,
 ) -> None:
     """Require exactly one automatic trigger and keep schedules temporal-only."""
 
     has_temporal_trigger = cycle_delay_seconds is not None
     has_relational_trigger = parent_goal_id is not None
-    if has_temporal_trigger == has_relational_trigger:
+    if sum((has_temporal_trigger, has_relational_trigger, recurrence is not None)) != 1:
         raise GoalConflictError(
             "A Goal must use exactly one automatic trigger: frequency or parent Goal."
         )
@@ -881,6 +883,7 @@ async def create(data: GoalCreate) -> GoalRead:
         cycle_delay_seconds=data.cycle_delay_seconds,
         parent_goal_id=data.parent_goal_id,
         schedule_enabled=data.schedule_enabled,
+        recurrence=data.recurrence,
     )
     await _assert_agent(data.agent_id)
     referrer = await _resolve_referrer(data.agent_id, data.referrer)
@@ -904,6 +907,7 @@ async def create(data: GoalCreate) -> GoalRead:
         category_id=data.category_id,
         parent_goal_id=data.parent_goal_id,
         cycle_delay_seconds=data.cycle_delay_seconds,
+        recurrence=data.recurrence.model_dump(mode="json") if data.recurrence else None,
         schedule_enabled=data.schedule_enabled,
         schedule=[window.model_dump(mode="json") for window in data.schedule],
         referrer_max_reminders=data.referrer_max_reminders,
@@ -917,6 +921,8 @@ async def create(data: GoalCreate) -> GoalRead:
     db = get_db()
     db.add(goal)
     try:
+        await db.flush()
+        await goal_calendar.sync_plan(goal, now=now)
         await db.commit()
     except Exception:
         await db.rollback()
@@ -963,6 +969,7 @@ async def _has_any_cycle(goal_id: UUID) -> bool:
 async def _save(goal: Goal, *, action: str = "update") -> GoalRead:
     db = get_db()
     try:
+        await goal_calendar.sync_plan(goal)
         await db.commit()
     except StaleDataError as exc:
         await db.rollback()
@@ -1002,6 +1009,8 @@ async def update(
             "tracking_content",
         },
     )
+    if "recurrence" in changes:
+        changes["recurrence"] = data.recurrence.model_dump(mode="json") if data.recurrence else None
     if {"schedule_enabled", "schedule"} & changes.keys():
         try:
             schedule_config = GoalScheduleConfig.model_validate(
@@ -1040,6 +1049,7 @@ async def update(
         cycle_delay_seconds=next_cycle_delay,
         parent_goal_id=next_parent_goal_id,
         schedule_enabled=next_schedule_enabled,
+        recurrence=data.recurrence if "recurrence" in data.model_fields_set else goal.recurrence,
     )
     owner_agent_id = int(changes.get("agent_id", goal.agent_id))
     if "agent_id" in changes and changes["agent_id"] != goal.agent_id:
@@ -1081,6 +1091,12 @@ async def update(
     if "parent_goal_id" in changes:
         await _assert_parent(goal.id, changes["parent_goal_id"])
 
+    if "title" in changes and changes["title"] != goal.title:
+        from .agenda_upgrade import snapshot_legacy_cycles
+
+        # Protect histories restored/imported after the schema upgrade too.
+        await snapshot_legacy_cycles(get_db(), goal.id)
+
     delay_changed = (
         "cycle_delay_seconds" in changes
         and changes["cycle_delay_seconds"] != goal.cycle_delay_seconds
@@ -1089,6 +1105,8 @@ async def update(
         setattr(goal, key, value)
     if referrer_values is not None:
         _assign_referrer(goal, referrer_values)
+
+    await goal_calendar.sync_plan(goal)
 
     if delay_changed and goal.status != GoalStatus.COMPLETED:
         if goal.cycle_delay_seconds is None:
@@ -1311,6 +1329,7 @@ async def delete(goal_id: UUID) -> bool:
             "A Goal with sub-goals cannot be deleted. Detach or move them first."
         )
     goal.soft_delete()
+    await goal_calendar.sync_plan(goal)
     await get_db().commit()
     await notify_goal(goal_id, "delete")
     await websocket.emit("goal", "delete", {

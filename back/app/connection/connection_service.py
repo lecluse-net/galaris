@@ -712,6 +712,8 @@ async def _validated_tool_params(tool_id: int, params: Dict[str, Optional[str]])
         if value in (None, ""):
             continue
         validate_param_value(definition.type, value)
+        if tool.calendar and tool.calendar.param_map.get("sync_interval_hours") == name and not 1 <= int(value) <= 8760:
+            raise ValueError("Calendar synchronization interval must be a whole number of hours between 1 and 8760")
         if definition.options and value not in {option.value for option in definition.options}:
             raise ValueError("Connection parameter must be one of the fixed options")
     return tool
@@ -1070,6 +1072,8 @@ async def connection_tool_options(*, include_globals: bool = False) -> list[dict
              "has_mail": t.mail_config is not None, "has_calendar": t.calendar_config is not None,
              "has_listener": bool(t.listener_config), "conversation_enabled": t.conversation_enabled,
              "mcp_config": {"type": t.mcp_config.get("type")} if t.mcp_config else None,
+             "calendar_config": {"settings": {name: t.calendar_config.get("settings", {}).get(name, "")
+                 for name in ("source_kind", "auth_type")}} if t.calendar_config else None,
              "connection_schema": public_connection_schema(tool_service.connection_schema_for_tool(t)),
              "global_params": {name: value.model_dump(mode="json") for name, value in tool_service.public_global_params(t).items()} if include_globals else {},
              "created_at": t.created_at, "updated_at": t.updated_at}

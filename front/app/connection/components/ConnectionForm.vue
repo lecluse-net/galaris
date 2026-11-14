@@ -66,6 +66,14 @@
       :prepare-connection="isValidForm && props.persistForAction ? prepareOAuthConnection : undefined"
     />
 
+    <McpOAuthConnection
+      v-if="['google', 'microsoft'].includes(selectedTool?.calendar_config?.settings?.source_kind ?? '') || ((selectedTool?.calendar_config?.settings?.source_kind ?? 'caldav') === 'caldav' && selectedTool?.calendar_config?.settings?.auth_type === 'oauth')"
+      :key="`calendar:${form.agent_id}:${form.tool_id}`" purpose="calendar"
+      :connection-id="props.connection?.agent_id === form.agent_id && props.connection?.tool_id === form.tool_id ? form.id : null"
+      :can-edit="canEdit"
+      :prepare-connection="isValidForm && props.persistForAction ? prepareOAuthConnection : undefined"
+    />
+
     <!-- Dynamic configuration parameter table -->
     <div v-if="showSchemaParameters" class="q-mt-md">
       <div class="text-subtitle2 q-mb-sm">
@@ -228,21 +236,6 @@
       </q-card-section>
     </q-card>
 
-    <CalendarConnectionEditor
-      v-if="selectedTool?.code === 'calendar' && privilegeStore.hasAnyPrivilege([privileges.CALENDAR_ACCESS, privileges.CALENDAR_EDIT]) && form.id !== null && form.agent_id !== null"
-      :connection-id="form.id"
-      :agent-id="form.agent_id"
-    />
-    <q-banner
-      v-else-if="selectedTool?.code === 'calendar'"
-      dense
-      rounded
-      class="bg-blue-1 text-blue-9"
-    >
-      <template #avatar><q-icon name="calendar_month" /></template>
-      {{ t('calendars.saveConnectionFirst') }}
-    </q-banner>
-
     <div class="row items-center q-mt-md">
       <q-toggle
         v-if="selectedTool?.code !== 'console' || consoleTarget === 'external'"
@@ -394,7 +387,6 @@ import { AgentSelect } from '@/app/agent'
 import { consoleService, type ConsoleConnectionStatus } from '@/app/console/services/consoleService'
 import { mailService, type MailApproverOption } from '@/app/connection/services/mailService'
 import connectionService, { type ConnectionActionResult } from '../services/connectionService'
-import CalendarConnectionEditor from './CalendarConnectionEditor.vue'
 import MailFolderAccess from './MailFolderAccess.vue'
 import McpOAuthConnection from './McpOAuthConnection.vue'
 import { authorizedKeysDeploymentCommands } from '@/app/console/sshKeyDeployment'
@@ -425,6 +417,7 @@ interface Tool {
   id: number
   has_mail?: boolean
   has_calendar?: boolean
+  calendar_config?: { settings?: Record<string, string> } | null
   code: string
   label: string
   can_edit?: boolean

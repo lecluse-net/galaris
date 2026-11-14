@@ -382,6 +382,8 @@
       },
       {
         "files": [
+          "back/app/calendar/__init__.py",
+          "back/app/calendar/context.py",
           "back/app/calendar/dispatch.py",
           "back/app/calendar/router.py",
           "back/app/calendar/service.py",
@@ -392,11 +394,15 @@
       },
       {
         "files": [
+          "back/app/calendar/__init__.py",
+          "back/app/calendar/awareness.py",
           "back/app/calendar/dbadmin.py",
           "back/app/calendar/dispatch.py",
+          "back/app/calendar/resources.py",
           "back/app/calendar/router.py",
           "back/app/calendar/service.py",
           "back/app/calendar/store.py",
+          "back/app/calendar/sync_progress.py",
           "back/app/calendar/synchronization.py"
         ],
         "source": "app.calendar",
@@ -405,9 +411,34 @@
       {
         "files": [
           "back/app/calendar/__init__.py",
+          "back/app/calendar/service.py"
+        ],
+        "source": "app.calendar",
+        "target": "app.contact"
+      },
+      {
+        "files": [
+          "back/app/calendar/__init__.py"
+        ],
+        "source": "app.calendar",
+        "target": "app.file_share"
+      },
+      {
+        "files": [
+          "back/app/calendar/awareness.py",
+          "back/app/calendar/context.py",
+          "back/app/calendar/mcp.py"
+        ],
+        "source": "app.calendar",
+        "target": "app.memory"
+      },
+      {
+        "files": [
+          "back/app/calendar/__init__.py",
           "back/app/calendar/dbadmin.py",
           "back/app/calendar/mcp.py",
-          "back/app/calendar/service.py"
+          "back/app/calendar/service.py",
+          "back/app/calendar/synchronization.py"
         ],
         "source": "app.calendar",
         "target": "app.tools"
@@ -421,12 +452,15 @@
       },
       {
         "files": [
+          "back/app/calendar/contact_links.py",
           "back/app/calendar/dispatch.py",
           "back/app/calendar/maintenance.py",
           "back/app/calendar/models.py",
+          "back/app/calendar/resources.py",
           "back/app/calendar/router.py",
           "back/app/calendar/service.py",
           "back/app/calendar/store.py",
+          "back/app/calendar/sync_progress.py",
           "back/app/calendar/synchronization.py"
         ],
         "source": "app.calendar",
@@ -438,6 +472,14 @@
         ],
         "source": "app.calendar",
         "target": "core.dbadmin"
+      },
+      {
+        "files": [
+          "back/app/calendar/context.py",
+          "back/app/calendar/service.py"
+        ],
+        "source": "app.calendar",
+        "target": "core.params"
       },
       {
         "files": [
@@ -674,6 +716,7 @@
           "back/app/connection/admin_service.py",
           "back/app/connection/agent_admin_mcp.py",
           "back/app/connection/agent_admin_service.py",
+          "back/app/connection/calendar_oauth.py",
           "back/app/connection/connection_service.py",
           "back/app/connection/function_permissions.py",
           "back/app/connection/mcp.py",
@@ -2264,6 +2307,7 @@
       },
       {
         "files": [
+          "back/app/goal/calendar.py",
           "back/app/goal/goal_service.py",
           "back/app/goal/models.py",
           "back/app/goal/referrer_wait.py",
@@ -2291,6 +2335,7 @@
       },
       {
         "files": [
+          "back/app/goal/calendar.py",
           "back/app/goal/category_service.py",
           "back/app/goal/events.py",
           "back/app/goal/facade.py",
@@ -2306,6 +2351,7 @@
       },
       {
         "files": [
+          "back/app/goal/agenda_upgrade.py",
           "back/app/goal/dbadmin.py"
         ],
         "source": "app.goal",
@@ -3345,6 +3391,7 @@
           "back/app/memory/access.py",
           "back/app/memory/acquisition_service.py",
           "back/app/memory/admission.py",
+          "back/app/memory/agenda.py",
           "back/app/memory/attachment_analysis.py",
           "back/app/memory/attachment_description.py",
           "back/app/memory/automation.py",
@@ -3459,12 +3506,12 @@
       {
         "files": [
           "back/app/memory/acquisition_service.py",
+          "back/app/memory/agenda.py",
           "back/app/memory/attachment_analysis.py",
           "back/app/memory/attachment_description.py",
           "back/app/memory/catalogue_projection.py",
           "back/app/memory/contact_policy.py",
           "back/app/memory/content_migration.py",
-          "back/app/memory/context.py",
           "back/app/memory/document_structure.py",
           "back/app/memory/file_facade.py",
           "back/app/memory/html_migration.py",
@@ -4974,6 +5021,8 @@
         "files": [
           "back/bridge/calendar/__init__.py",
           "back/bridge/calendar/caldav.py",
+          "back/bridge/calendar/providers.py",
+          "back/bridge/calendar/rest.py",
           "back/bridge/calendar/transport.py"
         ],
         "source": "bridge.calendar",
@@ -6722,7 +6771,7 @@
           "app.tools"
         ]
       ],
-      "domain_edges": 304,
+      "domain_edges": 307,
       "fan_in": [
         {
           "count": 45,
@@ -6914,12 +6963,13 @@
           ]
         },
         {
-          "count": 19,
+          "count": 20,
           "module": "app.file_share",
           "modules": [
             "app.agent",
             "app.audio",
             "app.browser",
+            "app.calendar",
             "app.console",
             "app.conversation",
             "app.document",
@@ -7000,9 +7050,10 @@
           ]
         },
         {
-          "count": 10,
+          "count": 11,
           "module": "app.memory",
           "modules": [
+            "app.calendar",
             "app.contact",
             "app.document",
             "app.dream",
@@ -7141,19 +7192,20 @@
         },
         {
           "count": 3,
+          "module": "app.contact",
+          "modules": [
+            "app.calendar",
+            "app.dream",
+            "bridge.mail"
+          ]
+        },
+        {
+          "count": 3,
           "module": "app.share",
           "modules": [
             "app.agent",
             "app.document",
             "app.process"
-          ]
-        },
-        {
-          "count": 2,
-          "module": "app.contact",
-          "modules": [
-            "app.dream",
-            "bridge.mail"
           ]
         },
         {
@@ -7519,6 +7571,18 @@
         },
         {
           "count": 6,
+          "module": "app.calendar",
+          "modules": [
+            "app.agent",
+            "app.connection",
+            "app.contact",
+            "app.file_share",
+            "app.memory",
+            "app.tools"
+          ]
+        },
+        {
+          "count": 6,
           "module": "app.goal",
           "modules": [
             "app.agent",
@@ -7658,15 +7722,6 @@
             "app.code",
             "app.console",
             "app.file_share"
-          ]
-        },
-        {
-          "count": 3,
-          "module": "app.calendar",
-          "modules": [
-            "app.agent",
-            "app.connection",
-            "app.tools"
           ]
         },
         {
@@ -8387,7 +8442,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_action_set",
-        "line": 253,
+        "line": 290,
         "module": "app.calendar",
         "name": "calendar_action_set",
         "namespace": "calendar"
@@ -8395,7 +8450,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_actions",
-        "line": 246,
+        "line": 282,
         "module": "app.calendar",
         "name": "calendar_actions",
         "namespace": "calendar"
@@ -8403,7 +8458,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_create_event",
-        "line": 136,
+        "line": 159,
         "module": "app.calendar",
         "name": "calendar_create_event",
         "namespace": "calendar"
@@ -8411,7 +8466,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_delete_event",
-        "line": 216,
+        "line": 250,
         "module": "app.calendar",
         "name": "calendar_delete_event",
         "namespace": "calendar"
@@ -8419,7 +8474,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_event_get",
-        "line": 238,
+        "line": 273,
         "module": "app.calendar",
         "name": "calendar_event_get",
         "namespace": "calendar"
@@ -8427,7 +8482,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_events",
-        "line": 52,
+        "line": 62,
         "module": "app.calendar",
         "name": "calendar_events",
         "namespace": "calendar"
@@ -8435,7 +8490,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_find_free_slots",
-        "line": 101,
+        "line": 121,
         "module": "app.calendar",
         "name": "calendar_find_free_slots",
         "namespace": "calendar"
@@ -8443,7 +8498,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_is_available",
-        "line": 77,
+        "line": 96,
         "module": "app.calendar",
         "name": "calendar_is_available",
         "namespace": "calendar"
@@ -8451,7 +8506,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_list",
-        "line": 39,
+        "line": 41,
         "module": "app.calendar",
         "name": "calendar_list",
         "namespace": "calendar"
@@ -8459,7 +8514,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_update_event",
-        "line": 173,
+        "line": 201,
         "module": "app.calendar",
         "name": "calendar_update_event",
         "namespace": "calendar"
@@ -8651,7 +8706,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "append_file",
-        "line": 461,
+        "line": 462,
         "module": "app.file_share",
         "name": "file_append",
         "namespace": "file_sharing"
@@ -8659,7 +8714,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "copy_file",
-        "line": 530,
+        "line": 531,
         "module": "app.file_share",
         "name": "file_copy",
         "namespace": "file_sharing"
@@ -8667,7 +8722,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "create_file",
-        "line": 375,
+        "line": 376,
         "module": "app.file_share",
         "name": "file_create",
         "namespace": "file_sharing"
@@ -8675,7 +8730,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "delete_file",
-        "line": 612,
+        "line": 613,
         "module": "app.file_share",
         "name": "file_delete",
         "namespace": "file_sharing"
@@ -8683,7 +8738,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "edit_file",
-        "line": 491,
+        "line": 492,
         "module": "app.file_share",
         "name": "file_edit",
         "namespace": "file_sharing"
@@ -8691,7 +8746,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "file_info",
-        "line": 173,
+        "line": 174,
         "module": "app.file_share",
         "name": "file_info",
         "namespace": "file_sharing"
@@ -8699,7 +8754,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "list_files",
-        "line": 145,
+        "line": 146,
         "module": "app.file_share",
         "name": "file_list",
         "namespace": "file_sharing"
@@ -8707,7 +8762,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "move_file",
-        "line": 582,
+        "line": 583,
         "module": "app.file_share",
         "name": "file_move",
         "namespace": "file_sharing"
@@ -8715,7 +8770,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "read_file",
-        "line": 271,
+        "line": 272,
         "module": "app.file_share",
         "name": "file_read",
         "namespace": "file_sharing"
@@ -8723,7 +8778,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "rename_file",
-        "line": 561,
+        "line": 562,
         "module": "app.file_share",
         "name": "file_rename",
         "namespace": "file_sharing"
@@ -8739,7 +8794,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "search_files",
-        "line": 216,
+        "line": 217,
         "module": "app.file_share",
         "name": "file_search",
         "namespace": "file_sharing"
@@ -8747,7 +8802,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "file_to_pdf",
-        "line": 303,
+        "line": 304,
         "module": "app.file_share",
         "name": "file_to_pdf",
         "namespace": "file_sharing"
@@ -8755,7 +8810,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "write_file",
-        "line": 426,
+        "line": 427,
         "module": "app.file_share",
         "name": "file_write",
         "namespace": "file_sharing"
@@ -10416,7 +10471,7 @@
           "calendar_events.id"
         ],
         "history_mixin": true,
-        "line": 119,
+        "line": 122,
         "module": "app.calendar",
         "table": "calendar_actions"
       },
@@ -10427,7 +10482,7 @@
           "calendar_events.id"
         ],
         "history_mixin": false,
-        "line": 78,
+        "line": 81,
         "module": "app.calendar",
         "table": "calendar_event_exceptions"
       },
@@ -10435,10 +10490,11 @@
         "class_name": "CalendarEventRevision",
         "file": "back/app/calendar/models.py",
         "foreign_keys": [
-          "calendar_events.id"
+          "calendar_events.id",
+          "memory_items.id"
         ],
         "history_mixin": false,
-        "line": 176,
+        "line": 180,
         "module": "app.calendar",
         "table": "calendar_event_revisions"
       },
@@ -10447,10 +10503,11 @@
         "file": "back/app/calendar/models.py",
         "foreign_keys": [
           "calendar_events.id",
-          "calendar_feeds.id"
+          "calendar_feeds.id",
+          "memory_items.id"
         ],
         "history_mixin": true,
-        "line": 48,
+        "line": 50,
         "module": "app.calendar",
         "table": "calendar_events"
       },
@@ -10473,7 +10530,7 @@
           "calendar_feeds.id"
         ],
         "history_mixin": false,
-        "line": 87,
+        "line": 90,
         "module": "app.calendar",
         "table": "calendar_occurrences"
       },
@@ -10484,7 +10541,7 @@
           "calendar_events.id"
         ],
         "history_mixin": false,
-        "line": 106,
+        "line": 109,
         "module": "app.calendar",
         "table": "calendar_projection_windows"
       },
@@ -10496,7 +10553,7 @@
           "calendar_feeds.id"
         ],
         "history_mixin": false,
-        "line": 136,
+        "line": 139,
         "module": "app.calendar",
         "table": "calendar_sync_operations"
       },
@@ -10508,7 +10565,7 @@
           "calendar_sync_operations.id"
         ],
         "history_mixin": false,
-        "line": 159,
+        "line": 162,
         "module": "app.calendar",
         "table": "calendar_sync_runs"
       },
@@ -10521,7 +10578,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 187,
+        "line": 192,
         "module": "app.calendar",
         "table": "calendar_triggers"
       },
@@ -11337,6 +11394,17 @@
         "table": "files"
       },
       {
+        "class_name": "GoalCalendarPlan",
+        "file": "back/app/goal/models.py",
+        "foreign_keys": [
+          "goals.id"
+        ],
+        "history_mixin": false,
+        "line": 364,
+        "module": "app.goal",
+        "table": "goal_calendar_plans"
+      },
+      {
         "class_name": "GoalCategory",
         "file": "back/app/goal/models.py",
         "foreign_keys": [],
@@ -11353,7 +11421,7 @@
           "goals.id"
         ],
         "history_mixin": false,
-        "line": 363,
+        "line": 402,
         "module": "app.goal",
         "table": "goal_cycle_triggers"
       },
@@ -11368,9 +11436,22 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 234,
+        "line": 235,
         "module": "app.goal",
         "table": "goal_cycles"
+      },
+      {
+        "class_name": "GoalOccurrence",
+        "file": "back/app/goal/models.py",
+        "foreign_keys": [
+          "goal_calendar_plans.id",
+          "goal_cycles.id",
+          "goals.id"
+        ],
+        "history_mixin": false,
+        "line": 381,
+        "module": "app.goal",
+        "table": "goal_occurrences"
       },
       {
         "class_name": "Goal",
@@ -15588,7 +15669,7 @@
         "declared_path": "/calendars",
         "file": "back/app/calendar/router.py",
         "handler": "read_calendars",
-        "line": 95,
+        "line": 96,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -15597,7 +15678,7 @@
         "declared_path": "/calendars",
         "file": "back/app/calendar/router.py",
         "handler": "create_calendar",
-        "line": 233,
+        "line": 259,
         "method": "POST",
         "module": "app.calendar"
       },
@@ -15606,7 +15687,7 @@
         "declared_path": "/calendars/connection-options",
         "file": "back/app/calendar/router.py",
         "handler": "connection_options",
-        "line": 88,
+        "line": 89,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -15615,8 +15696,17 @@
         "declared_path": "/calendars/events",
         "file": "back/app/calendar/router.py",
         "handler": "read_events",
-        "line": 124,
+        "line": 150,
         "method": "GET",
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/execution-states",
+        "file": "back/app/calendar/router.py",
+        "handler": "execution_states",
+        "line": 142,
+        "method": "POST",
         "module": "app.calendar"
       },
       {
@@ -15624,7 +15714,25 @@
         "declared_path": "/calendars/reminders",
         "file": "back/app/calendar/router.py",
         "handler": "read_reminders",
-        "line": 110,
+        "line": 128,
+        "method": "GET",
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/resources",
+        "file": "back/app/calendar/router.py",
+        "handler": "search_resources",
+        "line": 111,
+        "method": "GET",
+        "module": "app.calendar"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/calendars/{calendar_id:int}",
+        "file": "back/app/calendar/router.py",
+        "handler": "read_calendar",
+        "line": 120,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -15633,7 +15741,7 @@
         "declared_path": "/calendars/{calendar_id}",
         "file": "back/app/calendar/router.py",
         "handler": "delete_calendar",
-        "line": 270,
+        "line": 296,
         "method": "DELETE",
         "module": "app.calendar"
       },
@@ -15642,7 +15750,7 @@
         "declared_path": "/calendars/{calendar_id}",
         "file": "back/app/calendar/router.py",
         "handler": "update_calendar",
-        "line": 256,
+        "line": 282,
         "method": "PUT",
         "module": "app.calendar"
       },
@@ -15651,7 +15759,7 @@
         "declared_path": "/calendars/{calendar_id}/conflicts",
         "file": "back/app/calendar/router.py",
         "handler": "calendar_conflicts",
-        "line": 174,
+        "line": 200,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -15660,7 +15768,7 @@
         "declared_path": "/calendars/{calendar_id}/events",
         "file": "back/app/calendar/router.py",
         "handler": "create_event",
-        "line": 139,
+        "line": 165,
         "method": "POST",
         "module": "app.calendar"
       },
@@ -15669,7 +15777,7 @@
         "declared_path": "/calendars/{calendar_id}/events/{event_id}",
         "file": "back/app/calendar/router.py",
         "handler": "delete_event",
-        "line": 198,
+        "line": 224,
         "method": "DELETE",
         "module": "app.calendar"
       },
@@ -15678,7 +15786,7 @@
         "declared_path": "/calendars/{calendar_id}/events/{event_id}",
         "file": "back/app/calendar/router.py",
         "handler": "event_detail",
-        "line": 157,
+        "line": 183,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -15687,7 +15795,7 @@
         "declared_path": "/calendars/{calendar_id}/events/{event_id}",
         "file": "back/app/calendar/router.py",
         "handler": "update_event",
-        "line": 148,
+        "line": 174,
         "method": "PUT",
         "module": "app.calendar"
       },
@@ -15696,7 +15804,7 @@
         "declared_path": "/calendars/{calendar_id}/events/{event_id}/actions",
         "file": "back/app/calendar/router.py",
         "handler": "read_actions",
-        "line": 207,
+        "line": 233,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -15705,7 +15813,7 @@
         "declared_path": "/calendars/{calendar_id}/events/{event_id}/actions",
         "file": "back/app/calendar/router.py",
         "handler": "create_action",
-        "line": 215,
+        "line": 241,
         "method": "POST",
         "module": "app.calendar"
       },
@@ -15714,7 +15822,7 @@
         "declared_path": "/calendars/{calendar_id}/events/{event_id}/actions/{action_id}",
         "file": "back/app/calendar/router.py",
         "handler": "update_action",
-        "line": 224,
+        "line": 250,
         "method": "PUT",
         "module": "app.calendar"
       },
@@ -15723,7 +15831,7 @@
         "declared_path": "/calendars/{calendar_id}/events/{event_id}/history",
         "file": "back/app/calendar/router.py",
         "handler": "event_history",
-        "line": 165,
+        "line": 191,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -15732,7 +15840,7 @@
         "declared_path": "/calendars/{calendar_id}/events/{event_id}/resolve",
         "file": "back/app/calendar/router.py",
         "handler": "resolve_conflict",
-        "line": 182,
+        "line": 208,
         "method": "POST",
         "module": "app.calendar"
       },
@@ -15741,7 +15849,7 @@
         "declared_path": "/calendars/{calendar_id}/executions/{execution_id}/relaunch",
         "file": "back/app/calendar/router.py",
         "handler": "relaunch_execution",
-        "line": 247,
+        "line": 273,
         "method": "POST",
         "module": "app.calendar"
       },
@@ -15750,7 +15858,7 @@
         "declared_path": "/calendars/{calendar_id}/sync-runs",
         "file": "back/app/calendar/router.py",
         "handler": "sync_runs",
-        "line": 191,
+        "line": 217,
         "method": "GET",
         "module": "app.calendar"
       },
@@ -15759,7 +15867,7 @@
         "declared_path": "/calendars/{calendar_id}/test",
         "file": "back/app/calendar/router.py",
         "handler": "test_calendar",
-        "line": 281,
+        "line": 307,
         "method": "POST",
         "module": "app.calendar"
       },
@@ -18603,7 +18711,7 @@
         "declared_path": "/goals",
         "file": "back/app/goal/router.py",
         "handler": "read_goals",
-        "line": 88,
+        "line": 90,
         "method": "GET",
         "module": "app.goal"
       },
@@ -18612,8 +18720,17 @@
         "declared_path": "/goals",
         "file": "back/app/goal/router.py",
         "handler": "create_goal",
-        "line": 230,
+        "line": 246,
         "method": "POST",
+        "module": "app.goal"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/goals/agenda",
+        "file": "back/app/goal/router.py",
+        "handler": "read_agenda",
+        "line": 199,
+        "method": "GET",
         "module": "app.goal"
       },
       {
@@ -18621,7 +18738,7 @@
         "declared_path": "/goals/categories",
         "file": "back/app/goal/router.py",
         "handler": "read_categories",
-        "line": 116,
+        "line": 118,
         "method": "GET",
         "module": "app.goal"
       },
@@ -18630,7 +18747,7 @@
         "declared_path": "/goals/categories",
         "file": "back/app/goal/router.py",
         "handler": "create_category",
-        "line": 122,
+        "line": 124,
         "method": "POST",
         "module": "app.goal"
       },
@@ -18639,7 +18756,7 @@
         "declared_path": "/goals/categories/{category_id}",
         "file": "back/app/goal/router.py",
         "handler": "delete_category",
-        "line": 137,
+        "line": 139,
         "method": "DELETE",
         "module": "app.goal"
       },
@@ -18648,7 +18765,7 @@
         "declared_path": "/goals/categories/{category_id}",
         "file": "back/app/goal/router.py",
         "handler": "update_category",
-        "line": 128,
+        "line": 130,
         "method": "PUT",
         "module": "app.goal"
       },
@@ -18657,7 +18774,7 @@
         "declared_path": "/goals/referrers/messenger",
         "file": "back/app/goal/router.py",
         "handler": "search_messenger_referrers",
-        "line": 146,
+        "line": 148,
         "method": "GET",
         "module": "app.goal"
       },
@@ -18666,7 +18783,7 @@
         "declared_path": "/goals/runtime-status",
         "file": "back/app/goal/router.py",
         "handler": "read_goal_runtime",
-        "line": 161,
+        "line": 163,
         "method": "GET",
         "module": "app.goal"
       },
@@ -18675,7 +18792,7 @@
         "declared_path": "/goals/settings",
         "file": "back/app/goal/router.py",
         "handler": "read_goal_settings",
-        "line": 167,
+        "line": 169,
         "method": "GET",
         "module": "app.goal"
       },
@@ -18684,7 +18801,7 @@
         "declared_path": "/goals/settings",
         "file": "back/app/goal/router.py",
         "handler": "update_goal_settings",
-        "line": 173,
+        "line": 175,
         "method": "PATCH",
         "module": "app.goal"
       },
@@ -18693,7 +18810,7 @@
         "declared_path": "/goals/tree",
         "file": "back/app/goal/router.py",
         "handler": "read_goal_tree",
-        "line": 190,
+        "line": 192,
         "method": "GET",
         "module": "app.goal"
       },
@@ -18702,7 +18819,7 @@
         "declared_path": "/goals/{goal_id}",
         "file": "back/app/goal/router.py",
         "handler": "delete_goal",
-        "line": 317,
+        "line": 333,
         "method": "DELETE",
         "module": "app.goal"
       },
@@ -18711,7 +18828,7 @@
         "declared_path": "/goals/{goal_id}",
         "file": "back/app/goal/router.py",
         "handler": "read_goal",
-        "line": 197,
+        "line": 213,
         "method": "GET",
         "module": "app.goal"
       },
@@ -18720,7 +18837,7 @@
         "declared_path": "/goals/{goal_id}",
         "file": "back/app/goal/router.py",
         "handler": "update_goal",
-        "line": 244,
+        "line": 260,
         "method": "PUT",
         "module": "app.goal"
       },
@@ -18729,7 +18846,7 @@
         "declared_path": "/goals/{goal_id}/complete",
         "file": "back/app/goal/router.py",
         "handler": "complete_goal",
-        "line": 291,
+        "line": 307,
         "method": "POST",
         "module": "app.goal"
       },
@@ -18738,7 +18855,7 @@
         "declared_path": "/goals/{goal_id}/cycles",
         "file": "back/app/goal/router.py",
         "handler": "read_goal_cycles",
-        "line": 211,
+        "line": 227,
         "method": "GET",
         "module": "app.goal"
       },
@@ -18747,7 +18864,7 @@
         "declared_path": "/goals/{goal_id}/pause",
         "file": "back/app/goal/router.py",
         "handler": "pause_goal",
-        "line": 265,
+        "line": 281,
         "method": "POST",
         "module": "app.goal"
       },
@@ -18756,7 +18873,7 @@
         "declared_path": "/goals/{goal_id}/resume",
         "file": "back/app/goal/router.py",
         "handler": "resume_goal",
-        "line": 278,
+        "line": 294,
         "method": "POST",
         "module": "app.goal"
       },
@@ -18765,7 +18882,7 @@
         "declared_path": "/goals/{goal_id}/run-now",
         "file": "back/app/goal/router.py",
         "handler": "run_goal_now",
-        "line": 304,
+        "line": 320,
         "method": "POST",
         "module": "app.goal"
       },
@@ -20148,10 +20265,19 @@
       },
       {
         "authorized": true,
+        "declared_path": "/memory/agenda",
+        "file": "back/app/memory/router.py",
+        "handler": "read_memory_agenda",
+        "line": 57,
+        "method": "GET",
+        "module": "app.memory"
+      },
+      {
+        "authorized": true,
         "declared_path": "/memory/browse",
         "file": "back/app/memory/router.py",
         "handler": "browse_memory",
-        "line": 291,
+        "line": 308,
         "method": "POST",
         "module": "app.memory"
       },
@@ -20160,7 +20286,7 @@
         "declared_path": "/memory/duplicates/preview",
         "file": "back/app/memory/router.py",
         "handler": "estimate_memory_duplicates",
-        "line": 219,
+        "line": 236,
         "method": "GET",
         "module": "app.memory"
       },
@@ -20169,7 +20295,7 @@
         "declared_path": "/memory/filter-options",
         "file": "back/app/memory/router.py",
         "handler": "read_memory_filter_options",
-        "line": 334,
+        "line": 351,
         "method": "GET",
         "module": "app.memory"
       },
@@ -20178,7 +20304,7 @@
         "declared_path": "/memory/findings",
         "file": "back/app/memory/router.py",
         "handler": "list_memory_findings",
-        "line": 241,
+        "line": 258,
         "method": "GET",
         "module": "app.memory"
       },
@@ -20187,7 +20313,7 @@
         "declared_path": "/memory/findings/{finding_id}/apply",
         "file": "back/app/memory/router.py",
         "handler": "apply_memory_finding",
-        "line": 260,
+        "line": 277,
         "method": "POST",
         "module": "app.memory"
       },
@@ -20196,7 +20322,7 @@
         "declared_path": "/memory/findings/{finding_id}/dismiss",
         "file": "back/app/memory/router.py",
         "handler": "dismiss_memory_finding",
-        "line": 278,
+        "line": 295,
         "method": "POST",
         "module": "app.memory"
       },
@@ -20205,7 +20331,7 @@
         "declared_path": "/memory/graph/expand",
         "file": "back/app/memory/router.py",
         "handler": "expand_memory_graph_node",
-        "line": 399,
+        "line": 416,
         "method": "POST",
         "module": "app.memory"
       },
@@ -20214,7 +20340,7 @@
         "declared_path": "/memory/graph/roots",
         "file": "back/app/memory/router.py",
         "handler": "list_memory_graph_roots",
-        "line": 362,
+        "line": 379,
         "method": "POST",
         "module": "app.memory"
       },
@@ -20223,7 +20349,7 @@
         "declared_path": "/memory/graph/state",
         "file": "back/app/memory/router.py",
         "handler": "write_memory_graph_state",
-        "line": 390,
+        "line": 407,
         "method": "POST",
         "module": "app.memory"
       },
@@ -20232,7 +20358,7 @@
         "declared_path": "/memory/graph/state/read",
         "file": "back/app/memory/router.py",
         "handler": "read_memory_graph_state",
-        "line": 381,
+        "line": 398,
         "method": "POST",
         "module": "app.memory"
       },
@@ -20241,7 +20367,7 @@
         "declared_path": "/memory/items",
         "file": "back/app/memory/router.py",
         "handler": "create_memory_item",
-        "line": 133,
+        "line": 150,
         "method": "POST",
         "module": "app.memory"
       },
@@ -20250,7 +20376,7 @@
         "declared_path": "/memory/items/{item_id}",
         "file": "back/app/memory/router.py",
         "handler": "forget_memory_item",
-        "line": 501,
+        "line": 518,
         "method": "DELETE",
         "module": "app.memory"
       },
@@ -20259,7 +20385,7 @@
         "declared_path": "/memory/items/{item_id}",
         "file": "back/app/memory/router.py",
         "handler": "get_memory_item",
-        "line": 430,
+        "line": 447,
         "method": "GET",
         "module": "app.memory"
       },
@@ -20268,7 +20394,7 @@
         "declared_path": "/memory/items/{item_id}",
         "file": "back/app/memory/router.py",
         "handler": "update_memory_item",
-        "line": 478,
+        "line": 495,
         "method": "PUT",
         "module": "app.memory"
       },
@@ -20277,7 +20403,7 @@
         "declared_path": "/memory/items/{item_id}/links",
         "file": "back/app/memory/router.py",
         "handler": "list_memory_links",
-        "line": 657,
+        "line": 674,
         "method": "GET",
         "module": "app.memory"
       },
@@ -20286,7 +20412,7 @@
         "declared_path": "/memory/items/{item_id}/revisions",
         "file": "back/app/memory/router.py",
         "handler": "list_memory_revisions",
-        "line": 463,
+        "line": 480,
         "method": "GET",
         "module": "app.memory"
       },
@@ -20295,7 +20421,7 @@
         "declared_path": "/memory/link-reconciliation",
         "file": "back/app/memory/router.py",
         "handler": "read_link_reconciliation_status",
-        "line": 172,
+        "line": 189,
         "method": "GET",
         "module": "app.memory"
       },
@@ -20304,7 +20430,7 @@
         "declared_path": "/memory/link-reconciliation",
         "file": "back/app/memory/router.py",
         "handler": "launch_link_reconciliation",
-        "line": 184,
+        "line": 201,
         "method": "POST",
         "module": "app.memory"
       },
@@ -20313,7 +20439,7 @@
         "declared_path": "/memory/links",
         "file": "back/app/memory/router.py",
         "handler": "create_memory_link",
-        "line": 639,
+        "line": 656,
         "method": "POST",
         "module": "app.memory"
       },
@@ -20322,7 +20448,7 @@
         "declared_path": "/memory/metrics",
         "file": "back/app/memory/router.py",
         "handler": "read_memory_metrics",
-        "line": 154,
+        "line": 171,
         "method": "GET",
         "module": "app.memory"
       },
@@ -20349,7 +20475,7 @@
         "declared_path": "/memory/recall",
         "file": "back/app/memory/router.py",
         "handler": "recall_memory",
-        "line": 350,
+        "line": 367,
         "method": "POST",
         "module": "app.memory"
       },
@@ -20358,7 +20484,7 @@
         "declared_path": "/memory/recent",
         "file": "back/app/memory/router.py",
         "handler": "read_recent_memories",
-        "line": 92,
+        "line": 109,
         "method": "GET",
         "module": "app.memory"
       },
@@ -20367,7 +20493,7 @@
         "declared_path": "/memory/retention/preview",
         "file": "back/app/memory/router.py",
         "handler": "estimate_memory_retention",
-        "line": 202,
+        "line": 219,
         "method": "GET",
         "module": "app.memory"
       },
@@ -20376,7 +20502,7 @@
         "declared_path": "/memory/search",
         "file": "back/app/memory/router.py",
         "handler": "search_memory",
-        "line": 322,
+        "line": 339,
         "method": "POST",
         "module": "app.memory"
       },
@@ -20385,7 +20511,7 @@
         "declared_path": "/memory/temporal/defaults",
         "file": "back/app/memory/router.py",
         "handler": "temporal_defaults",
-        "line": 55,
+        "line": 72,
         "method": "GET",
         "module": "app.memory"
       },
@@ -22022,6 +22148,86 @@
       },
       {
         "files": [
+          "front/app/calendar/components/CalendarWorkspace.vue"
+        ],
+        "source": "app/calendar",
+        "target": "app/agent"
+      },
+      {
+        "files": [
+          "front/app/calendar/components/CalendarWorkspace.vue",
+          "front/app/calendar/services/calendarService.ts"
+        ],
+        "source": "app/calendar",
+        "target": "app/goal"
+      },
+      {
+        "files": [
+          "front/app/calendar/components/CalendarEventEditor.vue",
+          "front/app/calendar/components/CalendarEventPanel.vue",
+          "front/app/calendar/components/CalendarWorkspace.vue",
+          "front/app/calendar/services/calendarService.ts"
+        ],
+        "source": "app/calendar",
+        "target": "app/memory"
+      },
+      {
+        "files": [
+          "front/app/calendar/components/CalendarEventEditor.vue",
+          "front/app/calendar/components/CalendarEventPanel.vue",
+          "front/app/calendar/components/CalendarEventTasks.vue",
+          "front/app/calendar/components/CalendarResourceDialog.vue",
+          "front/app/calendar/components/CalendarSettings.vue",
+          "front/app/calendar/components/CalendarSyncMonitor.vue",
+          "front/app/calendar/components/CalendarWorkspace.vue",
+          "front/app/calendar/services/calendarService.ts"
+        ],
+        "source": "app/calendar",
+        "target": "core/api"
+      },
+      {
+        "files": [
+          "front/app/calendar/components/CalendarEventTasks.vue",
+          "front/app/calendar/components/CalendarSettings.vue",
+          "front/app/calendar/components/CalendarWorkspace.vue",
+          "front/app/calendar/navigation.ts"
+        ],
+        "source": "app/calendar",
+        "target": "core/authorize"
+      },
+      {
+        "files": [
+          "front/app/calendar/navigation.ts"
+        ],
+        "source": "app/calendar",
+        "target": "core/navigation"
+      },
+      {
+        "files": [
+          "front/app/calendar/components/CalendarWorkspace.vue"
+        ],
+        "source": "app/calendar",
+        "target": "core/user"
+      },
+      {
+        "files": [
+          "front/app/calendar/calendarDates.ts",
+          "front/app/calendar/components/CalendarBoard.vue",
+          "front/app/calendar/components/CalendarColorSelect.vue",
+          "front/app/calendar/components/CalendarEventChip.vue",
+          "front/app/calendar/components/CalendarEventTasks.vue",
+          "front/app/calendar/components/CalendarResourceDialog.vue",
+          "front/app/calendar/components/CalendarRowMenu.vue",
+          "front/app/calendar/components/CalendarSettings.vue",
+          "front/app/calendar/components/CalendarWorkspace.vue",
+          "front/app/calendar/presentation.ts",
+          "front/app/calendar/richContent.ts"
+        ],
+        "source": "app/calendar",
+        "target": "core/util"
+      },
+      {
+        "files": [
           "front/app/chat/components/RoomCreateDialog.vue",
           "front/app/chat/components/RoomList.vue"
         ],
@@ -22182,6 +22388,14 @@
       },
       {
         "files": [
+          "front/app/connection/pages/calendars.vue",
+          "front/app/connection/services/calendarService.ts"
+        ],
+        "source": "app/connection",
+        "target": "app/calendar"
+      },
+      {
+        "files": [
           "front/app/connection/components/ConnectionForm.vue"
         ],
         "source": "app/connection",
@@ -22200,11 +22414,9 @@
       {
         "files": [
           "front/app/connection/availability.ts",
-          "front/app/connection/components/CalendarConnectionEditor.vue",
           "front/app/connection/components/McpOAuthConnection.vue",
           "front/app/connection/pages/oauth-callback.vue",
           "front/app/connection/pages/permissions.vue",
-          "front/app/connection/services/calendarService.ts",
           "front/app/connection/services/connectionService.ts",
           "front/app/connection/services/mailService.ts",
           "front/app/connection/services/mcpOAuthService.ts",
@@ -22220,7 +22432,6 @@
           "front/app/connection/availability.ts",
           "front/app/connection/components/ActionAuthorizations.vue",
           "front/app/connection/components/AuthorizationManager.vue",
-          "front/app/connection/components/CalendarConnectionEditor.vue",
           "front/app/connection/components/ConnectionForm.vue",
           "front/app/connection/components/ConnectionList.vue",
           "front/app/connection/components/MailInboundJournal.vue",
@@ -22236,7 +22447,6 @@
       {
         "files": [
           "front/app/connection/navigation.ts",
-          "front/app/connection/pages/calendars.vue",
           "front/app/connection/pages/mail.vue"
         ],
         "source": "app/connection",
@@ -22247,7 +22457,7 @@
           "front/app/connection/components/ConnectionForm.vue",
           "front/app/connection/components/FunctionPolicyToggle.vue",
           "front/app/connection/components/PermissionToolBrowser.vue",
-          "front/app/connection/pages/calendars.vue",
+          "front/app/connection/index.ts",
           "front/app/connection/pages/mail.vue",
           "front/app/connection/pages/permissions.vue",
           "front/app/connection/permissionPresentation.ts"
@@ -22664,6 +22874,7 @@
       },
       {
         "files": [
+          "front/app/goal/components/GoalAgendaPanel.vue",
           "front/app/goal/navigation.ts",
           "front/app/goal/pages/index.vue",
           "front/app/goal/stores/goalStore.ts"
@@ -22689,7 +22900,9 @@
       },
       {
         "files": [
+          "front/app/goal/components/GoalAgendaPanel.vue",
           "front/app/goal/components/GoalCategoryManager.vue",
+          "front/app/goal/components/GoalRecurrenceEditor.vue",
           "front/app/goal/pages/index.vue",
           "front/app/goal/richContent.ts"
         ],
@@ -23077,6 +23290,7 @@
         "files": [
           "front/app/memory/components/ContactCreateDialog.vue",
           "front/app/memory/components/ContactEditDialog.vue",
+          "front/app/memory/components/ContactSelect.vue",
           "front/app/memory/components/MemoryFileResources.vue",
           "front/app/memory/components/MemoryGraph.vue",
           "front/app/memory/components/MemoryItemThumbnail.vue",
@@ -23092,6 +23306,7 @@
       },
       {
         "files": [
+          "front/app/memory/components/ContactSelect.vue",
           "front/app/memory/components/MemoryDreamActions.vue",
           "front/app/memory/navigation.ts",
           "front/app/memory/pages/contacts.vue",
@@ -24084,12 +24299,13 @@
           "app/voice"
         ]
       ],
-      "domain_edges": 53,
+      "domain_edges": 57,
       "fan_in": [
         {
-          "count": 14,
+          "count": 15,
           "module": "app/agent",
           "modules": [
+            "app/calendar",
             "app/chat",
             "app/connection",
             "app/conversation",
@@ -24179,6 +24395,21 @@
           ]
         },
         {
+          "count": 2,
+          "module": "app/memory",
+          "modules": [
+            "app/calendar",
+            "app/task"
+          ]
+        },
+        {
+          "count": 1,
+          "module": "app/calendar",
+          "modules": [
+            "app/connection"
+          ]
+        },
+        {
           "count": 1,
           "module": "app/console",
           "modules": [
@@ -24201,16 +24432,16 @@
         },
         {
           "count": 1,
-          "module": "app/harnesses",
+          "module": "app/goal",
           "modules": [
-            "app/agent"
+            "app/calendar"
           ]
         },
         {
           "count": 1,
-          "module": "app/memory",
+          "module": "app/harnesses",
           "modules": [
-            "app/task"
+            "app/agent"
           ]
         },
         {
@@ -24291,6 +24522,16 @@
         },
         {
           "count": 4,
+          "module": "app/connection",
+          "modules": [
+            "app/agent",
+            "app/calendar",
+            "app/console",
+            "app/tools"
+          ]
+        },
+        {
+          "count": 4,
           "module": "app/index",
           "modules": [
             "app/agent",
@@ -24311,11 +24552,11 @@
         },
         {
           "count": 3,
-          "module": "app/connection",
+          "module": "app/calendar",
           "modules": [
             "app/agent",
-            "app/console",
-            "app/tools"
+            "app/goal",
+            "app/memory"
           ]
         },
         {
@@ -24731,6 +24972,27 @@
           }
         ],
         "path": "front/app/connection"
+      },
+      {
+        "capabilities": [
+          "components",
+          "i18n.ts",
+          "navigation.ts",
+          "pages",
+          "presentation.ts",
+          "services"
+        ],
+        "exists": true,
+        "layer": "app",
+        "name": "app/calendar",
+        "pages": [
+          {
+            "file": "front/app/calendar/pages/index.vue",
+            "module": "app/calendar",
+            "route_hint": "/calendar"
+          }
+        ],
+        "path": "front/app/calendar"
       },
       {
         "capabilities": [
@@ -25209,16 +25471,6 @@
         "path": "front/bridge/n8n"
       },
       {
-        "capabilities": [
-          "i18n.ts"
-        ],
-        "exists": true,
-        "layer": "bridge",
-        "name": "bridge/calendar",
-        "pages": [],
-        "path": "front/bridge/calendar"
-      },
-      {
         "capabilities": [],
         "exists": true,
         "layer": "bridge",
@@ -25285,6 +25537,11 @@
         "file": "front/app/browser/pages/settings.vue",
         "module": "app/browser",
         "route_hint": "/browser/settings"
+      },
+      {
+        "file": "front/app/calendar/pages/index.vue",
+        "module": "app/calendar",
+        "route_hint": "/calendar"
       },
       {
         "file": "front/app/chat/pages/index.vue",

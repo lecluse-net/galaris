@@ -796,7 +796,7 @@ async def list_enabled_native_mcp_definitions(
             conversation_codes.add(tool.code)
             if getattr(tool, "mail_config", None) is not None:
                 conversation_codes.add("mail")
-            if getattr(tool, "calendar_config", None) is not None:
+            if tool.code == "agenda" or getattr(tool, "calendar_config", None) is not None:
                 conversation_codes.add("calendar")
             messenger_config = tool.messenger_config or {}
             service = str(messenger_config.get("service") or "")

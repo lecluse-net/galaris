@@ -18,8 +18,9 @@ export const contactService = {
     query?: string
     limit?: number
     offset?: number
-  }): Promise<ContactPage> {
+  }, signal?: AbortSignal): Promise<ContactPage> {
     const response = await api.get<ContactPage>('/contacts', {
+      ...(signal ? { signal } : {}),
       params: {
         agent_id: params.agentId,
         q: params.query ?? '',

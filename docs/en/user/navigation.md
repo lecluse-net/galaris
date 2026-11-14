@@ -95,8 +95,8 @@ The route is excluded from builds for other environments.
 |---|---|
 | **Configure** | Providers & models, Agents, Tools & connections, Skills |
 | **Act** | Chat, Goals, Processes |
-| **Knowledge** | Documents, Files, Memory, Contacts, Thematic dossiers |
-| **Monitor** | Dashboard, Activity, Dream, Permissions, Mail journal, Calendars, Failure journal |
+| **Knowledge** | Documents, Files, Memory, Agenda, Contacts, Thematic dossiers |
+| **Monitor** | Dashboard, Activity, Dream, Permissions, Mail journal, Failure journal |
 | **Administer** | Preferences, Laboratory, Console, Users, Teams, Roles & permissions |
 | **Developers** (dev mode only) | Visual reference |
 
@@ -104,11 +104,14 @@ Technical documentation may refer to “Tasks”, “Conversations” or “AI L
 conversation histories are tabs inside **Activity**; the AI Lab is **Laboratory**.
 They are not additional sidebar menus. Use the generated map for labels in each language.
 
-## Calendars and Mail journal
+## Agenda and Mail journal
 
-**Monitor → Calendars** (`/connection/calendars`) selects a Calendar connection and displays
-its feeds with `CALENDAR_ACCESS` or `CALENDAR_EDIT`. Editing requires `CALENDAR_EDIT`;
-connection creation remains under Tools & connections. The Mail journal separately uses
+**Knowledge → Agenda** (`/calendar`) selects an agent and its calendars, offers Month, Week,
+Day and Schedule views and tracks Tasks per event. Reading requires `CALENDAR_ACCESS` or
+`CALENDAR_EDIT`; editing requires `CALENDAR_EDIT`. Connection creation remains under
+Tools & connections. See [Agenda and Task launches](calendar.md). The former
+`/connection/calendars` link opens the same workspace. Agenda appears directly below Memory.
+The Mail journal separately uses
 `MAIL_ACCESS` or `MAIL_EDIT`; send decisions also require `PERMISSION_DECIDE` and the
 designated approver identity.
 

@@ -20,6 +20,7 @@ async def test_calendar_list_is_scoped_to_current_agent(monkeypatch) -> None:
 
     monkeypatch.setattr(mcp.service, "list_feeds", list_feeds)
     monkeypatch.setattr(mcp.service, "active_connection_for_agent", AsyncMock(return_value=SimpleNamespace(id=13)))
+    monkeypatch.setattr(mcp, "memory_read_enabled", AsyncMock(return_value=False))
     result = await mcp.calendar_list(McpToolContext(agent_id=42, runtime="internal"))
     assert result == [{"agent_id": 42}]
     assert observed == [(42, 13)]

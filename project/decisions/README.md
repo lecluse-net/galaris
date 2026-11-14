@@ -1,5 +1,13 @@
 # Décisions d'architecture
 
+- [0289 — Stable native Calendar resources](0289-calendar-resource-identity.md)
+
+- [0287 — Optional local contact references on calendar events](0287-calendar-contact-references.md)
+
+- [0286 — Informational Memory agenda and shared agent temporal context](0286-informational-memory-agenda.md)
+
+- [0283 — Goal series and durable agenda passages](0283-goal-agenda-passages.md)
+
 - [0281 — Quiet document history and substantial Dream updates](0281-quiet-document-history-and-dream.md)
 
 - [0277 — Configurable operating knowledge shared by executors](0277-configurable-operating-knowledge.md)
@@ -401,4 +409,6 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0278 — Default personal agendas and Goal boundaries](0278-personal-agendas-and-goal-boundaries.md)
 - [0279 — Local agendas and background CalDAV synchronization](0279-local-agendas-and-caldav-synchronization.md)
 - [0280 — Private current Chat drafts](0280-private-chat-drafts.md)
+- [0282 — Calendar workspace and per-occurrence Task launches](0282-calendar-workspace-and-task-launches.md)
 - [0284 — Server-owned document batch moves](0284-server-owned-document-batch-moves.md)
+- [0285 — Calendar providers and account authorization](0285-calendar-provider-authorization.md)

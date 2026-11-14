@@ -1,5 +1,39 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 
+for (const [kind, width] of [['google', 390], ['microsoft', 1440]]) test(`calendar OAuth remains independent from MCP (${kind})`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  let connected = true, fail = true
+  const writes = []
+  await page.route('**/api/connections/42/oauth?purpose=calendar', route => {
+    if (route.request().method() === 'DELETE') { writes.push('calendar-disconnect'); connected = false; return route.fulfill({ status: 204 }) }
+    if (fail) { fail = false; return route.fulfill({ status: 503, json: { detail: 'Synthetic calendar authorization unavailable' } }) }
+    return route.fulfill({ json: { connected, pending: false, reconnect_required: false } })
+  })
+  await jsonRoute(page, '**/api/connections/42/oauth', { connected: true, pending: false, reconnect_required: false })
+  await page.route('**/api/connections/42/oauth/start?purpose=calendar', route => {
+    writes.push('calendar-start')
+    return route.fulfill({ json: { method: 'redirect', authorization_url: 'http://localhost:8000/synthetic-calendar-login?state=synthetic-calendar-state-000000001' } })
+  })
+  await page.route('**/synthetic-calendar-login?*', route => route.fulfill({ contentType: 'text/html', body: 'Synthetic calendar sign-in' }))
+  const tool = { id: 8, code: 'synthetic_calendar', label: 'Synthetic Calendar', has_calendar: true,
+    calendar_config: { settings: { source_kind: kind } }, mcp_config: { type: 'http' }, global_params: {}, connection_schema: { params: {} } }
+  await mount(page, 'app/connection/components/ConnectionForm.vue', { privileges: ['CONNECTION_EDIT'], props: {
+    connection: { id: 42, agent_id: 7, tool_id: 8, active: true }, connectionParams: {}, tools: [tool],
+    agentOptions: [{ value: 7, label: 'Synthetic Agent', agentDriver: 'internal' }], toolOptions: [{ id: 8, label: 'Synthetic Calendar' }],
+  } })
+  const calendar = page.locator('.q-card').filter({ has: page.getByText('Calendar account authorization', { exact: true }) })
+  await expect(calendar.getByRole('alert')).toContainText('Synthetic calendar authorization unavailable')
+  await calendar.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(calendar.getByRole('status')).toHaveText('Account connected')
+  await calendar.getByRole('button', { name: 'Disconnect account', exact: true }).click()
+  await expect(calendar.getByRole('status')).toHaveText('No account connected')
+  await expect(page.getByRole('status').filter({ hasText: /^Account connected$/ })).toHaveCount(1)
+  await page.screenshot({ path: testInfo.outputPath('calendar-provider-oauth.png'), fullPage: true })
+  await calendar.getByRole('button', { name: 'Connect account', exact: true }).click()
+  await expect(page.getByText('Synthetic calendar sign-in')).toBeVisible()
+  expect(writes).toEqual(['calendar-disconnect', 'calendar-start'])
+})
+
 test('device authorization completes without a local script and respects the polling interval', async ({ page, context }) => {
   let approved = false
   let connected = false
@@ -127,7 +161,7 @@ test('local OAuth relay downloads on the browser computer and completes in a new
   // The relay opens a separate tab with no copy of the initiator's sessionStorage.
   expect(await callbackPage.evaluate(() => sessionStorage.length)).toBe(0)
   await callbackPage.evaluate(() => window.testApp.mount({ component: 'app/connection/pages/oauth-callback.vue' }))
-  await expect(callbackPage.getByRole('status')).toContainText('MCP connection authorized')
+  await expect(callbackPage.getByRole('status')).toContainText('Account authorized')
   expect(callbackPage.url()).not.toContain('synthetic-relayed-code')
   expect(callbacks).toBe(1)
   expect(await callbackPage.evaluate(state => localStorage.getItem(`galaris:mcp-oauth-local:${state}`), state)).toBeNull()
@@ -385,7 +419,7 @@ for (const width of [1440, 390]) {
     await page.getByRole('link', { name: 'Approve synthetic access' }).click()
     await page.waitForFunction(() => window.testApp?.mount)
     await page.evaluate(() => window.testApp.mount({ component: 'app/connection/pages/oauth-callback.vue' }))
-    await expect(page.getByRole('status')).toContainText('MCP connection authorized')
+    await expect(page.getByRole('status')).toContainText('Account authorized')
     expect(page.url()).not.toContain('synthetic-code')
     expect(callbacks).toBe(1)
     await mount(page, component, options)

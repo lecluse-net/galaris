@@ -11,16 +11,16 @@ tests remain authoritative for behavior.
 
 - 79 declared backend modules;
 - 40 declared frontend modules;
-- 639 backend dependency edges;
-- 219 frontend dependency edges;
-- 304 edges between `app`/`bridge` domains;
+- 643 backend dependency edges;
+- 228 frontend dependency edges;
+- 307 edges between `app`/`bridge` domains;
 - 30 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
-- 808 detected HTTP/WebSocket handlers;
-- 194 detected SQLAlchemy tables;
+- 813 detected HTTP/WebSocket handlers;
+- 196 detected SQLAlchemy tables;
 - 294 detected native MCP tools;
-- 55 detected Vue pages.
+- 56 detected Vue pages.
 
 ## Backend Modules
 
@@ -120,6 +120,7 @@ tests remain authoritative for behavior.
 | `app/tools` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 1 |
 | `app/browser` | yes | `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/connection` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 5 |
+| `app/calendar` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services` | 1 |
 | `app/skill` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/llm` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 2 |
 | `app/task` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
@@ -144,7 +145,6 @@ tests remain authoritative for behavior.
 | `bridge/whatsapp` | yes | `i18n.ts` | 0 |
 | `bridge/one_bot` | yes | `i18n.ts` | 0 |
 | `bridge/n8n` | yes | `components`, `i18n.ts`, `services` | 0 |
-| `bridge/calendar` | yes | `i18n.ts` | 0 |
 | `bridge/claude_agent` | yes | — | 0 |
 | `bridge/codex` | yes | — | 0 |
 | `bridge/deepseek_harness` | yes | — | 0 |
@@ -191,12 +191,16 @@ tests remain authoritative for behavior.
 | `app.browser` | `core.secrets` | `back/app/browser/router.py`, `back/app/browser/service.py` |
 | `app.browser` | `core.settings` | `back/app/browser/service.py` |
 | `app.browser` | `core.user` | `back/app/browser/__init__.py`, `back/app/browser/service.py` |
-| `app.calendar` | `app.agent` | `back/app/calendar/dispatch.py`, `back/app/calendar/router.py`, `back/app/calendar/service.py`, `back/app/calendar/store.py` |
-| `app.calendar` | `app.connection` | `back/app/calendar/dbadmin.py`, `back/app/calendar/dispatch.py`, `back/app/calendar/router.py`, `back/app/calendar/service.py`, `back/app/calendar/store.py`, `back/app/calendar/synchronization.py` |
-| `app.calendar` | `app.tools` | `back/app/calendar/__init__.py`, `back/app/calendar/dbadmin.py`, `back/app/calendar/mcp.py`, `back/app/calendar/service.py` |
+| `app.calendar` | `app.agent` | `back/app/calendar/__init__.py`, `back/app/calendar/context.py`, `back/app/calendar/dispatch.py`, `back/app/calendar/router.py`, `back/app/calendar/service.py`, `back/app/calendar/store.py` |
+| `app.calendar` | `app.connection` | `back/app/calendar/__init__.py`, `back/app/calendar/awareness.py`, `back/app/calendar/dbadmin.py`, `back/app/calendar/dispatch.py`, `back/app/calendar/resources.py`, `back/app/calendar/router.py`, `back/app/calendar/service.py`, `back/app/calendar/store.py`, `back/app/calendar/sync_progress.py`, `back/app/calendar/synchronization.py` |
+| `app.calendar` | `app.contact` | `back/app/calendar/__init__.py`, `back/app/calendar/service.py` |
+| `app.calendar` | `app.file_share` | `back/app/calendar/__init__.py` |
+| `app.calendar` | `app.memory` | `back/app/calendar/awareness.py`, `back/app/calendar/context.py`, `back/app/calendar/mcp.py` |
+| `app.calendar` | `app.tools` | `back/app/calendar/__init__.py`, `back/app/calendar/dbadmin.py`, `back/app/calendar/mcp.py`, `back/app/calendar/service.py`, `back/app/calendar/synchronization.py` |
 | `app.calendar` | `core.authorize` | `back/app/calendar/router.py` |
-| `app.calendar` | `core.database` | `back/app/calendar/dispatch.py`, `back/app/calendar/maintenance.py`, `back/app/calendar/models.py`, `back/app/calendar/router.py`, `back/app/calendar/service.py`, `back/app/calendar/store.py`, `back/app/calendar/synchronization.py` |
+| `app.calendar` | `core.database` | `back/app/calendar/contact_links.py`, `back/app/calendar/dispatch.py`, `back/app/calendar/maintenance.py`, `back/app/calendar/models.py`, `back/app/calendar/resources.py`, `back/app/calendar/router.py`, `back/app/calendar/service.py`, `back/app/calendar/store.py`, `back/app/calendar/sync_progress.py`, `back/app/calendar/synchronization.py` |
 | `app.calendar` | `core.dbadmin` | `back/app/calendar/dbadmin.py` |
+| `app.calendar` | `core.params` | `back/app/calendar/context.py`, `back/app/calendar/service.py` |
 | `app.calendar` | `core.util` | `back/app/calendar/crypto.py` |
 | `app.chat` | `app.agent` | `back/app/chat/assertions.py`, `back/app/chat/document_conversation.py`, `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/schemas.py` |
 | `app.chat` | `app.browser` | `back/app/chat/router.py`, `back/app/chat/thumbnail_service.py` |
@@ -221,7 +225,7 @@ tests remain authoritative for behavior.
 | `app.code` | `core.settings` | `back/app/code/gateway.py`, `back/app/code/service.py` |
 | `app.code` | `core.user` | `back/app/code/lifecycle.py`, `back/app/code/router.py`, `back/app/code/service.py` |
 | `app.connection` | `app.agent` | `back/app/connection/admin_service.py`, `back/app/connection/agent_admin_mcp.py`, `back/app/connection/connection_service.py`, `back/app/connection/function_permissions.py`, `back/app/connection/router.py` |
-| `app.connection` | `app.tools` | `back/app/connection/admin_service.py`, `back/app/connection/agent_admin_mcp.py`, `back/app/connection/agent_admin_service.py`, `back/app/connection/connection_service.py`, `back/app/connection/function_permissions.py`, `back/app/connection/mcp.py`, `back/app/connection/oauth_service.py`, `back/app/connection/router.py` |
+| `app.connection` | `app.tools` | `back/app/connection/admin_service.py`, `back/app/connection/agent_admin_mcp.py`, `back/app/connection/agent_admin_service.py`, `back/app/connection/calendar_oauth.py`, `back/app/connection/connection_service.py`, `back/app/connection/function_permissions.py`, `back/app/connection/mcp.py`, `back/app/connection/oauth_service.py`, `back/app/connection/router.py` |
 | `app.connection` | `core.authorize` | `back/app/connection/assertions.py`, `back/app/connection/router.py` |
 | `app.connection` | `core.database` | `back/app/connection/admin_service.py`, `back/app/connection/agent_admin_service.py`, `back/app/connection/connection_service.py`, `back/app/connection/function_permissions.py`, `back/app/connection/models.py`, `back/app/connection/oauth_runtime.py`, `back/app/connection/oauth_service.py`, `back/app/connection/router.py` |
 | `app.connection` | `core.dbadmin` | `back/app/connection/dbadmin.py` |
@@ -350,11 +354,11 @@ tests remain authoritative for behavior.
 | `app.goal` | `app.connection` | `back/app/goal/models.py` |
 | `app.goal` | `app.llm` | `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.messenger` | `back/app/goal/goal_service.py`, `back/app/goal/referrer_wait.py` |
-| `app.goal` | `app.task` | `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/reviews.py`, `back/app/goal/runner.py` |
+| `app.goal` | `app.task` | `back/app/goal/calendar.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/reviews.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.tools` | `back/app/goal/access.py`, `back/app/goal/mcp.py` |
 | `app.goal` | `core.authorize` | `back/app/goal/router.py` |
-| `app.goal` | `core.database` | `back/app/goal/category_service.py`, `back/app/goal/events.py`, `back/app/goal/facade.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/reviews.py`, `back/app/goal/runner.py` |
-| `app.goal` | `core.dbadmin` | `back/app/goal/dbadmin.py` |
+| `app.goal` | `core.database` | `back/app/goal/calendar.py`, `back/app/goal/category_service.py`, `back/app/goal/events.py`, `back/app/goal/facade.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/reviews.py`, `back/app/goal/runner.py` |
+| `app.goal` | `core.dbadmin` | `back/app/goal/agenda_upgrade.py`, `back/app/goal/dbadmin.py` |
 | `app.goal` | `core.i18n` | `back/app/goal/referrer_wait.py` |
 | `app.goal` | `core.params` | `back/app/goal/facade.py`, `back/app/goal/settings_service.py` |
 | `app.goal` | `core.scheduling` | `back/app/goal/__init__.py` |
@@ -453,14 +457,14 @@ tests remain authoritative for behavior.
 | `app.memory` | `app.topic` | `back/app/memory/link_reconciliation.py` |
 | `app.memory` | `app.voice` | `back/app/memory/automation.py` |
 | `app.memory` | `core.authorize` | `back/app/memory/assertions.py`, `back/app/memory/router.py` |
-| `app.memory` | `core.database` | `back/app/memory/access.py`, `back/app/memory/acquisition_service.py`, `back/app/memory/admission.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/automation.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/contact_directory.py`, `back/app/memory/deduplication.py`, `back/app/memory/document_projection.py`, `back/app/memory/document_structure.py`, `back/app/memory/dream_actions.py`, `back/app/memory/events.py`, `back/app/memory/facade.py`, `back/app/memory/graph_state.py`, `back/app/memory/html_migration.py`, `back/app/memory/inline_content.py`, `back/app/memory/library_queries.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/maintenance.py`, `back/app/memory/messenger_contact.py`, `back/app/memory/models.py`, `back/app/memory/native_content.py`, `back/app/memory/process_projection.py`, `back/app/memory/query_policy.py`, `back/app/memory/retrieval.py`, `back/app/memory/semantic_index.py`, `back/app/memory/service.py`, `back/app/memory/source_access.py`, `back/app/memory/source_projection.py`, `back/app/memory/topic_maintenance.py`, `back/app/memory/topic_ranking.py`, `back/app/memory/urls.py`, `back/app/memory/usage.py`, `back/app/memory/vector.py` |
+| `app.memory` | `core.database` | `back/app/memory/access.py`, `back/app/memory/acquisition_service.py`, `back/app/memory/admission.py`, `back/app/memory/agenda.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/automation.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/contact_directory.py`, `back/app/memory/deduplication.py`, `back/app/memory/document_projection.py`, `back/app/memory/document_structure.py`, `back/app/memory/dream_actions.py`, `back/app/memory/events.py`, `back/app/memory/facade.py`, `back/app/memory/graph_state.py`, `back/app/memory/html_migration.py`, `back/app/memory/inline_content.py`, `back/app/memory/library_queries.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/maintenance.py`, `back/app/memory/messenger_contact.py`, `back/app/memory/models.py`, `back/app/memory/native_content.py`, `back/app/memory/process_projection.py`, `back/app/memory/query_policy.py`, `back/app/memory/retrieval.py`, `back/app/memory/semantic_index.py`, `back/app/memory/service.py`, `back/app/memory/source_access.py`, `back/app/memory/source_projection.py`, `back/app/memory/topic_maintenance.py`, `back/app/memory/topic_ranking.py`, `back/app/memory/urls.py`, `back/app/memory/usage.py`, `back/app/memory/vector.py` |
 | `app.memory` | `core.dbadmin` | `back/app/memory/content_migration.py`, `back/app/memory/dbadmin.py`, `back/app/memory/file_attributes_migration.py`, `back/app/memory/html_migration.py`, `back/app/memory/url_migration.py` |
 | `app.memory` | `core.i18n` | `back/app/memory/automation.py`, `back/app/memory/mcp.py` |
 | `app.memory` | `core.params` | `back/app/memory/acquisition_service.py`, `back/app/memory/automation.py`, `back/app/memory/bootstrap.py`, `back/app/memory/contact_policy.py`, `back/app/memory/context.py`, `back/app/memory/deduplication.py`, `back/app/memory/maintenance.py`, `back/app/memory/retrieval.py`, `back/app/memory/router.py`, `back/app/memory/service.py` |
 | `app.memory` | `core.storage` | `back/app/memory/__init__.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/automation.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/content_migration.py`, `back/app/memory/contracts.py`, `back/app/memory/document_structure.py`, `back/app/memory/html_migration.py`, `back/app/memory/inline_content.py`, `back/app/memory/native_content.py`, `back/app/memory/semantic_index.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py`, `back/app/memory/storage_reconciliation.py` |
 | `app.memory` | `core.team` | `back/app/memory/bootstrap.py` |
 | `app.memory` | `core.user` | `back/app/memory/access.py`, `back/app/memory/contact_directory.py`, `back/app/memory/events.py`, `back/app/memory/maintenance.py`, `back/app/memory/router.py`, `back/app/memory/service.py` |
-| `app.memory` | `core.util` | `back/app/memory/acquisition_service.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/contact_policy.py`, `back/app/memory/content_migration.py`, `back/app/memory/context.py`, `back/app/memory/document_structure.py`, `back/app/memory/file_facade.py`, `back/app/memory/html_migration.py`, `back/app/memory/maintenance.py`, `back/app/memory/models.py`, `back/app/memory/passages.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py`, `back/app/memory/storage_reconciliation.py`, `back/app/memory/temporal.py` |
+| `app.memory` | `core.util` | `back/app/memory/acquisition_service.py`, `back/app/memory/agenda.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/catalogue_projection.py`, `back/app/memory/contact_policy.py`, `back/app/memory/content_migration.py`, `back/app/memory/document_structure.py`, `back/app/memory/file_facade.py`, `back/app/memory/html_migration.py`, `back/app/memory/maintenance.py`, `back/app/memory/models.py`, `back/app/memory/passages.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py`, `back/app/memory/storage_reconciliation.py`, `back/app/memory/temporal.py` |
 | `app.messenger` | `app.agent` | `back/app/messenger/agent_identity.py`, `back/app/messenger/contact_access.py`, `back/app/messenger/mcp.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_resources.py`, `back/app/messenger/permission_router.py`, `back/app/messenger/permissions.py`, `back/app/messenger/router.py`, `back/app/messenger/schemas.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
 | `app.messenger` | `app.connection` | `back/app/messenger/configuration.py`, `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/directory.py`, `back/app/messenger/ingest.py`, `back/app/messenger/journal.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py` |
 | `app.messenger` | `app.conversation` | `back/app/messenger/contact_memory.py`, `back/app/messenger/service.py` |
@@ -603,7 +607,7 @@ tests remain authoritative for behavior.
 | `bridge.azure_speech` | `core.util` | `back/bridge/azure_speech/resources.py`, `back/bridge/azure_speech/speech.py` |
 | `bridge.byteplus` | `app.llm` | `back/bridge/byteplus/__init__.py`, `back/bridge/byteplus/media.py` |
 | `bridge.byteplus` | `core.util` | `back/bridge/byteplus/media.py` |
-| `bridge.calendar` | `app.calendar` | `back/bridge/calendar/__init__.py`, `back/bridge/calendar/caldav.py`, `back/bridge/calendar/transport.py` |
+| `bridge.calendar` | `app.calendar` | `back/bridge/calendar/__init__.py`, `back/bridge/calendar/caldav.py`, `back/bridge/calendar/providers.py`, `back/bridge/calendar/rest.py`, `back/bridge/calendar/transport.py` |
 | `bridge.calendar` | `app.file_share` | `back/bridge/calendar/transport.py` |
 | `bridge.cerebras` | `app.llm` | `back/bridge/cerebras/__init__.py` |
 | `bridge.claude_agent` | `app.agent` | `back/bridge/claude_agent/harness_provider.py` |
@@ -814,6 +818,14 @@ tests remain authoritative for behavior.
 | `app/browser` | `core/params` | `front/app/browser/pages/settings.vue`, `front/app/browser/settingsFields.ts` |
 | `app/browser` | `core/user` | `front/app/browser/stores/browserSettingsStore.ts` |
 | `app/browser` | `core/util` | `front/app/browser/pages/settings.vue` |
+| `app/calendar` | `app/agent` | `front/app/calendar/components/CalendarWorkspace.vue` |
+| `app/calendar` | `app/goal` | `front/app/calendar/components/CalendarWorkspace.vue`, `front/app/calendar/services/calendarService.ts` |
+| `app/calendar` | `app/memory` | `front/app/calendar/components/CalendarEventEditor.vue`, `front/app/calendar/components/CalendarEventPanel.vue`, `front/app/calendar/components/CalendarWorkspace.vue`, `front/app/calendar/services/calendarService.ts` |
+| `app/calendar` | `core/api` | `front/app/calendar/components/CalendarEventEditor.vue`, `front/app/calendar/components/CalendarEventPanel.vue`, `front/app/calendar/components/CalendarEventTasks.vue`, `front/app/calendar/components/CalendarResourceDialog.vue`, `front/app/calendar/components/CalendarSettings.vue`, `front/app/calendar/components/CalendarSyncMonitor.vue`, `front/app/calendar/components/CalendarWorkspace.vue`, `front/app/calendar/services/calendarService.ts` |
+| `app/calendar` | `core/authorize` | `front/app/calendar/components/CalendarEventTasks.vue`, `front/app/calendar/components/CalendarSettings.vue`, `front/app/calendar/components/CalendarWorkspace.vue`, `front/app/calendar/navigation.ts` |
+| `app/calendar` | `core/navigation` | `front/app/calendar/navigation.ts` |
+| `app/calendar` | `core/user` | `front/app/calendar/components/CalendarWorkspace.vue` |
+| `app/calendar` | `core/util` | `front/app/calendar/calendarDates.ts`, `front/app/calendar/components/CalendarBoard.vue`, `front/app/calendar/components/CalendarColorSelect.vue`, `front/app/calendar/components/CalendarEventChip.vue`, `front/app/calendar/components/CalendarEventTasks.vue`, `front/app/calendar/components/CalendarResourceDialog.vue`, `front/app/calendar/components/CalendarRowMenu.vue`, `front/app/calendar/components/CalendarSettings.vue`, `front/app/calendar/components/CalendarWorkspace.vue`, `front/app/calendar/presentation.ts`, `front/app/calendar/richContent.ts` |
 | `app/chat` | `app/agent` | `front/app/chat/components/RoomCreateDialog.vue`, `front/app/chat/components/RoomList.vue` |
 | `app/chat` | `app/conversation` | `front/app/chat/components/AgentExecutionTrace.vue` |
 | `app/chat` | `app/task` | `front/app/chat/components/AgentExecutionTrace.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/CompactTaskOperations.vue`, `front/app/chat/liveState.ts`, `front/app/chat/runtimeState.ts`, `front/app/chat/types.ts` |
@@ -826,12 +838,13 @@ tests remain authoritative for behavior.
 | `app/chat` | `core/util` | `front/app/chat/code/components/CodeWorkspaceDialog.vue`, `front/app/chat/code/components/RepositoryBrowser.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/ChatDocumentPane.vue`, `front/app/chat/components/ChatDocumentSearchDialog.vue`, `front/app/chat/components/Composer.vue`, `front/app/chat/components/ConversationDocumentDialog.vue`, `front/app/chat/components/ConversationDocumentsPanel.vue`, `front/app/chat/components/ConversationProcessDialog.vue`, `front/app/chat/components/ConversationProcessesPanel.vue`, `front/app/chat/components/DocumentConversationPanel.vue`, `front/app/chat/components/MarkdownAttachmentPreview.vue`, `front/app/chat/components/MessageResourcePreviews.vue`, `front/app/chat/components/MessageTimeline.vue`, `front/app/chat/components/SafeMessageContent.vue`, `front/app/chat/conversationPanel.ts`, `front/app/chat/pages/index.vue`, `front/app/chat/richContent.ts`, `front/app/chat/services/chatService.ts`, `front/app/chat/stores/chat.ts`, `front/app/chat/useChatAvatar.ts` |
 | `app/chat` | `core/websocket` | `front/app/chat/components/AgentExecutionTrace.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/ConversationDocumentsPanel.vue`, `front/app/chat/components/ConversationProcessesPanel.vue`, `front/app/chat/components/DocumentConversationPanel.vue`, `front/app/chat/pages/index.vue`, `front/app/chat/stores/chat.ts`, `front/app/chat/stores/inbox.ts`, `front/app/chat/useMessagePreviewFreshness.ts` |
 | `app/connection` | `app/agent` | `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/MailInboundJournal.vue`, `front/app/connection/components/McpCandidateAgent.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue`, `front/app/connection/services/permissionDashboardSources.ts` |
+| `app/connection` | `app/calendar` | `front/app/connection/pages/calendars.vue`, `front/app/connection/services/calendarService.ts` |
 | `app/connection` | `app/console` | `front/app/connection/components/ConnectionForm.vue` |
 | `app/connection` | `app/tools` | `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/services/connectionService.ts` |
-| `app/connection` | `core/api` | `front/app/connection/availability.ts`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/components/McpOAuthConnection.vue`, `front/app/connection/pages/oauth-callback.vue`, `front/app/connection/pages/permissions.vue`, `front/app/connection/services/calendarService.ts`, `front/app/connection/services/connectionService.ts`, `front/app/connection/services/mailService.ts`, `front/app/connection/services/mcpOAuthService.ts`, `front/app/connection/services/permissionDashboardSources.ts`, `front/app/connection/services/permissionService.ts`, `front/app/connection/stores/connectionStore.ts` |
-| `app/connection` | `core/authorize` | `front/app/connection/availability.ts`, `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/CalendarConnectionEditor.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/MailInboundJournal.vue`, `front/app/connection/components/PermissionDashboardPanel.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/navigation.ts`, `front/app/connection/pages/mail.vue`, `front/app/connection/services/permissionDashboardSources.ts` |
-| `app/connection` | `core/navigation` | `front/app/connection/navigation.ts`, `front/app/connection/pages/calendars.vue`, `front/app/connection/pages/mail.vue` |
-| `app/connection` | `core/util` | `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/FunctionPolicyToggle.vue`, `front/app/connection/components/PermissionToolBrowser.vue`, `front/app/connection/pages/calendars.vue`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue`, `front/app/connection/permissionPresentation.ts` |
+| `app/connection` | `core/api` | `front/app/connection/availability.ts`, `front/app/connection/components/McpOAuthConnection.vue`, `front/app/connection/pages/oauth-callback.vue`, `front/app/connection/pages/permissions.vue`, `front/app/connection/services/connectionService.ts`, `front/app/connection/services/mailService.ts`, `front/app/connection/services/mcpOAuthService.ts`, `front/app/connection/services/permissionDashboardSources.ts`, `front/app/connection/services/permissionService.ts`, `front/app/connection/stores/connectionStore.ts` |
+| `app/connection` | `core/authorize` | `front/app/connection/availability.ts`, `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/MailInboundJournal.vue`, `front/app/connection/components/PermissionDashboardPanel.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/navigation.ts`, `front/app/connection/pages/mail.vue`, `front/app/connection/services/permissionDashboardSources.ts` |
+| `app/connection` | `core/navigation` | `front/app/connection/navigation.ts`, `front/app/connection/pages/mail.vue` |
+| `app/connection` | `core/util` | `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/FunctionPolicyToggle.vue`, `front/app/connection/components/PermissionToolBrowser.vue`, `front/app/connection/index.ts`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue`, `front/app/connection/permissionPresentation.ts` |
 | `app/console` | `core/api` | `front/app/console/services/consoleService.ts` |
 | `app/console` | `core/authorize` | `front/app/console/navigation.ts`, `front/app/console/pages/executor.vue` |
 | `app/console` | `core/navigation` | `front/app/console/navigation.ts`, `front/app/console/pages/executor.vue` |
@@ -871,10 +884,10 @@ tests remain authoritative for behavior.
 | `app/file_share` | `core/util` | `front/app/file_share/components/AgentFileBrowser.vue`, `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/components/FileTile.vue`, `front/app/file_share/components/MailMessageDialog.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/pages/settings.vue`, `front/app/file_share/presentation.ts` |
 | `app/goal` | `app/agent` | `front/app/goal/pages/index.vue` |
 | `app/goal` | `core/api` | `front/app/goal/components/GoalCategoryManager.vue`, `front/app/goal/pages/index.vue`, `front/app/goal/services/categoryService.ts`, `front/app/goal/services/goalService.ts`, `front/app/goal/stores/goalStore.ts` |
-| `app/goal` | `core/authorize` | `front/app/goal/navigation.ts`, `front/app/goal/pages/index.vue`, `front/app/goal/stores/goalStore.ts` |
+| `app/goal` | `core/authorize` | `front/app/goal/components/GoalAgendaPanel.vue`, `front/app/goal/navigation.ts`, `front/app/goal/pages/index.vue`, `front/app/goal/stores/goalStore.ts` |
 | `app/goal` | `core/navigation` | `front/app/goal/navigation.ts`, `front/app/goal/pages/index.vue` |
 | `app/goal` | `core/user` | `front/app/goal/pages/index.vue`, `front/app/goal/stores/goalStore.ts` |
-| `app/goal` | `core/util` | `front/app/goal/components/GoalCategoryManager.vue`, `front/app/goal/pages/index.vue`, `front/app/goal/richContent.ts` |
+| `app/goal` | `core/util` | `front/app/goal/components/GoalAgendaPanel.vue`, `front/app/goal/components/GoalCategoryManager.vue`, `front/app/goal/components/GoalRecurrenceEditor.vue`, `front/app/goal/pages/index.vue`, `front/app/goal/richContent.ts` |
 | `app/goal` | `core/websocket` | `front/app/goal/stores/goalStore.ts` |
 | `app/harnesses` | `core/api` | `front/app/harnesses/services/harnessService.ts`, `front/app/harnesses/services/managerService.ts` |
 | `app/harnesses` | `core/authorize` | `front/app/harnesses/components/HarnessCatalogGrid.vue`, `front/app/harnesses/components/HarnessEditor.vue`, `front/app/harnesses/components/HarnessExecutionSettings.vue`, `front/app/harnesses/components/HarnessManagedProviders.vue`, `front/app/harnesses/components/HarnessManagerConfiguration.vue` |
@@ -911,8 +924,8 @@ tests remain authoritative for behavior.
 | `app/memory` | `app/agent` | `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `app/document` | `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryGraphNodeDetail.vue`, `front/app/memory/components/MemoryGraphRelations.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/components/MemoryLinkDialog.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/memoryStore.ts`, `front/app/memory/types.ts` |
 | `app/memory` | `app/share` | `front/app/memory/types.ts` |
-| `app/memory` | `core/api` | `front/app/memory/components/ContactCreateDialog.vue`, `front/app/memory/components/ContactEditDialog.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/useContactResource.ts` |
-| `app/memory` | `core/authorize` | `front/app/memory/components/MemoryDreamActions.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/useContactResource.ts` |
+| `app/memory` | `core/api` | `front/app/memory/components/ContactCreateDialog.vue`, `front/app/memory/components/ContactEditDialog.vue`, `front/app/memory/components/ContactSelect.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/contactService.ts`, `front/app/memory/services/memoryService.ts`, `front/app/memory/useContactResource.ts` |
+| `app/memory` | `core/authorize` | `front/app/memory/components/ContactSelect.vue`, `front/app/memory/components/MemoryDreamActions.vue`, `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/useContactResource.ts` |
 | `app/memory` | `core/navigation` | `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `core/util` | `front/app/memory/components/ContactCreateDialog.vue`, `front/app/memory/components/ContactEditDialog.vue`, `front/app/memory/components/ContactResourceCard.vue`, `front/app/memory/components/ContactResourceDialog.vue`, `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemForm.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/memoryService.ts` |
 | `app/memory` | `core/websocket` | `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/stores/memoryStore.ts` |
@@ -1047,6 +1060,7 @@ tests remain authoritative for behavior.
 | `app.contact` | 7 | `app.agent`, `app.conversation`, `app.llm`, `app.memory`, `app.messenger`, `app.task`, `app.tools` |
 | `app.onboarding` | 7 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.process`, `app.skill`, `app.tools` |
 | `app.audio` | 6 | `app.file_share`, `app.llm`, `app.messenger`, `app.task`, `app.tools`, `bridge.youtube` |
+| `app.calendar` | 6 | `app.agent`, `app.connection`, `app.contact`, `app.file_share`, `app.memory`, `app.tools` |
 | `app.goal` | 6 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.task`, `app.tools` |
 | `bridge.codex` | 6 | `app.agent`, `app.harnesses`, `app.llm`, `app.mcp`, `app.skill`, `bridge.harness` |
 | `bridge.deepseek_harness` | 6 | `app.agent`, `app.harnesses`, `app.llm`, `app.mcp`, `app.skill`, `bridge.harness` |
@@ -1060,7 +1074,6 @@ tests remain authoritative for behavior.
 | `app.multimedia` | 4 | `app.agent`, `app.file_share`, `app.llm`, `app.tools` |
 | `app.webhook` | 4 | `app.agent`, `app.connection`, `app.task`, `app.tools` |
 | `bridge.code_server` | 4 | `app.agent`, `app.code`, `app.console`, `app.file_share` |
-| `app.calendar` | 3 | `app.agent`, `app.connection`, `app.tools` |
 | `app.dashboard` | 3 | `app.agent`, `app.llm`, `app.task` |
 | `app.image` | 3 | `app.file_share`, `app.llm`, `app.tools` |
 | `app.skill` | 3 | `app.agent`, `app.connection`, `app.tools` |
@@ -1107,11 +1120,11 @@ tests remain authoritative for behavior.
 | `app.tools` | 33 | `app.agent`, `app.audio`, `app.browser`, `app.calendar`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.document`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.image`, `app.incident`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
 | `app.messenger` | 24 | `app.agent`, `app.audio`, `app.browser`, `app.chat`, `app.contact`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.lab`, `app.llm`, `app.onboarding`, `app.task`, `app.tools`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.telegram`, `bridge.whatsapp` |
 | `app.connection` | 22 | `app.browser`, `app.calendar`, `app.console`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.messenger`, `app.onboarding`, `app.skill`, `app.tools`, `app.topic`, `app.voice`, `app.webhook`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.whatsapp` |
-| `app.file_share` | 19 | `app.agent`, `app.audio`, `app.browser`, `app.console`, `app.conversation`, `app.document`, `app.harness`, `app.image`, `app.llm`, `app.messenger`, `app.multimedia`, `app.process`, `app.tools`, `bridge.calendar`, `bridge.code_server`, `bridge.hermes`, `bridge.mail`, `bridge.nextcloud`, `bridge.samba` |
+| `app.file_share` | 20 | `app.agent`, `app.audio`, `app.browser`, `app.calendar`, `app.console`, `app.conversation`, `app.document`, `app.harness`, `app.image`, `app.llm`, `app.messenger`, `app.multimedia`, `app.process`, `app.tools`, `bridge.calendar`, `bridge.code_server`, `bridge.hermes`, `bridge.mail`, `bridge.nextcloud`, `bridge.samba` |
 | `app.task` | 17 | `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.tools`, `app.topic`, `app.voice`, `app.webhook` |
 | `app.process` | 14 | `app.agent`, `app.conversation`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.n8n` |
 | `app.conversation` | 12 | `app.chat`, `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.topic`, `app.voice` |
-| `app.memory` | 10 | `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.lab`, `app.messenger`, `app.process`, `app.topic`, `app.voice`, `bridge.hermes` |
+| `app.memory` | 11 | `app.calendar`, `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.lab`, `app.messenger`, `app.process`, `app.topic`, `app.voice`, `bridge.hermes` |
 | `app.skill` | 10 | `app.agent`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.onboarding`, `bridge.claude_agent`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
 | `app.document` | 7 | `app.chat`, `app.dataset`, `app.dream`, `app.file_share`, `app.memory`, `app.process`, `app.topic` |
 | `app.goal` | 6 | `app.document`, `app.dream`, `app.file_share`, `app.lab`, `app.memory`, `app.task` |
@@ -1123,8 +1136,8 @@ tests remain authoritative for behavior.
 | `app.topic` | 4 | `app.chat`, `app.dream`, `app.lab`, `app.memory` |
 | `bridge.harness` | 4 | `bridge.claude_agent`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
 | `app.code` | 3 | `app.chat`, `app.conversation`, `bridge.code_server` |
+| `app.contact` | 3 | `app.calendar`, `app.dream`, `bridge.mail` |
 | `app.share` | 3 | `app.agent`, `app.document`, `app.process` |
-| `app.contact` | 2 | `app.dream`, `bridge.mail` |
 | `app.documentation` | 2 | `app.file_share`, `app.tools` |
 | `app.image` | 2 | `app.agent`, `app.file_share` |
 | `app.browser` | 1 | `app.chat` |
@@ -1183,9 +1196,10 @@ tests remain authoritative for behavior.
 | `app/conversation` | 5 | `app/agent`, `app/lab`, `app/llm`, `app/task`, `app/topic` |
 | `app/voice` | 5 | `app/agent`, `app/lab`, `app/llm`, `app/task`, `app/topic` |
 | `app/chat` | 4 | `app/agent`, `app/conversation`, `app/task`, `app/topic` |
+| `app/connection` | 4 | `app/agent`, `app/calendar`, `app/console`, `app/tools` |
 | `app/index` | 4 | `app/agent`, `app/llm`, `app/onboarding`, `app/task` |
 | `app/process` | 4 | `app/agent`, `app/dataset`, `app/share`, `app/task` |
-| `app/connection` | 3 | `app/agent`, `app/console`, `app/tools` |
+| `app/calendar` | 3 | `app/agent`, `app/goal`, `app/memory` |
 | `app/document` | 3 | `app/agent`, `app/share`, `app/topic` |
 | `app/memory` | 3 | `app/agent`, `app/document`, `app/share` |
 | `app/agent` | 2 | `app/harnesses`, `app/llm` |
@@ -1205,7 +1219,7 @@ tests remain authoritative for behavior.
 
 | Module | Count | Dependents |
 |---|---:|---|
-| `app/agent` | 14 | `app/chat`, `app/connection`, `app/conversation`, `app/document`, `app/file_share`, `app/goal`, `app/index`, `app/llm`, `app/memory`, `app/process`, `app/skill`, `app/task`, `app/voice`, `bridge/hermes` |
+| `app/agent` | 15 | `app/calendar`, `app/chat`, `app/connection`, `app/conversation`, `app/document`, `app/file_share`, `app/goal`, `app/index`, `app/llm`, `app/memory`, `app/process`, `app/skill`, `app/task`, `app/voice`, `bridge/hermes` |
 | `app/llm` | 7 | `app/agent`, `app/conversation`, `app/dream`, `app/index`, `app/task`, `app/voice`, `bridge/ollama` |
 | `app/task` | 7 | `app/chat`, `app/conversation`, `app/index`, `app/lab`, `app/llm`, `app/process`, `app/voice` |
 | `app/topic` | 5 | `app/chat`, `app/conversation`, `app/document`, `app/task`, `app/voice` |
@@ -1213,11 +1227,13 @@ tests remain authoritative for behavior.
 | `app/lab` | 3 | `app/conversation`, `app/task`, `app/voice` |
 | `app/connection` | 2 | `app/browser`, `app/tools` |
 | `app/conversation` | 2 | `app/chat`, `app/task` |
+| `app/memory` | 2 | `app/calendar`, `app/task` |
+| `app/calendar` | 1 | `app/connection` |
 | `app/console` | 1 | `app/connection` |
 | `app/dataset` | 1 | `app/process` |
 | `app/document` | 1 | `app/memory` |
+| `app/goal` | 1 | `app/calendar` |
 | `app/harnesses` | 1 | `app/agent` |
-| `app/memory` | 1 | `app/task` |
 | `app/onboarding` | 1 | `app/index` |
 | `app/process` | 1 | `app/task` |
 | `app/tools` | 1 | `app/connection` |
@@ -1353,26 +1369,29 @@ tests remain authoritative for behavior.
 | GET | `/browser/search` | `app.file_share` | `search` | yes | `back/app/file_share/browser_router.py:104` |
 | GET | `/browser/status` | `app.browser` | `status` | yes | `back/app/browser/router.py:34` |
 | GET | `/browser/thumbnail` | `app.file_share` | `thumbnail` | yes | `back/app/file_share/browser_router.py:122` |
-| GET | `/calendars` | `app.calendar` | `read_calendars` | yes | `back/app/calendar/router.py:95` |
-| POST | `/calendars` | `app.calendar` | `create_calendar` | yes | `back/app/calendar/router.py:233` |
-| GET | `/calendars/connection-options` | `app.calendar` | `connection_options` | yes | `back/app/calendar/router.py:88` |
-| GET | `/calendars/events` | `app.calendar` | `read_events` | yes | `back/app/calendar/router.py:124` |
-| GET | `/calendars/reminders` | `app.calendar` | `read_reminders` | yes | `back/app/calendar/router.py:110` |
-| DELETE | `/calendars/{calendar_id}` | `app.calendar` | `delete_calendar` | yes | `back/app/calendar/router.py:270` |
-| PUT | `/calendars/{calendar_id}` | `app.calendar` | `update_calendar` | yes | `back/app/calendar/router.py:256` |
-| GET | `/calendars/{calendar_id}/conflicts` | `app.calendar` | `calendar_conflicts` | yes | `back/app/calendar/router.py:174` |
-| POST | `/calendars/{calendar_id}/events` | `app.calendar` | `create_event` | yes | `back/app/calendar/router.py:139` |
-| DELETE | `/calendars/{calendar_id}/events/{event_id}` | `app.calendar` | `delete_event` | yes | `back/app/calendar/router.py:198` |
-| GET | `/calendars/{calendar_id}/events/{event_id}` | `app.calendar` | `event_detail` | yes | `back/app/calendar/router.py:157` |
-| PUT | `/calendars/{calendar_id}/events/{event_id}` | `app.calendar` | `update_event` | yes | `back/app/calendar/router.py:148` |
-| GET | `/calendars/{calendar_id}/events/{event_id}/actions` | `app.calendar` | `read_actions` | yes | `back/app/calendar/router.py:207` |
-| POST | `/calendars/{calendar_id}/events/{event_id}/actions` | `app.calendar` | `create_action` | yes | `back/app/calendar/router.py:215` |
-| PUT | `/calendars/{calendar_id}/events/{event_id}/actions/{action_id}` | `app.calendar` | `update_action` | yes | `back/app/calendar/router.py:224` |
-| GET | `/calendars/{calendar_id}/events/{event_id}/history` | `app.calendar` | `event_history` | yes | `back/app/calendar/router.py:165` |
-| POST | `/calendars/{calendar_id}/events/{event_id}/resolve` | `app.calendar` | `resolve_conflict` | yes | `back/app/calendar/router.py:182` |
-| POST | `/calendars/{calendar_id}/executions/{execution_id}/relaunch` | `app.calendar` | `relaunch_execution` | yes | `back/app/calendar/router.py:247` |
-| GET | `/calendars/{calendar_id}/sync-runs` | `app.calendar` | `sync_runs` | yes | `back/app/calendar/router.py:191` |
-| POST | `/calendars/{calendar_id}/test` | `app.calendar` | `test_calendar` | yes | `back/app/calendar/router.py:281` |
+| GET | `/calendars` | `app.calendar` | `read_calendars` | yes | `back/app/calendar/router.py:96` |
+| POST | `/calendars` | `app.calendar` | `create_calendar` | yes | `back/app/calendar/router.py:259` |
+| GET | `/calendars/connection-options` | `app.calendar` | `connection_options` | yes | `back/app/calendar/router.py:89` |
+| GET | `/calendars/events` | `app.calendar` | `read_events` | yes | `back/app/calendar/router.py:150` |
+| POST | `/calendars/execution-states` | `app.calendar` | `execution_states` | yes | `back/app/calendar/router.py:142` |
+| GET | `/calendars/reminders` | `app.calendar` | `read_reminders` | yes | `back/app/calendar/router.py:128` |
+| GET | `/calendars/resources` | `app.calendar` | `search_resources` | yes | `back/app/calendar/router.py:111` |
+| GET | `/calendars/{calendar_id:int}` | `app.calendar` | `read_calendar` | yes | `back/app/calendar/router.py:120` |
+| DELETE | `/calendars/{calendar_id}` | `app.calendar` | `delete_calendar` | yes | `back/app/calendar/router.py:296` |
+| PUT | `/calendars/{calendar_id}` | `app.calendar` | `update_calendar` | yes | `back/app/calendar/router.py:282` |
+| GET | `/calendars/{calendar_id}/conflicts` | `app.calendar` | `calendar_conflicts` | yes | `back/app/calendar/router.py:200` |
+| POST | `/calendars/{calendar_id}/events` | `app.calendar` | `create_event` | yes | `back/app/calendar/router.py:165` |
+| DELETE | `/calendars/{calendar_id}/events/{event_id}` | `app.calendar` | `delete_event` | yes | `back/app/calendar/router.py:224` |
+| GET | `/calendars/{calendar_id}/events/{event_id}` | `app.calendar` | `event_detail` | yes | `back/app/calendar/router.py:183` |
+| PUT | `/calendars/{calendar_id}/events/{event_id}` | `app.calendar` | `update_event` | yes | `back/app/calendar/router.py:174` |
+| GET | `/calendars/{calendar_id}/events/{event_id}/actions` | `app.calendar` | `read_actions` | yes | `back/app/calendar/router.py:233` |
+| POST | `/calendars/{calendar_id}/events/{event_id}/actions` | `app.calendar` | `create_action` | yes | `back/app/calendar/router.py:241` |
+| PUT | `/calendars/{calendar_id}/events/{event_id}/actions/{action_id}` | `app.calendar` | `update_action` | yes | `back/app/calendar/router.py:250` |
+| GET | `/calendars/{calendar_id}/events/{event_id}/history` | `app.calendar` | `event_history` | yes | `back/app/calendar/router.py:191` |
+| POST | `/calendars/{calendar_id}/events/{event_id}/resolve` | `app.calendar` | `resolve_conflict` | yes | `back/app/calendar/router.py:208` |
+| POST | `/calendars/{calendar_id}/executions/{execution_id}/relaunch` | `app.calendar` | `relaunch_execution` | yes | `back/app/calendar/router.py:273` |
+| GET | `/calendars/{calendar_id}/sync-runs` | `app.calendar` | `sync_runs` | yes | `back/app/calendar/router.py:217` |
+| POST | `/calendars/{calendar_id}/test` | `app.calendar` | `test_calendar` | yes | `back/app/calendar/router.py:307` |
 | GET | `/catalogue` | `app.process` | `read_catalogue` | yes | `back/app/process/router.py:94` |
 | GET | `/chat/agents/{agent_id}/avatar` | `app.chat` | `read_agent_avatar` | yes | `back/app/chat/router.py:461` |
 | GET | `/chat/documents/{document_id}/conversation` | `app.chat` | `read_document_conversation_preference` | yes | `back/app/chat/router.py:201` |
@@ -1688,25 +1707,26 @@ tests remain authoritative for behavior.
 | WEBSOCKET | `/gateway/{identifier}/editor/{path:path}` | `app.code` | `editor_ws` | no | `back/app/code/gateway.py:188` |
 | GET | `/gateway/{identifier}/launch` | `app.code` | `launch_page` | no | `back/app/code/gateway.py:47` |
 | POST | `/gateway/{identifier}/launch` | `app.code` | `launch` | no | `back/app/code/gateway.py:71` |
-| GET | `/goals` | `app.goal` | `read_goals` | yes | `back/app/goal/router.py:88` |
-| POST | `/goals` | `app.goal` | `create_goal` | yes | `back/app/goal/router.py:230` |
-| GET | `/goals/categories` | `app.goal` | `read_categories` | yes | `back/app/goal/router.py:116` |
-| POST | `/goals/categories` | `app.goal` | `create_category` | yes | `back/app/goal/router.py:122` |
-| DELETE | `/goals/categories/{category_id}` | `app.goal` | `delete_category` | yes | `back/app/goal/router.py:137` |
-| PUT | `/goals/categories/{category_id}` | `app.goal` | `update_category` | yes | `back/app/goal/router.py:128` |
-| GET | `/goals/referrers/messenger` | `app.goal` | `search_messenger_referrers` | yes | `back/app/goal/router.py:146` |
-| GET | `/goals/runtime-status` | `app.goal` | `read_goal_runtime` | yes | `back/app/goal/router.py:161` |
-| GET | `/goals/settings` | `app.goal` | `read_goal_settings` | yes | `back/app/goal/router.py:167` |
-| PATCH | `/goals/settings` | `app.goal` | `update_goal_settings` | yes | `back/app/goal/router.py:173` |
-| GET | `/goals/tree` | `app.goal` | `read_goal_tree` | yes | `back/app/goal/router.py:190` |
-| DELETE | `/goals/{goal_id}` | `app.goal` | `delete_goal` | yes | `back/app/goal/router.py:317` |
-| GET | `/goals/{goal_id}` | `app.goal` | `read_goal` | yes | `back/app/goal/router.py:197` |
-| PUT | `/goals/{goal_id}` | `app.goal` | `update_goal` | yes | `back/app/goal/router.py:244` |
-| POST | `/goals/{goal_id}/complete` | `app.goal` | `complete_goal` | yes | `back/app/goal/router.py:291` |
-| GET | `/goals/{goal_id}/cycles` | `app.goal` | `read_goal_cycles` | yes | `back/app/goal/router.py:211` |
-| POST | `/goals/{goal_id}/pause` | `app.goal` | `pause_goal` | yes | `back/app/goal/router.py:265` |
-| POST | `/goals/{goal_id}/resume` | `app.goal` | `resume_goal` | yes | `back/app/goal/router.py:278` |
-| POST | `/goals/{goal_id}/run-now` | `app.goal` | `run_goal_now` | yes | `back/app/goal/router.py:304` |
+| GET | `/goals` | `app.goal` | `read_goals` | yes | `back/app/goal/router.py:90` |
+| POST | `/goals` | `app.goal` | `create_goal` | yes | `back/app/goal/router.py:246` |
+| GET | `/goals/agenda` | `app.goal` | `read_agenda` | yes | `back/app/goal/router.py:199` |
+| GET | `/goals/categories` | `app.goal` | `read_categories` | yes | `back/app/goal/router.py:118` |
+| POST | `/goals/categories` | `app.goal` | `create_category` | yes | `back/app/goal/router.py:124` |
+| DELETE | `/goals/categories/{category_id}` | `app.goal` | `delete_category` | yes | `back/app/goal/router.py:139` |
+| PUT | `/goals/categories/{category_id}` | `app.goal` | `update_category` | yes | `back/app/goal/router.py:130` |
+| GET | `/goals/referrers/messenger` | `app.goal` | `search_messenger_referrers` | yes | `back/app/goal/router.py:148` |
+| GET | `/goals/runtime-status` | `app.goal` | `read_goal_runtime` | yes | `back/app/goal/router.py:163` |
+| GET | `/goals/settings` | `app.goal` | `read_goal_settings` | yes | `back/app/goal/router.py:169` |
+| PATCH | `/goals/settings` | `app.goal` | `update_goal_settings` | yes | `back/app/goal/router.py:175` |
+| GET | `/goals/tree` | `app.goal` | `read_goal_tree` | yes | `back/app/goal/router.py:192` |
+| DELETE | `/goals/{goal_id}` | `app.goal` | `delete_goal` | yes | `back/app/goal/router.py:333` |
+| GET | `/goals/{goal_id}` | `app.goal` | `read_goal` | yes | `back/app/goal/router.py:213` |
+| PUT | `/goals/{goal_id}` | `app.goal` | `update_goal` | yes | `back/app/goal/router.py:260` |
+| POST | `/goals/{goal_id}/complete` | `app.goal` | `complete_goal` | yes | `back/app/goal/router.py:307` |
+| GET | `/goals/{goal_id}/cycles` | `app.goal` | `read_goal_cycles` | yes | `back/app/goal/router.py:227` |
+| POST | `/goals/{goal_id}/pause` | `app.goal` | `pause_goal` | yes | `back/app/goal/router.py:281` |
+| POST | `/goals/{goal_id}/resume` | `app.goal` | `resume_goal` | yes | `back/app/goal/router.py:294` |
+| POST | `/goals/{goal_id}/run-now` | `app.goal` | `run_goal_now` | yes | `back/app/goal/router.py:320` |
 | GET | `/harness-manager/configuration` | `bridge.harness` | `read_configuration` | yes | `back/bridge/harness/router.py:27` |
 | PUT | `/harness-manager/configuration` | `bridge.harness` | `update_configuration` | yes | `back/bridge/harness/router.py:33` |
 | GET | `/harness-manager/diagnostics` | `bridge.harness` | `manager_diagnostics` | yes | `back/bridge/harness/router.py:21` |
@@ -1860,33 +1880,34 @@ tests remain authoritative for behavior.
 | POST | `/mcp/{identifier}` | `app.harnesses` | `mcp` | no | `back/app/harnesses/runtime_web.py:60` |
 | POST | `/media` | `app.file_share` | `prepare_media` | yes | `back/app/file_share/media_router.py:39` |
 | DELETE | `/media/{identifier}` | `app.file_share` | `release_media` | yes | `back/app/file_share/media_router.py:117` |
-| POST | `/memory/browse` | `app.memory` | `browse_memory` | yes | `back/app/memory/router.py:291` |
-| GET | `/memory/duplicates/preview` | `app.memory` | `estimate_memory_duplicates` | yes | `back/app/memory/router.py:219` |
-| GET | `/memory/filter-options` | `app.memory` | `read_memory_filter_options` | yes | `back/app/memory/router.py:334` |
-| GET | `/memory/findings` | `app.memory` | `list_memory_findings` | yes | `back/app/memory/router.py:241` |
-| POST | `/memory/findings/{finding_id}/apply` | `app.memory` | `apply_memory_finding` | yes | `back/app/memory/router.py:260` |
-| POST | `/memory/findings/{finding_id}/dismiss` | `app.memory` | `dismiss_memory_finding` | yes | `back/app/memory/router.py:278` |
-| POST | `/memory/graph/expand` | `app.memory` | `expand_memory_graph_node` | yes | `back/app/memory/router.py:399` |
-| POST | `/memory/graph/roots` | `app.memory` | `list_memory_graph_roots` | yes | `back/app/memory/router.py:362` |
-| POST | `/memory/graph/state` | `app.memory` | `write_memory_graph_state` | yes | `back/app/memory/router.py:390` |
-| POST | `/memory/graph/state/read` | `app.memory` | `read_memory_graph_state` | yes | `back/app/memory/router.py:381` |
-| POST | `/memory/items` | `app.memory` | `create_memory_item` | yes | `back/app/memory/router.py:133` |
-| DELETE | `/memory/items/{item_id}` | `app.memory` | `forget_memory_item` | yes | `back/app/memory/router.py:501` |
-| GET | `/memory/items/{item_id}` | `app.memory` | `get_memory_item` | yes | `back/app/memory/router.py:430` |
-| PUT | `/memory/items/{item_id}` | `app.memory` | `update_memory_item` | yes | `back/app/memory/router.py:478` |
-| GET | `/memory/items/{item_id}/links` | `app.memory` | `list_memory_links` | yes | `back/app/memory/router.py:657` |
-| GET | `/memory/items/{item_id}/revisions` | `app.memory` | `list_memory_revisions` | yes | `back/app/memory/router.py:463` |
-| GET | `/memory/link-reconciliation` | `app.memory` | `read_link_reconciliation_status` | yes | `back/app/memory/router.py:172` |
-| POST | `/memory/link-reconciliation` | `app.memory` | `launch_link_reconciliation` | yes | `back/app/memory/router.py:184` |
-| POST | `/memory/links` | `app.memory` | `create_memory_link` | yes | `back/app/memory/router.py:639` |
-| GET | `/memory/metrics` | `app.memory` | `read_memory_metrics` | yes | `back/app/memory/router.py:154` |
+| GET | `/memory/agenda` | `app.memory` | `read_memory_agenda` | yes | `back/app/memory/router.py:57` |
+| POST | `/memory/browse` | `app.memory` | `browse_memory` | yes | `back/app/memory/router.py:308` |
+| GET | `/memory/duplicates/preview` | `app.memory` | `estimate_memory_duplicates` | yes | `back/app/memory/router.py:236` |
+| GET | `/memory/filter-options` | `app.memory` | `read_memory_filter_options` | yes | `back/app/memory/router.py:351` |
+| GET | `/memory/findings` | `app.memory` | `list_memory_findings` | yes | `back/app/memory/router.py:258` |
+| POST | `/memory/findings/{finding_id}/apply` | `app.memory` | `apply_memory_finding` | yes | `back/app/memory/router.py:277` |
+| POST | `/memory/findings/{finding_id}/dismiss` | `app.memory` | `dismiss_memory_finding` | yes | `back/app/memory/router.py:295` |
+| POST | `/memory/graph/expand` | `app.memory` | `expand_memory_graph_node` | yes | `back/app/memory/router.py:416` |
+| POST | `/memory/graph/roots` | `app.memory` | `list_memory_graph_roots` | yes | `back/app/memory/router.py:379` |
+| POST | `/memory/graph/state` | `app.memory` | `write_memory_graph_state` | yes | `back/app/memory/router.py:407` |
+| POST | `/memory/graph/state/read` | `app.memory` | `read_memory_graph_state` | yes | `back/app/memory/router.py:398` |
+| POST | `/memory/items` | `app.memory` | `create_memory_item` | yes | `back/app/memory/router.py:150` |
+| DELETE | `/memory/items/{item_id}` | `app.memory` | `forget_memory_item` | yes | `back/app/memory/router.py:518` |
+| GET | `/memory/items/{item_id}` | `app.memory` | `get_memory_item` | yes | `back/app/memory/router.py:447` |
+| PUT | `/memory/items/{item_id}` | `app.memory` | `update_memory_item` | yes | `back/app/memory/router.py:495` |
+| GET | `/memory/items/{item_id}/links` | `app.memory` | `list_memory_links` | yes | `back/app/memory/router.py:674` |
+| GET | `/memory/items/{item_id}/revisions` | `app.memory` | `list_memory_revisions` | yes | `back/app/memory/router.py:480` |
+| GET | `/memory/link-reconciliation` | `app.memory` | `read_link_reconciliation_status` | yes | `back/app/memory/router.py:189` |
+| POST | `/memory/link-reconciliation` | `app.memory` | `launch_link_reconciliation` | yes | `back/app/memory/router.py:201` |
+| POST | `/memory/links` | `app.memory` | `create_memory_link` | yes | `back/app/memory/router.py:656` |
+| GET | `/memory/metrics` | `app.memory` | `read_memory_metrics` | yes | `back/app/memory/router.py:171` |
 | POST | `/memory/provider/remember` | `bridge.hermes` | `hermes_provider_remember` | no | `back/bridge/hermes/router.py:151` |
 | POST | `/memory/provider/search` | `bridge.hermes` | `hermes_provider_search` | no | `back/bridge/hermes/router.py:127` |
-| POST | `/memory/recall` | `app.memory` | `recall_memory` | yes | `back/app/memory/router.py:350` |
-| GET | `/memory/recent` | `app.memory` | `read_recent_memories` | yes | `back/app/memory/router.py:92` |
-| GET | `/memory/retention/preview` | `app.memory` | `estimate_memory_retention` | yes | `back/app/memory/router.py:202` |
-| POST | `/memory/search` | `app.memory` | `search_memory` | yes | `back/app/memory/router.py:322` |
-| GET | `/memory/temporal/defaults` | `app.memory` | `temporal_defaults` | yes | `back/app/memory/router.py:55` |
+| POST | `/memory/recall` | `app.memory` | `recall_memory` | yes | `back/app/memory/router.py:367` |
+| GET | `/memory/recent` | `app.memory` | `read_recent_memories` | yes | `back/app/memory/router.py:109` |
+| GET | `/memory/retention/preview` | `app.memory` | `estimate_memory_retention` | yes | `back/app/memory/router.py:219` |
+| POST | `/memory/search` | `app.memory` | `search_memory` | yes | `back/app/memory/router.py:339` |
+| GET | `/memory/temporal/defaults` | `app.memory` | `temporal_defaults` | yes | `back/app/memory/router.py:72` |
 | GET | `/messenger/bridges` | `app.messenger` | `list_messenger_bridges` | yes | `back/app/messenger/router.py:23` |
 | GET | `/messenger/channels` | `app.messenger` | `list_enabled_messenger_channels` | yes | `back/app/messenger/router.py:73` |
 | POST | `/messenger/configuration/test` | `app.messenger` | `test_messenger_configuration` | yes | `back/app/messenger/router.py:34` |
@@ -2066,16 +2087,16 @@ tests remain authoritative for behavior.
 | `agent_teams` | `AgentTeam` | `app.agent` | no | `agent_groups.id`, `agents.id` | `back/app/agent/models.py:17` |
 | `agents` | `Agent` | `app.agent` | yes | `harnesses.id`, `llm_profiles.id`, `memory_items.id`, `titles.id`, `users.id` | `back/app/agent/models.py:37` |
 | `assignments` | `Assignment` | `core.authorize` | yes | `roles.id`, `users.id` | `back/core/authorize/models.py:91` |
-| `calendar_actions` | `CalendarAction` | `app.calendar` | yes | `calendar_events.id` | `back/app/calendar/models.py:119` |
-| `calendar_event_exceptions` | `CalendarEventException` | `app.calendar` | no | `calendar_events.id` | `back/app/calendar/models.py:78` |
-| `calendar_event_revisions` | `CalendarEventRevision` | `app.calendar` | no | `calendar_events.id` | `back/app/calendar/models.py:176` |
-| `calendar_events` | `CalendarEvent` | `app.calendar` | yes | `calendar_events.id`, `calendar_feeds.id` | `back/app/calendar/models.py:48` |
+| `calendar_actions` | `CalendarAction` | `app.calendar` | yes | `calendar_events.id` | `back/app/calendar/models.py:122` |
+| `calendar_event_exceptions` | `CalendarEventException` | `app.calendar` | no | `calendar_events.id` | `back/app/calendar/models.py:81` |
+| `calendar_event_revisions` | `CalendarEventRevision` | `app.calendar` | no | `calendar_events.id`, `memory_items.id` | `back/app/calendar/models.py:180` |
+| `calendar_events` | `CalendarEvent` | `app.calendar` | yes | `calendar_events.id`, `calendar_feeds.id`, `memory_items.id` | `back/app/calendar/models.py:50` |
 | `calendar_feeds` | `CalendarFeed` | `app.calendar` | yes | `connections.id` | `back/app/calendar/models.py:12` |
-| `calendar_occurrences` | `CalendarOccurrence` | `app.calendar` | no | `calendar_events.id`, `calendar_feeds.id` | `back/app/calendar/models.py:87` |
-| `calendar_projection_windows` | `CalendarProjectionWindow` | `app.calendar` | no | `calendar_events.id` | `back/app/calendar/models.py:106` |
-| `calendar_sync_operations` | `CalendarSyncOperation` | `app.calendar` | no | `calendar_events.id`, `calendar_feeds.id` | `back/app/calendar/models.py:136` |
-| `calendar_sync_runs` | `CalendarSyncRun` | `app.calendar` | no | `calendar_feeds.id`, `calendar_sync_operations.id` | `back/app/calendar/models.py:159` |
-| `calendar_triggers` | `CalendarTrigger` | `app.calendar` | no | `calendar_events.id`, `calendar_feeds.id`, `tasks.id` | `back/app/calendar/models.py:187` |
+| `calendar_occurrences` | `CalendarOccurrence` | `app.calendar` | no | `calendar_events.id`, `calendar_feeds.id` | `back/app/calendar/models.py:90` |
+| `calendar_projection_windows` | `CalendarProjectionWindow` | `app.calendar` | no | `calendar_events.id` | `back/app/calendar/models.py:109` |
+| `calendar_sync_operations` | `CalendarSyncOperation` | `app.calendar` | no | `calendar_events.id`, `calendar_feeds.id` | `back/app/calendar/models.py:139` |
+| `calendar_sync_runs` | `CalendarSyncRun` | `app.calendar` | no | `calendar_feeds.id`, `calendar_sync_operations.id` | `back/app/calendar/models.py:162` |
+| `calendar_triggers` | `CalendarTrigger` | `app.calendar` | no | `calendar_events.id`, `calendar_feeds.id`, `tasks.id` | `back/app/calendar/models.py:192` |
 | `chat_document_conversations` | `ChatDocumentConversation` | `app.chat` | no | `documents.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:25` |
 | `chat_draft_files` | `ChatDraftFile` | `app.chat` | no | `files.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:205` |
 | `chat_drafts` | `ChatDraft` | `app.chat` | no | `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:191` |
@@ -2144,9 +2165,11 @@ tests remain authoritative for behavior.
 | `file_owners` | `ManagedFileOwner` | `app.file_share` | no | `agents.id`, `files.id` | `back/app/file_share/models.py:18` |
 | `file_stores` | `FileStore` | `core.storage` | no | — | `back/core/storage/models.py:59` |
 | `files` | `StoredFile` | `core.storage` | yes | — | `back/core/storage/models.py:14` |
+| `goal_calendar_plans` | `GoalCalendarPlan` | `app.goal` | no | `goals.id` | `back/app/goal/models.py:364` |
 | `goal_categories` | `GoalCategory` | `app.goal` | yes | — | `back/app/goal/models.py:76` |
-| `goal_cycle_triggers` | `GoalCycleTrigger` | `app.goal` | no | `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:363` |
-| `goal_cycles` | `GoalCycle` | `app.goal` | no | `goal_cycles.id`, `goals.id`, `llms.id`, `memory_items.id`, `tasks.id` | `back/app/goal/models.py:234` |
+| `goal_cycle_triggers` | `GoalCycleTrigger` | `app.goal` | no | `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:402` |
+| `goal_cycles` | `GoalCycle` | `app.goal` | no | `goal_cycles.id`, `goals.id`, `llms.id`, `memory_items.id`, `tasks.id` | `back/app/goal/models.py:235` |
+| `goal_occurrences` | `GoalOccurrence` | `app.goal` | no | `goal_calendar_plans.id`, `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:381` |
 | `goals` | `Goal` | `app.goal` | yes | `agents.id`, `connections.id`, `documents.id`, `goal_categories.id`, `goals.id`, `memory_items.id`, `users.id` | `back/app/goal/models.py:86` |
 | `harness_execution_configurations` | `HarnessExecutionConfiguration` | `app.harnesses` | yes | — | `back/app/harnesses/models.py:18` |
 | `harnesses` | `Harness` | `app.harnesses` | yes | — | `back/app/harnesses/models.py:29` |
@@ -2310,16 +2333,16 @@ tests remain authoritative for behavior.
 | `browser_screenshot` | `browser` | `app.browser` | `browser_screenshot` | `back/app/browser/mcp.py:373` |
 | `browser_scroll` | `browser` | `app.browser` | `browser_scroll` | `back/app/browser/mcp.py:463` |
 | `browser_type` | `browser` | `app.browser` | `browser_type` | `back/app/browser/mcp.py:423` |
-| `calendar_action_set` | `calendar` | `app.calendar` | `calendar_action_set` | `back/app/calendar/mcp.py:253` |
-| `calendar_actions` | `calendar` | `app.calendar` | `calendar_actions` | `back/app/calendar/mcp.py:246` |
-| `calendar_create_event` | `calendar` | `app.calendar` | `calendar_create_event` | `back/app/calendar/mcp.py:136` |
-| `calendar_delete_event` | `calendar` | `app.calendar` | `calendar_delete_event` | `back/app/calendar/mcp.py:216` |
-| `calendar_event_get` | `calendar` | `app.calendar` | `calendar_event_get` | `back/app/calendar/mcp.py:238` |
-| `calendar_events` | `calendar` | `app.calendar` | `calendar_events` | `back/app/calendar/mcp.py:52` |
-| `calendar_find_free_slots` | `calendar` | `app.calendar` | `calendar_find_free_slots` | `back/app/calendar/mcp.py:101` |
-| `calendar_is_available` | `calendar` | `app.calendar` | `calendar_is_available` | `back/app/calendar/mcp.py:77` |
-| `calendar_list` | `calendar` | `app.calendar` | `calendar_list` | `back/app/calendar/mcp.py:39` |
-| `calendar_update_event` | `calendar` | `app.calendar` | `calendar_update_event` | `back/app/calendar/mcp.py:173` |
+| `calendar_action_set` | `calendar` | `app.calendar` | `calendar_action_set` | `back/app/calendar/mcp.py:290` |
+| `calendar_actions` | `calendar` | `app.calendar` | `calendar_actions` | `back/app/calendar/mcp.py:282` |
+| `calendar_create_event` | `calendar` | `app.calendar` | `calendar_create_event` | `back/app/calendar/mcp.py:159` |
+| `calendar_delete_event` | `calendar` | `app.calendar` | `calendar_delete_event` | `back/app/calendar/mcp.py:250` |
+| `calendar_event_get` | `calendar` | `app.calendar` | `calendar_event_get` | `back/app/calendar/mcp.py:273` |
+| `calendar_events` | `calendar` | `app.calendar` | `calendar_events` | `back/app/calendar/mcp.py:62` |
+| `calendar_find_free_slots` | `calendar` | `app.calendar` | `calendar_find_free_slots` | `back/app/calendar/mcp.py:121` |
+| `calendar_is_available` | `calendar` | `app.calendar` | `calendar_is_available` | `back/app/calendar/mcp.py:96` |
+| `calendar_list` | `calendar` | `app.calendar` | `calendar_list` | `back/app/calendar/mcp.py:41` |
+| `calendar_update_event` | `calendar` | `app.calendar` | `calendar_update_event` | `back/app/calendar/mcp.py:201` |
 | `console_exec` | `console` | `app.console` | `console_exec` | `back/app/console/mcp.py:50` |
 | `console_poll` | `console` | `app.console` | `console_poll` | `back/app/console/mcp.py:98` |
 | `console_start` | `console` | `app.console` | `console_start` | `back/app/console/mcp.py:77` |
@@ -2343,20 +2366,20 @@ tests remain authoritative for behavior.
 | `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:35` |
 | `document_sharing` | `document` | `app.document` | `document_sharing` | `back/app/document/mcp.py:20` |
 | `dataset_query` | `file_sharing` | `app.document` | `dataset_query` | `back/app/document/data/mcp.py:23` |
-| `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:461` |
-| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:530` |
-| `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:375` |
-| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:612` |
-| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:491` |
-| `file_info` | `file_sharing` | `app.file_share` | `file_info` | `back/app/file_share/mcp.py:173` |
-| `file_list` | `file_sharing` | `app.file_share` | `list_files` | `back/app/file_share/mcp.py:145` |
-| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:582` |
-| `file_read` | `file_sharing` | `app.file_share` | `read_file` | `back/app/file_share/mcp.py:271` |
-| `file_rename` | `file_sharing` | `app.file_share` | `rename_file` | `back/app/file_share/mcp.py:561` |
+| `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:462` |
+| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:531` |
+| `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:376` |
+| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:613` |
+| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:492` |
+| `file_info` | `file_sharing` | `app.file_share` | `file_info` | `back/app/file_share/mcp.py:174` |
+| `file_list` | `file_sharing` | `app.file_share` | `list_files` | `back/app/file_share/mcp.py:146` |
+| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:583` |
+| `file_read` | `file_sharing` | `app.file_share` | `read_file` | `back/app/file_share/mcp.py:272` |
+| `file_rename` | `file_sharing` | `app.file_share` | `rename_file` | `back/app/file_share/mcp.py:562` |
 | `file_schemes` | `file_sharing` | `app.file_share` | `file_schemes` | `back/app/file_share/mcp.py:124` |
-| `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:216` |
-| `file_to_pdf` | `file_sharing` | `app.file_share` | `file_to_pdf` | `back/app/file_share/mcp.py:303` |
-| `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:426` |
+| `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:217` |
+| `file_to_pdf` | `file_sharing` | `app.file_share` | `file_to_pdf` | `back/app/file_share/mcp.py:304` |
+| `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:427` |
 | `agent_get` | `galaris` | `app.agent` | `get_agent` | `back/app/agent/mcp.py:52` |
 | `agent_list` | `galaris` | `app.agent` | `list_agents` | `back/app/agent/mcp.py:26` |
 | `contact_create` | `galaris` | `app.contact` | `mcp_contact_create` | `back/app/contact/mcp.py:48` |
@@ -2705,6 +2728,7 @@ tests remain authoritative for behavior.
 | `/authorize` | `core/authorize` | `front/core/authorize/pages/index.vue` |
 | `/authorize/profile` | `core/authorize` | `front/core/authorize/pages/profile.vue` |
 | `/browser/settings` | `app/browser` | `front/app/browser/pages/settings.vue` |
+| `/calendar` | `app/calendar` | `front/app/calendar/pages/index.vue` |
 | `/chat` | `app/chat` | `front/app/chat/pages/index.vue` |
 | `/connection/calendars` | `app/connection` | `front/app/connection/pages/calendars.vue` |
 | `/connection/mail` | `app/connection` | `front/app/connection/pages/mail.vue` |

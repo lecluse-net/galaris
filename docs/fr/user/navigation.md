@@ -106,8 +106,8 @@ La route est exclue des constructions des autres environnements.
 |---|---|
 | **Configurer** | Fournisseurs & modèles, Agents, Outils & connexions, Compétences |
 | **Agir** | Discussion, Objectifs, Processus |
-| **Connaissances** | Documents, Fichiers, Mémoire, Contacts, Sujets |
-| **Superviser** | Tableau de bord, Activité, Dream, Permissions, Journal des mails, Calendriers, Journal des échecs |
+| **Connaissances** | Documents, Fichiers, Mémoire, Agenda, Contacts, Sujets |
+| **Superviser** | Tableau de bord, Activité, Dream, Permissions, Journal des mails, Journal des échecs |
 | **Administrer** | Préférences, Laboratoire, Console, Utilisateurs, Équipes, Rôles & autorisations |
 | **Développeurs** (mode dev uniquement) | Référence graphique |
 
@@ -116,11 +116,15 @@ Dans la documentation technique, « Chat » correspond au menu **Discussion**,
 et « Lab IA » au **Laboratoire**. Ces termes désignent les mêmes domaines ; ils ne sont
 pas autant de menus supplémentaires.
 
-## Calendriers et Journal des mails
+## Agenda et Journal des mails
 
-**Superviser → Calendriers** (`/connection/calendars`) permet de sélectionner une connexion
-Calendar puis de consulter ses flux avec `CALENDAR_ACCESS` ou `CALENDAR_EDIT`. La modification
-demande `CALENDAR_EDIT`. La création de la connexion reste dans Outils & connexions.
+**Connaissances → Agenda** (`/calendar`) permet de sélectionner un agent et ses agendas,
+de naviguer par mois, semaine, jour ou Planning et de suivre les Tasks par événement.
+La consultation demande `CALENDAR_ACCESS` ou `CALENDAR_EDIT` ; la modification demande
+`CALENDAR_EDIT`. La création de connexions reste dans Outils & connexions.
+Voir [Agenda et lancements de tâches](calendar.md). L’ancien lien `/connection/calendars`
+ouvre le même espace.
+L’entrée Agenda se trouve juste sous Mémoire.
 Le Journal des mails utilise séparément `MAIL_ACCESS` ou `MAIL_EDIT` ; décider un envoi
 demande aussi `PERMISSION_DECIDE` et le statut de valideur désigné.
 

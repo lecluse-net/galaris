@@ -7,6 +7,7 @@ from datetime import datetime
 from uuid import UUID
 
 from .contracts import MemorySearchItem
+from .agenda import MemoryAgendaOccurrence as MemoryAgendaOccurrence, memory_agenda as memory_agenda
 from .source_access import register_source_evidence_access
 from .retrieval import recall_items
 from .schemas import (
@@ -15,6 +16,19 @@ from .schemas import (
     MemoryRecallResult,
     MemoryRoleFilter,
 )
+
+
+async def resolve_recall_scope(*, agent_id: int, task_id: UUID | None,
+                               conversation_turn: object | None = None) -> tuple[UUID | None, UUID | None]:
+    from .recall_scope import resolve_recall_scope as resolve
+    return await resolve(agent_id=agent_id, task_id=task_id, conversation_turn=conversation_turn)
+
+
+async def record_agenda_context(*, agent_id: int, task_id: UUID | None, memory_ids: Sequence[UUID]) -> None:
+    """Retain usage evidence only for memories actually selected into agent context."""
+    from .service import record_llm_retrieval
+    await record_llm_retrieval(agent_id=agent_id, task_id=task_id,
+        item_scores=[(identity, 1.0) for identity in dict.fromkeys(memory_ids)], query="", access_kind="context")
 
 
 def _search_request(

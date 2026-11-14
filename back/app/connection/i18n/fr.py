@@ -3,7 +3,7 @@
 default = {
     "connection_api": {
         "oauth": {
-            "configuration": "Impossible de connecter ce compte. Vérifiez l’adresse du serveur MCP.",
+            "configuration": "Impossible de connecter ce compte. Vérifiez la configuration OAuth du Tool, son application et ses adresses de serveur.",
             "https_required": "OAuth exige HTTPS (HTTP est permis uniquement sur localhost).",
             "provider_unavailable": "Le fournisseur OAuth est injoignable. Réessayez.",
             "provider_timeout": "Le service a mis trop de temps à répondre pendant la connexion du compte.",
@@ -15,7 +15,7 @@ default = {
             "local_redirect_rejected": "Le service refuse aussi le retour OAuth local de Galaris : ${redirect_uri}. Vérifiez ses règles de retour auprès du fournisseur avant de recommencer.",
             "redirect_uri_rejected": "Le service a refusé l’URL de retour OAuth de cette instance : ${redirect_uri}. Vérifiez le nom de domaine, HTTPS et les règles de retour du fournisseur. Une adresse connue uniquement sur votre réseau peut être refusée. Le code invalid_redirect_uri ne précise pas à lui seul la règle qui bloque ; réessayer avec la même adresse ne la corrige pas.",
             "registration_invalid_response": "Le service a renvoyé une réponse d’enregistrement OAuth incomplète ou invalide.",
-            "authorization_required": "Autorisez cette connexion MCP dans Connexions, puis réessayez.",
+            "authorization_required": "Autorisez ce compte dans Connexions, puis réessayez.",
             "invalid_state": "Cette demande OAuth a expiré, a déjà été utilisée ou ne correspond plus à la connexion. Recommencez.",
             "authorization_denied": "L’autorisation a été refusée. Vous pouvez recommencer depuis la connexion.",
             "inactive": "Activez et enregistrez la connexion avant de l’autoriser.",

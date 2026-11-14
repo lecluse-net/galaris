@@ -229,10 +229,12 @@ async def _rewire_conversation_references(
     await get_db().execute(update(ContactDiscoveryJob).where(
         ContactDiscoveryJob.contact_item_id == source_contact_item_id,
     ).values(contact_item_id=target_contact_item_id))
+    from .references import update_contact_references
     return {
         "messages": _rowcount(messages),
         "conversation_rounds": _rowcount(rounds),
         "tasks": _rowcount(tasks),
+        **await update_contact_references(source_contact_item_id, target_contact_item_id),
     }
 
 
@@ -257,10 +259,12 @@ async def _clear_conversation_references(
         .where(Task.contact_memory_item_id == contact_item_id)
         .values(contact_memory_item_id=None)
     )
+    from .references import update_contact_references
     return {
         "messages": _rowcount(messages),
         "conversation_rounds": _rowcount(rounds),
         "tasks": _rowcount(tasks),
+        **await update_contact_references(contact_item_id, None),
     }
 
 

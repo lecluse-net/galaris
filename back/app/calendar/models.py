@@ -1,10 +1,10 @@
 """Local calendar aggregates, indexed projections and durable delivery journals."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID, uuid4
 from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint, func, text
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.dialects.postgresql import UUID as PGUUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from core.database import Base, HistoryMixin
 
@@ -20,7 +20,7 @@ class CalendarFeed(HistoryMixin, Base):
     is_default: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     writable: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
-    actions_enabled: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    actions_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     url_encrypted: Mapped[str | None] = mapped_column(Text)
     source_root_encrypted: Mapped[str | None] = mapped_column(Text)
     username_encrypted: Mapped[str | None] = mapped_column(Text)
@@ -30,6 +30,7 @@ class CalendarFeed(HistoryMixin, Base):
     source_revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
     initialized: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     sync_requested: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    sync_interval_hours: Mapped[int] = mapped_column(Integer, default=2, server_default="2")
     next_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     failure_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     lease_token: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
@@ -38,7 +39,8 @@ class CalendarFeed(HistoryMixin, Base):
     last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     last_error: Mapped[str | None] = mapped_column(String(500))
     __table_args__ = (
-        CheckConstraint("source_kind IN ('internal', 'ical', 'caldav')", name="ck_calendar_feed_source_kind"),
+        CheckConstraint("source_kind IN ('internal', 'ical', 'caldav', 'google', 'microsoft', 'icloud')", name="ck_calendar_feed_source_kind"),
+        CheckConstraint("sync_interval_hours BETWEEN 1 AND 8760", name="ck_calendar_feed_sync_interval"),
         Index("uq_calendar_default_connection", "connection_id", unique=True,
               postgresql_where=text("is_default AND deleted_at IS NULL")),
         Index("ix_calendar_feeds_due", "active", "sync_requested", "last_synced_at"),
@@ -51,6 +53,7 @@ class CalendarEvent(HistoryMixin, Base):
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     calendar_id: Mapped[int] = mapped_column(ForeignKey("calendar_feeds.id"), index=True)
     uid: Mapped[str] = mapped_column(String(255))
+    contact_id: Mapped[UUID | None] = mapped_column(ForeignKey("memory_items.id"), nullable=True, index=True)
     content_encrypted: Mapped[str] = mapped_column(Text)
     content_hash: Mapped[str] = mapped_column(String(64))
     start_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -168,7 +171,8 @@ class CalendarSyncRun(Base):
     operation_id: Mapped[UUID | None] = mapped_column(ForeignKey("calendar_sync_operations.id"))
     http_status: Mapped[int | None] = mapped_column(Integer)
     error_location: Mapped[str | None] = mapped_column(String(300))
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    progress: Mapped[dict[str, object]] = mapped_column(JSONB, default=dict, server_default="{}")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), server_default=func.now())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     __table_args__ = (Index("ix_calendar_sync_runs_recent", "calendar_id", "started_at"),)
 
@@ -177,6 +181,7 @@ class CalendarEventRevision(Base):
     __tablename__ = "calendar_event_revisions"
     id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
     event_id: Mapped[UUID] = mapped_column(ForeignKey("calendar_events.id"), index=True)
+    contact_id: Mapped[UUID | None] = mapped_column(ForeignKey("memory_items.id"), nullable=True, index=True)
     revision: Mapped[int] = mapped_column(Integer)
     content_encrypted: Mapped[str] = mapped_column(Text)
     deleting: Mapped[bool] = mapped_column(Boolean)

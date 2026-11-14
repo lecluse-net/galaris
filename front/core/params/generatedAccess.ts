@@ -1,5 +1,13 @@
 // Generated from core.params.access. Do not edit manually.
 export const parameterAccess: Record<string, readonly string[]> = {
+  "AGENDA_CONTEXT_DAYS": [
+    "MEMORY_CONFIG_ACCESS",
+    "MEMORY_CONFIG_EDIT"
+  ],
+  "AGENDA_CONTEXT_MAX_EVENTS": [
+    "MEMORY_CONFIG_ACCESS",
+    "MEMORY_CONFIG_EDIT"
+  ],
   "ALLOW_USER_REGISTRATION": [
     "PARAMS_ACCESS",
     "PARAMS_EDIT"

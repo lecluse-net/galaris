@@ -15,7 +15,7 @@ from .facade import search_memory_detailed
 from .metrics import observe_context
 from .schemas import MemorySearchHit
 from .service import record_llm_retrieval
-from .retrieval import admit_recall_hits, temporal_hits
+from .retrieval import admit_recall_hits
 from .schemas import MemoryRecallRequest
 from .passages import query_resource_references
 
@@ -346,14 +346,7 @@ async def build_memory_brief(
 
     general_hits: list[MemorySearchHit] = []
     truncated = False
-    if include_relevant:
-        upcoming, upcoming_more = await temporal_hits(MemoryRecallRequest(
-            agent_id=agent_id, topic_item_id=topic_item_id, contact_item_id=contact_item_id,
-            strict_contact_scope=strict_contact_scope, memory_role="ordinary",
-            exclude_agent_projections=True,
-        ), limit=limit)
-        general_hits.extend(upcoming)
-        truncated = upcoming_more
+    # Dated memories are presented once through the common agenda context.
     if relevant_page is not None:
         truncated = truncated or relevant_page.has_more
         seen = {hit.item.id for hit in general_hits}
@@ -388,19 +381,7 @@ async def build_memory_brief(
     admitted_by_id = {hit.item.id: hit for hit in admitted}
     general_hits = [admitted_by_id[hit.item.id] for hit in general_hits if hit.item.id in admitted_by_id]
     experience_hits = [admitted_by_id[hit.item.id] for hit in experience_hits if hit.item.id in admitted_by_id]
-    temporal_count = sum(getattr(hit, "temporal_match_at", None) is not None for hit in general_hits)
-    # Keep calendar entries first, but reserve up to half the slots for ordinary
-    # evidence: one fact cannot answer a request requiring several complements.
-    # Unused reservations flow back to the calendar; overflow is inspectable.
-    ordinary_slot = (min(len(general_hits) - temporal_count, max(1, limit // 2))
-                     if temporal_count > 0 and limit > 1 else 0)
-    calendar_limit = max(0, limit - ordinary_slot)
-    if temporal_count > calendar_limit:
-        general_hits = [*general_hits[:calendar_limit], *general_hits[temporal_count:]]
-        temporal_count = calendar_limit
-        truncated = True
-    reserved = min(len(experience_hits), runtime_settings.DREAM_EXPERIENCE_MAX_ITEMS,
-                   max(0, limit - temporal_count - ordinary_slot))
+    reserved = min(len(experience_hits), runtime_settings.DREAM_EXPERIENCE_MAX_ITEMS, limit)
     experience_has_more = experience_has_more or len(experience_hits) > reserved
     experience_hits = experience_hits[:reserved]
     general_limit = max(0, limit - len(experience_hits))
@@ -414,7 +395,6 @@ async def build_memory_brief(
         header: str,
         budget: int,
         experience: bool,
-        protect_ordinary: bool = False,
     ) -> tuple[str, list[MemoryContextItem], list[tuple[UUID, float]], bool]:
         rendered_parts = [header]
         consumed = len(header)
@@ -427,14 +407,6 @@ async def build_memory_brief(
             node_kind = str(getattr(hit.item, "node_kind", "memory"))
             kind_text = f"; kind={node_kind}" if node_kind == "document" else ""
             experience_text = ""
-            temporal_text = ""
-            match_at = getattr(hit, "temporal_match_at", None)
-            if isinstance(match_at, datetime) and hit.item.temporal is not None:
-                from zoneinfo import ZoneInfo
-                from core.util import local_timezone_name
-                zone_name = local_timezone_name()
-                local_match = match_at.astimezone(ZoneInfo(zone_name))
-                temporal_text = f"temporal_match={local_match.isoformat(timespec='minutes')} ({zone_name})\n"
             if experience:
                 metadata = hit.item.metadata
                 experience_text = (
@@ -451,10 +423,7 @@ async def build_memory_brief(
                 passage = next(iter(getattr(hit, "passages", [])), None)
                 location = f"; block_offset={passage.block_start}" if passage is not None and passage.block_start is not None else ""
                 prefix = prefix.rstrip() + f" (revision={revision}{location})\n  "
-            # An early large calendar excerpt must not consume the character
-            # reservation for the ordinary slot retained above.
-            tail_reserve = min(1_200 * ordinary_slot, budget // 2) if protect_ordinary and match_at is not None else 0
-            remaining = budget - consumed - len(prefix) - tail_reserve
+            remaining = budget - consumed - len(prefix)
             if remaining <= 0:
                 local_truncated = True
                 continue
@@ -470,7 +439,7 @@ async def build_memory_brief(
             recorded_text = f"recorded_at={recorded.isoformat()}\n" if isinstance(recorded, datetime) else ""
             validity = ", ".join(f"{key}={value.isoformat()}" for key in ("valid_from", "valid_until")
                 if isinstance(value := getattr(hit.item, key, None), datetime))
-            full_excerpt = conflict_text + temporal_text + recorded_text + (validity + "\n" if validity else "") + hit.excerpt
+            full_excerpt = conflict_text + recorded_text + (validity + "\n" if validity else "") + hit.excerpt
             excerpt = full_excerpt[:remaining]
             if len(excerpt) < len(full_excerpt):
                 excerpt = f"{excerpt[:-1].rstrip()}…" if excerpt else ""
@@ -502,14 +471,9 @@ async def build_memory_brief(
 
     total_budget = runtime_settings.MEMORY_CONTEXT_MAX_CHARS
     overflow_note = ("\n\nMemory context is bounded: omitted evidence may still exist. Search memory:// "
-                     "for missing facts; use memory_upcoming for further calendar matches.")
+                     "for missing facts. Dated memories are presented in the common agenda context.")
     total_budget = max(0, total_budget - len(overflow_note))
-    calendar_rendered, _, _, _ = render_hits(
-        general_hits[:temporal_count], header=_HEADER,
-        budget=total_budget - (min(1_200 * ordinary_slot, total_budget // 2) if ordinary_slot else 0), experience=False,
-    )
-    calendar_budget = len(calendar_rendered) + (2 if calendar_rendered else 0)
-    experience_budget = min(runtime_settings.DREAM_EXPERIENCE_MAX_CHARS, max(0, total_budget - calendar_budget))
+    experience_budget = min(runtime_settings.DREAM_EXPERIENCE_MAX_CHARS, total_budget)
     experience_rendered, experience_items, experience_consulted, exp_truncated = render_hits(
         experience_hits,
         header=_EXPERIENCE_HEADER,
@@ -526,7 +490,6 @@ async def build_memory_brief(
         header=_HEADER,
         budget=general_budget,
         experience=False,
-        protect_ordinary=bool(ordinary_slot),
     )
     items = [*general_items, *experience_items]
     rendered = "\n\n".join(

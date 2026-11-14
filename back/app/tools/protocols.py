@@ -146,13 +146,24 @@ def _mail_connection_params() -> dict[str, dict[str, Any]]:
 
 def _calendar_connection_params() -> dict[str, dict[str, Any]]:
     return {
-        "url": _param("password", description="HTTPS CalDAV calendar URL, or iCalendar subscription URL; encrypted because it may contain a private token"),
+        "url": _param("password", required=False, description="HTTPS CalDAV calendar URL, or private iCalendar subscription URL"),
         "username": _param(required=False, description="Optional HTTP authentication login"),
         "password": _param("password", required=False, description="Optional HTTP authentication password"),
+        "client_id": _param(required=False, description="OAuth application client ID; normally configured globally on the Tool"),
+        "client_secret": _param("password", required=False, description="OAuth application secret; normally configured globally on the Tool"),
         "label": _param(required=False, description="Calendar label; defaults to the provider label"),
         "owner_label": _param(required=False, description="Human owner of the calendar"),
-        "source_kind": _param(required=False, default="caldav", description="External calendar source: caldav or ical subscription",
-            options=[{"value": "caldav", "label": "CalDAV"}, {"value": "ical", "label": "iCalendar subscription"}]),
+        "sync_interval_hours": _param("integer", required=False, default="2", description="Automatic synchronization interval in whole hours, from 1 to 8760, shared by calendars of this connection"),
+        "source_kind": _param(required=False, default="caldav", description="Calendar provider",
+            options=[{"value": "caldav", "label": "CalDAV"}, {"value": "ical", "label": "iCalendar subscription"},
+                     {"value": "google", "label": "Google Calendar"}, {"value": "microsoft", "label": "Microsoft 365 / Outlook"},
+                     {"value": "icloud", "label": "Apple iCloud"}]),
+        "auth_type": _param(required=False, default="basic", options=[{"value": "basic", "label": "Password"}, {"value": "oauth", "label": "OAuth 2.0"}]),
+        "tenant": _param(required=False, default="common", description="Microsoft directory tenant; common accepts work and personal accounts"),
+        "issuer": _param(required=False, description="CalDAV OAuth issuer HTTPS URL"),
+        "authorization_endpoint": _param(required=False, description="CalDAV OAuth authorization HTTPS endpoint"),
+        "token_endpoint": _param(required=False, description="CalDAV OAuth token HTTPS endpoint"),
+        "scope": _param(required=False, description="CalDAV OAuth scopes"),
         "timezone": _param(
             required=False,
             default="Europe/Paris",
@@ -194,7 +205,7 @@ def protocol_parameter_bindings(protocol: str) -> dict[str, dict[str, Any]]:
     """Technical roles reference typed connection parameters, never literal credentials."""
     if protocol == "calendar":
         definitions = protocol_parameters(protocol)
-        names = ("url", "username", "password", "label", "owner_label")
+        names = ("url", "username", "password", "client_id", "client_secret", "label", "owner_label", "sync_interval_hours")
         return {name: {"parameter": "login" if name == "username" else name, "legacy_parameter": name,
             "label": f"tools.connectionParamLabels.{name}", "definition": definitions[name]} for name in names}
     if protocol != "mail":

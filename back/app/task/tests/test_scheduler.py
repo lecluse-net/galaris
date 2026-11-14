@@ -370,6 +370,57 @@ async def test_internal_harness_can_claim_work_while_other_tasks_run_for_the_sam
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("fairness_seconds", [0, 60])
+@pytest.mark.parametrize("origin", ["calendar", "goal"])
+@pytest.mark.parametrize("messaging_context", [False, True])
+@pytest.mark.parametrize("fast_resume", [False, True])
+async def test_discussion_work_precedes_scheduled_background_even_after_aging(
+    db, monkeypatch, fairness_seconds, origin, messaging_context, fast_resume,
+) -> None:
+    from app.goal.models import Goal
+    from app.document.models import Document
+
+    monkeypatch.setattr(scheduler.runtime_settings, "TASK_SCHEDULER_FAIRNESS_SECONDS", fairness_seconds)
+    scheduler._fast_path.clear()
+    scheduler._fast_path_ids.clear()
+    title = Title(label="Synthetic priority", gender="X")
+    db.add(title)
+    await db.flush()
+    agent = Agent(title_id=title.id, first_name="Synthetic", last_name="Priority", code=f"priority-{uuid4().hex}")
+    db.add(agent)
+    await db.flush()
+    tracking = Document(owner_agent_id=agent.id, provider_code="native", resource_id=f"synthetic:{uuid4()}",
+        title="Synthetic priority tracking", content="", content_hash="0" * 64, size_bytes=0)
+    db.add(tracking)
+    await db.flush()
+    goal = Goal(title="Synthetic background objective", description="<p>Synthetic work.</p>",
+        agent_id=agent.id, tracking_document_id=tracking.id)
+    db.add(goal)
+    await db.flush()
+    old = datetime.now(timezone.utc) - timedelta(days=1)
+    background = Task(label="Synthetic scheduled work", agent_id=agent.id,
+        goal_id=goal.id if origin == "goal" else None,
+        data={"calendar_trigger_id": str(uuid4())} if origin == "calendar" else {},
+        message_platform="matrix" if messaging_context else None,
+        message_group_id="synthetic-delivery-room" if messaging_context else None,
+        requester_agent_id=agent.id,
+        created_at=old, updated_at=old)
+    discussion = Task(label="Synthetic direct discussion", agent_id=agent.id,
+        message_platform="matrix", message_group_id="synthetic-human-room")
+    db.add_all([background, discussion])
+    await db.commit()
+    if fast_resume:
+        scheduler._queue_fast_path(background.id)
+    first = await scheduler._next_task(set(), set())
+    assert first is not None and first[0] == discussion.id
+    second = await scheduler._next_task({discussion.id}, set())
+    assert second is not None and second[0] == background.id
+    monkeypatch.setattr(scheduler, "_max_concurrency", lambda: 2)
+    monkeypatch.setattr(scheduler, "_running", {discussion.id: None})
+    assert scheduler._must_keep_interactive_slot(second[2])
+
+
+@pytest.mark.asyncio
 async def test_external_harness_keeps_second_task_queued_for_the_same_agent(
     db,
     monkeypatch: pytest.MonkeyPatch,

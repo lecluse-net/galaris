@@ -115,6 +115,13 @@ the resume phase.
 Scheduler actions: `CREATE → dispatch`, `DISPATCH → execute`, `PLAN → advance_plan`.
 A paused task retains its phase without being executed.
 
+In the automatic queue, calendar Tasks and Goal-linked Tasks remain background work, behind
+discussion-originated work. Their age and a messaging channel used for result delivery do not
+make them interactive. Fairness promotion does not apply to these Tasks. They retain the
+interactive capacity reservation; this queue ordering does not interrupt an ongoing execution.
+Fast resumptions of this work return to the background queue. New calendar subtasks and
+delegations inherit their trigger provenance; Goal descendants retain their Goal association.
+
 A domain-owned input request suspends the existing Task for reason `input`, without a
 technical child. At the end of the turn, `INTERRUPT_EXECUTION` keeps a `DISPATCH` resume point.
 An answer received during `EXEC` is folded at finalization; an answer received later releases
@@ -417,14 +424,22 @@ A cycle creates an ordinary Task, waits for its terminal state, moves to judgmen
 persists a verdict. `CONTINUE` schedules the next time-based cycle when a frequency exists; `STOP`
 closes the objective. A pause prevents the creation of new cycles without erasing history.
 
-Each Goal chooses exactly one automatic trigger mode. The time-based mode requires a
+Each Goal chooses exactly one automatic trigger: delay after work, fixed-date recurrence
+or a parent Goal cycle. Fixed cadence retains versioned planning segments and durable
+passages, uniquely associated with their cycles and Tasks. Edits replace only the future;
+elapsed passages and running cycles keep their planned time. Future passages are calculated
+on reads and materialized when due by the Goal worker. Expired passages are retained as
+skipped without a Task; cycles never overlap. Agenda creates no ordinary actions for these
+passages. See [decision 0283](../../../project/decisions/0283-goal-agenda-passages.md).
+
+The delay-based mode requires a
 frequency and may use the default global window or add a Goal-specific weekly restriction. The
 relational mode designates a single parent Goal, with neither its own frequency nor window.
 Each completed parent cycle idempotently deposits a durable trigger for each of its
 direct children. The runner consumes it to create a `RELATIONAL` cycle carrying the source
 cycle's identifier; cascading to subsequent levels occurs only once their own cycle
 is completed. Relationships are acyclic, and the tree API exposes descendants to the interface as well as the parent and child count in a Goal's details. A manual command remains possible
-in both modes and does not constitute a third configuration mode.
+in all three modes and does not constitute another configuration mode.
 
 A global weekly schedule bounds
 new cycles and reruns for all Goals. Each Goal may add an individual weekly restriction,

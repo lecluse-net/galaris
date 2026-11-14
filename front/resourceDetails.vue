@@ -1,6 +1,8 @@
 <template>
   <ContactResourceDialog v-if="target.kind === 'contact'" :key="target.id + ':' + target.agentId" :contact-id="target.id" @close="emit('close')" @changed="emit('changed')" />
+  <ConnectionDialog v-else-if="target.kind === 'connection'" :key="target.id" :preview-connection-id="Number(target.id)" @close="emit('close')" @changed="emit('changed')" />
   <GoalPreview v-else-if="target.kind === 'goal'" :key="target.id" :preview-goal-id="target.id" @close="emit('close')" />
+  <CalendarResourceDialog v-else-if="target.kind === 'calendar'" :key="target.id" :calendar-id="Number(target.id)" @close="emit('close')" />
   <CodeWorkspaceDialog v-else-if="target.kind === 'code'" :key="target.id" :workspace-id="target.id" :title="target.title" @close="emit('close')" />
   <NativeRunDialog v-else-if="target.kind === 'process_run'" :key="target.id + ':' + target.agentId"
     :run-id="target.id" :agent-id="target.agentId" :title="target.title" @close="emit('close')" />
@@ -90,7 +92,9 @@ const TopicDetail = defineAsyncView(async () => (await import('@/app/topic')).To
 const DocumentFolderCollection = defineAsyncView(async () => (await import('@/app/document')).DocumentFolderCollection)
 const AgentPreview = defineAsyncView(async () => (await import('@/app/agent')).AgentPreview)
 const ContactResourceDialog = defineAsyncView(async () => (await import('@/app/memory')).ContactResourceDialog)
+const ConnectionDialog = defineAsyncView(async () => (await import('@/app/connection')).ConnectionDialog)
 const GoalPreview = defineAsyncView(async () => (await import('@/app/goal')).GoalPreview)
+const CalendarResourceDialog = defineAsyncView(async () => (await import('@/app/calendar')).CalendarResourceDialog)
 const CodeWorkspaceDialog = defineAsyncView(async () => (await import('@/app/chat/interface')).CodeWorkspaceDialog)
 const NativeRunDialog = defineAsyncView(async () => (await import('@/app/process')).NativeRunDialog)
 const ExternalRunDialog = defineAsyncView(async () => (await import('@/app/process')).ExternalRunDialog)

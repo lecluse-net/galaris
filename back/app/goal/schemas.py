@@ -6,6 +6,7 @@ from core.util import normalize_html
 from datetime import datetime
 from typing import Annotated, Literal
 from uuid import UUID
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import AfterValidator, BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
 
@@ -160,6 +161,27 @@ class GoalReferrerRead(BaseModel):
     platform: str | None = None
 
 
+class GoalRecurrence(BaseModel):
+    """Fixed local-clock cadence, separate from the delay after completed work."""
+
+    model_config = ConfigDict(extra="forbid")
+    start_at: datetime
+    timezone: str = Field(min_length=1, max_length=100)
+    frequency: Literal["DAILY", "WEEKLY", "MONTHLY", "YEARLY"] = "DAILY"
+    interval: int = Field(default=1, ge=1, le=365)
+    max_lateness_minutes: int = Field(default=60, ge=0, le=10080)
+
+    @model_validator(mode="after")
+    def validate_clock(self) -> "GoalRecurrence":
+        if self.start_at.tzinfo is None or self.start_at.utcoffset() is None:
+            raise ValueError("A recurring Goal requires an explicit timezone offset")
+        try:
+            ZoneInfo(self.timezone)
+        except (ZoneInfoNotFoundError, ValueError) as exc:
+            raise ValueError("Unknown Goal timezone") from exc
+        return self
+
+
 class GoalCreate(GoalScheduleConfig):
     category_id: int | None = Field(default=None, gt=0)
     title: str = Field(min_length=1, max_length=400)
@@ -167,6 +189,7 @@ class GoalCreate(GoalScheduleConfig):
     agent_id: int = Field(gt=0)
     referrer: GoalReferrerInput
     cycle_delay_seconds: int | None = Field(default=3600, ge=0)
+    recurrence: GoalRecurrence | None = None
     parent_goal_id: UUID | None = None
     referrer_max_reminders: int = Field(default=1, ge=0)
     active: bool = True
@@ -183,7 +206,7 @@ class GoalCreate(GoalScheduleConfig):
     def require_one_automatic_trigger_mode(self) -> "GoalCreate":
         has_temporal_trigger = self.cycle_delay_seconds is not None
         has_relational_trigger = self.parent_goal_id is not None
-        if has_temporal_trigger == has_relational_trigger:
+        if sum((has_temporal_trigger, has_relational_trigger, self.recurrence is not None)) != 1:
             raise ValueError(
                 "A Goal must use exactly one automatic trigger: frequency or parent Goal"
             )
@@ -201,6 +224,7 @@ class GoalApiCreate(GoalScheduleConfig):
     agent_id: int = Field(gt=0)
     referrer: GoalMessengerReferrerInput
     cycle_delay_seconds: int | None = Field(default=3600, ge=0)
+    recurrence: GoalRecurrence | None = None
     parent_goal_id: UUID | None = None
     referrer_max_reminders: int = Field(default=1, ge=0)
     active: bool = True
@@ -222,6 +246,7 @@ class GoalUpdate(BaseModel):
     agent_id: int | None = Field(default=None, gt=0)
     referrer: GoalReferrerInput | None = None
     cycle_delay_seconds: int | None = Field(default=None, ge=0)
+    recurrence: GoalRecurrence | None = None
     parent_goal_id: UUID | None = None
     referrer_max_reminders: int | None = Field(default=None, ge=0)
     schedule_enabled: bool | None = None
@@ -267,6 +292,7 @@ class GoalApiUpdate(BaseModel):
     agent_id: int | None = Field(default=None, gt=0)
     referrer: GoalMessengerReferrerInput | None = None
     cycle_delay_seconds: int | None = Field(default=None, ge=0)
+    recurrence: GoalRecurrence | None = None
     parent_goal_id: UUID | None = None
     referrer_max_reminders: int | None = Field(default=None, ge=0)
     schedule_enabled: bool | None = None
@@ -319,6 +345,7 @@ class GoalRead(GoalScheduleConfig):
     agent_code: str = ""
     referrer: GoalReferrerRead | None = None
     cycle_delay_seconds: int | None
+    recurrence: GoalRecurrence | None = None
     parent_goal_id: UUID | None = None
     parent_title: str | None = None
     children_count: int = 0
@@ -381,6 +408,29 @@ class GoalCycleRead(BaseModel):
 
 class GoalDetail(GoalRead):
     pass
+
+
+class GoalAgendaEvent(BaseModel):
+    id: UUID
+    goal_id: UUID
+    title: str
+    scheduled_at: datetime
+    timezone: str
+    projected: bool
+    state: str
+    cycle_id: UUID | None = None
+    sequence: int | None = None
+    task_uri: str | None = None
+    review_task_uri: str | None = None
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    verdict: GoalVerdict | None = None
+    reason: str | None = None
+
+
+class GoalAgendaWindow(BaseModel):
+    items: list[GoalAgendaEvent]
+    complete: bool = True
 
 
 class GoalTreeNode(BaseModel):

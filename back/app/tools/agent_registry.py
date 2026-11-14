@@ -66,6 +66,8 @@ async def build_agent_tool_advertisement(
     tool_names = frozenset(definition.name for definition in definitions)
     if {"calendar_list", "calendar_create_event"} <= tool_names:
         lines.append("Use your personal agenda for appointments and dated reminders when its functions are allowed; no external account is needed. "
+            "It is your time-based memory aid in conversations and Tasks: record commitments, follow-ups and things to remember at a particular time there. "
+            "Memory time anchors do not schedule reminders or execute work. "
             "Call calendar_list() for its calendar_id, then calendar_create_event with reminder_minutes_before=0 "
             "for a reminder at the event start, or a positive number for advance notice. A reminder creates one tracked Task. "
             "Use Goals for durable outcomes, recurring progress and their existing scheduled reviews. Never duplicate a Goal cycle "

@@ -105,6 +105,7 @@ export { documentFolderId, documentFolderHref, canonicalFolderLink } from './doc
 export { documentResourceHtml } from './documentResources'
 export { formatFileSize, sizeInMegabytes, sizeFromMegabytes } from './fileSize'
 export type { FileSizeUnit } from './fileSize'
+export { wallTime, zonedInstant } from './timezone'
 export { default as PersonAvatar } from './components/PersonAvatar.vue'
 export { default as ConversationBubble } from './components/ConversationBubble.vue'
 export { default as AgentConversationPanel } from './components/AgentConversationPanel.vue'

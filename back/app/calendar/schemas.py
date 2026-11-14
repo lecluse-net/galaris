@@ -7,7 +7,7 @@ from typing import Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 
 def _valid_temporal_range(start: datetime | date, end: datetime | date) -> bool:
@@ -52,16 +52,23 @@ class CalendarFeedUpdate(BaseModel):
 
 
 class CalendarFeedRead(BaseModel):
+    @computed_field
+    @property
+    def resource_uri(self) -> str:
+        return f"galaris://calendar/{self.id}"
+
     id: int
     connection_id: int
     agent_id: int
     label: str
+    tool_label: str = ""
     owner_label: str | None
-    source_kind: Literal["internal", "ical", "caldav"] = "caldav"
+    source_kind: Literal["internal", "ical", "caldav", "google", "microsoft", "icloud"] = "caldav"
     timezone: str = "Europe/Paris"
     writable: bool = False
     initialized: bool = False
-    actions_enabled: bool = False
+    actions_enabled: bool = True
+    is_default: bool = False
     origin: str
     url_configured: bool = True
     username_configured: bool
@@ -70,6 +77,8 @@ class CalendarFeedRead(BaseModel):
     last_synced_at: datetime | None
     last_checked_at: datetime | None
     last_error: str | None
+    sync_interval_hours: int = 2
+    next_sync_at: datetime | None = None
     created_at: datetime
     updated_at: datetime | None
 
@@ -85,6 +94,7 @@ class CalendarConnectionEvent(BaseModel):
 class CalendarConnectionStatus(BaseModel):
     calendar_id: int
     ok: bool
+    sync_run_id: UUID | None = None
     events_seen: int = Field(ge=0)
     next_events: list[CalendarConnectionEvent] = Field(
         default_factory=list[CalendarConnectionEvent], max_length=3
@@ -92,6 +102,11 @@ class CalendarConnectionStatus(BaseModel):
 
 
 class CalendarEventRead(BaseModel):
+    contact_id: UUID | None = None
+    source_kind: Literal["calendar", "memory"] = "calendar"
+    source_uri: str | None = None
+    informational: bool = False
+    temporal: dict[str, int | None] | None = None
     event_id: UUID | None = None
     occurrence_id: UUID | None = None
     recurrence_key: str = ""
@@ -141,6 +156,23 @@ class CalendarReminderPage(BaseModel):
     total: int
 
 
+class CalendarOccurrenceSelection(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    event_id: UUID
+    recurrence_key: str = Field(max_length=100)
+
+
+class CalendarExecutionSummaryRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    connection_id: int = Field(gt=0)
+    occurrences: list[CalendarOccurrenceSelection] = Field(min_length=1, max_length=500)
+
+
+class CalendarExecutionSummary(CalendarOccurrenceSelection):
+    total: int = 0
+    states: dict[CalendarReminderState, int] = Field(default_factory=dict[CalendarReminderState, int])
+
+
 class CalendarAvailability(BaseModel):
     start: datetime
     end: datetime
@@ -164,6 +196,7 @@ class CalendarEventCreate(BaseModel):
     start: datetime | date
     end: datetime | date
     uid: str | None = Field(default=None, max_length=255)
+    contact_id: UUID | None = None
     reminder_minutes_before: int | None = Field(default=None, ge=0, le=525_600)
     timezone: str = "Europe/Paris"
     rrule: str | None = Field(default=None, max_length=2000)
@@ -191,6 +224,8 @@ class CalendarEventUpdate(BaseModel):
     reminder_minutes_before: int | None = Field(default=None, ge=0, le=525_600)
     clear_reminder: bool = False
     expected_revision: int = Field(ge=1)
+    contact_id: UUID | None = None
+    clear_contact: bool = False
     scope: Literal["series", "occurrence", "following"] = "series"
     recurrence_key: str | None = Field(default=None, max_length=100)
     rrule: str | None = Field(default=None, max_length=2000)
@@ -199,6 +234,8 @@ class CalendarEventUpdate(BaseModel):
 
     @model_validator(mode="after")
     def validate_range(self) -> "CalendarEventUpdate":
+        if self.clear_contact and self.contact_id is not None:
+            raise ValueError("Supply contact_id or clear_contact, not both")
         if self.start is not None and self.end is not None and not _valid_temporal_range(self.start, self.end):
             raise ValueError("start and end must use the same type, with end after start")
         if self.scope != "series" and not self.recurrence_key:
@@ -212,6 +249,7 @@ class CalendarEventUpdate(BaseModel):
 
 
 class CalendarMutationReceipt(BaseModel):
+    contact_id: UUID | None = None
     event_id: UUID | None = None
     revision: int = 1
     sync_state: Literal["local", "pending", "synced", "conflict"] = "local"
@@ -239,6 +277,7 @@ class CalendarActionFields(BaseModel):
 
 class CalendarActionWrite(CalendarActionFields):
     expected_revision: int | None = Field(default=None, ge=1)
+    request_key: UUID | None = None
 
 
 class CalendarActionRead(CalendarActionFields):
@@ -276,6 +315,7 @@ class CalendarAlarmRead(BaseModel):
 
 
 class CalendarEventDetail(BaseModel):
+    contact_id: UUID | None = None
     event_id: UUID
     calendar_id: int
     uid: str
@@ -301,10 +341,40 @@ class CalendarEventDetail(BaseModel):
 
 
 class CalendarEventHistoryRead(BaseModel):
+    contact_id: UUID | None = None
     revision: int
     deleted: bool
     created_at: datetime
     ical: str
+
+
+class CalendarSyncStepRead(BaseModel):
+    stage: str
+    started_at: datetime
+    finished_at: datetime | None = None
+
+
+class CalendarSyncProgressRead(BaseModel):
+    calendar_changed: bool = False
+    steps: list[CalendarSyncStepRead] = Field(default_factory=list[CalendarSyncStepRead])
+    server_reached: bool = False
+    network_phase: str | None = None
+    http_requests: int = 0
+    last_http_status: int | None = None
+    calendars: int = 0
+    downloaded: int = 0
+    download_total: int | None = None
+    applied: int = 0
+    apply_total: int | None = None
+    uploaded: int = 0
+    upload_total: int | None = None
+    upload_succeeded: int = 0
+    conflicts: int = 0
+    deleted: int = 0
+    bytes_received: int = 0
+    bytes_sent: int = 0
+    transfer_completed: int = 0
+    transfer_total: int | None = None
 
 
 class CalendarSyncRunRead(BaseModel):
@@ -317,6 +387,7 @@ class CalendarSyncRunRead(BaseModel):
     error_location: str | None
     started_at: datetime
     finished_at: datetime | None
+    progress: CalendarSyncProgressRead = Field(default_factory=CalendarSyncProgressRead)
 
 
 class CalendarExecutionRelaunch(BaseModel):

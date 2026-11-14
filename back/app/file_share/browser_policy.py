@@ -32,6 +32,7 @@ def resource_privileges(uri: str, *, write: bool = False) -> tuple[str, ...]:
         domains = {
             "contact": (Privileges.CONTACT_ACCESS, Privileges.CONTACT_EDIT),
             "code": (Privileges.CODE_ACCESS,),
+            "calendar": (Privileges.CALENDAR_ACCESS, Privileges.CALENDAR_EDIT),
             "agent": (Privileges.AGENT_ACCESS, Privileges.AGENT_EDIT),
             "process": (Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN),
             "task": (Privileges.TASK_ACCESS, Privileges.TASK_EDIT),

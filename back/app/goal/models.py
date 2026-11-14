@@ -168,7 +168,7 @@ class Goal(HistoryMixin, Base):
         index=True,
     )
     cycle_delay_seconds: Mapped[int | None] = mapped_column(
-        Integer, nullable=True, default=3600, server_default="3600"
+        Integer().evaluates_none(), nullable=True, default=3600, server_default="3600"
     )
     schedule_enabled: Mapped[bool] = mapped_column(
         nullable=False, default=False, server_default=sql_text("false")
@@ -179,6 +179,7 @@ class Goal(HistoryMixin, Base):
         default=list,
         server_default=sql_text("'[]'::jsonb"),
     )
+    recurrence: Mapped[dict[str, object] | None] = mapped_column(JSONB(none_as_null=True), nullable=True)
     referrer_max_reminders: Mapped[int] = mapped_column(
         Integer, nullable=False, default=1, server_default="1"
     )
@@ -358,6 +359,44 @@ class GoalCycle(Base):
         self.lease_token = None
         self.lease_owner = None
         self.lease_expires_at = None
+
+
+class GoalCalendarPlan(Base):
+    """An immutable schedule segment; closing it only changes its future boundary."""
+
+    __tablename__ = "goal_calendar_plans"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    goal_id: Mapped[UUID] = mapped_column(ForeignKey("goals.id", ondelete="CASCADE"), index=True)
+    title: Mapped[str] = mapped_column(String(400))
+    config: Mapped[dict[str, object]] = mapped_column(JSONB)
+    valid_from: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    next_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    __table_args__ = (
+        Index("uq_goal_calendar_plan_open", "goal_id", unique=True,
+              postgresql_where=sql_text("valid_until IS NULL")),
+    )
+
+
+class GoalOccurrence(Base):
+    """A durable agenda passage, independently of actual Task admission time."""
+
+    __tablename__ = "goal_occurrences"
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid4)
+    goal_id: Mapped[UUID] = mapped_column(ForeignKey("goals.id", ondelete="CASCADE"), index=True)
+    plan_id: Mapped[UUID | None] = mapped_column(ForeignKey("goal_calendar_plans.id", ondelete="RESTRICT"), nullable=True)
+    cycle_id: Mapped[UUID | None] = mapped_column(ForeignKey("goal_cycles.id", ondelete="RESTRICT"), nullable=True, unique=True)
+    scheduled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    title: Mapped[str] = mapped_column(String(400))
+    timezone: Mapped[str] = mapped_column(String(100))
+    state: Mapped[str] = mapped_column(String(20), default="waiting", server_default="waiting")
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    __table_args__ = (
+        UniqueConstraint("plan_id", "scheduled_at", name="uq_goal_occurrence_passage"),
+        CheckConstraint("state IN ('waiting', 'linked', 'skipped', 'cancelled')", name="ck_goal_occurrence_state"),
+        Index("ix_goal_occurrence_waiting", "goal_id", "scheduled_at", postgresql_where=sql_text("state = 'waiting'")),
+        Index("ix_goal_occurrence_expiry", "expires_at", postgresql_where=sql_text("state = 'waiting'")),
+    )
 
 
 class GoalCycleTrigger(Base):

@@ -13,7 +13,7 @@ export function toolCapabilitySelections(tool: Partial<Tool>): string[] {
   if (tool.messenger_config) result.push(`${tool.messenger_config.service}.messenger`)
   if (tool.listener_config) result.push('webhook.listener')
   if (tool.has_mail) result.push('imap_smtp.mail')
-  if (tool.has_calendar) result.push('ical.calendar')
+  if (tool.has_calendar) result.push('caldav.calendar')
   return result
 }
 

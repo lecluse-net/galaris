@@ -375,6 +375,7 @@ let realtimeTimer: ReturnType<typeof setTimeout> | undefined
 useMessagePreviewFreshness(scheduleRealtimeRefresh)
 
 const iconByKind: Record<MessageResourcePreviewKind, string> = {
+  calendar: 'calendar_month',
   code: 'code',
   document: 'description',
   memory: 'psychology',

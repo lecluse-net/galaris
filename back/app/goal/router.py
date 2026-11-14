@@ -5,6 +5,7 @@ from core.util import require_editorial_client
 from fastapi import Depends
 
 from uuid import UUID
+from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -30,6 +31,7 @@ from .schemas import (
     GoalSettingsUpdate,
     GoalTreePage,
     GoalUpdate,
+    GoalAgendaWindow,
     MessengerReferrerOption,
 )
 from . import settings_service
@@ -190,6 +192,20 @@ async def update_goal_settings(data: GoalSettingsUpdate) -> GoalSettingsRead:
 async def read_goal_tree() -> GoalTreePage:
     scope = await current_management_scope()
     return await goal_service.list_tree(agent_ids=scope.agent_ids)
+
+
+@router.get("/agenda", response_model=GoalAgendaWindow)
+@authorize(privileges=[Privileges.GOAL_ACCESS, Privileges.GOAL_EDIT])
+async def read_agenda(agent_id: int, start: datetime, end: datetime) -> GoalAgendaWindow:
+    from .calendar import agenda_window
+
+    scope = await current_management_scope()
+    if not scope.allows(agent_id):
+        raise _not_found()
+    try:
+        return await agenda_window(agent_id, start, end, managed_agents=scope.agent_ids)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/{goal_id}", response_model=GoalDetail)

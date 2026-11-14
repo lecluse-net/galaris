@@ -29,11 +29,14 @@ const protocolParameters = {
   ].map(([name, type, value, required], order) => [name, { type, default: value, required, builtin: true, order,
     label: 'tools.connectionParamLabels.' + name, section: 'tools.protocolSections.' + (name.startsWith('smtp_') ? 'smtp' : 'imap'),
     options: name.endsWith('_security') ? [{ value: 'tls' }, { value: 'starttls' }] : [] }])),
-  'ical.calendar': Object.fromEntries([
+  'caldav.calendar': Object.fromEntries([
+    ['source_kind', 'string', 'caldav'],
     ['timezone', 'string', 'Europe/Paris'], ['workday_start', 'string', '09:00'],
     ['workday_end', 'string', '18:00'], ['slot_step_minutes', 'integer', '15'],
   ].map(([name, type, value], order) => [name, { type, default: value, required: false, builtin: true, order,
-    label: 'tools.connectionParamLabels.' + name }])),
+    label: 'tools.connectionParamLabels.' + name,
+    options: name === 'source_kind' ? [{ value: 'caldav', label: 'tools.connectionParamOptions.calendar.source_kind.caldav' },
+      { value: 'ical', label: 'tools.connectionParamOptions.calendar.source_kind.ical' }] : [] }])),
 }
 const mailConnectionDefinitions = Object.fromEntries([
   ['email_address', 'string', true], ['password', 'password', true],
@@ -45,13 +48,17 @@ const mailBindings = Object.fromEntries(Object.entries({ email_address: ['email_
 }).map(([role, [legacy_parameter, parameter]]) => [role, { parameter, legacy_parameter, label: 'tools.connectionParamLabels.' + role,
   section: 'tools.protocolSections.' + (role.startsWith('smtp_') || ['email_address', 'approver_user_id'].includes(role) ? 'smtp' : 'imap'),
   definition: { ...mailConnectionDefinitions[legacy_parameter], ...(parameter === 'login' ? { label: 'tools.connectionParamLabels.login' } : {}) } }]))
+const calendarBindings = Object.fromEntries([
+  ['url', 'url', 'password', true], ['username', 'login', 'string', false], ['password', 'password', 'password', false],
+].map(([role, parameter, type, required]) => [role, { parameter, legacy_parameter: role,
+  label: 'tools.connectionParamLabels.' + role, definition: { type, required, builtin: true, label: 'tools.connectionParamLabels.' + role } }]))
 const capabilityCatalogue = Object.entries({ mcp: ['http', 'sse', 'stdio'], api: ['rest'],
   file_share: ['nextcloud', 'synthetic_share'], messenger: ['matrix', 'synthetic_messenger'],
-  listener: ['webhook'], mail: ['imap_smtp'], calendar: ['ical'],
+  listener: ['webhook'], mail: ['imap_smtp'], calendar: ['caldav'],
 }).map(([code, protocols]) => ({ code, label: 'tools.capabilityLabels.' + code, builtin: true,
   protocols: protocols.map(protocol => ({ value: protocol + '.' + code, capability: code,
     label: protocol.startsWith('synthetic_') ? 'Synthetic ' + (code === 'file_share' ? 'share' : 'messenger') : 'tools.protocolLabels.' + protocol,
-    builtin: !protocol.startsWith('synthetic_'), parameters: protocolParameters[protocol + '.' + code] ?? {}, connection_parameters: code === 'mail' ? mailBindings : {} })),
+    builtin: !protocol.startsWith('synthetic_'), parameters: protocolParameters[protocol + '.' + code] ?? {}, connection_parameters: code === 'mail' ? mailBindings : code === 'calendar' ? calendarBindings : {} })),
 }))
 async function addCapability(page, label) {
   await page.getByRole('dialog').getByRole('button', { name: 'Add protocol', exact: true }).click()
@@ -125,7 +132,11 @@ for (const width of [390, 1400]) {
     await expect(dialog.getByRole('textbox', { name: 'Password *', exact: true })).toHaveCount(0)
     await mapParameter('SMTP password', 'New parameter…')
     await expect(binding('SMTP password')).toHaveValue('password_2')
-    await addCapability(page, 'Calendar · iCal')
+    await addCapability(page, 'Calendar · CalDAV')
+    await expect(binding('HTTPS CalDAV URL')).toHaveValue('')
+    await mapParameter('HTTPS CalDAV URL', 'New parameter…')
+    await mapParameter('Username', 'login')
+    await mapParameter('Password', 'password')
     await dialog.getByLabel('Time zone', { exact: true }).fill('Europe/London')
     await dialog.getByLabel('Workday start', { exact: true }).fill('08:30')
     await dialog.getByRole('button', { name: 'Create', exact: true }).click()
@@ -136,19 +147,21 @@ for (const width of [390, 1400]) {
     await expect(dialog.getByLabel('IMAP server *', { exact: true })).toHaveValue('imap.example.test')
     await dialog.getByRole('button', { name: 'Create', exact: true }).click()
     await expect(dialog).toHaveCount(0)
-    expect(writes[1]).toMatchObject({ code: 'synthetic-provider', capabilities: ['imap_smtp.mail', 'ical.calendar'],
+    expect(writes[1]).toMatchObject({ code: 'synthetic-provider', capabilities: ['imap_smtp.mail', 'caldav.calendar'],
       mail_config: { settings: { imap_host: 'imap.example.test', smtp_host: 'smtp.example.test', smtp_port: '587' },
         param_map: { email_address: 'login', imap_username: 'login', imap_password: 'password', smtp_username: 'login', smtp_password: 'password_2', allowed_mailboxes: 'folders' } },
-      calendar_config: { settings: { timezone: 'Europe/London', workday_start: '08:30' } } })
+      calendar_config: { settings: { source_kind: 'caldav', timezone: 'Europe/London', workday_start: '08:30' }, param_map: { url: 'url', username: 'login', password: 'password' } } })
     expect(writes[1]).not.toHaveProperty('global_params')
-    expect(Object.keys(writes[1].connection_schema.params)).toEqual(['login', 'password', 'folders', 'password_2'])
+    expect(Object.keys(writes[1].connection_schema.params)).toEqual(['login', 'password', 'folders', 'password_2', 'url'])
     const row = page.locator(width === 390 ? '.tool-mobile-card' : 'tbody tr').filter({ hasText: 'Synthetic provider' })
     await expect(row).toContainText('Mail')
     await expect(row).toContainText('Calendar')
     await page.screenshot({ path: testInfo.outputPath('provider-list.png'), animations: 'disabled' })
+    // A historical binding is retired when the Tool is reopened and saved.
+    saved.calendar_config.param_map.action_kind = 'retired-action'
     await row.getByRole('button', { name: 'Edit tool', exact: true }).click()
     await expect(dialog.getByRole('tab', { name: 'IMAP & SMTP', exact: true })).toBeVisible()
-    await expect(dialog.getByRole('tab', { name: 'iCal', exact: true })).toBeVisible()
+    await expect(dialog.getByRole('tab', { name: 'CalDAV', exact: true })).toBeVisible()
     await expect(dialog.getByLabel('IMAP server *', { exact: true })).toHaveValue('imap.example.test')
     await expect(dialog.getByLabel('SMTP port *', { exact: true })).toHaveValue('587')
     await expect(binding('SMTP password')).toHaveValue('password_2')
@@ -158,9 +171,12 @@ for (const width of [390, 1400]) {
     expect(writes[2].mail_config.param_map).toMatchObject({ imap_password: 'password', smtp_password: 'password_2' })
     expect(writes[2].connection_schema.params.password_2.type).toBe('password')
     expect(writes[2].connection_schema.params.folders.widget).toBe('mail_folder_tree')
+    expect(writes[2].calendar_config.param_map).not.toHaveProperty('action_kind')
     await row.getByRole('button', { name: 'Edit tool', exact: true }).click()
-    await dialog.getByRole('tab', { name: 'iCal', exact: true }).click()
+    await dialog.getByRole('tab', { name: 'CalDAV', exact: true }).click()
     await expect(dialog.getByLabel('Time zone', { exact: true })).toHaveValue('Europe/London')
+    await expect(binding('HTTPS CalDAV URL')).toHaveValue('url')
+    await expect(binding('Password')).toHaveValue('password')
     await dialog.getByRole('tab', { name: 'IMAP & SMTP', exact: true }).click()
     await dialog.getByRole('button', { name: 'Add protocol', exact: true }).click()
     const picker = page.getByRole('menu', { name: 'Add protocol', exact: true })
@@ -178,7 +194,7 @@ for (const width of [390, 1400]) {
     await removeCapability(page, 'IMAP & SMTP')
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect.poll(() => writes.length).toBe(4)
-    expect(writes[3]).toMatchObject({ capabilities: ['ical.calendar'], mail_config: null,
+    expect(writes[3]).toMatchObject({ capabilities: ['caldav.calendar'], mail_config: null,
       calendar_config: { settings: { timezone: 'Europe/London' } } })
     expect(writes[3]).not.toHaveProperty('global_params')
     await expect(dialog).toHaveCount(0)
@@ -299,7 +315,7 @@ for (const width of [390, 1400]) {
     await dialog.locator('form').evaluate(form => form.requestSubmit())
     await expect(page.locator('.q-notification__message')).toContainText('Add at least one protocol to create the tool.')
     expect(writes).toEqual([])
-    for (const [name, protocol] of [['MCP', 'HTTP'], ['API', 'REST'], ['File sharing', 'Nextcloud'], ['Messaging', 'Matrix'], ['Listener', 'Webhook'], ['Mail', 'IMAP & SMTP'], ['Calendar', 'iCal']]) {
+    for (const [name, protocol] of [['MCP', 'HTTP'], ['API', 'REST'], ['File sharing', 'Nextcloud'], ['Messaging', 'Matrix'], ['Listener', 'Webhook'], ['Mail', 'IMAP & SMTP'], ['Calendar', 'CalDAV']]) {
       await addCapability(page, name + ' · ' + protocol)
       await expect(createButton).toBeEnabled()
       await removeCapability(page, protocol)

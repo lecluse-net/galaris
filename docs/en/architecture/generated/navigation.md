@@ -88,6 +88,14 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 - Additional conditions : —
 - Sources : `front/app/memory/navigation.ts`
 
+## Knowledge → Agenda
+
+- Route : `/calendar`
+- Purpose : Read calendars and track the Task for each reminder
+- Menu visibility (privileges) : (CALENDAR_ACCESS OR CALENDAR_EDIT)
+- Additional conditions : —
+- Sources : `front/app/calendar/navigation.ts`
+
 ## Knowledge → Contacts
 
 - Route : `/memory/contacts`
@@ -141,14 +149,6 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 - Route : `/permissions`
 - Purpose : Answer pending requests and manage permanent agent approvals and denials
 - Menu visibility (privileges) : (PERMISSION_ACCESS OR PERMISSION_DECIDE OR PERMISSION_REVOKE)
-- Additional conditions : —
-- Sources : `front/app/connection/navigation.ts`
-
-## Monitor → Calendars
-
-- Route : `/connection/calendars`
-- Purpose : Read and manage agent calendar feeds
-- Menu visibility (privileges) : (CALENDAR_ACCESS OR CALENDAR_EDIT)
 - Additional conditions : —
 - Sources : `front/app/connection/navigation.ts`
 

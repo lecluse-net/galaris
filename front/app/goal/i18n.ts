@@ -1,3 +1,40 @@
+const agendaFr = {
+  loadError: 'Impossible de charger les passages des objectifs.', layer: 'Objectifs', trigger: 'À dates fixes dans l’agenda', firstPassage: 'Premier passage',
+  timezone: 'Fuseau de la récurrence', every: 'Tous les', frequency: 'Période',
+  lateness: 'Retard maximal (minutes)', invalidDate: 'Choisissez une date et une heure valides dans ce fuseau.',
+  invalidInterval: 'Choisissez un entier de 1 à 365.', invalidLateness: 'Choisissez un entier de 0 à 10080.',
+  scheduleHint: 'Les changements concernent uniquement les passages futurs. Aucun cycle ne chevauche le précédent. Un passage trop ancien est ignoré ; les dates mensuelles inexistantes et les heures sautées au changement d’heure sont omises.',
+  projectedHint: 'Passage prévisionnel. Sa tâche sera liée lorsque le cycle démarrera. Les plages autorisées et la disponibilité de l’agent restent applicables.',
+  preservedHint: 'Ce passage et son lien au cycle sont conservés lors des changements de planification.',
+  cycle: 'Cycle {number}', started: 'Démarrage réel : {date}', finished: 'Fin du travail : {date}',
+  noTask: 'Aucune tâche n’a été créée pour ce passage.', openGoal: 'Ouvrir l’objectif', openTask: 'Ouvrir la tâche', openReview: 'Ouvrir la revue',
+  frequencies: { DAILY: 'jours', WEEKLY: 'semaines', MONTHLY: 'mois', YEARLY: 'ans' },
+  states: { scheduled: 'Planifié', waiting: 'En attente', queued: 'En file', running: 'En cours', judging: 'Évaluation du cycle', paused: 'En pause', done: 'Terminé', error: 'En erreur', skipped: 'Ignoré', cancelled: 'Annulé', unavailable: 'Indisponible' },
+}
+const agendaEn = {
+  loadError: 'Unable to load Goal passages.', layer: 'Goals', trigger: 'Fixed dates in the agenda', firstPassage: 'First passage',
+  timezone: 'Recurrence timezone', every: 'Every', frequency: 'Period',
+  lateness: 'Maximum lateness (minutes)', invalidDate: 'Choose a valid date and time in this timezone.',
+  invalidInterval: 'Choose an integer from 1 to 365.', invalidLateness: 'Choose an integer from 0 to 10080.',
+  scheduleHint: 'Changes affect future passages only. Cycles never overlap. Late passages are skipped; nonexistent monthly dates and daylight saving clock gaps are omitted.',
+  projectedHint: 'Projected passage. Its Task will be linked when the cycle starts. Allowed schedules and agent availability still apply.',
+  preservedHint: 'This passage and its cycle link survive planning changes.',
+  cycle: 'Cycle {number}', started: 'Actual start: {date}', finished: 'Work finished: {date}',
+  noTask: 'No Task has been created for this passage.', openGoal: 'Open Goal', openTask: 'Open Task', openReview: 'Open review',
+  frequencies: { DAILY: 'days', WEEKLY: 'weeks', MONTHLY: 'months', YEARLY: 'years' },
+  states: { scheduled: 'Scheduled', waiting: 'Waiting', queued: 'Queued', running: 'Running', judging: 'Evaluating cycle', paused: 'Paused', done: 'Done', error: 'Error', skipped: 'Skipped', cancelled: 'Cancelled', unavailable: 'Unavailable' },
+}
+const agendaZh = {
+  loadError: '无法加载目标计划。', layer: '目标', trigger: '按日程固定日期', firstPassage: '首次时间',
+  timezone: '重复时区', every: '每', frequency: '周期', lateness: '最大延迟（分钟）',
+  invalidDate: '请选择该时区中的有效日期和时间。', invalidInterval: '请选择 1 到 365 的整数。', invalidLateness: '请选择 0 到 10080 的整数。',
+  scheduleHint: '修改仅影响未来的计划。周期不会重叠。过期计划、月份中不存在的日期及夏令时跳过的时间将被跳过。',
+  projectedHint: '预计计划。周期开始时将关联任务。仍受允许时段和代理可用性限制。', preservedHint: '此计划及其周期关联在修改配置后仍然保留。',
+  cycle: '周期 {number}', started: '实际开始：{date}', finished: '工作结束：{date}', noTask: '此计划尚未创建任务。',
+  openGoal: '打开目标', openTask: '打开任务', openReview: '打开复核',
+  frequencies: { DAILY: '天', WEEKLY: '周', MONTHLY: '月', YEARLY: '年' },
+  states: { scheduled: '已计划', waiting: '等待中', queued: '排队中', running: '运行中', judging: '正在评估周期', paused: '已暂停', done: '已完成', error: '错误', skipped: '已跳过', cancelled: '已取消', unavailable: '不可用' },
+}
 export default {
   fr: {
     contextHelpPages: {
@@ -8,6 +45,7 @@ export default {
       goal_desc: 'Piloter les objectifs long terme confiés aux agents',
     },
     goal: {
+      agenda: agendaFr,
       new: 'Nouvel objectif',
       loadErrors: {
         list: 'Impossible de charger les objectifs. Les données déjà affichées sont conservées.',
@@ -110,6 +148,7 @@ export default {
       currentTask: 'Tâche courante',
       cycleNumber: 'Cycle n°{number}',
       task: 'Tâche',
+      cycleTask: 'Tâche - Cycle {number}',
       verdict: 'Décision',
       progress: 'Progression',
       evidence: 'Éléments probants',
@@ -234,6 +273,7 @@ export default {
       goal_desc: 'Supervise long-running objectives assigned to agents',
     },
     goal: {
+      agenda: agendaEn,
       new: 'New Goal',
       loadErrors: {
         list: 'Could not load Goals. Previously displayed data has been kept.',
@@ -336,6 +376,7 @@ export default {
       currentTask: 'Current Task',
       cycleNumber: 'Cycle #{number}',
       task: 'Task',
+      cycleTask: 'Task - Cycle {number}',
       verdict: 'Decision',
       progress: 'Progress',
       evidence: 'Evidence',
@@ -457,6 +498,7 @@ export default {
     },
     nav: { goal: '目标', goal_desc: '监控分配给智能体的长期目标' },
     goal: {
+      agenda: agendaZh,
       new: '新建目标', edit: '编辑目标', details: '目标详情', tabs: { overview: '目标', tracking: '跟踪', cycles: '周期', edit: '编辑' },
       loadErrors: {
         list: '无法加载目标。已保留当前显示的数据。', detail: '无法加载此目标。',
@@ -485,7 +527,7 @@ export default {
       noCycles: '此目标尚未开始任何周期。', cyclePageSize: '每页周期数', cycleRange: '第 {from} 至 {to} 个周期，共 {total} 个', tracking: '全局跟踪',
       trackingLlmMissingTitle: '未配置用于目标跟踪的 LLM', trackingLlmMissingMessage: '选择专用模型来维护 HTML 跟踪记录并决定“继续/停止”之前，不会启动新周期。',
       trackingLlmMissingAction: '在“使用的模型”中配置', costs: '费用', taskCost: '任务', evaluationCost: '跟踪', totalCost: '总计', currentTask: '当前任务',
-      cycleNumber: '周期 #{number}', task: '任务', verdict: '决策', progress: '进度', evidence: '证据', reason: '原因', judging: '正在更新跟踪记录', never: '—',
+      cycleNumber: '周期 #{number}', task: '任务', cycleTask: '任务 - 周期 {number}', verdict: '决策', progress: '进度', evidence: '证据', reason: '原因', judging: '正在更新跟踪记录', never: '—',
       runNow: '立即启动周期', runNowHint: '跳过间隔时间以及全局和目标专属时段。全局暂停仍然有效。', runNowUnavailable: '此目标已有周期正在运行。',
       runNowQueued: '下个周期已安排立即执行', pause: '暂停', resume: '恢复', restart: '重新启动', retry: '重试跟踪', complete: '完成', editAction: '编辑', delete: '删除',
       deleteConfirm: '删除目标“{title}”？', completeConfirm: '永久完成目标“{title}”？', created: '目标已创建', updated: '目标已更新', commandDone: '命令已执行', deleted: '目标已删除', error: '目标操作失败。',

@@ -19,6 +19,38 @@ from bridge.mail.models import MailOutboundDelivery
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('privilege', ['CALENDAR_ACCESS', 'CALENDAR_EDIT', 'CONNECTION_EDIT'])
+async def test_calendar_sync_interval_cannot_be_overridden_per_agenda(client, privilege):
+    from app.calendar.models import CalendarFeed
+    headers, user_id = await actor([privilege])
+    own = await owned_agent(user_id)
+    _, other_user = await actor([])
+    other = await owned_agent(other_user)
+    async with get_db_session() as db:
+        tool = await protocol_tool(db, 'calendar')
+        connections = [Connection(agent_id=identity, tool_id=tool.id, active=True) for identity in (own, other)]
+        db.add_all(connections)
+        await db.flush()
+        feeds = [CalendarFeed(connection_id=connection.id, label='Synthetic source', source_kind='caldav') for connection in connections]
+        db.add_all(feeds)
+        await db.flush()
+        own_feed, foreign_feed = [feed.id for feed in feeds]
+    response = await client.put(f'/api/calendars/{own_feed}', headers=headers, json={'sync_interval_hours': 3})
+    if privilege != 'CALENDAR_EDIT':
+        assert response.status_code == 403
+        return
+    # Cadence belongs to the connection; calendar editing cannot override it.
+    assert response.status_code == 422
+    persisted = await client.get('/api/calendars', headers=headers, params={'connection_id': connections[0].id})
+    assert persisted.status_code == 200 and persisted.json()[0]['sync_interval_hours'] == 2
+    for value in (0, -1, 1.5, '2', True, None):
+        invalid = await client.put(f'/api/calendars/{own_feed}', headers=headers, json={'sync_interval_hours': value})
+        assert invalid.status_code == 422, (value, invalid.text)
+    assert (await client.put(f'/api/calendars/{foreign_feed}', headers=headers,
+        json={'label': 'Synthetic unauthorized rename'})).status_code == 404
+
+
+@pytest.mark.asyncio
 async def test_memory_reader_does_not_gain_process_payloads(client):
     headers, user_id = await actor(["MEMORY_ACCESS"])
     agent_id = await owned_agent(user_id)
@@ -159,12 +191,21 @@ async def test_calendar_roles_use_scoped_metadata_and_do_not_open_connector_conf
             await db.flush()
             own_id, other_id = [connection.id for connection in connections]
         response = await client.get("/api/calendars/connection-options", headers=headers)
+        selection = [{"event_id": str(uuid4()), "recurrence_key": "synthetic-occurrence"}]
+        summaries = await client.post('/api/calendars/execution-states', headers=headers,
+            json={"connection_id": own_id, "occurrences": selection})
         if code == "CONNECTION_ACCESS":
+            assert summaries.status_code == 403
             assert response.status_code == 403
             assert (await client.get("/api/calendars", params={"connection_id": own_id}, headers=headers)).status_code == 403
             assert (await client.get("/api/calendars/reminders", params={"connection_id": own_id}, headers=headers)).status_code == 403
             continue
         assert response.status_code == 200 and response.json()
+        assert summaries.status_code == 200 and summaries.json() == [{**selection[0], "total": 0, "states": {}}]
+        assert (await client.post('/api/calendars/execution-states', headers=headers,
+            json={"connection_id": other_id, "occurrences": selection})).status_code == 404
+        assert (await client.post('/api/calendars/execution-states', headers=headers,
+            json={"connection_id": own_id, "occurrences": selection * 501})).status_code == 422
         assert all(set(item) == {"id", "agent_id", "label"} for item in response.json())
         assert {item["id"] for item in response.json()} == {own_id}
         assert (await client.get("/api/calendars", params={"connection_id": other_id}, headers=headers)).status_code == 404
@@ -174,7 +215,7 @@ async def test_calendar_roles_use_scoped_metadata_and_do_not_open_connector_conf
         assert (await client.get(f"/api/connections/{own_id}/params", headers=headers)).status_code == 403
         created = await client.post("/api/calendars", headers=headers, json={"connection_id": own_id,
             "label": "Synthetic calendar"})
-        assert created.status_code == (201 if code == "CALENDAR_EDIT" else 403), created.text
+        assert created.status_code == (422 if code == "CALENDAR_EDIT" else 403), created.text
         calendars = await client.get('/api/calendars', params={'connection_id': own_id}, headers=headers)
         calendar_id = calendars.json()[0]['id']
         appointment = {'summary': 'Synthetic API appointment', 'start': '2030-04-05T10:00:00Z', 'end': '2030-04-05T11:00:00Z'}

@@ -1,5 +1,30 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 
+for (const width of [390, 1440]) test(`Calendar connection owns its interval without loading calendars (${width})`, async ({ page }, testInfo) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const tool = { id: 8, code: 'synthetic_calendar', label: 'Synthetic Calendar', has_calendar: true,
+    calendar_config: { settings: { source_kind: 'caldav' }, param_map: { sync_interval_hours: 'sync_interval_hours' } },
+    global_params: {}, connection_schema: { params: { sync_interval_hours: { type: 'integer', required: false, default: '2',
+      label: 'Synchronization interval (hours)', description: 'Shared interval for this connection' } } } }
+  const props = { connection: { id: 42, agent_id: 7, tool_id: 8, active: true }, connectionParams: { sync_interval_hours: '2' }, tools: [tool],
+    agentOptions: [{ value: 7, label: 'Synthetic Agent', agentDriver: 'internal' }], toolOptions: [{ id: 8, label: 'Synthetic Calendar' }] }
+  await mount(page, 'app/connection/components/ConnectionForm.vue', { privileges: ['CONNECTION_EDIT', 'CALENDAR_EDIT'], props })
+  const input = page.getByRole('spinbutton', { name: 'Synchronization interval (hours)', exact: true })
+  await expect(input).toHaveValue('2')
+  await input.fill('3')
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.find(event => event.name === 'submit')?.value))
+    .toMatchObject({ id: 42, data: { tool_id: 8, agent_id: 7 }, params: { sync_interval_hours: '3' } })
+  await mount(page, 'app/connection/components/ConnectionForm.vue', {
+    privileges: ['CONNECTION_EDIT'], props: { ...props, connectionParams: { sync_interval_hours: '3' } },
+  })
+  await expect(page.getByRole('spinbutton', { name: 'Synchronization interval (hours)', exact: true })).toHaveValue('3')
+  for (const dark of [false, true]) {
+    await page.evaluate(dark => window.testApp.dark(dark), dark)
+    await page.screenshot({ path: testInfo.outputPath(`connection-interval-${dark ? 'dark' : 'light'}.png`), fullPage: true, animations: 'disabled' })
+  }
+})
+
 for (const width of [390, 1440]) test(`One Mail provider retains multiple accounts for the same agent (${width})`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
   const tool = { id: 8, code: 'synthetic_mail', label: 'Synthetic Mail', can_disable: true, has_mail: true,

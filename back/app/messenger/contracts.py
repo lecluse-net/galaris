@@ -162,6 +162,7 @@ class MessageResourcePreview(BaseModel):
         "voice",
         "goal",
         "goal_cycle",
+        "calendar",
         "process",
         "skill",
         "file",

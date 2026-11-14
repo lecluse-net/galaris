@@ -17,6 +17,7 @@ from core.database import get_db
 from core.i18n import default_language, is_supported, render_prompt, t
 
 from .models import Goal, GoalReferrerType, GoalStatus
+from . import calendar as goal_calendar
 
 if TYPE_CHECKING:
     from app.messenger.interactions import ChoiceResolution, PendingChoice
@@ -319,6 +320,7 @@ async def _handle_referrer_answer(
             goal.status = GoalStatus.ACTIVE
             goal.pause_reason = None
             goal.last_error = None
+            await goal_calendar.sync_plan(goal)
             if parent is not None:
                 task_service.release(parent, task_service.PAUSE_USER)
             auto_resumed = True
@@ -361,6 +363,7 @@ async def _pause_for_no_response(
     goal.status = GoalStatus.PAUSED
     goal.pause_reason = REFERRER_NO_RESPONSE_PAUSE_REASON
     goal.next_cycle_at = None
+    await goal_calendar.sync_plan(goal, now=now)
     parent = await task_service.get_by_id(wait.parent_id) if wait.parent_id else None
     if parent is not None:
         task_service.suspend(parent, task_service.PAUSE_USER)
@@ -469,6 +472,7 @@ async def process_due_referrer_wait(now: datetime | None = None) -> bool:
             goal.status = GoalStatus.ERROR
             goal.next_cycle_at = None
             goal.last_error = _message(_language(wait), "interaction_unavailable")
+            await goal_calendar.sync_plan(goal, now=current)
             await task_service.save(wait)
             from . import goal_service
 

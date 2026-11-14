@@ -13,25 +13,31 @@ from app.tools.mcp_loader import build_galaris_fastmcp, load_mcp_tools
 
 
 @pytest.mark.asyncio
-async def test_contact_tools_are_discovered_mounted_and_scoped_by_the_server():
+async def test_contact_tools_are_discovered_mounted_and_scoped_by_the_server(db):
+    title = Title(label="Synthetic contact tool discovery", gender="X")
+    db.add(title)
+    await db.flush()
+    agent = Agent(title_id=title.id, first_name="Synthetic", last_name="Tool Discovery", code=uuid4().hex)
+    db.add(agent)
+    await db.flush()
     names = {"contact_list", "contact_get", "contact_create", "contact_update"}
     definitions = {item.name: item for item in load_mcp_tools() if item.name in names}
     assert definitions.keys() == names
     assert {item.tool_code for item in definitions.values()} == {"galaris"}
     assert all(item.conversation_policy == "short" for item in definitions.values())
     assert definitions["contact_update"].approval == "ask"
-    server = build_galaris_fastmcp(7, runtime="internal", enabled_tool_codes={"galaris"})
+    server = build_galaris_fastmcp(agent.id, runtime="internal", enabled_tool_codes={"galaris"})
     tools = {item.name: item for item in await server.list_tools()}
     assert names <= tools.keys()
     for name in names:
         assert {"ctx", "agent_id", "owner_agent_id"}.isdisjoint(tools[name].parameters["properties"])
-    files = build_galaris_fastmcp(7, runtime="internal", enabled_tool_codes={"file_sharing"})
+    files = build_galaris_fastmcp(agent.id, runtime="internal", enabled_tool_codes={"file_sharing"})
     file_tools = {item.name: item for item in await files.list_tools()}
     for name in ("file_write", "file_edit"):
         assert {"ctx", "agent_id", "actor_agent_id", "owner_agent_id", "management_scope"}.isdisjoint(
             file_tools[name].parameters["properties"])
     assert tools["contact_list"].parameters["properties"]["limit"]["maximum"] == 500
-    other = build_galaris_fastmcp(7, runtime="internal", enabled_tool_codes={"memory"})
+    other = build_galaris_fastmcp(agent.id, runtime="internal", enabled_tool_codes={"memory"})
     assert names.isdisjoint(item.name for item in await other.list_tools())
 
 

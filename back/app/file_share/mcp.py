@@ -133,7 +133,8 @@ async def file_schemes(ctx: McpToolContext) -> str:
     description=(
         "List a resource collection by URI, for example console://reports/, "
         "document://<uuid>/attachments/, nextcloud://Shared/, telegram://<room-id>/, or "
-        "galaris://task/. With Gestion des compétences access, galaris://skill/ lists managed "
+        "galaris://task/ or galaris://calendar/. Calendar objects expose stable references and safe metadata; "
+        "use calendar tools for events. With Gestion des compétences access, galaris://skill/ lists managed "
         "skill packages and galaris://skill/<code>/ lists their files. "
         "When uri is omitted, console:// is listed if the run owns a console; otherwise "
         "an explicit provider URI is required. "
@@ -198,7 +199,7 @@ async def file_info(
         "to investigate further; one exact-file result contains selected passages, has no pagination, "
         "and does not create a memory. Access is rechecked for each query. "
         "For exact-file RAG, index_coverage describes retrieval; indexing_status refers to the separate file catalogue. "
-        "Use galaris:// to find tasks, conversation rounds, goals, goal cycles, and assigned "
+        "Use galaris:// to find calendars, tasks, conversation rounds, goals, goal cycles, and assigned "
         "processes; authorized skill files are searched below galaris://skill/. "
         "galaris:// supports name and text search, not semantic search; use memory:// for "
         "semantic recall. On document://, mode='name' matches titles and filenames only and "

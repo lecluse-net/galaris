@@ -12,9 +12,13 @@ import type {
   GoalTreePage,
   GoalUpdate,
   MessengerReferrerOption,
+  GoalAgendaEvent,
 } from '../types'
 
 export const goalService = {
+  async agenda(agent: number, start: string, end: string, signal?: AbortSignal): Promise<{ items: GoalAgendaEvent[]; complete: boolean }> {
+    return (await api.get('/goals/agenda', { params: { agent_id: agent, start, end }, signal })).data
+  },
   async getSettings(configuration = true): Promise<GoalSettings> {
     if (configuration) return (await api.get<GoalSettings>('/goals/settings')).data
     const response = await api.get<Omit<GoalSettings, 'schedule'>>('/goals/runtime-status')

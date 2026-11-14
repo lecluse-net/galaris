@@ -83,6 +83,9 @@ async def transfer_content(session: AsyncSession, _delta: SchemaTransitionSet) -
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    from .agenda_upgrade import register_agenda_upgrade
+
+    register_agenda_upgrade(registry)
     registry.register_action(DbAdminAction(
         key="app.goal.prepare_description_retirement", phase=DbAdminPhase.BEFORE_EXPAND,
         checksum="retained-description-reference-allows-new-goals-v1",

@@ -6,6 +6,7 @@ import base64
 import hashlib
 import secrets
 import time
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timedelta, timezone
 from typing import Literal, cast
 from urllib.parse import urlencode, urlsplit
@@ -31,6 +32,20 @@ from core.util import get_encryption_service
 from . import connection_service
 from . import oauth_loopback
 from .models import Connection, ConnectionOAuth
+
+
+_authorization_observers: dict[str, Callable[[int], Awaitable[None]]] = {}
+
+
+def register_oauth_observer(purpose: Literal["mcp", "calendar"], callback: Callable[[int], Awaitable[None]]) -> None:
+    """Let a capability fence its own workers when consent changes."""
+    _authorization_observers[purpose] = callback
+
+
+async def _authorization_changed(connection_id: int, purpose: Literal["mcp", "calendar"]) -> None:
+    observer = _authorization_observers.get(purpose)
+    if observer is not None:
+        await observer(connection_id)
 
 
 class OAuthError(ValueError):
@@ -68,6 +83,7 @@ class Grant(BaseModel):
     client: OAuthClientInformationFull
     token: OAuthToken | None = None
     token_expires_at: float | None = None
+    purpose: Literal["mcp", "calendar"] = "mcp"
 
 
 DEVICE_GRANT = "urn:ietf:params:oauth:grant-type:device_code"
@@ -205,7 +221,11 @@ async def _request(method: str, url: str, server_url: str, *,
         raise OAuthError("provider_unavailable") from None
 
 
-async def configuration(connection: Connection) -> tuple[McpConfig, str, str, dict[str, object]]:
+async def configuration(connection: Connection, purpose: Literal["mcp", "calendar"] = "mcp") -> tuple[McpConfig | None, str, str, dict[str, object]]:
+    if purpose == "calendar":
+        from .calendar_oauth import configuration as calendar_configuration
+        url, binding, params = await calendar_configuration(connection)
+        return None, url, binding, params
     tool = await get_tool_by_id(connection.tool_id)
     if tool is None or tool.mcp is None or tool.mcp.type == "stdio":
         raise OAuthError("configuration")
@@ -226,16 +246,29 @@ async def _row(connection_id: int, *, lock: bool = False) -> ConnectionOAuth | N
     return await get_db().scalar(query)
 
 
-async def status(connection: Connection) -> OAuthStatus:
+def _stored_grant(row: ConnectionOAuth, purpose: Literal["mcp", "calendar"]) -> str | None:
+    return row.calendar_grant if purpose == "calendar" else row.grant
+
+
+def _save_grant(row: ConnectionOAuth, grant: Grant) -> None:
+    if grant.purpose == "calendar":
+        row.calendar_grant = _encrypt(grant)
+    else:
+        row.grant = _encrypt(grant)
+
+
+async def status(connection: Connection, purpose: Literal["mcp", "calendar"] = "mcp") -> OAuthStatus:
     row = await _row(connection.id)
     if row is None:
         return OAuthStatus(redirect_uri=redirect_uri())
-    _, _, binding, _ = await configuration(connection)
-    grant = Grant.model_validate_json(_decrypt(row.grant)) if row and row.grant else None
-    valid = bool(grant and grant.binding == binding and grant.token)
+    _, _, binding, _ = await configuration(connection, purpose)
+    stored = _stored_grant(row, purpose)
+    grant = Grant.model_validate_json(_decrypt(stored)) if stored else None
+    valid = bool(grant and grant.purpose == purpose and grant.binding == binding and grant.token)
     usable = bool(valid and grant and (grant.token_expires_at is None or grant.token_expires_at > time.time()
                                       or (grant.token and grant.token.refresh_token)))
-    return OAuthStatus(connected=usable, pending=bool(row and row.pending and row.expires_at and row.expires_at > datetime.now(timezone.utc)),
+    pending = Pending.model_validate_json(_decrypt(row.pending)) if row.pending else None
+    return OAuthStatus(connected=usable, pending=bool(pending and pending.grant.purpose == purpose and row.expires_at and row.expires_at > datetime.now(timezone.utc)),
                        reconnect_required=bool(grant and not usable), redirect_uri=redirect_uri())
 
 
@@ -394,17 +427,26 @@ def _can_try_another_method(error: OAuthError) -> bool:
         or error.provider_error in {"invalid_redirect_uri", "invalid_client_metadata", "unsupported_grant_type", "unauthorized_client"})
 
 
-async def start(connection: Connection, user_id: int, options: OAuthStartOptions | None = None) -> OAuthStart:
+async def start(connection: Connection, user_id: int, options: OAuthStartOptions | None = None,
+                purpose: Literal["mcp", "calendar"] = "mcp") -> OAuthStart:
     if not connection.active:
         raise OAuthError("inactive")
     options = options or OAuthStartOptions()
-    _, url, binding, _ = await configuration(connection)
-    metadata, prm, challenge_scope = await _discover(url)
-    scope = get_client_metadata_scopes(challenge_scope, prm, metadata)
+    _, url, binding, _ = await configuration(connection, purpose)
+    extra_query: dict[str, str] = {}
+    if purpose == "calendar":
+        from .calendar_oauth import authorization
+        metadata, scope, registered, extra_query = await authorization(connection)
+        options = options.model_copy(update={"client": registered})
+        prm = None
+    else:
+        metadata, prm, challenge_scope = await _discover(url)
+        scope = get_client_metadata_scopes(challenge_scope, prm, metadata)
     web_callback = redirect_uri(options.browser_origin)
     _origin(web_callback)
     row = await _row(connection.id)
-    previous = Grant.model_validate_json(_decrypt(row.grant)) if row and row.grant else None
+    stored = _stored_grant(row, purpose) if row else None
+    previous = Grant.model_validate_json(_decrypt(stored)) if stored else None
     if previous and (previous.binding != binding or AnyHttpUrl(previous.issuer) != AnyHttpUrl(str(metadata.issuer))):
         previous = None
     grants = metadata.grant_types_supported
@@ -420,14 +462,14 @@ async def start(connection: Connection, user_id: int, options: OAuthStartOptions
         methods.append(("redirect", web_callback))
     if device_supported:
         methods.append(("device", None))
-    if code_supported and web_callback != oauth_loopback.REDIRECT_URI:
+    if purpose == "mcp" and code_supported and web_callback != oauth_loopback.REDIRECT_URI:
         methods.append(("relay", oauth_loopback.REDIRECT_URI))
     error: OAuthError | None = None
     for method, callback_uri in methods:
         try:
             info = await _registered_client(metadata, url, callback_uri, scope, previous, options.client)
             grant = Grant(binding=binding, server_url=url, resource_url=str(prm.resource) if prm else url,
-                issuer=str(metadata.issuer), token_endpoint=str(metadata.token_endpoint), client=info)
+                issuer=str(metadata.issuer), token_endpoint=str(metadata.token_endpoint), client=info, purpose=purpose)
             state = secrets.token_urlsafe(32)
             if method == "device":
                 assert metadata.device_authorization_endpoint is not None
@@ -450,6 +492,9 @@ async def start(connection: Connection, user_id: int, options: OAuthStartOptions
                 "state": state, "code_challenge": challenge, "code_challenge_method": "S256", "resource": grant.resource_url or url}
             if scope:
                 query["scope"] = scope
+            if purpose == "calendar":
+                query.pop("resource", None)
+                query.update(extra_query)
             endpoint = str(metadata.authorization_endpoint)
             authorization_url = endpoint + ("&" if "?" in endpoint else "?") + urlencode(query)
             script = oauth_loopback.build_script(authorization_url, web_callback) if method == "relay" else None
@@ -468,7 +513,8 @@ async def _grant_request(grant: Grant, endpoint: str, data: dict[str, str]) -> h
     if not client.client_id:
         raise OAuthError("configuration")
     data["client_id"] = client.client_id
-    data["resource"] = grant.resource_url or grant.server_url
+    if grant.purpose == "mcp":
+        data["resource"] = grant.resource_url or grant.server_url
     headers: dict[str, str] = {}
     if client.client_secret:
         if client.token_endpoint_auth_method == "client_secret_basic":
@@ -479,7 +525,10 @@ async def _grant_request(grant: Grant, endpoint: str, data: dict[str, str]) -> h
             data["client_secret"] = client.client_secret
         else:
             raise OAuthError("configuration")
-    return await _request("POST", endpoint, grant.server_url, data=data, headers=headers)
+    # Calendar endpoints are explicitly configured by the Tool administrator
+    # (or fixed Google/Microsoft endpoints), rather than discovered redirects.
+    # An enterprise identity server may have a different private HTTPS origin.
+    return await _request("POST", endpoint, endpoint if grant.purpose == "calendar" else grant.server_url, data=data, headers=headers)
 
 
 async def _exchange(grant: Grant, data: dict[str, str]) -> OAuthToken:
@@ -511,7 +560,7 @@ async def poll_device(connection: Connection, data: DevicePoll, user_id: int) ->
     pending = Pending.model_validate_json(_decrypt(row.pending))
     if pending.user_id != user_id or pending.device is None:
         raise OAuthError("invalid_state")
-    _, _, binding, _ = await configuration(connection)
+    _, _, binding, _ = await configuration(connection, pending.grant.purpose)
     if not connection.active or pending.grant.binding != binding:
         raise OAuthError("invalid_state")
     device = pending.device
@@ -555,11 +604,11 @@ async def poll_device(connection: Connection, data: DevicePoll, user_id: int) ->
     if token.token_type.lower() != "bearer" or not token.access_token:
         raise OAuthError("configuration")
     current_connection = await connection_service.get_connection(connection.id)
-    if (current_connection is None or not current_connection.active or (await configuration(current_connection))[2] != binding
+    if (current_connection is None or not current_connection.active or (await configuration(current_connection, pending.grant.purpose))[2] != binding
             or not current.expires_at or current.expires_at <= datetime.now(timezone.utc)):
         raise OAuthError("invalid_state")
     _set_token(pending.grant, token)
-    current.grant = _encrypt(pending.grant)
+    _save_grant(current, pending.grant)
     current.pending = None
     current.state_hash = None
     current.expires_at = None
@@ -574,7 +623,7 @@ async def complete(connection: Connection, callback: OAuthCallback, user_id: int
     pending = Pending.model_validate_json(_decrypt(row.pending))
     if pending.user_id != user_id or pending.device is not None:
         raise OAuthError("invalid_state")
-    _, _, binding, _ = await configuration(connection)
+    _, _, binding, _ = await configuration(connection, pending.grant.purpose)
     # Consume before external I/O: denial, interruption and a lost response cannot
     # make this code reusable. A failed exchange requires a fresh authorization.
     generation = row.state_hash
@@ -593,33 +642,44 @@ async def complete(connection: Connection, callback: OAuthCallback, user_id: int
     if current is None or current.pending or current.state_hash != generation:
         raise OAuthError("invalid_state")
     current_connection = await connection_service.get_connection(connection.id)
-    if current_connection is None or not current_connection.active or (await configuration(current_connection))[2] != binding:
+    if current_connection is None or not current_connection.active or (await configuration(current_connection, pending.grant.purpose))[2] != binding:
         raise OAuthError("invalid_state")
     _set_token(pending.grant, token)
-    current.grant = _encrypt(pending.grant)
+    _save_grant(current, pending.grant)
     current.state_hash = None
+    await _authorization_changed(connection.id, pending.grant.purpose)
     await get_db().commit()
 
 
-async def disconnect(connection: Connection) -> None:
+async def disconnect(connection: Connection, purpose: Literal["mcp", "calendar"] = "mcp") -> None:
     await get_db().execute(select(Connection.id).where(Connection.id == connection.id).with_for_update())
     row = await _row(connection.id, lock=True)
     if row:
-        await get_db().delete(row)
+        if purpose == "calendar":
+            row.calendar_grant = None
+        else:
+            row.grant = None
+        pending = Pending.model_validate_json(_decrypt(row.pending)) if row.pending else None
+        if not pending or pending.grant.purpose == purpose:
+            row.pending, row.state_hash, row.expires_at = None, None, None
+        if row.grant is None and row.calendar_grant is None and row.pending is None:
+            await get_db().delete(row)
+    await _authorization_changed(connection.id, purpose)
     await get_db().commit()
 
 
-async def access_token(connection_id: int, expected_url: str) -> str:
+async def access_token(connection_id: int, expected_url: str, purpose: Literal["mcp", "calendar"] = "mcp") -> str:
     """Resolve and refresh under a SQL lock; no interactive flow in agent runs."""
     connection = await connection_service.get_connection(connection_id)
     if connection is None or not connection.active:
         raise OAuthError("authorization_required")
-    _, url, binding, _ = await configuration(connection)
+    _, url, binding, _ = await configuration(connection, purpose)
     row = await _row(connection_id, lock=True)
-    if row is None or not row.grant:
+    stored = _stored_grant(row, purpose) if row else None
+    if row is None or not stored:
         raise OAuthError("authorization_required")
-    grant = Grant.model_validate_json(_decrypt(row.grant))
-    if url != expected_url or grant.binding != binding or grant.token is None:
+    grant = Grant.model_validate_json(_decrypt(stored))
+    if url != expected_url or grant.purpose != purpose or grant.binding != binding or grant.token is None:
         raise OAuthError("authorization_required")
     if grant.token_expires_at is not None and grant.token_expires_at <= time.time() + 30:
         if not grant.token.refresh_token:
@@ -629,22 +689,23 @@ async def access_token(connection_id: int, expected_url: str) -> str:
         except OAuthError as exc:
             if str(exc) == "authorization_required":
                 grant.token = None
-                row.grant = _encrypt(grant)
+                _save_grant(row, grant)
                 await get_db().commit()
             raise
         _set_token(grant, token)
-        row.grant = _encrypt(grant)
+        _save_grant(row, grant)
         await get_db().flush()
     assert grant.token is not None
     return grant.token.access_token
 
 
-async def invalidate_token(connection_id: int, token: str) -> None:
+async def invalidate_token(connection_id: int, token: str, purpose: Literal["mcp", "calendar"] = "mcp") -> None:
     """A 401 invalidates only the grant used by that request, never a newer one."""
     row = await _row(connection_id, lock=True)
-    if row and row.grant:
-        grant = Grant.model_validate_json(_decrypt(row.grant))
+    stored = _stored_grant(row, purpose) if row else None
+    if row and stored:
+        grant = Grant.model_validate_json(_decrypt(stored))
         if grant.token and secrets.compare_digest(grant.token.access_token, token):
             grant.token = None
-            row.grant = _encrypt(grant)
+            _save_grant(row, grant)
             await get_db().flush()

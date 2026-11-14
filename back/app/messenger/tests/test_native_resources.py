@@ -30,9 +30,9 @@ async def test_internal_attachment_requires_human_and_receiving_agent_access(mon
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("kind,privilege", [("process", "PROCESS_READ"), ("code", "CODE_ACCESS"), ("agent", "AGENT_ACCESS")])
+@pytest.mark.parametrize("kind,privilege", [("process", "PROCESS_READ"), ("code", "CODE_ACCESS"), ("agent", "AGENT_ACCESS"), ("calendar", "CALENDAR_ACCESS")])
 async def test_business_attachments_require_their_domain_privilege(monkeypatch, kind, privilege):
-    uri = f"galaris://{kind}/" + ("7" if kind == "agent" else "00000000-0000-4000-8000-000000000001")
+    uri = f"galaris://{kind}/" + ("7" if kind in {"agent", "calendar"} else "00000000-0000-4000-8000-000000000001")
     async def check(_user, required, _db):
         return privilege in required
     monkeypatch.setattr(resource_attachments, "check_privilege", check)

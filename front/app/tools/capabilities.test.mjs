@@ -23,5 +23,5 @@ test('explicit selections stay intact while older Tool responses remain readable
   assert.deepEqual(toolCapabilitySelections({ capabilities: ['vendor.sensors'], has_mail: true }), ['vendor.sensors'])
   assert.deepEqual(toolCapabilitySelections({ capabilities: [], has_mail: true }), [])
   assert.deepEqual(toolCapabilitySelections({ mcp_config: { type: 'sse' }, has_mail: true, has_calendar: true }),
-    ['sse.mcp', 'imap_smtp.mail', 'ical.calendar'])
+    ['sse.mcp', 'imap_smtp.mail', 'caldav.calendar'])
 })

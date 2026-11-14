@@ -61,6 +61,38 @@
       "target": "core/util"
     },
     {
+      "source": "app/calendar",
+      "target": "app/agent"
+    },
+    {
+      "source": "app/calendar",
+      "target": "app/goal"
+    },
+    {
+      "source": "app/calendar",
+      "target": "app/memory"
+    },
+    {
+      "source": "app/calendar",
+      "target": "core/api"
+    },
+    {
+      "source": "app/calendar",
+      "target": "core/authorize"
+    },
+    {
+      "source": "app/calendar",
+      "target": "core/navigation"
+    },
+    {
+      "source": "app/calendar",
+      "target": "core/user"
+    },
+    {
+      "source": "app/calendar",
+      "target": "core/util"
+    },
+    {
       "source": "app/chat",
       "target": "app/agent"
     },
@@ -107,6 +139,10 @@
     {
       "source": "app/connection",
       "target": "app/agent"
+    },
+    {
+      "source": "app/connection",
+      "target": "app/calendar"
     },
     {
       "source": "app/connection",

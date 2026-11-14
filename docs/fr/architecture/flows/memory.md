@@ -31,8 +31,7 @@ des schémas, captures de sources et journaux d'appels sont préservés.
 Une demande dépendant d'une préférence, décision ou reprise de projet exige des preuves antérieures :
 si elles manquent au contexte, l'agent est invité à rechercher avant de répondre ou d'agir.
 Une recherche ciblée peut être suivie de deux recherches complémentaires au plus.
-Un calendrier saturé conserve ses premières positions, mais réserve jusqu'à la moitié des places
-aux preuves ordinaires, avec restitution des places inutilisées. Les limites de caractères et
+L’agenda temporel et le brief Memory ordinaire disposent de budgets distincts. Les limites de caractères et
 les droits restent stricts. Les grands tableaux documentaires conservent les en-têtes de colonnes
 dans leurs passages. Une correction garde l'ancienne preuve sauf demande explicite d'effacement.
 Voir [0249](../../../../project/decisions/0249-memory-evidence-and-dataset-retrieval.md).
@@ -41,14 +40,15 @@ Les items peuvent porter un objet `temporal` facultatif (année, mois, jour, jou
 heure et minute). Toutes les composantes utilisent le fuseau global de Galaris (`TZ`), sans
 fuseau stocké par souvenir. Les valeurs absentes sont libres et les contraintes présentes se
 combinent. La préparation du contexte réserve le rappel ordinaire aux souvenirs sans ancrage
-et sélectionne séparément les correspondances actuelles et celles
-de la fenêtre `MEMORY_TEMPORAL_LOOKAHEAD_HOURS`, sans condition de similarité avec la requête.
-Cette voie conserve les ACL, la portée contact et l'admission finale, déduplique les UUID et
-respecte le budget commun, avec les correspondances temporelles d'abord dans leur part du budget
-et une réservation de preuves ordinaires. Un souvenir daté hors fenêtre ne peut pas revenir par similarité.
-Le Topic et les types ne limitent pas la branche temporelle ; la portée du contact conversationnel
-reste obligatoire. L'occurrence figure dans l'extrait des capsules conversationnelles.
-`memory_upcoming` expose les pages supplémentaires. La temporalité est indépendante de la validité
+et présente les correspondances datées exclusivement dans le contexte commun d’Agenda,
+sans condition de similarité avec la requête. `/memory/agenda` projette les occurrences avec
+leur précision et leur URI source, sans créer d’événement, de déclencheur ou de tâche.
+Cette voie conserve les ACL, la validité actuelle, la portée contact et l’admission finale.
+`AGENDA_CONTEXT_DAYS` et `AGENDA_CONTEXT_MAX_EVENTS`, réglables dans les préférences Mémoire,
+bornent la chronologie commune (10 jours et 10 occurrences par défaut). Le brief Memory
+ordinaire ne réinjecte pas ces éléments. `calendar_events` permet une consultation plus large ;
+`memory_upcoming` conserve sa lecture de compatibilité avec son anticipation propre.
+La temporalité est indépendante de la validité
 et ne déclenche ni notification ni expiration. Voir la décision
 [0144](../../../../project/decisions/0144-partial-memory-temporality.md).
 

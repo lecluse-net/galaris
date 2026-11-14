@@ -241,7 +241,8 @@
                 </div>
                 <div>
                   <div class="goal-metadata-label">{{ t('goal.automaticTriggers') }}</div>
-                  <div v-if="props.row.cycle_delay_seconds !== null" class="ellipsis">
+                  <div v-if="props.row.recurrence">{{ t("goal.agenda.trigger") }}</div>
+                  <div v-else-if="props.row.cycle_delay_seconds !== null" class="ellipsis">
                     <q-icon name="schedule" class="q-mr-xs" />
                     {{ formatDuration(props.row.cycle_delay_seconds) }}
                   </div>
@@ -250,7 +251,7 @@
                     {{ t('goal.afterGoal', { title: parentGoalTitle(props.row) }) }}
                   </div>
                   <div
-                    v-if="props.row.cycle_delay_seconds === null && !props.row.parent_goal_id"
+                    v-if="props.row.cycle_delay_seconds === null && !props.row.parent_goal_id && !props.row.recurrence"
                     class="text-grey-7"
                   >
                     {{ t('goal.manualOnly') }}
@@ -434,7 +435,8 @@
             </template>
 
             <template v-else-if="col.name === 'trigger'">
-              <div v-if="props.row.cycle_delay_seconds !== null" class="ellipsis">
+              <div v-if="props.row.recurrence">{{ t("goal.agenda.trigger") }}</div>
+                  <div v-else-if="props.row.cycle_delay_seconds !== null" class="ellipsis">
                 <q-icon name="schedule" color="primary" class="q-mr-xs" />
                 {{ formatDuration(props.row.cycle_delay_seconds) }}
               </div>
@@ -443,7 +445,7 @@
                 {{ t('goal.afterGoal', { title: parentGoalTitle(props.row) }) }}
               </div>
               <span
-                v-if="props.row.cycle_delay_seconds === null && !props.row.parent_goal_id"
+                v-if="props.row.cycle_delay_seconds === null && !props.row.parent_goal_id && !props.row.recurrence"
                 class="text-caption text-grey-7"
               >
                 {{ t('goal.manualOnly') }}
@@ -903,7 +905,8 @@
                     <q-icon name="bolt" color="secondary" size="20px" />
                     <div>
                       <div class="text-caption text-grey-7">{{ t('goal.automaticTriggers') }}</div>
-                      <div v-if="store.currentGoal.cycle_delay_seconds !== null">
+                      <div v-if="store.currentGoal.recurrence">{{ t("goal.agenda.trigger") }}</div>
+                      <div v-else-if="store.currentGoal.cycle_delay_seconds !== null">
                         {{ t('goal.temporalTrigger') }} · {{ formatDuration(store.currentGoal.cycle_delay_seconds) }}
                       </div>
                       <div v-else-if="parentGoalTitle(store.currentGoal)">
@@ -1012,11 +1015,19 @@
                     <q-space />
                     <q-btn
                       v-if="cycle.task_id && canViewTasks"
-                      flat
+                      outline
                       color="primary"
                       icon="open_in_new"
-                      :label="cycle.task_label || t('goal.task')"
+                      :label="t('goal.cycleTask', { number: cycle.sequence })"
                       @click="openTask(cycle.task_id)"
+                    />
+                    <q-btn
+                      v-if="cycle.review_task_id && canViewTasks"
+                      outline
+                      color="primary"
+                      icon="fact_check"
+                      :label="t('goal.agenda.openReview')"
+                      @click="selectedReviewTaskId = cycle.review_task_id ?? null"
                     />
                   </div>
                   <div v-if="cycle.progress_summary" class="q-mb-sm">
@@ -1215,7 +1226,8 @@
                       class="goal-trigger-options"
                       @update:model-value="setGoalTriggerMode"
                     />
-                    <div v-if="form.triggerMode !== 'RELATIONAL'" class="q-mt-sm">
+                    <GoalRecurrenceEditor v-if="form.triggerMode === 'CALENDAR'" v-model="form.recurrence" class="q-mt-sm" />
+                    <div v-else-if="form.triggerMode !== 'RELATIONAL'" class="q-mt-sm">
                       <div class="text-subtitle2 q-mb-xs">{{ t('goal.frequency') }}</div>
                       <div class="row q-col-gutter-sm">
                         <div class="col">
@@ -1330,11 +1342,14 @@
       </q-card>
     </q-dialog>
     <GoalCategoryManager v-if="categoryManagerOpen" v-model="categoryManagerOpen" @changed="categoriesChanged" />
+    <ResourceDetailDialog v-if="goalDialogOpen && selectedReviewTaskId && canViewTasks"
+      :target="{ kind: 'task', id: selectedReviewTaskId, title: '' }"
+      @close="selectedReviewTaskId = null" @changed="retryCycles" />
   </component>
 </template>
 
 <script setup lang="ts">
-import { CopyResourceReference, ResourceReferenceMenu, ActionContextMenu, useResourceCopy, type ContextAction } from '@/core/util'
+import { CopyResourceReference, ResourceReferenceMenu, ResourceDetailDialog, ActionContextMenu, useResourceCopy, type ContextAction } from '@/core/util'
 import { showConfirmationDialog } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
@@ -1353,6 +1368,8 @@ import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { useAuthStore } from '@/core/user'
 import { AgentAvatar, AgentSelect, getAgentSelection, useAgentSelectionStore, type AgentSelectionOption } from '@/app/agent'
 import GoalScheduleEditor from '../components/GoalScheduleEditor.vue'
+import GoalRecurrenceEditor from '../components/GoalRecurrenceEditor.vue'
+import type { GoalRecurrence } from '../types'
 import { categoryService } from '../services/categoryService'
 import { goalService } from '../services/goalService'
 import {
@@ -1374,7 +1391,7 @@ import type {
 
 type DurationUnit = 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'years'
 type GoalCommandName = 'pause' | 'resume' | 'complete' | 'runNow'
-type GoalTriggerMode = 'TEMPORAL_DEFAULT' | 'TEMPORAL_CUSTOM' | 'RELATIONAL'
+type GoalTriggerMode = 'TEMPORAL_DEFAULT' | 'TEMPORAL_CUSTOM' | 'RELATIONAL' | 'CALENDAR'
 type GoalDialogTab = 'overview' | 'tracking' | 'cycles' | 'edit'
 const GoalCategoryManager = defineAsyncComponent(() => import('../components/GoalCategoryManager.vue'))
 
@@ -1386,6 +1403,7 @@ interface GoalFormState {
   messengerReferrer: MessengerReferrerOption | null
   referrerMaxReminders: number
   triggerMode: GoalTriggerMode
+  recurrence: GoalRecurrence
   delayValue: number
   delayUnit: DurationUnit
   parentGoalId: string | null
@@ -1531,8 +1549,9 @@ let initializationSequence = 0
 let formGeneration = 0
 
 const goalDialogOpen = ref(false)
+const selectedReviewTaskId = ref<string | null>(null)
 const openingGoalId = ref<string | null>(null)
-watch(goalDialogOpen, open => { if (!open) { formGeneration++; formSaving.value = false; resetCategoryDraft(); openingGoalId.value = null; store.clearSelection(); if (previewGoalId) emit('close') } })
+watch(goalDialogOpen, open => { if (!open) { selectedReviewTaskId.value = null; formGeneration++; formSaving.value = false; resetCategoryDraft(); openingGoalId.value = null; store.clearSelection(); if (previewGoalId) emit('close') } })
 const goalDialogTab = ref<GoalDialogTab>('overview')
 watch(goalDialogTab, tab => { void store.setCyclesActive(tab === 'cycles').catch(() => undefined) })
 const goalDialogTitle = ref('')
@@ -1548,6 +1567,7 @@ const messengerReferrerOptions = ref<MessengerReferrerOption[]>([])
 const messengerSearching = ref(false)
 let messengerSearchSequence = 0
 const form = reactive<GoalFormState>({
+  recurrence: defaultRecurrence(),
   categoryId: null,
   title: '',
   description: '',
@@ -1660,6 +1680,7 @@ const durationUnitOptions = computed(() => (
 
 const triggerModeOptions = computed(() => (
   ([
+    ['CALENDAR', 'goal.agenda.trigger'],
     ['TEMPORAL_DEFAULT', 'goal.temporalDefaultTrigger'],
     ['TEMPORAL_CUSTOM', 'goal.temporalCustomTrigger'],
     ['RELATIONAL', 'goal.relationalTrigger'],
@@ -1902,6 +1923,7 @@ function resetForm(): void {
   scheduleDraft.value = goalScheduleDefaultSlots()
   Object.assign(form, {
     categoryId: null,
+    recurrence: defaultRecurrence(),
     title: '',
     description: '',
     agentId: agentSelectionStore.defaultAgentId(selectableAgents.value),
@@ -1915,6 +1937,10 @@ function resetForm(): void {
   })
 }
 
+function defaultRecurrence(): GoalRecurrence {
+  return { start_at: new Date(Date.now() + 86400000).toISOString(), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone, frequency: 'DAILY', interval: 1, max_lateness_minutes: 60 }
+}
+
 function scheduleDraftFromWindows(windows: Goal['schedule']): GoalScheduleSlots {
   return windows.length > 0
     ? goalScheduleWindowsToSlots(windows)
@@ -1926,6 +1952,7 @@ function setGoalTriggerMode(value: unknown): void {
     value !== 'TEMPORAL_DEFAULT'
     && value !== 'TEMPORAL_CUSTOM'
     && value !== 'RELATIONAL'
+    && value !== 'CALENDAR'
   ) return
   form.triggerMode = value
   scheduleEnabledDraft.value = value === 'TEMPORAL_CUSTOM'
@@ -1973,12 +2000,13 @@ function prepareGoalForm(goal: Goal): void {
   scheduleDraft.value = scheduleDraftFromWindows(goal.schedule)
   Object.assign(form, {
     categoryId: goal.category_id ?? null,
+    recurrence: goal.recurrence ? { ...goal.recurrence } : defaultRecurrence(),
     title: goal.title,
     description: goal.description,
     agentId: goal.agent_id,
     messengerReferrer,
     referrerMaxReminders: goal.referrer_max_reminders,
-    triggerMode: goal.parent_goal_id !== null
+    triggerMode: goal.recurrence ? 'CALENDAR' : goal.parent_goal_id !== null
       ? 'RELATIONAL'
       : goal.schedule_enabled ? 'TEMPORAL_CUSTOM' : 'TEMPORAL_DEFAULT',
     delayValue: delay.value,
@@ -2041,11 +2069,12 @@ async function submitForm(): Promise<void> {
   const current = () => generation === formGeneration && session === sessionGeneration()
     && !disposed && goalDialogOpen.value
   try {
-    const temporalTrigger = form.triggerMode !== 'RELATIONAL'
+    const temporalTrigger = form.triggerMode === 'TEMPORAL_DEFAULT' || form.triggerMode === 'TEMPORAL_CUSTOM'
     const cycleDelay = temporalTrigger
       ? Math.round(Number(form.delayValue) * UNIT_SECONDS[form.delayUnit])
       : null
-    const parentGoalId = temporalTrigger ? null : form.parentGoalId
+    const parentGoalId = form.triggerMode === 'RELATIONAL' ? form.parentGoalId : null
+    const recurrence = form.triggerMode === 'CALENDAR' ? form.recurrence : null
     const scheduleEnabled = form.triggerMode === 'TEMPORAL_CUSTOM'
     const schedule = scheduleEnabled
       ? goalScheduleSlotsToWindows(scheduleDraft.value)
@@ -2059,6 +2088,7 @@ async function submitForm(): Promise<void> {
         agent_id: form.agentId,
         referrer,
         cycle_delay_seconds: cycleDelay,
+        recurrence,
         parent_goal_id: parentGoalId,
         schedule_enabled: scheduleEnabled,
         schedule,
@@ -2077,6 +2107,7 @@ async function submitForm(): Promise<void> {
         agent_id: form.agentId,
         referrer,
         cycle_delay_seconds: cycleDelay,
+        recurrence,
         parent_goal_id: parentGoalId,
         schedule_enabled: scheduleEnabled,
         schedule,

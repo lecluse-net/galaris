@@ -1,5 +1,6 @@
 <template>
   <div>
+    <template v-if="!previewConnectionId">
     <!-- Filters and add button. -->
     <div class="row q-mb-md q-gutter-md items-center justify-between connection-toolbar">
       <div class="row q-gutter-md items-center connection-filters">
@@ -202,8 +203,9 @@
         </div>
       </template>
     </q-table>
+    </template>
 
-    <q-dialog v-model="showDialog">
+    <q-dialog v-model="showDialog" @hide="previewConnectionId && emit('close')">
       <q-card class="connection-dialog-card galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center">
           <div class="text-h6">{{ isEdit ? $t('connection.editDialogTitle') : $t('connection.addDialogTitle') }}</div>
@@ -212,6 +214,11 @@
         </q-card-section>
 
         <div class="galaris-dialog-body">
+          <q-linear-progress v-if="previewLoading" indeterminate color="primary" />
+          <q-banner v-if="previewError" role="alert" class="q-ma-md">
+            {{ previewError }}
+            <template #action><q-btn outline color="primary" :label="t('common.retry')" @click="loadPreview" /></template>
+          </q-banner>
           <q-banner v-if="saveError" dense inline-actions class="bg-negative text-white">
             <template #avatar>
               <q-icon name="error" />
@@ -228,7 +235,7 @@
             </template>
           </q-banner>
 
-          <q-card-section class="connection-dialog-body q-pt-md scroll">
+          <q-card-section v-if="!previewLoading && !previewError" class="connection-dialog-body q-pt-md scroll">
             <ConnectionForm
 
               :connection="currentConnection"
@@ -288,6 +295,8 @@ import { refreshMailAvailability } from '../availability'
 const SESSION_FILTER_AGENT_KEY = 'connection_filter_agent_id'
 const SESSION_FILTER_TOOL_KEY = 'connection_filter_tool_id'
 const SESSION_FILTER_STATE_KEY = 'connection_filter_state'
+const props = defineProps<{ previewConnectionId?: number }>()
+const emit = defineEmits<{ close: []; changed: [] }>()
 
 type FilterState = 'active' | 'inactive' | 'all'
 interface ExistingConnectionTarget {
@@ -320,7 +329,9 @@ const canViewPermissions = computed(() => privilegeStore.hasAnyPrivilege([
 const refreshNotice = ref('')
 const refreshFailed = ref(false)
 
-const showDialog = ref(false)
+const showDialog = ref(Boolean(props.previewConnectionId))
+const previewLoading = ref(Boolean(props.previewConnectionId))
+const previewError = ref('')
 const showDeleteDialog = ref(false)
 const currentConnection = ref<Connection | null>(null)
 const currentConnectionParams = ref<Record<string, unknown> | null>(null)
@@ -331,11 +342,13 @@ const existingConnectionTarget = ref<ExistingConnectionTarget | null>(null)
 const approverLabels = ref<Map<number, string>>(new Map())
 let actionConnection: Connection | null = null
 let dialogGeneration = 0
+let previewRequest = 0
+watch(showDialog, open => { if (!open) { dialogGeneration++; previewRequest++ } })
 
 const filterAgent = ref<number | null>(null)
 const filterTool = ref<number | null>(null)
 const filterState = ref<FilterState>('active')
-loadFiltersFromSession()
+if (!props.previewConnectionId) loadFiltersFromSession()
 
 function loadFiltersFromSession(): void {
   const agentRaw = sessionStorage.getItem(SESSION_FILTER_AGENT_KEY)
@@ -375,7 +388,7 @@ const pagination = ref({
   rowsPerPage: 50
 })
 
-const isEdit = computed(() => !!currentConnection.value)
+const isEdit = computed(() => !!currentConnection.value || Boolean(props.previewConnectionId))
 const agentsById = computed(() => new Map(agentOptionsData.value.map(agent => [agent.id, agent])))
 const toolsById = computed(() => new Map(toolStore.tools.map(tool => [tool.id, tool])))
 
@@ -515,7 +528,7 @@ function hasVisibleParams(connectionId: number, toolId: number): boolean {
 }
 
 async function openDialog(connection?: Connection) {
-  if (!canEdit.value || (connection && isSystemTool(connection.tool_id))) return
+  if ((!canEdit.value && !props.previewConnectionId) || (connection && isSystemTool(connection.tool_id))) return
   const generation = ++dialogGeneration
   actionConnection = null
   saveError.value = null
@@ -529,6 +542,7 @@ async function openDialog(connection?: Connection) {
       currentConnectionConfiguredParams.value = connectionStore.getConfiguredParamsForConnection(connection.id)
     } catch {
       if (generation === dialogGeneration) {
+        if (props.previewConnectionId) previewError.value = t('connection.auth.loadConnectionsError')
         $q.notify({ type: 'negative', message: t('connection.auth.loadConnectionsError') })
       }
       return
@@ -679,6 +693,7 @@ async function onSubmit(payload: ConnectionPersistencePayload) {
       await connectionStore.createOrUpdateParamsBulk(connection.id, payload.params)
     }
 
+    emit('changed')
     showDialog.value = false
     currentConnection.value = null
     currentConnectionParams.value = null
@@ -701,6 +716,7 @@ async function onSubmit(payload: ConnectionPersistencePayload) {
 }
 
 async function onEmbeddedConfigured(): Promise<void> {
+  emit('changed')
   showDialog.value = false
   currentConnection.value = null
   currentConnectionParams.value = null
@@ -724,6 +740,11 @@ function setDuplicateError(agentId: number, toolId: number): void {
 function showExistingConnection(): void {
   const target = existingConnectionTarget.value
   if (!target) return
+  if (props.previewConnectionId) {
+    const existing = connectionStore.connections.find(connection => connection.agent_id === target.agentId && connection.tool_id === target.toolId)
+    if (existing) void openDialog(existing)
+    return
+  }
   filterAgent.value = target.agentId
   filterTool.value = target.toolId
   filterState.value = 'all'
@@ -783,12 +804,12 @@ async function loadApproverLabels(): Promise<void> {
 }
 
 watch([filterAgent, filterTool], () => {
-  saveFiltersToSession()
+  if (!props.previewConnectionId) saveFiltersToSession()
   pagination.value.page = 1
 })
 
 // Apply the status filter client-side without reloading.
-watch(filterState, saveFiltersToSession)
+watch(filterState, () => { if (!props.previewConnectionId) saveFiltersToSession() })
 
 watch(() => toolStore.tools.map(tool => tool.id), ids => {
   if (!toolStore.loading && filterTool.value !== null && !ids.includes(filterTool.value)) filterTool.value = null
@@ -803,14 +824,32 @@ async function loadConnectionsTab(): Promise<void> {
   ])
 }
 
-onMounted(loadConnectionsTab)
+async function loadPreview(): Promise<void> {
+  const request = ++previewRequest
+  dialogGeneration++
+  previewLoading.value = true
+  previewError.value = ''
+  try {
+    await loadConnectionsTab()
+    if (request !== previewRequest || !showDialog.value) return
+    if (connectionStore.error) throw connectionStore.error
+    const connection = connectionStore.connections.find(row => row.id === props.previewConnectionId)
+    if (!connection || isSystemTool(connection.tool_id)) throw new Error(t('connection.auth.loadConnectionsError'))
+    await openDialog(connection)
+  } catch (error) {
+    if (request === previewRequest) previewError.value = apiErrorDetail(error) || t('connection.auth.loadConnectionsError')
+  } finally {
+    if (request === previewRequest) previewLoading.value = false
+  }
+}
+onMounted(() => props.previewConnectionId ? loadPreview() : loadConnectionsTab())
 let firstActivation = true
 onActivated(() => {
   if (firstActivation) firstActivation = false
-  else void loadConnectionsTab()
+  else if (!props.previewConnectionId) void loadConnectionsTab()
 })
 
-onBeforeUnmount(() => { dialogGeneration++ })
+onBeforeUnmount(() => { dialogGeneration++; previewRequest++ })
 </script>
 
 <style scoped>

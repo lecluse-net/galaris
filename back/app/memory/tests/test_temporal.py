@@ -10,6 +10,7 @@ from app.memory import acquisition_service, context, service
 from app.memory.schemas import MemoryAcquisitionCreate, MemoryItemCreate, MemoryItemUpdate, MemoryPayload, MemoryRecallRequest
 from app.memory.retrieval import temporal_hits
 from app.memory.temporal import MemoryTemporalAnchor, MemoryTemporalFilter, next_match
+from app.memory.agenda import memory_agenda
 from app.memory.schemas import MemorySearchRequest
 from app.memory import bootstrap, observe_messenger_contact, MessengerContactObservation, ensure_contact_memory_scope
 from app.agent import AgentContextRequest, AgentSnapshot
@@ -123,10 +124,10 @@ async def test_calendar_memory_round_trip_context_acl_revision_and_removal(agent
     original_revision = item.revision
     assert item.temporal == anchor.model_dump(mode='json')
     assert item.valid_from is None and item.valid_until is None
-    # No search query and no embedding provider are needed for temporal context.
+    # Temporal evidence now belongs to the common agenda, not the ordinary brief.
     brief = await context.build_memory_brief(agent_id=owner.id, query='')
-    assert [entry.memory_id for entry in brief.items] == [str(item_id)]
-    assert 'temporal_match=' in brief.rendered
+    assert not brief.items
+    assert [entry.memory_id for entry in (await memory_agenda(owner.id, now, now + timedelta(days=1))).items] == [item_id]
     assert not (await context.build_memory_brief(agent_id=peer.id, query='')).items
     with pytest.raises(service.MemoryPermissionError):
         await service.update_item(item_id, MemoryItemUpdate(temporal=None), actor_agent_id=peer.id)
@@ -197,12 +198,13 @@ async def test_temporal_contact_context_preserves_attribution_and_budget(agents,
         task_id=None,
         agent=AgentSnapshot(id=owner.id, code='synthetic', first_name='Test', last_name='Agent', driver_code='internal'),
         objective='', label='', contact_memory_item_id=alice))
-    assert {candidate.reference for candidate in contribution.candidates} == {str(ids[0]), str(ids[2])}
-    assert all('temporal_match=' in candidate.excerpt for candidate in contribution.candidates)
+    assert not contribution.candidates
+    page = await memory_agenda(owner.id, now, now + timedelta(days=1), contact_item_id=alice)
+    assert {entry.memory_id for entry in page.items} == {ids[0], ids[2]}
     monkeypatch.setattr(context.runtime_settings, 'MEMORY_CONTEXT_MAX_ITEMS', 1)
     brief = await context.build_memory_brief(agent_id=owner.id, query='', contact_item_id=alice)
-    assert len(brief.items) == 1 and brief.truncated
-    assert 'memory_upcoming' in brief.rendered
+    assert not brief.items
+    assert not (await memory_agenda(owner.id, now, now + timedelta(days=1), contact_item_id=alice, limit=1)).complete
 
 
 @pytest.mark.asyncio
@@ -394,11 +396,10 @@ async def test_context_separates_dated_recall_from_ordinary_relevance(agents, me
         title='Prior lesson',  payload=MemoryPayload(text='needle ' * 300),
         metadata={'memory_role': 'experience'}))
     brief = await context.build_memory_brief(agent_id=owner.id, query='needle', include_experience=include_experience)
-    assert [item.memory_id for item in brief.items] == [ids[1], ids[0], *([str(experience.id)] if include_experience else [])]
+    assert [item.memory_id for item in brief.items] == [ids[0], *([str(experience.id)] if include_experience else [])]
     monkeypatch.setattr(context.runtime_settings, 'MEMORY_CONTEXT_MAX_ITEMS', 1)
     brief = await context.build_memory_brief(agent_id=owner.id, query='needle', include_experience=include_experience)
-    assert [item.memory_id for item in brief.items] == [ids[1]]
-    assert brief.truncated
+    assert [item.memory_id for item in brief.items] == [str(experience.id) if include_experience else ids[0]]
 
 
 @pytest.mark.asyncio
@@ -422,6 +423,6 @@ async def test_busy_calendar_preserves_multiple_complementary_project_facts(agen
         wanted.add(str(item.id))
     brief = await context.build_memory_brief(agent_id=owner.id, query='Quartz project budget coordinator deadline review')
     assert wanted <= {item.memory_id for item in brief.items}
-    assert any('temporal_match=' in item.excerpt for item in brief.items)
-    assert brief.truncated and len(brief.items) <= 8
+    assert all('temporal_match=' not in item.excerpt for item in brief.items)
+    assert len(brief.items) <= 8
     assert len(brief.rendered) <= context.runtime_settings.MEMORY_CONTEXT_MAX_CHARS

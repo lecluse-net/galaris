@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import asyncio
+import socket
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit
 from xml.etree import ElementTree as ET
@@ -16,7 +17,7 @@ from sqlalchemy import func, select
 from app.calendar import ical, service
 from app.calendar.crypto import decrypt
 from app.calendar.models import CalendarEvent, CalendarFeed, CalendarSyncOperation, CalendarSyncRun
-from app.calendar.schemas import CalendarEventCreate, CalendarEventUpdate, CalendarEventDelete
+from app.calendar.schemas import CalendarEventCreate, CalendarEventUpdate, CalendarEventDelete, CalendarFeedUpdate
 from app.calendar.synchronization import synchronize_calendar
 from bridge.calendar import transport
 
@@ -45,6 +46,7 @@ class DavServer:
         self.report_started = None
         self.report_release = None
         self.page_size = None
+        self.discovery_order = None
 
     def write(self, href, content):
         self.version += 1
@@ -70,6 +72,28 @@ class DavServer:
         base = urlsplit(URL).path
         href = "https://calendar.example.test" + path
         if method == "PROPFIND":
+            if self.discovery_order is not None:
+                principal = '/dav/principals/users/synthetic/'
+                home = '/dav/calendars/synthetic/'
+                if path == '/.well-known/caldav':
+                    return httpx.Response(301, headers={'Location': '/dav/'})
+                if path == '/dav/':
+                    properties = f'<d:current-user-principal><d:href>{principal}</d:href></d:current-user-principal>'
+                    entries = [('/dav/', properties)]
+                elif path == principal:
+                    entries = [(principal, f'<c:calendar-home-set><d:href>{home}</d:href></c:calendar-home-set>')]
+                    delegates = [
+                        (principal + group + '/', '<c:calendar-home-set><d:href>/dav/calendars/' + group + '/</d:href></c:calendar-home-set>')
+                        for group in ('synthetic-proxy-read', 'synthetic-proxy-write')
+                    ]
+                    entries = entries + delegates if self.discovery_order.endswith('self-first') else delegates + entries
+                elif path not in (home, base):
+                    return httpx.Response(404)
+                else:
+                    entries = None
+                if entries is not None:
+                    body = ''.join(f'<d:response><d:href>{entry_href}</d:href><d:propstat><d:status>HTTP/1.1 200 OK</d:status><d:prop>{properties}</d:prop></d:propstat></d:response>' for entry_href, properties in entries)
+                    return httpx.Response(207, text='<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">' + body + '</d:multistatus>')
             privilege = '<d:privilege><d:write/></d:privilege>' if self.writable else ''
             body = f'<d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:response><d:href>{base}</d:href><d:propstat><d:status>HTTP/1.1 200 OK</d:status><d:prop><d:resourcetype><c:calendar/></d:resourcetype><d:displayname>Synthetic agenda</d:displayname><d:current-user-privilege-set>{privilege}</d:current-user-privilege-set></d:prop></d:propstat></d:response></d:multistatus>'
             return httpx.Response(207, text=body)
@@ -132,15 +156,15 @@ class DavServer:
         raise AssertionError(method)
 
 
-@pytest.fixture
-def dav(monkeypatch):
+@pytest_asyncio.fixture
+async def dav(monkeypatch):
     server = DavServer()
     original = httpx.AsyncClient
     monkeypatch.setattr(transport.httpx, 'AsyncClient', lambda **kwargs: original(transport=httpx.MockTransport(server), **kwargs))
-    async def resolve(url):
-        transport.validate_calendar_url(url)
-        return transport._Target(url, 'calendar.example.test', 'calendar.example.test', ('93.184.216.34',))
-    monkeypatch.setattr(transport, '_resolve', resolve)
+    async def getaddrinfo(host, port, **kwargs):
+        assert host == 'calendar.example.test'
+        return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, '', ('10.20.30.40', port))]
+    monkeypatch.setattr(asyncio.get_running_loop(), 'getaddrinfo', getaddrinfo)
     return server
 
 
@@ -152,9 +176,9 @@ async def external(db, agent, dav):
     tool = await tool_service.create_tool(ToolCreate.model_validate({
         "code": "synthetic-caldav-provider", "label": "Synthetic external", "capabilities": ["caldav.calendar"],
         "connection_schema": {"params": {"url": {"type": "password", "required": True},
-            "login": {"type": "string"}, "password": {"type": "password"}}},
+            "login": {"type": "string"}, "password": {"type": "password"}, "sync_interval_hours": {"type": "integer", "required": False, "default": "2"}}},
         "calendar_config": {"settings": {"timezone": "Europe/Paris", "source_kind": "caldav"},
-            "param_map": {"url": "url", "username": "login", "password": "password"}}}))
+            "param_map": {"url": "url", "username": "login", "password": "password", "sync_interval_hours": "sync_interval_hours"}}}))
     connection = await connection_service.get_or_create_connection(tool.id, agent.id)
     await connection_service.set_params_bulk(connection.id, {"url": URL, "login": "synthetic-login", "password": "synthetic-secret"})
     read = (await service.list_feeds(connection_id=connection.id))[0]
@@ -178,8 +202,91 @@ async def test_caldav_continuation_collects_all_changes_before_advancing_the_cur
 
 
 @pytest.mark.asyncio
-async def test_caldav_bidirectional_diff_and_offline_commands_are_idempotent(db, agent, external, dav):
+async def test_synchronized_calendars_launch_tasks_by_default_and_preserve_explicit_disabling(db, agent, external, dav, monkeypatch):
+    from app.agent.task_port import task_port
+    from app.calendar import dispatch
+    from app.calendar.contracts import caldav_transport, RemoteCalendar
+    from app.task.models import Task
+    monkeypatch.setattr(task_port, "schedule", lambda _: None)
+    provider = caldav_transport()
+    original = provider.discover
+    async def discover(*args, **kwargs):
+        return [*(await original(*args, **kwargs)), RemoteCalendar(URL + 'secondary/', 'Synthetic secondary', True)]
+    monkeypatch.setattr(provider, 'discover', discover)
+    assert external.actions_enabled
+    dav.write(URL + 'default-launch.ics', event_content(description='Prepare a synthetic answer and deliver it to the requester.'))
+    await synchronize_calendar(external.id, agent_id=agent.id)
+    calendars = await service.list_feeds(connection_id=external.connection_id)
+    assert len(calendars) == 2 and all(feed.actions_enabled for feed in calendars)
+    assert next(feed for feed in calendars if feed.id == external.id).label == 'Synthetic agenda'
+    assert await dispatch.dispatch_due(now=NOW) == 1
+    task = (await db.scalars(select(Task))).one()
+    assert task.data['event']['description'] == 'Prepare a synthetic answer and deliver it to the requester.'
+    assert task.data['event']['description'] in task.objective
+    await service.update_feed(external.id, CalendarFeedUpdate(actions_enabled=False))
+    await synchronize_calendar(external.id, agent_id=agent.id)
+    assert not (await service.get_feed(external.id)).actions_enabled
+
+
+@pytest.mark.asyncio
+async def test_requested_sync_retains_its_identity_and_complete_download_upload_monitoring(db, agent, external, dav):
+    from uuid import uuid4
+    monitor_a = event_content(uid='synthetic-monitor-a@example.test')
+    monitor_b = event_content(uid='synthetic-monitor-b@example.test')
+    dav.write(URL + 'monitor-a.ics', monitor_a)
+    dav.write(URL + 'monitor-b.ics', monitor_b)
+    requested = await service.test_feed(external.id)
+    repeated = await service.test_feed(external.id)
+    assert requested.sync_run_id is not None and repeated.sync_run_id == requested.sync_run_id
+    pending = (await service.sync_runs(external.id, run_id=requested.sync_run_id))[0]
+    assert pending.state == pending.stage == 'queued'
+    await synchronize_calendar(external.id, agent_id=agent.id)
+    completed = (await service.sync_runs(external.id, run_id=requested.sync_run_id))[0]
+    assert completed.state == 'success' and completed.progress.server_reached
+    assert completed.progress.downloaded == completed.progress.download_total == 2
+    assert completed.progress.applied == completed.progress.apply_total == 2
+    assert completed.progress.calendar_changed
+    assert completed.progress.bytes_received > 0 and completed.progress.calendars == 1
+    assert completed.progress.steps == []
+    persisted = await db.get(CalendarSyncRun, requested.sync_run_id)
+    assert 'steps' not in persisted.progress and 'network_phase' not in persisted.progress
+    assert await service.sync_runs(external.id, run_id=uuid4()) == []
+    # Both an empty delta and identical resources replayed with new ETags are no-ops.
+    await synchronize_calendar(external.id, agent_id=agent.id)
+    assert not (await service.sync_runs(external.id))[0].progress.calendar_changed
+    dav.write(URL + 'monitor-a.ics', monitor_a)
+    dav.write(URL + 'monitor-b.ics', monitor_b)
+    await synchronize_calendar(external.id, agent_id=agent.id)
+    replayed = (await service.sync_runs(external.id))[0]
+    assert replayed.progress.applied == 2 and not replayed.progress.calendar_changed
+    dav.write(URL + 'monitor-a.ics', event_content(uid='synthetic-monitor-a@example.test', summary='Synthetic revised appointment'))
+    await synchronize_calendar(external.id, agent_id=agent.id)
+    assert (await service.sync_runs(external.id))[0].progress.calendar_changed
+    dav.delete(URL + 'monitor-b.ics')
+    await synchronize_calendar(external.id, agent_id=agent.id)
+    removed = (await service.sync_runs(external.id))[0]
+    assert removed.progress.deleted == 1 and removed.progress.calendar_changed
+    await service.create_calendar_event(external.id, agent.id, CalendarEventCreate(
+        summary='Synthetic monitored upload', start=NOW, end=NOW + timedelta(hours=1)))
+    upload = await service.test_feed(external.id)
+    assert await synchronize_calendar(external.id, agent_id=agent.id) == 1
+    uploaded = (await service.sync_runs(external.id, run_id=upload.sync_run_id))[0]
+    assert uploaded.progress.uploaded == uploaded.progress.upload_total == uploaded.progress.upload_succeeded == 1
+    assert uploaded.progress.calendar_changed
+    assert uploaded.progress.bytes_sent > 0 and uploaded.progress.last_http_status == 200
+    assert 'synthetic-secret' not in uploaded.progress.model_dump_json()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('discovery_order', [None, 'self-first', 'self-last', 'redirected-self-first'], ids=['direct-calendar', 'dav-root-self-first', 'dav-root-self-last', 'redirected-dav-root'])
+async def test_caldav_bidirectional_diff_and_offline_commands_are_idempotent(db, agent, external, dav, discovery_order):
     feed = external
+    if discovery_order is not None:
+        from app.connection import connection_service
+        dav.discovery_order = discovery_order
+        source_path = '/.well-known/caldav' if discovery_order.startswith('redirected') else '/dav/'
+        await connection_service.set_params_bulk(feed.connection_id, {'url': 'https://calendar.example.test' + source_path})
+        await service._refresh_parameter_feed(feed.connection_id)
     href = URL + 'existing.ics'
     dav.write(href, event_content())
     await synchronize_calendar(feed.id, agent_id=agent.id)
@@ -256,7 +363,8 @@ async def test_failed_sync_is_logged_persisted_and_does_not_erase_local_data_or_
     assert page.total == 1 and not page.complete
     assert (await service.availability_for_agent(agent.id, NOW, NOW + timedelta(hours=1))).available is None
     runs = list((await db.scalars(select(CalendarSyncRun).order_by(CalendarSyncRun.started_at))).all())
-    assert runs[-1].state == 'error' and runs[-1].stage == 'read' and runs[-1].error_category == 'ConnectError'
+    assert runs[-1].state == 'error' and runs[-1].stage == 'discover' and runs[-1].error_category == 'ConnectError'
+    assert 'network_phase' not in runs[-1].progress and not runs[-1].progress['server_reached']
     assert 'synthetic-secret' not in json.dumps([run.error_category for run in runs])
 
 
@@ -378,6 +486,11 @@ async def test_sync_lease_prevents_parallel_provider_reads_and_fences_configurat
             return await synchronize_calendar(calendar_id, agent_id=agent_id)
     first = asyncio.create_task(run())
     await asyncio.wait_for(dav.report_started.wait(), 3)
+    async with get_db_session() as db:
+        live = (await db.scalars(select(CalendarSyncRun))).one()
+        assert live.state == 'running' and live.stage == 'read'
+        assert live.progress['server_reached'] and live.progress['http_requests'] >= 2
+        assert live.progress['bytes_received'] > 0
     assert await run() == 0
     async with get_db_session() as db:
         feed = await db.get(CalendarFeed, calendar_id)
@@ -398,13 +511,20 @@ async def test_invalid_source_configuration_keeps_reads_local_and_never_falls_ba
     dav.write(URL + 'existing.ics', event_content())
     await synchronize_calendar(calendar_id, agent_id=agent_id)
     await connection_service.set_params_bulk(connection_id, {'url': url})
+    requested = await service.test_feed(calendar_id)
     calls = len(dav.calls)
     await service.sync_calendars()
     assert len(dav.calls) == calls
     window = await service.event_window(agent_id, NOW, NOW + timedelta(days=1))
     assert window.total == 1 and not window.complete
     assert len(await service.list_feeds(connection_id=connection_id)) == 1
-    assert (await service.sync_runs(calendar_id))[0].stage == 'configuration'
+    run = (await service.sync_runs(calendar_id, run_id=requested.sync_run_id))[0]
+    assert run.stage == 'configuration' and run.state == 'error'
+    # A repeated manual request must also settle when configuration is still invalid.
+    requested = await service.test_feed(calendar_id)
+    await service.sync_calendars()
+    assert (await service.sync_runs(calendar_id, run_id=requested.sync_run_id))[0].state == 'error'
+    assert len(dav.calls) == calls
 
 
 @pytest.mark.asyncio
@@ -426,3 +546,92 @@ async def test_ical_subscription_uses_conditional_reads_and_the_same_local_struc
     assert 'if-none-match' in dav.calls[-1][2]
     with pytest.raises(PermissionError):
         await service.create_calendar_event(external.id, agent.id, CalendarEventCreate(summary='Forbidden subscription write', start=NOW, end=NOW+timedelta(hours=1)))
+
+
+@pytest.mark.asyncio
+async def test_connection_interval_drives_its_calendars_and_local_edits_preserve_the_deadline(db, agent, external, dav):
+    from app.connection import connection_service
+    dav.write(URL + 'existing.ics', event_content())
+    await synchronize_calendar(external.id, agent_id=agent.id)
+    assert external.sync_interval_hours == 2
+    anchor = datetime.now(timezone.utc) - timedelta(hours=1, minutes=15)
+    external.last_checked_at = external.last_synced_at = anchor
+    # An installation upgrading from the old five-minute schedule must also wait.
+    external.next_sync_at = anchor + timedelta(minutes=5)
+    sibling = CalendarFeed(connection_id=external.connection_id, label='Synthetic hourly agenda', source_kind='caldav',
+        url_encrypted=external.url_encrypted, source_root_encrypted=external.source_root_encrypted,
+        username_encrypted=external.username_encrypted, password_encrypted=external.password_encrypted,
+        initialized=True, sync_interval_hours=1, last_synced_at=anchor, last_checked_at=anchor,
+        next_sync_at=anchor + timedelta(hours=1))
+    db.add(sibling)
+    await db.commit()
+    await service.create_calendar_event(external.id, agent.id, CalendarEventCreate(summary='Synthetic pending edit',
+        start=NOW + timedelta(hours=3), end=NOW + timedelta(hours=4)))
+    assert external.next_sync_at == anchor + timedelta(minutes=5)
+    assert (await service.event_window(agent.id, NOW, NOW + timedelta(days=1), calendar_ids=[external.id])).complete
+    before = len(dav.calls)
+    await service.sync_external_calendars()
+    assert len(dav.calls) == before
+    await db.refresh(sibling)
+    assert sibling.sync_interval_hours == 2
+    await connection_service.set_params_bulk(external.connection_id, {"sync_interval_hours": "1"})
+    for invalid in ("0", "-1", "8761", "1.5"):
+        with pytest.raises(ValueError):
+            await connection_service.set_params_bulk(external.connection_id, {"sync_interval_hours": invalid})
+    await service._refresh_parameter_feed(external.connection_id)
+    assert external.sync_interval_hours == sibling.sync_interval_hours == 1
+    assert external.next_sync_at == sibling.next_sync_at == anchor + timedelta(hours=1)
+    await service.sync_external_calendars()
+    runs = (await db.scalars(select(CalendarSyncRun).order_by(CalendarSyncRun.started_at))).all()
+    assert [run.calendar_id for run in runs] == [external.id, external.id, sibling.id]
+    await db.refresh(sibling)
+    assert sibling.next_sync_at - sibling.last_checked_at == timedelta(hours=1)
+
+    assert sum(method == 'PUT' for method, _, _ in dav.calls) == 1
+    await db.refresh(external)
+    assert external.next_sync_at - external.last_checked_at == timedelta(hours=1)
+    assert sibling.sync_interval_hours == 1
+    before = len(dav.calls)
+    await service.sync_external_calendars()
+    assert len(dav.calls) == before
+    # A queued worker must recheck the deadline after another worker/configuration change.
+    assert await synchronize_calendar(external.id, agent_id=agent.id, automatic=True) == 0
+    assert len(dav.calls) == before
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('hours', [1, 2, 4])
+async def test_failed_automatic_sync_waits_for_the_calendar_interval(db, agent, external, dav, hours):
+    external.sync_interval_hours = hours
+    await db.commit()
+    dav.fail = True
+    await synchronize_calendar(external.id, agent_id=agent.id)
+    await db.refresh(external)
+    assert external.last_error and external.failure_count == 1
+    failed = (await db.scalars(select(CalendarSyncRun).where(CalendarSyncRun.calendar_id == external.id))).one()
+    assert 'steps' not in failed.progress and 'network_phase' not in failed.progress
+    assert external.next_sync_at - external.last_checked_at == timedelta(hours=hours)
+    before = len(dav.calls)
+    await service.sync_external_calendars()
+    assert len(dav.calls) == before
+
+
+@pytest.mark.asyncio
+async def test_interrupted_sync_keeps_its_hourly_deadline_after_the_lease_expires(db, agent, external, dav):
+    dav.report_started, dav.report_release = asyncio.Event(), asyncio.Event()
+    task = asyncio.create_task(synchronize_calendar(external.id, agent_id=agent.id))
+    await asyncio.wait_for(dav.report_started.wait(), 3)
+    assert (await service.sync_runs(external.id))[0].progress.steps
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    await db.refresh(external)
+    assert external.lease_token is not None
+    interrupted = (await db.scalars(select(CalendarSyncRun).where(CalendarSyncRun.calendar_id == external.id))).one()
+    assert 'steps' not in interrupted.progress
+    assert external.next_sync_at - external.last_checked_at == timedelta(hours=2)
+    external.lease_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    await db.commit()
+    before = len(dav.calls)
+    await service.sync_external_calendars()
+    assert len(dav.calls) == before

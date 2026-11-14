@@ -61,6 +61,7 @@ _IMAGE_MEDIA_TYPES = {
 }
 _HTML_MEDIA_TYPES = {"text/html", "application/xhtml+xml"}
 _RESOURCE_KINDS = {
+    "calendar",
     "code",
     "task",
     "text",
@@ -71,6 +72,7 @@ _RESOURCE_KINDS = {
     "skill",
 }
 ResourcePreviewKind = Literal[
+    "calendar",
     "code",
     "document",
     "memory",

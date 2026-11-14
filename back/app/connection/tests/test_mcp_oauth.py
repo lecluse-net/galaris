@@ -626,6 +626,58 @@ async def test_http_oauth_requires_web_edit_privileges_and_managed_agent(committ
         assert (await client.post(f"/api/connections/{connection.id}/oauth/device", headers=headers, json={"state": "synthetic-no-edit-state-000001"})).status_code == 403
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize('kind', ['google', 'microsoft', 'caldav'])
+async def test_calendar_oauth_keeps_mcp_grants_isolated_and_rotates_refresh_tokens(db, oauth_connection, monkeypatch, kind):
+    connection, user_id, tool, _, _ = oauth_connection
+    initial, _ = callback(await oauth_service.start(connection, user_id))
+    await oauth_service.complete(connection, initial, user_id)
+    row = await db.get(ConnectionOAuth, connection.id)
+    mcp_grant = row.grant
+    tool.calendar_config = {'settings': {'source_kind': kind, 'auth_type': 'oauth',
+        'issuer': 'https://identity.example.test', 'authorization_endpoint': 'https://identity.example.test/authorize',
+        'token_endpoint': 'https://identity.example.test/token', 'scope': 'calendar'},
+        'param_map': {'client_id': 'client_id', 'client_secret': 'client_secret', 'url': 'url'}}
+    tool.connection_schema = {'params': {'client_id': {'type': 'string'}, 'client_secret': {'type': 'password'}, 'url': {'type': 'password'}}}
+    await db.commit()
+    await connection_service.set_params_bulk(connection.id, {'client_id': 'synthetic-calendar-app', 'client_secret': 'synthetic-calendar-secret',
+        'url': 'https://calendar.example.test/dav/'})
+    requests = []
+    async def client(url, server_url):
+        def respond(request):
+            requests.append(request)
+            return httpx.Response(200, json={'access_token': f'synthetic-calendar-{len(requests)}', 'token_type': 'Bearer',
+                'refresh_token': f'synthetic-calendar-refresh-{len(requests)}', 'expires_in': 3600})
+        return httpx.AsyncClient(transport=httpx.MockTransport(respond))
+    monkeypatch.setattr(oauth_service, '_client', client)
+    started = await oauth_service.start(connection, user_id, purpose='calendar')
+    query = parse_qs(urlsplit(started.authorization_url).query)
+    assert 'resource' not in query and query['code_challenge_method'] == ['S256']
+    assert query['client_id'] == ['synthetic-calendar-app']
+    assert query['scope'] and (query.get('access_type') == ['offline'] if kind == 'google' else True)
+    await oauth_service.complete(connection, OAuthCallback(state=query['state'][0], code='synthetic-calendar-code'), user_id)
+    await db.refresh(row)
+    assert row.grant == mcp_grant and 'synthetic-calendar-' not in row.calendar_grant
+    assert (await oauth_service.status(connection, 'calendar')).connected
+    assert (await oauth_service.status(connection)).connected
+    grant = Grant.model_validate_json(get_encryption_service().decrypt(row.calendar_grant))
+    grant.token_expires_at = time.time() - 1
+    row.calendar_grant = get_encryption_service().encrypt(grant.model_dump_json())
+    await db.commit()
+    assert await oauth_service.access_token(connection.id, grant.server_url, 'calendar') == 'synthetic-calendar-2'
+    body = parse_qs(requests[-1].content.decode())
+    assert 'resource' not in body and body['refresh_token'] == ['synthetic-calendar-refresh-1']
+    assert body['client_secret'] == ['synthetic-calendar-secret']
+    grant = Grant.model_validate_json(get_encryption_service().decrypt(row.calendar_grant))
+    assert grant.token.refresh_token == 'synthetic-calendar-refresh-2'
+    await oauth_service.disconnect(connection, 'calendar')
+    assert (await oauth_service.status(connection)).connected
+    assert not (await oauth_service.status(connection, 'calendar')).connected
+    assert row.grant == mcp_grant
+    with pytest.raises(OAuthError, match='authorization_required'):
+        await oauth_service.access_token(connection.id, grant.server_url, 'calendar')
+
+
 def test_legacy_tool_oauth_configuration_is_readable_without_manual_settings():
     # OAuth now belongs to the connection; obsolete Tool settings are ignored.
     config = McpConfig.model_validate({"type": "http", "url": "https://mcp.example.test/mcp",

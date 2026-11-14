@@ -162,20 +162,20 @@ async def oauth_local_client_metadata(scheme: Literal["http", "https"], host: Li
 
 @router.get("/{connection_id}/oauth", response_model=OAuthStatus)
 @authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
-async def oauth_status(connection_id: int) -> OAuthStatus:
+async def oauth_status(connection_id: int, purpose: Literal["mcp", "calendar"] = "mcp") -> OAuthStatus:
     connection = await _managed_connection(connection_id)
     try:
-        return await oauth_service.status(connection)
+        return await oauth_service.status(connection, purpose)
     except (oauth_service.OAuthError, ValidationError) as exc:
         raise await _oauth_error(exc) from None
 
 
 @router.post("/{connection_id}/oauth/start", response_model=OAuthStart, dependencies=[Depends(require_web_session)])
 @authorize(privileges=Privileges.CONNECTION_EDIT)
-async def oauth_start(connection_id: int, data: OAuthStartOptions | None = None) -> OAuthStart:
+async def oauth_start(connection_id: int, data: OAuthStartOptions | None = None, purpose: Literal["mcp", "calendar"] = "mcp") -> OAuthStart:
     connection = await _managed_connection(connection_id, editable=True)
     try:
-        return await oauth_service.start(connection, _oauth_user(), data)
+        return await oauth_service.start(connection, _oauth_user(), data, purpose)
     except (oauth_service.OAuthError, ValidationError) as exc:
         raise await _oauth_error(exc) from None
 
@@ -206,9 +206,9 @@ async def oauth_device(connection_id: int, data: DevicePoll) -> DevicePollResult
 
 @router.delete("/{connection_id}/oauth", status_code=204, dependencies=[Depends(require_web_session)])
 @authorize(privileges=Privileges.CONNECTION_EDIT)
-async def oauth_disconnect(connection_id: int) -> None:
+async def oauth_disconnect(connection_id: int, purpose: Literal["mcp", "calendar"] = "mcp") -> None:
     connection = await _managed_connection(connection_id, editable=True)
-    await oauth_service.disconnect(connection)
+    await oauth_service.disconnect(connection, purpose)
     await _refresh_agent_indexes([connection.agent_id])
 
 @router.get("/find-by-param", response_model=AgentByParamResponse)

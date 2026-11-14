@@ -114,6 +114,7 @@ class ConnectionOAuth(Base):
 
     connection_id: Mapped[int] = mapped_column(ForeignKey("connections.id", ondelete="CASCADE"), primary_key=True)
     grant: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    calendar_grant: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     pending: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     state_hash: Mapped[Optional[str]] = mapped_column(String(64), unique=True, nullable=True)
     expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

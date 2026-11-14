@@ -7,8 +7,16 @@ import { documentService } from '@/app/document'
 
 export type MemoryDreamAction = 'describe' | 'read_document' | 'thumbnail' | 'findings' | 'structure'
 export interface MemoryDreamActionResult { receipt_id: string; result_count: number }
+export interface MemoryAgendaOccurrence {
+  id: string; memory_id: string; uri: string; title: string; excerpt: string; revision: number
+  start: string; end: string; all_day: boolean; timezone: string
+  temporal: { year?: number | null; month?: number | null; day?: number | null; weekday?: number | null; hour?: number | null; minute?: number | null }
+}
 
 export const memoryService = {
+async agenda(agentId: number, start: string, end: string, signal?: AbortSignal): Promise<{ items: MemoryAgendaOccurrence[]; complete: boolean }> {
+    return (await api.get('/memory/agenda', { params: { agent_id: agentId, start, end }, signal })).data
+  },
 async readGraphState(context: GraphContext): Promise<GraphState> {
     return (await api.post<GraphState>('/memory/graph/state/read', context)).data
   },

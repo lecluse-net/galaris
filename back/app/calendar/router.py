@@ -27,6 +27,7 @@ from .schemas import (
     CalendarActionWrite, CalendarActionRead,
     CalendarConflictResolution, CalendarConflictRead, CalendarEventDetail, CalendarEventHistoryRead, CalendarSyncRunRead,
     CalendarExecutionRelaunch, CalendarExecutionReceipt,
+    CalendarExecutionSummaryRequest, CalendarExecutionSummary,
 )
 
 
@@ -105,6 +106,23 @@ async def read_calendars(connection_id: int | None = Query(default=None, gt=0), 
         raise _invalid(exc) from exc
 
 
+@router.get("/resources")
+@authorize(privileges=[Privileges.CALENDAR_ACCESS, Privileges.CALENDAR_EDIT])
+async def search_resources(query: str = Query(default="", max_length=200), skip: int = Query(default=0, ge=0),
+                           limit: int = Query(default=50, ge=1, le=500)) -> list[dict[str, object]]:
+    from .resources import search_calendar_resources
+    scope = await current_management_scope()
+    return await search_calendar_resources(scope.agent_ids, query, skip, limit)
+
+
+@router.get("/{calendar_id:int}", response_model=CalendarFeedRead)
+@authorize(privileges=[Privileges.CALENDAR_ACCESS, Privileges.CALENDAR_EDIT])
+async def read_calendar(calendar_id: int) -> CalendarFeedRead:
+    await _require_calendar_scope(calendar_id)
+    feed, connection = await service.feed_context(calendar_id)
+    return service.serialize_feed(feed, connection.agent_id)
+
+
 @router.get("/reminders", response_model=CalendarReminderPage)
 @authorize(privileges=[Privileges.CALENDAR_ACCESS, Privileges.CALENDAR_EDIT])
 async def read_reminders(connection_id: int = Query(gt=0), skip: int = Query(default=0, ge=0),
@@ -117,6 +135,14 @@ async def read_reminders(connection_id: int = Query(gt=0), skip: int = Query(def
         raise _not_found(exc) from exc
     except ValueError as exc:
         raise _invalid(exc) from exc
+
+
+@router.post("/execution-states", response_model=list[CalendarExecutionSummary])
+@authorize(privileges=[Privileges.CALENDAR_ACCESS, Privileges.CALENDAR_EDIT])
+async def execution_states(data: CalendarExecutionSummaryRequest) -> list[CalendarExecutionSummary]:
+    await _require_connection_scope(data.connection_id)
+    with _errors():
+        return await service.execution_summaries(data.connection_id, data.occurrences)
 
 
 @router.get("/events", response_model=CalendarEventWindow)
@@ -188,9 +214,9 @@ async def resolve_conflict(calendar_id: int, event_id: UUID, data: CalendarConfl
 
 @router.get("/{calendar_id}/sync-runs", response_model=list[CalendarSyncRunRead])
 @authorize(privileges=[Privileges.CALENDAR_ACCESS, Privileges.CALENDAR_EDIT])
-async def sync_runs(calendar_id: int, skip: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=500)) -> list[CalendarSyncRunRead]:
+async def sync_runs(calendar_id: int, skip: int = Query(default=0, ge=0), limit: int = Query(default=50, ge=1, le=500), run_id: UUID | None = None) -> list[CalendarSyncRunRead]:
     await _require_calendar_scope(calendar_id)
-    return await service.sync_runs(calendar_id, skip=skip, limit=limit)
+    return await service.sync_runs(calendar_id, skip=skip, limit=limit, run_id=run_id)
 
 
 @router.delete("/{calendar_id}/events/{event_id}", response_model=CalendarMutationReceipt)

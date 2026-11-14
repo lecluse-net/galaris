@@ -4194,36 +4194,33 @@ Sources : [flux Mail](../architecture/flows/mail.md), [fonctions](../../../back/
 [validation et historique](../../../back/bridge/mail/router.py).
 
 <a id="calendrier"></a>
-## 23. Agendas locaux et synchronisation CalDAV
+## 23. Agendas, calendriers et rappels
 
-**Superviser → Calendriers** (`/connection/calendars`) propose les connexions du périmètre
-géré, avec `CALENDAR_ACCESS` ou `CALENDAR_EDIT`. Le second droit permet aussi d'ajouter,
-modifier, tester ou supprimer les flux ; créer la connexion conserve les droits Connexions.
+Chaque agent dispose d’un **Agenda personnel** interne par défaut, sans compte externe.
+Il peut y créer des rendez-vous et des rappels avec les fonctions `calendar_*` autorisées.
+Une connexion iCal optionnelle ajoute une source HTTPS ; elle ne remplace pas le défaut personnel.
 
-Chaque agent dispose d'un agenda personnel interne sans compte externe. `app.calendar` possède
-les événements, exceptions, révisions et actions ; `bridge.calendar` adapte CalDAV et les
-abonnements iCalendar HTTPS en lecture seule. Les paramètres standards des connexions portent
-les identifiants externes et les préférences de disponibilité.
+`reminder_minutes_before=0` programme une notification à l’heure de l’événement ; une valeur
+positive demande une avance. Déplacer l’événement conserve son alarme relative ;
+`clear_reminder=true` retire le rappel. Un événement sans alarme ne crée aucune tâche.
+Chaque notification crée une tâche suivie par occurrence, avec les informations de l’événement.
+La tâche peut ensuite lancer un Process. Seul son succès marque la relance comme traitée.
 
-- Créer un agenda interne et configurer son activation et ses actions locales.
-- Tester la synchronisation et voir les prochaines occurrences sans déclencher d’action.
-- Lister les calendriers et les événements sur une période, avec développement des récurrences.
-- Vérifier la disponibilité sur une plage et obtenir les conflits.
-- Rechercher des créneaux libres selon les préférences de travail.
-- Créer, modifier ou supprimer un événement sur une ressource déclarée inscriptible.
-- Programmer des actions avant/après le début ou la fin et suivre leurs Tasks par occurrence.
+**Connaissances → Agenda** (`/calendar`, ancien lien `/connection/calendars` conservé) propose
+les vues mois/semaine/jour/Planning, les récurrences et les lancements de Tasks par événement
+du périmètre géré, avec `CALENDAR_ACCESS` ou `CALENDAR_EDIT`. Le détail de tâche
+conserve ses droits propres. Les agendas sont privés à leur agent ; les fonctions MCP et les
+identités de source sont recontrôlées à l’appel.
 
-Les consultations et mutations utilisent le stockage local. Les fenêtres mensuelles ou plus
-courtes renvoient toutes les occurrences, sans pagination silencieuse. Les mutations contrôlent
-la révision et la portée : occurrence seule, suivantes ou série entière. Les événements annulés
-ou transparents ne bloquent pas la disponibilité ; une source périmée rend celle-ci inconnue.
+`app.calendar` possède le stockage, les événements, les reçus et le suivi. `bridge.calendar`
+fournit le transport HTTPS borné et protégé contre les réseaux privés. Le contenu natif est
+chiffré et édité sous verrou ; les anciens identifiants et historiques iCal restent conservés.
+Le scheduler vérifie le natif chaque minute et HTTPS toutes les quinze minutes.
+Les empreintes durables évitent les doubles tâches lors d’une reprise.
 
-Le worker externe est examiné chaque minute et relève les sources saines toutes les cinq minutes.
-CalDAV utilise les jetons différentiels, ETag et une outbox transactionnelle ; `pending` ne vaut
-pas confirmation distante. Les conflits conservent les deux versions. Le worker d'actions local
-est examiné toutes les dix secondes, indépendamment de la navigation et du réseau. Une admission
-idempotente crée une Task ; seul son succès marque l'action comme traitée. Les actions externes
-nécessitent une activation explicite. Goal conserve ses propres cycles, sans rappel dupliqué.
+L’agenda gère les engagements datés et les rappels ponctuels. Goal conserve un résultat durable,
+ses itérations et ses revues planifiées ; les consignes interdisent de dupliquer un cycle Goal
+dans un rappel. Les tâches de calendrier ne modifient pas l’ordonnancement des objectifs.
 
 Sources : [calendrier](../architecture/flows/calendar.md), [API](../../../back/app/calendar/router.py),
 [fonctions](../../../back/app/calendar/mcp.py).
@@ -5843,7 +5840,8 @@ d’activation et de configuration restent celles du runtime.
 | `bridge.n8n` | [Workflows externes](#processus) |
 | `bridge.code_server` | [Runtime VS Code OSS, sessions, profils et maintenance des éditeurs](#console) |
 | `bridge.mail` | [IMAP, SMTP, validation humaine et historique](#mail) |
-| `bridge.calendar` | [iCalendar, disponibilité et déclencheurs](#calendrier) |
+| `app.calendar` | [Agendas personnels, sources et suivi des rappels](#calendrier) |
+| `bridge.calendar` | [Transport iCalendar HTTPS](#calendrier) |
 | `bridge.hermes` | [Runtime et configuration Hermès](#harnais) |
 | `bridge.one_bot` | [Adaptateur OneBot v11](#messageries) |
 | `bridge.matrix` | [Messages Matrix](#messageries), [appels](#voix) |
@@ -5915,7 +5913,7 @@ des formulaires/guides aux écrans communs, plutôt qu’une application indépe
 | `bridge/whatsapp` | Configuration et guide WhatsApp |
 | `bridge/one_bot` | Configuration et guide OneBot |
 | `bridge/n8n` | Configuration et guide n8n |
-| `bridge/calendar` | Calendriers intégrés au formulaire de connexion |
+| `app/calendar` | Agendas personnels et calendriers connectés |
 | `bridge/claude_agent` | Contribution au catalogue/configuration de harnais |
 | `bridge/codex` | Contribution au catalogue/configuration de harnais |
 | `bridge/deepseek_harness` | Contribution au catalogue/configuration de harnais |

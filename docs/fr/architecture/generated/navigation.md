@@ -88,6 +88,14 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 - Conditions supplémentaires : —
 - Sources : `front/app/memory/navigation.ts`
 
+## Connaissances → Agenda
+
+- Route : `/calendar`
+- Usage : Consulter les agendas et suivre les tâches de chaque rappel
+- Visibilité du menu (privilèges) : (CALENDAR_ACCESS OR CALENDAR_EDIT)
+- Conditions supplémentaires : —
+- Sources : `front/app/calendar/navigation.ts`
+
 ## Connaissances → Contacts
 
 - Route : `/memory/contacts`
@@ -141,14 +149,6 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 - Route : `/permissions`
 - Usage : Répondez aux demandes en attente et gérez les autorisations et interdictions permanentes des agents
 - Visibilité du menu (privilèges) : (PERMISSION_ACCESS OR PERMISSION_DECIDE OR PERMISSION_REVOKE)
-- Conditions supplémentaires : —
-- Sources : `front/app/connection/navigation.ts`
-
-## Superviser → Calendriers
-
-- Route : `/connection/calendars`
-- Usage : Consulter et gérer les flux calendaires des agents
-- Visibilité du menu (privilèges) : (CALENDAR_ACCESS OR CALENDAR_EDIT)
 - Conditions supplémentaires : —
 - Sources : `front/app/connection/navigation.ts`
 

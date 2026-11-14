@@ -35,6 +35,7 @@ GalarisResourceKind = Literal[
     "goal_cycle",
     "agent",
     "process",
+    "calendar",
     "skill",
 ]
 _KINDS: tuple[GalarisResourceKind, ...] = (
@@ -47,6 +48,7 @@ _KINDS: tuple[GalarisResourceKind, ...] = (
     "goal_cycle",
     "agent",
     "process",
+    "calendar",
     "skill",
 )
 _COLLECTION_CAPABILITIES: list[ResourceCapability] = ["info", "list", "search"]
@@ -56,6 +58,17 @@ _code_lister: Callable[[int, str, int, int], Awaitable[list[dict[str, object]]]]
 _contact_reader: Callable[[UUID, int], Awaitable[dict[str, object] | None]] | None = None
 _contact_lister: Callable[[int, str, int, int], Awaitable[list[dict[str, object]]]] | None = None
 _contact_writer: Callable[[UUID, int, bytes, str | None], Awaitable[dict[str, object]]] | None = None
+_calendar_reader: Callable[[int, int], Awaitable[dict[str, object] | None]] | None = None
+_calendar_lister: Callable[[int, str, int, int], Awaitable[list[dict[str, object]]]] | None = None
+
+
+def register_calendar_resource_provider(
+    reader: Callable[[int, int], Awaitable[dict[str, object] | None]],
+    lister: Callable[[int, str, int, int], Awaitable[list[dict[str, object]]]],
+) -> None:
+    """Bind Calendar-owned, authorized projections without importing the domain."""
+    global _calendar_reader, _calendar_lister
+    _calendar_reader, _calendar_lister = reader, lister
 
 
 def register_contact_resource_provider(
@@ -100,7 +113,7 @@ def _route(reference: ResourceUri) -> _Route:
         raise PermissionError("Official Galaris documentation is read-only; use documentation_search or file_read.")
     if raw_kind not in _KINDS:
         raise ResourceUriError(
-            "galaris:// supports contact, task, voice, text, goal, goal_cycle, process, and skill."
+            "galaris:// supports contact, code, task, voice, text, goal, goal_cycle, agent, process, calendar, and skill."
         )
     kind = raw_kind
     if len(segments) == 1 and reference.is_collection:
@@ -119,9 +132,9 @@ def _route(reference: ResourceUri) -> _Route:
         raise ResourceUriError(
             f"galaris://{kind}/ requires a collection or one exact identifier."
         )
-    if kind == "agent":
+    if kind in {"agent", "calendar"}:
         if not segments[1].isdecimal() or int(segments[1]) < 1:
-            raise ResourceUriError("galaris://agent/ requires a positive integer.")
+            raise ResourceUriError(f"galaris://{kind}/ requires a positive integer.")
         return _Route(kind=kind, identifier=segments[1], avatar=avatar)
     if kind == "process":
         workflow_id = segments[1].strip()
@@ -168,7 +181,7 @@ def _item_name(kind: GalarisResourceKind, payload: dict[str, Any]) -> str:
         )
         or "resource"
     )
-    if kind == "task" or kind == "code":
+    if kind in {"task", "code", "calendar"}:
         return str(payload.get("label") or f"Task {identifier}")
     if kind == "text" or kind == "voice":
         round_payload = payload.get("round")
@@ -253,7 +266,7 @@ def _descriptor(
             metadata["created_at"] = source["created_at"]
     return ResourceDescriptor(
         uri=f"galaris://{'processes' if kind == 'process' and payload.get('native_code') else kind}/{encoded_identifier}",
-        name=label if kind in {"contact", "goal_cycle"} else f"{kind}-{identifier}.json",
+        name=label if kind in {"contact", "goal_cycle", "calendar"} else f"{kind}-{identifier}.json",
         media_type=f"application/vnd.galaris.{kind}+json",
         size=len(content.encode("utf-8")) if include_size else None,
         modified_at=_item_modified_at(kind, payload),
@@ -279,6 +292,7 @@ def _collection_descriptor(kind: GalarisResourceKind) -> ResourceDescriptor:
         "goal_cycle": "Goal cycles",
         "process": "Processes",
         "code": "Code repositories",
+        "calendar": "Calendars",
         "skill": "Skills",
     }
     return ResourceDescriptor(
@@ -355,6 +369,8 @@ async def _read_payload(
     identifier: UUID | str,
     *, native_process: bool = False,
 ) -> dict[str, Any] | None:
+    if kind == "calendar":
+        return await _calendar_reader(int(str(identifier)), ctx.agent_id) if _calendar_reader is not None else None
     if kind == "contact":
         assert isinstance(identifier, UUID)
         return await _contact_reader(identifier, ctx.agent_id) if _contact_reader is not None else None
@@ -409,6 +425,8 @@ async def _list_payloads(
     limit: int = 100,
     goal_id: UUID | None = None,
 ) -> list[dict[str, Any]]:
+    if kind == "calendar":
+        return await _calendar_lister(ctx.agent_id, query, offset, limit) if _calendar_lister is not None else []
     if kind == "contact":
         return await _contact_lister(ctx.agent_id, query, offset, limit) if _contact_lister is not None else []
     if kind == "code":

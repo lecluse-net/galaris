@@ -324,7 +324,10 @@ L'attente ne signifie pas que l'objectif est atteint.
 
 Dans **Objectifs**, la liste affiche l’avatar et le nom de l’agent responsable.
 Le détail s’ouvre sans charger tout l’historique : l’onglet **Cycles** récupère sa page lors
-de son ouverture. Les mises à jour en direct conservent la sélection et les informations déjà
+de son ouverture. Chaque cycle affiche son bilan et ses preuves enregistrées. Lorsqu’une
+tâche de revue existe, **Ouvrir la revue** permet de la consulter dans une modale superposée,
+avec les droits Task, puis de retrouver le même objectif et ses cycles en la fermant.
+Les mises à jour en direct conservent la sélection et les informations déjà
 affichées. Si un chargement échoue, un message et **Réessayer** permettent de le reprendre.
 Une modification concurrente ne remplace pas votre brouillon : l’enregistrement signale le
 conflit de révision pour éviter d’écraser une version plus récente.
@@ -335,6 +338,10 @@ pour retrouver les objectifs classés ou **Sans catégorie**. Chaque objectif a 
 catégorie. La liste est regroupée sous les titres des catégories, toujours classées par ordre
 alphabétique ; **Sans catégorie** apparaît à la fin. Cliquer sur la colonne **Agent** trie les
 agents à l’intérieur de chaque catégorie, sans changer l’ordre des catégories, y compris
+Le mode **À dates fixes dans l’agenda** permet une récurrence dans un fuseau choisi.
+La couche **Objectifs** de l’[Agenda](calendar.md) montre les passages
+futurs puis le cycle et la Task exacts de chaque passage arrivé à échéance. Les changements
+de configuration conservent le passé et ne remplacent que la planification future.
 entre les pages de résultats. Une catégorie n’est visible et modifiable que par son créateur, même entre
 administrateurs ; elle ne change pas les droits d’accès à l’objectif. Sa suppression est
 historisée et conserve les objectifs en retirant leur classement.
@@ -867,8 +874,8 @@ Galaris peut injecter avant l’exécution un rappel borné des souvenirs pertin
 sémantique est indisponible, l’interface indique le repli vers la recherche lexicale.
 
 Pour une reprise de projet, une décision antérieure ou une préférence, l'agent est invité à
-rechercher les preuves manquantes avant de répondre. Un calendrier chargé laisse jusqu'à la
-moitié du rappel aux faits ordinaires ; les rendez-vous supplémentaires restent consultables.
+rechercher les preuves manquantes avant de répondre. L’agenda temporel et le brief de faits
+ordinaires disposent de budgets distincts ; les occurrences supplémentaires restent consultables.
 Une correction conserve les anciennes preuves sauf demande explicite d'effacement.
 
 La fiche d'un souvenir propose une **Temporalité (facultative)**. Renseignez uniquement les
@@ -879,14 +886,17 @@ sans minute correspond de 9 h à 9 h 59. Le fuseau est celui configuré pour Gal
 il ne se règle pas dans cette fiche. L'interprétation s'affiche sous les champs ; **Retirer la temporalité** conserve
 le souvenir et son contenu.
 
-Les correspondances actuelles ou prochaines enrichissent le contexte des agents, avec les
-mêmes droits d'accès. L'anticipation se règle dans **Préférences → Mémoire** (24 heures par
-défaut). Le contexte reste borné ; l'agent peut consulter les correspondances supplémentaires
-avec `memory_upcoming`. Aucune notification ni expiration du souvenir n'est déclenchée.
+Les correspondances actuelles ou prochaines apparaissent dans la source **Mémoire** de l’Agenda et dans le
+contexte temporel commun des agents, avec les mêmes droits d’accès et la portée du contact
+courant. **Préférences → Mémoire → Contexte temporel des agents** règle l’horizon et le nombre
+maximal d’occurrences (10 jours et 10 événements par défaut, toutes sources confondues).
+Le brief Memory ordinaire ne les injecte plus séparément. L’agent peut consulter d’autres
+périodes avec les outils Agenda. `memory_upcoming` conserve sa lecture de compatibilité.
+Aucune tâche, notification, réservation de disponibilité ni expiration n’est déclenchée.
 Les agents et Dream réservent ces valeurs aux rappels voulus à une date donnée (rendez-vous,
 anniversaire, habitude). Une date historique reste dans le texte : elle ne justifie pas à elle
-seule une temporalité. Ajouter un ancrage exclut le souvenir du rappel automatique hors période
-et lui donne priorité lorsqu'il correspond. Les souvenirs sans date suivent la recherche habituelle.
+seule une temporalité. Ajouter un ancrage réserve sa présentation automatique à l’agenda
+temporel. Les souvenirs sans date suivent la recherche habituelle.
 
 Dans **Mémoire → Liste**, le filtre temporel est toujours appliqué, dès la première recherche.
 Un seul champ date et heure est prérempli avec l'instant actuel dans le fuseau global de Galaris. Modifiez-le puis

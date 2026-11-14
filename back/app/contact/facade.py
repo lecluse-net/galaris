@@ -6,6 +6,20 @@ from uuid import UUID
 
 from .contracts import ReachableHumanContact
 from .discovery_contracts import ContactMergeCandidate as ContactMergeCandidate
+from .references import register_contact_reference_handler as register_contact_reference_handler
+
+
+async def require_contact_reference(agent_id: int, contact_id: UUID) -> None:
+    """Validate a private reference under the same lock as merges and forgetting."""
+    from app.memory import MemoryNotFoundError
+    from .directory import lock_contact_directory
+    from .service import get_contact
+
+    await lock_contact_directory(agent_id)
+    try:
+        await get_contact(agent_id=agent_id, contact_item_id=contact_id)
+    except MemoryNotFoundError:
+        raise ValueError("Contact not found for this calendar agent") from None
 
 
 async def read_contact_resource(contact_item_id: UUID, actor_agent_id: int) -> dict[str, object] | None:
@@ -77,7 +91,7 @@ async def list_reachable_humans(
     return await _list_reachable_humans(agent_id=agent_id, query=query)
 
 
-__all__ = ["list_reachable_humans", "is_known_mail_contact", "ContactMergeCandidate",
+__all__ = ["register_contact_reference_handler", "require_contact_reference", "list_reachable_humans", "is_known_mail_contact", "ContactMergeCandidate",
            "list_contact_resources", "read_contact_resource", "write_contact_resource",
            "register_contact_runtime", "process_contact_discovery", "contact_merge_candidates",
            "apply_contact_merge", "contact_merge_evidence", "count_contact_merge_candidates"]

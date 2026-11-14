@@ -7,8 +7,8 @@ from xml.etree import ElementTree as ET
 from xml.sax.saxutils import escape
 
 from app.calendar.contracts import (CalendarHttpResponse, InvalidSyncTokenError, RemoteCalendar,
-    RemoteChange, RemoteChanges, RemoteConflictError)
-from .transport import request_calendar, validate_calendar_url
+    RemoteChange, RemoteChanges, RemoteConflictError, report_calendar_sync)
+from .transport import request_calendar, validate_calendar_url, same_calendar_origin
 
 DAV = "{DAV:}"
 CAL = "{urn:ietf:params:xml:ns:caldav}"
@@ -29,7 +29,7 @@ def _multistatus(content: bytes) -> ET.Element:
 
 def _href(base: str, value: str) -> str:
     resolved = validate_calendar_url(urljoin(base, value))
-    if urlsplit(base).netloc != urlsplit(resolved).netloc:
+    if not same_calendar_origin(base, resolved):
         raise ValueError("CalDAV resources must remain on their configured origin")
     return resolved
 
@@ -68,6 +68,7 @@ async def discover(url: str, *, username: str | None, password: str | None) -> l
             break
         visited.add(current)
         response = await _dav("PROPFIND", current, body, username=username, password=password)
+        current = response.final_url
         root = _multistatus(response.content)
         calendars: list[RemoteCalendar] = []
         next_url: str | None = None
@@ -79,6 +80,10 @@ async def discover(url: str, *, username: str | None, password: str | None) -> l
                 writable = privileges is not None and any(privileges.find('.//' + DAV + key) is not None for key in ("all", "write"))
                 calendars.append(RemoteCalendar(_href(current, entry.findtext(DAV + "href") or ""),
                     prop.findtext(DAV + "displayname") or "Calendar", writable))
+            # Child resources (including delegation groups) have their own homes.
+            # Only the queried resource may guide the next discovery step.
+            if _href(current, entry.findtext(DAV + "href") or "").rstrip('/') != response.final_url.rstrip('/'):
+                continue
             home = prop.findtext(CAL + "calendar-home-set/" + DAV + "href")
             principal = prop.findtext(DAV + "current-user-principal/" + DAV + "href")
             if home:
@@ -86,6 +91,7 @@ async def discover(url: str, *, username: str | None, password: str | None) -> l
             elif principal and next_url is None:
                 next_url = _href(current, principal)
         if calendars:
+            await report_calendar_sync("discover", len(calendars), len(calendars))
             return calendars
         if next_url is None:
             break
@@ -93,7 +99,7 @@ async def discover(url: str, *, username: str | None, password: str | None) -> l
     raise ValueError("No readable CalDAV calendars discovered")
 
 
-async def _changes_page(url: str, *, token: str | None, username: str | None, password: str | None) -> tuple[RemoteChanges, bool]:
+async def _changes_page(url: str, *, token: str | None, username: str | None, password: str | None, offset: int = 0) -> tuple[RemoteChanges, bool]:
     body = '<d:sync-collection xmlns:d="DAV:"><d:sync-token>' + escape(token or "") + '</d:sync-token><d:sync-level>1</d:sync-level><d:prop><d:getetag/></d:prop></d:sync-collection>'
     response = await _dav("REPORT", url, body, username=username, password=password, statuses=(403, 405, 501))
     if response.status_code == 403:
@@ -129,9 +135,13 @@ async def _changes_page(url: str, *, token: str | None, username: str | None, pa
         data = prop.findtext(CAL + "calendar-data")
         result.append(RemoteChange(href, etag, data.encode() if data is not None else None))
     missing = [change.href for change in result if not change.deleted and change.content is None]
+    received = sum(not change.deleted and change.content is not None for change in result)
+    total = offset + sum(not change.deleted for change in result) if not truncated else None
+    await report_calendar_sync("download", offset + received, total)
     fetched: dict[str, RemoteChange] = {}
     for index in range(0, len(missing), 100):
         fetched.update(await _multiget(url, missing[index:index + 100], username=username, password=password))
+        await report_calendar_sync("download", offset + received + len(fetched), total)
     result = [fetched[change.href] if not change.deleted and change.content is None else change for change in result]
     return RemoteChanges(tuple(result), root.findtext(DAV + "sync-token"), full), truncated
 
@@ -160,11 +170,14 @@ async def changes(url: str, *, token: str | None, username: str | None, password
     initial = token
     combined: dict[str, RemoteChange] = {}
     for _ in range(100):
-        batch, truncated = await _changes_page(url, token=token, username=username, password=password)
+        batch, truncated = await _changes_page(url, token=token, username=username, password=password,
+            offset=sum(not change.deleted for change in combined.values()))
         combined.update((change.href, change) for change in batch.changes)
         if len(combined) > 100000:
             raise ValueError("CalDAV synchronization exceeds 100000 resources")
         if not truncated:
+            downloaded = sum(not change.deleted for change in combined.values())
+            await report_calendar_sync("download", downloaded, downloaded)
             return RemoteChanges(tuple(combined.values()), batch.token, initial is None or batch.full)
         if not batch.token or batch.token == token:
             raise ValueError("Truncated CalDAV synchronization has no continuation token")

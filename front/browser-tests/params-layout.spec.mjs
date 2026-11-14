@@ -48,6 +48,8 @@ for (const [section, name, label, initial, saved, rejected, tab = 'internal', sc
   ['messaging', 'MESSENGER_MAX_INLINE_MB', 'Maximum inline attachment size (MB)', '3.814697265625', '7.62939453125', '15.2587890625', 'internal', 1.048576],
   ['harnesses', 'PYDANTIC_AI_BINARY_INPUT_MAX_BYTES', 'Maximum binary file size sent to the model (MB)', '20000000', '40000000', '80000000', 'internal', 0.000001],
   ['tasks', 'TASK_PLAN_MAX_DEPTH', 'Maximum plan depth', '3', '4', '5'],
+  ['memory', 'AGENDA_CONTEXT_DAYS', 'Agenda horizon (days)', '10', '14', '20'],
+  ['memory', 'AGENDA_CONTEXT_MAX_EVENTS', 'Maximum events presented to agents', '10', '15', '25'],
   ['tasks', 'TASK_PLAN_MAX_LEAVES', 'Maximum leaves in one plan', '12', '30', '40'],
   ['tasks', 'TASK_AGENT_MAX_REQUESTS', 'Maximum model requests per execution', '120', '150', '200'],
   ['tasks', 'LLM_CALL_TIMEOUT_MINUTES', 'Maximum LLM call duration (minutes)', '30', '45', '60'],

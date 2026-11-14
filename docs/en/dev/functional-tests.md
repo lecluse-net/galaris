@@ -58,6 +58,20 @@ reply, reopening, attachment cards, downloads and denial of a private file.
 `chat-internal-attachments.spec.mjs` verifies that the reply's values and file/document
 cards remain visible together on mobile and desktop.
 
+Synchronization scenarios protect the shared connection interval (2 h by default),
+old short deadlines, pending writes and failure/interruption recovery without early polling.
+HTTP checks cover whole-hour validation, persistence and authorization.
+`connections-loading.spec.mjs` exercises the standard connection parameter, reopening and
+the absence of calendar reads. The former connection diagnostic listing calendars and Tasks
+is retired; links and histories remain covered on the Agenda page in `calendar.spec.mjs`,
+including live attempts, retained history and reopening after failures on mobile and desktop.
+Discovery from the DAV root follows the account and its calendar home, ignoring delegation
+group homes regardless of response order. The same scenario protects writes and discovery
+after a DAV redirect.
+The synthetic provider uses private IPv4 through the actual transport resolver.
+`test_transport.py` verifies HTTPS reads over public/private IPv4/IPv6, DNS pinning,
+redirects and credential isolation. Special-purpose addresses remain rejected, including
+IPv4-mapped addresses and mixed DNS answers.
 `app/conversation/tests/test_direct_process_inputs.py` covers structured contributions,
 HTTP permissions, stale revisions, real uploads, progress despite a vanished file, confirming
 an unchanged value after a validation issue, agent reuse and one launch without AI
@@ -140,6 +154,9 @@ cover `CONTACT_ACCESS`/`CONTACT_EDIT`, denial with Files privileges alone and ma
 Writes and edits check JSON, protected fields, omitted coordinates and the concurrency token.
 `app/contact/tests/test_file_resource_concurrency.py` uses independent transactions to prove
 that only one writer of the same snapshot succeeds.
+History retry in `goals.spec.mjs` also checks retained evidence and review Task access
+according to privileges, without navigation or closing the Goal.
+
 The Contacts scenario in `front/browser-tests/file-browser.spec.mjs` now opens the existing
 edit dialog, saves, reopens and changes Agent on mobile and desktop; this domain contract
 replaces the former generic JSON opening assertion.
@@ -1873,6 +1890,10 @@ it excludes a native WebKit XHR error only when cancellation of that same reques
 Its wait tracks completion or failure events for requests in flight, then the requests
 triggered by their responses until that sequence finishes. It excludes Socket.IO long polling
 and also covers navigation immediately after sign-in.
+`app/task/tests/test_scheduler.py` protects discussion priority over calendar and Goal work,
+including age, fairness, delivery context, fast resumptions and reserved interactive capacity.
+`test_task_service.py` checks trigger provenance through new calendar subtasks and delegations
+without losing their own data.
 On full navigation, requests from the departing document no longer participate in
 this wait: a request started during replacement can disappear without a completion
 event. Errors remain observed and requests from the new document are tracked.
@@ -2184,6 +2205,7 @@ without mixing conversations or losing the finished response.
 `front/browser-tests/chat-window.spec.mjs` measures mounted bubbles for 1,000 synthetic
 messages and protects both ends, replies and read visibility. The full chat and discussion
 viewer cross the virtualization threshold by loading pages of 50 messages on desktop
+| Informational Memory agenda | Recurring occurrences and precise periods, stable identities, owner/contact scope and current validity; no event or trigger creation; shared agent chronology without duplicate injection, source failure recovery; configurable horizon and event count, saving and reopening; selectable source and original memory opening on desktop/mobile | `back/app/memory/tests/test_agenda.py`, `back/app/calendar/tests/test_context.py`, `front/browser-tests/calendar.spec.mjs`, `front/browser-tests/params-layout.spec.mjs`, `e2e/specs/calendar.spec.mjs` |
 and mobile, then reopen at the bottom. Each older page is requested once; legitimate
 first-page refreshes and a fresh read on reopening remain allowed. Navigation during
 initial layout restoration must not be lost. Scenarios preserve the reading anchor through

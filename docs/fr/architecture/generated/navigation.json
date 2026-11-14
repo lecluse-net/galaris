@@ -352,6 +352,39 @@
       ]
     },
     {
+      "id": "knowledge.calendars",
+      "labels": {
+        "fr": "Agenda",
+        "en": "Agenda"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Connaissances",
+          "Agenda"
+        ],
+        "en": [
+          "Knowledge",
+          "Agenda"
+        ]
+      },
+      "route": "/calendar",
+      "href": null,
+      "description": {
+        "fr": "Consulter les agendas et suivre les tâches de chaque rappel",
+        "en": "Read calendars and track the Task for each reminder"
+      },
+      "privilege_groups": [
+        [
+          "CALENDAR_ACCESS",
+          "CALENDAR_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/calendar/navigation.ts"
+      ]
+    },
+    {
       "id": "knowledge.contacts",
       "labels": {
         "fr": "Contacts",
@@ -592,39 +625,6 @@
           "PERMISSION_ACCESS",
           "PERMISSION_DECIDE",
           "PERMISSION_REVOKE"
-        ]
-      ],
-      "conditions": [],
-      "sources": [
-        "front/app/connection/navigation.ts"
-      ]
-    },
-    {
-      "id": "monitor.calendars",
-      "labels": {
-        "fr": "Calendriers",
-        "en": "Calendars"
-      },
-      "breadcrumbs": {
-        "fr": [
-          "Superviser",
-          "Calendriers"
-        ],
-        "en": [
-          "Monitor",
-          "Calendars"
-        ]
-      },
-      "route": "/connection/calendars",
-      "href": null,
-      "description": {
-        "fr": "Consulter et gérer les flux calendaires des agents",
-        "en": "Read and manage agent calendar feeds"
-      },
-      "privilege_groups": [
-        [
-          "CALENDAR_ACCESS",
-          "CALENDAR_EDIT"
         ]
       ],
       "conditions": [],

@@ -28,6 +28,9 @@ def test_ical_advertises_standard_connection_parameter_bindings():
     assert protocol.connection_parameters["url"]["definition"]["type"] == "password"
     assert protocol.connection_parameters["username"]["parameter"] == "login"
     assert protocol.connection_parameters["password"]["parameter"] == "password"
+    assert protocol.connection_parameters["sync_interval_hours"]["definition"]["type"] == "integer"
+    assert protocol.connection_parameters["sync_interval_hours"]["definition"]["default"] == "2"
+    assert "sync_interval_hours" not in protocol.parameters
     assert "url" not in protocol.parameters
     assert not {"access_mode", "trigger_on_start", "trigger_on_alarm", "action_kind",
         "process_workflow_id", "action_instructions"} & protocol.connection_parameters.keys()

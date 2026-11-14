@@ -1,13 +1,14 @@
 """Local commands, occurrence identity, history and durable task admission."""
 from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 from unittest.mock import AsyncMock
 
 import pytest
 from sqlalchemy import func, select
 from app.agent.task_port import task_port
 from app.calendar import dispatch, service, store
-from app.calendar.models import CalendarEvent, CalendarEventRevision, CalendarTrigger, CalendarOccurrence
-from app.calendar.schemas import CalendarEventCreate, CalendarEventUpdate, CalendarEventDelete, CalendarActionWrite
+from app.calendar.models import CalendarEvent, CalendarEventRevision, CalendarTrigger, CalendarOccurrence, CalendarFeed
+from app.calendar.schemas import CalendarEventCreate, CalendarEventUpdate, CalendarEventDelete, CalendarActionWrite, CalendarOccurrenceSelection, CalendarFeedCreate, CalendarFeedUpdate
 from app.task.models import Task, TaskStatus
 
 NOW = datetime(2026, 11, 12, 9, 30, tzinfo=timezone.utc)
@@ -24,6 +25,14 @@ async def test_local_agenda_commands_are_network_free_historized_and_revision_ch
     from app.calendar import synchronization
     network = AsyncMock(side_effect=AssertionError("Local commands must not access a provider"))
     monkeypatch.setattr(synchronization, "read_calendar", network)
+    assert service.serialize_feed(feed, agent.id).is_default
+    with pytest.raises(ValueError, match="one automatic personal agenda"):
+        await service.create_feed(CalendarFeedCreate(connection_id=connection.id, label="Synthetic secondary agenda"))
+    with pytest.raises(ValueError, match="cannot be disabled"):
+        await service.update_feed(feed.id, CalendarFeedUpdate(active=False))
+    with pytest.raises(ValueError, match="default personal agenda"):
+        await service.delete_feed(feed.id)
+    assert len(await service.list_feeds(connection_id=connection.id)) == 1
     created = await service.create_calendar_event(feed.id, agent.id, appointment(uid="synthetic-unique@example.test"))
     replay = await service.create_calendar_event(feed.id, agent.id, appointment(uid=created.uid))
     assert replay.event_id == created.event_id
@@ -42,11 +51,115 @@ async def test_local_agenda_commands_are_network_free_historized_and_revision_ch
 
 
 @pytest.mark.asyncio
+async def test_an_event_without_an_alarm_automatically_admits_one_task_with_its_complete_context(db, agent, personal, monkeypatch):
+    _, feed = personal
+    monkeypatch.setattr(task_port, "schedule", lambda _: None)
+    created = await service.create_calendar_event(feed.id, agent.id, appointment(
+        description="Prepare the synthetic report and its conclusions", location="Synthetic meeting room"))
+    trigger = (await db.scalars(select(CalendarTrigger))).one()
+    assert trigger.action_key == "event:start" and trigger.occurrence_at == NOW + timedelta(minutes=30)
+    assert await service.list_actions(feed.id, created.uid) == []
+    assert await dispatch.dispatch_due(now=NOW) == 0
+    await service.update_calendar_event(feed.id, agent.id, created.uid, CalendarEventUpdate(
+        expected_revision=1, description="Prepare the revised synthetic report and its conclusions"))
+    assert await dispatch.dispatch_due(now=NOW + timedelta(minutes=30)) == 1
+    assert await dispatch.dispatch_due(now=NOW + timedelta(minutes=30)) == 0
+    task = (await db.scalars(select(Task))).one()
+    context = task.data["event"]
+    assert context["summary"] == "Synthetic appointment"
+    assert context["description"] == "Prepare the revised synthetic report and its conclusions"
+    assert context["location"] == "Synthetic meeting room"
+    assert datetime.fromisoformat(context["start"]) == NOW + timedelta(minutes=30)
+    assert datetime.fromisoformat(context["end"]) == NOW + timedelta(minutes=60)
+    assert context["timezone_name"] == "Europe/Paris"
+    assert context["description"] in task.objective and context["location"] in task.objective
+    journal = await service.list_reminders(feed.connection_id, event_id=created.event_id)
+    assert journal.total == 1 and journal.items[0].task_uri == f"galaris://task/{task.id}"
+    task.status = TaskStatus.SUCCESS
+    await db.commit()
+    await service.relaunch_execution(feed.id, trigger.id, agent.id, uuid4(), 2)
+    assert await dispatch.dispatch_due(now=datetime.now(timezone.utc) + timedelta(seconds=1)) == 1
+
+
+@pytest.mark.asyncio
+async def test_existing_personal_calendar_is_adopted_without_creating_a_duplicate(db, personal):
+    connection, feed = personal
+    feed.is_default = False
+    await db.commit()
+    assert (await service._ensure_native_feed(connection)).id == feed.id
+    assert (await service._ensure_native_feed(connection)).id == feed.id
+    assert await db.scalar(select(func.count()).select_from(type(feed)).where(type(feed).connection_id == connection.id)) == 1
+
+
+@pytest.mark.asyncio
+async def test_external_calendars_expose_their_tool_label_and_never_the_personal_default_marker(db, agent, personal, calendar_connection):
+    from app.tools.models import Tool
+    tool = await db.get(Tool, calendar_connection.tool_id)
+    tool.label = "Synthetic calendar provider"
+    external = CalendarFeed(connection_id=calendar_connection.id, label="Synthetic external calendar",
+        source_kind="caldav", is_default=True, active=True, initialized=True)
+    db.add(external)
+    await db.commit()
+    rows = await service.list_feeds(agent_id=agent.id)
+    assert [row.id for row in rows if row.is_default] == [personal[1].id]
+    assert next(row for row in rows if row.id == external.id).tool_label == tool.label
+    tool.label = "Renamed synthetic provider"
+    await db.commit()
+    rows = await service.list_feeds(agent_id=agent.id)
+    assert next(row for row in rows if row.id == external.id).tool_label == tool.label
+    assert external.is_default  # Synchronization keeps its private discovery-root marker.
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('first_check', [NOW - timedelta(hours=1), NOW + timedelta(minutes=30)])
+async def test_missed_early_notification_falls_back_to_event_start_without_duplicate_admission(db, agent, personal, monkeypatch, first_check):
+    _, feed = personal
+    monkeypatch.setattr(task_port, "schedule", lambda _: None)
+    await service.create_calendar_event(feed.id, agent.id, appointment(reminder_minutes_before=180,
+        description='Deliver a complete synthetic response.'))
+    count = await dispatch.dispatch_due(now=first_check)
+    if first_check < NOW + timedelta(minutes=30):
+        assert count == 0
+        assert await dispatch.dispatch_due(now=NOW + timedelta(minutes=30)) == 1
+    else:
+        assert count == 1
+    assert await dispatch.dispatch_due(now=NOW + timedelta(minutes=30)) == 0
+    task = (await db.scalars(select(Task))).one()
+    assert task.data['missed_notification_at'] == (NOW - timedelta(minutes=150)).isoformat()
+    assert task.data['fallback_at'] == (NOW + timedelta(minutes=30)).isoformat()
+    assert task.data['event']['description'] in task.objective
+
+
+@pytest.mark.asyncio
+async def test_upcoming_legacy_events_without_actions_are_scheduled_by_the_existing_calendar_worker(db, agent, personal):
+    from sqlalchemy import delete
+    _, feed = personal
+    start = datetime.now(timezone.utc) + timedelta(hours=1)
+    created = await service.create_calendar_event(feed.id, agent.id, CalendarEventCreate(
+        summary="Synthetic legacy appointment", start=start, end=start + timedelta(hours=1)))
+    event = await db.get(CalendarEvent, created.event_id)
+    assert event is not None
+    event.has_actions = False
+    await db.execute(delete(CalendarTrigger).where(CalendarTrigger.event_id == event.id))
+    await db.commit()
+    await service.sync_native_calendars()
+    trigger = (await db.scalars(select(CalendarTrigger).where(CalendarTrigger.event_id == event.id))).one()
+    assert trigger.action_key == "event:start" and trigger.status == "scheduled" and event.has_actions
+    await service.sync_native_calendars()
+    assert await db.scalar(select(func.count()).select_from(CalendarTrigger).where(CalendarTrigger.event_id == event.id)) == 1
+
+
+@pytest.mark.asyncio
 async def test_actions_have_distinct_tasks_results_and_recover_after_lost_admission_receipt(db, agent, personal, monkeypatch):
     connection, feed = personal
+    agent_id, connection_id = agent.id, connection.id
     monkeypatch.setattr(task_port, "schedule", lambda _: None)
     created = await service.create_calendar_event(feed.id, agent.id, appointment(reminder_minutes_before=30))
-    await service.write_action(feed.id, agent.id, created.uid, CalendarActionWrite(offset_minutes=-30, instructions="Prepare synthetic meeting"))
+    data = CalendarActionWrite(request_key=uuid4(), offset_minutes=-30, instructions="Prepare synthetic meeting")
+    action = await service.write_action(feed.id, agent.id, created.uid, data)
+    assert (await service.write_action(feed.id, agent.id, created.uid, data)).id == action.id
+    with pytest.raises(store.CalendarConflictError):
+        await service.write_action(feed.id, agent.id, created.uid, data.model_copy(update={"instructions": "Different synthetic work"}))
     original = dispatch.submit_background_task
     lost = False
     async def admit(draft):
@@ -67,6 +180,10 @@ async def test_actions_have_distinct_tasks_results_and_recover_after_lost_admiss
     tasks[0].status = TaskStatus.SUCCESS
     await db.commit()
     assert sum(row.treated for row in (await service.list_reminders(connection.id)).items) == 1
+    occurrence = (await service.event_window(agent_id, NOW, NOW + timedelta(days=1))).items[0]
+    summaries = await service.execution_summaries(connection_id, [CalendarOccurrenceSelection(event_id=created.event_id, recurrence_key=occurrence.recurrence_key)])
+    assert len(summaries) == 1 and summaries[0].total == 2
+    assert summaries[0].states == {"done": 1, "queued": 1}
     assert all(task.goal_id is None for task in tasks)
 
 
@@ -88,6 +205,11 @@ async def test_moving_and_deleting_occurrences_recalculates_pending_actions_with
     remaining = (await service.event_window(agent.id, NOW, NOW + timedelta(days=4))).items
     assert len([row for row in remaining if row.status != "CANCELLED"]) == 2
     assert await db.scalar(select(func.count()).select_from(Task)) == 0
+    # The next surviving occurrence still launches automatically with its recurrence context.
+    next_event = next(row for row in remaining if row.status != "CANCELLED")
+    assert await dispatch.dispatch_due(now=next_event.start) == 1
+    task = (await db.scalars(select(Task))).one()
+    assert task.data["event_recurrence"]["rrule"] == "FREQ=DAILY;COUNT=3"
 
 
 @pytest.mark.asyncio
@@ -129,7 +251,7 @@ async def test_browsing_old_months_does_not_change_scheduled_actions_or_lose_fut
 @pytest.mark.asyncio
 async def test_an_admitted_task_is_reconciled_before_event_edit_and_terminal_task_can_be_relaunched(db, agent, personal, monkeypatch):
     from uuid import uuid4
-    _, feed = personal
+    connection, feed = personal
     calendar_id, agent_id = feed.id, agent.id
     monkeypatch.setattr(task_port, 'schedule', lambda _: None)
     created = await service.create_calendar_event(feed.id, agent.id, CalendarEventCreate(summary="Synthetic meeting",
@@ -158,6 +280,9 @@ async def test_an_admitted_task_is_reconciled_before_event_edit_and_terminal_tas
     assert len(tasks) == 2 and task.status == TaskStatus.ERROR
     newer = next(row for row in tasks if row.id != task.id)
     assert newer.data['event']['description'] == 'Synthetic revised context'
+    summaries = await service.execution_summaries(connection.id, [CalendarOccurrenceSelection(event_id=created.event_id, recurrence_key=receipt.recurrence_key)])
+    # Old failed launches remain in history; the calendar displays the latest launch per action.
+    assert summaries[0].total == 2 and summaries[0].states == {"queued": 1}
 
 
 @pytest.mark.asyncio

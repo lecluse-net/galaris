@@ -285,6 +285,13 @@ the **Category** filter to find classified Goals or **Uncategorized**. Each Goal
 one category. The list groups Goals under category headings, always in alphabetical order,
 with **Uncategorized** last. Clicking the **Agent** column sorts Agents within each category
 without changing the category order, including across result pages.
+In **Cycles**, each cycle shows its assessment and recorded evidence. When a review Task
+exists, **Open review** opens its details in an overlay, subject to Task privileges. Closing
+the review returns to the same Goal and cycle history.
+**Fixed dates in the agenda** supports recurrence in a chosen timezone. The **Goals** layer
+in the [Agenda](calendar.md) shows future passages, then the exact cycle
+and Task for each elapsed passage. Configuration changes preserve the past and replace
+only future planning.
 Only its creator can see and edit a category, including between administrators;
 classification does not change access to the Goal. Category deletion is audited and retains
 the Goals while removing their classification.
@@ -731,8 +738,8 @@ associated Tasks. Memory commands and agent searches use the same context.
 Recent conversation memory is reconstructed automatically. For durable context, Galaris can inject a bounded reminder of relevant memories before execution. If semantic search is unavailable, the interface indicates the fallback to lexical search.
 
 For resumed projects, prior decisions or preferences, agents are instructed to search for missing
-evidence before answering. A busy calendar leaves up to half the brief for ordinary facts; further
-appointments remain accessible. Corrections preserve old evidence unless erasure is explicit.
+evidence before answering. The temporal agenda and ordinary Memory brief have separate budgets;
+further occurrences remain accessible. Corrections preserve old evidence unless erasure is explicit.
 
 A memory's details include **Temporality (optional)**. Enter only meaningful components:
 day, month, year, weekday, hour and minute. Empty fields are unrestricted: day 27 and month 9
@@ -741,13 +748,15 @@ matches the whole day. Hour 9 without a minute matches 9:00–9:59. The timezone
 it cannot be changed in this form. An interpretation appears below the fields;
 **Remove temporality** preserves the memory and its content.
 
-Current and upcoming matches enrich agent context under the same access rules. Configure the
-lookahead in **Preferences → Memory** (24 hours by default). Context remains bounded; agents
-can inspect additional matches with `memory_upcoming`. This creates no notification and does
-not expire the memory. Agents and Dream reserve anchors for intended reminders (appointments,
+Current and upcoming matches appear in the Agenda’s **Memory** source and the shared agent temporal
+context under the same access and contact rules. **Preferences → Memory → Agent temporal context**
+configures the horizon and maximum occurrence count (10 days and 10 events across sources by default).
+The ordinary Memory brief no longer injects these items separately. Calendar tools inspect other
+periods; `memory_upcoming` retains its compatibility read. No Task, notification, availability
+reservation or expiration is created. Agents and Dream reserve anchors for intended reminders (appointments,
 birthdays or habits). A historical date stays in the prose and does not itself justify an anchor.
-Adding an anchor excludes the memory from automatic recall outside its period and gives it priority
-when it matches. Undated memories continue through ordinary relevance search.
+Adding an anchor reserves automatic presentation for the temporal agenda.
+Undated memories continue through ordinary relevance search.
 
 In **Memory → List**, the temporal filter always applies, starting with the first search. A single
 date and time field is prefilled with the current instant in Galaris's global timezone. Edit it and click **Apply**

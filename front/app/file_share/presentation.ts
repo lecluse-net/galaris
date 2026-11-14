@@ -58,6 +58,8 @@ export function resourceTarget(entry: FileEntry, agentId: number, locale?: strin
   if (match) return { kind: match[1] === 'data' ? 'dataset' : match[1]!, id: match[2]!, title: entry.name, agentId }
   const title = typeof entry.metadata?.label === 'string' ? entry.metadata.label : entry.name
   const contact = /^galaris:\/\/contact\/([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/.exec(entry.uri)
+  const calendar = /^galaris:\/\/calendar\/([1-9][0-9]*)$/.exec(entry.uri)
+  if (calendar) return { kind: 'calendar', id: calendar[1]!, title, agentId }
   if (contact) return { kind: 'contact', id: contact[1]!, title, agentId }
   const code = /^galaris:\/\/code\/([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$/.exec(entry.uri)
   if (code) return { kind: 'code', id: code[1]!, title, agentId }

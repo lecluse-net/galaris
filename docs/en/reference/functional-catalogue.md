@@ -3313,26 +3313,33 @@ Sources: [Mail flow](../architecture/flows/mail.md), [tools](../../../back/bridg
 [approval/history](../../../back/bridge/mail/router.py).
 
 <a id="calendrier"></a>
-## 23. Local agendas and CalDAV synchronization
+## 23. Agendas, calendars and reminders
 
-**Monitor → Calendars** (`/connection/calendars`) lists connections within management scope,
-with `CALENDAR_ACCESS` or `CALENDAR_EDIT`. The latter also permits creating, editing, testing
-and deleting feeds; creating the connection retains Connection privileges.
+Every agent has a default internal **Personal agenda** without an external account.
+Agents create appointments and reminders through authorized `calendar_*` functions.
+An optional iCal connection adds an HTTPS source without replacing the personal default.
 
-Every agent has an internal personal agenda without an external account. `app.calendar` owns
-events, exceptions, revisions and actions; `bridge.calendar` adapts CalDAV and read-only HTTPS
-iCalendar subscriptions. Standard connection parameters hold external credentials and scheduling
-preferences. Tools list calendars/events, check availability, find slots, create/edit/delete
-appointments and schedule actions relative to their start/end with per-occurrence Task tracking.
+Set `reminder_minutes_before=0` for notification at the event time, or a positive integer for
+advance notice. Moving an event preserves its relative alarm; `clear_reminder=true` removes it.
+An event without an alarm creates no Task. Each notification creates an independently tracked
+Task containing event information. The Task may start a Process; only its success marks the
+reminder processed.
 
-Reads and mutations use local persistence. Month-sized or shorter windows return all occurrences
-without silent pagination. Mutations check revisions and scope: one occurrence, following ones or
-the entire series. Cancelled/transparent events do not block availability; stale sources make it
-unknown. The external worker is examined every minute and polls healthy sources every five minutes.
-CalDAV uses differential tokens, ETags and a transactional outbox; `pending` is not remote confirmation.
-Conflicts preserve both versions. Local actions are examined every ten seconds independently of
-browsing and network access. Idempotent admission creates a Task; only its success marks the action
-processed. External actions require explicit activation. Goal reviews retain their own schedule.
+**Knowledge → Agenda** (`/calendar`, with `/connection/calendars` retained) offers Month/Week/Day/
+Schedule views, recurrence and Task launches per event within management scope, requiring
+`CALENDAR_ACCESS` or `CALENDAR_EDIT`. Task details keep their own
+permissions. Agendas belong to their agent, and MCP function rights and source identities are
+checked again at invocation.
+
+`app.calendar` owns storage, events, receipts and follow-up. `bridge.calendar` provides bounded
+HTTPS transport with private-network protection. Native content is encrypted and mutations use
+row locks. Historical iCal identities and receipts remain intact. The scheduler checks native
+agendas every minute and HTTPS sources every fifteen minutes. Durable fingerprints prevent
+duplicate Tasks during recovery.
+
+The agenda holds dated commitments and punctual reminders. A Goal retains a durable outcome,
+iterations and scheduled reviews. Guidance prohibits duplicating a Goal cycle in a reminder,
+and calendar Tasks do not change Goal scheduling.
 
 Sources: [calendar flow](../architecture/flows/calendar.md), [API](../../../back/app/calendar/router.py),
 [tools](../../../back/app/calendar/mcp.py).
@@ -4731,7 +4738,8 @@ All **78 declared modules** map to one or more sections; runtime activation/conf
 | `bridge.n8n` | [External workflows](#processus) |
 | `bridge.code_server` | [VS Code OSS runtime, sessions, profiles and editor maintenance](#console) |
 | `bridge.mail` | [IMAP/SMTP, human approval/history](#mail) |
-| `bridge.calendar` | [iCalendar, availability/triggers](#calendrier) |
+| `app.calendar` | [Personal agendas, sources and reminder follow-up](#calendrier) |
+| `bridge.calendar` | [HTTPS iCalendar transport](#calendrier) |
 | `bridge.hermes` | [Hermes runtime/configuration](#harnais) |
 | `bridge.one_bot` | [OneBot v11 adapter](#messageries) |
 | `bridge.matrix` | [Matrix messages](#messageries), [calls](#voix) |
@@ -4803,7 +4811,7 @@ rather than independent applications.
 | `bridge/whatsapp` | WhatsApp setup/guide |
 | `bridge/one_bot` | OneBot setup/guide |
 | `bridge/n8n` | n8n setup/guide |
-| `bridge/calendar` | Calendars in connection forms |
+| `app/calendar` | Personal agendas and connected calendars |
 | `bridge/claude_agent` | Harness catalogue/configuration |
 | `bridge/codex` | Harness catalogue/configuration |
 | `bridge/deepseek_harness` | Harness catalogue/configuration |

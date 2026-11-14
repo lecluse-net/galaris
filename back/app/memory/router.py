@@ -1,6 +1,7 @@
 """RBAC-protected administration API for governed memory."""
 
 from __future__ import annotations
+from datetime import datetime
 from core.util import require_editorial_client, local_timezone_name
 from fastapi import Depends
 
@@ -17,6 +18,7 @@ from core.user import HumanActor
 
 from . import acquisition_service, automation, deduplication, facade, maintenance, metrics, retrieval, service
 from .contracts import MemorySearchItem
+from .agenda import MemoryAgendaWindow
 from .schemas import (
     MemoryDuplicatePreview,
     MemoryForgetResult,
@@ -48,6 +50,21 @@ from app.document.interface import AppConsentRequired, AppWriteLimitError
 
 
 router = APIRouter(prefix="/memory", tags=["memory"])
+
+
+@router.get("/agenda")
+@authorize(privileges=[Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
+async def read_memory_agenda(agent_id: int, start: datetime, end: datetime) -> MemoryAgendaWindow:
+    from .agenda import memory_agenda
+
+    await _require_agent_scope(agent_id)
+    try:
+        page = await memory_agenda(agent_id, start, end)
+        if not page.complete:
+            raise ValueError("Too many memory occurrences; request a shorter period")
+        return page
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @router.get("/temporal/defaults")

@@ -117,6 +117,15 @@ la phase de reprise.
 Actions du scheduler : `CREATE → dispatch`, `DISPATCH → execute`, `PLAN → advance_plan`.
 Une tâche suspendue conserve sa phase sans être exécutée.
 
+Dans la file automatique, les tâches d’agenda et celles liées à un objectif restent en
+arrière-plan, derrière le travail issu des discussions. Leur ancienneté et la présence d’un
+canal de messagerie pour livrer le résultat ne les rendent pas interactives. La promotion
+par équité ne s’applique pas à ces tâches. Elles conservent la réservation de capacité pour
+le travail interactif ; une exécution déjà engagée n’est pas interrompue par cet ordre de file.
+Les reprises rapides de ces travaux repassent par la file d’arrière-plan. Les nouvelles
+sous-tâches et délégations d’agenda héritent de la provenance du déclencheur ; celles des
+objectifs conservent leur rattachement à l’objectif.
+
 Une demande d'information appartenant à un domaine suspend la tâche existante avec la raison
 `input`, sans enfant technique. À la fin du tour, `INTERRUPT_EXECUTION` conserve un point de
 reprise `DISPATCH`. Une réponse reçue pendant `EXEC` est injectée à la finalisation ; une réponse
@@ -423,7 +432,16 @@ Les revues continuent le cycle engagé avec les règles ordinaires de scheduler,
 Leurs coûts, y compris les avis invalidés, rejoignent le coût de travail du cycle.
 La stratégie et les pistes restent des contenus documentaires libres.
 
-Chaque Goal choisit exactement un mode de déclenchement automatique. Le mode temporel exige une
+Chaque Goal choisit exactement un mode de déclenchement automatique : délai après travail,
+récurrence à dates fixes ou cycle d’un objectif parent. La récurrence conserve des segments
+de planification versionnés et des passages durables, avec un lien unique vers chaque cycle
+et sa Task. Les éditions ne remplacent que les dates futures ; les passages échus et les
+cycles engagés restent liés à leur date prévue. Les futurs passages sont calculés à la lecture,
+puis matérialisés à échéance par le worker Goal. Un passage trop ancien est conservé comme
+ignoré, sans Task ; aucun cycle supplémentaire ne chevauche le cycle engagé. L’Agenda ne
+déclenche aucune action ordinaire pour ces passages. Voir la [décision 0283](../../../project/decisions/0283-goal-agenda-passages.md).
+
+Le mode temporel par délai exige une
 fréquence et peut utiliser la plage globale par défaut ou ajouter une restriction hebdomadaire
 propre au Goal. Le mode relationnel désigne un unique Goal parent, sans fréquence ni plage propre.
 Chaque cycle parent bouclé dépose de manière idempotente un déclenchement durable pour chacun de ses
@@ -431,7 +449,7 @@ enfants directs. Le runner le consomme pour créer un cycle `RELATIONAL` portant
 cycle source ; la cascade vers les niveaux suivants ne se produit qu'une fois leur propre cycle
 bouclé. Les relations sont acycliques, et l'API d'arbre expose les descendants à l'interface ainsi
 que le parent et le nombre d'enfants dans le détail d'un Goal. Une commande manuelle reste possible
-dans les deux modes, sans constituer un troisième mode de configuration.
+dans les trois modes, sans constituer un mode de configuration supplémentaire.
 
 Un planning hebdomadaire global borne
 les nouveaux cycles et relances de tous les Goals. Chaque Goal peut ajouter une restriction

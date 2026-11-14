@@ -1,3 +1,21 @@
+const calendarProviders = {
+  fr: {
+    labels: { client_id: 'Identifiant de l’application OAuth', client_secret: 'Secret de l’application OAuth', auth_type: 'Authentification CalDAV', tenant: 'Annuaire Microsoft', issuer: 'Émetteur OAuth', authorization_endpoint: 'Adresse d’autorisation OAuth', token_endpoint: 'Adresse des jetons OAuth', scope: 'Autorisations OAuth' },
+    descriptions: { client_id: 'Application du fournisseur ; à définir dans les paramètres globaux du Tool', client_secret: 'Secret chiffré de cette application, commun aux comptes du Tool', auth_type: 'Pour CalDAV ; Google et Microsoft utilisent toujours OAuth', tenant: 'common pour les comptes personnels et professionnels, ou identifiant de l’annuaire de l’entreprise', issuer: 'URL HTTPS de l’émetteur OAuth CalDAV', authorization_endpoint: 'URL HTTPS d’autorisation OAuth CalDAV', token_endpoint: 'URL HTTPS de renouvellement des jetons CalDAV', scope: 'Autorisations demandées par le serveur CalDAV' },
+    options: { source_kind: { caldav: 'CalDAV', ical: 'iCalendar privé (lecture seule)', google: 'Google Agenda', microsoft: 'Microsoft 365 / Outlook', icloud: 'Apple iCloud' }, auth_type: { basic: 'Identifiant et mot de passe', oauth: 'OAuth 2.0' } },
+  },
+  en: {
+    labels: { client_id: 'OAuth application client ID', client_secret: 'OAuth application secret', auth_type: 'CalDAV authentication', tenant: 'Microsoft directory', issuer: 'OAuth issuer', authorization_endpoint: 'OAuth authorization endpoint', token_endpoint: 'OAuth token endpoint', scope: 'OAuth scopes' },
+    descriptions: { client_id: 'Provider application; configure as a global Tool parameter', client_secret: 'Encrypted application secret, shared by accounts on this Tool', auth_type: 'For CalDAV; Google and Microsoft always use OAuth', tenant: 'common for personal and work accounts, or the enterprise directory identifier', issuer: 'CalDAV OAuth issuer HTTPS URL', authorization_endpoint: 'CalDAV OAuth authorization HTTPS URL', token_endpoint: 'CalDAV OAuth token renewal HTTPS URL', scope: 'Scopes required by the CalDAV server' },
+    options: { source_kind: { caldav: 'CalDAV', ical: 'Private iCalendar (read only)', google: 'Google Calendar', microsoft: 'Microsoft 365 / Outlook', icloud: 'Apple iCloud' }, auth_type: { basic: 'Username and password', oauth: 'OAuth 2.0' } },
+  },
+  zh: {
+    labels: { client_id: 'OAuth 应用 ID', client_secret: 'OAuth 应用密钥', auth_type: 'CalDAV 身份验证', tenant: 'Microsoft 目录', issuer: 'OAuth 颁发者', authorization_endpoint: 'OAuth 授权地址', token_endpoint: 'OAuth 令牌地址', scope: 'OAuth 权限' },
+    descriptions: { client_id: '供应商应用 ID，配置在 Tool 全局参数中', client_secret: '此 Tool 账户共用的加密应用密钥', auth_type: 'CalDAV 身份验证；Google 和 Microsoft 使用 OAuth', tenant: '个人和工作账户使用 common，或输入企业目录 ID', issuer: 'CalDAV OAuth 颁发者 HTTPS URL', authorization_endpoint: 'CalDAV OAuth 授权 HTTPS URL', token_endpoint: 'CalDAV OAuth 令牌续订 HTTPS URL', scope: 'CalDAV 所需的 OAuth 权限' },
+    options: { source_kind: { caldav: 'CalDAV', ical: '私密 iCalendar（只读）', google: 'Google Calendar', microsoft: 'Microsoft 365 / Outlook', icloud: 'Apple iCloud' }, auth_type: { basic: '用户名和密码', oauth: 'OAuth 2.0' } },
+  },
+}
+
 export default {
   fr: {
     contextHelpPages: {
@@ -20,7 +38,7 @@ export default {
       capabilityProtocol: "{capability} · {protocol}",
       capabilityLabels: {"mcp":"MCP","api":"API","file_share":"Partage","messenger":"Messagerie","listener":"Listener","mail":"Mail","calendar":"Calendrier"},
       protocolSections: { imap: "IMAP", smtp: "SMTP" },
-      protocolLabels: {"http":"HTTP","sse":"SSE","stdio":"stdio","rest":"REST","affine":"AFFiNE","nextcloud":"Nextcloud","samba":"Samba","internal":"Galaris","matrix":"Matrix","nextcloud_talk":"Nextcloud Talk","one_bot":"OneBot","telegram":"Telegram","whatsapp":"WhatsApp","webhook":"Webhook","imap_smtp":"IMAP & SMTP","ical":"iCal"},
+      protocolLabels: {"http":"HTTP","sse":"SSE","stdio":"stdio","rest":"REST","affine":"AFFiNE","nextcloud":"Nextcloud","samba":"Samba","internal":"Galaris","matrix":"Matrix","nextcloud_talk":"Nextcloud Talk","one_bot":"OneBot","telegram":"Telegram","whatsapp":"WhatsApp","webhook":"Webhook","imap_smtp":"IMAP & SMTP","caldav":"CalDAV"},
       protocols: "Protocoles",
       protocolsHint: "Un outil représente un service, par exemple Ionos, et peut implémenter un ou plusieurs protocoles.",
       mcpProtocol: "MCP",
@@ -186,7 +204,10 @@ export default {
       paramOptionLabel: 'Libellé du choix',
       removeParamOption: 'Supprimer ce choix',
       connectionParamLabels: {
+        sync_interval_hours: 'Intervalle de synchronisation (heures)',
         imap_username: "Identifiant IMAP",
+        ...calendarProviders.fr.labels,
+        source_kind: 'Type de source', url: 'URL CalDAV HTTPS', label: 'Libellé du calendrier', owner_label: 'Propriétaire du calendrier',
         imap_password: "Mot de passe IMAP",
         smtp_username: "Identifiant SMTP",
         smtp_password: "Mot de passe SMTP",
@@ -214,6 +235,7 @@ export default {
         allowed_phone_numbers: 'Numéros de téléphone autorisés', template_name: 'Nom du modèle de message', template_language: 'Langue du modèle de message',
       },
       connectionParamOptions: {
+        calendar: calendarProviders.fr.options,
         peerCommunication: { none: 'Aucune', team: 'Agents de ses équipes', all: 'Tous les agents' },
         managementScope: {
           usage: 'Usage sans droit de modification',
@@ -265,6 +287,7 @@ export default {
       systemService: "Service système obligatoire",
       systemServiceHint: "Ce service système et sa connexion sont obligatoires. Ses fonctions restent configurables : bloquer une fonction peut empêcher le travail de l’agent.",
       builtins: {
+        agenda: { label: 'Agenda personnel', description: 'Rendez-vous et rappels personnels sans compte externe. Les rappels créent des tâches suivies. Les objectifs conservent le suivi durable et leurs propres cycles ; ne pas dupliquer une revue d’objectif dans l’agenda.' },
         agent_admin: {
           label: "AgentAdmin",
           description: "Administration des autres agents selon tools.management_scope : usage, équipe ou globale, sous les droits du responsable humain. Le niveau équipe permet la création dans une équipe de l’appelant. Aucune automodification, même au niveau global. Les délégations restent humaines. Inactif par défaut.",
@@ -418,6 +441,14 @@ export default {
           approver_user_id: 'Utilisateur responsable de la validation et de l’envoi',
         },
         calendar: {
+          url: 'URL HTTPS CalDAV ou abonnement iCalendar ; chiffrée car elle peut contenir un jeton privé',
+          ...calendarProviders.fr.descriptions,
+          source_kind: 'CalDAV en lecture/écriture ou abonnement iCalendar en lecture seule',
+          username: 'Identifiant HTTP facultatif',
+          password: 'Mot de passe HTTP facultatif',
+          label: 'Libellé du calendrier ; celui du fournisseur par défaut',
+          owner_label: 'Propriétaire humain du calendrier',
+          sync_interval_hours: 'Heures entières entre 1 et 8760, par défaut 2. Fréquence commune à tous les agendas de cette connexion.',
           timezone: 'Fuseau IANA utilisé pour rechercher des créneaux, par exemple Europe/Paris',
           workday_start: 'Début par défaut de la journée de travail, au format HH:MM',
           workday_end: 'Fin par défaut de la journée de travail, au format HH:MM',
@@ -495,7 +526,7 @@ export default {
       capabilityProtocol: "{capability} · {protocol}",
       capabilityLabels: {"mcp":"MCP","api":"API","file_share":"File sharing","messenger":"Messaging","listener":"Listener","mail":"Mail","calendar":"Calendar"},
       protocolSections: { imap: "IMAP", smtp: "SMTP" },
-      protocolLabels: {"http":"HTTP","sse":"SSE","stdio":"stdio","rest":"REST","affine":"AFFiNE","nextcloud":"Nextcloud","samba":"Samba","internal":"Galaris","matrix":"Matrix","nextcloud_talk":"Nextcloud Talk","one_bot":"OneBot","telegram":"Telegram","whatsapp":"WhatsApp","webhook":"Webhook","imap_smtp":"IMAP & SMTP","ical":"iCal"},
+      protocolLabels: {"http":"HTTP","sse":"SSE","stdio":"stdio","rest":"REST","affine":"AFFiNE","nextcloud":"Nextcloud","samba":"Samba","internal":"Galaris","matrix":"Matrix","nextcloud_talk":"Nextcloud Talk","one_bot":"OneBot","telegram":"Telegram","whatsapp":"WhatsApp","webhook":"Webhook","imap_smtp":"IMAP & SMTP","caldav":"CalDAV"},
       protocols: "Protocols",
       protocolsHint: "A Tool represents a service, such as Ionos, and can implement one or more protocols.",
       mcpProtocol: "MCP",
@@ -661,7 +692,10 @@ export default {
       paramOptionLabel: 'Choice label',
       removeParamOption: 'Remove this choice',
       connectionParamLabels: {
+        sync_interval_hours: 'Synchronization interval (hours)',
         imap_username: "IMAP username",
+        ...calendarProviders.en.labels,
+        source_kind: 'Source type', url: 'HTTPS CalDAV URL', label: 'Calendar label', owner_label: 'Calendar owner',
         imap_password: "IMAP password",
         smtp_username: "SMTP username",
         smtp_password: "SMTP password",
@@ -689,6 +723,7 @@ export default {
         allowed_phone_numbers: 'Allowed phone numbers', template_name: 'Message template name', template_language: 'Message template language',
       },
       connectionParamOptions: {
+        calendar: calendarProviders.en.options,
         peerCommunication: { none: 'None', team: 'Agents in its teams', all: 'All agents' },
         managementScope: {
           usage: 'Usage without modification rights',
@@ -740,6 +775,7 @@ export default {
       systemService: "Mandatory system service",
       systemServiceHint: "This system service and its connection are mandatory. Function policies remain configurable: blocking a function may prevent the agent from working.",
       builtins: {
+        agenda: { label: 'Personal agenda', description: 'Personal appointments and reminders without an external account. Reminders create tracked Tasks. Goals retain durable outcome tracking and their own cycles; do not duplicate a Goal review in the agenda.' },
         agent_admin: {
           label: "AgentAdmin",
           description: "Administer other agents according to tools.management_scope: usage, team or global, bounded by the human manager’s rights. Team scope permits creation in a caller’s team. Self-modification is forbidden even with global scope. Delegation remains human-only. Inactive by default.",
@@ -893,6 +929,14 @@ export default {
           approver_user_id: 'User responsible for approving and sending the message',
         },
         calendar: {
+          url: 'HTTPS CalDAV calendar or iCalendar subscription URL; encrypted because it may contain a private token',
+          ...calendarProviders.en.descriptions,
+          source_kind: 'Read/write CalDAV or read-only iCalendar subscription',
+          username: 'Optional HTTP login',
+          password: 'Optional HTTP password',
+          label: 'Calendar label; defaults to the provider label',
+          owner_label: 'Human owner of the calendar',
+          sync_interval_hours: 'Whole hours from 1 to 8760, default 2. Shared by every calendar of this connection.',
           timezone: 'IANA timezone used to search for slots, for example Europe/Paris',
           workday_start: 'Default start of the working day in HH:MM format',
           workday_end: 'Default end of the working day in HH:MM format',
@@ -967,7 +1011,7 @@ export default {
       capabilityProtocol: "{capability} · {protocol}",
       capabilityLabels: {"mcp":"MCP","api":"API","file_share":"文件共享","messenger":"消息","listener":"监听器","mail":"邮件","calendar":"日历"},
       protocolSections: { imap: "IMAP", smtp: "SMTP" },
-      protocolLabels: {"http":"HTTP","sse":"SSE","stdio":"stdio","rest":"REST","affine":"AFFiNE","nextcloud":"Nextcloud","samba":"Samba","internal":"Galaris","matrix":"Matrix","nextcloud_talk":"Nextcloud Talk","one_bot":"OneBot","telegram":"Telegram","whatsapp":"WhatsApp","webhook":"Webhook","imap_smtp":"IMAP & SMTP","ical":"iCal"},
+      protocolLabels: {"http":"HTTP","sse":"SSE","stdio":"stdio","rest":"REST","affine":"AFFiNE","nextcloud":"Nextcloud","samba":"Samba","internal":"Galaris","matrix":"Matrix","nextcloud_talk":"Nextcloud Talk","one_bot":"OneBot","telegram":"Telegram","whatsapp":"WhatsApp","webhook":"Webhook","imap_smtp":"IMAP & SMTP","caldav":"CalDAV"},
       protocols: "协议",
       protocolsHint: "工具代表 Ionos 等服务，可实现一个或多个协议。",
       mcpProtocol: "MCP",
@@ -1037,7 +1081,10 @@ export default {
       invalidParamOptions: '“{name}”的选项无效：值必须非空、唯一且符合类型；默认值必须是一个选项。',
       paramOptionsHint: '选项替代自由文本输入。保存值，显示标签。', paramOptionValue: '值 *', paramOptionLabel: '选项标签', removeParamOption: '删除此选项',
       connectionParamLabels: {
+        sync_interval_hours: '同步间隔（小时）',
         imap_username: "IMAP 用户名",
+        ...calendarProviders.zh.labels,
+        source_kind: '来源类型', url: 'HTTPS CalDAV URL', label: '日历标签', owner_label: '日历所有者',
         imap_password: "IMAP 密码",
         smtp_username: "SMTP 用户名",
         smtp_password: "SMTP 密码",
@@ -1060,6 +1107,7 @@ export default {
         allowed_phone_numbers: '允许的电话号码', template_name: '消息模板名称', template_language: '消息模板语言',
       },
       connectionParamOptions: {
+        calendar: calendarProviders.zh.options,
         peerCommunication: { none: '禁止', team: '所在团队的智能体', all: '所有智能体' },
         managementScope: {
           usage: '使用（无修改权限）',
@@ -1106,6 +1154,7 @@ export default {
       systemService: "必需的系统服务",
       systemServiceHint: "此系统服务及其连接为必需。功能策略仍可配置：阻止功能可能导致智能体无法工作。",
       builtins: {
+        agenda: { label: '个人日程', description: '无需外部账户即可管理个人预约和提醒。提醒会创建可跟踪的任务。目标保留长期结果跟踪及其自身周期；不要在日程中重复目标检查。' },
         agent_admin: {
           label: "AgentAdmin",
           description: "通过 tools.management_scope 选择仅使用、团队管理或全局管理，且不超过人类负责人的权限。团队范围允许在调用者的团队中创建智能体。任何范围都禁止修改自身。管理授权仅由人类授予。默认关闭。",
@@ -1246,7 +1295,7 @@ export default {
           connect_timeout_s: '连接超时秒数', operation_timeout_s: '网络操作超时秒数', poll_interval_s: '收件箱轮询间隔秒数', max_attachment_mb: '单个附件最大大小（MB）',
           max_total_attachment_mb: '单封邮件附件总大小上限（MB）', approval_required: '每次投递前要求人工批准', approver_user_id: '负责批准并发送邮件的用户',
         },
-        calendar: { timezone: '用于搜索时段的 IANA 时区，例如 Europe/Paris', workday_start: '默认工作日开始时间，格式 HH:MM', workday_end: '默认工作日结束时间，格式 HH:MM', slot_step_minutes: '搜索空闲时段的步长（分钟）' },
+        calendar: { ...calendarProviders.zh.descriptions, sync_interval_hours: '1 至 8760 的整数小时，默认为 2。同一连接的所有日历共用此间隔。', source_kind: 'CalDAV 或 iCalendar 订阅', url: 'HTTPS CalDAV 或 iCalendar 订阅 URL，可能包含私密令牌，因此加密保存', username: '可选 HTTP 登录名', password: '可选 HTTP 密码', label: '日历标签，默认为供应商标签', owner_label: '日历的人类所有者', timezone: '用于搜索时段的 IANA 时区，例如 Europe/Paris', workday_start: '默认工作日开始时间，格式 HH:MM', workday_end: '默认工作日结束时间，格式 HH:MM', slot_step_minutes: '搜索空闲时段的步长（分钟）' },
         messenger: {
           login: '智能体账户的 Nextcloud 标识符', user_id: '消息平台上的机器人标识符', password: '消息账户密码或密钥', access_token: '长期访问令牌',
           bot_token: '使用 BotFather 创建的机器人令牌', allowed_user_ids: '以逗号分隔的授权用户标识符', allowed_chat_ids: '获授权的 Telegram 私聊或群聊 ID',

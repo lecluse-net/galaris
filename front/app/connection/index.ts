@@ -1,3 +1,5 @@
+import { defineAsyncView } from '@/core/util'
+
 export {
   mailService,
   type MailApproverOption,
@@ -13,3 +15,4 @@ export {
 export { CONNECTIONS_CHANGED_EVENT } from './events'
 export { useConnectionStore } from './stores/connectionStore'
 export { default as McpCandidateAgent } from './components/McpCandidateAgent.vue'
+export const ConnectionDialog = defineAsyncView(() => import('./components/ConnectionList.vue'))

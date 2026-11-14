@@ -214,8 +214,9 @@ allowed_dependencies = ["app.calendar", "app.file_share"]
 max_domain_fan_out = 2
 
 [module."app.calendar"]
-allowed_dependencies = ["app.agent", "app.connection", "app.tools"]
-max_domain_fan_out = 3
+# Contact lifecycle hooks (ADR 0287) and native resource registration (ADR 0289).
+allowed_dependencies = ["app.agent", "app.connection", "app.contact", "app.file_share", "app.memory", "app.tools"]
+max_domain_fan_out = 6
 
 [module."bridge.hermes"]
 allowed_dependencies = ["app.agent", "app.connection", "app.file_share", "app.harnesses", "app.llm", "app.mcp", "app.memory", "app.messenger", "app.process", "app.skill", "app.tools", "bridge.harness"]

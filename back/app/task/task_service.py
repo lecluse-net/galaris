@@ -345,6 +345,7 @@ async def create(task_data: TaskCreate, *, idempotency_key: str | None = None,
             return existing
     await apply_goal_lineage(task_data)
     await apply_reasoning_effort_lineage(task_data)
+    await apply_calendar_lineage(task_data)
     new_task = build(task_data)
     if requester_user_id is not None:
         from core.user import get_user_record
@@ -1018,6 +1019,19 @@ async def apply_goal_lineage(new_task: Union[TaskCreate, Task]) -> None:
         return
     query = select(Task.goal_id).where(Task.id == related_task_id)
     new_task.goal_id = await get_db().scalar(Task.histo_filter(query))
+
+
+async def apply_calendar_lineage(new_task: Union[TaskCreate, Task]) -> None:
+    """Keep planned and delegated calendar work in its background scheduling class."""
+    data = dict(new_task.data or {})
+    if data.get("calendar_trigger_id") is not None:
+        return
+    related_task_id = new_task.source_task_id or new_task.parent_id
+    if related_task_id is None:
+        return
+    trigger = await get_db().scalar(select(Task.data["calendar_trigger_id"].as_string()).where(Task.id == related_task_id))
+    if trigger is not None:
+        new_task.data = {**data, "calendar_trigger_id": trigger}
 
 
 async def apply_reasoning_effort_lineage(

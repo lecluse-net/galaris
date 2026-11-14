@@ -141,12 +141,6 @@ export const memorySessionFields: SettingField[] = [
 
 export const memoryContextFields: SettingField[] = [
     {
-        name: 'MEMORY_TEMPORAL_LOOKAHEAD_HOURS',
-        labelKey: 'memorySettings.fields.temporalHours',
-        descriptionKey: 'memorySettings.fields.temporalHoursHint',
-        input: 'integer', min: 0, max: 744,
-    },
-    {
         name: 'MEMORY_CONTEXT_ENABLED',
         labelKey: 'memorySettings.fields.contextEnabled',
         descriptionKey: 'memorySettings.fields.contextEnabledHint',
@@ -278,6 +272,11 @@ export const memoryContextFields: SettingField[] = [
         step: 0.01,
         advanced: true,
     },
+]
+
+export const agendaContextFields: SettingField[] = [
+    { name: 'AGENDA_CONTEXT_DAYS', labelKey: 'memorySettings.fields.agendaDays', descriptionKey: 'memorySettings.fields.agendaDaysHint', input: 'integer', min: 1, max: 31 },
+    { name: 'AGENDA_CONTEXT_MAX_EVENTS', labelKey: 'memorySettings.fields.agendaEvents', descriptionKey: 'memorySettings.fields.agendaEventsHint', input: 'integer', min: 1, max: 100 },
 ]
 
 export const memoryCaptureFields: SettingField[] = [

@@ -59,7 +59,7 @@ connection's parameters does not replace these rights.
 
 The Mail journal still checks the designated approver. Approving or rejecting a send requires
 a web session and both `MAIL_EDIT` and `PERMISSION_DECIDE`. View and configure calendars under
-**Monitor → Calendars** (`/connection/calendars`) for connections within management scope;
+**Knowledge → Agenda** (`/connection/calendars`) for connections within management scope;
 creating the connection remains a Connection operation.
 
 ## Delegate a Preferences section

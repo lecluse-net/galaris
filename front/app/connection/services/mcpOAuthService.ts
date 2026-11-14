@@ -45,11 +45,11 @@ function localConnection(state: string): number {
 }
 
 export const mcpOAuthService = {
-  async status(connectionId: number): Promise<McpOAuthStatus> {
-    return (await api.get<McpOAuthStatus>(`/connections/${connectionId}/oauth`)).data
+  async status(connectionId: number, purpose: 'mcp' | 'calendar' = 'mcp'): Promise<McpOAuthStatus> {
+    return (await api.get<McpOAuthStatus>(`/connections/${connectionId}/oauth`, { params: purpose === 'calendar' ? { purpose } : undefined })).data
   },
-  async start(connectionId: number, client?: McpOAuthClient): Promise<McpOAuthStart> {
-    const { data } = await api.post<McpOAuthStart>(`/connections/${connectionId}/oauth/start`, { browser_origin: window.location.origin, client })
+  async start(connectionId: number, client?: McpOAuthClient, purpose: 'mcp' | 'calendar' = 'mcp'): Promise<McpOAuthStart> {
+    const { data } = await api.post<McpOAuthStart>(`/connections/${connectionId}/oauth/start`, { browser_origin: window.location.origin, client }, { params: purpose === 'calendar' ? { purpose } : undefined })
     if (data.method === 'device' || data.method === 'configure') return data
     const state = new URL(data.authorization_url).searchParams.get('state')
     if (!state) throw new Error('Missing OAuth state')
@@ -73,7 +73,7 @@ export const mcpOAuthService = {
       localStorage.removeItem(localPendingPrefix + state)
     }
   },
-  async disconnect(connectionId: number): Promise<void> {
-    await api.delete(`/connections/${connectionId}/oauth`)
+  async disconnect(connectionId: number, purpose: 'mcp' | 'calendar' = 'mcp'): Promise<void> {
+    await api.delete(`/connections/${connectionId}/oauth`, { params: purpose === 'calendar' ? { purpose } : undefined })
   },
 }

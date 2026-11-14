@@ -427,6 +427,21 @@ async def test_create_persists_and_inherits_reasoning_effort_override(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("link", ["parent_id", "source_task_id"])
+async def test_calendar_children_keep_background_origin_and_content(db, monkeypatch, link):
+    trigger = str(uuid4())
+    parent = _task(data={"calendar_trigger_id": trigger})
+    db.add(parent)
+    await db.commit()
+    monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
+    child = await task_service.create(TaskCreate(label="Synthetic calendar contribution", objective="Continue",
+        data={"synthetic_preserved": "kept"}, **{link: parent.id}))
+    grandchild = await task_service.create(TaskCreate(label="Synthetic next contribution", objective="Continue", parent_id=child.id))
+    assert child.data["calendar_trigger_id"] == grandchild.data["calendar_trigger_id"] == trigger
+    assert child.data["synthetic_preserved"] == "kept"
+
+
+@pytest.mark.asyncio
 async def test_created_task_keeps_user_language_for_background_execution(db, monkeypatch):
     from core.user import user_service
     from core.user.models import User

@@ -1,6 +1,7 @@
 import type { ConnectionParamDef, ConnectionParamOption, Tool } from './services/toolService'
 
 const BUILT_IN_TOOL_CODES = new Set([
+  "agenda",
   "galaris",
   "conversation",
   "memory",

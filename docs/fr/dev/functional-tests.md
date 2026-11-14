@@ -61,6 +61,21 @@ sa réouverture, les cartes de pièces jointes, le téléchargement et le refus 
 `chat-internal-attachments.spec.mjs` vérifie que les valeurs et les cartes fichier/document
 de la réponse restent visibles ensemble sur mobile et bureau.
 
+Les scénarios de synchronisation protègent l’intervalle commun des agendas d’une connexion
+(2 h par défaut), les anciennes échéances courtes, les écritures en attente et les reprises
+après erreur ou interruption sans polling anticipé. Les contrôles HTTP couvrent les valeurs
+entières, la persistance et les droits. `connections-loading.spec.mjs` exerce le paramètre
+standard de la connexion, sa réouverture et l’absence de lecture des agendas. L’ancien
+diagnostic listant agendas et tâches dans la connexion est retiré ; les liens et historiques
+restent couverts sur la page Agenda par `calendar.spec.mjs`, y compris les tentatives en
+direct, leur conservation et la réouverture après erreur, sur mobile et bureau.
+La découverte depuis la racine DAV suit le compte puis son espace de calendriers, sans
+confondre les espaces des groupes de délégation, quel que soit l’ordre des réponses.
+Le même scénario protège les écritures et la reprise après une redirection DAV.
+Le fournisseur synthétique utilise une IPv4 privée via le véritable résolveur du transport.
+`test_transport.py` vérifie les lectures HTTPS sur IPv4/IPv6 publiques et privées, l’épinglage
+DNS, les redirections et la confidentialité des identifiants. Les adresses spéciales restent
+refusées, y compris en IPv4 mappée et parmi des réponses DNS mixtes.
 `app/conversation/tests/test_direct_process_inputs.py` couvre les contributions structurées,
 droits HTTP, révisions dépassées, dépôts réels, conservation des autres données après disparition
 d'un fichier, confirmation d'une valeur inchangée après erreur, reprise par l'agent et lancement unique sans
@@ -149,6 +164,9 @@ base réelle : noms et coordonnées actuels, export JSON, isolation entre agents
 déplacements et suppressions, oubli et pagination/recherche sur 501 fiches. Le parcours HTTP vérifie
 `CONTACT_ACCESS`/`CONTACT_EDIT`, le refus avec Fichiers seul et le périmètre des agents gérés.
 Les écritures et éditions contrôlent le JSON, les champs protégés, les coordonnées omises et
+La reprise de l’historique dans `goals.spec.mjs` vérifie aussi les preuves conservées et
+l’accès à la Task de revue selon les privilèges, sans navigation ni fermeture de l’objectif.
+
 le jeton de concurrence. `app/contact/tests/test_file_resource_concurrency.py` vérifie, dans
 deux transactions indépendantes, qu'une seule écriture d'un même snapshot est acceptée.
 Le scénario Contacts de `front/browser-tests/file-browser.spec.mjs` ouvre désormais la modale
@@ -1974,6 +1992,10 @@ Son attente suit les événements de fin ou d'échec des requêtes en cours, pui
 déclenchées par leurs réponses, jusqu'à la fin de cette séquence. Elle exclut le long polling
 Socket.IO et couvre aussi la navigation juste après connexion.
 Lors d'une navigation complète, les requêtes du document quitté ne participent plus à
+`app/task/tests/test_scheduler.py` protège la priorité des discussions devant les travaux
+d’agenda et d’objectifs, avec ancienneté, équité, canal de livraison et reprise rapide,
+ainsi que la capacité réservée aux demandes interactives. `test_task_service.py` vérifie
+la provenance d’agenda des nouvelles sous-tâches et délégations, sans perte de leurs données.
 cette attente : une requête lancée pendant son remplacement peut disparaître sans événement
 de fin. Les erreurs restent observées et les requêtes du nouveau document sont suivies.
 Les parcours de crédits attendent chaque résultat visible ; ils n'attendent pas les lectures
@@ -2293,6 +2315,7 @@ en chargeant des pages de 50 messages, sur desktop et mobile, puis se rouvrent e
 Chaque page ancienne est demandée une seule fois ; les rafraîchissements légitimes de
 la première page et sa relecture à la réouverture restent permis. La navigation pendant
 la restauration initiale ne doit pas être perdue.
+| Agenda mémoire informatif | Occurrences récurrentes et périodes précises, identités stables, droits et contact, validité actuelle ; aucune création d’événement ni de déclencheur ; chronologie agent commune sans double injection, repli après erreur ; horizon et nombre d’événements configurables, sauvegarde et réouverture ; source sélectionnable et ouverture du souvenir sur mobile/bureau | `back/app/memory/tests/test_agenda.py`, `back/app/calendar/tests/test_context.py`, `front/browser-tests/calendar.spec.mjs`, `front/browser-tests/params-layout.spec.mjs`, `e2e/specs/calendar.spec.mjs` |
 Les scénarios conservent l’ancre avec des hauteurs variables, des ajouts d’historique,
 le streaming et le redimensionnement, y compris lorsqu’un contenu tardif agrandit le
 message partiellement visible en cours de lecture ; ils couvrent aussi le focus, la sélection,

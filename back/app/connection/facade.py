@@ -44,8 +44,12 @@ from .connection_service import (
     set_tool_function_state,
     resolve_function,
 )
+from .calendar_oauth import calendar_access_token, invalidate_calendar_token
+from .oauth_service import register_oauth_observer
 
 __all__ = [
+    "register_oauth_observer",
+    "calendar_access_token", "invalidate_calendar_token",
     "mcp_oauth_auth", "tool_connection_options",
     "effective_param_value_expression",
     "function_state_label",

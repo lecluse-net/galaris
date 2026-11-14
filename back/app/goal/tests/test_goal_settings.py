@@ -215,6 +215,7 @@ def test_next_schedule_does_not_announce_a_cycle_while_globally_paused() -> None
 
 @pytest.mark.asyncio
 async def test_process_goals_blocks_new_cycles_while_globally_paused(
+    db,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings = AsyncMock(
@@ -241,6 +242,7 @@ async def test_process_goals_blocks_new_cycles_while_globally_paused(
 
 @pytest.mark.asyncio
 async def test_process_goals_starts_only_manual_cycles_outside_global_schedule(
+    db,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings = AsyncMock(
@@ -267,6 +269,7 @@ async def test_process_goals_starts_only_manual_cycles_outside_global_schedule(
 
 @pytest.mark.asyncio
 async def test_process_goals_runs_referrer_waits_and_due_cycles_when_globally_active(
+    db,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     settings = AsyncMock(

@@ -28,6 +28,7 @@ async def test_galaris_root_lists_the_supported_business_collections(db) -> None
         "galaris://agent/",
         "galaris://processes/",
         "galaris://code/",
+        "galaris://calendar/",
         "galaris://skill/",
     }
     for entry in result.entries:

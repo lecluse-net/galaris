@@ -30,23 +30,23 @@ source captures and call journals are preserved.
 
 Requests depending on a preference, decision or resumed project require prior evidence: when
 it is missing from context, agents are instructed to search before answering or acting.
-A focused search may be followed by at most two complementary searches. A saturated calendar
-keeps its first positions but reserves up to half the slots for ordinary evidence; unused slots
-return to calendar entries. Character budgets and access remain strict. Large documentary tables
+A focused search may be followed by at most two complementary searches.
+The temporal agenda and ordinary Memory brief have separate budgets.
+Character budgets and access remain strict. Large documentary tables
 retain column labels in their passages. Corrections preserve old evidence unless erasure is explicit.
 See [0249](../../../../project/decisions/0249-memory-evidence-and-dataset-retrieval.md).
 
 Items may carry an optional `temporal` object (year, month, day, ISO weekday, hour and minute).
 All components use Galaris's global timezone (`TZ`); memories store no timezone override.
 Missing components are unrestricted; supplied constraints are combined.
-Context preparation restricts ordinary recall to unanchored memories and separately selects current matches and those within
-`MEMORY_TEMPORAL_LOOKAHEAD_HOURS`, without a query-similarity requirement. This path preserves
-ACLs, contact scope and final admission, deduplicates UUIDs and respects the shared budget,
-with calendar matches first within their budget share and a reservation for ordinary evidence. Dated memories
-outside the window cannot return through similarity. Topic and type filters do not limit the
-calendar branch; conversational contact isolation remains mandatory.
-The occurrence stays in the excerpt used by conversational context capsules. `memory_upcoming`
-exposes further pages. Temporality is independent of validity and triggers neither notifications
+Context preparation restricts ordinary recall to unanchored memories and presents dated matches
+only through the common Agenda context, without a query-similarity requirement. `/memory/agenda`
+projects occurrences with their precision and source URI without creating events, triggers or Tasks.
+ACLs, current validity, contact scope and final admission remain enforced.
+`AGENDA_CONTEXT_DAYS` and `AGENDA_CONTEXT_MAX_EVENTS`, in Memory preferences, bound the shared
+chronology (10 days and 10 occurrences by default). The ordinary Memory brief does not inject
+these items again. `calendar_events` allows wider consultation; `memory_upcoming` retains its
+compatibility read with its own lookahead. Temporality is independent of validity and triggers neither notifications
 nor expiration. See decision [0144](../../../../project/decisions/0144-partial-memory-temporality.md).
 
 The administration list reuses `next_match` through the `temporal` filter on `/memory/browse`.

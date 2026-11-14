@@ -22,6 +22,7 @@ from loguru import logger
 import logfire
 from sqlalchemy import case, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import ColumnElement
 
 from core.params import runtime_settings
 from core.database import get_db, get_db_session, watch_committed_changes
@@ -588,6 +589,10 @@ async def _run_action(task_id: UUID, status: TaskStatus) -> None:
         return
 
 
+def _scheduled_background_clause() -> ColumnElement[bool]:
+    return or_(Task.goal_id.is_not(None), Task.data["calendar_trigger_id"].as_string().is_not(None))
+
+
 async def _next_task(
     running_ids: set[UUID], busy_agents: set[int]
 ) -> ClaimedTask | None:
@@ -613,6 +618,12 @@ async def _next_task(
                 (Task.requester_agent_id.is_not(None), 1),
                 else_=2,
             )
+        # Scheduled work remains background work regardless of a result-delivery
+        # channel, agent requester or age-based promotion.
+        priority = case(
+            (_scheduled_background_clause(), 2),
+            else_=priority,
+        )
         blocked_agents: set[int] = set()
         while True:
             query = (
@@ -678,6 +689,7 @@ async def _next_fast_path(
             query = (
                 select(Task.id, Task.status, Task.agent_id)
                 .where(Task.id == task_id)
+                .where(~_scheduled_background_clause())
                 .where(
                     Task.status.in_(
                         (

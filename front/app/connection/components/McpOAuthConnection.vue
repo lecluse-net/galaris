@@ -1,7 +1,7 @@
 <template>
   <q-card flat bordered>
     <q-card-section>
-      <div class="text-subtitle2">{{ t('connection.oauth.title') }}</div>
+      <div class="text-subtitle2">{{ t(purpose === 'calendar' ? 'agenda.oauthTitle' : 'connection.oauth.title') }}</div>
       <div class="q-my-sm" role="status">
         {{ loading ? t('connection.oauth.loading') : t(statusKey) }}
       </div>
@@ -49,7 +49,7 @@ import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
 import { mcpOAuthService, type McpOAuthStart, type McpOAuthStatus } from '../services/mcpOAuthService'
 
-const props = defineProps<{ connectionId: number | null; canEdit: boolean; prepareConnection?: () => Promise<number> }>()
+const props = withDefaults(defineProps<{ connectionId: number | null; canEdit: boolean; prepareConnection?: () => Promise<number>; purpose?: 'mcp' | 'calendar' }>(), { purpose: 'mcp' })
 const { t } = useI18n()
 const status = ref<McpOAuthStatus | null>(null)
 const loading = ref(false)
@@ -111,7 +111,7 @@ async function load(): Promise<void> {
   loading.value = Boolean(id)
   if (!id) return
   try {
-    const result = await mcpOAuthService.status(id)
+    const result = await mcpOAuthService.status(id, props.purpose)
     if (current === generation) status.value = result
   } catch (cause) {
     if (current === generation) { error.value = errorMessage(cause); retryAction = load }
@@ -132,7 +132,7 @@ async function authorize(): Promise<void> {
     const id = props.prepareConnection ? await props.prepareConnection() : props.connectionId
     if (!id || current !== generation) return
     const client = clientConfiguration.value ? { client_id: clientId.value.trim(), client_secret: clientSecret.value || undefined } : undefined
-    const result = await mcpOAuthService.start(id, client)
+    const result = await mcpOAuthService.start(id, client, props.purpose)
     if (current !== generation) return
     if (result.method === 'configure') clientConfiguration.value = result.redirect_uri ?? ''
     else if (result.method === 'device' && result.device) {
@@ -167,14 +167,14 @@ async function disconnect(): Promise<void> {
   busy.value = true
   error.value = ''
   try {
-    await mcpOAuthService.disconnect(id)
+    await mcpOAuthService.disconnect(id, props.purpose)
     if (current === generation) await load()
   } catch (cause) {
     if (current === generation) { error.value = errorMessage(cause); retryAction = disconnect }
   } finally { busy.value = false }
 }
 
-watch(() => props.connectionId, load, { immediate: true })
+watch(() => [props.connectionId, props.purpose], load, { immediate: true })
 onBeforeUnmount(() => { generation++; stopPolling(); clientSecret.value = '' })
 </script>
 

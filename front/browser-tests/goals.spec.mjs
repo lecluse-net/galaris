@@ -1,5 +1,5 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
-import { agent, goal } from './data.mjs'
+import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
+import { agent, goal, result } from './data.mjs'
 
 async function goals(page, status = 'ACTIVE', id = 'goal-a', changes = {}) {
   let current = { ...goal, id, status, ...changes }
@@ -20,6 +20,35 @@ async function goals(page, status = 'ACTIVE', id = 'goal-a', changes = {}) {
   })
   return commands
 }
+
+test('a fixed Goal cadence saves with a timezone and survives reopening', async ({ page }) => {
+  await goals(page)
+  let current = { ...goal, referrer: { type: 'MESSENGER', connection_id: 1,
+    user_id: 'user:1', display_name: 'Synthetic supervisor', platform: 'internal' } }
+  const writes = []
+  await page.route('**/api/goals/goal-a', route => {
+    if (route.request().method() === 'PUT') {
+      const body = route.request().postDataJSON(); writes.push(body)
+      current = { ...current, ...body, revision: current.revision + 1 }
+    }
+    return route.fulfill({ json: current })
+  })
+  await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_EDIT'] })
+  await page.getByRole('button', { name: 'Goal details', exact: true }).first().click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('tab', { name: 'Edit', exact: true }).click()
+  await dialog.getByRole('radio', { name: 'Fixed dates in the agenda', exact: true }).click()
+  await dialog.getByRole('combobox', { name: 'Recurrence timezone', exact: true }).click()
+  await page.getByRole('option', { name: 'UTC', exact: true }).click()
+  await dialog.getByLabel('First passage', { exact: true }).fill('2026-11-17T09:00')
+  await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+  await expect.poll(() => writes.length).toBe(1)
+  expect(writes[0]).toMatchObject({ cycle_delay_seconds: null, parent_goal_id: null,
+    recurrence: { frequency: 'DAILY', interval: 1, timezone: 'UTC', start_at: '2026-11-17T09:00:00.000Z' } })
+  await dialog.getByRole('tab', { name: 'Edit', exact: true }).click()
+  await expect(dialog.getByRole('radio', { name: 'Fixed dates in the agenda', exact: true })).toBeChecked()
+  await expect(dialog.getByLabel('First passage', { exact: true })).toHaveValue('2026-11-17T09:00')
+})
 
 test.describe('Goal schedule timezone', () => {
   test.use({ timezoneId: 'America/New_York' })
@@ -410,12 +439,31 @@ for (const mode of ['create', 'edit']) test(`a late category creation cannot sel
 
 test('Goal history loads on demand, recovers from an error and stays lazy after reopening', async ({ page }, testInfo) => {
   await goals(page)
+  const reviewId = '00000000-0000-0000-0000-000000000173'
+  const cycle = { id: 'synthetic-reviewed-cycle', goal_id: 'goal-a', sequence: 2, trigger_kind: 'TEMPORAL',
+    task_id: null, review_task_id: reviewId, review_task_uri: `galaris://task/${reviewId}`,
+    task_label: null, task_status: 'SUCCESS', task_cost: 0, status: 'DECIDED', verdict: 'CONTINUE',
+    reason: 'Synthetic evidence was inspected.', progress_summary: 'Synthetic milestone verified.',
+    evidence: ['Synthetic acceptance checks passed.'], task_finished_at: '2026-09-01T12:00:00Z',
+    judge_cost: 0, judge_attempt_count: 1, error: null, created_at: '2026-09-01T11:00:00Z' }
+  const review = { id: reviewId, label: 'Synthetic cycle review', objective: '<p>Check synthetic evidence.</p>',
+    status: 'SUCCESS', paused: false, agent_id: null, tree_parent_id: null, parent_id: null,
+    directly_linked: true, topic_id: null, data: {}, execution_result: result, revision: 1,
+    created_at: '2026-09-01T12:00:00Z', updated_at: null, effort: 'standard', ai: true, cost: 0, messages: [] }
+  await jsonRoute(page, `**/api/tasks/${reviewId}/full`, review)
+  await jsonRoute(page, `**/api/tasks/${reviewId}`, review)
+  await jsonRoute(page, `**/api/tasks/${reviewId}/children`, [])
+  await jsonRoute(page, `**/api/tasks/${reviewId}/budget`, { enabled: false, scope: 'task_tree',
+    provider_hard_cap: false, recorded_tokens: 0, recorded_cost: 0, active_phases: 0,
+    reserved_tokens: 0, reserved_cost: 0, remaining_tokens: null, remaining_cost: null, remaining_seconds: null })
+  await jsonRoute(page, '**/api/tasks/activity', [])
+  await jsonRoute(page, '**/api/topics?*', [])
   let reads = 0
   await page.route('**/api/goals/goal-a/cycles?*', route => {
     reads++
     return reads === 1
       ? route.fulfill({ status: 503, json: { detail: 'Synthetic unavailable history' } })
-      : route.fulfill({ json: { items: [], total: 0, page: 1, page_size: 50 } })
+      : route.fulfill({ json: { items: [cycle], total: 1, page: 1, page_size: 50 } })
   })
   await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_ACCESS'] })
   const open = () => page.getByRole('button', { name: 'Goal details', exact: true }).first().click()
@@ -436,6 +484,17 @@ test('Goal history loads on demand, recovers from an error and stays lazy after 
   await dialog.getByRole('button', { name: 'Retry', exact: true }).click()
   await expect(dialog.getByRole('alert')).toHaveCount(0)
   expect(reads).toBe(2)
+  await expect(dialog).toContainText('Synthetic acceptance checks passed.')
+  await expect(dialog.getByRole('button', { name: 'Open review', exact: true })).toHaveCount(0)
+  await setPrivileges(page, ['GOAL_ACCESS', 'TASK_ACCESS'])
+  const originalUrl = page.url()
+  await dialog.getByRole('button', { name: 'Open review', exact: true }).click()
+  const reviewDialog = page.getByRole('dialog').last()
+  await expect(reviewDialog.getByText('Synthetic cycle review', { exact: true })).toBeVisible()
+  await expect(page).toHaveURL(originalUrl)
+  await reviewDialog.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(dialog).toHaveCount(1)
+  await expect(dialog).toContainText('Synthetic acceptance checks passed.')
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
   await open()

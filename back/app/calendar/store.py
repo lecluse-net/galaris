@@ -23,6 +23,7 @@ from .models import (CalendarAction, CalendarEvent, CalendarEventException, Cale
 from .models import CalendarProjectionWindow
 
 _occurrence_adapter = TypeAdapter(ical.ParsedEvent)
+EVENT_START_ACTION_KEY = "event:start"
 
 
 class CalendarConflictError(ValueError):
@@ -50,7 +51,7 @@ async def resource_content(event: CalendarEvent) -> bytes:
 
 
 async def save_resource(feed: CalendarFeed, resource: ical.EventResource, *, local: bool,
-                        existing: CalendarEvent | None = None, known: bool = False) -> CalendarEvent:
+                        existing: CalendarEvent | None = None, known: bool = False, contact_id: UUID | None = None) -> CalendarEvent:
     if not known:
         existing = await get_db().scalar(select(CalendarEvent).where(CalendarEvent.calendar_id == feed.id,
             CalendarEvent.uid == resource.uid).execution_options(include_historized=True).with_for_update())
@@ -58,7 +59,7 @@ async def save_resource(feed: CalendarFeed, resource: ical.EventResource, *, loc
     if event is None:
         event = CalendarEvent(id=uuid4(), calendar_id=feed.id, uid=resource.uid, revision=1, synced_revision=0,
             content_encrypted=encrypt(resource.master), content_hash=resource.digest, start_at=resource.start,
-            end_at=resource.end, recurring=resource.recurring, conflict=False)
+            end_at=resource.end, recurring=resource.recurring, conflict=False, contact_id=contact_id)
         get_db().add(event)
     else:
         event.revision += 1
@@ -66,8 +67,7 @@ async def save_resource(feed: CalendarFeed, resource: ical.EventResource, *, loc
         event.content_encrypted = encrypt(resource.master)
         event.content_hash = resource.digest
         event.start_at, event.end_at, event.recurring = resource.start, resource.end, resource.recurring
-    event.has_actions = resource.has_alarms or bool(await get_db().scalar(select(CalendarAction.id).where(
-        CalendarAction.event_id == event.id, CalendarAction.active.is_(True)).limit(1)))
+    event.has_actions = True
     event.actions_planned_until = None
     await get_db().flush()
     await get_db().execute(delete(CalendarProjectionWindow).where(CalendarProjectionWindow.event_id == event.id))
@@ -76,13 +76,12 @@ async def save_resource(feed: CalendarFeed, resource: ical.EventResource, *, loc
         await get_db().execute(insert(CalendarEventException), [dict(id=uuid4(), event_id=event.id,
             recurrence_key=key, content_encrypted=encrypt(content)) for key, content in resource.exceptions])
     content = ical.join_resource(resource.master, [value for _, value in resource.exceptions]).decode() if resource.exceptions else resource.master
-    get_db().add(CalendarEventRevision(event_id=event.id, revision=event.revision, content_encrypted=encrypt(content), deleting=False))
-    if local and feed.source_kind == "caldav":
+    get_db().add(CalendarEventRevision(event_id=event.id, revision=event.revision, contact_id=event.contact_id,
+        content_encrypted=encrypt(content), deleting=False))
+    if local and feed.source_kind not in ("internal", "ical"):
         get_db().add(CalendarSyncOperation(calendar_id=feed.id, event_id=event.id, revision=event.revision,
             deleting=False, content_encrypted=encrypt(content), content_hash=resource.digest))
         feed.sync_requested = True
-        if not feed.failure_count:
-            feed.next_sync_at = None
     elif not local:
         event.synced_revision = event.revision
     return event
@@ -94,13 +93,12 @@ async def delete_local_event(feed: CalendarFeed, event: CalendarEvent, *, local:
     content = (await resource_content(event)).decode()
     event.revision += 1
     event.soft_delete()
-    get_db().add(CalendarEventRevision(event_id=event.id, revision=event.revision, content_encrypted=encrypt(content), deleting=True))
-    if local and feed.source_kind == "caldav":
+    get_db().add(CalendarEventRevision(event_id=event.id, revision=event.revision, contact_id=event.contact_id,
+        content_encrypted=encrypt(content), deleting=True))
+    if local and feed.source_kind not in ("internal", "ical"):
         get_db().add(CalendarSyncOperation(calendar_id=feed.id, event_id=event.id, revision=event.revision,
             deleting=True, content_encrypted=encrypt(content), content_hash=event.content_hash))
         feed.sync_requested = True
-        if not feed.failure_count:
-            feed.next_sync_at = None
     await get_db().execute(delete(CalendarOccurrence).where(CalendarOccurrence.event_id == event.id))
     await cancel_pending([event.id])
 
@@ -168,6 +166,7 @@ async def project_events(feed: CalendarFeed, events: Sequence[CalendarEvent], *,
         deadlines: list[dict[str, object]] = []
         for event in batch:
             if reschedule:
+                event.has_actions = True
                 event.actions_planned_until = upper
             if event.recurring:
                 covered = insert(CalendarProjectionWindow).values(id=uuid4(), event_id=event.id, event_revision=event.revision,
@@ -190,6 +189,8 @@ async def project_events(feed: CalendarFeed, events: Sequence[CalendarEvent], *,
                     if action.recurrence_key is None or action.recurrence_key == occurrence.recurrence_key:
                         at = (occurrence.start if action.anchor == "start" else occurrence.end) + timedelta(minutes=action.offset_minutes)
                         planned.append((str(action.id), at, "", action.max_lateness_minutes, action.revision))
+                if not planned:
+                    planned.append((EVENT_START_ACTION_KEY, occurrence.start, "", 60, None))
                 for key, at, instructions, lateness, action_revision in planned:
                     fingerprint = digest(f"{event.id}:{occurrence.recurrence_key}:{key}:0")
                     snapshot = dict(agent_id=agent_id, label=f"Agenda: {occurrence.summary or feed.label}"[:400],
@@ -233,7 +234,7 @@ async def import_new_resources(feed: CalendarFeed, resources: Sequence[ical.Even
     """Bulk first import: a bounded number of SQL statements per resource batch."""
     events = [CalendarEvent(id=uuid4(), calendar_id=feed.id, uid=resource.uid, revision=1, synced_revision=1,
         content_encrypted=encrypt(resource.master), content_hash=resource.digest, start_at=resource.start,
-        end_at=resource.end, recurring=resource.recurring, has_actions=resource.has_alarms, conflict=False) for resource in resources]
+        end_at=resource.end, recurring=resource.recurring, has_actions=True, conflict=False) for resource in resources]
     get_db().add_all(events)
     await get_db().flush()
     exception_rows: list[dict[str, object]] = []

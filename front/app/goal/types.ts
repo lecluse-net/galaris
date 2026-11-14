@@ -6,6 +6,21 @@ export type GoalReferrerType = 'AGENT' | 'MESSENGER'
 export type GoalPauseReason = 'MANUAL' | 'REFERRER_NO_RESPONSE' | string
 export type GoalInactiveReason = 'GLOBAL_PAUSE' | 'OUTSIDE_SCHEDULE'
 
+export interface GoalRecurrence {
+  start_at: string
+  timezone: string
+  frequency: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'YEARLY'
+  interval: number
+  max_lateness_minutes: number
+}
+
+export interface GoalAgendaEvent {
+  id: string; goal_id: string; title: string; scheduled_at: string; timezone: string
+  projected: boolean; state: string; cycle_id: string | null; sequence: number | null
+  task_uri: string | null; review_task_uri: string | null
+  started_at: string | null; finished_at: string | null; verdict: GoalVerdict | null; reason: string | null
+}
+
 export interface GoalScheduleWindow {
   weekdays: number[]
   start_time: string
@@ -55,6 +70,7 @@ export interface MessengerReferrerOption {
 }
 
 export interface Goal {
+  recurrence?: GoalRecurrence | null
   id: string
   category_id: number | null
   effective_category_id?: number | null
@@ -101,6 +117,8 @@ export interface GoalCycle {
   trigger_kind: GoalCycleTriggerKind
   source_cycle_id: string | null
   task_id: string | null
+  review_task_id?: string | null
+  review_task_uri?: string | null
   task_label: string | null
   task_status: string | null
   task_cost: number
@@ -164,6 +182,7 @@ export interface GoalTreePage {
 }
 
 export interface GoalCreate {
+  recurrence?: GoalRecurrence | null
   category_id?: number | null
   title: string
   description: string
@@ -178,6 +197,7 @@ export interface GoalCreate {
 }
 
 export interface GoalUpdate {
+  recurrence?: GoalRecurrence | null
   category_id?: number | null
   expected_revision: number
   title?: string

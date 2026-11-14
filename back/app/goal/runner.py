@@ -39,6 +39,7 @@ from .models import (
 )
 from .schemas import GoalJudgement
 from . import reviews
+from . import calendar as goal_calendar
 
 
 _WORKER_ID = f"{socket.gethostname()}:{os.getpid()}:{uuid4().hex[:8]}"
@@ -491,6 +492,7 @@ async def _finish_judgement(
         if goal.status == GoalStatus.PAUSED and goal.pause_reason in {"BLOCKED", "REVIEW_UNAVAILABLE"}:
             goal.next_cycle_at = None
             goal.manual_run_requested_at = None
+    await goal_calendar.sync_plan(goal, now=now)
     await get_goal_document_store().update(
         goal.tracking_document_id,
         content=judgement.tracking_content + (
@@ -553,6 +555,7 @@ async def _fail_judgement(
         goal.next_cycle_at = None
     if goal.status not in (GoalStatus.COMPLETED, GoalStatus.PAUSED):
         goal.status = GoalStatus.ERROR
+    await goal_calendar.sync_plan(goal, now=now)
     await db.commit()
     await goal_service.emit_updated(goal.id)
     logger.error("Goal {} cycle {} judgement failed: {}", goal.id, cycle.sequence, error)
@@ -673,6 +676,7 @@ async def start_due_cycle(
         or_(
             Goal.manual_run_requested_at.is_not(None),
             temporal_due,
+            goal_calendar.pending_passage(now),
             pending_relational_trigger,
         ),
     )
@@ -702,6 +706,7 @@ async def start_due_cycle(
                 or_(
                     Goal.manual_run_requested_at.is_not(None),
                     temporal_due,
+                    goal_calendar.pending_passage(now),
                     pending_relational_trigger,
                 ),
             )
@@ -738,7 +743,10 @@ async def start_due_cycle(
         if manual_only and not is_manual:
             await db.rollback()
             continue
-        if not is_manual and selected_relational_trigger is None and not is_temporal:
+        is_calendar = bool(await db.scalar(select(goal_calendar.pending_passage(now)).where(Goal.id == goal.id)))
+        if is_calendar and not is_manual:
+            selected_relational_trigger = None
+        if not is_manual and selected_relational_trigger is None and not is_temporal and not is_calendar:
             await db.rollback()
             continue
         if (
@@ -754,6 +762,7 @@ async def start_due_cycle(
             goal.last_error = (
                 f"Goal owner agent {goal.agent_id} is deleted or unavailable."
             )
+            await goal_calendar.sync_plan(goal, now=now)
             await db.commit()
             await goal_service.emit_updated(goal.id)
             logger.warning(
@@ -776,6 +785,7 @@ async def start_due_cycle(
             goal.next_cycle_at = None
             goal.manual_run_requested_at = None
             goal.last_error = str(exc)
+            await goal_calendar.sync_plan(goal, now=now)
             await db.commit()
             await goal_service.emit_updated(goal.id)
             logger.warning("Goal {} cannot contact its referrer: {}", goal.id, exc)
@@ -842,6 +852,7 @@ async def start_due_cycle(
         task_service.retain(task, _GOAL_JUDGEMENT_RETENTION)
         cycle = GoalCycle(
             id=cycle_id,
+            created_at=now,
             goal_id=goal.id,
             sequence=sequence,
             status=GoalCycleStatus.RUNNING,
@@ -861,6 +872,7 @@ async def start_due_cycle(
         )
         db.add_all([task, cycle])
         await db.flush()
+        await goal_calendar.attach_cycle(goal, cycle, now=now, manual=is_manual)
         if selected_relational_trigger is not None:
             selected_relational_trigger.consumed_cycle_id = cycle_id
             selected_relational_trigger.consumed_at = now
@@ -888,6 +900,7 @@ async def process_goals() -> None:
 
     from .referrer_wait import process_due_referrer_wait
 
+    await goal_calendar.materialize_due()
     await process_terminal_cycle()
     settings = await settings_service.get_settings()
     if not settings.is_active:

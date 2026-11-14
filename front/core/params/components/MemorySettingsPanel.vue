@@ -48,6 +48,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 import {
+    agendaContextFields,
     memoryContextFields,
     memorySessionFields,
     memoryStorageFields,
@@ -58,6 +59,7 @@ import { memoryMaintenanceGroups, memoryRuntimeFields } from '../settingsLayout'
 
 const { t } = useI18n()
 const groups = [
+    { key: 'agenda', icon: 'calendar_month', fields: agendaContextFields },
     { key: 'context', icon: 'psychology', fields: memoryContextFields },
     { key: 'session', icon: 'forum', fields: memorySessionFields },
     { key: 'automation', icon: 'auto_fix_high', fields: [] },

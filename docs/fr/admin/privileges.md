@@ -60,7 +60,7 @@ La gestion des paramètres d'une connexion ne remplace aucun de ces droits.
 
 Le Journal des mails conserve son contrôle du valideur désigné. Approuver ou rejeter un envoi
 exige une session web et les droits `MAIL_EDIT` et `PERMISSION_DECIDE`. Les calendriers se
-consultent et se configurent dans **Superviser → Calendriers** (`/connection/calendars`),
+consultent et se configurent dans **Connaissances → Agenda** (`/connection/calendars`),
 sur les connexions du périmètre géré ; créer la connexion reste une opération Connexions.
 
 ## Déléguer une rubrique de Préférences

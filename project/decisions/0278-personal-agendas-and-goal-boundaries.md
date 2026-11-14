@@ -2,6 +2,10 @@
 
 Statut : accepté, implémenté.
 
+La [décision 0283](0283-goal-agenda-passages.md) remplace l’interdiction d’afficher les
+cycles Goal : leur couche Agenda conserve les liens de chaque passage, sans action de
+rappel concurrente. Goal reste seul propriétaire de leur exécution.
+
 Le stockage, la synchronisation et l'ordonnancement décrits ci-dessous sont remplacés par
 la [décision 0279](0279-local-agendas-and-caldav-synchronization.md). Le défaut personnel et
 la frontière avec Goal restent applicables.
