@@ -55,39 +55,24 @@ dont les exécuteurs. Ses outils d'enregistrement sans effet permettent des essa
 ils ne qualifient pas seuls une tâche complète avec persistance, reprise et livraison.
 Réutiliser ce socle avant d'ajouter les extensions décrites ci-dessous.
 
-## Acquis réutilisables et limites au 25 octobre 2026
+## Contrats à réutiliser
 
-Le statut `design` porte sur la nouvelle répartition supervision/exécution. Les briques
-communes ci-dessous existent déjà ; leur présence ne démontre pas le gain de cette architecture.
-La revue initiale a lu les tests sans rejouer les campagnes. La tranche de comptabilité
-0238 ajoute ses vérifications ciblées ; elle ne qualifie aucun candidat LLM.
-L'état décrit est celui du dépôt de travail consulté ; il ne prouve aucun déploiement.
+La comptabilité par appel physique, le bilan Task par usage et le coût par réussite
+du benchmark sont réalisés dans
+[0238](../decisions/0238-physical-call-cost-evidence.md).
+Le planner, les checkpoints et les reçus de livraison gardent les contrats de
+[0170](../decisions/0170-execution-scope-and-durable-controls.md)
+et [0206](../decisions/0206-contextual-task-write-targets.md).
 
-| Acquis constaté | Preuve et limite pour cette étude |
-|---|---|
-| Choix `standard`/`high` par feuille, brief, critères de réussite, outils autorisés et exécution séquentielle. | `planner_contracts.py`, `planner_service.py`, `test_planner_service.py` et `test_planner_collections.py` sous `back/app/agent/`. Pas de verdict de supervision avant la feuille suivante ; une réussite ordinaire fait avancer le curseur. |
-| Récupération `BLOCKED:` bornée, vérification de présence d'artefacts et rapprochement des reçus de livraison. | `back/app/agent/tests/test_planner_service.py` couvre récupération unique, fichier manquant, reçu absent et destination durable exacte. Ce contrôle déterministe ne remplace pas un vérificateur du contenu demandé. |
-| Portée/provenance, préflight durable, working set et contrat de checkpoint par driver. | ADR [0170](../decisions/0170-execution-scope-and-durable-controls.md), [0206](../decisions/0206-contextual-task-write-targets.md), `back/app/task/tests/test_execution_scope.py` et `back/app/agent/tests/test_checkpoint_contract.py`. Une reprise de checkpoint existante ne prouve pas sa portabilité vers un autre modèle. |
-| Lab `task_executor`, `conversation_executor` et `voice_executor`, candidat et juge distincts, snapshots, répétitions, budgets et rejugement sans régénération du candidat. | `back/app/lab/tests/test_contracts_and_passes.py` et `test_stability_and_review.py`. Le budget de campagne peut être dépassé par l'évaluation déjà engagée ; il n'est pas un plafond cumulé de Task supervisée. |
-| Corpus FR/EN de capacités, décisions et transfert ; outils simulés avec schémas natifs, réponses ciblées, relecture du contenu écrit et contrôles indépendants des déclarations du modèle. | [Corpus de référence](../../docs/fr/dev/lab-reference-corpus.md), `back/app/lab/tests/test_reference_corpus.py` et `test_executor_outcomes.py`. Les refus, révisions, valeurs JSON, pertes de faits et faux succès sont testables ; l'état simulé reste local au cas, sans persistance métier réelle. |
-| Comparaison de runs, couverture, régressions critiques/dimensionnelles et médianes appariées coût/durée/première sortie ; étalonnage humain et incertitude par cas. | `back/app/lab/comparison_schemas.py`, `tests/test_comparison.py`, ADR [0230](../decisions/0230-lab-human-calibration-and-case-uncertainty.md). Pas encore de mesure complète A/B/C/D, de garde de promotion automatique ni de coût par tâche réellement réussie sur toute la chaîne. |
-| Rapport API de répétabilité du juge sur sorties candidates fixes. | ADR [0236](../decisions/0236-lab-fixed-output-judge-repeatability.md), `back/app/lab/judge_repeatability.py` et son test, présents dans les changements locaux au moment de la revue. Ne pas les considérer comme publiés ; affichage dédié, campagnes représentatives et séparation des variances restent ouverts. |
-| Admission partagée par fournisseur, priorité voix/texte/fond, capacité protégée et attente avant claim d'inférence. | ADR [0181](../decisions/0181-provider-llm-admission.md), `back/app/llm/provider_scheduler.py` et `tests/test_provider_scheduler.py`. Socle mono-worker ; provenance exhaustive, transports non tracés, coordination multi-backend et charge réelle restent dans le [plan fournisseur](ordonnancement-llm-par-fournisseur.md). |
-
-Le contexte d'admission typé (`back/app/llm/admission.py`), également présent dans les
-changements locaux, distingue les Tasks de leur conversation d'origine et partage leur
-propriétaire entre file durable et appel physique. Réutiliser ce contrat pour les futurs
-appels de supervision ; ne pas leur donner la priorité conversationnelle par simple filiation.
-Cette tranche ne qualifie pas la provenance de tous les demandeurs ni les transports non tracés.
-
-Des campagnes avec fournisseur réel sont déjà documentées dans le
-[guide du corpus](../../docs/fr/dev/lab-reference-corpus.md#qualification-du-24-octobre-2026)
-et la [qualification conversationnelle](../audits/2026-10-24-conversation-qualification.md).
-Elles comparent des consignes ou qualifient des parcours, pas la répartition de modèles
-A/B/C/D. Elles montrent notamment qu'une baisse des appels ne suffit pas à établir une
-baisse du coût brut. Réutiliser leurs scénarios et vérificateurs ; refixer la référence
-après ces corrections et constituer une réserve indépendante, puisque ces cas publics
-ont servi au réglage. Aucun résultat économique de supervision n'est acquis.
+Réutiliser les corpus, vérificateurs d'effets, comparaisons et rapports du
+[Lab](lab-evaluation-mecanismes-ia.md), ainsi que
+l'[admission fournisseur](ordonnancement-llm-par-fournisseur.md).
+Les appels de supervision n'acquièrent pas la priorité conversationnelle par filiation.
+Les campagnes documentées dans le
+[guide du corpus](../../docs/fr/dev/lab-reference-corpus.md)
+et la [qualification conversationnelle](../audits/2026-10-24-conversation-qualification.md)
+comparent des consignes et parcours, sans démontrer la répartition A/B/C/D.
+Refixer la référence et réserver des cas indépendants avant cette étude.
 
 ## Variantes à comparer
 
@@ -249,14 +234,9 @@ Ces propositions ne sont pas des fonctionnalités livrées ni un accord d'implé
    le candidat explicitement par expérience ; modifier `standard` dans le profil actif
    changerait aussi les Goals. Réception : reprise sans doublon, configuration incompatible
    signalée, aucun changement de conversation/Goals ; performances et qualité appariées.
-2. **Comptabilité implémentée — ADR [0238](../decisions/0238-physical-call-cost-evidence.md).**
-   Registre par appel physique, provenance/tarifs figés, échecs et reprises conservés,
-   bilan Task par usage sans addition des totaux parents/enfants, coûts candidat/juge
-   séparés et ratio du benchmark conditionné aux preuves. Les appels non publiés après
-   perte de lease restent rapprochables, même après suppression de leur trace détaillée.
-   Les anciens montants sans preuve restent inconnus ; aucune refacturation historique.
-   Restent la réussite indépendante des tâches métier du point 3 et la mesure explicite
-   de l'attente fournisseur ; aucune durée de file ni fin vérifiée n'est inventée.
+2. **Mesurer l'attente fournisseur.** Compléter les preuves existantes avec la durée
+   explicite en file, distincte de l'appel physique. Ne pas inventer de durées ni de
+   réussite indépendante à partir du bilan de coûts.
 3. **Premier scénario persistant avec vérificateur indépendant.** Réutiliser les services
    Document, Dataset, Task et livraison dans une infrastructure isolée réinitialisable pour
    le parcours documents → extraction → Dataset JSON + récapitulatif HTML → livraison.

@@ -1,71 +1,25 @@
 # Carte mémoire 3D — navigation multiechelle et placement précalculé
 
-- Statut : `partial` — socle 2D conservé et rendu 3D local implémenté ; carte serveur régionale encore à construire.
-- Revue des sources et conception : 2026-10-09.
+- Statut : `partial` — carte serveur régionale encore à construire.
+- Tri documentaire : 2026-11-14.
 - Propriétaire du chantier : `app.memory`, avec les contrats publics de File Share.
-- Mise en œuvre du rendu 3D demandée le 2026-10-10 ; aucun commit ni déploiement engagé par cette demande.
 
-## Livraison du rendu local — 2026-10-10
+## Contrats réalisés à réutiliser
 
-La page ouvre désormais une vue Three.js avec retour explicite en 2D. Le même contrat
-de chargement, les mêmes droits, regroupements, filtres, détails et positions personnelles
-restent utilisés. `graph3d.worker.ts` calcule le placement hors du thread principal ;
-`graph3dScene.ts` regroupe les marqueurs visibles dans un dessin instancié et les relations
-dans un dessin de segments. Un index de cellules élimine les régions hors champ avant
-projection et sélection. La caméra et les coordonnées GPU relatives permettent le zoom
-profond sans agrandir les symboles au-delà des deux tailles éloignée/proche.
-Les cellules denses sans ancres communes se replient également en groupes spatiaux
-d'affichage, avec seuil lié à la densité et hystérésis. Le clic approche et révèle
-les membres ; les liens de même type, direction et statut sont agrégés visuellement.
-Les identités et relations canoniques sont conservées. Ce regroupement local ne constitue
-pas encore la hiérarchie serveur de L2.
+Le rendu 3D local, les interactions et l'état personnel sont décrits dans
+[0165](../decisions/0165-personal-memory-graph-state.md),
+[0166](../decisions/0166-batched-memory-3d-renderer.md) et
+[0168](../decisions/0168-memory-graph-3d-only.md).
+Le graphe est exclusivement 3D : le retour 2D est retiré.
+Les répertoires connus sont chargés dès l'ouverture, les fichiers restent paginés
+à l'approche, et les actualisations préservent le cadrage.
+Réutiliser les scénarios `front/browser-tests/memory-3d.spec.mjs` et
+`e2e/specs/memory-graph.spec.mjs`.
 
-Le rendu reprend les SVG/glyphes, bordures et styles de relations de la 2D, avec un atlas
-public borné et des rubans instanciés pour les épaisseurs de liens. Les courbes reprennent
-les courbures 2D et adaptent le nombre de segments à leur longueur projetée et à leur
-courbure, par tronçons instanciés de quatre segments, jusqu'à 64 par lien sans ajouter
-d'appel de dessin. Leurs épaisseurs 3D sont renforcées d'un facteur de 2,25 au loin et
-de 1,25 de près. La taille éloignée 2D/3D a été doublée à 56 % de la base plafonnée ; la taille
-proche reste à 110 %. Les libellés n'ont pas de fond ; les positions et gestes de
-navigation restent inchangés.
-Le cadrage 3D adapte la distance et le centre aux limites projetées des marqueurs
-rendus, au viewport et à la profondeur, plutôt qu'à une sphère conservatrice. Il s'applique
-aussi au recul maximal et au redimensionnement, avec une marge pour les glyphes.
-
-Le rendu n'a pas de boucle permanente. Les titres et aperçus constituent des couches DOM
-bornées ; ils ne créent pas un élément DOM pour chaque item. Le cache de miniatures et ses
-contrôles d'accès sont réutilisés, avec croissance différée jusqu'au pixel natif. La caméra
-3D est persistée séparément de la caméra 2D, dans les préférences personnelles existantes.
-Le clic immobile ouvre un détail ; le glissement gauche tourne autour du nœud pressé,
-sans le recentrer à l'écran et sans ouverture même après un aller-retour du pointeur.
-Un geste gauche commencé sur le fond translate le graphe jusqu'au relâchement, sans rotation.
-La molette déplace caméra et cible ensemble vers le pointeur sans rotation ; le pincement
-et les boutons conservent l'axe central. Ils peuvent traverser le plan d'un nœud,
-puis continuer en espace vide. Le recul maximal retrouve une vue d'ensemble centrée et stable.
-Le masquage d'une nature réorganise la vue temporaire sans réécrire la carte complète.
-La perte de WebGL revient en 2D. Voir [ADR 0166](../decisions/0166-batched-memory-3d-renderer.md).
-
-Cette étape couvre le rendu et une partie des interactions de L5/L6. Le scénario de volume
-exerce 10 000 nœuds et 20 000 relations en 3D, 5 000 et 10 000 en 2D ; ces charges différentes
-ne constituent pas une comparaison directe de vitesse. Les pages de 500 s'affichent
-progressivement, avec 10 000 liens par page en 3D et 2 500 en 2D, sans plafond global.
-La 3D commence par les racines File Share, sujets et contacts, puis dossiers/répertoires,
-documents et détails. Elle diffère les descendants connus d'un répertoire accessible et
-lit ses enfants à l'approche, par pages de 100 et au plus deux demandes simultanées.
-Les branches déjà visitées sont restaurées ; les demandes d'un ancien contexte sont annulées.
-Le retour 2D recharge son catalogue complet. La profondeur suit l'espacement local des
-branches `parent_of`, sans plans rigides ; les liens dont une extrémité est derrière la
-caméra sont masqués. Cette extension des API actuelles ne réalise pas L1–L4 : générations
-préparées, journal rejouable, occurrences de fichiers et carte régionale préparée.
-Elle ne remplace pas le futur arbre d'emplacements. Les budgets d'ouverture indépendante
-du volume global et la qualification à 100 000/million d'items restent des objectifs.
-
-Les parcours `front/browser-tests/memory-3d.spec.mjs` vérifient le rendu WebGL réel,
-le culling au zoom, les groupes, le clavier, les filtres, le repli 2D, le changement
-d'agent, les gestes clic/glissement, le passage de la caméra au-delà d'un nœud et la
-taille native des aperçus. `e2e/specs/memory-graph.spec.mjs` traverse
-les API réelles dans les deux vues. Les preuves de performance détaillées restent dans
-`artifacts/front-components/`, hors du corpus versionné.
+Ces acquis ne réalisent pas les générations serveur, le journal rejouable,
+les occurrences de fichiers et la carte régionale préparée ci-dessous.
+Les budgets indépendants du volume global et la qualification à 100 000/million
+d'items restent des objectifs.
 
 ## 1. Résultat attendu et périmètre
 
@@ -82,8 +36,8 @@ Une petite mémoire reste directement lisible, sans imposer des regroupements ar
 
 La carte est une projection reconstructible. Elle ne modifie ni classement réel, ni Topics,
 ni relations métier, ni contenu, ni déduplication, ni droits. La sélection réutilise les
-détails et actions existants. La vue 2D actuelle reste disponible pendant la qualification ;
-une représentation 2D accessible de la nouvelle hiérarchie doit aussi rester possible.
+détails et actions existants. Le parcours accessible de la nouvelle hiérarchie reste
+à qualifier, sans réintroduire le moteur 2D retiré.
 
 Le chantier inclut hiérarchie, calcul et persistance des positions, actualisation,
 API régionale, navigation 3D, liens, recherche/localisation, miniatures, qualification et
@@ -95,7 +49,7 @@ une classification LLM obligatoire ou l'exposition des embeddings au navigateur.
 | Surface actuelle | Ce qui est disponible | Ce que cela ne démontre pas |
 |---|---|---|
 | [API mémoire](../../back/app/memory/schemas.py), [service](../../back/app/memory/service.py) | Pages légères par activité, rôles, voisins admissibles, liens, filtres, accès et résolutions de sources. | Ni carte hiérarchique, ni génération de placement durable, ni chargement régional. |
-| [Graphe 2D](../../front/app/memory/components/MemoryGraph.vue), [branches](../../front/app/memory/graphBranches.ts), [placement](../../front/app/memory/graphLayout.ts) | Repli des feuilles exclusives, coordonnées conservées, placement borné et niveaux de rendu. Le worktree retire les plafonds client et prépositionne les grandes communautés. | Le chargement reste exhaustif par pages ; le placement est calculé dans le navigateur et n'est pas une carte serveur. |
+| [Graphe 3D](../../front/app/memory/components/MemoryGraph.vue), [branches](../../front/app/memory/graphBranches.ts), [placement](../../front/app/memory/graph3dLayout.ts) | Rendu local, navigation progressive, préférences et rafraîchissement sans perte de cadrage. | L'inventaire des répertoires est paginé ; le placement navigateur n'est pas une carte serveur régionale. |
 | [Catalogue File Share](../../back/app/file_share/models.py), [observations](../../back/app/file_share/catalogue.py), [projection mémoire](../../back/app/memory/catalogue_projection.py) | Identités d'emplacements, connexions et générations de binding, présence, liens de parenté observés, fichier canonique accessible par plusieurs emplacements. | Une liste de liens mémoire ne suffit pas à reconstituer sans ambiguïté chaque arborescence d'emplacements. |
 | [Modèle Topic](../../back/app/topic/models.py), [modèles mémoire](../../back/app/memory/models.py) | Topics, contacts, conversations et relations sont canoniques ; Topic ne fournit pas une arborescence native de sous-Topics. | Les cycles et multi-appartenances ne sont pas un arbre qu'il suffirait de dérouler. |
 | [Accès aux sources](../../back/app/memory/source_access.py), [événements](../../back/app/memory/events.py) | Contrôles vivants, contrôles par lots et événements autorisés. | Un événement websocket ne constitue pas à lui seul un journal durable rejouable pour reconstruire une carte. |
@@ -405,7 +359,7 @@ et contacts qui se recouvrent comme s'il s'agissait d'un total unique.
 Chaque réponse demeure bornée. Un dépassement renvoie des sous-groupes, un curseur ou
 un résumé de couverture, pas un échantillon présenté comme exhaustif.
 Les listes navigables respectent défaut 50, choix `[10, 20, 50, 100, 500]` et API jusqu'à 500.
-Conserver les anciens endpoints pour les consommateurs 2D durant la transition.
+Préserver les consommateurs des endpoints existants pendant la transition.
 
 ### 4.9 Frontière visible, chargement et caméra
 
@@ -458,16 +412,14 @@ de tous les enfants d'un groupe replié. Bornes séparées pour octets compress�
 décodés, textures GPU et travail de génération ; arrivée sans changer les coordonnées.
 Respecter proportions, rôles et palette Solaire ; les états ne reposent pas uniquement
 sur la couleur. Perte de contexte WebGL : reconstruire depuis le cache régional valide
-ou proposer la représentation 2D/arborescente, avec focus conservé.
+ou proposer un parcours arborescent accessible, avec focus conservé.
 
 ### 4.11 Positions et visibilité persistées
 
-Le socle 2D est réalisé en amont du chantier 3D : préférences restaurées avant le rendu,
-coordonnées rechargées avec les pages de nœuds, positions connues conservées et nouveaux
-éléments placés autour des ancres. L'état appartient à **l'utilisateur**, pour un agent et
-un contexte de recherche/Topic/contact. Les natures masquées, branches ouvertes et caméra
-sont persistées, ainsi que les coordonnées des nœuds masqués et repliés. Voir la
-[décision 0165](../decisions/0165-personal-memory-graph-state.md).
+Les préférences et positions personnelles existantes relèvent de
+[0165](../decisions/0165-personal-memory-graph-state.md) et
+[0168](../decisions/0168-memory-graph-3d-only.md).
+La future carte doit les adapter aux occurrences et générations régionales.
 
 La sauvegarde contient deux ensembles versionnés, restitués dans une même enveloppe :
 placement dans le repère du graphe et présentation personnelle. Les coordonnées de **tous
@@ -537,7 +489,7 @@ détaillés de la section 4 priment sur les raccourcis de ce tableau.
 | P21 | Rafales au zoom, oscillations et réponses hors ordre. | Seuils à hystérésis, coalescence, priorités, annulation et génération de contexte. | Gestes rapides et réponses inversées : pas de requête par frame ni de clignotement parent/enfants. | L4, L5 |
 | P22 | Curseur périmé, ancienne génération retirée ou websocket perdu. | Cursors liés à la génération, rattrapage durable et resynchronisation explicite. | Déconnecter/reprendre au-delà de la rétention puis retrouver le focus courant autorisé. | L3, L4 |
 | P23 | CPU, RAM, disque et GPU croissant avec la durée d'exploration. | Budgets séparés, éviction, rétention des générations/journaux et libération effective. | Parcours de 30 minutes : plateau après échauffement, fermeture rendant les ressources. | L3, L4, L5 |
-| P24 | Régression des autres lecteurs 3D et du graphe 2D. | Nouveau renderer métier, contrats additifs et inventaire des utilitaires partagés. | Rejouer les scénarios Memory/Model3d existants, navigation et thumbnails. | L1, L5, L7 |
+| P24 | Régression des autres lecteurs 3D et du graphe mémoire. | Nouveau renderer métier, contrats additifs et inventaire des utilitaires partagés. | Rejouer les scénarios Memory/Model3d existants, navigation et thumbnails. | L1, L5, L7 |
 | P25 | Désorientation, occlusion, branche derrière la caméra. | Navigation guidée, retour parent/accueil, fil d'Ariane, focus et entrée explicite. | Retrouver le parent après orbite et ouvrir un enfant occulté sur desktop/mobile. | L5 |
 | P26 | Mobile, clavier, lecteur d'écran ou GPU indisponible. | Contrôleur commun, liste/arborescence sémantique, commandes accessibles et fallback. | Même ressource ouvrable à 390/750/1024 px, clavier seul et WebGL indisponible/perdu. | L5 |
 | P27 | Lignes partout ou relations disparaissant à l'agrégation. | Résumés typés/directionnels, détail sur sélection, chemins et liens paginés. | Totaux sans doublons, relation traversante retrouvable du groupe jusqu'aux items. | L6 |
@@ -648,10 +600,10 @@ partielle/incompatible vérifiés sans perte des coordonnées ni des choix d'aff
 
 ### L5 — Scène 3D et navigation progressive
 
-Construire renderer instancié, picking, labels, contrôleur caméra guidé, transitions,
-recentrage et adoption des positions. Intégrer boutons, fil d'Ariane, historique, focus,
-accessibilité, mode réduit et fallback 2D/arborescent. Laisser les détails métier existants
-posséder ouverture, permissions, édition et actions. Charger le renderer à l'entrée de la vue.
+Adapter le renderer existant aux régions et générations préparées, à l'adoption des
+positions et aux transitions. Compléter fil d'Ariane, historique, focus, accessibilité,
+mode réduit et parcours arborescent. Laisser les détails métier existants posséder
+ouverture, permissions, édition et actions.
 
 **Livrables** : première navigation complète de la racine au contenu puis retour, desktop/mobile.
 **Réception** : peu d'items aussi utilisables que beaucoup ; stabilité aux zooms/themes/détails,

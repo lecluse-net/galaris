@@ -1,35 +1,28 @@
 # Lab IA — étalonnage, comparaisons et gardes
 
 - Statut : `partial`
-- Revue des sources : 2026-10-08 ; tri du socle Process le 2026-10-24 ; rapport API et interface de répétabilité du juge le 2026-10-25. Les campagnes fournisseurs ne sont pas rejouées par ces travaux.
-- Extension Process demandée le 2026-10-11 : socle de campagnes avec cas synthétiques et runs réels réalisé ; mocks d'applications conservés en seconde phase.
+- Tri documentaire : 2026-11-14 ; campagnes fournisseurs non rejouées.
 
-## Socle réalisé
+## Contrats à réutiliser
 
-Campagnes, snapshots, comparaisons, répétitions/budgets, revue humaine et bindings hybrides
-appartiennent à l'[architecture](../../docs/fr/architecture/ai-lab-evaluation.md),
-au [guide](../../docs/fr/user/lab-ai.md) et aux décisions
-[0078](../decisions/0078-lab-variable-and-judgment-campaigns.md),
-[0082](../decisions/0082-lab-stability-human-review.md),
-[0134](../decisions/0134-agent-lab-control.md).
-Un score, rôle holdout ou digest ne prouve pas à lui seul étanchéité, qualité ou comparabilité.
-
-Les campagnes Process enregistrent leurs cas dans des Datasets natifs et lancent de vrais
-runs sous droits Lab/Process : [0225](../decisions/0225-process-lab-native-datasets.md) et
-[parcours utilisateur](../../docs/fr/user/lab-ai.md#évaluer-un-processus-avec-des-entrées-synthétiques).
-Ce socle ne constitue pas une qualification des applications externes ou de la charge.
+Le socle des campagnes, snapshots, répétitions/budgets et revues humaines est décrit dans
+l'[architecture](../../docs/fr/architecture/ai-lab-evaluation.md) et le
+[guide utilisateur](../../docs/fr/user/lab-ai.md).
+Les campagnes Process et leurs Datasets natifs sont réalisées dans
+[0225](../decisions/0225-process-lab-native-datasets.md).
+Les rapports d'étalonnage, l'incertitude par cas et la répétabilité du juge sur sorties
+fixes, par API et interface, relèvent de
+[0230](../decisions/0230-lab-human-calibration-and-case-uncertainty.md)
+et [0236](../decisions/0236-lab-fixed-output-judge-repeatability.md).
+Ces fonctionnalités ne sont plus à implémenter ; les expériences réelles,
+l'arbitrage et la séparation des variances restent ouverts.
 
 ## Lots restants
-
-Le rapport d'étalonnage par utilisateur/campagne et l'incertitude par groupes de cas
-sont réalisés dans [0230](../decisions/0230-lab-human-calibration-and-case-uncertainty.md).
-Ils utilisent les revues existantes sans fabriquer de référence humaine. Les lots ci-dessous
-conservent les campagnes annotées réelles, l'arbitrage et la séparation des variances.
 
 | Lot | Travail | Réception |
 |---|---|---|
 | Étalonnage humain | Corpus annotés par mécanisme, arbitrage justifié, biais/corrélation/faux passages du juge. | Erreur de passage mesurable contre référence humaine revue, juge/corpus/date versionnés ; panne/couverture faible sans bonne note fictive. |
-| Incertitude | Intervalles par cas et insuffisance d'échantillon réalisés ; rapport API et interface de répétabilité sur sorties fixes réalisés (0236). Restent expériences réelles, qualification sur corpus représentatifs et séparation de la variance candidat/juge. | Répétitions d'un épisode non présentées comme observations indépendantes ; répétabilité du juge mesurée séparément. |
+| Incertitude | Expériences réelles, qualification sur corpus représentatifs et séparation de la variance candidat/juge. | Répétitions d'un épisode non présentées comme observations indépendantes ; répétabilité du juge mesurée séparément. |
 | Comparabilité/tendances | Campagnes réelles du protocole FR/EN ; politiques pour changement de rubrique/corpus/juge ; tendances dimensionnelles. | Aucun changement de référence présenté comme gain du candidat ; résultats liés aux snapshots et incertitude publiée. |
 | Gardes | Baseline approuvée/remplaçable, seuils dimensionnels/globaux/erreurs/couverture, verdict machine et export CI. | Nouvelle défaillance critique bloquante malgré une moyenne meilleure ; verdict reconstructible, rapport narratif sans pouvoir de lever la garde. |
 | Portabilité/gouvernance | Import/export versionné des datasets/résultats ; revue des références, rétention, gel/ouverture des holdouts. | Corpus/paramètres/provenance préservés, secrets et droits des sources respectés. |
@@ -39,14 +32,6 @@ conservent les campagnes annotées réelles, l'arbitrage et la séparation des v
 Préparer étalonnage/comparabilité, puis incertitude, avant gardes décisionnelles.
 Les datasets versionnés restent entièrement synthétiques. Une revue masquée ne supprime
 pas l'exposition passée aux réponses.
-
-Le rapport [0236](../decisions/0236-lab-fixed-output-judge-repeatability.md) exploite les
-campagnes de rejugement existantes : mêmes sorties candidates, configurations enregistrées
-strictement identiques, écarts absolus et désaccords de verdict pondérés par cas. Il conserve
-les jugements manquants/invalides dans la couverture et ne lance aucun appel. Disponible
-par API et dans les résultats du benchmark sous droits du Lab concerné ; les mesures fournisseurs et la
-décomposition de variance restent à réaliser. Une configuration historique incomplète
-n'est pas une preuve de stabilité.
 
 ## Extension Process : mocks d'applications
 
@@ -77,11 +62,8 @@ métier, explicitement absents de la v1.
 
 ## Campagnes de modèles de décision regroupées
 
-Le plan `modeles-decision.md` est absorbé ici : catalogue, profil, adaptateur et workflows
-sont réalisés dans
-[0127](../decisions/0127-optional-dispatcher-decision-model.md),
-[0129](../decisions/0129-shared-decision-model-workflows.md) et
-[0130](../decisions/0130-live-message-topic-decisions.md).
+Les campagnes réutilisent les workflows de
+[0129](../decisions/0129-shared-decision-model-workflows.md).
 Le pilote dispatcher sans témoin texte ni répétitions suffisantes ne conclut pas la comparaison.
 
 Comparer spécialisé/texte sur mêmes cas FR/EN, configuration figée, répétitions et holdout ;

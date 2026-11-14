@@ -67,4 +67,4 @@ remain in the development runtime. Only synthetic input texts, recorded vectors
 and prepared prompts/answers cross into benchmark artifacts. A provider failure
 does not count as a measured answer or get replaced by another model. Diagnostic
 artifacts remain outside versioned documentation; aggregate results and limits
-are recorded in the memory plan.
+are recorded in the [qualification audit](../audits/2026-10-24-memory-evidence-and-context.md).

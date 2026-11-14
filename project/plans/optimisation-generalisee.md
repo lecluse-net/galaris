@@ -1,7 +1,7 @@
 # Suite de la campagne d’optimisation généralisée
 
-- Statut : `in-progress` ; exécution en pause pour la soirée du 24 octobre 2026.
-- Reprise prévue : 25 octobre 2026, sans exécution programmée.
+- Statut : `in-progress` ; campagne non clôturée.
+- Tri documentaire : 2026-11-14 ; aucune reprise d'exécution programmée.
 - Suivi des réalisations, mesures et limites : [audit de campagne](../audits/optimisation-generalisee/README.md).
 
 Quinze lots sont réalisés et qualifiés sur leurs scénarios. Leur historique et leurs
@@ -37,9 +37,7 @@ Les prototypes de pagination Topics écartés faute de bénéfice suffisant ne s
   Réconcilier les ajouts et requalifier seulement les preuves affectées.
 - Commencer par Process/MCP, avec un parcours complet et un budget de mesure borné.
   Choisir ensuite les lots selon le coût réellement observé.
-- Reprendre `make docs-prepare` sur des sources stabilisées. Les dernières tentatives
-  ont vérifié corpus et contrats sur leur instantané, puis refusé la publication
-  après détection de changements concurrents.
+- Exécuter `make docs-prepare` après les modifications documentaires, sur des sources stabilisées.
 
 ## Qualification des prochains lots
 

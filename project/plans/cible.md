@@ -143,14 +143,13 @@ révocation/dépréciation/rollback. Audit aligné sur les référentiels applic
 à revalider lors de conception.
 Bundle altéré/révoqué/incompatible ou permissions non acceptées refusés.
 
-### Piste optionnelle — visualisation 3D de la mémoire
+### Extension — carte mémoire préparée côté serveur
 
-La conception détaillée est regroupée dans le
-[plan de carte mémoire multiechelle](graphe-memoire-multiechelle.md) : portes d'entrée par
-schémas, Topics et contacts, profondeur des arborescences, placement précalculé régulièrement
-et ajouts positionnés en direct, chargement régional et navigation 3D guidée.
-Conserve ACL et vue 2D, sans exposer les embeddings. Le vol libre reste une extension à
-qualifier après les repères et parcours guidés. Ne bloque pas la livraison publique.
+Le rendu 3D est réalisé selon
+[0168](../decisions/0168-memory-graph-3d-only.md).
+Le [plan multiechelle](graphe-memoire-multiechelle.md) conserve le placement précalculé,
+les générations et ajouts en direct, la lecture régionale et les très grands volumes.
+Cette extension conserve les ACL et ne bloque pas la livraison publique.
 
 ## Dépendances et preuves de maturité
 

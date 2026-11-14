@@ -29,26 +29,16 @@ Un éventuel accès depuis un espace Applications, un menu ou un raccourci reste
 besoin d'intégration à préciser ; aucune de ces surfaces supplémentaires n'est
 requise pour établir que le socle existant permet de créer une petite application.
 
-## 2. Socle déjà implémenté
+## 2. Contrats à réutiliser
 
-| Capacité | Contrat existant |
-|---|---|
-| Création par un agent | `file_create(path="document://", ...)` enregistre le HTML ; `file_read`, `file_write`, `file_edit` et `file_append` permettent les améliorations avec contrôle de révision. |
-| Interface interactive | HTML, formulaires, CSS et JavaScript ordinaires sont acceptés dans le profil Document. Le code démarre à l'ouverture ; aucun manifeste applicatif ni nouveau type de Document n'est requis. |
-| Intégration au lecteur | L'interface interactive reste dans le Document, avec la barre d'outils et le texte éditable habituels. Les aperçus et historiques restent inertes. |
-| Données persistantes | `app.dataset` possède JSON libre, historique, révisions, droits, partage, bibliothèque et éditeur. Création par `file_create(path="data://", ...)`, sans Document associé ni schéma imposé. |
-| Pont de données | Le HTML déclare ses Datasets par `data-dataset`, alias et accès. Le SDK expose `galaris.datasets.read`, `append` et `replace` avec révision attendue. |
-| Droits | Le Document et chaque Dataset ont des droits indépendants. Le pont utilise ceux du lecteur et son consentement personnel serveur pour la révision documentaire courante. |
-| Évolution | Le source est conservé dans les révisions du Document. Une modification arrête le runtime et le rendu reprend après sauvegarde valide ; les Datasets conservent leur identité et leur historique propres. |
-| Conservation du rendu | Impression, PDF et archive HTML capturent l'état affiché sans rejouer les scripts ni effectuer de nouvelle écriture Dataset. |
-
-Références canoniques : [applications HTML](../../docs/fr/dev/document-apps.md),
-[Datasets](../../docs/fr/dev/datasets.md),
-[ADR 0125](../decisions/0125-document-applications.md),
-[ADR 0187](../decisions/0187-dataset-domain-and-typed-contracts.md) et
-[ADR 0223](../decisions/0223-memory-document-independence.md).
-Le skill runtime `back/app/skill/system_skills/galaris/SKILL.md` décrit déjà la
-création HTML et l'utilisation du pont Dataset pour les agents.
+Les interfaces HTML/JavaScript, le pont de données, les droits et les révisions sont
+décrits dans les [applications HTML](../../docs/fr/dev/document-apps.md),
+les [documents Données](../../docs/fr/dev/datasets.md) et
+[0125](../decisions/0125-document-applications.md).
+Documents Texte et Données ont désormais le propriétaire commun `app.document`
+([0252](../decisions/0252-typed-documents.md)) ; `app.dataset` est un relais de compatibilité.
+La création et l'amélioration par File Sharing sont déjà documentées dans le skill
+runtime Galaris. Ces capacités ne sont plus des lots à réaliser.
 
 ## 3. Écart concret : accès aux données d'une nouvelle application
 
@@ -84,7 +74,7 @@ ni supprimer les contrôles serveur pour rendre une démonstration passante.
 - Une écriture contrôle la révision du Dataset. En cas de conflit, conserver la saisie, relire et demander une nouvelle soumission sans retry aveugle.
 - Fermeture, changement de Document ou nouvelle révision arrêtent le runtime et écartent ses réponses tardives. Une écriture déjà committée reste durable.
 - Le code reste dans le runtime isolé existant, sans session, secrets, DOM parent ni outils Galaris implicites. Les quotas et limites du pont Dataset restent applicables.
-- Dataset conserve le JSON libre, sans schéma métier imposé. Document conserve HTML et code ; Process conserve ses workflows BPMN, données et fichiers de runs.
+- Document Données conserve le JSON libre, sans schéma métier imposé ; Document Texte conserve HTML et code. Process conserve ses workflows BPMN, données et fichiers de runs.
 
 Les limites actuelles sont celles du [guide des applications](../../docs/fr/dev/document-apps.md) :
 le runtime est un navigateur isolé, sans budget CPU garanti ni accès réseau ordinaire.
@@ -114,21 +104,7 @@ exécuter les suites ciblées via les cibles Make, puis exercer le parcours asse
 avec un agent et des données entièrement synthétiques, clavier et petit viewport
 compris. Distinguer le résultat des tests de celui de la recette applicative.
 
-## 6. Hypothèses historiques retirées du périmètre nécessaire
-
-Le catalogue personnel de programmes, les fonctions proposées `document_register`,
-`document_exec`, `document_exec_get`, `document_test`, le paquet
-`galaris.program/v1`, un nouveau domaine `app.program` et un moteur QuickJS serveur
-ne sont pas nécessaires à l'objectif précisé. Ils ne constituent plus les critères
-permettant de déclarer ce plan terminé. Les agents peuvent déjà enregistrer les
-interfaces HTML par les opérations File Sharing existantes.
-
-Le port `ProgramExecutor` du moteur BPMN ne prouve ni ne conditionne la réalisation
-de ces petites applications navigateur. Une fonction technique ne devient pas un
-Process pour obtenir un suivi durable. Tout besoin ultérieur d'exécution serveur
-JSON vers JSON doit être justifié et conçu séparément.
-
-## 7. Condition de clôture
+## 6. Condition de clôture
 
 Retirer ce plan lorsque les parcours de création, utilisation, persistance, partage
 et amélioration d'une petite application par un agent sont qualifiés, avec un accès
