@@ -270,11 +270,6 @@
         </div>
       </div>
     </div>
-    <div class="text-caption q-mt-xs" role="status" aria-live="polite">
-      {{ t(draft.failed.value ? 'chat.draftOffline' : draft.saving.value ? 'chat.draftSaving' : 'chat.draftSaved') }}
-      <q-btn v-if="draft.failed.value" outline dense color="primary" class="q-ml-sm"
-        :label="t(draft.conflicted.value ? 'chat.draftReplace' : 'chat.retry')" @click="retryDraft" />
-    </div>
   </div>
   <DocumentResourceReferences v-if="resourcePickerOpen" v-model:picker-open="resourcePickerOpen" :agent-id="agentId" :editable="!sending" resources-only @resources-picked="addResources" />
 </template>
@@ -283,7 +278,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
-import { DocumentResourceReferences, showConfirmationDialog } from '@/core/util'
+import { DocumentResourceReferences } from '@/core/util'
 import { TopicSelect } from '@/app/topic'
 import { chatService, DictationNotConfiguredError } from '../services/chatService'
 import { visibleMessageText } from '../messageDirectives'
@@ -357,14 +352,6 @@ const draft = useComposerDraft({
   restoreContext: (topic) => { if (topic !== props.topicId) emit('update:topicId', topic) },
   error: error => emit('error', new Error(t('chat.draftError'), { cause: error })),
 })
-function retryDraft(): void {
-  const retry = (replace = false): void => { void draft.retry(replace).catch(error => emit('error', error)) }
-  if (!draft.conflicted.value) { retry(); return }
-  showConfirmationDialog({ title: t('chat.draftReplace'), message: t('chat.draftReplaceConfirm'),
-    cancel: { flat: false, outline: true, color: 'primary' },
-    ok: { flat: false, color: 'primary', label: t('chat.draftReplace') }, focus: 'cancel',
-  }).onOk(() => retry(true))
-}
 const dictating = ref(false)
 const preparingDictation = ref(false)
 const transcribing = ref(false)
