@@ -82,9 +82,7 @@ quota also applies to expanded bytes; an archive accepts at most 2,000 entries a
 
 ## Choose a document format
 
-The displayed names are **Text format** and **Data format**. **Document formats** lists
-available formats, native capabilities and Galaris fallbacks. A capability declaration
-does not mean a plugin has passed qualification.
+The displayed names are **Text format** and **Data format**.
 
 **Download source** retrieves the saved version, including when its format viewer is
 unavailable. Existing documents and their rights remain intact. Formats other than Text

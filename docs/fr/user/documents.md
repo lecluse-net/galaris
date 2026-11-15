@@ -94,9 +94,7 @@ décompressé ; une archive accepte au maximum 2 000 entrées et 32 niveaux de r
 
 ## Choisir le format de document
 
-Les noms affichés sont **Format Texte** et **Format Data**. Le bouton **Formats de document**
-présente les formats disponibles, leurs capacités natives et les replis Galaris. Une
-capacité déclarée ne signifie pas qu'un plugin a passé sa qualification.
+Les noms affichés sont **Format Texte** et **Format Data**.
 
 Chaque icône **Nouveau document** ouvre le menu des formats sous l’icône cliquée, avant toute création. Choisissez **Format Texte**
 ou **Format Data**, puis le titre et le propriétaire. Les menus contextuels des documents et

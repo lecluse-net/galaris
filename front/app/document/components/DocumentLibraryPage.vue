@@ -1,7 +1,6 @@
 <template>
   <q-page class="documents-page q-pa-md" :class="{ 'viewport-page--desktop': !$q.screen.lt.md }">
     <PageHeader help-key="documents" :help-text="$t('contextHelpPages.documents')" :icon="navigationIcon('description')" :title="t('nav.documents')" :description="t('nav.documents_desc')">
-      <template #actions><q-btn outline color="primary" icon="widgets" :label="t('documents.formatCatalogue.title')" @click="formatsOpen = true" /></template>
       <template #title-after>
         <div class="row items-center q-gutter-xs">
           <q-btn v-if="!$q.screen.lt.md" flat round :icon="libraryOpen ? fullDocumentIcon : libraryDocumentIcon" :aria-label="t('documents.toggleLibrary')" :aria-expanded="libraryOpen" @click="libraryOpen = !libraryOpen"><q-tooltip>{{ t('documents.toggleLibrary') }}</q-tooltip></q-btn>
@@ -11,7 +10,6 @@
       </template>
     </PageHeader>
 
-    <DocumentFormatsDialog v-if="formatsOpen" v-model="formatsOpen" />
     <q-banner v-if="importingFileName" dense role="status" class="q-mb-sm">
       <template #avatar><q-spinner color="primary" /></template>
       {{ t('documents.importingFile', { name: importingFileName }) }}
@@ -163,7 +161,7 @@
 
 <script setup lang="ts">
 import { navigationIcon } from '@/core/navigation'
-import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useQuasar, type QMenu } from 'quasar'
@@ -191,8 +189,6 @@ import DocumentLibraryNavigation from '@/app/document/components/DocumentLibrary
 import DocumentSplitterHandle from '@/app/document/components/DocumentSplitterHandle.vue'
 import DocumentBulkList from '@/app/document/components/DocumentBulkList.vue'
 import DocumentImportDialog from '@/app/document/components/DocumentImportDialog.vue'
-const DocumentFormatsDialog = defineAsyncComponent(() => import('./DocumentFormatsDialog.vue'))
-const formatsOpen = ref(false)
 
 interface MemoryRealtimeEvent { data: { id: string; node_kind: DocumentNodeKind } }
 
