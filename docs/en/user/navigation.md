@@ -472,6 +472,11 @@ is imposed. Existing folders retain their names and behave as ordinary editable 
 without translation or automatic renaming.
 
 Agents are encouraged to synthesize tracking while preserving useful information.
+Each new cycle Task receives the tracking document link, to read in bounded pages as
+needed, instead of a full copy in its objective. After the cycle, synthesis consolidates
+repetition and obsolete history while preserving open work, decisions, constraints and
+useful evidence. This instruction also applies with a customized tracking prompt; it
+does not guarantee a maximum size.
 This guidance imposes no character cap or truncation on tracking, judgement reasons or
 evidence. HTML checks and the shared document storage quota still apply.
 

@@ -629,14 +629,17 @@ async def _agent_has_pending_work(agent_id: int, now: datetime) -> bool:
 
 
 async def _cycle_task_objective(goal: Goal, sequence: int) -> str:
-    markdown = await goal_service.read_markdown(goal)
     sections = [
         "You are advancing a long-running Goal through one concrete work cycle.",
         f"GOAL TITLE:\n{goal.title}",
-        f"GOAL DESCRIPTION:\n{markdown.description}",
+        f"GOAL DESCRIPTION:\n{goal.description}",
         (
-            "DURABLE GOAL TRACKING (HTML, shared by every cycle):\n"
-            + (markdown.tracking or "(No tracking has been recorded yet.)")
+            "DURABLE GOAL TRACKING (HTML document, shared by every cycle):\n"
+            f"document://{goal.tracking_document_id}\n"
+            "Read this document with file_read before choosing work or asking the referrer. "
+            "Use bounded pages and next_offset as needed; do not assume an unread page is empty. "
+            "Use the current state and remaining work to select the relevant evidence. "
+            "If access fails, report the exact limit without inventing the missing context."
         ),
         _referrer_context(goal),
         f"CYCLE:\n{sequence}",

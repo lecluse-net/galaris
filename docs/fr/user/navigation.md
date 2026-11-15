@@ -515,6 +515,11 @@ Aucun dossier Objectifs n'est imposé. Les dossiers déjà créés gardent leur 
 comme les autres dossiers, sans traduction ou renommage automatique.
 
 Les agents sont invités à synthétiser le suivi en conservant les informations utiles.
+Chaque nouvelle tâche de cycle reçoit le lien du document de suivi, à lire par pages selon
+les besoins, plutôt qu'une copie complète dans son objectif. Après le cycle, la synthèse
+regroupe les répétitions et l'historique devenu inutile sans supprimer les chantiers ouverts,
+les décisions, les contraintes ni les preuves utiles. Cette consigne s'applique aussi avec
+un prompt de suivi personnalisé ; elle ne garantit pas une taille maximale.
 Cette consigne n'impose aucun plafond de caractères ni aucune troncature du suivi ou
 des justifications et preuves du jugement. Les contrôles HTML et le quota de stockage
 documentaire commun restent applicables.

@@ -13,7 +13,16 @@ def goal_judgement_runtime_instructions() -> str:
         "completion criteria are satisfied. Do not redefine the objective or invent evidence. "
         "Use actual observations; distinguish author and reviewer claims from verified effects. "
         "Preserve strategy, decision reasons, rejected approaches and useful next work in "
-        "tracking_content, with whatever organization suits the Goal."
+        "tracking_content, with whatever organization suits the Goal.\n"
+        "TRACKING SYNTHESIS: Return a complete, concise current-state synthesis, not an "
+        "ever-growing cycle log. Consolidate repetitive history, merge duplicate facts and "
+        "replace superseded statements with verified corrections. Preserve every distinct "
+        "open work item, commitment, constraint, uncertainty, blocker, authenticated decision, "
+        "useful rejected approach and reopening condition. Keep essential evidence and exact "
+        "canonical resource links instead of copying long deliverables. Chronological cycle "
+        "details remain in cycle history; never invent a link or assume missing evidence can "
+        "be recovered there. With no new evidence, do not append the same state again. "
+        "Never truncate useful information to meet a length target."
     )
 
 
@@ -60,7 +69,7 @@ def goal_cycle_work_instructions(
         "approaches and reasons, remaining criteria, and the next useful work or waiting "
         "condition. Not knowing a method is not evidence that the Goal is impossible.\n\n"
         "GOAL CYCLE DECISION CHECKPOINT:\n"
-        "Use the current request and supplied tracking to identify what remains. When they "
+        "Use the current request and the tracking you have read to identify what remains. When they "
         "already identify the target, inspect that target rather than reconstructing the "
         "Goal or searching for unmentioned prerequisites. A cycle can make "
         "useful progress by obtaining a required decision; it need not create content. "

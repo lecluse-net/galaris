@@ -417,3 +417,4 @@ nouvelle décision plutôt que réécrite silencieusement si le choix change.
 - [0288 — Document format contributions and qualification](0288-document-format-contributions.md)
 - [0290 — Native provider embeddings through the shared LLM boundary](0290-native-provider-embeddings.md)
 - [0292 — Desktop client reusing the server interface](0292-desktop-client.md)
+- [0293 — Goal tracking references and continuity synthesis](0293-goal-tracking-reference-and-synthesis.md)

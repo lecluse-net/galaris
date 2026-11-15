@@ -100,6 +100,7 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
     finally:
         user_service.set_current_user(None)
     goal_id = goal.id
+    tracking_uri = f"document://{goal.tracking_document_id}"
 
     stages: list[str] = []
 
@@ -141,7 +142,8 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
                             for message in body["messages"] for call in message.get("tool_calls", []))
             if approval_tool == "goal_update_suivi" and not confirmed:
                 read_ids = {call["id"] for message in body["messages"] for call in message.get("tool_calls", [])
-                            if call["function"]["name"] == "file_read"}
+                            if call["function"]["name"] == "file_read"
+                            and json.loads(call["function"]["arguments"]).get("uri") == f"galaris://goal/{goal_id}"}
                 reads = [message for message in body["messages"]
                          if message.get("role") == "tool" and message.get("tool_call_id") in read_ids]
                 if not reads:
@@ -164,8 +166,20 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
             stages.append("wait")
             text = ("Question permission denied; the delivery choice remains unknown."
                     if revoke_question else "Question sent; waiting for the referrer's answer.")
+        elif not any(call["function"]["name"] == "file_read"
+                     and json.loads(call["function"]["arguments"]).get("uri") == tracking_uri
+                     for message in body["messages"] for call in message.get("tool_calls", [])):
+            stages.append("read_tracking")
+            tool_name, value = "file_read", {"uri": tracking_uri}
         else:
             stages.append("ask")
+            tracking_reads = {call["id"] for message in body["messages"] for call in message.get("tool_calls", [])
+                              if call["function"]["name"] == "file_read"
+                              and json.loads(call["function"]["arguments"]).get("uri") == tracking_uri}
+            receipts = [json.loads(message["content"]) for message in body["messages"]
+                        if message.get("role") == "tool" and message.get("tool_call_id") in tracking_reads]
+            assert receipts and receipts[-1]["uri"] == tracking_uri
+            assert "content" in receipts[-1]
             assert "goal_ask_referrer" in {tool["name"] for tool in functions}
             tool_name = "goal_ask_referrer"
             value = {
@@ -226,6 +240,7 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
         assert not await runner.process_terminal_cycle()
         assert not await runner.start_due_cycle()
         assert stages.count("ask") == stages.count("judge") == 1
+        assert stages.count("read_tracking") == 1
         return
     assert task.status == TaskStatus.DISPATCH, task.last_error
     assert task_service.is_paused_for(task, task_service.PAUSE_AWAIT)
@@ -327,6 +342,7 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
     assert {"agent.dispatch", "agent.exec", "goal.tracking"} <= {call.purpose for call in calls}
     assert calls and all(call.status == "completed" and call.error is None for call in calls)
     assert stages.count("ask") == stages.count("resume") == 1
+    assert stages.count("read_tracking") == 1
     assert stages.count("judge") == 2
     assert stages.count("review_read") == stages.count("review_done") == 1
     assert "dispatch" in stages

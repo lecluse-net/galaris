@@ -655,8 +655,9 @@ async def test_goal_schedule_is_persisted_and_updated_with_the_goal(db) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("milestones", [0, 1, 6500])
 async def test_due_goal_creates_an_ordinary_dispatcher_owned_task(
-    db, monkeypatch: pytest.MonkeyPatch
+    db, monkeypatch: pytest.MonkeyPatch, milestones: int
 ) -> None:
     agent = await _new_agent(db)
     referrer = await _new_agent(db)
@@ -674,14 +675,19 @@ async def test_due_goal_creates_an_ordinary_dispatcher_owned_task(
         )
     )
 
+    tracking = (
+        "<p>Synthetic milestone with a verified result.</p>" * milestones
+        + "<p>A previous result suggests synthetic://tracking-only-target</p>"
+        if milestones else ""
+    )
     await goal_service.update(created.id, GoalUpdate(expected_revision=created.revision,
-        tracking_content="<p>A previous result suggests synthetic://tracking-only-target</p>"))
+        tracking_content=tracking))
     store = goal_service.get_goal_document_store()
     read_tracking = AsyncMock(wraps=store.read_many)
     monkeypatch.setattr(store, "read_many", read_tracking)
     assert await runner.start_due_cycle() is True
     assert await runner.start_due_cycle() is False
-    # One prompt read plus the fresh committed snapshot sent to subscribers.
+    # Materialization must not repeatedly load the growing tracking document.
     assert read_tracking.await_count <= 2
 
     task = await db.scalar(select(Task).where(Task.goal_id == created.id))
@@ -708,8 +714,29 @@ async def test_due_goal_creates_an_ordinary_dispatcher_owned_task(
     assert scope is not None
     assert scope.requirements[0].source_reference == f"galaris://goal/{created.id}"
     assert "DURABLE GOAL TRACKING" not in scope.requirements[0].instruction
-    assert "synthetic://tracking-only-target" in (task.objective or "")
+    tracking_uri = f"document://{created.tracking_document_id}"
+    assert tracking_uri in (task.objective or "")
+    assert "synthetic://tracking-only-target" not in (task.objective or "")
+    assert "Synthetic milestone" not in (task.objective or "")
     assert "synthetic://tracking-only-target" not in scope.requirements[0].instruction
+    # The reference must remain readable through the real bounded resource path,
+    # including all later pages of a long tracking document.
+    from app.file_share import ResourceContext, resource_read
+    context = ResourceContext(agent_id=agent.id, runtime="internal")
+    page = await resource_read(context, tracking_uri)
+    pages = [page.content]
+    while page.next_offset is not None:
+        page = await resource_read(context, tracking_uri, offset=page.next_offset)
+        pages.append(page.content)
+    content = "".join(pages)
+    if milestones:
+        assert "synthetic://tracking-only-target" in content
+        assert content.count("Synthetic milestone") == milestones
+    if milestones == 6500:
+        assert len(pages) > 1
+    assert (await goal_service.read_markdown(goal)).tracking == tracking
+    with pytest.raises(document_service.DocumentPermissionError):
+        await resource_read(ResourceContext(agent_id=referrer.id, runtime="internal"), tracking_uri)
     assert scope.grants == ()
     assert created.referrer is not None
     assert created.referrer.type == GoalReferrerType.AGENT
@@ -1185,6 +1212,8 @@ async def test_terminal_cycle_is_judged_once_and_stop_completes_goal(
     assert tracking_call["task_id"] == task_id
     assert tracking_call["agent_id"] == agent_id
     assert tracking_call["request_limit"] == 2
+    from app.goal.cycle_context import goal_judgement_runtime_instructions
+    assert goal_judgement_runtime_instructions() in tracking_call["prompt"]
     assert tracking_call["system_prompt"] == (
         custom_prompt if custom_prompt is not None else await params_service.declared_default(
             Params.AI_GOAL_TRACKING_SYSTEM_PROMPT

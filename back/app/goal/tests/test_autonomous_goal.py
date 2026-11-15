@@ -155,7 +155,11 @@ async def test_critical_review_can_redirect_instead_of_completing(db, monkeypatc
     assert goal.status == GoalStatus.ACTIVE and cycle.verdict == GoalVerdict.CONTINUE
     assert (await goal_service.read_markdown(goal)).tracking == revised
     assert goal.next_cycle_at is not None
-    assert revised in await runner._cycle_task_objective(goal, 2)
+    from app.file_share import ResourceContext, resource_read
+    tracking_uri = f"document://{goal.tracking_document_id}"
+    assert tracking_uri in await runner._cycle_task_objective(goal, 2)
+    current = await resource_read(ResourceContext(agent_id=goal.agent_id, runtime="internal"), tracking_uri)
+    assert current.content == revised
 
 
 @pytest.mark.parametrize("change", ["goal", "tracking", "work"])
