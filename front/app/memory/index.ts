@@ -1,4 +1,7 @@
+import { defineAsyncComponent } from 'vue'
+
 export { memoryService } from './services/memoryService'
+export const MemoryItemDialog = defineAsyncComponent(() => import('./components/MemoryItemDialog.vue'))
 export type { MemoryAgendaOccurrence } from './services/memoryService'
 export type { MemoryItem, MemoryItemDetail } from './types'
 export { default as ContactResourceDialog } from './components/ContactResourceDialog.vue'

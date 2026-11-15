@@ -22,7 +22,7 @@ const MEMORY_PAGE_SIZE_OPTIONS = [10, 20, 50, 100, 500]
 const DEFAULT_MEMORY_PAGE_SIZE = 50
 const MAX_MEMORY_PAGE_SIZE = 500
 
-export const useMemoryStore = defineStore('memory', () => {
+export function useMemoryState({ detailsOnly = false } = {}) {
   const hits = ref<MemorySearchHit[]>([])
   const currentItem = ref<MemoryItemDetail | null>(null)
   const revisions = ref<MemoryRevision[]>([])
@@ -67,6 +67,14 @@ export const useMemoryStore = defineStore('memory', () => {
     sortBy?: MemorySortField | null
     sortDescending?: boolean
   } = {}): Promise<void> {
+    if (detailsOnly) {
+      const agentId = selectedAgentId.value
+      if (agentId === null) return
+      const request = ++searchRequest
+      const rows = await memoryService.listFindings(agentId)
+      if (request === searchRequest && selectedAgentId.value === agentId) findings.value = rows
+      return
+    }
     const request = ++searchRequest
     const agentId = selectedAgentId.value
     const previousPage = page.value
@@ -282,7 +290,7 @@ export const useMemoryStore = defineStore('memory', () => {
       await search()
       if (currentItem.value === null) return
       const currentId = currentItem.value.id
-      const stillExists = hits.value.some(hit => hit.item.id === currentId)
+      const stillExists = detailsOnly || hits.value.some(hit => hit.item.id === currentId)
       if (stillExists) await openItem(currentId)
       else currentItem.value = null
     } catch {
@@ -393,4 +401,6 @@ export const useMemoryStore = defineStore('memory', () => {
 
     createLink,
   }
-})
+}
+
+export const useMemoryStore = defineStore('memory', () => useMemoryState())

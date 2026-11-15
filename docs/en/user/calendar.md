@@ -33,7 +33,9 @@ appointments, deadlines and things to remember at a particular time. A request s
 the function is authorized.
 
 The **Memory** source, selectable in the calendar list, displays the agent’s dated memories over
-the visible period. Click an occurrence to open the original content. Partial dates retain
+the visible period. Click an occurrence to open the full Memory item in a dialog within the
+agenda: content, links and history, with editing according to your permissions. Closing it
+preserves the period, view and selected calendars. Partial dates retain
 their precision and recurrence in Galaris’s global timezone: a date without a time spans the
 day, and a month alone spans that month. Memories remain owned by Memory.
 This source also contributes to the agent’s temporal context, with its source memory link,

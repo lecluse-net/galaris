@@ -277,7 +277,7 @@ test('future Goal months render while Memory is pending and late Memory response
   await expect(page.getByRole('button', { name: /Synthetic future Goal 2026-12/ })).toHaveCount(0)
 })
 
-for (const width of [390, 1440]) test(`Memory agenda opens source content, retries and stays informational at ${width}px`, async ({ page }, testInfo) => {
+for (const width of [390, 1440]) for (const editable of [false, true]) test(`Memory agenda opens the full item, retries and stays informational at ${width}px (${editable ? 'edit' : 'read'})`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 950 })
   const model = await calendar(page)
   const memoryId = '00000000-0000-0000-0000-000000000101'
@@ -294,18 +294,27 @@ for (const width of [390, 1440]) test(`Memory agenda opens source content, retri
     const url = new URL(route.request().url())
     return route.fulfill({ json: { items: occurrence.start < url.searchParams.get('end') && occurrence.end > url.searchParams.get('start') ? [occurrence] : [], complete: true } })
   })
-  await jsonRoute(page, `**/api/memory/items/${memoryId}?*`, memory)
-  await start(page, { privileges: ['CALENDAR_EDIT', 'MEMORY_ACCESS'] })
+  let saves = 0
+  await page.route(`**/api/memory/items/${memoryId}?*`, route => {
+    expect(new URL(route.request().url()).searchParams.get(route.request().method() === 'PUT' ? 'actor_agent_id' : 'agent_id')).toBe('7')
+    if (route.request().method() === 'PUT') {
+      const body = route.request().postDataJSON()
+      expect(body.expected_revision).toBe(memory.revision)
+      Object.assign(memory, { payload: body.payload, keywords: body.keywords, temporal: body.temporal, revision: memory.revision + 1, lock_version: memory.lock_version + 1 })
+      saves++
+    }
+    return route.fulfill({ json: memory })
+  })
+  await jsonRoute(page, `**/api/memory/items/${memoryId}/links?*`, [])
+  await jsonRoute(page, `**/api/memory/items/${memoryId}/revisions?*`, [{ revision: 3, created_at: memory.created_at, keywords: [], author_agent_id: 7, task_id: null, content_hash: 'synthetic' }])
+  await jsonRoute(page, '**/api/memory/findings?*', [])
+  await start(page, { privileges: ['CALENDAR_EDIT', editable ? 'MEMORY_EDIT' : 'MEMORY_ACCESS'] })
   await expect(page.getByText('Unable to load the Memory agenda.', { exact: true })).toBeVisible()
   failure = false
   await page.getByRole('button', { name: 'Retry', exact: true }).click()
   const chip = page.getByRole('button', { name: /Synthetic annual memory/ })
   await expect(chip).toBeVisible()
   expect(model.stateReads.every(body => body.occurrences.every(row => row.event_id !== occurrence.id))).toBe(true)
-  await chip.click()
-  await expect(page.getByRole('dialog').getByText('Synthetic annual observation preserved in Memory.', { exact: true })).toBeVisible()
-  await expect(page.getByRole('dialog').getByRole('button', { name: 'Add Task launch', exact: true })).toHaveCount(0)
-  await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
   if (width < 1024) await page.getByRole('button', { name: 'Show calendars', exact: true }).click()
   await page.getByRole('checkbox', { name: 'Memory', exact: true }).uncheck()
   await expect(chip).toHaveCount(0)
@@ -316,6 +325,33 @@ for (const width of [390, 1440]) test(`Memory agenda opens source content, retri
   await page.screenshot({ path: testInfo.outputPath('memory-agenda.png'), fullPage: true, animations: 'disabled' })
   await page.evaluate(() => window.testApp.dark(true))
   await page.screenshot({ path: testInfo.outputPath('memory-agenda-dark.png'), fullPage: true, animations: 'disabled' })
+  const agendaRoute = await page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)
+  await chip.click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.locator('[data-editor-surface]')).toHaveText('Synthetic annual observation preserved in Memory.')
+  await expect(dialog.locator('[data-editor-surface]')).toHaveAttribute('contenteditable', String(editable))
+  await dialog.getByRole('tab', { name: 'Links and relations', exact: true }).click()
+  await expect(dialog.getByText('No explicit relation.', { exact: true })).toBeVisible()
+  await dialog.getByRole('tab', { name: 'History', exact: true }).click()
+  await expect(dialog.getByRole('button', { name: /^Version 3/ })).toBeVisible()
+  await dialog.getByRole('tab', { name: 'Memory', exact: true }).click()
+  if (editable) {
+    await dialog.locator('[data-editor-surface]').fill('Synthetic memory updated from the agenda.')
+    await dialog.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect.poll(() => saves).toBe(1)
+    await expect(dialog.locator('[data-editor-surface]')).toHaveText('Synthetic memory updated from the agenda.')
+  } else await expect(dialog.getByRole('button', { name: 'Save', exact: true })).toHaveCount(0)
+  await page.screenshot({ path: testInfo.outputPath('memory-item-dark.png'), animations: 'disabled' })
+  await page.evaluate(() => window.testApp.dark(false))
+  await page.screenshot({ path: testInfo.outputPath('memory-item-light.png'), animations: 'disabled' })
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(chip).toBeVisible()
+  expect(await page.evaluate(() => window.testApp.router.currentRoute.value.fullPath)).toBe(agendaRoute)
+  await chip.click()
+  await expect(dialog.locator('[data-editor-surface]')).toHaveText(editable ? 'Synthetic memory updated from the agenda.' : 'Synthetic annual observation preserved in Memory.')
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click()
+  expect(model.writes).toEqual([])
 })
 async function taskDetails(page) {
   for (const [id, label] of [[taskId, 'Synthetic agenda Task'], [reviewTaskId, 'Synthetic review Task']]) {

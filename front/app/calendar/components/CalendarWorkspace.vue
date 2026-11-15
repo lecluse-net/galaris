@@ -52,8 +52,8 @@
     </div>
     <CalendarEventPanel v-if="selectedEvent && selectedFeed && !editor" :key="occurrenceKey(selectedEvent)" :event="selectedEvent" :feed="selectedFeed" :can-edit="canEdit" @close="selectedEvent = null" @changed="loadEvents(false)" @edit="edit" @settings="settingsId = selectedFeed.id; settingsOpen = true" />
     <GoalAgendaPanel v-if="selectedEvent?.goal_event && canReadGoals && !editor" :event="selectedEvent.goal_event" @close="selectedEvent = null" @changed="loadEvents(false)" />
-    <ResourceDetailDialog v-if="selectedEvent?.memory_event && canReadMemory && agentId" :key="selectedEvent.memory_event.memory_id"
-      :target="{ kind: 'memory', id: selectedEvent.memory_event.memory_id, title: selectedEvent.summary, agentId }" @close="selectedEvent = null; loadEvents(false)" />
+    <MemoryItemDialog v-if="selectedEvent?.memory_event && canReadMemory && agentId" :key="`${agentId}:${selectedEvent.memory_event.memory_id}`"
+      :item-id="selectedEvent.memory_event.memory_id" :agent-id="agentId" @close="selectedEvent = null; loadEvents(false)" @changed="loadEvents(false)" />
     <CalendarEventEditor v-if="editor" :key="editorKey" :feeds="feeds" :detail="editor.detail" :master="editor.master" :recurrence-key="editor.recurrenceKey" :date="editor.date" :time="editor.time" :end-time="editor.endTime" :timezone="timezone" :calendar-id="editor.calendarId" @close="editor = null" @saved="saved" @reload="reloadEditor" />
     <CalendarSettings v-if="settingsOpen" :feeds="feeds" :colors="calendarColors" :initial-id="settingsId" :can-edit="canEdit" @close="settingsOpen = false" @changed="loadFeeds(true)" @color="setCalendarColor" />
     <q-dialog :model-value="syncFeedId !== null" @update:model-value="!$event && (syncFeedId = null)">
@@ -78,8 +78,8 @@ import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { useAuthStore } from '@/core/user'
 import { AgentSelect, getAgentSelection } from '@/app/agent'
 import { GoalAgendaPanel, goalService, type GoalAgendaEvent } from '@/app/goal'
-import { memoryService, type MemoryAgendaOccurrence } from '@/app/memory'
-import { PageHeader, ResourceDetailDialog, solaireColors, solaireCss, type SolaireColor } from '@/core/util'
+import { MemoryItemDialog, memoryService, type MemoryAgendaOccurrence } from '@/app/memory'
+import { PageHeader, solaireColors, solaireCss, type SolaireColor } from '@/core/util'
 import { calendarLabel, calendarSourceLabel, defaultCalendarColor } from '../presentation'
 import { retainCalendarEvents, retainExecutionStates } from '../calendarState'
 import { MONTH_VISIBLE_EVENTS, addDays, addMonths, eventsByDay, isoWeekNumber, occurrenceKey, queryWindows, visibleDays, wallTime, zonedInstant, type CalendarView } from '../calendarDates'

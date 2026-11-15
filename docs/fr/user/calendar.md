@@ -33,7 +33,9 @@ telle que « rappelle-moi vers 15 h que je dois partir » doit créer un événe
 personnel lorsque la fonction est autorisée.
 
 La source **Mémoire**, sélectionnable dans la liste des agendas, affiche les souvenirs datés de
-l’agent sur la période consultée. Un clic ouvre leur contenu d’origine. Les dates partielles
+l’agent sur la période consultée. Un clic ouvre la fiche Mémoire complète en modale dans
+l’agenda : contenu, liens et historique, avec modification selon vos droits. Fermer la fiche
+retrouve la même période, la même vue et les mêmes agendas sélectionnés. Les dates partielles
 gardent leur précision et leur récurrence, dans le fuseau global de Galaris : une date sans
 heure couvre la journée, un mois seul couvre ce mois. Les souvenirs restent dans Memory.
 Cette source figure aussi dans le contexte temporel de l’agent, avec un lien vers le souvenir,

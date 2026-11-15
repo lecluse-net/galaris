@@ -23363,6 +23363,7 @@
           "front/app/memory/components/ContactSelect.vue",
           "front/app/memory/components/MemoryFileResources.vue",
           "front/app/memory/components/MemoryGraph.vue",
+          "front/app/memory/components/MemoryItemDialog.vue",
           "front/app/memory/components/MemoryItemThumbnail.vue",
           "front/app/memory/pages/contacts.vue",
           "front/app/memory/pages/index.vue",
@@ -23378,6 +23379,7 @@
         "files": [
           "front/app/memory/components/ContactSelect.vue",
           "front/app/memory/components/MemoryDreamActions.vue",
+          "front/app/memory/components/MemoryItemDialog.vue",
           "front/app/memory/navigation.ts",
           "front/app/memory/pages/contacts.vue",
           "front/app/memory/pages/index.vue",
@@ -23404,6 +23406,7 @@
           "front/app/memory/components/MemoryAttachmentButton.vue",
           "front/app/memory/components/MemoryContentPreviews.vue",
           "front/app/memory/components/MemoryGraph.vue",
+          "front/app/memory/components/MemoryItemDialog.vue",
           "front/app/memory/components/MemoryItemForm.vue",
           "front/app/memory/components/MemoryItemHistory.vue",
           "front/app/memory/components/MemoryItemThumbnail.vue",
@@ -23418,7 +23421,7 @@
       {
         "files": [
           "front/app/memory/components/MemoryGraph.vue",
-          "front/app/memory/pages/index.vue",
+          "front/app/memory/components/MemoryItemDialog.vue",
           "front/app/memory/stores/memoryStore.ts"
         ],
         "source": "app/memory",
