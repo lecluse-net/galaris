@@ -49,6 +49,8 @@ test('personal chat display preferences require an enabled accessible chat and r
 for (const [name, label, privileges] of [
   ['ai.executor-system-prompt', 'Task executor', ['INSTRUCTION_CONFIG_EDIT']],
   ['ai.goal-tracking-system-prompt', 'Goal tracking prompt', ['GOAL_CONFIG_EDIT']],
+  ['audio.summary-meeting-final-system-prompt', 'Meeting reports', ['AUDIO_CONFIG_EDIT']],
+  ['audio.summary-video-final-system-prompt', 'YouTube video summaries', ['AUDIO_CONFIG_EDIT']],
 ]) {
 test(`${name}: customization displays a diff, persists choices and respects revoked rights`, async ({ page }) => {
   let param = { name, value: 'Custom instructions', secret: false, configured: true,
@@ -67,8 +69,8 @@ test(`${name}: customization displays a diff, persists choices and respects revo
     props: { section: 'instructions' }, route: '/params/instructions', privileges,
   })
   const block = page.getByRole('region', { name: label, exact: true })
-  await block.locator('.q-expansion-item__container > .q-item').click()
-  const editor = block.locator('textarea')
+  await block.getByRole('button', { name: `Expand "${label}"`, exact: true }).click()
+  const editor = block.locator('textarea:visible')
   await expect(editor).toHaveValue('Custom instructions')
   await page.getByRole('button', { name: 'Show differences', exact: true }).click()
   await expect(page.locator('.prompt-editor__diff-line--removed')).toContainText('Default instructions')

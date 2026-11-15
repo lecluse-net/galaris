@@ -740,9 +740,13 @@ in the [multi-level memory graph plan](../../../project/plans/graphe-memoire-mul
 ## Preferences, monitoring and account
 
 **Administer → Preferences** (`/params`) presents a section grid and submenus for System,
-Language, Messaging, Memory, Dream, Voice, Audio, Processes, Tasks and execution,
+Language, Messaging, Memory, Dream, Voice, Processes, Tasks and execution,
 Harnesses, Search, Browser, Janus, Instructions and Logs. The
 [generated map](../architecture/generated/navigation.md) provides each route.
+
+Meeting report and YouTube video summary prompts, including their advanced settings, are
+under **Preferences → Instructions** (`/params/instructions`). The former `/params/audio`
+link redirects there; existing values and Audio permissions are preserved.
 
 In **Preferences → Messaging** and a Service’s **Messaging** tab, network notices help prepare
 [bridge tests from a local instance](../bridges/telegram-whatsapp.md).

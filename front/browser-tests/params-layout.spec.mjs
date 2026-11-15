@@ -6,9 +6,9 @@ function settingsPrivileges(section, editable = true) {
   const domains = {
     system: ['PARAMS', 'LOG_CONFIG'], language: ['LANGUAGE_CONFIG'],
     messaging: ['MESSAGING_CONFIG'], memory: ['MEMORY_CONFIG'], dream: ['DREAM_CONFIG'],
-    voice: ['VOICE_CONFIG'], audio: ['AUDIO_CONFIG'], process: ['PROCESS_CONFIG'],
+    voice: ['VOICE_CONFIG'], process: ['PROCESS_CONFIG'],
     tasks: ['TASK_CONFIG'], harnesses: ['HARNESS_CONFIG'], search: ['SEARCH_CONFIG'],
-    janus: ['JANUS_CONFIG'], instructions: ['INSTRUCTION_CONFIG', 'GOAL_CONFIG'], logs: ['LOG_CONFIG'],
+    janus: ['JANUS_CONFIG'], instructions: ['INSTRUCTION_CONFIG', 'GOAL_CONFIG', 'AUDIO_CONFIG'], logs: ['LOG_CONFIG'],
   }[section]
   return domains.flatMap(domain => [`${domain}_ACCESS`, ...(editable
     ? [domain === 'DREAM_CONFIG' ? 'DREAM_EDIT' : `${domain}_EDIT`] : [])])
@@ -103,10 +103,9 @@ const sectionCatalogs = {
   system: ['systemFields'],
   language: ['languageFields'], memory: ['memorySessionFields', 'memoryContextFields', 'memoryAutomationFields', 'memoryStorageFields'],
   dream: ['dreamFields', 'dreamAttachmentFields', 'dreamLinkReconciliationFields'], voice: ['voiceFields'],
-  audio: ['audioMeetingSummaryFields', 'audioVideoSummaryFields'],
   process: ['processGeneralFields', 'processAdvancedFields'],
   tasks: ['taskSchedulerFields', 'taskRetryFields', 'taskCreationFields', 'taskBudgetFields', 'taskCollaborationFields'],
-  search: ['searchFields'], instructions: ['executorInstructionFields', 'goalFields'],
+  search: ['searchFields'], instructions: ['executorInstructionFields', 'goalFields', 'audioMeetingSummaryFields', 'audioVideoSummaryFields'],
   messaging: ['commonMessagingFields'], harnesses: [], janus: [], logs: ['traceRetentionFields'],
 }
 

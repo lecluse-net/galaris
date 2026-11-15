@@ -13,6 +13,10 @@ const router = useRouter()
 const section = computed(() => findPreferenceSectionBySlug(String(route.params.section ?? '')))
 
 watch(() => String(route.params.section ?? ''), slug => {
+  if (slug === 'audio') {
+    void router.replace('/params/instructions')
+    return
+  }
   if (slug === 'drivers') {
     void router.replace('/params/harnesses')
     return

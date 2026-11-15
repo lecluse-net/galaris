@@ -701,8 +701,6 @@
           "DREAM_EDIT",
           "VOICE_CONFIG_ACCESS",
           "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
           "PROCESS_CONFIG_ACCESS",
           "PROCESS_CONFIG_EDIT",
           "TASK_CONFIG_ACCESS",
@@ -717,6 +715,8 @@
           "INSTRUCTION_CONFIG_EDIT",
           "GOAL_CONFIG_ACCESS",
           "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
           "TASK_PURGE",
@@ -773,8 +773,6 @@
           "DREAM_EDIT",
           "VOICE_CONFIG_ACCESS",
           "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
           "PROCESS_CONFIG_ACCESS",
           "PROCESS_CONFIG_EDIT",
           "TASK_CONFIG_ACCESS",
@@ -789,6 +787,8 @@
           "INSTRUCTION_CONFIG_EDIT",
           "GOAL_CONFIG_ACCESS",
           "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
           "TASK_PURGE",
@@ -847,8 +847,6 @@
           "DREAM_EDIT",
           "VOICE_CONFIG_ACCESS",
           "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
           "PROCESS_CONFIG_ACCESS",
           "PROCESS_CONFIG_EDIT",
           "TASK_CONFIG_ACCESS",
@@ -863,6 +861,8 @@
           "INSTRUCTION_CONFIG_EDIT",
           "GOAL_CONFIG_ACCESS",
           "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
           "TASK_PURGE",
@@ -921,8 +921,6 @@
           "DREAM_EDIT",
           "VOICE_CONFIG_ACCESS",
           "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
           "PROCESS_CONFIG_ACCESS",
           "PROCESS_CONFIG_EDIT",
           "TASK_CONFIG_ACCESS",
@@ -937,6 +935,8 @@
           "INSTRUCTION_CONFIG_EDIT",
           "GOAL_CONFIG_ACCESS",
           "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
           "TASK_PURGE",
@@ -995,8 +995,6 @@
           "DREAM_EDIT",
           "VOICE_CONFIG_ACCESS",
           "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
           "PROCESS_CONFIG_ACCESS",
           "PROCESS_CONFIG_EDIT",
           "TASK_CONFIG_ACCESS",
@@ -1011,6 +1009,8 @@
           "INSTRUCTION_CONFIG_EDIT",
           "GOAL_CONFIG_ACCESS",
           "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
           "TASK_PURGE",
@@ -1069,8 +1069,6 @@
           "DREAM_EDIT",
           "VOICE_CONFIG_ACCESS",
           "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
           "PROCESS_CONFIG_ACCESS",
           "PROCESS_CONFIG_EDIT",
           "TASK_CONFIG_ACCESS",
@@ -1085,6 +1083,8 @@
           "INSTRUCTION_CONFIG_EDIT",
           "GOAL_CONFIG_ACCESS",
           "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
           "TASK_PURGE",
@@ -1143,8 +1143,6 @@
           "DREAM_EDIT",
           "VOICE_CONFIG_ACCESS",
           "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
           "PROCESS_CONFIG_ACCESS",
           "PROCESS_CONFIG_EDIT",
           "TASK_CONFIG_ACCESS",
@@ -1159,6 +1157,8 @@
           "INSTRUCTION_CONFIG_EDIT",
           "GOAL_CONFIG_ACCESS",
           "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
           "TASK_PURGE",
@@ -1217,8 +1217,6 @@
           "DREAM_EDIT",
           "VOICE_CONFIG_ACCESS",
           "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
           "PROCESS_CONFIG_ACCESS",
           "PROCESS_CONFIG_EDIT",
           "TASK_CONFIG_ACCESS",
@@ -1233,6 +1231,8 @@
           "INSTRUCTION_CONFIG_EDIT",
           "GOAL_CONFIG_ACCESS",
           "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
           "TASK_PURGE",
@@ -1246,80 +1246,6 @@
         [
           "VOICE_CONFIG_ACCESS",
           "VOICE_CONFIG_EDIT"
-        ]
-      ],
-      "conditions": [],
-      "sources": [
-        "front/core/params/navigation.ts"
-      ]
-    },
-    {
-      "id": "admin.params.audio",
-      "labels": {
-        "fr": "Audio",
-        "en": "Audio"
-      },
-      "breadcrumbs": {
-        "fr": [
-          "Administrer",
-          "Préférences",
-          "Audio"
-        ],
-        "en": [
-          "Administer",
-          "Preferences",
-          "Audio"
-        ]
-      },
-      "route": "/params/audio",
-      "href": null,
-      "description": {
-        "fr": "Personnalisez les prompts utilisés pour résumer les transcriptions longues et les sous-titres YouTube.",
-        "en": "Customize the prompts used to summarize long transcripts and YouTube captions."
-      },
-      "privilege_groups": [
-        [
-          "PARAMS_ACCESS",
-          "PARAMS_EDIT",
-          "LANGUAGE_CONFIG_ACCESS",
-          "LANGUAGE_CONFIG_EDIT",
-          "MESSAGING_CONFIG_ACCESS",
-          "MESSAGING_CONFIG_EDIT",
-          "MEMORY_CONFIG_ACCESS",
-          "MEMORY_CONFIG_EDIT",
-          "DREAM_CONFIG_ACCESS",
-          "DREAM_EDIT",
-          "VOICE_CONFIG_ACCESS",
-          "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
-          "PROCESS_CONFIG_ACCESS",
-          "PROCESS_CONFIG_EDIT",
-          "TASK_CONFIG_ACCESS",
-          "TASK_CONFIG_EDIT",
-          "HARNESS_CONFIG_ACCESS",
-          "HARNESS_CONFIG_EDIT",
-          "SEARCH_CONFIG_ACCESS",
-          "SEARCH_CONFIG_EDIT",
-          "JANUS_CONFIG_ACCESS",
-          "JANUS_CONFIG_EDIT",
-          "INSTRUCTION_CONFIG_ACCESS",
-          "INSTRUCTION_CONFIG_EDIT",
-          "GOAL_CONFIG_ACCESS",
-          "GOAL_CONFIG_EDIT",
-          "LOG_CONFIG_ACCESS",
-          "LOG_CONFIG_EDIT",
-          "TASK_PURGE",
-          "LLM_CALL_PURGE",
-          "INCIDENT_PURGE",
-          "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT",
-          "FILE_INDEX_ACCESS",
-          "FILE_INDEX_RUN"
-        ],
-        [
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -1365,8 +1291,6 @@
           "DREAM_EDIT",
           "VOICE_CONFIG_ACCESS",
           "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
           "PROCESS_CONFIG_ACCESS",
           "PROCESS_CONFIG_EDIT",
           "TASK_CONFIG_ACCESS",
@@ -1381,6 +1305,8 @@
           "INSTRUCTION_CONFIG_EDIT",
           "GOAL_CONFIG_ACCESS",
           "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
           "TASK_PURGE",
@@ -1439,8 +1365,6 @@
           "DREAM_EDIT",
           "VOICE_CONFIG_ACCESS",
           "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
           "PROCESS_CONFIG_ACCESS",
           "PROCESS_CONFIG_EDIT",
           "TASK_CONFIG_ACCESS",
@@ -1455,6 +1379,8 @@
           "INSTRUCTION_CONFIG_EDIT",
           "GOAL_CONFIG_ACCESS",
           "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
           "TASK_PURGE",
@@ -1513,8 +1439,6 @@
           "DREAM_EDIT",
           "VOICE_CONFIG_ACCESS",
           "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
           "PROCESS_CONFIG_ACCESS",
           "PROCESS_CONFIG_EDIT",
           "TASK_CONFIG_ACCESS",
@@ -1529,6 +1453,8 @@
           "INSTRUCTION_CONFIG_EDIT",
           "GOAL_CONFIG_ACCESS",
           "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
           "TASK_PURGE",
@@ -1587,8 +1513,6 @@
           "DREAM_EDIT",
           "VOICE_CONFIG_ACCESS",
           "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
           "PROCESS_CONFIG_ACCESS",
           "PROCESS_CONFIG_EDIT",
           "TASK_CONFIG_ACCESS",
@@ -1603,6 +1527,8 @@
           "INSTRUCTION_CONFIG_EDIT",
           "GOAL_CONFIG_ACCESS",
           "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
           "TASK_PURGE",
@@ -1616,6 +1542,80 @@
         [
           "SEARCH_CONFIG_ACCESS",
           "SEARCH_CONFIG_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/core/params/navigation.ts"
+      ]
+    },
+    {
+      "id": "admin.params.janus",
+      "labels": {
+        "fr": "Janus",
+        "en": "Janus"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Préférences",
+          "Janus"
+        ],
+        "en": [
+          "Administer",
+          "Preferences",
+          "Janus"
+        ]
+      },
+      "route": "/params/janus",
+      "href": null,
+      "description": {
+        "fr": "Janus expose une API compatible OpenAI. Il propose les agents disponibles puis transmet directement la conversation à l’agent choisi avec son {'@'}code.",
+        "en": "Janus exposes an OpenAI-compatible API. It lists the available agents, then directly forwards the conversation to the agent selected with its {'@'}code."
+      },
+      "privilege_groups": [
+        [
+          "PARAMS_ACCESS",
+          "PARAMS_EDIT",
+          "LANGUAGE_CONFIG_ACCESS",
+          "LANGUAGE_CONFIG_EDIT",
+          "MESSAGING_CONFIG_ACCESS",
+          "MESSAGING_CONFIG_EDIT",
+          "MEMORY_CONFIG_ACCESS",
+          "MEMORY_CONFIG_EDIT",
+          "DREAM_CONFIG_ACCESS",
+          "DREAM_EDIT",
+          "VOICE_CONFIG_ACCESS",
+          "VOICE_CONFIG_EDIT",
+          "PROCESS_CONFIG_ACCESS",
+          "PROCESS_CONFIG_EDIT",
+          "TASK_CONFIG_ACCESS",
+          "TASK_CONFIG_EDIT",
+          "HARNESS_CONFIG_ACCESS",
+          "HARNESS_CONFIG_EDIT",
+          "SEARCH_CONFIG_ACCESS",
+          "SEARCH_CONFIG_EDIT",
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT",
+          "INSTRUCTION_CONFIG_ACCESS",
+          "INSTRUCTION_CONFIG_EDIT",
+          "GOAL_CONFIG_ACCESS",
+          "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
+          "LOG_CONFIG_ACCESS",
+          "LOG_CONFIG_EDIT",
+          "TASK_PURGE",
+          "LLM_CALL_PURGE",
+          "INCIDENT_PURGE",
+          "BROWSER_CONFIG_ACCESS",
+          "BROWSER_CONFIG_EDIT",
+          "FILE_INDEX_ACCESS",
+          "FILE_INDEX_RUN"
+        ],
+        [
+          "JANUS_CONFIG_ACCESS",
+          "JANUS_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -1661,8 +1661,6 @@
           "DREAM_EDIT",
           "VOICE_CONFIG_ACCESS",
           "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
           "PROCESS_CONFIG_ACCESS",
           "PROCESS_CONFIG_EDIT",
           "TASK_CONFIG_ACCESS",
@@ -1677,6 +1675,8 @@
           "INSTRUCTION_CONFIG_EDIT",
           "GOAL_CONFIG_ACCESS",
           "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
           "TASK_PURGE",
@@ -1700,80 +1700,6 @@
       ],
       "sources": [
         "front/app/browser/navigation.ts"
-      ]
-    },
-    {
-      "id": "admin.params.janus",
-      "labels": {
-        "fr": "Janus",
-        "en": "Janus"
-      },
-      "breadcrumbs": {
-        "fr": [
-          "Administrer",
-          "Préférences",
-          "Janus"
-        ],
-        "en": [
-          "Administer",
-          "Preferences",
-          "Janus"
-        ]
-      },
-      "route": "/params/janus",
-      "href": null,
-      "description": {
-        "fr": "Janus expose une API compatible OpenAI. Il propose les agents disponibles puis transmet directement la conversation à l’agent choisi avec son {'@'}code.",
-        "en": "Janus exposes an OpenAI-compatible API. It lists the available agents, then directly forwards the conversation to the agent selected with its {'@'}code."
-      },
-      "privilege_groups": [
-        [
-          "PARAMS_ACCESS",
-          "PARAMS_EDIT",
-          "LANGUAGE_CONFIG_ACCESS",
-          "LANGUAGE_CONFIG_EDIT",
-          "MESSAGING_CONFIG_ACCESS",
-          "MESSAGING_CONFIG_EDIT",
-          "MEMORY_CONFIG_ACCESS",
-          "MEMORY_CONFIG_EDIT",
-          "DREAM_CONFIG_ACCESS",
-          "DREAM_EDIT",
-          "VOICE_CONFIG_ACCESS",
-          "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
-          "PROCESS_CONFIG_ACCESS",
-          "PROCESS_CONFIG_EDIT",
-          "TASK_CONFIG_ACCESS",
-          "TASK_CONFIG_EDIT",
-          "HARNESS_CONFIG_ACCESS",
-          "HARNESS_CONFIG_EDIT",
-          "SEARCH_CONFIG_ACCESS",
-          "SEARCH_CONFIG_EDIT",
-          "JANUS_CONFIG_ACCESS",
-          "JANUS_CONFIG_EDIT",
-          "INSTRUCTION_CONFIG_ACCESS",
-          "INSTRUCTION_CONFIG_EDIT",
-          "GOAL_CONFIG_ACCESS",
-          "GOAL_CONFIG_EDIT",
-          "LOG_CONFIG_ACCESS",
-          "LOG_CONFIG_EDIT",
-          "TASK_PURGE",
-          "LLM_CALL_PURGE",
-          "INCIDENT_PURGE",
-          "BROWSER_CONFIG_ACCESS",
-          "BROWSER_CONFIG_EDIT",
-          "FILE_INDEX_ACCESS",
-          "FILE_INDEX_RUN"
-        ],
-        [
-          "JANUS_CONFIG_ACCESS",
-          "JANUS_CONFIG_EDIT"
-        ]
-      ],
-      "conditions": [],
-      "sources": [
-        "front/core/params/navigation.ts"
       ]
     },
     {
@@ -1814,8 +1740,6 @@
           "DREAM_EDIT",
           "VOICE_CONFIG_ACCESS",
           "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
           "PROCESS_CONFIG_ACCESS",
           "PROCESS_CONFIG_EDIT",
           "TASK_CONFIG_ACCESS",
@@ -1830,6 +1754,8 @@
           "INSTRUCTION_CONFIG_EDIT",
           "GOAL_CONFIG_ACCESS",
           "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
           "TASK_PURGE",
@@ -1844,7 +1770,9 @@
           "INSTRUCTION_CONFIG_ACCESS",
           "INSTRUCTION_CONFIG_EDIT",
           "GOAL_CONFIG_ACCESS",
-          "GOAL_CONFIG_EDIT"
+          "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT"
         ]
       ],
       "conditions": [],
@@ -1890,8 +1818,6 @@
           "DREAM_EDIT",
           "VOICE_CONFIG_ACCESS",
           "VOICE_CONFIG_EDIT",
-          "AUDIO_CONFIG_ACCESS",
-          "AUDIO_CONFIG_EDIT",
           "PROCESS_CONFIG_ACCESS",
           "PROCESS_CONFIG_EDIT",
           "TASK_CONFIG_ACCESS",
@@ -1906,6 +1832,8 @@
           "INSTRUCTION_CONFIG_EDIT",
           "GOAL_CONFIG_ACCESS",
           "GOAL_CONFIG_EDIT",
+          "AUDIO_CONFIG_ACCESS",
+          "AUDIO_CONFIG_EDIT",
           "LOG_CONFIG_ACCESS",
           "LOG_CONFIG_EDIT",
           "TASK_PURGE",

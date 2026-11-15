@@ -806,9 +806,13 @@ et les sous-groupes sont les étapes restantes du
 ## Préférences, supervision et compte
 
 **Administrer → Préférences** (`/params`) présente une grille de rubriques et des sous-menus :
-Système, Langue, Messagerie, Mémoire, Dream, Voix, Audio, Processus, Tâches et exécution,
+Système, Langue, Messagerie, Mémoire, Dream, Voix, Processus, Tâches et exécution,
 Harnais, Recherche, Navigateur, Janus, Instructions et Journaux. La
 [carte générée](../architecture/generated/navigation.md) donne la route de chaque rubrique.
+
+Les prompts de comptes rendus de réunions et de synthèses de vidéos YouTube, ainsi que leurs
+réglages avancés, se trouvent dans **Préférences → Instructions** (`/params/instructions`).
+L’ancien lien `/params/audio` redirige vers cette page ; les valeurs et les droits Audio sont conservés.
 
 Dans **Préférences → Messagerie** et l’onglet **Messagerie** d’un Service, les indications réseau
 permettent de préparer les [tests des passerelles depuis une instance locale](../bridges/telegram-whatsapp.md).

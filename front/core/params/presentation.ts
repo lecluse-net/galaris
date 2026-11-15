@@ -48,14 +48,6 @@ export const preferenceSections = [
     descriptionKey: 'voiceSettings.subtitle',
   },
   {
-    key: 'audio',
-    slug: 'audio',
-    icon: 'graphic_eq',
-    color: 'salmon',
-    titleKey: 'configuration.tabs.audio',
-    descriptionKey: 'audioSettings.subtitle',
-  },
-  {
     key: 'process',
     slug: 'processes',
     icon: 'account_tree',

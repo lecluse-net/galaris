@@ -48,21 +48,6 @@
                         </SettingsBlock>
                     </q-tab-panel>
 
-                    <q-tab-panel name="audio" class="settings-panel">
-                        <div class="text-h6 text-primary q-mb-sm">{{ t('audioSettings.title') }}</div>
-                        <div class="text-body2 text-grey-7 q-mb-md">{{ t('audioSettings.subtitle') }}</div>
-                        <q-banner rounded class="settings-guide q-mb-lg">
-                            <template #avatar><q-icon name="security" color="primary" size="md" /></template>
-                            {{ t('audioSettings.defaultHint') }}
-                        </q-banner>
-                        <SettingsBlock :title="t('audioSettings.meetingTitle')" :description="t('audioSettings.meetingHint')" icon="groups">
-                            <SettingsFields :fields="audioSummaryFields(audioMeetingSummaryFields)" />
-                        </SettingsBlock>
-                        <SettingsBlock :title="t('audioSettings.videoTitle')" :description="t('audioSettings.videoHint')" icon="movie">
-                            <SettingsFields :fields="audioSummaryFields(audioVideoSummaryFields)" />
-                        </SettingsBlock>
-                    </q-tab-panel>
-
                     <q-tab-panel name="process" class="settings-panel">
                         <div class="text-h6 text-primary q-mb-sm">{{ t('processSettings.title') }}</div>
                         <div class="text-body2 text-grey-7 q-mb-lg">{{ t('processSettings.subtitle') }}</div>
@@ -157,6 +142,14 @@
                             icon="description" advanced>
                             <SettingsFields :fields="[field]" />
                         </SettingsBlock>
+                        <template v-if="canViewAudioPrompts">
+                            <SettingsBlock :title="t('audioSettings.meetingTitle')" :description="t('audioSettings.meetingHint')" icon="groups" advanced>
+                                <SettingsFields :fields="audioSummaryFields(audioMeetingSummaryFields)" />
+                            </SettingsBlock>
+                            <SettingsBlock :title="t('audioSettings.videoTitle')" :description="t('audioSettings.videoHint')" icon="movie" advanced>
+                                <SettingsFields :fields="audioSummaryFields(audioVideoSummaryFields)" />
+                            </SettingsBlock>
+                        </template>
                     </q-tab-panel>
 
                     <q-tab-panel name="logs" class="settings-panel">
@@ -219,6 +212,7 @@ const paramsStore = useParamsStore()
 const privilegeStore = usePrivilegeStore()
 const instructionFields = computed(() => [...executorInstructionFields, ...goalFields]
     .filter(field => privilegeStore.hasAnyPrivilege(parameterReadPrivileges(field.name))))
+const canViewAudioPrompts = computed(() => privilegeStore.hasAnyPrivilege(parameterReadPrivileges(audioMeetingSummaryFields[0]!.name)))
 const canViewSection = computed(() => privilegeStore.hasAnyPrivilege(sectionPrivileges(section)))
 const canEdit = computed(() => privilegeStore.hasPrivilege(sectionPrivileges(section)[1] ?? ''))
 const currentSection = computed(() => preferenceSections.find(item => item.key === section) ?? preferenceSections[0])
