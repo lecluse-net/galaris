@@ -1,0 +1,46 @@
+name: Desktop client
+
+on:
+  pull_request:
+    paths: ['desktop/**', 'bin/desktop.sh', 'front/core/util/solaire*', 'front/public/pwa/**', '.github/workflows/desktop.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - if: runner.os == 'Linux'
+        run: xvfb-run -a npm run test:desktop
+      - if: runner.os == 'Windows'
+        run: npm run test:desktop
+      - run: npx electron-builder --config electron-builder.cjs --publish never --x64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-preview-${{ runner.os }}
+          path: |
+            desktop/release/*.exe
+            desktop/release/*.AppImage
+            desktop/release/*.deb
+            desktop/release/*.blockmap
+            desktop/release/latest*.yml
+          if-no-files-found: error

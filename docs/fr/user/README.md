@@ -179,6 +179,13 @@ d'une surcharge ou d'une indisponibilité du fournisseur principal. La conversat
 Tâche conserve le travail déjà effectué ; les détails de la bascule apparaissent dans les
 journaux d'appels LLM. Une sélection vide dans le secondaire ne remplace pas un usage absent.
 
+## Installer Galaris sur Windows ou Linux
+
+Le [client desktop](desktop.md) ouvre votre serveur Galaris dans une fenêtre dédiée.
+Les publications qui le proposent contiennent un installateur Windows et une AppImage Linux
+avec téléchargement des mises à jour et redémarrage choisi. Le paquet Debian est facultatif
+et se met à niveau manuellement. Le serveur et la connexion réseau restent nécessaires.
+
 ## Installer Galaris sur Android ou iPhone
 
 

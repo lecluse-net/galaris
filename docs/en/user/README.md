@@ -158,6 +158,13 @@ in **Agents → Edit → Models**. The secondary is used when the primary provid
 or unavailable. The conversation or Task retains completed work; LLM call logs expose the
 failover details. An empty secondary selection does not replace a missing usage.
 
+## Installing Galaris on Windows or Linux
+
+The [desktop client](desktop.md) opens your Galaris server in a dedicated window.
+Releases offering it include a Windows installer and Linux AppImage with update downloads
+and a chosen restart. The optional Debian package requires manual upgrades.
+A server and network connection are still required.
+
 ## Installing Galaris on Android or iPhone
 
 

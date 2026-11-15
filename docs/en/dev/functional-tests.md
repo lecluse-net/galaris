@@ -3002,3 +3002,20 @@ private draft isolation, preuploaded attachment publication, denied access, stal
 revisions, idempotent retries and file retention/retirement. Assertions expecting uploads
 only on Post are replaced with checks for bytes transferred before sending and the draft
 token passed at Post time.
+
+### Windows/Linux desktop client
+
+`make tests-desktop` builds the isolated client, then checks HTTPS origins, external links,
+server persistence, catalogs and update transitions. Electron journeys in
+`desktop/tests/client.spec.ts` exercise connection and relaunch with cookies/drafts,
+isolation of two origins, invalid addresses, network failure and retry, downloads,
+isolated previews, clipboard, microphone permission with a simulated device and OAuth
+return with same-tab state preserved. The real updater rejects corrupted bytes before
+succeeding on retry; local diagnostics cover causes, secret redaction, rotation and write
+failures.
+Unsaved changes prevent quitting or switching servers while preserving the current
+session; installation restarts pass through the same closing protection. Remote windows receive
+neither Node nor the desktop API. Publication remains covered by
+`back/tests/test_release_publication.py`.
+Synthetic tests do not qualify physical devices, Web Push or upgrading between signed
+installers on a real workstation; see the [desktop guide](desktop.md).

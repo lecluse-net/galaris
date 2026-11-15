@@ -3150,3 +3150,20 @@ l'isolation des brouillons, l'envoi des PJ préchargées, les refus, les révisi
 les réessais idempotents et la conservation/retraite des fichiers. Les assertions qui
 attendaient un téléversement seulement lors du Post sont remplacées par la vérification
 des octets transférés avant l'envoi et du jeton de brouillon transmis au Post.
+
+### Client desktop Windows/Linux
+
+`make tests-desktop` construit le client isolé, puis vérifie les origines HTTPS, les liens
+externes, la persistance du serveur, les catalogues et les transitions de mise à jour.
+Les parcours Electron de `desktop/tests/client.spec.ts` exercent connexion et relance avec
+cookies/brouillons, isolation de deux origines, adresse invalide, erreur réseau et réessai,
+téléchargement, aperçu isolé, presse-papiers, permission micro avec périphérique simulé et
+retour OAuth avec conservation du state du même onglet. Le moteur réel de mise à jour
+refuse des octets corrompus avant de réussir au réessai ; les diagnostics locaux couvrent
+la cause, la suppression des secrets, la rotation et l’échec d’écriture.
+Les changements non enregistrés empêchent de quitter ou de changer de serveur sans
+perdre la session en cours ; le redémarrage d’installation passe par cette même fermeture.
+Les fenêtres distantes ne reçoivent ni Node ni l’API desktop. La chaîne de publication
+reste couverte par `back/tests/test_release_publication.py`.
+Les tests synthétiques ne qualifient pas les périphériques physiques, Web Push ou le passage
+entre deux installateurs signés sur un poste réel ; voir le [guide desktop](desktop.md).

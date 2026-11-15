@@ -336,6 +336,26 @@ upgrade-deps-front: ## Update frontend dependencies
 	docker compose $(COMPOSE_FILES) exec frontend npm install
 .PHONY: upgrade-deps-front
 
+desktop-deps: ## Generate/update the desktop dependency lock in Docker
+	@bash bin/desktop.sh install
+.PHONY: desktop-deps
+
+desktop-build: ## Build the desktop launcher and Electron entrypoints in Docker
+	@bash bin/desktop.sh build
+.PHONY: desktop-build
+
+desktop-package: ## Build Linux AppImage and Debian desktop packages in Docker
+	@bash bin/desktop.sh package
+.PHONY: desktop-package
+
+desktop-package-windows: ## Build an unsigned Windows installer in Docker/Wine
+	@bash bin/desktop.sh package-windows
+.PHONY: desktop-package-windows
+
+tests-desktop: ## Test desktop connections, persistence, isolation and updates in Docker
+	@bash bin/desktop.sh test
+.PHONY: tests-desktop
+
 
 
 # ====================================================================================

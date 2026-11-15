@@ -60,6 +60,11 @@ These commands use the Compose files selected for the current environment.
 | `sync-db` | Synchronize schema and datasets without restarting, only with `APP_ENV=dev`. |
 | `upgrade-deps-back` | Refresh the backend lockfile and synchronize the environment with uv. |
 | `upgrade-deps-front` | Update and install npm dependencies. |
+| `desktop-deps` | Update the desktop npm lock in Docker. |
+| `desktop-build` | Check types and build the launcher and Electron entrypoints in Docker. |
+| `desktop-package` | Build x64 Linux AppImage and Debian packages in `desktop/release/`. |
+| `desktop-package-windows` | Build the unsigned x64 Windows installer in Docker/Wine. |
+| `tests-desktop` | Verify rules, updates and Electron journeys with isolated synthetic servers. |
 | `rebuild-source-memory` | Rebuild Agent/Goal memory projections; options through `ARGS`. |
 | `rebuild-messenger-contacts` | Rebuild contact memories from the Messenger journal. |
 | `rebuild-memory-index` | Queue semantic index rebuilds; options through `ARGS`. |

@@ -13,7 +13,9 @@ def test_every_automated_publication_depends_on_the_release_check():
              if any("make release-check" in step.get("run", "") for step in job.get("steps", []))}
     assert gates, "Publication must have a mandatory release check"
     for key, job in jobs.items():
-        if not any("gh release create" in step.get("run", "") for step in job.get("steps", [])):
+        if not any(action in step.get("run", "")
+                   for step in job.get("steps", [])
+                   for action in ("gh release create", "gh release upload", "gh release edit")):
             continue
         needed = job.get("needs", [])
         needed = {needed} if isinstance(needed, str) else set(needed)
@@ -21,6 +23,30 @@ def test_every_automated_publication_depends_on_the_release_check():
         assert "always()" not in job.get("if", ""), "Publication cannot run after a failed prerequisite"
         checkout = next(step for step in job["steps"] if step.get("uses", "").startswith("actions/checkout@"))
         assert checkout["with"]["ref"] == "${{ needs.preflight.outputs.commit }}", "Publish the qualified commit"
+        assert "desktop" in needed, "Source and desktop artifacts must be qualified together"
+
+
+def test_desktop_builds_are_qualified_and_published_as_one_complete_release():
+    root = Path(__file__).resolve().parents[2]
+    jobs = yaml.safe_load((root / ".github/workflows/publish-release.yml").read_text())["jobs"]
+    desktop = jobs["desktop"]
+    assert desktop["needs"] == "preflight"
+    platforms = desktop["strategy"]["matrix"]["os"]
+    assert any(platform.startswith("ubuntu-") for platform in platforms)
+    assert any(platform.startswith("windows-") for platform in platforms)
+    assert not any("npm test" in step.get("run", "") or "test:desktop" in step.get("run", "")
+                   for step in desktop["steps"]), "Functional quality must remain separate from source publication"
+    checkout = next(step for step in desktop["steps"] if step.get("uses", "").startswith("actions/checkout@"))
+    assert checkout["with"]["ref"] == "${{ needs.preflight.outputs.commit }}"
+    build = next(step for step in desktop["steps"] if "electron-builder" in step.get("run", ""))
+    assert "--publish never" in build["run"]
+    assert "extraMetadata.version" in build["run"]
+    assert build["env"]["DESKTOP_VERSION"] == "${{ inputs.tag || github.ref_name }}"
+    assert "runner.os == 'Windows' && '1'" in build["env"]["DESKTOP_REQUIRE_SIGNING"]
+    publication = next(step["run"] for step in jobs["publish"]["steps"] if "gh release create" in step.get("run", ""))
+    assert "--draft" in publication
+    assert publication.index("gh release upload") < publication.index("gh release edit")
+    assert "--draft=false" in publication
 
 
 def test_full_quality_keeps_all_browsers_and_requires_explicit_opt_in():

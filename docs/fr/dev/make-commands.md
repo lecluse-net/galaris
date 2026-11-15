@@ -61,6 +61,11 @@ Ces commandes utilisent les fichiers Compose sélectionnés pour l'environnement
 | `sync-db` | Synchroniser schéma et datasets sans redémarrage, uniquement avec `APP_ENV=dev`. |
 | `upgrade-deps-back` | Actualiser le verrou backend puis synchroniser l'environnement avec uv. |
 | `upgrade-deps-front` | Actualiser et installer les dépendances npm. |
+| `desktop-deps` | Actualiser le verrou npm du client desktop dans Docker. |
+| `desktop-build` | Vérifier les types et construire le lanceur et les points d’entrée Electron dans Docker. |
+| `desktop-package` | Construire les paquets Linux AppImage et Debian x64 dans `desktop/release/`. |
+| `desktop-package-windows` | Construire l’installateur Windows x64 non signé dans Docker/Wine. |
+| `tests-desktop` | Vérifier règles, mises à jour et parcours Electron avec des serveurs synthétiques isolés. |
 | `rebuild-source-memory` | Reconstruire les projections mémoire Agent/Goal ; options via `ARGS`. |
 | `rebuild-messenger-contacts` | Reconstruire les mémoires de contacts à partir du journal Messenger. |
 | `rebuild-memory-index` | Mettre en file la reconstruction de l'index sémantique ; options via `ARGS`. |

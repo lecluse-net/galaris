@@ -1,0 +1,41 @@
+{
+  "name": "galaris-desktop",
+  "productName": "Galaris",
+  "desktopName": "galaris-desktop.desktop",
+  "version": "0.3.1",
+  "private": true,
+  "type": "module",
+  "description": "Desktop client for a self-hosted Galaris server",
+  "author": "Galaris contributors",
+  "license": "CECILL-2.1",
+  "homepage": "https://github.com/lecluse-net/galaris",
+  "repository": { "type": "git", "url": "https://github.com/lecluse-net/galaris.git" },
+  "main": "dist-main/main.cjs",
+  "scripts": {
+    "build": "npm run typecheck && vite build && esbuild src/main.ts --bundle --platform=node --format=cjs --external:electron --external:electron-updater --outfile=dist-main/main.cjs && esbuild src/preload.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist-main/preload.cjs && node scripts/notices.mjs",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "node --test tests/*.test.ts",
+    "test:desktop": "playwright test",
+    "start": "electron .",
+    "package": "npm run build && electron-builder --config electron-builder.cjs --publish never",
+    "pack": "npm run build && electron-builder --config electron-builder.cjs --dir --publish never"
+  },
+  "dependencies": { "electron-updater": "6.8.11" },
+  "devDependencies": {
+    "@playwright/test": "1.64.0",
+    "@quasar/extras": "2.1.0",
+    "@quasar/vite-plugin": "2.0.2",
+    "@types/node": "^24.0.0",
+    "@vitejs/plugin-vue": "6.0.10",
+    "quasar": "2.35.4",
+    "vue": "3.5.45",
+    "vue-i18n": "11.4.20",
+    "electron": "45.3.2",
+    "electron-builder": "26.18.0",
+    "esbuild": "0.28.2",
+    "sass": "1.106.1",
+    "typescript": "6.0.3",
+    "vite": "8.3.8",
+    "vue-tsc": "3.3.11"
+  }
+}
