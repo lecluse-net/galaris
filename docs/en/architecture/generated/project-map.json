@@ -229,6 +229,7 @@
           "back/app/agent/dispatcher.py",
           "back/app/agent/html_migration.py",
           "back/app/agent/models.py",
+          "back/app/agent/openai_service.py",
           "back/app/agent/planner_service.py",
           "back/app/agent/router.py",
           "back/app/agent/schemas.py"

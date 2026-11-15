@@ -15,6 +15,7 @@ from core.database import get_db
 from core.authorize import check_privilege, role_id_ctx
 from core.user import UserModel, get_current_user_id
 from core.i18n import render_prompt, tr
+from core.util import convert_to_html
 from app.agent.models import Agent
 
 from .contracts import TaskMessage
@@ -114,9 +115,15 @@ async def prepare_task(
         await tr("agent_api.openai_task.label"),
         agent_code=agent.code,
     )
-    objective = render_prompt(
-        await tr("agent_api.openai_task.objective"),
-        message=request.messages[-1].content,
+    messages = convert_openai_messages_to_messenger(request.messages)
+    # Transport text may contain literal tags or filename placeholders. Escape it
+    # explicitly before crossing into the Task's editorial HTML contract.
+    objective = convert_to_html(
+        render_prompt(
+            await tr("agent_api.openai_task.objective"),
+            message=messages[-1].text,
+        ),
+        "text/plain",
     )
     task_data = AgentTaskDraft(
         agent_id=agent.id,
@@ -129,7 +136,7 @@ async def prepare_task(
         },
         messages=tuple(
             message.model_dump(mode="json")
-            for message in convert_openai_messages_to_messenger(request.messages)
+            for message in messages
         ),
         objective=objective,
         status=TaskPhase.CREATE,

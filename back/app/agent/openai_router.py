@@ -6,7 +6,7 @@ from typing import Any, Dict
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, HTTPException, Request, status
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from loguru import logger
 
 from core.authorize import Privileges, authorize
@@ -126,22 +126,22 @@ async def agent_chat_completions(raw_request: Request):
     except LookupError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e)) from e
     except RuntimeError as e:
-        raise HTTPException(
+        return JSONResponse(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail={
+            content={
                 "error": {
                     "message": str(e),
                     "type": "agent_error",
                 }
             },
-        ) from e
+        )
     except HTTPException:
         raise
     except Exception as e:
         logger.exception("Agent chat completion failed")
-        raise HTTPException(
+        return JSONResponse(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail={
+            content={
                 "error": {
                     "message": render_prompt(
                         await tr("agent_api.errors.internal_error"),
@@ -150,7 +150,7 @@ async def agent_chat_completions(raw_request: Request):
                     "type": "internal_error",
                 }
             },
-        ) from e
+        )
 
 
 @janus_router.get(

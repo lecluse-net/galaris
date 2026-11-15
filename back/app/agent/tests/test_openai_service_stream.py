@@ -7,12 +7,12 @@ from uuid import UUID, uuid4
 
 import pytest
 
-from app.agent.models import Agent
+from app.agent.models import Agent, Title
 from app.agent import openai_service as service
 from app.agent.contracts import AIMessage, ExecutionResult
 from app.agent.openai_schemas import ChatCompletionRequest, Message
-from app.task.models import TaskStatus
-from app.task.schemas import TaskCreate
+from app.task.models import Task, TaskStatus
+from core.util import normalize_html, visible_text
 
 
 @pytest.mark.asyncio
@@ -69,31 +69,47 @@ async def test_openai_stream_relays_only_text_task_messages(monkeypatch: pytest.
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "content,expected_text",
+    [
+        ("Hello", "Hello"),
+        (
+            "Use <asset.png> & keep <strong>literal</strong>.\n<script>alert(1)</script>",
+            "Use <asset.png> & keep <strong>literal</strong>.\n<script>alert(1)</script>",
+        ),
+        (
+            [{"type": "text", "text": "Read <asset.png>"}, {"type": "text", "text": " & explain."}],
+            "Read <asset.png> & explain.",
+        ),
+        (None, ""),
+    ],
+)
 async def test_prepare_openai_task_is_scheduler_managed(
-    monkeypatch: pytest.MonkeyPatch,
+    db, content, expected_text,
 ) -> None:
-    created_task = SimpleNamespace(id=uuid4())
-
-    async def fake_create(task_data: TaskCreate) -> SimpleNamespace:
-        assert task_data.message_platform == "openai"
-        assert task_data.data == {"conversation_id": "conv-1"}
-        return created_task
-
-    async def fake_get_by_id(task_id: UUID) -> None:
-        return None
-
-    monkeypatch.setattr("app.task.task_service.create", fake_create)
-    monkeypatch.setattr("app.task.task_service.get_by_id", fake_get_by_id)
-
-    agent = cast(Agent, SimpleNamespace(id=12, code="demo"))
+    title = Title(label="Synthetic API agent", gender="X")
+    db.add(title)
+    await db.flush()
+    agent = Agent(title_id=title.id, code="synthetic-openai", first_name="Synthetic", last_name="Agent")
+    db.add(agent)
+    await db.flush()
     request = ChatCompletionRequest(
-        model="demo",
-        messages=[Message(role="user", content="Hello")],
+        model=agent.code,
+        messages=[Message(role="user", content=content)],
     )
 
     task = await service.prepare_task(agent, request, "conv-1")
+    task_id = task.id
+    db.expunge(task)
+    saved = await db.get(Task, task_id)
 
-    assert task is created_task
+    assert saved is not None
+    assert saved.status == TaskStatus.CREATE
+    assert saved.message_platform == "openai"
+    assert saved.data["conversation_id"] == "conv-1"
+    assert normalize_html(saved.objective) == saved.objective
+    assert visible_text(saved.objective).endswith(expected_text)
+    assert saved.messages[-1].text == expected_text
 
 
 @pytest.mark.asyncio
