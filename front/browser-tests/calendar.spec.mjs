@@ -251,6 +251,32 @@ test('calendar color choices survive reopening and stay private to each user', a
   }
 })
 
+test('future Goal months render while Memory is pending and late Memory responses cannot restore another month', async ({ page }) => {
+  await calendar(page)
+  const pending = []
+  await page.route('**/api/memory/agenda?*', async route => {
+    await new Promise(resolve => pending.push(resolve))
+    try { await route.fulfill({ json: { items: [], complete: true } }) } catch { /* Navigation may abort the old month. */ }
+  })
+  await page.route('**/api/goals/agenda?*', route => {
+    const url = new URL(route.request().url())
+    const items = ['2026-12-12T09:00:00Z', '2027-01-12T09:00:00Z']
+      .filter(at => Date.parse(at) >= Date.parse(url.searchParams.get('start')) && Date.parse(at) < Date.parse(url.searchParams.get('end')))
+      .map(scheduled => ({ id: scheduled, goal_id: goal.id,
+      title: `Synthetic future Goal ${scheduled.slice(0, 7)}`, scheduled_at: scheduled,
+      timezone: 'UTC', projected: true, state: 'scheduled' }))
+    return route.fulfill({ json: { items, complete: true } })
+  })
+  await start(page, { route: '/calendar?agent_id=7&date=2026-12-12&view=month&timezone=UTC',
+    privileges: ['CALENDAR_EDIT', 'GOAL_ACCESS', 'MEMORY_ACCESS'] })
+  await expect(page.getByRole('button', { name: /Synthetic future Goal 2026-12/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Next period', exact: true }).click()
+  await expect(page.getByRole('button', { name: /Synthetic future Goal 2027-01/ })).toBeVisible()
+  for (const release of pending) release()
+  await expect(page.getByRole('button', { name: 'Refresh', exact: true })).toBeEnabled()
+  await expect(page.getByRole('button', { name: /Synthetic future Goal 2026-12/ })).toHaveCount(0)
+})
+
 for (const width of [390, 1440]) test(`Memory agenda opens source content, retries and stays informational at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 950 })
   const model = await calendar(page)

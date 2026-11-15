@@ -44,6 +44,7 @@ from .connection_service import (
     set_connection_function_state,
     set_service_function_state,
     resolve_function,
+    resolve_function_states_many,
 )
 from .calendar_oauth import calendar_access_token, invalidate_calendar_token
 from .oauth_service import register_oauth_observer
@@ -84,5 +85,5 @@ __all__ += [
     "administration", "validate_param_value", "validate_params", "get_connection_by_agent_service",
     "get_agent_ids_by_tool", "get_or_create_connection", "create_connection", "set_connection_active", "delete_connection",
     "get_params_for_api", "set_params_bulk", "delete_param", "set_connection_function_state",
-    "set_service_function_state", "resolve_function",
+    "set_service_function_state", "resolve_function", "resolve_function_states_many",
 ]

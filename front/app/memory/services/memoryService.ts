@@ -15,7 +15,7 @@ export interface MemoryAgendaOccurrence {
 
 export const memoryService = {
 async agenda(agentId: number, start: string, end: string, signal?: AbortSignal): Promise<{ items: MemoryAgendaOccurrence[]; complete: boolean }> {
-    return (await api.get('/memory/agenda', { params: { agent_id: agentId, start, end }, signal })).data
+    return (await api.get('/memory/agenda', { params: { agent_id: agentId, start, end, include_excerpt: false }, signal })).data
   },
 async readGraphState(context: GraphContext): Promise<GraphState> {
     return (await api.post<GraphState>('/memory/graph/state/read', context)).data

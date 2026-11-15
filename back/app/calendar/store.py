@@ -144,7 +144,8 @@ async def project_events(feed: CalendarFeed, events: Sequence[CalendarEvent], *,
         lower, upper = window_start, window_end
         parsed: dict[str, list[ical.ParsedEvent]] = defaultdict(list)
         if recurring:
-            async def expand(spans: Sequence[bytes]) -> None:
+            async def expand(spans: Sequence[bytes], lower: datetime, upper: datetime,
+                             parsed: dict[str, list[ical.ParsedEvent]]) -> None:
                 # Only pure calculations run concurrently; all SQL stays on the
                 # caller's contextual session. The worker pool still caps CPU at two.
                 tasks = [asyncio.create_task(calculation.events_between(span, lower, upper, feed.timezone, compact=True))
@@ -167,10 +168,10 @@ async def project_events(feed: CalendarFeed, events: Sequence[CalendarEvent], *,
                 spans = [combined] if len(combined) <= 5 * 1024 * 1024 else contents
                 pending.extend(spans)
                 while len(pending) >= 2:
-                    await expand(pending[:2])
+                    await expand(pending[:2], lower, upper, parsed)
                     del pending[:2]
             if pending:
-                await expand(pending)
+                await expand(pending, lower, upper, parsed)
         for event in batch:
             if not event.recurring:
                 parsed[event.uid] = [ical.master_event(decrypt(event.content_encrypted).encode(), feed.timezone)]
@@ -237,10 +238,17 @@ async def project_events(feed: CalendarFeed, events: Sequence[CalendarEvent], *,
 
 
 async def ensure_coverage(feed: CalendarFeed, start: datetime, end: datetime, agent_id: int) -> None:
+    await ensure_coverages([feed], start, end, agent_id)
+
+
+async def ensure_coverages(feeds: Sequence[CalendarFeed], start: datetime, end: datetime, agent_id: int) -> None:
+    """Check all sources together; amortize moving conversation windows over days."""
+    if not feeds:
+        return
     covered = select(CalendarProjectionWindow.id).where(CalendarProjectionWindow.event_id == CalendarEvent.id,
         CalendarProjectionWindow.event_revision == CalendarEvent.revision, CalendarProjectionWindow.start_at <= start,
         CalendarProjectionWindow.end_at >= end, CalendarProjectionWindow.built_at >= datetime.now(timezone.utc) - timedelta(days=30)).exists()
-    identities = list((await get_db().scalars(select(CalendarEvent.id).where(CalendarEvent.calendar_id == feed.id,
+    identities = list((await get_db().scalars(select(CalendarEvent.id).where(CalendarEvent.calendar_id.in_([feed.id for feed in feeds]),
         CalendarEvent.recurring, ~covered))).all())
     if identities:
         # Lock identities first, then recheck at a fresh statement snapshot: a
@@ -250,7 +258,17 @@ async def ensure_coverage(feed: CalendarFeed, start: datetime, end: datetime, ag
             .order_by(CalendarEvent.id).with_for_update())).all())
         events = list((await get_db().scalars(select(CalendarEvent).where(CalendarEvent.id.in_(locked),
             CalendarEvent.recurring, ~covered).execution_options(populate_existing=True))).all())
-        await project_events(feed, events, agent_id=agent_id, start=start, end=end, reschedule=False)
+        # Exact rolling bounds expire at the very next round. Stable UTC-day
+        # bounds and a week of headroom also reuse work across nearby UI reads.
+        lower = start.astimezone(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        upper = end.astimezone(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        upper += min(timedelta(days=8), datetime.max.replace(tzinfo=timezone.utc) - upper)
+        grouped: dict[int, list[CalendarEvent]] = defaultdict(list)
+        for event in events:
+            grouped[event.calendar_id].append(event)
+        for feed in feeds:
+            if feed.id in grouped:
+                await project_events(feed, grouped[feed.id], agent_id=agent_id, start=lower, end=upper, reschedule=False)
 
 
 def decode_occurrence(row: CalendarOccurrence) -> ical.ParsedEvent:

@@ -21,6 +21,262 @@ async def remember(agent, title, **parts):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('recurring', [False, True])
+async def test_dense_memory_agenda_reads_bounded_metadata_without_loading_content(agents, db, monkeypatch, recurring):
+    import json
+    from pathlib import Path
+    from time import perf_counter
+    from uuid import uuid4
+    from sqlalchemy import event
+    from app.memory.models import MemoryItem
+
+    owner, peer = agents
+    agent_id = owner.id
+    monkeypatch.setenv('TZ', 'Europe/Paris')
+    rows = [dict(id=uuid4(), owner_agent_id=agent_id if index % 2 else peer.id,
+        resource_id=f'synthetic-dense-agenda-{index}', title=f'Synthetic observation {index}',
+        content_hash=f'{index:064x}', content='<p>' + 'Synthetic content. ' * 1000 + '</p>',
+        search_text='Synthetic evidence. ' * 1000,
+        metadata={'synthetic': 'Synthetic metadata. ' * 1000},
+        temporal=dict(minute=30) if recurring else dict(month=11, day=1 + index % 28)) for index in range(1200)]
+    await db.execute(MemoryItem.__table__.insert(), rows)
+    await db.commit()
+    db.expunge_all()
+    queries, loaded = [], []
+    connection = await db.connection()
+
+    def observe_sql(_connection, _cursor, statement, _parameters, context, _many):
+        context._agenda_started = perf_counter()
+
+    def finish_sql(_connection, _cursor, statement, _parameters, context, _many):
+        queries.append({'seconds': perf_counter() - context._agenda_started, 'sql': statement})
+
+    def observe_item(item, _context):
+        loaded.append('memory_content' in item.__dict__ or 'metadata_' in item.__dict__)
+
+    event.listen(connection.sync_connection, 'before_cursor_execute', observe_sql)
+    event.listen(connection.sync_connection, 'after_cursor_execute', finish_sql)
+    event.listen(MemoryItem, 'load', observe_item)
+    samples = []
+    try:
+        for _ in range(1 if recurring else 3):
+            started = perf_counter()
+            page = await memory_agenda(agent_id, datetime(2026, 11, 1, tzinfo=timezone.utc),
+                datetime(2026, 12, 1, tzinfo=timezone.utc), limit=50 if recurring else 10_000)
+            samples.append(perf_counter() - started)
+            assert len(page.items) == (50 if recurring else 600) and page.complete != recurring
+            if recurring:
+                from uuid import NAMESPACE_URL, uuid5
+                lower = datetime(2026, 11, 1, 0, 30, tzinfo=timezone.utc)
+                expected = sorted((uuid5(NAMESPACE_URL, f"memory://{row['id']}/occurrences/{lower.isoformat()}"), row['id'])
+                    for row in rows if row['owner_agent_id'] == agent_id)[:50]
+                assert [(item.id, item.memory_id) for item in page.items] == expected
+            else:
+                assert {item.memory_id for item in page.items} == {row['id'] for row in rows if row['owner_agent_id'] == agent_id}
+            assert all(len(item.excerpt) == 1200 for item in page.items)
+    finally:
+        event.remove(connection.sync_connection, 'before_cursor_execute', observe_sql)
+        event.remove(connection.sync_connection, 'after_cursor_execute', finish_sql)
+        event.remove(MemoryItem, 'load', observe_item)
+    report = {'total_items': len(rows), 'visible_items': len(page.items), 'samples_seconds': samples,
+        'query_count': len(queries), 'queries': queries}
+    compact = await memory_agenda(agent_id, datetime(2026, 11, 1, tzinfo=timezone.utc),
+        datetime(2026, 12, 1, tzinfo=timezone.utc), limit=50 if recurring else 10_000, include_excerpt=False)
+    assert compact.items == [item.model_copy(update={'excerpt': ''}) for item in page.items]
+    report['response_bytes'] = len(page.model_dump_json().encode())
+    report['compact_response_bytes'] = len(compact.model_dump_json().encode())
+    destination = Path('../artifacts/memory-agenda-benchmark' + ('-recurring' if recurring else '') + '.json')
+    destination.parent.mkdir(exist_ok=True)
+    destination.write_text(json.dumps(report, indent=2))
+    print({key: value for key, value in report.items() if key != 'queries'})
+    assert not any(loaded), 'Agenda must not hydrate memory content or arbitrary metadata'
+    assert len(queries) <= 36, 'Agenda queries must remain batched for a dense month'
+
+
+@pytest.mark.asyncio
+async def test_memory_agenda_rechecks_live_scope_and_reads_current_values_after_source_admission(agents, memory_storage, db, monkeypatch):
+    from app.memory import agenda
+    from app.memory.models import MemoryItem
+    from sqlalchemy import update
+    owner, peer = agents
+    start = datetime(2026, 11, 1, tzinfo=timezone.utc)
+    moved, expired, erased, edited = [await remember(owner, f'Synthetic concurrent date {index}', month=11, day=14)
+        for index in range(4)]
+    stable = await remember(owner, 'Synthetic unchanged date', month=11, day=12)
+    stable_id = stable.id
+    moved_id, expired_id, erased_id, edited_id = moved.id, expired.id, erased.id, edited.id
+    original = agenda.readable_source_ids
+
+    async def admit(identities, agent_id):
+        result = await original(identities, agent_id)
+        await db.execute(update(MemoryItem).where(MemoryItem.id == moved_id).values(owner_agent_id=peer.id))
+        await db.execute(update(MemoryItem).where(MemoryItem.id == expired_id).values(valid_until=datetime(2020, 1, 1, tzinfo=timezone.utc)))
+        await db.execute(update(MemoryItem).where(MemoryItem.id == erased_id).values(temporal=None))
+        await db.execute(update(MemoryItem).where(MemoryItem.id == edited_id).values(
+            search_title='Synthetic current title', memory_revision=2, temporal={'month': 11, 'day': 11}))
+        await db.flush()
+        return result
+
+    monkeypatch.setattr(agenda, 'readable_source_ids', admit)
+    page = await memory_agenda(owner.id, start, start + timedelta(days=30))
+    assert [item.memory_id for item in page.items] == [edited_id, stable_id]
+    assert page.items[0].title == 'Synthetic current title' and page.items[0].revision == 2
+    assert page.items[0].temporal.day == 11
+
+
+@pytest.mark.asyncio
+async def test_memory_agenda_refreshes_validity_time_between_ranking_and_admission(agents, memory_storage, db, monkeypatch):
+    from app.memory import agenda
+    owner, _ = agents
+    reference = datetime.now(timezone.utc)
+    item = await remember(owner, 'Synthetic expiring context', year=reference.year)
+    item.valid_until = reference + timedelta(seconds=1)
+    await db.commit()
+    clock = {'now': reference}
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return clock['now'].astimezone(tz or timezone.utc)
+
+    original = agenda.readable_source_ids
+
+    async def admit(identities, agent_id):
+        result = await original(identities, agent_id)
+        clock['now'] = reference + timedelta(seconds=2)
+        return result
+
+    monkeypatch.setattr(agenda, 'datetime', Clock)
+    monkeypatch.setattr(agenda, 'readable_source_ids', admit)
+    assert not (await memory_agenda(owner.id, reference, reference + timedelta(days=1))).items
+
+
+@pytest.mark.asyncio
+async def test_memory_agenda_date_expansion_keeps_other_async_work_responsive(agents, memory_storage, monkeypatch):
+    import asyncio
+    from threading import Event
+    from app.memory import agenda
+    owner, _ = agents
+    await remember(owner, 'Synthetic expensive date', hour=9)
+    entered, release = Event(), Event()
+    original = agenda.next_match
+
+    def slow_match(*args):
+        entered.set()
+        assert release.wait(5), 'Date expansion prevented another asynchronous round from running'
+        return original(*args)
+
+    monkeypatch.setattr(agenda, 'next_match', slow_match)
+    start = datetime(2026, 11, 14, tzinfo=timezone.utc)
+    reading = asyncio.create_task(memory_agenda(owner.id, start, start + timedelta(days=1)))
+    try:
+        assert await asyncio.to_thread(entered.wait, 5)
+        release.set()
+        assert (await asyncio.wait_for(reading, 5)).items
+    finally:
+        release.set()
+        await asyncio.gather(reading, return_exceptions=True)
+
+
+@pytest.mark.asyncio
+async def test_memory_agenda_limits_chronologically_across_candidate_pages(agents, db, monkeypatch):
+    from uuid import NAMESPACE_URL, uuid4, uuid5
+    from app.memory.models import MemoryItem
+    owner, _ = agents
+    monkeypatch.setenv('TZ', 'UTC')
+    identities = [uuid4() for _ in range(1001)]
+    await db.execute(MemoryItem.__table__.insert(), [dict(id=identity, owner_agent_id=owner.id,
+        resource_id=f'synthetic-paged-agenda-{index}', title='Synthetic paged date', content_hash=f'{index:064x}',
+        temporal={'month': 11, 'day': 14}) for index, identity in enumerate(identities)])
+    await db.commit()
+    start = datetime(2026, 11, 14, tzinfo=timezone.utc)
+    page = await memory_agenda(owner.id, start, start + timedelta(days=1), limit=5)
+    expected = sorted((uuid5(NAMESPACE_URL, f'memory://{identity}/occurrences/{start.isoformat()}'), identity)
+        for identity in identities)[:5]
+    assert not page.complete and [(item.id, item.memory_id) for item in page.items] == expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('derived', [False, True])
+async def test_memory_agenda_rechecks_source_owned_permissions_on_reopening(agents, memory_storage, db, monkeypatch, derived):
+    from sqlalchemy import true
+    from app.memory import source_access
+    from app.memory.models import MemorySource
+    owner, _ = agents
+    item = await remember(owner, 'Synthetic source-owned date', month=11, day=14)
+    ordinary = await remember(owner, 'Synthetic independent date', month=11, day=14)
+    for name in ('_checks', '_batch_readers', '_evidence_checks', '_evidence_batch_readers'):
+        monkeypatch.setattr(source_access, name, dict(getattr(source_access, name)))
+    readable = True
+
+    async def read_one(*_args):
+        return readable
+
+    async def read_many(records, _agent):
+        return {record[0] if derived else record for record in records} if readable else set()
+
+    if derived:
+        item.metadata_ = {'evidence_validator': 'synthetic-agenda'}
+        db.add(MemorySource(item_id=item.id, source_kind='synthetic', source_ref='synthetic:agenda:evidence',
+            metadata_={'evidence_validator': 'synthetic-agenda'}))
+        source_access.register_source_evidence_access('synthetic-agenda', lambda _column: true(),
+            read_one, batch_reader=read_many)
+    else:
+        item.source_managed, item.read_only = True, True
+        item.managed_source_kind, item.managed_source_ref = 'synthetic-agenda', 'synthetic:agenda:source'
+        source_access.register_source_access('synthetic-agenda', lambda _column: true(), read_one, batch_reader=read_many)
+    await db.commit()
+    start = datetime(2026, 11, 1, tzinfo=timezone.utc)
+    assert {row.memory_id for row in (await memory_agenda(owner.id, start, start + timedelta(days=30))).items} == {item.id, ordinary.id}
+    readable = False
+    assert [row.memory_id for row in (await memory_agenda(owner.id, start, start + timedelta(days=30))).items] == [ordinary.id]
+
+
+@pytest.mark.asyncio
+async def test_memory_agenda_skips_a_large_revoked_prefix_without_tiny_repeated_admissions(agents, db, monkeypatch):
+    from uuid import uuid4
+    from sqlalchemy import true, update
+    from app.memory import source_access
+    from app.memory.models import MemoryItem
+    owner, _ = agents
+    monkeypatch.setattr(source_access, '_checks', dict(source_access._checks))
+    monkeypatch.setattr(source_access, '_batch_readers', dict(source_access._batch_readers))
+    batches = []
+
+    async def denied_one(*_args):
+        return False
+
+    async def denied_many(identities, _agent):
+        batches.append(len(identities))
+        if len(batches) == 1:
+            # A later admission batch must use the edited date and the final
+            # result must remain chronological across the rejected prefix.
+            await db.execute(update(MemoryItem).where(MemoryItem.id == visible_id)
+                .values(temporal={'month': 11, 'day': 11}))
+        return set()
+
+    source_access.register_source_access('synthetic-revoked-agenda', lambda _column: true(),
+        denied_one, batch_reader=denied_many)
+    rows = [dict(id=uuid4(), owner_agent_id=owner.id, resource_id=f'synthetic-revoked-{index}',
+        title='Synthetic revoked date', content_hash=f'{index:064x}', temporal={'month': 11, 'day': 14},
+        source_managed=True, read_only=True, managed_source_kind='synthetic-revoked-agenda',
+        managed_source_ref=f'synthetic:revoked:{index}') for index in range(300)]
+    await db.execute(MemoryItem.__table__.insert(), rows)
+    visible_id = uuid4()
+    earlier_id = uuid4()
+    await db.execute(MemoryItem.__table__.insert(), [dict(id=visible_id, owner_agent_id=owner.id,
+        resource_id='synthetic-visible-after-revocation', title='Synthetic live date', content_hash='f' * 64,
+        temporal={'month': 11, 'day': 15}), dict(id=earlier_id, owner_agent_id=owner.id,
+        resource_id='synthetic-visible-before-revocation', title='Synthetic stable date', content_hash='e' * 64,
+        temporal={'month': 11, 'day': 13})])
+    await db.commit()
+    start = datetime(2026, 11, 1, tzinfo=timezone.utc)
+    page = await memory_agenda(owner.id, start, start + timedelta(days=30), limit=10)
+    assert page.complete and [item.memory_id for item in page.items] == [visible_id, earlier_id]
+    assert len(batches) <= 5, 'Revoked candidates must be skipped in growing batches'
+
+
+@pytest.mark.asyncio
 async def test_memory_agenda_avoids_jit_compilation_even_in_a_fresh_transaction(agents, memory_storage, db):
     from sqlalchemy import event, text
 
@@ -200,6 +456,10 @@ async def test_memory_agenda_http_requires_management_and_memory_rights(client, 
     monkeypatch.setattr(router, 'current_management_scope', management)
     response = await client.get(path, params=params, headers=headers)
     assert response.status_code == 200 and len(response.json()['items']) == 1
+    assert response.json()['items'][0]['excerpt']
+    compact = await client.get(path, params={**params, 'include_excerpt': False}, headers=headers)
+    assert compact.status_code == 200
+    assert compact.json()['items'] == [{**response.json()['items'][0], 'excerpt': ''}]
     assert (await client.get(path, params={**params, 'agent_id': agent_id + 10000}, headers=headers)).status_code == 404
     assert (await client.get(path, params={**params, 'end': now.isoformat()}, headers=headers)).status_code == 422
 

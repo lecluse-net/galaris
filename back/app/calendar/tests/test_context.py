@@ -17,6 +17,68 @@ NOW = datetime(2026, 11, 14, 12, tzinfo=timezone.utc)
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('memory_count,connection_count', [(600, 1), (6000, 12)])
+async def test_repeated_round_agenda_cost_is_bounded_by_selected_context(db, agent, personal, calendar_connection, monkeypatch,
+                                                                      memory_count, connection_count):
+    from pathlib import Path
+    from time import perf_counter
+    from cProfile import Profile
+    from sqlalchemy import event
+    from app.memory.models import MemoryItem, MemoryUsage
+    from app.calendar.models import CalendarFeed
+    from app.connection import Connection
+    from sqlalchemy import func, select
+
+    monkeypatch.setattr(context, 'datetime', Clock)
+    monkeypatch.setenv('TZ', 'UTC')
+    for index in range(connection_count - 1):
+        connection = Connection(service_id=calendar_connection.service_id, agent_id=agent.id,
+            active=True, singleton_key=None)
+        db.add(connection)
+        await db.flush()
+        db.add(CalendarFeed(connection_id=connection.id, label=f'Synthetic source {index}', source_kind='caldav',
+            active=True, initialized=True, writable=False, last_synced_at=NOW))
+    await db.execute(MemoryItem.__table__.insert(), [dict(id=uuid4(), owner_agent_id=agent.id,
+        resource_id=f'synthetic-round-memory-{index}', title=f'Synthetic recurring evidence {index}',
+        content_hash=f'{index:064x}', search_text='Synthetic dated context. ' * 2000,
+        temporal={'hour': 9}) for index in range(memory_count)])
+    await db.commit()
+    measured, samples = [], []
+    profile = Profile()
+    connection = await db.connection()
+
+    def observed(_connection, cursor, statement, _parameters, _context, _many):
+        measured.append({'sql': statement, 'rows': cursor.rowcount})
+
+    event.listen(connection.sync_connection, 'after_cursor_execute', observed)
+    try:
+        for round_index in range(3):
+            if round_index == 2:
+                profile.enable()
+            started = perf_counter()
+            data = snapshot(await context.calendar_context_provider(request(agent)))
+            elapsed = perf_counter() - started
+            if round_index == 2:
+                profile.disable()
+            else:
+                samples.append(elapsed)
+            assert len(data['items']) == 10 and data['truncated']
+            assert all(item['source'] == 'memory' and item['excerpt'] for item in data['items'])
+    finally:
+        event.remove(connection.sync_connection, 'after_cursor_execute', observed)
+    assert await db.scalar(select(func.count()).select_from(MemoryUsage)) == 30
+    report = {'memories': memory_count, 'connections': connection_count, 'round_samples_seconds': samples,
+        'profiled_round_seconds': elapsed, 'queries_for_three_rounds': len(measured), 'queries': measured}
+    path = Path(f'../artifacts/agenda-rounds-{memory_count}-{connection_count}.json')
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(json.dumps(report, indent=2))
+    profile.dump_stats(str(path.with_suffix('.pstats')))
+    print({key: value for key, value in report.items() if key != 'queries'})
+    assert max((query['rows'] for query in measured if 'substr(memory_items.search_text' in query['sql']), default=0) <= 32
+    assert len(measured) <= 75, 'Round context must batch calendar permissions and coverage, independent of source count'
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("conversation_only", [False, True])
 async def test_personal_agenda_tools_are_available_in_tasks_and_conversations_with_live_permissions(
     db, agent, personal, conversation_only,
@@ -170,3 +232,25 @@ async def test_context_keeps_appointments_when_memory_source_fails(db, agent, pe
     result = snapshot(await context.calendar_context_provider(request(agent)))
     assert result["items"][0]["summary"] == "Synthetic preserved appointment"
     assert result["unavailable_sources"] == ["memory"]
+
+
+@pytest.mark.asyncio
+async def test_round_permission_batch_matches_live_single_connection_policies(db, agent, personal, calendar_connection):
+    from app.connection import Connection
+    from app.connection.facade import resolve_function, resolve_function_states_many
+
+    connections = [personal[0], calendar_connection]
+    for state in ('enabled', 'disabled', 'ask'):
+        row = Connection(service_id=calendar_connection.service_id, agent_id=agent.id, active=True, singleton_key=None)
+        db.add(row)
+        await db.flush()
+        await set_connection_function_state(row.id, 'calendar_events', state)
+        connections.append(row)
+    identities = {row.id for row in connections}
+    for global_state in ('ask', 'disabled', 'enabled'):
+        await set_service_function_state(calendar_connection.service_id, 'calendar_events', global_state)
+        expected = {row.id: (await resolve_function(row, 'calendar_events'))['effective_state'] for row in connections}
+        assert await resolve_function_states_many(identities, 'calendar_events') == expected
+    calendar_connection.active = False
+    await db.commit()
+    assert calendar_connection.id not in await resolve_function_states_many(identities, 'calendar_events')

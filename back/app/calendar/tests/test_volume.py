@@ -51,6 +51,27 @@ async def test_cold_recurrence_coverage_batches_sql_without_scheduling_and_warm_
 
 
 @pytest.mark.asyncio
+async def test_advancing_conversation_windows_reuse_recurrence_coverage(db, agent, personal, monkeypatch):
+    _, feed = personal
+    resources = ical.split_resources(synthetic_calendar(1, dense=True).replace(
+        b'END:VEVENT', b'RRULE:FREQ=DAILY\r\nEND:VEVENT'))
+    await store.import_new_resources(feed, resources)
+    await db.commit()
+    start = datetime(2026, 1, 1, 12, tzinfo=timezone.utc)
+    await store.ensure_coverage(feed, start, start + timedelta(days=10), agent.id)
+    await db.commit()
+
+    def unexpected(*_args, **_kwargs):
+        raise AssertionError('Successive conversation rounds must reuse an already expanded horizon')
+
+    monkeypatch.setattr(calculation, 'events_between', unexpected)
+    for advance in (timedelta(seconds=1), timedelta(minutes=5), timedelta(hours=3), timedelta(days=1)):
+        page = await service.event_window(agent.id, start + advance, start + advance + timedelta(days=10))
+        assert len(page.items) == 10
+    assert await db.scalar(select(func.count()).select_from(CalendarTrigger)) == 0
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize('count', [10000, 100000])
 async def test_large_agendas_use_indexed_local_windows_and_dense_month_is_complete(db, agent, personal, monkeypatch, count):
     _, feed = personal

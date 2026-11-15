@@ -303,7 +303,7 @@ async def test_late_actions_are_explicitly_skipped_and_foreign_agents_cannot_mut
 async def test_browsing_old_months_does_not_change_scheduled_actions_or_lose_future_coverage(db, agent, personal):
     from sqlalchemy import update
     from app.calendar.maintenance import prune_calendar_cache
-    from app.calendar.models import CalendarProjectionWindow
+    from app.calendar.models import CalendarOccurrence, CalendarProjectionWindow
     _, feed = personal
     created = await service.create_calendar_event(feed.id, agent.id, CalendarEventCreate(summary="Synthetic long series",
         start=datetime(2020,1,1,10,tzinfo=timezone.utc), end=datetime(2020,1,1,11,tzinfo=timezone.utc),
@@ -318,7 +318,13 @@ async def test_browsing_old_months_does_not_change_scheduled_actions_or_lose_fut
     await db.execute(update(CalendarProjectionWindow).where(CalendarProjectionWindow.end_at < NOW - timedelta(days=365))
         .values(built_at=NOW - timedelta(days=90)))
     await db.commit()
-    assert await prune_calendar_cache() == 31
+    # Read-ahead cache size is internal; pruning must report its actual removals
+    # and preserve already projected future occurrences without rebuilding them.
+    cached_before = set(await db.scalars(select(CalendarOccurrence.id)))
+    removed = await prune_calendar_cache()
+    cached_after = set(await db.scalars(select(CalendarOccurrence.id)))
+    assert removed == len(cached_before - cached_after) and removed > 0
+    assert {item.occurrence_id for item in future.items} <= cached_after
     assert await db.scalar(select(func.count()).select_from(CalendarTrigger).where(CalendarTrigger.status == 'scheduled')) == before
     assert (await service.event_window(agent.id, NOW, NOW + timedelta(days=30))).total == future.total
     assert (await service.event_window(agent.id, datetime(2020,1,1,tzinfo=timezone.utc), datetime(2020,2,1,tzinfo=timezone.utc))).total == 31

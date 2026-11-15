@@ -16,6 +16,17 @@ from .schemas import MemorySearchHit
 from .source_access import source_is_readable, readable_evidence_ids
 
 
+def current_document_summary_clause() -> ColumnElement[bool]:
+    """A documentary projection must still describe its current source."""
+    return or_(MemoryItem.node_kind != "document", exists(select(Document.id).where(
+        Document.id == MemoryItem.id,
+        Document.revision == MemoryItem.metadata_["document_source_revision"].as_integer(),
+        Document.summary_content_hash == MemoryItem.metadata_["document_summary_hash"].as_string(),
+        Document.title == MemoryItem.search_title,
+        Document.keywords == MemoryItem.keywords,
+    ).correlate(MemoryItem)))
+
+
 async def admit_search_hits(
     agent_id: int, hits: Sequence[MemorySearchHit],
     *, scope_filters: Sequence[ColumnElement[bool]] = (),
@@ -42,13 +53,7 @@ async def admit_search_hits(
     now = datetime.now(timezone.utc)
     visible = select(MemoryItem.id).where(
         readable_item_clause(agent_id),
-        or_(MemoryItem.node_kind != "document", exists(select(Document.id).where(
-            Document.id == MemoryItem.id,
-            Document.revision == MemoryItem.metadata_["document_source_revision"].as_integer(),
-            Document.summary_content_hash == MemoryItem.metadata_["document_summary_hash"].as_string(),
-            Document.title == MemoryItem.search_title,
-            Document.keywords == MemoryItem.keywords,
-        ).correlate(MemoryItem))),
+        current_document_summary_clause(),
         or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
         or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
     ).correlate(None)

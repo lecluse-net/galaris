@@ -54,12 +54,12 @@ router = APIRouter(prefix="/memory", tags=["memory"])
 
 @router.get("/agenda")
 @authorize(privileges=[Privileges.MEMORY_ACCESS, Privileges.MEMORY_EDIT, Privileges.MEMORY_ADMIN])
-async def read_memory_agenda(agent_id: int, start: datetime, end: datetime) -> MemoryAgendaWindow:
+async def read_memory_agenda(agent_id: int, start: datetime, end: datetime, include_excerpt: bool = True) -> MemoryAgendaWindow:
     from .agenda import memory_agenda
 
     await _require_agent_scope(agent_id)
     try:
-        page = await memory_agenda(agent_id, start, end)
+        page = await memory_agenda(agent_id, start, end, include_excerpt=include_excerpt)
         if not page.complete:
             raise ValueError("Too many memory occurrences; request a shorter period")
         return page

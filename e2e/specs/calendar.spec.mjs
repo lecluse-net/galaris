@@ -113,6 +113,20 @@ test('a Goal fixed series is visible in the assembled agenda and only its future
   await expect(page.getByRole('dialog')).toContainText('Passage prévisionnel')
   await page.screenshot({ path: testInfo.outputPath('goal-agenda-series.png'), fullPage: true, animations: 'disabled' })
   await page.getByRole('dialog').getByRole('button', { name: 'Fermer', exact: true }).click()
+  // Future projections remain readable after leaving the current month/year.
+  for (const months of [1, 2, 6, 18]) {
+    const future = new Date(`${tomorrow}T12:00:00Z`)
+    future.setUTCDate(12)
+    future.setUTCMonth(future.getUTCMonth() + months)
+    const futureDay = future.toISOString().slice(0, 10)
+    await page.goto(`/calendar?agent_id=${fixture.agent_id}&date=${futureDay}&view=day&timezone=UTC`)
+    await expect(passage).toHaveCount(1)
+    await expect(passage).toContainText('10:00')
+    await passage.click()
+    await expect(page.getByRole('dialog')).toContainText('Passage prévisionnel')
+    await page.getByRole('dialog').getByRole('button', { name: 'Fermer', exact: true }).click()
+  }
+  await page.goto(`/calendar?agent_id=${fixture.agent_id}&date=${tomorrow}&view=day&timezone=UTC`)
   await page.setViewportSize({ width: 390, height: 844 })
   await page.getByRole('group', { name: 'Vue du calendrier', exact: true }).getByRole('button', { name: 'Planning', exact: true }).click()
   await expect(passage).toHaveCount(30)

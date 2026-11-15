@@ -1070,6 +1070,46 @@ async def resolve_function(connection: Connection, function_name: str, *, capabi
                                    capability_kind=capability_kind, native=native)
 
 
+async def resolve_function_states_many(connection_ids: Collection[int], function_name: str, *,
+                                       capability_kind: CapabilityKind = "tool") -> dict[int, EffectiveFunctionState]:
+    """Resolve live local/global/native defaults in a bounded number of queries.
+
+    Inactive or missing connections are omitted. Temporary action grants are not
+    permanent function states and cannot enable automatic context consumption.
+    """
+    if not connection_ids:
+        return {}
+    from app.services import facade as tools
+    from app.services import load_mcp_tools, native_service_codes_for_service
+
+    rows = (await get_db().execute(select(Connection.id, Connection.service_id,
+        ConnectionFunctionState.state, ConnectionFunctionState.enabled,
+        ServiceFunctionState.state, ServiceFunctionState.enabled)
+        .outerjoin(ConnectionFunctionState, (ConnectionFunctionState.connection_id == Connection.id)
+            & (ConnectionFunctionState.function_name == function_name)
+            & (ConnectionFunctionState.capability_kind == capability_kind))
+        .outerjoin(ServiceFunctionState, (ServiceFunctionState.service_id == Connection.service_id)
+            & (ServiceFunctionState.function_name == function_name)
+            & (ServiceFunctionState.capability_kind == capability_kind))
+        .where(Connection.id.in_(connection_ids), Connection.active.is_(True)))).all()
+    services = await tools.get_services_by_ids({row.service_id for row in rows})
+    definitions = [definition for definition in load_mcp_tools() if definition.name == function_name] if capability_kind == "tool" else []
+    defaults: dict[int, EffectiveFunctionState] = {}
+    for service_id, tool in services.items():
+        codes = native_service_codes_for_service(tool)
+        default: EffectiveFunctionState = "enabled"
+        for definition in definitions:
+            if definition.service_code in codes:
+                default = definition.approval
+                break
+        defaults[service_id] = default
+    return {identity: resolve_function_state(function_name,
+        {function_name: state if state is not None else enabled} if enabled is not None else {},
+        {function_name: inherited if inherited is not None else inherited_enabled} if inherited_enabled is not None else {},
+        default=defaults.get(service_id, "enabled"))
+        for identity, service_id, state, enabled, inherited, inherited_enabled in rows}
+
+
 async def connection_tool_options(*, include_globals: bool = False) -> list[dict[str, Any]]:
     from app.services import service, has_function_permissions
     from app.services.facade import public_connection_schema, service_can_edit

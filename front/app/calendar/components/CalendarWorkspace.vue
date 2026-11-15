@@ -251,31 +251,46 @@ async function loadEvents(clear = true): Promise<void> {
   refreshing.value = true; error.value = ''; goalError.value = ''; memoryError.value = ''
   try {
     const windows = queryWindows(days.value, timezone.value)
-    const [result, goalWindows, memoryWindows] = await Promise.all([
-      selectedIds.value.length ? Promise.all(windows.map(window => calendarService.events(agent, window.start, window.end, selectedIds.value, eventController.signal))) : Promise.resolve([]),
-      canReadGoals.value && showGoals.value ? Promise.all(windows.map(window => goalService.agenda(agent, window.start, window.end, eventController.signal))).catch(caught => {
-        if (alive && token === eventGeneration && !isCancelledRequest(caught)) goalError.value = t('goal.agenda.loadError')
-        return []
-      }) : Promise.resolve([]),
-      canReadMemory.value && showMemory.value ? Promise.all(windows.map(window => memoryService.agenda(agent, window.start, window.end, eventController.signal))).catch(caught => {
-        if (alive && token === eventGeneration && !isCancelledRequest(caught)) memoryError.value = t('agenda.memoryLoadError')
-        return []
-      }) : Promise.resolve([]),
-    ])
-    if (!alive || token !== eventGeneration) return
-    events.value = retainCalendarEvents(events.value, [...new Map([...result.flatMap(window => window.items), ...goalWindows.flatMap(window => window.items.map(goalEvent)), ...memoryWindows.flatMap(window => window.items.map(memoryEvent))].map(event => [occurrenceKey(event), event])).values()].sort((a, b) => a.start.localeCompare(b.start)))
-    const next: Record<string, EventExecutionSummary> = {}
-    for (const event of events.value) {
-      const key = occurrenceKey(event), previous = executions.value[key]
-      if (previous) next[key] = previous
+    const layers = {
+      calendar: events.value.filter(event => !event.goal_event && !event.memory_event),
+      goals: events.value.filter(event => event.goal_event),
+      memory: events.value.filter(event => event.memory_event),
     }
-    for (const event of events.value) if (event.goal_event) next[occurrenceKey(event)] = { total: 1, states: { [event.goal_event.state]: 1 } }
-    for (const event of events.value) if (event.memory_event) next[occurrenceKey(event)] = { total: 0 }
-    executions.value = retainExecutionStates(executions.value, next)
-    if (selectedEvent.value?.goal_event) selectedEvent.value = events.value.find(event => event.event_id === selectedEvent.value?.event_id) ?? null
-    if (selectedEvent.value?.memory_event) selectedEvent.value = events.value.find(event => event.event_id === selectedEvent.value?.event_id) ?? null
-    stale.value = [...result, ...goalWindows].some(window => !window.complete)
-    void loadStates()
+    const incomplete = { calendar: false, goals: false, memory: false }
+    function publish(layer: keyof typeof layers, rows: CalendarEvent[], complete = true): void {
+      if (!alive || token !== eventGeneration) return
+      layers[layer] = rows; incomplete[layer] = !complete
+      events.value = retainCalendarEvents(events.value, [...new Map(Object.values(layers).flat().map(event => [occurrenceKey(event), event])).values()].sort((a, b) => a.start.localeCompare(b.start)))
+      const next: Record<string, EventExecutionSummary> = {}
+      for (const event of events.value) {
+        const key = occurrenceKey(event), previous = executions.value[key]
+        if (event.goal_event) next[key] = { total: 1, states: { [event.goal_event.state]: 1 } }
+        else if (event.memory_event) next[key] = { total: 0 }
+        else if (previous) next[key] = previous
+      }
+      executions.value = retainExecutionStates(executions.value, next)
+      if ((layer === 'goals' && selectedEvent.value?.goal_event) || (layer === 'memory' && selectedEvent.value?.memory_event)) selectedEvent.value = rows.find(event => event.event_id === selectedEvent.value?.event_id) ?? null
+      stale.value = Object.values(incomplete).some(Boolean)
+    }
+    await Promise.all([
+      (selectedIds.value.length ? Promise.all(windows.map(window => calendarService.events(agent, window.start, window.end, selectedIds.value, eventController.signal))) : Promise.resolve([]))
+        .then(result => { publish('calendar', result.flatMap(window => window.items), result.every(window => window.complete)); if (alive && token === eventGeneration) void loadStates() })
+        .catch(caught => {
+          if (alive && token === eventGeneration && !isCancelledRequest(caught)) { error.value = apiErrorDetail(caught) ?? t('agenda.loadError'); publish('calendar', []) }
+        }),
+      (canReadGoals.value && showGoals.value ? Promise.all(windows.map(window => goalService.agenda(agent, window.start, window.end, eventController.signal))) : Promise.resolve([]))
+        .then(result => publish('goals', result.flatMap(window => window.items.map(goalEvent)), result.every(window => window.complete)))
+        .catch(caught => {
+          if (alive && token === eventGeneration && !isCancelledRequest(caught)) goalError.value = t('goal.agenda.loadError')
+          publish('goals', [])
+        }),
+      (canReadMemory.value && showMemory.value ? Promise.all(windows.map(window => memoryService.agenda(agent, window.start, window.end, eventController.signal))) : Promise.resolve([]))
+        .then(result => publish('memory', result.flatMap(window => window.items.map(memoryEvent)), result.every(window => window.complete)))
+        .catch(caught => {
+          if (alive && token === eventGeneration && !isCancelledRequest(caught)) memoryError.value = t('agenda.memoryLoadError')
+          publish('memory', [])
+        }),
+    ])
   } catch (caught) { if (alive && token === eventGeneration && !isCancelledRequest(caught)) error.value = apiErrorDetail(caught) ?? t('agenda.loadError') }
   finally { if (alive && token === eventGeneration) refreshing.value = false }
 }

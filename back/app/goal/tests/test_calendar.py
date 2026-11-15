@@ -99,6 +99,21 @@ def test_fixed_cadence_preserves_local_time_and_skips_invalid_dates():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('months_ahead', [1, 2, 6, 18])
+async def test_recurring_agenda_projects_future_months_without_materializing(db, clock, months_ahead):
+    goal = await create_goal(db)
+    ordinal = START.year * 12 + START.month - 1 + months_ahead
+    year, month = divmod(ordinal, 12)
+    lower = datetime(year, month + 1, 1, tzinfo=UTC)
+    upper = (lower + timedelta(days=32)).replace(day=1)
+    page = await calendar.agenda_window(goal.agent_id, lower, upper)
+    assert page.complete and len(page.items) == (upper - lower).days
+    assert all(item.projected and item.state == 'scheduled' and lower <= item.scheduled_at < upper for item in page.items)
+    assert (await calendar.agenda_window(goal.agent_id, lower, upper)).items == page.items
+    assert await db.scalar(select(func.count()).select_from(GoalOccurrence)) == 0
+
+
+@pytest.mark.asyncio
 async def test_legacy_cycle_snapshots_are_transactional_idempotent_and_survive_renaming(db, clock):
     from core.dbadmin import SchemaTransitionSet
     from app.goal.agenda_upgrade import backfill_snapshots, needs_agenda_snapshots, snapshots_complete

@@ -313,8 +313,7 @@ async def event_window(agent_id: int, start: datetime, end: datetime, *, calenda
     if start.tzinfo is None or end.tzinfo is None or end <= start or end - start > timedelta(days=32):
         raise ValueError("Calendar queries require a timezone-aware window of at most one month")
     feeds = await _feeds_for_agent(agent_id, calendar_ids)
-    for feed in feeds:
-        await store.ensure_coverage(feed, start, end, agent_id)
+    await store.ensure_coverages(feeds, start, end, agent_id)
     # Keep one indexed event lookup per occurrence even before PostgreSQL has
     # analyzed a large first import. A reorderable join can otherwise scan the
     # entire event index for each occurrence when its row estimate is still 1.
@@ -344,21 +343,15 @@ async def upcoming_context_events(agent_id: int, now: datetime) -> tuple[list[Ca
     None means no enabled read source; an empty list means an enabled but empty
     agenda. Ask permissions never authorize automatic context reads.
     """
-    from app.connection.facade import resolve_function
+    from app.connection.facade import resolve_function_states_many
 
     feeds = await _feeds_for_agent(agent_id)
-    allowed_connections: dict[int, bool] = {}
-    for feed in feeds:
-        if feed.connection_id not in allowed_connections:
-            connection = await connection_service.get_connection(feed.connection_id)
-            policy = await resolve_function(connection, "calendar_events") if connection is not None else {}
-            allowed_connections[feed.connection_id] = policy.get("effective_state") == "enabled"
-    feeds = [feed for feed in feeds if allowed_connections[feed.connection_id]]
+    policies = await resolve_function_states_many({feed.connection_id for feed in feeds}, "calendar_events")
+    feeds = [feed for feed in feeds if policies.get(feed.connection_id) == "enabled"]
     if not feeds:
         return None
     until = now + timedelta(days=runtime_settings.AGENDA_CONTEXT_DAYS)
-    for feed in feeds:
-        await store.ensure_coverage(feed, now, until, agent_id)
+    await store.ensure_coverages(feeds, now, until, agent_id)
     resource = (select(CalendarEvent.id, CalendarEvent.uid, CalendarEvent.contact_id, CalendarEvent.revision,
         CalendarEvent.recurring, CalendarEvent.conflict, CalendarEvent.synced_revision, CalendarEvent.deleted_at)
         .where(CalendarEvent.id == CalendarOccurrence.event_id)

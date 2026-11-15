@@ -171,9 +171,9 @@ async def dav(monkeypatch):
 @pytest_asyncio.fixture
 async def external(db, agent, dav):
     from app.connection import connection_service
-    from app.services import service
+    from app.services import service as services
     from app.services.schemas import ServiceCreate
-    tool = await service.create_service(ServiceCreate.model_validate({
+    tool = await services.create_service(ServiceCreate.model_validate({
         "code": "synthetic-caldav-provider", "label": "Synthetic external", "capabilities": ["caldav.calendar"],
         "connection_schema": {"params": {"url": {"type": "password", "required": True},
             "login": {"type": "string"}, "password": {"type": "password"}, "sync_interval_hours": {"type": "integer", "required": False, "default": "2"}}},
@@ -530,10 +530,10 @@ async def test_invalid_source_configuration_keeps_reads_local_and_never_falls_ba
 @pytest.mark.asyncio
 async def test_ical_subscription_uses_conditional_reads_and_the_same_local_structure(db, agent, external, dav):
     from app.connection import connection_service
-    from app.services import service
+    from app.services import service as services
     from app.services.schemas import ServiceUpdate
     connection = await connection_service.get_connection(external.connection_id)
-    await service.update_service(connection.service_id, ServiceUpdate(calendar_config={
+    await services.update_service(connection.service_id, ServiceUpdate(calendar_config={
         'settings': {'source_kind':'ical', 'timezone':'Europe/Paris'},
         'param_map': {'url':'url', 'username':'login', 'password':'password'}}))
     await service._refresh_parameter_feed(connection.id)

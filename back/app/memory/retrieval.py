@@ -331,8 +331,10 @@ async def _record(
 
 def _item_filters(
     request: MemorySearchRequest,
+    *, now: datetime | ColumnElement[datetime] | None = None,
 ) -> list[ColumnElement[bool]]:
-    now = datetime.now(timezone.utc)
+    if now is None:
+        now = datetime.now(timezone.utc)
     filters: list[ColumnElement[bool]] = [
         readable_item_clause(request.agent_id),
         MemoryItem.document_format.not_in(("data", "dataset", "process")),
