@@ -23,7 +23,7 @@ try {
     contentType: 'text/html', body: '<h1>Synthetic packaged server</h1>'
   }))
   await launcher.getByRole('textbox', { name: 'Server address' }).fill('https://packaged.example.test')
-  const remoteWindow = client.waitForEvent('window')
+  const remoteWindow = client.waitForEvent('window', page => !page.url().startsWith('galaris-desktop:'))
   await launcher.getByRole('button', { name: 'Connect', exact: true }).click()
   const remote = await remoteWindow
   await remote.getByRole('heading', { name: 'Synthetic packaged server' }).waitFor()

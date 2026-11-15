@@ -23114,6 +23114,7 @@
         "files": [
           "front/app/index/components/HomeActionCenter.vue",
           "front/app/index/components/HomeConnected.vue",
+          "front/app/index/components/MainLayout.vue",
           "front/app/index/components/Sidebar.vue",
           "front/app/index/navigation.ts"
         ],

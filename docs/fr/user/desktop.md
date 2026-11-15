@@ -38,6 +38,9 @@ avec Ctrl+clic, le bouton central ou « Ouvrir le lien dans un nouvel onglet » 
 la fenêtre. Chaque page conserve sa navigation et ses brouillons pendant les changements
 d’onglet. Les onglets partagent la session du serveur ; au redémarrage, seule sa page
 d’accueil est rouverte. La fermeture du dernier onglet ferme la fenêtre.
+Chaque onglet affiche le titre de sa page courante et suit les changements
+de page et de langue. Cette information vient de l’interface servie par Galaris : le
+serveur doit aussi être à jour pour remplacer l’ancien titre uniforme « Galaris ».
 
 La vérification orthographique français/anglais est activée dans les champs de texte
 qui l’autorisent. Un clic droit sur un mot souligné propose des corrections et **Ajouter

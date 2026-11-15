@@ -26,14 +26,16 @@
 
 <script setup lang="ts">
 import ContextHelp from './ContextHelp.vue'
+import { useMeta } from 'quasar'
 
-defineProps<{
+const { title } = defineProps<{
   icon: string
   title: string
   description?: string
   helpKey?: string
   helpText?: string
 }>()
+useMeta(() => title ? { title } : {})
 </script>
 
 <style scoped>

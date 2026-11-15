@@ -24,6 +24,7 @@ export { useNavigationStore } from './stores/navigationStore'
 
 // Composables
 export { useNavigation } from './composables/useNavigation'
+export { usePageTitle } from './composables/usePageTitle'
 
 // Privileges for convenient use in navigation definitions.
 export { privileges } from '@/core/authorize/definitions'

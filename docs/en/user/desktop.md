@@ -37,6 +37,9 @@ tab; **Ctrl+Tab** and **Ctrl+Shift+Tab** switch tabs. Internal links opened with
 the middle button or “Open link in new tab” stay in the window. Each page retains its
 navigation and drafts when switching tabs. Tabs share the server session; restarting
 reopens only its home page. Closing the last tab closes the window.
+Each tab shows the title of its current page and follows page and language
+changes. This information comes from the Galaris server interface: the server must also
+be updated to replace the previous uniform “Galaris” title.
 
 French/English spellchecking is enabled in text fields that allow it. Right-click an
 underlined word for suggestions and **Add to dictionary**. Rich-text fields outside

@@ -19,7 +19,7 @@ test.beforeAll(async () => {
       return
     }
     response.writeHead(200, { 'Content-Type': 'text/html' })
-    response.end(`<!doctype html><title>Synthetic Galaris</title><h1>Synthetic Galaris server</h1>
+    response.end(`<!doctype html><title>${request.url === '/second' ? 'Synthetic second page' : 'Synthetic Galaris'}</title><h1>Synthetic Galaris server</h1>
       <button onclick="localStorage.setItem('draft','Synthetic draft'); document.cookie='session=synthetic; max-age=3600; path=/'; document.querySelector('p').textContent='Saved'">Save draft</button>
       <button onclick="navigator.clipboard.writeText('Synthetic clipboard').then(()=>document.querySelector('p').textContent='Copied').catch(error=>document.querySelector('p').textContent=error.name)">Copy text</button>
       <button onclick="navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{stream.getTracks().forEach(track=>track.stop());document.querySelector('p').textContent='Microphone ready'}).catch(error=>document.querySelector('p').textContent=error.name)">Test microphone</button>
@@ -239,6 +239,10 @@ test('browser tabs preserve drafts, share the server session and protect unsaved
   const third = await linked
   await expect(third).toHaveURL(`${origin}/second`)
   await expect(chrome.getByRole('tab')).toHaveCount(3)
+  await expect(chrome.getByRole('tab', { name: 'Synthetic second page', exact: true })).toBeVisible()
+  await second.evaluate(() => { document.title = 'Synthetic Tasks' })
+  await expect(chrome.getByRole('tab', { name: 'Synthetic Tasks', exact: true })).toBeVisible()
+  await expect(chrome.getByRole('tab', { name: 'Synthetic Galaris', exact: true })).toHaveCount(1)
   await shortcut('W')
   await expect.poll(() => third.isClosed()).toBe(true)
   await expect(chrome.getByRole('tab')).toHaveCount(2)

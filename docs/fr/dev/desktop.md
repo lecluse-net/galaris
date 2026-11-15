@@ -26,6 +26,10 @@ uniquement dans leur conteneur isolé ; le client livré conserve `sandbox: true
 Le lanceur réutilise les composants natifs Quasar de la référence graphique et la palette
 Solaire partagée. Il suit le thème du système et propose les catalogues en/fr/zh selon sa
 langue. L’interface distante conserve sa propre langue et ses réglages utilisateur.
+Son titre HTML suit le titre de `PageHeader` via Quasar Meta, avec les libellés de navigation
+autorisés et traduits en repli et la route parente la plus précise pour une page imbriquée.
+Electron reprend les changements de
+ce titre pour chaque onglet, y compris lorsqu’il est en arrière-plan.
 
 `server.json` contient seulement l’origine du serveur dans le répertoire utilisateur Electron.
 L’écriture atomique de ce petit fichier ne cède pas la main à une annulation concurrente.

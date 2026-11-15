@@ -1,7 +1,7 @@
 import '@quasar/extras/material-icons/material-icons.css'
 import 'quasar/src/css/index.sass'
 
-import { Notify, Dialog, Dark, useQuasar, type QuasarPluginOptions } from 'quasar'
+import { Notify, Dialog, Dark, Meta, useQuasar, type QuasarPluginOptions } from 'quasar'
 import { onScopeDispose, watch } from 'vue'
 import { getThemeMode, toQuasarDark } from '@/core/theme'
 import i18n from '@/core/i18n'
@@ -46,7 +46,8 @@ const quasarOptions: Partial<QuasarPluginOptions> = {
     plugins: {
         Notify,
         Dialog,
-        Dark
+        Dark,
+        Meta
     }
 }
 

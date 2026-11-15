@@ -3016,6 +3016,8 @@ failures.
 Unsaved changes prevent quitting or switching servers while preserving the current
 session; installation restarts pass through the same closing protection. Tabs retain drafts,
 share server cookies, open internal links and honor shortcuts and dirty-page close vetoes.
+`page-title.spec.mjs` verifies translated navigation titles, specific page headings,
+restoration and revoked access; Electron verifies background tab titles.
 Spellchecking coverage verifies fr/en-US configuration and native menus with synthetic
 suggestions; dictionary additions use the real Electron session. `editor-toolbar.spec.mjs`
 verifies native menus in Documents and Shift+right-click access in rich-text fields,

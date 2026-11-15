@@ -1,7 +1,7 @@
 import { createApp, h, nextTick, shallowRef } from 'vue'
 import { createPinia, disposePinia } from 'pinia'
 import { createMemoryHistory, createWebHistory, createRouter } from 'vue-router'
-import { Quasar, QLayout, QPageContainer, Dialog, Notify, Loading } from 'quasar'
+import { Quasar, QLayout, QPageContainer, Dialog, Notify, Loading, Meta } from 'quasar'
 import quasarUserOptions, { useBrowserTheme } from '/quasar-user-options.ts'
 import { getThemeMode, toQuasarDark } from '/core/theme.ts'
 import { i18n, setLocale, initialLocaleReady } from '/core/i18n/index.ts'
@@ -63,7 +63,7 @@ window.testApp = {
     app.config.errorHandler = error => errors.push(String(error.stack ?? error))
     app.use(pinia).use(router).use(i18n).use(Quasar, {
       ...quasarUserOptions,
-      plugins: { Dialog, Notify, Loading },
+      plugins: { Dialog, Notify, Loading, Meta },
       config: { ...quasarUserOptions.config, dark },
     })
     app.provide(contextHelpKey, useHelpStore(pinia))

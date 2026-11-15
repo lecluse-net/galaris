@@ -4,6 +4,7 @@
 
 <script setup>
 import { onMounted } from 'vue'
+import { useMeta } from 'quasar'
 import { useBrowserTheme } from '../quasar-user-options'
 import { provideContextHelp } from './user'
 import MainLayout from '@/app/index/components/MainLayout.vue'
@@ -13,6 +14,7 @@ import { usePrivilegeStore } from './authorize/stores/privilegeStore'
 import { settings } from './settings'
 
 useBrowserTheme()
+useMeta({ title: settings.APP_LABEL })
 const authStore = useAuthStore()
 provideContextHelp()
 const authorizeStore = useAuthorizeStore()
@@ -25,6 +27,5 @@ onMounted(async () => {
   authorizeStore.init()
   // Initialize privilege store (watches auth and role changes)
   privilegeStore.init()
-  document.title = settings.APP_LABEL
 })
 </script>

@@ -60,11 +60,13 @@ import { useRoute } from 'vue-router'
 import { useQuasar } from 'quasar'
 import EnvironmentBadge from './EnvironmentBadge.vue'
 import { environmentLabel, environmentStyle } from '../environmentPresentation'
+import { usePageTitle } from '@/core/navigation'
 
 const $q = useQuasar()
 const appStore = useAppStore()
 const authStore = useAuthStore()
 const route = useRoute()
+usePageTitle()
 
 const isMobileLayout = computed(() => $q.screen.lt.md)
 const guestLoginHiddenPaths = new Set(['/', '/user/login', '/user/register'])

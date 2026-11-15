@@ -26,6 +26,10 @@ container; the shipped client retains `sandbox: true`.
 The launcher reuses native Quasar components from the graphic reference and the shared
 Solaire palette. It follows the system theme and selects en/fr/zh catalogs from the system
 language. The remote interface retains its own language and user preferences.
+Its HTML title follows `PageHeader` through Quasar Meta, falling back to authorized,
+translated navigation labels and the most specific parent route for nested pages.
+Electron follows title changes for each tab, including
+background tabs.
 
 `server.json` contains only the server origin in the Electron user directory. The atomic
 write of this tiny file does not yield to concurrent cancellation. Cookies, caches and
