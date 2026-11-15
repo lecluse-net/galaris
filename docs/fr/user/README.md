@@ -759,6 +759,20 @@ alors dans l’onglet **tâches** et continue après la fin de l’appel.
 
 ### Résumer un audio, une vidéo ou une vidéo YouTube
 
+Avec le service Multimédia et un spécialiste vidéo configurés, l'agent peut aussi analyser
+l'image et les paroles d'une visio en un appel `video_read`. Joignez la vidéo et, si vous en
+disposez, son fichier de sous-titres SRT ou WebVTT : l'agent le transmet avec `subtitles_uri`.
+La priorité va à ce fichier, puis aux sous-titres textuels intégrés à la vidéo, puis à une
+transcription par le modèle speech-to-text configuré pour l'agent. Le résultat fournit l'analyse
+visuelle et le texte séparément, avec leur provenance, les horodatages disponibles et les limites
+de couverture. Les sous-titres incrustés dans les images ne sont pas extraits par cette chaîne.
+Sans son ou si la transcription est indisponible, l'analyse visuelle reste possible et cette
+absence est signalée. Cette lecture vidéo est limitée à 32 Mo et vingt minutes ; pour une visio
+plus longue ou une transcription complète enregistrée, utilisez le parcours Audio ci-dessous.
+L'extrait transmis au spécialiste vidéo est borné par son budget de prompt ; le texte retourné
+à l'agent est limité à 120 000 caractères, avec un indicateur en cas de troncature. Les appels
+speech-to-text sont comptabilisés séparément du coût d'analyse vidéo.
+
 Dans le détail d'un tour de l'onglet **Appels téléphoniques**, les gestionnaires disposant
 du droit de modification des tâches peuvent **Raccrocher de force** un traitement audio.
 La confirmation conserve l'historique ; un arrêt encore en cours reste signalé.

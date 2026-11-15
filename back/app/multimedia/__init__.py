@@ -1,4 +1,4 @@
-"""Specialist sound, music and video tools. Voice/STT remains independent."""
+"""Specialist sound, music and video tools with subtitle and speech evidence."""
 
 from .models import MediaGeneration, MediaOutputReceipt
 from .generation_worker import tick as generation_tick

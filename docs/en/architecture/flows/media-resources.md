@@ -267,6 +267,21 @@ images when vision is available, otherwise textual descriptions from the vision 
 Incomplete visual coverage is explicit. Video analysis requires a video track and a duration
 of at most twenty minutes.
 
+The Multimedia `video_read` tool enriches analysis with spoken text: an explicitly supplied
+SRT/WebVTT `subtitles_uri` (authorized canonical URI, at most 1 MB), then embedded text
+subtitles, then isolated `app.audio` normalization and the Agent's STT model. Temporary files
+and segments are removed after success, error or cancellation. Subtitle authorization denials
+stop the call; unreadable tracks can fall back. Image subtitle tracks and burned-in captions
+are not OCRed. The result preserves `analysis` and adds `transcript`: timestamped text,
+provenance, language, status and warnings. Text is bounded to 120,000 characters with explicit
+truncation. A quoted, untrusted-data excerpt is added within the specialist's existing
+10,000-character prompt limit; `specialist_context_truncated` signals reduced coverage.
+Without audio, without an STT model or after STT failure, visual analysis remains available
+with an explicit status. The STT fallback has a five-minute total timeout and retains segments
+already transcribed after a later failure. `cost` covers media analysis only; STT calls have
+their own LLM accounting. This addition concerns the `video_read` tool; native attachment
+preparation retains its existing contract.
+
 During model discovery, an absent modality stays unknown until catalog enrichment. Chat defaults
 must not fabricate image, file, audio or video refusals; explicit provider values take precedence.
 The API exposes known modalities separately from booleans filled with response defaults.

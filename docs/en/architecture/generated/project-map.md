@@ -11,9 +11,9 @@ tests remain authoritative for behavior.
 
 - 79 declared backend modules;
 - 40 declared frontend modules;
-- 644 backend dependency edges;
+- 645 backend dependency edges;
 - 228 frontend dependency edges;
-- 307 edges between `app`/`bridge` domains;
+- 308 edges between `app`/`bridge` domains;
 - 30 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 7 directly bidirectional frontend pairs;
@@ -483,8 +483,9 @@ tests remain authoritative for behavior.
 | `app.messenger` | `core.user` | `back/app/messenger/interactions.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_resources.py`, `back/app/messenger/permission_router.py`, `back/app/messenger/permissions.py` |
 | `app.messenger` | `core.util` | `back/app/messenger/ingest.py`, `back/app/messenger/interface.py`, `back/app/messenger/link_preview.py` |
 | `app.multimedia` | `app.agent` | `back/app/multimedia/generation_execution.py`, `back/app/multimedia/router.py` |
+| `app.multimedia` | `app.audio` | `back/app/multimedia/transcripts.py` |
 | `app.multimedia` | `app.file_share` | `back/app/multimedia/delivery.py`, `back/app/multimedia/generation_execution.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py` |
-| `app.multimedia` | `app.llm` | `back/app/multimedia/generation_execution.py`, `back/app/multimedia/generation_service.py`, `back/app/multimedia/generation_worker.py`, `back/app/multimedia/mcp.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py` |
+| `app.multimedia` | `app.llm` | `back/app/multimedia/generation_execution.py`, `back/app/multimedia/generation_service.py`, `back/app/multimedia/generation_worker.py`, `back/app/multimedia/mcp.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py`, `back/app/multimedia/transcripts.py` |
 | `app.multimedia` | `app.services` | `back/app/multimedia/generation_service.py`, `back/app/multimedia/generation_worker.py`, `back/app/multimedia/mcp.py`, `back/app/multimedia/service.py` |
 | `app.multimedia` | `core.authorize` | `back/app/multimedia/router.py` |
 | `app.multimedia` | `core.database` | `back/app/multimedia/delivery.py`, `back/app/multimedia/generation_execution.py`, `back/app/multimedia/generation_service.py`, `back/app/multimedia/generation_store.py`, `back/app/multimedia/generation_worker.py`, `back/app/multimedia/models.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/router.py` |
@@ -1067,12 +1068,12 @@ tests remain authoritative for behavior.
 | `bridge.deepseek_harness` | 6 | `app.agent`, `app.harnesses`, `app.llm`, `app.mcp`, `app.skill`, `bridge.harness` |
 | `bridge.mail` | 6 | `app.agent`, `app.connection`, `app.contact`, `app.file_share`, `app.messenger`, `app.services` |
 | `bridge.nextcloud` | 6 | `app.agent`, `app.connection`, `app.file_share`, `app.messenger`, `app.services`, `app.voice` |
+| `app.multimedia` | 5 | `app.agent`, `app.audio`, `app.file_share`, `app.llm`, `app.services` |
 | `app.task` | 5 | `app.agent`, `app.goal`, `app.llm`, `app.messenger`, `app.services` |
 | `bridge.claude_agent` | 5 | `app.agent`, `app.harnesses`, `app.mcp`, `app.skill`, `bridge.harness` |
 | `bridge.matrix` | 5 | `app.agent`, `app.connection`, `app.messenger`, `app.services`, `app.voice` |
 | `app.browser` | 4 | `app.connection`, `app.file_share`, `app.messenger`, `app.services` |
 | `app.console` | 4 | `app.agent`, `app.connection`, `app.file_share`, `app.services` |
-| `app.multimedia` | 4 | `app.agent`, `app.file_share`, `app.llm`, `app.services` |
 | `app.webhook` | 4 | `app.agent`, `app.connection`, `app.services`, `app.task` |
 | `bridge.code_server` | 4 | `app.agent`, `app.code`, `app.console`, `app.file_share` |
 | `app.dashboard` | 3 | `app.agent`, `app.llm`, `app.task` |
@@ -1141,6 +1142,7 @@ tests remain authoritative for behavior.
 | `app.share` | 3 | `app.agent`, `app.document`, `app.process` |
 | `app.documentation` | 2 | `app.file_share`, `app.services` |
 | `app.image` | 2 | `app.agent`, `app.file_share` |
+| `app.audio` | 1 | `app.multimedia` |
 | `app.browser` | 1 | `app.chat` |
 | `app.calendar` | 1 | `bridge.calendar` |
 | `app.dream` | 1 | `app.lab` |
@@ -2516,10 +2518,10 @@ tests remain authoritative for behavior.
 | `messenger_send_file_to_user` | `messenger` | `app.messenger` | `mcp_send_file_to_user` | `back/app/messenger/mcp.py:971` |
 | `messenger_send_message_to_user` | `messenger` | `app.messenger` | `mcp_send_message_to_user` | `back/app/messenger/mcp.py:383` |
 | `audio_read` | `multimedia` | `app.multimedia` | `audio_read` | `back/app/multimedia/mcp.py:13` |
-| `multimedia_get_run` | `multimedia` | `app.multimedia` | `multimedia_get_run` | `back/app/multimedia/mcp.py:51` |
-| `music_generate` | `multimedia` | `app.multimedia` | `music_generate` | `back/app/multimedia/mcp.py:35` |
-| `sound_generate` | `multimedia` | `app.multimedia` | `sound_generate` | `back/app/multimedia/mcp.py:28` |
-| `video_generate` | `multimedia` | `app.multimedia` | `video_generate` | `back/app/multimedia/mcp.py:43` |
+| `multimedia_get_run` | `multimedia` | `app.multimedia` | `multimedia_get_run` | `back/app/multimedia/mcp.py:52` |
+| `music_generate` | `multimedia` | `app.multimedia` | `music_generate` | `back/app/multimedia/mcp.py:36` |
+| `sound_generate` | `multimedia` | `app.multimedia` | `sound_generate` | `back/app/multimedia/mcp.py:29` |
+| `video_generate` | `multimedia` | `app.multimedia` | `video_generate` | `back/app/multimedia/mcp.py:44` |
 | `video_read` | `multimedia` | `app.multimedia` | `video_read` | `back/app/multimedia/mcp.py:18` |
 | `conversation_round_get` | `platform_admin` | `app.conversation` | `conversation_round_get` | `back/app/conversation/mcp.py:248` |
 | `documentation_catalog` | `platform_admin` | `app.services` | `documentation_catalog` | `back/app/services/mcp.py:37` |

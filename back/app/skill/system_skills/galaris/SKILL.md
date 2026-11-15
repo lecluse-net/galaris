@@ -1962,8 +1962,16 @@ Use canonical file URIs as inputs; keep media bytes out of the conversation cont
 
 - `audio_read(uri, prompt=...)` analyzes audible events, ambient sounds, instruments and music.
   Use `audio_transcribe` for spoken words.
-- `video_read(uri, prompt=...)` analyzes video scenes and actions; request timestamps and
-  explicit uncertainty when useful.
+- `video_read(uri, prompt=..., subtitles_uri="", language="")` analyzes video scenes and spoken
+  content (media files up to 32 MB and twenty minutes). Supply an authorized SRT/WebVTT URI when
+  available, including a separate caption attachment from the same meeting. Otherwise it tries
+  embedded text subtitles, then the agent's configured speech-to-text model. It returns `analysis`
+  and a separate `transcript` with source, timestamps, status and warnings; a bounded excerpt also
+  goes to the video specialist. Check `truncated` and `specialist_context_truncated` before claiming
+  complete coverage. Missing speech text leaves visual analysis available with an explicit status.
+  Omit `language` for automatic speech detection. Use `audio_transcribe` for longer recordings or
+  a full saved transcript. A public YouTube page URL still uses `audio_transcribe` for accessible
+  captions; `video_read` requires an actual video file URI.
 - `sound_generate(prompt, destination, duration=None, loop=False, invocation_key=None)`
   generates effects or ambience.
 - `music_generate(prompt, destination, instrumental=False, lyrics=None, style="", title="",

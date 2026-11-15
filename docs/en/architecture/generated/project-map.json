@@ -3745,6 +3745,13 @@
       },
       {
         "files": [
+          "back/app/multimedia/transcripts.py"
+        ],
+        "source": "app.multimedia",
+        "target": "app.audio"
+      },
+      {
+        "files": [
           "back/app/multimedia/delivery.py",
           "back/app/multimedia/generation_execution.py",
           "back/app/multimedia/provider_results.py",
@@ -3760,7 +3767,8 @@
           "back/app/multimedia/generation_worker.py",
           "back/app/multimedia/mcp.py",
           "back/app/multimedia/provider_results.py",
-          "back/app/multimedia/service.py"
+          "back/app/multimedia/service.py",
+          "back/app/multimedia/transcripts.py"
         ],
         "source": "app.multimedia",
         "target": "app.llm"
@@ -6802,7 +6810,7 @@
           "app.task"
         ]
       ],
-      "domain_edges": 307,
+      "domain_edges": 308,
       "fan_in": [
         {
           "count": 45,
@@ -7257,6 +7265,13 @@
         },
         {
           "count": 1,
+          "module": "app.audio",
+          "modules": [
+            "app.multimedia"
+          ]
+        },
+        {
+          "count": 1,
           "module": "app.browser",
           "modules": [
             "app.chat"
@@ -7674,6 +7689,17 @@
         },
         {
           "count": 5,
+          "module": "app.multimedia",
+          "modules": [
+            "app.agent",
+            "app.audio",
+            "app.file_share",
+            "app.llm",
+            "app.services"
+          ]
+        },
+        {
+          "count": 5,
           "module": "app.task",
           "modules": [
             "app.agent",
@@ -7722,16 +7748,6 @@
             "app.agent",
             "app.connection",
             "app.file_share",
-            "app.services"
-          ]
-        },
-        {
-          "count": 4,
-          "module": "app.multimedia",
-          "modules": [
-            "app.agent",
-            "app.file_share",
-            "app.llm",
             "app.services"
           ]
         },
@@ -9897,7 +9913,7 @@
       {
         "file": "back/app/multimedia/mcp.py",
         "handler": "multimedia_get_run",
-        "line": 51,
+        "line": 52,
         "module": "app.multimedia",
         "name": "multimedia_get_run",
         "namespace": "multimedia"
@@ -9905,7 +9921,7 @@
       {
         "file": "back/app/multimedia/mcp.py",
         "handler": "music_generate",
-        "line": 35,
+        "line": 36,
         "module": "app.multimedia",
         "name": "music_generate",
         "namespace": "multimedia"
@@ -9913,7 +9929,7 @@
       {
         "file": "back/app/multimedia/mcp.py",
         "handler": "sound_generate",
-        "line": 28,
+        "line": 29,
         "module": "app.multimedia",
         "name": "sound_generate",
         "namespace": "multimedia"
@@ -9921,7 +9937,7 @@
       {
         "file": "back/app/multimedia/mcp.py",
         "handler": "video_generate",
-        "line": 43,
+        "line": 44,
         "module": "app.multimedia",
         "name": "video_generate",
         "namespace": "multimedia"

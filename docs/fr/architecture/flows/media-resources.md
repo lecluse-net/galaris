@@ -321,6 +321,22 @@ et au plus huit pages rendues : images si la vision est disponible, sinon descri
 textuelles par le spécialiste de vision. La couverture visuelle incomplète est signalée.
 L'analyse vidéo exige une piste vidéo et une durée maximale de vingt minutes.
 
+L'outil Multimédia `video_read` enrichit son analyse avec le texte parlé : un fichier SRT/WebVTT
+fourni par `subtitles_uri` (URI canonique autorisée, au plus 1 Mo), puis une piste textuelle
+intégrée, puis la normalisation audio isolée de `app.audio` et le modèle STT de l'agent.
+Le temporaire et ses segments sont supprimés après succès, erreur ou annulation. Les refus
+d'accès au fichier de sous-titres interrompent l'appel ; une piste illisible peut conduire
+au repli suivant. Les pistes image et les sous-titres incrustés ne font pas l'objet d'OCR.
+Le résultat conserve `analysis` et ajoute `transcript` : texte horodaté, provenance, langue,
+statut et avertissements. Le budget de texte est de 120 000 caractères ; les troncatures sont
+explicites. Un extrait cité comme données non fiables est injecté dans le prompt du spécialiste,
+dans sa limite existante de 10 000 caractères ; `specialist_context_truncated` signale une
+couverture plus petite. Sans audio, sans modèle STT ou après erreur STT, l'analyse visuelle
+reste disponible avec un statut explicite. Le repli STT a un délai total de cinq minutes et
+conserve les segments déjà transcrits en cas d'échec tardif. Le champ `cost` porte seulement
+l'analyse multimédia ; les appels STT ont leur comptabilisation LLM séparée. Ce complément
+concerne l'outil `video_read` ; la préparation native des pièces jointes conserve son contrat.
+
 À la découverte des modèles, une modalité absente reste inconnue jusqu'à l'enrichissement
 par le catalogue. Un défaut de conversation ne doit pas fabriquer un refus d'image, de fichier,
 d'audio ou de vidéo : les valeurs explicites du fournisseur restent prioritaires. L'API expose

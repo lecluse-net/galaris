@@ -14,9 +14,10 @@ async def audio_read(ctx: McpToolContext, uri: str, prompt: str = "Describe the 
     return await analyze(ctx, "audio_read", uri, prompt)
 
 
-@mcp_tool("multimedia", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="video_read", description="Analyze a video from a canonical file URI with the configured video specialist. Ask about scenes, actions and timestamps.", timeout_seconds=660)
-async def video_read(ctx: McpToolContext, uri: str, prompt: str = "Describe this video with timestamps, actions and uncertainty.") -> dict[str, Any]:
-    return await analyze(ctx, "video_read", uri, prompt)
+@mcp_tool("multimedia", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", name="video_read", description="Analyze scenes, actions and spoken content from a canonical video file URI (up to 32 MB and 20 minutes). Uses supplied SRT/WebVTT subtitles_uri, then embedded text subtitles, otherwise the agent's configured speech-to-text model. Returns visual analysis and a separate transcript with provenance and coverage warnings. A bounded transcript excerpt also goes to the video specialist. language is optional; omit it for automatic speech detection. Use audio_transcribe for longer recordings or a full saved transcript. Public YouTube page URLs use audio_transcribe for captions; uri here must resolve to a media file.", timeout_seconds=660)
+async def video_read(ctx: McpToolContext, uri: str, prompt: str = "Describe this video with timestamps, actions and uncertainty.",
+                     subtitles_uri: str = "", language: str = "") -> dict[str, Any]:
+    return await analyze(ctx, "video_read", uri, prompt, subtitles_uri=subtitles_uri, language=language)
 
 
 async def _generate(ctx: McpToolContext, request: MediaRequest, destination: str, invocation_key: str | None) -> dict[str, Any]:

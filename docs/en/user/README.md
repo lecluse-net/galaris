@@ -659,6 +659,19 @@ Reopening follows the persisted request through temporary service interruptions.
 
 ### Summarizing Audio, Video, or a YouTube Video
 
+With the Multimedia Service and a configured video specialist, the Agent can analyse both
+the visuals and speech of a meeting recording in one `video_read` call. Attach the video and,
+when available, its SRT or WebVTT subtitle file: the Agent supplies it as `subtitles_uri`.
+This file takes priority, followed by embedded text subtitles, then transcription using the
+Agent's configured speech-to-text model. The result supplies visual analysis and text separately,
+with provenance, available timestamps and coverage limitations. Subtitles burned into video
+frames are not extracted by this pipeline. Without audio or when transcription is unavailable,
+visual analysis remains possible and the missing text is explicit. Video reading is limited to
+32 MB and twenty minutes; for longer meetings or a complete saved transcript, use the Audio
+journey below. The video specialist receives an excerpt bounded by its prompt budget; text
+returned to the Agent is limited to 120,000 characters, with an explicit truncation indicator.
+Speech-to-text calls are accounted separately from the video analysis cost.
+
 If the Agent has the Audio Service, attach the recording and then directly request the expected deliverable, for example:
 
 > Transcribe `reunion-projet.mp4`, then summarize the topics discussed, decisions, owners, and actions with their deadlines. Also retain the complete transcription.
