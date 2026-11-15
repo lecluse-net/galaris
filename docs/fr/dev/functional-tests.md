@@ -3163,6 +3163,12 @@ refuse des octets corrompus avant de réussir au réessai ; les diagnostics loca
 la cause, la suppression des secrets, la rotation et l’échec d’écriture.
 Les changements non enregistrés empêchent de quitter ou de changer de serveur sans
 perdre la session en cours ; le redémarrage d’installation passe par cette même fermeture.
+Les onglets conservent leurs brouillons, partagent les cookies du serveur, ouvrent les liens
+internes et respectent les raccourcis et le refus de fermeture d’une page modifiée.
+La vérification orthographique contrôle les langues fr/en-US et le menu natif avec des
+suggestions synthétiques ; l’ajout au dictionnaire passe par la session Electron réelle.
+`editor-toolbar.spec.mjs` vérifie que les Documents conservent le menu natif et que
+Maj+clic droit y donne accès dans les champs `rich-text`, sans altérer le contenu.
 Les fenêtres distantes ne reçoivent ni Node ni l’API desktop. La chaîne de publication
 reste couverte par `back/tests/test_release_publication.py`.
 Les tests synthétiques ne qualifient pas les périphériques physiques, Web Push ou le passage

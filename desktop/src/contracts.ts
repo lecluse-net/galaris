@@ -16,4 +16,13 @@ export interface DesktopAPI {
   checkUpdates(): Promise<void>
   installUpdate(): Promise<void>
   onState(listener: (state: DesktopState) => void): () => void
+  tabs(): Promise<TabsState>
+  newTab(): Promise<void>
+  selectTab(id: number): Promise<void>
+  closeTab(id: number): Promise<void>
+  onTabs(listener: (state: TabsState) => void): () => void
+}
+export interface TabsState {
+  activeId: number
+  tabs: { id: number; title: string; loading: boolean }[]
 }

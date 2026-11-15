@@ -3,7 +3,7 @@
 # Electron desktop client
 
 The independent `desktop/` package reuses the server interface and bundles only the
-Vue/Quasar server selector and Electron runtime. It adds no business module, local server,
+Vue/Quasar server selector, tab bar and Electron runtime. It adds no business module, local server,
 Node access for the remote interface, or CORS configuration.
 See decision [0292](../../../project/decisions/0292-desktop-client.md) and the
 [user journey](../user/desktop.md).
@@ -33,9 +33,21 @@ web storage live in a separate persistent partition for each origin. HTTP is acc
 only in development for loopback addresses. A failed connection preserves the last saved
 server and keeps the launcher usable.
 
-The local `galaris-desktop:` protocol serves only bundled assets. The preload exposes five
-bounded operations and a subscription; each invocation verifies the window, main frame and
-exact URL. Remote windows and previews have no preload. Permissions reject third-party
+The local `galaris-desktop:` protocol serves only bundled assets. The preload exposes bounded
+launcher and tab operations; each invocation verifies the window, main frame and exact URL,
+with separate authorization for the two interfaces. Remote tabs are `WebContentsView`
+instances without a preload; only the local tab bar has one. Each view retains its state
+while another is selected, sharing a server partition. Same-origin new windows become tabs;
+blob/data previews remain isolated windows. Views are explicitly closed with `beforeunload`
+before destroying their window, including server switches and installation. A veto retains
+the affected view; tabs already closed are not restored. No tab list is persisted.
+The session enables the `fr` and `en-US` Hunspell dictionaries on Windows/Linux; words are
+processed locally. Electron downloads dictionaries from its default CDN. The context menu
+offers suggestions, dictionary additions and editing actions. Previews have no preload.
+Rich-text editors retain their custom menu; Shift+right-click allows the native menu
+without changing the selection. Internal links opened in tabs are isolated from their
+opener, matching existing `noopener` consumers.
+Permissions reject third-party
 frames and origins and request native consent for supported capabilities. Local program
 schemes are never passed to `shell.openExternal`. Invalid certificates remain rejected.
 

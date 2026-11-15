@@ -587,6 +587,8 @@ function selectEmbeddedObject(event: Event): void {
   }
 }
 async function openContextMenu(event: MouseEvent): Promise<void> {
+  // Keep the native spelling menu reachable alongside the rich-text commands.
+  if (event.shiftKey) { pointerMenu.value?.hide(); event.stopPropagation(); return }
   if (profile === 'document') { event.stopPropagation(); return }
   if (mobileDocument.value) return
   if (readonly) { event.preventDefault(); event.stopPropagation(); return }

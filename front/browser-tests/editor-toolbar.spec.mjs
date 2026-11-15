@@ -68,21 +68,23 @@ test('an open document emoji picker closes when content or edit permission chang
   await expect(page.locator('[data-editor-surface]')).toHaveText('Another document')
 })
 
-for (const width of [390, 1440]) test(`ordinary document text keeps browser spelling and keyboard menus (${width}px)`, async ({ page }) => {
+for (const width of [390, 1440]) for (const profile of ['document', 'rich-text']) test(`ordinary ${profile} text keeps browser spelling menus (${width}px)`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 })
-  await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile: 'document', modelValue: '<p>Browser spelling suggestions</p>' } })
+  await mount(page, 'core/util/components/RichTextEditor.vue', { props: { profile, modelValue: '<p>Browser spelling suggestions</p>' } })
   const editor = page.locator('[data-editor-surface]')
   await editor.click()
   await expect(editor).toHaveJSProperty('spellcheck', true)
   await expect(page.getByRole('toolbar', { name: 'Contextual actions', exact: true })).toHaveCount(0)
-  expect(await editor.evaluate(element => {
+  expect(await editor.evaluate((element, shiftKey) => {
     const box = element.getBoundingClientRect()
-    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: box.left + 20, clientY: box.top + 20 })
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, shiftKey, clientX: box.left + 20, clientY: box.top + 20 })
     element.dispatchEvent(event)
     return event.defaultPrevented
-  })).toBe(false)
+  }, profile === 'rich-text')).toBe(false)
   await expect(page.getByRole('menu')).toBeHidden()
-  for (const key of ['ContextMenu', 'F10']) expect(await editor.evaluate((element, key) => {
+  await editor.click({ button: 'right', modifiers: profile === 'rich-text' ? ['Shift'] : [] })
+  await expect(page.getByRole('menu')).toBeHidden()
+  for (const key of profile === 'document' ? ['ContextMenu', 'F10'] : []) expect(await editor.evaluate((element, key) => {
     const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, key, shiftKey: key === 'F10' })
     element.dispatchEvent(event)
     return event.defaultPrevented

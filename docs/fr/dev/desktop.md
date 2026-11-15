@@ -3,7 +3,7 @@
 # Client desktop Electron
 
 Le package indépendant `desktop/` réutilise l’interface du serveur et embarque seulement
-le sélecteur de serveur Vue/Quasar et le moteur Electron. Il n’ajoute aucun module métier,
+le sélecteur de serveur, la barre d’onglets Vue/Quasar et le moteur Electron. Il n’ajoute aucun module métier,
 serveur local, accès Node à l’interface distante ou configuration CORS.
 Voir la décision [0292](../../../project/decisions/0292-desktop-client.md) et le
 [parcours utilisateur](../user/desktop.md).
@@ -34,8 +34,22 @@ chaque origine. L’HTTP est accepté uniquement en développement pour les adre
 Une connexion échouée conserve le dernier serveur enregistré et laisse le lanceur utilisable.
 
 Le protocole local `galaris-desktop:` sert seulement les assets embarqués. Le preload expose
-cinq opérations bornées et un abonnement ; chaque invocation vérifie la fenêtre, le frame
-principal et l’URL exacte. Les fenêtres distantes et les aperçus n’ont aucun preload.
+les opérations bornées du lanceur et des onglets ; chaque invocation vérifie la fenêtre,
+le frame principal et l’URL exacte, avec des autorisations distinctes pour les deux interfaces.
+Les onglets distants sont des `WebContentsView` sans preload ; seule la barre locale en
+possède un. Chaque vue conserve son état pendant la sélection d’une autre vue, avec une
+partition serveur commune. Les nouvelles fenêtres de même origine deviennent des onglets ;
+les aperçus blob/data restent des fenêtres isolées. Les vues sont fermées explicitement
+avec `beforeunload` avant de détruire la fenêtre, y compris pour un changement de serveur
+ou une installation. Un refus conserve la vue concernée ; les onglets déjà fermés ne sont
+pas restaurés. Aucune liste d’onglets n’est persistée.
+La session active les dictionnaires Hunspell `fr` et `en-US` sur Windows/Linux ; les mots
+restent traités localement. Electron télécharge les dictionnaires depuis son CDN par défaut.
+Le menu contextuel expose les suggestions, l’ajout au dictionnaire et les actions d’édition.
+Les éditeurs `rich-text` conservent leur menu spécifique ; Maj+clic droit laisse passer
+le menu natif sans modifier la sélection. Les liens internes ouverts en onglet sont isolés
+de leur fenêtre d’origine, conformément aux consommateurs `noopener` existants.
+Les aperçus n’ont aucun preload.
 Les permissions refusent les frames et origines tierces et demandent un accord natif pour
 les capacités prises en charge. Les schémas de programmes locaux ne sont jamais transmis
 à `shell.openExternal`. Les certificats invalides restent refusés.

@@ -1,5 +1,8 @@
 {
   "en": {
+    "tabs": "Tabs", "newTab": "New tab", "closeTab": "Close tab", "closeNamedTab": "Close tab: {title}",
+    "nextTab": "Next tab", "previousTab": "Previous tab", "openInTab": "Open link in new tab",
+    "addToDictionary": "Add to dictionary", "noSuggestions": "No spelling suggestions",
     "title": "Galaris desktop", "intro": "Connect to your Galaris server.",
     "server": "Server address", "hint": "Use the HTTPS address provided by your administrator.",
     "connect": "Connect", "cancel": "Cancel", "version": "Desktop version {version}",
@@ -23,6 +26,9 @@
     "updateFailed": "The desktop update failed. You can continue working and try again later."
   },
   "fr": {
+    "tabs": "Onglets", "newTab": "Nouvel onglet", "closeTab": "Fermer l’onglet", "closeNamedTab": "Fermer l’onglet : {title}",
+    "nextTab": "Onglet suivant", "previousTab": "Onglet précédent", "openInTab": "Ouvrir le lien dans un nouvel onglet",
+    "addToDictionary": "Ajouter au dictionnaire", "noSuggestions": "Aucune suggestion orthographique",
     "title": "Galaris desktop", "intro": "Connectez-vous à votre serveur Galaris.",
     "server": "Adresse du serveur", "hint": "Utilisez l’adresse HTTPS fournie par votre administrateur.",
     "connect": "Se connecter", "cancel": "Annuler", "version": "Version desktop {version}",
@@ -46,6 +52,9 @@
     "updateFailed": "La mise à jour du client a échoué. Vous pouvez continuer à travailler et réessayer plus tard."
   },
   "zh": {
+    "tabs": "标签页", "newTab": "新建标签页", "closeTab": "关闭标签页", "closeNamedTab": "关闭标签页：{title}",
+    "nextTab": "下一个标签页", "previousTab": "上一个标签页", "openInTab": "在新标签页中打开链接",
+    "addToDictionary": "添加到词典", "noSuggestions": "无拼写建议",
     "title": "Galaris 桌面客户端", "intro": "连接到您的 Galaris 服务器。",
     "server": "服务器地址", "hint": "请输入管理员提供的 HTTPS 地址。",
     "connect": "连接", "cancel": "取消", "version": "桌面版本 {version}",

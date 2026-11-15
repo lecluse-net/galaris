@@ -9,8 +9,17 @@ Galaris origin. It loads the existing server interface, preserving same-origin A
 WebSocket, authentication, document isolation and PWA update behavior. It does not bundle
 the backend, introduce offline business data, or duplicate frontend domain modules.
 
-Only the local Vue/Quasar launcher receives a bounded preload. Every IPC invocation
-validates its sender and main-frame URL. Server windows and resource previews have no
+Only the local Vue/Quasar launcher and tab bar receive a bounded preload, with separate
+sender authorization. Every IPC invocation validates its sender and main-frame URL.
+Server tabs use `WebContentsView` instances sharing the server partition; switching views
+retains each page's state. Same-origin new-window links become tabs, while blob/data
+previews remain separate windows. New internal tabs have no opener relationship, matching
+the server interface's `noopener` links. The owner closes each view with its unload protection
+before closing itself, switching servers or installing an update. A veto retains that view;
+clean tabs already closed are not restored. Tabs are not persisted across restarts.
+French and English spellchecking runs locally, with Electron's default dictionary downloads
+and a native context menu for suggestions and dictionary additions.
+Server tabs and resource previews have no
 preload, Node integration or webview. Context isolation, web security and the renderer
 sandbox remain enabled. Permission requests are limited to the selected server's main
 frame and require native consent. HTTPS navigation inside the tab preserves OAuth state.

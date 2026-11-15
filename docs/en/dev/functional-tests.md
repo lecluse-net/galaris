@@ -3014,7 +3014,12 @@ return with same-tab state preserved. The real updater rejects corrupted bytes b
 succeeding on retry; local diagnostics cover causes, secret redaction, rotation and write
 failures.
 Unsaved changes prevent quitting or switching servers while preserving the current
-session; installation restarts pass through the same closing protection. Remote windows receive
+session; installation restarts pass through the same closing protection. Tabs retain drafts,
+share server cookies, open internal links and honor shortcuts and dirty-page close vetoes.
+Spellchecking coverage verifies fr/en-US configuration and native menus with synthetic
+suggestions; dictionary additions use the real Electron session. `editor-toolbar.spec.mjs`
+verifies native menus in Documents and Shift+right-click access in rich-text fields,
+without changing their content. Remote windows receive
 neither Node nor the desktop API. Publication remains covered by
 `back/tests/test_release_publication.py`.
 Synthetic tests do not qualify physical devices, Web Push or upgrading between signed

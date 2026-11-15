@@ -30,6 +30,23 @@ Chaque adresse de serveur possède ses propres cookies et données locales. Pour
 serveur ou réessayer après une erreur réseau, utiliser **Galaris → Changer de serveur…**.
 Fermer cette fenêtre de configuration ramène à la fenêtre Galaris déjà ouverte.
 
+## Onglets et orthographe
+
+Le bouton **+** ou **Ctrl+T** ouvre une nouvelle page Galaris. **Ctrl+W** ferme l’onglet
+courant ; **Ctrl+Tab** et **Ctrl+Maj+Tab** changent d’onglet. Les liens internes ouverts
+avec Ctrl+clic, le bouton central ou « Ouvrir le lien dans un nouvel onglet » restent dans
+la fenêtre. Chaque page conserve sa navigation et ses brouillons pendant les changements
+d’onglet. Les onglets partagent la session du serveur ; au redémarrage, seule sa page
+d’accueil est rouverte. La fermeture du dernier onglet ferme la fenêtre.
+
+La vérification orthographique français/anglais est activée dans les champs de texte
+qui l’autorisent. Un clic droit sur un mot souligné propose des corrections et **Ajouter
+au dictionnaire**. Les champs de texte enrichi hors Documents conservent leur menu
+spécifique : utiliser **Maj+clic droit** pour accéder aux suggestions natives.
+Les éditeurs de code peuvent désactiver cette vérification. Le premier
+chargement des dictionnaires nécessite Internet ; le texte saisi n’est pas envoyé au
+service de téléchargement des dictionnaires.
+
 ## Mises à jour
 
 L’interface et les fonctionnalités web arrivent du serveur, comme pour la PWA. Une mise à jour

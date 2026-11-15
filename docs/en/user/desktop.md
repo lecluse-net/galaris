@@ -30,6 +30,21 @@ Each server address has separate cookies and local data. To change servers or re
 a network failure, use **Galaris → Change server…**. Closing this configuration window
 returns to the existing Galaris window.
 
+## Tabs and spelling
+
+The **+** button or **Ctrl+T** opens another Galaris page. **Ctrl+W** closes the current
+tab; **Ctrl+Tab** and **Ctrl+Shift+Tab** switch tabs. Internal links opened with Ctrl+click,
+the middle button or “Open link in new tab” stay in the window. Each page retains its
+navigation and drafts when switching tabs. Tabs share the server session; restarting
+reopens only its home page. Closing the last tab closes the window.
+
+French/English spellchecking is enabled in text fields that allow it. Right-click an
+underlined word for suggestions and **Add to dictionary**. Rich-text fields outside
+Documents retain their custom menu: use **Shift+right-click** for native suggestions.
+Code editors may disable
+spellchecking. The first dictionary download requires Internet access; typed text is
+not sent to the dictionary download service.
+
 ## Updates
 
 The interface and web features come from the server, like the PWA. A server update does not

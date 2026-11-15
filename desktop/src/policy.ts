@@ -32,5 +32,6 @@ export const remotePreferences = Object.freeze({
   sandbox: true,
   webSecurity: true,
   allowRunningInsecureContent: false,
-  webviewTag: false
+  webviewTag: false,
+  spellcheck: true
 })

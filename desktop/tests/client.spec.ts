@@ -23,7 +23,8 @@ test.beforeAll(async () => {
       <button onclick="localStorage.setItem('draft','Synthetic draft'); document.cookie='session=synthetic; max-age=3600; path=/'; document.querySelector('p').textContent='Saved'">Save draft</button>
       <button onclick="navigator.clipboard.writeText('Synthetic clipboard').then(()=>document.querySelector('p').textContent='Copied').catch(error=>document.querySelector('p').textContent=error.name)">Copy text</button>
       <button onclick="navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{stream.getTracks().forEach(track=>track.stop());document.querySelector('p').textContent='Microphone ready'}).catch(error=>document.querySelector('p').textContent=error.name)">Test microphone</button>
-      <p></p><a href='/download'>Download</a><a href='https://example.test/help' target='_blank'>External link</a>
+      <label>Draft<textarea spellcheck="true"></textarea></label>
+      <p></p><a href='/download'>Download</a><a href='/second' target='_blank' rel='noopener noreferrer'>Internal link</a><a href='https://example.test/help' target='_blank'>External link</a>
       <button onclick="const tab=window.open('about:blank'); tab.opener=null; tab.location.replace(window.URL.createObjectURL(new Blob(['<h1>Synthetic preview</h1>'],{type:'text/html'})))">Preview</button>`)
   })
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
@@ -65,8 +66,17 @@ async function openServer(launcher: Page, address = origin): Promise<Page> {
   await launcher.getByRole('button', { name: 'Connect', exact: true }).click()
   const remote = await window
   await expect(remote.getByRole('heading', { name: 'Synthetic Galaris server' })).toBeVisible()
-  await expect.poll(() => client!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(win => win.webContents.getURL().startsWith('galaris-desktop:'))?.isVisible())).toBe(false)
+  await expect.poll(() => client!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(win => win.webContents.getURL() === 'galaris-desktop://launcher/index.html')?.isVisible())).toBe(false)
   return remote
+}
+
+async function shortcut(keyCode: string, modifiers: ('control' | 'shift')[] = ['control']): Promise<void> {
+  // CDP keyboard events bypass Electron's native accelerators and before-input-event.
+  await client!.evaluate(({ webContents }, input) => {
+    const contents = webContents.getFocusedWebContents()!
+    contents.sendInputEvent({ type: 'keyDown', ...input })
+    contents.sendInputEvent({ type: 'keyUp', ...input })
+  }, { keyCode, modifiers })
 }
 
 test('connects, retains cookies and drafts after restart, and isolates servers', async () => {
@@ -107,9 +117,9 @@ test('invalid addresses and connection failures remain recoverable without repla
 test('downloads and standalone previews work; external links never launch custom programs', async () => {
   const remote = await openServer(await launch())
   const destination = path.join(profile, 'download.txt')
-  await client!.evaluate(({ BrowserWindow }, output) => {
-    for (const win of BrowserWindow.getAllWindows()) {
-      if (win.webContents.getURL().startsWith('http:')) win.webContents.session.once('will-download', (_event: unknown, item: Electron.DownloadItem) => item.setSavePath(output))
+  await client!.evaluate(({ webContents }, output) => {
+    for (const contents of webContents.getAllWebContents()) {
+      if (contents.getURL().startsWith('http:')) contents.session.once('will-download', (_event: unknown, item: Electron.DownloadItem) => item.setSavePath(output))
     }
   }, destination)
   await remote.getByRole('link', { name: 'Download', exact: true }).click()
@@ -183,7 +193,7 @@ test('launcher supports the keyboard and renders in light, dark and narrow windo
   await client!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setSize(480, 720))
   await launcher.screenshot({ path: '../artifacts/desktop/launcher-narrow.png' })
   await launcher.getByRole('textbox', { name: 'Server address' }).fill(origin)
-  const remote = client!.waitForEvent('window')
+  const remote = client!.waitForEvent('window', page => !page.url().startsWith('galaris-desktop:'))
   await launcher.getByRole('textbox', { name: 'Server address' }).press('Enter')
   await expect((await remote).getByRole('heading', { name: 'Synthetic Galaris server' })).toBeVisible()
 })
@@ -205,6 +215,89 @@ test('unsaved edits can prevent quitting and switching servers without losing th
   expect(remote.isClosed()).toBe(false)
   expect(JSON.parse(await readFile(path.join(profile, 'server.json'), 'utf8')).server).toBe(origin)
   await remote.evaluate(() => { window.onbeforeunload = null })
+})
+
+test('browser tabs preserve drafts, share the server session and protect unsaved edits', async () => {
+  const launcher = await launch()
+  const first = await openServer(launcher)
+  const chrome = client!.windows().find(page => page.url().endsWith('?tabs'))!
+  await first.getByRole('textbox', { name: 'Draft' }).fill('Unsent synthetic draft')
+  await first.getByRole('button', { name: 'Save draft' }).click()
+  const created = client!.waitForEvent('window', page => !page.url().startsWith('galaris-desktop:'))
+  await chrome.getByRole('button', { name: 'New tab', exact: true }).click()
+  const second = await created
+  await expect(second.getByRole('heading', { name: 'Synthetic Galaris server' })).toBeVisible()
+  await expect(chrome.getByRole('tab')).toHaveCount(2)
+  expect(await second.evaluate(() => document.cookie)).toContain('session=synthetic')
+  expect(await second.evaluate(() => typeof window.galarisDesktop)).toBe('undefined')
+  await second.getByRole('textbox', { name: 'Draft' }).fill('Second synthetic draft')
+  await shortcut('Tab', ['control', 'shift'])
+  await expect(chrome.getByRole('tab').first()).toHaveAttribute('aria-selected', 'true')
+  await expect(first.getByRole('textbox', { name: 'Draft' })).toHaveValue('Unsent synthetic draft')
+  const linked = client!.waitForEvent('window', page => !page.url().startsWith('galaris-desktop:'))
+  await first.getByRole('link', { name: 'Internal link' }).click()
+  const third = await linked
+  await expect(third).toHaveURL(`${origin}/second`)
+  await expect(chrome.getByRole('tab')).toHaveCount(3)
+  await shortcut('W')
+  await expect.poll(() => third.isClosed()).toBe(true)
+  await expect(chrome.getByRole('tab')).toHaveCount(2)
+  await expect(second.getByRole('textbox', { name: 'Draft' })).toHaveValue('Second synthetic draft')
+  const keyboardTab = client!.waitForEvent('window', page => !page.url().startsWith('galaris-desktop:'))
+  await shortcut('T')
+  const fourth = await keyboardTab
+  await expect(fourth.getByRole('heading', { name: 'Synthetic Galaris server' })).toBeVisible()
+  await shortcut('W')
+  await expect.poll(() => fourth.isClosed()).toBe(true)
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await chrome.emulateMedia({ colorScheme })
+    await chrome.screenshot({ path: `../artifacts/desktop/tabs-${colorScheme}.png` })
+  }
+  await client!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(win => win.webContents.getURL().endsWith('?tabs'))!.setSize(480, 720))
+  await chrome.screenshot({ path: '../artifacts/desktop/tabs-narrow.png' })
+  // A dirty background tab must also veto closing the whole application.
+  await first.evaluate(() => { window.onbeforeunload = event => { event.preventDefault(); event.returnValue = ''; return '' } })
+  await chrome.getByRole('button', { name: 'Close tab: Synthetic Galaris' }).first().click()
+  await expect(launcher.getByRole('alert')).toContainText('unsaved changes')
+  expect(first.isClosed()).toBe(false)
+  await chrome.getByRole('tab').last().click()
+  await client!.evaluate(({ app }) => app.quit())
+  await expect(launcher.getByRole('alert')).toContainText('unsaved changes')
+  expect(first.isClosed()).toBe(false)
+  await first.evaluate(() => { window.onbeforeunload = null })
+  const finalClose = chrome.waitForEvent('close')
+  await chrome.getByRole('button', { name: 'Close tab: Synthetic Galaris' }).click()
+  await finalClose
+  expect(first.isClosed()).toBe(true)
+})
+
+test('French and English spellchecking exposes suggestions and dictionary actions in the native menu', async () => {
+  const remote = await openServer(await launch())
+  const configuration = await client!.evaluate(({ webContents }) => {
+    const contents = webContents.getAllWebContents().find(page => page.getURL().startsWith('http:'))!
+    return { enabled: contents.session.isSpellCheckerEnabled(), languages: contents.session.getSpellCheckerLanguages() }
+  })
+  expect(configuration.enabled).toBe(true)
+  expect(configuration.languages).toEqual(expect.arrayContaining(['fr', 'en-US']))
+  // Replace only the native popup boundary; Chromium still emits the real right-click.
+  await client!.evaluate(({ Menu, webContents }) => {
+    const contents = webContents.getAllWebContents().find(page => page.getURL().startsWith('http:'))!
+    contents.prependListener('context-menu', (_event, params) => {
+      params.misspelledWord = 'synthetci'
+      params.dictionarySuggestions = ['synthetic']
+    })
+    const tracker = { labels: [] as string[], add: undefined as (() => void) | undefined }
+    ;(globalThis as unknown as { spellingTest: typeof tracker }).spellingTest = tracker
+    Menu.prototype.popup = function () {
+      tracker.labels = this.items.map(item => item.label)
+      tracker.add = () => { this.items.find(item => item.label === 'Add to dictionary')!.click() }
+    }
+  })
+  await remote.getByRole('textbox', { name: 'Draft' }).fill('synthetci')
+  await remote.getByRole('textbox', { name: 'Draft' }).click({ button: 'right' })
+  await expect.poll(() => client!.evaluate(() => (globalThis as unknown as { spellingTest: { labels: string[] } }).spellingTest.labels)).toEqual(expect.arrayContaining(['synthetic', 'Add to dictionary']))
+  await client!.evaluate(() => (globalThis as unknown as { spellingTest: { add: () => void } }).spellingTest.add())
+  await expect.poll(() => client!.evaluate(async ({ webContents }) => webContents.getAllWebContents().find(page => page.getURL().startsWith('http:'))!.session.listWordsInSpellCheckerDictionary())).toContain('synthetci')
 })
 
 test('the real updater rejects corrupted bytes and downloads a verified retry without installing', async () => {

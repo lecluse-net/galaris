@@ -1,9 +1,10 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, session, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, session } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { readServer, writeServer } from './preferences.ts'
-import { externalURL, partitionFor, remotePreferences, sameOrigin, serverOrigin } from './policy.ts'
+import { partitionFor, remotePreferences, sameOrigin, serverOrigin } from './policy.ts'
+import { Workspace, tabsURL } from './workspace.ts'
 import { configureUpdates } from './updates.ts'
 import type { DesktopState, Locale } from './contracts.ts'
 import messages from '../renderer/messages.json'
@@ -17,8 +18,8 @@ app.setAppUserModelId('net.lecluse.galaris')
 if (!app.isPackaged && process.env.GALARIS_DESKTOP_USER_DATA) app.setPath('userData', process.env.GALARIS_DESKTOP_USER_DATA)
 
 let launcher: BrowserWindow
-let remote: BrowserWindow | undefined
-let candidate: BrowserWindow | undefined
+let remote: Workspace | undefined
+let candidate: Workspace | undefined
 let generation = 0
 let quitting = false
 let installing = false
@@ -54,14 +55,17 @@ function cancel(): void {
   broadcast()
 }
 
-function authorize(event: Electron.IpcMainInvokeEvent): void {
-  if (event.sender !== launcher.webContents || event.senderFrame !== launcher.webContents.mainFrame || event.senderFrame.url !== launcherURL) {
+function authorize(event: Electron.IpcMainInvokeEvent, workspace = false): void {
+  const owner = workspace ? [remote, candidate].find(item => item?.window.webContents === event.sender)?.window : launcher
+  if (!owner || event.sender !== owner.webContents || event.senderFrame !== owner.webContents.mainFrame || event.senderFrame.url !== (workspace ? tabsURL : launcherURL)) {
     throw new Error('Unauthorized desktop request')
   }
 }
 
 function configureSession(origin: string): Electron.Session {
   const ses = session.fromPartition(partitionFor(origin))
+  ses.setSpellCheckerEnabled(true)
+  if (process.platform !== 'darwin') ses.setSpellCheckerLanguages(['fr', 'en-US'].filter(language => ses.availableSpellCheckerLanguages.includes(language)))
   // Replacing handlers prevents accumulation when the same server is reopened.
   const granted = new Set<string>()
   const pending = new Map<string, Promise<boolean>>()
@@ -82,7 +86,7 @@ function configureSession(origin: string): Electron.Session {
     if (granted.has(permission)) { callback(true); return }
     let request = pending.get(permission)
     if (!request) {
-      const owner = BrowserWindow.fromWebContents(contents)
+      const owner = BrowserWindow.fromWebContents(contents) ?? [remote, candidate].find(item => item?.owns(contents))?.window
       if (!owner) { callback(false); return }
       request = dialog.showMessageBox(owner, {
         type: 'question', title: t('permissionTitle'),
@@ -100,52 +104,6 @@ function configureSession(origin: string): Electron.Session {
   return ses
 }
 
-function guardWindow(win: BrowserWindow, origin: string, previews = true): void {
-  win.webContents.on('will-prevent-unload', () => {
-    if (remote !== win) return
-    quitting = false
-    installing = false
-    state.error = 'unsavedChanges'
-    showLauncher()
-  })
-  win.webContents.on('will-attach-webview', event => event.preventDefault())
-  const safeNavigation = (url: string): boolean => {
-    if (sameOrigin(url, origin)) return true
-    // HTTPS redirects in the same window preserve OAuth sessionStorage and callbacks.
-    try {
-      const target = new URL(url)
-      return (target.protocol === 'https:' && !target.username && !target.password)
-        || url === 'about:blank' || url.startsWith(`blob:${origin}/`) || url.startsWith('data:')
-    } catch { return false }
-  }
-  win.webContents.on('will-navigate', (event, url) => { if (!safeNavigation(url)) event.preventDefault() })
-  win.webContents.on('will-redirect', (event, url) => { if (!safeNavigation(url)) event.preventDefault() })
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (previews && (sameOrigin(url, origin) || url === 'about:blank' || url.startsWith(`blob:${origin}/`) || url.startsWith('data:'))) {
-      return { action: 'allow', overrideBrowserWindowOptions: { autoHideMenuBar: true, webPreferences: { ...remotePreferences, session: win.webContents.session } } }
-    }
-    const target = externalURL(url)
-    if (target) void shell.openExternal(target).catch(() => undefined)
-    return { action: 'deny' }
-  })
-  win.webContents.on('did-create-window', child => guardWindow(child, origin, false))
-}
-
-function closeForSwitch(win: BrowserWindow): Promise<boolean> {
-  return new Promise(resolve => {
-    const contents = win.webContents
-    const cleanup = () => {
-      win.removeListener('closed', closed)
-      contents.removeListener('will-prevent-unload', blocked)
-    }
-    const closed = () => { cleanup(); resolve(true) }
-    const blocked = () => { cleanup(); resolve(false) }
-    win.once('closed', closed)
-    contents.once('will-prevent-unload', blocked)
-    win.close()
-  })
-}
-
 async function connect(input: unknown): Promise<void> {
   if (state.connecting) return
   let origin: string
@@ -156,13 +114,18 @@ async function connect(input: unknown): Promise<void> {
   state.connecting = true
   const attempt = ++generation
   broadcast()
-  const win = new BrowserWindow({
+  const window = new BrowserWindow({
     width: 1280, height: 900, minWidth: 480, minHeight: 480, show: false, title: 'Galaris',
     icon: app.isPackaged ? path.join(process.resourcesPath, 'icon.png') : path.join(__dirname, '../../front/public/pwa/icon-512.png'),
-    webPreferences: { ...remotePreferences, session: configureSession(origin) }
+    webPreferences: { ...remotePreferences, session: launcher.webContents.session, preload: path.join(__dirname, 'preload.cjs') }
   })
+  const win = new Workspace(window, origin, configureSession(origin), t, () => {
+    quitting = false
+    installing = false
+    state.error = 'unsavedChanges'
+    showLauncher()
+  }, () => { if (remote === win) { state.error = 'connectionFailed'; showLauncher() } })
   candidate = win
-  guardWindow(win, origin)
   // A stalled DNS/TLS connection must remain cancellable and recover to the launcher.
   const timeout = setTimeout(() => {
     if (candidate !== win || attempt !== generation) return
@@ -174,38 +137,32 @@ async function connect(input: unknown): Promise<void> {
     showLauncher()
   }, 30_000)
   try {
-    await win.loadURL(`${origin}/`)
-    if (attempt !== generation || win.isDestroyed()) return
-    // An initial cross-origin redirect must not silently select another server.
-    if (!sameOrigin(win.webContents.getURL(), origin)) throw new Error('connectionFailed')
-    if (remote && !remote.isDestroyed() && !await closeForSwitch(remote)) {
+    await win.load()
+    if (attempt !== generation || window.isDestroyed()) return
+    if (remote && !remote.window.isDestroyed() && !await remote.close()) {
       if (attempt === generation) { candidate = undefined; state.connecting = false; showLauncher() }
       win.destroy()
       return
     }
-    if (attempt !== generation || win.isDestroyed()) return
+    if (attempt !== generation || window.isDestroyed()) return
     // Commit the tiny preference atomically without yielding to a cancelled attempt.
     try { writeServer(app.getPath('userData'), origin) } catch {
       if (attempt === generation) state.error = 'saveFailed'
       throw new Error('saveFailed')
     }
-    if (attempt !== generation || win.isDestroyed()) return
+    if (attempt !== generation || window.isDestroyed()) return
     remote = win
     candidate = undefined
     state.server = origin
     state.connecting = false
-    win.on('closed', () => {
+    window.on('closed', () => {
       if (remote !== win) return
       remote = undefined
       if (installing) { installing = false; showLauncher(); updates.install(); return }
       if (quitting) { setImmediate(() => app.quit()); return }
       if (!quitting && (launcher.isDestroyed() || !launcher.isVisible())) app.quit()
     })
-    win.webContents.on('did-fail-load', (_event, code, _description, _url, mainFrame) => {
-      if (remote === win && mainFrame && code !== -3) { state.error = 'connectionFailed'; showLauncher() }
-    })
-    win.webContents.on('render-process-gone', () => { if (remote === win) { state.error = 'connectionFailed'; showLauncher() } })
-    win.show()
+    window.show()
     launcher.hide()
   } catch {
     if (attempt === generation) {
@@ -214,7 +171,7 @@ async function connect(input: unknown): Promise<void> {
       candidate = undefined
       showLauncher()
     }
-    if (!win.isDestroyed()) win.destroy()
+    if (!window.isDestroyed()) win.destroy()
   } finally {
     clearTimeout(timeout)
     broadcast()
@@ -229,10 +186,16 @@ function buildMenu(): void {
       { type: 'separator' }, { label: t('quit'), accelerator: 'CmdOrCtrl+Q', click: () => app.quit() }
     ] },
     { role: 'editMenu' },
+    { label: t('tabs'), submenu: [
+      { label: t('newTab'), accelerator: 'CmdOrCtrl+T', click: () => { void remote?.open() } },
+      { label: t('closeTab'), accelerator: 'CmdOrCtrl+W', click: () => { void remote?.closeTab() } },
+      { label: t('nextTab'), accelerator: 'Ctrl+Tab', click: () => remote?.cycle(1) },
+      { label: t('previousTab'), accelerator: 'Ctrl+Shift+Tab', click: () => remote?.cycle(-1) }
+    ] },
     { label: t('view'), submenu: [
-      { label: t('reload'), role: 'reload' },
-      { label: t('back'), accelerator: 'Alt+Left', click: () => { if (remote?.webContents.navigationHistory.canGoBack()) remote.webContents.navigationHistory.goBack() } },
-      { label: t('forward'), accelerator: 'Alt+Right', click: () => { if (remote?.webContents.navigationHistory.canGoForward()) remote.webContents.navigationHistory.goForward() } },
+      { label: t('reload'), accelerator: 'CmdOrCtrl+R', click: () => remote?.active?.reload() },
+      { label: t('back'), accelerator: 'Alt+Left', click: () => { if (remote?.active?.navigationHistory.canGoBack()) remote.active.navigationHistory.goBack() } },
+      { label: t('forward'), accelerator: 'Alt+Right', click: () => { if (remote?.active?.navigationHistory.canGoForward()) remote.active.navigationHistory.goForward() } },
       { label: t('resetZoom'), role: 'resetZoom' }, { label: t('zoomIn'), role: 'zoomIn' }, { label: t('zoomOut'), role: 'zoomOut' },
       { label: t('fullScreen'), role: 'togglefullscreen' }
     ] }
@@ -264,9 +227,13 @@ async function start(): Promise<void> {
   launcher.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   launcher.on('close', event => {
     cancel()
-    if (!quitting && remote && !remote.isDestroyed()) { event.preventDefault(); launcher.hide(); remote.show() }
+    if (!quitting && remote && !remote.window.isDestroyed()) { event.preventDefault(); launcher.hide(); remote.window.show() }
   })
-  ipcMain.handle('desktop:state', event => { authorize(event); return state })
+  ipcMain.handle('desktop:state', event => { authorize(event, event.sender !== launcher.webContents); return state })
+  ipcMain.handle('desktop:tabs', event => { authorize(event, true); return (remote?.window.webContents === event.sender ? remote : candidate)?.snapshot() })
+  ipcMain.handle('desktop:new-tab', event => { authorize(event, true); void remote?.open() })
+  ipcMain.handle('desktop:select-tab', (event, id: unknown) => { authorize(event, true); if (typeof id === 'number') remote?.select(id) })
+  ipcMain.handle('desktop:close-tab', (event, id: unknown) => { authorize(event, true); if (typeof id === 'number') return remote?.closeTab(id) })
   ipcMain.handle('desktop:connect', (event, server: unknown) => { authorize(event); return connect(server) })
   ipcMain.handle('desktop:cancel', event => { authorize(event); cancel() })
   ipcMain.handle('desktop:check-updates', event => { authorize(event); return updates.check() })
@@ -296,13 +263,13 @@ async function confirmInstall(): Promise<void> {
   if (prompting || state.update.status !== 'ready') return
   prompting = true
   try {
-    const owner = remote && !remote.isDestroyed() ? remote : launcher
+    const owner = remote && !remote.window.isDestroyed() ? remote.window : launcher
     const result = await dialog.showMessageBox(owner, {
       type: 'info', title: t('updates'), message: t('updateReady'),
       buttons: [t('later'), t('restart')], defaultId: 0, cancelId: 0, noLink: true
     })
     if (result.response === 1) {
-      if (remote && !remote.isDestroyed()) { installing = true; remote.close() }
+      if (remote && !remote.window.isDestroyed()) { installing = true; void remote.close() }
       else updates.install()
     }
   } catch (error) { recordFailure('update:restart', error) } finally { prompting = false }
@@ -311,14 +278,14 @@ async function confirmInstall(): Promise<void> {
 if (!app.requestSingleInstanceLock()) app.quit()
 else {
   app.on('second-instance', () => {
-    const win = remote ?? launcher
+    const win = remote?.window ?? launcher
     if (!win || win.isDestroyed()) return
     if (win.isMinimized()) win.restore()
     win.show(); win.focus()
   })
   app.on('before-quit', event => {
     quitting = true
-    if (remote && !remote.isDestroyed()) { event.preventDefault(); remote.close(); return }
+    if (remote && !remote.window.isDestroyed()) { event.preventDefault(); void remote.close(); return }
     clearInterval(interval)
   })
   app.on('window-all-closed', () => app.quit())
