@@ -34,6 +34,19 @@ fi
 rg -q '^PASS success$' "$report"
 rg -q '^FAIL failure ' "$report"
 test "$(cat "$run_dir/failure.log")" == rejected
+# Automated gates must not consume the operator's terminal. GNU timeout gives
+# its child a separate process group, so reading that terminal suspends the run.
+cat > "$case_dir/check-stdin.sh" <<'CHECK'
+#!/usr/bin/env bash
+if IFS= read -r input; then
+  echo 'FAIL: a validation gate inherited interactive input' >&2
+  exit 9
+fi
+echo stdin-closed
+CHECK
+printf 'operator input\n' | bash -c 'run_step noninteractive bash "$1"' bash \
+  "$case_dir/check-stdin.sh" > "$case_dir/noninteractive.log"
+test "$(cat "$run_dir/noninteractive.log")" == stdin-closed
 cat > "$case_dir/bin/docker" <<'MOCK'
 #!/usr/bin/env bash
 set -euo pipefail

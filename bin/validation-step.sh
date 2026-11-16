@@ -17,7 +17,9 @@ run_step() {
   shift
   local gate_started=$SECONDS
   printf '\nRunning %s\n' "$name"
-  if (cd "$snapshot" && "$@") 2>&1 | tee "$run_dir/$name.log"; then
+  # Gates are noninteractive: Docker must not read a terminal from timeout's
+  # background process group and suspend the entire validation with SIGTTIN.
+  if (cd "$snapshot" && "$@") </dev/null 2>&1 | tee "$run_dir/$name.log"; then
     printf 'PASS %s\n' "$name" >> "$report"
   else
     printf 'FAIL %s (see %s.log)\n' "$name" "$name" >> "$report"

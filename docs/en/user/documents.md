@@ -356,8 +356,9 @@ or into the unclassified documents area. The gesture carries the entire selectio
 displayed order; dropping before or after a row places the group at that position.
 A descendant selected together with its parent follows that parent without being detached.
 You can also drag from the paginated list with checkboxes into the tree.
-Moves are saved document by document. If some fail, a summary appears and failed documents
-remain selected for retry.
+Group moves are saved in one transaction: if any document is rejected, none of the group
+moves and the full selection remains available for retry. If the response is lost, refresh
+the library to check the placement before retrying.
 
 In the list with checkboxes, these shortcuts also work on titles and checkboxes.
 Clicking a row's background selects it; a plain click on its title opens the document.

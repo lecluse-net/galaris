@@ -20,6 +20,13 @@
     "line_min": 75,
     "branch_min": 69
   },
+  "app/calendar/": {
+    "prefixes": [
+      "app/calendar/"
+    ],
+    "line_min": 83,
+    "branch_min": 69
+  },
   "app/chat/": {
     "prefixes": [
       "app/chat/"
@@ -544,6 +551,13 @@
     ],
     "line_min": 75,
     "branch_min": 54
+  },
+  "core/backup.py": {
+    "prefixes": [
+      "core/backup.py"
+    ],
+    "line_min": 79,
+    "branch_min": 64
   },
   "core/database/": {
     "prefixes": [

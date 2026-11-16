@@ -283,7 +283,8 @@ for (const width of [390, 1280]) {
 test('conversation process states and opening details follow the loaded data', async ({ page }) => {
   const run = { id: 'process-a', service_code: 'n8n', process_label: 'Synthetic image export', summary: 'Synthetic image export',
     status: 'running', input: { format: 'png' }, output: null, engine_metadata: {},
-    error_message: null, created_at: '2026-09-01T12:00:00Z', task_ids: [], events: [], llm_calls: [] }
+    error_message: null, created_at: '2026-09-01T12:00:00Z', task_ids: [],
+    events: [{ id: 1, event_type: 'export.started', source: 'synthetic', created_at: '2026-09-01T12:00:00Z', payload: { format: 'png' } }], llm_calls: [] }
   await jsonRoute(page, '**/api/chat/rooms/room-a/processes?*', { items: [run], total: 1 })
   let reads = 0
   await page.route('**/api/processes/runs/process-a', route => { reads++; return route.fulfill({ json: run }) })
@@ -291,10 +292,15 @@ test('conversation process states and opening details follow the loaded data', a
   await expect(page.locator('.q-item .q-spinner').first()).toBeVisible()
   await page.locator('.q-item').first().click()
   await expect(page.getByRole('dialog')).toBeVisible()
-  await expect(page.locator('textarea.code-editor').first()).toHaveValue(/png/)
-  run.status = 'success'; run.output = { result: 'Synthetic completed export' }
+  // Raw run input/output blocks were retired by decision 0270. The shared
+  // read-only modal still exposes live status, summary and technical events.
+  await page.getByText('Events (1)', { exact: true }).click()
+  await expect(page.getByRole('textbox', { name: 'export.started', exact: true })).toHaveValue(/png/)
+  run.status = 'success'; run.summary = 'Synthetic completed export'
+  run.events.push({ id: 2, event_type: 'export.completed', source: 'synthetic', created_at: '2026-09-01T12:01:00Z', payload: { saved: true } })
   await page.evaluate(() => window.testApp.emitSocket('process_run.update', { data: { id: 'process-a' } }))
-  await expect(page.getByRole('textbox', { name: 'Output', exact: true })).toHaveValue(/Synthetic completed export/)
+  await expect(page.getByRole('dialog')).toContainText('Synthetic completed export')
+  await expect(page.getByRole('textbox', { name: 'export.completed', exact: true })).toHaveValue(/"saved": true/)
   await expect(page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true })).toHaveCount(0)
   await expect(page.getByRole('dialog').getByRole('button', { name: 'Delete run', exact: true })).toHaveCount(0)
   await page.keyboard.press('Escape')
@@ -304,7 +310,9 @@ test('conversation process states and opening details follow the loaded data', a
   await page.waitForTimeout(200)
   expect(reads).toBe(afterClose)
   await page.locator('.q-item').first().click()
-  await expect(page.getByRole('textbox', { name: 'Output', exact: true })).toHaveValue(/Synthetic completed export/)
+  await expect(page.getByRole('dialog')).toContainText('Synthetic completed export')
+  await page.getByText('Events (2)', { exact: true }).click()
+  await expect(page.getByRole('textbox', { name: 'export.completed', exact: true })).toHaveValue(/"saved": true/)
 })
 
 for (const width of [390, 1280]) test(`conversation processes place recent runs at the bottom and follow new runs at ${width}px`, async ({ page }) => {

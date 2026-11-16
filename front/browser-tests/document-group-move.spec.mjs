@@ -9,7 +9,7 @@ async function library(page, { list = false } = {}) {
   const folders = new Map(items.slice(0, 4).map(item => [item.id, 'source']))
   const parents = new Map([['move-4', 'move-1']])
   let order = items.map(item => item.id)
-  const state = { writes: [], fail: null, hold: null, release: null, invalidate: false, folders, parents, order: () => order }
+  const state = { writes: [], requests: [], fail: null, hold: null, release: null, invalidate: false, folders, parents, order: () => order }
   const entry = item => ({ item, tags: tags.filter(tag => folders.get(item.id) === tag.id), agent_ids: [7], writable_agent_ids: [7],
     parent_document_id: parents.get(item.id) ?? null, children_count: [...parents.values()].filter(id => id === item.id).length,
     position: order.indexOf(item.id),
@@ -25,21 +25,25 @@ async function library(page, { list = false } = {}) {
             : body.classification === 'unclassified' ? !folders.has(item.id) && !parents.has(item.id) : !parents.has(item.id))
     return route.fulfill({ json: { entries: values.map(entry), total: values.length, has_more: false, keywords: [] } })
   })
-  await page.route(/\/api\/documents\/(?:move-\d+\/tags|order)$/, async route => {
+  await page.route(/\/api\/documents\/(?:move-\d+\/tags|order(?:\/batch)?)$/, async route => {
     const body = route.request().postDataJSON()
-    const id = body.node?.id ?? new URL(route.request().url()).pathname.split('/')[3]
-    state.writes.push({ id, ...body })
-    if (state.hold === id) await new Promise(resolve => { state.release = resolve })
-    if (state.fail === id) return route.fulfill({ status: 409, json: { detail: 'Placement changed' } })
-    if (!body.list_only) {
-      folders.delete(id); parents.delete(id)
-      if (body.parent_document_id) parents.set(id, body.parent_document_id)
-      else if (body.tag_id ?? body.parent_id) folders.set(id, body.tag_id ?? body.parent_id)
-      else if (body.at_root) folders.set(id, 'root')
+    const ids = body.document_ids ?? [body.node?.id ?? new URL(route.request().url()).pathname.split('/')[3]]
+    state.requests.push(ids)
+    if (ids.includes(state.hold)) await new Promise(resolve => { state.release = resolve })
+    // The server preflights the full selection and commits it atomically.
+    if (ids.includes(state.fail)) return route.fulfill({ status: 409, json: { detail: 'Placement changed' } })
+    for (const id of ids) {
+      state.writes.push({ id, ...body })
+      if (!body.list_only) {
+        folders.delete(id); parents.delete(id)
+        if (body.parent_document_id) parents.set(id, body.parent_document_id)
+        else if (body.tag_id ?? body.parent_id) folders.set(id, body.tag_id ?? body.parent_id)
+        else if (body.at_root) folders.set(id, 'root')
+      }
     }
-    order = order.filter(value => value !== id)
+    order = order.filter(value => !ids.includes(value))
     const anchor = body.anchor ? order.indexOf(body.anchor.id) : -1
-    order.splice(anchor < 0 ? order.length : anchor + Number(Boolean(body.after)), 0, id)
+    order.splice(anchor < 0 ? order.length : anchor + Number(Boolean(body.after)), 0, ...ids)
     if (state.invalidate) await page.evaluate(() => window.testApp.emitSocket('document.invalidate', { data: {} }))
     return route.fulfill({ status: 204 })
   })
@@ -89,23 +93,27 @@ test('group ordering preserves rendered order before and after an anchor', async
   const bounds = await target('Omega').boundingBox()
   await row(page, list, 'Alpha').dragTo(target('Omega'), { targetPosition: { x: 100, y: bounds.height - 1 } })
   await expect.poll(() => state.order().filter(id => id !== 'move-4')).toEqual(['move-1', 'move-3', 'move-0', 'move-2'])
-  expect(state.writes.slice(-2).map(write => write.anchor.id)).toEqual(['move-3', 'move-0'])
+  expect(state.requests).toEqual([['move-0', 'move-2'], ['move-0', 'move-2']])
+  expect(state.writes.slice(-2).map(write => write.anchor.id)).toEqual(['move-3', 'move-3'])
 })
 
-test('a partial failure leaves only failed documents selected for retry', async ({ page }) => {
+test('a rejected group move preserves every document and its selection for retry', async ({ page }) => {
   const state = await library(page)
   const tree = panel(page, false)
   state.fail = 'move-1'
   await row(page, tree, 'Alpha').click()
   await row(page, tree, 'Gamma').click({ modifiers: ['Shift'] })
   await row(page, tree, 'Alpha').dragTo(page.getByText('Target', { exact: true }))
-  await expect(page.getByText('2 succeeded, 1 failed.', { exact: false })).toBeVisible()
+  await expect(page.getByText('The move could not be confirmed.', { exact: false })).toBeVisible()
+  expect(state.writes).toEqual([])
+  expect([...state.folders.values()].filter(id => id === 'source')).toHaveLength(4)
   await expect(row(page, tree, 'Beta')).toHaveAttribute('aria-selected', 'true')
-  await expect(row(page, tree, 'Gamma')).toHaveAttribute('aria-selected', 'false')
+  await expect(row(page, tree, 'Gamma')).toHaveAttribute('aria-selected', 'true')
   state.fail = null
   await row(page, tree, 'Beta').dragTo(page.getByText('Target', { exact: true }))
   await expect.poll(() => state.folders.get('move-1')).toBe('target')
-  expect(state.writes.map(write => write.id)).toEqual(['move-0', 'move-1', 'move-2', 'move-1'])
+  expect(state.writes.map(write => write.id)).toEqual(['move-0', 'move-1', 'move-2'])
+  expect(state.requests).toEqual([['move-0', 'move-1', 'move-2'], ['move-0', 'move-1', 'move-2']])
 })
 
 for (const destination of ['document', 'root', 'unclassified']) test(`a group can move to ${destination}`, async ({ page }) => {
@@ -138,7 +146,7 @@ test('selected descendants follow their parent and cannot become the destination
   expect(state.parents.get('move-4')).toBe('move-1')
 })
 
-test('changing session during a group move stops unsent requests', async ({ page }) => {
+test('changing session during a group move discards late selection and notifications', async ({ page }) => {
   const state = await library(page)
   const tree = panel(page, false)
   state.hold = 'move-0'
@@ -151,9 +159,10 @@ test('changing session during a group move stops unsent requests', async ({ page
     api.invalidateSessionRequests()
     window.dispatchEvent(new CustomEvent('galaris:auth-token-changed', { detail: 'new-session' }))
   })
-  const response = page.waitForResponse(response => response.url().endsWith('/move-0/tags'))
+  const response = page.waitForResponse(response => response.url().endsWith('/order/batch'))
   state.release()
   await (await response).finished()
   await expect(tree.locator('.document-row[aria-selected="true"]')).toHaveCount(0)
-  expect(state.writes.map(write => write.id)).toEqual(['move-0'])
+  expect(state.requests).toEqual([['move-0', 'move-1', 'move-2']])
+  await expect(page.getByText('3 documents moved.', { exact: true })).toHaveCount(0)
 })

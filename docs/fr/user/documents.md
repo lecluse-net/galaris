@@ -392,8 +392,9 @@ un dossier, sous un document ou vers la zone des documents non classés. Le gest
 toute la sélection et conserve son ordre ; le dépôt avant ou après une ligne déplace le groupe
 à cette position. Un sous-document sélectionné avec son parent suit celui-ci sans être détaché.
 Cela fonctionne aussi depuis la liste paginée avec cases à cocher vers l’arborescence.
-Les déplacements sont enregistrés document par document : en cas d’échec partiel, un bilan
-apparaît et les documents en échec restent sélectionnés pour réessayer.
+Un déplacement groupé est enregistré dans une seule transaction : si un document est refusé,
+aucun document du groupe n’est déplacé et toute la sélection reste disponible pour réessayer.
+Si la réponse est perdue, actualisez la bibliothèque pour vérifier le classement avant de réessayer.
 
 Dans la liste avec cases à cocher, ces raccourcis fonctionnent aussi sur les titres et les
 cases. Un clic sur le fond d’une ligne la sélectionne ; un clic simple sur son titre ouvre

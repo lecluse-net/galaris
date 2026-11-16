@@ -464,17 +464,17 @@ test(`a private human-owned document opens using the human identity: ${scenario.
   if (!scenario.folder) {
     await page.getByRole('tree').getByText('Work', { exact: true }).hover()
     await page.getByRole('button', { name: 'New document in Work', exact: true }).press('Enter')
-    await page.getByRole('menuitem', { name: 'Text', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Text format', exact: true }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await page.getByRole('button', { name: 'Create a document at the root', exact: true }).press('Enter')
-    await page.getByRole('menuitem', { name: 'Text', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Text format', exact: true }).click()
   } else {
     if (scenario.folder === 'project') await page.getByText('Work', { exact: true }).click()
     const folder = tags.find(tag => tag.id === scenario.folder)
     await page.getByRole('tree').getByText(folder.name, { exact: true }).hover()
     await page.getByRole('button', { name: `New document in ${folder.name}`, exact: true }).press('Enter')
-    await page.getByRole('menuitem', { name: 'Text', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Text format', exact: true }).click()
     await expect(page.getByRole('dialog')).toContainText(`New document in ${folder.name}`)
   }
   await page.getByRole('dialog').getByLabel('Title', { exact: true }).fill('Personal notes')

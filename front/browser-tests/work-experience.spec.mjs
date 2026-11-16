@@ -8,6 +8,7 @@ const task = '00000000-0000-4000-8000-000000000104'
 test('first mission retries the same message, restores progress and requires a saved document for completion', async ({ page }, testInfo) => {
   await jsonRoute(page, '**/api/chat/status', { enabled: true, chat_enabled: true })
   await jsonRoute(page, '**/api/chat/recipients?*', { agents: [{ agent_id: 7, display_name: 'Alice Example', active: true }] })
+  await jsonRoute(page, '**/api/agents/selection?scope=dialogue', [{ id: 7, label: 'Alice Example', has_avatar: false }])
   let creations = 0, failSend = true, finished = false, saved = false
   const clients = []
   await page.route('**/api/chat/rooms', route => { creations++; return route.fulfill({ json: { id: room } }) })
@@ -51,6 +52,7 @@ test('first mission explains missing permissions before making any request', asy
 test('a role change during room creation prevents a late mission send', async ({ page }) => {
   await jsonRoute(page, '**/api/chat/status', { enabled: true, chat_enabled: true })
   await jsonRoute(page, '**/api/chat/recipients?*', { agents: [{ agent_id: 7, display_name: 'Alice Example', active: true }] })
+  await jsonRoute(page, '**/api/agents/selection?scope=dialogue', [{ id: 7, label: 'Alice Example', has_avatar: false }])
   let release, sends = 0
   await page.route('**/api/chat/rooms', async route => {
     await new Promise(resolve => { release = resolve })

@@ -121,8 +121,8 @@ test(`${provider} setup creates secret connection parameters once and recovers f
   await page.getByRole('tab', { name: provider, exact: true }).click()
   const guide = page.getByRole('region', { name: 'Setup guide', exact: true })
   await expect(guide.getByRole('link', { name: 'Configure agent accounts', exact: true })).toHaveAttribute('href', '/services?tab=connections')
-  const create = page.getByRole('button', { name: `Create ${provider} Tool`, exact: true })
-  await expect(guide.getByRole('alert')).toContainText(`Unable to prepare the ${provider} Tool`)
+  const create = page.getByRole('button', { name: `Create ${provider} Service`, exact: true })
+  await expect(guide.getByRole('alert')).toContainText(`Unable to prepare the ${provider} Service`)
   await expect(create).toHaveCount(0)
   fail = false
   await guide.getByRole('button', { name: 'Retry', exact: true }).focus()
@@ -163,18 +163,18 @@ test(`${provider} setup creates secret connection parameters once and recovers f
   await expect(page.getByRole('link', { name: 'Open tools and connections', exact: true })).toHaveCount(0)
 })
 
-test(`${provider} setup preserves an existing Tool with conflicting configuration`, async ({ page }) => {
+test(`${provider} setup preserves an existing Service with conflicting configuration`, async ({ page }) => {
   const requests = []
   await page.route('**/api/services', route => {
     requests.push(route.request().method())
-    return route.fulfill({ json: [{ id: 83, code: service, label: 'Synthetic existing Tool',
+    return route.fulfill({ json: [{ id: 83, code: service, label: 'Synthetic existing Service',
       messenger_config: null, connection_schema: { params: {} } }] })
   })
-  await mount(page, `app/services/components/${provider}ToolSetup.vue`, { privileges: [] })
-  await expect(page.getByRole('button', { name: `Create ${provider} Tool` })).toHaveCount(0)
+  await mount(page, `app/services/components/${provider}ServiceSetup.vue`, { privileges: [] })
+  await expect(page.getByRole('button', { name: `Create ${provider} Service` })).toHaveCount(0)
   await setPrivileges(page, ['SERVICE_EDIT'])
-  await expect(page.getByRole('status')).toContainText('already used by a Tool with different settings')
-  await expect(page.getByRole('button', { name: `Create ${provider} Tool` })).toHaveCount(0)
+  await expect(page.getByRole('status')).toContainText('already used by a Service with different settings')
+  await expect(page.getByRole('button', { name: `Create ${provider} Service` })).toHaveCount(0)
   expect(requests).toEqual(['GET'])
 })
 
@@ -189,8 +189,8 @@ test(`${provider} setup never offers creation when another code already uses the
       messenger_config: { service, settings: {}, param_map: { token: 'bot_secret' } },
       connection_schema: { params: { bot_secret: { type: 'password', required: true, default: '' } } } }] })
   })
-  await mount(page, `app/services/components/${provider}ToolSetup.vue`, { privileges: ['SERVICE_EDIT'] })
-  const create = page.getByRole('button', { name: `Create ${provider} Tool`, exact: true })
+  await mount(page, `app/services/components/${provider}ServiceSetup.vue`, { privileges: ['SERVICE_EDIT'] })
+  const create = page.getByRole('button', { name: `Create ${provider} Service`, exact: true })
   await expect(create).toHaveCount(0)
   release()
   // Existing channels no longer show a confirmation message; keep the usable action.
@@ -199,7 +199,7 @@ test(`${provider} setup never offers creation when another code already uses the
   expect(requests).toEqual(['GET'])
 })
 
-test(`${provider} setup rechecks the bridge before creation to avoid a newly configured Tool`, async ({ page }) => {
+test(`${provider} setup rechecks the bridge before creation to avoid a newly configured Service`, async ({ page }) => {
   let checks = 0
   const writes = []
   await page.route('**/api/services', route => {
@@ -208,24 +208,28 @@ test(`${provider} setup rechecks the bridge before creation to avoid a newly con
     return route.fulfill({ json: checks === 1 ? [] : [{ id: 85, code: 'synthetic_added_later', label: 'New channel',
       messenger_config: { service, settings: {}, param_map: {} } }] })
   })
-  await mount(page, `app/services/components/${provider}ToolSetup.vue`, { privileges: ['SERVICE_EDIT'] })
+  await mount(page, `app/services/components/${provider}ServiceSetup.vue`, { privileges: ['SERVICE_EDIT'] })
   if (service === 'matrix') await page.evaluate(() => window.testApp.setProps({
     settings: { MESSENGER_MATRIX_HOMESERVER: 'https://matrix.example.test' },
   }))
-  await page.getByRole('button', { name: `Create ${provider} Tool`, exact: true }).click()
+  await page.getByRole('button', { name: `Create ${provider} Service`, exact: true }).click()
   await expect(page.getByRole('link', { name: 'Open tools and connections', exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: `Create ${provider} Tool` })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: `Create ${provider} Service` })).toHaveCount(0)
   expect(writes).toEqual([])
 })
 }
 
-test('the Tool messaging warning allows saving and remains accurate on reopening', async ({ page }) => {
+test('the Service messaging warning allows saving and remains accurate on reopening', async ({ page }) => {
   const tool = { id: 81, code: 'synthetic_messaging', label: 'Synthetic messaging', can_edit: true, can_disable: true,
     conversation_enabled: false, connection_schema: { params: {} }, global_params: {}, has_messenger: true,
     messenger_config: { service: 'whatsapp', settings: {}, param_map: {} } }
   let saved = tool
   const writes = []
   await page.route('**/api/services', route => route.fulfill({ json: [saved] }))
+  await jsonRoute(page, '**/api/services/capabilities', [{ code: 'messenger', builtin: true,
+    label: 'services.capabilityLabels.messenger', protocols: ['whatsapp', 'telegram'].map(service => ({
+      value: `${service}.messenger`, capability: 'messenger', builtin: true, label: `services.protocolLabels.${service}`,
+    })) }])
   await jsonRoute(page, '**/api/file-share/bridges', [])
   await jsonRoute(page, '**/api/messenger/bridges', [
     { service: 'whatsapp', label: 'WhatsApp', settings: [], params: [] },
@@ -238,21 +242,22 @@ test('the Tool messaging warning allows saving and remains accurate on reopening
     return route.fulfill({ json: saved })
   })
   await mount(page, 'app/services/components/ServicesList.vue', { privileges: ['SERVICE_ACCESS', 'SERVICE_EDIT'] })
-  const edit = page.locator('tbody tr').filter({ hasText: tool.label }).getByRole('button', { name: 'Edit tool', exact: true })
+  const edit = page.getByRole('article', { name: tool.label, exact: true }).getByRole('button', { name: 'Edit service', exact: true })
   await edit.click()
   const dialog = page.getByRole('dialog')
-  await dialog.getByRole('tab', { name: 'Messaging', exact: true }).click()
+  await dialog.getByRole('tab', { name: 'WhatsApp', exact: true }).click()
   await expect(dialog.getByRole('alert', { name: 'WhatsApp', exact: true })).toContainText('Meta')
   await dialog.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(dialog).toHaveCount(0)
   expect(writes).toHaveLength(1)
   expect(writes[0].messenger_config.service).toBe('whatsapp')
   await edit.click()
-  await dialog.getByRole('tab', { name: 'Messaging', exact: true }).click()
+  await dialog.getByRole('tab', { name: 'WhatsApp', exact: true }).click()
   await expect(dialog.getByRole('alert', { name: 'WhatsApp', exact: true })).toBeVisible()
-  const select = dialog.getByRole('combobox', { name: 'Messaging service (bridge) *', exact: true })
-  await select.click()
-  await page.getByRole('option', { name: 'Telegram', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Delete protocol', exact: true }).click()
+  await page.getByRole('dialog').last().getByRole('button', { name: 'Delete', exact: true }).click()
+  await dialog.getByRole('button', { name: 'Add protocol', exact: true }).click()
+  await page.getByRole('menu', { name: 'Add protocol', exact: true }).getByRole('menuitem', { name: 'Telegram', exact: true }).click()
   await expect(dialog.getByRole('alert', { name: 'WhatsApp', exact: true })).toHaveCount(0)
   await expect(dialog.getByRole('note')).toContainText('long polling')
   await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })

@@ -212,6 +212,7 @@ async function searchFixtures(page, failure = false) {
     ['tasks/recent', { items: [task] }], ['goals', { items: [goal] }], ['topics', { items: [topic] }],
     ['conversations/messages', { items: [{ ...round, round_id: id }] }], ['voice/conversations', { items: [session] }],
     ['chat/rooms', { items: [room] }],
+    ['calendars/resources', []],
   ]) await page.route(`**/api/${path}?*`, route => route.fulfill(failure ? { status: 503, json: { detail: 'Unavailable' } } : { json: value }))
 }
 

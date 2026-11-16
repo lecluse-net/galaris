@@ -832,6 +832,12 @@ remplacement des voisins, fermeture, focus clavier, tactile et éléments désac
 La fermeture extérieure couvre aussi la zone d’origine, les événements dont la propagation
 est arrêtée et les cadres embarqués, en conservant le focus et l’action du contrôle cliqué.
 
+`document-group-move.spec.mjs` vérifie l’ordre des groupes, les descendants, le refus de toute
+la sélection sans déplacement partiel, la reprise et les réponses tardives après changement
+de session. La frontière HTTP simule la transaction groupée ; `app/document/tests/test_bulk_moves.py`
+vérifie son atomicité sur PostgreSQL. `library-root.spec.mjs` exerce les formats Texte et Data
+dans la bibliothèque commune, sur mobile et desktop, sans monter l’ancien arbre Dataset.
+
 `attachment-rename.spec.mjs` vérifie la saisie d’un nom, les erreurs récupérables et
 la fermeture du dialogue dans les composants réels. Son parcours E2E vérifie sur mobile
 et bureau le renommage documentaire, la réouverture, le renommage depuis Fichiers et

@@ -77,6 +77,7 @@ for (const status of [200, 503]) {
       await page.locator('.room-item').filter({ hasText: 'Conversation b' }).click()
       await expect(page.locator('.conversation-pane')).toContainText('Content room-b')
       if (status === 200) {
+        await jsonRoute(page, '**/api/agents/selection?scope=dialogue', [{ id: 7, label: 'Alice', has_avatar: false }])
         await page.getByRole('button', { name: 'Conversation display options', exact: true }).click()
         await page.locator('.viewer-select').click()
         await page.getByRole('option', { name: /Alice/ }).click()
@@ -229,12 +230,15 @@ for (const attachment of [false, true]) {
   test(`a failed message preserves its draft and attachments for an explicit retry (${attachment})`, async ({ page }) => {
     const { messages } = await conversation(page)
     const attempts = []
-    const endpoint = attachment ? 'attachments' : 'messages'
-    await page.route(`**/api/chat/rooms/room-a/${endpoint}`, async route => {
+    // Publication can use JSON after the draft upload finishes or multipart
+    // while it is still pending. Both transports retain the same message key.
+    await page.route(/\/api\/chat\/rooms\/room-a\/(?:attachments|messages)$/, async route => {
+      const multipart = new URL(route.request().url()).pathname.endsWith('/attachments')
       const body = route.request().postData()
-      const clientId = attachment
+      const clientId = multipart
         ? body.match(/name="client_message_id"\r\n\r\n([^\r]+)/)[1]
         : JSON.parse(body).client_message_id
+      if (attachment && !multipart) expect(JSON.parse(body).draft_file_keys).toHaveLength(1)
       attempts.push(clientId)
       if (attempts.length === 1) return route.abort('connectionreset')
       return route.fulfill({ status: 201, json: { ...messages['room-a'], id: 'saved-message',

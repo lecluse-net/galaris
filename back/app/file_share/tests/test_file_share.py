@@ -4,11 +4,12 @@ from unittest.mock import AsyncMock
 import pytest
 
 from app.file_share import file_share_service, available_bridges
+from app.services import service as service_catalog
 from app.services.schemas import (
     ConnectionSchema,
     FileShareConfig,
     MessengerConfig,
-    Tool,
+    Service,
 )
 from bridge.affine import AffineFileClient
 from bridge.nextcloud import NextcloudFileClient
@@ -89,7 +90,7 @@ async def test_resolve_transport_uses_service_code(monkeypatch):
         base_url="https://cloud.example.com",
         param_map={"login": "nc_login", "password": "nc_pw"},
     )
-    tool = Tool(
+    tool = Service(
         code="cloud_docs",
         label="Cloud docs",
         file_share_config=cfg,
@@ -115,7 +116,7 @@ async def test_resolve_transport_uses_service_code(monkeypatch):
         "get_connections_by_agent",
         get_connections_by_agent,
     )
-    monkeypatch.setattr(file_share_service.service, "get_service_by_id", get_service_by_id)
+    monkeypatch.setattr(service_catalog, "get_service_by_id", get_service_by_id)
     monkeypatch.setattr(
         file_share_service.connection_service,
         "get_params_as_dict",
@@ -139,7 +140,7 @@ async def test_messenger_without_files_does_not_expose_a_resource_scheme(
 ) -> None:
     import app.messenger as messenger_module
 
-    tool = Tool(
+    tool = Service(
         code="text-only",
         label="Text only",
         messenger_config=MessengerConfig(service="text_only"),
@@ -150,7 +151,7 @@ async def test_messenger_without_files_does_not_expose_a_resource_scheme(
     async def connections(_agent_id: int) -> list[object]:
         return [connection]
 
-    async def get_service(_service_id: int) -> Tool:
+    async def get_service(_service_id: int) -> Service:
         return tool
 
     monkeypatch.setattr(
@@ -158,7 +159,7 @@ async def test_messenger_without_files_does_not_expose_a_resource_scheme(
         "get_connections_by_agent",
         connections,
     )
-    monkeypatch.setattr(file_share_service.service, "get_service_by_id", get_service)
+    monkeypatch.setattr(service_catalog, "get_service_by_id", get_service)
     monkeypatch.setattr(
         messenger_module,
         "get_spec",
@@ -166,7 +167,7 @@ async def test_messenger_without_files_does_not_expose_a_resource_scheme(
     )
 
     assert await file_share_service.list_service_codes(7) == []
-    monkeypatch.setattr(file_share_service.service, "get_services_by_ids", AsyncMock(return_value={42: tool}))
+    monkeypatch.setattr(service_catalog, "get_services_by_ids", AsyncMock(return_value={42: tool}))
     assert await file_share_service.describe_targets(7) == []
     with pytest.raises(ValueError):
         await file_share_service.resolve_resource_transport_with_service(
@@ -182,10 +183,10 @@ async def test_retired_file_share_does_not_hide_other_schemes(monkeypatch):
     from app.file_share.resource_contracts import ResourceContext
 
     tools = {
-        41: Tool(code="old-media", label="Old media", file_share_config=FileShareConfig(
+        41: Service(code="old-media", label="Old media", file_share_config=FileShareConfig(
             service="grav", base_url="https://media.example.test",
         )),
-        42: Tool(code="cloud-files", label="Cloud files", file_share_config=FileShareConfig(
+        42: Service(code="cloud-files", label="Cloud files", file_share_config=FileShareConfig(
             service="nextcloud", base_url="https://cloud.example.test",
         )),
     }
@@ -201,9 +202,9 @@ async def test_retired_file_share_does_not_hide_other_schemes(monkeypatch):
         return connection, {"services.fileindexing": "known_uris"}
 
     monkeypatch.setattr(file_share_service.connection_service, "get_connections_by_agent", connections)
-    monkeypatch.setattr(file_share_service.service, "get_service_by_id", get_service)
+    monkeypatch.setattr(service_catalog, "get_service_by_id", get_service)
     monkeypatch.setattr(file_share_service.connection_service, "get_params_as_dict", params)
-    monkeypatch.setattr(file_share_service.service, "get_services_by_ids", AsyncMock(return_value=tools))
+    monkeypatch.setattr(service_catalog, "get_services_by_ids", AsyncMock(return_value=tools))
 
     schemes = await resource_service.list_schemes(ResourceContext(agent_id=7, runtime="internal"))
     by_scheme = {scheme.scheme: scheme for scheme in schemes}
@@ -218,7 +219,7 @@ async def test_console_file_share_capability_remains_one_native_provider(
 ) -> None:
     import app.console as console_module
 
-    tool = Tool(
+    tool = Service(
         code="console",
         label="Console SSH",
         file_share_config=FileShareConfig(service="console", base_url=""),
@@ -229,7 +230,7 @@ async def test_console_file_share_capability_remains_one_native_provider(
     async def connections(_agent_id: int) -> list[object]:
         return [connection]
 
-    async def get_service(_service_id: int) -> Tool:
+    async def get_service(_service_id: int) -> Service:
         return tool
 
     files = object()
@@ -243,11 +244,11 @@ async def test_console_file_share_capability_remains_one_native_provider(
         "get_connections_by_agent",
         connections,
     )
-    monkeypatch.setattr(file_share_service.service, "get_service_by_id", get_service)
+    monkeypatch.setattr(service_catalog, "get_service_by_id", get_service)
     monkeypatch.setattr(console_module, "build_run_resource", build_run_resource)
 
     assert await file_share_service.list_service_codes(7) == ["console"]
-    monkeypatch.setattr(file_share_service.service, "get_services_by_ids", AsyncMock(return_value={42: tool}))
+    monkeypatch.setattr(service_catalog, "get_services_by_ids", AsyncMock(return_value={42: tool}))
     assert await file_share_service.describe_targets(7) == []
     transport, service = await file_share_service.resolve_transport_with_service(
         7,
@@ -268,7 +269,7 @@ async def test_resource_transport_selects_messenger_capability_by_known_room(
         base_url="https://cloud.example.com",
         param_map={"login": "login", "password": "password"},
     )
-    tool = Tool(
+    tool = Service(
         code="nextcloud",
         label="Nextcloud",
         file_share_config=cfg,
@@ -281,7 +282,7 @@ async def test_resource_transport_selects_messenger_capability_by_known_room(
     async def connections(_agent_id: int) -> list[object]:
         return [connection]
 
-    async def get_service(_service_id: int) -> Tool:
+    async def get_service(_service_id: int) -> Service:
         return tool
 
     async def known_room(connection_id: int, room_locator: str) -> bool:
@@ -297,12 +298,13 @@ async def test_resource_transport_selects_messenger_capability_by_known_room(
         "get_connections_by_agent",
         connections,
     )
-    monkeypatch.setattr(file_share_service.service, "get_service_by_id", get_service)
+    monkeypatch.setattr(service_catalog, "get_service_by_id", get_service)
     monkeypatch.setattr(
         messenger_module,
         "messenger_room_locator_known",
         known_room,
     )
+    monkeypatch.setattr(service_catalog, "get_services_by_ids", AsyncMock(return_value={42: tool}))
     monkeypatch.setattr(
         messenger_module,
         "messenger_for_agent_connection",
@@ -330,7 +332,7 @@ async def test_resource_transport_uses_file_share_for_non_room_path(
         base_url="https://cloud.example.com",
         param_map={"login": "login", "password": "password"},
     )
-    tool = Tool(
+    tool = Service(
         code="nextcloud",
         label="Nextcloud",
         file_share_config=cfg,
@@ -342,7 +344,7 @@ async def test_resource_transport_uses_file_share_for_non_room_path(
     async def connections(_agent_id: int) -> list[object]:
         return [connection]
 
-    async def get_service(_service_id: int) -> Tool:
+    async def get_service(_service_id: int) -> Service:
         return tool
 
     async def unknown_room(_connection_id: int, _room: str) -> bool:
@@ -361,7 +363,7 @@ async def test_resource_transport_uses_file_share_for_non_room_path(
         connections,
     )
     monkeypatch.setattr(
-        file_share_service.service,
+        service_catalog,
         "get_service_by_id",
         get_service,
     )
@@ -370,6 +372,7 @@ async def test_resource_transport_uses_file_share_for_non_room_path(
         "messenger_room_locator_known",
         unknown_room,
     )
+    monkeypatch.setattr(service_catalog, "get_services_by_ids", AsyncMock(return_value={42: tool}))
     monkeypatch.setattr(
         file_share_service.connection_service,
         "get_params_as_dict",

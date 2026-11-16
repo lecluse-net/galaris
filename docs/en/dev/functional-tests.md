@@ -784,6 +784,12 @@ dismissal, keyboard focus, touch and disabled items.
 Outside dismissal also covers the source area, stopped events and embedded frames while
 preserving focus and the clicked control's action.
 
+`document-group-move.spec.mjs` checks group order, descendants, rejection of the entire
+selection without partial moves, retry and late responses after a session change. Its HTTP
+boundary simulates the batch transaction; `app/document/tests/test_bulk_moves.py` verifies
+atomicity on PostgreSQL. `library-root.spec.mjs` exercises Text and Data formats in the
+shared library on mobile and desktop, without mounting the retired Dataset tree.
+
 `attachment-rename.spec.mjs` checks name entry, recoverable errors and dialog dismissal
 in real components. Its E2E journey checks Document renaming, reopening, renaming from
 Files and preservation of the body, revision, identity and bytes on mobile and desktop.

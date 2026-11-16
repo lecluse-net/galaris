@@ -163,7 +163,7 @@ for (const treeRow of [false, true]) for (const width of [1440, 390]) test(`docu
   await row.screenshot({ path: testInfo.outputPath('document-menu-button.png'), animations: 'disabled' })
   await menuButton.click()
   await expect(page.getByRole('menu')).toBeVisible()
-  for (const name of ['Create Text document', 'Create Data document', 'New document from…']) {
+  for (const name of ['Create a document in Text format', 'Create a document in Data format', 'New document from…']) {
     await expect(page.getByRole('menuitem', { name, exact: true })).toHaveCount(treeRow ? 1 : 0)
   }
   if (treeRow) {

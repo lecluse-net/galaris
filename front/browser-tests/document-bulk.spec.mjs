@@ -208,7 +208,7 @@ test('shortcuts on a paginated document row target that document and preserve th
   await page.keyboard.press('F7')
   await page.getByRole('link', { name: 'Report 01', exact: true }).hover()
   await page.getByRole('button', { name: 'Actions for document Report 01', exact: true }).click()
-  for (const name of ['Create Text document', 'Create Data document', 'New document from…']) {
+  for (const name of ['Create a document in Text format', 'Create a document in Data format', 'New document from…']) {
     await expect(page.getByRole('menuitem', { name, exact: true })).toHaveCount(0)
   }
   await page.keyboard.press('Escape')

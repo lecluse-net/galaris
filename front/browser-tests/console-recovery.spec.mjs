@@ -43,7 +43,8 @@ for (const active of [true, false]) {
       const form = page.getByRole('dialog').first()
       // Unsaved activation changes must not take effect during a technical action.
       await form.getByRole('switch', { name: 'Active connection', exact: true }).click()
-      await form.getByRole('button', { name: action, exact: true }).click()
+      await form.getByText('SSH configuration tools', { exact: true }).locator('..')
+        .getByRole('button', { name: action, exact: true }).click()
       if (action === 'Test') {
         await expect(page.getByRole('dialog').last()).toContainText('"reachable": true')
         await page.getByRole('dialog').last().getByRole('button', { name: 'Close', exact: true }).last().click()

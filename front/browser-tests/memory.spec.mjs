@@ -691,7 +691,7 @@ test('calendar default keeps the current instant during a repeated global hour',
   })
 })
 
-test('calendar waits for the global timezone and recovers its loading failure', async ({ page }) => {
+test('calendar keeps wall-time editing disabled until the global timezone recovers', async ({ page }) => {
   await page.clock.setFixedTime(new Date('2026-09-27T16:12:45Z'))
   await memoryItemFixtures(page)
   let fail = true
@@ -706,11 +706,14 @@ test('calendar waits for the global timezone and recovers its loading failure', 
   await mount(page, 'app/memory/pages/index.vue', { route: '/memory?agent=7' })
   await expect(page.getByRole('button', { name: 'Retry', exact: true })).toBeVisible()
   await expect(page.getByLabel('Target date and time', { exact: true })).toBeDisabled()
-  expect(requests).toEqual([])
+  // The UTC instant is already known; browsing starts in parallel with defaults.
+  // A failed auxiliary read must still leave wall-time editing disabled.
+  expect(requests).toHaveLength(1)
+  expect(requests[0].temporal.target_at).toBe('2026-09-27T16:12:00.000Z')
   fail = false
   await page.getByRole('button', { name: 'Retry', exact: true }).click()
   await expect(page.getByLabel('Target date and time', { exact: true })).toHaveValue('2026-09-27T18:12')
-  await expect.poll(() => requests.length).toBe(1)
+  await expect.poll(() => requests.length).toBe(2)
   await expect(page.getByRole('button', { name: 'Retry', exact: true })).toHaveCount(0)
   expect(requests[0].temporal).not.toHaveProperty('timezone')
 })
