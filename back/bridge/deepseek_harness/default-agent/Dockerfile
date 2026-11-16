@@ -36,7 +36,7 @@ RUN case "${TARGETARCH}" in \
         --targets="node24-linux-${dsh_arch}"
 
 
-FROM python:3.14-slim-trixie
+FROM python:3.15-slim-trixie
 
 ARG RUNTIME_UID=1000
 ARG RUNTIME_GID=1000
