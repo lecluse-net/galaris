@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 
 # Keep the Node carrier reproducible alongside the pinned DSH revision.
-FROM node:24.22.1-bookworm-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS dsh-builder
+FROM node:26.13.1-bookworm-slim@sha256:5df79989ed685e09f0a98019db4cebfb22fb9df1a53c0161664a011f7ff6b0f1 AS dsh-builder
 
 ARG DSH_REF
 ARG TARGETARCH=amd64
