@@ -148,7 +148,7 @@ jobs:
         run: make tests-providers
       - name: Preserve provider contract results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: provider-contracts
           path: artifacts/provider-contracts.xml
@@ -182,7 +182,7 @@ jobs:
         run: make regression-check
       - name: Preserve coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: critical-branch-coverage
           path: |
@@ -208,7 +208,7 @@ jobs:
         run: make tests-front-components ARGS='--max-failures=0'
       - name: Preserve component traces and service logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: frontend-components
           path: artifacts/front-components/
@@ -229,7 +229,7 @@ jobs:
         run: make tests-e2e ARGS='--project=${{ matrix.browser }} --repeat-each=1 --max-failures=0'
       - name: Preserve browser traces and service logs
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: chat-e2e-${{ matrix.browser }}
           path: artifacts/e2e/
