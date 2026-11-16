@@ -481,6 +481,19 @@ async def _handle_connect(
         logger.warning("Rejected invalid WebSocket authentication: {}", sid)
         return False
 
+    if _sio:
+        try:
+            await _sio.save_session(  # type: ignore
+                sid,
+                {"user_id": identity.user_id, "role_id": identity.role_id},
+            )
+        except KeyError:
+            # Socket.IO can lose its transport while authentication awaits the
+            # database. Do not resurrect a disconnected client in our registries.
+            await _handle_disconnect(sid)
+            logger.debug("WebSocket transport closed during authentication: {}", sid)
+            return False
+
     logger.debug(
         "Authenticated WebSocket client: {} user_id={} role_id={}",
         sid,
@@ -495,10 +508,6 @@ async def _handle_connect(
         _event_subscriptions[sid] = subscriptions
 
     if _sio:
-        await _sio.save_session(  # type: ignore
-            sid,
-            {"user_id": identity.user_id, "role_id": identity.role_id},
-        )
         await _sio.emit("welcome", {"message": "Welcome to this server !"}, room=sid)  # type: ignore
     return True
 

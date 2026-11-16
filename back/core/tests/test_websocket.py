@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock
 from unittest.mock import Mock
 
 import pytest
+from engineio.async_socket import AsyncSocket
+from socketio import AsyncServer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core import websocket
@@ -122,6 +124,39 @@ async def test_connect_accepts_valid_token_and_stores_identity(
     assert fake_server.events == [
         ("welcome", {"message": "Welcome to this server !"}, "sid-3")
     ]
+
+
+@pytest.mark.parametrize("disconnect_during_auth", [False, True])
+async def test_connect_handles_transport_disappearing_during_authentication(
+    monkeypatch: pytest.MonkeyPatch, disconnect_during_auth: bool,
+) -> None:
+    server = AsyncServer()
+    transport = "synthetic-transport"
+    server.eio.sockets[transport] = AsyncSocket(server.eio, transport)
+    sid = await server.manager.connect(transport, "/")
+    authenticating, resume = asyncio.Event(), asyncio.Event()
+
+    async def authenticate(_token: str) -> websocket._SocketIdentity:
+        authenticating.set()
+        await resume.wait()
+        return websocket._SocketIdentity(user_id=42, role_id=7)
+
+    monkeypatch.setattr(websocket, "_sio", server)
+    monkeypatch.setattr(websocket, "_authenticate_socket_token", authenticate)
+    monkeypatch.setattr(websocket, "_event_subscriptions", {})
+    connecting = asyncio.create_task(websocket._handle_connect(
+        sid, {}, {"token": "synthetic-token", "events": ["chat.message"]},
+    ))
+    await asyncio.wait_for(authenticating.wait(), timeout=1)
+    if disconnect_during_auth:
+        await server.manager.disconnect(sid, "/")
+        await websocket._handle_disconnect(sid)
+        server.eio.sockets.pop(transport)
+    resume.set()
+    assert await asyncio.wait_for(connecting, timeout=1) is not disconnect_during_auth
+    assert (sid in websocket._connected_identities) is not disconnect_during_auth
+    assert (sid in websocket._event_subscriptions) is not disconnect_during_auth
+    assert sid not in websocket._displayed_resource_rooms
 
 
 async def test_socket_token_authenticates_active_user(db: AsyncSession) -> None:
