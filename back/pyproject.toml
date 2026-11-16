@@ -34,7 +34,7 @@ dependencies = [
     "bcrypt~=5.0",                   # pwdlib hashing backend
     "cryptography~=50.0",            # encryption (core/util/encryption)
     # Real-time frontend transport and HTTP client
-    "python-socketio~=5.17",
+    "python-socketio~=5.18",
     "httpx~=0.28",
     "httpx2~=2.16",                  # blocking sentinel transport; bounded response decompression
     # Logging and serialization
