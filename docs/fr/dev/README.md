@@ -451,6 +451,15 @@ Tâche. Un Process compatible garde la priorité absolue ; la tâche prend en ch
 durables, livraisons, tiers, systèmes externes sans Process et travaux substantiels. Le catalogue
 conversationnel des Processes reste une projection de données et ne répète plus cette politique.
 
+Cette politique possède aussi le traitement des limites de capacité : une fonction absente du
+round ou une méthode inconnue ne prouve pas l'impossibilité en Task. La Task peut explorer les
+moyens et tenter le résultat demandé ; une interdiction vérifiée reste applicable. Les inventaires
+fournissent des faits bornés, communs au texte et aux deux chemins vocaux, sans seconde consigne
+d'admission. Le guide opérationnel renvoie à cette politique ; les règles de transport conservent
+le style et les reçus. Le flux reste dispatch → run, sans jugement ni appel décisionnel ajouté.
+Une personnalisation du Param reste prioritaire : vérifier sa valeur effective avant d'attribuer
+un comportement au nouveau défaut. Voir la [décision 0297](../../../project/decisions/0297-unified-conversation-capability-policy.md).
+
 Le prompt commun rend une seule frontière de non-fiabilité avant les historiques, souvenirs,
 ressources et résultats récupérés. Les prompts conversation et voix déclarent l'identité comme une
 parole directe à la première personne, puis rappellent brièvement cette incarnation en fin d'arbre,
@@ -952,8 +961,10 @@ la passerelle Galaris et conservent les deux niveaux d’effort.
 
 Chaque agent référence un profil LLM personnel ou conserve `profile_id = NULL` pour suivre le
 profil courant. Les usages texte partagent quatre niveaux : `ultra-low` pour Dream ; `low` pour le
-dispatcher et la conversation rapide ; `standard` pour l’exécuteur et le suivi des
-Goals ; `high` pour l’exécuteur high, le planner et le Lab IA. Les modèles spécialisés (médias,
+dispatcher et la conversation rapide ; `standard` pour l’exécuteur ; `high` pour l’exécuteur
+high, le planner et le Lab IA. Le monitoring des Goals utilise exclusivement la sélection
+Décision, sans repli texte ; sans elle, les cycles continuent sans clôture automatique.
+Les modèles spécialisés (médias,
 transcription et embeddings) conservent leurs colonnes dédiées. Une valeur vide dans un profil
 personnel reste vide et ne reprend jamais le profil courant. La sélection du planner couvre aussi
 la synthèse finale du plan. Les gateways reconnaissent également les familles Claude
@@ -1251,12 +1262,15 @@ Browser, Search, Image et Multimedia sont connectés actifs par défaut. Console
 interne est provisionnée automatiquement à la création d'un agent utilisant le
 harnais interne et activée après vérification SSH/SFTP. Si l'exécuteur est
 indisponible, la connexion reste inactive ; le provisionnement peut être relancé
-depuis les connexions. Ces cinq Services sont autorisés en conversation à leur
-première initialisation. Les réglages et restrictions existants sont conservés.
+depuis les connexions. Browser et Search sont autorisés en conversation à leur première
+initialisation ; Console, Image et Multimedia exigent l'activation de cet accès dans le
+Service. Les réglages et restrictions existants sont conservés.
 
-Les packages `goal_management`, `skills` et `process_admin` sont déclarés dans
+Les packages `goal_management` et `process_admin` sont déclarés dans
 `app.services.mandatory_services` avec `default_active=False`. La synchronisation crée donc une connexion
-pour chaque agent compatible, mais ne lui accorde aucune fonction par défaut. Une connexion
+pour chaque agent compatible, mais ne lui accorde aucune fonction par défaut. `skills`
+démarre au contraire actif, avec la portée personnelle et les restrictions existantes préservées.
+Une connexion
 `goal_management` active avec une portée administrative élargit les fonctions Goal partagées
 aux agents de cette portée locale (`personal`, `team`, `all`) et expose
 uniquement les commandes administratives `goal_create`, `goal_update`, `goal_delete`, `goal_pause`,

@@ -97,8 +97,9 @@ Pour un Dataset, `file_read` pagine en caractères et `file_edit` édite des lig
 complet après modification doit être valide. `file_write`, `file_edit` et `file_append`
 exigent la révision lue. Préférer remplacement ou édition à la concaténation de JSON.
 Copier une source `application/json` vers `data://` crée un nouveau Dataset privé.
-Les exports PDF/HTML restent propres aux documents HTML. Les autres formats de documents
-restent hors périmètre. Le [HTML interactif](document-apps.md) permet désormais
+Les exports PDF/HTML des documents Texte utilisent leur instantané statique. Les autres
+formats déclarent leurs capacités et leur repli dans le [contrat des formats](document-formats.md).
+Le [HTML interactif](document-apps.md) permet désormais
 aux documents HTML de contenir des formulaires et d'accéder à des datasets déclarés via un
 runtime isolé ; l'historique et les exports restent inertes.
 

@@ -22,6 +22,9 @@ Les chemins ci-dessous sont relatifs à votre instance Galaris.
 Pour comprendre les jalons, les plans, les questions et les reprises, consulter le
 [guide des tâches](tasks.md).
 
+Le [client Windows/Linux](desktop.md) reprend ces mêmes menus avec des onglets et une session
+propre à chaque serveur HTTPS. Son installation et ses mises à jour sont distinctes de celles du serveur.
+
 ## Retrouver un travail et intervenir
 
 L’accueil regroupe les conversations non lues, les indicateurs de consommation et **Activité
@@ -54,6 +57,11 @@ Lors de la première ouverture d'un onglet ou d'un éditeur, un indicateur de ch
 peut apparaître brièvement. Le reste de la page reste utilisable. Si le chargement échoue,
 **Réessayer** relance l'ouverture sans recharger la page ni effacer les saisies en cours.
 Une erreur persistante laisse la vue en échec ; les autres actions restent accessibles.
+
+Les catalogues et les préférences affichent l'échec de leur propre chargement : une autre
+action réussie ne masque pas ce diagnostic. Utilisez **Réessayer** dans la bannière concernée.
+Dans Discussion, le détail d'une tâche reste ouvert quand les messages se synchronisent ;
+changer de conversation le ferme.
 
 Les arborescences de données regroupent les branches de plus de 100 entrées en
 répertoires virtuels numérotés, avec une icône de dossier compressé cyan. Dépliez la
@@ -514,15 +522,12 @@ présent dans la liste Documents mais absent de l'arborescence tant que vous ne 
 Aucun dossier Objectifs n'est imposé. Les dossiers déjà créés gardent leur nom et se modifient
 comme les autres dossiers, sans traduction ou renommage automatique.
 
-Les agents sont invités à synthétiser le suivi en conservant les informations utiles.
 Chaque nouvelle tâche de cycle reçoit le lien du document de suivi, à lire par pages selon
-les besoins, plutôt qu'une copie complète dans son objectif. Après le cycle, la synthèse
-regroupe les répétitions et l'historique devenu inutile sans supprimer les chantiers ouverts,
-les décisions, les contraintes ni les preuves utiles. Cette consigne s'applique aussi avec
-un prompt de suivi personnalisé ; elle ne garantit pas une taille maximale.
-Cette consigne n'impose aucun plafond de caractères ni aucune troncature du suivi ou
-des justifications et preuves du jugement. Les contrôles HTML et le quota de stockage
-documentaire commun restent applicables.
+les besoins, ainsi que le résultat du cycle précédent. Le suivi reste modifiable ; aucun
+modèle de monitoring ne le réécrit. Seul le LLM décisionnel du profil peut répondre
+`CONTINUE` ou `STOP`. Sans ce modèle, les tâches continuent selon leur planning sans
+clôture automatique. Un blocage ou une panne du monitoring ne met pas le Goal en pause.
+Les pauses humaines et les questions au référent conservent leur fonctionnement.
 
 La page **Processus** affiche ses listes sans attendre le contrôle du moteur externe ni
 le catalogue des agents. Les détails d'une exécution et son diagramme se chargent seulement

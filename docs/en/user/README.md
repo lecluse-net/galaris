@@ -98,7 +98,7 @@ A Service represents the provider, for example **Ionos**, and can combine API, M
 messaging, listener, Mail and Calendar. Mail and CalDAV are optional provider protocols.
 Every agent also has a default internal **Personal agenda** without an external connection.
 Ask the agent to book an appointment or set a reminder; it uses its authorized agenda functions.
-Goals retain durable outcome tracking and their own reviews: a reminder must not duplicate an
+Goals retain their own work cycles: a reminder must not duplicate an
 already scheduled Goal cycle.
 For Ionos Mail, create **Ionos**, enable **Mail**, enter servers in its global parameters,
 then create an Ionos connection for each agent with its email address and password.
@@ -112,9 +112,10 @@ The URL uses the password type because it may contain a private token.
 recurrences and Task launches per event. See [Agenda and Task launches](calendar.md).
 Appointments are read from a local replica; remote changes synchronize in the background.
 A pending write is not yet confirmed by the provider. Source kind iCalendar also permits a
-read-only subscription. External calendar actions require explicit activation. Each due action,
-including activated VALARM alarms, creates a Task containing the event information; an event
-without an action creates no Task. **Execution history** follows each occurrence separately with
+read-only subscription. New internal and synchronized agendas enable Task launches by default;
+saved deactivations are preserved. Without a specific action, each event launches a Task at
+its start. Configured VALARM alarms or actions replace that default for the occurrence.
+**Execution history** follows each occurrence separately with
 its Task link and state. Only a successfully completed Task is marked processed. The Task
 may start a Process when needed, subject to its ordinary tool permissions.
 
@@ -283,9 +284,11 @@ A planned Task remains finite work: it ends after the requested delivery. A **du
 You may provide the desired outcome without knowing the method. The Agent can research,
 experiment, improve existing work without external news and consult colleagues. It freely
 organizes strategy and approaches in tracking, preserving reasons for decisions and rejected
-approaches. A fresh-context review Task examines work before automatic completion and after
-persistent stagnation. A concrete blocker or failed review can pause the Goal; tracking explains
-the resumption conditions. Resuming preserves work and history. Success depends on the original
+approaches. After each Task, only the profile's decision model may choose to continue or finish.
+It does not rewrite tracking or create reviews. A blocker keeps the Goal active for reassessment
+on its schedule. Without a decision model, cycles continue without monitoring or automatic
+completion. A model outage retains its diagnostic without stopping work. Each Task result is
+passed to the next cycle. Human pauses and reply waits remain authoritative. Success depends on the original
 criteria and available evidence; this mechanism does not guarantee solving every objective.
 
 When a cycle depends on an unmade human choice, the Agent can ask the referrer and wait
@@ -293,9 +296,8 @@ for the reply. An already recorded decision should be read from its source; a fa
 to make the choice should be checked before asking. Waiting does not mean the Goal is achieved.
 
 In **Goals**, the list shows the responsible Agent’s avatar and name.
-In **Cycles**, each cycle shows its assessment and recorded evidence. When a review Task
-exists, **Open review** opens its details in an overlay, subject to Task privileges. Closing
-the review returns to the same Goal and cycle history.
+In **Cycles**, each cycle shows the applied decision, monitoring state and recorded evidence.
+No review-opening action is offered.
 **Fixed dates in the agenda** supports recurrence in a chosen timezone. The **Goals** layer
 in the [Agenda](calendar.md) shows future passages, then the exact cycle
 and Task for each elapsed passage. Configuration changes preserve the past and replace
@@ -320,14 +322,12 @@ each parent before its descendants. A sub-goal retains its own category, which a
 when detached from its parent. Changing the root’s category therefore reclassifies its entire
 branch without overwriting individual categories.
 
-Galaris updates Goal tracking automatically at the end of the cycle, using the evidence
-returned by the Agent. A requested delivery still needs to be performed with the required
-permissions; automatic tracking does not replace it.
+Each Task result retains its evidence and useful context for the next cycle. Monitoring does
+not rewrite the tracking Document. A requested delivery still requires its authorized action.
 
-In **Preferences → Instructions**, authorized users can customize the tracking prompt: the current-state
-synthesis, information to preserve, and continuation decision. Changes apply to subsequent
-judgements. **Restore default** restores the Galaris instructions, which merge repetitions
-without imposing a target length.
+In **Preferences → Instructions**, authorized users can customize the `CONTINUE`/`STOP`
+decision prompt. Changes apply to subsequent judgements and cannot enable text synthesis
+or reviews. **Restore default** restores the Galaris instructions.
 
 When an Agentic HR Agent has the corresponding management capabilities, you can ask it, for example:
 
@@ -452,13 +452,13 @@ error, you can retry without entering them again; an unchanged retry keeps the m
 to avoid a second admission if the first send was already received. Once confirmed, a slow or
 unavailable conversation refresh does not block the next send or attachment selection.
 Text is saved immediately in browser local storage, files in IndexedDB, and the draft
-is synchronized to the server every two seconds while editing. Attachments upload as
-soon as they are selected, before posting. Reloading, switching conversations or returning
-from a document restores the draft for that account and conversation. Offline edits remain
-local and synchronization resumes when connectivity returns. The status below the composer
-reports saving errors and offers retry. If another editor changed the server draft,
-**Keep this draft** asks for confirmation before replacing it. There is one current draft
-with no history; its saved content is cleared after confirmed sending while preserving
+is synchronized to the server every two seconds while editing. Attachment uploads start
+when selected. **Post** uses local bytes and already uploaded attachments without waiting
+for autosave. Reloading, switching conversations or returning from a document restores the
+draft for that login session, account and conversation. Saving outages and conflicts recover
+in the background, without error messages or confirmation; a nonempty local draft takes
+priority when the server holds a different version. Login sessions have separate drafts.
+Each current draft has no history; its saved content is cleared after confirmed sending while preserving
 edits made during that send. Clearing browser data removes edits that have not yet reached
 the server.
 
@@ -583,6 +583,13 @@ A document open beside the chat provides context; its words never trigger automa
 Attaching an image to a document and sending it back in the chat are separate requests.
 
 ### Understanding Short Conversations and Background Work
+
+An unavailable conversation function does not prove that Tasks lack that capability.
+For work beyond the conversation, the agent can start a Task to discover available means
+and attempt the requested outcome, even when the method is still unknown. A matching assigned
+Process retains priority. Rights, denials and pending approvals still apply; an unresolved
+human choice requires clarification. This policy is shared by text, turn-based Voice and
+native realtime Voice.
 
 During an update or restart, an ongoing conversation automatically continues from its saved
 state. You do not need to resend the message. Confirmed actions are retained and interruptions

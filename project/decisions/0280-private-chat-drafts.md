@@ -10,8 +10,10 @@ not protect an attachment chosen before navigation.
 
 ## Decision
 
-Chat owns one replaceable draft per authenticated human user and canonical Messenger
-room. Text commits synchronously to scoped browser local storage; attachment bytes use
+Chat owns one replaceable draft per authenticated human user, validated login session
+family and canonical Messenger room. The server derives its session scope from the
+authenticated context, never a client-supplied selector. Text commits synchronously to
+browser local storage scoped to the login generation; attachment bytes use
 IndexedDB. A two-second dirty-only loop sends complete bounded snapshots over the
 existing authenticated HTTP API, with immediate attachment uploads and lifecycle flushes.
 This does not introduce a websocket transport or character-by-character updates.
@@ -19,7 +21,21 @@ This does not introduce a websocket transport or character-by-character updates.
 `chat_drafts` retains only the current content and concurrency/idempotency cursors, with
 no draft history. Optimistic revisions prevent stale writes and clears from overwriting
 new edits. A pending mutation receipt is kept locally so a lost save response can be
-retried even after further typing. Explicit conflict replacement requires confirmation.
+retried even after further typing. Conflicts recover automatically: a nonempty local
+snapshot takes priority; an empty local snapshot may restore a different remote draft.
+Saving failures remain outside the user-facing error flow and never gate publication.
+
+Post snapshots the local message immediately. Uploaded private file keys are authorized
+again under user, session and room; remaining local files travel through the ordinary
+multipart publication endpoint, including when autosave is pending or unavailable.
+Publication idempotency remains keyed by the client message identity. A draft cursor
+only controls conditional cleanup; it is not required to publish the current local text
+and authorized file keys. Known sent snapshots cannot be resurrected by delayed saves.
+
+The schema adds a legacy empty session scope without discarding existing rows. The first
+validated session opening a pre-upgrade draft claims its cursor, content and private files
+atomically; subsequent sessions start separately. Legacy browser snapshots and bytes are
+claimed for one login generation while their recovery copies remain available.
 
 Draft attachments use the existing bounded Chat upload path and immutable `core.storage`
 identities. Chat owns their private references and author/room checks; they are not

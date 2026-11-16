@@ -374,6 +374,9 @@ changes a default, a customization is never overwritten: the editor asks whether
 instance version or adopt the newly provided version.
 
 **Preferences → Instructions** exposes the complete `ai.goal-tracking-system-prompt` prompt.
+Monitoring uses only the profile's **Decision model** for a `CONTINUE`/`STOP` choice,
+without generating tracking or falling back to text. Without that model, or during an outage,
+cycles continue on schedule and automatic completion is never presumed.
 `GOAL_CONFIG_ACCESS` and `GOAL_CONFIG_EDIT` control reading and editing it.
 Each new judgement uses the configured value; a judgement already started keeps its request.
 New Goal tracking Lab datasets copy that value, then keep their own version independently
@@ -1185,6 +1188,28 @@ The harness manager has an independent deployment cycle and may reside on anothe
 machine. `make update` never updates it and does not restart any external host service. Its
 update is performed on its own host with the `harness_manager` Makefile, explicitly coordinating
 compatibility with the Galaris deployments that consume it.
+
+### Changes after 0.3.0
+
+To move from 0.3.0 to the current code, follow the normal backup procedure and run
+`make update`. DbAdmin applies schema and dataset changes at startup. These points also
+cover work still in development; they do not identify a new published release.
+
+- Legacy Mail and Calendar connections become custom provider Services, preserving
+  parameters and history. The [catalogue](../user/services.md) creates local copies;
+  refreshing it never replaces your Services.
+- `document_format` replaces `document_type` in APIs and storage. Legacy `html` and `form`
+  formats become `text`, preserving URIs and rights. Update integrations still sending
+  the old field; see the [format contract](../dev/document-formats.md).
+- Every agent receives a personal agenda. New synchronized agendas enable Task launches
+  at event start; explicit deactivations are preserved. Check agendas and their connection's
+  interval using the [Agenda journey](../user/calendar.md).
+- Goal monitoring uses only the Decision model. Without it, cycles continue without
+  automatic completion. Former automatic `BLOCKED` and `REVIEW_UNAVAILABLE` pauses gradually
+  resume; human pauses and waits for answers remain respected. Former review Tasks retain
+  their content, state and costs but no longer participate in Goal supervision.
+
+The [desktop client](../user/desktop.md) is distributed and updated separately from the server.
 
 <a id="upgrade-0-3"></a>
 ### Upgrading from 0.2.0 to 0.3.0

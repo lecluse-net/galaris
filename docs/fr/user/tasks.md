@@ -16,6 +16,12 @@ de méthode, les jalons, les plans, les questions et la reprise. Pour créer vot
 demande, suivre le [guide utilisateur](README.md) ; pour trouver les commandes, consulter
 les [menus et parcours](navigation.md).
 
+En conversation texte ou vocale, l'agent peut lancer une tâche lorsque les outils du dialogue
+ne suffisent pas. La tâche peut explorer la méthode et les moyens disponibles : cette incertitude
+ne vous oblige pas à réaliser vous-même le traitement. Son lancement confirme la prise en charge,
+pas la réussite du résultat. Les droits et accords nécessaires restent applicables ; une préférence
+humaine indispensable doit être précisée avant le travail.
+
 ## Consulter les coûts enregistrés
 
 Dans le détail d'une tâche, ouvrir **Détails**, puis **Bilan des coûts** dans la zone

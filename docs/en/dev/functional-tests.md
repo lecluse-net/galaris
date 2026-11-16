@@ -2,6 +2,17 @@
 
 # Functional guarantees catalogue
 
+Recovery scenarios in `front/browser-tests/preferences.spec.mjs` and
+`request-lifecycle.spec.mjs` check operation-specific read errors, retry and preservation
+of a Service form reopened during a save. Pinia interactions run in real Vue with its
+development proxies. The central `front/core/util/sessionStore.test.mjs` also protects
+proxy identity and response ordering; store tests cover mutations and session changes.
+`task-panel.spec.mjs` preserves Task details across a message-boundary change and closes
+them when the conversation changes. `llm-calls.spec.mjs` exercises shared resource details;
+`agents.spec.mjs` covers retry and clearing revealed MCP tokens when changing agents.
+The frontend baseline enforces acyclic module dependencies and no private cross-module
+imports. These guarantees do not replace assembled-application E2E tests.
+
 The service catalog and self-contained YAML are covered by
 `app/services/tests/test_service_catalog.py`: SVG/PNG/GIF icons, legacy YAML, secret-free
 presets, compatibility and atomic refresh with offline fallback.
@@ -19,6 +30,9 @@ independent sources, sanitized errors and out-of-scope denials. Browser scenario
 `front/browser-tests/connection-actions.spec.mjs` and `connections-loading.spec.mjs`
 cover testing, failure/retry, late responses, decision privileges, saving, reopening
 and connection isolation using the shared Permissions table.
+The scoped read preserves these guarantees with 0 or 500 unrelated, large Services
+without materializing their configurations; an unknown connection triggers no MCP
+discovery, and reopening exposes the current label.
 
 `make tests-document-formats` groups documentary guarantees and browser workflows.
 `app/document/tests/test_formats.py` covers contribution registration, exact-evidence
@@ -112,17 +126,32 @@ of missing effects, equivalent clock notation and clustered repetitions/translat
 infrastructure failures excluded. `test_reference_corpus.py` covers authenticated import and
 persistence. The [paired campaign](lab-reference-corpus.md)
 uses real models with simulated tools; its scores do not prove business effects.
+Conversation-boundary cases require a Task attempt when means are unknown and protect
+prohibitions, human choices, Process priority and direct reads. Mutations remove a required
+call or add a forbidden Task to verify the oracles. The benchmark can reuse complete prompts
+from a prior freeze, rejecting different models, effort, inputs, tools, fixtures or oracles.
+Composition tests cover unique policy injection and shared capability context for text,
+turn-based voice and realtime voice. None of these judgments is added to the runtime.
 `test_executor_outcomes.py` also reproduces raw argument equality rejecting defaults bound
 by the framework. Earlier references supplied arguments explicitly; new cases exercise
 omission and genuinely different values.
 
-`app/goal/tests/test_autonomous_goal.py` exercises durable review before completion with
-PostgreSQL: critical redirection, blockers distinct from success, Goal/tracking revision
-invalidation, superseded review costs, expired lease recovery and human completion during
-review. Only the model and scheduler wake boundary are replaced. `test_goal_runner.py`
-retains tracking recovery scenarios while requiring review before automatic completion.
+`app/goal/tests/test_autonomous_goal.py` exercises continuation without reviews or automatic
+pauses, unchanged tracking, retained Task results, stale decisions, leases, human pauses and
+obsolete pause recovery with PostgreSQL. `test_review_retirement.py` uses PostgreSQL and real
+Atlas to prove reference removal, idempotent metadata cleanup, rollback and preservation of
+every Task and its state. Review cancellation tests are retired because Goals no longer control
+those Tasks. The unused generative Goal schema and its specific tests are removed; editable
+tracking and the generic JSON adapter retain their coverage.
+`test_decision_monitoring.py` requires one native
+choice without text inference or fallback. `test_goal_runner.py` retains cost, scheduling and
+recovery coverage; a monitoring failure preserves its diagnostic without blocking the Goal.
+Mandatory reviews, generated synthesis and blocker pauses are intentionally retired by
+decision 0296. `test_supervision_benchmark.py` measures seven current-contract lifecycle scenarios
+with a scripted model boundary; synthetic prices do not measure monetary savings.
 In the development backend, `python -m scripts.qualify_goal_autonomy --output /tmp/goal-trial.json
---max-cost 1` runs six synthetic cases against the configured Goal model. Expected decisions
+--max-cost 1` runs six synthetic cases against the configured native decision model, with no
+tracking generation or text fallback. Expected decisions
 stay outside the prompt; `--prompt-file` permits an earlier reference. Reports retain fingerprints,
 decisions, cost and duration; failures or exceeded budgets return nonzero. This qualifies real
 judgement, not complete autonomous problem solving with tools.
@@ -171,9 +200,6 @@ provider: one request, two reads, added values, start and replay. It bounds SQL 
 auxiliary model calls. Resources shared by 1, 10, 50 and 200 fields require one metadata
 lookup per batch; the next call rechecks access. These measurements do not qualify real
 provider latency.
-
-History retry in `goals.spec.mjs` also checks retained evidence and review Task access
-according to privileges, without navigation or closing the Goal.
 
 Goal store tests cover deferred cycle loading, non-overlapping event batches, error recovery,
 late responses, closing and jumping directly to the last remaining page. `goals.spec.mjs`
@@ -281,6 +307,9 @@ coverage of resumable analysis, reader upgrades and source changes.
 `tests/test_document_rag_qualification.py` verifies rejection of fabricated facts/citations
 and unsupported full-reading claims based on base64. `make qualify-document-rag` executes
 real-model cases on synthetic sources, without entering the scheduler or creating memories.
+The Dream scenarios in `app/memory/tests/test_dream_attachments.py` reject interrupted
+native analysis (`length`, `content_filter`): partial descriptions are not persisted,
+the receipt remains retryable and the next attachment can still be processed.
 
 ## Agent renaming of Documents and Datasets
 
@@ -429,8 +458,11 @@ interactions.
 Non-empty cases with 0, 501 and 2,001 unrelated contacts also bound canonical reads
 and PostgreSQL work while preserving the canonical name, route and owner. Identity
 filters match exactly and select their union; an explicitly empty collection does not
-scan the directory. Cases with 501 and 1,001 routes retain every recipient across
-batches, and reopening reads a changed name.
+scan the directory. Cases with 501 and 1,001 routes traverse the canonical PostgreSQL
+contacts, retain every recipient and bound reads per batch without an extra empty page.
+Reopening and message attribution independently read changed names despite a retained
+session object; contacts owned by another agent remain excluded. Only the transport
+directory is simulated.
 
 ## Native Document reads
 
@@ -1101,6 +1133,10 @@ is retired: it could not distinguish SQL compilation from pauses elsewhere in th
 Durations remain diagnostic, and a disposable mutation that enables JIT must fail the guard. Process
 permission tests preserve denials, sharing and orphan definition exclusion; the access
 filter optimization removes folder and attachment branches that these lists do not need.
+Personal and administrative MCP lists reuse the SQL access selection and batched
+summary projection for 10, 50 and 500 results, without hydrating private state or
+checking each row separately. Scenarios preserve connection revocation and exclude
+runs outside the delegated scope.
 The same suite bounds SQL reads to three for pages of 10, 50 and 500 summaries linked
 to scoped Tasks/runs, without loading private execution state or traces. It preserves
 complete business JSON, ordering, archived labels and stored data, compares late changes
@@ -1763,6 +1799,10 @@ for agreement, denial, revocation and cancellation, without restarting the SDK.
 `make tests-harness-runtimes` exercises the embedded Codex, Claude, Hermes and DeepSeek SDKs
 with synthetic model and external transports: no effect before agreement, denial, resumption
 of the exact call, and MCP continuation. This qualification does not prove a deployment.
+For Codex and Claude, cancellation is exercised while authorization is pending:
+the subprocess must have exited before `stopped`, late approval has no effect and
+the same context does not restart. `test_runtime_control.py` also verifies that repeated
+stops preserve cleanup, including after an SDK-internal cancellation or a peer wait.
 The scenarios also check tool names, arguments, results, identities and failures for
 Codex, Claude and DeepSeek; Hermes retains its native history. Task projection and
 reconnection tests preserve bounded, redacted previews without changing effect receipts.
@@ -1907,6 +1947,11 @@ deltas. The progress scenario distinguishes text, fragmented reasoning and actua
 reasoning fragments do not force one save each, while block completion stays immediate.
 `app/agent/tests/test_message_contracts.py` retains one `tools_used` occurrence per invocation,
 including fragmented messages and repeated calls to the same tool.
+`app/task/tests/test_run_events.py` checks the same confidential-argument and result
+redaction in live previews and serialized Task snapshots, including `task.update`.
+Complete snapshots preserve large business payloads without mutating their source.
+The Chat tool-inspection scenario checks details live, after reload and after completion,
+without exposing its synthetic secret.
 `app/dataset/tests/test_datasets.py` verifies editing from a partial JSON read, LF/CRLF/CR
 line endings, preservation of adjacent content, revision conflicts and access rights.
 `test_inference_lifecycle.py` uses PostgreSQL to ensure polling, lease renewal and
@@ -1943,6 +1988,9 @@ projection without models, recursive folder visibility derived from readable doc
 separate personal classifications. Scenarios use PostgreSQL, including concurrent connections
 and stale Dream replay. `memory.spec.mjs` checks open-view invalidation and rejection of a
 response started before access revocation.
+The same scenarios cover attachments whose document has no graph reference:
+canonical source access and revocation, Dream text/PDF/image/video acquisition,
+preserved revisions and recovery without recreating that reference.
 
 The [12 September campaign](../../../project/audits/2026-09-12-functional-regressions.md)
 strengthens Process admission and recovery, media billing and delivery, evaluation
@@ -2196,7 +2244,7 @@ are in `front/browser-tests/`.
 | Harness boundary | Reject invalid results and events before publication, close streams, honor declared capabilities | `make tests-harness-contracts`, `app/agent/tests/test_driver_boundary.py` |
 | Harness policies | Shared configuration, SQL conflicts, call-time tool restrictions, opaque checkpoints and safe retry | `test_execution_configuration.py`, `test_checkpoint_contract.py`, `harness-policy.spec.mjs` |
 | Driver-owned retry | Preserve internal effect journals; explicit managed-network retry starts a new inference with the same Task parameters and archived receipts in simple Tasks and plans; stop or observe the previous actor before issuing fresh authority; automatic recovery observes the same actor without resubmission | `back/app/task/tests/test_task_service.py`, `back/app/harnesses/tests/test_checkpoint_recovery.py`, `back/app/agent/tests/test_checkpoint_contract.py`, `back/app/services/tests/test_action_authorizations.py` |
-| Real Harness SDKs | Execute all four pinned images against a local model; verify DeepSeek MCP loading | `make tests-harness-runtimes`, `artifacts/harness-runtimes/summary.txt` |
+| Real Harness SDKs | Execute all four pinned images against a local model; verify DeepSeek MCP loading. For Codex and Claude, exercise real SDK authorization/denial, cancellation while waiting, subprocess exit before `stopped`, no effect from late approval and no reopening on duplicate context submission. These interactions replace the old AST test requiring Claude's `query` function call; real SDKs still qualify streaming input and the permission callback. | `make tests-harness-runtimes`, `artifacts/harness-runtimes/summary.txt` |
 | `harnesses` | Runtime selection and configuration without losing active work | `test_service.py`, `test_runtime_actions.py`, `test_router.py`, `configuration.spec.mjs` |
 | `task` | Creation, pause, resume, completion and deletion; budgets and lease ownership | `test_task_service.py`, `test_workflow.py`, `test_active_lease.py`, `test_budget.py`, `task-panel.spec.mjs` |
 | Renewed request after failure | Preserve deliberate conversation and manual retry; independent creation preserves the failed Task's state, error and result and remains idempotent. The semantic choice between retry and creation is guided by model instructions | `back/app/services/tests/test_mcp_loader.py`, `back/app/conversation/tests/test_service.py`, `back/app/task/tests/test_task_service.py` |
@@ -2270,7 +2318,7 @@ are in `front/browser-tests/`.
 | First useful output | Ignore reasoning, internal decisions and empty text; retain initial measurements after retries; count concurrent calls once; keep missing evidence unknown and preserve agent scope | `app/llm/tests/test_timing.py`, `app/task/tests/test_activity_snapshot.py`, `app/conversation/tests/test_monitoring_service.py`, `execution.spec.mjs` |
 | Older document continuity | Recover the URI after fifty exchanges without documents, with current title/revision and provenance; exclude other contacts and forbidden, absent or deleted documents | `app/conversation/tests/test_context.py` |
 | `incident` | Group, diagnose and resolve failures with authorization and correction evidence | `test_incident_service.py`, `test_router.py`, `test_retention.py`, `lab-access.spec.mjs`, `e2e/specs/incident.spec.mjs` |
-| `dashboard` / frontend `index` | Scoped metrics with bounded aggregations; reuse visited months, refresh and invalidate the cache when access changes | `test_dashboard_service.py`, `dashboardStore.test.mjs`, `dashboard.spec.mjs`, `shell.spec.mjs`, `preferences.spec.mjs` |
+| `dashboard` / frontend `index` | Scoped metrics with bounded aggregations; reuse visited months, refresh and invalidate the cache when access changes; preload every avatar once and share its cache; cancel reads on closing, release Blob URLs and pause hidden periodic reads with immediate reconciliation on return | `test_dashboard_service.py`, `dashboardStore.test.mjs`, `dashboard.spec.mjs`, `shell.spec.mjs`, `preferences.spec.mjs` |
 | MCP Lab | Control all ten contracts through the real catalogue; atomic effects and receipts, revisions, live authorizations and pagination; publish generation once, compare treatments, retain separate agent opinions and assign/revoke the dedicated skill | `app/lab/tests/test_mcp.py`, `app/skill/tests/test_storage.py`, `lab-insights.spec.mjs` |
 | `onboarding` | Initialize without overwriting configuration; keep Welcome even when preconfigured until persisted personal confirmation; errors, retry, account changes, mobile and reopening | `test_services.py`, `front/browser-tests/onboarding.spec.mjs`, `e2e/specs/onboarding.spec.mjs` |
 | `webhook` | Authenticate and identify incoming deliveries without duplicate admission | `test_router.py`, `test_delivery_identity.py` |
@@ -2311,6 +2359,11 @@ Visible, opened and playing media is protected from eviction; other previews sha
 30 seconds and are invalidated on document changes, reconnects and session changes;
 original downloads are excluded. `services/chatPreviews.test.mjs` verifies request
 sharing, independent copies and metadata enrichment after a capture.
+
+`file-indexing.spec.mjs` and `useTaskActivity.test.mjs` verify that a hidden minute triggers
+no periodic reads, then returning immediately reconciles data without interrupting live
+messages. The streaming E2E journey attaches local preparation, first output, durable
+handoff and traffic-by-type measurements; they do not qualify remote provider latency.
 
 `front/browser-tests/topic-detail.spec.mjs` checks desktop and mobile dossier target dialogs
 for tasks, conversations, documents, Datasets and memories in their dedicated tab, including keyboard activation,
@@ -2519,13 +2572,14 @@ with real APIs, in Chromium, Firefox and WebKit.
 
 ### Personal document classification
 
-The Dataset library uses the same tree/list concept with independent personal folders.
-`back/app/dataset/tests/test_library.py` verifies user isolation, combined filters and paged
-sorting, JSON and permission preservation, HTTP denials and concurrent cycle prevention.
-`front/browser-tests/dataset-library.spec.mjs` exercises menus, subfolders, moves, branch
-deletion returning resources to the unclassified list, filters and late responses.
-`e2e/specs/datasets.spec.mjs` verifies persistent folders and moves in the assembled
-application alongside editing and sharing.
+Data Documents use the shared Document library. The unused standalone Dataset tree and
+its presentation assertions are retired. `front/browser-tests/document-classification.spec.mjs`
+protects folders, menus, subfolders, moves, errors, icons and deletion returning documents
+to the unclassified list. `front/browser-tests/dataset-library.spec.mjs` specifically protects
+personal classification of a readable Data Document without write access, common filters
+and late responses. Backend Dataset tests retain legacy API guarantees: isolation, JSON,
+permissions, paged sorting, HTTP denials and concurrent cycle prevention. Assembled journeys
+retain editing, saving, history and sharing of Data Documents.
 Document and Dataset classification tests also cover image icons without a dedicated file
 size limit, recognised bytes and formats, TIFF conversion to PNG and invalid image rejection.
 Component journeys exercise SVG/PNG/JPEG/WebP uploads, visible save errors in the picker,
@@ -2997,11 +3051,13 @@ package's evidence and editing on mobile and desktop.
 
 `chat-drafts.spec.mjs` protects Chat drafts through reload and navigation with text and
 attachments, offline recovery, server restoration, delayed responses and typing during
-send. `app/chat/tests/test_attachment_http.py` exercises real HTTP and PostgreSQL for
-private draft isolation, preuploaded attachment publication, denied access, stale
-revisions, idempotent retries and file retention/retirement. Assertions expecting uploads
-only on Post are replaced with checks for bytes transferred before sending and the draft
-token passed at Post time.
+send. Autosave 409/503 failures and stalled requests must neither emit user-facing errors
+nor prevent sending local bytes. Nonempty local content wins and two login sessions of
+the same account remain isolated. `app/chat/tests/test_attachment_http.py` exercises real
+HTTP and PostgreSQL for validated session isolation, one-time legacy draft adoption,
+preuploaded attachments mixed with local files, cross-session denials, idempotent retries
+and stale clears. The requirement to finish every draft upload before Post is retired:
+publication owns its files, whose bytes remain verified.
 
 ### Windows/Linux desktop client
 
@@ -3026,3 +3082,17 @@ neither Node nor the desktop API. Publication remains covered by
 `back/tests/test_release_publication.py`.
 Synthetic tests do not qualify physical devices, Web Push or upgrading between signed
 installers on a real workstation; see the [desktop guide](desktop.md).
+
+### Frontend concurrency and consistency
+
+`front/browser-tests/request-lifecycle.spec.mjs` verifies Voice filters during a read,
+slow Conversation polling without overlap, dismissal of an ongoing purge and preservation
+of a Topic form reopened while its previous save completes. The Skills journey verifies
+that overlapping editor openings never mix identity and content. Store and composable tests
+cover session/role changes, concurrent loading flags, file selection, catalogue invalidation,
+Task timer disposal, Goal reconnection and the Agent MCP context. `topicReferences.test.mjs`
+protects freshness, invalidation, coalescing and batches exceeding 500 references.
+
+Lint tests centrally protect button conventions, accessible names, dialog dismissal,
+static palette choices and observed promises in TypeScript and Vue. They do not constitute
+visual validation or a complete accessibility assessment.

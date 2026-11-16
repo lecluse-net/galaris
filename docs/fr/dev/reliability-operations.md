@@ -343,6 +343,36 @@ restent hors de cette mesure. La façade `core/util/facade` expose les primitive
 au bootstrap sans charger le catalogue de composants ; les mêmes instances restent
 disponibles via l'interface racine.
 
+`route_total_by_locale` mesure le parcours complet shell + chat sans compter deux fois
+les chunks partagés. Le contrôle du code cumulé conserve 660 000 octets gzip, soit la
+somme des anciens budgets initiaux anglais (460 000) et additionnels du chat (200 000) :
+déplacer un chunk entre ces étapes ne change plus le verdict. Les catalogues JSON sont
+ajoutés dans les mesures par langue et restent soumis aux budgets de démarrage ci-dessus.
+`packaged_assets` inventorie aussi les fontes, images et fichiers publics, avec les dix
+plus gros fichiers ; ces tailles sur disque ne représentent ni le trafic réel ni le seul précache.
+Le parcours synthétique de streaming dans `e2e/specs/chat.spec.mjs` joint les temps de
+préparation, de première réponse visible et de relais durable, ainsi que les transferts
+JS/CSS/fontes/API de sa navigation. Le fournisseur est simulé et la fin libérée explicitement.
+
+Les lectures périodiques de l'indexation de fichiers, de l'activité des tâches et de
+l'activité de l'accueil s'arrêtent
+dans un onglet masqué et reprennent immédiatement à son retour. Les événements temps réel
+restent traités ; une requête déjà engagée peut se terminer. Aucun délai ni droit n'est mis en cache.
+
+L'activité de l'accueil précharge tous les avatars des agents gérés une fois au montage,
+puis réutilise ces images pendant les actualisations. Une révision connue (`updated_at`)
+reste en cache pendant la session sans expiration temporelle, dans les limites de
+64 entrées et 16 Mio avec éviction des moins récemment utilisées. Une réouverture
+réutilise ces octets tant qu'ils sont retenus ; un catalogue relu expose la révision
+courante. Les mutations et changements de session invalident le cache. Les lectures
+sans révision conservent leur revalidation après 60 secondes. Le cache des avatars de
+conversation reste distinct, avec sa durée courte existante.
+La fermeture annule les lectures encore attendues et
+révoque les URL Blob possédées par l'écran, y compris un résultat qui arriverait tardivement.
+Un changement de droits annule les lectures d'activité en cours et rejette leurs réponses
+obsolètes. La lecture reprend sous les droits courants sans attendre l'ancienne réponse
+ni le prochain intervalle. La fermeture annule aussi ces lectures.
+
 Les lecteurs, éditeurs et prévisualisations lourds exposés par `core/util`, ainsi que les
 panneaux Activité, Fournisseurs & modèles et plusieurs sections des Préférences, se
 chargent à leur ouverture. `defineAsyncView` conserve le contrat Vue des props, événements,

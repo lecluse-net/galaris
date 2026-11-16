@@ -11,6 +11,9 @@ Documents and their shared summaries are independent of agents' personal memorie
 Sharing a document does not share any memory; deleting a reference in the memory
 graph does not delete the document. Memories about a document remain private to
 the agent that acquired them.
+An attachment analysis follows its source document's access rights even when
+that document has no reference in the memory graph. Reading the analysis does
+not allow editing the document and stops when access to the source is revoked.
 
 A document body uses the same full editor in the library, Chat, preview dialogs and
 Goal tracking, including its mobile layout. Rich text fields — memories, Agent profiles,

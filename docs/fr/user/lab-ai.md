@@ -2,6 +2,13 @@
 
 # Utiliser le Lab IA
 
+Pour qualifier le passage conversation → tâche, les corpus `latency-fr` et `latency-en` v2
+comprennent chacun douze scénarios fictifs. Importer le corpus, puis comparer les prompts
+dans **Lab → Conversation → Benchmarks** : examiner les tâches effectivement admises,
+les interdictions respectées, les clarifications et les réponses directes. Les outils sont
+simulés ; cette qualification s'exécute uniquement à votre demande dans le Lab et ne crée
+aucun contrôle supplémentaire pendant vos conversations.
+
 Pour évaluer le découpage du Planner, le corpus public `planner-boundaries` propose 24 cas
 synthétiques : traitement complet par fichier, collections ordonnées et reprises, tâches
 uniques complexes à conserver entières, petits lots mécaniques et demandes ambiguës.
@@ -29,7 +36,7 @@ la valeur de la variable, son contexte et le résultat attendu, avec un nom et s
 | Détection des sujets | Échange ordonné | Sujet de chaque message |
 | Extraction mémoire | Échange ou compte-rendu de tâche | CREATE, LINK ou IGNORE |
 | Apprentissage | Issue d’exécution | Leçons étayées |
-| Suivi d’objectif | Résultat du cycle | Décision et suivi durable |
+| Suivi d’objectif | Résultat du cycle | Choix décisionnel CONTINUE/STOP |
 | Exécuteur de tâches | Demande | Réponse et appels d’outils |
 | Exécuteur conversationnel | Sollicitation courante | Réponse et actions |
 | Exécuteur vocal | Sollicitation transcrite | Réponse orale et actions |

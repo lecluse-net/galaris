@@ -13,6 +13,9 @@ sont ceux des fonctions MCP réelles ; les effets restent simulés. Importer ave
 La version 2 conserve dans le reçu de pause le titre de la modification concurrente. Le
 scénario antérieur contenait une contradiction qui justifiait une vérification supplémentaire ;
 ses observations doivent être exclues puis remplacées par une comparaison appariée corrigée.
+La version 3 aligne aussi le titre et la description du reçu `goal_create` sur la demande
+effective. Les anciennes observations de ce cas ne permettent pas d'attribuer les appels
+correctifs à une dérive du modèle ; conserver leurs preuves et rejouer le cas corrigé.
 Les reçus sont comparés après application des seules valeurs par défaut déclarées : omettre
 un argument optionnel ne devient pas un faux échec, mais une valeur différente reste rejetée.
 
@@ -21,8 +24,16 @@ schémas, réponses simulées, prompts, modèle et effort sans appeler le modèl
 exécute la comparaison : même constructeur de production et mêmes instructions spécifiques,
 avec le guide commun comme seule différence entre les bras. Le modèle est celui du profil
 d'exécution, y compris pour les cas de conversation et de voix ; ce benchmark ne teste ni STT
-ni TTS. Les 32 nouveaux cas, les 40 cas de capacités/décisions/transfert et les 16 cas de
-conversation/voix donnent 88 scénarios, trois répétitions et 528 évaluations par défaut.
+ni TTS. Les 32 cas opérationnels, les 40 cas de capacités/décisions/transfert et les 48 cas de
+conversation/voix donnent 120 scénarios, trois répétitions et 720 évaluations par défaut.
+
+Pour comparer une consolidation complète du prompt, figer d'abord une référence avant les
+modifications, puis fournir `--baseline-prompts /tmp/operating-benchmark.<référence>/prompts.json`
+à la campagne suivante. Son bras `before` reprend le prompt complet `after` de cette référence ;
+le candidat utilise le constructeur et les paramètres courants. Les empreintes du modèle, de
+l'effort, des cas, outils, réponses et oracles doivent rester identiques. `--case` permet une
+sélection de scénarios nommés. Ces contrôles et appels s'exécutent uniquement au bench,
+jamais lors d'une conversation ordinaire. Les personnalisations des prompts restent prioritaires.
 
 Les preuves restent dans `artifacts/operating-benchmark.*` : manifeste, prompts complets,
 entrées figées, sorties, contrôles, coûts et durées. Les oracles restent hors du contexte
@@ -307,13 +318,31 @@ Six essais distincts conservent la livraison d'une confirmation explicitement ex
 Cette qualification du harness interne et du Chat ne couvre pas le navigateur, les bridges
 externes, les autres harnesses ni les autres parcours métier natifs.
 
+Cette mesure qualifie la politique de suivi automatique de l'époque. Depuis la décision
+[0296](../../../project/decisions/0296-decision-only-goal-monitoring.md), le monitoring ne
+génère plus de suivi ni de Task de revue ; ces chiffres ne qualifient pas cette nouvelle politique.
+
 ## Campagne délai, coût et qualité
 
-Les corpus `latency_corpus_fr.json` et `latency_corpus_en.json` contiennent chacun quatre
+Les corpus `latency_corpus_fr.json` et `latency_corpus_en.json` v2 contiennent chacun douze
 cas de `conversation_executor` : calcul simple sans outil, recherche en Memory, lecture
-d'état d'une tâche et admission simulée de tâche. Toutes les données sont fictives.
+d'état d'une tâche, admission simulée, moyens connus ou inconnus, refus antérieur,
+demande mixte, interdiction vérifiée, choix humain, priorité Process et lecture bornée.
+La campagne appariée les joue aussi avec le prompt voix. Les oracles vérifient les appels
+et reçus : tentative requise manquante, Task inutile ou interdite et Process prioritaire.
+Ils ne cherchent pas des mots de refus dans la réponse ; la qualité du texte et du transfert
+d'objectif doit également être revue sémantiquement. Toutes les données sont fictives.
+Une demande de méthode inconnue précise néanmoins le livrable attendu : une cible ambiguë
+justifie une clarification. Le contrôle d'état accepte l'UUID ou l'URI canonique prévus par
+l'outil, en conservant les arguments bruts ; le calcul oral est revu sémantiquement sans imposer
+des chiffres écrits. Conserver et exclure les essais fondés sur les anciennes contraintes.
 Les outils ont des réponses fixes, réinitialisées pour chaque observation ; aucune tâche
 réelle n'est créée. La recherche porte sur Memory, sans accès web.
+Le corpus fige les descriptions et schémas publics des outils de contrôle MCP et de la
+recherche Memory temps réel. Le même simulateur de contrats sert aux Tasks, au texte et
+à la voix ; il n'exécute aucune fonction métier. Les descriptions exposées au candidat
+ne présentent pas l'admission comme une simple proposition sans effet. Le montage complet
+des outils des transports texte et vocaux reste hors du périmètre de ce bench de prompts.
 
 Dans le conteneur backend, prévisualiser puis importer chaque langue avec le même contrat
 authentifié que ci-dessus :
@@ -324,7 +353,7 @@ python scripts/import_lab_reference.py --corpus latency-fr --install
 python scripts/import_lab_reference.py --corpus latency-en --install
 ```
 
-1. Dans **Lab → Conversation → Benchmarks**, choisir le corpus importé. Examiner ses quatre
+1. Dans **Lab → Conversation → Benchmarks**, choisir le corpus importé. Examiner ses douze
    cas, les références et les réponses d'outils avant de lancer les modèles.
 2. Fixer le juge, sa grille, le prompt, les paramètres, le niveau de raisonnement et le nombre
    de répétitions (cinq par cas, par exemple). Exécuter A puis B en ne changeant que le modèle

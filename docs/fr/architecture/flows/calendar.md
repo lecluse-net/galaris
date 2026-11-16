@@ -1,23 +1,29 @@
 <p align="right"><strong>Français</strong> · <a href="../../../en/architecture/flows/calendar.md">English</a></p>
 
-# Agenda local, CalDAV et exécution des actions
+# Agenda local, fournisseurs et exécution des actions
 
 `app.calendar` possède le modèle canonique des agendas internes et externes. Chaque agent
-possède un **Agenda personnel** système (`agenda`) sans compte externe, auquel peuvent
-s'ajouter d'autres agendas internes et des sources externes. `bridge.calendar` traduit le
-protocole **CalDAV** ; les événements échangés restent au format **iCalendar** (`VEVENT`,
+possède un unique **Agenda personnel** système (`agenda`) créé automatiquement, sans compte
+externe ; il ne peut pas être désactivé ou supprimé. Les anciens agendas internes supplémentaires
+restent accessibles, sans possibilité d'en créer de nouveaux. `bridge.calendar` traduit
+CalDAV, Google Agenda, Microsoft 365 / Outlook, iCloud et les abonnements iCalendar ;
+la représentation canonique des événements reste **iCalendar** (`VEVENT`,
 récurrences, exceptions et `VALARM`). Un abonnement à un fichier iCalendar est en lecture seule.
 
 ## Configuration et droits
 
 La capacité fournisseur est `caldav.calendar`. `calendar_config.settings` porte le type de
-source (`caldav`, par défaut, ou `ical`), le fuseau et les préférences de créneaux.
+source (`caldav`, par défaut, `ical`, `google`, `microsoft` ou `icloud`), le fuseau et les préférences de créneaux.
 `calendar_config.param_map` référence les paramètres de connexion standards pour `url`,
 `username`, `password`, et éventuellement le libellé et le propriétaire. L'URL privée et le
 mot de passe utilisent des paramètres chiffrés de type `password` ; les valeurs suivent
 l'héritage et les valeurs imposées des connexions. Aucun formulaire parallèle de secrets
 n'appartient à l'Agenda. Les agendas externes sont matérialisés depuis ces paramètres et
-la découverte CalDAV ; l'API de création d'agenda crée uniquement des agendas internes.
+la découverte fournisseur. L'API refuse la création d'agendas internes supplémentaires.
+Le rôle `sync_interval_hours` référence un paramètre entier de connexion, commun à tous
+ses agendas, avec héritage global/local : deux heures par défaut, de 1 à 8760 heures.
+Google et Microsoft utilisent le consentement OAuth du compte ; iCloud un mot de passe
+d'application. La configuration détaillée est décrite dans le [parcours Agenda](../../user/calendar.md).
 
 `CALENDAR_ACCESS` ou `CALENDAR_EDIT` autorise la consultation dans le périmètre de gestion
 de l'agent. `CALENDAR_EDIT` autorise les commandes ; les capacités distantes restent
@@ -83,9 +89,9 @@ explicitement dans un calcul isolé, sans résultat partiel présenté comme com
 Une modification locale et son opération d'outbox sont enregistrées dans la même transaction.
 Le reçu `sync_state=pending` indique une intention locale, jamais une confirmation distante.
 
-Le worker externe est examiné chaque minute. Une source saine est relevée toutes les cinq
-minutes ; une écriture en attente ou une demande explicite réveille sa synchronisation. Les
-sources sont traitées avec une concurrence bornée et une session indépendante par branche.
+Le worker externe est examiné chaque minute et applique l'intervalle de la connexion,
+y compris après une erreur ou une interruption. Les agendas sont traités un à un ; une
+demande manuelle possède son suivi dans `calendar_sync_runs`.
 Un bail et une révision de configuration empêchent l'application d'une réponse périmée.
 
 CalDAV fournit la découverte, `sync-token` et `sync-collection`. Les contenus modifiés sont lus
@@ -93,6 +99,11 @@ par lots avec `calendar-multiget`. Les continuations d'une réponse tronquée so
 avant de valider le passage. Un jeton expiré entraîne une lecture complète de réconciliation.
 Un abonnement iCalendar utilise une lecture conditionnelle par ETag lorsque possible.
 Une réponse incomplète ou invalide n'avance jamais le curseur et ne justifie aucune suppression.
+
+Google et Microsoft utilisent un snapshot complet paginé sans limite de dates. Les séries
+et exceptions sont importées, mais seules les écritures d'événements simples et la suppression
+d'une série entière sont exposées ; les autres mutations récurrentes échouent avant écriture
+locale. CalDAV conserve l'édition des récurrences.
 
 Chaque ressource CalDAV possède une adresse stable et un ETag. Une création utilise
 `If-None-Match: *`, une modification/suppression `If-Match` avec un ETag fort. Après perte
@@ -106,9 +117,11 @@ opération, étape, catégorie, statut HTTP et emplacement de code, sans URL ni 
 
 Une action n'est pas une notification d'interface : son échéance admet une Task par la façade
 publique `app.agent`. Elle peut agir avant le début, au début ou après la fin. Plusieurs actions
-peuvent partager une heure tout en conservant des identités distinctes. Un calendrier externe
-requiert une activation explicite des actions ; une source en lecture seule peut porter des
-consignes locales. Les données importées ne deviennent jamais des instructions autorisées.
+peuvent partager une heure tout en conservant des identités distinctes. Sans action particulière,
+chaque événement lance une Task à son début ; les alarmes et actions configurées remplacent
+ce lancement. Les nouveaux agendas internes et synchronisés activent les actions par défaut,
+en conservant les désactivations explicites. Une source en lecture seule peut porter des
+consignes locales. Les Tasks restent soumises aux droits et politiques de leurs outils.
 
 Le worker local examine les échéances toutes les dix secondes, indépendamment du réseau et
 des vues ouvertes. Il vérifie activation, révision, occurrence et politique de retard ; une
@@ -123,6 +136,6 @@ manuelle possède sa propre clé et un nouveau numéro de lancement ; elle ne ro
 terminale précédente. Un événement annulé ne produit pas de nouvelle action.
 
 L'Agenda porte les engagements datés et rappels. Goal possède les résultats durables et leurs
-revues : ne pas recopier une prochaine revue de Goal dans l'Agenda. Les Tasks de rappel ne
+cycles : ne pas recopier un prochain cycle de Goal dans l'Agenda. Les Tasks de rappel ne
 reçoivent aucun `goal_id` implicite. Une Task peut ensuite lancer un Process sous ses droits
 ordinaires ; aucun Process ne sert à envelopper la synchronisation ou le rappel technique.

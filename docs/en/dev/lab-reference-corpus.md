@@ -12,7 +12,10 @@ come from actual MCP functions; effects remain simulated. Import using
 
 Version 2 preserves the concurrently edited title in the pause receipt. The earlier scenario
 contained a contradiction that justified additional verification; exclude those observations
-and replace them with a corrected paired comparison. Receipt arguments are compared after
+and replace them with a corrected paired comparison. Version 3 also aligns the `goal_create`
+receipt's title and description with the actual request. Earlier observations of that case
+cannot attribute corrective calls to model drift; retain their evidence and rerun the corrected case.
+Receipt arguments are compared after
 binding only declared defaults: omitting an optional argument is not a false failure, while
 a genuinely different value remains rejected.
 
@@ -21,8 +24,15 @@ schemas, simulated responses, prompts, model and reasoning without model calls. 
 to compare the same production prompt builder and executor-specific instructions, changing
 only the common operating guide between arms. The executor-profile model is used throughout,
 including text and voice cases; neither STT nor TTS is tested. The 32 new cases, 40 existing
-capability/decision/transfer cases and 16 text/voice cases provide 88 scenarios, three
-repetitions and 528 evaluations by default.
+capability/decision/transfer cases and 48 text/voice cases provide 120 scenarios, three
+repetitions and 720 evaluations by default.
+
+To compare a complete prompt consolidation, freeze a reference before changing sources, then
+pass `--baseline-prompts /tmp/operating-benchmark.<reference>/prompts.json` to the next campaign.
+Its `before` arm reuses the reference's complete `after` prompt; the candidate uses the current
+builder and settings. Model binding, effort, cases, tools, fixtures and oracle fingerprints must
+match. `--case` selects named scenarios. These checks and calls execute only in the benchmark,
+never during an ordinary conversation. Customized prompts retain their priority.
 
 Evidence stays under `artifacts/operating-benchmark.*`: manifest, complete prompts, frozen
 inputs, outputs, checks, costs and durations. Oracles never enter candidate context. Reports
@@ -297,13 +307,29 @@ Six separate trials preserve explicitly required confirmation delivery. This qua
 of the internal harness and Chat does not cover the browser, external bridges, other
 harnesses or other native business journeys.
 
+This measurement qualifies the automatic-tracking policy used at that time. Since decision
+[0296](../../../project/decisions/0296-decision-only-goal-monitoring.md), monitoring generates
+neither tracking nor review Tasks; these figures do not qualify the new policy.
+
 ## Latency, cost and quality campaign
 
-The `latency_corpus_fr.json` and `latency_corpus_en.json` corpora each contain four
+The v2 `latency_corpus_fr.json` and `latency_corpus_en.json` corpora each contain twelve
 `conversation_executor` cases: a simple calculation without tools, Memory search, Task
-status lookup and simulated Task admission. All data is synthetic. Services return fixed
+status lookup, simulated Task admission, known or unknown means, historical refusal, mixed
+outcomes, verified prohibition, human choice, Process priority and bounded reads. The paired
+campaign also uses the voice prompt. Oracles examine calls and receipts for missing attempts,
+unnecessary or forbidden Tasks and Process priority. They do not search responses for refusal
+keywords; prose and objective handoff quality also require semantic review. All data is synthetic. Services return fixed
 responses, reset for each observation; no real Task is created. Search uses Memory, not
 the web.
+The unknown-method request still specifies its deliverable: an ambiguous target warrants
+clarification. Status checks accept either UUID or canonical URI as supported by the tool,
+preserving raw arguments; spoken arithmetic is reviewed semantically without requiring written
+digits. Retain and exclude trials based on the earlier incidental constraints.
+The corpus freezes public descriptions and schemas for MCP control tools and realtime Memory
+search. Tasks, text and voice reuse the same contract simulator, which never executes business
+functions. Candidate-facing descriptions do not present admission as an effect-free proposal.
+Complete text and voice transport tool mounting remains outside this prompt benchmark's scope.
 
 Inside the backend container, preview and import each language using the same authenticated
 contract described above:
@@ -314,7 +340,7 @@ python scripts/import_lab_reference.py --corpus latency-fr --install
 python scripts/import_lab_reference.py --corpus latency-en --install
 ```
 
-1. Under **Lab → Conversation → Benchmarks**, select the imported corpus. Review the four
+1. Under **Lab → Conversation → Benchmarks**, select the imported corpus. Review the twelve
    cases, references and tool responses before running models.
 2. Fix the judge, rubric, prompt, parameters, reasoning level and repetition count (five per
    case, for example). Run A then B, changing only the candidate model, or duplicate the

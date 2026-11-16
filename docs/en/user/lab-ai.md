@@ -2,6 +2,12 @@
 
 # Using the AI Lab
 
+To qualify conversation-to-Task behaviour, the v2 `latency-fr` and `latency-en` corpora each
+include twelve fictional scenarios. Import a corpus, then compare prompts under
+**Lab → Conversation → Benchmarks**: inspect actual admissions, respected prohibitions,
+clarifications and direct answers. Tools are simulated; this qualification runs only when
+you request it in the Lab and adds no extra checks to ordinary conversations.
+
 To evaluate Planner granularity, the public `planner-boundaries` corpus provides 24 synthetic
 cases: complete per-file treatment, ordered collections and recovery, complex coherent tasks
 that must stay whole, small mechanical batches and ambiguous requests.
@@ -29,7 +35,7 @@ its context and expected output, with a name and optional provenance.
 | Topic detection | Ordered exchange | Topic for each message |
 | Memory extraction | Exchange or Task report | CREATE, LINK or IGNORE |
 | Learning | Execution outcome | Supported lessons |
-| Goal tracking | Cycle result | Decision and durable tracking |
+| Goal tracking | Cycle result | Native CONTINUE/STOP choice |
 | Task executor | Request | Response and tool calls |
 | Conversation executor | Current request | Response and actions |
 | Voice executor | Transcribed request | Spoken response and actions |

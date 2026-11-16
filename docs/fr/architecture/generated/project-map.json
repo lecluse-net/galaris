@@ -61,7 +61,8 @@
           "back/app/agent/executor_service.py",
           "back/app/agent/facade.py",
           "back/app/agent/mcp.py",
-          "back/app/agent/planner_service.py"
+          "back/app/agent/planner_service.py",
+          "back/app/agent/realtime.py"
         ],
         "source": "app.agent",
         "target": "app.services"
@@ -647,6 +648,7 @@
       {
         "files": [
           "back/app/chat/document_conversation.py",
+          "back/app/chat/draft_service.py",
           "back/app/chat/events.py",
           "back/app/chat/router.py",
           "back/app/chat/webrtc.py"
@@ -2300,6 +2302,7 @@
       },
       {
         "files": [
+          "back/app/goal/evaluation.py",
           "back/app/goal/goal_service.py",
           "back/app/goal/models.py",
           "back/app/goal/runner.py"
@@ -2330,7 +2333,6 @@
           "back/app/goal/models.py",
           "back/app/goal/referrer_wait.py",
           "back/app/goal/resource_facade.py",
-          "back/app/goal/reviews.py",
           "back/app/goal/runner.py"
         ],
         "source": "app.goal",
@@ -2353,7 +2355,6 @@
           "back/app/goal/models.py",
           "back/app/goal/referrer_wait.py",
           "back/app/goal/resource_facade.py",
-          "back/app/goal/reviews.py",
           "back/app/goal/runner.py"
         ],
         "source": "app.goal",
@@ -2823,6 +2824,7 @@
           "back/app/lab/mcp.py",
           "back/app/lab/mcp_access.py",
           "back/app/lab/mcp_service.py",
+          "back/app/lab/mechanism_registry.py",
           "back/app/lab/operation_execution.py",
           "back/app/lab/operation_worker.py",
           "back/app/lab/operations.py",
@@ -3309,6 +3311,7 @@
       {
         "files": [
           "back/app/memory/access.py",
+          "back/app/memory/acquisition_service.py",
           "back/app/memory/admission.py",
           "back/app/memory/attachment_analysis.py",
           "back/app/memory/attachment_description.py",
@@ -8569,7 +8572,7 @@
       {
         "file": "back/app/console/mcp.py",
         "handler": "console_exec",
-        "line": 50,
+        "line": 56,
         "module": "app.console",
         "name": "console_exec",
         "namespace": "console"
@@ -8577,7 +8580,7 @@
       {
         "file": "back/app/console/mcp.py",
         "handler": "console_poll",
-        "line": 98,
+        "line": 104,
         "module": "app.console",
         "name": "console_poll",
         "namespace": "console"
@@ -8585,7 +8588,7 @@
       {
         "file": "back/app/console/mcp.py",
         "handler": "console_start",
-        "line": 77,
+        "line": 83,
         "module": "app.console",
         "name": "console_start",
         "namespace": "console"
@@ -8593,7 +8596,7 @@
       {
         "file": "back/app/console/mcp.py",
         "handler": "console_status",
-        "line": 35,
+        "line": 41,
         "module": "app.console",
         "name": "console_status",
         "namespace": "console"
@@ -8601,7 +8604,7 @@
       {
         "file": "back/app/console/mcp.py",
         "handler": "console_stop",
-        "line": 127,
+        "line": 133,
         "module": "app.console",
         "name": "console_stop",
         "namespace": "console"
@@ -8609,7 +8612,7 @@
       {
         "file": "back/app/console/mcp.py",
         "handler": "console_write",
-        "line": 112,
+        "line": 118,
         "module": "app.console",
         "name": "console_write",
         "namespace": "console"
@@ -8977,7 +8980,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_analyze_run",
-        "line": 386,
+        "line": 378,
         "module": "app.process",
         "name": "process_analyze_run",
         "namespace": "galaris"
@@ -9017,7 +9020,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_get_run",
-        "line": 373,
+        "line": 365,
         "module": "app.process",
         "name": "process_get_run",
         "namespace": "galaris"
@@ -10017,7 +10020,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_analyze_run",
-        "line": 730,
+        "line": 714,
         "module": "app.process",
         "name": "process_admin_analyze_run",
         "namespace": "process_admin"
@@ -10025,7 +10028,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_cancel_run",
-        "line": 702,
+        "line": 686,
         "module": "app.process",
         "name": "process_admin_cancel_run",
         "namespace": "process_admin"
@@ -10033,7 +10036,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_create",
-        "line": 488,
+        "line": 480,
         "module": "app.process",
         "name": "process_admin_create",
         "namespace": "process_admin"
@@ -10041,7 +10044,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_delete",
-        "line": 569,
+        "line": 561,
         "module": "app.process",
         "name": "process_admin_delete",
         "namespace": "process_admin"
@@ -10049,7 +10052,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_delete_run",
-        "line": 744,
+        "line": 728,
         "module": "app.process",
         "name": "process_admin_delete_run",
         "namespace": "process_admin"
@@ -10057,7 +10060,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_engines",
-        "line": 400,
+        "line": 392,
         "module": "app.process",
         "name": "process_admin_engines",
         "namespace": "process_admin"
@@ -10065,7 +10068,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_get",
-        "line": 468,
+        "line": 460,
         "module": "app.process",
         "name": "process_admin_get",
         "namespace": "process_admin"
@@ -10073,7 +10076,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_get_run",
-        "line": 668,
+        "line": 652,
         "module": "app.process",
         "name": "process_admin_get_run",
         "namespace": "process_admin"
@@ -10081,7 +10084,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_list",
-        "line": 437,
+        "line": 429,
         "module": "app.process",
         "name": "process_admin_list",
         "namespace": "process_admin"
@@ -10089,7 +10092,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_list_runs",
-        "line": 630,
+        "line": 622,
         "module": "app.process",
         "name": "process_admin_list_runs",
         "namespace": "process_admin"
@@ -10097,7 +10100,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_refresh_run",
-        "line": 688,
+        "line": 672,
         "module": "app.process",
         "name": "process_admin_refresh_run",
         "namespace": "process_admin"
@@ -10105,7 +10108,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_retry_run",
-        "line": 716,
+        "line": 700,
         "module": "app.process",
         "name": "process_admin_retry_run",
         "namespace": "process_admin"
@@ -10113,7 +10116,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_start",
-        "line": 591,
+        "line": 583,
         "module": "app.process",
         "name": "process_admin_start",
         "namespace": "process_admin"
@@ -10121,7 +10124,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_sync",
-        "line": 420,
+        "line": 412,
         "module": "app.process",
         "name": "process_admin_sync",
         "namespace": "process_admin"
@@ -10129,7 +10132,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_update",
-        "line": 519,
+        "line": 511,
         "module": "app.process",
         "name": "process_admin_update",
         "namespace": "process_admin"
@@ -10651,7 +10654,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 205,
+        "line": 206,
         "module": "app.chat",
         "table": "chat_draft_files"
       },
@@ -11447,7 +11450,7 @@
           "goals.id"
         ],
         "history_mixin": false,
-        "line": 364,
+        "line": 359,
         "module": "app.goal",
         "table": "goal_calendar_plans"
       },
@@ -11468,7 +11471,7 @@
           "goals.id"
         ],
         "history_mixin": false,
-        "line": 402,
+        "line": 397,
         "module": "app.goal",
         "table": "goal_cycle_triggers"
       },
@@ -11496,7 +11499,7 @@
           "goals.id"
         ],
         "history_mixin": false,
-        "line": 381,
+        "line": 376,
         "module": "app.goal",
         "table": "goal_occurrences"
       },
@@ -16123,7 +16126,7 @@
         "declared_path": "/chat/rooms/{room_id}/attachments",
         "file": "back/app/chat/router.py",
         "handler": "create_attachment_message",
-        "line": 1283,
+        "line": 1286,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16132,7 +16135,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls",
         "file": "back/app/chat/router.py",
         "handler": "start_call",
-        "line": 1472,
+        "line": 1487,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16141,7 +16144,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/active",
         "file": "back/app/chat/router.py",
         "handler": "read_active_call",
-        "line": 1531,
+        "line": 1546,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16150,7 +16153,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/status",
         "file": "back/app/chat/router.py",
         "handler": "read_voice_call_status",
-        "line": 1445,
+        "line": 1460,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16159,7 +16162,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/{call_id}",
         "file": "back/app/chat/router.py",
         "handler": "stop_call",
-        "line": 1590,
+        "line": 1605,
         "method": "DELETE",
         "module": "app.chat"
       },
@@ -16168,7 +16171,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/{call_id}/candidates",
         "file": "back/app/chat/router.py",
         "handler": "add_call_candidate",
-        "line": 1555,
+        "line": 1570,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16186,7 +16189,7 @@
         "declared_path": "/chat/rooms/{room_id}/dictation",
         "file": "back/app/chat/router.py",
         "handler": "transcribe_dictation",
-        "line": 1232,
+        "line": 1235,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16213,7 +16216,7 @@
         "declared_path": "/chat/rooms/{room_id}/draft",
         "file": "back/app/chat/router.py",
         "handler": "get_private_draft",
-        "line": 1622,
+        "line": 1637,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16222,7 +16225,7 @@
         "declared_path": "/chat/rooms/{room_id}/draft",
         "file": "back/app/chat/router.py",
         "handler": "save_private_draft",
-        "line": 1629,
+        "line": 1644,
         "method": "PUT",
         "module": "app.chat"
       },
@@ -16231,7 +16234,7 @@
         "declared_path": "/chat/rooms/{room_id}/draft/files/{key}",
         "file": "back/app/chat/router.py",
         "handler": "discard_private_draft_file",
-        "line": 1651,
+        "line": 1666,
         "method": "DELETE",
         "module": "app.chat"
       },
@@ -16240,7 +16243,7 @@
         "declared_path": "/chat/rooms/{room_id}/draft/files/{key}",
         "file": "back/app/chat/router.py",
         "handler": "upload_private_draft_file",
-        "line": 1639,
+        "line": 1654,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16249,7 +16252,7 @@
         "declared_path": "/chat/rooms/{room_id}/files/{file_id}",
         "file": "back/app/chat/router.py",
         "handler": "download_file",
-        "line": 1400,
+        "line": 1415,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16258,7 +16261,7 @@
         "declared_path": "/chat/rooms/{room_id}/files/{file_id}",
         "file": "back/app/chat/router.py",
         "handler": "rename_chat_attachment",
-        "line": 1390,
+        "line": 1405,
         "method": "PATCH",
         "module": "app.chat"
       },
@@ -16357,7 +16360,7 @@
         "declared_path": "/chat/rooms/{room_id}/mute",
         "file": "back/app/chat/router.py",
         "handler": "set_muted",
-        "line": 1382,
+        "line": 1397,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16375,7 +16378,7 @@
         "declared_path": "/chat/rooms/{room_id}/read",
         "file": "back/app/chat/router.py",
         "handler": "mark_read",
-        "line": 1374,
+        "line": 1389,
         "method": "POST",
         "module": "app.chat"
       },
@@ -22100,26 +22103,12 @@
     "dependencies": [
       {
         "files": [
-          "front/app/agent/pages/index.vue"
-        ],
-        "source": "app/agent",
-        "target": "app/harnesses"
-      },
-      {
-        "files": [
-          "front/app/agent/pages/index.vue"
-        ],
-        "source": "app/agent",
-        "target": "app/llm"
-      },
-      {
-        "files": [
           "front/app/agent/components/AgentAvatar.vue",
           "front/app/agent/components/AgentSelect.vue",
           "front/app/agent/composables/useAgentChoices.ts",
+          "front/app/agent/composables/useAgentMcp.ts",
           "front/app/agent/composables/useAgentTeamMetadata.ts",
           "front/app/agent/composables/useHarnessLogs.ts",
-          "front/app/agent/pages/index.vue",
           "front/app/agent/richContent.ts",
           "front/app/agent/services/agentSelectionService.ts",
           "front/app/agent/services/agentService.ts",
@@ -22134,31 +22123,21 @@
       {
         "files": [
           "front/app/agent/components/AgentSelect.vue",
-          "front/app/agent/navigation.ts",
-          "front/app/agent/pages/index.vue"
+          "front/app/agent/navigation.ts"
         ],
         "source": "app/agent",
         "target": "core/authorize"
       },
       {
         "files": [
-          "front/app/agent/navigation.ts",
-          "front/app/agent/pages/index.vue"
+          "front/app/agent/navigation.ts"
         ],
         "source": "app/agent",
         "target": "core/navigation"
       },
       {
         "files": [
-          "front/app/agent/pages/index.vue"
-        ],
-        "source": "app/agent",
-        "target": "core/params"
-      },
-      {
-        "files": [
           "front/app/agent/components/TeamAgentMembers.vue",
-          "front/app/agent/pages/index.vue",
           "front/app/agent/team.ts"
         ],
         "source": "app/agent",
@@ -22166,15 +22145,19 @@
       },
       {
         "files": [
+          "front/app/agent/components/AgentAuxiliaryDialogs.vue",
           "front/app/agent/components/AgentAvatar.vue",
-          "front/app/agent/components/AgentPreview.vue",
+          "front/app/agent/components/AgentMcpPanel.vue",
+          "front/app/agent/components/AvatarGenerationDialog.vue",
+          "front/app/agent/composables/useAgentMcp.ts",
           "front/app/agent/composables/useHarnessLogs.ts",
-          "front/app/agent/pages/index.vue",
+          "front/app/agent/index.ts",
           "front/app/agent/richContent.ts",
           "front/app/agent/services/agentOptionGroups.ts",
           "front/app/agent/services/agentSelectionService.ts",
           "front/app/agent/services/agentService.ts",
-          "front/app/agent/services/teamService.ts"
+          "front/app/agent/services/teamService.ts",
+          "front/app/agent/stores/agentStore.ts"
         ],
         "source": "app/agent",
         "target": "core/util"
@@ -22299,7 +22282,10 @@
           "front/app/calendar/calendarDates.ts",
           "front/app/calendar/components/CalendarBoard.vue",
           "front/app/calendar/components/CalendarColorSelect.vue",
+          "front/app/calendar/components/CalendarConfirmDialog.vue",
           "front/app/calendar/components/CalendarEventChip.vue",
+          "front/app/calendar/components/CalendarEventEditor.vue",
+          "front/app/calendar/components/CalendarEventPanel.vue",
           "front/app/calendar/components/CalendarEventTasks.vue",
           "front/app/calendar/components/CalendarResourceDialog.vue",
           "front/app/calendar/components/CalendarRowMenu.vue",
@@ -22416,6 +22402,7 @@
       {
         "files": [
           "front/app/chat/code/components/CodeWorkspaceDialog.vue",
+          "front/app/chat/code/components/CodeWorkspacePane.vue",
           "front/app/chat/code/components/RepositoryBrowser.vue",
           "front/app/chat/components/AgentTasksPanel.vue",
           "front/app/chat/components/ChatDocumentPane.vue",
@@ -22429,6 +22416,8 @@
           "front/app/chat/components/MarkdownAttachmentPreview.vue",
           "front/app/chat/components/MessageResourcePreviews.vue",
           "front/app/chat/components/MessageTimeline.vue",
+          "front/app/chat/components/RoomCreateDialog.vue",
+          "front/app/chat/components/RoomPreferencesDialog.vue",
           "front/app/chat/components/SafeMessageContent.vue",
           "front/app/chat/conversationPanel.ts",
           "front/app/chat/pages/index.vue",
@@ -22462,8 +22451,8 @@
           "front/app/connection/components/ConnectionForm.vue",
           "front/app/connection/components/ConnectionList.vue",
           "front/app/connection/components/MailInboundJournal.vue",
-          "front/app/connection/components/McpCandidateAgent.vue",
           "front/app/connection/components/RuntimePermissions.vue",
+          "front/app/connection/index.ts",
           "front/app/connection/pages/mail.vue",
           "front/app/connection/pages/permissions.vue",
           "front/app/connection/services/permissionDashboardSources.ts"
@@ -22539,20 +22528,27 @@
       },
       {
         "files": [
+          "front/app/connection/components/ActionAuthorizations.vue",
           "front/app/connection/components/ConnectionForm.vue",
+          "front/app/connection/components/ConnectionList.vue",
+          "front/app/connection/components/ConnectionTestButton.vue",
           "front/app/connection/components/FunctionPolicyToggle.vue",
+          "front/app/connection/components/MailInboundJournal.vue",
           "front/app/connection/components/PermissionToolBrowser.vue",
+          "front/app/connection/components/RuntimePermissions.vue",
           "front/app/connection/index.ts",
           "front/app/connection/pages/mail.vue",
           "front/app/connection/pages/permissions.vue",
-          "front/app/connection/permissionPresentation.ts"
+          "front/app/connection/permissionPresentation.ts",
+          "front/app/connection/stores/connectionStore.ts"
         ],
         "source": "app/connection",
         "target": "core/util"
       },
       {
         "files": [
-          "front/app/console/services/consoleService.ts"
+          "front/app/console/services/consoleService.ts",
+          "front/app/console/stores/consoleStore.ts"
         ],
         "source": "app/console",
         "target": "core/api"
@@ -22575,7 +22571,8 @@
       },
       {
         "files": [
-          "front/app/console/pages/executor.vue"
+          "front/app/console/pages/executor.vue",
+          "front/app/console/stores/consoleStore.ts"
         ],
         "source": "app/console",
         "target": "core/util"
@@ -22647,6 +22644,7 @@
           "front/app/conversation/components/ConversationExecutionDetails.vue",
           "front/app/conversation/components/ConversationHistory.vue",
           "front/app/conversation/components/ConversationRoundDetail.vue",
+          "front/app/conversation/components/DeliveryResolution.vue",
           "front/app/conversation/index.ts",
           "front/app/conversation/richContent.ts"
         ],
@@ -22656,8 +22654,6 @@
       {
         "files": [
           "front/app/dataset/components/DatasetEditor.vue",
-          "front/app/dataset/components/DatasetLibraryFilters.vue",
-          "front/app/dataset/components/DatasetLibraryNavigation.vue",
           "front/app/dataset/components/DatasetSharing.vue",
           "front/app/dataset/services/datasetService.ts",
           "front/app/dataset/types.ts"
@@ -22667,7 +22663,6 @@
       },
       {
         "files": [
-          "front/app/dataset/components/DatasetLibraryNavigation.vue",
           "front/app/dataset/services/datasetService.ts"
         ],
         "source": "app/dataset",
@@ -22675,9 +22670,7 @@
       },
       {
         "files": [
-          "front/app/dataset/components/DatasetEditor.vue",
-          "front/app/dataset/components/DatasetLibraryNavigation.vue",
-          "front/app/dataset/components/DatasetLibraryRow.vue"
+          "front/app/dataset/components/DatasetEditor.vue"
         ],
         "source": "app/dataset",
         "target": "core/authorize"
@@ -22693,9 +22686,6 @@
         "files": [
           "front/app/dataset/components/DatasetDialog.vue",
           "front/app/dataset/components/DatasetEditor.vue",
-          "front/app/dataset/components/DatasetFolderRow.vue",
-          "front/app/dataset/components/DatasetLibraryNavigation.vue",
-          "front/app/dataset/components/DatasetLibraryRow.vue",
           "front/app/dataset/richContent.ts"
         ],
         "source": "app/dataset",
@@ -22791,6 +22781,7 @@
           "front/app/document/components/DocumentApplication.vue",
           "front/app/document/components/DocumentApplicationBlock.vue",
           "front/app/document/components/DocumentAttachments.vue",
+          "front/app/document/components/DocumentBulkDialog.vue",
           "front/app/document/components/DocumentBulkList.vue",
           "front/app/document/components/DocumentClassificationActions.vue",
           "front/app/document/components/DocumentDialog.vue",
@@ -22798,6 +22789,7 @@
           "front/app/document/components/DocumentFolderCollection.vue",
           "front/app/document/components/DocumentFolderSelect.vue",
           "front/app/document/components/DocumentFolderThumbnail.vue",
+          "front/app/document/components/DocumentFormatsDialog.vue",
           "front/app/document/components/DocumentHistoryDialog.vue",
           "front/app/document/components/DocumentImportDialog.vue",
           "front/app/document/components/DocumentLibraryDocument.vue",
@@ -22931,6 +22923,7 @@
         "files": [
           "front/app/file_share/components/AgentFileBrowser.vue",
           "front/app/file_share/components/FileEntryActions.vue",
+          "front/app/file_share/components/FileIndexPanel.vue",
           "front/app/file_share/components/FileTile.vue",
           "front/app/file_share/components/MailMessageDialog.vue",
           "front/app/file_share/pages/index.vue",
@@ -22942,6 +22935,7 @@
       },
       {
         "files": [
+          "front/app/goal/components/GoalOverview.vue",
           "front/app/goal/pages/index.vue"
         ],
         "source": "app/goal",
@@ -22988,6 +22982,7 @@
         "files": [
           "front/app/goal/components/GoalAgendaPanel.vue",
           "front/app/goal/components/GoalCategoryManager.vue",
+          "front/app/goal/components/GoalOverview.vue",
           "front/app/goal/components/GoalRecurrenceEditor.vue",
           "front/app/goal/pages/index.vue",
           "front/app/goal/richContent.ts"
@@ -23037,15 +23032,20 @@
       },
       {
         "files": [
+          "front/app/harnesses/components/HarnessCatalogGrid.vue",
           "front/app/harnesses/components/HarnessEditor.vue",
           "front/app/harnesses/components/HarnessExecutionSettings.vue",
-          "front/app/harnesses/components/HarnessManagerConfiguration.vue"
+          "front/app/harnesses/components/HarnessManagedProviders.vue",
+          "front/app/harnesses/components/HarnessManagerConfiguration.vue",
+          "front/app/harnesses/components/HarnessManagerHelp.vue",
+          "front/app/harnesses/components/HarnessManagerRelease.vue"
         ],
         "source": "app/harnesses",
         "target": "core/util"
       },
       {
         "files": [
+          "front/app/incident/logCleanup.ts",
           "front/app/incident/pages/index.vue",
           "front/app/incident/services/incidentService.ts"
         ],
@@ -23077,15 +23077,40 @@
       },
       {
         "files": [
+          "front/app/index/components/AgentPreview.vue",
           "front/app/index/components/DashboardAgentTable.vue",
-          "front/app/index/components/DashboardLiveActivity.vue"
+          "front/app/index/components/DashboardLiveActivity.vue",
+          "front/app/index/pages/agent.vue"
         ],
         "source": "app/index",
         "target": "app/agent"
       },
       {
         "files": [
-          "front/app/index/components/DashboardLiveActivity.vue"
+          "front/app/index/pages/services.vue"
+        ],
+        "source": "app/index",
+        "target": "app/connection"
+      },
+      {
+        "files": [
+          "front/app/index/pages/task.vue"
+        ],
+        "source": "app/index",
+        "target": "app/conversation"
+      },
+      {
+        "files": [
+          "front/app/index/pages/agent.vue"
+        ],
+        "source": "app/index",
+        "target": "app/harnesses"
+      },
+      {
+        "files": [
+          "front/app/index/components/DashboardLiveActivity.vue",
+          "front/app/index/pages/agent.vue",
+          "front/app/index/pages/task.vue"
         ],
         "source": "app/index",
         "target": "app/llm"
@@ -23101,13 +23126,37 @@
       },
       {
         "files": [
-          "front/app/index/components/DashboardLiveActivity.vue"
+          "front/app/index/pages/task.vue"
+        ],
+        "source": "app/index",
+        "target": "app/process"
+      },
+      {
+        "files": [
+          "front/app/index/pages/services.vue"
+        ],
+        "source": "app/index",
+        "target": "app/services"
+      },
+      {
+        "files": [
+          "front/app/index/components/DashboardLiveActivity.vue",
+          "front/app/index/pages/task.vue"
         ],
         "source": "app/index",
         "target": "app/task"
       },
       {
         "files": [
+          "front/app/index/pages/task.vue"
+        ],
+        "source": "app/index",
+        "target": "app/voice"
+      },
+      {
+        "files": [
+          "front/app/index/pages/agent.vue",
+          "front/app/index/pages/task.vue",
           "front/app/index/services/dashboardService.ts",
           "front/app/index/services/homeService.ts",
           "front/app/index/stores/dashboardStore.ts"
@@ -23121,6 +23170,9 @@
           "front/app/index/components/HomeActionCenter.vue",
           "front/app/index/components/HomeConnected.vue",
           "front/app/index/navigation.ts",
+          "front/app/index/pages/agent.vue",
+          "front/app/index/pages/services.vue",
+          "front/app/index/pages/task.vue",
           "front/app/index/stores/dashboardStore.ts"
         ],
         "source": "app/index",
@@ -23132,10 +23184,20 @@
           "front/app/index/components/HomeConnected.vue",
           "front/app/index/components/MainLayout.vue",
           "front/app/index/components/Sidebar.vue",
-          "front/app/index/navigation.ts"
+          "front/app/index/navigation.ts",
+          "front/app/index/pages/agent.vue",
+          "front/app/index/pages/services.vue",
+          "front/app/index/pages/task.vue"
         ],
         "source": "app/index",
         "target": "core/navigation"
+      },
+      {
+        "files": [
+          "front/app/index/pages/agent.vue"
+        ],
+        "source": "app/index",
+        "target": "core/params"
       },
       {
         "files": [
@@ -23154,6 +23216,13 @@
       },
       {
         "files": [
+          "front/app/index/pages/agent.vue"
+        ],
+        "source": "app/index",
+        "target": "core/team"
+      },
+      {
+        "files": [
           "front/app/index/components/HomeActionCenter.vue",
           "front/app/index/components/HomePublic.vue",
           "front/app/index/components/MainLayout.vue",
@@ -23166,16 +23235,22 @@
       },
       {
         "files": [
+          "front/app/index/components/AgentPreview.vue",
           "front/app/index/components/DashboardLiveActivity.vue",
           "front/app/index/components/HomeActionCenter.vue",
           "front/app/index/components/HomeConnected.vue",
           "front/app/index/environmentPresentation.ts",
+          "front/app/index/graphic-reference/GalleryDialogCard.vue",
           "front/app/index/graphic-reference/GalleryForms.vue",
           "front/app/index/graphic-reference/GalleryNavigation.vue",
           "front/app/index/graphic-reference/GalleryPatterns.vue",
+          "front/app/index/index.ts",
           "front/app/index/pages/about.vue",
+          "front/app/index/pages/agent.vue",
           "front/app/index/pages/graphic-reference.vue",
-          "front/app/index/pages/license.vue"
+          "front/app/index/pages/license.vue",
+          "front/app/index/pages/services.vue",
+          "front/app/index/pages/task.vue"
         ],
         "source": "app/index",
         "target": "core/util"
@@ -23232,7 +23307,10 @@
       },
       {
         "files": [
+          "front/app/lab/components/LabCaptureConfirmation.vue",
           "front/app/lab/components/LabComparisonDialog.vue",
+          "front/app/lab/components/LabDatasetCaptureDialog.vue",
+          "front/app/lab/components/LabHumanReviewDialog.vue",
           "front/app/lab/components/LabResultsPanel.vue",
           "front/app/lab/components/LabValueEditor.vue",
           "front/app/lab/components/LabWorkbench.vue",
@@ -23241,6 +23319,7 @@
           "front/app/lab/pages/ai-evaluations.vue",
           "front/app/lab/pages/index.vue",
           "front/app/lab/pages/processes.vue",
+          "front/app/lab/stores/evaluationStore.ts",
           "front/app/lab/textPresentation.ts"
         ],
         "source": "app/lab",
@@ -23249,19 +23328,12 @@
       {
         "files": [
           "front/app/llm/components/LlmActivityPanel.vue",
-          "front/app/llm/components/LlmCall.vue"
-        ],
-        "source": "app/llm",
-        "target": "app/agent"
-      },
-      {
-        "files": [
           "front/app/llm/components/LlmCall.vue",
           "front/app/llm/components/LlmCallDetails.vue",
           "front/app/llm/presentation.ts"
         ],
         "source": "app/llm",
-        "target": "app/task"
+        "target": "app/agent"
       },
       {
         "files": [
@@ -23317,6 +23389,7 @@
       {
         "files": [
           "front/app/llm/components/ConfiguredLlmManager.vue",
+          "front/app/llm/components/ExternalClientConfigDialog.vue",
           "front/app/llm/components/LlmActivityPanel.vue",
           "front/app/llm/components/LlmCall.vue",
           "front/app/llm/components/LlmCallDetails.vue",
@@ -23324,8 +23397,15 @@
           "front/app/llm/components/LlmCallTaskDetail.vue",
           "front/app/llm/components/LlmCalls.vue",
           "front/app/llm/components/LlmUsageManager.vue",
+          "front/app/llm/components/ProviderConfigPanel.vue",
+          "front/app/llm/components/ProviderModelsPanel.vue",
           "front/app/llm/components/ProviderQuotaPanel.vue",
+          "front/app/llm/components/ProviderWorkspace.vue",
+          "front/app/llm/index.ts",
           "front/app/llm/pages/index.vue",
+          "front/app/llm/stores/llmProfileStore.ts",
+          "front/app/llm/stores/llmProviderStore.ts",
+          "front/app/llm/taskColors.ts",
           "front/app/llm/useEditorVoice.ts"
         ],
         "source": "app/llm",
@@ -23448,7 +23528,8 @@
         "files": [
           "front/app/onboarding/components/FirstMission.vue",
           "front/app/onboarding/services/firstMissionService.ts",
-          "front/app/onboarding/services/onboardingService.ts"
+          "front/app/onboarding/services/onboardingService.ts",
+          "front/app/onboarding/stores/onboardingStore.ts"
         ],
         "source": "app/onboarding",
         "target": "core/api"
@@ -23475,6 +23556,13 @@
         ],
         "source": "app/onboarding",
         "target": "core/user"
+      },
+      {
+        "files": [
+          "front/app/onboarding/stores/onboardingStore.ts"
+        ],
+        "source": "app/onboarding",
+        "target": "core/util"
       },
       {
         "files": [
@@ -23558,6 +23646,7 @@
           "front/app/process/components/NativeRunDialog.vue",
           "front/app/process/components/NativeRunPanel.vue",
           "front/app/process/components/NativeRunsTable.vue",
+          "front/app/process/components/ProcessInputEditor.vue",
           "front/app/process/components/ProcessPreview.vue",
           "front/app/process/components/ProcessRunDetailContent.vue",
           "front/app/process/components/ProcessRunStatusBadge.vue",
@@ -23567,6 +23656,7 @@
           "front/app/process/components/ProcessThumbnail.vue",
           "front/app/process/components/ProcessVariableDeclarations.vue",
           "front/app/process/contracts.ts",
+          "front/app/process/index.ts",
           "front/app/process/pages/index.vue",
           "front/app/process/richContent.ts"
         ],
@@ -23585,17 +23675,17 @@
       },
       {
         "files": [
-          "front/app/services/components/ServicesList.vue",
-          "front/app/services/pages/index.vue",
-          "front/app/services/stores/serviceStore.ts"
+          "front/app/services/components/ServicesList.vue"
         ],
         "source": "app/services",
-        "target": "app/connection"
+        "target": "app/agent"
       },
       {
         "files": [
+          "front/app/services/components/ServiceGlobalParameters.vue",
           "front/app/services/components/ServicesList.vue",
-          "front/app/services/services/serviceApi.ts"
+          "front/app/services/services/serviceApi.ts",
+          "front/app/services/stores/serviceStore.ts"
         ],
         "source": "app/services",
         "target": "core/api"
@@ -23604,10 +23694,10 @@
         "files": [
           "front/app/services/components/MatrixServiceSetup.vue",
           "front/app/services/components/ServiceCatalog.vue",
+          "front/app/services/components/ServiceGlobalParameters.vue",
           "front/app/services/components/ServicesList.vue",
           "front/app/services/components/TelegramServiceSetup.vue",
-          "front/app/services/navigation.ts",
-          "front/app/services/pages/index.vue"
+          "front/app/services/navigation.ts"
         ],
         "source": "app/services",
         "target": "core/authorize"
@@ -23616,8 +23706,7 @@
         "files": [
           "front/app/services/components/ServiceIcon.vue",
           "front/app/services/components/ServiceIdentityIcon.vue",
-          "front/app/services/navigation.ts",
-          "front/app/services/pages/index.vue"
+          "front/app/services/navigation.ts"
         ],
         "source": "app/services",
         "target": "core/navigation"
@@ -23625,8 +23714,10 @@
       {
         "files": [
           "front/app/services/components/ServiceCard.vue",
+          "front/app/services/components/ServiceGlobalParameters.vue",
           "front/app/services/components/ServicesList.vue",
-          "front/app/services/pages/index.vue"
+          "front/app/services/index.ts",
+          "front/app/services/stores/serviceStore.ts"
         ],
         "source": "app/services",
         "target": "core/util"
@@ -23659,7 +23750,8 @@
           "front/app/skill/components/PersonalSkillManager.vue",
           "front/app/skill/components/SkillOwnershipDialog.vue",
           "front/app/skill/pages/index.vue",
-          "front/app/skill/services/skillService.ts"
+          "front/app/skill/services/skillService.ts",
+          "front/app/skill/stores/skillStore.ts"
         ],
         "source": "app/skill",
         "target": "core/api"
@@ -23688,7 +23780,8 @@
           "front/app/skill/components/SkillPolicyToggle.vue",
           "front/app/skill/components/SkillRowMenu.vue",
           "front/app/skill/components/SkillViewerDialog.vue",
-          "front/app/skill/pages/index.vue"
+          "front/app/skill/pages/index.vue",
+          "front/app/skill/stores/skillStore.ts"
         ],
         "source": "app/skill",
         "target": "core/util"
@@ -23700,31 +23793,17 @@
           "front/app/task/components/TaskDetail.vue",
           "front/app/task/components/TaskFormDialog.vue",
           "front/app/task/services/taskService.ts",
-          "front/app/task/stores/taskStore.ts"
+          "front/app/task/stores/taskStore.ts",
+          "front/app/task/types.ts"
         ],
         "source": "app/task",
         "target": "app/agent"
       },
       {
         "files": [
-          "front/app/task/pages/index.vue"
-        ],
-        "source": "app/task",
-        "target": "app/conversation"
-      },
-      {
-        "files": [
-          "front/app/task/components/TaskDetail.vue"
-        ],
-        "source": "app/task",
-        "target": "app/lab"
-      },
-      {
-        "files": [
           "front/app/task/activity.ts",
           "front/app/task/components/ExecutionResult.vue",
           "front/app/task/components/TaskStartupTiming.vue",
-          "front/app/task/pages/index.vue",
           "front/app/task/useTaskActivity.ts"
         ],
         "source": "app/task",
@@ -23740,13 +23819,6 @@
       },
       {
         "files": [
-          "front/app/task/pages/index.vue"
-        ],
-        "source": "app/task",
-        "target": "app/process"
-      },
-      {
-        "files": [
           "front/app/task/components/ActiveTaskNode.vue",
           "front/app/task/components/ActiveTasksPanel.vue",
           "front/app/task/components/TaskDetail.vue"
@@ -23756,18 +23828,10 @@
       },
       {
         "files": [
-          "front/app/task/pages/index.vue"
-        ],
-        "source": "app/task",
-        "target": "app/voice"
-      },
-      {
-        "files": [
           "front/app/task/components/TaskActivitySummary.vue",
           "front/app/task/components/TaskBudget.vue",
           "front/app/task/components/TaskCosts.vue",
           "front/app/task/components/TaskDetail.vue",
-          "front/app/task/pages/index.vue",
           "front/app/task/richContent.ts",
           "front/app/task/services/taskService.ts"
         ],
@@ -23781,7 +23845,6 @@
           "front/app/task/components/TaskFormDialog.vue",
           "front/app/task/components/TaskRowMenu.vue",
           "front/app/task/navigation.ts",
-          "front/app/task/pages/index.vue",
           "front/app/task/useTaskActivity.ts"
         ],
         "source": "app/task",
@@ -23796,8 +23859,7 @@
       },
       {
         "files": [
-          "front/app/task/navigation.ts",
-          "front/app/task/pages/index.vue"
+          "front/app/task/navigation.ts"
         ],
         "source": "app/task",
         "target": "core/navigation"
@@ -23822,9 +23884,9 @@
           "front/app/task/components/TaskFormDialog.vue",
           "front/app/task/components/TaskRowMenu.vue",
           "front/app/task/index.ts",
-          "front/app/task/pages/index.vue",
           "front/app/task/richContent.ts",
-          "front/app/task/services/taskStatusService.ts"
+          "front/app/task/services/taskStatusService.ts",
+          "front/app/task/useTaskActivity.ts"
         ],
         "source": "app/task",
         "target": "core/util"
@@ -23841,6 +23903,7 @@
         "files": [
           "front/app/topic/components/TopicBadge.vue",
           "front/app/topic/components/TopicSelect.vue",
+          "front/app/topic/composables/useTopicRefs.ts",
           "front/app/topic/services/topicService.ts"
         ],
         "source": "app/topic",
@@ -23870,9 +23933,11 @@
           "front/app/topic/components/TopicDetail.vue",
           "front/app/topic/components/TopicFormDialog.vue",
           "front/app/topic/components/TopicParticipants.vue",
+          "front/app/topic/composables/useTopicRefs.ts",
           "front/app/topic/index.ts",
           "front/app/topic/pages/index.vue",
-          "front/app/topic/richContent.ts"
+          "front/app/topic/richContent.ts",
+          "front/app/topic/services/topicService.ts"
         ],
         "source": "app/topic",
         "target": "core/util"
@@ -23936,6 +24001,7 @@
         "files": [
           "front/app/voice/components/VoiceCallHistory.vue",
           "front/app/voice/components/VoiceConversationDetail.vue",
+          "front/app/voice/index.ts",
           "front/app/voice/richContent.ts"
         ],
         "source": "app/voice",
@@ -24143,6 +24209,7 @@
           "front/core/authorize/components/PrivilegeListManager.vue",
           "front/core/authorize/components/RoleManager.vue",
           "front/core/authorize/components/UserPreferencesMenu.vue",
+          "front/core/authorize/index.ts",
           "front/core/authorize/pages/index.vue",
           "front/core/authorize/pages/profile.vue"
         ],
@@ -24187,22 +24254,8 @@
       },
       {
         "files": [
-          "front/core/params/components/LogCleanupPanel.vue"
-        ],
-        "source": "core/params",
-        "target": "app/llm"
-      },
-      {
-        "files": [
-          "front/core/params/components/LogCleanupPanel.vue"
-        ],
-        "source": "core/params",
-        "target": "app/task"
-      },
-      {
-        "files": [
+          "front/core/params/components/PreferencesSectionPage.vue",
           "front/core/params/services/configurationService.ts",
-          "front/core/params/services/logCleanupService.ts",
           "front/core/params/services/paramsService.ts",
           "front/core/params/stores/paramsStore.ts"
         ],
@@ -24244,7 +24297,8 @@
           "front/core/params/pages/harnesses/[provider].vue",
           "front/core/params/pages/index.vue",
           "front/core/params/services/paramsService.ts",
-          "front/core/params/settingsTypes.ts"
+          "front/core/params/settingsTypes.ts",
+          "front/core/params/stores/paramsStore.ts"
         ],
         "source": "core/params",
         "target": "core/util"
@@ -24283,6 +24337,9 @@
       },
       {
         "files": [
+          "front/core/team/components/TeamEditor.vue",
+          "front/core/team/components/TeamManager.vue",
+          "front/core/team/components/TeamMembersDialog.vue",
           "front/core/team/pages/index.vue"
         ],
         "source": "core/team",
@@ -24336,11 +24393,14 @@
       },
       {
         "files": [
+          "front/core/user/components/AccountDeletionCard.vue",
           "front/core/user/components/UserAvatar.vue",
           "front/core/user/components/UserMenu.vue",
           "front/core/user/contextHelp.ts",
+          "front/core/user/index.ts",
           "front/core/user/pages/tokens.vue",
-          "front/core/user/pages/users.vue"
+          "front/core/user/pages/users.vue",
+          "front/core/user/stores/tokenStore.ts"
         ],
         "source": "core/user",
         "target": "core/util"
@@ -24350,7 +24410,8 @@
           "front/core/util/components/ActionContextMenu.vue",
           "front/core/util/components/RenameFileButton.vue",
           "front/core/util/components/ResourceAttachments.vue",
-          "front/core/util/sessionResources.ts"
+          "front/core/util/sessionResources.ts",
+          "front/core/util/sessionStore.ts"
         ],
         "source": "core/util",
         "target": "core/api"
@@ -24364,40 +24425,11 @@
       }
     ],
     "dependency_metrics": {
-      "direct_cycles": [
-        [
-          "app/agent",
-          "app/llm"
-        ],
-        [
-          "app/connection",
-          "app/services"
-        ],
-        [
-          "app/conversation",
-          "app/task"
-        ],
-        [
-          "app/lab",
-          "app/task"
-        ],
-        [
-          "app/llm",
-          "app/task"
-        ],
-        [
-          "app/process",
-          "app/task"
-        ],
-        [
-          "app/task",
-          "app/voice"
-        ]
-      ],
-      "domain_edges": 57,
+      "direct_cycles": [],
+      "domain_edges": 56,
       "fan_in": [
         {
-          "count": 15,
+          "count": 16,
           "module": "app/agent",
           "modules": [
             "app/calendar",
@@ -24411,6 +24443,7 @@
             "app/llm",
             "app/memory",
             "app/process",
+            "app/services",
             "app/skill",
             "app/task",
             "app/voice",
@@ -24418,10 +24451,9 @@
           ]
         },
         {
-          "count": 7,
+          "count": 6,
           "module": "app/llm",
           "modules": [
-            "app/agent",
             "app/conversation",
             "app/dream",
             "app/index",
@@ -24431,14 +24463,13 @@
           ]
         },
         {
-          "count": 7,
+          "count": 6,
           "module": "app/task",
           "modules": [
             "app/chat",
             "app/conversation",
             "app/index",
             "app/lab",
-            "app/llm",
             "app/process",
             "app/voice"
           ]
@@ -24465,20 +24496,11 @@
           ]
         },
         {
-          "count": 3,
-          "module": "app/lab",
-          "modules": [
-            "app/conversation",
-            "app/task",
-            "app/voice"
-          ]
-        },
-        {
           "count": 2,
           "module": "app/connection",
           "modules": [
             "app/browser",
-            "app/services"
+            "app/index"
           ]
         },
         {
@@ -24486,7 +24508,15 @@
           "module": "app/conversation",
           "modules": [
             "app/chat",
-            "app/task"
+            "app/index"
+          ]
+        },
+        {
+          "count": 2,
+          "module": "app/lab",
+          "modules": [
+            "app/conversation",
+            "app/voice"
           ]
         },
         {
@@ -24495,6 +24525,14 @@
           "modules": [
             "app/calendar",
             "app/task"
+          ]
+        },
+        {
+          "count": 2,
+          "module": "app/services",
+          "modules": [
+            "app/connection",
+            "app/index"
           ]
         },
         {
@@ -24536,7 +24574,7 @@
           "count": 1,
           "module": "app/harnesses",
           "modules": [
-            "app/agent"
+            "app/index"
           ]
         },
         {
@@ -24550,36 +24588,31 @@
           "count": 1,
           "module": "app/process",
           "modules": [
-            "app/task"
-          ]
-        },
-        {
-          "count": 1,
-          "module": "app/services",
-          "modules": [
-            "app/connection"
+            "app/index"
           ]
         },
         {
           "count": 1,
           "module": "app/voice",
           "modules": [
-            "app/task"
+            "app/index"
           ]
         }
       ],
       "fan_out": [
         {
-          "count": 8,
-          "module": "app/task",
+          "count": 10,
+          "module": "app/index",
           "modules": [
             "app/agent",
+            "app/connection",
             "app/conversation",
-            "app/lab",
+            "app/harnesses",
             "app/llm",
-            "app/memory",
+            "app/onboarding",
             "app/process",
-            "app/topic",
+            "app/services",
+            "app/task",
             "app/voice"
           ]
         },
@@ -24627,22 +24660,22 @@
         },
         {
           "count": 4,
-          "module": "app/index",
-          "modules": [
-            "app/agent",
-            "app/llm",
-            "app/onboarding",
-            "app/task"
-          ]
-        },
-        {
-          "count": 4,
           "module": "app/process",
           "modules": [
             "app/agent",
             "app/dataset",
             "app/share",
             "app/task"
+          ]
+        },
+        {
+          "count": 4,
+          "module": "app/task",
+          "modules": [
+            "app/agent",
+            "app/llm",
+            "app/memory",
+            "app/topic"
           ]
         },
         {
@@ -24670,22 +24703,6 @@
             "app/agent",
             "app/document",
             "app/share"
-          ]
-        },
-        {
-          "count": 2,
-          "module": "app/agent",
-          "modules": [
-            "app/harnesses",
-            "app/llm"
-          ]
-        },
-        {
-          "count": 2,
-          "module": "app/llm",
-          "modules": [
-            "app/agent",
-            "app/task"
           ]
         },
         {
@@ -24732,9 +24749,16 @@
         },
         {
           "count": 1,
+          "module": "app/llm",
+          "modules": [
+            "app/agent"
+          ]
+        },
+        {
+          "count": 1,
           "module": "app/services",
           "modules": [
-            "app/connection"
+            "app/agent"
           ]
         },
         {
@@ -24759,23 +24783,7 @@
           ]
         }
       ],
-      "strongly_connected_components": [
-        [
-          "app/agent",
-          "app/conversation",
-          "app/document",
-          "app/lab",
-          "app/llm",
-          "app/memory",
-          "app/process",
-          "app/task",
-          "app/voice"
-        ],
-        [
-          "app/connection",
-          "app/services"
-        ]
-      ]
+      "strongly_connected_components": []
     },
     "modules": [
       {
@@ -24918,6 +24926,11 @@
             "route_hint": "/index/about"
           },
           {
+            "file": "front/app/index/pages/agent.vue",
+            "module": "app/index",
+            "route_hint": "/agent"
+          },
+          {
             "file": "front/app/index/pages/dashboard.vue",
             "module": "app/index",
             "route_hint": "/index/dashboard"
@@ -24938,6 +24951,16 @@
             "route_hint": "/index/license"
           },
           {
+            "file": "front/app/index/pages/services.vue",
+            "module": "app/index",
+            "route_hint": "/services"
+          },
+          {
+            "file": "front/app/index/pages/task.vue",
+            "module": "app/index",
+            "route_hint": "/task"
+          },
+          {
             "file": "front/app/index/pages/welcome.vue",
             "module": "app/index",
             "route_hint": "/index/welcome"
@@ -24950,20 +24973,13 @@
           "components",
           "i18n.ts",
           "navigation.ts",
-          "pages",
           "services",
           "stores"
         ],
         "exists": true,
         "layer": "app",
         "name": "app/agent",
-        "pages": [
-          {
-            "file": "front/app/agent/pages/index.vue",
-            "module": "app/agent",
-            "route_hint": "/agent"
-          }
-        ],
+        "pages": [],
         "path": "front/app/agent"
       },
       {
@@ -24999,11 +25015,6 @@
         "layer": "app",
         "name": "app/services",
         "pages": [
-          {
-            "file": "front/app/services/pages/index.vue",
-            "module": "app/services",
-            "route_hint": "/services"
-          },
           {
             "file": "front/app/services/pages/legacy.vue",
             "module": "app/services",
@@ -25147,20 +25158,13 @@
           "components",
           "i18n.ts",
           "navigation.ts",
-          "pages",
           "services",
           "stores"
         ],
         "exists": true,
         "layer": "app",
         "name": "app/task",
-        "pages": [
-          {
-            "file": "front/app/task/pages/index.vue",
-            "module": "app/task",
-            "route_hint": "/task"
-          }
-        ],
+        "pages": [],
         "path": "front/app/task"
       },
       {
@@ -25258,6 +25262,7 @@
           "i18n.ts",
           "navigation.ts",
           "pages",
+          "presentation.ts",
           "services",
           "stores"
         ],
@@ -25619,8 +25624,8 @@
     ],
     "pages": [
       {
-        "file": "front/app/agent/pages/index.vue",
-        "module": "app/agent",
+        "file": "front/app/index/pages/agent.vue",
+        "module": "app/index",
         "route_hint": "/agent"
       },
       {
@@ -25849,8 +25854,8 @@
         "route_hint": "/process/new-internal"
       },
       {
-        "file": "front/app/services/pages/index.vue",
-        "module": "app/services",
+        "file": "front/app/index/pages/services.vue",
+        "module": "app/index",
         "route_hint": "/services"
       },
       {
@@ -25859,8 +25864,8 @@
         "route_hint": "/skill"
       },
       {
-        "file": "front/app/task/pages/index.vue",
-        "module": "app/task",
+        "file": "front/app/index/pages/task.vue",
+        "module": "app/index",
         "route_hint": "/task"
       },
       {

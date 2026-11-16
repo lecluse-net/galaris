@@ -20,6 +20,9 @@ Paths below are relative to your Galaris instance.
 
 For milestones, plans, questions and recovery, see the [Task guide](tasks.md).
 
+The [Windows/Linux client](desktop.md) uses these same menus, with tabs and a separate session
+for each HTTPS server. Its installation and updates are independent of the server's.
+
 ## Find work and take action
 
 Home groups unread conversations, usage indicators and **Recent activity**. It does not add
@@ -49,6 +52,11 @@ A loading indicator may briefly appear when opening a tab or editor for the firs
 The rest of the page stays usable. If loading fails, **Retry** attempts to open the view
 again without reloading the page or discarding current input. A persistent error leaves
 that view unavailable; other actions remain accessible.
+
+Catalogues and preferences display their own loading failure: a successful unrelated
+action does not hide that diagnostic. Use **Retry** in the relevant banner.
+In Discussion, Task details stay open while messages synchronize; changing conversations
+closes them.
 
 Data trees group branches with more than 100 entries into numbered virtual folders,
 identified by a cyan zipped-folder icon. Expand the required range to display its
@@ -471,14 +479,11 @@ visible in the Documents list but outside the tree until you classify it. No Goa
 is imposed. Existing folders retain their names and behave as ordinary editable folders,
 without translation or automatic renaming.
 
-Agents are encouraged to synthesize tracking while preserving useful information.
-Each new cycle Task receives the tracking document link, to read in bounded pages as
-needed, instead of a full copy in its objective. After the cycle, synthesis consolidates
-repetition and obsolete history while preserving open work, decisions, constraints and
-useful evidence. This instruction also applies with a customized tracking prompt; it
-does not guarantee a maximum size.
-This guidance imposes no character cap or truncation on tracking, judgement reasons or
-evidence. HTML checks and the shared document storage quota still apply.
+Each new cycle Task receives the tracking Document link, to read in bounded pages as
+needed, and the previous cycle's Task result. Tracking remains editable; monitoring never
+rewrites it. Only the profile's decision model can choose `CONTINUE` or `STOP`. Without
+that model, Tasks continue on schedule without automatic completion. A blocker or monitoring
+outage does not pause the Goal. Human pauses and referrer questions retain their behavior.
 
 The **Processes** page displays its lists without waiting for the external engine check or
 agent catalogue. Execution details and their diagram load only when you open an execution;

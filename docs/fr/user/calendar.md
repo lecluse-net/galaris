@@ -206,7 +206,7 @@ du réseau privé de l’entreprise (IPv4 privée et IPv6 locale unique). Le ser
 joignable depuis le backend Galaris et présenter un certificat valide. Les adresses de
 boucle locale et de liaison locale restent exclues.
 
-Les boutons **Ouvrir la tâche**, **Ouvrir la revue** et **Ouvrir l’objectif** affichent leur
+Les boutons **Ouvrir la tâche** et **Ouvrir l’objectif** affichent leur
 modale de détail au-dessus de l’agenda. Leur fermeture retrouve l’événement et conserve la
 période, la vue et les filtres de l’agenda.
 Pour un agenda synchronisé, **Paramètres de connexion** ouvre directement la modale de sa

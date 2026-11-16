@@ -39,8 +39,9 @@ the content of referenced resources.
 `GET /api/documents/formats` exposes the catalogue and declared capabilities: editing,
 preview, embedding, thumbnail, PDF, native export and import. Each distinguishes
 `native`, `fallback` and `unavailable`. `capability_complete` describes a declaration,
-not certification. The library offers **Document formats**, showing composed backend
-and frontend capabilities with retry after errors. `file_schemes` also exposes
+not certification. The catalogue remains available through the API; the library no longer
+has a **Document formats** button. Creation and format filtering remain available through
+the ordinary Documents controls. `file_schemes` also exposes
 `document_formats` for agents.
 File tools also read and replace binary formats with revision checks. Each base64 page
 can be decoded independently, and offsets count bytes.

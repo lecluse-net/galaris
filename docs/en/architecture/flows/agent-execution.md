@@ -957,6 +957,14 @@ external effect corresponding to a Process retains absolute priority over a Task
 catalog no longer repeats this arbitration in short prompts: it provides only the selected metadata,
 while the conversational policy is its sole owner.
 
+This policy also owns capability-limit handling: a function absent from the round, incomplete
+discovery or an earlier assistant refusal does not prove impossibility in a Task. The Task
+can investigate a method; verified limits, ACLs, human denials and pending approvals remain
+authoritative. Text, turn-based Voice and realtime receive the same local projection of
+Services excluded from conversation, without remote discovery or mounting additional tools.
+No additional classifier runs. Updates preserve customized prompts; see decision
+[0297](../../../../project/decisions/0297-unified-conversation-capability-policy.md).
+
 The three executors share a single `Untrusted data boundary` node placed before context data.
 Memory headers and conversational rules no longer repeat this hierarchy. Short prompts also open
 with a first-person declarative identity and add an embodiment reminder immediately before the

@@ -1,22 +1,26 @@
 <p align="right"><a href="../../../fr/architecture/flows/calendar.md">Français</a> · <strong>English</strong></p>
 
-# Local agenda, CalDAV and action execution
+# Local agenda, providers and action execution
 
 `app.calendar` owns the canonical model for internal and external calendars. Each agent has a
-system **Personal agenda** (`agenda`) without an external account. Additional internal and
-external calendars use the same model. `bridge.calendar` implements **CalDAV**; exchanged
-events remain **iCalendar** (`VEVENT`, recurrence rules, exceptions and `VALARM`). An iCalendar
+single system **Personal agenda** (`agenda`), created automatically without an external account;
+it cannot be disabled or deleted. Legacy additional internal agendas remain accessible, but
+new ones cannot be created. `bridge.calendar` adapts CalDAV, Google Calendar, Microsoft 365 /
+Outlook, iCloud and iCalendar subscriptions. Canonical events remain **iCalendar** (`VEVENT`, recurrence rules, exceptions and `VALARM`). An iCalendar
 file subscription is read-only.
 
 ## Configuration and authorization
 
 The provider capability is `caldav.calendar`. `calendar_config.settings` holds source kind
-(`caldav` by default, or `ical`), timezone and working-hour preferences. Its `param_map`
+(`caldav` by default, `ical`, `google`, `microsoft` or `icloud`), timezone and working-hour preferences. Its `param_map`
 references standard connection parameters for `url`, `username`, `password` and optional
 labels. Private URLs and passwords use encrypted `password` parameters, with ordinary
 connection inheritance and enforced values. Agenda has no parallel credential editor.
-External calendars come from these parameters and CalDAV discovery; the calendar creation
-API creates internal calendars only.
+External calendars come from these parameters and provider discovery. The API refuses
+additional internal-calendar creation. The `sync_interval_hours` role references a standard
+integer connection parameter shared by all its agendas, with global/local inheritance:
+two hours by default, from 1 to 8760 hours. Google and Microsoft use account OAuth consent;
+iCloud uses an application password. See the [Agenda journey](../../user/calendar.md) for setup.
 
 `CALENDAR_ACCESS` or `CALENDAR_EDIT` permits reading within agent management scope.
 `CALENDAR_EDIT` permits commands; remote capabilities still constrain writes. MCP functions
@@ -76,14 +80,18 @@ fails explicitly in an isolated worker, never presenting partial data as complet
 A local mutation and its outbox operation are committed together. `sync_state=pending`
 means local intent, not remote confirmation.
 
-The external worker checks every minute. Healthy calendars are polled every five minutes;
-pending writes or an explicit request wake synchronization. Concurrency is bounded, with
-independent database sessions per branch. A lease and configuration revision fence stale responses.
+The external worker checks every minute and respects the connection interval, including after
+failure or interruption. Calendars are processed one at a time; a manual request has its own
+`calendar_sync_runs` tracking. A lease and configuration revision fence stale responses.
 
 CalDAV provides discovery, `sync-token` and `sync-collection`. Modified resources are fetched
 in `calendar-multiget` batches. Truncated responses are continued before completing the sync.
 An expired token triggers full reconciliation. iCalendar subscriptions use conditional ETag
 reads where supported. Invalid/incomplete responses never advance the cursor or justify deletion.
+
+Google and Microsoft use a complete paginated snapshot without a date limit. Series and
+exceptions are imported, but writes support simple events and whole-series deletion only;
+other recurring mutations fail before local writing. CalDAV retains recurrence editing.
 
 Each CalDAV resource has a stable locator and ETag. Creates use `If-None-Match: *`;
 updates/deletes use `If-Match` with a strong ETag. Lost acknowledgements are reconciled by
@@ -96,8 +104,10 @@ stage, category, HTTP status and code location, without private URLs or contents
 
 An action is a scheduled Task admission through the public `app.agent` facade. It may run
 before/start/after an event. Several actions may share a deadline with distinct identities.
-External calendars require explicit action activation. Read-only events may have local actions;
-imported event data never becomes an authorized instruction.
+Without a specific action, each event launches a Task at its start; configured alarms and actions
+replace that launch. New internal and synchronized agendas enable actions by default, preserving
+explicit deactivations. Read-only events may have local actions. Tasks retain ordinary tool
+permissions and policies.
 
 The local worker checks deadlines every ten seconds independently of providers or open views.
 It checks activation, revision, occurrence and lateness; overdue actions become `skipped`.
@@ -110,6 +120,6 @@ The journal filters by event/occurrence and exposes `galaris://task/<uuid>`. Man
 use a separate key and launch number, preserving the previous terminal Task. Cancelled events
 do not produce new actions.
 
-Agenda owns dated commitments and reminders. Goal owns durable outcomes and reviews: never
-copy a Goal review into Agenda. Reminder Tasks receive no implicit `goal_id`. A Task may use
+Agenda owns dated commitments and reminders. Goal owns durable outcomes and work cycles: never
+copy a Goal cycle into Agenda. Reminder Tasks receive no implicit `goal_id`. A Task may use
 its ordinary permissions to start a Process; synchronization/reminders are not Process wrappers.

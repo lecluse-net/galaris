@@ -40,8 +40,9 @@ résoudre ni copier le contenu d'une ressource liée.
 `GET /api/documents/formats` expose le catalogue et les capacités déclarées : éditeur,
 aperçu, intégration, miniature, PDF, export natif et import. Chaque capacité distingue
 `native`, `fallback` et `unavailable`. `capability_complete` décrit cette déclaration,
-pas une certification. La bibliothèque propose **Formats de document**, avec les
-capacités composées backend/frontend et une nouvelle tentative après erreur.
+pas une certification. Le catalogue reste disponible par l'API ; la bibliothèque ne
+propose plus de bouton **Formats de document**. La création et le filtre de format
+restent accessibles dans les commandes ordinaires de Documents.
 `file_schemes` expose aussi `document_formats` pour les agents.
 Les outils fichiers lisent et remplacent aussi les formats binaires, avec contrôle de
 révision. Leurs pages base64 sont décodables indépendamment ; les offsets sont en octets.

@@ -438,6 +438,15 @@ creating a Task. A compatible Process retains absolute priority; the Task handle
 resources, deliveries, third parties, external systems without a Process, and substantial work.
 The conversational Process catalog remains a data projection and no longer repeats this policy.
 
+This policy also owns capability limits: a function absent from the round or an unknown method
+does not establish that a Task cannot perform the work. The Task may explore the means and attempt
+the requested outcome; verified prohibitions still apply. Inventories provide bounded facts,
+shared by text and both voice paths, without a second admission instruction. The operating guide
+refers to this policy; transport rules retain style and receipt requirements. Execution remains
+dispatch → run, without an added judge or decision call. A customized Param still takes priority:
+inspect its effective value before attributing behaviour to the new default. See
+[decision 0297](../../../project/decisions/0297-unified-conversation-capability-policy.md).
+
 The common prompt creates a single non-reliability boundary before histories, memories,
 resources, and retrieved results. Conversation and voice prompts declare identity as direct
 first-person speech, then briefly recall this embodiment at the end of the tree,
@@ -961,8 +970,10 @@ setting is required. See [ADR 0130](../../../project/decisions/0130-live-message
 
 Each agent references a personal LLM profile or retains `profile_id = NULL` to follow the
 current profile. Text usages share four levels: `ultra-low` for Dream; `low` for the
-dispatcher and quick conversation; `standard` for the executor and Goal tracking;
-`high` for the high executor, planner, and AI Lab. Specialized models (media,
+dispatcher and quick conversation; `standard` for the executor;
+`high` for the high executor, planner, and AI Lab. Goal monitoring exclusively uses the
+Decision selection, without text fallback; without it, cycles continue without automatic
+completion. Specialized models (media,
 transcription, and embeddings) retain their dedicated columns. An empty value in a personal
 profile remains empty and never falls back to the current profile. Planner selection also covers
 final plan synthesis. Gateways also recognize Claude families
@@ -1220,12 +1231,14 @@ Browser, Search, Image, and Multimedia connections start active by default. The
 embedded Console is provisioned when an agent using the internal harness is
 created and activated after SSH/SFTP verification. If the executor is unavailable,
 the connection remains inactive; provisioning can be retried from Connections.
-These five Services are enabled for conversations on first initialization. Existing
-settings and restrictions are preserved.
+Browser and Search are enabled for conversations on first initialization; Console, Image
+and Multimedia require conversation access to be enabled in the Service. Existing settings
+and restrictions are preserved.
 
-The `goal_management`, `skills`, and `process_admin` packages are declared in
+The `goal_management` and `process_admin` packages are declared in
 `app.services.mandatory_services` with `default_active=False`. Synchronization therefore creates a
-connection for every compatible agent, but grants it no functions by default. An active
+connection for every compatible agent, but grants it no functions by default. In contrast,
+`skills` starts active with personal scope, preserving existing restrictions. An active
 `goal_management` connection with administrative scope broadens shared Goal functions to agents
 within its local `personal`, `team` or `all` scope and exposes only the
 administrative commands `goal_create`, `goal_update`, `goal_delete`, `goal_pause`,

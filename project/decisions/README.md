@@ -1,5 +1,12 @@
 # Décisions d'architecture
 
+- [0297 — Politique unifiée des capacités conversationnelles](0297-unified-conversation-capability-policy.md)
+
+- [0296 — Decision-only Goal monitoring](0296-decision-only-goal-monitoring.md)
+
+- [0295 — Composition frontend sans cycles et erreurs par opération](0295-acyclic-frontend-composition-and-operation-errors.md)
+- [0294 — Snapshots frontend par session et surfaces publiques](0294-frontend-session-snapshots-and-public-surfaces.md)
+
 - [0291 — Services et catalogue YAML autonome](0291-services-and-portable-catalog.md)
 
 - [0289 — Stable native Calendar resources](0289-calendar-resource-identity.md)

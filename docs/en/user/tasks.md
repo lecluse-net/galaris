@@ -2,6 +2,12 @@
 
 # Assigning and following a Task
 
+During text or voice conversations, the agent can start a Task when dialogue tools are insufficient.
+The Task may explore the method and available means: this uncertainty does not require you to do
+the work yourself. Admission confirms that work was accepted, not that the outcome succeeded.
+Permissions and required approvals still apply; an essential human preference must be clarified
+before starting the work.
+
 **Activities** tabs are independent: Tasks use `TASK_ACCESS`/`TASK_EDIT`, text conversations
 use `CONVERSATION_ACCESS`/`CONVERSATION_CONTROL`, voice uses
 `VOICE_HISTORY_ACCESS`/`VOICE_HISTORY_CONTROL`, LLM calls use `LLM_CALL_ACCESS`/`LLM_CALL_CONTROL`,

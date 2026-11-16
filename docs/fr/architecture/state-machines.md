@@ -411,26 +411,23 @@ Un cycle crée une tâche ordinaire, attend son état terminal, passe au jugemen
 un verdict. `CONTINUE` programme le cycle temporel suivant lorsqu'une fréquence existe ; `STOP`
 clôt l’objectif. Une pause empêche la création de nouveaux cycles sans effacer l’historique.
 
-Le jugement propose `CONTINUE`, `STOP`, `PAUSE` ou `REVIEW`. `STOP` signifie que les critères
-d'origine sont satisfaits ; un blocage ou une méthode inconnue ne vaut jamais réussite.
-Avant une clôture automatique, une pause proposée ou une demande de revue, le cycle crée
-une Task de revue en contexte neuf, appartenant au même agent et sans droits supplémentaires.
-Trois cycles consécutifs sans progrès depuis la dernière revue déclenchent également cet examen.
-Une amélioration utile peut constituer un progrès sans information externe.
-Le cycle reste `JUDGING` sans rappeler le modèle pendant cette Task. Le lien nullable
-`review_task_id`, le bail et les transactions empêchent les créations doubles et permettent la reprise.
-Les révisions du Goal et du suivi bornent la validité de la revue ; un contexte modifié invalide
-son avis. Une nouvelle revue ne remplace jamais une Task encore active. Les observations d'outils
-enregistrées accompagnent son résultat dans le jugement suivant. Une revue échouée ne permet
-pas une clôture automatique. Une revue sans observation d'outil réussie enregistrée ne peut
-pas justifier une clôture non plus. `PAUSE` conserve le verdict de cycle `CONTINUE`, place le Goal
-en `PAUSED` avec la raison `BLOCKED` et conserve la condition de reprise dans le suivi.
-Une revue indisponible donne `REVIEW_UNAVAILABLE`. Une pause humaine reste prioritaire.
-La clôture humaine demande aussi l'arrêt de la revue devenue inutile ; sa réponse tardive
-ne rouvre jamais le Goal.
-Les revues continuent le cycle engagé avec les règles ordinaires de scheduler, périmètre et budget.
-Leurs coûts, y compris les avis invalidés, rejoignent le coût de travail du cycle.
-La stratégie et les pistes restent des contenus documentaires libres.
+Le monitoring utilise exclusivement le modèle **Décision** du profil de l'agent pour un
+choix fermé `CONTINUE` ou `STOP`, avec un appel maximum et aucun repli texte. Il ne génère
+ni synthèse du suivi, ni commentaire de progression, ni Task de revue. `STOP` signifie que
+les critères d'origine sont satisfaits par les observations disponibles ; un blocage, une
+méthode inconnue ou une affirmation de réussite ne suffit pas. Les révisions du Goal et du
+suivi invalident une décision devenue périmée. Une pause humaine reste prioritaire.
+Sans modèle décisionnel, le monitoring est désactivé : le cycle persiste `CONTINUE` et les
+tâches continuent selon leur planning. Un échec du fournisseur conserve son diagnostic et
+son coût, puis persiste aussi `CONTINUE` sans arrêter le Goal. Le résultat intégral de la
+Task est conservé comme contexte du cycle suivant, sans réécriture par un autre modèle.
+Le document de suivi reste modifiable par les utilisateurs et les outils autorisés.
+Les anciennes pauses `BLOCKED` et `REVIEW_UNAVAILABLE` sont reprises progressivement par
+le worker ; `MANUAL` et `REFERRER_NO_RESPONSE` sont préservées. Le lien de revue dans les cycles
+et les marqueurs techniques associés sont retirés par DbAdmin. Les tâches correspondantes
+restent des tâches ordinaires : aucune suppression, annulation ni attente de leur résultat
+n'est déclenchée par ce nettoyage. Leurs contenus, états et coûts sont conservés.
+Voir la [décision 0296](../../../project/decisions/0296-decision-only-goal-monitoring.md).
 
 Chaque Goal choisit exactement un mode de déclenchement automatique : délai après travail,
 récurrence à dates fixes ou cycle d’un objectif parent. La récurrence conserve des segments

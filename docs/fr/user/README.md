@@ -109,7 +109,7 @@ Un Service représente le fournisseur, par exemple **Ionos**, et peut cumuler AP
 messagerie, écouteur, Mail et Calendrier. Mail et CalDAV sont des protocoles de fournisseurs optionnels.
 Chaque agent dispose aussi d’un **Agenda personnel** interne par défaut, sans connexion externe.
 Demander à l’agent de prendre un rendez-vous ou de prévoir un rappel suffit ; il utilise les
-fonctions autorisées de son agenda. Les objectifs conservent le suivi durable et leurs propres revues :
+fonctions autorisées de son agenda. Les objectifs conservent leurs propres cycles de travail :
 un rappel ne doit pas dupliquer un cycle d’objectif déjà programmé.
 Pour Ionos Mail, créer **Ionos**, activer **Mail**, renseigner les serveurs dans ses paramètres
 globaux, puis créer une connexion Ionos par agent avec son adresse et son mot de passe.
@@ -124,10 +124,11 @@ et l’édition des rendez-vous, leurs répétitions et les lancements de Tasks 
 Voir [Agenda et lancements de tâches](calendar.md).
 Les rendez-vous sont consultés dans une copie locale ; les modifications externes sont synchronisées
 en arrière-plan. Une écriture en attente n'est pas encore confirmée chez le fournisseur.
-Le type de source iCalendar permet également un abonnement en lecture seule. Les actions d'un
-agenda externe doivent être activées explicitement. Chaque action arrivée à échéance, dont les
-alarmes VALARM activées, crée une tâche avec les informations de l’événement ; un événement
-sans action ne crée aucune tâche. L’**Historique d’exécution** suit séparément chaque occurrence,
+Le type de source iCalendar permet également un abonnement en lecture seule. Les nouveaux
+agendas internes et synchronisés activent les lancements de tâches par défaut ; une
+désactivation enregistrée reste conservée. Sans action particulière, chaque événement
+déclenche une tâche à son début. Les alarmes VALARM ou actions configurées remplacent ce
+lancement par défaut pour l'occurrence concernée. L’**Historique d’exécution** suit séparément chaque occurrence,
 avec le lien vers sa tâche et son état. Seule une tâche terminée avec succès est marquée traitée.
 Elle peut lancer un processus si nécessaire, avec les autorisations ordinaires de ses outils.
 
@@ -325,16 +326,19 @@ Exemple : « Compare ces trois offres, produis un tableau argumenté, vérifie l
 partage le fichier dans le salon Achats. »
 
 Une tâche planifiée reste un travail fini : elle se termine après la livraison demandée. Un
-**objectif durable** est différent : Galaris lance des cycles successifs, évalue les progrès après
+**objectif durable** est différent : Galaris lance des cycles successifs, examine leur résultat après
 chaque cycle et continue jusqu’à réussite ou arrêt explicite.
 
 Vous pouvez donner le résultat recherché sans connaître la méthode. L'agent peut rechercher,
 expérimenter, améliorer l'existant sans information nouvelle et solliciter ses collègues.
 Il organise librement sa stratégie et ses pistes dans le suivi documentaire, en conservant
-les raisons des choix et des abandons. Une Task de revue en contexte neuf examine le travail
-avant une clôture automatique et lors d'une stagnation persistante. Un blocage durable ou
-une revue en échec peut mettre l'objectif en pause ; le suivi précise les conditions de reprise.
-Reprendre conserve travaux et historique. La réussite dépend des critères d'origine et des
+les raisons des choix et des abandons. Après chaque Task, seul le LLM décisionnel du profil
+peut choisir de poursuivre ou de terminer. Il ne réécrit pas le suivi et ne crée aucune revue.
+Un blocage conserve l'objectif actif pour une réévaluation selon son planning. Sans modèle
+décisionnel, les cycles continuent sans monitoring ni clôture automatique. Une panne de ce
+modèle conserve le diagnostic sans arrêter le travail. Le résultat de la Task est transmis
+au cycle suivant. Les pauses humaines et les attentes de réponse restent respectées.
+La réussite dépend des critères d'origine et des
 preuves disponibles ; ce mécanisme ne garantit pas de résoudre tout objectif.
 
 Si un cycle dépend d'un choix humain encore indécidé, l'agent peut poser la question au
@@ -348,9 +352,8 @@ La couche **Objectifs** de l’[Agenda](calendar.md) montre les passages
 futurs puis le cycle et la Task exacts de chaque passage arrivé à échéance. Les changements
 de configuration conservent le passé et ne remplacent que la planification future.
 Le détail s’ouvre sans charger tout l’historique : l’onglet **Cycles** récupère sa page lors
-de son ouverture. Chaque cycle affiche son bilan et ses preuves enregistrées. Lorsqu’une
-tâche de revue existe, **Ouvrir la revue** permet de la consulter dans une modale superposée,
-avec les droits Task, puis de retrouver le même objectif et ses cycles en la fermant.
+de son ouverture. Chaque cycle affiche la décision appliquée, l’état du monitoring et les
+preuves enregistrées. Aucun bouton d’ouverture de revue n’est proposé.
 Les mises à jour en direct conservent la sélection et les informations déjà
 affichées. Si un chargement échoue, un message et **Réessayer** permettent de le reprendre.
 Une modification concurrente ne remplace pas votre brouillon : l’enregistrement signale le
@@ -372,14 +375,13 @@ hérité et conservent chaque parent avant ses descendants. La catégorie propre
 elle s’applique de nouveau si le sous-objectif est détaché de son parent. Un changement de
 catégorie de la racine reclasse donc toute sa branche, sans modifier les catégories propres.
 
-Galaris actualise automatiquement le suivi de l'objectif à la fin du cycle, à partir des
-preuves remontées par l'agent. Une livraison demandée reste une action à réaliser avec
-les autorisations nécessaires ; le suivi automatique ne la remplace pas.
+Le résultat de chaque Task conserve les preuves et les éléments utiles au prochain cycle.
+Le monitoring ne réécrit pas le document de suivi. Une livraison demandée reste une action
+à réaliser avec les autorisations nécessaires.
 
 Dans **Préférences → Instructions**, les personnes autorisées peuvent personnaliser le prompt
-de suivi : synthèse de l'état actuel, informations à conserver et décision de poursuite.
-La modification s'applique aux prochains jugements. **Revenir au défaut** restaure les
-consignes Galaris, qui fusionnent les répétitions sans imposer de cible de longueur.
+de décision `CONTINUE`/`STOP`. La modification s'applique aux prochains jugements et ne peut
+activer une synthèse texte ou une revue. **Revenir au défaut** restaure les consignes Galaris.
 
 Lorsqu’une DRH agentique dispose des capacités de gestion correspondantes, vous pouvez lui
 demander par exemple :
@@ -543,13 +545,14 @@ envoi avait déjà été reçu. Après confirmation, un rafraîchissement lent o
 fil ne bloque pas l’envoi suivant ni la sélection des pièces jointes. Le texte est conservé
 immédiatement dans le stockage local du navigateur, les fichiers dans IndexedDB, et le
 brouillon est synchronisé au serveur toutes les deux secondes pendant la saisie. Les PJ
-sont téléversées dès leur sélection, avant de poster. Recharger la page, changer de
-conversation ou revenir depuis un document retrouve le brouillon du compte et de la
-conversation concernés. Une coupure réseau conserve la saisie locale et la synchronisation
-reprend au retour de la connexion. Le statut sous la saisie signale les erreurs et permet
-de réessayer. Si un autre éditeur a modifié le brouillon serveur, **Conserver ce brouillon**
-demande confirmation avant de le remplacer. Il n'existe qu'un brouillon courant, sans
-historique ; son contenu sauvegardé est effacé après confirmation de l'envoi, en conservant
+commencent leur téléversement dès leur sélection. **Poster** utilise les octets locaux
+et les PJ déjà téléversées sans attendre cette sauvegarde. Recharger la page, changer de
+conversation ou revenir depuis un document retrouve le brouillon de la session de connexion,
+du compte et de la conversation concernés. Une coupure ou un conflit de sauvegarde se
+résout en arrière-plan, sans message d'erreur ni confirmation ; un brouillon local non vide
+est conservé en priorité si le serveur contient une autre version. Les sessions de connexion
+possèdent des brouillons distincts. Chaque brouillon courant reste sans historique ; son
+contenu sauvegardé est effacé après confirmation de l'envoi, en conservant
 les modifications saisies pendant cet envoi. Effacer les données du navigateur supprime
 les modifications qui n'ont pas encore atteint le serveur.
 
@@ -674,6 +677,13 @@ deux demandes distinctes.
 
 ### Comprendre les conversations courtes et le travail de fond
 
+L'absence d'une fonction dans la conversation ne prouve pas qu'elle manque aux tâches.
+Pour un travail qui dépasse le dialogue, l'agent peut lancer une Task afin de rechercher
+les moyens disponibles et tenter le résultat demandé, même si la méthode est encore inconnue.
+Un Process affecté correspondant reste prioritaire. Les droits, refus et accords en attente
+restent applicables ; un choix humain non résolu demande une clarification. Cette politique
+est commune au texte, à la voix par tours et à la voix temps réel.
+
 Pendant une mise à jour ou un redémarrage, une conversation en cours reprend automatiquement
 à partir de ses informations enregistrées. Vous n'avez pas à renvoyer le message. Les actions
 confirmées sont conservées et les interruptions ne consomment pas les essais réservés aux
@@ -686,7 +696,7 @@ politique d’action habituelle et les droits de contact ; lire sa fiche ne le c
 
 À l’initialisation, **Console SSH**, **Image** et **Multimédia** ne sont pas
 accessibles en mode conversation par défaut. Un administrateur peut autoriser chaque outil
-pour les conversations depuis le catalogue des outils. Ce réglage ne change pas leur accès
+pour les conversations depuis le catalogue des Services. Ce réglage ne change pas leur accès
 dans les tâches ; les mises à jour conservent les choix déjà enregistrés.
 
 Si une tâche attend votre accord pour lire un mail, répondez à la demande d’autorisation.

@@ -12,6 +12,9 @@ Les documents et leurs résumés partagés sont indépendants des souvenirs pers
 des agents. Partager un document ne partage aucun souvenir ; supprimer une référence
 dans le graphe mémoire ne supprime pas le document. Les souvenirs concernant un
 document restent privés à l'agent qui les a acquis.
+L'analyse d'une pièce jointe conserve les droits de son document source, même si
+la référence de ce document est absente du graphe mémoire. Sa lecture ne permet
+pas de modifier le document et cesse lorsque l'accès à la source est révoqué.
 
 Le contenu d'un document utilise le même éditeur complet dans la bibliothèque,
 Discussion, les fenêtres d'aperçu et le suivi des objectifs, avec son adaptation mobile.

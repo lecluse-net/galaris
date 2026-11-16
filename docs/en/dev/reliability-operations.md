@@ -306,6 +306,33 @@ These budgets include the selected catalogue; fonts, APIs and precache downloads
 The `core/util/facade` surface exposes bootstrap primitives without loading the component
 catalogue; the same instances remain available through the root interface.
 
+`route_total_by_locale` measures the complete shell + chat journey without double-counting
+shared chunks. The cumulative code gate retains 660,000 gzip bytes, the sum of the former
+English startup (460,000) and additional chat (200,000) allowances: moving a chunk between
+these stages no longer changes the verdict. JSON catalogues are included in per-language
+measurements and remain bounded by the startup budgets above. `packaged_assets` also
+inventories fonts, images and public files, including the ten largest files; these disk sizes
+represent neither actual traffic nor the precache alone. The synthetic streaming journey
+in `e2e/specs/chat.spec.mjs` attaches preparation, first visible response and durable handoff
+timings, plus JS/CSS/font/API transfers for its navigation. The provider is simulated and
+completion is released explicitly.
+
+Periodic file-indexing, Task-activity and home-activity reads stop in hidden tabs and resume immediately
+on return. Real-time events remain processed; an already pending request may finish.
+No deadline or permission is cached.
+
+Home activity preloads all managed-agent avatars once when mounted, then reuses the
+images across refreshes. A known revision (`updated_at`) remains cached for the session
+without time-based expiration, within 64 entries and 16 MiB with least-recently-used
+eviction. Reopening reuses these bytes while retained; rereading the catalogue exposes
+the current revision. Mutations and session changes invalidate the cache. Unversioned
+reads retain their 60-second revalidation. Conversation avatars keep their separate,
+existing short-lived cache.
+Closing cancels pending reads and revokes the screen's Blob URLs, including any late result.
+A privilege change cancels pending activity reads and rejects their obsolete responses.
+Reads restart under the current privileges without waiting for the old response or
+the next interval. Closing also cancels these reads.
+
 Heavy readers, editors and previews exported by `core/util`, the Activity and Providers
 & models panels, and several Preferences sections load when opened. `defineAsyncView`
 preserves Vue props, events, slots and references. After a short wait it displays an

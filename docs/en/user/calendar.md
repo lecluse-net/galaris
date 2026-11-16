@@ -187,7 +187,7 @@ private network (private IPv4 and IPv6 unique-local addresses). The server must 
 from the Galaris backend and present a valid certificate. Loopback and link-local addresses
 remain excluded.
 
-**Open Task**, **Open review** and **Open Goal** display their detail dialogs over the
+**Open Task** and **Open Goal** display their detail dialogs over the
 agenda. Closing them returns to the event and preserves the agenda's period, view and filters.
 For a synchronized calendar, **Connection parameters** opens that connection's standard
 dialog directly without leaving the agenda.

@@ -12,11 +12,11 @@ tests remain authoritative for behavior.
 - 79 declared backend modules;
 - 40 declared frontend modules;
 - 645 backend dependency edges;
-- 228 frontend dependency edges;
+- 227 frontend dependency edges;
 - 308 edges between `app`/`bridge` domains;
 - 30 directly bidirectional domain pairs;
 - 1 strongly connected components;
-- 7 directly bidirectional frontend pairs;
+- 0 directly bidirectional frontend pairs;
 - 817 detected HTTP/WebSocket handlers;
 - 196 detected SQLAlchemy tables;
 - 294 detected native MCP tools;
@@ -114,22 +114,22 @@ tests remain authoritative for behavior.
 | `core/team` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
 | `core/authorize` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 2 |
 | `core/params` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 3 |
-| `app/index` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 7 |
-| `app/agent` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
+| `app/index` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 10 |
+| `app/agent` | yes | `components`, `i18n.ts`, `navigation.ts`, `services`, `stores` | 0 |
 | `app/harnesses` | yes | `components`, `i18n.ts`, `pages`, `services` | 1 |
-| `app/services` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 2 |
+| `app/services` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 1 |
 | `app/browser` | yes | `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/connection` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 5 |
 | `app/calendar` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services` | 1 |
 | `app/skill` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/llm` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 2 |
-| `app/task` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
+| `app/task` | yes | `components`, `i18n.ts`, `navigation.ts`, `services`, `stores` | 0 |
 | `app/conversation` | yes | `components`, `i18n.ts`, `services` | 0 |
 | `app/chat` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/voice` | yes | `components`, `i18n.ts`, `services` | 0 |
 | `app/dream` | yes | `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
 | `app/topic` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 2 |
-| `app/goal` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
+| `app/goal` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 1 |
 | `app/share` | yes | `components` | 0 |
 | `app/document` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 3 |
 | `app/memory` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 2 |
@@ -160,7 +160,7 @@ tests remain authoritative for behavior.
 | `app.agent` | `app.llm` | `back/app/agent/admin_service.py`, `back/app/agent/agent_service.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/conversation_dispatch.py`, `back/app/agent/dispatcher.py`, `back/app/agent/facade.py`, `back/app/agent/janus.py`, `back/app/agent/model_resolver.py`, `back/app/agent/models.py`, `back/app/agent/openai_router.py`, `back/app/agent/planner_service.py`, `back/app/agent/realtime.py`, `back/app/agent/router.py`, `back/app/agent/tools.py` |
 | `app.agent` | `app.messenger` | `back/app/agent/planner_service.py` |
 | `app.agent` | `app.process` | `back/app/agent/janus.py`, `back/app/agent/openai_router.py`, `back/app/agent/realtime.py` |
-| `app.agent` | `app.services` | `back/app/agent/admin_authorization.py`, `back/app/agent/agent_service.py`, `back/app/agent/defaults.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/mcp.py`, `back/app/agent/planner_service.py` |
+| `app.agent` | `app.services` | `back/app/agent/admin_authorization.py`, `back/app/agent/agent_service.py`, `back/app/agent/defaults.py`, `back/app/agent/executor_service.py`, `back/app/agent/facade.py`, `back/app/agent/mcp.py`, `back/app/agent/planner_service.py`, `back/app/agent/realtime.py` |
 | `app.agent` | `app.share` | `back/app/agent/share_directory.py` |
 | `app.agent` | `app.skill` | `back/app/agent/__init__.py`, `back/app/agent/agent_service.py`, `back/app/agent/defaults.py`, `back/app/agent/facade.py`, `back/app/agent/models.py` |
 | `app.agent` | `core.authorize` | `back/app/agent/admin_authorization.py`, `back/app/agent/agent_service.py`, `back/app/agent/assertions.py`, `back/app/agent/avatar_generation.py`, `back/app/agent/defaults.py`, `back/app/agent/dialogue_service.py`, `back/app/agent/management_scope.py`, `back/app/agent/openai_router.py`, `back/app/agent/openai_service.py`, `back/app/agent/router.py`, `back/app/agent/team_router.py` |
@@ -218,7 +218,7 @@ tests remain authoritative for behavior.
 | `app.chat` | `core.scheduling` | `back/app/chat/__init__.py` |
 | `app.chat` | `core.settings` | `back/app/chat/storage.py`, `back/app/chat/webrtc.py` |
 | `app.chat` | `core.storage` | `back/app/chat/draft_service.py`, `back/app/chat/router.py`, `back/app/chat/storage.py` |
-| `app.chat` | `core.user` | `back/app/chat/document_conversation.py`, `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/webrtc.py` |
+| `app.chat` | `core.user` | `back/app/chat/document_conversation.py`, `back/app/chat/draft_service.py`, `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/webrtc.py` |
 | `app.chat` | `core.util` | `back/app/chat/push_service.py`, `back/app/chat/router.py`, `back/app/chat/storage.py`, `back/app/chat/thumbnail_service.py` |
 | `app.code` | `core.authorize` | `back/app/code/gateway.py`, `back/app/code/lifecycle.py`, `back/app/code/router.py`, `back/app/code/service.py` |
 | `app.code` | `core.database` | `back/app/code/gateway.py`, `back/app/code/lifecycle.py`, `back/app/code/models.py`, `back/app/code/resource_facade.py`, `back/app/code/router.py`, `back/app/code/runtime_configuration.py`, `back/app/code/service.py` |
@@ -352,12 +352,12 @@ tests remain authoritative for behavior.
 | `app.file_share` | `core.util` | `back/app/file_share/browser_router.py`, `back/app/file_share/document_facade.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/mcp.py`, `back/app/file_share/media_router.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/operation_memos.py`, `back/app/file_share/process_provider.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
 | `app.goal` | `app.agent` | `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/hierarchy.py`, `back/app/goal/models.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.connection` | `back/app/goal/models.py` |
-| `app.goal` | `app.llm` | `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/runner.py` |
+| `app.goal` | `app.llm` | `back/app/goal/evaluation.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.messenger` | `back/app/goal/goal_service.py`, `back/app/goal/referrer_wait.py` |
 | `app.goal` | `app.services` | `back/app/goal/access.py`, `back/app/goal/mcp.py` |
-| `app.goal` | `app.task` | `back/app/goal/calendar.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/reviews.py`, `back/app/goal/runner.py` |
+| `app.goal` | `app.task` | `back/app/goal/calendar.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/runner.py` |
 | `app.goal` | `core.authorize` | `back/app/goal/router.py` |
-| `app.goal` | `core.database` | `back/app/goal/calendar.py`, `back/app/goal/category_service.py`, `back/app/goal/events.py`, `back/app/goal/facade.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/reviews.py`, `back/app/goal/runner.py` |
+| `app.goal` | `core.database` | `back/app/goal/calendar.py`, `back/app/goal/category_service.py`, `back/app/goal/events.py`, `back/app/goal/facade.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/runner.py` |
 | `app.goal` | `core.dbadmin` | `back/app/goal/agenda_upgrade.py`, `back/app/goal/dbadmin.py` |
 | `app.goal` | `core.i18n` | `back/app/goal/referrer_wait.py` |
 | `app.goal` | `core.params` | `back/app/goal/facade.py`, `back/app/goal/settings_service.py` |
@@ -408,7 +408,7 @@ tests remain authoritative for behavior.
 | `app.lab` | `app.memory` | `back/app/lab/mechanism_evaluation_service.py` |
 | `app.lab` | `app.messenger` | `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
 | `app.lab` | `app.process` | `back/app/lab/evidence_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/process_evaluation.py` |
-| `app.lab` | `app.services` | `back/app/lab/evidence_service.py`, `back/app/lab/mcp.py`, `back/app/lab/mcp_access.py`, `back/app/lab/mcp_service.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operation_worker.py`, `back/app/lab/operations.py`, `back/app/lab/run_claims.py` |
+| `app.lab` | `app.services` | `back/app/lab/evidence_service.py`, `back/app/lab/mcp.py`, `back/app/lab/mcp_access.py`, `back/app/lab/mcp_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/operation_execution.py`, `back/app/lab/operation_worker.py`, `back/app/lab/operations.py`, `back/app/lab/run_claims.py` |
 | `app.lab` | `app.skill` | `back/app/lab/evidence_service.py` |
 | `app.lab` | `app.task` | `back/app/lab/dispatcher_evaluation_service.py`, `back/app/lab/evaluation_service.py`, `back/app/lab/evidence_service.py`, `back/app/lab/judgment_service.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/operations.py` |
 | `app.lab` | `app.topic` | `back/app/lab/contracts.py`, `back/app/lab/mechanism_evaluation_service.py`, `back/app/lab/mechanism_registry.py`, `back/app/lab/schemas.py`, `back/app/lab/synthetic_service.py` |
@@ -448,7 +448,7 @@ tests remain authoritative for behavior.
 | `app.mcp` | `core.util` | `back/app/mcp/models.py`, `back/app/mcp/service.py` |
 | `app.memory` | `app.agent` | `back/app/memory/access.py`, `back/app/memory/assertions.py`, `back/app/memory/automation.py`, `back/app/memory/bootstrap.py`, `back/app/memory/conversation_summary.py`, `back/app/memory/dream_actions.py`, `back/app/memory/events.py`, `back/app/memory/graph_state.py`, `back/app/memory/router.py`, `back/app/memory/service.py`, `back/app/memory/source_projection.py` |
 | `app.memory` | `app.conversation` | `back/app/memory/link_reconciliation.py`, `back/app/memory/recall_scope.py`, `back/app/memory/service.py` |
-| `app.memory` | `app.document` | `back/app/memory/access.py`, `back/app/memory/admission.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/automation.py`, `back/app/memory/bootstrap.py`, `back/app/memory/document_projection.py`, `back/app/memory/document_structure.py`, `back/app/memory/dream_actions.py`, `back/app/memory/facade.py`, `back/app/memory/maintenance.py`, `back/app/memory/models.py`, `back/app/memory/router.py`, `back/app/memory/schemas.py`, `back/app/memory/semantic_index.py`, `back/app/memory/service.py`, `back/app/memory/source_access.py` |
+| `app.memory` | `app.document` | `back/app/memory/access.py`, `back/app/memory/acquisition_service.py`, `back/app/memory/admission.py`, `back/app/memory/attachment_analysis.py`, `back/app/memory/attachment_description.py`, `back/app/memory/automation.py`, `back/app/memory/bootstrap.py`, `back/app/memory/document_projection.py`, `back/app/memory/document_structure.py`, `back/app/memory/dream_actions.py`, `back/app/memory/facade.py`, `back/app/memory/maintenance.py`, `back/app/memory/models.py`, `back/app/memory/router.py`, `back/app/memory/schemas.py`, `back/app/memory/semantic_index.py`, `back/app/memory/service.py`, `back/app/memory/source_access.py` |
 | `app.memory` | `app.goal` | `back/app/memory/bootstrap.py`, `back/app/memory/link_reconciliation.py`, `back/app/memory/source_projection.py` |
 | `app.memory` | `app.llm` | `back/app/memory/__init__.py`, `back/app/memory/acquisition_service.py`, `back/app/memory/conversation_summary.py`, `back/app/memory/embedding.py` |
 | `app.memory` | `app.process` | `back/app/memory/link_reconciliation.py`, `back/app/memory/process_projection.py` |
@@ -805,14 +805,11 @@ tests remain authoritative for behavior.
 
 | Source | Target | Files |
 |---|---|---|
-| `app/agent` | `app/harnesses` | `front/app/agent/pages/index.vue` |
-| `app/agent` | `app/llm` | `front/app/agent/pages/index.vue` |
-| `app/agent` | `core/api` | `front/app/agent/components/AgentAvatar.vue`, `front/app/agent/components/AgentSelect.vue`, `front/app/agent/composables/useAgentChoices.ts`, `front/app/agent/composables/useAgentTeamMetadata.ts`, `front/app/agent/composables/useHarnessLogs.ts`, `front/app/agent/pages/index.vue`, `front/app/agent/richContent.ts`, `front/app/agent/services/agentSelectionService.ts`, `front/app/agent/services/agentService.ts`, `front/app/agent/services/mcpTokenService.ts`, `front/app/agent/services/teamService.ts`, `front/app/agent/stores/agentSelectionStore.ts`, `front/app/agent/stores/agentStore.ts` |
-| `app/agent` | `core/authorize` | `front/app/agent/components/AgentSelect.vue`, `front/app/agent/navigation.ts`, `front/app/agent/pages/index.vue` |
-| `app/agent` | `core/navigation` | `front/app/agent/navigation.ts`, `front/app/agent/pages/index.vue` |
-| `app/agent` | `core/params` | `front/app/agent/pages/index.vue` |
-| `app/agent` | `core/team` | `front/app/agent/components/TeamAgentMembers.vue`, `front/app/agent/pages/index.vue`, `front/app/agent/team.ts` |
-| `app/agent` | `core/util` | `front/app/agent/components/AgentAvatar.vue`, `front/app/agent/components/AgentPreview.vue`, `front/app/agent/composables/useHarnessLogs.ts`, `front/app/agent/pages/index.vue`, `front/app/agent/richContent.ts`, `front/app/agent/services/agentOptionGroups.ts`, `front/app/agent/services/agentSelectionService.ts`, `front/app/agent/services/agentService.ts`, `front/app/agent/services/teamService.ts` |
+| `app/agent` | `core/api` | `front/app/agent/components/AgentAvatar.vue`, `front/app/agent/components/AgentSelect.vue`, `front/app/agent/composables/useAgentChoices.ts`, `front/app/agent/composables/useAgentMcp.ts`, `front/app/agent/composables/useAgentTeamMetadata.ts`, `front/app/agent/composables/useHarnessLogs.ts`, `front/app/agent/richContent.ts`, `front/app/agent/services/agentSelectionService.ts`, `front/app/agent/services/agentService.ts`, `front/app/agent/services/mcpTokenService.ts`, `front/app/agent/services/teamService.ts`, `front/app/agent/stores/agentSelectionStore.ts`, `front/app/agent/stores/agentStore.ts` |
+| `app/agent` | `core/authorize` | `front/app/agent/components/AgentSelect.vue`, `front/app/agent/navigation.ts` |
+| `app/agent` | `core/navigation` | `front/app/agent/navigation.ts` |
+| `app/agent` | `core/team` | `front/app/agent/components/TeamAgentMembers.vue`, `front/app/agent/team.ts` |
+| `app/agent` | `core/util` | `front/app/agent/components/AgentAuxiliaryDialogs.vue`, `front/app/agent/components/AgentAvatar.vue`, `front/app/agent/components/AgentMcpPanel.vue`, `front/app/agent/components/AvatarGenerationDialog.vue`, `front/app/agent/composables/useAgentMcp.ts`, `front/app/agent/composables/useHarnessLogs.ts`, `front/app/agent/index.ts`, `front/app/agent/richContent.ts`, `front/app/agent/services/agentOptionGroups.ts`, `front/app/agent/services/agentSelectionService.ts`, `front/app/agent/services/agentService.ts`, `front/app/agent/services/teamService.ts`, `front/app/agent/stores/agentStore.ts` |
 | `app/browser` | `app/connection` | `front/app/browser/stores/browserSettingsStore.ts` |
 | `app/browser` | `core/api` | `front/app/browser/services/browserService.ts` |
 | `app/browser` | `core/authorize` | `front/app/browser/navigation.ts`, `front/app/browser/stores/browserSettingsStore.ts` |
@@ -827,7 +824,7 @@ tests remain authoritative for behavior.
 | `app/calendar` | `core/authorize` | `front/app/calendar/components/CalendarEventTasks.vue`, `front/app/calendar/components/CalendarSettings.vue`, `front/app/calendar/components/CalendarWorkspace.vue`, `front/app/calendar/navigation.ts` |
 | `app/calendar` | `core/navigation` | `front/app/calendar/navigation.ts` |
 | `app/calendar` | `core/user` | `front/app/calendar/components/CalendarWorkspace.vue` |
-| `app/calendar` | `core/util` | `front/app/calendar/calendarDates.ts`, `front/app/calendar/components/CalendarBoard.vue`, `front/app/calendar/components/CalendarColorSelect.vue`, `front/app/calendar/components/CalendarEventChip.vue`, `front/app/calendar/components/CalendarEventTasks.vue`, `front/app/calendar/components/CalendarResourceDialog.vue`, `front/app/calendar/components/CalendarRowMenu.vue`, `front/app/calendar/components/CalendarSettings.vue`, `front/app/calendar/components/CalendarWorkspace.vue`, `front/app/calendar/presentation.ts`, `front/app/calendar/richContent.ts` |
+| `app/calendar` | `core/util` | `front/app/calendar/calendarDates.ts`, `front/app/calendar/components/CalendarBoard.vue`, `front/app/calendar/components/CalendarColorSelect.vue`, `front/app/calendar/components/CalendarConfirmDialog.vue`, `front/app/calendar/components/CalendarEventChip.vue`, `front/app/calendar/components/CalendarEventEditor.vue`, `front/app/calendar/components/CalendarEventPanel.vue`, `front/app/calendar/components/CalendarEventTasks.vue`, `front/app/calendar/components/CalendarResourceDialog.vue`, `front/app/calendar/components/CalendarRowMenu.vue`, `front/app/calendar/components/CalendarSettings.vue`, `front/app/calendar/components/CalendarWorkspace.vue`, `front/app/calendar/presentation.ts`, `front/app/calendar/richContent.ts` |
 | `app/chat` | `app/agent` | `front/app/chat/components/RoomCreateDialog.vue`, `front/app/chat/components/RoomList.vue` |
 | `app/chat` | `app/conversation` | `front/app/chat/components/AgentExecutionTrace.vue` |
 | `app/chat` | `app/task` | `front/app/chat/components/AgentExecutionTrace.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/CompactTaskOperations.vue`, `front/app/chat/liveState.ts`, `front/app/chat/runtimeState.ts`, `front/app/chat/types.ts` |
@@ -837,20 +834,20 @@ tests remain authoritative for behavior.
 | `app/chat` | `core/navigation` | `front/app/chat/navigation.ts`, `front/app/chat/pages/index.vue` |
 | `app/chat` | `core/params` | `front/app/chat/settings.ts` |
 | `app/chat` | `core/user` | `front/app/chat/code/components/CodeEditorHost.vue`, `front/app/chat/components/ChatProfilePreferences.vue`, `front/app/chat/components/MessageResourcePreviews.vue`, `front/app/chat/useComposerDraft.ts` |
-| `app/chat` | `core/util` | `front/app/chat/code/components/CodeWorkspaceDialog.vue`, `front/app/chat/code/components/RepositoryBrowser.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/ChatDocumentPane.vue`, `front/app/chat/components/ChatDocumentSearchDialog.vue`, `front/app/chat/components/Composer.vue`, `front/app/chat/components/ConversationDocumentDialog.vue`, `front/app/chat/components/ConversationDocumentsPanel.vue`, `front/app/chat/components/ConversationProcessDialog.vue`, `front/app/chat/components/ConversationProcessesPanel.vue`, `front/app/chat/components/DocumentConversationPanel.vue`, `front/app/chat/components/MarkdownAttachmentPreview.vue`, `front/app/chat/components/MessageResourcePreviews.vue`, `front/app/chat/components/MessageTimeline.vue`, `front/app/chat/components/SafeMessageContent.vue`, `front/app/chat/conversationPanel.ts`, `front/app/chat/pages/index.vue`, `front/app/chat/richContent.ts`, `front/app/chat/services/chatService.ts`, `front/app/chat/stores/chat.ts`, `front/app/chat/useChatAvatar.ts` |
+| `app/chat` | `core/util` | `front/app/chat/code/components/CodeWorkspaceDialog.vue`, `front/app/chat/code/components/CodeWorkspacePane.vue`, `front/app/chat/code/components/RepositoryBrowser.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/ChatDocumentPane.vue`, `front/app/chat/components/ChatDocumentSearchDialog.vue`, `front/app/chat/components/Composer.vue`, `front/app/chat/components/ConversationDocumentDialog.vue`, `front/app/chat/components/ConversationDocumentsPanel.vue`, `front/app/chat/components/ConversationProcessDialog.vue`, `front/app/chat/components/ConversationProcessesPanel.vue`, `front/app/chat/components/DocumentConversationPanel.vue`, `front/app/chat/components/MarkdownAttachmentPreview.vue`, `front/app/chat/components/MessageResourcePreviews.vue`, `front/app/chat/components/MessageTimeline.vue`, `front/app/chat/components/RoomCreateDialog.vue`, `front/app/chat/components/RoomPreferencesDialog.vue`, `front/app/chat/components/SafeMessageContent.vue`, `front/app/chat/conversationPanel.ts`, `front/app/chat/pages/index.vue`, `front/app/chat/richContent.ts`, `front/app/chat/services/chatService.ts`, `front/app/chat/stores/chat.ts`, `front/app/chat/useChatAvatar.ts` |
 | `app/chat` | `core/websocket` | `front/app/chat/components/AgentExecutionTrace.vue`, `front/app/chat/components/AgentTasksPanel.vue`, `front/app/chat/components/ConversationDocumentsPanel.vue`, `front/app/chat/components/ConversationProcessesPanel.vue`, `front/app/chat/components/DocumentConversationPanel.vue`, `front/app/chat/pages/index.vue`, `front/app/chat/stores/chat.ts`, `front/app/chat/stores/inbox.ts`, `front/app/chat/useMessagePreviewFreshness.ts` |
-| `app/connection` | `app/agent` | `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/MailInboundJournal.vue`, `front/app/connection/components/McpCandidateAgent.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue`, `front/app/connection/services/permissionDashboardSources.ts` |
+| `app/connection` | `app/agent` | `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/MailInboundJournal.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/index.ts`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue`, `front/app/connection/services/permissionDashboardSources.ts` |
 | `app/connection` | `app/calendar` | `front/app/connection/pages/calendars.vue`, `front/app/connection/services/calendarService.ts` |
 | `app/connection` | `app/console` | `front/app/connection/components/ConnectionForm.vue` |
 | `app/connection` | `app/services` | `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/services/connectionService.ts` |
 | `app/connection` | `core/api` | `front/app/connection/availability.ts`, `front/app/connection/components/McpOAuthConnection.vue`, `front/app/connection/pages/oauth-callback.vue`, `front/app/connection/pages/permissions.vue`, `front/app/connection/services/connectionService.ts`, `front/app/connection/services/mailService.ts`, `front/app/connection/services/mcpOAuthService.ts`, `front/app/connection/services/permissionDashboardSources.ts`, `front/app/connection/services/permissionService.ts`, `front/app/connection/stores/connectionStore.ts` |
 | `app/connection` | `core/authorize` | `front/app/connection/availability.ts`, `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/AuthorizationManager.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/MailInboundJournal.vue`, `front/app/connection/components/PermissionDashboardPanel.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/navigation.ts`, `front/app/connection/pages/mail.vue`, `front/app/connection/services/permissionDashboardSources.ts` |
 | `app/connection` | `core/navigation` | `front/app/connection/navigation.ts`, `front/app/connection/pages/mail.vue` |
-| `app/connection` | `core/util` | `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/FunctionPolicyToggle.vue`, `front/app/connection/components/PermissionToolBrowser.vue`, `front/app/connection/index.ts`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue`, `front/app/connection/permissionPresentation.ts` |
-| `app/console` | `core/api` | `front/app/console/services/consoleService.ts` |
+| `app/connection` | `core/util` | `front/app/connection/components/ActionAuthorizations.vue`, `front/app/connection/components/ConnectionForm.vue`, `front/app/connection/components/ConnectionList.vue`, `front/app/connection/components/ConnectionTestButton.vue`, `front/app/connection/components/FunctionPolicyToggle.vue`, `front/app/connection/components/MailInboundJournal.vue`, `front/app/connection/components/PermissionToolBrowser.vue`, `front/app/connection/components/RuntimePermissions.vue`, `front/app/connection/index.ts`, `front/app/connection/pages/mail.vue`, `front/app/connection/pages/permissions.vue`, `front/app/connection/permissionPresentation.ts`, `front/app/connection/stores/connectionStore.ts` |
+| `app/console` | `core/api` | `front/app/console/services/consoleService.ts`, `front/app/console/stores/consoleStore.ts` |
 | `app/console` | `core/authorize` | `front/app/console/navigation.ts`, `front/app/console/pages/executor.vue` |
 | `app/console` | `core/navigation` | `front/app/console/navigation.ts`, `front/app/console/pages/executor.vue` |
-| `app/console` | `core/util` | `front/app/console/pages/executor.vue` |
+| `app/console` | `core/util` | `front/app/console/pages/executor.vue`, `front/app/console/stores/consoleStore.ts` |
 | `app/conversation` | `app/agent` | `front/app/conversation/components/ConversationHistory.vue`, `front/app/conversation/components/ConversationRoundDetail.vue` |
 | `app/conversation` | `app/lab` | `front/app/conversation/components/ConversationRoundDetail.vue` |
 | `app/conversation` | `app/llm` | `front/app/conversation/components/ConversationExecutionDetails.vue`, `front/app/conversation/components/ConversationHistory.vue`, `front/app/conversation/components/ConversationRoundDetail.vue`, `front/app/conversation/index.ts`, `front/app/conversation/services/conversationService.ts`, `front/app/conversation/types.ts` |
@@ -858,12 +855,12 @@ tests remain authoritative for behavior.
 | `app/conversation` | `app/topic` | `front/app/conversation/components/ConversationHistory.vue`, `front/app/conversation/components/ConversationRoundDetail.vue` |
 | `app/conversation` | `core/api` | `front/app/conversation/components/ConversationRoundDetail.vue`, `front/app/conversation/components/DeliveryResolution.vue`, `front/app/conversation/services/conversationService.ts` |
 | `app/conversation` | `core/authorize` | `front/app/conversation/components/ContactAuthorization.vue`, `front/app/conversation/components/ConversationHistory.vue`, `front/app/conversation/components/ConversationRoundDetail.vue` |
-| `app/conversation` | `core/util` | `front/app/conversation/components/ConversationExecutionDetails.vue`, `front/app/conversation/components/ConversationHistory.vue`, `front/app/conversation/components/ConversationRoundDetail.vue`, `front/app/conversation/index.ts`, `front/app/conversation/richContent.ts` |
-| `app/dataset` | `app/share` | `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/components/DatasetLibraryFilters.vue`, `front/app/dataset/components/DatasetLibraryNavigation.vue`, `front/app/dataset/components/DatasetSharing.vue`, `front/app/dataset/services/datasetService.ts`, `front/app/dataset/types.ts` |
-| `app/dataset` | `core/api` | `front/app/dataset/components/DatasetLibraryNavigation.vue`, `front/app/dataset/services/datasetService.ts` |
-| `app/dataset` | `core/authorize` | `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/components/DatasetLibraryNavigation.vue`, `front/app/dataset/components/DatasetLibraryRow.vue` |
+| `app/conversation` | `core/util` | `front/app/conversation/components/ConversationExecutionDetails.vue`, `front/app/conversation/components/ConversationHistory.vue`, `front/app/conversation/components/ConversationRoundDetail.vue`, `front/app/conversation/components/DeliveryResolution.vue`, `front/app/conversation/index.ts`, `front/app/conversation/richContent.ts` |
+| `app/dataset` | `app/share` | `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/components/DatasetSharing.vue`, `front/app/dataset/services/datasetService.ts`, `front/app/dataset/types.ts` |
+| `app/dataset` | `core/api` | `front/app/dataset/services/datasetService.ts` |
+| `app/dataset` | `core/authorize` | `front/app/dataset/components/DatasetEditor.vue` |
 | `app/dataset` | `core/navigation` | `front/app/dataset/navigation.ts` |
-| `app/dataset` | `core/util` | `front/app/dataset/components/DatasetDialog.vue`, `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/components/DatasetFolderRow.vue`, `front/app/dataset/components/DatasetLibraryNavigation.vue`, `front/app/dataset/components/DatasetLibraryRow.vue`, `front/app/dataset/richContent.ts` |
+| `app/dataset` | `core/util` | `front/app/dataset/components/DatasetDialog.vue`, `front/app/dataset/components/DatasetEditor.vue`, `front/app/dataset/richContent.ts` |
 | `app/document` | `app/agent` | `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentHistoryDialog.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentSharingPanel.vue`, `front/app/document/components/DocumentTopicNavigation.vue` |
 | `app/document` | `app/share` | `front/app/document/components/DocumentBulkDialog.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentLibraryFilters.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentSharingPanel.vue`, `front/app/document/services/documentService.ts`, `front/app/document/types.ts` |
 | `app/document` | `app/topic` | `front/app/document/components/DocumentClassificationActions.vue`, `front/app/document/components/DocumentTopicNavigation.vue` |
@@ -871,7 +868,7 @@ tests remain authoritative for behavior.
 | `app/document` | `core/authorize` | `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentClassificationActions.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentIcon.vue`, `front/app/document/components/DocumentImportDialog.vue`, `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentRowMenu.vue`, `front/app/document/components/DocumentTagRow.vue`, `front/app/document/components/DocumentThumbnail.vue`, `front/app/document/components/DocumentTopicNavigation.vue`, `front/app/document/navigation.ts` |
 | `app/document` | `core/navigation` | `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentTopicNavigation.vue`, `front/app/document/navigation.ts` |
 | `app/document` | `core/user` | `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentLibraryNavigation.vue` |
-| `app/document` | `core/util` | `front/app/document/components/DocumentApplication.vue`, `front/app/document/components/DocumentApplicationBlock.vue`, `front/app/document/components/DocumentAttachments.vue`, `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentClassificationActions.vue`, `front/app/document/components/DocumentDialog.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentFolderCollection.vue`, `front/app/document/components/DocumentFolderSelect.vue`, `front/app/document/components/DocumentFolderThumbnail.vue`, `front/app/document/components/DocumentHistoryDialog.vue`, `front/app/document/components/DocumentImportDialog.vue`, `front/app/document/components/DocumentLibraryDocument.vue`, `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentResourceEmbed.vue`, `front/app/document/components/DocumentRowMenu.vue`, `front/app/document/components/DocumentSharingPanel.vue`, `front/app/document/components/DocumentSplitterHandle.vue`, `front/app/document/components/DocumentSummaryPanel.vue`, `front/app/document/components/DocumentTagIcon.vue`, `front/app/document/components/DocumentTagIconPicker.vue`, `front/app/document/components/DocumentTagRow.vue`, `front/app/document/components/DocumentThumbnail.vue`, `front/app/document/components/DocumentTopicNavigation.vue`, `front/app/document/data/ContentEditor.vue`, `front/app/document/data/index.ts`, `front/app/document/documentAppResources.ts`, `front/app/document/documentAppSandbox.ts`, `front/app/document/documentEditor.ts`, `front/app/document/documentFolders.ts`, `front/app/document/documentFormats.ts`, `front/app/document/libraryShortcuts.ts`, `front/app/document/richContent.ts`, `front/app/document/services/documentService.ts`, `front/app/document/tagEmojiCatalog.ts`, `front/app/document/tagIcon.ts`, `front/app/document/text/index.ts`, `front/app/document/useDocumentBranches.ts` |
+| `app/document` | `core/util` | `front/app/document/components/DocumentApplication.vue`, `front/app/document/components/DocumentApplicationBlock.vue`, `front/app/document/components/DocumentAttachments.vue`, `front/app/document/components/DocumentBulkDialog.vue`, `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentClassificationActions.vue`, `front/app/document/components/DocumentDialog.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentFolderCollection.vue`, `front/app/document/components/DocumentFolderSelect.vue`, `front/app/document/components/DocumentFolderThumbnail.vue`, `front/app/document/components/DocumentFormatsDialog.vue`, `front/app/document/components/DocumentHistoryDialog.vue`, `front/app/document/components/DocumentImportDialog.vue`, `front/app/document/components/DocumentLibraryDocument.vue`, `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentResourceEmbed.vue`, `front/app/document/components/DocumentRowMenu.vue`, `front/app/document/components/DocumentSharingPanel.vue`, `front/app/document/components/DocumentSplitterHandle.vue`, `front/app/document/components/DocumentSummaryPanel.vue`, `front/app/document/components/DocumentTagIcon.vue`, `front/app/document/components/DocumentTagIconPicker.vue`, `front/app/document/components/DocumentTagRow.vue`, `front/app/document/components/DocumentThumbnail.vue`, `front/app/document/components/DocumentTopicNavigation.vue`, `front/app/document/data/ContentEditor.vue`, `front/app/document/data/index.ts`, `front/app/document/documentAppResources.ts`, `front/app/document/documentAppSandbox.ts`, `front/app/document/documentEditor.ts`, `front/app/document/documentFolders.ts`, `front/app/document/documentFormats.ts`, `front/app/document/libraryShortcuts.ts`, `front/app/document/richContent.ts`, `front/app/document/services/documentService.ts`, `front/app/document/tagEmojiCatalog.ts`, `front/app/document/tagIcon.ts`, `front/app/document/text/index.ts`, `front/app/document/useDocumentBranches.ts` |
 | `app/document` | `core/websocket` | `front/app/document/components/DocumentApplication.vue`, `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentThumbnail.vue` |
 | `app/dream` | `app/llm` | `front/app/dream/pages/index.vue`, `front/app/dream/types.ts` |
 | `app/dream` | `core/api` | `front/app/dream/services/dreamService.ts` |
@@ -883,45 +880,52 @@ tests remain authoritative for behavior.
 | `app/file_share` | `core/api` | `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/pages/settings.vue`, `front/app/file_share/services/fileBrowserService.ts`, `front/app/file_share/services/fileIndexService.ts`, `front/app/file_share/services/mailBrowserService.ts` |
 | `app/file_share` | `core/authorize` | `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/components/FileIndexSettings.vue`, `front/app/file_share/navigation.ts`, `front/app/file_share/pages/index.vue`, `front/app/file_share/pages/settings.vue` |
 | `app/file_share` | `core/navigation` | `front/app/file_share/navigation.ts` |
-| `app/file_share` | `core/util` | `front/app/file_share/components/AgentFileBrowser.vue`, `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/components/FileTile.vue`, `front/app/file_share/components/MailMessageDialog.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/pages/settings.vue`, `front/app/file_share/presentation.ts` |
-| `app/goal` | `app/agent` | `front/app/goal/pages/index.vue` |
+| `app/file_share` | `core/util` | `front/app/file_share/components/AgentFileBrowser.vue`, `front/app/file_share/components/FileEntryActions.vue`, `front/app/file_share/components/FileIndexPanel.vue`, `front/app/file_share/components/FileTile.vue`, `front/app/file_share/components/MailMessageDialog.vue`, `front/app/file_share/pages/index.vue`, `front/app/file_share/pages/settings.vue`, `front/app/file_share/presentation.ts` |
+| `app/goal` | `app/agent` | `front/app/goal/components/GoalOverview.vue`, `front/app/goal/pages/index.vue` |
 | `app/goal` | `core/api` | `front/app/goal/components/GoalCategoryManager.vue`, `front/app/goal/pages/index.vue`, `front/app/goal/services/categoryService.ts`, `front/app/goal/services/goalService.ts`, `front/app/goal/stores/goalStore.ts` |
 | `app/goal` | `core/authorize` | `front/app/goal/components/GoalAgendaPanel.vue`, `front/app/goal/navigation.ts`, `front/app/goal/pages/index.vue`, `front/app/goal/stores/goalStore.ts` |
 | `app/goal` | `core/navigation` | `front/app/goal/navigation.ts`, `front/app/goal/pages/index.vue` |
 | `app/goal` | `core/user` | `front/app/goal/pages/index.vue`, `front/app/goal/stores/goalStore.ts` |
-| `app/goal` | `core/util` | `front/app/goal/components/GoalAgendaPanel.vue`, `front/app/goal/components/GoalCategoryManager.vue`, `front/app/goal/components/GoalRecurrenceEditor.vue`, `front/app/goal/pages/index.vue`, `front/app/goal/richContent.ts` |
+| `app/goal` | `core/util` | `front/app/goal/components/GoalAgendaPanel.vue`, `front/app/goal/components/GoalCategoryManager.vue`, `front/app/goal/components/GoalOverview.vue`, `front/app/goal/components/GoalRecurrenceEditor.vue`, `front/app/goal/pages/index.vue`, `front/app/goal/richContent.ts` |
 | `app/goal` | `core/websocket` | `front/app/goal/stores/goalStore.ts` |
 | `app/harnesses` | `core/api` | `front/app/harnesses/services/harnessService.ts`, `front/app/harnesses/services/managerService.ts` |
 | `app/harnesses` | `core/authorize` | `front/app/harnesses/components/HarnessCatalogGrid.vue`, `front/app/harnesses/components/HarnessEditor.vue`, `front/app/harnesses/components/HarnessExecutionSettings.vue`, `front/app/harnesses/components/HarnessManagedProviders.vue`, `front/app/harnesses/components/HarnessManagerConfiguration.vue` |
 | `app/harnesses` | `core/params` | `front/app/harnesses/components/HarnessEditor.vue`, `front/app/harnesses/components/HarnessManagedProviders.vue`, `front/app/harnesses/components/HarnessPipelineSettings.vue`, `front/app/harnesses/components/HarnessPreferences.vue`, `front/app/harnesses/components/TaskExecutionSettings.vue`, `front/app/harnesses/managedSettings.ts`, `front/app/harnesses/runtimeSettings.ts`, `front/app/harnesses/settings.ts` |
-| `app/harnesses` | `core/util` | `front/app/harnesses/components/HarnessEditor.vue`, `front/app/harnesses/components/HarnessExecutionSettings.vue`, `front/app/harnesses/components/HarnessManagerConfiguration.vue` |
-| `app/incident` | `core/api` | `front/app/incident/pages/index.vue`, `front/app/incident/services/incidentService.ts` |
+| `app/harnesses` | `core/util` | `front/app/harnesses/components/HarnessCatalogGrid.vue`, `front/app/harnesses/components/HarnessEditor.vue`, `front/app/harnesses/components/HarnessExecutionSettings.vue`, `front/app/harnesses/components/HarnessManagedProviders.vue`, `front/app/harnesses/components/HarnessManagerConfiguration.vue`, `front/app/harnesses/components/HarnessManagerHelp.vue`, `front/app/harnesses/components/HarnessManagerRelease.vue` |
+| `app/incident` | `core/api` | `front/app/incident/logCleanup.ts`, `front/app/incident/pages/index.vue`, `front/app/incident/services/incidentService.ts` |
 | `app/incident` | `core/authorize` | `front/app/incident/navigation.ts`, `front/app/incident/pages/index.vue` |
 | `app/incident` | `core/navigation` | `front/app/incident/navigation.ts`, `front/app/incident/pages/index.vue` |
 | `app/incident` | `core/util` | `front/app/incident/pages/index.vue` |
-| `app/index` | `app/agent` | `front/app/index/components/DashboardAgentTable.vue`, `front/app/index/components/DashboardLiveActivity.vue` |
-| `app/index` | `app/llm` | `front/app/index/components/DashboardLiveActivity.vue` |
+| `app/index` | `app/agent` | `front/app/index/components/AgentPreview.vue`, `front/app/index/components/DashboardAgentTable.vue`, `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/pages/agent.vue` |
+| `app/index` | `app/connection` | `front/app/index/pages/services.vue` |
+| `app/index` | `app/conversation` | `front/app/index/pages/task.vue` |
+| `app/index` | `app/harnesses` | `front/app/index/pages/agent.vue` |
+| `app/index` | `app/llm` | `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/pages/agent.vue`, `front/app/index/pages/task.vue` |
 | `app/index` | `app/onboarding` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/pages/index.vue`, `front/app/index/pages/welcome.vue` |
-| `app/index` | `app/task` | `front/app/index/components/DashboardLiveActivity.vue` |
-| `app/index` | `core/api` | `front/app/index/services/dashboardService.ts`, `front/app/index/services/homeService.ts`, `front/app/index/stores/dashboardStore.ts` |
-| `app/index` | `core/authorize` | `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/navigation.ts`, `front/app/index/stores/dashboardStore.ts` |
-| `app/index` | `core/navigation` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/components/Sidebar.vue`, `front/app/index/navigation.ts` |
+| `app/index` | `app/process` | `front/app/index/pages/task.vue` |
+| `app/index` | `app/services` | `front/app/index/pages/services.vue` |
+| `app/index` | `app/task` | `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/pages/task.vue` |
+| `app/index` | `app/voice` | `front/app/index/pages/task.vue` |
+| `app/index` | `core/api` | `front/app/index/pages/agent.vue`, `front/app/index/pages/task.vue`, `front/app/index/services/dashboardService.ts`, `front/app/index/services/homeService.ts`, `front/app/index/stores/dashboardStore.ts` |
+| `app/index` | `core/authorize` | `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/navigation.ts`, `front/app/index/pages/agent.vue`, `front/app/index/pages/services.vue`, `front/app/index/pages/task.vue`, `front/app/index/stores/dashboardStore.ts` |
+| `app/index` | `core/navigation` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/components/Sidebar.vue`, `front/app/index/navigation.ts`, `front/app/index/pages/agent.vue`, `front/app/index/pages/services.vue`, `front/app/index/pages/task.vue` |
+| `app/index` | `core/params` | `front/app/index/pages/agent.vue` |
 | `app/index` | `core/settings` | `front/app/index/components/HomePublic.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/components/Sidebar.vue`, `front/app/index/components/SidebarFooter.vue`, `front/app/index/environmentPresentation.ts`, `front/app/index/navigation.ts`, `front/app/index/pages/about.vue`, `front/app/index/pages/graphic-reference.vue`, `front/app/index/router.ts` |
+| `app/index` | `core/team` | `front/app/index/pages/agent.vue` |
 | `app/index` | `core/user` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomePublic.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/pages/index.vue`, `front/app/index/pages/welcome.vue`, `front/app/index/stores/dashboardStore.ts` |
-| `app/index` | `core/util` | `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/environmentPresentation.ts`, `front/app/index/graphic-reference/GalleryForms.vue`, `front/app/index/graphic-reference/GalleryNavigation.vue`, `front/app/index/graphic-reference/GalleryPatterns.vue`, `front/app/index/pages/about.vue`, `front/app/index/pages/graphic-reference.vue`, `front/app/index/pages/license.vue` |
+| `app/index` | `core/util` | `front/app/index/components/AgentPreview.vue`, `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/environmentPresentation.ts`, `front/app/index/graphic-reference/GalleryDialogCard.vue`, `front/app/index/graphic-reference/GalleryForms.vue`, `front/app/index/graphic-reference/GalleryNavigation.vue`, `front/app/index/graphic-reference/GalleryPatterns.vue`, `front/app/index/index.ts`, `front/app/index/pages/about.vue`, `front/app/index/pages/agent.vue`, `front/app/index/pages/graphic-reference.vue`, `front/app/index/pages/license.vue`, `front/app/index/pages/services.vue`, `front/app/index/pages/task.vue` |
 | `app/index` | `core/websocket` | `front/app/index/components/DashboardLiveActivity.vue` |
 | `app/lab` | `app/task` | `front/app/lab/pages/ai-evaluations.vue` |
 | `app/lab` | `core/api` | `front/app/lab/components/LabComparisonDialog.vue`, `front/app/lab/components/LabHumanReviewDialog.vue`, `front/app/lab/components/LabSyntheticDatasetDialog.vue`, `front/app/lab/components/LabWorkbench.vue`, `front/app/lab/services/dispatcherEvaluationService.ts`, `front/app/lab/services/evaluationService.ts`, `front/app/lab/services/labWorkbenchService.ts`, `front/app/lab/services/mechanismEvaluationService.ts`, `front/app/lab/services/processCampaignService.ts` |
 | `app/lab` | `core/authorize` | `front/app/lab/access.ts`, `front/app/lab/components/TaskLabCaptureMenu.vue`, `front/app/lab/pages/[section].vue`, `front/app/lab/pages/ai-evaluations.vue`, `front/app/lab/pages/index.vue`, `front/app/lab/pages/processes.vue` |
 | `app/lab` | `core/navigation` | `front/app/lab/navigation.ts`, `front/app/lab/pages/ai-evaluations.vue`, `front/app/lab/pages/index.vue` |
-| `app/lab` | `core/util` | `front/app/lab/components/LabComparisonDialog.vue`, `front/app/lab/components/LabResultsPanel.vue`, `front/app/lab/components/LabValueEditor.vue`, `front/app/lab/components/LabWorkbench.vue`, `front/app/lab/components/MemoryExtractionCaseEditor.vue`, `front/app/lab/components/TopicMessageRangeImportDialog.vue`, `front/app/lab/pages/ai-evaluations.vue`, `front/app/lab/pages/index.vue`, `front/app/lab/pages/processes.vue`, `front/app/lab/textPresentation.ts` |
-| `app/llm` | `app/agent` | `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue` |
-| `app/llm` | `app/task` | `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/presentation.ts` |
+| `app/lab` | `core/util` | `front/app/lab/components/LabCaptureConfirmation.vue`, `front/app/lab/components/LabComparisonDialog.vue`, `front/app/lab/components/LabDatasetCaptureDialog.vue`, `front/app/lab/components/LabHumanReviewDialog.vue`, `front/app/lab/components/LabResultsPanel.vue`, `front/app/lab/components/LabValueEditor.vue`, `front/app/lab/components/LabWorkbench.vue`, `front/app/lab/components/MemoryExtractionCaseEditor.vue`, `front/app/lab/components/TopicMessageRangeImportDialog.vue`, `front/app/lab/pages/ai-evaluations.vue`, `front/app/lab/pages/index.vue`, `front/app/lab/pages/processes.vue`, `front/app/lab/stores/evaluationStore.ts`, `front/app/lab/textPresentation.ts` |
+| `app/llm` | `app/agent` | `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/presentation.ts` |
 | `app/llm` | `core/api` | `front/app/llm/components/ExternalClientConfigDialog.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/services/llmCallService.ts`, `front/app/llm/services/llmProfileService.ts`, `front/app/llm/services/llmProviderService.ts`, `front/app/llm/services/personalLlmService.ts`, `front/app/llm/services/profileCatalogService.ts`, `front/app/llm/useLlmCallProgress.ts` |
 | `app/llm` | `core/authorize` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/CustomProviderDialog.vue`, `front/app/llm/components/ExternalClientConfigButton.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderConfigPanel.vue`, `front/app/llm/components/ProviderListPanel.vue`, `front/app/llm/components/ProviderModelsPanel.vue`, `front/app/llm/components/ProviderWorkspace.vue`, `front/app/llm/navigation.ts`, `front/app/llm/pages/index.vue`, `front/app/llm/useLlmCallProgress.ts` |
 | `app/llm` | `core/navigation` | `front/app/llm/navigation.ts`, `front/app/llm/pages/index.vue` |
 | `app/llm` | `core/user` | `front/app/llm/tokenAction.ts`, `front/app/llm/userTab.ts` |
-| `app/llm` | `core/util` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCallTaskDetail.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderQuotaPanel.vue`, `front/app/llm/pages/index.vue`, `front/app/llm/useEditorVoice.ts` |
+| `app/llm` | `core/util` | `front/app/llm/components/ConfiguredLlmManager.vue`, `front/app/llm/components/ExternalClientConfigDialog.vue`, `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCall.vue`, `front/app/llm/components/LlmCallDetails.vue`, `front/app/llm/components/LlmCallStopButton.vue`, `front/app/llm/components/LlmCallTaskDetail.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/components/LlmUsageManager.vue`, `front/app/llm/components/ProviderConfigPanel.vue`, `front/app/llm/components/ProviderModelsPanel.vue`, `front/app/llm/components/ProviderQuotaPanel.vue`, `front/app/llm/components/ProviderWorkspace.vue`, `front/app/llm/index.ts`, `front/app/llm/pages/index.vue`, `front/app/llm/stores/llmProfileStore.ts`, `front/app/llm/stores/llmProviderStore.ts`, `front/app/llm/taskColors.ts`, `front/app/llm/useEditorVoice.ts` |
 | `app/llm` | `core/websocket` | `front/app/llm/components/LlmActivityPanel.vue`, `front/app/llm/components/LlmCalls.vue`, `front/app/llm/useLlmCallProgress.ts` |
 | `app/memory` | `app/agent` | `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `app/document` | `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryFileResources.vue`, `front/app/memory/components/MemoryGraphNodeDetail.vue`, `front/app/memory/components/MemoryGraphRelations.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/components/MemoryLinkDialog.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/services/memoryService.ts`, `front/app/memory/stores/memoryStore.ts`, `front/app/memory/types.ts` |
@@ -931,10 +935,11 @@ tests remain authoritative for behavior.
 | `app/memory` | `core/navigation` | `front/app/memory/navigation.ts`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue` |
 | `app/memory` | `core/util` | `front/app/memory/components/ContactCreateDialog.vue`, `front/app/memory/components/ContactEditDialog.vue`, `front/app/memory/components/ContactResourceCard.vue`, `front/app/memory/components/ContactResourceDialog.vue`, `front/app/memory/components/MemoryAttachmentButton.vue`, `front/app/memory/components/MemoryContentPreviews.vue`, `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemDialog.vue`, `front/app/memory/components/MemoryItemForm.vue`, `front/app/memory/components/MemoryItemHistory.vue`, `front/app/memory/components/MemoryItemThumbnail.vue`, `front/app/memory/pages/contacts.vue`, `front/app/memory/pages/index.vue`, `front/app/memory/richContent.ts`, `front/app/memory/services/memoryService.ts` |
 | `app/memory` | `core/websocket` | `front/app/memory/components/MemoryGraph.vue`, `front/app/memory/components/MemoryItemDialog.vue`, `front/app/memory/stores/memoryStore.ts` |
-| `app/onboarding` | `core/api` | `front/app/onboarding/components/FirstMission.vue`, `front/app/onboarding/services/firstMissionService.ts`, `front/app/onboarding/services/onboardingService.ts` |
+| `app/onboarding` | `core/api` | `front/app/onboarding/components/FirstMission.vue`, `front/app/onboarding/services/firstMissionService.ts`, `front/app/onboarding/services/onboardingService.ts`, `front/app/onboarding/stores/onboardingStore.ts` |
 | `app/onboarding` | `core/authorize` | `front/app/onboarding/components/FirstMission.vue`, `front/app/onboarding/components/WelcomePage.vue` |
 | `app/onboarding` | `core/params` | `front/app/onboarding/components/WelcomePage.vue` |
 | `app/onboarding` | `core/user` | `front/app/onboarding/components/FirstMission.vue`, `front/app/onboarding/components/WelcomePage.vue` |
+| `app/onboarding` | `core/util` | `front/app/onboarding/stores/onboardingStore.ts` |
 | `app/process` | `app/agent` | `front/app/process/components/ExternalProcessEditor.vue`, `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/components/ProcessAgentSelect.vue`, `front/app/process/components/ProcessLaneHeader.vue`, `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/components/ProcessSharingDraft.vue`, `front/app/process/pages/index.vue`, `front/app/process/services/processService.ts` |
 | `app/process` | `app/dataset` | `front/app/process/services/nativeProcessService.ts` |
 | `app/process` | `app/share` | `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/components/ProcessSharingDraft.vue`, `front/app/process/services/nativeProcessService.ts` |
@@ -942,38 +947,34 @@ tests remain authoritative for behavior.
 | `app/process` | `core/api` | `front/app/process/services/catalogueService.ts`, `front/app/process/services/nativeProcessService.ts`, `front/app/process/services/processResourceService.ts`, `front/app/process/services/processService.ts`, `front/app/process/stores/catalogueStore.ts` |
 | `app/process` | `core/authorize` | `front/app/process/components/ExternalProcessEditor.vue`, `front/app/process/components/ExternalRunDialog.vue`, `front/app/process/components/NativeActivityDetails.vue`, `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/components/NativeRunPanel.vue`, `front/app/process/navigation.ts`, `front/app/process/pages/index.vue` |
 | `app/process` | `core/navigation` | `front/app/process/components/ExternalProcessEditor.vue`, `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/navigation.ts`, `front/app/process/pages/index.vue` |
-| `app/process` | `core/util` | `front/app/process/components/BpmnCanvas.vue`, `front/app/process/components/ExternalProcessEditor.vue`, `front/app/process/components/ExternalProcessRuns.vue`, `front/app/process/components/ExternalRunDialog.vue`, `front/app/process/components/NativeActivityDetails.vue`, `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/components/NativeRunDialog.vue`, `front/app/process/components/NativeRunPanel.vue`, `front/app/process/components/NativeRunsTable.vue`, `front/app/process/components/ProcessPreview.vue`, `front/app/process/components/ProcessRunDetailContent.vue`, `front/app/process/components/ProcessRunStatusBadge.vue`, `front/app/process/components/ProcessRunVariables.vue`, `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/components/ProcessSharingDraft.vue`, `front/app/process/components/ProcessThumbnail.vue`, `front/app/process/components/ProcessVariableDeclarations.vue`, `front/app/process/contracts.ts`, `front/app/process/pages/index.vue`, `front/app/process/richContent.ts` |
+| `app/process` | `core/util` | `front/app/process/components/BpmnCanvas.vue`, `front/app/process/components/ExternalProcessEditor.vue`, `front/app/process/components/ExternalProcessRuns.vue`, `front/app/process/components/ExternalRunDialog.vue`, `front/app/process/components/NativeActivityDetails.vue`, `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/components/NativeRunDialog.vue`, `front/app/process/components/NativeRunPanel.vue`, `front/app/process/components/NativeRunsTable.vue`, `front/app/process/components/ProcessInputEditor.vue`, `front/app/process/components/ProcessPreview.vue`, `front/app/process/components/ProcessRunDetailContent.vue`, `front/app/process/components/ProcessRunStatusBadge.vue`, `front/app/process/components/ProcessRunVariables.vue`, `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/components/ProcessSharingDraft.vue`, `front/app/process/components/ProcessThumbnail.vue`, `front/app/process/components/ProcessVariableDeclarations.vue`, `front/app/process/contracts.ts`, `front/app/process/index.ts`, `front/app/process/pages/index.vue`, `front/app/process/richContent.ts` |
 | `app/process` | `core/websocket` | `front/app/process/components/ExternalRunDialog.vue`, `front/app/process/components/NativeRunPanel.vue`, `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/composables/useProcessRunRefresh.ts` |
-| `app/services` | `app/connection` | `front/app/services/components/ServicesList.vue`, `front/app/services/pages/index.vue`, `front/app/services/stores/serviceStore.ts` |
-| `app/services` | `core/api` | `front/app/services/components/ServicesList.vue`, `front/app/services/services/serviceApi.ts` |
-| `app/services` | `core/authorize` | `front/app/services/components/MatrixServiceSetup.vue`, `front/app/services/components/ServiceCatalog.vue`, `front/app/services/components/ServicesList.vue`, `front/app/services/components/TelegramServiceSetup.vue`, `front/app/services/navigation.ts`, `front/app/services/pages/index.vue` |
-| `app/services` | `core/navigation` | `front/app/services/components/ServiceIcon.vue`, `front/app/services/components/ServiceIdentityIcon.vue`, `front/app/services/navigation.ts`, `front/app/services/pages/index.vue` |
-| `app/services` | `core/util` | `front/app/services/components/ServiceCard.vue`, `front/app/services/components/ServicesList.vue`, `front/app/services/pages/index.vue` |
+| `app/services` | `app/agent` | `front/app/services/components/ServicesList.vue` |
+| `app/services` | `core/api` | `front/app/services/components/ServiceGlobalParameters.vue`, `front/app/services/components/ServicesList.vue`, `front/app/services/services/serviceApi.ts`, `front/app/services/stores/serviceStore.ts` |
+| `app/services` | `core/authorize` | `front/app/services/components/MatrixServiceSetup.vue`, `front/app/services/components/ServiceCatalog.vue`, `front/app/services/components/ServiceGlobalParameters.vue`, `front/app/services/components/ServicesList.vue`, `front/app/services/components/TelegramServiceSetup.vue`, `front/app/services/navigation.ts` |
+| `app/services` | `core/navigation` | `front/app/services/components/ServiceIcon.vue`, `front/app/services/components/ServiceIdentityIcon.vue`, `front/app/services/navigation.ts` |
+| `app/services` | `core/util` | `front/app/services/components/ServiceCard.vue`, `front/app/services/components/ServiceGlobalParameters.vue`, `front/app/services/components/ServicesList.vue`, `front/app/services/index.ts`, `front/app/services/stores/serviceStore.ts` |
 | `app/share` | `core/util` | `front/app/share/components/OwnerAvatar.vue`, `front/app/share/components/OwnerSelect.vue`, `front/app/share/components/ResourceSharingPanel.vue`, `front/app/share/components/SharingPanel.vue`, `front/app/share/components/SharingRecipients.vue`, `front/app/share/ownerCache.ts`, `front/app/share/ownerGroups.ts`, `front/app/share/panel.ts` |
 | `app/skill` | `app/agent` | `front/app/skill/components/PersonalSkillManager.vue`, `front/app/skill/components/SkillAuthorizationManager.vue`, `front/app/skill/components/SkillOwnershipDialog.vue` |
-| `app/skill` | `core/api` | `front/app/skill/components/PersonalSkillManager.vue`, `front/app/skill/components/SkillOwnershipDialog.vue`, `front/app/skill/pages/index.vue`, `front/app/skill/services/skillService.ts` |
+| `app/skill` | `core/api` | `front/app/skill/components/PersonalSkillManager.vue`, `front/app/skill/components/SkillOwnershipDialog.vue`, `front/app/skill/pages/index.vue`, `front/app/skill/services/skillService.ts`, `front/app/skill/stores/skillStore.ts` |
 | `app/skill` | `core/authorize` | `front/app/skill/components/PersonalSkillManager.vue`, `front/app/skill/components/SkillAuthorizationManager.vue`, `front/app/skill/navigation.ts`, `front/app/skill/pages/index.vue` |
 | `app/skill` | `core/navigation` | `front/app/skill/navigation.ts`, `front/app/skill/pages/index.vue` |
-| `app/skill` | `core/util` | `front/app/skill/components/PersonalSkillManager.vue`, `front/app/skill/components/SkillPolicyToggle.vue`, `front/app/skill/components/SkillRowMenu.vue`, `front/app/skill/components/SkillViewerDialog.vue`, `front/app/skill/pages/index.vue` |
-| `app/task` | `app/agent` | `front/app/task/components/ActiveTaskNode.vue`, `front/app/task/components/ActiveTasksPanel.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/components/TaskFormDialog.vue`, `front/app/task/services/taskService.ts`, `front/app/task/stores/taskStore.ts` |
-| `app/task` | `app/conversation` | `front/app/task/pages/index.vue` |
-| `app/task` | `app/lab` | `front/app/task/components/TaskDetail.vue` |
-| `app/task` | `app/llm` | `front/app/task/activity.ts`, `front/app/task/components/ExecutionResult.vue`, `front/app/task/components/TaskStartupTiming.vue`, `front/app/task/pages/index.vue`, `front/app/task/useTaskActivity.ts` |
+| `app/skill` | `core/util` | `front/app/skill/components/PersonalSkillManager.vue`, `front/app/skill/components/SkillPolicyToggle.vue`, `front/app/skill/components/SkillRowMenu.vue`, `front/app/skill/components/SkillViewerDialog.vue`, `front/app/skill/pages/index.vue`, `front/app/skill/stores/skillStore.ts` |
+| `app/task` | `app/agent` | `front/app/task/components/ActiveTaskNode.vue`, `front/app/task/components/ActiveTasksPanel.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/components/TaskFormDialog.vue`, `front/app/task/services/taskService.ts`, `front/app/task/stores/taskStore.ts`, `front/app/task/types.ts` |
+| `app/task` | `app/llm` | `front/app/task/activity.ts`, `front/app/task/components/ExecutionResult.vue`, `front/app/task/components/TaskStartupTiming.vue`, `front/app/task/useTaskActivity.ts` |
 | `app/task` | `app/memory` | `front/app/task/components/ExecutionMemoryPanel.vue`, `front/app/task/components/MemoryItemCard.vue` |
-| `app/task` | `app/process` | `front/app/task/pages/index.vue` |
 | `app/task` | `app/topic` | `front/app/task/components/ActiveTaskNode.vue`, `front/app/task/components/ActiveTasksPanel.vue`, `front/app/task/components/TaskDetail.vue` |
-| `app/task` | `app/voice` | `front/app/task/pages/index.vue` |
-| `app/task` | `core/api` | `front/app/task/components/TaskActivitySummary.vue`, `front/app/task/components/TaskBudget.vue`, `front/app/task/components/TaskCosts.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/pages/index.vue`, `front/app/task/richContent.ts`, `front/app/task/services/taskService.ts` |
-| `app/task` | `core/authorize` | `front/app/task/components/TaskActivitySummary.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/components/TaskFormDialog.vue`, `front/app/task/components/TaskRowMenu.vue`, `front/app/task/navigation.ts`, `front/app/task/pages/index.vue`, `front/app/task/useTaskActivity.ts` |
+| `app/task` | `core/api` | `front/app/task/components/TaskActivitySummary.vue`, `front/app/task/components/TaskBudget.vue`, `front/app/task/components/TaskCosts.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/richContent.ts`, `front/app/task/services/taskService.ts` |
+| `app/task` | `core/authorize` | `front/app/task/components/TaskActivitySummary.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/components/TaskFormDialog.vue`, `front/app/task/components/TaskRowMenu.vue`, `front/app/task/navigation.ts`, `front/app/task/useTaskActivity.ts` |
 | `app/task` | `core/i18n` | `front/app/task/services/taskStatusService.ts` |
-| `app/task` | `core/navigation` | `front/app/task/navigation.ts`, `front/app/task/pages/index.vue` |
+| `app/task` | `core/navigation` | `front/app/task/navigation.ts` |
 | `app/task` | `core/user` | `front/app/task/components/TaskDetail.vue`, `front/app/task/stores/taskStore.ts` |
-| `app/task` | `core/util` | `front/app/task/components/ActiveTaskNode.vue`, `front/app/task/components/ActiveTasksPanel.vue`, `front/app/task/components/DispatchResult.vue`, `front/app/task/components/ExecutionResult.vue`, `front/app/task/components/MemoryItemCard.vue`, `front/app/task/components/PlannerResult.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/components/TaskFormDialog.vue`, `front/app/task/components/TaskRowMenu.vue`, `front/app/task/index.ts`, `front/app/task/pages/index.vue`, `front/app/task/richContent.ts`, `front/app/task/services/taskStatusService.ts` |
+| `app/task` | `core/util` | `front/app/task/components/ActiveTaskNode.vue`, `front/app/task/components/ActiveTasksPanel.vue`, `front/app/task/components/DispatchResult.vue`, `front/app/task/components/ExecutionResult.vue`, `front/app/task/components/MemoryItemCard.vue`, `front/app/task/components/PlannerResult.vue`, `front/app/task/components/TaskDetail.vue`, `front/app/task/components/TaskFormDialog.vue`, `front/app/task/components/TaskRowMenu.vue`, `front/app/task/index.ts`, `front/app/task/richContent.ts`, `front/app/task/services/taskStatusService.ts`, `front/app/task/useTaskActivity.ts` |
 | `app/task` | `core/websocket` | `front/app/task/stores/taskStore.ts`, `front/app/task/useTaskActivity.ts` |
-| `app/topic` | `core/api` | `front/app/topic/components/TopicBadge.vue`, `front/app/topic/components/TopicSelect.vue`, `front/app/topic/services/topicService.ts` |
+| `app/topic` | `core/api` | `front/app/topic/components/TopicBadge.vue`, `front/app/topic/components/TopicSelect.vue`, `front/app/topic/composables/useTopicRefs.ts`, `front/app/topic/services/topicService.ts` |
 | `app/topic` | `core/authorize` | `front/app/topic/components/TopicBadge.vue`, `front/app/topic/components/TopicSelect.vue`, `front/app/topic/navigation.ts`, `front/app/topic/pages/index.vue` |
 | `app/topic` | `core/navigation` | `front/app/topic/components/TopicDetail.vue`, `front/app/topic/navigation.ts`, `front/app/topic/pages/index.vue` |
-| `app/topic` | `core/util` | `front/app/topic/components/TopicDetail.vue`, `front/app/topic/components/TopicFormDialog.vue`, `front/app/topic/components/TopicParticipants.vue`, `front/app/topic/index.ts`, `front/app/topic/pages/index.vue`, `front/app/topic/richContent.ts` |
+| `app/topic` | `core/util` | `front/app/topic/components/TopicDetail.vue`, `front/app/topic/components/TopicFormDialog.vue`, `front/app/topic/components/TopicParticipants.vue`, `front/app/topic/composables/useTopicRefs.ts`, `front/app/topic/index.ts`, `front/app/topic/pages/index.vue`, `front/app/topic/richContent.ts`, `front/app/topic/services/topicService.ts` |
 | `app/voice` | `app/agent` | `front/app/voice/components/VoiceCallHistory.vue`, `front/app/voice/components/VoiceConversationDetail.vue` |
 | `app/voice` | `app/lab` | `front/app/voice/components/VoiceConversationDetail.vue` |
 | `app/voice` | `app/llm` | `front/app/voice/components/VoiceConversationDetail.vue`, `front/app/voice/services/voiceConversationService.ts`, `front/app/voice/types.ts` |
@@ -981,7 +982,7 @@ tests remain authoritative for behavior.
 | `app/voice` | `app/topic` | `front/app/voice/components/VoiceCallHistory.vue`, `front/app/voice/components/VoiceConversationDetail.vue` |
 | `app/voice` | `core/api` | `front/app/voice/services/voiceConversationService.ts` |
 | `app/voice` | `core/authorize` | `front/app/voice/components/VoiceCallHistory.vue`, `front/app/voice/components/VoiceConversationDetail.vue` |
-| `app/voice` | `core/util` | `front/app/voice/components/VoiceCallHistory.vue`, `front/app/voice/components/VoiceConversationDetail.vue`, `front/app/voice/richContent.ts` |
+| `app/voice` | `core/util` | `front/app/voice/components/VoiceCallHistory.vue`, `front/app/voice/components/VoiceConversationDetail.vue`, `front/app/voice/index.ts`, `front/app/voice/richContent.ts` |
 | `app/voice` | `core/websocket` | `front/app/voice/components/VoiceCallHistory.vue` |
 | `bridge/hermes` | `app/agent` | `front/bridge/hermes/agentTab.ts` |
 | `bridge/hermes` | `core/api` | `front/bridge/hermes/services/hermesService.ts` |
@@ -1008,30 +1009,28 @@ tests remain authoritative for behavior.
 | `core/authorize` | `core/navigation` | `front/core/authorize/navigation.ts`, `front/core/authorize/pages/index.vue`, `front/core/authorize/pages/profile.vue` |
 | `core/authorize` | `core/theme` | `front/core/authorize/components/UserPreferencesMenu.vue`, `front/core/authorize/pages/profile.vue` |
 | `core/authorize` | `core/user` | `front/core/authorize/components/AssignmentMenu.vue`, `front/core/authorize/components/UserPreferencesMenu.vue`, `front/core/authorize/pages/profile.vue`, `front/core/authorize/services/authorize.service.ts`, `front/core/authorize/stores/authorizeStore.ts`, `front/core/authorize/stores/privilegeStore.ts` |
-| `core/authorize` | `core/util` | `front/core/authorize/components/AssignmentManager.vue`, `front/core/authorize/components/PrivilegeListManager.vue`, `front/core/authorize/components/RoleManager.vue`, `front/core/authorize/components/UserPreferencesMenu.vue`, `front/core/authorize/pages/index.vue`, `front/core/authorize/pages/profile.vue` |
+| `core/authorize` | `core/util` | `front/core/authorize/components/AssignmentManager.vue`, `front/core/authorize/components/PrivilegeListManager.vue`, `front/core/authorize/components/RoleManager.vue`, `front/core/authorize/components/UserPreferencesMenu.vue`, `front/core/authorize/index.ts`, `front/core/authorize/pages/index.vue`, `front/core/authorize/pages/profile.vue` |
 | `core/main` | `app/index` | `front/core/main.ts` |
 | `core/main` | `app/style` | `front/core/main.ts` |
 | `core/main` | `core/App` | `front/core/main.ts` |
 | `core/main` | `core/i18n` | `front/core/main.ts` |
 | `core/navigation` | `core/authorize` | `front/core/navigation/composables/useNavigation.ts`, `front/core/navigation/index.ts` |
-| `core/params` | `app/llm` | `front/core/params/components/LogCleanupPanel.vue` |
-| `core/params` | `app/task` | `front/core/params/components/LogCleanupPanel.vue` |
-| `core/params` | `core/api` | `front/core/params/services/configurationService.ts`, `front/core/params/services/logCleanupService.ts`, `front/core/params/services/paramsService.ts`, `front/core/params/stores/paramsStore.ts` |
+| `core/params` | `core/api` | `front/core/params/components/PreferencesSectionPage.vue`, `front/core/params/services/configurationService.ts`, `front/core/params/services/paramsService.ts`, `front/core/params/stores/paramsStore.ts` |
 | `core/params` | `core/authorize` | `front/core/params/components/BridgeSettingsPanel.vue`, `front/core/params/components/DreamSettingsPanel.vue`, `front/core/params/components/LogCleanupPanel.vue`, `front/core/params/components/MessagingSettingsPanel.vue`, `front/core/params/components/PreferencesSectionPage.vue`, `front/core/params/components/PromptSettingEditor.vue`, `front/core/params/components/SettingFieldControl.vue`, `front/core/params/components/SettingsFields.vue`, `front/core/params/pages/harnesses/[provider].vue` |
 | `core/params` | `core/navigation` | `front/core/params/components/PreferencesMenuGrid.vue`, `front/core/params/components/PreferencesSectionPage.vue`, `front/core/params/navigation.ts`, `front/core/params/pages/index.vue` |
-| `core/params` | `core/util` | `front/core/params/components/MessagingSettingsPanel.vue`, `front/core/params/components/PreferencesMenuGrid.vue`, `front/core/params/components/PreferencesSectionPage.vue`, `front/core/params/components/PromptSettingEditor.vue`, `front/core/params/components/SettingFieldControl.vue`, `front/core/params/pages/harnesses/[provider].vue`, `front/core/params/pages/index.vue`, `front/core/params/services/paramsService.ts`, `front/core/params/settingsTypes.ts` |
+| `core/params` | `core/util` | `front/core/params/components/MessagingSettingsPanel.vue`, `front/core/params/components/PreferencesMenuGrid.vue`, `front/core/params/components/PreferencesSectionPage.vue`, `front/core/params/components/PromptSettingEditor.vue`, `front/core/params/components/SettingFieldControl.vue`, `front/core/params/pages/harnesses/[provider].vue`, `front/core/params/pages/index.vue`, `front/core/params/services/paramsService.ts`, `front/core/params/settingsTypes.ts`, `front/core/params/stores/paramsStore.ts` |
 | `core/team` | `core/api` | `front/core/team/components/TeamEditor.vue`, `front/core/team/services/teamService.ts` |
 | `core/team` | `core/authorize` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamManager.vue`, `front/core/team/components/TeamMembersDialog.vue` |
 | `core/team` | `core/navigation` | `front/core/team/navigation.ts` |
 | `core/team` | `core/user` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamHumanSummary.vue` |
-| `core/team` | `core/util` | `front/core/team/pages/index.vue` |
+| `core/team` | `core/util` | `front/core/team/components/TeamEditor.vue`, `front/core/team/components/TeamManager.vue`, `front/core/team/components/TeamMembersDialog.vue`, `front/core/team/pages/index.vue` |
 | `core/user` | `core/api` | `front/core/user/services/authService.ts`, `front/core/user/services/helpService.ts`, `front/core/user/services/tokenService.ts`, `front/core/user/services/userService.ts`, `front/core/user/stores/authStore.ts`, `front/core/user/stores/helpStore.ts` |
 | `core/user` | `core/authorize` | `front/core/user/components/UserAdminForm.vue`, `front/core/user/components/UserMenu.vue`, `front/core/user/pages/users.vue` |
 | `core/user` | `core/i18n` | `front/core/user/stores/authStore.ts`, `front/core/user/stores/tokenStore.ts` |
 | `core/user` | `core/navigation` | `front/core/user/navigation.ts`, `front/core/user/pages/tokens.vue`, `front/core/user/pages/users.vue` |
 | `core/user` | `core/settings` | `front/core/user/pages/login.vue`, `front/core/user/pages/register.vue` |
-| `core/user` | `core/util` | `front/core/user/components/UserAvatar.vue`, `front/core/user/components/UserMenu.vue`, `front/core/user/contextHelp.ts`, `front/core/user/pages/tokens.vue`, `front/core/user/pages/users.vue` |
-| `core/util` | `core/api` | `front/core/util/components/ActionContextMenu.vue`, `front/core/util/components/RenameFileButton.vue`, `front/core/util/components/ResourceAttachments.vue`, `front/core/util/sessionResources.ts` |
+| `core/user` | `core/util` | `front/core/user/components/AccountDeletionCard.vue`, `front/core/user/components/UserAvatar.vue`, `front/core/user/components/UserMenu.vue`, `front/core/user/contextHelp.ts`, `front/core/user/index.ts`, `front/core/user/pages/tokens.vue`, `front/core/user/pages/users.vue`, `front/core/user/stores/tokenStore.ts` |
+| `core/util` | `core/api` | `front/core/util/components/ActionContextMenu.vue`, `front/core/util/components/RenameFileButton.vue`, `front/core/util/components/ResourceAttachments.vue`, `front/core/util/sessionResources.ts`, `front/core/util/sessionStore.ts` |
 | `core/websocket` | `core/api` | `front/core/websocket.ts` |
 
 ## Backend Domain Coupling Metrics
@@ -1195,25 +1194,24 @@ tests remain authoritative for behavior.
 
 | Module | Count | Dependencies |
 |---|---:|---|
-| `app/task` | 8 | `app/agent`, `app/conversation`, `app/lab`, `app/llm`, `app/memory`, `app/process`, `app/topic`, `app/voice` |
+| `app/index` | 10 | `app/agent`, `app/connection`, `app/conversation`, `app/harnesses`, `app/llm`, `app/onboarding`, `app/process`, `app/services`, `app/task`, `app/voice` |
 | `app/conversation` | 5 | `app/agent`, `app/lab`, `app/llm`, `app/task`, `app/topic` |
 | `app/voice` | 5 | `app/agent`, `app/lab`, `app/llm`, `app/task`, `app/topic` |
 | `app/chat` | 4 | `app/agent`, `app/conversation`, `app/task`, `app/topic` |
 | `app/connection` | 4 | `app/agent`, `app/calendar`, `app/console`, `app/services` |
-| `app/index` | 4 | `app/agent`, `app/llm`, `app/onboarding`, `app/task` |
 | `app/process` | 4 | `app/agent`, `app/dataset`, `app/share`, `app/task` |
+| `app/task` | 4 | `app/agent`, `app/llm`, `app/memory`, `app/topic` |
 | `app/calendar` | 3 | `app/agent`, `app/goal`, `app/memory` |
 | `app/document` | 3 | `app/agent`, `app/share`, `app/topic` |
 | `app/memory` | 3 | `app/agent`, `app/document`, `app/share` |
-| `app/agent` | 2 | `app/harnesses`, `app/llm` |
-| `app/llm` | 2 | `app/agent`, `app/task` |
 | `app/browser` | 1 | `app/connection` |
 | `app/dataset` | 1 | `app/share` |
 | `app/dream` | 1 | `app/llm` |
 | `app/file_share` | 1 | `app/agent` |
 | `app/goal` | 1 | `app/agent` |
 | `app/lab` | 1 | `app/task` |
-| `app/services` | 1 | `app/connection` |
+| `app/llm` | 1 | `app/agent` |
+| `app/services` | 1 | `app/agent` |
 | `app/skill` | 1 | `app/agent` |
 | `bridge/hermes` | 1 | `app/agent` |
 | `bridge/ollama` | 1 | `app/llm` |
@@ -1222,40 +1220,33 @@ tests remain authoritative for behavior.
 
 | Module | Count | Dependents |
 |---|---:|---|
-| `app/agent` | 15 | `app/calendar`, `app/chat`, `app/connection`, `app/conversation`, `app/document`, `app/file_share`, `app/goal`, `app/index`, `app/llm`, `app/memory`, `app/process`, `app/skill`, `app/task`, `app/voice`, `bridge/hermes` |
-| `app/llm` | 7 | `app/agent`, `app/conversation`, `app/dream`, `app/index`, `app/task`, `app/voice`, `bridge/ollama` |
-| `app/task` | 7 | `app/chat`, `app/conversation`, `app/index`, `app/lab`, `app/llm`, `app/process`, `app/voice` |
+| `app/agent` | 16 | `app/calendar`, `app/chat`, `app/connection`, `app/conversation`, `app/document`, `app/file_share`, `app/goal`, `app/index`, `app/llm`, `app/memory`, `app/process`, `app/services`, `app/skill`, `app/task`, `app/voice`, `bridge/hermes` |
+| `app/llm` | 6 | `app/conversation`, `app/dream`, `app/index`, `app/task`, `app/voice`, `bridge/ollama` |
+| `app/task` | 6 | `app/chat`, `app/conversation`, `app/index`, `app/lab`, `app/process`, `app/voice` |
 | `app/topic` | 5 | `app/chat`, `app/conversation`, `app/document`, `app/task`, `app/voice` |
 | `app/share` | 4 | `app/dataset`, `app/document`, `app/memory`, `app/process` |
-| `app/lab` | 3 | `app/conversation`, `app/task`, `app/voice` |
-| `app/connection` | 2 | `app/browser`, `app/services` |
-| `app/conversation` | 2 | `app/chat`, `app/task` |
+| `app/connection` | 2 | `app/browser`, `app/index` |
+| `app/conversation` | 2 | `app/chat`, `app/index` |
+| `app/lab` | 2 | `app/conversation`, `app/voice` |
 | `app/memory` | 2 | `app/calendar`, `app/task` |
+| `app/services` | 2 | `app/connection`, `app/index` |
 | `app/calendar` | 1 | `app/connection` |
 | `app/console` | 1 | `app/connection` |
 | `app/dataset` | 1 | `app/process` |
 | `app/document` | 1 | `app/memory` |
 | `app/goal` | 1 | `app/calendar` |
-| `app/harnesses` | 1 | `app/agent` |
+| `app/harnesses` | 1 | `app/index` |
 | `app/onboarding` | 1 | `app/index` |
-| `app/process` | 1 | `app/task` |
-| `app/services` | 1 | `app/connection` |
-| `app/voice` | 1 | `app/task` |
+| `app/process` | 1 | `app/index` |
+| `app/voice` | 1 | `app/index` |
 
 ### Direct Frontend Cycles
 
-- `app/agent` ↔ `app/llm`
-- `app/connection` ↔ `app/services`
-- `app/conversation` ↔ `app/task`
-- `app/lab` ↔ `app/task`
-- `app/llm` ↔ `app/task`
-- `app/process` ↔ `app/task`
-- `app/task` ↔ `app/voice`
+No direct cycle detected.
 
 ### Strongly Connected Frontend Components
 
-- `app/agent`, `app/conversation`, `app/document`, `app/lab`, `app/llm`, `app/memory`, `app/process`, `app/task`, `app/voice`
-- `app/connection`, `app/services`
+No cyclic component detected.
 
 ## Declared Backend Routes
 
@@ -1417,22 +1408,22 @@ tests remain authoritative for behavior.
 | GET | `/chat/rooms/{room_id}/activity/{round_id}` | `app.chat` | `read_activity_detail` | yes | `back/app/chat/router.py:1026` |
 | POST | `/chat/rooms/{room_id}/activity/{round_id}/control` | `app.chat` | `control_response` | yes | `back/app/chat/router.py:1040` |
 | PATCH | `/chat/rooms/{room_id}/archive` | `app.chat` | `update_room_archive` | yes | `back/app/chat/router.py:581` |
-| POST | `/chat/rooms/{room_id}/attachments` | `app.chat` | `create_attachment_message` | yes | `back/app/chat/router.py:1283` |
-| POST | `/chat/rooms/{room_id}/calls` | `app.chat` | `start_call` | yes | `back/app/chat/router.py:1472` |
-| GET | `/chat/rooms/{room_id}/calls/active` | `app.chat` | `read_active_call` | yes | `back/app/chat/router.py:1531` |
-| GET | `/chat/rooms/{room_id}/calls/status` | `app.chat` | `read_voice_call_status` | yes | `back/app/chat/router.py:1445` |
-| DELETE | `/chat/rooms/{room_id}/calls/{call_id}` | `app.chat` | `stop_call` | yes | `back/app/chat/router.py:1590` |
-| POST | `/chat/rooms/{room_id}/calls/{call_id}/candidates` | `app.chat` | `add_call_candidate` | yes | `back/app/chat/router.py:1555` |
+| POST | `/chat/rooms/{room_id}/attachments` | `app.chat` | `create_attachment_message` | yes | `back/app/chat/router.py:1286` |
+| POST | `/chat/rooms/{room_id}/calls` | `app.chat` | `start_call` | yes | `back/app/chat/router.py:1487` |
+| GET | `/chat/rooms/{room_id}/calls/active` | `app.chat` | `read_active_call` | yes | `back/app/chat/router.py:1546` |
+| GET | `/chat/rooms/{room_id}/calls/status` | `app.chat` | `read_voice_call_status` | yes | `back/app/chat/router.py:1460` |
+| DELETE | `/chat/rooms/{room_id}/calls/{call_id}` | `app.chat` | `stop_call` | yes | `back/app/chat/router.py:1605` |
+| POST | `/chat/rooms/{room_id}/calls/{call_id}/candidates` | `app.chat` | `add_call_candidate` | yes | `back/app/chat/router.py:1570` |
 | GET | `/chat/rooms/{room_id}/commands` | `app.chat` | `read_room_commands` | yes | `back/app/chat/router.py:622` |
-| POST | `/chat/rooms/{room_id}/dictation` | `app.chat` | `transcribe_dictation` | yes | `back/app/chat/router.py:1232` |
+| POST | `/chat/rooms/{room_id}/dictation` | `app.chat` | `transcribe_dictation` | yes | `back/app/chat/router.py:1235` |
 | GET | `/chat/rooms/{room_id}/documents` | `app.chat` | `read_room_documents` | yes | `back/app/chat/router.py:1078` |
 | POST | `/chat/rooms/{room_id}/documents` | `app.chat` | `create_room_document` | yes | `back/app/chat/router.py:1108` |
-| GET | `/chat/rooms/{room_id}/draft` | `app.chat` | `get_private_draft` | yes | `back/app/chat/router.py:1622` |
-| PUT | `/chat/rooms/{room_id}/draft` | `app.chat` | `save_private_draft` | yes | `back/app/chat/router.py:1629` |
-| DELETE | `/chat/rooms/{room_id}/draft/files/{key}` | `app.chat` | `discard_private_draft_file` | yes | `back/app/chat/router.py:1651` |
-| POST | `/chat/rooms/{room_id}/draft/files/{key}` | `app.chat` | `upload_private_draft_file` | yes | `back/app/chat/router.py:1639` |
-| GET | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `download_file` | yes | `back/app/chat/router.py:1400` |
-| PATCH | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `rename_chat_attachment` | yes | `back/app/chat/router.py:1390` |
+| GET | `/chat/rooms/{room_id}/draft` | `app.chat` | `get_private_draft` | yes | `back/app/chat/router.py:1637` |
+| PUT | `/chat/rooms/{room_id}/draft` | `app.chat` | `save_private_draft` | yes | `back/app/chat/router.py:1644` |
+| DELETE | `/chat/rooms/{room_id}/draft/files/{key}` | `app.chat` | `discard_private_draft_file` | yes | `back/app/chat/router.py:1666` |
+| POST | `/chat/rooms/{room_id}/draft/files/{key}` | `app.chat` | `upload_private_draft_file` | yes | `back/app/chat/router.py:1654` |
+| GET | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `download_file` | yes | `back/app/chat/router.py:1415` |
+| PATCH | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `rename_chat_attachment` | yes | `back/app/chat/router.py:1405` |
 | GET | `/chat/rooms/{room_id}/interactions/{interaction_id}` | `app.chat` | `read_interaction` | yes | `back/app/chat/router.py:1154` |
 | POST | `/chat/rooms/{room_id}/interactions/{interaction_id}/answer` | `app.chat` | `answer_interaction` | yes | `back/app/chat/router.py:1163` |
 | GET | `/chat/rooms/{room_id}/messages` | `app.chat` | `read_messages` | yes | `back/app/chat/router.py:636` |
@@ -1443,9 +1434,9 @@ tests remain authoritative for behavior.
 | POST | `/chat/rooms/{room_id}/messages/{message_id}/previews/repository` | `app.chat` | `open_message_directory_repository` | yes | `back/app/chat/router.py:881` |
 | POST | `/chat/rooms/{room_id}/messages/{message_id}/speech` | `app.chat` | `read_message_speech` | yes | `back/app/chat/router.py:687` |
 | PATCH | `/chat/rooms/{room_id}/messages/{message_id}/topic` | `app.chat` | `update_message_topic` | yes | `back/app/chat/router.py:755` |
-| POST | `/chat/rooms/{room_id}/mute` | `app.chat` | `set_muted` | yes | `back/app/chat/router.py:1382` |
+| POST | `/chat/rooms/{room_id}/mute` | `app.chat` | `set_muted` | yes | `back/app/chat/router.py:1397` |
 | GET | `/chat/rooms/{room_id}/processes` | `app.chat` | `read_room_processes` | yes | `back/app/chat/router.py:1136` |
-| POST | `/chat/rooms/{room_id}/read` | `app.chat` | `mark_read` | yes | `back/app/chat/router.py:1374` |
+| POST | `/chat/rooms/{room_id}/read` | `app.chat` | `mark_read` | yes | `back/app/chat/router.py:1389` |
 | GET | `/chat/rooms/{room_id}/repositories` | `app.chat` | `discover_room_repositories` | yes | `back/app/chat/router.py:842` |
 | POST | `/chat/rooms/{room_id}/repositories` | `app.chat` | `open_room_repository` | yes | `back/app/chat/router.py:858` |
 | GET | `/chat/rooms/{room_id}/speech/status` | `app.chat` | `read_message_speech_status` | yes | `back/app/chat/router.py:661` |
@@ -2105,7 +2096,7 @@ tests remain authoritative for behavior.
 | `calendar_sync_runs` | `CalendarSyncRun` | `app.calendar` | no | `calendar_feeds.id`, `calendar_sync_operations.id` | `back/app/calendar/models.py:162` |
 | `calendar_triggers` | `CalendarTrigger` | `app.calendar` | no | `calendar_events.id`, `calendar_feeds.id`, `tasks.id` | `back/app/calendar/models.py:192` |
 | `chat_document_conversations` | `ChatDocumentConversation` | `app.chat` | no | `documents.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:25` |
-| `chat_draft_files` | `ChatDraftFile` | `app.chat` | no | `files.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:205` |
+| `chat_draft_files` | `ChatDraftFile` | `app.chat` | no | `files.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:206` |
 | `chat_drafts` | `ChatDraft` | `app.chat` | no | `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:191` |
 | `chat_emoji_usages` | `ChatEmojiUsage` | `app.chat` | no | `users.id` | `back/app/chat/models.py:46` |
 | `chat_push_deliveries` | `ChatPushDelivery` | `app.chat` | no | `chat_push_subscriptions.id`, `messenger_messages.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:126` |
@@ -2172,11 +2163,11 @@ tests remain authoritative for behavior.
 | `file_owners` | `ManagedFileOwner` | `app.file_share` | no | `agents.id`, `files.id` | `back/app/file_share/models.py:18` |
 | `file_stores` | `FileStore` | `core.storage` | no | — | `back/core/storage/models.py:59` |
 | `files` | `StoredFile` | `core.storage` | yes | — | `back/core/storage/models.py:14` |
-| `goal_calendar_plans` | `GoalCalendarPlan` | `app.goal` | no | `goals.id` | `back/app/goal/models.py:364` |
+| `goal_calendar_plans` | `GoalCalendarPlan` | `app.goal` | no | `goals.id` | `back/app/goal/models.py:359` |
 | `goal_categories` | `GoalCategory` | `app.goal` | yes | — | `back/app/goal/models.py:76` |
-| `goal_cycle_triggers` | `GoalCycleTrigger` | `app.goal` | no | `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:402` |
+| `goal_cycle_triggers` | `GoalCycleTrigger` | `app.goal` | no | `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:397` |
 | `goal_cycles` | `GoalCycle` | `app.goal` | no | `goal_cycles.id`, `goals.id`, `llms.id`, `memory_items.id`, `tasks.id` | `back/app/goal/models.py:235` |
-| `goal_occurrences` | `GoalOccurrence` | `app.goal` | no | `goal_calendar_plans.id`, `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:381` |
+| `goal_occurrences` | `GoalOccurrence` | `app.goal` | no | `goal_calendar_plans.id`, `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:376` |
 | `goals` | `Goal` | `app.goal` | yes | `agents.id`, `connections.id`, `documents.id`, `goal_categories.id`, `goals.id`, `memory_items.id`, `users.id` | `back/app/goal/models.py:86` |
 | `harness_execution_configurations` | `HarnessExecutionConfiguration` | `app.harnesses` | yes | — | `back/app/harnesses/models.py:18` |
 | `harnesses` | `Harness` | `app.harnesses` | yes | — | `back/app/harnesses/models.py:29` |
@@ -2350,12 +2341,12 @@ tests remain authoritative for behavior.
 | `calendar_is_available` | `calendar` | `app.calendar` | `calendar_is_available` | `back/app/calendar/mcp.py:96` |
 | `calendar_list` | `calendar` | `app.calendar` | `calendar_list` | `back/app/calendar/mcp.py:41` |
 | `calendar_update_event` | `calendar` | `app.calendar` | `calendar_update_event` | `back/app/calendar/mcp.py:201` |
-| `console_exec` | `console` | `app.console` | `console_exec` | `back/app/console/mcp.py:50` |
-| `console_poll` | `console` | `app.console` | `console_poll` | `back/app/console/mcp.py:98` |
-| `console_start` | `console` | `app.console` | `console_start` | `back/app/console/mcp.py:77` |
-| `console_status` | `console` | `app.console` | `console_status` | `back/app/console/mcp.py:35` |
-| `console_stop` | `console` | `app.console` | `console_stop` | `back/app/console/mcp.py:127` |
-| `console_write` | `console` | `app.console` | `console_write` | `back/app/console/mcp.py:112` |
+| `console_exec` | `console` | `app.console` | `console_exec` | `back/app/console/mcp.py:56` |
+| `console_poll` | `console` | `app.console` | `console_poll` | `back/app/console/mcp.py:104` |
+| `console_start` | `console` | `app.console` | `console_start` | `back/app/console/mcp.py:83` |
+| `console_status` | `console` | `app.console` | `console_status` | `back/app/console/mcp.py:41` |
+| `console_stop` | `console` | `app.console` | `console_stop` | `back/app/console/mcp.py:133` |
+| `console_write` | `console` | `app.console` | `console_write` | `back/app/console/mcp.py:118` |
 | `conversation_choice_resolve` | `conversation` | `app.conversation` | `conversation_choice_resolve` | `back/app/conversation/mcp.py:877` |
 | `conversation_process_pending` | `conversation` | `app.conversation` | `conversation_process_pending` | `back/app/conversation/mcp.py:933` |
 | `conversation_process_prepare` | `conversation` | `app.conversation` | `conversation_process_prepare` | `back/app/conversation/mcp.py:1029` |
@@ -2401,12 +2392,12 @@ tests remain authoritative for behavior.
 | `goal_update_suivi` | `galaris` | `app.goal` | `mcp_goal_update_suivi` | `back/app/goal/mcp.py:268` |
 | `process_activity_complete` | `galaris` | `app.process` | `process_activity_complete` | `back/app/process/mcp.py:159` |
 | `process_activity_question` | `galaris` | `app.process` | `process_activity_question` | `back/app/process/mcp.py:174` |
-| `process_analyze_run` | `galaris` | `app.process` | `process_analyze_run` | `back/app/process/mcp.py:386` |
+| `process_analyze_run` | `galaris` | `app.process` | `process_analyze_run` | `back/app/process/mcp.py:378` |
 | `process_archive` | `galaris` | `app.process` | `process_archive` | `back/app/process/mcp.py:226` |
 | `process_create` | `galaris` | `app.process` | `process_create` | `back/app/process/mcp.py:188` |
 | `process_definition_read` | `galaris` | `app.process` | `process_definition_read` | `back/app/process/mcp.py:182` |
 | `process_get` | `galaris` | `app.process` | `process_get` | `back/app/process/mcp.py:118` |
-| `process_get_run` | `galaris` | `app.process` | `process_get_run` | `back/app/process/mcp.py:373` |
+| `process_get_run` | `galaris` | `app.process` | `process_get_run` | `back/app/process/mcp.py:365` |
 | `process_history` | `galaris` | `app.process` | `process_history` | `back/app/process/mcp.py:212` |
 | `process_list` | `galaris` | `app.process` | `process_list` | `back/app/process/mcp.py:109` |
 | `process_list_runs` | `galaris` | `app.process` | `process_list_runs` | `back/app/process/mcp.py:348` |
@@ -2531,21 +2522,21 @@ tests remain authoritative for behavior.
 | `llm_call` | `platform_admin` | `app.llm` | `mcp_llm_call` | `back/app/llm/mcp.py:70` |
 | `llm_calls` | `platform_admin` | `app.llm` | `mcp_llm_calls` | `back/app/llm/mcp.py:88` |
 | `voice_turn_get` | `platform_admin` | `app.voice` | `voice_turn_get` | `back/app/voice/mcp.py:52` |
-| `process_admin_analyze_run` | `process_admin` | `app.process` | `process_admin_analyze_run` | `back/app/process/mcp.py:730` |
-| `process_admin_cancel_run` | `process_admin` | `app.process` | `process_admin_cancel_run` | `back/app/process/mcp.py:702` |
-| `process_admin_create` | `process_admin` | `app.process` | `process_admin_create` | `back/app/process/mcp.py:488` |
-| `process_admin_delete` | `process_admin` | `app.process` | `process_admin_delete` | `back/app/process/mcp.py:569` |
-| `process_admin_delete_run` | `process_admin` | `app.process` | `process_admin_delete_run` | `back/app/process/mcp.py:744` |
-| `process_admin_engines` | `process_admin` | `app.process` | `process_admin_engines` | `back/app/process/mcp.py:400` |
-| `process_admin_get` | `process_admin` | `app.process` | `process_admin_get` | `back/app/process/mcp.py:468` |
-| `process_admin_get_run` | `process_admin` | `app.process` | `process_admin_get_run` | `back/app/process/mcp.py:668` |
-| `process_admin_list` | `process_admin` | `app.process` | `process_admin_list` | `back/app/process/mcp.py:437` |
-| `process_admin_list_runs` | `process_admin` | `app.process` | `process_admin_list_runs` | `back/app/process/mcp.py:630` |
-| `process_admin_refresh_run` | `process_admin` | `app.process` | `process_admin_refresh_run` | `back/app/process/mcp.py:688` |
-| `process_admin_retry_run` | `process_admin` | `app.process` | `process_admin_retry_run` | `back/app/process/mcp.py:716` |
-| `process_admin_start` | `process_admin` | `app.process` | `process_admin_start` | `back/app/process/mcp.py:591` |
-| `process_admin_sync` | `process_admin` | `app.process` | `process_admin_sync` | `back/app/process/mcp.py:420` |
-| `process_admin_update` | `process_admin` | `app.process` | `process_admin_update` | `back/app/process/mcp.py:519` |
+| `process_admin_analyze_run` | `process_admin` | `app.process` | `process_admin_analyze_run` | `back/app/process/mcp.py:714` |
+| `process_admin_cancel_run` | `process_admin` | `app.process` | `process_admin_cancel_run` | `back/app/process/mcp.py:686` |
+| `process_admin_create` | `process_admin` | `app.process` | `process_admin_create` | `back/app/process/mcp.py:480` |
+| `process_admin_delete` | `process_admin` | `app.process` | `process_admin_delete` | `back/app/process/mcp.py:561` |
+| `process_admin_delete_run` | `process_admin` | `app.process` | `process_admin_delete_run` | `back/app/process/mcp.py:728` |
+| `process_admin_engines` | `process_admin` | `app.process` | `process_admin_engines` | `back/app/process/mcp.py:392` |
+| `process_admin_get` | `process_admin` | `app.process` | `process_admin_get` | `back/app/process/mcp.py:460` |
+| `process_admin_get_run` | `process_admin` | `app.process` | `process_admin_get_run` | `back/app/process/mcp.py:652` |
+| `process_admin_list` | `process_admin` | `app.process` | `process_admin_list` | `back/app/process/mcp.py:429` |
+| `process_admin_list_runs` | `process_admin` | `app.process` | `process_admin_list_runs` | `back/app/process/mcp.py:622` |
+| `process_admin_refresh_run` | `process_admin` | `app.process` | `process_admin_refresh_run` | `back/app/process/mcp.py:672` |
+| `process_admin_retry_run` | `process_admin` | `app.process` | `process_admin_retry_run` | `back/app/process/mcp.py:700` |
+| `process_admin_start` | `process_admin` | `app.process` | `process_admin_start` | `back/app/process/mcp.py:583` |
+| `process_admin_sync` | `process_admin` | `app.process` | `process_admin_sync` | `back/app/process/mcp.py:412` |
+| `process_admin_update` | `process_admin` | `app.process` | `process_admin_update` | `back/app/process/mcp.py:511` |
 | `search_web` | `search` | `app.services` | `search_web` | `back/app/services/mcp.py:74` |
 | `service_admin_catalog_refresh` | `service_admin` | `app.services` | `service_admin_catalog_refresh` | `back/app/services/mcp.py:399` |
 | `service_admin_connection_create` | `service_admin` | `app.connection` | `service_admin_connection_create` | `back/app/connection/mcp.py:20` |
@@ -2731,7 +2722,7 @@ tests remain authoritative for behavior.
 
 | Indicative Route | Module | Source |
 |---|---|---|
-| `/agent` | `app/agent` | `front/app/agent/pages/index.vue` |
+| `/agent` | `app/index` | `front/app/index/pages/agent.vue` |
 | `/authorize` | `core/authorize` | `front/core/authorize/pages/index.vue` |
 | `/authorize/profile` | `core/authorize` | `front/core/authorize/pages/profile.vue` |
 | `/browser/settings` | `app/browser` | `front/app/browser/pages/settings.vue` |
@@ -2777,9 +2768,9 @@ tests remain authoritative for behavior.
 | `/process/internal/run/:id` | `app/process` | `front/app/process/pages/internal/run/[id].vue` |
 | `/process/new-external` | `app/process` | `front/app/process/pages/new-external.vue` |
 | `/process/new-internal` | `app/process` | `front/app/process/pages/new-internal.vue` |
-| `/services` | `app/services` | `front/app/services/pages/index.vue` |
+| `/services` | `app/index` | `front/app/index/pages/services.vue` |
 | `/skill` | `app/skill` | `front/app/skill/pages/index.vue` |
-| `/task` | `app/task` | `front/app/task/pages/index.vue` |
+| `/task` | `app/index` | `front/app/index/pages/task.vue` |
 | `/team` | `core/team` | `front/core/team/pages/index.vue` |
 | `/tools` | `app/services` | `front/app/services/pages/legacy.vue` |
 | `/topic` | `app/topic` | `front/app/topic/pages/index.vue` |

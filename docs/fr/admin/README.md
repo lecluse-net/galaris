@@ -383,6 +383,9 @@ mise à jour qui change un défaut, une personnalisation n’est jamais écrasé
 garder la version de l’instance ou d’adopter la nouvelle version fournie.
 
 **Préférences → Instructions** expose le prompt complet `ai.goal-tracking-system-prompt`.
+Le monitoring utilise uniquement le **Modèle de décision** du profil, pour un choix
+`CONTINUE`/`STOP` sans génération de suivi ni repli texte. Sans ce modèle, ou en cas de panne,
+les cycles continuent selon leur planning ; aucune clôture automatique n'est présumée.
 Les droits `GOAL_CONFIG_ACCESS` et `GOAL_CONFIG_EDIT` contrôlent sa lecture et sa modification.
 Chaque nouveau jugement utilise la valeur configurée ; un jugement déjà lancé conserve sa
 requête. Les nouveaux jeux de données de suivi du Lab en copient la valeur, puis gardent leur
@@ -1218,6 +1221,32 @@ Le harness manager possède un cycle de déploiement indépendant et peut résid
 machine. `make update` ne le met jamais à jour et ne redémarre aucun service hôte externe. Sa mise
 à jour s'effectue sur son propre hôte avec le Makefile de `harness_manager`, en coordonnant
 explicitement la compatibilité avec les déploiements Galaris qui le consomment.
+
+### Évolutions après 0.3.0
+
+Pour passer de 0.3.0 au code actuel, utiliser la procédure normale de sauvegarde puis
+`make update`. DbAdmin applique les évolutions de schéma et de données au démarrage.
+Ces points concernent aussi les changements encore en développement ; ils ne désignent
+pas une nouvelle version publiée.
+
+- Les anciennes connexions Mail et Calendrier deviennent des Services fournisseurs
+  personnalisés, en conservant paramètres et historique. Le [catalogue](../user/services.md)
+  crée des copies locales ; son actualisation ne remplace pas vos Services.
+- `document_format` remplace `document_type` dans les API et le stockage. Les anciens
+  formats `html` et `form` deviennent `text`, sans changer les URI ni les droits.
+  Adapter les intégrations qui envoient encore l'ancien champ ; voir le
+  [contrat des formats](../dev/document-formats.md).
+- Chaque agent reçoit son agenda personnel. Les nouveaux agendas synchronisés activent
+  les lancements de Tasks au début des événements ; les désactivations explicites sont
+  préservées. Vérifier les agendas et l'intervalle de leur connexion dans le
+  [parcours Agenda](../user/calendar.md).
+- Le monitoring des Goals utilise uniquement le modèle Décision. Sans lui, les cycles
+  continuent sans clôture automatique. Les anciennes pauses automatiques `BLOCKED` et
+  `REVIEW_UNAVAILABLE` sont progressivement reprises ; les pauses humaines et attentes
+  de réponse restent respectées. Les anciennes Tasks de revue sont conservées avec leur
+  contenu, état et coût, mais ne participent plus à la supervision du Goal.
+
+Le [client desktop](../user/desktop.md) se distribue et se met à jour séparément du serveur.
 
 <a id="upgrade-0-3"></a>
 ### Passer de 0.2.0 à 0.3.0

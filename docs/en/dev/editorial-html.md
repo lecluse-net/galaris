@@ -93,7 +93,8 @@ Dataset `file_read` offsets count characters; `file_edit` ranges count lines. Th
 result must remain valid JSON. `file_write`, `file_edit` and `file_append` require the observed
 revision. Prefer replacement or line editing to JSON concatenation. Copying an
 `application/json` source to `data://` creates a new private Dataset.
-PDF/HTML exports remain specific to HTML documents. Other document formats remain out of scope.
+Text documents use their static snapshot for PDF/HTML exports. Other formats declare their
+capabilities and fallback through the [format contract](document-formats.md).
 [Interactive HTML](document-apps.md) now allows forms and declared Dataset access inside
 an isolated document runtime; history and exports remain inert.
 

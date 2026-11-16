@@ -15,6 +15,10 @@ graphical interface. Asking a first question requires no team design or workflow
 
 The application works on desktop and mobile, with English, French and Simplified Chinese interfaces, light/dark themes
 and PWA installation. Navigation, search, notifications and monitoring keep routine work accessible.
+The [Windows and Linux client](user/desktop.md) opens the same server in a dedicated window,
+with tabs and French/English spellchecking. It keeps its own session; Windows and AppImage
+offer client updates independently from server updates.
+
 For installation/update commands, follow the [installation guide](admin/installation.md).
 
 ## Talk to an agent that can keep working
@@ -116,11 +120,24 @@ A Task targets a result; a Goal organises successive work cycles around a contin
 Assign recurring research or monitoring, define working windows, designate a human referrer and
 inspect successive results. Follow-up and produced documents remain linked to the objective.
 
-After each cycle, Galaris examines the outcome to continue or stop. The agent can ask its referrer
+With a Decision model, Galaris examines each outcome to continue or stop, without generating
+reviews or rewriting tracking. Without that model, or after it fails, work continues on its
+schedule without automatic completion. The agent can ask its referrer
 for a missing decision. Humans can pause, resume, finish or request an immediate cycle. Calendar
 events and alarms can also trigger Tasks or Processes.
 
+[Agenda](user/calendar.md) brings together each agent's personal agenda, CalDAV, Google,
+Microsoft or iCloud calendars, and Goals and Memory layers. Events are read locally while
+synchronization runs in the background. An event launches a Task at its start by default;
+saved agenda settings can disable launches. Dated memories remain informational and open
+their complete details without scheduling Tasks.
+
 ## Give agents practical means to act
+
+The [Service catalogue](user/services.md) provides templates to configure and copy locally.
+A Service combines protocols; its connections hold each agent's credentials. YAML exports
+include the definition and icon without connection secrets. Refreshing the catalogue does
+not replace configured Services.
 
 [Personal skills](user/skills.md) add private packages per agent, with editing, activation and
 ownership transfer. Generic methods remain assignable across agents. Native Process AI
@@ -149,7 +166,9 @@ Files also lets users read IMAP folders and messages without marking them as rea
 repositories in the code editor and inspect or edit an agent's private Contacts. The address
 book accepts emails, phone numbers and postal addresses; Contact cards in documents retain
 each reader's access checks. Document import copies HTML, Markdown, text and JSON files,
-as well as existing documents, into the common library.
+as well as existing documents, into the common library. PDFs, Office files and other convertible
+formats become editable text with illustrations and the attached original; results depend on
+source and conversion quality. See [supported imports](user/documents.md).
 
 Email adds message search/reading, attachment processing and reply preparation. Where configured,
 sending waits for a human to approve the exact content. Calendars add availability checks, free-slot

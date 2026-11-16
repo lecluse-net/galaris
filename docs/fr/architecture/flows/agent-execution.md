@@ -1000,6 +1000,15 @@ Tâche. Le catalogue de Processes ne répète plus cet arbitrage dans les prompt
 uniquement les métadonnées sélectionnées, tandis que la politique conversationnelle en est
 l'unique propriétaire.
 
+La même politique possède le traitement des limites : une fonction absente du round,
+un inventaire incomplet ou un ancien refus de l'IA ne prouvent pas une impossibilité en
+Task. Celle-ci peut rechercher la méthode ; une limite vérifiée, une ACL, un refus humain
+ou un accord en attente restent opposables. Texte, voix par tours et realtime reçoivent
+la même projection locale des Services exclus de la conversation, sans découverte distante
+ni ajout d'outils au round. Aucun classificateur supplémentaire n'intervient. Les prompts
+personnalisés restent conservés lors des mises à jour ; voir la décision
+[0297](../../../../project/decisions/0297-unified-conversation-capability-policy.md).
+
 Les trois exécuteurs partagent un unique nœud `Untrusted data boundary` placé avant les données de
 contexte. Les en-têtes Memory et les règles conversationnelles ne répètent plus cette hiérarchie.
 Les prompts courts ouvrent en outre sur une identité déclarative à la première personne et ajoutent

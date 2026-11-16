@@ -41,6 +41,15 @@ Les lectures prennent `uri` et une question `prompt`. Les fichiers restent dans 
 d'origine ; l'analyse dispose d'un temporaire borné à 32 Mio et 20 minutes, validé par FFprobe,
 sans copie durable.
 
+`video_read` accepte aussi `subtitles_uri` et `language`. Il utilise d'abord le fichier
+SRT/WebVTT fourni, puis une piste textuelle intégrée, puis le modèle de transcription du
+profil de l'agent. Le résultat sépare l'analyse visuelle et `transcript`, avec provenance,
+horodatages et avertissements de couverture ; un extrait borné est aussi transmis au modèle
+vidéo. Sans son ou sans transcription disponible, l'analyse visuelle reste possible avec
+un avertissement. Les sous-titres incrustés ne sont pas extraits par OCR. Une URL de page
+YouTube passe par `audio_transcribe`, qui convient aussi aux enregistrements plus longs ou
+à une transcription complète enregistrée. Voir le [parcours multimédia](../user/README.md).
+
 Les générations prennent un `prompt` et une `destination` désignant une collection de fichiers
 accessible en écriture, terminée par `/`, par exemple une collection renvoyée par `file_list`.
 La racine `document://` ne convient pas ; une collection de pièces jointes de document convient.

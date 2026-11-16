@@ -22,6 +22,10 @@ L’application s’utilise sur ordinateur et mobile, avec une interface frança
 un thème clair ou sombre et une installation possible comme PWA. La navigation, la recherche,
 les notifications et les écrans de suivi gardent les opérations courantes accessibles.
 
+Un [client Windows et Linux](user/desktop.md) ouvre le même serveur dans une fenêtre dédiée,
+avec onglets et vérification orthographique français/anglais. Il conserve sa propre session ;
+Windows et l'AppImage proposent les mises à jour du client, indépendamment de celles du serveur.
+
 Pour les commandes d’installation et de mise à jour, suivre le [guide d’installation](admin/installation.md).
 
 ## Discuter avec un agent qui peut poursuivre le travail
@@ -126,12 +130,25 @@ Une tâche vise un résultat ; un Goal organise des cycles de travail autour d�
 On peut confier une veille ou un suivi régulier, définir des horaires, désigner un référent humain
 et consulter les résultats successifs. Le suivi et les documents produits restent liés à l’objectif.
 
-À chaque cycle, Galaris examine le résultat pour continuer ou s’arrêter. L’agent peut interroger
+Avec un modèle Décision, Galaris examine chaque résultat pour continuer ou s’arrêter, sans
+générer de revue ni réécrire le suivi. Sans ce modèle, ou s'il échoue, le travail continue
+selon son planning sans clôture automatique. L’agent peut interroger
 son référent lorsqu’une décision manque. L’humain peut suspendre, reprendre, terminer ou demander
 un cycle immédiat. Des calendriers peuvent aussi déclencher des tâches ou des processus à partir
 d’événements ou d’alarmes.
 
+L'[Agenda](user/calendar.md) rassemble l'agenda personnel de chaque agent, les calendriers
+CalDAV, Google, Microsoft ou iCloud, ainsi que les couches Objectifs et Mémoire. Les événements
+se lisent localement pendant la synchronisation en arrière-plan. Un événement lance par défaut
+une tâche à son début ; les réglages conservés de l'agenda peuvent désactiver ces lancements.
+Les souvenirs datés restent informatifs et ouvrent leur fiche complète sans programmer de tâche.
+
 ## Donner des moyens d’action concrets
+
+Le [catalogue de Services](user/services.md) propose des fiches prêtes à configurer et à copier
+localement. Un Service réunit plusieurs protocoles ; ses connexions portent les identifiants
+de chaque agent. Les exports YAML incluent la définition et son icône, sans les secrets des
+connexions. Actualiser le catalogue ne remplace pas les Services déjà configurés.
 
 Les outils couvrent la recherche web, la navigation interactive, les fichiers et, pour les agents
 équipés, une console Linux. Un agent peut consulter des sources, manipuler des ressources,
@@ -162,6 +179,9 @@ ouvrir un dépôt dans l'éditeur de code et consulter ou modifier les Contacts 
 Le carnet accepte mails, téléphones et adresses postales ; insérer une carte Contact dans un
 document conserve les droits du lecteur. L'import documentaire copie des fichiers HTML,
 Markdown, texte ou JSON, ainsi que des documents existants, dans la bibliothèque commune.
+Les PDF, fichiers Office et autres formats convertibles deviennent du texte modifiable avec
+leurs illustrations et leur original joint ; le résultat dépend de la qualité de la source
+et de la conversion. Voir les [formats d'import pris en charge](user/documents.md).
 
 Le courrier complète ces moyens d’action : lire et rechercher des mails, traiter les pièces jointes,
 préparer une réponse et, si la connexion l’exige, attendre que l’humain approuve exactement ce qui

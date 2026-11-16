@@ -40,6 +40,14 @@ authenticated provider polling controls their state.
 Analysis accepts a canonical file `uri` and a `prompt`. Files remain in their original Service;
 temporary materialization is limited to 32 MiB and 20 minutes, validated by FFprobe.
 
+`video_read` also accepts `subtitles_uri` and `language`. It first uses the supplied SRT/WebVTT
+file, then embedded text subtitles, then the agent profile's transcription model. Its result
+separates visual analysis from `transcript`, including provenance, timestamps and coverage
+warnings; a bounded excerpt also reaches the video model. Without audio or an available
+transcript, visual analysis remains possible with a warning. Burned-in captions are not
+extracted through OCR. YouTube page URLs use `audio_transcribe`, which also handles longer
+recordings or a complete saved transcript. See the [multimedia workflow](../user/README.md).
+
 Generation accepts a `prompt` and a writable binary-file collection `destination` ending in `/`.
 Use a collection returned by `file_list`. The `document://` root is unsuitable; a document
 attachment collection is suitable. A console requires an active connection.

@@ -2,6 +2,18 @@
 
 # Catalogue des garanties fonctionnelles
 
+Les scénarios de reprise `front/browser-tests/preferences.spec.mjs` et
+`request-lifecycle.spec.mjs` vérifient les erreurs propres à chaque lecture, leur retry et
+la conservation d'un formulaire Service rouvert pendant une sauvegarde. Les interactions
+Pinia sont exécutées dans Vue réel, avec les proxys de développement. Le test central
+`front/core/util/sessionStore.test.mjs` protège aussi l'identité des proxys et l'ordre des
+réponses ; les tests des stores couvrent les mutations et changements de session.
+`task-panel.spec.mjs` conserve le détail Task pendant un changement de borne de message,
+et le ferme au changement de conversation. `llm-calls.spec.mjs` vérifie le détail partagé ;
+`agents.spec.mjs` vérifie la reprise et l'effacement des tokens MCP au changement d'agent.
+Les dépendances inter-modules sans cycles et sans imports privés sont contrôlées par la
+baseline frontend. Ces garanties ne remplacent pas les E2E de l'application assemblée.
+
 Le catalogue de services et le YAML autonome sont couverts par
 `app/services/tests/test_service_catalog.py` : icônes SVG/PNG/GIF, ancien YAML, absence de
 secrets distribués, compatibilité et actualisation atomique avec repli hors ligne.
@@ -19,6 +31,9 @@ sources indépendantes, erreurs assainies et refus hors périmètre. Les scénar
 `front/browser-tests/connection-actions.spec.mjs` et `connections-loading.spec.mjs`
 vérifient test, échec/reprise, réponses tardives, droits de décision, sauvegarde,
 réouverture et isolation entre connexions, avec le tableau partagé de Permissions.
+La lecture ciblée conserve ces garanties avec 0 ou 500 Services volumineux sans rapport,
+sans matérialiser leurs configurations ; une connexion inconnue ne déclenche aucune
+découverte MCP et la réouverture restitue le libellé courant.
 
 `make tests-document-formats` regroupe les garanties documentaires et leurs parcours
 navigateur. `app/document/tests/test_formats.py` vérifie l'enregistrement de contributions,
@@ -118,18 +133,36 @@ des heures et le regroupement statistique des répétitions/traductions avec exc
 pannes. `test_reference_corpus.py` couvre leur import authentifié et leur persistance.
 La [campagne avant/après](lab-reference-corpus.md)
 utilise de vrais modèles avec des outils simulés ; ses scores ne prouvent pas les effets métier.
+Les cas de limites conversationnelles imposent une tentative en Task lorsque les moyens sont
+inconnus et protègent interdictions, choix humains, priorité Process et lectures directes.
+Leurs mutations retirent un appel requis ou ajoutent une Task interdite pour vérifier les
+oracles. Le bench peut reprendre les prompts complets d'une référence antérieure, mais refuse
+une comparaison si modèle, effort, entrées, outils, réponses ou oracles diffèrent. Les tests
+de composition couvrent l'injection unique de la politique et le même contexte de capacités
+pour texte, voix par tours et voix temps réel. Aucun de ces jugements n'est ajouté au runtime.
 `test_executor_outcomes.py` reproduit aussi le défaut d'égalité brute entre arguments soumis
 et valeurs par défaut liées par le framework. Les anciennes références fournissaient les
 arguments explicitement ; les nouveaux cas couvrent leur omission et les vraies divergences.
 
-`app/goal/tests/test_autonomous_goal.py` vérifie avec PostgreSQL la revue durable avant clôture,
-la réorientation après critique, les blocages distincts de la réussite, l'invalidation des avis
-par les révisions du Goal/suivi, les coûts des revues périmées, la reprise après expiration du
-bail et la clôture humaine pendant une revue. Seuls le modèle et le réveil du scheduler sont
-remplacés. `test_goal_runner.py` conserve les scénarios de récupération de suivi en exigeant
-désormais la revue avant clôture automatique. Dans le backend de développement,
+`app/goal/tests/test_autonomous_goal.py` vérifie avec PostgreSQL la poursuite sans revue ni
+pause automatique, la conservation du suivi et du résultat Task, les décisions périmées,
+les baux, les pauses humaines et le retrait des anciennes pauses de supervision.
+`test_review_retirement.py` vérifie avec PostgreSQL et le vrai Atlas la suppression du lien
+de revue, le nettoyage idempotent des marqueurs, le rollback et la conservation de toutes les
+tâches et de leur état. Les anciens tests d'annulation des revues sont retirés : ces tâches
+ne sont plus pilotées par les objectifs. Le schéma de synthèse générative inutilisé et ses
+tests spécifiques sont retirés ; les mises à jour du suivi et l'adaptateur JSON générique
+conservent leur couverture.
+`test_decision_monitoring.py` impose un seul choix natif, sans modèle texte ni repli.
+`test_goal_runner.py` conserve les contrôles de coûts, de scheduling et de reprise ; un échec
+du monitoring conserve son diagnostic sans bloquer le Goal. Les attentes de revue obligatoire,
+de synthèse générée et de pause sur blocage sont retirées selon la décision 0296.
+`test_supervision_benchmark.py` mesure sept scénarios du contrat courant en base isolée, avec une
+frontière modèle scriptée ; ses prix synthétiques ne sont pas des économies mesurées.
+Dans le backend de développement,
 `python -m scripts.qualify_goal_autonomy --output /tmp/goal-trial.json --max-cost 1` exerce six
-cas synthétiques sur le modèle Goal configuré. Les attentes restent hors du prompt ;
+cas synthétiques sur le modèle décisionnel configuré, sans génération de suivi ni repli texte.
+Les attentes restent hors du prompt ;
 `--prompt-file` permet une référence antérieure. Le rapport conserve empreintes, décisions,
 coût et durée ; échec ou budget dépassé rendent le code de sortie non nul. Cette qualification
 porte sur le jugement réel, pas sur la résolution autonome complète avec outils.
@@ -181,9 +214,6 @@ fournisseur synthétique : une demande, deux relectures, un complément de valeu
 et rejeu. Il borne les lectures SQL et les appels auxiliaires IA. Les ressources partagées
 par 1, 10, 50 et 200 champs ne nécessitent qu'une lecture de métadonnées par lot ; l'appel
 suivant revérifie les droits. Ces mesures ne qualifient pas la latence d'un fournisseur réel.
-
-La reprise de l’historique dans `goals.spec.mjs` vérifie aussi les preuves conservées et
-l’accès à la Task de revue selon les privilèges, sans navigation ni fermeture de l’objectif.
 
 Les tests du store Goals vérifient le chargement différé des cycles, le regroupement des
 événements en lots sans chevauchement, la récupération après erreur, les réponses tardives,
@@ -306,6 +336,9 @@ reprenables, les changements de lecteur et les changements de source restent cou
 le contrôle de qualification refuse faits/citations fabriqués et affirmations de lecture
 complète fondées sur du base64. `make qualify-document-rag` exécute les cas avec un vrai
 modèle sur des sources synthétiques, sans entrer dans le scheduler ni créer de souvenir.
+Les scénarios Dream de `app/memory/tests/test_dream_attachments.py` refusent une analyse
+native interrompue (`length`, `content_filter`) : la description partielle n'est pas
+persistée, le reçu reste à reprendre et la pièce jointe suivante peut être traitée.
 
 ## Renommer les Documents et Datasets par un agent
 
@@ -457,8 +490,11 @@ Les tests existants conservent filtrage des bots, fusion multicanal, ordre et ro
 Les cas non vides à 0, 501 et 2 001 contacts sans rapport bornent aussi les lectures
 canoniques et le travail PostgreSQL, en conservant nom canonique, route et propriétaire.
 Les filtres d'identités sont exacts et sélectionnent leur union ; une collection vide
-explicite ne parcourt pas l'annuaire. Les cas de 501 et 1 001 routes conservent chaque
-destinataire après découpage, et une réouverture relit le nom modifié.
+explicite ne parcourt pas l'annuaire. Les cas de 501 et 1 001 routes traversent les
+contacts canoniques PostgreSQL, conservent chaque destinataire et bornent les lectures
+par lot, sans page vide supplémentaire. Une réouverture et l'attribution des messages
+relisent indépendamment les noms modifiés malgré un objet conservé en session ; les
+contacts d'un autre propriétaire restent exclus. Seul l'annuaire du transport est simulé.
 
 ## Lectures natives des Documents
 
@@ -1170,8 +1206,11 @@ doit faire échouer ce contrôle. Les tests de permissions des processus conserv
 les partages et l'exclusion des définitions orphelines ; l'optimisation du filtre d'accès
 retire les branches de dossiers et de pièces jointes inutiles à ces listes.
 La même suite borne à trois les lectures SQL des pages de 10, 50 et 500 résumés liés
-aux Tasks/runs autorisés, sans charger les traces et l'état privé d'exécution. Elle
-préserve les JSON métier complets, l'ordre, les libellés archivés et les données stockées,
+aux Tasks/runs autorisés. Les listes MCP personnelles et administratives réutilisent
+la sélection SQL des droits et la projection groupée, sans hydratation de l'état privé
+ni vérification par élément ; les scénarios conservent la révocation de connexion et
+le refus des runs hors périmètre. La suite préserve les JSON métier complets,
+l'ordre, les libellés archivés et les données stockées,
 compare les changements tardifs à la lecture détaillée et relit un résultat validé par
 une session indépendante. Le parcours E2E du catalogue vérifie aussi les cinq résumés
 de l'API générale avant et après réouverture. Les contrôles MCP et HTTP existants
@@ -1860,6 +1899,11 @@ du runtime pour l'accord, le refus, la révocation et l'annulation, sans relance
 `make tests-harness-runtimes` exerce les SDK embarqués Codex, Claude, Hermes et DeepSeek,
 avec modèle et transports externes synthétiques : aucun effet avant accord, refus, reprise
 de l’appel exact et continuation MCP. Cette qualification ne prouve pas un déploiement.
+Pour Codex et Claude, l'annulation est exercée pendant une autorisation en attente :
+le sous-processus doit avoir disparu avant `stopped`, un accord tardif reste sans effet
+et le même contexte ne redémarre pas. `test_runtime_control.py` vérifie aussi que les
+arrêts répétés préservent le nettoyage, y compris après une annulation interne du SDK
+ou une attente de collègue.
 Les scénarios vérifient aussi les noms, arguments, retours, identités et échecs des outils
 Codex, Claude et DeepSeek ; Hermes conserve son historique natif. Les tests de projection
 Tâche et de reconnexion conservent des aperçus bornés et masqués sans modifier les reçus.
@@ -2009,6 +2053,11 @@ vides. Le scénario de progression distingue texte, réflexion fragmentée et vr
 les fragments de réflexion ne forcent pas une sauvegarde chacun et la clôture reste immédiate.
 `app/agent/tests/test_message_contracts.py` conserve une occurrence par invocation dans
 `tools_used`, même avec de nombreux fragments et plusieurs appels du même outil.
+`app/task/tests/test_run_events.py` vérifie le même masquage des arguments et résultats
+confidentiels dans les aperçus live et les snapshots Task sérialisés, dont `task.update`.
+Le snapshot complet conserve les contenus métier volumineux et ne modifie pas la source.
+Le scénario Chat d'inspection des outils vérifie les détails en direct, après rechargement
+et après achèvement, sans exposer le secret synthétique.
 `app/dataset/tests/test_datasets.py` vérifie l'édition depuis une lecture JSON partielle,
 les fins de ligne LF/CRLF/CR, la conservation du contenu voisin, les conflits et les droits.
 `test_inference_lifecycle.py` vérifie sur PostgreSQL que les boucles de suivi,
@@ -2045,6 +2094,9 @@ des descriptions d'images, projection sans modèle, dossiers visibles récursive
 documents autorisés et classements personnels séparés. Les scénarios utilisent une vraie base,
 y compris des connexions concurrentes et un ancien travail Dream rejoué. `memory.spec.mjs`
 vérifie l'invalidation d'une vue ouverte et le rejet d'une réponse antérieure à la révocation.
+Les mêmes scénarios couvrent une PJ dont le document n'a plus de référence graphe :
+lecture sous les droits canoniques puis révocation, acquisition Dream texte/PDF/image/vidéo,
+révision et reprise conservées sans recréer cette référence.
 
 La [campagne du 12 septembre](../../../project/audits/2026-09-12-functional-regressions.md)
 renforce les admissions et reprises de Process, la facturation et la livraison des médias,
@@ -2306,7 +2358,7 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | Frontière des harnais | Refuser les résultats et événements invalides avant publication, fermer les flux, respecter les capacités déclarées | `make tests-harness-contracts`, `app/agent/tests/test_driver_boundary.py` |
 | Politique des harnais | Même configuration pour tous, conflits SQL, restriction des outils à l’appel, checkpoints opaques et retry sûr | `test_execution_configuration.py`, `test_checkpoint_contract.py`, `harness-policy.spec.mjs` |
 | Réessai par driver | Journal d'effets interne conservé ; réessai réseau géré explicite avec nouvelle inférence, mêmes paramètres tâche et reçus archivés, pour tâches simples et plans ; arrêt ou observation de l'ancien acteur avant nouvelle autorité ; récupération automatique par observation du même acteur sans nouvelle soumission | `back/app/task/tests/test_task_service.py`, `back/app/harnesses/tests/test_checkpoint_recovery.py`, `back/app/agent/tests/test_checkpoint_contract.py`, `back/app/services/tests/test_action_authorizations.py` |
-| SDK réels des harnais | Exécuter dans les quatre images épinglées avec modèle local ; vérifier la connexion MCP DeepSeek | `make tests-harness-runtimes`, `artifacts/harness-runtimes/summary.txt` |
+| SDK réels des harnais | Exécuter dans les quatre images épinglées avec modèle local ; vérifier la connexion MCP DeepSeek. Pour Codex et Claude, autorisation/refus du vrai SDK, annulation pendant l'attente, disparition du sous-processus avant `stopped`, accord tardif sans effet et relance du même contexte sans réouverture. Ces interactions remplacent l'ancien test AST imposant l'appel de fonction `query` de Claude ; l'entrée streaming et le callback de permission restent qualifiés par les SDK réels. | `make tests-harness-runtimes`, `artifacts/harness-runtimes/summary.txt` |
 | `harnesses` | Changer de runtime sans perdre une tâche active ; révoquer/configurer selon les droits | `test_service.py`, `test_runtime_actions.py`, `test_router.py`, `configuration.spec.mjs` |
 | `task` | Créer, suspendre, reprendre, terminer et supprimer une tâche ; préserver budget et propriété du lease | `test_task_service.py`, `test_workflow.py`, `test_active_lease.py`, `test_budget.py`, `task-panel.spec.mjs` |
 | Nouvelle demande après échec | Conserver la relance conversationnelle délibérée et manuelle ; une création indépendante préserve l'état, l'erreur et le résultat de la tâche échouée et reste idempotente. Le choix sémantique entre relance et création relève des consignes du modèle | `back/app/services/tests/test_mcp_loader.py`, `back/app/conversation/tests/test_service.py`, `back/app/task/tests/test_task_service.py` |
@@ -2383,7 +2435,7 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | Continuité documentaire ancienne | Retrouver l'URI après cinquante échanges sans document, avec titre/révision actuels et provenance ; exclure autre contact, document interdit, absent ou supprimé | `app/conversation/tests/test_context.py` |
 | MCP Lab | Piloter les dix contrats avec le catalogue réel ; conserver les effets et reçus atomiques, les révisions, les autorisations courantes et la pagination ; publier une génération une seule fois, comparer les traitements et distinguer les avis d'agents ; attribuer et retirer la compétence dédiée | `app/lab/tests/test_mcp.py`, `app/skill/tests/test_storage.py`, `lab-insights.spec.mjs` |
 | `incident` | Regrouper les échecs, diagnostiquer/résoudre selon les droits, conserver la preuve du correctif | `test_incident_service.py`, `test_router.py`, `test_retention.py`, `lab-access.spec.mjs`, `e2e/specs/incident.spec.mjs` |
-| `dashboard` / frontend `index` | Montrer les indicateurs du périmètre autorisé avec des agrégations bornées ; réutiliser les mois consultés, actualiser et invalider le cache au changement de droits | `test_dashboard_service.py`, `dashboardStore.test.mjs`, `dashboard.spec.mjs`, `shell.spec.mjs`, `preferences.spec.mjs` |
+| `dashboard` / frontend `index` | Montrer les indicateurs du périmètre autorisé avec des agrégations bornées ; réutiliser les mois consultés, actualiser et invalider le cache au changement de droits ; précharger tous les avatars une fois et partager leur cache ; annuler les lectures à la fermeture, libérer les URL Blob et suspendre les lectures périodiques masquées avec reprise immédiate | `test_dashboard_service.py`, `dashboardStore.test.mjs`, `dashboard.spec.mjs`, `shell.spec.mjs`, `preferences.spec.mjs` |
 | `onboarding` | Initialiser sans écraser la configuration ; conserver Welcome même préconfigurée jusqu’à confirmation personnelle persistée ; erreurs, relance, changement de compte, mobile et réouverture | `test_services.py`, `front/browser-tests/onboarding.spec.mjs`, `e2e/specs/onboarding.spec.mjs` |
 | `webhook` | Authentifier et identifier une livraison entrante sans admettre deux fois le même événement | `test_router.py`, `test_delivery_identity.py` |
 
@@ -2427,6 +2479,12 @@ partagés des cartes et miniatures expirent après 30 secondes et sont invalidé
 des modifications documentaires, reconnexions et changements de session ; ils ne stockent
 pas les téléchargements originaux. `services/chatPreviews.test.mjs` vérifie le partage
 des requêtes, les copies indépendantes et l’enrichissement des métadonnées après capture.
+
+`file-indexing.spec.mjs` et `useTaskActivity.test.mjs` vérifient qu'une minute d'onglet
+masqué ne relance aucune lecture périodique, puis que le retour réconcilie immédiatement
+les données sans interrompre les messages temps réel. Le parcours E2E de streaming joint
+des mesures locales de préparation, première sortie, relais durable et trafic par type ;
+elles ne qualifient pas la latence d'un fournisseur distant.
 
 `TopicSelect` centralise la recherche paginée et la sélection par identifiant de sujet.
 
@@ -2635,13 +2693,15 @@ avec les vraies API, sur Chromium, Firefox et WebKit.
 
 ### Classement personnel des documents
 
-La bibliothèque Datasets possède le même principe d'arborescence et de liste, avec un
-classement indépendant. `back/app/dataset/tests/test_library.py` vérifie l'isolation entre
-utilisateurs, les filtres combinés et le tri paginé, la conservation du JSON et des droits,
-les refus HTTP et les cycles concurrents. `front/browser-tests/dataset-library.spec.mjs`
-exerce les menus, sous-dossiers, déplacements, suppression avec retour aux non classés,
-filtres et réponses tardives. `e2e/specs/datasets.spec.mjs` vérifie la persistance des dossiers
-et déplacements dans l'application assemblée, en plus de l'édition et du partage.
+Les Documents Données utilisent la bibliothèque Document commune. L'ancienne arborescence
+Dataset inutilisée et ses assertions de présentation sont retirées.
+`front/browser-tests/document-classification.spec.mjs` protège les dossiers, menus,
+sous-dossiers, déplacements, erreurs, icônes et suppression avec retour aux non classés.
+`front/browser-tests/dataset-library.spec.mjs` protège spécifiquement le classement personnel
+d'un Document Données lisible sans droit d'écriture, les filtres communs et les réponses tardives.
+Les tests backend Dataset conservent les garanties des API historiques : isolation, JSON,
+droits, tri paginé, refus HTTP et cycles concurrents. Les parcours assemblés conservent
+l'édition, la sauvegarde, l'historique et le partage des Documents Données.
 Les tests de classement Document et Dataset couvrent aussi les images d’icônes sans plafond
 de fichier dédié, les octets et formats reconnus, la conversion TIFF en PNG et le refus des
 images invalides. Les parcours de composants couvrent l’import SVG/PNG/JPEG/WebP, le refus
@@ -3145,11 +3205,14 @@ API et `front/browser-tests/skills.spec.mjs` (preuves et édition du même packa
 
 `chat-drafts.spec.mjs` protège le brouillon Chat : rechargement et navigation avec texte
 et PJ, reprise hors ligne, récupération serveur, réponses tardives et saisie pendant
-l'envoi. `app/chat/tests/test_attachment_http.py` vérifie sur HTTP et PostgreSQL réels
-l'isolation des brouillons, l'envoi des PJ préchargées, les refus, les révisions périmées,
-les réessais idempotents et la conservation/retraite des fichiers. Les assertions qui
-attendaient un téléversement seulement lors du Post sont remplacées par la vérification
-des octets transférés avant l'envoi et du jeton de brouillon transmis au Post.
+l'envoi. Les erreurs 409/503 et les requêtes d'autosauvegarde suspendues ne doivent ni
+émettre d'erreur utilisateur ni empêcher l'envoi des octets locaux. Le local non vide
+reste prioritaire et deux sessions de connexion du même compte sont isolées.
+`app/chat/tests/test_attachment_http.py` vérifie sur HTTP et PostgreSQL réels l'isolation
+par session validée, la reprise unique du brouillon historique, les PJ préchargées mélangées
+aux fichiers locaux, les refus inter-sessions, les réessais idempotents et les effacements
+périmés. La contrainte d'attendre tous les téléversements de brouillon avant Post est retirée :
+la publication possède ses propres fichiers ; ses octets restent vérifiés.
 
 ### Client desktop Windows/Linux
 
@@ -3175,3 +3238,18 @@ Les fenêtres distantes ne reçoivent ni Node ni l’API desktop. La chaîne de 
 reste couverte par `back/tests/test_release_publication.py`.
 Les tests synthétiques ne qualifient pas les périphériques physiques, Web Push ou le passage
 entre deux installateurs signés sur un poste réel ; voir le [guide desktop](desktop.md).
+
+### Concurrence et cohérence du frontend
+
+`front/browser-tests/request-lifecycle.spec.mjs` vérifie les filtres Voice pendant une
+lecture, le polling Conversation lent sans chevauchement, la fermeture d'une purge en cours
+et la préservation d'un formulaire Topic rouvert pendant son ancienne sauvegarde.
+Le parcours Skills vérifie que deux ouvertures d'éditeur ne mélangent jamais identité et contenu.
+Les tests de stores et de composables couvrent changements de session/rôle, indicateurs
+concurrents, sélection des fichiers, invalidation des catalogues, arrêt des timers Task,
+reconnexion Goal et contexte MCP Agent. `topicReferences.test.mjs` protège la fraîcheur,
+l'invalidation, la coalescence et les lots supérieurs à 500 références.
+
+Les tests du lint protègent centralement les conventions de boutons, les noms accessibles,
+la fermeture des modales, la palette statique et l'observation des promesses en TypeScript
+et Vue. Ils ne constituent pas une validation visuelle ni une preuve d'accessibilité complète.
