@@ -1,7 +1,7 @@
 <template>
   <q-dialog v-model="opened">
     <q-card class="review-dialog galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('evaluation.insights.review') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
+      <DialogHeader :title="t('evaluation.insights.review')" :close-label="t('common.close')" />
       <q-card-section class="galaris-dialog-body">
         <q-banner v-if="error" role="alert">{{ error }}</q-banner>
         <q-spinner v-if="loading" />
@@ -64,6 +64,7 @@
   </q-dialog>
 </template>
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'

@@ -6,7 +6,7 @@
     </div>
     <q-banner v-if="error" role="alert">
       {{ t('nativeProcesses.error') }}
-      <template #action><q-btn outline :label="t('nativeProcesses.retry')" @click="emit('retry')" /></template>
+      <template #action><q-btn color="primary" outline :label="t('nativeProcesses.retry')" @click="emit('retry')" /></template>
     </q-banner>
     <q-spinner v-if="loading" color="primary" />
     <template v-else-if="!error">
@@ -31,8 +31,8 @@
           :default-opened="index === detail.attempts.length - 1">
           <div class="q-pa-sm q-gutter-y-md">
             <q-banner v-if="attempt.error" role="alert">{{ attempt.error }}</q-banner>
-            <q-btn v-if="attempt.task_uri && canReadTasks" outline icon="task_alt" :label="t('nativeProcesses.execution.task')" :to="richLinkHref(attempt.task_uri) ?? ''" />
-            <q-btn v-if="attempt.child_run_id" outline icon="account_tree" :label="t('nativeProcesses.execution.childRun')" :to="`/process/internal/run/${attempt.child_run_id}`" />
+            <q-btn color="primary" v-if="attempt.task_uri && canReadTasks" outline icon="task_alt" :label="t('nativeProcesses.execution.task')" :to="richLinkHref(attempt.task_uri) ?? ''" />
+            <q-btn color="primary" v-if="attempt.child_run_id" outline icon="account_tree" :label="t('nativeProcesses.execution.childRun')" :to="`/process/internal/run/${attempt.child_run_id}`" />
             <q-expansion-item v-if="attempt.prompt" icon="description" :label="t('nativeProcesses.execution.prompt')">
               <CodeEditor :model-value="attempt.prompt" language="plaintext" readonly :label="t('nativeProcesses.execution.prompt')" :min-lines="3" :visible-lines="8" />
             </q-expansion-item>

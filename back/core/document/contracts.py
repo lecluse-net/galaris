@@ -1,8 +1,32 @@
 """Source-local coverage and derivatives; paths live only within caller temporaries."""
 
 from pathlib import Path
+import traceback
 
 from pydantic import BaseModel, Field
+
+
+class PreparationFailure(BaseModel):
+    """Safe worker diagnostics: never include exception text or document data."""
+
+    exception_type: str
+    locations: list[str] = Field(default_factory=list[str])
+    exit_code: int | None = None
+    converter_code: int | None = None
+
+    @classmethod
+    def from_exception(cls, error: BaseException) -> "PreparationFailure":
+        code = getattr(error, "err_code", None)
+        return cls(exception_type=type(error).__name__, converter_code=code if isinstance(code, int) else None, locations=[
+            f"{Path(frame.filename).name}:{frame.name}:{frame.lineno}"
+            for frame in traceback.extract_tb(error.__traceback__)[-8:]
+        ])
+
+
+class DocumentPreparationError(ValueError):
+    def __init__(self, failure: PreparationFailure) -> None:
+        super().__init__("Document preparation failed; format, encryption or conversion limits")
+        self.failure = failure
 
 
 OFFICE_EXTENSIONS = frozenset({

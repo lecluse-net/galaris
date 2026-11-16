@@ -246,7 +246,7 @@ for (const width of [1440, 390]) test(`the Agents page adds multiple existing me
   await jsonRoute(page, '**/api/agents/titles?*', [])
   await jsonRoute(page, '**/api/agents/groups?*', catalogue.teams)
   await jsonRoute(page, '**/api/agents/drivers', [{ name: 'internal', manages_runtime: false }])
-  await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_ACCESS', 'TEAM_ACCESS', 'TEAM_MEMBERS_EDIT', 'TEAM_EDIT'] })
+  await mount(page, 'app/index/pages/agent.vue', { privileges: ['AGENT_ACCESS', 'TEAM_ACCESS', 'TEAM_MEMBERS_EDIT', 'TEAM_EDIT'] })
   const addMembers = page.getByRole('button', { name: 'Add members', exact: true })
   await expect(page.getByRole('tab', { name: 'Sales', exact: true })).toHaveAttribute('aria-selected', 'true')
   await addMembers.click()

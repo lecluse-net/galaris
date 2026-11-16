@@ -6,7 +6,7 @@
       </template>
     </PageHeader>
 
-    <q-banner v-if="store.error" rounded class="bg-red-1 text-negative q-mb-md">
+    <q-banner v-if="store.error" rounded class="bg-solaire-red-light text-negative q-mb-md">
       <template #avatar><q-icon name="error" /></template>
       {{ t('console.unavailable') }} — {{ store.error }}
     </q-banner>
@@ -51,7 +51,7 @@
         <q-card-section>
           <div class="text-subtitle1 text-weight-medium q-mb-md">{{ t('console.maintenance') }}</div>
           <div class="row q-gutter-sm">
-            <q-btn outline icon="cleaning_services" :label="t('console.cleanPartials')" :loading="store.actionLoading" @click="runAction('cleanup_partials')" />
+            <q-btn color="primary" outline icon="cleaning_services" :label="t('console.cleanPartials')" :loading="store.actionLoading" @click="runAction('cleanup_partials')" />
             <q-btn outline color="warning" icon="restart_alt" :label="t('console.recycle')" :loading="store.actionLoading" @click="recycle" />
           </div>
         </q-card-section>
@@ -80,10 +80,10 @@ const statusCards = computed(() => store.status ? [
   { label: t('console.version'), value: store.status.version, icon: 'deployed_code', color: 'primary' },
   { label: t('console.ssh'), value: store.status.ssh, icon: 'key', color: store.status.ssh === 'running' ? 'positive' : 'warning' },
   { label: t('console.disk'), value: `${formatBytes(store.status.disk.used)} / ${formatBytes(store.status.disk.total)}`, icon: 'hard_drive', color: 'secondary' },
-  { label: t('console.memory'), value: `${formatBytes(store.status.resources.memory_current ?? 0)} / ${store.status.resources.memory_limit === null ? '∞' : formatBytes(store.status.resources.memory_limit)}`, icon: 'memory', color: 'teal' },
-  { label: t('console.processes'), value: `${store.status.resources.pids_current} / ${store.status.resources.pids_limit ?? '∞'}`, icon: 'account_tree', color: 'indigo' },
-  { label: t('console.load'), value: store.status.load_average.map(value => value.toFixed(2)).join(' · '), icon: 'speed', color: 'orange' },
-  { label: t('console.sessions'), value: String(store.status.active_sessions), icon: 'terminal', color: 'purple' },
+  { label: t('console.memory'), value: `${formatBytes(store.status.resources.memory_current ?? 0)} / ${store.status.resources.memory_limit === null ? '∞' : formatBytes(store.status.resources.memory_limit)}`, icon: 'memory', color: 'solaire-cyan' },
+  { label: t('console.processes'), value: `${store.status.resources.pids_current} / ${store.status.resources.pids_limit ?? '∞'}`, icon: 'account_tree', color: 'solaire-iris' },
+  { label: t('console.load'), value: store.status.load_average.map(value => value.toFixed(2)).join(' · '), icon: 'speed', color: 'solaire-orange' },
+  { label: t('console.sessions'), value: String(store.status.active_sessions), icon: 'terminal', color: 'solaire-violet' },
 ] : [])
 
 const userColumns = computed<QTableColumn[]>(() => [
@@ -106,7 +106,7 @@ const sessionColumns = computed<QTableColumn[]>(() => [
 function formatBytes(value: number): string {
   return formatFileSize(value, locale.value)
 }
-function formatDate(value?: number): string { return value ? new Date(value * 1000).toLocaleString() : '—' }
+function formatDate(value?: number): string { return value ? new Date(value * 1000).toLocaleString(locale.value) : '—' }
 function confirm(message: string): Promise<boolean> { return new Promise(resolve => showConfirmationDialog({ message, cancel: true }).onOk(() => resolve(true)).onCancel(() => resolve(false))) }
 async function notifyAction(operation: string, payload: Record<string, unknown> = {}): Promise<void> {
   try { await store.action(operation, payload); $q.notify({ type: 'positive', message: t('console.success') }) }

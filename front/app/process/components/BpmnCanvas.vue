@@ -18,10 +18,10 @@
           <q-btn outline round dense color="primary" icon="fit_screen" :aria-label="t('nativeProcesses.fitDiagram')" @click="fit">
             <q-tooltip>{{ t('nativeProcesses.fitDiagram') }}</q-tooltip>
           </q-btn>
-          <q-btn flat dense color="primary" :label="`${Math.round(zoom * 100)}%`" :aria-label="t('nativeProcesses.resetZoom')" @click="zoom = 1">
+          <q-btn outline  dense color="primary" :label="`${Math.round(zoom * 100)}%`" :aria-label="t('nativeProcesses.resetZoom')" @click="zoom = 1">
             <q-tooltip>{{ t('nativeProcesses.resetZoom') }}</q-tooltip>
           </q-btn>
-          <q-btn round dense color="primary" :icon="isFullscreen ? 'fullscreen_exit' : 'fullscreen'" :aria-label="t(isFullscreen ? 'nativeProcesses.exitFullscreen' : 'nativeProcesses.fullscreen')"
+          <q-btn flat round dense color="primary" :icon="isFullscreen ? 'fullscreen_exit' : 'fullscreen'" :aria-label="t(isFullscreen ? 'nativeProcesses.exitFullscreen' : 'nativeProcesses.fullscreen')"
             :aria-pressed="isFullscreen" :loading="fullscreenBusy" @click="toggleFullscreen">
             <q-tooltip>{{ t(isFullscreen ? 'nativeProcesses.exitFullscreen' : 'nativeProcesses.fullscreen') }}</q-tooltip>
           </q-btn>
@@ -115,7 +115,7 @@
       </q-btn>
       <q-tooltip>{{ t('nativeProcesses.dropToCreateActor') }}</q-tooltip>
     </div>
-    <div v-if="connecting" role="status" class="connect-hint"><q-icon name="link" />{{ t('nativeProcesses.connectTarget') }}<q-btn flat dense :label="t('nativeProcesses.cancelConnection')" @click="connecting = null" /></div>
+    <div v-if="connecting" role="status" class="connect-hint"><q-icon name="link" />{{ t('nativeProcesses.connectTarget') }}<q-btn outline color="primary"  dense :label="t('nativeProcesses.cancelConnection')" @click="connecting = null" /></div>
     <div v-if="drag?.moved && dropTarget?.create" role="status" class="drop-message"><q-icon name="group_add" />{{ t('nativeProcesses.dropToCreateActor') }}</div>
     <div v-if="dropError" role="status" class="drop-message"><q-icon name="block" />{{ t('nativeProcesses.incompatibleActorDrop') }}</div>
     </div>

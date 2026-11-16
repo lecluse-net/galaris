@@ -1,4 +1,5 @@
 import { api } from '@/core/api'
+import { createSessionCatalogueCache, invalidateSessionReads } from '@/core/util/facade'
 import type {
   Topic,
   TopicContent,
@@ -11,6 +12,12 @@ import type {
   TopicAssignmentSubjectKind,
 } from '../types'
 
+const references = createSessionCatalogueCache<TopicRef[]>('topic-references', 60_000)
+function topicChanged<T>(value: T): T {
+  invalidateSessionReads('topic-references')
+  return value
+}
+
 export const topicService = {
   async reassignResource(kind: 'document' | 'dataset', id: string, topicId: string,
     expectedTopicId: string | null, expectedLockVersion: number): Promise<{ topic_id: string; lock_version: number }> {
@@ -19,12 +26,18 @@ export const topicService = {
     })).data
   },
   async refs(ids: string[]): Promise<TopicRef[]> {
-    const uniqueIds = [...new Set(ids.filter(Boolean))]
+    const uniqueIds = [...new Set(ids.filter(Boolean))].sort()
     if (!uniqueIds.length) return []
-    const params = new URLSearchParams()
-    for (const id of uniqueIds.slice(0, 500)) params.append('ids', id)
-    const response = await api.get<TopicRef[]>('/topics/refs', { params })
-    return response.data
+    const result: TopicRef[] = []
+    for (let offset = 0; offset < uniqueIds.length; offset += 500) {
+      const batch = uniqueIds.slice(offset, offset + 500)
+      result.push(...await references.read(JSON.stringify(batch), async signal => {
+        const params = new URLSearchParams()
+        for (const id of batch) params.append('ids', id)
+        return (await api.get<TopicRef[]>('/topics/refs', { params, signal })).data
+      }))
+    }
+    return result
   },
 
   async assignmentAudit(params: {
@@ -82,7 +95,7 @@ export const topicService = {
 
   async create(data: TopicInput): Promise<Topic> {
     const response = await api.post<Topic>('/topics', data)
-    return response.data
+    return topicChanged(response.data)
   },
 
   async update(topic: Topic, data: TopicInput): Promise<Topic> {
@@ -90,11 +103,12 @@ export const topicService = {
       ...data,
       revision: topic.revision,
     })
-    return response.data
+    return topicChanged(response.data)
   },
 
   async remove(id: string): Promise<void> {
     await api.delete(`/topics/${encodeURIComponent(id)}`)
+    topicChanged(undefined)
   },
 
   async linkedMemories(id: string): Promise<TopicLinkedMemory[]> {
@@ -109,7 +123,7 @@ export const topicService = {
       `/topics/${encodeURIComponent(sourceId)}/merge`,
       { target_topic_id: targetId },
     )
-    return response.data
+    return topicChanged(response.data)
   },
 
   async split(
@@ -120,7 +134,7 @@ export const topicService = {
       `/topics/${encodeURIComponent(sourceId)}/split`,
       data,
     )
-    return response.data
+    return topicChanged(response.data)
   },
 
   async forConversation(connectionId: number, roomId: string): Promise<Topic[]> {

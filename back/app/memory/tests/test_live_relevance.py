@@ -45,7 +45,7 @@ async def test_configured_provider_relevance_campaign(request, db, agents, memor
     output.resolve().relative_to(Path("/repo/artifacts").resolve())
     output.mkdir(parents=True, exist_ok=False)
     manifest = {"synthetic": True, "complete": False, "source_fingerprints": fingerprint(),
-                "scope": "paired hybrid retrieval, common driver context, configured-model answer; saturated calendar"}
+                "scope": "paired retrieval and ordinary Memory provider; prepared fact-answer inputs; independent agenda not mounted"}
     reference_path = Path(request.config.getoption('--memory-benchmark-reference'))
     manifest['reference_fingerprints'] = reference_fingerprints(reference_path)
     results = []
@@ -109,6 +109,7 @@ async def test_configured_provider_relevance_campaign(request, db, agents, memor
         reference["context"].admit_recall_hits = reference["retrieval"].admit_recall_hits
         monkeypatch.setattr(agent_context, "_providers", {})
         agent_context.register_context_provider("long_term_memory", bootstrap.memory_context_provider, priority=20)
+        manifest["context_providers"] = list(agent_context.registered_context_providers())
         monkeypatch.setattr(context.runtime_settings, "MEMORY_CONTEXT_ENABLED", True)
         monkeypatch.setattr(context.runtime_settings, "MEMORY_CONTEXT_MAX_ITEMS", 8)
         monkeypatch.setattr(context.runtime_settings, "MEMORY_CONTEXT_MAX_CHARS", 6_000)

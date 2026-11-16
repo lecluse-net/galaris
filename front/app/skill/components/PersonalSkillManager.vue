@@ -128,21 +128,21 @@
             <q-btn v-if="ownerChanged" outline color="primary" :label="t('skills.cancel')" :disable="saving" @click="cancelEditing" />
             <q-btn color="primary" icon="edit" :label="t('skills.edit')" :disable="saving || detailLoading || detailError || content === null" @click="beginEditing" />
             <template v-if="!ownerChanged">
-            <q-btn :flat="$q.screen.lt.md" :outline="!$q.screen.lt.md" :dense="$q.screen.lt.md" color="primary"
+            <q-btn  :outline="!$q.screen.lt.md" :dense="$q.screen.lt.md" color="primary"
               :icon="selected.enabled ? 'pause' : 'play_arrow'"
               :label="$q.screen.lt.md ? undefined : t(selected.enabled ? 'skills.personal.disable' : 'skills.personal.enable')"
               :aria-label="t(selected.enabled ? 'skills.personal.disable' : 'skills.personal.enable')" :disable="saving" @click="toggleEnabled">
               <q-tooltip>{{ t(selected.enabled ? 'skills.personal.disable' : 'skills.personal.enable') }}</q-tooltip>
             </q-btn>
-            <q-btn v-if="canRelease" :flat="$q.screen.lt.md" :outline="!$q.screen.lt.md" :dense="$q.screen.lt.md" color="primary" icon="publish"
+            <q-btn v-if="canRelease"  :outline="!$q.screen.lt.md" :dense="$q.screen.lt.md" color="primary" icon="publish"
               :label="$q.screen.lt.md ? undefined : t('skills.personal.release')" :aria-label="t('skills.personal.release')"
               :disable="saving" @click="prepareConfirmation('release')"><q-tooltip>{{ t('skills.personal.release') }}</q-tooltip></q-btn>
-            <q-btn :flat="$q.screen.lt.md" :dense="$q.screen.lt.md" color="negative" icon="delete"
+            <q-btn  :dense="$q.screen.lt.md" color="negative" icon="delete"
               :label="$q.screen.lt.md ? undefined : t('skills.delete')" :aria-label="t('skills.delete')"
               :disable="saving" @click="prepareConfirmation('delete')"><q-tooltip>{{ t('skills.delete') }}</q-tooltip></q-btn>
             </template>
           </template>
-          <q-btn v-if="ownerChanged" :flat="$q.screen.lt.md" color="primary" icon="swap_horiz"
+          <q-btn outline v-if="ownerChanged"  color="primary" icon="swap_horiz"
             :label="$q.screen.lt.md ? undefined : t('skills.personal.transfer')" :aria-label="t('skills.personal.transfer')"
             :disable="saving || editing || labelChanged || detailLoading" @click="prepareConfirmation('transfer')">
             <q-tooltip>{{ t('skills.personal.transfer') }}</q-tooltip>

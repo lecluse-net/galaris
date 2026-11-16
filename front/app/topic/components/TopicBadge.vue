@@ -7,7 +7,7 @@
     :aria-label="t('topic.assignmentAudit.open', { title: displayTitle })"
     @click.stop="openAssignmentAudit"
   >
-    <q-badge outline color="deep-purple" class="topic-badge no-wrap">
+    <q-badge outline color="solaire-iris" class="topic-badge no-wrap">
       <q-icon name="folder" :size="size === 'regular' ? '13px' : '10px'" class="q-mr-xs" />
       <span class="topic-badge-title ellipsis">{{ displayTitle }}</span>
     </q-badge>
@@ -38,7 +38,7 @@
         </q-card-section>
 
         <q-card-section v-else-if="auditError">
-          <q-banner rounded class="bg-red-1 text-negative">
+          <q-banner rounded class="bg-solaire-red-light text-negative">
             <q-icon name="error_outline" class="q-mr-xs" />
             {{ auditError }}
           </q-banner>
@@ -47,7 +47,7 @@
         <template v-else-if="audit">
           <q-card-section>
             <div class="row items-center q-gutter-sm q-mb-md">
-              <q-badge outline color="deep-purple" class="topic-badge no-wrap">
+              <q-badge outline color="solaire-iris" class="topic-badge no-wrap">
                 <q-icon name="folder" size="12px" class="q-mr-xs" />
                 {{ displayTitle }}
               </q-badge>
@@ -113,7 +113,7 @@
               <q-banner
                 v-if="topicChangeError"
                 rounded
-                class="bg-red-1 text-negative q-mt-sm"
+                class="bg-solaire-red-light text-negative q-mt-sm"
               >
                 <q-icon name="error_outline" class="q-mr-xs" />
                 {{ topicChangeError }}
@@ -151,7 +151,7 @@
               v-if="canOpenTopic"
               outline
               no-caps
-              color="deep-purple"
+              color="solaire-iris"
               icon="folder_open"
               :label="t('topic.assignmentAudit.openTopic')"
               @click="openTopic"
@@ -179,7 +179,7 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
 import { privileges } from '@/core/authorize'
-import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
+import { usePrivilegeStore } from '@/core/authorize/facade'
 import { topicService } from '../services/topicService'
 import TopicSelect from './TopicSelect.vue'
 import type {

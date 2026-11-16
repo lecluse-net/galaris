@@ -1,3 +1,4 @@
+import { withSessionScope } from '@/core/util/facade'
 import { defineStore } from 'pinia'
 import llmProviderService, {
     type LLMProviderCreate,
@@ -36,7 +37,7 @@ interface LLMProviderState {
     error: unknown
 }
 
-export const useLLMProviderStore = defineStore('llmProvider', {
+export const useLLMProviderStore = withSessionScope(defineStore('llmProvider', {
     state: (): LLMProviderState => ({
         providers: [],
         catalogItems: [],
@@ -507,4 +508,4 @@ export const useLLMProviderStore = defineStore('llmProvider', {
             }
         },
     }
-})
+}), { flags: {"fetchProviders":"loading","fetchCatalog":"loading","configureCatalogProvider":"loading","fetchProvider":"loading","createProvider":"loading","updateProvider":"loading","deleteProvider":"loading","fetchProviderModels":"loadingModels","fetchProviderResources":"loadingModels","fetchCatalogResources":"loadingModels","fetchProviderTranscriptionModels":"loadingModels","testConnection":"loading","fetchLLMs":"loadingLLMs","fetchLLM":"loadingLLMs","createLLM":"loading","updateLLM":"loading","deleteLLM":"loading","pullModel":"loading","deleteModel":"loading"} })

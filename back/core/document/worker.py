@@ -13,7 +13,7 @@ from zipfile import ZipFile
 from typing import Any
 
 from PIL import Image
-from .contracts import OFFICE_EXTENSIONS, preparation_version
+from .contracts import OFFICE_EXTENSIONS, PreparationFailure, preparation_version
 from .spreadsheets import spreadsheet_text
 from .legacy_spreadsheets import legacy_spreadsheet_text
 from .office import office_pdf
@@ -231,5 +231,8 @@ if __name__ == "__main__":
     try:
         print(json.dumps(prepare(Path(sys.argv[1]), sys.argv[2], sys.argv[3], Path(sys.argv[4]),
                                  preview_only=preview_only, editable=editable), ensure_ascii=False))
-    except Exception:
+    except Exception as error:
+        # stdout is a bounded structured channel. Exception messages and stderr
+        # can contain document text, paths or credentials and never cross it.
+        print(PreparationFailure.from_exception(error).model_dump_json())
         raise SystemExit(2)

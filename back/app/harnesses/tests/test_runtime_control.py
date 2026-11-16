@@ -192,6 +192,46 @@ def test_unfinished_runtime_journal_is_unknown_after_restart_and_never_replays(t
     assert effects == []
 
 
+@pytest.mark.parametrize("first_stop", ["human", "peer_wait", "sdk_cancel"])
+def test_duplicate_stop_does_not_interrupt_sdk_cleanup(tmp_path, first_stop):
+    runs = RuntimeRuns(tmp_path / "journal")
+    started, closing, release, fence = (threading.Event() for _ in range(4))
+    cleaned = []
+
+    async def events(_actor):
+        if first_stop == "sdk_cancel":
+            asyncio.current_task().cancel()
+            try:
+                await asyncio.sleep(0)
+            except asyncio.CancelledError:
+                pass
+        started.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            closing.set()
+            await asyncio.to_thread(release.wait, 4)
+            cleaned.append(True)
+        yield "result", {"success": True}
+
+    identifier = runs.start("synthetic-duplicate-stop", {}, events)
+    try:
+        assert started.wait(2)
+        if first_stop != "peer_wait":
+            runs.cancel(identifier)
+        else:
+            runs.actors[identifier].children([])
+        assert closing.wait(2)
+        runs.cancel(identifier)
+        runs.cancel(identifier)
+        runs.actors[identifier].loop.call_soon_threadsafe(fence.set)
+        assert fence.wait(2)
+    finally:
+        release.set()
+    eventually(lambda: runs.get(identifier).get("stopped"))
+    assert cleaned == [True], "Repeated stop interrupted the SDK resource cleanup"
+
+
 def test_parallel_authorizations_keep_the_actor_waiting_for_remaining_actions(tmp_path):
     from app.harnesses.runtime_support import RuntimeActor
     actor = RuntimeActor("synthetic", tmp_path / "actor.json", "synthetic")

@@ -1,0 +1,41 @@
+/* Dark mode: remap hardcoded light utility backgrounds to dark surfaces. */
+.body--dark {
+    --galaris-page-background: var(--q-dark-page);
+    --q-background: #1d1d1d;
+
+    .bg-white {
+        background: #1d1d1d !important;
+    }
+
+    .bg-grey-1 {
+        background: #232323 !important;
+    }
+
+    .bg-grey-2 {
+        background: #2a2a2a !important;
+    }
+
+    .bg-grey-3 {
+        background: #333333 !important;
+    }
+
+    .bg-grey-4 {
+        background: #3d3d3d !important;
+    }
+
+    /* Bright status backgrounds are dimmed to keep white text readable without glare. */
+    .bg-info { background: var(--solaire-cyan-dark) !important; }
+    .bg-warning { background: var(--solaire-orange-dark) !important; }
+
+    .text-grey-7,
+    .text-grey-8,
+    .text-grey-9,
+    .text-grey-10 {
+        color: #b5b5b5 !important;
+    }
+
+    .text-dark,
+    .text-black {
+        color: #e0e0e0 !important;
+    }
+}

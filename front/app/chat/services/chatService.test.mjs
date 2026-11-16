@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { serviceRecorder } from '../../../test-support/service-recorder.mjs'
+import { loadTypescript } from '../../../test-support/load-typescript.mjs'
+import { sessionReadCache } from '../../../test-support/session-read-cache.mjs'
 
 function setup() { return serviceRecorder(new URL('./chatService.ts', import.meta.url), 'chatService', { axios: { isAxiosError: () => false } }) }
 
@@ -81,3 +83,38 @@ test('text and attachment messages carry the language chosen by their author', a
     assert.equal(requests.pop().args[1].get('language'), language)
   }
 })
+
+for (const first of ['send', 'upload']) for (const conflict of ['draft_file_unavailable', 'other_conflict', 'session_changed']) {
+  test(`${first} recovers missing draft bytes locally only for its current session (${conflict})`, async () => {
+    let generation = 'first'
+    const calls = []
+    const error = { response: { status: 409, data: { detail: { code: conflict === 'session_changed' ? 'draft_file_unavailable' : conflict } } } }
+    const api = { async post(url, data) {
+      calls.push({ url, data })
+      if (calls.length === 1) { if (conflict === 'session_changed') generation = 'second'; throw error }
+      return { data: { id: 'accepted-message' } }
+    } }
+    const { chatService: service } = loadTypescript(new URL('./chatService.ts', import.meta.url), {
+      '@/core/api': { api, sessionGeneration: () => generation }, '@/core/util/facade': sessionReadCache(),
+      axios: { isAxiosError: value => value === error },
+    })
+    const file = new File(['Synthetic recovered bytes'], 'kept.txt', { type: 'text/plain' })
+    const draft = { revision: 3, clientMessageId: 'same-publication-key', fileKeys: ['retired-private-key'], fallbackFiles: [file] }
+    const result = service[first]('room-a', ...(first === 'upload' ? [[file]] : []), 'Local message', null, null,
+      'unused-client-key', null, false, null, 'fr', null, null, [], draft)
+    if (conflict !== 'draft_file_unavailable') {
+      await assert.rejects(result, value => value === error)
+      assert.equal(calls.length, 1)
+      return
+    }
+    assert.deepEqual(await result, { id: 'accepted-message' })
+    assert.equal(calls.length, 2)
+    assert.equal(calls[1].url, '/chat/rooms/room-a/attachments')
+    const form = calls[1].data
+    assert.equal(form.get('client_message_id'), draft.clientMessageId)
+    assert.equal(form.get('text'), 'Local message')
+    assert.equal(form.get('language'), 'fr')
+    assert.deepEqual(form.getAll('draft_file_keys'), [])
+    assert.equal(await form.get('files').text(), 'Synthetic recovered bytes')
+  })
+}

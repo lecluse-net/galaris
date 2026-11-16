@@ -1,4 +1,5 @@
 import { notificationPrompt } from '../notification-prompt.mjs'
+import { selectOption } from '../select-option.mjs'
 import { test, expect } from '@playwright/test'
 
 test.beforeEach(async ({ page }) => {
@@ -50,8 +51,7 @@ test('an agentic activity keeps its selected execution agent without adding a la
   await panel.getByRole('textbox', { name: /^(Title|Titre)$/ }).fill('Synthetic agentic work')
   await panel.getByRole('textbox', { name: /^(Task instructions|Instructions de la tâche)$/ }).fill('Prepare a synthetic result.')
   const assigned = panel.getByRole('combobox', { name: /^(Assigned agent|Agent affecté)$/ })
-  await assigned.click()
-  await page.getByRole('option', { name: agent.label, exact: true }).click()
+  await selectOption(page, assigned, agent.label)
   const saved = page.waitForResponse(response => response.request().method() === 'PUT' && response.url().endsWith(path))
   await page.getByRole('button', { name: /^(Save|Enregistrer)$/, exact: true }).click()
   expect((await saved).ok()).toBeTruthy()
@@ -202,17 +202,18 @@ test(fileOnly ? 'a file-only chat reply completes its pending process with the o
   ]
   const response = await request.post('/api/processes/internal/definitions', { headers, data: {
     agent_id: fixture.agent_id, title: 'Synthetic typed review', owner: 'user', graph: {
-      schema_version: 'galaris.bpmn/v2', inputs: [], outputs,
+      schema_version: 'galaris.bpmn/v2', variables: outputs,
       actors: [{ id: 'reviewer', name: 'Reviewer', kind: 'human', user_id: user.id }],
       nodes: [{ id: 'start', kind: 'start' }, { id: 'review', kind: 'human_task', title: 'Synthetic typed review',
-        inputs: [], outputs, config: { prompt: 'Review this entirely invented case.', actor: 'reviewer' } }, { id: 'end', kind: 'end' }],
+        inputs: [], outputs: outputs.map(variable => variable.name), config: { prompt: 'Review this entirely invented case.', actor: 'reviewer' } },
+        { id: 'end', kind: 'end', outputs: outputs.map(variable => variable.name) }],
       flows: [{ id: 'a', source: 'start', target: 'review' }, { id: 'b', source: 'review', target: 'end' }],
     },
   } })
   expect(response.ok(), await response.text()).toBeTruthy()
   const definition = await response.json()
   const invalid = structuredClone(definition.graph)
-  invalid.nodes[1].outputs[0].default = { type: fileOnly ? 'File' : 'bool', value: null }
+  invalid.variables[0].default = { type: fileOnly ? 'File' : 'bool', value: null }
   const rejected = await request.put(`/api/processes/internal/definitions/${definition.code}`, { headers,
     data: { graph: invalid, expected_revision: definition.revision } })
   expect(rejected.status()).toBe(422)
@@ -243,7 +244,9 @@ test(fileOnly ? 'a file-only chat reply completes its pending process with the o
     expect(original.text).toBe('')
     expect(run.output).toEqual({ report: { type: 'File', value: original.files[0].uri } })
   } else {
-    expect(run.output).toEqual({ accepted: { type: 'bool', value: false }, note: { type: 'string', value: null } })
+    // Uninitialized process variables remain absent, distinct from an explicit null.
+    expect(run.output).toEqual({ accepted: { type: 'bool', value: false } })
+    expect(run.output).not.toHaveProperty('note')
   }
   expect(run.data).toEqual(run.output)
 })
@@ -297,13 +300,13 @@ test('a visually edited native process runs its saved Task and retains its own g
   const headers = { Authorization: `Bearer ${session.access_token}` }
   const created = await request.post('/api/processes/internal/definitions', { headers, data: {
     agent_id: fixture.agent_id, title: 'Invented native workflow', owner: 'user', graph: {
-      schema_version: 'galaris.bpmn/v1', actors: [
+      schema_version: 'galaris.bpmn/v2', variables: [{ name: 'subject', type: 'string', nullable: false }], actors: [
         { id: 'executor', name: 'Executor', kind: 'agent', agent_id: fixture.agent_id },
         { id: 'validator', name: 'Validator', kind: 'agent', agent_id: fixture.agent_id },
       ], nodes: [
-        { id: 'start', kind: 'start' },
-        { id: 'work', kind: 'task', title: 'Draft note', config: { prompt: 'Invent a synthetic note.', actor: 'executor' } },
-        { id: 'end', kind: 'end', config: { output: { $expr: 'results.work' } } },
+        { id: 'start', kind: 'start', inputs: ['subject'] },
+        { id: 'work', kind: 'task', title: 'Draft note', inputs: ['subject'], config: { prompt: 'Invent a synthetic note.', actor: 'executor' } },
+        { id: 'end', kind: 'end', outputs: ['subject'] },
       ], flows: [{ id: 'first', source: 'start', target: 'work' }, { id: 'last', source: 'work', target: 'end' }],
     },
   } })
@@ -349,8 +352,9 @@ test('a visually edited native process runs its saved Task and retains its own g
   expect((await savedResponse.json()).graph.nodes.find(node => node.id === 'work').config.actor).toBe('validator')
   await page.reload()
   await page.getByRole('button', { name: 'Draft note · work', exact: true }).click()
+  const supplied = { subject: { type: 'string', value: 'Invented example' } }
   const admission = await request.post(`${definitionPath}/runs`, { headers,
-    data: { agent_id: fixture.agent_id, input: { subject: 'Invented example' } } })
+    data: { agent_id: fixture.agent_id, input: supplied } })
   expect(admission.ok(), await admission.text()).toBeTruthy()
   const { run_id: runId } = await admission.json()
   await page.goto(`/process/internal/run/${runId}`)
@@ -366,10 +370,11 @@ test('a visually edited native process runs its saved Task and retains its own g
   expect(run.definition_revision).toBe(2)
   expect(run.graph.nodes.find(node => node.id === 'work').config.actor).toBe('validator')
   expect(run.nodes.map(node => node.status)).toEqual(['success', 'success', 'success'])
-  expect(run.data).toEqual({ subject: 'Invented example' })
+  expect(run.data).toEqual(supplied)
   expect(run.data).toEqual(run.output)
-  const runData = page.getByRole('textbox', { name: /^(Run data|Données du run)$/, exact: true })
-  await expect.poll(async () => JSON.parse(await runData.inputValue())).toEqual({ subject: 'Invented example' })
+  const runData = page.getByRole('region', { name: /^(Process variables|Variables du processus)$/, exact: true })
+  await expect(runData.getByText('subject', { exact: true })).toBeVisible()
+  await expect(runData.getByText(supplied.subject.value, { exact: true })).toBeVisible()
   const changed = await request.put(definitionPath, { headers, data: { expected_revision: 2, title: 'Changed next launch',
     graph: { ...run.graph, nodes: run.graph.nodes.map(node => node.id === 'work'
       ? { ...node, config: { ...node.config, prompt: 'A different instruction for future launches.' } } : node) },

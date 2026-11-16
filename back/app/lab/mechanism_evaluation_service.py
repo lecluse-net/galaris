@@ -2017,7 +2017,8 @@ async def generate_expected(
     *, llm_id: int | None = None,
 ) -> MechanismExpectedGenerated:
     row = await _case(mechanism, case_id)
-    llm = await llm_service.get_llm(llm_id) if llm_id is not None else await llm_service.get_profile_llm(model_usages.LAB)
+    llm = await llm_service.get_llm(llm_id) if llm_id is not None else await llm_service.get_profile_llm(
+        model_usages.GOAL if mechanism == "goal_tracking" else model_usages.LAB)
     if llm is None:
         raise ValueError(await tr("evaluation_api.errors.lab_llm_not_configured"))
     dataset = await _dataset(mechanism, row.dataset_id)
@@ -2077,6 +2078,8 @@ async def start_run(
     dataset = await _dataset(mechanism, dataset_id)
     llm = await llm_service.get_llm(data.llm_id)
     allowed_capabilities = {"chat", "decision"} if mechanism in {"dispatcher", "topic_classification", "memory_extraction"} else {"chat"}
+    if mechanism == "goal_tracking":
+        allowed_capabilities = {"decision"}
     if llm is None or not allowed_capabilities.intersection(llm.service_capabilities):
         raise ValueError(await tr("evaluation_api.errors.run_llm_invalid"))
     generation_model: LLM | None = None
@@ -2122,7 +2125,7 @@ async def start_run(
         snapshot["reasoning_effort"] = await llm_service.get_profile_reasoning_effort_for_agent_id(
             profile, native.get("agent_id") if mechanism == "dispatcher" else None
         )
-    if mechanism == "topic_classification":
+    if mechanism in {"topic_classification", "goal_tracking"}:
         for snapshot in snapshots:
             snapshot["expected_output"] = definition.validate_output(
                 snapshot.get("expected_output")

@@ -35,8 +35,11 @@ function focusAction(): void {
 }
 
 function buttonProps(value: boolean | string | QBtnProps, label: string): QBtnProps {
-  return { flat: true, color, label: typeof value === 'string' ? value : label,
+  const props: QBtnProps = { color, label: typeof value === 'string' ? value : label,
     ...(typeof value === 'object' ? value : {}) }
+  props.flat = false
+  props.outline = props.color !== 'negative'
+  return props
 }
 const okProps = computed(() => buttonProps(ok, $q.lang.label.ok))
 const cancelProps = computed(() => buttonProps(cancel, t('common.cancel')))

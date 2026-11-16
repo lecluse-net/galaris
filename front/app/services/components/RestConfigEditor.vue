@@ -27,7 +27,7 @@
           outlined dense class="col" :label="t('services.valueParam')" @update:model-value="saveHeaders" />
         <q-btn flat round icon="delete" :aria-label="t('common.delete')" @click="headerRows.splice(index, 1); saveHeaders()" />
       </div>
-      <q-btn outline icon="add" :label="t('services.restAddHeader')" @click="headerRows.push({ name: '', param: '' })" />
+      <q-btn color="primary" outline icon="add" :label="t('services.restAddHeader')" @click="headerRows.push({ name: '', param: '' })" />
     </div>
   </div>
 </template>

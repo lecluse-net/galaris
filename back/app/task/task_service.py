@@ -1152,11 +1152,11 @@ async def preempt_running_agent_tasks(
 
 async def _set_tree_paused(task_id: UUID, *, paused: bool) -> Optional[Task]:
     db = get_db()
-    root = await get_by_id(task_id)
+    root = await get_by_id(task_id, for_update=True)
     if root is None:
         return None
 
-    tasks = await _collect_tree(root, set())
+    tasks = await _collect_tree(root, set(), for_update=True)
     changed: list[Task] = []
     for task in tasks:
         if paused and task.status in _TERMINAL_STATUSES:
@@ -1190,7 +1190,7 @@ async def _set_tree_paused(task_id: UUID, *, paused: bool) -> Optional[Task]:
     return root
 
 
-async def _collect_tree(task: Task, seen: set[UUID]) -> list[Task]:
+async def _collect_tree(task: Task, seen: set[UUID], *, for_update: bool = False) -> list[Task]:
     if task.id in seen:
         return []
     # UNION terminates safely even on a corrupt cyclic parent graph. Deleted
@@ -1201,8 +1201,10 @@ async def _collect_tree(task: Task, seen: set[UUID]) -> list[Task]:
     descendants = descendants.union(select(Task.id, Task.parent_id).join(
         descendants, Task.parent_id == descendants.c.id,
     ).where(Task.deleted_at.is_(None), Task.id.not_in(seen)))
-    records = await get_db().scalars(select(Task).where(Task.id.in_(select(descendants.c.id)))
-        .order_by(Task.created_at.asc(), Task.id.asc()))
+    query = select(Task).where(Task.id.in_(select(descendants.c.id))).order_by(Task.created_at.asc(), Task.id.asc())
+    if for_update:
+        query = query.with_for_update(key_share=True).execution_options(populate_existing=True)
+    records = await get_db().scalars(query)
     children: dict[UUID, list[Task]] = {}
     for record in records:
         if record.parent_id is not None:

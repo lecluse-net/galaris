@@ -5,7 +5,7 @@
     </div>
 
     <!-- Info Banner -->
-    <q-banner class="privilege-info-banner bg-blue-1 text-primary q-mb-md rounded-borders">
+    <q-banner class="privilege-info-banner bg-solaire-blue-light text-primary q-mb-md rounded-borders">
       <template v-slot:avatar>
         <q-icon name="info" color="primary" />
       </template>
@@ -130,7 +130,7 @@
               autofocus
             />
             <div class="privilege-dialog-actions galaris-dialog-actions q-mt-md q-pa-md">
-              <q-btn :label="$t('common.cancel')" color="primary" flat v-close-popup />
+              <q-btn outline :label="$t('common.cancel')" color="primary"  v-close-popup />
               <q-btn v-if="canManage" :label="isEdit ? $t('common.save') : $t('common.create')" type="submit" color="primary" />
             </div>
           </q-form>

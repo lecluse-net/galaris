@@ -4,7 +4,7 @@ import test from 'node:test'
 import ts from 'typescript'
 
 // Execute the real form submission handler, not a parallel implementation of its guard.
-const page = readFileSync(new URL('./pages/index.vue', import.meta.url), 'utf8')
+const page = readFileSync(new URL('../index/pages/agent.vue', import.meta.url), 'utf8')
 const script = page.match(/<script setup[^>]*>([\s\S]*?)<\/script>/)[1]
 const source = ts.createSourceFile('agent.ts', script, ts.ScriptTarget.Latest, true)
 const declaration = source.statements

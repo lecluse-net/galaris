@@ -1,7 +1,7 @@
 <template>
   <q-dialog :model-value="true" :maximized="$q.screen.lt.md" @update:model-value="!$event && emit('close')">
     <q-card class="galaris-dialog-card event-editor">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap"><div class="text-subtitle1">{{ t(detail ? 'agenda.editEvent' : 'agenda.newEvent') }}</div><q-space /><q-btn flat round dense icon="close" :aria-label="t('agenda.close')" @click="emit('close')" /></q-card-section>
+      <DialogHeader :title="t(detail ? 'agenda.editEvent' : 'agenda.newEvent')" :close-label="t('agenda.close')" :close-popup="false" @close="emit('close')" />
       <q-form class="galaris-dialog-form" @submit="save">
         <q-card-section class="galaris-dialog-body q-gutter-y-md">
           <q-banner v-if="error" class="error-banner" role="alert">{{ error }}<template v-if="conflict" #action><q-btn outline color="primary" :label="t('agenda.reload')" @click="emit('reload')" /></template></q-banner>
@@ -31,6 +31,7 @@
   </q-dialog>
 </template>
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { isAxiosError } from 'axios'
 import { useI18n } from 'vue-i18n'

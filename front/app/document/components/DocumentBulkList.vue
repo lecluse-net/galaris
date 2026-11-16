@@ -27,7 +27,7 @@
     </div>
     <q-linear-progress v-if="loading || busy" indeterminate class="q-mb-sm" />
     <div v-if="busy" role="status">{{ t('documents.bulk.progress', { done: processed, total: operationTotal }) }}</div>
-    <q-banner v-if="loadError" role="alert" class="q-mb-sm">{{ t('documents.loadError') }}<q-btn outline :label="t('documents.retry')" @click="load" /></q-banner>
+    <q-banner v-if="loadError" role="alert" class="q-mb-sm">{{ t('documents.loadError') }}<q-btn color="primary" outline :label="t('documents.retry')" @click="load" /></q-banner>
     <q-banner v-if="outcome" class="q-mb-sm" role="status">
       {{ t('documents.bulk.result', { success: outcome.success, failed: outcome.failed.length }) }}
       <ul v-if="outcome.failed.length" class="q-my-sm">

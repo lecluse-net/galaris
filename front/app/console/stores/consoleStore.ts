@@ -1,3 +1,6 @@
+import { toRaw } from 'vue'
+import { withSessionScope, storeRequestFailure } from '@/core/util/facade'
+import { sessionGeneration } from '@/core/api'
 import { defineStore } from 'pinia'
 import { consoleService, type EmbeddedProvisionResult, type ExecutorStatus } from '../services/consoleService'
 
@@ -12,7 +15,9 @@ interface ConsoleState {
   lastProvision: EmbeddedProvisionResult | null
 }
 
-export const useConsoleStore = defineStore('console-executor', {
+const statusReads = new WeakMap<object, symbol>()
+
+export const useConsoleStore = withSessionScope(defineStore('console-executor', {
   state: (): ConsoleState => ({
     availability: null,
     availabilityLoading: false,
@@ -27,50 +32,62 @@ export const useConsoleStore = defineStore('console-executor', {
     async loadAvailability(force = false): Promise<void> {
       if (!force && (this.availabilityLoading || this.availability !== null)) return
       const requestId = ++this.availabilityRequestId
+      const session = sessionGeneration()
+      const current = () => session === sessionGeneration() && requestId === this.availabilityRequestId
       this.availabilityLoading = true
       try {
         const { data } = await consoleService.availability()
-        if (requestId === this.availabilityRequestId) this.availability = data.in_use
+        if (current()) this.availability = data.in_use
       } catch {
-        if (requestId === this.availabilityRequestId) this.availability = false
+        if (current()) this.availability = false
       } finally {
-        if (requestId === this.availabilityRequestId) this.availabilityLoading = false
+        if (current()) this.availabilityLoading = false
       }
     },
     async refresh(): Promise<void> {
+      const reportFailure = storeRequestFailure(this, 'refresh')
+      const request = Symbol(), session = sessionGeneration()
+      statusReads.set(toRaw(this), request)
+      const current = () => statusReads.get(toRaw(this)) === request && session === sessionGeneration()
       this.loading = true
       this.error = ''
       try {
         const { data } = await consoleService.status()
+        if (!current()) return
         if (!data.ok) throw new Error(data.error || 'Executor unavailable')
         this.status = data.result
       } catch (error) {
+        if (!current()) return
         this.status = null
         this.error = error instanceof Error ? error.message : String(error)
+        reportFailure(error)
       } finally {
-        this.loading = false
+        if (current()) this.loading = false
       }
     },
     async action(operation: string, payload: Record<string, unknown> = {}): Promise<void> {
+      const session = sessionGeneration()
       this.actionLoading = true
       try {
         await consoleService.action(operation, payload)
-        await this.refresh()
+        if (session === sessionGeneration()) await this.refresh()
       } finally {
-        this.actionLoading = false
+        if (session === sessionGeneration()) this.actionLoading = false
       }
     },
     async provision(agentId: number): Promise<EmbeddedProvisionResult> {
+      const session = sessionGeneration()
       this.actionLoading = true
       try {
         const { data } = await consoleService.provision(agentId)
+        if (session !== sessionGeneration()) return data
         this.lastProvision = data
         await this.loadAvailability(true)
-        await this.refresh()
+        if (session === sessionGeneration()) await this.refresh()
         return data
       } finally {
-        this.actionLoading = false
+        if (session === sessionGeneration()) this.actionLoading = false
       }
     },
   },
-})
+}), { flags: { refresh: 'loading', action: 'actionLoading', provision: 'actionLoading' } })

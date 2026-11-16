@@ -6,7 +6,8 @@ import codecs
 import hashlib
 import json
 import mimetypes
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -44,9 +45,14 @@ class SshAgentFileTransport:
         config = self._execution.config
         return f"ssh://{config.username}@{config.host}:{config.port}/~"
 
-    async def _client(self) -> Any:
-        connection = await self._execution.connection()
-        return await connection.start_sftp_client()
+    @asynccontextmanager
+    async def _client(self) -> AsyncGenerator[Any]:
+        async with self._execution.active_connection() as connection:
+            sftp = await connection.start_sftp_client()
+            try:
+                yield sftp
+            finally:
+                sftp.exit()
 
     @staticmethod
     def _inside(home: str, path: str) -> bool:
@@ -155,8 +161,7 @@ class SshAgentFileTransport:
 
     async def iter_range(self, remote: str, *, offset: int, length: int,
                          target: str = "") -> AsyncIterator[bytes]:
-        sftp = await self._client()
-        try:
+        async with self._client() as sftp:
             source, _relative = await self._resolve_existing(sftp, remote, target)
             async with sftp.open(source, "rb", encoding=None) as input_file:
                 remaining = length
@@ -167,8 +172,6 @@ class SshAgentFileTransport:
                     remaining -= len(chunk)
                     offset += len(chunk)
                     yield chunk
-        finally:
-            sftp.exit()
 
     async def iter_bytes(
         self,
@@ -177,8 +180,7 @@ class SshAgentFileTransport:
         target: str = "",
         offset: int = 0,
     ) -> AsyncIterator[bytes]:
-        sftp = await self._client()
-        try:
+        async with self._client() as sftp:
             source, _relative = await self._resolve_existing(sftp, remote, target)
             async with sftp.open(source, "rb", encoding=None) as input_file:
                 position = max(0, offset)
@@ -189,8 +191,6 @@ class SshAgentFileTransport:
                     raw = bytes(chunk)
                     position += len(raw)
                     yield raw
-        finally:
-            sftp.exit()
 
     async def upload_stream(
         self,
@@ -199,55 +199,50 @@ class SshAgentFileTransport:
         *,
         target: str = "",
     ) -> tuple[str, int]:
-        sftp = await self._client()
         temporary = ""
         publishing = False
-        try:
-            destination, relative = await self._resolve_destination(sftp, filename, target)
-            path = PurePosixPath(destination)
-            temporary = str(path.with_name(f".{path.name}.galaris-part-{uuid4().hex}"))
-            size = 0
-            async with sftp.open(temporary, "wb", encoding=None) as output:
-                async for chunk in chunks:
-                    await output.write(chunk)
-                    size += len(chunk)
-            publishing = True
+        async with self._client() as sftp:
             try:
-                await sftp.posix_rename(temporary, destination)
-            except asyncssh.SFTPOpUnsupported:
+                destination, relative = await self._resolve_destination(sftp, filename, target)
+                path = PurePosixPath(destination)
+                temporary = str(path.with_name(f".{path.name}.galaris-part-{uuid4().hex}"))
+                size = 0
+                async with sftp.open(temporary, "wb", encoding=None) as output:
+                    async for chunk in chunks:
+                        await output.write(chunk)
+                        size += len(chunk)
+                publishing = True
                 try:
-                    await sftp.remove(destination)
-                except asyncssh.SFTPNoSuchFile:
-                    pass
-                await sftp.rename(temporary, destination)
-            return relative, size
-        except BaseException as exc:
-            cleaned = True
-            if temporary:
-                try:
-                    await sftp.remove(temporary)
-                except asyncssh.SFTPNoSuchFile:
-                    pass
-                except (asyncssh.SFTPError, OSError):
-                    cleaned = False
-            if isinstance(exc, Exception) and not publishing and cleaned:
-                # Only disposable staging bytes and idempotent parent directories
-                # may have changed. The destination file has not been published.
-                raise ToolCallRejectedError(
-                    "Upload failed before publishing the destination file; "
-                    "temporary content was removed. Correct the source or destination and retry."
-                ) from exc
-            raise
-        finally:
-            sftp.exit()
+                    await sftp.posix_rename(temporary, destination)
+                except asyncssh.SFTPOpUnsupported:
+                    try:
+                        await sftp.remove(destination)
+                    except asyncssh.SFTPNoSuchFile:
+                        pass
+                    await sftp.rename(temporary, destination)
+                return relative, size
+            except BaseException as exc:
+                cleaned = True
+                if temporary:
+                    try:
+                        await sftp.remove(temporary)
+                    except asyncssh.SFTPNoSuchFile:
+                        pass
+                    except (asyncssh.SFTPError, OSError):
+                        cleaned = False
+                if isinstance(exc, Exception) and not publishing and cleaned:
+                    # Only disposable staging bytes and idempotent parent directories
+                    # may have changed. The destination file has not been published.
+                    raise ToolCallRejectedError(
+                        "Upload failed before publishing the destination file; "
+                        "temporary content was removed. Correct the source or destination and retry."
+                    ) from exc
+                raise
 
     async def delete(self, remote: str, *, target: str = "") -> None:
-        sftp = await self._client()
-        try:
+        async with self._client() as sftp:
             path, _relative = await self._resolve_existing(sftp, remote, target)
             await sftp.remove(path)
-        finally:
-            sftp.exit()
 
     @staticmethod
     def _entry(path: str, attrs: Any, relative: str, sha256: str = "") -> FileEntry:
@@ -273,8 +268,7 @@ class SshAgentFileTransport:
         recursive: bool,
         limit: int,
     ) -> FileListing:
-        sftp = await self._client()
-        try:
+        async with self._client() as sftp:
             base, base_relative = await self._resolve_existing(sftp, path or ".")
             attrs = await sftp.stat(base, follow_symlinks=False)
             if attrs.type != _SFTP_TYPE_DIRECTORY:
@@ -311,8 +305,6 @@ class SshAgentFileTransport:
                     break
             entries.sort(key=lambda entry: entry.path)
             return FileListing(base_relative, tuple(entries[:limit]), truncated)
-        finally:
-            sftp.exit()
 
     async def resource_list(self, path: str, *, recursive: bool, limit: int) -> FileListing:
         return await self.resource_list_page(path, recursive=recursive, limit=limit)
@@ -324,8 +316,7 @@ class SshAgentFileTransport:
             if cursor:
                 raise ValueError("Recursive console listing does not support cursors")
             return await self.file_list(path, recursive=True, limit=limit)
-        sftp = await self._client()
-        try:
+        async with self._client() as sftp:
             base, relative = await self._resolve_existing(sftp, path or ".")
             binding_key = hashlib.sha256(base.encode()).hexdigest()
             after = ""
@@ -360,18 +351,14 @@ class SshAgentFileTransport:
             page = selected[:limit]
             next_cursor = json.dumps([binding_key, page[-1].path]) if truncated else None
             return FileListing(relative, tuple(page), truncated, next_cursor)
-        finally:
-            sftp.exit()
 
     async def file_info(self, path: str, *, include_sha256: bool) -> FileEntry:
-        sftp = await self._client()
-        try:
-            target, relative = await self._resolve_existing(sftp, path)
-            attrs = await sftp.stat(target, follow_symlinks=False)
-        except asyncssh.SFTPNoSuchFile as exc:
-            raise FileNotFoundError(path) from exc
-        finally:
-            sftp.exit()
+        async with self._client() as sftp:
+            try:
+                target, relative = await self._resolve_existing(sftp, path)
+                attrs = await sftp.stat(target, follow_symlinks=False)
+            except asyncssh.SFTPNoSuchFile as exc:
+                raise FileNotFoundError(path) from exc
         digest = ""
         if include_sha256 and attrs.type != _SFTP_TYPE_DIRECTORY:
             hasher = hashlib.sha256()
@@ -419,16 +406,13 @@ class SshAgentFileTransport:
         overwrite: bool,
     ) -> FileMutation:
         if not overwrite:
-            sftp = await self._client()
-            try:
+            async with self._client() as sftp:
                 try:
                     await self._resolve_existing(sftp, path)
                 except FileNotFoundError:
                     pass
                 else:
                     raise FileExistsError(path)
-            finally:
-                sftp.exit()
 
         encoded = content.encode("utf-8")
 
@@ -439,18 +423,14 @@ class SshAgentFileTransport:
         return FileMutation(location, len(content), state="written")
 
     async def file_append_text(self, path: str, content: str) -> FileMutation:
-        sftp = await self._client()
-        try:
+        async with self._client() as sftp:
             target, relative = await self._resolve_destination(sftp, path)
             async with sftp.open(target, "ab", encoding=None) as output:
                 await output.write(content.encode("utf-8"))
             return FileMutation(relative, len(content), state="appended")
-        finally:
-            sftp.exit()
 
     async def file_copy(self, source: str, destination: str) -> FileMutation:
-        sftp = await self._client()
-        try:
+        async with self._client() as sftp:
             src, src_relative = await self._resolve_existing(sftp, source)
             dest, dest_relative = await self._resolve_destination(sftp, destination)
             await sftp.copy(src, dest, follow_symlinks=False)
@@ -461,12 +441,9 @@ class SshAgentFileTransport:
                 source=src_relative,
                 state="copied",
             )
-        finally:
-            sftp.exit()
 
     async def file_move(self, source: str, destination: str, *, overwrite: bool = False) -> FileMutation:
-        sftp = await self._client()
-        try:
+        async with self._client() as sftp:
             src, src_relative = await self._resolve_existing(sftp, source)
             dest, dest_relative = await self._resolve_destination(sftp, destination)
             if src_relative in {"", "."} or dest_relative in {"", "."}:
@@ -485,25 +462,19 @@ class SshAgentFileTransport:
                 source=src_relative,
                 state="moved",
             )
-        finally:
-            sftp.exit()
 
     async def file_delete(self, path: str) -> FileMutation:
-        sftp = await self._client()
-        try:
+        async with self._client() as sftp:
             target, relative = await self._resolve_existing(sftp, path)
             attrs = await sftp.stat(target, follow_symlinks=False)
             if attrs.type == _SFTP_TYPE_DIRECTORY:
                 raise IsADirectoryError(path)
             await sftp.remove(target)
             return FileMutation(relative, int(attrs.size or 0), state="deleted")
-        finally:
-            sftp.exit()
 
     async def resource_delete_collection(self, path: str) -> FileMutation:
         """Remove an explicitly selected tree, bounded and without following links."""
-        sftp = await self._client()
-        try:
+        async with self._client() as sftp:
             target, relative = await self._resolve_existing(sftp, path)
             if relative in {"", "."}:
                 raise PermissionError("The SSH home cannot be deleted")
@@ -541,5 +512,3 @@ class SshAgentFileTransport:
                 else:
                     await sftp.remove(current)
             return FileMutation(relative, state="deleted")
-        finally:
-            sftp.exit()

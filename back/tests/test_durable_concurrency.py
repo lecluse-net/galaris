@@ -113,7 +113,7 @@ async def test_buffered_saturation_leaves_auth_files_and_lease_renewal_operation
     import os
 
     load_seconds = float(os.environ.get("MIXED_LOAD_SECONDS", "0"))
-    assert 0 <= load_seconds <= 120
+    assert 0 <= load_seconds <= 900
     load_until = time.monotonic() + load_seconds
 
     peers = [RTCPeerConnection(RTCConfiguration(iceServers=[])) for _ in range(2)]
@@ -130,6 +130,8 @@ async def test_buffered_saturation_leaves_auth_files_and_lease_renewal_operation
     process = psutil.Process()
     initial_rss = process.memory_info().rss
     peak_rss = initial_rss
+    pressure_started = time.monotonic()
+    rss_samples = [{"seconds": 0.0, "bytes": initial_rss}]
     latencies = []
     max_loop_lag = 0.0
     async def receive_audio():
@@ -154,6 +156,9 @@ async def test_buffered_saturation_leaves_auth_files_and_lease_renewal_operation
             await asyncio.sleep(0.02)
             max_loop_lag = max(max_loop_lag, time.monotonic() - started - 0.02)
             peak_rss = max(peak_rss, process.memory_info().rss)
+            elapsed = time.monotonic() - pressure_started
+            if elapsed - rss_samples[-1]["seconds"] >= 10:
+                rss_samples.append({"seconds": round(elapsed, 3), "bytes": process.memory_info().rss})
     audio_reader = asyncio.create_task(receive_audio())
     encoding = asyncio.create_task(encode_media())
     pressure = asyncio.create_task(observe_pressure())
@@ -202,13 +207,19 @@ async def test_buffered_saturation_leaves_auth_files_and_lease_renewal_operation
         assert peak == 60 and budget.used == 0
         await encoding
         assert frame_count >= 100
+        async with get_db_session() as db:
+            expires = await db.scalar(select(Task.lease_expires_at).where(Task.id == task_id))
+            assert expires is not None and expires > datetime.now(timezone.utc)
         p95 = sorted(latencies)[int(len(latencies) * 0.95)]
         rss_growth = peak_rss - initial_rss
         assert p95 < 2.0 and max_loop_lag < 1.0
         assert rss_growth < 256 * 1024 * 1024
         print("MIXED_LOAD=" + json.dumps({"identity_p95_seconds": p95, "peak_rss_growth_bytes": rss_growth,
             "loop_max_lag_seconds": max_loop_lag, "received_webrtc_frames": frame_count,
-            "lease_renewed": True, "file_bytes": 4 * 1024 * 1024}))
+            "lease_renewed": True, "file_bytes": 4 * 1024 * 1024,
+            "load_seconds": load_seconds, "identity_requests": len(latencies),
+            "rss_initial_bytes": initial_rss, "rss_final_bytes": process.memory_info().rss,
+            "rss_samples": rss_samples}))
     finally:
         heartbeat.cancel()
         for pending in queued:

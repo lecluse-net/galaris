@@ -121,7 +121,7 @@
                 <q-item-section avatar>
                   <q-icon
                     :name="assignment.is_default ? 'star' : 'star_border'"
-                    :color="assignment.is_default ? 'amber-7' : 'grey'"
+                    :color="assignment.is_default ? 'solaire-yellow' : 'grey'"
                   />
                 </q-item-section>
 
@@ -179,7 +179,7 @@ import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useAuthStore } from '@/core/user/stores/authStore'
+import { useAuthStore } from '@/core/user/facade'
 import { useAuthorizeStore } from '@/core/authorize/stores/authorizeStore'
 import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
 import { localizedAuthorizeLabel } from '@/core/authorize/presentation'

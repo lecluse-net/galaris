@@ -27,6 +27,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { QTableColumn } from 'quasar'
 import { fileIndexService, type FileIndexPage } from '../services/fileIndexService'
+import { startVisiblePolling } from '@/core/util/facade'
 const { agentId, editable } = defineProps<{ agentId: number; editable: boolean }>()
 const { t } = useI18n()
 const root = ref(''), busy = ref(false), loading = ref(false), error = ref(false)
@@ -78,6 +79,6 @@ function requested({ pagination: next }: { pagination: { page: number; rowsPerPa
 }
 watch(() => agentId, () => { generation++; data.value = null; root.value = ''; loading.value = false; pagination.value.page = 1; void load() })
 onMounted(() => { void load() })
-const timer = setInterval(() => { void load() }, 5000)
-onBeforeUnmount(() => { disposed = true; generation++; clearInterval(timer) })
+const stopPolling = startVisiblePolling(load, 5000)
+onBeforeUnmount(() => { disposed = true; generation++; stopPolling() })
 </script>

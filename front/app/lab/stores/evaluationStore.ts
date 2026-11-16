@@ -1,3 +1,4 @@
+import { withSessionScope } from '@/core/util/facade'
 import { defineStore } from 'pinia'
 import {
   evaluationService,
@@ -21,7 +22,7 @@ interface EvaluationState {
   error: unknown
 }
 
-export const useEvaluationStore = defineStore('evaluationLab', {
+export const useEvaluationStore = withSessionScope(defineStore('evaluationLab', {
   state: (): EvaluationState => ({
     config: null,
     tasks: [],
@@ -147,4 +148,4 @@ export const useEvaluationStore = defineStore('evaluationLab', {
       }
     },
   },
-})
+}), { flags: {"loadAll":"loading","loadCandidates":"candidatesLoading"} })

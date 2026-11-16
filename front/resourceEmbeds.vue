@@ -5,7 +5,7 @@
   <div v-else-if="folderId" ref="folderThumbnail" class="folder-citation-thumbnail"><ResourceThumbnail :uri="uri" :agent-id="agentId" :title="title" /></div>
   <div v-else-if="documentId" class="document-citation-preview">
     <div class="document-citation-thumbnail" aria-hidden="true"><DocumentResourceEmbed ref="documentEmbed" :document-id="documentId" :agent-id="agentId" /></div>
-    <q-btn flat dense no-caps class="document-citation-identifier" :label="documentId" :aria-label="t('common.copy')" @click.stop.prevent="copyIdentifier"><q-tooltip>{{ t('common.copy') }}</q-tooltip></q-btn>
+    <q-btn outline color="primary" dense no-caps class="document-citation-identifier" :label="documentId" :aria-label="t('common.copy')" @click.stop.prevent="copyIdentifier"><q-tooltip>{{ t('common.copy') }}</q-tooltip></q-btn>
   </div>
 </template>
 <script setup lang="ts">

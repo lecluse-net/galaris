@@ -12,8 +12,8 @@
             <q-icon name="description" size="15px" />
             {{ t('codeEditor.language.markdown') }}
           </span>
-          <q-btn
-            flat
+          <q-btn outline color="primary"
+
             dense
             no-caps
             size="sm"

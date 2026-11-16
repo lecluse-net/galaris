@@ -15,7 +15,7 @@
         <q-spinner v-if="checkingRegistration" color="primary" />
         <div v-else-if="registrationStatusError" role="alert">
           {{ $t('auth.registrationStatusError') }}
-          <q-btn flat :label="$t('auth.retryRegistrationStatus')" @click="refreshRegistration" />
+          <q-btn outline color="primary"  :label="$t('auth.retryRegistrationStatus')" @click="refreshRegistration" />
         </div>
         <q-form v-else-if="registrationOpen" @submit="onSubmit" class="q-gutter-md">
           <q-input
@@ -100,7 +100,7 @@
         </q-form>
       </q-card-section>
       <q-card-actions align="center">
-        <q-btn flat to="/user/login" :label="$t('auth.loginButton')" />
+        <q-btn outline color="primary"  to="/user/login" :label="$t('auth.loginButton')" />
       </q-card-actions>
     </q-card>
 
@@ -161,7 +161,7 @@ async function onSubmit() {
       position: 'top'
     })
     
-    router.push('/')
+    await router.push('/')
   } catch (err) {
     error.value = typeof err === 'string' ? err : t('auth.registerError')
     await refreshRegistration()

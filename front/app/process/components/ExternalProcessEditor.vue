@@ -11,7 +11,7 @@
     <div v-if="loading" class="flex flex-center q-pa-lg"><q-spinner color="primary" size="2.5em" /></div>
     <q-banner v-else-if="loadError" role="alert">
       {{ t('processes.genericError') }}
-      <template #action><q-btn outline :label="t('nativeProcesses.retry')" @click="load" /></template>
+      <template #action><q-btn color="primary" outline :label="t('nativeProcesses.retry')" @click="load" /></template>
     </q-banner>
     <q-banner v-else-if="!id && !canAdmin">{{ t('nativeProcesses.readOnly') }}</q-banner>
     <q-card v-else flat bordered class="q-pa-md">

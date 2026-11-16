@@ -1,5 +1,27 @@
 import { test, expect, mount } from './fixtures.mjs'
 
+test('indexing pauses background reads and refreshes immediately on return', async ({ page }, testInfo) => {
+  let reads = 0
+  await page.clock.install()
+  await page.route('**/api/file-share/indexing?*', route => {
+    reads++
+    return route.fulfill({ json: { runs: [], total: 0, pending_repairs: reads, failed_repairs: 0 } })
+  })
+  await mount(page, 'app/file_share/components/FileIndexPanel.vue', { props: { agentId: 7, editable: false } })
+  await expect(page.getByText('Pending repairs: 1; failed: 0.', { exact: true })).toBeVisible()
+  const visibility = hidden => page.evaluate(value => {
+    Object.defineProperty(document, 'hidden', { configurable: true, value })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }, hidden)
+  await visibility(true)
+  const before = reads
+  await page.clock.runFor(60_000)
+  await testInfo.attach('hidden-indexing-reads', { body: JSON.stringify({ hiddenSeconds: 60, requests: reads - before }), contentType: 'application/json' })
+  expect(reads).toBe(before)
+  await visibility(false)
+  await expect(page.getByText(`Pending repairs: ${before + 1}; failed: 0.`, { exact: true })).toBeVisible()
+})
+
 for (const width of [1440, 390]) {
   test(`Dream preserves tracking and history without loading file indexing at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })

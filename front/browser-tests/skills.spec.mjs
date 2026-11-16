@@ -6,6 +6,44 @@ async function skillFixtures(page) {
   await jsonRoute(page, '**/api/skills/categories', [])
 }
 
+test('two skill edits cannot save the first content under the second identity', async ({ page }) => {
+  await skillFixtures(page)
+  const skills = [1, 2].map(id => ({ id, revision: 1, enabled: true, code: `synthetic-${id}`, label: `Synthetic skill ${id}`, system: false,
+    valid: true, available: true, category_id: null, file_count: 1, total_size: 200 }))
+  await jsonRoute(page, '**/api/skills', skills)
+  let release
+  const writes = []
+  await page.route('**/api/skills/*/content?*', async route => {
+    const id = Number(new URL(route.request().url()).pathname.split('/')[3])
+    if (id === 1) await new Promise(resolve => { release = resolve })
+    return route.fulfill({ json: { path: 'SKILL.md', content: `# Synthetic skill ${id} content` } })
+  })
+  await page.route('**/api/skills/2', route => {
+    const data = route.request().postDataJSON(); writes.push(data)
+    return route.fulfill({ json: { ...skills[1], ...data, revision: 2 } })
+  })
+  await mount(page, 'app/skill/pages/index.vue', { privileges: ['SKILL_EDIT', 'AGENT_MANAGE_ALL'] })
+  const edit = async id => {
+    await page.getByText(`Synthetic skill ${id}`, { exact: true }).click({ button: 'right' })
+    await page.getByRole('menuitem', { name: 'Edit', exact: true }).click()
+  }
+  await edit(1)
+  try {
+    await expect.poll(() => Boolean(release)).toBe(true)
+    await edit(2)
+    const editor = page.getByRole('dialog').locator('textarea.code-editor')
+    await expect(editor).toHaveValue('# Synthetic skill 2 content')
+    const old = page.waitForResponse('**/api/skills/1/content?*')
+    release(); await old
+    await expect(editor).toHaveValue('# Synthetic skill 2 content')
+    await editor.fill('# Synthetic skill 2 updated content')
+    await page.getByRole('dialog').getByRole('button', { name: 'Save', exact: true }).click()
+    await expect.poll(() => writes.length).toBe(1)
+    expect(writes[0].markdown).toBe('# Synthetic skill 2 updated content')
+    expect(writes[0].label).toBe('Synthetic skill 2')
+  } finally { release?.() }
+})
+
 test('skill import explains validation and HTTP failures and preserves the file for retry', async ({ page }, testInfo) => {
   await skillFixtures(page)
   let attempts = 0

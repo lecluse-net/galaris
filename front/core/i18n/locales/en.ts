@@ -1,5 +1,6 @@
 export default {
   common: {
+    expand: 'Expand', collapse: 'Collapse', previousPage: 'Previous page', nextPage: 'Next page',
     apiError: {
       network: "No usable HTTP response was received. The browser did not provide the exact cause: an interrupted connection, a blocked request or an unreachable server. Check the browser Network tab and console for the reason.",
       timeout: "The request timeout elapsed before a response was received. Server-side processing may still be running.",

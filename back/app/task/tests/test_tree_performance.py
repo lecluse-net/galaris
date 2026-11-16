@@ -10,6 +10,29 @@ from tests.sql_reads import measured_reads
 
 
 @pytest.mark.asyncio
+async def test_tree_controls_refresh_rows_changed_since_their_first_read(db, monkeypatch):
+    from sqlalchemy import update
+
+    root = Task(label="Synthetic cached root", status=TaskStatus.PLAN)
+    db.add(root)
+    await db.flush()
+    child = Task(label="Synthetic cached child", parent_id=root.id, status=TaskStatus.DISPATCH)
+    db.add(child)
+    await db.commit()
+    monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
+    # A worker advances revisions while a caller still holds an earlier view.
+    await db.execute(update(Task).where(Task.id.in_([root.id, child.id])).values(
+        revision=Task.revision + 1, data={"worker_checkpoint": "preserved"},
+    ).execution_options(synchronize_session=False))
+    await db.commit()
+    await task_service.pause_tree(root.id)
+    await db.refresh(root)
+    await db.refresh(child)
+    assert root.paused and child.paused
+    assert root.data["worker_checkpoint"] == child.data["worker_checkpoint"] == "preserved"
+
+
+@pytest.mark.asyncio
 async def test_tree_pause_and_resume_keep_other_pause_reasons_with_bounded_reads(db, monkeypatch):
     root = Task(label="Synthetic root", status=TaskStatus.PLAN)
     db.add(root)

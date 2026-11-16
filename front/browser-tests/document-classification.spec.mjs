@@ -916,7 +916,7 @@ test(`folder context menu keeps actions on the right folder and supports dismiss
   await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('document://folders/work/')
   expect(await page.evaluate(() => window.testApp.events.filter(event => ['browse', 'create'].includes(event.name)))).toEqual([])
   await work.click({ button: 'right' })
-  for (const name of ['Show as a list', 'Create Text document', 'Create Data document', 'New document from…', 'Create a subfolder',
+  for (const name of ['Show as a list', 'Create a document in Text format', 'Create a document in Data format', 'New document from…', 'Create a subfolder',
     'Create a folder below', 'Edit folder', 'Delete folder',
     'Sort by name (A → Z)', 'Sort by name (Z → A)', 'Expand all in this folder', 'Collapse all in this folder']) {
     await expect(menu.getByRole('menuitem', { name, exact: true })).toBeVisible()
@@ -944,7 +944,7 @@ test(`folder context menu keeps actions on the right folder and supports dismiss
   await page.keyboard.press('Escape')
   await expect(menu).toHaveCount(0)
   await work.click({ button: 'right' })
-  await menu.getByRole('menuitem', { name: 'Create Text document', exact: true }).click()
+  await menu.getByRole('menuitem', { name: 'Create a document in Text format', exact: true }).click()
   await expect(menu).toHaveCount(0)
   await expect.poll(() => page.evaluate(() => window.testApp.events.filter(event => event.name === 'create').at(-1)?.args[0]?.id)).toBe('work')
   await page.getByRole('tree').getByText('Work', { exact: true }).focus()
@@ -1067,16 +1067,18 @@ test('each tag creates a child and its icon picker searches Unicode emojis and r
   await page.getByRole('button', { name: 'Triangle', exact: true }).click()
   await expect.poll(() => mutations.at(-1)).toMatchObject({ id: 'work', icon: uploaded })
   await expect(page.getByLabel('Search icons', { exact: true })).toHaveCount(0)
-  const image = await page.evaluate(() => {
-    const canvas = document.createElement('canvas'); canvas.width = 16; canvas.height = 8
-    canvas.getContext('2d').fillRect(0, 0, 16, 8)
-    return canvas.toDataURL('image/png')
-  })
+  for (const format of ['png', 'jpeg', 'webp']) {
+    const image = await page.evaluate(format => {
+      const canvas = document.createElement('canvas'); canvas.width = 16; canvas.height = 8
+      canvas.getContext('2d').fillRect(0, 0, 16, 8)
+      return canvas.toDataURL(`image/${format}`)
+  }, format)
   await openFolderIcon(page.getByRole('button', { name: 'Icon for folder Work', exact: true }))
-  await page.locator('input[type=file]').setInputFiles({ name: 'Synthetic raster.png', mimeType: 'image/png', buffer: Buffer.from(image.split(',')[1], 'base64') })
+  await page.locator('input[type=file]').setInputFiles({ name: `Synthetic raster.${format}`, mimeType: `image/${format}`, buffer: Buffer.from(image.split(',')[1], 'base64') })
   await expect.poll(() => mutations.at(-1)).toMatchObject({ id: 'work', icon: image })
   const rendered = page.getByRole('button', { name: 'Icon for folder Work', exact: true }).locator('img')
   await expect.poll(() => rendered.evaluate(image => image.naturalWidth)).toBe(16)
+  }
   await openFolderIcon(page.getByRole('button', { name: 'Icon for folder Work', exact: true }))
   await page.getByRole('combobox', { name: 'Icon library', exact: true }).click()
   await page.getByRole('option', { name: 'Unicode emoji', exact: true }).click()

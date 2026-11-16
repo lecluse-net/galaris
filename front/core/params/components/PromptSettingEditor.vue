@@ -22,16 +22,16 @@
         <q-banner
             v-if="metadata?.default_changed"
             rounded
-            class="prompt-editor__conflict bg-orange-1 text-orange-10 q-mx-md q-mb-md"
+            class="prompt-editor__conflict bg-solaire-orange-light text-solaire-orange q-mx-md q-mb-md"
         >
             <template #avatar><q-icon name="difference" color="warning" /></template>
             <div class="text-subtitle2">{{ t('promptEditor.defaultChangedTitle') }}</div>
             <div class="text-body2">{{ t('promptEditor.defaultChangedMessage') }}</div>
             <template #action>
-                <q-btn
-                    flat
+                <q-btn outline
+
                     no-caps
-                    color="orange-10"
+                    color="solaire-orange"
                     :label="t('promptEditor.keepCustom')"
                     :loading="savingAction === 'keep_custom'"
                     :disable="!canEdit || saving"
@@ -77,8 +77,8 @@
                     :disable="!canEdit || saving || !metadata?.customized"
                     @click="openUseDefaultDialog"
                 />
-                <q-btn
-                    flat
+                <q-btn outline
+
                     color="primary"
                     :icon="showDiff ? 'visibility_off' : 'difference'"
                     no-caps
@@ -105,22 +105,11 @@
 
     <q-dialog v-model="useDefaultDialog">
         <q-card class="prompt-editor__dialog galaris-dialog-card">
-            <q-card-section class="galaris-dialog-title row items-center">
-                <div class="text-h6">{{ t('promptEditor.restoreTitle') }}</div>
-                <q-space />
-                <q-btn
-                    v-close-popup
-                    flat
-                    round
-                    dense
-                    icon="close"
-                    :aria-label="t('common.close')"
-                />
-            </q-card-section>
+            <DialogHeader :title="t('promptEditor.restoreTitle')" :close-label="t('common.close')" />
             <q-card-section class="galaris-dialog-body">{{ t('promptEditor.restoreMessage') }}</q-card-section>
             <q-separator />
             <q-card-actions class="galaris-dialog-actions" align="right">
-                <q-btn v-close-popup flat no-caps :label="t('common.cancel')" />
+                <q-btn outline color="primary" v-close-popup  no-caps :label="t('common.cancel')" />
                 <q-btn
                     unelevated
                     no-caps
@@ -135,6 +124,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'

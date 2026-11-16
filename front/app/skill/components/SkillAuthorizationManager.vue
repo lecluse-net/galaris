@@ -254,7 +254,7 @@ import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import AgentAvatar from '@/app/agent/components/AgentAvatar.vue'
+import { AgentAvatar } from '@/app/agent'
 import { AgentSelect } from '@/app/agent'
 
 import {

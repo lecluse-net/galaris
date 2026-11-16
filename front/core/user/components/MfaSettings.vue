@@ -32,7 +32,7 @@
       />
 
       <template v-else>
-        <q-banner rounded class="bg-blue-1 text-blue-10">
+        <q-banner rounded class="bg-solaire-blue-light text-solaire-blue">
           {{ t('mfa.setupHint') }}
         </q-banner>
 
@@ -122,7 +122,7 @@
     </q-card-section>
 
     <q-card-section v-if="recoveryCodes.length" class="q-pt-none">
-      <q-banner rounded class="bg-orange-1 text-orange-10 q-mb-sm">
+      <q-banner rounded class="bg-solaire-orange-light text-solaire-orange q-mb-sm">
         {{ t('mfa.recoveryWarning') }}
       </q-banner>
       <q-list bordered separator>
@@ -130,8 +130,8 @@
           <q-item-section class="text-monospace">{{ code }}</q-item-section>
         </q-item>
       </q-list>
-      <q-btn
-        flat
+      <q-btn outline color="primary"
+
         icon="content_copy"
         :label="t('mfa.copyRecovery')"
         class="q-mt-sm"

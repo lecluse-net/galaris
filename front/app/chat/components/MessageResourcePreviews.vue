@@ -173,8 +173,8 @@
           >
             {{ t('chat.resourcePreview.fileLoadError') }}
             <template #action>
-              <q-btn
-                flat
+              <q-btn outline color="primary"
+
                 dense
                 no-caps
                 :label="t('chat.resourcePreview.retryFile')"

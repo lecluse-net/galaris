@@ -812,3 +812,45 @@ Ces résultats ciblés ne valent pas validation complète de la plateforme.
 Prochaine étape : poursuivre la revue des familles et fichiers signalés, des fortes
 cardinalités de destinataires et des coûts au repos. Ces quinze lots ne closent pas la
 campagne ; `make validate`, réservé à l'utilisateur, n'a pas été exécuté.
+
+## Reprise ciblée du 15 novembre 2026
+
+Les listes MCP personnelles et administratives utilisent les résumés Process existants.
+Pour 50 runs synthétiques, les lectures SQL passent de 53 à 2 ; les listes de 10 et
+500 runs prennent également 2 lectures. Les 28 scénarios ciblés préservent contenu,
+droits, révocation, exclusions des lignes supprimées et absence d'état privé dans les
+résumés. Il s'agit d'un gain de requêtes, sans comparaison de latence globale.
+
+La vue des permissions d'une connexion filtre désormais les Services avant de charger
+leurs configurations. Avec 500 Services synthétiques sans rapport, elle matérialisait
+71 680 000 octets de descriptions inutiles ; elle n'en matérialise plus après correction.
+Ce volume décrit les données chargées, pas un pic RSS. Les scénarios Services préservent
+les secrets masqués, connexions inactives, politiques, refus et fraîcheur des libellés.
+Les 154 tests Services ciblés passent ; les scénarios de diagnostics sont rejoués après
+le renforcement de la vérification de fraîcheur.
+
+La qualification des 501 et 1 001 destinataires utilise maintenant les contacts canoniques
+PostgreSQL ; seul l'annuaire du transport est remplacé. La lecture des colonnes utiles et
+l'arrêt sur le total connu suppriment les chargements de relations inutiles et les pages
+vides. Les noms courants sont relus indépendamment pour l'annuaire et l'attribution des
+messages, sans invalider les relations déjà chargées. Les routes, propriétaires, coordonnées,
+fusion, séparation et contenus vivants restent couverts par les scénarios existants.
+Les lectures passent de 14 à 8 pour 501 destinataires et de 22 à 12 pour 1 001,
+sur les mêmes corpus synthétiques. Les 62 tests Contacts/mémoire/diagnostics et les
+32 tests des autres consommateurs passent. Les durées locales observées ne constituent
+pas une comparaison de latence qualifiée ni une preuve de capacité distante.
+
+Ces compléments n'ajoutent ni cache, ni contrôle de dérive, ni configuration applicative.
+Ils ne clôturent pas la revue exhaustive, les coûts au repos, l'endurance ou la
+qualification des annuaires distants réels. Les preuves brutes restent dans les diagnostics
+locaux ; les changements frontend simultanés ne sont pas inclus dans cette attribution.
+
+Le scénario mixte existant a ensuite été exercé pendant dix minutes sur PostgreSQL
+éphémère : 9 880 lectures HTTP d'identité, 28 000 trames WebRTC et transfert d'un fichier
+de 4 Mio, avec renouvellement du bail encore vérifié à la fin. Le p95 HTTP observé est
+de 69,2 ms, le retard maximal de boucle de 228 ms et la croissance maximale RSS de
+50,9 Mio ; la mémoire finale dépasse la référence initiale de 12,0 Mio.
+Ces mesures concernent le processus de test chargé, avec d'autres travaux sur l'hôte.
+Elles ne qualifient ni un serveur au repos, ni une capacité distante, ni une endurance
+de production. L'échantillonnage mémoire et la durée étendue restent exclusivement
+dans le test, sans dispositif d'observation ajouté à l'application.

@@ -31,7 +31,7 @@
         class="col"
       />
       <span class="text-caption">{{ uploadName }} · {{ Math.round(uploadProgress * 100) }}% · {{ uploadDone }}/{{ uploadTotal }}</span>
-      <q-btn flat dense icon="close" :label="t('documents.cancelUpload')" @click="uploadController?.abort()" />
+      <q-btn outline color="primary"  dense icon="close" :label="t('documents.cancelUpload')" @click="uploadController?.abort()" />
     </div>
     <div v-if="loading" class="document-attachments__list">
       <q-skeleton type="rect" width="260px" height="160px" />
@@ -178,28 +178,19 @@
 
   <q-dialog v-model="audioOpen">
     <q-card v-if="previewAttachment" class="document-attachments__audio-dialog galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <div class="text-h6 ellipsis">{{ previewAttachment.name }}</div>
-        <q-space />
-        <q-btn flat round dense icon="download" :aria-label="t('documents.downloadAttachment', { name: previewAttachment.name })" @click="download(previewAttachment)" />
-        <RenameFileButton v-if="canRename(previewAttachment)" :key="`${resourceId}:${agentId}:${previewAttachment.id}`" :name="previewAttachment.name" :rename="name => renameAttachment(previewAttachment!, name)" />
-        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-      </q-card-section>
+      <DialogHeader :title="previewAttachment.name" :close-label="t('common.close')"><template #actions><q-btn flat round dense icon="download" :aria-label="t('documents.downloadAttachment', { name: previewAttachment.name })" @click="download(previewAttachment)" />
+<RenameFileButton v-if="canRename(previewAttachment)" :key="`${resourceId}:${agentId}:${previewAttachment.id}`" :name="previewAttachment.name" :rename="name => renameAttachment(previewAttachment!, name)" /></template></DialogHeader>
       <AudioResourcePlayer :source="audioSource(previewAttachment)" />
     </q-card>
   </q-dialog>
 
   <q-dialog v-model="removeOpen">
     <q-card class="document-attachments__confirm galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <div class="text-h6">{{ t('documents.removeAttachmentTitle') }}</div>
-        <q-space />
-        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-      </q-card-section>
+      <DialogHeader :title="t('documents.removeAttachmentTitle')" :close-label="t('common.close')" />
       <q-card-section class="galaris-dialog-body">{{ t('documents.removeAttachmentConfirm', { name: removalAttachment?.name }) }}<p v-if="removalInUse" class="text-warning q-mt-sm">{{ t('documents.attachmentInUse') }}</p></q-card-section>
       <q-separator />
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn v-close-popup flat :label="t('memory.cancel')" />
+        <q-btn outline color="primary" v-close-popup  :label="t('memory.cancel')" />
         <q-btn color="negative" :label="t('documents.remove')" :loading="removing" @click="confirmRemoval" />
       </q-card-actions>
     </q-card>
@@ -207,24 +198,17 @@
 </template>
 
 <script setup lang="ts" generic="T extends ResourceAttachment">
+import DialogHeader from './DialogHeader.vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import type { ComponentPublicInstance, ShallowRef } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
-import {
-  browserResourceKind,
-  formatFileSize,
-  FullscreenPreview,
-  ResourcePreviewBlock,
-  AudioResourcePlayer,
-  Model3dThumbnail,
-  Model3dViewer,
-  TextResourcePreview,
-  isolatedBrowserResourceUrl,
-  saveBlobAsResource,
-} from '@/core/util'
-import type { BrowserResourceKind, Model3dSource } from '@/core/util'
+import { browserResourceKind, isolatedBrowserResourceUrl, saveBlobAsResource, type BrowserResourceKind } from '../resourceViewer'
+import { formatFileSize } from '../fileSize'
+import { FullscreenPreview, AudioResourcePlayer, Model3dThumbnail, Model3dViewer, TextResourcePreview } from '../mediaViews'
+import ResourcePreviewBlock from './ResourcePreviewBlock.vue'
+import type { Model3dSource } from '../model3d'
 import type { AttachmentSource, ResourceAttachment } from '../resourceAttachments'
 import { findResourceViewer, type ResourceViewerSource } from '../resourceViewers'
 import type { ContextAction } from '../contextActions'

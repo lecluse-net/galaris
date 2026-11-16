@@ -9,7 +9,7 @@ from sqlalchemy.dialects.postgresql import aggregate_order_by
 from sqlalchemy.sql.elements import ColumnElement
 
 from core.database import get_db
-from .document_contracts import AcquiredDocumentEvidence
+from .document_contracts import AcquiredDocumentEvidence, same_source_content_version
 from .models import LLMDocumentAnalysis
 
 
@@ -76,7 +76,7 @@ async def acquired_document_evidence(
         current = descriptor.model_dump(
             include={"revision", "etag", "checksum", "modified_at", "size"}, exclude_none=True
         )
-        if version and version != current:
+        if version and not same_source_content_version(version, current):
             continue
         output = row.output or {}
         raw_passages = row.checkpoint.get("source_passages")

@@ -7,7 +7,7 @@
         <div class="current-run-toolbar q-mt-xs">
           <span class="text-caption text-grey-7 cursor-pointer" @click="emit('copyId', run.id)">{{ shortId(run.id) }}</span>
           <div class="current-run-actions">
-            <q-btn v-if="canOperateRuns" icon="refresh" :label="t('processes.refresh')" @click="refreshRun" />
+            <q-btn color="primary" v-if="canOperateRuns" icon="refresh" :label="t('processes.refresh')" @click="refreshRun" />
             <q-btn v-if="canAnalyze" color="secondary" icon="analytics" :label="t('processes.analyze')" @click="emit('analyze')" />
             <q-btn v-if="canOperateRuns && ['error', 'cancelled'].includes(run.status)" color="primary" icon="replay" :label="t('processes.retry')" @click="emit('retry')" />
             <q-btn v-if="canOperateRuns && run.service_code !== 'galaris' && !terminal(run.status)" color="negative" icon="cancel" :label="t('processes.cancel')" @click="emit('cancel')" />
@@ -22,9 +22,9 @@
   </q-card-section>
   <q-separator />
   <q-card-section class="q-gutter-md">
-    <q-banner v-if="run.error_message" class="bg-red-1 text-negative">{{ run.error_code }} — {{ run.error_message }}</q-banner>
+    <q-banner v-if="run.error_message" class="bg-solaire-red-light text-negative">{{ run.error_code }} — {{ run.error_message }}</q-banner>
     <div v-if="run.engine_metadata.failed_node" class="text-caption text-negative">{{ t('processes.failedNode') }} : {{ run.engine_metadata.failed_node }}</div>
-    <q-banner v-if="run.engine_metadata.remote_may_continue" class="bg-orange-1 text-warning">{{ t('processes.remoteMayContinue') }}</q-banner>
+    <q-banner v-if="run.engine_metadata.remote_may_continue" class="bg-solaire-orange-light text-warning">{{ t('processes.remoteMayContinue') }}</q-banner>
     <template v-if="analysis">
       <q-separator />
       <div class="text-subtitle2">{{ t('processes.summary') }}</div>
@@ -35,7 +35,7 @@
       <q-separator />
       <div class="text-subtitle2">{{ t('processes.linkedTasks') }}</div>
       <div class="linked-task-actions">
-        <q-btn v-for="taskId in canReadTasks ? run.task_ids : []" :key="taskId" flat icon="task_alt" :label="taskResourceUri(taskId)" :to="{ path: '/task', query: { task_id: taskId } }" />
+        <q-btn outline color="primary" v-for="taskId in canReadTasks ? run.task_ids : []" :key="taskId"  icon="task_alt" :label="taskResourceUri(taskId)" :to="{ path: '/task', query: { task_id: taskId } }" />
       </div>
     </template>
     <template v-if="run.llm_calls?.length">
@@ -46,7 +46,7 @@
           <q-item-section avatar><q-icon name="psychology" color="secondary" /></q-item-section>
           <q-item-section>
             <q-item-label class="process-llm-title">
-              <q-badge color="indigo-7" outline>{{ purposeLabel(call) }}</q-badge>
+              <q-badge color="solaire-iris" outline>{{ purposeLabel(call) }}</q-badge>
               <span>{{ call.requested_model }}</span>
             </q-item-label>
             <q-item-label caption>{{ call.provider_name }} · {{ statusLabel(call.status) }} · {{ formatDuration(call.duration) }}</q-item-label>
@@ -55,7 +55,7 @@
           <q-item-section side>
             <div class="process-llm-metrics">
               <q-badge
-                color="blue-grey-6"
+                color="solaire-gray"
                 tabindex="0"
                 :title="tokenSummary(call)"
                 :aria-label="tokenSummary(call)"
@@ -63,7 +63,7 @@
                 <q-icon name="title" size="xs" class="q-mr-xs" />
                 {{ formatTokenCount(call.output_tokens) }}
               </q-badge>
-              <q-badge color="purple">
+              <q-badge color="solaire-violet">
                 <q-icon name="attach_money" size="xs" class="q-mr-xs" />
                 {{ formatCost(call.cost) }}
               </q-badge>
@@ -130,7 +130,7 @@ function purposeLabel(call: ProcessLLMCall): string {
 function statusLabel(status: string): string { const key = `processes.statuses.${status}`; return te(key) ? t(key) : status }
 function statusColor(status: string): string { return ({ success: 'positive', error: 'negative', cancelled: 'grey', running: 'primary', waiting: 'orange', queued: 'blue-grey', cancelling: 'warning', unknown: 'dark' } as Record<string, string>)[status] || 'grey' }
 function runStatusIcon(status: string): string { return ({ success: 'check_circle', error: 'error', cancelled: 'cancel', running: 'play_circle', waiting: 'hourglass_top', queued: 'schedule', cancelling: 'pending', unknown: 'help' } as Record<string, string>)[status] || 'help' }
-function runHeaderClass(status: string): string { return ({ success: 'bg-positive-1', error: 'bg-negative-1', running: 'bg-blue-1', waiting: 'bg-orange-1' } as Record<string, string>)[status] || 'bg-grey-1' }
+function runHeaderClass(status: string): string { return ({ success: 'bg-positive-1', error: 'bg-negative-1', running: 'bg-solaire-blue-light', waiting: 'bg-solaire-orange-light' } as Record<string, string>)[status] || 'bg-grey-1' }
 function terminal(status: string): boolean { return ['success', 'error', 'cancelled'].includes(status) }
 </script>
 
@@ -145,8 +145,8 @@ function terminal(status: string): boolean { return ['success', 'error', 'cancel
 .current-run-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .bg-positive-1 { background-color: rgba(33, 186, 69, 0.1); }
 .bg-negative-1 { background-color: rgba(193, 0, 21, 0.1); }
-.bg-blue-1 { background-color: rgba(25, 118, 210, 0.1); }
-.bg-orange-1 { background-color: rgba(242, 192, 55, 0.15); }
+.bg-solaire-blue-light { background-color: rgba(25, 118, 210, 0.1); }
+.bg-solaire-orange-light { background-color: rgba(242, 192, 55, 0.15); }
 @media (max-width: 1023px) {
   .current-run-toolbar { align-items: flex-start; flex-direction: column; }
   .current-run-actions { justify-content: flex-start; width: 100%; }

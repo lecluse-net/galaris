@@ -7,7 +7,7 @@
     <q-spinner v-if="loading" color="primary" />
     <q-banner v-else-if="failed" role="alert">
       {{ t('harnesses.policy.error') }}
-      <template #action><q-btn flat :label="t('common.retry')" @click="load" /></template>
+      <template #action><q-btn outline color="primary"  :label="t('common.retry')" @click="load" /></template>
     </q-banner>
     <HarnessPipelineSettings v-else :configurations="configurations" />
   </div>

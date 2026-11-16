@@ -54,11 +54,15 @@ async def _rename_constraints_and_indexes(session: AsyncSession) -> None:
     for table, name in constraints:
         target = _schema_name(str(name))
         if target != name:
+            # Catalog identifiers and the derived target are double-quoted with embedded quotes escaped.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             await session.execute(text(f"ALTER TABLE public.{_quote(str(table))} RENAME CONSTRAINT {_quote(str(name))} TO {_quote(target)}"))
     # Constraint-backed indexes were already renamed with their constraint.
     for name in await session.scalars(text("SELECT indexname FROM pg_indexes WHERE schemaname='public' ORDER BY indexname")):
         target = _schema_name(str(name))
         if target != name:
+            # Catalog identifiers and the derived target pass through the same identifier escaping.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             await session.execute(text(f"ALTER INDEX public.{_quote(str(name))} RENAME TO {_quote(target)}"))
 
 
@@ -78,10 +82,14 @@ async def rename_services(session: AsyncSession, _transitions: SchemaTransitionS
             continue
         if new in tables:
             raise ValueError(f"Service rename refused: both {old} and {new} exist")
+        # Both identifiers come from the fixed _TABLES mapping and are quoted.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"ALTER TABLE public.{_quote(old)} RENAME TO {_quote(new)}"))
         # SERIAL defaults and sequence ownership must retain their current values.
         sequence = await session.scalar(text("SELECT to_regclass(:name)::text"), {"name": f"public.{old}_id_seq"})
         if sequence is not None:
+            # Sequence names derive only from the fixed _TABLES mapping and are quoted.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             await session.execute(text(f"ALTER SEQUENCE public.{_quote(old + '_id_seq')} RENAME TO {_quote(new + '_id_seq')}"))
         tables.remove(old)
         tables.add(new)
@@ -91,6 +99,8 @@ async def rename_services(session: AsyncSession, _transitions: SchemaTransitionS
             "AND table_name=:table AND column_name=:column"), {"table": table, "column": new})
         if exists:
             raise ValueError("Service rename refused: both legacy and destination columns exist")
+        # Catalog table names and allowlisted column names are escaped as SQL identifiers.
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         await session.execute(text(f"ALTER TABLE public.{_quote(table)} RENAME COLUMN {_quote(old)} TO {_quote(new)}"))
     await _rename_constraints_and_indexes(session)
     if "services" in tables:
@@ -114,9 +124,15 @@ async def rename_services(session: AsyncSession, _transitions: SchemaTransitionS
             await session.execute(text("UPDATE public.connection_params SET param_name=:new WHERE param_name=:old"), {"old": old, "new": new})
     for table in ("service_function_state", "connection_function_state"):
         if table in tables:
+            # Only the two fixed table names above are interpolated, with identifier escaping.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             await session.execute(text(f"UPDATE public.{_quote(table)} SET function_name='service_admin' || substr(function_name,11) "
                 "WHERE function_name LIKE 'tool\\_admin\\_%' ESCAPE '\\'"))
+            # The table is allowlisted and quoted; all values are fixed SQL literals.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             await session.execute(text(f"UPDATE public.{_quote(table)} SET function_name='services_list' WHERE function_name='tools_list'"))
+            # The table is allowlisted and quoted; all values are fixed SQL literals.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             await session.execute(text(f"UPDATE public.{_quote(table)} SET function_name='agent_service_list' WHERE function_name='agent_tool_list'"))
     if "privileges" in tables:
         for old, new in (("TOOL_ACCESS", "SERVICE_ACCESS"), ("TOOL_EDIT", "SERVICE_EDIT")):

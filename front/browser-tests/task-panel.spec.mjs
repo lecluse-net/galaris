@@ -22,6 +22,25 @@ async function panel(page, items, total = items.length, activity = [], privilege
 const scrolling = page => page.locator('.agent-tasks-scroll .q-scrollarea__container')
 const bottomGap = page => scrolling(page).evaluate(node => node.scrollHeight - node.clientHeight - node.scrollTop)
 
+test('a late message boundary preserves an open task detail but a room change closes it', async ({ page }) => {
+  const item = { ...task(1), execution_result: result, plan: null, dispatcher_result: null, llm_calls: [] }
+  await jsonRoute(page, '**/api/tasks/task-1', item)
+  await jsonRoute(page, '**/api/tasks/task-1/children', [])
+  await jsonRoute(page, '**/api/tasks/task-1/budget', { task_id: item.id, limits: {}, usage: {}, exceeded: false })
+  await jsonRoute(page, '**/api/chat/rooms/room-b/tasks?*', { items: [], total: 0, page: 1, page_size: 10 })
+  await panel(page, [item])
+  await page.locator('.agent-task-row').getByRole('button', { name: 'Details', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('Task 1')
+  await page.clock.install()
+  await page.evaluate(() => window.testApp.setProps({ fromMessageId: 'message-new-boundary' }))
+  await page.clock.runFor(1000)
+  await expect(dialog).toBeVisible()
+  await expect(dialog).toContainText('Task 1')
+  await page.evaluate(() => window.testApp.setProps({ roomId: 'room-b' }))
+  await expect(dialog).toHaveCount(0)
+})
+
 for (const [action, label, initial, next] of [
   ['run', 'RUN', { status: 'CREATE' }, { status: 'EXEC' }],
   ['retry', 'Retry', { status: 'ERROR' }, { status: 'EXEC' }],

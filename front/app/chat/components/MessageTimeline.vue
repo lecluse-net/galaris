@@ -85,9 +85,9 @@
             v-if="entry.message && (canReadMessage(entry.message) || (allowReply && !entry.message.is_mine))"
             class="message-actions"
           >
-            <q-btn
+            <q-btn outline color="primary"
               v-if="canReadMessage(entry.message)"
-              flat
+
               dense
               no-caps
               :icon-right="speechPlayingMessageId === entry.message.id ? 'stop_circle' : 'volume_up'"
@@ -98,9 +98,9 @@
               class="message-action"
               @click="toggleMessageSpeech(entry.message)"
             />
-            <q-btn
+            <q-btn outline color="primary"
               v-if="allowReply && !entry.message.is_mine"
-              flat
+
               dense
               no-caps
               icon-right="reply"
@@ -195,8 +195,8 @@
                 @loaded="storeMarkdownContent"
               />
               <div class="attachment-actions">
-                <q-btn
-                  flat
+                <q-btn outline color="primary"
+
                   dense
                   no-caps
                   :href="attachmentStandaloneHref(file)"
@@ -343,8 +343,9 @@ import SafeMessageContent from './SafeMessageContent.vue'
 import InteractionChoice from './InteractionChoice.vue'
 import InternalAgentAvatar from './InternalAgentAvatar.vue'
 import InternalParticipantAvatar from './InternalParticipantAvatar.vue'
-import AgentExecutionTrace from './AgentExecutionTrace.vue'
-import MarkdownAttachmentPreview from './MarkdownAttachmentPreview.vue'
+import { defineAsyncView } from '@/core/util/facade'
+const AgentExecutionTrace = defineAsyncView(() => import('./AgentExecutionTrace.vue'))
+const MarkdownAttachmentPreview = defineAsyncView(() => import('./MarkdownAttachmentPreview.vue'))
 import TimelineWindow from './TimelineWindow.vue'
 import MessageResourcePreviews from './MessageResourcePreviews.vue'
 import VoiceTranscriptionStatus from './VoiceTranscriptionStatus.vue'
@@ -1032,14 +1033,14 @@ watch(
   },
 )
 onMounted(() => {
-  window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, onMediaSessionChanged)
+  window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, onSessionEvent)
   timelineResizeObserver = new ResizeObserver(() => emit('layoutChanged'))
   if (timelineElement.value) timelineResizeObserver.observe(timelineElement.value)
   observeMessageVisibility()
   observeAttachmentVisibility()
 })
 onBeforeUnmount(() => {
-  window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, onMediaSessionChanged)
+  window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, onSessionEvent)
   timelineResizeObserver?.disconnect()
   timelineResizeObserver = null
   messageVisibilityObserver?.disconnect()
@@ -1056,6 +1057,7 @@ onBeforeUnmount(() => {
   }
   speechContext = null
 })
+function onSessionEvent(): void { void onMediaSessionChanged().catch(error => console.error('Session refresh failed', error)) }
 </script>
 <style scoped>
 .model3d-attachment { display: block; width: 260px; max-width: 100%; height: 180px; overflow: hidden; border-radius: 8px; }

@@ -1,3 +1,4 @@
+import { openCustomService, addServiceProtocol } from '../services.mjs'
 import { notificationPrompt } from '../notification-prompt.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
@@ -57,7 +58,7 @@ for (const mobile of [false, true]) {
     await pageErrors.settle()
     await page.goto('/services')
     if (mobile) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }))
-    await page.getByRole('button', { name: 'Nouvel outil', exact: true }).click()
+    await openCustomService(page)
     const editor = page.getByRole('dialog').first()
     await editor.getByLabel('Nom technique *', { exact: true }).fill(code)
     await editor.getByLabel('Libellé *', { exact: true }).fill('Synthetic ServiceAdmin candidate')
@@ -65,7 +66,7 @@ for (const mobile of [false, true]) {
     await editor.getByLabel('Nom *', { exact: true }).fill('token')
     await editor.getByRole('combobox', { name: 'Type', exact: true }).press('ArrowDown')
     await page.getByRole('option', { name: 'password', exact: true }).click()
-    await editor.getByRole('switch', { name: 'Activer MCP', exact: true }).check()
+    await addServiceProtocol(page, 'HTTP')
     await editor.getByLabel('URL *', { exact: true }).fill('http://127.0.0.1:8000/api/__test/mcp/')
     await editor.getByRole('combobox', { name: "Type d'auth", exact: true }).press('ArrowDown')
     await page.getByRole('option', { name: 'bearer — Authorization: Bearer', exact: true }).click()
@@ -126,7 +127,7 @@ for (const mobile of [false, true]) {
     expect(revoked.function.effective).toBe(false)
     await pageErrors.settle()
     await page.reload()
-    await page.getByRole('tab', { name: 'Services personnalisés', exact: true }).click()
+    // Services share one catalogue of cards.
     await expect(page.getByText(code, { exact: true })).toBeVisible()
     const current = await allowed('service_admin_get', { service_id: toolId })
     const blocked = await invoke('service_admin_delete', { service_id: toolId, expected_version: current.version })
@@ -136,7 +137,7 @@ for (const mobile of [false, true]) {
     await allowed('service_admin_delete', { service_id: toolId, expected_version: detached.version })
     await pageErrors.settle()
     await page.reload()
-    await page.getByRole('tab', { name: 'Services personnalisés', exact: true }).click()
+    // Services share one catalogue of cards.
     await expect(page.getByText(code, { exact: true })).toHaveCount(0)
     expect([...errors, ...pageErrors()]).toEqual([])
   })

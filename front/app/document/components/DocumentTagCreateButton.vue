@@ -1,5 +1,5 @@
 <template>
-  <q-btn :flat="!!parentId" :outline="!parentId" dense :round="!!parentId" :no-caps="!parentId"
+  <q-btn color="primary"  :outline="!parentId" dense :round="!!parentId" :no-caps="!parentId"
     icon="create_new_folder" :label="parentId ? undefined : t('documents.library.newFolderName')" :size="parentId ? 'sm' : undefined" :disable="busy"
     :aria-label="parentId ? t('documents.library.newSubtag', { name: parentName }) : t('documents.library.newTag')" @click.stop="create">
     <q-tooltip>{{ parentId ? t('documents.library.newSubtag', { name: parentName }) : t('documents.library.newTag') }}</q-tooltip>

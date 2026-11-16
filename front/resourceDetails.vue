@@ -17,7 +17,7 @@
     <div v-if="loading" class="flex flex-center q-pa-xl"><q-spinner color="primary" size="42px" /></div>
     <q-banner v-else-if="error" class="q-ma-md">
       {{ error }}
-      <template #action><q-btn flat :label="t('common.retry')" @click="retry++" /></template>
+      <template #action><q-btn outline color="primary" :label="t('common.retry')" @click="retry++" /></template>
     </q-banner>
     <TopicDetail v-else-if="target.kind === 'topic'" :key="target.id" :topic-id="target.id" embedded @loaded="resolvedTitle = $event" />
     <DocumentFolderCollection v-else-if="target.kind === 'document_folder'" :key="target.id + ':' + target.agentId" :folder-id="target.id" :agent-id="target.agentId" />
@@ -63,7 +63,7 @@
       <q-card-section>{{ t('task.deleteMessage', { label: taskToDelete?.label }) }}</q-card-section>
       <q-banner v-if="deleteError" class="q-ma-md">{{ deleteError }}</q-banner>
       <q-card-actions align="right">
-        <q-btn v-close-popup flat :label="t('common.cancel')" />
+        <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" />
         <q-btn color="negative" :label="t('common.delete')" :loading="deleting" @click="deleteTask" />
       </q-card-actions>
     </q-card>
@@ -90,7 +90,7 @@ import type { LLMCall } from '@/app/llm'
 const TaskDetail = defineAsyncView(async () => (await import('@/app/task')).TaskDetail)
 const TopicDetail = defineAsyncView(async () => (await import('@/app/topic')).TopicDetail)
 const DocumentFolderCollection = defineAsyncView(async () => (await import('@/app/document')).DocumentFolderCollection)
-const AgentPreview = defineAsyncView(async () => (await import('@/app/agent')).AgentPreview)
+const AgentPreview = defineAsyncView(async () => (await import('@/app/index')).AgentPreview)
 const ContactResourceDialog = defineAsyncView(async () => (await import('@/app/memory')).ContactResourceDialog)
 const ConnectionDialog = defineAsyncView(async () => (await import('@/app/connection')).ConnectionDialog)
 const GoalPreview = defineAsyncView(async () => (await import('@/app/goal')).GoalPreview)

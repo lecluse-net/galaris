@@ -413,6 +413,8 @@ async def test_conversion_checkpoint_resumes_only_missing_pages(tmp_path, monkey
 @pytest.mark.asyncio
 @pytest.mark.parametrize('kind', ['corrupt', 'encrypted'])
 async def test_unreadable_files_do_not_call_model(tmp_path, kind):
+    from core.document import DocumentPreparationError
+
     path = tmp_path / 'source.pdf'
     if kind == 'encrypted':
         writer = PdfWriter(); writer.add_blank_page(width=200, height=100)
@@ -425,6 +427,16 @@ async def test_unreadable_files_do_not_call_model(tmp_path, kind):
         return JSONResponse({})
     response = await route_documents(body(path), LLM(input_file=True), send)
     assert response.status_code == 422 and not calls
+    with pytest.raises(DocumentPreparationError) as caught:
+        await prepare_document(path, path.name, "application/pdf", tmp_path / "diagnostic")
+    failure = caught.value.failure
+    assert failure.exit_code == 2
+    assert failure.exception_type == "PdfiumError"
+    assert failure.converter_code == (4 if kind == "encrypted" else 3)
+    assert failure.locations and all("/" not in location and location.rpartition(":")[2].isdigit()
+        for location in failure.locations)
+    assert "synthetic-password" not in failure.model_dump_json()
+    assert str(path) not in failure.model_dump_json()
 
 
 @pytest.mark.asyncio

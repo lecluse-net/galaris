@@ -17,7 +17,7 @@ export interface GoalRecurrence {
 export interface GoalAgendaEvent {
   id: string; goal_id: string; title: string; scheduled_at: string; timezone: string
   projected: boolean; state: string; cycle_id: string | null; sequence: number | null
-  task_uri: string | null; review_task_uri: string | null
+  task_uri: string | null
   started_at: string | null; finished_at: string | null; verdict: GoalVerdict | null; reason: string | null
 }
 
@@ -117,8 +117,6 @@ export interface GoalCycle {
   trigger_kind: GoalCycleTriggerKind
   source_cycle_id: string | null
   task_id: string | null
-  review_task_id?: string | null
-  review_task_uri?: string | null
   task_label: string | null
   task_status: string | null
   task_cost: number

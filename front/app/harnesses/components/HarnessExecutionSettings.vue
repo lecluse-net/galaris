@@ -5,7 +5,7 @@
       <q-spinner v-if="loading" color="primary" />
       <q-banner v-else-if="failed" role="alert">
         {{ t('harnesses.policy.error') }}
-        <template #action><q-btn flat :label="t('common.retry')" @click="load" /></template>
+        <template #action><q-btn outline color="primary"  :label="t('common.retry')" @click="load" /></template>
       </q-banner>
       <q-form v-else-if="selected && policy" @submit="save">
         <p>{{ t('harnesses.policy.hint') }}</p>

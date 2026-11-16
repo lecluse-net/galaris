@@ -15,7 +15,7 @@
         <q-linear-progress v-if="busy" indeterminate color="primary" />
         <q-banner v-if="loadError" role="alert">
           {{ t('documents.loadError') }}
-          <template #action><q-btn outline :label="t('common.retry')" @click="retry" /></template>
+          <template #action><q-btn color="primary" outline :label="t('common.retry')" @click="retry" /></template>
         </q-banner>
         <DocumentEditor v-if="current" :key="`${currentAgentId}:${current.id}`" ref="editor"
           :document-id="current.id" :agent-id="currentAgentId" :initial-document="current" :editable="editable"

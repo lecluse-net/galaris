@@ -45,6 +45,8 @@ def _pg(program: str, *arguments: str, database: str | None = None) -> str:
         environment[f"PG{suffix}"] = os.environ.get(f"POSTGRES_{suffix}", default)
     environment["PGCONNECT_TIMEOUT"] = "10"
     result = subprocess.run(
+        # PostgreSQL clients receive separate argv elements with shell=False; configuration is never shell code.
+        # nosemgrep: python.lang.security.audit.dangerous-subprocess-use-tainted-env-args.dangerous-subprocess-use-tainted-env-args
         [program, "--dbname", database or os.environ.get("POSTGRES_DB", "galaris"), *arguments],
         env=environment, capture_output=True, text=True, check=False,
     )

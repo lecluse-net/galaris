@@ -15,10 +15,10 @@
         </q-btn>
         <input ref="fileInput" type="file" accept="image/*,.svg" hidden :aria-label="t('libraryIcons.uploadIcon')" @change="upload" />
       </div>
-      <div v-if="error" role="alert" class="q-my-sm">{{ error }} <q-btn v-if="loadError" flat dense :label="t('common.retry')" @click="load" /></div>
+      <div v-if="error" role="alert" class="q-my-sm">{{ error }} <q-btn outline color="primary" v-if="loadError"  dense :label="t('common.retry')" @click="load" /></div>
       <q-linear-progress v-if="loading" indeterminate />
       <div v-if="family === 'emoji'" role="group" :aria-label="t('libraryIcons.iconCategories')" class="tag-icon-categories q-my-sm">
-        <q-btn v-for="group in groups" :key="group.id" flat dense no-caps size="sm" :icon="group.icon"
+        <q-btn outline color="primary" v-for="group in groups" :key="group.id"  dense no-caps size="sm" :icon="group.icon"
           :label="t(`libraryIcons.iconGroups.${group.id}`)" :aria-pressed="category === group.id"
           :class="{ 'tag-icon-category--active': category === group.id }" @click="category = group.id" />
       </div>
@@ -44,7 +44,7 @@ import { useI18n } from 'vue-i18n'
 import { QVirtualScroll, useQuasar } from 'quasar'
 interface UploadedTagIcon { id: string; name: string; data: string }
 import { loadTagEmojiIcons, type TagEmojiIcon } from '../tagEmojiCatalog'
-import { solaireColors } from '@/core/util'
+import { solaireColors } from '../solaire'
 import DocumentTagIcon from './LibraryIcon.vue'
 const open = defineModel<boolean>({ required: true })
 const props = withDefaults(defineProps<{ busy: boolean; save: (icon: string | null) => Promise<boolean>; currentIcon?: string | null; defaultIcon?: string; document?: boolean; emojiOnly?: boolean; target?: boolean | string | Element; loadIcons?: () => Promise<UploadedTagIcon[]>; uploadIcon?: (name: string, data: string) => Promise<UploadedTagIcon> }>(), { target: true })

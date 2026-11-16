@@ -431,6 +431,33 @@ async def test_memory_extraction_retries_invalid_json_before_success(
 
 
 @pytest.mark.asyncio
+async def test_live_extraction_checks_reference_access_before_persisting_a_decision(db, memory_extraction_storage, monkeypatch):
+    from functools import partial
+    from app.memory import validate_atomic_fact_references
+
+    owner = await _owner(db)
+    outputs = iter([{"subject_ref": f"memory://{uuid4()}", "predicate": "meeting_day", "value": "Friday"},
+                    {"predicate": "meeting_day", "value": "Friday"}])
+    calls = []
+
+    async def infer(**kwargs):
+        calls.append(kwargs)
+        return StructuredInferenceResult(output=json.dumps({"operations": [{"action": "CREATE",
+            "fact": next(outputs), "retention_reason": "recurring_constraint", "future_utility": "high"}]}),
+            cost=0.01, messages=[])
+
+    monkeypatch.setattr(memory_extraction, "run_text", infer)
+    prepared, cost = await run_memory_extraction(llm=cast(LLM, object()), use_decision_profile=False,
+        input_data=MemoryExtractionInput(source_kind="task", topic={"title": "Workshop"},
+            current=[MemoryExtractionMessage(speaker_name="Synthetic agent", speaker_kind="AI",
+                text="The recurring workshop meeting is on Friday.")]),
+        system_prompt=MEMORY_EXTRACTION_SYSTEM_PROMPT, task_id=None, agent_id=owner.id,
+        language_instruction="", fact_validator=partial(validate_atomic_fact_references, agent_id=owner.id))
+    assert len(calls) == 2 and cost == pytest.approx(0.02)
+    assert prepared.decision.operations[0].fact.subject_ref == ""
+
+
+@pytest.mark.asyncio
 async def test_memory_extraction_fails_when_every_json_attempt_is_invalid(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

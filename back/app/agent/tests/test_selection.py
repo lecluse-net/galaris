@@ -97,14 +97,25 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
         assert {item['id'] for item in response.json()} == set(expected)
         ordered_ids = [item['id'] for item in response.json() if item['id'] in ids]
         assert ordered_ids == [agent_id for agent_id in reversed(ids) if agent_id in expected]
-        assert all(set(item) == {'id', 'label', 'has_avatar', 'driver', 'teams'} for item in response.json())
+        assert all(set(item) == {'id', 'label', 'has_avatar', 'updated_at', 'driver', 'teams'} for item in response.json())
         by_id = {item['id']: item for item in response.json()}
+        if scope == 'management':
+            own_version = by_id[ids[0]]['updated_at']
+        else:
+            assert all(item['updated_at'] is None for item in response.json())
         assert by_id[ids[0]]['teams'] == []
         if ids[1] in expected:
             assert by_id[ids[1]]['teams'] == peer_teams
         if scope != 'teams':
             assert all(team['name'] != 'Outside team' for item in response.json() for team in item['teams'])
     assert (await client.get('/api/agents/selection', headers=admin)).status_code == 200
+    portrait = b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=")
+    assert (await client.post(f'/api/agents/{ids[0]}/avatar', headers=admin,
+                             files={'file': ('portrait.png', portrait, 'image/png')})).status_code == 204
+    reopened = (await client.get('/api/agents/selection', headers=human)).json()
+    current = next(item for item in reopened if item['id'] == ids[0])
+    assert current['has_avatar'] and current['updated_at'] is not None
+    assert current['updated_at'] != own_version
     for task_id in task_ids[1:]:
         assert (await client.get(f'/api/tasks/{task_id}', headers=human)).status_code == 404
         assert (await client.get(f'/api/tasks/{task_id}/budget', headers=human)).status_code == 404

@@ -4,7 +4,7 @@
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <div class="col">
           <div class="text-h6">{{ t('evaluation.capture.chooseDatasetFor', { mechanism: targetLabel }) }}</div>
-          <div class="text-caption text-blue-1">
+          <div class="text-caption text-solaire-blue">
             {{ t('evaluation.capture.chooseDatasetHelp', { source: sourceLabel }) }}
           </div>
         </div>
@@ -15,7 +15,7 @@
 
       <div class="galaris-dialog-body">
         <q-card-section v-if="datasetsLoading" class="flex flex-center q-pa-xl">
-          <q-spinner color="deep-purple" size="40px" />
+          <q-spinner color="solaire-iris" size="40px" />
         </q-card-section>
 
         <q-list v-else-if="datasets.length" separator>
@@ -27,7 +27,7 @@
             @click="captureInDataset(dataset)"
           >
             <q-item-section avatar>
-              <q-avatar color="deep-purple" text-color="white" icon="dataset" />
+              <q-avatar color="solaire-iris" text-color="white" icon="dataset" />
             </q-item-section>
             <q-item-section>
               <q-item-label>{{ dataset.name }}</q-item-label>
@@ -39,7 +39,7 @@
               </q-item-label>
             </q-item-section>
             <q-item-section side>
-              <q-spinner v-if="importingDatasetId === dataset.id" color="deep-purple" />
+              <q-spinner v-if="importingDatasetId === dataset.id" color="solaire-iris" />
               <q-icon v-else name="chevron_right" />
             </q-item-section>
           </q-item>
@@ -55,26 +55,22 @@
 
       <q-separator />
       <q-card-actions class="galaris-dialog-actions" align="between">
-        <q-btn
-          color="deep-purple"
-          flat
+        <q-btn outline
+          color="solaire-iris"
+
           icon="add"
           :label="t('evaluation.capture.createDataset')"
           :disable="importingDatasetId !== null"
           @click="openCreateDatasetDialog"
         />
-        <q-btn v-close-popup flat :label="t('common.close')" />
+        <q-btn outline color="primary" v-close-popup  :label="t('common.close')" />
       </q-card-actions>
     </q-card>
   </q-dialog>
 
   <q-dialog v-model="createDatasetDialog">
     <q-card class="create-dataset-dialog galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <div class="text-h6">{{ t('evaluation.capture.createDataset') }}</div>
-        <q-space />
-        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-      </q-card-section>
+      <DialogHeader :title="t('evaluation.capture.createDataset')" :close-label="t('common.close')" />
       <q-separator />
       <q-form class="galaris-dialog-form" @submit="createDatasetAndCapture">
         <q-card-section class="galaris-dialog-body">
@@ -86,7 +82,7 @@
           />
         </q-card-section>
         <q-card-actions align="right" class="q-px-md q-pb-md galaris-dialog-actions">
-          <q-btn v-close-popup flat :label="t('common.cancel')" />
+          <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
           <q-btn
             type="submit"
             color="primary"
@@ -103,6 +99,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import LabCaptureConfirmation from './LabCaptureConfirmation.vue'
 import { useCaptureConfirmation } from '../services/useCaptureConfirmation'
 import { computed, ref, watch } from 'vue'

@@ -58,8 +58,9 @@ watch(() => [folderId, agentId, query.value, pageSize.value], () => {
   else void load()
 }, { immediate: true })
 watch(page, () => { void load() })
-onMounted(() => window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, load))
-onBeforeUnmount(() => { request?.abort(); window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, load) })
+onMounted(() => window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, onSessionEvent))
+onBeforeUnmount(() => { request?.abort(); window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, onSessionEvent) })
+function onSessionEvent(): void { void load().catch(error => console.error('Session refresh failed', error)) }
 </script>
 <style scoped>
 .folder-collection { min-width: 0; }

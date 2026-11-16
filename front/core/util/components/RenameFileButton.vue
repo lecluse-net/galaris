@@ -6,17 +6,14 @@
   <q-dialog v-model="open">
     <q-card class="galaris-dialog-card" style="width: 480px; max-width: 95vw">
       <q-form @submit="save">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ title || t('fileRename.title') }}</div><q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="title || t('fileRename.title')" :close-label="t('common.close')" />
         <q-card-section>
           <q-input v-model="draft" outlined autofocus :label="nameLabel || t('fileRename.name')" :disable="saving"
             maxlength="500" :error="Boolean(validationError)" :error-message="validationError" />
           <q-banner v-if="error" class="q-mt-sm" role="alert">{{ error }}</q-banner>
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn v-close-popup outline :label="t('common.cancel')" />
+          <q-btn color="primary" v-close-popup outline :label="t('common.cancel')" />
           <q-btn color="primary" type="submit" :label="t('fileRename.save')" :loading="saving"
             :disable="Boolean(validationError) || draft.trim() === name" />
         </q-card-actions>
@@ -25,6 +22,7 @@
   </q-dialog>
 </template>
 <script setup lang="ts">
+import DialogHeader from './DialogHeader.vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'

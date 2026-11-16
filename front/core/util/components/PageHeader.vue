@@ -74,6 +74,9 @@ useMeta(() => title ? { title } : {})
 .page-header__title {
   min-width: 0;
   margin: 0;
+  font-size: 2rem;
+  font-weight: 100;
+  line-height: 1.1;
   overflow-wrap: anywhere;
 }
 
@@ -100,6 +103,10 @@ useMeta(() => title ? { title } : {})
 }
 
 @media (max-width: 1023.98px) {
+  .page-header { gap: 8px; }
+  .page-header__title-line { gap: 6px; }
+  .page-header__separator + br { display: none; }
+
   .page-header__identity {
     gap: 10px;
   }

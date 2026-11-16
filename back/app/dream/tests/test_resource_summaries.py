@@ -21,6 +21,38 @@ from core.util.resource_summary import change_percent, normalize_source, needs_s
 from app.document.tests.revision_helpers import revision_clock as revision_clock
 
 
+@pytest.mark.asyncio
+async def test_resource_summary_can_correct_invalid_structured_output(db, agents, memory_storage, monkeypatch, revision_clock):
+    from pydantic_ai.messages import ModelResponse, ToolCallPart
+    from pydantic_ai.models.function import FunctionModel
+    from pydantic_ai.usage import RequestUsage
+    from app.llm import structured_service
+    from app.dream.mechanisms.resource_summaries import document_summary_mechanism
+
+    item = await create("document", agents[0], "Synthetic source. " * 100)
+    await revision_clock.settle()
+    requests = []
+
+    def respond(messages, info):
+        requests.append(messages)
+        output = {"description": "", "keywords": []} if len(requests) == 1 else {
+            "description": "Synthetic reference", "keywords": ["reference"]}
+        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, output)])
+
+    model = FunctionModel(respond)
+    monkeypatch.setattr(model, "count_tokens", AsyncMock(return_value=RequestUsage(input_tokens=100)))
+    monkeypatch.setattr(structured_service, "build_model_for_llm", AsyncMock(return_value=model))
+    monkeypatch.setattr(structured_service, "resolve_reasoning_effort", AsyncMock(return_value=None))
+    monkeypatch.setattr("app.dream.mechanisms.resource_summaries.llm_service.get_profile_llm_for_agent_id",
+        AsyncMock(return_value=SimpleNamespace(cost_per_input_token=0, cost_per_output_token=0)))
+    claim = await document_summary_mechanism.claim_one()
+    assert claim is not None
+    prepared = await document_summary_mechanism.prepare(claim)
+    assert len(requests) == 2
+    assert prepared.payload["description"] == "Synthetic reference"
+    assert await document_summary_mechanism.apply(claim, prepared.payload) == 1
+
+
 def body(kind, text):
     return f"<p>{text}</p>" if kind == "document" else json.dumps(text)
 

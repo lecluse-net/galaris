@@ -1,4 +1,4 @@
-import { defineAsyncView } from '@/core/util'
+import { defineAsyncView } from '@/core/util/facade'
 
 export { default as TopicBadge } from './components/TopicBadge.vue'
 export { default as TopicFormDialog } from './components/TopicFormDialog.vue'
@@ -11,4 +11,5 @@ export type {
   TopicAssignmentChangeScope,
   TopicAssignmentSubjectKind,
 } from './types'
-export const TopicDetail = defineAsyncView(() => import('./components/TopicDetail.vue'))
+export const TopicDetail = /* @__PURE__ */ defineAsyncView(() => import('./components/TopicDetail.vue'))
+export { default as TopicAssignmentEditor } from './components/TopicAssignmentEditor.vue'

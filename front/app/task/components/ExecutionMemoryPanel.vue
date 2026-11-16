@@ -8,7 +8,7 @@
                 }) }}
             </div>
 
-            <q-banner v-if="context.error" rounded class="bg-red-1 text-negative q-mt-md">
+            <q-banner v-if="context.error" rounded class="bg-solaire-red-light text-negative q-mt-md">
                 <template #avatar><q-icon name="error_outline" /></template>
                 {{ t('task.memory.errorDetail') }}
             </q-banner>
@@ -25,7 +25,7 @@
                     />
                 </div>
                 <div v-else class="memory-empty q-mt-md">
-                    <q-icon name="inbox" size="md" color="blue-grey-5" />
+                    <q-icon name="inbox" size="md" color="solaire-gray" />
                     <span>{{ t('task.memory.noResult') }}</span>
                 </div>
 
@@ -58,8 +58,8 @@
                         <div class="row items-center justify-between q-col-gutter-sm">
                             <div class="row items-center col no-wrap">
                                 <q-avatar
-                                    color="blue-grey-1"
-                                    text-color="blue-grey-8"
+                                    color="solaire-gray-light"
+                                    text-color="solaire-gray"
                                     :icon="call.icon"
                                     size="36px"
                                 />
@@ -72,7 +72,7 @@
                             </div>
                             <q-chip
                                 dense
-                                :color="call.error ? 'red-1' : 'green-1'"
+                                :color="call.error ? 'solaire-red' : 'solaire-green'"
                                 :text-color="call.error ? 'negative' : 'positive'"
                                 :icon="call.error ? 'error_outline' : 'check_circle'"
                             >
@@ -120,7 +120,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { AIMessage } from '../types'
 import type { MemoryItemDetail, MemoryNodeKind } from '@/app/memory/types'
-import { memoryService } from '@/app/memory/services/memoryService'
+import { memoryService } from '@/app/memory/facade'
 import MemoryItemCard, { type MemoryItemPreview } from './MemoryItemCard.vue'
 
 interface MemoryContextTrace {

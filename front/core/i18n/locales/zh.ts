@@ -1,5 +1,6 @@
 export default {
   common: {
+    expand: '展开', collapse: '折叠', previousPage: '上一页', nextPage: '下一页',
     apiError: {
       network: "未收到可用的 HTTP 响应。浏览器未提供确切原因：连接中断、请求被阻止或服务器无法访问。请查看浏览器的网络面板和控制台以了解原因。",
       timeout: "在收到响应之前，请求已超过配置的超时时间。服务器端处理可能仍在进行。",

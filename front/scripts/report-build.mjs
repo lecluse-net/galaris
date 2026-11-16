@@ -1,5 +1,5 @@
 // Measure the entry's eager dependency graph separately from optional chunks.
-import { readFile } from 'node:fs/promises'
+import { readFile, readdir, stat } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { gzipSync } from 'node:zlib'
 import assert from 'node:assert/strict'
@@ -29,11 +29,15 @@ function visit(key, files, visited = new Set()) {
   for (const dependency of entry.imports ?? []) visit(dependency, files, visited)
 }
 for (const [key, entry] of Object.entries(manifest)) if (entry.isEntry) visit(key, eager)
+const measuredFiles = new Map()
+function measure(file) {
+  if (!measuredFiles.has(file)) measuredFiles.set(file, readFile(resolve(directory, file)).then(data => (
+    { file, bytes: data.length, gzip_bytes: gzipSync(data).length }
+  )))
+  return measuredFiles.get(file)
+}
 async function sizes(files) {
-  const rows = await Promise.all([...files].map(async file => {
-    const data = await readFile(resolve(directory, file))
-    return { file, bytes: data.length, gzip_bytes: gzipSync(data).length }
-  }))
+  const rows = await Promise.all([...files].map(measure))
   return {
     files: rows.length,
     bytes: rows.reduce((sum, row) => sum + row.bytes, 0),
@@ -43,12 +47,23 @@ async function sizes(files) {
 const all = new Set(Object.values(manifest).flatMap(entry => [entry.file, ...(entry.css ?? [])]))
 const startupByLocale = {}
 const routeAdditional = {}
-const routeGzipLimits = { chat: 200_000 }
+const routeTotalByLocale = {}
+// The chat journey includes the shell: keep the existing combined allowance
+// (460k initial code + 200k route code), independent of chunk placement.
+// Locale JSON is measured separately and remains bounded by startup budgets.
+const routeCodeGzipLimits = { chat: 660_000 }
 for (const [name, key] of Object.entries({ chat: 'app/chat/pages/index.vue' })) {
   if (!manifest[key]) continue
   const files = new Set()
   visit(key, files)
   routeAdditional[name] = await sizes(new Set([...files].filter(file => !eager.has(file))))
+  routeTotalByLocale[name] = {}
+  for (const locale of ['en', 'fr', 'zh']) {
+    const combined = new Set([...eager, ...files])
+    const catalog = `core/i18n/catalogs/${locale}.json`
+    if (manifest[catalog]) visit(catalog, combined)
+    routeTotalByLocale[name][locale] = await sizes(combined)
+  }
 }
 // Leave room above the measured baseline while rejecting accidental eager views.
 const startupGzipLimits = { en: 460_000, fr: 600_000, zh: 600_000 }
@@ -58,13 +73,31 @@ for (const locale of ['en', 'fr', 'zh']) {
   if (manifest[key]) visit(key, files)
   startupByLocale[locale] = await sizes(files)
 }
+// Inventory all packaged files, including fonts and public assets omitted from
+// Vite's JS/CSS graph. This is disk size, not a promise of network transfer size.
+const packaged = (await Promise.all((await readdir(directory, { recursive: true }))
+  .filter(file => !file.startsWith('.vite/'))
+  .map(async file => ({ file, info: await stat(resolve(directory, file)) }))))
+  .filter(({ info }) => info.isFile())
+  .map(({ file, info }) => ({ file, bytes: info.size }))
+const assetKinds = {}
+for (const { file, bytes } of packaged) {
+  const kind = /\.(?:woff2?|ttf|otf)$/.test(file) ? 'fonts' : file.endsWith('.js') ? 'js'
+    : file.endsWith('.css') ? 'css' : file.endsWith('.json') ? 'json'
+      : /\.(?:png|jpe?g|svg|ico|webp)$/.test(file) ? 'images' : 'other'
+  const group = assetKinds[kind] ??= { files: 0, bytes: 0 }
+  group.files++
+  group.bytes += bytes
+}
 console.log(JSON.stringify({
   metric: 'frontend_build_bytes',
   eager: await sizes(eager), all: await sizes(all),
   startup_by_locale: startupByLocale,
   startup_gzip_limits: startupGzipLimits,
   route_additional: routeAdditional,
-  route_gzip_limits: routeGzipLimits,
+  route_total_by_locale: routeTotalByLocale,
+  route_code_gzip_limits: routeCodeGzipLimits,
+  packaged_assets: { by_kind: assetKinds, largest: packaged.sort((a, b) => b.bytes - a.bytes).slice(0, 10) },
   note: 'Static imports and CSS; startup_by_locale also includes the selected language. Excludes other dynamic imports, fonts, API traffic and PWA precache downloads. Gzip is measured per file.',
 }, null, 2))
 const overruns = []
@@ -72,9 +105,10 @@ for (const [locale, limit] of Object.entries(startupGzipLimits)) {
   const measured = startupByLocale[locale].gzip_bytes
   if (measured > limit) overruns.push(`${locale} startup exceeds gzip budget: ${measured} > ${limit} bytes`)
 }
-for (const [route, measurement] of Object.entries(routeAdditional)) {
-  const limit = routeGzipLimits[route]
-  if (measurement.gzip_bytes > limit) overruns.push(`${route} route exceeds gzip budget: ${measurement.gzip_bytes} > ${limit} bytes`)
+for (const [route, locales] of Object.entries(routeTotalByLocale)) {
+  const measurement = locales.en
+  const limit = routeCodeGzipLimits[route]
+  if (measurement.gzip_bytes > limit) overruns.push(`${route} route code exceeds gzip budget: ${measurement.gzip_bytes} > ${limit} bytes`)
 }
 // Performance regressions belong in the quality gate, not the installation path.
 // Invalid or missing build artifacts still fail above in both modes.

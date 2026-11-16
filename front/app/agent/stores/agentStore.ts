@@ -1,3 +1,5 @@
+import { toRaw } from 'vue'
+import { withSessionScope, storeRequestFailure } from '@/core/util/facade'
 import { defineStore } from 'pinia'
 import { isAxiosError } from 'axios'
 import { sessionGeneration } from '@/core/api'
@@ -17,8 +19,8 @@ interface AgentState {
 const catalogueReads = new WeakMap<object, Map<string, symbol>>()
 
 function beginRead(store: object, catalogue: string): () => boolean {
-    const reads = catalogueReads.get(store) ?? new Map<string, symbol>()
-    catalogueReads.set(store, reads)
+    const reads = catalogueReads.get(toRaw(store)) ?? new Map<string, symbol>()
+    catalogueReads.set(toRaw(store), reads)
     const request = Symbol(catalogue)
     const generation = sessionGeneration()
     reads.set(catalogue, request)
@@ -29,7 +31,7 @@ function cancelled(error: unknown): boolean {
     return error instanceof DOMException && error.name === 'AbortError'
 }
 
-export const useAgentStore = defineStore('agent', {
+export const useAgentStore = withSessionScope(defineStore('agent', {
     state: (): AgentState => ({
         agents: [],
         titles: [],
@@ -68,6 +70,7 @@ export const useAgentStore = defineStore('agent', {
     actions: {
         // ==================== TITLES ====================
         async fetchTitles(force = false): Promise<void> {
+            const reportFailure = storeRequestFailure(this, 'fetchTitles')
             const current = beginRead(this, 'titles')
             this.loading = true
             this.error = null
@@ -80,11 +83,13 @@ export const useAgentStore = defineStore('agent', {
                 if (isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0)) this.titles = []
                 this.error = error
                 console.error('Error fetching titles:', error)
+                reportFailure(error)
             } finally {
                 if (current()) this.loading = false
             }
         },
         async fetchTitle(id: number): Promise<void> {
+            const reportFailure = storeRequestFailure(this, 'fetchTitle')
             this.loading = true
             this.error = null
             try {
@@ -93,6 +98,7 @@ export const useAgentStore = defineStore('agent', {
             } catch (error) {
                 this.error = error
                 console.error('Error fetching title:', error)
+                reportFailure(error)
             } finally {
                 this.loading = false
             }
@@ -148,6 +154,7 @@ export const useAgentStore = defineStore('agent', {
 
         // ==================== GROUPS ====================
         async fetchGroups(force = false): Promise<void> {
+            const reportFailure = storeRequestFailure(this, 'fetchGroups')
             const current = beginRead(this, 'groups')
             this.loading = true
             this.error = null
@@ -160,6 +167,7 @@ export const useAgentStore = defineStore('agent', {
                 if (isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0)) this.groups = []
                 this.error = error
                 console.error('Error fetching groups:', error)
+                reportFailure(error)
             } finally {
                 if (current()) this.loading = false
             }
@@ -218,6 +226,7 @@ export const useAgentStore = defineStore('agent', {
 
         // ==================== AGENTS ====================
         async fetchAgents(force = false): Promise<void> {
+            const reportFailure = storeRequestFailure(this, 'fetchAgents')
             const current = beginRead(this, 'agents')
             this.loading = true
             this.error = null
@@ -230,11 +239,13 @@ export const useAgentStore = defineStore('agent', {
                 this.agents = []
                 this.error = error
                 console.error('Error fetching agents:', error)
+                reportFailure(error)
             } finally {
                 if (current()) this.loading = false
             }
         },
         async fetchAgent(id: number): Promise<void> {
+            const reportFailure = storeRequestFailure(this, 'fetchAgent')
             this.loading = true
             this.error = null
             try {
@@ -243,6 +254,7 @@ export const useAgentStore = defineStore('agent', {
             } catch (error) {
                 this.error = error
                 console.error('Error fetching agent:', error)
+                reportFailure(error)
             } finally {
                 this.loading = false
             }
@@ -296,4 +308,4 @@ export const useAgentStore = defineStore('agent', {
             }
         }
     }
-})
+}), { flags: {"fetchTitles":"loading","fetchTitle":"loading","createTitle":"loading","updateTitle":"loading","deleteTitle":"loading","fetchGroups":"loading","createGroup":"loading","updateGroup":"loading","deleteGroup":"loading","fetchAgents":"loading","fetchAgent":"loading","createAgent":"loading","updateAgent":"loading","deleteAgent":"loading"} })

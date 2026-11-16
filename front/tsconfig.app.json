@@ -42,6 +42,8 @@
         "bridge/**/*.ts",
         "bridge/**/*.vue",
         "modules.ts",
+        "serviceParameterChoices.ts",
+        "taskDiagnostics.ts",
         "*.vue",
         "env.d.ts"
     ],

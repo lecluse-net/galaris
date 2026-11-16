@@ -19,7 +19,7 @@ defineProps<{
 
 <style scoped>
 .galaris-status-badge {
-  --galaris-status-color: #616161;
+  --galaris-status-color: var(--solaire-gray-accent);
 
   display: inline-flex;
   align-items: center;
@@ -45,7 +45,7 @@ defineProps<{
 }
 
 .galaris-status-badge--warning {
-  --galaris-status-color: #b45309;
+  --galaris-status-color: var(--solaire-orange-accent);
 }
 
 .galaris-status-badge--error {
@@ -53,6 +53,6 @@ defineProps<{
 }
 
 .galaris-status-badge--neutral {
-  --galaris-status-color: #616161;
+  --galaris-status-color: var(--solaire-gray-accent);
 }
 </style>

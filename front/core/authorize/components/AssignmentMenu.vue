@@ -17,6 +17,6 @@
 </template>
 
 <script setup lang="ts">
-import UserMenu from '@/core/user/components/UserMenu.vue'
+import { UserMenu } from '@/core/user'
 import RoleSwitcher from './RoleSwitcher.vue'
 </script>

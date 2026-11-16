@@ -44,7 +44,7 @@
                             @keyup.enter="onRenameSave"
                             @keyup.esc="onRenameCancel"
                         />
-                        <q-btn
+                        <q-btn :aria-label="$t('common.save')"
                             flat
                             round
                             dense
@@ -54,7 +54,7 @@
                             :loading="profileSaving"
                             @click="onRenameSave"
                         />
-                        <q-btn
+                        <q-btn :aria-label="$t('common.close')"
                             flat
                             round
                             dense
@@ -64,7 +64,7 @@
                         />
                     </template>
                     <template v-else>
-                        <q-btn
+                        <q-btn :aria-label="t('llm.profileAdd')"
                             flat
                             round
                             dense
@@ -75,7 +75,7 @@
                         >
                             <q-tooltip>{{ t('llm.profileAdd') }}</q-tooltip>
                         </q-btn>
-                        <q-btn
+                        <q-btn :aria-label="t('llm.profileEdit')"
                             flat
                             round
                             dense
@@ -86,7 +86,7 @@
                         >
                             <q-tooltip>{{ t('llm.profileEdit') }}</q-tooltip>
                         </q-btn>
-                        <q-btn
+                        <q-btn :aria-label="t('llm.profileDelete')"
                             flat
                             round
                             dense
@@ -145,7 +145,7 @@
                 </q-card-section>
 
                 <q-card-actions class="galaris-dialog-actions" align="right">
-                    <q-btn v-close-popup flat color="grey-8" :label="t('llm.profileCancel')" />
+                    <q-btn outline v-close-popup  color="grey-8" :label="t('llm.profileCancel')" />
                     <q-btn
                         unelevated
                         color="primary"

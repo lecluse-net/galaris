@@ -15,7 +15,7 @@
     <div v-else-if="error" class="model3d-viewer__status" role="alert">
       <q-icon name="view_in_ar" size="42px" />
       <span>{{ t(`model3d.errors.${error}`) }}</span>
-      <q-btn outline no-caps :label="t('model3d.retry')" @click="load" />
+      <q-btn color="primary" outline no-caps :label="t('model3d.retry')" @click="load" />
     </div>
     <div v-else class="model3d-viewer__tools" role="toolbar" :aria-label="t('fullscreenPreview.viewControls')">
       <q-btn flat round icon="center_focus_strong" :aria-label="t('model3d.reset')" @click="view?.reset()">

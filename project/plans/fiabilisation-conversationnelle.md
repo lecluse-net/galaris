@@ -1,7 +1,9 @@
 # Conversation — identité, qualité des contenus et qualification du parcours
 
-- Statut : `partial`
+- Statut : `in-progress`
 - Tri documentaire : 2026-11-14 ; campagnes historiques non rejouées.
+- Reprise : 2026-11-15, arrêt/reprise et parcours d'accueil/document/partage ;
+  périmètre et accord préalable décrits dans l'[index](README.md#campagne-engagée-le-15-novembre-2026).
 
 ## Contrats et preuves à réutiliser
 

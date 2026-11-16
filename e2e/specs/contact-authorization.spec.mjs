@@ -36,7 +36,7 @@ test(`${provider} setup creates the actual Service and preserves its configurati
   await expect(page.getByRole('switch', { name: 'Active', exact: true })).toBeChecked()
   const guide = page.getByRole('region', { name: 'Guide de configuration', exact: true })
   const created = page.waitForResponse(response => response.url().endsWith('/api/services') && response.request().method() === 'POST')
-  await page.getByRole('button', { name: `Créer l’outil ${provider}`, exact: true }).click()
+  await page.getByRole('button', { name: `Créer le service ${provider}`, exact: true }).click()
   const result = await created
   expect(result.ok(), await result.text()).toBeTruthy()
   const tool = await result.json()
@@ -50,7 +50,7 @@ test(`${provider} setup creates the actual Service and preserves its configurati
       password: { type: 'password', required: false, default: '' },
     } },
   })
-  await expect(guide.getByRole('link', { name: 'Ouvrir les outils et connexions', exact: true })).toBeVisible()
+  await expect(guide.getByRole('link', { name: 'Ouvrir les services et connexions', exact: true })).toBeVisible()
   // This agent has Chat, but no connection to this provider: no transport is tested.
   const reception = page.waitForResponse(response => response.url().endsWith(`/api/messenger/configuration/test?provider=${service}`))
   await page.getByRole('button', { name: 'Tester la réception', exact: true }).click()
@@ -78,15 +78,15 @@ test(`${provider} setup creates the actual Service and preserves its configurati
   await expect(page.getByRole('tab', { name: provider, exact: true })).toBeVisible()
   const checked = page.waitForResponse(response => response.url().endsWith('/api/services') && response.request().method() === 'GET')
   await withSidebarDismissal(page, () => page.getByRole('tab', { name: provider, exact: true }).click())
-  await expect(guide.getByRole('link', { name: 'Ouvrir les outils et connexions', exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: `Créer l’outil ${provider}`, exact: true })).toHaveCount(0)
+  await expect(guide.getByRole('link', { name: 'Ouvrir les services et connexions', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: `Créer le service ${provider}`, exact: true })).toHaveCount(0)
   const checkedResponse = await checked
   expect(checkedResponse.ok(), await checkedResponse.text()).toBeTruthy()
   const stored = await checkedResponse.json()
   expect(stored.filter(candidate => candidate.messenger_config?.service === service)).toHaveLength(1)
   await page.screenshot({ path: testInfo.outputPath(`${service}-setup-mobile.png`), fullPage: true, animations: 'disabled' })
   await guide.getByRole('link', { name: 'Configurer les comptes des agents', exact: true }).click()
-  await expect(page).toHaveURL(/\/tools\?tab=connections$/)
+  await expect(page).toHaveURL(/\/services\?tab=connections$/)
   await expect(page.getByRole('tab', { name: 'Connexions', exact: true })).toHaveAttribute('aria-selected', 'true')
   await errors.settle()
   expect(errors()).toEqual([])

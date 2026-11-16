@@ -92,7 +92,7 @@ for (const width of [390, 1440]) {
       await page.locator('.q-drawer__backdrop').click({ position: { x: width - 10, y: 200 } })
     }
     if (width >= 1024) {
-      await page.getByRole('complementary', { name: 'Outil', exact: true }).getByRole('button', { name: 'AgentAdmin', exact: true }).click()
+      await page.getByRole('complementary', { name: 'Service', exact: true }).getByRole('button', { name: 'AgentAdmin', exact: true }).click()
       const scope = page.getByRole('group', { name: 'Périmètre de AgentAdmin (services.management_scope)', exact: true })
       await expect(scope.getByRole('button', { name: "Gestion pour l'agent uniquement", exact: true })).toHaveCount(0)
       await scope.getByRole('button', { name: 'Gestion de niveau équipe', exact: true }).click()
@@ -104,8 +104,8 @@ for (const width of [390, 1440]) {
     }
     expect((await invoke(randomUUID(), 'Blocked synthetic mutation')).is_error).toBe(true)
     expect((await read()).job_title).toBe(`Synthetic approved ${fixture.agent_id}`)
-    const functionPanel = page.getByRole('region', { name: 'Fonctions et prompts des outils', exact: true })
-    await functionPanel.getByRole('complementary', { name: 'Outil', exact: true }).getByRole('button', { name: 'AgentAdmin', exact: true }).click()
+    const functionPanel = page.getByRole('region', { name: 'Fonctions et prompts des services', exact: true })
+    await functionPanel.getByRole('complementary', { name: 'Service', exact: true }).getByRole('button', { name: 'AgentAdmin', exact: true }).click()
     await expect(functionPanel.getByText('browser_open', { exact: true })).toHaveCount(0)
     const decision = width < 1024 ? functionPanel.getByRole('article', { name: 'agent_update', exact: true }) : functionPanel.locator('tr').filter({ hasText: 'agent_update' })
     await expect(decision).toContainText('Interdits')
@@ -139,7 +139,7 @@ for (const width of [390, 1440]) {
     }
     await page.getByRole('tab', { name: 'Autorisations', exact: true }).click()
     await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), `${operator.first_name} ${operator.last_name}`)
-    await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par outil', exact: true }), 'AgentAdmin')
+    await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par service', exact: true }), 'AgentAdmin')
     await page.getByRole('textbox', { name: 'Rechercher une fonction', exact: true }).fill('agent_update')
     const global = page.getByRole('group', { name: 'Global (tous): agent_update', exact: true })
     const local = page.getByRole('group', { name: 'Cette connexion: agent_update', exact: true })
@@ -174,7 +174,7 @@ for (const width of [390, 1440]) {
         connection_state: 'enabled', global_state: 'disabled', effective_state: 'enabled',
       })
       expect((await invoke(randomUUID(), 'UI allowed synthetic mutation')).is_error).toBe(false)
-      await page.getByRole('tab', { name: 'Outils', exact: true }).click()
+      await page.getByRole('tab', { name: 'Services', exact: true }).click()
       await page.getByRole('tab', { name: 'Autorisations', exact: true }).click()
       await expect(local.getByRole('button', { name: 'Activé', exact: true })).toHaveAttribute('aria-pressed', 'true')
     } finally { releaseFirst() }

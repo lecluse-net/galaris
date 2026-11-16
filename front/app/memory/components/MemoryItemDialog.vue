@@ -83,9 +83,9 @@
             <section class="memory-links-section" :aria-label="t('memory.links')">
                 <div class="row items-center justify-between q-mb-xs">
                   <div class="memory-section-title"><q-icon name="account_tree" />{{ t('memory.links') }}</div>
-                  <q-btn
+                  <q-btn outline
                     v-if="canEdit && !store.currentItem.source_managed && store.currentItem.access.can_write"
-                    flat
+
                     color="primary"
                     icon="add_link"
                     :label="t('memory.addLink')"
@@ -125,7 +125,7 @@
         <q-card-actions class="galaris-dialog-actions memory-detail-actions" v-if="store.currentItem" v-show="detailTab !== 'history'" align="right">
           <q-btn
             v-if="canEdit && store.currentItem.node_kind !== 'document' && !store.currentItem.source_managed && !store.currentItem.deletion_protected && (store.currentItem.access.can_write || store.currentItem.owner_agent_id === store.selectedAgentId)"
-            flat
+
             color="negative"
             icon="delete_forever"
             :label="t('memory.forget')"
@@ -162,6 +162,7 @@
     />
 </template>
 <script setup lang="ts">
+import { useFindingPresentation } from '../findingPresentation'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterLink } from 'vue-router'
@@ -180,7 +181,7 @@ import MemoryDreamActions from './MemoryDreamActions.vue'
 import MemoryGraphRelations from './MemoryGraphRelations.vue'
 import MemoryLinkDialog from './MemoryLinkDialog.vue'
 import MemoryFindingDialog from './MemoryFindingDialog.vue'
-import type { MemoryItem, MemoryItemDetail, MemoryGraphNode, MemoryGraphRelation, MemoryFinding, MemoryFindingKind, MemoryNodeKind, MemoryRelationType } from '../types'
+import type { MemoryItem, MemoryItemDetail, MemoryGraphNode, MemoryGraphRelation, MemoryFinding, MemoryNodeKind, MemoryRelationType } from '../types'
 
 const props = defineProps<{
   itemId: string
@@ -190,6 +191,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ close: []; changed: []; 'graph-neighbor': [id: string] }>()
 const { t, te, locale } = useI18n()
+const { findingIcon, findingColor, findingLabel } = useFindingPresentation()
 const $q = useQuasar(), privilegeStore = usePrivilegeStore()
 const store = props.state ?? reactive(useMemoryState({ detailsOnly: true }))
 const graphContext = computed(() => props.graphContext)
@@ -303,10 +305,10 @@ async function onDocumentMemoryUpdate(response: { data: { id: string } }): Promi
   }
 }
 
-websocket.onEvent('document', 'update', onDocumentMemoryUpdate)
+websocket.onEvent('document', 'update', onObservedEvent)
 onBeforeUnmount(() => {
   documentRefreshRequest++
-  websocket.offEvent('document', 'update', onDocumentMemoryUpdate)
+  websocket.offEvent('document', 'update', onObservedEvent)
 })
 watch([detailDialog, () => store.selectedAgentId, editingId], () => { documentRefreshRequest++ })
 
@@ -353,24 +355,6 @@ function memoryTitle(memoryId: string): string {
   return linkedItemTitles[memoryId]
     ?? store.hits.find(hit => hit.item.id === memoryId)?.item.title
     ?? memoryId
-}
-
-function findingIcon(kind: MemoryFindingKind): string {
-  return ({ duplicate: 'content_copy', contradiction: 'compare_arrows', aging: 'history' })[kind]
-}
-
-function findingColor(kind: MemoryFindingKind): string {
-  return ({ duplicate: 'orange-8', contradiction: 'red-7', aging: 'blue-grey-7' })[kind]
-}
-
-function findingLabel(finding: MemoryFinding): string {
-  const label = t(`memory.findings.kinds.${finding.kind}`)
-  if (finding.score === null) return label
-  const score = new Intl.NumberFormat(locale.value, {
-    style: 'percent',
-    maximumFractionDigits: 1,
-  }).format(finding.score)
-  return `${label} · ${score}`
 }
 
 function openFinding(finding: MemoryFinding): void {
@@ -509,6 +493,7 @@ watch(() => [props.itemId, props.agentId] as const, ([id, agentId]) => {
   if (!props.state) void store.search().catch(notifyError)
 }, { immediate: true })
 onBeforeUnmount(() => { detailOpenRequest++; detailDialog.value = false })
+function onObservedEvent(event: Parameters<typeof onDocumentMemoryUpdate>[0]): void { void onDocumentMemoryUpdate(event).catch(error => console.error('Live refresh failed', error)) }
 </script>
 <style scoped>
 .memory-detail { width: 980px; max-width: 96vw; height: min(760px, 88vh); }

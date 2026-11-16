@@ -1,7 +1,7 @@
 <template>
   <q-dialog :model-value="modelValue" @update:model-value="emit('update:modelValue', $event)">
     <q-card class="topic-form-dialog galaris-dialog-card">
-      <DialogHeader :title="topic ? t('topic.editTitle') : t('topic.createTitle')" :close-label="t('topic.cancel')" />
+      <DialogHeader :title="topic ? t('topic.editTitle') : t('topic.createTitle')" />
       <q-form class="galaris-dialog-form" @submit.prevent="save">
         <q-card-section class="q-gutter-md galaris-dialog-body">
           <q-input v-model="form.title" outlined autofocus :label="t('topic.title')" :rules="[requiredRule]" />
@@ -28,7 +28,7 @@
         </q-card-section>
         <q-separator />
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn v-close-popup flat :label="t('topic.cancel')" />
+          <q-btn outline color="primary" v-close-popup  :label="t('topic.cancel')" />
           <q-btn color="primary" type="submit" icon="save" :label="t('topic.save')" :loading="saving" />
         </q-card-actions>
       </q-form>
@@ -37,10 +37,11 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref, watch } from 'vue'
+import { onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { topicService } from '../services/topicService'
+import { normalizeTopicInput } from '../topicInput'
 import type { Topic, TopicInput } from '../types'
 import { DialogHeader } from '@/core/util'
 
@@ -61,6 +62,8 @@ const keywordOptions = ref<string[]>([])
 const filteredKeywordOptions = ref<string[]>([])
 const loadingKeywords = ref(false)
 const saving = ref(false)
+let opening = 0
+onBeforeUnmount(() => { opening++ })
 const requiredRule = (value: string): true | string => Boolean(value.trim()) || t('topic.required')
 
 function resetForm(): void {
@@ -72,14 +75,18 @@ function resetForm(): void {
 }
 
 async function loadKeywords(): Promise<void> {
+  const request = opening
   loadingKeywords.value = true
   try {
-    keywordOptions.value = await topicService.listKeywords()
+    const keywords = await topicService.listKeywords()
+    if (request === opening) keywordOptions.value = keywords
   } catch {
-    keywordOptions.value = []
+    if (request === opening) keywordOptions.value = []
   } finally {
-    filteredKeywordOptions.value = keywordOptions.value
-    loadingKeywords.value = false
+    if (request === opening) {
+      filteredKeywordOptions.value = keywordOptions.value
+      loadingKeywords.value = false
+    }
   }
 }
 
@@ -97,36 +104,34 @@ function addKeyword(value: string, done: NewKeywordDone): void {
   done(normalized || undefined, normalized ? 'add-unique' : undefined)
 }
 
-function payload(): TopicInput {
-  return {
-    title: form.title.trim(),
-    description: form.description.trim(),
-    keywords: [...new Set(form.keywords.map(value => value.trim().slice(0, 80)).filter(Boolean))].slice(0, 20),
-  }
-}
-
 async function save(): Promise<void> {
   if (!form.title.trim() || saving.value) return
   saving.value = true
+  const request = opening, topic = props.topic
+  const current = () => request === opening && props.modelValue
   try {
-    const saved = props.topic
-      ? await topicService.update(props.topic, payload())
-      : await topicService.create(payload())
-    $q.notify({ type: 'positive', message: t(props.topic ? 'topic.updateSuccess' : 'topic.createSuccess') })
+    const saved = topic
+      ? await topicService.update(topic, normalizeTopicInput(form))
+      : await topicService.create(normalizeTopicInput(form))
+    if (!current()) return
+    $q.notify({ type: 'positive', message: t(topic ? 'topic.updateSuccess' : 'topic.createSuccess') })
     emit('saved', saved)
     emit('update:modelValue', false)
   } catch {
-    $q.notify({ type: 'negative', message: t('topic.operationError') })
+    if (current()) $q.notify({ type: 'negative', message: t('topic.operationError') })
   } finally {
-    saving.value = false
+    if (current()) saving.value = false
   }
 }
 
-watch(() => props.modelValue, open => {
+watch(() => [props.modelValue, props.topic?.id] as const, ([open]) => {
+  opening++
+  saving.value = false
+  loadingKeywords.value = false
   if (!open) return
   resetForm()
   void loadKeywords()
-})
+}, { immediate: true, flush: 'sync' })
 </script>
 
 <style scoped>

@@ -11,7 +11,7 @@
     </div>
     <q-banner v-if="error" role="alert" class="q-mb-md">
       {{ t('files.agentError') }}
-      <template #action><q-btn outline :label="t('common.retry')" @click="loadAgents" /></template>
+      <template #action><q-btn color="primary" outline :label="t('common.retry')" @click="loadAgents" /></template>
     </q-banner>
     <AgentFileBrowser v-if="agentId !== null && canBrowse" ref="browser" :key="`${agentId}:${session}`" :agent-id="agentId" :initial-uri="resourceUri" @navigate="locationChanged" />
     <section v-else class="file-agent-picker" :aria-label="t('files.chooseAgent')">

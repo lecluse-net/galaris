@@ -5,11 +5,11 @@
       <template v-if="store.ready">
         <p class="q-my-xs"><slot>{{ text }}</slot></p>
         <p v-if="store.saveErrors.includes(helpKey)" role="alert" class="q-my-xs">{{ t('contextHelp.saveError') }}</p>
-        <q-btn unelevated no-caps class="context-help__confirm q-mt-sm" :label="t('contextHelp.understood')" :loading="saving" @click="store.dismiss(helpKey)" />
+        <q-btn color="primary" unelevated no-caps class="context-help__confirm q-mt-sm" :label="t('contextHelp.understood')" :loading="saving" @click="store.dismiss(helpKey)" />
       </template>
       <template v-else>
         <p role="alert" class="q-my-xs">{{ t('contextHelp.loadError') }}</p>
-        <q-btn flat no-caps :label="t('contextHelp.retry')" @click="store.load()" />
+        <q-btn outline color="primary"  no-caps :label="t('contextHelp.retry')" @click="store.load()" />
       </template>
     </div>
     <q-btn v-if="store.ready" flat round dense icon="close" :disable="saving"

@@ -8,7 +8,7 @@ from uuid import UUID
 from pydantic import ValidationError
 from sqlalchemy import String, and_, case, column, exists, func, literal, or_, select
 from sqlalchemy import cast as sql_cast
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -29,6 +29,14 @@ def conversation_evidence_clause(
     )
     parts = func.jsonb_array_elements(evidence).table_valued(column("value", JSONB))
     part = parts.c.value
+    # Cast the reference, not the indexed message key. Preserve the canonical
+    # UUID spelling required by the former text comparison, and let malformed
+    # persisted references fail closed without aborting the whole browse query.
+    message_reference = part["message_id"].astext
+    message_identity = sql_cast(case((
+        message_reference.op("~")(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"),
+        message_reference,
+    ), else_=None), PGUUID(as_uuid=True))
     file_identity = func.regexp_replace(part["uri"].astext, "^.*/", "")
     source_file = exists(
         select(Attachment.file_id)
@@ -61,7 +69,7 @@ def conversation_evidence_clause(
         .join(Room, Room.id == Message.messenger_room_id)
         .join(Connection, Connection.id == Room.connection_id)
         .where(
-            sql_cast(Message.id, String) == part["message_id"].astext,
+            Message.id == message_identity,
             Message.deleted_at.is_(None),
             Room.deleted_at.is_(None),
             Connection.active.is_(True),

@@ -1,3 +1,5 @@
+import { toRaw } from 'vue'
+import { withSessionScope } from '@/core/util/facade'
 import { defineStore } from 'pinia'
 import { isAxiosError } from 'axios'
 import { sessionGeneration } from '@/core/api'
@@ -33,11 +35,11 @@ const overviewReads = new WeakMap<object, symbol>()
 const parameterReads = new WeakMap<object, Map<number, symbol>>()
 
 function invalidateReads(store: object, connectionId?: number): void {
-    overviewReads.delete(store)
-    if (connectionId !== undefined) parameterReads.get(store)?.delete(connectionId)
+    overviewReads.delete(toRaw(store))
+    if (connectionId !== undefined) parameterReads.get(toRaw(store))?.delete(connectionId)
 }
 
-export const useConnectionStore = defineStore('connection', {
+export const useConnectionStore = withSessionScope(defineStore('connection', {
     state: (): ConnectionState => ({
         connections: [],
         currentConnection: null,
@@ -51,8 +53,8 @@ export const useConnectionStore = defineStore('connection', {
         async fetchConnectionOverview(): Promise<void> {
             const request = Symbol('overview')
             const generation = sessionGeneration()
-            overviewReads.set(this, request)
-            const current = () => overviewReads.get(this) === request && generation === sessionGeneration()
+            overviewReads.set(toRaw(this), request)
+            const current = () => overviewReads.get(toRaw(this)) === request && generation === sessionGeneration()
             this.loading = true
             this.error = null
             try {
@@ -211,8 +213,8 @@ export const useConnectionStore = defineStore('connection', {
         // =====================================================================
 
         async fetchConnectionParams(connectionId: number, decrypt: boolean = false): Promise<Record<string, unknown>> {
-            const reads = parameterReads.get(this) ?? new Map<number, symbol>()
-            parameterReads.set(this, reads)
+            const reads = parameterReads.get(toRaw(this)) ?? new Map<number, symbol>()
+            parameterReads.set(toRaw(this), reads)
             const request = Symbol('params')
             const generation = sessionGeneration()
             reads.set(connectionId, request)
@@ -349,4 +351,4 @@ export const useConnectionStore = defineStore('connection', {
             this.currentConnectionParams = null
         }
     }
-})
+}), { flags: {"fetchConnectionOverview":"loading","fetchConnections":"loading","fetchConnection":"loading","createConnection":"loading","updateConnection":"loading","deleteConnection":"loading","refreshToolCatalogs":"loading","fetchConnectionParams":"loading","getSingleParam":"loading","createOrUpdateParam":"loading","createOrUpdateParamsBulk":"loading","updateParam":"loading","deleteParam":"loading"} })

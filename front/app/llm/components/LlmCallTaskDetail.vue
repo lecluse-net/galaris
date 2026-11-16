@@ -11,8 +11,8 @@
       <q-item-section class="llm-call-main">
         <div class="llm-call-header-grid">
           <q-item-label class="llm-call-heading row items-center">
-            <q-icon name="memory" color="indigo" size="20px" />
-            <q-badge class="llm-purpose-badge" color="deep-purple" outline>
+            <q-icon name="memory" color="solaire-iris" size="20px" />
+            <q-badge class="llm-purpose-badge" color="solaire-iris" outline>
               {{ callPurposeLabel }}
             </q-badge>
             <span class="llm-label">{{ modelLabel }}</span>
@@ -26,7 +26,7 @@
               {{ reasoningEffortLabel }}
               <q-tooltip>{{ t('llm.reasoningEffort') }}</q-tooltip>
             </q-badge>
-            <q-badge v-if="providerName" class="llm-outline-badge" color="indigo" outline>
+            <q-badge v-if="providerName" class="llm-outline-badge" color="solaire-iris" outline>
               {{ providerName }}
             </q-badge>
           </q-item-label>
@@ -38,15 +38,15 @@
                 :icon="success ? 'check_circle' : 'error'"
                 :label="success ? $t('task.dispatch.success') : $t('task.dispatch.failure')"
               />
-              <q-badge v-if="call.duration" color="blue" size="sm">
+              <q-badge v-if="call.duration" color="solaire-blue" size="sm">
                 <q-icon name="timer" size="xs" class="q-mr-xs" />
                 {{ formatExecutionTime(call.duration) }}
               </q-badge>
             </template>
-            <q-spinner-dots v-else color="indigo" size="24px" />
+            <q-spinner-dots v-else color="solaire-iris" size="24px" />
             <LlmCallTokenBadge :call="call" />
             <q-badge
-              color="purple"
+              color="solaire-violet"
               size="sm"
               :title="showApiCost
                 ? t('llmCalls.inferenceCost', { cost: formatApiCost(call.inference_cost) })
@@ -86,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { StatusBadge } from '@/core/util'
 import LlmCallStopButton from './LlmCallStopButton.vue'
@@ -96,9 +96,9 @@ import {
   formatApiCost,
   formatBilledCost,
   formatExecutionTime,
-  reasoningEffortColor,
+
 } from '../presentation'
-import { useLLMProviderStore } from '../stores/llmProviderStore'
+import { useCallPresentation } from '../useCallPresentation'
 import type { LLMCall } from '../types'
 
 const props = withDefaults(defineProps<{
@@ -112,34 +112,12 @@ const emit = defineEmits<{
   delete: [call: LLMCall]
 }>()
 
-const { t, te } = useI18n()
-const store = useLLMProviderStore()
+const { t } = useI18n()
 const isExpanded = ref(false)
 
 // Resolve the label and provider through llm_id. Load the configured LLM list
 // only once for the complete call list.
-onMounted(() => {
-  if (!store.llms.length && !store.loadingLLMs) void store.fetchLLMs()
-})
-
-const llm = computed(() => store.llms.find(item => item.id === props.call.llm_id))
-const modelLabel = computed(() => llm.value?.label || props.call.effective_model || props.call.requested_model)
-const providerName = computed(() => llm.value?.provider_name || props.call.provider_name)
-const reasoningEffortLabel = computed(() => {
-  const effort = props.call.reasoning_effort
-  return effort ? t(`llm.reasoningEfforts.${effort}`) : null
-})
-const reasoningEffortBadgeColor = computed(() => {
-  const effort = props.call.reasoning_effort
-  return effort ? reasoningEffortColor(effort) : 'grey-7'
-})
-const callPurposeLabel = computed(() => {
-  const purposeKey = props.call.purpose
-    ? `llmCalls.purposes.${props.call.purpose}`
-    : ''
-  if (!purposeKey) return t(`llmCalls.callTypes.${props.call.call_type}`)
-  return te(purposeKey) ? t(purposeKey) : props.call.purpose ?? purposeKey
-})
+const { modelLabel, providerName, reasoningEffortLabel, reasoningEffortBadgeColor, callPurposeLabel } = useCallPresentation(() => props.call)
 
 const running = computed(() => props.call.status === 'running')
 const success = computed(() => props.call.status === 'completed')

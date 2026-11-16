@@ -132,3 +132,32 @@ test('sidebar logo navigates home and compact mode changes the rendered drawer',
   await page.getByRole('link', { name: 'About', exact: true }).press('Enter')
   await expect.poll(() => page.evaluate(() => window.testApp.router.currentRoute.value.path)).toBe('/about')
 })
+
+test('a failed parameter read stays visible until its own retry restores editable saved values', async ({ page }) => {
+  let failed = true, reads = 0
+  await page.route('**/api/params', route => {
+    reads++
+    return route.fulfill(failed ? { status: 503, json: { detail: 'Synthetic configuration outage' } }
+      : { json: { params: [{ name: 'ai.executor-system-prompt', value: 'Saved instructions', secret: false, configured: true,
+        prompt: { default_value: 'Default', customized: true, default_changed: false } }] } })
+  })
+  await jsonRoute(page, '**/api/params/unrelated', { name: 'unrelated', value: 'kept', secret: false, configured: true })
+  await mount(page, 'core/params/components/PreferencesSectionPage.vue', {
+    props: { section: 'instructions' }, route: '/params/instructions', privileges: ['INSTRUCTION_CONFIG_EDIT'],
+  })
+  const alert = page.getByRole('alert')
+  await expect(alert).toContainText('Synthetic configuration outage')
+  await expect(page.locator('textarea')).toHaveCount(0)
+  // A successful unrelated action must not hide the failed read.
+  await page.evaluate(async () => {
+    const { useParamsStore } = await import('/core/params/stores/paramsStore.ts')
+    await useParamsStore(window.testApp.pinia).updateParam('unrelated', 'kept')
+  })
+  await expect(alert).toContainText('Synthetic configuration outage')
+  failed = false
+  await alert.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(alert).toHaveCount(0)
+  await page.getByRole('region', { name: 'Task executor', exact: true }).getByRole('button', { name: 'Expand "Task executor"', exact: true }).click()
+  await expect(page.locator('textarea:visible')).toHaveValue('Saved instructions')
+  expect(reads).toBe(2)
+})

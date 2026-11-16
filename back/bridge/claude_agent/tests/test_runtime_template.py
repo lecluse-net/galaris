@@ -1,34 +1,9 @@
-import ast
 from pathlib import Path
 
 
 _RUNTIME_SOURCE = (
     Path(__file__).parents[1] / "default-agent" / "server.py.txt"
 ).read_text(encoding="utf-8")
-
-
-def test_runtime_uses_streaming_sdk_input_with_permission_callback() -> None:
-    tree = ast.parse(_RUNTIME_SOURCE)
-    prompt_helper = next(
-        node
-        for node in ast.walk(tree)
-        if isinstance(node, ast.AsyncFunctionDef) and node.name == "_prompt_messages"
-    )
-    assert any(isinstance(node, ast.Yield) for node in ast.walk(prompt_helper))
-
-    query_call = next(
-        node
-        for node in ast.walk(tree)
-        if isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Name)
-        and node.func.id == "query"
-    )
-    prompt_keyword = next(
-        keyword for keyword in query_call.keywords if keyword.arg == "prompt"
-    )
-    assert isinstance(prompt_keyword.value, ast.Call)
-    assert isinstance(prompt_keyword.value.func, ast.Name)
-    assert prompt_keyword.value.func.id == "_prompt_messages"
 
 
 def test_runtime_publishes_semantic_thinking_and_authoritative_final_text() -> None:

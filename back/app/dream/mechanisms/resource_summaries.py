@@ -79,7 +79,7 @@ class ResourceSummaryMechanism:
                     result = await run_structured(llm=model, output_type=ResourceSummary,
                         prompt=f"{self.kind}: {title}\n\n{text[offset:offset + 24_000]}",
                         system_prompt=_INSTRUCTIONS, task_id=None, agent_id=agent_id,
-                        temperature=0.0, request_limit=1, max_tokens=1200,
+                        temperature=0.0, request_limit=2, output_retries=1, max_tokens=1200,
                         purpose="dream_resource_summary", model_field=model_usages.DREAM)
                 cost += result.cost
                 final = result.output

@@ -3,7 +3,7 @@ import { createPinia } from 'pinia'
 import { Quasar } from 'quasar'
 import quasarUserOptions from '../quasar-user-options'
 import App from './App.vue'
-import router from '@/app/index/router'
+import { router } from '@/app/index/facade'
 import i18n, { getLocale, initialLocaleReady, setLocale } from '@/core/i18n'
 import '@/app/style.scss'
 import '../pwa/register'
@@ -22,4 +22,4 @@ async function initApp() {
     app.mount('#app')
 }
 
-initApp()
+void initApp().catch(error => console.error('Application initialization failed', error))

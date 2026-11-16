@@ -46,12 +46,12 @@
       <q-banner
         v-if="canSeeDashboard && dashboardStore.error"
         rounded
-        class="bg-red-1 text-negative q-mb-lg"
+        class="bg-solaire-red-light text-negative q-mb-lg"
       >
         <template #avatar><q-icon name="error_outline" /></template>
         {{ t('index.dashboard.loadError') }}
         <template #action>
-          <q-btn flat color="negative" :label="t('index.dashboard.retry')" @click="refreshDashboard" />
+          <q-btn  color="negative" :label="t('index.dashboard.retry')" @click="refreshDashboard" />
         </template>
       </q-banner>
 
@@ -332,7 +332,7 @@
               </q-badge>
             </template>
             <template #action>
-              <q-btn v-if="canViewAgents" flat no-caps color="primary" icon-right="arrow_forward" :label="t('index.dashboard.manageAgents')" to="/agent" />
+              <q-btn outline v-if="canViewAgents"  no-caps color="primary" icon-right="arrow_forward" :label="t('index.dashboard.manageAgents')" to="/agent" />
             </template>
           </DashboardSectionHeader>
           <q-separator />

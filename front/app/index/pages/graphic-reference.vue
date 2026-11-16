@@ -7,11 +7,11 @@
       <template #title-after><q-badge outline color="primary">{{ t('graphicReference.dev') }}</q-badge></template>
       <template #actions><div class="row q-gutter-sm">
         <q-btn outline color="primary" :icon="$q.dark.isActive ? 'light_mode' : 'dark_mode'" :label="t($q.dark.isActive ? 'graphicReference.light' : 'graphicReference.dark')" @click="$q.dark.toggle()" />
-        <q-btn outline icon="restart_alt" :label="t('graphicReference.reset')" @click="reset" />
+        <q-btn color="primary" outline icon="restart_alt" :label="t('graphicReference.reset')" @click="reset" />
       </div></template>
     </PageHeader>
     <p>{{ t('graphicReference.intro') }}</p>
-    <nav class="row q-gutter-sm q-mb-lg" :aria-label="t('graphicReference.title')"><q-btn v-for="section in sections" :key="section" outline dense no-caps :label="t(`graphicReference.${section}`)" :href="`#${section}`" /></nav>
+    <nav class="row q-gutter-sm q-mb-lg" :aria-label="t('graphicReference.title')"><q-btn color="primary" v-for="section in sections" :key="section" outline dense no-caps :label="t(`graphicReference.${section}`)" :href="`#${section}`" /></nav>
     <div :key="generation" class="gallery-grid">
       <GallerySection id="palette" :title="t('graphicReference.palette')" icon="palette" class="wide">
         <div class="palette-grid"><div v-for="color in solaireColors" :key="color" class="palette-color">
@@ -24,9 +24,9 @@
           <q-btn color="primary" icon="add" :label="t('graphicReference.primary')" @click="notify" />
           <q-btn outline color="primary" :label="t('graphicReference.secondary')" @click="notify" />
           <q-btn color="negative" icon="delete" :label="t('graphicReference.delete')" @click="notify" />
-          <q-btn disable :label="t('graphicReference.disabled')" />
+          <q-btn color="primary" disable :label="t('graphicReference.disabled')" />
           <q-btn color="primary" loading :label="t('graphicReference.loading')" />
-          <q-btn flat color="warning" class="solaire-warning-action" icon="edit" :label="t('graphicReference.name')" />
+          <q-btn outline  color="warning" class="solaire-warning-action" icon="edit" :label="t('graphicReference.name')" />
           <q-btn flat round icon="edit" :aria-label="t('graphicReference.name')"><q-tooltip>{{ t('graphicReference.hint') }}</q-tooltip></q-btn>
           <q-btn flat round color="negative" icon="delete" :aria-label="t('graphicReference.delete')" @click="notify" />
           <q-btn-dropdown outline :label="t('graphicReference.menu')"><q-list><q-item v-close-popup clickable @click="notify"><q-item-section avatar><q-icon name="edit" /></q-item-section><q-item-section>{{ t('graphicReference.sample') }}</q-item-section></q-item></q-list></q-btn-dropdown>

@@ -12,15 +12,16 @@ from typing import Any, Literal, cast
 from uuid import UUID, uuid5
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
+import httpx
 
 from app.file_share import ResourceContext, prepared_resource, resource_info
 from . import llm_service, model_usages
 from .contracts import ProtocolInferenceRequest
 from .facade import read_inference, control_inference
-from core.document import PreparedDocument, page_images
+from core.document import DocumentPreparationError, PreparationFailure, PreparedDocument, page_images
 from core.util import complete_io
 from .document_store import document_checkpoint, submit_batch
-from .document_contracts import DocumentAnalysisSnapshot, DocumentAnalysisError
+from .document_contracts import DocumentAnalysisSnapshot, DocumentAnalysisError, same_source_content_version
 
 _conversions: dict[UUID, set[asyncio.Task[Any]]] = {}
 
@@ -138,6 +139,23 @@ async def prepare_input(agent_id: int, input_data: dict[str, Any]) -> dict[str, 
             admission.vision_fingerprint = model_fingerprint(vision)
     return admission.model_dump()
 
+
+async def _stop_pending_after_failure(analysis_id: UUID, metadata: dict[str, Any]) -> None:
+    pending = metadata.get("pending_inference")
+    if not pending:
+        return
+    key = UUID(str(pending))
+    terminal = {"completed", "failed", "stopped"}
+    if (await read_inference(key)).status in terminal:
+        return
+    try:
+        await control_inference(key, "stop", command_id=uuid5(analysis_id, "document-failure-stop"))
+    except ValueError:
+        # Completion may race the stop command. Its acquired result stays immutable.
+        if (await read_inference(key)).status not in terminal:
+            raise
+
+
 async def advance_step(analysis_id: UUID) -> DocumentAnalysisSnapshot:
     data = await document_checkpoint(analysis_id)
     admission = DocumentAdmission.model_validate(data["input"])
@@ -148,22 +166,28 @@ async def advance_step(analysis_id: UUID) -> DocumentAnalysisSnapshot:
     if metadata.get("cancelled"):
         return await _cancelled_snapshot(analysis_id, metadata, completed)
     ctx = ResourceContext(agent_id=int(data["agent_id"]), runtime=admission.runtime, task_id=data.get("task_id"))
+    phase = "source_access"
     try:
         # Access is revalidated even while an inference is pending.
         descriptor = await resource_info(ctx, admission.uri)
-        if admission.source_version and admission.source_version != descriptor.model_dump(
+        phase = "source_version"
+        if admission.source_version and not same_source_content_version(admission.source_version, descriptor.model_dump(
             include={"revision", "etag", "checksum", "modified_at", "size"}, exclude_none=True,
-        ):
+        )):
             raise ValueError("Document changed since analysis admission")
+        phase = "model_resolution"
         llm = await llm_service.get_llm(admission.model_key, fresh=True)
         if llm is None:
             raise ValueError("Admitted document model no longer exists")
         if admission.model_fingerprint and model_fingerprint(llm) != admission.model_fingerprint:
             raise ValueError("Admitted document model changed")
+        phase = "source_preparation"
         async with _prepared_for_run(analysis_id, ctx, admission.uri) as (document, directory):
+            phase = "source_checksum"
             if metadata.get("source_sha256") and metadata["source_sha256"] != document.sha256:
                 raise ValueError("Document changed since analysis admission")
             reader = llm
+            phase = "visual_model_resolution"
             if admission.vision_model_key:
                 vision = await llm_service.get_llm(admission.vision_model_key, fresh=True)
                 if vision is None or not vision.input_image:
@@ -171,6 +195,7 @@ async def advance_step(analysis_id: UUID) -> DocumentAnalysisSnapshot:
                 if admission.vision_fingerprint and model_fingerprint(vision) != admission.vision_fingerprint:
                     raise ValueError("Admitted visual preparation model changed")
                 reader = vision
+            phase = "batch_planning"
             plan = await complete_io(batches, document, directory, bool(reader.input_image))
             coverage = document.coverage()
             coverage.update({"completed_batches": completed, "expected_batches": len(plan),
@@ -179,6 +204,7 @@ async def advance_step(analysis_id: UUID) -> DocumentAnalysisSnapshot:
             if len(plan) + 1 > admission.max_calls:
                 return DocumentAnalysisSnapshot(status="error", output={"complete": False, "coverage": coverage},
                     error=DocumentAnalysisError(code="document_budget", message="The document requires more calls than the admitted budget"))
+            phase = "evidence_checkpoint"
             await document_checkpoint(analysis_id, immutable_values={"source_sha256": document.sha256, "batch_count": len(plan)})
             if "source_passages" not in metadata:
                 # Reuse the material already prepared for this analysis. This never
@@ -201,6 +227,7 @@ async def advance_step(analysis_id: UUID) -> DocumentAnalysisSnapshot:
             # Deterministic inference identity survives a server restart between
             # admission and checkpoint. Completed calls are read, never resubmitted.
             inference_key = uuid5(analysis_id, f"document-batch:{completed}")
+            phase = "inference"
             try:
                 inference = await read_inference(inference_key)
             except LookupError:
@@ -259,9 +286,14 @@ async def advance_step(analysis_id: UUID) -> DocumentAnalysisSnapshot:
             if updated["metadata"].get("cancelled") or updated["terminal"]:
                 return DocumentAnalysisSnapshot(status="cancelled", output={"complete": False, "coverage": coverage})
             return DocumentAnalysisSnapshot(status="success", output=output)
-    except (ValueError, PermissionError, FileNotFoundError):
+    except (ValueError, OSError, httpx.HTTPError) as error:
+        failure = PreparationFailure.from_exception(error)
+        await _stop_pending_after_failure(analysis_id, metadata)
         return DocumentAnalysisSnapshot(status="error", output={"complete": False, "completed_batches": completed},
-            error=DocumentAnalysisError(code="document_source_unavailable", message="Source access, version, format or preparation limits no longer permit this analysis"))
+            error=DocumentAnalysisError(code="document_source_unavailable", message="Source access, version, format or preparation limits no longer permit this analysis",
+                phase=phase, cause_type=failure.exception_type, locations=failure.locations,
+                http_status=error.response.status_code if isinstance(error, httpx.HTTPStatusError) else None,
+                preparation=error.failure.model_dump() if isinstance(error, DocumentPreparationError) else None))
 
 async def cancel_step(analysis_id: UUID) -> DocumentAnalysisSnapshot:
     data = await document_checkpoint(analysis_id, {"cancelled": True})

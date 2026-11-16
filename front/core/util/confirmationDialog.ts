@@ -12,5 +12,17 @@ export interface ConfirmationDialogOptions {
 
 /** Keep Quasar's outcome callbacks while sharing the application's title bar. */
 export function showConfirmationDialog(options: ConfirmationDialogOptions) {
-  return Dialog.create({ component: ConfirmationDialog, componentProps: options })
+  const dialog = Dialog.create({ component: ConfirmationDialog, componentProps: options })
+  const chain = {
+    ...dialog,
+    onOk(callback: (value?: unknown) => void | Promise<void>) {
+      dialog.onOk((value?: unknown) => {
+        // Quasar does not observe a callback's returned promise.
+        try { void Promise.resolve(callback(value)).catch(error => console.error('Confirmation action failed', error)) }
+        catch (error) { console.error('Confirmation action failed', error) }
+      })
+      return chain
+    },
+  }
+  return chain
 }

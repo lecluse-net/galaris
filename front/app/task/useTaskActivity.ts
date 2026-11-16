@@ -7,6 +7,7 @@ import { applyTaskLiveRunEvent, completedTaskAIResult, emptyAIResult, reconcileT
 import { roomReferences, type TaskActivitySnapshot } from './activity'
 import type { AIResult, Task } from './types'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
+import { startVisiblePolling } from '@/core/util/facade'
 
 class TaskRunRoom extends BaseRoom { readonly className = 'TaskRunRoom' }
 const rooms = roomReferences(
@@ -202,7 +203,7 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
   websocket.onEvent('llm_call', 'delete', schedule)
   websocket.onEvent('llm_call', 'cleanup', schedule)
   websocket.onConnect(schedule)
-  const poll = setInterval(() => { if (joined.size) schedule() }, 15_000)
+  const stopPolling = startVisiblePolling(async () => { if (joined.size) await refresh() }, 15_000)
   watch(() => tasks().map(task => `${task.id}:${task.revision}:${task.status}:${taskRunId(task)}`).join('|'), () => {
     const nextSelection = tasks().map(task => `${task.id}:${taskRunId(task)}`).join('|')
     if (nextSelection !== selection) {
@@ -225,7 +226,7 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
     disposed = true
     generation++
     if (timer) clearTimeout(timer)
-    clearInterval(poll)
+    stopPolling()
     for (const id of joined) rooms.release(id)
     websocket.offEvent('agent_run', 'event', onEvent)
     websocket.offEvent('llm_call', 'create', onCall)

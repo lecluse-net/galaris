@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from datetime import datetime
 from typing import Any, cast
 from uuid import UUID
@@ -17,6 +17,7 @@ from app.llm.provider_models import LLM
 from app.llm import LLMCallPurpose, model_usages
 from app.llm.structured_service import run_text
 from app.memory import MemoryAcquisitionCreate, MemorySearchHit, acquire_memory, ensure_contact_memory_scope, ensure_topic_contact_memory_scope
+from app.memory import AtomicMemoryFact, MemoryConflictError
 from app.document import redact_secrets
 from core.params import Params, params_service
 
@@ -306,6 +307,7 @@ async def run_memory_extraction(
     language_instruction: str,
     output_attempts: int = MEMORY_OUTPUT_ATTEMPTS,
     use_decision_profile: bool = True,
+    fact_validator: Callable[[AtomicMemoryFact], Awaitable[None]] | None = None,
 ) -> tuple[MemoryExtractionPrepared, float]:
     """Decide retention first when configured, and write only genuinely new facts."""
 
@@ -338,6 +340,8 @@ async def run_memory_extraction(
         "Every non-LINK operation MUST supply fact={subject_ref,predicate,value}. "
         "Use one raw scalar or resource reference per fact, without narrated author or date. "
         "Omit subject_ref only for the current contact or agent; otherwise use an existing Contact/Document URI. "
+        "References use memory://<uuid>, document://<uuid>, or your own galaris://agent/<integer>. "
+        "Do not add a contact/ path to memory://. Store other resource URIs as scalar strings, not {ref:URI}. "
         "Do not supply prose in title or content; the server generates its editorial view. "
         f"{output_schema}"
     )
@@ -345,13 +349,15 @@ async def run_memory_extraction(
     base_system_prompt = (
         f"{system_prompt}\n\n{language_instruction}\n\n{output_instructions}"
     ).strip()
-    last_error: ValueError | None = None
+    last_error: ValueError | MemoryConflictError | None = None
     for attempt in range(1, output_attempts + 1):
         if decision is not None:
             break
         retry_instruction = (
             "\n\nYour previous response was rejected because it was not one complete valid "
-            "JSON object. Return only the raw object now."
+            "JSON object with valid, accessible fact references. Copy an existing authorized "
+            "Contact/Document identity exactly or omit the subject for the current contact/agent. "
+            "Other resource URIs must be scalar strings. Return only the raw object now."
             if attempt > 1
             else ""
         )
@@ -372,7 +378,11 @@ async def run_memory_extraction(
             if any(not isinstance(operation, MemoryLinkOperation) and operation.fact is None
                    for operation in decision.operations):
                 raise ValueError("New agent memories must be atomic structured facts")
-        except ValueError as exc:
+            if fact_validator is not None:
+                for operation in decision.operations:
+                    if not isinstance(operation, MemoryLinkOperation) and operation.fact is not None:
+                        await fact_validator(operation.fact)
+        except (ValueError, MemoryConflictError) as exc:
             decision = None
             last_error = exc
             logger.warning(

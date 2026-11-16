@@ -43,7 +43,11 @@ _entries: dict[str, _Entry] = {}
 
 
 def _revision(info: ResourceDescriptor) -> str:
-    return json.dumps([info.name, info.media_type, info.size, info.modified_at, info.revision, info.checksum, info.etag], sort_keys=True)
+    # Native document reads can update access metadata while materializing the
+    # same content. Keep weak-provider timestamps, but trust an explicit content
+    # revision/checksum instead of invalidating preparation on its own reads.
+    modified_at = None if info.revision is not None or info.checksum else info.modified_at
+    return json.dumps([info.name, info.media_type, info.size, modified_at, info.revision, info.checksum, info.etag], sort_keys=True)
 
 
 @asynccontextmanager

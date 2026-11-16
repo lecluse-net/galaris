@@ -63,10 +63,10 @@
       </template>
     </q-banner>
 
-    <q-banner v-if="loadError" rounded class="bg-red-1 text-negative q-mb-md">
+    <q-banner v-if="loadError" rounded class="bg-solaire-red-light text-negative q-mb-md">
       {{ $t('tokens.loadError') }}
       <template #action>
-        <q-btn flat color="negative" :label="$t('common.retry')" @click="loadTokens" />
+        <q-btn  color="negative" :label="$t('common.retry')" @click="loadTokens" />
       </template>
     </q-banner>
 
@@ -104,12 +104,12 @@
               @keyup.enter="saveLabel(props.row.id)"
               @keyup.esc="cancelEditLabel"
             />
-            <q-btn flat dense icon="check" color="positive" size="sm" @click="saveLabel(props.row.id)" />
-            <q-btn flat dense icon="close" color="grey" size="sm" @click="cancelEditLabel" />
+            <q-btn :aria-label="$t('common.save')" flat dense icon="check" color="positive" size="sm" @click="saveLabel(props.row.id)" />
+            <q-btn :aria-label="$t('common.close')" flat dense icon="close" color="grey" size="sm" @click="cancelEditLabel" />
           </div>
           <div v-else class="row items-center q-gutter-xs">
             <span class="text-grey-8">{{ props.row.label || '-' }}</span>
-            <q-btn flat dense icon="edit" color="primary" size="sm" @click="startEditLabel(props.row)">
+            <q-btn :aria-label="$t('tokens.editLabel')" flat dense icon="edit" color="primary" size="sm" @click="startEditLabel(props.row)">
               <q-tooltip>{{ $t('tokens.editLabel') }}</q-tooltip>
             </q-btn>
           </div>
@@ -138,7 +138,7 @@
 
       <template v-slot:body-cell-actions="props">
         <q-td :props="props">
-          <q-btn
+          <q-btn :aria-label="props.row.enabled ? $t('tokens.disable') : $t('tokens.enable')"
             flat
             round
             :color="props.row.enabled ? 'grey' : 'positive'"
@@ -148,7 +148,7 @@
           >
             <q-tooltip>{{ props.row.enabled ? $t('tokens.disable') : $t('tokens.enable') }}</q-tooltip>
           </q-btn>
-          <q-btn flat round color="negative" icon="delete" size="sm" @click="onDelete(props.row)">
+          <q-btn :aria-label="$t('common.delete')" flat round color="negative" icon="delete" size="sm" @click="onDelete(props.row)">
             <q-tooltip>{{ $t('common.delete') }}</q-tooltip>
           </q-btn>
         </q-td>
@@ -252,18 +252,7 @@
     <!-- Token creation dialog with a label. -->
     <q-dialog v-model="showCreateDialog">
       <q-card class="token-dialog token-dialog--small galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ $t('tokens.newToken') }}</div>
-          <q-space />
-          <q-btn
-            flat
-            round
-            dense
-            icon="close"
-            :aria-label="$t('common.close')"
-            v-close-popup
-          />
-        </q-card-section>
+        <DialogHeader :title="$t('tokens.newToken')" :close-label="$t('common.close')" />
         <q-card-section class="galaris-dialog-body">
           <q-input
             v-model="newTokenLabel"
@@ -275,8 +264,8 @@
           />
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn flat :label="$t('common.cancel')" color="primary" v-close-popup />
-          <q-btn flat :label="$t('common.create')" color="positive" @click="confirmCreate" :loading="tokenStore.loading" />
+          <q-btn outline  :label="$t('common.cancel')" color="primary" v-close-popup />
+          <q-btn outline  :label="$t('common.create')" color="positive" @click="confirmCreate" :loading="tokenStore.loading" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -284,18 +273,7 @@
     <!-- Dialog displaying the newly created token. -->
     <q-dialog v-model="showNewTokenDialog">
       <q-card class="token-dialog galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ $t('tokens.createdTitle') }}</div>
-          <q-space />
-          <q-btn
-            flat
-            round
-            dense
-            icon="close"
-            :aria-label="$t('common.close')"
-            v-close-popup
-          />
-        </q-card-section>
+        <DialogHeader :title="$t('tokens.createdTitle')" :close-label="$t('common.close')" />
         <q-card-section class="galaris-dialog-body">
           <p class="text-body2">
             {{ $t('tokens.copyHint') }}
@@ -308,38 +286,27 @@
             autogrow
           >
             <template v-slot:append>
-              <q-btn flat round icon="content_copy" @click="copyToken(newTokenValue)" />
+              <q-btn flat round icon="content_copy" :aria-label="$t('common.copy')" @click="copyToken(newTokenValue)" />
             </template>
           </q-input>
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn flat :label="$t('common.close')" color="primary" v-close-popup @click="showNewTokenDialog = false" />
+          <q-btn outline  :label="$t('common.close')" color="primary" v-close-popup @click="showNewTokenDialog = false" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
     <q-dialog v-model="showDeleteDialog">
       <q-card class="token-dialog token-dialog--small galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ $t('common.deleteConfirmTitle') }}</div>
-          <q-space />
-          <q-btn
-            flat
-            round
-            dense
-            icon="close"
-            :aria-label="$t('common.close')"
-            v-close-popup
-          />
-        </q-card-section>
+        <DialogHeader :title="$t('common.deleteConfirmTitle')" :close-label="$t('common.close')" />
         <q-card-section class="galaris-dialog-body">
           {{ $t('tokens.deleteConfirm') }}
           <br />
           <code class="q-mt-sm block">{{ tokenToDelete ? maskToken(tokenToDelete.token) : '' }}</code>
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn flat :label="$t('common.cancel')" color="primary" v-close-popup />
-          <q-btn flat :label="$t('common.delete')" color="negative" @click="confirmDelete" v-close-popup />
+          <q-btn outline  :label="$t('common.cancel')" color="primary" v-close-popup />
+          <q-btn  :label="$t('common.delete')" color="negative" @click="confirmDelete" v-close-popup />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -347,6 +314,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { ref, computed, onMounted } from 'vue'
 import type { QTableProps } from 'quasar'

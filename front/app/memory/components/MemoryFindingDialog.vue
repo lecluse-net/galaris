@@ -10,7 +10,7 @@
       <q-inner-loading :showing="loading" />
       <q-scroll-area class="col galaris-dialog-body--contained galaris-dialog-body">
         <q-card-section>
-          <q-banner rounded class="bg-blue-1 text-primary q-mb-md">
+          <q-banner rounded class="bg-solaire-blue-light text-primary q-mb-md">
             {{ explanation }}
             <div v-if="finding.score !== null" class="text-caption q-mt-xs">
               {{ t('memory.findings.score', {
@@ -57,8 +57,8 @@
 
       <q-separator />
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn
-          flat
+        <q-btn outline
+
           color="grey-8"
           icon="visibility_off"
           :label="t('memory.findings.dismiss')"

@@ -49,7 +49,7 @@
         <div v-if="error" role="alert">{{ error }}</div>
         <div v-if="saved" role="status">{{ t('personalVoice.saved') }}</div>
         <div class="row justify-end q-gutter-sm">
-          <q-btn v-if="!loaded && !loading" flat :label="t('personalVoice.retry')" @click="load" />
+          <q-btn outline color="primary" v-if="!loaded && !loading"  :label="t('personalVoice.retry')" @click="load" />
           <q-btn type="submit" color="primary" :label="t('personalVoice.save')" :loading="saving" :disable="loading || !loaded" />
         </div>
       </q-form>

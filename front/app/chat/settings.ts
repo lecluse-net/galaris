@@ -1,4 +1,4 @@
-import type { BridgeSettingsContribution } from '@/core/params/settingsTypes'
+import type { BridgeSettingsContribution } from '@/core/params/contracts'
 import { chatAvailable, refreshChatAvailability } from './availability'
 
 export default {

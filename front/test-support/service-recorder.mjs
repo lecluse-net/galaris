@@ -9,6 +9,6 @@ export function serviceRecorder(url, exportName, dependencies = {}) {
     requests.push({ method, args })
     return { data: response }
   }]))
-  const module = loadTypescript(url, { '@/core/api': { __esModule: true, api, default: api }, '@/core/util/facade': sessionReadCache(), ...dependencies })
+  const module = loadTypescript(url, { '@/core/api': { __esModule: true, api, default: api, sessionGeneration: () => '' }, '@/core/util/facade': sessionReadCache(), ...dependencies })
   return { service: module[exportName], requests, response }
 }

@@ -133,6 +133,7 @@ class ExecutorParameters(Parameters):
     context_projection: str = ""
     linked_work: str = ""
     available_tools: list[str] = Field(default_factory=list[str])
+    task_only_services: list[dict[str, str]] = Field(default_factory=list[dict[str, str]])
     tool_catalog: list[dict[str, JsonValue]] = Field(default_factory=list[dict[str, JsonValue]])
     available_processes: list[dict[str, JsonValue]] = Field(
         default_factory=list[dict[str, JsonValue]]
@@ -196,6 +197,10 @@ class GoalContext(ItemContext):
 
 class ExecutorContext(ItemContext):
     history: list[dict[str, JsonValue]] = Field(default_factory=list[dict[str, JsonValue]])
+    available_tools: list[str] | None = None
+    task_only_services: list[dict[str, str]] | None = None
+    available_processes: list[dict[str, JsonValue]] | None = None
+    resources: list[JsonValue] | None = None
     goal_referrer_type: Literal["AGENT", "MESSENGER"] | None = None
     tool_responses: dict[str, list[JsonValue]] | None = None
     tool_response_arguments: dict[str, list[dict[str, JsonValue]]] | None = None
@@ -355,7 +360,8 @@ def resolve_input(mechanism: str, value: object, shared: dict[str, Any]) -> tupl
     context = contract.context_type.model_validate(item.context).model_dump(mode="json")
     native_fields = {**parameters, **context}
     if mechanism.endswith("_executor"):
-        for field in ("tool_responses", "tool_response_arguments"):
+        for field in ("tool_responses", "tool_response_arguments", "available_tools",
+                      "task_only_services", "available_processes", "resources"):
             if context.get(field) is None:
                 native_fields[field] = parameters[field]
     variable = item.variable_value

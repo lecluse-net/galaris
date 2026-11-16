@@ -3,7 +3,7 @@
         header-class="text-teal text-subtitle2" class="planner-expansion q-mt-md" dense toggle-indicator expanded>
         <template v-slot:header>
             <q-item-section avatar>
-                <q-icon name="account_tree" color="teal" />
+                <q-icon name="account_tree" color="solaire-cyan" />
             </q-item-section>
             <q-item-section>
                 <q-item-label>{{ $t('task.planner.title') }}</q-item-label>
@@ -19,32 +19,32 @@
                         :icon="statusSuccess ? 'check_circle' : 'error'"
                         :label="statusSuccess ? $t('task.dispatch.success') : $t('task.dispatch.failure')"
                     />
-                    <q-badge color="teal" size="sm">
+                    <q-badge color="solaire-cyan" size="sm">
                         <q-icon name="format_list_numbered" size="xs" class="q-mr-xs" />
                         {{ rootSteps.length }}
                     </q-badge>
-                    <q-badge color="blue" size="sm">
+                    <q-badge color="solaire-blue" size="sm">
                         <q-icon name="trending_up" size="xs" class="q-mr-xs" />
                         {{ completedRootSteps }}/{{ rootSteps.length }}
                     </q-badge>
-                    <q-badge v-if="hasExecutionTime" color="blue" size="sm">
+                    <q-badge v-if="hasExecutionTime" color="solaire-blue" size="sm">
                         <q-icon name="timer" size="xs" class="q-mr-xs" />
                         {{ formatExecutionTime(plan.execution_time || 0) }}
                     </q-badge>
-                    <q-badge v-if="hasCost" color="purple" size="sm">
+                    <q-badge v-if="hasCost" color="solaire-violet" size="sm">
                         <q-icon name="attach_money" size="xs" class="q-mr-xs" />
                         {{ formatCostShort(plan.cost || 0) }}
                     </q-badge>
                 </div>
             </q-item-section>
             <q-item-section side v-else-if="planning">
-                <q-spinner-dots color="teal" size="24px" />
+                <q-spinner-dots color="solaire-cyan" size="24px" />
             </q-item-section>
         </template>
 
         <q-card v-if="!plan" flat bordered class="q-mt-sm">
             <q-card-section class="text-center text-grey q-pa-md">
-                <q-spinner color="teal" size="2em" class="q-mb-sm" />
+                <q-spinner color="solaire-cyan" size="2em" class="q-mb-sm" />
                 <div>{{ $t('task.planner.starting') }}</div>
             </q-card-section>
         </q-card>
@@ -77,9 +77,9 @@
 
                 <q-tab-panels v-model="activeTab" animated>
                     <q-tab-panel name="data">
-                        <q-banner v-if="clarificationQuestions.length" rounded class="bg-orange-1 text-orange-10 q-mb-md">
+                        <q-banner v-if="clarificationQuestions.length" rounded class="bg-solaire-orange-light text-solaire-orange q-mb-md">
                             <template v-slot:avatar>
-                                <q-icon name="help" color="orange-9" />
+                                <q-icon name="help" color="solaire-orange" />
                             </template>
                             <div class="text-subtitle2 q-mb-xs">{{ $t('task.planner.clarifications') }}</div>
                             <ul class="planner-list">
@@ -104,7 +104,7 @@
                                 <div class="info-item">
                                     <div class="info-label">{{ $t('task.planner.progress') }}</div>
                                     <div class="row items-center no-wrap q-gutter-sm">
-                                        <q-linear-progress :value="progressValue" color="teal" rounded class="col" />
+                                        <q-linear-progress :value="progressValue" color="solaire-cyan" rounded class="col" />
                                         <span class="text-caption text-grey">{{ completedRootSteps }}/{{ rootSteps.length }}</span>
                                     </div>
                                 </div>
@@ -138,7 +138,7 @@
                             <q-list bordered separator dense class="rounded-borders planner-steps">
                                 <q-item v-for="step in flattenedSteps" :key="step.key" :class="{ 'current-step': step.isCurrentRoot }">
                                     <q-item-section avatar>
-                                        <q-badge color="teal" text-color="white">{{ step.number }}</q-badge>
+                                        <q-badge color="solaire-cyan" text-color="white">{{ step.number }}</q-badge>
                                     </q-item-section>
                                     <q-item-section :style="{ paddingLeft: `${step.depth * 16}px` }">
                                         <q-item-label class="row items-center q-gutter-xs">
@@ -190,7 +190,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { Effort, PlanStep, TaskPlan, TaskStatus } from '../types'
-import Markdown from '@/core/util/components/Markdown.vue'
+import { Markdown } from '@/core/util'
 import { StatusBadge, richTextExcerpt } from '@/core/util'
 
 const props = defineProps<{
@@ -290,8 +290,8 @@ const flattenedSteps = computed<FlatStep[]>(() => {
 
 const getEffortColor = (effort: string): string => {
     switch (effort) {
-        case 'high': return 'deep-orange'
-        case 'standard': return 'blue-grey'
+        case 'high': return 'solaire-orange'
+        case 'standard': return 'solaire-gray'
         default: return 'grey'
     }
 }

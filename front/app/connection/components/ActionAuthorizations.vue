@@ -24,10 +24,7 @@
     </q-table>
     <q-dialog v-model="detailOpen">
       <q-card style="width: 660px; max-width: 95vw">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ t('permissions.oneAction') }}</div><q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('permissions.cancel')" />
-        </q-card-section>
+        <DialogHeader :title="t('permissions.oneAction')" :close-label="t('permissions.cancel')" />
         <q-card-section v-if="detailLoading"><q-spinner :aria-label="t('permissions.loading')" /></q-card-section>
         <q-card-section v-if="selected">
           <h3 class="text-h6 q-mt-none q-mb-md">{{ selected.presentation?.title ?? selected.preview }}</h3>
@@ -66,6 +63,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onActivated, onDeactivated, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'

@@ -66,6 +66,7 @@ from .embedding_service import EmbeddingError
 from .image_generation_service import generate_image_native
 from .handlers import get_handler_for_url
 from .structured_service import (
+    StructuredInferenceResult,
     StructuredOutputRetry,
     run_prompted,
     run_structured,
@@ -173,6 +174,7 @@ __all__ = [
     "resolve_runtime_process_run_id",
     "run_prompted",
     "run_structured",
+    "StructuredInferenceResult",
     "reasoning_effort_scope",
     "register_scheduler_jobs",
     "transcription_service",

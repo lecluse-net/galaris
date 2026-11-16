@@ -250,7 +250,13 @@ async def test_realtime_voice_context_uses_conversation_action_policy(
 ) -> None:
     from app.agent import agent_service, context, executor_service
     from app import process
+    from app import services
     from core.params import params_service
+
+    task_context = AsyncMock(return_value=services.render_task_capability_context(
+        ({"code": "shape_lab", "label": "3D modelling"},),
+    ))
+    monkeypatch.setattr(services, "build_task_capability_context", task_context)
 
     monkeypatch.setattr(
         agent_service,
@@ -344,6 +350,8 @@ async def test_realtime_voice_context_uses_conversation_action_policy(
     )
 
     assert "Any requested action other than speaking must run in the background" in result.instructions
+    task_context.assert_awaited_once_with(7)
+    assert result.instructions.count(task_context.return_value) == 1
     assert "same primary artifact or target" in result.instructions
     assert "different target, repository, resource, deliverable" in result.instructions
     assert "follows from the same incident" in result.instructions

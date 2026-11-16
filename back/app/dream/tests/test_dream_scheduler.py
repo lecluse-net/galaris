@@ -190,6 +190,44 @@ async def _terminal_task(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("ai", [True, False])
+async def test_delegated_task_memory_does_not_adopt_another_agents_private_contact(db, dream_storage, ai):
+    from app.memory import AtomicMemoryFact, MessengerContactObservation, observe_messenger_contact
+    from app.memory.models import MemoryContactItem
+    from app.dream.service import create_running_receipt
+
+    requester, executor = await _owner(db), await _owner(db)
+    contact = await observe_messenger_contact(MessengerContactObservation(owner_agent_id=requester.id,
+        messaging_id="matrix", user_id="@synthetic-delegation:example.test", display_name="Synthetic requester"))
+    topic = Topic(title="Synthetic workshop procedures")
+    db.add(topic)
+    await db.flush()
+    chat = await db.scalar(select(Service).where(Service.code == "chat"))
+    connection = Connection(agent_id=executor.id, service_id=chat.id, active=True)
+    db.add(connection)
+    await db.flush()
+    task = await _terminal_task(db, executor, label="Synthetic delegated workshop procedure",
+        objective="The workshop checks its backup every Friday.")
+    task.ai, task.requester_agent_id = ai, requester.id
+    task.messenger_connection_id = connection.id
+    task.topic_id, task.contact_memory_item_id = topic.id, contact
+    await db.commit()
+    mechanism = task_memory.TaskMemoryMechanism()
+    claim = create_running_receipt(mechanism_key=mechanism.key, subject_kind="task", subject_id=str(task.id))
+    await db.commit()
+    prepared = MemoryExtractionPrepared(decision=MemoryExtractionDecision(operations=[MemoryCreateOperation(
+        fact=AtomicMemoryFact(predicate="backup_check_day", value="Friday"),
+        retention_reason="recurring_constraint", future_utility="high")]))
+    assert await mechanism.apply(claim, prepared.model_dump(mode="json")) == 1
+    stored = await db.scalar(select(MemoryItem).where(MemoryItem.owner_agent_id == executor.id,
+        MemoryItem.source_managed.is_(False)))
+    assert stored is not None and stored.metadata_["atomic_fact"]["subject_ref"] == f"galaris://agent/{executor.id}"
+    assert await db.scalar(select(MemoryContactItem.id).where(MemoryContactItem.item_id == stored.id,
+        MemoryContactItem.contact_item_id == contact)) is None
+    assert task.contact_memory_item_id == contact  # Causal lineage remains intact.
+
+
+@pytest.mark.asyncio
 async def test_cycle_scans_exactly_one_task_and_checkpoints_memories(
     db: AsyncSession,
     dream_storage: Path,

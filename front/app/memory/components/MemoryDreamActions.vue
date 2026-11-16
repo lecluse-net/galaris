@@ -10,7 +10,7 @@
           :loading="running === action" :disable="disabled || running !== null" @click="run(action)" />
       </div>
     </template>
-    <q-btn v-if="loadFailed" flat no-caps color="primary" :label="t('memory.dream.retry')" @click="load" />
+    <q-btn outline v-if="loadFailed"  no-caps color="primary" :label="t('memory.dream.retry')" @click="load" />
   </section>
 </template>
 

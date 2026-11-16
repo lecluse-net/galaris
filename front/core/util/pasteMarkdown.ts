@@ -13,7 +13,7 @@ export function pastedMarkdownHtml(text: string, clipboardHtml: string): string 
   }
   const tokens = marked.lexer(text, { gfm: true })
   let markdown = false
-  marked.walkTokens(tokens, token => {
+  void marked.walkTokens(tokens, token => {
     if (formatting.has(token.type) || (token.type === 'link' && token.raw.startsWith('['))) markdown = true
   })
   if (!markdown) return null

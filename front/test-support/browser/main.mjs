@@ -24,13 +24,13 @@ window.testApp = {
     this.pendingMount = this.mountComponent(options)
     return this.pendingMount
   },
-  async mountComponent({ component, props = {}, slots = {}, setProps = [], containerStyle = {}, route = '/', browserHistory = false, authenticated = true, dark = toQuasarDark(getThemeMode()), locale = 'en', user = {} }) {
+  async mountComponent({ component, props = {}, slots = {}, setProps = [], containerStyle = {}, route = '/', browserHistory = false, authenticated = true, dark = toQuasarDark(getThemeMode()), locale = 'en', user = {}, shell = false }) {
     this.unmount?.()
     errors.length = 0
     const pinia = createPinia()
     const router = createRouter({
       history: browserHistory ? createWebHistory() : createMemoryHistory(),
-      routes: [{ path: '/:pathMatch(.*)*', component: { render: () => null } }],
+      routes: [{ path: '/:pathMatch(.*)*', name: 'component', component: { render: () => null } }],
     })
     await router.push(route)
     const auth = useAuthStore(pinia)
@@ -51,14 +51,16 @@ window.testApp = {
         if (name.startsWith('update:')) currentProps.value = { ...currentProps.value, [name.slice(7)]: args[0] }
       },
     ]))
+    const renderTarget = () => h(target, { ...currentProps.value, ...listeners },
+      Object.fromEntries(Object.entries(slots).map(([name, paragraphs]) => [name, () => paragraphs.map(text => h('p', text))])))
+    const shellComponent = shell ? (await import('/app/index/components/MainLayout.vue')).default : null
+    if (shellComponent) {
+      router.addRoute({ path: '/:pathMatch(.*)*', name: 'component', component: { render: renderTarget } })
+      await router.replace({ path: router.currentRoute.value.path, query: router.currentRoute.value.query, force: true })
+    }
     const app = createApp({
       setup() { useBrowserTheme() },
-      render: () => h(QLayout, {}, () => h(QPageContainer, { style: containerStyle }, () => h(target, {
-        ...currentProps.value,
-        ...listeners,
-      }, Object.fromEntries(Object.entries(slots).map(([name, paragraphs]) => [
-        name, () => paragraphs.map(text => h('p', text)),
-      ]))))),
+      render: () => shellComponent ? h(shellComponent) : h(QLayout, {}, () => h(QPageContainer, { style: containerStyle }, renderTarget)),
     })
     app.config.errorHandler = error => errors.push(String(error.stack ?? error))
     app.use(pinia).use(router).use(i18n).use(Quasar, {

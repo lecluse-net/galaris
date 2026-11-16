@@ -4,3 +4,5 @@ export { default as ExternalRunDialog } from './components/ExternalRunDialog.vue
 export { default as ProcessPreview } from './components/ProcessPreview.vue'
 export { default as ProcessThumbnail } from './components/ProcessThumbnail.vue'
 export { processResourceTarget, processReferenceHtml } from './contracts'
+import { defineAsyncView } from '@/core/util/facade'
+export const ProcessRunsPanel = /* @__PURE__ */ defineAsyncView(() => import('./components/ProcessRunsPanel.vue'))

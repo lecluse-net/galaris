@@ -49,7 +49,7 @@
             <q-card-section class="users-grid-footer q-py-sm">
               <div class="text-caption">
                 <div class="text-grey-7">{{ $t('usersAdmin.colCreatedAt') }}</div>
-                <div>{{ new Date(props.row.created_at).toLocaleDateString() }}</div>
+                <div>{{ new Date(props.row.created_at).toLocaleDateString(locale) }}</div>
               </div>
               <div class="row items-center q-gutter-xs">
                 <q-btn v-if="tabs.length" flat round color="primary" icon="security" :aria-label="$t(tabs[0].labelKey)" @click="openAuthorizations(props.row.id)" />
@@ -80,10 +80,10 @@
       <template v-slot:body-cell-actions="props">
         <q-td :props="props" class="q-gutter-sm">
           <q-btn v-if="tabs.length" flat round color="primary" icon="security" :aria-label="$t(tabs[0].labelKey)" @click="openAuthorizations(props.row.id)" />
-          <q-btn v-if="canUpdate" flat round color="primary" icon="edit" size="sm" @click="openEditDialog(props.row)">
+          <q-btn :aria-label="$t('common.edit')" v-if="canUpdate" flat round color="primary" icon="edit" size="sm" @click="openEditDialog(props.row)">
             <q-tooltip>{{ $t('common.edit') }}</q-tooltip>
           </q-btn>
-          <q-btn v-if="canDelete" flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)">
+          <q-btn :aria-label="$t('common.delete')" v-if="canDelete" flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)">
             <q-tooltip>{{ $t('common.delete') }}</q-tooltip>
           </q-btn>
         </q-td>
@@ -116,7 +116,7 @@ import UserAdminForm from '../components/UserAdminForm.vue'
 import { userTabs } from '../userTabs'
 
 const $q = useQuasar()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const privilegeStore = usePrivilegeStore()
 const tab=ref('users')
 const authorizationUserId=ref<number>()
@@ -141,7 +141,7 @@ const columns = computed<QTableColumn[]>(() => [
   { name: 'email', field: 'email', label: t('auth.email'), sortable: true, align: 'left' },
   { name: 'display_name', field: 'display_name', label: t('usersAdmin.colName'), sortable: true, align: 'left' },
   { name: 'is_active', field: 'is_active', label: t('usersAdmin.colStatus'), sortable: true, align: 'center' },
-  { name: 'created_at', field: 'created_at', label: t('usersAdmin.colCreatedAt'), sortable: true, format: (val) => new Date(val).toLocaleDateString() },
+  { name: 'created_at', field: 'created_at', label: t('usersAdmin.colCreatedAt'), sortable: true, format: (val) => new Date(val).toLocaleDateString(locale.value) },
   { name: 'actions', field: 'actions', label: t('common.actions'), align: 'right' }
 ])
 
@@ -200,7 +200,7 @@ async function handleSubmit(formData: any) {
       $q.notify({ type: 'positive', message: t('usersAdmin.created') })
     }
     showDialog.value = false
-    fetchUsers()
+    await fetchUsers()
   } catch (err: any) {
      $q.notify({
       type: 'negative',
@@ -221,7 +221,7 @@ function confirmDelete(user: User) {
     try {
       await authService.deleteUser(user.id)
       $q.notify({ type: 'positive', message: t('usersAdmin.deleted') })
-      fetchUsers()
+      await fetchUsers()
     } catch (err: any) {
       $q.notify({
         type: 'negative',
@@ -232,7 +232,7 @@ function confirmDelete(user: User) {
 }
 
 onMounted(() => {
-  fetchUsers()
+  void fetchUsers()
 })
 </script>
 

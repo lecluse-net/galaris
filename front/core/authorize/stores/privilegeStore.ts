@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { privilegeService } from '@/core/authorize/services/privilege.service'
-import { useAuthStore } from '@/core/user/stores/authStore'
+import { useAuthStore } from '@/core/user/facade'
 import { useAuthorizeStore } from '@/core/authorize/stores/authorizeStore'
 
 /**
@@ -37,7 +37,7 @@ export const usePrivilegeStore = defineStore('privilege', () => {
             // Ensure privileges are loaded before checking
             if (!attempted && !loaded.value && !loading.value && authStore.isAuthenticated) {
                 // Trigger async load (don't await, let it happen in background)
-                loadPrivileges()
+                void loadPrivileges()
             }
             return allPrivileges.value.includes(privilegeCode)
         }

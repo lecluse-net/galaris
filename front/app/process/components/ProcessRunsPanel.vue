@@ -91,7 +91,7 @@
         <q-separator class="q-mt-sm" />
       </q-card-section>
 
-      <q-banner v-if="loadError" dense class="bg-red-1 text-negative q-mx-md q-mb-md" rounded>
+      <q-banner v-if="loadError" dense class="bg-solaire-red-light text-negative q-mx-md q-mb-md" rounded>
         <template #avatar><q-icon name="error" /></template>
         {{ t('processes.tracking.loadError') }}
       </q-banner>

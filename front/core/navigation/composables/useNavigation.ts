@@ -11,7 +11,7 @@ import { computed, ref } from 'vue'
 import type { NavigationTree, NavigationNode, NavigationNodeWithPath, NavigationModule } from '../types'
 import { mergeNavigationTrees } from '../tree'
 import { modules as activeModules } from '../../../modules'
-import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
+import { usePrivilegeStore } from '@/core/authorize/facade'
 
 /** Loaded module cache. */
 const modulesCache = ref<Record<string, NavigationModule>>({})

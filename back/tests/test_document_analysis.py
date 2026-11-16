@@ -5,6 +5,7 @@ import json
 from uuid import uuid4
 
 import httpx
+from httpx import AsyncClient
 import pytest
 from sqlalchemy import select, func
 
@@ -25,13 +26,13 @@ from tests.test_protocol_inference import provider_http
 from tests.test_inference_lifecycle import runtime, state
 
 
-async def setup_source(db, tmp_path, monkeypatch, count=17):
+async def setup_source(db, tmp_path, monkeypatch, count=17, content=None):
     monkeypatch.setattr(type(settings), 'GALARIS_INTERNAL_MESSENGER_ROOT', str(tmp_path / 'chat'))
     agent, owner, _ = await _scope(db)
     room = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
     messenger = await get_messenger(room.connection_id)
     path = tmp_path / 'source.pdf'; pdf(path, count=count)
-    message = await messenger.upload_file(room.id, path.read_bytes(), name=path.name)
+    message = await messenger.upload_file(room.id, path.read_bytes() if content is None else content, name=path.name)
     from app.agent.contracts import TaskMessage
     uri = TaskMessage.from_messenger(message).attachments[0].uri
     return agent, uri
@@ -43,6 +44,124 @@ async def setup_run(db, agent, uri, model_key):
             model_key=model_key).model_dump())
     db.add(run); await db.commit()
     return run, run.id
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("change", ["unchanged", "metadata", "content"])
+@pytest.mark.parametrize("consumer", ["advance", "evidence"])
+async def test_document_analysis_distinguishes_metadata_edits_from_content_changes(runtime, tmp_path, monkeypatch, change, consumer):
+    from app.document import document_service, resource_service as documents
+    from app.document.schemas import DocumentUpdate, DocumentPayload
+    from app.file_share import resource_info
+    from app.task import Task
+    from app.llm.facade import acquired_document_evidence
+
+    db, llm, _, _ = runtime
+    agent, _uri = await setup_source(db, tmp_path, monkeypatch, count=1)
+    document = await document_service.create_document(owner_agent_id=agent.id, title="Synthetic reference",
+        content="<p>Synthetic workshop backup schedule: Friday.</p>", task_id=None)
+    uri = f"document://{document.id}"
+    descriptor = await resource_info(ResourceContext(agent_id=agent.id, runtime="internal"), uri)
+    run, reference = await setup_run(db, agent, uri, llm.id)
+    task = Task(agent_id=agent.id, label="Synthetic document analysis")
+    db.add(task)
+    await db.flush()
+    run.task_id = task.id
+    run.input = {**run.input, "source_version": descriptor.model_dump(
+        include={"revision", "etag", "checksum", "modified_at", "size"}, exclude_none=True)}
+    if consumer == "evidence":
+        run.status = "success"
+        run.checkpoint = {"source_passages": [{"locator": "page:1", "text": "Synthetic acquired evidence"}]}
+        run.output = {"answer": "The backup check is on Friday.", "coverage": {"complete": True}}
+    await db.commit()
+    if change != "unchanged":
+        update = DocumentUpdate(title="Renamed synthetic reference", expected_lock_version=document.lock_version) if change == "metadata" else (
+            DocumentUpdate(payload=DocumentPayload(text="<p>Synthetic new content.</p>"), expected_revision=document.revision))
+        await documents.update_item(document.id, update, actor_agent_id=agent.id)
+    if consumer == "evidence":
+        evidence = await acquired_document_evidence(agent.id, [task.id], [uri])
+        assert bool(evidence) == (change != "content")
+        return
+    result = await advance_analysis(reference)
+    if change != "content":
+        assert result.status == "running" and result.error is None
+    else:
+        assert result.status == "error" and result.error.code == "document_source_unavailable"
+        assert result.error.phase == "source_version"
+
+
+@pytest.mark.asyncio
+async def test_failed_preparation_keeps_safe_diagnostics_without_rebilling(runtime, tmp_path, monkeypatch):
+    db, llm, _, _ = runtime
+    private_marker = "Synthetic private input never belongs in an error"
+    agent, uri = await setup_source(db, tmp_path, monkeypatch, count=1,
+        content=b"%PDF-1.7\n" + private_marker.encode())
+    run, reference = await setup_run(db, agent, uri, llm.id)
+    result = await advance_analysis(reference)
+    assert result.status == "error"
+    assert result.error.phase == "source_preparation"
+    assert result.error.cause_type == "DocumentPreparationError"
+    assert result.error.preparation["exception_type"] == "PdfiumError"
+    assert result.error.preparation["exit_code"] == 2
+    locations = result.error.preparation["locations"]
+    assert locations and all("/" not in location and location.rpartition(":")[2].isdigit() for location in locations)
+    assert private_marker not in result.model_dump_json()
+    assert uri not in result.model_dump_json()
+    await db.refresh(run)
+    assert run.error == result.error.model_dump()
+    assert await advance_analysis(reference) == result
+    assert await db.scalar(select(func.count()).select_from(LLMCall)) == 0
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("method,failure", [("HEAD", "404"), ("GET", "503"), ("GET", "timeout")])
+async def test_unavailable_https_source_becomes_terminal_without_paid_replay(runtime, tmp_path, monkeypatch, method, failure):
+    from app.file_share import web_transport
+
+    db, llm, _, _ = runtime
+    agent, _ = await setup_source(db, tmp_path, monkeypatch, count=1)
+    uri = "https://files.example.test/synthetic.pdf?token=synthetic-private-token"
+    run, reference = await setup_run(db, agent, uri, llm.id)
+    requests = []
+
+    async def resolve(value):
+        return web_transport._ResolvedHttpsTarget(url=value, hostname="files.example.test",
+            host_header="files.example.test", addresses=("1.1.1.1",))
+
+    async def handle(request):
+        requests.append(request.method)
+        if request.method == method:
+            if failure == "timeout":
+                raise httpx.ReadTimeout("Synthetic private details must not be persisted", request=request)
+            return httpx.Response(int(failure), request=request)
+        return httpx.Response(200, headers={"Content-Type": "application/pdf", "Content-Length": "20"})
+
+    monkeypatch.setattr(web_transport, "_resolve_public_https", resolve)
+    monkeypatch.setattr(web_transport, "_new_client", lambda: AsyncClient(transport=httpx.MockTransport(handle)))
+    result = await advance_analysis(reference)
+    assert result.status == "error"
+    assert result.error.phase == ("source_access" if method == "HEAD" else "source_preparation")
+    assert result.error.cause_type == ("ReadTimeout" if failure == "timeout" else "HTTPStatusError")
+    assert result.error.http_status == (None if failure == "timeout" else int(failure))
+    assert "synthetic-private-token" not in result.model_dump_json()
+    assert "Synthetic private details" not in result.model_dump_json()
+    calls = list(requests)
+    assert await advance_analysis(reference) == result
+    assert requests == calls
+    await db.refresh(run)
+    assert run.status == "error"
+    assert await db.scalar(select(func.count()).select_from(LLMCall)) == 0
+
+
+@pytest.mark.parametrize("before,after", [
+    ({"modified_at": "old", "size": 20}, {"modified_at": "new", "size": 20}),
+    ({"revision": 1, "size": 20}, {"revision": 2, "size": 20}),
+    ({"checksum": "abc", "size": 20}, {"checksum": "def", "size": 20}),
+    ({"revision": 1, "size": 20}, {"size": 20}),
+])
+def test_source_version_checks_keep_weak_provider_versions_and_real_content_changes(before, after):
+    from app.llm.document_contracts import same_source_content_version
+    assert not same_source_content_version(before, after)
 
 
 @pytest.mark.asyncio
@@ -311,7 +430,8 @@ async def test_temporary_cache_reuses_preparation_and_rechecks_source_access(db,
 
 
 @pytest.mark.asyncio
-async def test_cancel_waits_for_inference_stop_and_never_admits_another_batch(runtime, tmp_path, monkeypatch):
+@pytest.mark.parametrize("trigger", ["cancel", "source_unavailable", "source_unavailable_after_completion"])
+async def test_cancel_waits_for_inference_stop_and_never_admits_another_batch(runtime, tmp_path, monkeypatch, trigger):
     db, llm, _, _ = runtime
     agent, uri = await setup_source(db, tmp_path, monkeypatch, count=2)
     run, reference = await setup_run(db, agent, uri, llm.id)
@@ -327,13 +447,31 @@ async def test_cancel_waits_for_inference_stop_and_never_admits_another_batch(ru
     async with asyncio.timeout(5):
         while not calls:
             await asyncio.sleep(0.02)
-    snapshot = DocumentAnalysisSnapshot.model_validate(await cancel_analysis(agent.id, reference, runtime='internal'))
-    assert snapshot.status in {'cancelling', 'cancelled'}
-    async with asyncio.timeout(5):
-        while (await advance_analysis(reference)).status != 'cancelled':
-            await asyncio.sleep(0.02)
+    if trigger == "cancel":
+        snapshot = DocumentAnalysisSnapshot.model_validate(await cancel_analysis(agent.id, reference, runtime='internal'))
+        assert snapshot.status in {'cancelling', 'cancelled'}
+        async with asyncio.timeout(5):
+            while (await advance_analysis(reference)).status != 'cancelled':
+                await asyncio.sleep(0.02)
+        terminal = "cancelled"
+    else:
+        from app.connection import Connection
+        from uuid import UUID
+
+        await db.refresh(run)
+        pending = UUID(run.checkpoint["pending_inference"])
+        if trigger == "source_unavailable_after_completion":
+            gate.set()
+            await state(pending, "completed")
+        connection = await db.scalar(select(Connection).where(Connection.agent_id == agent.id))
+        connection.active = False
+        await db.commit()
+        snapshot = await advance_analysis(reference)
+        assert snapshot.status == "error" and snapshot.error.phase == "source_access"
+        await state(pending, "completed" if trigger == "source_unavailable_after_completion" else "stopped")
+        terminal = "error"
     gate.set()
-    assert (await advance_analysis(reference)).status == 'cancelled'
+    assert (await advance_analysis(reference)).status == terminal
     assert len(calls) == 1
     await db.refresh(run)
     assert not run.checkpoint.get('result')

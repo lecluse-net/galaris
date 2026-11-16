@@ -4,13 +4,30 @@ from html import escape
 import json
 import re
 import unicodedata
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, FiniteFloat, StrictBool, StrictInt, StrictStr, field_validator
+
+
+def fact_reference(value: str) -> str:
+    """Validate identity syntax before a generated fact enters a durable checkpoint."""
+    if value.startswith(("memory://", "document://")):
+        prefix, identity = value.split("://", 1)
+        try:
+            return f"{prefix}://{UUID(identity)}"
+        except ValueError:
+            pass
+    if re.fullmatch(r"galaris://agent/[1-9][0-9]*", value):
+        return value
+    raise ValueError("Use memory://<uuid>, document://<uuid> or the current galaris://agent/<integer>; "
+                     "copy an existing identity exactly. Other resources belong in a scalar value, not {ref:URI}.")
 
 
 class MemoryFactReference(BaseModel):
     model_config = ConfigDict(extra="forbid")
     ref: str = Field(min_length=1, max_length=1_024)
+
+    _validate_ref = field_validator("ref")(fact_reference)
 
 
 class AtomicMemoryFact(BaseModel):
@@ -24,6 +41,11 @@ class AtomicMemoryFact(BaseModel):
     value: StrictStr | StrictBool | StrictInt | FiniteFloat | MemoryFactReference
     negated: bool = False
     unit: str | None = Field(default=None, max_length=32)
+
+    @field_validator("subject_ref")
+    @classmethod
+    def validate_subject(cls, value: str) -> str:
+        return fact_reference(value) if value else value
 
     @field_validator("predicate", mode="before")
     @classmethod

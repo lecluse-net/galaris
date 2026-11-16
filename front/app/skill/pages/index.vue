@@ -112,7 +112,7 @@
               v-if="props.row.system"
               dense
               square
-              color="blue-1"
+              color="solaire-blue-light"
               text-color="primary"
               icon="verified_user"
             >
@@ -158,14 +158,14 @@
           <q-btn flat round color="primary" icon="visibility" size="sm" :aria-label="t('skills.view')" @click="openViewer(props.row)">
             <q-tooltip>{{ t('skills.view') }}</q-tooltip>
           </q-btn>
-          <q-btn v-if="canEdit && !props.row.system" flat round color="primary" icon="edit" size="sm" @click="openEdit(props.row)">
+          <q-btn :aria-label="t('skills.edit')" v-if="canEdit && !props.row.system" flat round color="primary" icon="edit" size="sm" @click="openEdit(props.row)">
             <q-tooltip>{{ t('skills.edit') }}</q-tooltip>
           </q-btn>
           <q-btn v-if="canEdit && !props.row.system" flat round color="primary" icon="person" size="sm"
             :aria-label="t('skills.personal.assign')" @click="ownershipSkill = props.row">
             <q-tooltip>{{ t('skills.personal.assign') }}</q-tooltip>
           </q-btn>
-          <q-btn
+          <q-btn :aria-label="t('skills.categories.assign')"
             v-if="canEdit"
             flat
             round
@@ -204,10 +204,10 @@
               </q-list>
             </q-menu>
           </q-btn>
-          <q-btn flat round color="primary" icon="download" size="sm" @click="downloadSkill(props.row)">
+          <q-btn :aria-label="t('skills.download')" flat round color="primary" icon="download" size="sm" @click="downloadSkill(props.row)">
             <q-tooltip>{{ t('skills.download') }}</q-tooltip>
           </q-btn>
-          <q-btn v-if="canEdit && !props.row.system" flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)">
+          <q-btn :aria-label="t('skills.delete')" v-if="canEdit && !props.row.system" flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)">
             <q-tooltip>{{ t('skills.delete') }}</q-tooltip>
           </q-btn>
           </div>
@@ -228,7 +228,7 @@
                       v-if="props.row.system"
                       dense
                       square
-                      color="blue-1"
+                      color="solaire-blue-light"
                       text-color="primary"
                       icon="verified_user"
                     >
@@ -418,7 +418,7 @@
         </div>
         <q-separator />
         <q-card-actions align="right" class="q-px-md q-py-sm galaris-dialog-actions">
-          <q-btn flat :label="t('skills.cancel')" v-close-popup />
+          <q-btn outline color="primary"  :label="t('skills.cancel')" v-close-popup />
           <q-btn
             v-if="canEdit"
             color="primary"
@@ -468,7 +468,7 @@
             <div v-if="!importFiles.length" class="text-body2 text-grey-7">
               {{ t('skills.dropHint') }}
             </div>
-            <q-btn flat color="primary" class="q-mt-sm" :label="t('skills.selectFiles')" />
+            <q-btn outline  color="primary" class="q-mt-sm" :label="t('skills.selectFiles')" />
             <q-list
               v-if="importFiles.length"
               bordered
@@ -523,7 +523,7 @@
               :label="t('skills.optionalLabel')"
             />
           </div>
-          <q-banner v-else-if="importFiles.length > 1" dense rounded class="bg-blue-1 text-primary">
+          <q-banner v-else-if="importFiles.length > 1" dense rounded class="bg-solaire-blue-light text-primary">
             {{ t('skills.batchMetadataHint') }}
           </q-banner>
           <q-select
@@ -543,7 +543,7 @@
           />
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn flat :label="t('skills.cancel')" v-close-popup />
+          <q-btn outline color="primary"  :label="t('skills.cancel')" v-close-popup />
           <q-btn
             v-if="canEdit"
             color="primary"
@@ -566,7 +566,7 @@
 <script setup lang="ts">
 import { showConfirmationDialog } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
-import { computed, onMounted, reactive, ref, shallowRef, useTemplateRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { apiErrorDetail } from '@/core/api'
 import { isAxiosError } from 'axios'
 import type { QTableProps } from 'quasar'
@@ -575,10 +575,10 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 
 import { privileges } from '@/core/authorize'
-import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
+import { usePrivilegeStore } from '@/core/authorize/facade'
 import { PageHeader, formatFileSize } from '@/core/util'
-import CodeEditor from '@/core/util/components/CodeEditor.vue'
-import Markdown from '@/core/util/components/Markdown.vue'
+import { CodeEditor } from '@/core/util'
+import { Markdown } from '@/core/util'
 import SkillAuthorizationManager from '../components/SkillAuthorizationManager.vue'
 import SkillCategoryManager from '../components/SkillCategoryManager.vue'
 import PersonalSkillManager from '../components/PersonalSkillManager.vue'
@@ -635,6 +635,10 @@ const editorOriginalMarkdown = ref('')
 const editorTab = ref<'source' | 'preview'>('source')
 const editorForm = reactive({ code: '', label: '', markdown: '', category_id: null as number | null })
 const viewerDialog = ref(false)
+let editorGeneration = 0
+watch(editorDialog, open => { if (!open) editorGeneration++ }, { flush: 'sync' })
+watch(viewerDialog, open => { if (!open) store.clearCurrent() }, { flush: 'sync' })
+onBeforeUnmount(() => { editorGeneration++; store.clearCurrent() })
 const importDialog = ref(false)
 const importFiles = shallowRef<File[]>([])
 const importing = ref(false)
@@ -833,10 +837,11 @@ function notifyError(error: unknown): void {
 }
 
 function defaultMarkdown(): string {
-  return '---\nname: new-skill\ndescription: Décrivez brièvement ce que fait cette compétence.\n---\n\n# Nouvelle compétence\n\n## Quand utiliser cette compétence\n\nDécrivez les situations pertinentes.\n\n## Procédure\n\n1. Première étape.\n'
+  return `---\nname: new-skill\ndescription: ${t('skills.templateDescription')}\n---\n\n# ${t('skills.templateTitle')}\n\n## ${t('skills.templateWhen')}\n\n${t('skills.templateSituation')}\n\n## ${t('skills.templateProcedure')}\n\n1. ${t('skills.templateFirstStep')}\n`
 }
 
 function openCreate(): void {
+  editorGeneration++
   editingSkill.value = null
   editorOriginalMarkdown.value = ''
   Object.assign(editorForm, {
@@ -850,55 +855,59 @@ function openCreate(): void {
 }
 
 async function openEdit(skill: Skill): Promise<void> {
+  const request = ++editorGeneration
   try {
+    const { data } = await skillService.getFileContent(skill.id, 'SKILL.md')
+    if (request !== editorGeneration) return
     editingSkill.value = skill
-    await store.openSkill(skill)
-    editorOriginalMarkdown.value = store.currentContent
+    editorOriginalMarkdown.value = data.content
     Object.assign(editorForm, {
       code: skill.code,
       label: skill.label,
-      markdown: store.currentContent,
+      markdown: data.content,
       category_id: skill.category_id,
     })
     editorTab.value = 'source'
     editorDialog.value = true
   } catch (error) {
-    notifyError(error)
+    if (request === editorGeneration) notifyError(error)
   }
 }
 
 async function saveEditor(): Promise<void> {
+  const request = editorGeneration, skill = editingSkill.value
+  const draft = { ...editorForm }
   if (
     requiredRule(editorForm.code) !== true
     || codeRule(editorForm.code) !== true
     || requiredRule(editorForm.label) !== true
   ) return
   try {
-    if (editingSkill.value) {
-      const markdownChanged = editorForm.markdown !== editorOriginalMarkdown.value
-      await store.updateSkill(editingSkill.value.id, {
-        label: editorForm.label,
-        ...(markdownChanged ? { markdown: editorForm.markdown } : {}),
+    if (skill) {
+      const markdownChanged = draft.markdown !== editorOriginalMarkdown.value
+      await store.updateSkill(skill.id, {
+        label: draft.label,
+        ...(markdownChanged ? { markdown: draft.markdown } : {}),
       })
-      if (editorForm.category_id !== editingSkill.value.category_id) {
-        await store.assignCategory(editingSkill.value.id, editorForm.category_id)
+      if (draft.category_id !== skill.category_id) {
+        await store.assignCategory(skill.id, draft.category_id)
       }
       $q.notify({ type: 'positive', message: t('skills.updated') })
     } else {
-      await store.createSkill({ ...editorForm })
+      await store.createSkill(draft)
       await store.fetchCategories()
       $q.notify({ type: 'positive', message: t('skills.created') })
     }
-    editorDialog.value = false
+    if (request === editorGeneration) editorDialog.value = false
   } catch (error) {
     notifyError(error)
   }
 }
 
 async function openViewer(skill: Skill): Promise<void> {
+  editorGeneration++
   try {
-    await store.openSkill(skill)
-    viewerDialog.value = true
+    if (await store.openSkill(skill)) viewerDialog.value = true
   } catch (error) {
     notifyError(error)
   }

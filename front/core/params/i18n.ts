@@ -10,7 +10,7 @@ export default {
     },
     goalSettings: {
       trackingPrompt: 'Prompt de suivi des objectifs',
-      trackingPromptHint: 'Prompt complet utilisé après chaque cycle pour actualiser le suivi et décider de poursuivre ou de terminer. Les modifications s’appliquent aux prochains jugements. Effacer le contenu restaure le prompt standard.',
+      trackingPromptHint: 'Consignes du LLM décisionnel pour choisir CONTINUE ou STOP après un cycle, sans réécrire le suivi ni générer de revue. Sans modèle décisionnel, le monitoring est désactivé. Effacer le contenu restaure le prompt standard.',
     },
     params: {
       title: 'Paramètres',
@@ -437,7 +437,7 @@ export default {
     },
     goalSettings: {
       trackingPrompt: 'Goal tracking prompt',
-      trackingPromptHint: 'Complete prompt used after each cycle to update tracking and decide whether to continue or stop. Changes apply to subsequent judgements. Clearing the content restores the standard prompt.',
+      trackingPromptHint: 'Instructions for the decision model to choose CONTINUE or STOP after a cycle, without rewriting tracking or generating a review. Without a decision model, monitoring is disabled. Clearing the content restores the standard prompt.',
     },
     params: {
       title: 'Settings',
@@ -864,7 +864,7 @@ export default {
     },
     goalSettings: {
       trackingPrompt: '目标跟踪提示词',
-      trackingPromptHint: '每个周期结束后用于更新跟踪并决定继续或停止的完整提示词。修改适用于后续评估。清空内容可恢复默认提示词。',
+      trackingPromptHint: '决策模型在周期结束后选择继续或停止的指令，不重写跟踪记录或生成审查。未配置决策模型时停用监控。清空内容可恢复默认提示词。',
     },
     params: {
       title: '设置',

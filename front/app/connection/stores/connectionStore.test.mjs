@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import * as pinia from 'pinia'
+import * as vue from 'vue'
 import * as axios from 'axios'
 import { loadTypescript, deferred } from '../../../test-support/load-typescript.mjs'
+import { sessionStoreScope } from '../../../test-support/session-store.mjs'
 
 const row = (id, host = 'synthetic.example.test') => ({ id, agent_id: id, service_id: 9, active: true,
   params: { host, token: null }, configured_params: ['token'] })
@@ -16,8 +18,9 @@ function setup() {
     return pending.promise
   }]))
   const { useConnectionStore } = loadTypescript(new URL('./connectionStore.ts', import.meta.url), {
-    pinia, axios,
+    vue, pinia, axios,
     '@/core/api': { sessionGeneration: () => generation },
+    '@/core/util/facade': sessionStoreScope(new EventTarget(), () => generation),
     '../services/connectionService': { __esModule: true, default: service },
     '../events': { CONNECTIONS_CHANGED_EVENT: 'connections-changed' },
   })

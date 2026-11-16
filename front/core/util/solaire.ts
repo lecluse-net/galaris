@@ -32,3 +32,9 @@ export const solaireCss = Object.fromEntries(solaireColors.map(color => [color, 
 export const solaireStyles = `:root {\n${solaireColors.flatMap(color => (
   Object.entries(solaire[color]).map(([variant, value]) => `  --solaire-${color}-${variant}: ${value};`)
 )).join('\n')}\n  --solaire-warning-action-text: ${solaireWarningActionText};\n}`
+  + solaireColors.map(color => `
+.text-solaire-${color} { color: var(--solaire-${color}-accent) !important; }
+.bg-solaire-${color} { background: var(--solaire-${color}-accent) !important; }
+.bg-solaire-${color}-light { background: var(--solaire-${color}-light) !important; }
+.body--dark .bg-solaire-${color}-light { background: var(--solaire-${color}-dark) !important; }
+`).join('')

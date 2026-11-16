@@ -12,7 +12,7 @@
     </div>
     <q-banner v-else-if="catalogTab && failed" class="q-my-lg" role="alert">
       {{ t('harnesses.catalog.loadError') }}
-      <template #action><q-btn flat :label="t('common.retry')" @click="load" /></template>
+      <template #action><q-btn outline color="primary"  :label="t('common.retry')" @click="load" /></template>
     </q-banner>
     <q-tab-panels v-show="!catalogTab || (!loading && !failed)" :model-value="tab" keep-alive animated>
       <q-tab-panel name="internal" :aria-label="t('harnesses.preferences.internal')">

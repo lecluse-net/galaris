@@ -4,7 +4,8 @@ import asyncio
 from pathlib import Path
 import sys
 
-from .contracts import PreparedDocument
+from .contracts import DocumentPreparationError, PreparationFailure, PreparedDocument
+from pydantic import ValidationError
 
 _slots = asyncio.Semaphore(2)
 
@@ -27,7 +28,12 @@ async def prepare_document(
             async with asyncio.timeout(120 if preview_only else 1200):
                 output, _ = await process.communicate()
             if process.returncode != 0:
-                raise ValueError("Document preparation failed; format, encryption or conversion limits")
+                try:
+                    failure = PreparationFailure.model_validate_json(output)
+                except ValidationError:
+                    failure = PreparationFailure(exception_type="WorkerExit")
+                failure.exit_code = process.returncode
+                raise DocumentPreparationError(failure)
             return PreparedDocument.model_validate_json(output)
         except TimeoutError as error:
             raise ValueError("Document preparation exceeded its time budget") from error

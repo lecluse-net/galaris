@@ -1,11 +1,12 @@
 import { defineStore } from 'pinia'
+import { withSessionScope } from '@/core/util/facade'
 import { ref, computed } from 'vue'
 import { tokenService, type UserToken, type UserTokenUpdate } from '../services/tokenService'
 import { i18n } from '@/core/i18n'
 
 export type { UserToken }
 
-export const useTokenStore = defineStore('token', () => {
+export const useTokenStore = withSessionScope(defineStore('token', () => {
     // State
     const tokens = ref<UserToken[]>([])
     const loading = ref(false)
@@ -117,4 +118,7 @@ export const useTokenStore = defineStore('token', () => {
         updateTokenLabel,
         deleteToken
     }
+}), {
+    reset(store) { store.tokens = []; store.loading = false; store.error = null },
+    flags: { fetchTokens: 'loading', createToken: 'loading', toggleToken: 'loading', updateTokenLabel: 'loading', deleteToken: 'loading' },
 })

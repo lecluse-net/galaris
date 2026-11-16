@@ -4,14 +4,15 @@
     <div :id="titleId" class="dialog-header-title text-h6"><slot name="title">{{ title }}</slot></div>
     <q-space />
     <slot name="actions" />
-    <q-btn v-close-popup flat round dense icon="close" :aria-label="closeLabel || t('common.close')" />
+    <q-btn v-close-popup="closePopup" flat round dense icon="close" :aria-label="closeLabel || t('common.close')" @click="emit('close', $event)" />
   </q-card-section>
 </template>
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
 
-defineProps<{ title: string; icon?: string; titleId?: string; closeLabel?: string }>()
+withDefaults(defineProps<{ title: string; icon?: string; titleId?: string; closeLabel?: string; closePopup?: boolean }>(), { closePopup: true })
+const emit = defineEmits<{ close: [event: Event] }>()
 const { t } = useI18n()
 </script>
 

@@ -68,10 +68,10 @@
       </template>
     </q-banner>
 
-    <q-banner v-if="connectionStore.error" role="alert" class="bg-negative text-white q-mb-md" rounded>
+    <q-banner v-if="connectionRequests.fetchConnectionOverview?.error" role="alert" class="bg-negative text-white q-mb-md" rounded>
       {{ $t('connection.auth.loadConnectionsError') }}
       <template #action>
-        <q-btn outline :label="$t('common.retry')" @click="reloadConnections" />
+        <q-btn color="primary" outline :label="$t('common.retry')" @click="reloadConnections" />
       </template>
     </q-banner>
 
@@ -216,11 +216,7 @@
 
     <q-dialog v-model="showDialog" @hide="previewConnectionId && emit('close')">
       <q-card class="connection-dialog-card galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ !showSettings ? t('permissions.title') : isEdit ? $t('connection.editDialogTitle') : $t('connection.addDialogTitle') }}</div>
-          <q-space />
-          <q-btn icon="close" :aria-label="$t('common.close')" flat round dense v-close-popup />
-        </q-card-section>
+        <DialogHeader :title="!showSettings ? t('permissions.title') : isEdit ? $t('connection.editDialogTitle') : $t('connection.addDialogTitle')" :close-label="$t('common.close')" />
 
         <q-tabs v-if="currentConnection && showPermissionTab && !previewLoading && !previewError"
           v-model="connectionTab" inline-label align="left" active-color="primary" indicator-color="primary"
@@ -242,9 +238,9 @@
             </template>
             {{ saveError }}
             <template #action>
-              <q-btn
+              <q-btn outline
                 v-if="existingConnectionTarget"
-                flat
+
                 color="white"
                 :label="t('connection.showExisting')"
                 @click="showExistingConnection"
@@ -285,17 +281,13 @@
 
     <q-dialog v-model="showDeleteDialog">
       <q-card class="galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title">
-          <div class="text-h6">{{ $t('connection.deleteTitle') }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="$t('connection.deleteTitle')" :close-label="$t('common.close')" />
         <q-card-section class="galaris-dialog-body">
           {{ $t('connection.deleteMessage') }}
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn flat :label="$t('common.cancel')" color="primary" v-close-popup />
-          <q-btn v-if="canEdit" flat :label="$t('common.delete')" color="negative" @click="onDelete" v-close-popup />
+          <q-btn outline  :label="$t('common.cancel')" color="primary" v-close-popup />
+          <q-btn v-if="canEdit"  :label="$t('common.delete')" color="negative" @click="onDelete" v-close-popup />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -303,8 +295,10 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
+import { storeRequests } from '@/core/util/facade'
 import { isAxiosError } from 'axios'
-import { reactive, ref, computed, onMounted, onActivated, onBeforeUnmount, watch } from 'vue'
+import { reactive, ref, computed, onMounted, onActivated, onDeactivated, onBeforeUnmount, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { useConnectionStore, type Connection } from '../stores/connectionStore'
@@ -315,7 +309,7 @@ import ConnectionTestButton from './ConnectionTestButton.vue'
 import ConnectionPermissions from './ConnectionPermissions.vue'
 import { SystemServiceIcon, ServiceIdentityIcon, ServiceFilterSelect, ServiceOriginBadge, type Service } from '@/app/services'
 import { useI18n } from 'vue-i18n'
-import { connectionParamLabel, connectionParamOptions, toolMessageKey } from '@/app/services/presentation'
+import { connectionParamLabel, connectionParamOptions, toolMessageKey } from '@/app/services/facade'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { mailService, type MailApproverOption } from '../services/mailService'
 import { refreshMailAvailability } from '../availability'
@@ -345,6 +339,7 @@ interface VisibleConnectionParam {
 }
 
 const connectionStore = useConnectionStore()
+const connectionRequests = storeRequests(connectionStore)
 const agentOptionsData = ref<AgentSelectionOption[]>([])
 const serviceStore = reactive({ services: [] as Service[], loading: false })
 const { t, te } = useI18n()
@@ -877,7 +872,7 @@ async function loadPreview(): Promise<void> {
   try {
     await loadConnectionsTab()
     if (request !== previewRequest || !showDialog.value) return
-    if (connectionStore.error) throw connectionStore.error
+    if (connectionRequests.fetchConnectionOverview?.error) throw connectionRequests.fetchConnectionOverview.error
     const connection = connectionStore.connections.find(row => row.id === props.previewConnectionId)
     if (!connection || (isSystemTool(connection.service_id) && !canInspectPermissions(connection))) throw new Error(t('connection.auth.loadConnectionsError'))
     await openDialog(connection)
@@ -888,10 +883,14 @@ async function loadPreview(): Promise<void> {
   }
 }
 onMounted(() => props.previewConnectionId ? loadPreview() : loadConnectionsTab())
-let firstActivation = true
+let returningFromInactive = false
+onDeactivated(() => { returningFromInactive = true })
 onActivated(() => {
-  if (firstActivation) firstActivation = false
-  else if (!props.previewConnectionId) void loadConnectionsTab()
+  // Async views can resolve after KeepAlive's initial activation. Only a real
+  // departure suppresses the initial read and requires reconciliation on return.
+  if (!returningFromInactive) return
+  returningFromInactive = false
+  if (!props.previewConnectionId) void loadConnectionsTab()
 })
 
 onBeforeUnmount(() => { dialogGeneration++; previewRequest++ })

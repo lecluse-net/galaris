@@ -6,11 +6,10 @@
 import { onMounted } from 'vue'
 import { useMeta } from 'quasar'
 import { useBrowserTheme } from '../quasar-user-options'
-import { provideContextHelp } from './user'
-import MainLayout from '@/app/index/components/MainLayout.vue'
-import { useAuthStore } from './user/stores/authStore'
-import { useAuthorizeStore } from './authorize/stores/authorizeStore'
-import { usePrivilegeStore } from './authorize/stores/privilegeStore'
+import { provideContextHelp } from './user/facade'
+import { MainLayout } from '@/app/index'
+import { useAuthStore } from './user/facade'
+import { useAuthorizeStore, usePrivilegeStore } from './authorize'
 import { settings } from './settings'
 
 useBrowserTheme()

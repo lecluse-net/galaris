@@ -1,7 +1,9 @@
 # Mémoire — extensions et expériences restantes
 
-- Statut : `partial`
+- Statut : `in-progress`
 - Tri documentaire : 2026-11-14 ; campagnes historiques non rejouées.
+- Reprise : 2026-11-15, pièces jointes et qualification documentaire synthétique ;
+  périmètre et accord préalable décrits dans l'[index](README.md#campagne-engagée-le-15-novembre-2026).
 
 ## Contrats et preuves à réutiliser
 

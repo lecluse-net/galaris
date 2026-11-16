@@ -58,7 +58,7 @@
     <CalendarSettings v-if="settingsOpen" :feeds="feeds" :colors="calendarColors" :initial-id="settingsId" :can-edit="canEdit" @close="settingsOpen = false" @changed="loadFeeds(true)" @color="setCalendarColor" />
     <q-dialog :model-value="syncFeedId !== null" @update:model-value="!$event && (syncFeedId = null)">
       <q-card class="galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap"><div class="text-h6">{{ t('agenda.syncHistory') }}</div><q-space /><q-btn flat round dense icon="close" :aria-label="t('agenda.close')" @click="syncFeedId = null" /></q-card-section>
+        <DialogHeader :title="t('agenda.syncHistory')" :close-label="t('agenda.close')" :close-popup="false" @close="syncFeedId = null" />
         <q-card-section class="galaris-dialog-body"><CalendarSyncMonitor v-if="syncFeedId !== null" ref="syncMonitor" :key="syncFeedId" :calendar-id="syncFeedId" :show-trigger="false" auto-start @changed="refresh" /></q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right"><q-btn color="primary" icon="sync" :label="t('agenda.newSync')" :loading="syncMonitor?.requesting" :disable="!syncMonitor?.canStart" @click="syncMonitor?.start()" /></q-card-actions>
       </q-card>
@@ -69,6 +69,7 @@
   </q-page>
 </template>
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'

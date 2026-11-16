@@ -107,6 +107,7 @@ def infer_call_type(messages: Any, system_prompt: str = "") -> str:
     markers = (
         ("you maintain the durable markdown tracking", "goal_tracking"),
         ("you maintain the durable html tracking", "goal_tracking"),
+        ("you decide whether a long-running goal", "goal_tracking"),
         ("you are the main dispatcher", "dispatch"),
         ("you are the planner", "planning"),
         ("you synthesize the overall result", "synthesis"),

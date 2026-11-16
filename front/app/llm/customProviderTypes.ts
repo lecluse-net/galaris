@@ -21,7 +21,7 @@ const canonicalOpenAICompatible: CustomProviderTypeContribution = {
   hintKey: 'llm.openAiCompatibleMultipleHint',
   urlHintKey: 'llm.apiUrlHint',
   icon: 'lan',
-  bannerClass: 'bg-blue-1 text-blue-10',
+  bannerClass: 'bg-solaire-blue-light text-solaire-blue',
   apiKeyRequired: true,
   defaultBaseUrl: '',
 }

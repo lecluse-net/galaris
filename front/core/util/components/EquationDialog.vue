@@ -1,10 +1,7 @@
 <template>
   <q-dialog :model-value="true" no-refocus :aria-label="t('richEditor.equation.title')" @update:model-value="value => { if (!value) emit('close') }" @show="initialize" @before-hide="dispose">
     <q-card class="galaris-dialog-card rich-editor equation-dialog">
-      <q-card-section class="galaris-dialog-title row items-center">
-        <div class="text-h6">{{ t('richEditor.equation.title') }}</div><q-space />
-        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-      </q-card-section>
+      <DialogHeader :title="t('richEditor.equation.title')" :close-label="t('common.close')" />
       <q-card-section class="galaris-dialog-body q-gutter-md">
         <div>{{ t(kind === 'inline' ? 'richEditor.equation.inline' : 'richEditor.equation.block') }}</div>
         <div v-if="loading" role="status"><q-spinner /> {{ t('common.loading') }}</div>
@@ -22,6 +19,7 @@
   </q-dialog>
 </template>
 <script setup lang="ts">
+import DialogHeader from './DialogHeader.vue'
 import { nextTick, onBeforeUnmount, ref, shallowRef, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { MathfieldElement } from 'mathlive'

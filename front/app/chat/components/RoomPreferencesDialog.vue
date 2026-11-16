@@ -1,18 +1,7 @@
 <template>
   <q-dialog :model-value="modelValue" @update:model-value="$emit('update:modelValue', $event)">
     <q-card class="room-preferences-card galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <div class="text-h6">{{ t('chat.roomPreferences.title') }}</div>
-        <q-space />
-        <q-btn
-          v-close-popup
-          flat
-          round
-          dense
-          icon="close"
-          :aria-label="t('common.close')"
-        />
-      </q-card-section>
+      <DialogHeader :title="t('chat.roomPreferences.title')" :close-label="t('common.close')" />
 
       <q-card-section class="q-gutter-md galaris-dialog-body">
         <q-input
@@ -47,8 +36,8 @@
       </q-card-section>
 
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn
-          flat
+        <q-btn outline
+
           :color="room?.archived ? 'primary' : 'warning'"
           :icon="room?.archived ? 'unarchive' : 'archive'"
           :label="t(room?.archived ? 'chat.roomPreferences.unarchive' : 'chat.roomPreferences.archive')"
@@ -57,7 +46,7 @@
           @click="toggleArchive"
         />
         <q-space />
-        <q-btn v-close-popup flat :label="t('chat.cancel')" />
+        <q-btn outline color="primary" v-close-popup  :label="t('chat.cancel')" />
         <q-btn
           color="primary"
           :label="t('chat.roomPreferences.save')"
@@ -71,6 +60,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { TopicSelect } from '@/app/topic'

@@ -2,9 +2,9 @@
   <div class="footer-menu bg-grey-8 text-grey-4 shadow-up-2" :class="{ 'mini': mini }">
     <q-toolbar :class="mini ? 'justify-center column' : 'justify-center'">
       <template v-for="node in sortedNodes" :key="node.path">
-        <q-btn
+        <q-btn outline color="primary"
           v-if="node.to"
-          flat
+
           :to="node.to"
           :icon="node.icon"
           :label="mini ? undefined : translatedLabel(node.label)"
@@ -12,9 +12,9 @@
         >
           <q-tooltip v-if="mini">{{ translatedLabel(node.label) }}</q-tooltip>
         </q-btn>
-        <q-btn
+        <q-btn outline color="primary"
           v-else-if="node.href"
-          flat
+
           :href="node.href"
           target="_blank"
           :icon="node.icon"

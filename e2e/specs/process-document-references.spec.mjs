@@ -19,7 +19,7 @@ test('native Processes and runs remain live references in authored Documents', a
   const checked = async response => { expect(response.ok(), await response.text()).toBeTruthy(); return response.json() }
   const definition = await checked(await request.post('/api/processes/internal/definitions', { headers, data: {
     agent_id: fixture.agent_id, owner: 'agent', title: 'Synthetic cited process',
-    graph: { schema_version: 'galaris.bpmn/v2', inputs: [], outputs: [], actors: [],
+    graph: { schema_version: 'galaris.bpmn/v2', variables: [], actors: [],
       nodes: [{ id: 'start', kind: 'start', title: 'Synthetic start' }, { id: 'end', kind: 'end', title: 'Synthetic end' }],
       flows: [{ id: 'finish', source: 'start', target: 'end' }] },
   } }))

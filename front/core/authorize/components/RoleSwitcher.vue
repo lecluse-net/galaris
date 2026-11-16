@@ -7,7 +7,7 @@
         v-close-popup 
         @click="switchRole(assignment.role_id)"
         :active="authorizeStore.activeRole?.id === assignment.role_id"
-        active-class="bg-blue-1 text-primary"
+        active-class="bg-solaire-blue-light text-primary"
     >
         <q-item-section avatar>
             <q-icon name="admin_panel_settings" :color="authorizeStore.activeRole?.id === assignment.role_id ? 'primary' : 'grey-7'" />

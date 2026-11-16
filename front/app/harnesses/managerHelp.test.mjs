@@ -16,6 +16,7 @@ function setup() {
   const timers = new Map()
   let mounted, unmounted, nextTimer = 0
   const modules = {
+    '@/core/util': { DialogHeader: {} },
     './HarnessManagerConfiguration.vue': { __esModule: true, default: {} },
     './HarnessManagerRelease.vue': { __esModule: true, default: {} },
     vue: { ...vue, onMounted: fn => { mounted = fn }, onUnmounted: fn => { unmounted = fn } },

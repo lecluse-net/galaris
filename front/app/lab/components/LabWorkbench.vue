@@ -15,7 +15,7 @@
       <q-chip v-if="dataset">{{ t('evaluation.insights.purposes.' + (dataset.purpose ?? 'work')) }}</q-chip>
     </div>
     <q-banner v-if="!loading && !datasets.length">{{ t('evaluation.contract.emptyDatasets') }}</q-banner>
-    <q-banner v-if="datasetDirty" class="bg-orange-1 text-orange-10">{{ t('evaluation.contract.unsaved') }}</q-banner>
+    <q-banner v-if="datasetDirty" class="bg-solaire-orange-light text-solaire-orange">{{ t('evaluation.contract.unsaved') }}</q-banner>
     <q-card v-if="dataset && descriptor" flat bordered>
       <q-tabs v-model="tab" align="left" active-color="primary">
         <q-tab name="dataset" :label="t('evaluation.contract.datasetSettings')" />
@@ -54,8 +54,8 @@
         <q-tab-panel name="items">
           <div v-if="canEdit" class="row q-gutter-sm q-mb-md">
             <q-btn icon="add" color="primary" :label="t('evaluation.contract.newItem')" @click="openName('item')" />
-            <q-btn icon="input" outline :label="t('evaluation.contract.capture')" @click="captureDialog = true" />
-            <q-btn v-if="mechanism === 'topic_classification'" icon="forum" outline :label="t('evaluation.topicImport.title')" @click="topicImport = true" />
+            <q-btn color="primary" icon="input" outline :label="t('evaluation.contract.capture')" @click="captureDialog = true" />
+            <q-btn color="primary" v-if="mechanism === 'topic_classification'" icon="forum" outline :label="t('evaluation.topicImport.title')" @click="topicImport = true" />
           </div>
           <q-select v-model="categoryFilter" clearable :options="categoryOptions" emit-value map-options outlined :label="t('evaluation.insights.categoryFilter')" class="q-mb-md" />
           <div class="row q-gutter-sm q-mb-md"><q-chip v-for="entry in coverage" :key="entry.category">{{ t('evaluation.insights.categories.' + entry.category) }} · {{ entry.count }}</q-chip></div>
@@ -69,7 +69,7 @@
             </q-td></template>
             <template #item="scope"><div class="col-12 q-mb-sm"><q-card flat bordered @click="openCase(scope.row)"><q-card-section>
               <strong>{{ previewText(scope.row.name) }}</strong><p class="value-preview">{{ previewText(scope.row.input_data.variable_value) }}</p>
-              <q-btn flat icon="edit_note" :label="t('evaluation.view')" @click.stop="openCase(scope.row)" />
+              <q-btn outline color="primary"  icon="edit_note" :label="t('evaluation.view')" @click.stop="openCase(scope.row)" />
               <q-btn v-if="canEdit" flat icon="delete_outline" color="negative" :aria-label="t('evaluation.contract.delete')" @click.stop="confirmDelete('item', scope.row.id)" />
             </q-card-section></q-card></div></template>
           </q-table>
@@ -82,11 +82,11 @@
           <p>{{ t('evaluation.insights.budgetHelp') }}</p>
           <p>{{ t('evaluation.insights.planned', { count: cases.filter(row => row.readiness === 'ready' && row.enabled).length * repetitions }) }}</p>
           <div class="row q-col-gutter-md q-mb-md">
-            <q-select v-model="candidateId" :options="[...(config?.llms ?? []), ...(['dispatcher', 'topic_classification', 'memory_extraction'].includes(mechanism) ? config?.decision_llms ?? [] : [])]" option-value="id" option-label="label" emit-value map-options outlined class="col-12 col-md-5" :label="t('evaluation.contract.candidate')" />
+            <q-select v-model="candidateId" :options="mechanism === 'goal_tracking' ? config?.decision_llms ?? [] : [...(config?.llms ?? []), ...(['dispatcher', 'topic_classification', 'memory_extraction'].includes(mechanism) ? config?.decision_llms ?? [] : [])]" option-value="id" option-label="label" emit-value map-options outlined class="col-12 col-md-5" :label="t('evaluation.contract.candidate')" />
             <q-select v-model="judgeId" :options="config?.llms ?? []" option-value="id" option-label="label" emit-value map-options outlined class="col-12 col-md-5" :label="t('evaluation.contract.judge')" />
             <div class="col-12 col-md-2"><q-btn v-if="canEdit" icon="play_arrow" color="primary" :label="t('evaluation.contract.start')" :loading="busy" :disable="!runSettingsValid || datasetDirty || candidateId == null || judgeId == null || !cases.some(row => row.readiness === 'ready')" @click="startRun" /></div>
           </div>
-          <q-btn unelevated icon="compare_arrows" :label="t('evaluation.comparison.title')" class="comparison-button q-mb-md" @click="comparisonOpen = true" />
+          <q-btn color="primary" unelevated icon="compare_arrows" :label="t('evaluation.comparison.title')" class="comparison-button q-mb-md" @click="comparisonOpen = true" />
           <q-table :rows="runs" :columns="runColumns" row-key="id" :pagination="{ rowsPerPage: 50 }" :rows-per-page-options="[10, 20, 50, 100, 500]" :grid="$q.screen.lt.md" flat>
             <template #body-cell-status="scope"><q-td :props="scope">{{ t('evaluation.contract.status.' + scope.row.status) }}</q-td></template>
             <template #body-cell-progress="scope"><q-td :props="scope">
@@ -100,7 +100,7 @@
               <div>{{ t('evaluation.insights.averageCoherence') }} · <strong class="text-h6">{{ score(scope.row.score_percent) }}</strong></div>
               <div>{{ t('evaluation.contract.execution') }} {{ scope.row.completed_cases }}/{{ scope.row.total_cases }}</div>
               <div>{{ t('evaluation.contract.judgment') }} {{ scope.row.judged_cases }}/{{ scope.row.total_cases }}</div>
-              <q-btn flat icon="visibility" :label="t('evaluation.view')" @click="openRun(scope.row.id)" /><q-btn v-if="!active(scope.row) && scope.row.completed_cases" flat icon="rate_review" :label="t('evaluation.insights.review')" @click="openReview(scope.row.id)" />
+              <q-btn outline color="primary"  icon="visibility" :label="t('evaluation.view')" @click="openRun(scope.row.id)" /><q-btn outline color="primary" v-if="!active(scope.row) && scope.row.completed_cases"  icon="rate_review" :label="t('evaluation.insights.review')" @click="openReview(scope.row.id)" />
             </q-card-section></q-card></div></template>
           </q-table>
         </q-tab-panel>
@@ -108,14 +108,14 @@
       <div v-if="canEdit && tab === 'dataset'" class="dataset-actions">
         <q-btn color="primary" icon="save" :label="t('evaluation.contract.save')" :loading="busy" :disable="datasetInvalid || configurationInvalid" @click="saveDataset" />
         <span class="text-caption" :class="datasetDirty ? 'text-warning' : 'text-grey-7'">{{ t(datasetDirty ? 'evaluation.contract.pendingChanges' : 'evaluation.contract.savedParameters') }}</span>
-        <q-btn flat color="negative" icon="delete_outline" :label="$q.screen.lt.md ? undefined : t('evaluation.contract.delete')" :aria-label="t('evaluation.contract.delete')" @click="confirmDelete('dataset', dataset.id)" />
+        <q-btn  color="negative" icon="delete_outline" :label="$q.screen.lt.md ? undefined : t('evaluation.contract.delete')" :aria-label="t('evaluation.contract.delete')" @click="confirmDelete('dataset', dataset.id)" />
       </div>
     </q-card>
 
     <LabSyntheticDatasetDialog v-if="canEdit" v-model="syntheticDialog" :mechanism="mechanism" :models="config?.llms ?? []" :default-model="config?.lab_llm_id ?? null" :source-dataset="savedDataset" :context-dirty="Boolean(datasetDirty)" @generated="onSyntheticGenerated" />
     <q-dialog v-model="caseDialog">
       <q-card v-if="editingCase && descriptor && dataset" class="wide-dialog galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ editingCase.name }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
+        <DialogHeader :title="editingCase.name" :close-label="t('common.close')" />
         <q-card-section class="q-gutter-md galaris-dialog-body">
           <q-input v-model="editingCase.name" outlined :label="t('evaluation.contract.name')" :readonly="!canEdit" />
           <q-select v-model="editingCase.categories" multiple use-chips :options="categoryOptions" emit-value map-options outlined :label="t('evaluation.insights.categoryLabel')" :readonly="!canEdit" />
@@ -135,20 +135,20 @@
           <q-expansion-item v-if="Object.keys(editingCase.source_capture).length" :label="t('evaluation.contract.provenance')">
             <JsonEditor :model-value="pretty(editingCase.source_capture)" language="json" readonly :visible-lines="12" />
           </q-expansion-item>
-          <q-banner class="bg-blue-1 text-primary">{{ t('evaluation.contract.referenceHelp') }}</q-banner>
-          <q-btn outline icon="preview" :label="t('evaluation.contract.preview')" :loading="busy" :disable="variableInvalid || contextInvalid" @click="previewCase" />
-          <q-btn v-if="canEdit" flat icon="auto_awesome" :label="t('evaluation.contract.proposeReference')" :loading="busy" :disable="variableInvalid || contextInvalid" @click="proposeReference" />
+          <q-banner class="bg-solaire-blue-light text-primary">{{ t('evaluation.contract.referenceHelp') }}</q-banner>
+          <q-btn color="primary" outline icon="preview" :label="t('evaluation.contract.preview')" :loading="busy" :disable="variableInvalid || contextInvalid" @click="previewCase" />
+          <q-btn outline color="primary" v-if="canEdit"  icon="auto_awesome" :label="t('evaluation.contract.proposeReference')" :loading="busy" :disable="variableInvalid || contextInvalid" @click="proposeReference" />
           <q-expansion-item v-if="preview" default-opened :label="t('evaluation.contract.effectiveInput')">
             <JsonEditor :model-value="pretty(preview)" language="json" readonly :visible-lines="12" />
           </q-expansion-item>
         </q-card-section>
-        <q-card-actions class="galaris-dialog-actions" align="right"><q-btn v-close-popup flat :label="t('common.cancel')" /><q-btn v-if="canEdit" color="primary" :label="t('evaluation.contract.save')" :loading="busy" :disable="variableInvalid || contextInvalid || expectedInvalid" @click="saveCase" /></q-card-actions>
+        <q-card-actions class="galaris-dialog-actions" align="right"><q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" /><q-btn v-if="canEdit" color="primary" :label="t('evaluation.contract.save')" :loading="busy" :disable="variableInvalid || contextInvalid || expectedInvalid" @click="saveCase" /></q-card-actions>
       </q-card>
     </q-dialog>
 
     <q-dialog v-model="runDialog">
       <q-card v-if="selectedRun" class="wide-dialog galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('evaluation.contract.benchmarkResult') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
+        <DialogHeader :title="t('evaluation.contract.benchmarkResult')" :close-label="t('common.close')" />
         <q-card-section class="galaris-dialog-body">
           <div class="text-subtitle1">{{ t('evaluation.contract.status.' + selectedRun.status) }} · {{ score(selectedRun.score_percent) }}</div>
           <div>{{ t('evaluation.contract.candidate') }}: {{ selectedRun.llm_snapshot.label }}</div>
@@ -157,15 +157,15 @@
           <div class="q-mt-md">{{ t('evaluation.contract.execution') }} {{ selectedRun.completed_cases }}/{{ selectedRun.total_cases }}</div>
           <q-linear-progress :value="selectedRun.completed_cases / Math.max(1, selectedRun.total_cases)" color="primary" />
           <div class="q-mt-md">{{ t('evaluation.contract.judgment') }} {{ selectedRun.judged_cases }}/{{ selectedRun.total_cases }}</div>
-          <q-linear-progress :value="selectedRun.judged_cases / Math.max(1, selectedRun.total_cases)" color="deep-purple" />
+          <q-linear-progress :value="selectedRun.judged_cases / Math.max(1, selectedRun.total_cases)" color="solaire-iris" />
           <div class="q-my-md">{{ t('evaluation.contract.costs', { candidate: selectedRun.candidate_cost.toFixed(4), judge: selectedRun.judge_cost.toFixed(4) }) }}</div>
-          <q-banner v-if="selectedRun.status === 'partial'" class="bg-orange-1 text-orange-10">{{ t('evaluation.contract.incomplete') }}</q-banner>
+          <q-banner v-if="selectedRun.status === 'partial'" class="bg-solaire-orange-light text-solaire-orange">{{ t('evaluation.contract.incomplete') }}</q-banner>
           <div v-if="canEdit" class="row q-gutter-sm q-my-md">
-            <q-btn v-if="active(selectedRun)" outline color="negative" icon="stop" :label="t('evaluation.contract.cancelRun')" :loading="busy" @click="cancelRun" />
-            <q-btn v-if="selectedRun.status === 'cancelled'" outline icon="play_arrow" :label="t('evaluation.contract.resume')" :loading="busy" @click="resumeRun" />
-            <q-btn v-if="!active(selectedRun)" outline color="deep-purple" icon="rate_review" :label="t('evaluation.contract.rejudge')" :disable="judgeId == null || !selectedRun.results.length" :loading="busy" @click="rejudgeRun" />
+            <q-btn v-if="active(selectedRun)"  color="negative" icon="stop" :label="t('evaluation.contract.cancelRun')" :loading="busy" @click="cancelRun" />
+            <q-btn color="primary" v-if="selectedRun.status === 'cancelled'" outline icon="play_arrow" :label="t('evaluation.contract.resume')" :loading="busy" @click="resumeRun" />
+            <q-btn v-if="!active(selectedRun)" outline color="solaire-iris" icon="rate_review" :label="t('evaluation.contract.rejudge')" :disable="judgeId == null || !selectedRun.results.length" :loading="busy" @click="rejudgeRun" />
           </div>
-          <q-btn v-if="canEdit && !active(selectedRun)" flat icon="analytics" :label="t('evaluation.dispatcher.analyzeBenchmark')" :loading="busy" @click="analyzeRun" />
+          <q-btn outline color="primary" v-if="canEdit && !active(selectedRun)"  icon="analytics" :label="t('evaluation.dispatcher.analyzeBenchmark')" :loading="busy" @click="analyzeRun" />
           <Markdown v-if="selectedRun.analysis_markdown" :content="selectedRun.analysis_markdown" class="q-my-md" />
           <LabResultsPanel :run="selectedRun" />
           <q-separator class="q-my-md" />
@@ -173,7 +173,7 @@
           <q-separator class="q-my-md" />
           <div class="text-subtitle1">{{ t('evaluation.contract.campaigns') }}</div>
           <q-expansion-item v-for="campaign in selectedRun.campaigns" :key="campaign.id" :label="campaign.created_at" :caption="t('evaluation.contract.status.' + campaign.status)">
-            <q-btn flat icon="rate_review" :label="t('evaluation.insights.review')" @click="openReview(selectedRun.id, campaign.id)" />
+            <q-btn outline color="primary"  icon="rate_review" :label="t('evaluation.insights.review')" @click="openReview(selectedRun.id, campaign.id)" />
             <JsonEditor :model-value="pretty(campaign)" language="json" readonly :visible-lines="12" />
           </q-expansion-item>
         </q-card-section>
@@ -181,23 +181,23 @@
     </q-dialog>
 
     <q-dialog v-model="nameDialog"><q-card class="small-dialog galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center"><div>{{ t(nameKind === 'dataset' ? 'evaluation.contract.newDataset' : 'evaluation.contract.newItem') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
+        <DialogHeader :title="t(nameKind === 'dataset' ? 'evaluation.contract.newDataset' : 'evaluation.contract.newItem')" :close-label="t('common.close')" />
       <q-card-section class="galaris-dialog-body"><q-input v-model="newName" outlined autofocus :label="t('evaluation.contract.name')" /></q-card-section>
-      <q-card-actions class="galaris-dialog-actions" align="right"><q-btn v-close-popup flat :label="t('common.cancel')" /><q-btn color="primary" :label="t('evaluation.contract.create')" :loading="busy" :disable="!newName.trim()" @click="createNamed" /></q-card-actions>
+      <q-card-actions class="galaris-dialog-actions" align="right"><q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" /><q-btn color="primary" :label="t('evaluation.contract.create')" :loading="busy" :disable="!newName.trim()" @click="createNamed" /></q-card-actions>
     </q-card></q-dialog>
     <q-dialog v-model="deleteDialog"><q-card class="small-dialog galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center"><div>{{ t('evaluation.contract.delete') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
+        <DialogHeader :title="t('evaluation.contract.delete')" :close-label="t('common.close')" />
       <q-card-section class="galaris-dialog-body">{{ t('evaluation.contract.deleteConfirm') }}</q-card-section>
-      <q-card-actions class="galaris-dialog-actions" align="right"><q-btn v-close-popup flat :label="t('common.cancel')" /><q-btn color="negative" :label="t('evaluation.contract.delete')" :loading="busy" @click="deleteConfirmed" /></q-card-actions>
+      <q-card-actions class="galaris-dialog-actions" align="right"><q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" /><q-btn color="negative" :label="t('evaluation.contract.delete')" :loading="busy" @click="deleteConfirmed" /></q-card-actions>
     </q-card></q-dialog>
     <q-dialog v-model="captureDialog"><q-card class="small-dialog galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center"><div>{{ t('evaluation.contract.capture') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
+        <DialogHeader :title="t('evaluation.contract.capture')" :close-label="t('common.close')" />
       <q-card-section class="q-gutter-md galaris-dialog-body">
         <q-input v-model="taskUri" outlined :label="t('evaluation.contract.taskUri')" />
-        <q-btn outline :label="t('evaluation.contract.captureTask')" :loading="busy" :disable="!taskUri.trim()" @click="captureTask" />
+        <q-btn color="primary" outline :label="t('evaluation.contract.captureTask')" :loading="busy" :disable="!taskUri.trim()" @click="captureTask" />
         <template v-if="descriptor?.source_import && mechanism !== 'task_analysis'">
           <q-input v-model="sourceSearch" outlined :label="t('evaluation.contract.searchSource')" />
-          <q-btn outline icon="search" :label="t('evaluation.contract.search')" :loading="busy" @click="searchSources" />
+          <q-btn color="primary" outline icon="search" :label="t('evaluation.contract.search')" :loading="busy" @click="searchSources" />
           <q-select v-model="sourceId" :options="sourceOptions" emit-value map-options outlined :label="t('evaluation.contract.source')" />
           <q-btn color="primary" :label="t('evaluation.contract.capture')" :loading="busy" :disable="!sourceId" @click="captureSource" />
         </template>
@@ -211,6 +211,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import LabResultsPanel from './LabResultsPanel.vue'
 import LabJudgeRepeatabilityPanel from './LabJudgeRepeatabilityPanel.vue'
 import LabSyntheticDatasetDialog from './LabSyntheticDatasetDialog.vue'
@@ -335,7 +336,7 @@ async function reload() {
     const [all, settings, list] = await Promise.all([api.descriptors(), api.config(), api.datasets(key)])
     if (current !== generation) return
     descriptors.value = all; config.value = settings; datasets.value = list
-    candidateId.value ??= mechanism === 'dispatcher' ? settings.dispatcher_llm_id : settings.lab_llm_id
+    candidateId.value ??= mechanism === 'goal_tracking' ? settings.decision_llms[0]?.id ?? null : mechanism === 'dispatcher' ? settings.dispatcher_llm_id : settings.lab_llm_id
     judgeId.value ??= settings.lab_llm_id
     const id = list.some(item => item.id === datasetId.value) ? datasetId.value : list[0]?.id ?? null
     if (id !== datasetId.value) datasetId.value = id

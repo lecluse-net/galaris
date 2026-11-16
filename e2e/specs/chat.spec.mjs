@@ -63,11 +63,13 @@ async function send(page, text = 'Vérifie le scénario de streaming') {
   await input.fill(text)
   await expect(input).toHaveValue(text)
   expect(await page.evaluate(() => window.isSecureContext)).toBe(true)
+  const submitted = performance.now()
   await input.press('Enter')
   // Admission can recover from a concurrent room lock through the real
   // scheduler; its recovery cadence is shortened by the isolated E2E root.
   await expect(page.locator('.message-timeline')).toContainText('Réponse progressive', { timeout: 40_000 })
   await expect(page.locator('.message-timeline')).not.toContainText('terminée.')
+  return { submit_to_visible_ms: performance.now() - submitted }
 }
 
 async function release(request, room) {
@@ -121,7 +123,8 @@ for (const mixed of [false, true]) test(`internal image attachments ${mixed ? 'w
   await expect(input).toHaveValue('')
   await expect(page.getByRole('button', { name: /^(Remove|Retirer) Synthetic attachment.png$/ })).toBeVisible()
   const publication = page.waitForResponse(response => response.request().method() === 'POST'
-    && new URL(response.url()).pathname === `/api/chat/rooms/${fixture.rooms[0]}/${mixed ? 'attachments' : 'messages'}`)
+    && [`/api/chat/rooms/${fixture.rooms[0]}/messages`, `/api/chat/rooms/${fixture.rooms[0]}/attachments`]
+      .includes(new URL(response.url()).pathname))
   await input.press('Enter')
   const response = await publication
   expect(response.ok(), await response.text()).toBeTruthy()
@@ -183,9 +186,50 @@ test('an internal task attachment opens its usual modal after sending and reload
   expect(errors()).toEqual([])
 })
 
-test('progress is visible before completion and survives durable handoff and reload', async ({ page, request }) => {
+test('autosave outages never hold local text and file publication', async ({ page, request }, testInfo) => {
+  const errors = collectPageErrors(page)
+  const fixture = await prepare(page, request, 'normal', errors)
+  let attempts = 0
+  await page.route('**/api/chat/rooms/*/draft', route => {
+    if (route.request().method() === 'GET') return route.continue()
+    attempts += 1
+    return route.fulfill({ status: 503, json: { detail: 'Synthetic autosave outage' } })
+  })
+  await page.route('**/api/chat/rooms/*/draft/files/*', route => {
+    attempts += 1
+    return route.fulfill({ status: 503, json: { detail: 'Synthetic autosave outage' } })
+  })
+  await page.locator('.composer-fields textarea').fill('Synthetic locally preserved message')
+  await page.locator('.composer-shell input[type=file]').setInputFiles({
+    name: 'local-draft.txt', mimeType: 'text/plain', buffer: Buffer.from('Synthetic local attachment bytes'),
+  })
+  await expect.poll(() => attempts).toBeGreaterThan(0)
+  const receipt = page.waitForResponse(response => response.url().endsWith(`/api/chat/rooms/${fixture.rooms[0]}/attachments`)
+    && response.request().method() === 'POST')
+  await send(page, 'Synthetic locally preserved message')
+  const published = await receipt
+  expect(published.status(), await published.text()).toBe(201)
+  const message = await published.json()
+  expect(message.text).toBe('Synthetic locally preserved message')
+  expect(message.files).toHaveLength(1)
+  expect(message.files[0].name).toBe('local-draft.txt')
+  const headers = { Authorization: `Bearer ${await page.evaluate(() => localStorage.getItem('access_token'))}` }
+  const bytes = await request.get(`/api/chat/rooms/${fixture.rooms[0]}/files/${message.files[0].id}`, { headers })
+  expect((await bytes.body()).toString()).toBe('Synthetic local attachment bytes')
+  await expect(page.locator('.composer-fields textarea')).toHaveValue('')
+  await expect(page.locator('.conversation-error')).toHaveCount(0)
+  await release(request, fixture.rooms[0])
+  await final(page)
+  await errors.settle()
+  expect(errors()).toEqual([])
+  await page.screenshot({ path: testInfo.outputPath('local-send-during-autosave-outage.png'), fullPage: true })
+})
+
+test('progress is visible before completion and survives durable handoff and reload', async ({ page, request }, testInfo) => {
+  const started = performance.now()
   const fixture = await prepare(page, request)
-  await send(page)
+  const prepareMs = performance.now() - started
+  const timing = await send(page)
   await page.evaluate(() => {
     window.handoffViolations = []
     const timeline = document.querySelector('.message-timeline')
@@ -196,8 +240,27 @@ test('progress is visible before completion and survives durable handoff and rel
     })
     window.handoffObserver.observe(timeline, { childList: true, subtree: true, characterData: true })
   })
+  const released = performance.now()
   await release(request, fixture.rooms[0])
   await final(page)
+  const completionMs = performance.now() - released
+  const resources = await page.evaluate(() => {
+    const totals = {}
+    for (const entry of performance.getEntriesByType('resource')) {
+      const path = new URL(entry.name).pathname
+      const kind = path.startsWith('/api/') ? 'api' : /\.(?:woff2?|ttf|otf)$/.test(path) ? 'fonts'
+        : path.endsWith('.js') ? 'js' : path.endsWith('.css') ? 'css' : 'other'
+      const group = totals[kind] ??= { requests: 0, transfer_bytes: 0, decoded_bytes: 0 }
+      group.requests++
+      group.transfer_bytes += entry.transferSize
+      group.decoded_bytes += entry.decodedBodySize
+    }
+    return totals
+  })
+  await testInfo.attach('chat-journey-performance', { body: JSON.stringify({
+    prepare_ms: prepareMs, ...timing, release_to_durable_message_ms: completionMs, resources,
+    note: 'Local synthetic runtime; preparation includes login; resources cover the current chat navigation. Service worker blocked, provider completion released explicitly. Not a remote model latency measurement.',
+  }), contentType: 'application/json' })
   expect(await page.evaluate(() => {
     window.handoffObserver.disconnect()
     return window.handoffViolations
@@ -387,10 +450,11 @@ test('Task tool details remain inspectable live, after reload and after completi
     const tool = dialog.getByRole('button', { name: /fixture_denied/ })
     await expect(tool).toHaveCount(1)
     if (await tool.getAttribute('aria-expanded') !== 'true') await tool.click()
+    const detail = dialog.locator('.timeline-item').filter({ has: page.getByRole('button', { name: /fixture_denied/ }) })
     await expect(tool).toContainText('Échec')
-    await expect(dialog.getByRole('cell', { name: 'Synthetic Task query', exact: true })).toBeVisible()
-    await expect(dialog.getByRole('region', { name: 'Contenu retourné', exact: true })).toContainText('Synthetic denial')
-    await expect(dialog.getByRole('cell', { name: '[REDACTED]', exact: true })).toBeVisible()
+    await expect(detail.getByRole('cell', { name: 'Synthetic Task query', exact: true })).toBeVisible()
+    await expect(detail.getByRole('region', { name: 'Contenu retourné', exact: true })).toContainText('Synthetic denial')
+    await expect(detail.getByRole('cell', { name: '[REDACTED]', exact: true })).toBeVisible()
     await expect(dialog).not.toContainText('synthetic-task-secret')
   }
   try {
@@ -400,6 +464,8 @@ test('Task tool details remain inspectable live, after reload and after completi
     await inspect()
     expect((await request.post(`/api/__test/task-tools/${fixture.agent_id}/release`)).ok()).toBeTruthy()
     await expect(page.getByRole('dialog')).toContainText('Résultat durable de la tâche.', { timeout: 40_000 })
+    await page.reload()
+    await inspect()
     await page.screenshot({ path: '/artifacts/task-tool-details.png' })
   } finally {
     await request.post(`/api/__test/task-tools/${fixture.agent_id}/release`)

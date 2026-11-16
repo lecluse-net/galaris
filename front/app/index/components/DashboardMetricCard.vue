@@ -25,6 +25,9 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { locale } = useI18n()
 
 const props = defineProps<{
   label: string
@@ -55,7 +58,7 @@ const trendIcon = computed(() => {
 
 const formattedTrend = computed(() => {
   if (props.trend === null) return '—'
-  return `${Math.abs(props.trend).toLocaleString(undefined, { maximumFractionDigits: 1 })} %`
+  return `${Math.abs(props.trend).toLocaleString(locale.value, { maximumFractionDigits: 1 })} %`
 })
 </script>
 
@@ -78,16 +81,16 @@ const formattedTrend = computed(() => {
   background: var(--metric-color);
 }
 
-.metric-card--blue { --metric-color: #4f7cff; --metric-soft: #edf2ff; }
-.metric-card--violet { --metric-color: #8b5cf6; --metric-soft: #f3efff; }
-.metric-card--teal { --metric-color: #10a78e; --metric-soft: #e8f8f4; }
-.metric-card--amber { --metric-color: #e79525; --metric-soft: #fff5e4; }
+.metric-card--blue { --metric-color: var(--solaire-blue-accent); --metric-soft: var(--solaire-blue-light); }
+.metric-card--violet { --metric-color: var(--solaire-violet-accent); --metric-soft: var(--solaire-violet-light); }
+.metric-card--teal { --metric-color: var(--solaire-cyan-accent); --metric-soft: var(--solaire-cyan-light); }
+.metric-card--amber { --metric-color: var(--solaire-orange-accent); --metric-soft: var(--solaire-orange-light); }
 
 body.body--dark .metric-card { border-color: rgba(255, 255, 255, 0.09); background: rgba(29, 29, 29, 0.94); box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35); }
-body.body--dark .metric-card--blue { --metric-soft: #1e2740; }
-body.body--dark .metric-card--violet { --metric-soft: #2b2340; }
-body.body--dark .metric-card--teal { --metric-soft: #17302b; }
-body.body--dark .metric-card--amber { --metric-soft: #362b15; }
+body.body--dark .metric-card--blue { --metric-soft: var(--solaire-blue-dark); }
+body.body--dark .metric-card--violet { --metric-soft: var(--solaire-violet-dark); }
+body.body--dark .metric-card--teal { --metric-soft: var(--solaire-cyan-dark); }
+body.body--dark .metric-card--amber { --metric-soft: var(--solaire-orange-dark); }
 
 .metric-card__body {
   display: flex;
@@ -111,14 +114,14 @@ body.body--dark .metric-card--amber { --metric-soft: #362b15; }
 .metric-card__label { color: #73809a; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.055em; text-transform: uppercase; }
 .metric-card__value-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
 .metric-card__value { margin: 5px 0 8px; color: #17233f; font-size: clamp(1.6rem, 2.2vw, 2.15rem); font-weight: 750; line-height: 1; }
-.metric-card__detail { margin-left: auto; color: #97640e; font-size: 0.9rem; font-weight: 750; font-variant-numeric: tabular-nums; text-align: right; }
+.metric-card__detail { margin-left: auto; color: var(--solaire-warning-action-text); font-size: 0.9rem; font-weight: 750; font-variant-numeric: tabular-nums; text-align: right; }
 body.body--dark .metric-card__value { color: #dbe2ee; }
-body.body--dark .metric-card__detail { color: #d9a54a; }
-body.body--dark .metric-card__trend--positive { color: #34d0ab; }
+body.body--dark .metric-card__detail { color: var(--solaire-orange-accent); }
+body.body--dark .metric-card__trend--positive { color: var(--solaire-green-accent); }
 .metric-card__foot { display: flex; gap: 8px; align-items: center; color: #8a94a8; font-size: 0.78rem; }
 .metric-card__trend { display: inline-flex; gap: 2px; align-items: center; font-weight: 700; white-space: nowrap; }
-.metric-card__trend--positive { color: #078873; }
-.metric-card__trend--negative { color: #d44d5c; }
+.metric-card__trend--positive { color: var(--solaire-green-accent); }
+.metric-card__trend--negative { color: var(--solaire-red-accent); }
 .metric-card__trend--neutral { color: #8a94a8; }
 .metric-card__hint { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

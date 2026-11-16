@@ -28,8 +28,8 @@ async def trial(output: Path, *, max_cost: float, prompt_file: Path | None = Non
     from modules import load_llm_provider_modules
     from app.goal.facade import resolve_goal_tracking_system_prompt
     from app.goal.cycle_context import goal_judgement_runtime_instructions
-    from app.goal.schemas import GoalJudgement
-    from app.llm import llm_service, model_usages, run_structured, LLMCallPurpose
+    from app.goal.evaluation import evaluate_goal
+    from app.llm import llm_service, model_usages, LLMCallPurpose
 
     load_models()
     load_llm_provider_modules()
@@ -52,22 +52,22 @@ async def trial(output: Path, *, max_cost: float, prompt_file: Path | None = Non
             started = time.monotonic()
             try:
                 async with asyncio.timeout(60):
-                    inference = await run_structured(llm=llm, output_type=GoalJudgement,
-                        system_prompt=prompt, prompt=message, task_id=None, agent_id=None,
-                        temperature=0.0, request_limit=1, max_tokens=4000, output_retries=0,
-                        count_tokens_before_request=False, purpose=LLMCallPurpose.LAB_MECHANISM_RUN,
-                        model_field=model_usages.GOAL)
+                    inference = await evaluate_goal(llm=llm, system_prompt=prompt,
+                        prompt=message, task_id=None, agent_id=None,
+                        purpose=LLMCallPurpose.LAB_MECHANISM_RUN)
                 total_cost += inference.cost
                 actual = inference.output.model_dump(mode="json")
-                results.append({"case": case["name"], "passed": actual["action"] in case["actions"],
+                expected = "STOP" if case["name"] == "verified_completion" else "CONTINUE"
+                results.append({"case": case["name"], "passed": actual["action"] == expected,
+                    "expected": expected,
                     "actual": actual, "cost": inference.cost, "seconds": time.monotonic() - started})
             except Exception as error:
                 results.append({"case": case["name"], "passed": False,
                     "error_type": type(error).__name__, "seconds": time.monotonic() - started})
     success = len(results) == len(corpus) and total_cost <= max_cost and all(r["passed"] for r in results)
-    report = {"version": "goal-autonomy-semantic-trial/v1", "synthetic": True,
+    report = {"version": "goal-autonomy-semantic-trial/v2", "synthetic": True,
         "scope": "Real-model judgement decisions; no autonomous tool or business execution",
-        "comparison": "Prompt-only comparison under a common output schema, not an old-runtime benchmark",
+        "comparison": "Native closed-choice monitoring, no text generation or fallback; compare identical corpus inputs with v1",
         "model": llm.code, "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
         "corpus_sha256": hashlib.sha256(json.dumps(corpus, sort_keys=True).encode()).hexdigest(),
         "passed": success, "cost": total_cost, "max_cost": max_cost, "results": results}

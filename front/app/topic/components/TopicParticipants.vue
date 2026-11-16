@@ -3,10 +3,10 @@
     <div v-for="group in groups" :key="group.key" class="topic-relation-group">
       <div class="topic-relation-label">{{ group.label }}</div>
       <div class="row q-gutter-xs">
-        <q-btn
+        <q-btn outline
           v-if="group.items.length > 5"
           dense
-          flat
+
           no-caps
           :icon="group.icon"
           :label="group.countLabel"

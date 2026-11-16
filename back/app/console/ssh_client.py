@@ -6,6 +6,8 @@ import asyncio
 import json
 import shlex
 import time
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from pathlib import PurePosixPath
 from typing import Any, cast
 from uuid import UUID, uuid4
@@ -65,6 +67,8 @@ class SshExecutionTransport:
         self._helper_path: str | None = None
         self._helper_version: str | None = None
         self._active_runs: set[UUID] = set()
+        self._active_operations = 0
+        self._persistent = False
 
     async def _new_connection(self) -> Any:
         passphrase = (
@@ -91,11 +95,22 @@ class SshExecutionTransport:
     def _schedule_idle_close(self) -> None:
         if self._idle_handle is not None:
             self._idle_handle.cancel()
+            self._idle_handle = None
+        if self._active_operations or self._persistent:
+            return
         loop = asyncio.get_running_loop()
-        self._idle_handle = loop.call_later(
+
+        async def close_if_idle() -> None:
+            # A fired timer may already have queued its task when another user
+            # acquires the connection. Only the current idle period may close it.
+            if self._idle_handle is handle and not self._active_operations and not self._persistent:
+                await self.close()
+
+        handle = loop.call_later(
             _IDLE_CLOSE_SECONDS,
-            lambda: asyncio.create_task(self.close()),
+            lambda: asyncio.create_task(close_if_idle()),
         )
+        self._idle_handle = handle
 
     async def connection(self) -> Any:
         async with self._connect_lock:
@@ -109,24 +124,38 @@ class SshExecutionTransport:
             self._idle_handle.cancel()
             self._idle_handle = None
         connection, self._connection = self._connection, None
+        self._persistent = False
         if connection is not None:
             connection.close()
             await connection.wait_closed()
 
     async def persistent_connection(self) -> Any:
         """Retain a dedicated transport until its owner closes it explicitly."""
+        self._persistent = True
         connection = await self.connection()
         if self._idle_handle is not None:
             self._idle_handle.cancel()
             self._idle_handle = None
         return connection
 
+    @asynccontextmanager
+    async def active_connection(self) -> AsyncGenerator[Any]:
+        """Keep the shared connection alive until every current user releases it."""
+        self._active_operations += 1
+        self._schedule_idle_close()
+        try:
+            yield await self.connection()
+        finally:
+            self._active_operations -= 1
+            if self._connection is not None:
+                self._schedule_idle_close()
+
     async def _simple(self, command: str, timeout_s: float = 10.0) -> Any:
-        connection = await self.connection()
-        return await asyncio.wait_for(
-            connection.run(command, check=False),
-            timeout=timeout_s,
-        )
+        async with self.active_connection() as connection:
+            return await asyncio.wait_for(
+                connection.run(command, check=False),
+                timeout=timeout_s,
+            )
 
     async def home(self) -> str:
         if self._home is None:
@@ -348,6 +377,12 @@ class SshExecutionTransport:
     ) -> ConsoleResult:
         if not command.strip():
             raise ToolCallRejectedError("Command must not be empty")
+        async with self.active_connection():
+            return await self._exec(command, cwd, timeout_s, stdin=stdin)
+
+    async def _exec(
+        self, command: str, cwd: str, timeout_s: float | None, *, stdin: bytes | None,
+    ) -> ConsoleResult:
         absolute_cwd, relative_cwd = await self.resolve_path(cwd)
         shell_command = (
             f"cd -- {shlex.quote(absolute_cwd)} && "

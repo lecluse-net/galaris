@@ -4,7 +4,7 @@
     <p class="text-body2">{{ t('n8nSetup.intro') }}</p>
     <q-banner v-if="loadError" class="n8n-status n8n-status--error q-mb-md" role="alert">
       {{ t('n8nSetup.loadError') }}
-      <template #action><q-btn flat :label="t('common.retry')" @click="loadDefaults" /></template>
+      <template #action><q-btn outline color="primary"  :label="t('common.retry')" @click="loadDefaults" /></template>
     </q-banner>
     <q-form autocomplete="off" @submit="save(true)">
       <div class="n8n-fields">
@@ -45,8 +45,8 @@
             </q-input>
             <div class="text-caption q-mt-xs">{{ t(field.hint) }}</div>
             <div v-if="field.secret && canEdit" class="row q-gutter-sm q-mt-xs">
-              <q-btn outline no-caps :disable="busy" :label="t('n8nSetup.generateSecret')" @click="generateSecret" />
-              <q-btn v-if="form[field.name]" flat no-caps :disable="busy" icon="content_copy"
+              <q-btn color="primary" outline no-caps :disable="busy" :label="t('n8nSetup.generateSecret')" @click="generateSecret" />
+              <q-btn outline color="primary" v-if="form[field.name]"  no-caps :disable="busy" icon="content_copy"
                 :label="t('n8nSetup.copySecret')" @click="copySecret" />
             </div>
           </div>
@@ -67,7 +67,7 @@
       {{ result.message }}
     </q-banner>
     <p class="text-caption q-mt-md">{{ t('n8nSetup.testScope') }}</p>
-    <q-btn v-if="canReadProcesses" to="/process" outline no-caps icon="account_tree" :label="t('n8nSetup.openProcesses')" />
+    <q-btn color="primary" v-if="canReadProcesses" to="/process" outline no-caps icon="account_tree" :label="t('n8nSetup.openProcesses')" />
   </section>
 </template>
 

@@ -12,7 +12,7 @@
       <q-btn
         class="q-mt-xl"
         color="white"
-        text-color="blue"
+        text-color="solaire-blue"
         unelevated
         to="/"
         :label="$t('index.backHome')"

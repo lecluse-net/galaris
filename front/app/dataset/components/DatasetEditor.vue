@@ -2,7 +2,7 @@
   <section class="dataset-editor" :aria-label="t('datasets.editor')" :aria-busy="busy">
     <q-banner v-if="error" role="alert">
       {{ error }}
-      <template v-if="!dataset" #action><q-btn flat :label="t('datasets.reload')" :disable="busy" @click="load" /></template>
+      <template v-if="!dataset" #action><q-btn outline color="primary"  :label="t('datasets.reload')" :disable="busy" @click="load" /></template>
     </q-banner>
     <div v-if="busy && !dataset" class="dataset-editor-state"><q-spinner color="primary" size="36px" /></div>
     <template v-if="dataset">
@@ -32,7 +32,7 @@
           <q-btn flat round dense icon="refresh" class="dataset-editor-refresh" :aria-label="t('datasets.reload')" :disable="busy" @click="reload">
             <q-tooltip>{{ t('datasets.reload') }}</q-tooltip>
           </q-btn>
-          <q-btn v-if="editable && dataset.can_delete" dense color="negative" icon="delete_outline"
+          <q-btn flat v-if="editable && dataset.can_delete" dense color="negative" icon="delete_outline"
             :aria-label="t('datasets.deleteDataset')" :disable="busy"
             @click="error = ''; confirmDelete = true">
             <q-tooltip>{{ t('datasets.deleteDataset') }}</q-tooltip>
@@ -75,7 +75,7 @@
         </q-tab-panel>
         <q-tab-panel name="history" class="q-pa-sm">
           <q-table v-model:pagination="pagination" :rows="history" :columns="columns" row-key="revision" :rows-per-page-options="[10, 20, 50, 100, 500]" :loading="busy" @request="requestHistory">
-            <template #body-cell-revision="slot"><q-td :props="slot"><q-btn outline :label="String(slot.row.revision)" @click="preview(slot.row.revision)" /></q-td></template>
+            <template #body-cell-revision="slot"><q-td :props="slot"><q-btn color="primary" outline :label="String(slot.row.revision)" @click="preview(slot.row.revision)" /></q-td></template>
           </q-table>
         </q-tab-panel>
         <q-tab-panel name="usages" class="q-pa-none">
@@ -83,24 +83,22 @@
         </q-tab-panel>
       </q-tab-panels>
     </template>
-    <q-dialog v-model="showRevision"><q-card style="width: 800px; max-width: 95vw"><q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('datasets.revision') }} {{ revision }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('datasets.close')" /></q-card-section><q-card-section><CodeEditor :model-value="historical" language="json" readonly :label="t('datasets.content')" /></q-card-section><q-card-actions align="right"><q-btn v-if="editable && dataset?.can_write" :label="t('datasets.restore')" @click="restore" /></q-card-actions></q-card></q-dialog>
-    <q-dialog v-model="confirmDelete"><q-card style="width: 480px; max-width: 95vw"><q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('datasets.delete') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('datasets.close')" /></q-card-section><q-card-section><q-banner v-if="error" role="alert">{{ error }}</q-banner>{{ t('datasets.deleteConfirm') }}<p class="q-mt-md">{{ t('datasets.deleteImpact') }}</p></q-card-section><q-card-actions align="right"><q-btn v-close-popup flat :label="t('datasets.cancel')" /><q-btn flat :label="t('datasets.delete')" :loading="busy" @click="remove" /></q-card-actions></q-card></q-dialog>
+    <q-dialog v-model="showRevision"><q-card style="width: 800px; max-width: 95vw"><q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('datasets.revision') }} {{ revision }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('datasets.close')" /></q-card-section><q-card-section><CodeEditor :model-value="historical" language="json" readonly :label="t('datasets.content')" /></q-card-section><q-card-actions align="right"><q-btn color="primary" v-if="editable && dataset?.can_write" :label="t('datasets.restore')" @click="restore" /></q-card-actions></q-card></q-dialog>
+    <q-dialog v-model="confirmDelete"><q-card style="width: 480px; max-width: 95vw"><DialogHeader :title="t('datasets.delete')" :close-label="t('datasets.close')" /><q-card-section><q-banner v-if="error" role="alert">{{ error }}</q-banner>{{ t('datasets.deleteConfirm') }}<p class="q-mt-md">{{ t('datasets.deleteImpact') }}</p></q-card-section><q-card-actions align="right"><q-btn outline color="primary" v-close-popup  :label="t('datasets.cancel')" /><q-btn outline color="primary"  :label="t('datasets.delete')" :loading="busy" @click="remove" /></q-card-actions></q-card></q-dialog>
     <q-dialog :model-value="confirmDiscard" @update:model-value="!$event && resolveDiscard(false)">
       <q-card style="width: 480px; max-width: 95vw">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ t('datasets.unsaved') }}</div><q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('datasets.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('datasets.unsaved')" :close-label="t('datasets.close')" />
         <q-card-section>{{ t('datasets.discardConfirm') }}</q-card-section>
         <q-card-actions align="right">
-          <q-btn v-close-popup flat :label="t('datasets.cancel')" />
-          <q-btn flat :label="t('datasets.discard')" @click="resolveDiscard(true)" />
+          <q-btn outline color="primary" v-close-popup  :label="t('datasets.cancel')" />
+          <q-btn outline color="primary"  :label="t('datasets.discard')" @click="resolveDiscard(true)" />
         </q-card-actions>
       </q-card>
     </q-dialog>
   </section>
 </template>
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import { useI18n } from 'vue-i18n'

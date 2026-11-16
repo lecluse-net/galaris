@@ -4,7 +4,7 @@
         :header-class="embedded ? 'execution-result-header--hidden' : 'text-deep-orange text-subtitle2'" class="exec-expansion q-mt-md" dense toggle-indicator>
         <template v-slot:header>
             <q-item-section avatar>
-                <q-icon name="terminal" color="deep-orange" />
+                <q-icon name="terminal" color="solaire-orange" />
             </q-item-section>
             <q-item-section>
                 <q-item-label>
@@ -40,18 +40,18 @@
                         :icon="executionSucceeded ? 'check_circle' : 'error'"
                         :label="executionSucceeded ? $t('task.dispatch.success') : $t('task.dispatch.failure')"
                     />
-                    <q-badge color="blue" size="sm">
+                    <q-badge color="solaire-blue" size="sm">
                         <q-icon name="timer" size="xs" class="q-mr-xs" />
                         {{ formatExecutionTime(displayedExecutionResult.execution_time) }}
                     </q-badge>
-                    <q-badge v-if="displayedExecutionResult.cost > 0" color="purple" size="sm">
+                    <q-badge v-if="displayedExecutionResult.cost > 0" color="solaire-violet" size="sm">
                         <q-icon name="attach_money" size="xs" class="q-mr-xs" />
                         {{ formatCostShort(displayedExecutionResult.cost) }}
                     </q-badge>
                 </div>
             </q-item-section>
             <q-item-section side v-else-if="running">
-                <q-spinner-dots color="deep-orange" size="24px" />
+                <q-spinner-dots color="solaire-orange" size="24px" />
             </q-item-section>
         </template>
 
@@ -141,11 +141,11 @@
                                                 :label="step.success === false ? $t('task.dispatch.failure') : $t('task.dispatch.success')"
                                                 class="q-mr-xs"
                                             />
-                                            <q-badge v-if="step.execution_time !== undefined && step.execution_time > 0" color="blue" size="sm" class="q-mr-xs">
+                                            <q-badge v-if="step.execution_time !== undefined && step.execution_time > 0" color="solaire-blue" size="sm" class="q-mr-xs">
                                                 <q-icon name="timer" size="xs" class="q-mr-xs" />
                                                 {{ formatExecutionTime(step.execution_time) }}
                                             </q-badge>
-                                            <q-badge v-if="step.cost !== undefined && step.cost > 0" color="purple" size="sm" class="q-mr-xs">
+                                            <q-badge v-if="step.cost !== undefined && step.cost > 0" color="solaire-violet" size="sm" class="q-mr-xs">
                                                 <q-icon name="attach_money" size="xs" class="q-mr-xs" />
                                                 {{ formatCostShort(step.cost) }}
                                             </q-badge>
@@ -290,10 +290,10 @@ import { useI18n } from 'vue-i18n'
 import { copyToClipboard, useQuasar } from 'quasar'
 import type { AIMessage, ExecutionResult } from '../types'
 import type { LLMCall } from '@/app/llm/types'
-import { callExecutionResult } from '@/app/llm/presentation'
-import Markdown from '@/core/util/components/Markdown.vue'
+import { callExecutionResult } from '@/app/llm/facade'
+import { Markdown } from '@/core/util'
 import { StatusBadge } from '@/core/util'
-import LlmCalls from '@/app/llm/components/LlmCalls.vue'
+import { LlmCalls } from '@/app/llm'
 import ExecutionMemoryPanel from './ExecutionMemoryPanel.vue'
 import TaskBudget from './TaskBudget.vue'
 
@@ -557,11 +557,11 @@ const stepKind = (step: AIMessage): string => {
 const getStepColor = (step: AIMessage): string => {
     switch (stepKind(step)) {
         case 'text': return 'primary'
-        case 'image': return 'purple'
-        case 'audio': return 'orange'
-        case 'video': return 'deep-purple'
-        case 'tool': return 'teal'
-        case 'thinking': return 'amber-9'
+        case 'image': return 'solaire-violet'
+        case 'audio': return 'solaire-orange'
+        case 'video': return 'solaire-iris'
+        case 'tool': return 'solaire-cyan'
+        case 'thinking': return 'solaire-yellow'
         default: return 'grey'
     }
 }

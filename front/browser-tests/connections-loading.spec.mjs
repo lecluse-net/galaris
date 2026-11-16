@@ -166,7 +166,7 @@ for (const width of [390, 1440]) {
       Object.assign(params, route.request().postDataJSON().params)
       return route.fulfill({ json: [] })
     })
-    await mount(page, 'app/services/pages/index.vue', {
+    await mount(page, 'app/index/pages/services.vue', {
       route: '/services?tab=connections',
       privileges: ['SERVICE_ACCESS', 'SERVICE_EDIT', 'CONNECTION_ACCESS', 'CONNECTION_EDIT', 'AGENT_MANAGE_ALL', 'PERMISSION_ACCESS'],
     })

@@ -1,11 +1,7 @@
 <template>
   <q-dialog v-model="open">
     <q-card class="galaris-dialog-card" style="width: 560px; max-width: 92vw">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <div class="text-h6">{{ t('agent.generateAvatar') }}</div>
-        <q-space />
-        <q-btn flat round dense icon="close" v-close-popup :aria-label="t('common.close')" />
-      </q-card-section>
+      <DialogHeader :title="t('agent.generateAvatar')" :close-label="t('common.close')" />
       <q-form @submit="emit('generate', instructions.trim())">
         <q-card-section class="galaris-dialog-body">
           <p>{{ t('agent.avatarInstructionsHelp') }}</p>
@@ -35,6 +31,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 

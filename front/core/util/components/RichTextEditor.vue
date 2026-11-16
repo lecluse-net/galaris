@@ -27,8 +27,8 @@
       <q-checkbox v-model="fields.matchCase" dense :label="t('richEditor.matchCase')" />
       <q-checkbox v-model="fields.wholeWords" dense :label="t('richEditor.wholeWords')" />
       <span role="status" aria-live="polite">{{ matches.length }}</span>
-      <q-btn dense outline :label="t('richEditor.next')" :disable="!matches.length" @click="findNext" />
-      <q-btn dense outline :label="t('richEditor.replaceAll')" :disable="readonly || !matches.length" @click="replaceAll" />
+      <q-btn color="primary" dense outline :label="t('richEditor.next')" :disable="!matches.length" @click="findNext" />
+      <q-btn color="primary" dense outline :label="t('richEditor.replaceAll')" :disable="readonly || !matches.length" @click="replaceAll" />
       <q-btn dense color="primary" :label="t('richEditor.replace')" :disable="readonly || !matches.length" @click="replaceMatch" />
       <q-btn flat round dense icon="close" :aria-label="t('common.close')" @click="closeFind" />
     </div>
@@ -78,27 +78,28 @@
     <InternalResourcePicker v-if="!pickResources && linkOpen" v-model:picker-open="linkOpen" :agent-id="resourceAgentId" :editable="!readonly" @picked="finishInternalSelection" />
     <q-dialog v-model="dialogOpen" :aria-label="t('richEditor.' + dialog)" @hide="releaseDialog">
       <q-card class="galaris-dialog-card" style="width: 480px; max-width: 95vw">
-        <q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('richEditor.' + dialog) }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
+        <DialogHeader :title="t('richEditor.' + dialog)" :close-label="t('common.close')" />
         <q-card-section class="galaris-dialog-body" :class="{ 'q-gutter-md': dialog !== 'help' }">
           <template v-if="dialog === 'link'"><q-input v-model="fields.url" :label="t('richEditor.uri')" /><q-input v-model="fields.text" :label="t('richEditor.linkText')" /></template>
           <template v-else-if="dialog === 'image'"><q-input v-model="fields.alt" :label="t('richEditor.alt')" /><q-input v-model="fields.caption" :label="t('richEditor.caption')" /><q-input v-model="fields.width" :label="t('richEditor.imageWidth')" /><q-select v-model="fields.imageStyle" :options="imageStyles" emit-value map-options :label="t('richEditor.imageStyle')" /><q-input v-model="fields.imageLink" :label="t('richEditor.link')" /></template>
           <template v-else-if="dialog === 'tableProperties' || dialog === 'cellProperties'"><q-input v-model="fields.width" :label="t('richEditor.width')" /><q-input v-model="fields.height" :label="t('richEditor.height')" /><q-input v-model="fields.background" :label="t('richEditor.backgroundColor')" /><q-input v-model="fields.border" :label="t('richEditor.border')" /><q-input v-if="dialog === 'tableProperties'" v-model="fields.caption" :label="t('richEditor.caption')" /></template>
           <template v-else-if="dialog === 'listProperties'"><q-input v-if="editor?.isActive('orderedList')" v-model="fields.start" type="number" min="1" :label="t('richEditor.listStart')" /><q-checkbox v-if="editor?.isActive('orderedList')" v-model="fields.reversed" :label="t('richEditor.reversed')" /><q-select v-model="fields.listStyle" :options="listStyles" emit-value map-options :label="t('richEditor.listStyle')" /></template>
-          <template v-else-if="dialog === 'specialCharacters'"><div class="row q-gutter-xs"><q-btn v-for="character in '© ® ™ € £ ¥ α β γ Δ π Ω ± × ÷ ∞ ≈ ≠ ≤ ≥ ← → ↑ ↓ ✓ ✗ ☐ ☑'.split(' ')" :key="character" outline :label="character" @click="fields.text = character" /></div><q-input v-model="fields.text" :label="t('richEditor.specialCharacters')" /></template>
+          <template v-else-if="dialog === 'specialCharacters'"><div class="row q-gutter-xs"><q-btn color="primary" v-for="character in '© ® ™ € £ ¥ α β γ Δ π Ω ± × ÷ ∞ ≈ ≠ ≤ ≥ ← → ↑ ↓ ✓ ✗ ☐ ☑'.split(' ')" :key="character" outline :label="character" @click="fields.text = character" /></div><q-input v-model="fields.text" :label="t('richEditor.specialCharacters')" /></template>
           <q-color v-else-if="dialog === 'fontColor' || dialog === 'backgroundColor'" v-model="fields.color" no-header no-footer />
           <q-markup-table v-else-if="dialog === 'help'" flat dense wrap-cells>
             <tbody><tr v-for="shortcut in keyboardShortcuts" :key="shortcut.label + shortcut.keys"><td>{{ shortcut.label }}</td><td class="text-right"><kbd>{{ shortcut.keys }}</kbd></td></tr></tbody>
           </q-markup-table>
         </q-card-section>
-        <q-card-actions v-if="dialog !== 'help'" align="right"><q-btn v-close-popup outline :label="t('common.cancel')" /><q-btn color="primary" :label="t('richEditor.apply')" :disable="readonly" @click="applyDialog" /></q-card-actions>
+        <q-card-actions v-if="dialog !== 'help'" align="right"><q-btn color="primary" v-close-popup outline :label="t('common.cancel')" /><q-btn color="primary" :label="t('richEditor.apply')" :disable="readonly" @click="applyDialog" /></q-card-actions>
       </q-card>
     </q-dialog>
     <q-dialog v-model="shareOpen" @hide="cancelShare">
-      <q-card class="galaris-dialog-card" style="width: 420px; max-width: 95vw"><q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('richEditor.share.title') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section><q-card-section class="galaris-dialog-body"><div v-if="sharePreparing" role="status"><q-spinner />{{ t('richEditor.share.preparing') }}</div><div v-else-if="shareError" role="alert">{{ shareError }}</div><div v-else-if="shareFile">{{ shareFile.name }}</div></q-card-section><q-card-actions align="right"><q-btn v-close-popup outline :label="t('common.cancel')" /><q-btn v-if="shareError && !shareFile" outline :label="t('common.retry')" @click="prepareShare" /><q-btn v-else color="primary" :disable="!shareFile" :loading="sharing" :label="t(nativeShareData ? 'richEditor.share.action' : 'richEditor.share.save')" @click="shareDocument" /></q-card-actions></q-card>
+      <q-card class="galaris-dialog-card" style="width: 420px; max-width: 95vw"><DialogHeader :title="t('richEditor.share.title')" :close-label="t('common.close')" /><q-card-section class="galaris-dialog-body"><div v-if="sharePreparing" role="status"><q-spinner />{{ t('richEditor.share.preparing') }}</div><div v-else-if="shareError" role="alert">{{ shareError }}</div><div v-else-if="shareFile">{{ shareFile.name }}</div></q-card-section><q-card-actions align="right"><q-btn color="primary" v-close-popup outline :label="t('common.cancel')" /><q-btn color="primary" v-if="shareError && !shareFile" outline :label="t('common.retry')" @click="prepareShare" /><q-btn v-else color="primary" :disable="!shareFile" :loading="sharing" :label="t(nativeShareData ? 'richEditor.share.action' : 'richEditor.share.save')" @click="shareDocument" /></q-card-actions></q-card>
     </q-dialog>
   </div>
 </template>
 <script setup lang="ts">
+import DialogHeader from './DialogHeader.vue'
 import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useSlots, useTemplateRef, watch } from 'vue'
 import { useQuasar, copyToClipboard, type QInput, type QMenu } from 'quasar'
 import { useI18n } from 'vue-i18n'
@@ -396,11 +397,11 @@ function createEditor(): void {
       const sameCode = pointerSelection && transaction.selection.$from.parent.type.name === 'codeBlock' && transaction.selection.$from.sameParent(pointerSelection.$from)
       if (transaction.docChanged || transaction.selectionSet && pointerSelection && !transaction.selection.eq(pointerSelection) && !sameCode) pointerMenu.value?.hide()
       for (const value of anchors) { const from = transaction.mapping.mapResult(value.from, 1), to = transaction.mapping.mapResult(value.to, -1); value.from = from.pos; value.to = Math.max(from.pos, to.pos); if (from.deletedAcross && to.deletedAcross) value.valid = false }
-      revision.value++; nextTick(() => { if (!current.isDestroyed) resolveEditorLinks(current) })
+      revision.value++; void nextTick(() => { if (!current.isDestroyed) resolveEditorLinks(current) })
     },
     onUpdate: () => { if (!sourceMode.value) publish(html()) },
   })
-  nextTick(() => { if (editor.value) resolveEditorLinks(editor.value) })
+  void nextTick(() => { if (editor.value) resolveEditorLinks(editor.value) })
 }
 const personalVoice = editorVoiceProvider?.({ html, editable: () => !readonly && !sourceMode.value, playbackElement: () => playbackElement.value ?? undefined, insert: insertDictation })
 const voice = computed(() => personalVoice?.controls.value)
@@ -802,7 +803,7 @@ function showDialog(kind: string): void {
   if (kind === 'find') {
     if (sourceMode.value) return
     findOpen.value = true
-    nextTick(() => { searchInput.value?.focus(); searchInput.value?.select() })
+    void nextTick(() => { searchInput.value?.focus(); searchInput.value?.select() })
     return
   }
   if (kind === 'link' && current.isActive('link')) current.commands.extendMarkRange('link')
@@ -924,7 +925,7 @@ function closeFind(): void {
   findOpen.value = false
   editor.value?.commands.focus()
   // Tiptap does not focus a noneditable surface; it remains keyboard-accessible.
-  if (readonly) nextTick(() => { if (!findOpen.value) editor.value?.view.dom.focus() })
+  if (readonly) void nextTick(() => { if (!findOpen.value) editor.value?.view.dom.focus() })
 }
 function findNext(): void {
   const current = editor.value
@@ -954,8 +955,8 @@ const tableActions = computed(() => {
 })
 const contextActions = computed(() => {
   void revision.value
-  const actions: Array<{ key: string; icon: string; label: string; disabled: boolean; run: () => void }> = []
-  const add = (key: string, icon: string, label: string, run: () => void, disabled = false): void => { actions.push({ key, icon, label: t('richEditor.' + label), disabled, run }) }
+  const actions: Array<{ key: string; icon: string; label: string; disabled: boolean; run: () => void | Promise<void> }> = []
+  const add = (key: string, icon: string, label: string, run: () => void | Promise<void>, disabled = false): void => { actions.push({ key, icon, label: t('richEditor.' + label), disabled, run }) }
   if (activeContext.value?.kind === 'code') {
     add('lines', 'format_list_numbered', 'codeTools.lineNumbers', () => { editor.value?.commands.updateAttributes('codeBlock', { lines: !selectedAttributes.value.lines }) }, readonly)
     add('wrap', 'wrap_text', 'codeTools.wrap', () => { editor.value?.commands.updateAttributes('codeBlock', { nowrap: !selectedAttributes.value.nowrap }) }, readonly)
@@ -986,7 +987,7 @@ const contextActions = computed(() => {
   }
   return actions
 })
-function runContextAction(key: string): void { const item = contextActions.value.find(item => item.key === key); if (item && !item.disabled) item.run() }
+function runContextAction(key: string): void { const item = contextActions.value.find(item => item.key === key); if (item && !item.disabled) void Promise.resolve(item.run()).catch(error => console.error('Editor action failed', error)) }
 const clipboardActions = ['cut', 'copy', 'paste'] as const
 async function clipboardAction(key: typeof clipboardActions[number]): Promise<void> {
   const current = editor.value

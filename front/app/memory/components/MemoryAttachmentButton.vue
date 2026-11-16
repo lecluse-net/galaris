@@ -1,5 +1,5 @@
 <template>
-  <q-btn v-if="!showThumbnail" :outline="!iconOnly" :flat="iconOnly" :round="iconOnly" dense no-caps icon="attach_file" color="primary"
+  <q-btn v-if="!showThumbnail" :outline="!iconOnly"  :round="iconOnly" dense no-caps icon="attach_file" color="primary"
     :label="iconOnly ? undefined : t('memory.viewLinkedContent')" :aria-label="t('memory.viewLinkedContent')"
     :loading="loading" :disable="agentId === null"
     @click.stop="open">
@@ -8,7 +8,7 @@
   <q-skeleton v-if="showThumbnail && loading" type="rect" height="86px" />
   <q-banner v-else-if="showThumbnail && failed" rounded class="bg-negative text-white" role="alert">
     {{ t('documents.attachmentError') }}
-    <template #action><q-btn flat :label="t('chat.resourcePreview.retryFile')" @click="load(false)" /></template>
+    <template #action><q-btn outline color="primary"  :label="t('chat.resourcePreview.retryFile')" @click="load(false)" /></template>
   </q-banner>
   <DocumentAttachments v-if="documentId && attachment" ref="viewer" :preview-only="!showThumbnail"
     :document-id="documentId" :agent-id="agentId" :attachments="[attachment]" />

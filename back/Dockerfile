@@ -26,7 +26,7 @@ WORKDIR /app
 COPY --from=ghcr.io/astral-sh/uv:0.11@sha256:77280f2f771df71f90786c314fe1bbc1e023feac652969bbf139c280babf2eb7 /uv /bin/uv
 
 # Install Atlas
-COPY --from=arigaio/atlas@sha256:bafdd9c5921bd717626b5411fd0895e723702e638186e3f71bfb8299c043fa3a /atlas /bin/atlas
+COPY --from=arigaio/atlas:1.3.10@sha256:971adc207bd2ac243b3152d8b99190d206aa8f1660b4228a1d889a262568d670 /atlas /bin/atlas
 
 # Install system dependencies
 # Keep dump/restore tools on the server's PostgreSQL major version.

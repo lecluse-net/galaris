@@ -1,5 +1,6 @@
 export default {
   common: {
+    expand: 'Développer', collapse: 'Réduire', previousPage: 'Page précédente', nextPage: 'Page suivante',
     apiError: {
       network: "Aucune réponse HTTP exploitable n’a été reçue. Le navigateur ne précise pas la cause : connexion interrompue, requête bloquée ou serveur injoignable. Consultez l’onglet Réseau et la console du navigateur pour connaître le motif du blocage.",
       timeout: "Le délai maximal de la requête a été dépassé avant la réception de la réponse. Le traitement côté serveur peut encore être en cours.",

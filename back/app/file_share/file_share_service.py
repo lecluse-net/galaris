@@ -99,12 +99,11 @@ async def _resolve_connected_tool(
     """Resolve one active agent connection and its exact Service code."""
 
     matches: list[tuple[Any, Service]] = []
-    for connection in await connection_service.get_connections_by_agent(agent_id):
-        if not connection.active:
-            continue
-        if connection_id is not None and connection.id != connection_id:
-            continue
-        tool = await service_catalog.get_service_by_id(connection.service_id)
+    connections = [connection for connection in await connection_service.get_connections_by_agent(agent_id)
+        if connection.active and (connection_id is None or connection.id == connection_id)]
+    tools = await service_catalog.get_services_by_ids({connection.service_id for connection in connections})
+    for connection in connections:
+        tool = tools.get(connection.service_id)
         if tool is not None and tool.code == service_code:
             matches.append((connection, tool))
     if len(matches) == 1 or matches and inspect_mail_accounts and matches[0][1].mail is not None:

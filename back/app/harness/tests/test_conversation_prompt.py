@@ -30,6 +30,7 @@ from core.params import Params, prompt_default
 from app.harness import conversation as conversation_module
 from app.llm import LLMCallPurpose
 from app.skill import skill_service
+from app.services import render_task_capability_context
 from app.harness.conversation import (
     HarnessConversationController,
     _LiveTextProgressBuffer,
@@ -489,10 +490,9 @@ def test_conversation_prompt_preserves_identity_role_and_fast_control_plane() ->
         tool_advertisement=(
             "- `search`: `search_web`\n"
             "- `galaris`: `conversation_process_start`, `conversation_task_submit`\n\n"
-            "## Task-only Tools\n\n"
-            "- {\"code\": \"gitlab\", \"label\": \"GitLab\"}\n\n"
-            "If the user's request requires this Tool, launching a Task with "
-            "`conversation_task_submit` is mandatory."
+            + render_task_capability_context(
+                ({"code": "gitlab", "label": "GitLab"},),
+            )
         ),
         process_advertisement=(
             "## Business processes available to you\n"
@@ -524,7 +524,6 @@ def test_conversation_prompt_preserves_identity_role_and_fast_control_plane() ->
     assert "# Galaris tools" in prompt
     assert "search_web" in prompt
     assert '"code": "gitlab"' in prompt
-    assert "launching a Task with `conversation_task_submit` is mandatory" in prompt
     assert "daily-weather" in prompt
     assert "Answer promptly and directly" in prompt
     assert "live text chat, not an email, letter" in prompt
@@ -546,8 +545,7 @@ def test_conversation_prompt_preserves_identity_role_and_fast_control_plane() ->
     assert "label, status, UUID, or technical reference" in prompt
     assert "unless explicitly asked" in prompt
     assert "two operating modes of the same agent" in prompt
-    assert "full rights-filtered Task tools" in prompt
-    assert "missing foreground tool" in prompt
+    # Capability-routing wording now comes solely from the injected action policy.
     assert "Use governed memory carefully." in prompt
     assert "The demo user requests numbered assembly instructions." in prompt
     assert "# Long-term memory" in prompt

@@ -1,6 +1,7 @@
 """Extract durable memories from classified text-conversation rounds."""
 
 from __future__ import annotations
+from functools import partial
 
 from app.llm import model_usages
 
@@ -21,7 +22,7 @@ from app.conversation import (
 from app.connection import Connection
 from app.llm import llm_service
 from app.llm.facade import acquired_document_evidence, document_evidence_revision
-from app.memory import search_memory_detailed
+from app.memory import search_memory_detailed, validate_atomic_fact_references
 from app.messenger import Attachment, File, Message, MessengerUser, Room, hydrate_messages, conversation_audio_transcripts, attachment_resource_uri
 from app.topic import Topic, service as topic_service
 from core.database import get_db, get_db_session
@@ -565,6 +566,7 @@ class ConversationMemoryMechanism:
                 task_id=None,
                 agent_id=agent_id,
                 language_instruction=language_instruction,
+                fact_validator=partial(validate_atomic_fact_references, agent_id=agent_id),
             )
             prepared = prepared.model_copy(update={"source_snapshot": snapshot})
             return DreamPrepared(payload=prepared.model_dump(mode="json"), cost=cost)

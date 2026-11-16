@@ -273,15 +273,30 @@ async def test_conversation_advertisement_lists_only_task_only_application_tools
     )
 
     assert advertisement.tool_names == frozenset({"search_web", "file_list"})
-    assert "## Task-only Services" in advertisement.text
+    assert "## Task capability context" in advertisement.text
     assert '{"code": "audio", "label": "Audio"}' in advertisement.text
     assert '{"code": "gitlab", "label": "GitLab"}' in advertisement.text
     assert '{"code": "search", "label": "Web search"}' not in advertisement.text
     assert '"code": "team-share"' not in advertisement.text
     assert '"code": "mixed-share"' in advertisement.text
     assert "file_list(uri='<tool-code>://')" in advertisement.text
-    assert "launching a Task with `conversation_task_submit` is mandatory" in advertisement.text
-    assert "Never claim that the agent lacks access" in advertisement.text
+    # The projection supplies facts; the action policy owns admission decisions.
+    assert advertisement.text.endswith(await agent_registry.build_task_capability_context(12))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("task_services", [(), ({"code": "shape_lab", "label": "3D modelling"},)])
+async def test_task_capability_context_is_shared_even_with_no_known_task_only_service(monkeypatch, task_services):
+    from app.services import agent_registry, render_task_capability_context
+
+    projection = AsyncMock(return_value=task_services)
+    monkeypatch.setattr(agent_registry, "_task_only_tools", projection)
+    context = await agent_registry.build_task_capability_context(12)
+    projection.assert_awaited_once_with(12)
+    assert context == render_task_capability_context(task_services)
+    assert context
+    for service in task_services:
+        assert service["code"] in context
 
 
 @pytest.mark.asyncio

@@ -45,9 +45,30 @@ declare module 'vue-router/auto-routes' {
       { all: ParamValue<false> },
       | never
     >,
+    '///agent': RouteRecordInfo<
+      '///agent',
+      '/agent',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '///graphic-reference': RouteRecordInfo<
       '///graphic-reference',
       '/graphic-reference',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '///services': RouteRecordInfo<
+      '///services',
+      '/services',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '///task': RouteRecordInfo<
+      '///task',
+      '/task',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -76,13 +97,6 @@ declare module 'vue-router/auto-routes' {
     '///welcome': RouteRecordInfo<
       '///welcome',
       '/welcome',
-      Record<never, never>,
-      Record<never, never>,
-      | never
-    >,
-    '//agent/': RouteRecordInfo<
-      '//agent/',
-      '/agent',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -353,13 +367,6 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
-    '//services/': RouteRecordInfo<
-      '//services/',
-      '/services',
-      Record<never, never>,
-      Record<never, never>,
-      | never
-    >,
     '//services/legacy': RouteRecordInfo<
       '//services/legacy',
       '/tools',
@@ -370,13 +377,6 @@ declare module 'vue-router/auto-routes' {
     '//skill/': RouteRecordInfo<
       '//skill/',
       '/skill',
-      Record<never, never>,
-      Record<never, never>,
-      | never
-    >,
-    '//task/': RouteRecordInfo<
-      '//task/',
-      '/task',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -459,9 +459,33 @@ declare module 'vue-router/auto-routes' {
       pathParamNames:
         | 'all'
     }
+    'app/index/pages/agent.vue': {
+      routes:
+        | '///agent'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
     'app/index/pages/graphic-reference.vue': {
       routes:
         | '///graphic-reference'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'app/index/pages/services.vue': {
+      routes:
+        | '///services'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'app/index/pages/task.vue': {
+      routes:
+        | '///task'
       views:
         | never
       pathParamNames:
@@ -494,14 +518,6 @@ declare module 'vue-router/auto-routes' {
     'app/index/pages/welcome.vue': {
       routes:
         | '///welcome'
-      views:
-        | never
-      pathParamNames:
-        | never
-    }
-    'app/agent/pages/index.vue': {
-      routes:
-        | '//agent/'
       views:
         | never
       pathParamNames:
@@ -811,14 +827,6 @@ declare module 'vue-router/auto-routes' {
       pathParamNames:
         | never
     }
-    'app/services/pages/index.vue': {
-      routes:
-        | '//services/'
-      views:
-        | never
-      pathParamNames:
-        | never
-    }
     'app/services/pages/legacy.vue': {
       routes:
         | '//services/legacy'
@@ -830,14 +838,6 @@ declare module 'vue-router/auto-routes' {
     'app/skill/pages/index.vue': {
       routes:
         | '//skill/'
-      views:
-        | never
-      pathParamNames:
-        | never
-    }
-    'app/task/pages/index.vue': {
-      routes:
-        | '//task/'
       views:
         | never
       pathParamNames:

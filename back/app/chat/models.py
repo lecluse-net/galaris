@@ -195,11 +195,12 @@ class ChatDraft(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     room_id: Mapped[UUID] = mapped_column(ForeignKey("messenger_rooms.id", ondelete="CASCADE"), index=True)
+    session_key: Mapped[str] = mapped_column(String(36), default="", server_default="")
     revision: Mapped[int] = mapped_column(default=0)
     mutation_key: Mapped[UUID | None] = mapped_column(nullable=True)
     last_sent_key: Mapped[UUID | None] = mapped_column(nullable=True)
     payload: Mapped[str] = mapped_column(Text, default="{}")
-    __table_args__ = (UniqueConstraint("user_id", "room_id", name="uq_chat_draft_user_room"),)
+    __table_args__ = (UniqueConstraint("user_id", "room_id", "session_key", name="uq_chat_draft_user_room_session"),)
 
 
 class ChatDraftFile(Base):
@@ -209,4 +210,5 @@ class ChatDraftFile(Base):
     id: Mapped[UUID] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     room_id: Mapped[UUID] = mapped_column(ForeignKey("messenger_rooms.id", ondelete="CASCADE"), index=True)
+    session_key: Mapped[str] = mapped_column(String(36), default="", server_default="")
     file_id: Mapped[UUID] = mapped_column(ForeignKey("files.id"), index=True)

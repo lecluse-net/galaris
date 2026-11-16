@@ -97,7 +97,7 @@ async def check_messaging_status(
 
     query = (
         select(ServiceModel)
-            .options(load_only(ServiceModel.id, ServiceModel.messenger_config, raiseload=True))
+            .options(load_only(ServiceModel.id, ServiceModel.messenger_config, ServiceModel.mail_config, raiseload=True))
             .join(Connection, ServiceModel.id == Connection.service_id)
             .where(Connection.active.is_(True))
             .distinct()

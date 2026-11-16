@@ -62,7 +62,7 @@ test('A bundled service preset is saved, reopened and exported as one YAML with 
   await page.setViewportSize({ width: 390, height: 844 })
   await expect(page.locator('.mobile-taskbar')).toBeVisible()
   if (await page.locator('.q-drawer__backdrop').isVisible()) {
-    await page.getByRole('button', { name: 'Déployer la sidebar', exact: true }).click()
+    await page.locator('.q-drawer__backdrop').click({ position: { x: 382, y: 150 } })
   }
   await expect(page.getByText('Synthetic catalog provider', { exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('services-mobile.png'), fullPage: true, animations: 'disabled' })
@@ -70,7 +70,7 @@ test('A bundled service preset is saved, reopened and exported as one YAML with 
   await page.reload()
   await expect(page.locator('.mobile-taskbar')).toBeVisible()
   if (await page.locator('.q-drawer__backdrop').isVisible()) {
-    await page.getByRole('button', { name: 'Déployer la sidebar', exact: true }).click()
+    await page.locator('.q-drawer__backdrop').click({ position: { x: 382, y: 150 } })
   }
   await expect(row).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('services-mobile-light.png'), fullPage: true, animations: 'disabled' })

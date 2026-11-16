@@ -1,9 +1,6 @@
 <template>
   <q-card class="gallery-dialog-card galaris-dialog-card">
-    <q-card-section class="galaris-dialog-title row items-center no-wrap">
-      <span class="text-h6">{{ t('graphicReference.modalTitle') }}</span><q-space />
-      <q-btn flat round dense icon="close" :aria-label="t('graphicReference.close')" @click="emit('close')" />
-    </q-card-section>
+    <DialogHeader :title="t('graphicReference.modalTitle')" :close-label="t('graphicReference.close')" :close-popup="false" @close="emit('close')" />
     <q-card-section class="galaris-dialog-body">
       <p>{{ t('graphicReference.modalText') }}</p>
       <q-input v-model="name" outlined dense :label="t('graphicReference.name')" />
@@ -16,6 +13,7 @@
   </q-card>
 </template>
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 const { t } = useI18n()

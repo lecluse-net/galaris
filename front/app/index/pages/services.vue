@@ -1,3 +1,6 @@
+<route lang="json">
+{ "path": "/services" }
+</route>
 <template>
   <q-page class="q-pa-md">
     <PageHeader help-key="tools" :help-text="$t('contextHelpPages.tools')" :icon="navigationIcon('hub')" :title="$t('nav.services')" :description="$t('nav.services_desc')" />
@@ -18,7 +21,7 @@
 
     <q-tab-panels v-model="tab" animated keep-alive class="bg-transparent">
       <q-tab-panel v-if="canView('tools')" name="tools" class="q-px-none">
-        <ServicesList />
+        <ServicesList @deleted="connections.forgetDeletedTool" />
       </q-tab-panel>
       <q-tab-panel v-if="canView('connections')" name="connections" class="q-px-none">
         <ConnectionList />
@@ -36,11 +39,11 @@ import { computed, ref, watch } from 'vue'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { useRoute } from 'vue-router'
 import { PageHeader } from '@/core/util'
-import ServicesList from '../components/ServicesList.vue'
-import ConnectionList from '@/app/connection/components/ConnectionList.vue'
-import AuthorizationManager from '@/app/connection/components/AuthorizationManager.vue'
+import { ServicesList } from '@/app/services'
+import { ConnectionList, AuthorizationManager, useConnectionStore } from '@/app/connection'
 
 const route = useRoute()
+const connections = useConnectionStore()
 
 // Keep existing tab query links valid when opening the Services page.
 const privilegeStore = usePrivilegeStore()

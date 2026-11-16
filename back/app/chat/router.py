@@ -17,7 +17,7 @@ from core.authorize import authorize, check_privilege
 from core import websocket
 from core.database import get_db
 from core.storage import FileRename
-from .draft_service import (DraftSnapshot, DraftWrite, DraftFile, DraftConflict, read_draft,
+from .draft_service import (DraftSnapshot, DraftWrite, DraftFile, DraftConflict, DraftFileUnavailable, read_draft,
     write_draft, upload_draft_file, draft_attachments, clear_sent_draft, discard_draft_file)
 from core.util import source_code_response_headers
 from core.i18n import current_language, tr
@@ -1180,8 +1180,11 @@ async def create_message(room_id: UUID, data: MessageCreate) -> NativeMessengerM
     _require_enabled()
     await _validate_topic(data.topic_id)
     try:
-        attachments = (await draft_attachments(await _user_id(), room_id, data.draft_revision, data.client_message_id)
-                       if data.draft_revision is not None else [])
+        attachments = (await draft_attachments(await _user_id(), room_id, data.draft_revision or 0,
+                        data.client_message_id, data.draft_file_keys)
+                       if data.draft_revision is not None or data.draft_file_keys is not None else [])
+    except DraftFileUnavailable as exc:
+        raise HTTPException(409, {"code": "draft_file_unavailable", "message": str(exc)}) from exc
     except DraftConflict as exc:
         raise HTTPException(409, str(exc)) from exc
     resource_uris: list[str] = []
@@ -1223,7 +1226,7 @@ async def create_message(room_id: UUID, data: MessageCreate) -> NativeMessengerM
     if result is None:
         raise _not_found()
     if data.draft_revision is not None:
-        await clear_sent_draft(await _user_id(), room_id, data.draft_revision)
+        await clear_sent_draft(await _user_id(), room_id, data.draft_revision, client_message_id=data.client_message_id)
     return result
 
 
@@ -1294,6 +1297,8 @@ async def create_attachment_message(
     language: str = Form(default="", max_length=10),
     document_focus: Annotated[Json[DocumentFocus] | None, Form()] = None,
     resource_uris: Annotated[Json[AttachmentResourceUris] | None, Form()] = None,
+    draft_file_keys: list[UUID] = Form(default=[], max_length=20),
+    draft_revision: int | None = Form(default=None, ge=0),
 ) -> NativeMessengerMessage:
     _require_enabled()
     await _validate_topic(topic_id)
@@ -1315,7 +1320,15 @@ async def create_attachment_message(
                               if displayed_repository_id is not None else None)
     except (PermissionError, FileNotFoundError, ValueError):
         raise HTTPException(403, "Displayed repository unavailable") from None
-    observations: list[ObservedMessengerFile] = []
+    if len(files) + len(draft_file_keys) > 20:
+        raise HTTPException(422, "A message accepts at most 20 attachments")
+    try:
+        observations = await draft_attachments(await _user_id(), room_id, draft_revision or 0,
+            client_message_id, draft_file_keys) if draft_file_keys else []
+    except DraftFileUnavailable as exc:
+        raise HTTPException(409, {"code": "draft_file_unavailable", "message": str(exc)}) from exc
+    except DraftConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
     stored_file_ids: list[UUID] = []
     try:
         for file in files:
@@ -1366,6 +1379,8 @@ async def create_attachment_message(
         for file_id in stored_file_ids:
             await storage.discard(file_id)
         raise _not_found()
+    if draft_revision is not None:
+        await clear_sent_draft(await _user_id(), room_id, draft_revision, client_message_id=client_message_id)
     return result
 
 

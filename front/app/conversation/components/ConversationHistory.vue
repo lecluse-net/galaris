@@ -1,6 +1,6 @@
 <template>
   <div>
-    <q-banner v-if="error" rounded class="bg-red-1 text-negative q-mb-md">
+    <q-banner v-if="error" rounded class="bg-solaire-red-light text-negative q-mb-md">
       <template #avatar><q-icon name="error" /></template>
       {{ error }}
     </q-banner>
@@ -242,17 +242,17 @@
 </template>
 
 <script setup lang="ts">
-import { HistoryToolbar, MetricCard, type SolaireColor } from '@/core/util'
-import { computed, onMounted, ref } from 'vue'
+import { HistoryToolbar, MetricCard, startVisiblePolling, type SolaireColor } from '@/core/util'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useInterval, type QTableColumn, type QTableProps } from 'quasar'
-import AgentAvatar from '@/app/agent/components/AgentAvatar.vue'
+import type { QTableColumn, QTableProps } from 'quasar'
+import { AgentAvatar } from '@/app/agent'
 import { AgentSelect } from '@/app/agent'
 import { getAgentSelection, type AgentSelectionOption } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import type { LLMCall } from '@/app/llm/types'
-import ConversationTurnDialog from '@/core/util/components/ConversationTurnDialog.vue'
-import WaitingResponseIndicator from '@/core/util/components/WaitingResponseIndicator.vue'
+import { ConversationTurnDialog } from '@/core/util'
+import { WaitingResponseIndicator } from '@/core/util'
 import { ResourceReferenceMenu, ExecutionDateFilters, StatusBadge, type StatusBadgeTone } from '@/core/util'
 import ConversationRoundDetail from './ConversationRoundDetail.vue'
 import { conversationService } from '../services/conversationService'
@@ -262,9 +262,9 @@ import type {
   ConversationStatus,
   ConversationStatusOverview,
 } from '../types'
-import TopicBadge from '@/app/topic/components/TopicBadge.vue'
-import { useTopicRefs } from '@/app/topic/composables/useTopicRefs'
-import TopicSelect from '@/app/topic/components/TopicSelect.vue'
+import { TopicBadge } from '@/app/topic'
+import { useTopicRefs } from '@/app/topic/facade'
+import { TopicSelect } from '@/app/topic'
 
 type TableRequest = Parameters<NonNullable<QTableProps['onRequest']>>[0]
 type ConversationMetricKey = 'idle' | 'ready' | 'running' | 'errors'
@@ -278,7 +278,6 @@ interface ConversationMetric {
 }
 
 const { t, te, locale } = useI18n()
-const { registerInterval } = useInterval()
 const agents = ref<AgentSelectionOption[]>([])
 const privilegeStore = usePrivilegeStore()
 const canFilterTopics = computed(() => privilegeStore.hasAnyPrivilege([privileges.TOPIC_ACCESS, privileges.TOPIC_EDIT]))
@@ -307,6 +306,7 @@ const detailError = ref('')
 const callsLoading = ref(false)
 const callsError = ref('')
 let listRequest = 0
+let listPending = 0
 let roundRequest = 0
 let callsRequest = 0
 const { resolveTopicRefs, topicTitle } = useTopicRefs()
@@ -341,20 +341,23 @@ const metrics = computed<ConversationMetric[]>(() => [
 ])
 const detailTitle = computed(() => t('conversation.history.detail.turn'))
 
+let stopPolling: (() => void) | undefined
 onMounted(() => {
   void loadAgents()
   void refresh()
-  registerInterval(() => {
-    void refresh(false)
+  stopPolling = startVisiblePolling(async () => {
+    if (listPending) return
+    await refresh(false)
     if (detailOpen.value && selectedMessage.value?.round_id && selectedRoundIsActive()) {
-      void refreshSelectedRound(false)
-      void refreshSelectedCalls(false)
+      await Promise.all([refreshSelectedRound(false), refreshSelectedCalls(false)])
     }
   }, 3000)
 })
+onBeforeUnmount(() => { stopPolling?.(); listRequest++; roundRequest++; callsRequest++ })
 
 async function refresh(showLoading = true): Promise<void> {
   const request = ++listRequest
+  listPending++
   if (showLoading) {
     loading.value = true
     error.value = ''
@@ -383,6 +386,7 @@ async function refresh(showLoading = true): Promise<void> {
       error.value = reason instanceof Error ? reason.message : t('conversation.history.loadError')
     }
   } finally {
+    listPending--
     if (request === listRequest) loading.value = false
   }
 }

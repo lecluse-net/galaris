@@ -20,7 +20,7 @@
         <q-checkbox v-model="draft.sort_desc" dense :label="t('documents.library.descending')" />
         <div v-if="invalidDates" role="alert">{{ t('documents.library.invalidDates') }}</div>
         <div class="row justify-end q-gutter-sm">
-          <q-btn flat :label="t('documents.library.reset')" @click="draft = defaults(); onlyUnclassified = true" />
+          <q-btn outline color="primary"  :label="t('documents.library.reset')" @click="draft = defaults(); onlyUnclassified = true" />
           <q-btn type="submit" color="primary" :disable="invalidDates" :label="t('documents.library.apply')" v-close-popup="!invalidDates" />
         </div>
       </q-form>

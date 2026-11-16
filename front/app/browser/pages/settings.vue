@@ -3,7 +3,7 @@
         <PageHeader help-key="browser" :help-text="$t('contextHelpPages.browser')" :icon="navigationIcon('web')" :title="t('browserSettings.title')" :description="t('browserSettings.subtitle')" />
         <div v-if="availability.failed || (params.error && !params.params.length)" class="q-mt-md">
             <q-banner class="bg-negative text-white" rounded>{{ t('browserSettings.loadError') }}</q-banner>
-            <q-btn class="q-mt-md" :label="t('browserSettings.retry')" @click="retry" />
+            <q-btn color="primary" class="q-mt-md" :label="t('browserSettings.retry')" @click="retry" />
         </div>
         <div v-else-if="availability.available !== true || (params.loading && !params.params.length)" class="row justify-center q-pa-lg">
             <q-spinner color="primary" size="3em" />
@@ -11,7 +11,7 @@
         <q-card v-else flat bordered class="q-pa-md browser-settings">
             <SettingsFields :fields="browserFields" :columns="2" />
         </q-card>
-        <q-btn flat color="primary" class="q-mt-md" icon="arrow_back" :label="t('common.back')" to="/params" />
+        <q-btn outline  color="primary" class="q-mt-md" icon="arrow_back" :label="t('common.back')" to="/params" />
     </q-page>
 </template>
 

@@ -246,7 +246,7 @@ async def qualify_hermes_managed(origin: str) -> None:
     """Exercise the real SDK's native and MCP boundaries with the run-bound collector."""
     from types import SimpleNamespace
     authorization = importlib.import_module("galaris_authorization")
-    handlers = importlib.import_module("services.mcp_tool_handlers")
+    handlers = importlib.import_module("tools.mcp_tool_handlers")
     for mcp_call in (False, True):
         for allowed in (False, True):
             gate.clear()
@@ -305,6 +305,20 @@ async def http_adapter(runtime: str) -> None:
     import urllib.request
 
     uvicorn = importlib.import_module("uvicorn")
+
+    def child_processes() -> set[int]:
+        parents: dict[int, int] = {}
+        for path in Path("/proc").glob("[0-9]*/stat"):
+            try:
+                fields = path.read_text().rsplit(") ", 1)[1].split()
+                if fields[0] != "Z":
+                    parents[int(path.parent.name)] = int(fields[1])
+            except (FileNotFoundError, ProcessLookupError):
+                continue
+        descendants = {os.getpid()}
+        while added := {pid for pid, parent in parents.items() if parent in descendants} - descendants:
+            descendants.update(added)
+        return descendants - {os.getpid()}
 
     root = Path("/opt/codex-harness" if runtime == "codex" else "/opt/claude-agent")
     sys.path.insert(0, str(root))
@@ -379,6 +393,48 @@ async def http_adapter(runtime: str) -> None:
                 assert tool["success"] is allowed, tool
                 print(json.dumps({"runtime": runtime, "authorization": "allow" if allowed else "deny", "effect": target.exists()}))
                 gate.clear()
+            gate.clear()
+            target = Path("/workspace" if runtime == "codex" else "/data/workspace") / "cancelled-write.txt"
+            gate.update(path=str(target), decision="pending", requests=[], receipts=[])
+            headers = {"Content-Type": "application/json", "Authorization": "Bearer qualification-token",
+                "X-Galaris-Run-Context": "synthetic-cancelled-context"}
+            body = json.dumps({"model": "qualification", "messages": [
+                {"role": "user", "content": "Perform the synthetic write, then reply qualification-ok"}]}).encode()
+            request = urllib.request.Request(origin + "/v1/galaris/runs", data=body, headers=headers)
+            existing_children = child_processes()
+            with urllib.request.urlopen(request, timeout=10) as response:
+                identifier = json.load(response)["runtime_run_id"]
+            status_url = origin + "/v1/galaris/runs/" + identifier
+            deadline = time.monotonic() + 20
+            while not gate["requests"] and time.monotonic() < deadline:
+                await asyncio.sleep(0.05)
+            assert gate["requests"] and not target.exists(), "Cancellation must exercise a real pending SDK action"
+            sdk_children = child_processes() - existing_children
+            assert sdk_children, "The cancellation probe did not observe a real SDK subprocess"
+            started = time.monotonic()
+            for _ in range(2):
+                with urllib.request.urlopen(urllib.request.Request(status_url + "/cancel", data=b"{}", headers=headers), timeout=10) as response:
+                    assert json.load(response)["cancelled"] is True
+            while time.monotonic() < deadline:
+                with urllib.request.urlopen(urllib.request.Request(status_url, headers=headers), timeout=10) as response:
+                    status = json.load(response)
+                if status.get("stopped") is True:
+                    break
+                await asyncio.sleep(0.05)
+            assert status.get("stopped") is True and status.get("success") is False, status
+            assert not (sdk_children & child_processes()), "The runtime announced stopped with a live SDK subprocess"
+            stopped_seconds = time.monotonic() - started
+            # A late human answer must not authorize the cancelled SDK's write.
+            gate["decision"] = "executing"
+            with urllib.request.urlopen(request, timeout=10) as response:
+                assert json.load(response)["runtime_run_id"] == identifier
+            await asyncio.sleep(0.3)
+            with urllib.request.urlopen(urllib.request.Request(status_url, headers=headers), timeout=10) as response:
+                assert json.load(response) == status, "A duplicate launch reopened a stopped run"
+            assert not target.exists() and not gate["receipts"], gate
+            print(json.dumps({"runtime": runtime, "cancellation": "confirmed", "stopped_seconds": stopped_seconds,
+                "late_approval_effect": False, "duplicate_launch_replayed": False}))
+            gate.clear()
         finally:
             server.should_exit = True
             thread.join(timeout=5)
@@ -416,8 +472,8 @@ def main() -> None:
         assert ANSWER in json.dumps(result), str(result)[:2000]
         # The pinned dispatcher, file tool, collector and model transport are real.
         # Only the responsible human's once/deny decision is synthetic.
-        approvals = importlib.import_module("services.approval")
-        approval_context = importlib.import_module("services.approval_context")
+        approvals = importlib.import_module("tools.approval")
+        approval_context = importlib.import_module("tools.approval_context")
         os.environ.update(TERMINAL_CWD="/workspace", TERMINAL_ENV="local", HERMES_WRITE_SAFE_ROOT="/workspace")
         for allowed in (False, True):
             gate.clear()

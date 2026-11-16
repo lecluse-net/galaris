@@ -210,10 +210,6 @@
     },
     {
       "source": "back/app/goal/runner.py",
-      "target": "app.llm.structured_service"
-    },
-    {
-      "source": "back/app/goal/runner.py",
       "target": "app.task.models"
     },
     {

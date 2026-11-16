@@ -59,7 +59,7 @@
             <div class="timeline-header" @click="toggleStep(index)">
               <div class="timeline-header-left">
                 <q-icon :name="getStepIcon(step)" :color="getStepColor(step)" size="xs" class="q-mr-xs" />
-                <span v-if="stepKind(step) === 'thinking'" class="text-caption text-amber-9">
+                <span v-if="stepKind(step) === 'thinking'" class="text-caption text-solaire-yellow">
                   {{ $t('task.execution.thinking') }}
                 </span>
                 <span v-else-if="step.type === 'tool'" class="tool-name text-body2">{{ step.tool_name }}</span>
@@ -69,7 +69,7 @@
                 <span class="text-caption text-grey q-mr-sm">{{ truncateContent(step.content) }}</span>
                 <q-badge
                   v-if="step.execution_time !== undefined && step.execution_time > 0"
-                  color="blue"
+                  color="solaire-blue"
                   size="sm"
                   class="q-mr-xs"
                 >
@@ -78,7 +78,7 @@
                 </q-badge>
                 <q-badge
                   v-if="step.cost !== undefined && step.cost > 0"
-                  color="purple"
+                  color="solaire-violet"
                   size="sm"
                   class="q-mr-xs"
                 >
@@ -207,7 +207,7 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CodeEditor, Markdown } from '@/core/util'
-import type { AIMessage } from '@/app/task/types'
+import type { AIMessage } from '@/app/agent/contracts'
 import { callExecutionResult, formatCostShort, formatExecutionTime } from '../presentation'
 import type { LLMCall } from '../types'
 
@@ -283,11 +283,11 @@ const stepKind = (step: AIMessage): string => {
 const getStepColor = (step: AIMessage): string => {
   switch (stepKind(step)) {
     case 'text': return 'primary'
-    case 'image': return 'purple'
-    case 'audio': return 'orange'
-    case 'video': return 'deep-purple'
-    case 'tool': return 'teal'
-    case 'thinking': return 'amber-9'
+    case 'image': return 'solaire-violet'
+    case 'audio': return 'solaire-orange'
+    case 'video': return 'solaire-iris'
+    case 'tool': return 'solaire-cyan'
+    case 'thinking': return 'solaire-yellow'
     default: return 'grey'
   }
 }

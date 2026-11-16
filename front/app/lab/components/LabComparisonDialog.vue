@@ -1,10 +1,7 @@
 <template>
   <q-dialog v-model="opened">
     <q-card class="comparison-dialog galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center">
-        <div class="text-h6">{{ t('evaluation.comparison.title') }}</div><q-space />
-        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-      </q-card-section>
+      <DialogHeader :title="t('evaluation.comparison.title')" :close-label="t('common.close')" />
       <q-card-section class="galaris-dialog-body">
         <p>{{ t('evaluation.comparison.help') }}</p>
         <div class="comparison-columns">
@@ -14,13 +11,13 @@
             <q-select v-model="side.runId" :options="side.runs.map(run => ({ value: run.id, label: runLabel(run) }))" emit-value map-options outlined :loading="side.loading" :disable="side.loading" :label="t('evaluation.comparison.run')" class="q-mt-sm" />
             <p class="text-caption">{{ t('evaluation.comparison.recentRuns') }}</p>
             <p v-if="side.datasetId && !side.loading && !side.error && !side.runs.length">{{ t('evaluation.comparison.noRuns') }}</p>
-            <q-banner v-if="side.error" role="alert">{{ side.error }} <q-btn flat :label="t('evaluation.comparison.retry')" @click="loadRuns(side)" /></q-banner>
+            <q-banner v-if="side.error" role="alert">{{ side.error }} <q-btn outline color="primary"  :label="t('evaluation.comparison.retry')" @click="loadRuns(side)" /></q-banner>
           </section>
         </div>
         <q-select v-model="axis" :options="axes" emit-value map-options outlined :label="t('evaluation.comparison.axis')" class="q-my-md" />
         <div class="row q-gutter-sm">
           <q-btn color="primary" icon="compare_arrows" :label="t('evaluation.comparison.compare')" :disable="!ready" :loading="loading" @click="compare(0)" />
-          <q-btn flat icon="swap_horiz" :label="t('evaluation.comparison.swap')" :disable="!ready || loading" @click="swap" />
+          <q-btn outline color="primary"  icon="swap_horiz" :label="t('evaluation.comparison.swap')" :disable="!ready || loading" @click="swap" />
         </div>
         <q-banner v-if="error" role="alert" class="q-mt-md">{{ error }}</q-banner>
         <template v-if="result">
@@ -41,7 +38,7 @@
           <LabComparisonInsights :comparison="result" @focus="chooseFocus" />
           <p v-if="filter.focus !== 'all'">
             {{ t('evaluation.comparison.activeFocus.' + filter.focus, { code: filter.dimension ?? '' }) }}
-            <q-btn flat :label="t('evaluation.comparison.allCases')" @click="chooseFocus({ focus: 'all' })" />
+            <q-btn outline color="primary"  :label="t('evaluation.comparison.allCases')" @click="chooseFocus({ focus: 'all' })" />
           </p>
           <p v-if="!result.items.length">{{ t('evaluation.comparison.empty') }}</p>
           <article v-for="item in result.items" :key="item.left_result_id" class="comparison-case q-my-md q-pa-md">
@@ -73,9 +70,9 @@
           </article>
           <div class="row items-center q-gutter-sm">
             <q-select v-model="limit" :options="[10, 20, 50, 100, 500]" outlined :label="t('evaluation.comparison.pageSize')" class="page-size" />
-            <q-btn flat :label="t('evaluation.comparison.previous')" :disable="loading || offset === 0" @click="compare(Math.max(0, offset - limit))" />
+            <q-btn outline color="primary"  :label="t('evaluation.comparison.previous')" :disable="loading || offset === 0" @click="compare(Math.max(0, offset - limit))" />
             <span>{{ t('evaluation.comparison.page', { number: Math.floor(offset / limit) + 1 }) }}</span>
-            <q-btn flat :label="t('evaluation.comparison.next')" :disable="loading || result.next_offset == null" @click="compare(result.next_offset ?? 0)" />
+            <q-btn outline color="primary"  :label="t('evaluation.comparison.next')" :disable="loading || result.next_offset == null" @click="compare(result.next_offset ?? 0)" />
           </div>
         </template>
       </q-card-section>
@@ -83,6 +80,7 @@
   </q-dialog>
 </template>
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'

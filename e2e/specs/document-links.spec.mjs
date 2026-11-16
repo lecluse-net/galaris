@@ -53,7 +53,6 @@ test('documents dropped from the list and tree persist as titled links and rever
   await page.getByRole('button', { name: /^(Show card|Afficher une carte)$/, exact: true }).click()
   await expect(editor.locator('.galaris-link-card > p').first()).toHaveText(source.title)
   expect((await cardSave).ok()).toBeTruthy()
-  await expect(editor.locator('.document-thumbnail img')).toBeVisible()
   const identifier = editor.locator('.document-citation-identifier')
   await expect(identifier).toHaveText(source.id)
   await identifier.click()

@@ -16,7 +16,7 @@ from uuid import UUID, uuid4
 from loguru import logger
 from app.agent import AgentManagementScope
 from pydantic import ValidationError
-from sqlalchemy import DateTime, String, case, cast as sa_cast, func, or_, and_, select, true, false
+from sqlalchemy import DateTime, Select, String, case, cast as sa_cast, func, or_, and_, select, true, false
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.orm import defer
 from sqlalchemy.exc import IntegrityError, InvalidRequestError
@@ -981,8 +981,10 @@ async def list_runs(
     limit: int = 100,
     participant_agent_id: int | None = None,
     administrative_agent_ids: Collection[int] | None = None,
-) -> list[ProcessRun]:
-    query = select(ProcessRun).join(ProcessDefinition, ProcessDefinition.id == ProcessRun.process_id)
+) -> list[ProcessRunRead]:
+    from .query_policy import prepare_process_read
+    await prepare_process_read()
+    query = select(ProcessRun.id).join(ProcessDefinition, ProcessDefinition.id == ProcessRun.process_id)
     if administrative_agent_ids is not None:
         query = query.where(ProcessRun.launcher_agent_id.in_(administrative_agent_ids))
     if agent_id is not None:
@@ -999,7 +1001,7 @@ async def list_runs(
     if status:
         query = query.where(ProcessRun.status == status)
     query = query.order_by(ProcessRun.created_at.desc()).limit(max(1, min(limit, 500)))
-    return list((await get_db().execute(query)).scalars().all())
+    return await _run_reads(query)
 
 
 async def paginate_runs(
@@ -1114,16 +1116,19 @@ async def _run_read(run: ProcessRun, *, fresh: bool = True) -> ProcessRunRead:
     })
 
 
-async def _run_reads(run_ids: Sequence[UUID]) -> list[ProcessRunRead]:
+async def _run_reads(run_ids: Sequence[UUID] | Select[tuple[UUID]]) -> list[ProcessRunRead]:
     """Serialize already selected runs without loading their private execution state."""
     from app.agent import Agent
 
     fields = set(ProcessRunRead.model_fields) | {"engine_code"}
     columns = [column for column in ProcessRun.__table__.columns if column.key in fields]
     summaries: dict[UUID, ProcessRunRead] = {}
-    for offset in range(0, len(run_ids), 500):
-        rows = (await get_db().execute(
-            select(
+    if isinstance(run_ids, Select):
+        selections: list[Sequence[UUID] | Select[tuple[UUID]]] = [run_ids]
+    else:
+        selections = [run_ids[offset:offset + 500] for offset in range(0, len(run_ids), 500)]
+    for selection in selections:
+        query = (select(
                 *columns,
                 ProcessDefinition.engine_process_id.label("workflow_id"),
                 ProcessDefinition.label.label("process_label"),
@@ -1134,9 +1139,14 @@ async def _run_reads(run_ids: Sequence[UUID]) -> list[ProcessRunRead]:
             .select_from(ProcessRun)
             .outerjoin(ProcessDefinition, ProcessDefinition.id == ProcessRun.process_id)
             .outerjoin(Agent, and_(Agent.id == ProcessRun.launcher_agent_id, Agent.deleted_at.is_(None)))
-            .where(ProcessRun.id.in_(run_ids[offset:offset + 500]))
-            .execution_options(include_historized=True)
-        )).mappings().all()
+            .where(ProcessRun.id.in_(selection)))
+        if isinstance(run_ids, Select):
+            # Read summaries and their live authorization in one SQL snapshot.
+            # Keep normal soft-deletion filtering throughout the scoped query.
+            query = query.order_by(ProcessRun.created_at.desc())
+        else:
+            query = query.execution_options(include_historized=True)
+        rows = (await get_db().execute(query)).mappings().all()
         for row in rows:
             base = ProcessRunRead.model_validate(row)
             summaries[base.id] = base.model_copy(update={
@@ -1144,6 +1154,8 @@ async def _run_reads(run_ids: Sequence[UUID]) -> list[ProcessRunRead]:
                 "process_label": base.process_label if base.process_label is not None else str(row["snapshot_process_label"] or ""),
                 "summary": await tr(f"process.summary.{base.status}"),
             })
+    if isinstance(run_ids, Select):
+        return list(summaries.values())
     if any(run_id not in summaries for run_id in run_ids):
         raise InvalidRequestError("A selected process run no longer exists")
     return [summaries[run_id] for run_id in run_ids]

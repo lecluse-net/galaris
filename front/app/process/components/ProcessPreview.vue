@@ -2,7 +2,7 @@
   <section ref="root" class="process-preview" :class="{ 'process-preview--inline': inline }">
     <div v-if="loading" class="q-pa-md" role="status"><q-spinner color="primary" /></div>
     <q-banner v-else-if="error" role="alert">{{ t('nativeProcesses.resources.unavailable') }}
-      <template #action><q-btn outline :label="t('common.retry')" @click="load" /></template>
+      <template #action><q-btn color="primary" outline :label="t('common.retry')" @click="load" /></template>
     </q-banner>
     <template v-else-if="preview">
       <div v-if="!inline" class="q-pa-md">
@@ -14,11 +14,11 @@
           <div v-if="selectedNode" class="q-pa-sm">
             <div class="text-subtitle2">{{ selectedNode.title }}</div>
             <p v-if="selectedNode.config.prompt">{{ selectedNode.config.prompt }}</p>
-            <q-btn v-if="selectedNode.body" outline :label="t('nativeProcesses.openBody')" @click="path.push(selectedNode.id); selected = null" />
+            <q-btn color="primary" v-if="selectedNode.body" outline :label="t('nativeProcesses.openBody')" @click="path.push(selectedNode.id); selected = null" />
           </div>
         </template>
       </BpmnCanvas>
-      <q-btn v-if="path.length" outline icon="arrow_back" :label="t('nativeProcesses.resources.parentDiagram')" @click="path.pop(); selected = null" />
+      <q-btn color="primary" v-if="path.length" outline icon="arrow_back" :label="t('nativeProcesses.resources.parentDiagram')" @click="path.pop(); selected = null" />
     </template>
   </section>
 </template>

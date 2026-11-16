@@ -4,7 +4,7 @@
     <q-spinner v-if="state === 'loading'" color="primary" size="28px" />
     <q-icon v-else :name="icon || icons[state]" size="28px" />
     <span>{{ message || (state === 'loading' ? t('common.loading') : '') }}</span>
-    <q-btn v-if="state === 'error' && retryLabel" outline dense color="negative" :label="retryLabel" @click="emit('retry')" />
+    <q-btn v-if="state === 'error' && retryLabel"  dense color="negative" :label="retryLabel" @click="emit('retry')" />
   </div>
 </template>
 

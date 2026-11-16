@@ -4,18 +4,7 @@
     @update:model-value="$emit('update:modelValue', $event)"
   >
     <q-card class="room-create-card galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <div class="text-h6">{{ t('chat.newRoom') }}</div>
-        <q-space />
-        <q-btn
-          v-close-popup
-          flat
-          round
-          dense
-          icon="close"
-          :aria-label="t('common.close')"
-        />
-      </q-card-section>
+      <DialogHeader :title="t('chat.newRoom')" :close-label="t('common.close')" />
 
       <q-card-section class="q-gutter-md galaris-dialog-body">
         <AgentSelect
@@ -78,7 +67,7 @@
       </q-card-section>
 
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn v-close-popup flat :label="t('chat.cancel')" />
+        <q-btn outline color="primary" v-close-popup  :label="t('chat.cancel')" />
         <q-btn
           color="primary"
           :label="t('chat.create')"
@@ -92,6 +81,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { TopicSelect } from '@/app/topic'
@@ -149,6 +139,7 @@ watch(
     showLastMessage.value = true
     suggestedLabel = label.value
   },
+  { immediate: true },
 )
 
 watch(agentId, selectedAgentId => {

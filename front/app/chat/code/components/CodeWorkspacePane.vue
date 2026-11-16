@@ -7,24 +7,21 @@
       <q-btn flat round dense icon="close" :aria-label="t('code.hide')" @click="emit('hide')" />
     </q-toolbar>
     <q-banner v-if="editor?.error" class="code-error" role="alert">{{ t('code.connectionLost') }}
-      <q-btn flat :label="t('code.retry')" @click="retry" />
+      <q-btn outline color="primary"  :label="t('code.retry')" @click="retry" />
     </q-banner>
     <q-banner v-if="editor?.recoveryUrl" class="code-error" role="status">
       {{ t(editor.showRecovery ? 'code.recoveredWindow' : 'code.previousWindow') }}
-      <q-btn flat :label="t(editor.showRecovery ? 'code.showPrevious' : 'code.showRecovered')"
+      <q-btn outline color="primary"  :label="t(editor.showRecovery ? 'code.showPrevious' : 'code.showRecovered')"
         @click="editor.showRecovery = !editor.showRecovery" />
     </q-banner>
     <div ref="anchor" class="code-workspace-anchor"><q-inner-loading :showing="!(editor?.showRecovery ? editor.recoveryLoaded : editor?.loaded)" /></div>
     <q-dialog v-model="confirmReload" :aria-label="t('code.reloadTitle')">
       <q-card style="max-width: 560px">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ t('code.reloadTitle') }}</div><q-space />
-          <q-btn flat round dense icon="close" v-close-popup :aria-label="t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('code.reloadTitle')" :close-label="t('common.close')" />
         <q-card-section>{{ t('code.reloadWarning') }}</q-card-section>
         <q-card-actions align="right">
-          <q-btn flat :label="t('common.cancel')" v-close-popup />
-          <q-btn flat :label="t('code.reloadConfirm')" @click="reload" />
+          <q-btn outline color="primary"  :label="t('common.cancel')" v-close-popup />
+          <q-btn outline color="primary"  :label="t('code.reloadConfirm')" @click="reload" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -32,6 +29,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'

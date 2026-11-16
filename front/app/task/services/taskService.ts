@@ -1,7 +1,7 @@
 import { api } from '@/core/api'
 import type { TaskActivitySnapshot, TaskCallRecoveryState } from '../activity'
 import type { Task, TaskCreate, TaskUpdate, TaskWithAssignments, TaskFull, TaskPage } from '../types'
-import type { Agent } from '@/app/agent/services/agentService'
+import type { Agent } from '@/app/agent/contracts'
 export interface CostSummary {
   calls: number; estimated_calls: number; unknown_calls: number; running_calls: number
   failed_calls: number; subscription_calls: number; recorded_cost: number
@@ -53,8 +53,8 @@ export class TaskService {
     return response.data
   }
 
-  async getActive(limit: number = 10): Promise<Task[]> {
-    const response = await api.get('/tasks/active', { params: { limit } })
+  async getActive(limit: number = 10, signal?: AbortSignal): Promise<Task[]> {
+    const response = await api.get('/tasks/active', { params: { limit }, signal })
     return response.data
   }
 

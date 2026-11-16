@@ -8,7 +8,7 @@
       </q-card>
 
       <div class="text-center q-mt-xl">
-        <q-btn flat color="primary" to="/" icon="arrow_back" :label="$t('index.backHome')" />
+        <q-btn outline  color="primary" to="/" icon="arrow_back" :label="$t('index.backHome')" />
       </div>
     </div>
   </q-page>

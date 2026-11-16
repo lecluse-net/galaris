@@ -1,7 +1,7 @@
 <template>
   <q-dialog :model-value="true" :position="$q.screen.lt.md ? 'standard' : 'right'" :maximized="$q.screen.lt.md" @update:model-value="!$event && emit('close')">
     <q-card class="event-panel">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap"><div class="text-subtitle1 ellipsis">{{ detail?.summary || event.summary }}</div><q-space /><q-btn flat round dense icon="close" :aria-label="t('agenda.close')" @click="emit('close')" /></q-card-section>
+      <DialogHeader :title="detail?.summary || event.summary" :close-label="t('agenda.close')" :close-popup="false" @close="emit('close')" />
       <q-linear-progress v-if="loading" indeterminate color="primary" />
       <q-banner v-if="error" role="alert">{{ error }}<template #action><q-btn outline color="primary" :label="t('agenda.retry')" @click="load" /></template></q-banner>
       <template v-if="detail">
@@ -37,6 +37,7 @@
   </q-dialog>
 </template>
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'

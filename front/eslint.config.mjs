@@ -1,6 +1,7 @@
 import js from '@eslint/js'
 import ts from 'typescript-eslint'
 import vue from 'eslint-plugin-vue'
+import { uiConventions } from './scripts/ui-conventions.mjs'
 
 // A repository-wide correctness gate. Formatting and gradual Any removal remain
 // separate from bugs such as duplicate branches, invalid templates or prop mutations.
@@ -36,10 +37,13 @@ export default [
   {
     files: ['**/*.vue'],
     languageOptions: { parserOptions: { parser: ts.parser } },
+    plugins: { galaris: { rules: { 'ui-conventions': uiConventions } } },
+    rules: { 'galaris/ui-conventions': 'error' },
   },
   {
-    files: ['core/websocket.ts', 'app/process/stores/processStore.ts', 'app/process/composables/useProcessRunActions.ts'],
-    languageOptions: { parserOptions: { projectService: true, tsconfigRootDir: import.meta.dirname } },
+    files: ['core/**/*.{ts,vue}', 'app/**/*.{ts,vue}', 'bridge/**/*.{ts,vue}'],
+    plugins: { '@typescript-eslint': ts.plugin },
+    languageOptions: { parserOptions: { projectService: true, extraFileExtensions: ['.vue'], tsconfigRootDir: import.meta.dirname } },
     rules: {
       '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
       '@typescript-eslint/no-misused-promises': 'error',

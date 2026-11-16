@@ -2,14 +2,6 @@
   "dependencies": [
     {
       "source": "app/agent",
-      "target": "app/harnesses"
-    },
-    {
-      "source": "app/agent",
-      "target": "app/llm"
-    },
-    {
-      "source": "app/agent",
       "target": "core/api"
     },
     {
@@ -19,10 +11,6 @@
     {
       "source": "app/agent",
       "target": "core/navigation"
-    },
-    {
-      "source": "app/agent",
-      "target": "core/params"
     },
     {
       "source": "app/agent",
@@ -382,6 +370,18 @@
     },
     {
       "source": "app/index",
+      "target": "app/connection"
+    },
+    {
+      "source": "app/index",
+      "target": "app/conversation"
+    },
+    {
+      "source": "app/index",
+      "target": "app/harnesses"
+    },
+    {
+      "source": "app/index",
       "target": "app/llm"
     },
     {
@@ -390,7 +390,19 @@
     },
     {
       "source": "app/index",
+      "target": "app/process"
+    },
+    {
+      "source": "app/index",
+      "target": "app/services"
+    },
+    {
+      "source": "app/index",
       "target": "app/task"
+    },
+    {
+      "source": "app/index",
+      "target": "app/voice"
     },
     {
       "source": "app/index",
@@ -406,7 +418,15 @@
     },
     {
       "source": "app/index",
+      "target": "core/params"
+    },
+    {
+      "source": "app/index",
       "target": "core/settings"
+    },
+    {
+      "source": "app/index",
+      "target": "core/team"
     },
     {
       "source": "app/index",
@@ -443,10 +463,6 @@
     {
       "source": "app/llm",
       "target": "app/agent"
-    },
-    {
-      "source": "app/llm",
-      "target": "app/task"
     },
     {
       "source": "app/llm",
@@ -521,6 +537,10 @@
       "target": "core/user"
     },
     {
+      "source": "app/onboarding",
+      "target": "core/util"
+    },
+    {
       "source": "app/process",
       "target": "app/agent"
     },
@@ -557,6 +577,26 @@
       "target": "core/websocket"
     },
     {
+      "source": "app/services",
+      "target": "app/agent"
+    },
+    {
+      "source": "app/services",
+      "target": "core/api"
+    },
+    {
+      "source": "app/services",
+      "target": "core/authorize"
+    },
+    {
+      "source": "app/services",
+      "target": "core/navigation"
+    },
+    {
+      "source": "app/services",
+      "target": "core/util"
+    },
+    {
       "source": "app/share",
       "target": "core/util"
     },
@@ -586,14 +626,6 @@
     },
     {
       "source": "app/task",
-      "target": "app/conversation"
-    },
-    {
-      "source": "app/task",
-      "target": "app/lab"
-    },
-    {
-      "source": "app/task",
       "target": "app/llm"
     },
     {
@@ -602,15 +634,7 @@
     },
     {
       "source": "app/task",
-      "target": "app/process"
-    },
-    {
-      "source": "app/task",
       "target": "app/topic"
-    },
-    {
-      "source": "app/task",
-      "target": "app/voice"
     },
     {
       "source": "app/task",
@@ -639,26 +663,6 @@
     {
       "source": "app/task",
       "target": "core/websocket"
-    },
-    {
-      "source": "app/services",
-      "target": "app/connection"
-    },
-    {
-      "source": "app/services",
-      "target": "core/api"
-    },
-    {
-      "source": "app/services",
-      "target": "core/authorize"
-    },
-    {
-      "source": "app/services",
-      "target": "core/navigation"
-    },
-    {
-      "source": "app/services",
-      "target": "core/util"
     },
     {
       "source": "app/topic",
@@ -838,14 +842,6 @@
     },
     {
       "source": "core/params",
-      "target": "app/llm"
-    },
-    {
-      "source": "core/params",
-      "target": "app/task"
-    },
-    {
-      "source": "core/params",
       "target": "core/api"
     },
     {
@@ -913,452 +909,7 @@
       "target": "core/api"
     }
   ],
-  "private_imports": [
-    {
-      "source": "front/app/agent/pages/index.vue",
-      "target": "@/app/llm/services/llmProviderService"
-    },
-    {
-      "source": "front/app/agent/pages/index.vue",
-      "target": "@/app/llm/stores/llmProfileStore"
-    },
-    {
-      "source": "front/app/agent/pages/index.vue",
-      "target": "@/app/llm/stores/llmProviderStore"
-    },
-    {
-      "source": "front/app/agent/pages/index.vue",
-      "target": "@/core/params/stores/paramsStore"
-    },
-    {
-      "source": "front/app/chat/pages/index.vue",
-      "target": "@/core/authorize/stores/privilegeStore"
-    },
-    {
-      "source": "front/app/chat/settings.ts",
-      "target": "@/core/params/settingsTypes"
-    },
-    {
-      "source": "front/app/connection/components/AuthorizationManager.vue",
-      "target": "@/app/services/presentation"
-    },
-    {
-      "source": "front/app/connection/components/ConnectionForm.vue",
-      "target": "@/app/console/services/consoleService"
-    },
-    {
-      "source": "front/app/connection/components/ConnectionForm.vue",
-      "target": "@/app/console/sshKeyDeployment"
-    },
-    {
-      "source": "front/app/connection/components/ConnectionForm.vue",
-      "target": "@/app/services/presentation"
-    },
-    {
-      "source": "front/app/connection/components/ConnectionList.vue",
-      "target": "@/app/services/presentation"
-    },
-    {
-      "source": "front/app/conversation/components/ConversationHistory.vue",
-      "target": "@/app/agent/components/AgentAvatar.vue"
-    },
-    {
-      "source": "front/app/conversation/components/ConversationHistory.vue",
-      "target": "@/app/topic/components/TopicBadge.vue"
-    },
-    {
-      "source": "front/app/conversation/components/ConversationHistory.vue",
-      "target": "@/app/topic/components/TopicSelect.vue"
-    },
-    {
-      "source": "front/app/conversation/components/ConversationHistory.vue",
-      "target": "@/app/topic/composables/useTopicRefs"
-    },
-    {
-      "source": "front/app/conversation/components/ConversationHistory.vue",
-      "target": "@/core/util/components/ConversationTurnDialog.vue"
-    },
-    {
-      "source": "front/app/conversation/components/ConversationHistory.vue",
-      "target": "@/core/util/components/WaitingResponseIndicator.vue"
-    },
-    {
-      "source": "front/app/conversation/components/ConversationRoundDetail.vue",
-      "target": "@/app/agent/components/AgentAvatar.vue"
-    },
-    {
-      "source": "front/app/conversation/components/ConversationRoundDetail.vue",
-      "target": "@/app/lab/components/ConversationDatasetCaptureButton.vue"
-    },
-    {
-      "source": "front/app/conversation/components/ConversationRoundDetail.vue",
-      "target": "@/app/task/components/ExecutionResult.vue"
-    },
-    {
-      "source": "front/app/conversation/components/ConversationRoundDetail.vue",
-      "target": "@/app/topic/components/TopicAssignmentEditor.vue"
-    },
-    {
-      "source": "front/app/conversation/components/ConversationRoundDetail.vue",
-      "target": "@/core/util/components/ConversationBubble.vue"
-    },
-    {
-      "source": "front/app/conversation/components/ConversationRoundDetail.vue",
-      "target": "@/core/util/components/Markdown.vue"
-    },
-    {
-      "source": "front/app/conversation/components/ConversationRoundDetail.vue",
-      "target": "@/core/util/components/WaitingResponseIndicator.vue"
-    },
-    {
-      "source": "front/app/goal/stores/goalStore.ts",
-      "target": "@/core/user/stores/authStore"
-    },
-    {
-      "source": "front/app/index/components/DashboardAgentTable.vue",
-      "target": "@/app/agent/services/agentService"
-    },
-    {
-      "source": "front/app/index/components/DashboardLiveActivity.vue",
-      "target": "@/app/agent/services/agentService"
-    },
-    {
-      "source": "front/app/index/components/DashboardLiveActivity.vue",
-      "target": "@/app/llm/services/llmCallService"
-    },
-    {
-      "source": "front/app/index/components/DashboardLiveActivity.vue",
-      "target": "@/app/task/services/taskService"
-    },
-    {
-      "source": "front/app/index/components/DashboardLiveActivity.vue",
-      "target": "@/app/task/services/taskStatusService"
-    },
-    {
-      "source": "front/app/index/components/MainLayout.vue",
-      "target": "@/core/user/components/UserMenu.vue"
-    },
-    {
-      "source": "front/app/index/components/MainLayout.vue",
-      "target": "@/core/user/stores/authStore"
-    },
-    {
-      "source": "front/app/index/components/Sidebar.vue",
-      "target": "@/core/navigation/components/LeftMenu.vue"
-    },
-    {
-      "source": "front/app/lab/pages/ai-evaluations.vue",
-      "target": "@/app/task/resourceUri"
-    },
-    {
-      "source": "front/app/llm/components/LlmActivityPanel.vue",
-      "target": "@/app/agent/services/agentService"
-    },
-    {
-      "source": "front/app/llm/components/LlmCall.vue",
-      "target": "@/app/agent/stores/agentStore"
-    },
-    {
-      "source": "front/app/llm/components/LlmCall.vue",
-      "target": "@/app/task/components/TaskDetail.vue"
-    },
-    {
-      "source": "front/app/llm/components/LlmCall.vue",
-      "target": "@/app/task/resourceUri"
-    },
-    {
-      "source": "front/app/memory/pages/index.vue",
-      "target": "@/core/authorize/stores/privilegeStore"
-    },
-    {
-      "source": "front/app/skill/components/SkillAuthorizationManager.vue",
-      "target": "@/app/agent/components/AgentAvatar.vue"
-    },
-    {
-      "source": "front/app/skill/pages/index.vue",
-      "target": "@/core/authorize/stores/privilegeStore"
-    },
-    {
-      "source": "front/app/skill/pages/index.vue",
-      "target": "@/core/util/components/CodeEditor.vue"
-    },
-    {
-      "source": "front/app/skill/pages/index.vue",
-      "target": "@/core/util/components/Markdown.vue"
-    },
-    {
-      "source": "front/app/task/components/ActiveTaskNode.vue",
-      "target": "@/app/agent/stores/agentStore"
-    },
-    {
-      "source": "front/app/task/components/ActiveTaskNode.vue",
-      "target": "@/app/topic/components/TopicBadge.vue"
-    },
-    {
-      "source": "front/app/task/components/ActiveTasksPanel.vue",
-      "target": "@/app/agent/services/agentService"
-    },
-    {
-      "source": "front/app/task/components/ActiveTasksPanel.vue",
-      "target": "@/app/topic/components/TopicSelect.vue"
-    },
-    {
-      "source": "front/app/task/components/ActiveTasksPanel.vue",
-      "target": "@/app/topic/composables/useTopicRefs"
-    },
-    {
-      "source": "front/app/task/components/DispatchResult.vue",
-      "target": "@/core/util/components/Markdown.vue"
-    },
-    {
-      "source": "front/app/task/components/ExecutionMemoryPanel.vue",
-      "target": "@/app/memory/services/memoryService"
-    },
-    {
-      "source": "front/app/task/components/ExecutionResult.vue",
-      "target": "@/app/llm/components/LlmCalls.vue"
-    },
-    {
-      "source": "front/app/task/components/ExecutionResult.vue",
-      "target": "@/app/llm/presentation"
-    },
-    {
-      "source": "front/app/task/components/ExecutionResult.vue",
-      "target": "@/core/util/components/Markdown.vue"
-    },
-    {
-      "source": "front/app/task/components/PlannerResult.vue",
-      "target": "@/core/util/components/Markdown.vue"
-    },
-    {
-      "source": "front/app/task/components/TaskDetail.vue",
-      "target": "@/app/agent/services/agentService"
-    },
-    {
-      "source": "front/app/task/components/TaskDetail.vue",
-      "target": "@/app/agent/stores/agentStore"
-    },
-    {
-      "source": "front/app/task/components/TaskDetail.vue",
-      "target": "@/app/lab/components/TaskLabCaptureMenu.vue"
-    },
-    {
-      "source": "front/app/task/components/TaskDetail.vue",
-      "target": "@/app/topic/components/TopicAssignmentEditor.vue"
-    },
-    {
-      "source": "front/app/task/components/TaskDetail.vue",
-      "target": "@/core/user/services/authService"
-    },
-    {
-      "source": "front/app/task/components/TaskDetail.vue",
-      "target": "@/core/util/components/Markdown.vue"
-    },
-    {
-      "source": "front/app/task/components/TaskFormDialog.vue",
-      "target": "@/app/agent/services/agentService"
-    },
-    {
-      "source": "front/app/task/pages/index.vue",
-      "target": "@/app/conversation/components/ConversationHistory.vue"
-    },
-    {
-      "source": "front/app/task/pages/index.vue",
-      "target": "@/app/llm/components/LlmActivityPanel.vue"
-    },
-    {
-      "source": "front/app/task/pages/index.vue",
-      "target": "@/app/process/components/ProcessRunsPanel.vue"
-    },
-    {
-      "source": "front/app/task/pages/index.vue",
-      "target": "@/app/voice/components/VoiceCallHistory.vue"
-    },
-    {
-      "source": "front/app/task/services/taskService.ts",
-      "target": "@/app/agent/services/agentService"
-    },
-    {
-      "source": "front/app/task/stores/taskStore.ts",
-      "target": "@/app/agent/services/agentService"
-    },
-    {
-      "source": "front/app/task/stores/taskStore.ts",
-      "target": "@/core/user/stores/authStore"
-    },
-    {
-      "source": "front/app/services/pages/index.vue",
-      "target": "@/app/connection/components/AuthorizationManager.vue"
-    },
-    {
-      "source": "front/app/services/pages/index.vue",
-      "target": "@/app/connection/components/ConnectionList.vue"
-    },
-    {
-      "source": "front/app/topic/components/TopicBadge.vue",
-      "target": "@/core/authorize/stores/privilegeStore"
-    },
-    {
-      "source": "front/app/topic/pages/index.vue",
-      "target": "@/core/authorize/stores/privilegeStore"
-    },
-    {
-      "source": "front/app/voice/components/VoiceCallHistory.vue",
-      "target": "@/app/agent/components/AgentAvatar.vue"
-    },
-    {
-      "source": "front/app/voice/components/VoiceCallHistory.vue",
-      "target": "@/app/topic/components/TopicBadge.vue"
-    },
-    {
-      "source": "front/app/voice/components/VoiceCallHistory.vue",
-      "target": "@/app/topic/components/TopicSelect.vue"
-    },
-    {
-      "source": "front/app/voice/components/VoiceCallHistory.vue",
-      "target": "@/app/topic/composables/useTopicRefs"
-    },
-    {
-      "source": "front/app/voice/components/VoiceCallHistory.vue",
-      "target": "@/core/util/components/ConversationTurnDialog.vue"
-    },
-    {
-      "source": "front/app/voice/components/VoiceCallHistory.vue",
-      "target": "@/core/util/components/WaitingResponseIndicator.vue"
-    },
-    {
-      "source": "front/app/voice/components/VoiceConversationDetail.vue",
-      "target": "@/app/agent/components/AgentAvatar.vue"
-    },
-    {
-      "source": "front/app/voice/components/VoiceConversationDetail.vue",
-      "target": "@/app/lab/components/ConversationDatasetCaptureButton.vue"
-    },
-    {
-      "source": "front/app/voice/components/VoiceConversationDetail.vue",
-      "target": "@/app/task/components/ExecutionResult.vue"
-    },
-    {
-      "source": "front/app/voice/components/VoiceConversationDetail.vue",
-      "target": "@/app/topic/components/TopicAssignmentEditor.vue"
-    },
-    {
-      "source": "front/app/voice/components/VoiceConversationDetail.vue",
-      "target": "@/core/util/components/ConversationBubble.vue"
-    },
-    {
-      "source": "front/app/voice/components/VoiceConversationDetail.vue",
-      "target": "@/core/util/components/Markdown.vue"
-    },
-    {
-      "source": "front/app/voice/components/VoiceConversationDetail.vue",
-      "target": "@/core/util/components/WaitingResponseIndicator.vue"
-    },
-    {
-      "source": "front/bridge/hermes/agentTab.ts",
-      "target": "@/app/agent/driverTabs"
-    },
-    {
-      "source": "front/bridge/hermes/settings.ts",
-      "target": "@/core/params/settingsTypes"
-    },
-    {
-      "source": "front/bridge/matrix/settings.ts",
-      "target": "@/core/params/settingsTypes"
-    },
-    {
-      "source": "front/bridge/nextcloud/settings.ts",
-      "target": "@/core/params/settingsTypes"
-    },
-    {
-      "source": "front/bridge/ollama/llmProvider.ts",
-      "target": "@/app/llm/customProviderTypes"
-    },
-    {
-      "source": "front/bridge/one_bot/settings.ts",
-      "target": "@/core/params/settingsTypes"
-    },
-    {
-      "source": "front/bridge/telegram/settings.ts",
-      "target": "@/core/params/settingsTypes"
-    },
-    {
-      "source": "front/bridge/whatsapp/settings.ts",
-      "target": "@/core/params/settingsTypes"
-    },
-    {
-      "source": "front/core/App.vue",
-      "target": "@/app/index/components/MainLayout.vue"
-    },
-    {
-      "source": "front/core/App.vue",
-      "target": "@/core/authorize/stores/authorizeStore"
-    },
-    {
-      "source": "front/core/App.vue",
-      "target": "@/core/authorize/stores/privilegeStore"
-    },
-    {
-      "source": "front/core/App.vue",
-      "target": "@/core/user/stores/authStore"
-    },
-    {
-      "source": "front/core/authorize/components/AssignmentMenu.vue",
-      "target": "@/core/user/components/UserMenu.vue"
-    },
-    {
-      "source": "front/core/authorize/pages/profile.vue",
-      "target": "@/core/user/stores/authStore"
-    },
-    {
-      "source": "front/core/authorize/services/authorize.service.ts",
-      "target": "@/core/user/services/authService"
-    },
-    {
-      "source": "front/core/authorize/stores/authorizeStore.ts",
-      "target": "@/core/user/stores/authStore"
-    },
-    {
-      "source": "front/core/authorize/stores/privilegeStore.ts",
-      "target": "@/core/user/stores/authStore"
-    },
-    {
-      "source": "front/core/main.ts",
-      "target": "@/app/index/router"
-    },
-    {
-      "source": "front/core/navigation/composables/useNavigation.ts",
-      "target": "@/core/authorize/stores/privilegeStore"
-    },
-    {
-      "source": "front/core/navigation/index.ts",
-      "target": "@/core/authorize/definitions"
-    },
-    {
-      "source": "front/core/params/components/LogCleanupPanel.vue",
-      "target": "@/app/llm/services/llmCallService"
-    },
-    {
-      "source": "front/core/params/components/LogCleanupPanel.vue",
-      "target": "@/app/task/services/taskService"
-    }
-  ],
+  "private_imports": [],
   "schema_version": 1,
-  "strongly_connected_components": [
-    [
-      "app/agent",
-      "app/conversation",
-      "app/document",
-      "app/lab",
-      "app/llm",
-      "app/memory",
-      "app/process",
-      "app/task",
-      "app/voice"
-    ],
-    [
-      "app/connection",
-      "app/services"
-    ]
-  ]
+  "strongly_connected_components": []
 }

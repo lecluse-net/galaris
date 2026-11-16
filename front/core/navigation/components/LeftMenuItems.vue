@@ -74,6 +74,8 @@
             flat
             dense
             :icon="store.isExpanded(node.path) ? 'expand_less' : 'expand_more'"
+            :aria-label="$t(store.isExpanded(node.path) ? 'common.collapse' : 'common.expand')"
+            :aria-expanded="store.isExpanded(node.path)"
             class="expand-btn"
             @click.stop="toggle(node.path)"
           />

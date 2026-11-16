@@ -53,34 +53,30 @@
 
     <q-dialog v-model="oauthDialog" @hide="stopOauthPolling">
       <q-card class="galaris-dialog-card" style="width: 540px; max-width: 94vw">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ t('llm.connectExternalAccount') }}</div>
-          <q-space />
-          <q-btn flat round dense icon="close" :aria-label="$t('common.close')" @click="closeOauthDialog" />
-        </q-card-section>
+        <DialogHeader :title="t('llm.connectExternalAccount')" :close-label="$t('common.close')" :close-popup="false" @close="closeOauthDialog" />
         <q-separator />
         <div class="galaris-dialog-body">
           <q-card-section v-if="!oauthChallenge" class="column flex-center q-pa-xl">
-            <q-spinner color="deep-purple" size="42px" />
+            <q-spinner color="solaire-iris" size="42px" />
             <div class="q-mt-md">{{ t('llm.providerLoginPreparing') }}</div>
           </q-card-section>
           <q-card-section v-else class="text-center q-pa-lg">
-            <q-icon name="open_in_browser" color="deep-purple" size="44px" />
+            <q-icon name="open_in_browser" color="solaire-iris" size="44px" />
             <div class="text-subtitle1 q-mt-md">{{ t('llm.providerDeviceInstructions') }}</div>
             <q-btn
               :href="oauthChallenge.verification_uri"
               target="_blank"
               rel="noopener noreferrer"
-              color="deep-purple"
+              color="solaire-iris"
               icon-right="open_in_new"
               :label="t('llm.openOpenAi')"
               class="q-my-lg"
             />
             <div class="text-caption text-grey-7">{{ t('llm.providerCodeLabel') }}</div>
             <div class="oauth-code text-h4 text-weight-bold q-my-sm">{{ oauthChallenge.user_code }}</div>
-            <q-btn flat color="primary" icon="content_copy" :label="t('llm.copyCode')" @click="copyOauthCode" />
+            <q-btn outline  color="primary" icon="content_copy" :label="t('llm.copyCode')" @click="copyOauthCode" />
             <div class="row flex-center q-gutter-sm q-mt-lg text-grey-7">
-              <q-spinner-dots color="deep-purple" size="28px" />
+              <q-spinner-dots color="solaire-iris" size="28px" />
               <span>{{ t('llm.providerLoginWaiting') }}</span>
             </div>
           </q-card-section>
@@ -90,16 +86,12 @@
 
     <q-dialog v-model="deleteDialog">
       <q-card class="galaris-dialog-card" style="width: 480px; max-width: 92vw">
-        <q-card-section class="galaris-dialog-title">
-          <div class="text-h6">{{ t('common.confirm') }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('common.confirm')" :close-label="$t('common.close')" />
         <q-card-section class="galaris-dialog-body">
           {{ t('llm.confirmDeleteProvider', { name: selectedItem?.display_name }) }}
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn v-close-popup flat :label="t('common.cancel')" />
+          <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
           <q-btn v-if="canEdit" color="negative" :label="t('common.delete')" :loading="saving" @click="deleteCustomProvider" />
         </q-card-actions>
       </q-card>
@@ -108,6 +100,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { copyToClipboard, useInterval, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'

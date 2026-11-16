@@ -1,5 +1,5 @@
 <template>
-  <q-btn outline label="Actions">
+  <q-btn outline color="primary" label="Actions">
     <q-menu><q-list role="menu" aria-label="Root">
       <q-item clickable role="menuitem" aria-label="First" :disable="disabled"><q-item-section>First</q-item-section>
         <ContextSubmenu><q-list role="menu" aria-label="First options">

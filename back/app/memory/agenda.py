@@ -154,7 +154,7 @@ async def memory_agenda(
     # the event loop to other conversations instead of blocking their requests.
     candidates: list[_Candidate] = []
 
-    def enqueue(rows: Sequence[tuple[dict[str, object] | None, Sequence[UUID]]]) -> None:
+    def enqueue(rows: Sequence[tuple[dict[str, object] | None, Sequence[str]]]) -> None:
         for temporal, identities in rows:
             if temporal is None:
                 continue
@@ -162,11 +162,16 @@ async def memory_agenda(
             _anchor, matches = periods(parts)
             if matches:
                 lower, _upper = matches[0]
-                candidates.extend((lower, _occurrence_id(identity, lower), identity, 0, parts) for identity in identities)
+                for value in identities:
+                    identity = UUID(value)
+                    candidates.append((lower, _occurrence_id(identity, lower), identity, 0, parts))
 
     # Repeated anchors travel once, rather than decoding the same JSON for
     # thousands of memories on every conversation round.
-    statement = select(MemoryItem.temporal, func.array_agg(MemoryItem.id)).where(
+    # JSONB uses the connection's existing codec. First-use UUID-array codec
+    # discovery in asyncpg sets session-level jit=off, overriding SET LOCAL and
+    # leaking that setting into the next transaction after commit.
+    statement = select(MemoryItem.temporal, func.jsonb_agg(MemoryItem.id)).where(
         *filters, MemoryItem.temporal.is_not(None)).group_by(MemoryItem.temporal)
     stream = await get_db().stream(statement, {"memory_agenda_as_of": datetime.now(timezone.utc)})
     try:

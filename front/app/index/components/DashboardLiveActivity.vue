@@ -15,8 +15,8 @@
             <span class="live-label"><span class="live-pulse" aria-hidden="true"></span>{{ t('index.dashboard.liveActivity.live') }}</span>
           </template>
           <template #action>
-            <q-btn
-              flat
+            <q-btn outline
+
               dense
               no-caps
               color="primary"
@@ -93,12 +93,12 @@
           :subtitle="t('index.dashboard.liveActivity.llmSubtitle')"
         >
           <template #badge>
-            <q-badge rounded color="deep-purple" class="activity-count-badge">{{ runningCalls.length }}</q-badge>
+            <q-badge rounded color="solaire-iris" class="activity-count-badge">{{ runningCalls.length }}</q-badge>
             <span class="live-label"><span class="live-pulse" aria-hidden="true"></span>{{ t('index.dashboard.liveActivity.live') }}</span>
           </template>
           <template #action>
-            <q-btn
-              flat
+            <q-btn outline
+
               dense
               no-caps
               color="primary"
@@ -136,7 +136,7 @@
               <q-item-section avatar class="activity-avatar-section">
                 <q-avatar size="38px" class="activity-avatar activity-avatar--llm">
                   <img v-if="agentAvatarUrl(call.agent_id)" :src="agentAvatarUrl(call.agent_id)" alt="" />
-                  <q-icon v-else name="smart_toy" color="deep-purple" size="21px" />
+                  <q-icon v-else name="smart_toy" color="solaire-iris" size="21px" />
                 </q-avatar>
                 <span class="live-pulse" aria-hidden="true"></span>
               </q-item-section>
@@ -150,14 +150,14 @@
                 </q-item-label>
                 <div class="activity-call-metrics q-mt-xs">
                   <LlmCallTokenBadge :call="call" />
-                  <q-badge color="purple">
+                  <q-badge color="solaire-violet">
                     <q-icon name="attach_money" size="xs" class="q-mr-xs" />
                     {{ formatBilledCost(call.cost) }}
                   </q-badge>
                 </div>
               </q-item-section>
               <q-item-section side class="activity-side activity-side--llm">
-                <q-spinner-dots color="deep-purple" size="20px" />
+                <q-spinner-dots color="solaire-iris" size="20px" />
                 <span>{{ t('index.dashboard.liveActivity.generating') }}</span>
               </q-item-section>
             </q-item>
@@ -170,24 +170,23 @@
 
 <script setup lang="ts">
 import { richTextExcerpt } from '@/core/util'
+import { startVisiblePolling } from '@/core/util/facade'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { useInterval } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { agentService } from '@/app/agent/services/agentService'
+import { agentService } from '@/app/agent/facade'
 import { getAgentSelection, type AgentSelectionOption } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { formatBilledCost, LlmCallTokenBadge, useLlmCallProgress } from '@/app/llm'
-import { llmCallService } from '@/app/llm/services/llmCallService'
+import { llmCallService } from '@/app/llm/facade'
 import type { LLMCall, LLMToolCall } from '@/app/llm/types'
-import { taskService } from '@/app/task/services/taskService'
-import { getTaskStatusConfig, isTaskStatusAction } from '@/app/task/services/taskStatusService'
+import { taskService } from '@/app/task/interface'
+import { getTaskStatusConfig, isTaskStatusAction } from '@/app/task/interface'
 import type { AIMessage, Task } from '@/app/task/types'
 import { websocket } from '@/core/websocket'
 import DashboardSectionHeader from './DashboardSectionHeader.vue'
 
 const MAX_ITEMS = 5
 const { t } = useI18n()
-const { registerInterval, removeInterval } = useInterval()
 const agents = ref<AgentSelectionOption[]>([])
 const privilegeStore = usePrivilegeStore()
 const canReadTasks = computed(() => privilegeStore.hasAnyPrivilege([privileges.TASK_ACCESS, privileges.TASK_EDIT]))
@@ -200,6 +199,11 @@ const callsLoading = ref(true)
 const tasksError = ref(false)
 const callsError = ref(false)
 let refreshInFlight = false
+let activityRevision = 0
+let activityRequest: AbortController | undefined
+let disposed = false
+let stopPolling: (() => void) | undefined
+const avatarController = new AbortController()
 
 const activeTasks = computed(() => tasks.value
   .filter(task => isTaskStatusAction(task.status) && !task.paused)
@@ -290,12 +294,19 @@ function compactText(value: string): string {
 }
 
 async function refreshActivity(): Promise<void> {
-  if (refreshInFlight) return
+  if (disposed || refreshInFlight) return
   refreshInFlight = true
+  const revision = activityRevision
+  const request = new AbortController()
+  activityRequest = request
   const [taskResult, callResult] = await Promise.allSettled([
-    canReadTasks.value ? taskService.getActive(MAX_ITEMS) : Promise.resolve([]),
-    canReadCalls.value ? llmCallService.getRunning(MAX_ITEMS) : Promise.resolve([]),
+    canReadTasks.value ? taskService.getActive(MAX_ITEMS, request.signal) : Promise.resolve([]),
+    canReadCalls.value ? llmCallService.getRunning(MAX_ITEMS, undefined, undefined, request.signal) : Promise.resolve([]),
   ])
+  if (activityRequest === request) activityRequest = undefined
+  refreshInFlight = false
+  if (disposed) return
+  if (revision !== activityRevision) return refreshActivity()
 
   if (taskResult.status === 'fulfilled') {
     tasks.value = taskResult.value
@@ -313,7 +324,6 @@ async function refreshActivity(): Promise<void> {
   }
   tasksLoading.value = false
   callsLoading.value = false
-  refreshInFlight = false
 }
 
 function upsertTask(task: Task): void {
@@ -359,19 +369,35 @@ const onCallDelete = (response: { data?: { id: string } } | { id: string }) => {
 const onCallCleanup = () => { void refreshActivity() }
 
 async function loadAgents(): Promise<void> {
-  try { agents.value = await getAgentSelection('management') }
-  catch (error) { console.error('Could not load managed agent labels:', error); return }
+  try { agents.value = await getAgentSelection('management', avatarController.signal) }
+  catch (error) {
+    if (!avatarController.signal.aborted) console.error('Could not load managed agent labels:', error)
+    return
+  }
+  if (disposed) return
   await Promise.all(agents.value.map(async agent => {
     if (!agent.has_avatar || agentAvatarUrls[agent.id]) return
     try {
-      agentAvatarUrls[agent.id] = await agentService.getAvatarBlobUrl(agent.id)
+      const url = await agentService.getAvatarBlobUrl(agent.id, avatarController.signal, agent.updated_at)
+      if (disposed) URL.revokeObjectURL(url)
+      else agentAvatarUrls[agent.id] = url
     } catch (error) {
-      console.error(`Failed to load avatar for agent ${agent.id}:`, error)
+      if (!avatarController.signal.aborted) console.error(`Failed to load avatar for agent ${agent.id}:`, error)
     }
   }))
 }
 
-watch([canReadTasks, canReadCalls], () => { tasks.value = []; calls.value = []; void refreshActivity() })
+watch([canReadTasks, canReadCalls], () => {
+  activityRevision++
+  activityRequest?.abort()
+  tasks.value = []
+  calls.value = []
+  tasksLoading.value = true
+  callsLoading.value = true
+  tasksError.value = false
+  callsError.value = false
+  void refreshActivity()
+})
 onMounted(() => {
   void refreshActivity()
   void loadAgents()
@@ -385,10 +411,13 @@ onMounted(() => {
   websocket.onEvent('llm_call', 'update', onCallUpdate)
   websocket.onEvent('llm_call', 'delete', onCallDelete)
   websocket.onEvent('llm_call', 'cleanup', onCallCleanup)
-  registerInterval(() => { void refreshActivity() }, 15_000)
+  stopPolling = startVisiblePolling(refreshActivity, 15_000)
 })
 
 onUnmounted(() => {
+  disposed = true
+  activityRequest?.abort()
+  avatarController.abort()
   websocket.offEvent('task', 'create', onTaskCreate)
   websocket.offEvent('task', 'update', onTaskUpdate)
   websocket.offEvent('task', 'delete', onTaskDelete)
@@ -398,7 +427,7 @@ onUnmounted(() => {
   websocket.offEvent('llm_call', 'update', onCallUpdate)
   websocket.offEvent('llm_call', 'delete', onCallDelete)
   websocket.offEvent('llm_call', 'cleanup', onCallCleanup)
-  removeInterval()
+  stopPolling?.()
   Object.values(agentAvatarUrls).forEach(url => URL.revokeObjectURL(url))
 })
 </script>

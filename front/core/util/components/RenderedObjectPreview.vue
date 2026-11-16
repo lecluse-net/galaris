@@ -3,7 +3,7 @@
     <template #default="{ fit }">
       <div v-if="failed" role="alert" class="q-pa-lg bg-white text-dark">
         {{ t('richEditor.unavailable') }}
-        <q-btn outline :label="t('common.retry')" @click="prepare" />
+        <q-btn color="primary" outline :label="t('common.retry')" @click="prepare" />
       </div>
       <q-spinner v-else-if="!html" color="primary" size="48px" />
       <iframe v-else :srcdoc="html" sandbox="" referrerpolicy="no-referrer" :title="title"

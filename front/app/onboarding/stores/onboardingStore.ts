@@ -1,3 +1,5 @@
+import { toRaw } from 'vue'
+import { withSessionScope } from '@/core/util/facade'
 /**
  * Pinia store for onboarding state.
  *
@@ -5,6 +7,7 @@
  * help blocks should be displayed on the home page.
  */
 import { defineStore } from 'pinia'
+import { sessionGeneration } from '@/core/api'
 import onboardingService, {
   type OnboardingStatusResponse,
   type OnboardingOverviewResponse,
@@ -26,7 +29,9 @@ interface OnboardingState {
   error: unknown
 }
 
-export const useOnboardingStore = defineStore('onboarding', {
+const reads = new WeakMap<object, symbol>()
+
+export const useOnboardingStore = withSessionScope(defineStore('onboarding', {
   state: (): OnboardingState => ({
     languageConfigured: null,
     llmProvider: null,
@@ -116,10 +121,14 @@ export const useOnboardingStore = defineStore('onboarding', {
      * Fetch onboarding state for every module.
      */
     async fetchOverview(): Promise<void> {
+      const request = Symbol('overview'), session = sessionGeneration()
+      reads.set(toRaw(this), request)
+      const current = () => reads.get(toRaw(this)) === request && session === sessionGeneration()
       this.loading = true
       this.error = null
       try {
         const response = await onboardingService.getOverview()
+        if (!current()) return
         this.$patch((state) => {
           state.languageConfigured = response.language_configured
           state.llmProvider = response.llm_provider
@@ -130,10 +139,11 @@ export const useOnboardingStore = defineStore('onboarding', {
           state.processes = response.processes
         })
       } catch (error) {
+        if (!current()) return
         this.error = error
         console.error('Error fetching onboarding overview:', error)
       } finally {
-        this.loading = false
+        if (current()) this.loading = false
       }
     },
 
@@ -141,6 +151,7 @@ export const useOnboardingStore = defineStore('onboarding', {
      * Reset the store state.
      */
     clearState(): void {
+      reads.delete(toRaw(this))
       this.$patch((state) => {
         state.languageConfigured = null
         state.llmProvider = null
@@ -150,7 +161,8 @@ export const useOnboardingStore = defineStore('onboarding', {
         state.skills = null
         state.processes = null
         state.error = null
+        state.loading = false
       })
     },
   },
-})
+}))

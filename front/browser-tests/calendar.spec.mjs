@@ -3,7 +3,6 @@ import { agent, document, goal, result } from './data.mjs'
 
 const id = '00000000-0000-0000-0000-000000000091'
 const taskId = '00000000-0000-0000-0000-000000000092'
-const reviewTaskId = '00000000-0000-0000-0000-000000000094'
 const feed = { id: 9, connection_id: 42, agent_id: 7, label: 'Synthetic agenda', service_label: 'Synthetic Calendar', source_kind: 'internal', timezone: 'Europe/Paris', is_default: true, active: true, writable: true, initialized: true, actions_enabled: true, last_synced_at: null, last_error: null }
 const event = { event_id: id, occurrence_id: id, recurrence_key: '20261112T090000Z', revision: 1, recurring: false, sync_state: 'local', calendar_id: 9, calendar_label: feed.label, uid: 'synthetic-event@example.test', summary: 'Prepare synthetic review', description: 'Synthetic event content', location: 'Meeting room', start: '2026-11-12T09:00:00Z', end: '2026-11-12T10:00:00Z', all_day: false, start_date: null, end_date: null, timezone_name: 'Europe/Paris', status: '', transparent: false }
 const detail = { ...event, timezone: 'Europe/Paris', deleted: false, rrule: null, rdates: [], exdates: [], alarms: [], ical: 'BEGIN:VCALENDAR\nEND:VCALENDAR' }
@@ -354,17 +353,15 @@ for (const width of [390, 1440]) for (const editable of [false, true]) test(`Mem
   expect(model.writes).toEqual([])
 })
 async function taskDetails(page) {
-  for (const [id, label] of [[taskId, 'Synthetic agenda Task'], [reviewTaskId, 'Synthetic review Task']]) {
-    const task = { id, label, objective: '<p>Synthetic appointment work</p>', status: 'SUCCESS', paused: false, agent_id: null,
-      tree_parent_id: null, parent_id: null, directly_linked: true, topic_id: null, data: {}, execution_result: result,
-      revision: 1, created_at: event.start, updated_at: null, effort: 'standard', ai: true, cost: 0, messages: [] }
-    await jsonRoute(page, `**/api/tasks/${id}/full`, task)
-    await jsonRoute(page, `**/api/tasks/${id}`, task)
-    await jsonRoute(page, `**/api/tasks/${id}/children`, [])
-    await jsonRoute(page, `**/api/tasks/${id}/budget`, { enabled: false, scope: 'task_tree', provider_hard_cap: false,
-      recorded_tokens: 0, recorded_cost: 0, active_phases: 0, reserved_tokens: 0, reserved_cost: 0,
-      remaining_tokens: null, remaining_cost: null, remaining_seconds: null })
-  }
+  const task = { id: taskId, label: 'Synthetic agenda Task', objective: '<p>Synthetic appointment work</p>', status: 'SUCCESS', paused: false, agent_id: null,
+    tree_parent_id: null, parent_id: null, directly_linked: true, topic_id: null, data: {}, execution_result: result,
+    revision: 1, created_at: event.start, updated_at: null, effort: 'standard', ai: true, cost: 0, messages: [] }
+  await jsonRoute(page, `**/api/tasks/${taskId}/full`, task)
+  await jsonRoute(page, `**/api/tasks/${taskId}`, task)
+  await jsonRoute(page, `**/api/tasks/${taskId}/children`, [])
+  await jsonRoute(page, `**/api/tasks/${taskId}/budget`, { enabled: false, scope: 'task_tree', provider_hard_cap: false,
+    recorded_tokens: 0, recorded_cost: 0, active_phases: 0, reserved_tokens: 0, reserved_cost: 0,
+    remaining_tokens: null, remaining_cost: null, remaining_seconds: null })
   await jsonRoute(page, '**/api/tasks/activity', [])
   await jsonRoute(page, '**/api/topics?*', [])
 }
@@ -395,7 +392,7 @@ for (const width of [390, 1440]) test(`Goal agenda passages open their exact Tas
   const passage = { id: '00000000-0000-0000-0000-000000000096', goal_id: goalId,
     title: 'Synthetic daily Goal passage', scheduled_at: '2026-11-12T08:00:00Z', timezone: 'Europe/Paris',
     projected: true, state: 'scheduled', cycle_id: null, sequence: null, task_uri: null,
-    review_task_uri: null, started_at: null, finished_at: null, verdict: null, reason: null }
+    started_at: null, finished_at: null, verdict: null, reason: null }
   await page.route('**/api/goals/agenda?*', route => {
     const url = new URL(route.request().url())
     return route.fulfill({ json: { items: passage.scheduled_at >= url.searchParams.get('start') && passage.scheduled_at < url.searchParams.get('end') ? [passage] : [], complete: true } })
@@ -407,12 +404,11 @@ for (const width of [390, 1440]) test(`Goal agenda passages open their exact Tas
   await expect(dialog.getByRole('button', { name: 'Open Task', exact: true })).toHaveCount(0)
   await dialog.getByRole('button', { name: 'Close', exact: true }).click()
   Object.assign(passage, { projected: false, state: 'running', cycle_id: 'synthetic-cycle', sequence: 4,
-    task_uri: `galaris://task/${taskId}`, review_task_uri: `galaris://task/${reviewTaskId}`, started_at: '2026-11-12T08:10:00Z' })
+    task_uri: `galaris://task/${taskId}`, started_at: '2026-11-12T08:10:00Z' })
   await page.getByRole('button', { name: 'Refresh', exact: true }).click()
   await page.getByRole('button', { name: /Synthetic daily Goal passage/ }).click()
   await expect(dialog.getByText('Cycle 4', { exact: true })).toBeVisible()
   await openTaskInAgenda(page, 'Open Task', 'Synthetic agenda Task')
-  await openTaskInAgenda(page, 'Open review', 'Synthetic review Task')
   const agendaUrl = page.url()
   await dialog.getByRole('button', { name: 'Open Goal', exact: true }).click()
   const goalDialog = page.getByRole('dialog').last()

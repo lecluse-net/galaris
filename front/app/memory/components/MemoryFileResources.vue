@@ -2,7 +2,7 @@
   <div>
     <q-banner v-if="failed" rounded class="bg-negative text-white" role="alert">
       {{ t('documents.attachmentError') }}
-      <template #action><q-btn flat :label="t('chat.resourcePreview.retryFile')" @click="load" /></template>
+      <template #action><q-btn outline color="primary"  :label="t('chat.resourcePreview.retryFile')" @click="load" /></template>
     </q-banner>
     <DocumentAttachments v-else-if="agentId !== null" :key="generation" :document-id="itemId" :agent-id="agentId"
       :attachments="resources" :loading="loading" :resource-source="resourceSource" :show-heading="false" />

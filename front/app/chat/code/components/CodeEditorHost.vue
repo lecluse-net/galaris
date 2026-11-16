@@ -15,7 +15,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch, type ComponentPublicInstance } from 'vue'
-import { useAuthStore } from '@/core/user'
+import { useAuthStore } from '@/core/user/facade'
 import { useCodeStore } from '../stores/codeStore'
 const store = useCodeStore()
 const auth = useAuthStore()

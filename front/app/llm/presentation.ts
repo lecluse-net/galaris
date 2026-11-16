@@ -1,4 +1,4 @@
-import type { AIMessage, ExecutionResult } from '@/app/task/types'
+import type { AIMessage, ExecutionResult } from '@/app/agent/contracts'
 import type { LLMCall, ReasoningEffort } from './types'
 
 
@@ -6,11 +6,11 @@ const CONTEXT_DISPLAY_KEYS = ['datetime', 'weekday', 'user_name', 'user_id'] as 
 
 const REASONING_EFFORT_COLORS: Record<ReasoningEffort, string> = {
   none: 'grey-7',
-  low: 'light-blue-7',
-  medium: 'amber-8',
-  high: 'deep-orange-7',
-  xhigh: 'red-7',
-  max: 'purple-8',
+  low: 'solaire-blue',
+  medium: 'solaire-yellow',
+  high: 'solaire-orange',
+  xhigh: 'solaire-red',
+  max: 'solaire-violet',
 }
 
 export function reasoningEffortColor(effort: ReasoningEffort): string {

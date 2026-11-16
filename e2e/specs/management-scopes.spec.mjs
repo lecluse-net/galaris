@@ -83,7 +83,7 @@ test('five administrative Services retain a human-selected scope and enforce it 
     await page.goto('/services?tab=connections')
     await errors.settle()
     await selectOption(page, page.getByRole('combobox', { name: 'Filtrer par agent', exact: true }), `${caller.first_name} ${caller.last_name}`)
-    const row = page.locator('tbody tr').filter({ hasText: domain.label })
+    const row = page.locator('tbody tr').filter({ has: page.getByRole('cell', { name: domain.label, exact: true }) })
     await expect(row).toHaveCount(1)
     await row.getByRole('button', { name: 'Modifier', exact: true }).click()
     const dialog = page.getByRole('dialog')

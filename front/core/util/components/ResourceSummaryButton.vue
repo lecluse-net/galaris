@@ -5,11 +5,7 @@
   </q-btn>
   <q-dialog v-model="open" :aria-label="t('resourceSummary.title')">
     <q-card class="galaris-dialog-card column no-wrap" style="width: 560px; max-width: 95vw">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <div class="text-h6">{{ t('resourceSummary.title') }}</div>
-        <q-space />
-        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('resourceSummary.close')" />
-      </q-card-section>
+      <DialogHeader :title="t('resourceSummary.title')" :close-label="t('resourceSummary.close')" />
       <q-card-section class="galaris-dialog-body scroll">
         <div class="text-subtitle2 q-mb-md">{{ title }}</div>
         <div v-if="loading" role="status" class="row justify-center q-pa-md">
@@ -37,6 +33,7 @@
 </template>
 
 <script setup lang="ts">
+import DialogHeader from './DialogHeader.vue'
 import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { defineAsyncView } from '../asyncView'

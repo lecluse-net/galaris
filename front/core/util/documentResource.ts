@@ -2,6 +2,7 @@ const DOCUMENT_ID_SOURCE = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}'
 const DOCUMENT_ID_PATTERN = new RegExp(`^${DOCUMENT_ID_SOURCE}$`, 'i')
 const DOCUMENT_RESOURCE_PATTERN = new RegExp(`^document://(${DOCUMENT_ID_SOURCE})$`, 'i')
 const DOCUMENT_RESOURCE_GLOBAL_PATTERN = new RegExp(`document://(${DOCUMENT_ID_SOURCE})`, 'gi')
+const DOCUMENT_ATTACHMENT_PATTERN = new RegExp(`^document://(${DOCUMENT_ID_SOURCE})/attachments/(${DOCUMENT_ID_SOURCE})$`)
 
 function normalizeDocumentId(value: string): string | null {
   const candidate = value.trim()
@@ -89,4 +90,8 @@ export function linkDocumentResourceUris(html: string): string {
   }
 
   return parsedDocument.body.innerHTML
+}
+export function attachmentReference(uri: string): [string, string] | null {
+  const match = DOCUMENT_ATTACHMENT_PATTERN.exec(uri)
+  return match ? [match[1]!, match[2]!] : null
 }

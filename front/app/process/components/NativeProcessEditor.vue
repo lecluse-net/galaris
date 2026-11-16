@@ -11,7 +11,7 @@
       <q-btn color="warning" icon="arrow_back" :label="t('processes.backToList')" to="/process" />
     </div>
     <div class="editor-content">
-      <q-banner v-if="error" role="alert">{{ error }}<template #action><q-btn flat :label="t('nativeProcesses.retry')" @click="sharingPending ? save() : load()" /></template></q-banner>
+      <q-banner v-if="error" role="alert">{{ error }}<template #action><q-btn outline color="primary"  :label="t('nativeProcesses.retry')" @click="sharingPending ? save() : load()" /></template></q-banner>
       <q-spinner v-if="loading" />
       <template v-else-if="definition || !code">
         <div class="row q-col-gutter-md">
@@ -41,7 +41,7 @@
         <q-input v-model="description" outlined dense hide-bottom-space :readonly="!editable" :label="t('nativeProcesses.description')" />
         <q-banner v-if="graph.schema_version === 'galaris.bpmn/v1'">
           {{ t('nativeProcesses.variables.legacy') }}
-          <template v-if="editable" #action><q-btn flat :label="t('nativeProcesses.variables.upgrade')" @click="upgradeProfile" /></template>
+          <template v-if="editable" #action><q-btn outline color="primary"  :label="t('nativeProcesses.variables.upgrade')" @click="upgradeProfile" /></template>
         </q-banner>
         <q-banner v-for="diagnostic in definition?.diagnostics" :key="diagnostic.node + diagnostic.code">{{ diagnostic.node }} · {{ t(diagnostic.code === 'isolated_runner_unavailable' ? 'nativeProcesses.codeUnavailable' : 'nativeProcesses.programUnavailable') }}</q-banner>
         <div class="editor-workspace">
@@ -87,7 +87,7 @@
                       <q-input :model-value="configString('service_code')" outlined :readonly="!editable" :label="t('nativeProcesses.restTool')" @update:model-value="setConfig('service_code', String($event ?? ''))" />
                       <CodeEditor :key="`${selected.id}-request`" :model-value="configJson('request')" language="json" :readonly="!editable" :label="t('nativeProcesses.restRequest')" @update:model-value="setConfigJson('request', $event)" />
                     </template>
-                    <q-btn v-if="selected.body" flat icon="open_in_new" :label="t('nativeProcesses.openBody')" @click="openBody" />
+                    <q-btn outline color="primary" v-if="selected.body"  icon="open_in_new" :label="t('nativeProcesses.openBody')" @click="openBody" />
                     <CodeEditor v-if="(selected.kind === 'tool_call' || selected.kind === 'program') && localGraph.schema_version === 'galaris.bpmn/v1'" :key="`${selected.id}-input`" :model-value="configJson('input')" language="json" :readonly="!editable" :label="t('nativeProcesses.toolArguments')" @update:model-value="setConfigJson('input', $event)" />
                     <template v-if="contractActivity && !modeEditable && localGraph.schema_version === 'galaris.bpmn/v2'">
                       <CodeEditor :key="`${selected.id}-mapping`" :model-value="configJson('input_mapping')" language="json" :readonly="!editable" :label="t('nativeProcesses.variables.mapping')" @update:model-value="setConfigJson('input_mapping', $event)" />
@@ -137,7 +137,7 @@
           <q-expansion-item :label="t('nativeProcesses.history')" icon="history" @show="loadHistory()">
             <q-banner v-if="historyError" role="alert">
               {{ t('nativeProcesses.error') }}
-              <template #action><q-btn outline :label="t('nativeProcesses.retry')" @click="loadHistory(historyRequest.page, historyRequest.rowsPerPage)" /></template>
+              <template #action><q-btn color="primary" outline :label="t('nativeProcesses.retry')" @click="loadHistory(historyRequest.page, historyRequest.rowsPerPage)" /></template>
             </q-banner>
             <div class="history-workspace">
             <q-table class="history-list" bordered flat wrap-cells hide-header :rows="history?.items ?? []" :columns="historyColumns" row-key="revision"
@@ -153,7 +153,7 @@
                     </q-item-section>
                     <q-item-section side>
                       <div class="row q-gutter-sm no-wrap">
-                        <q-btn v-if="editable && scope.row.revision !== definition.revision" round dense color="primary" icon="restore" :aria-label="t('nativeProcesses.restore')" :disable="saving || deletingRevision" @click.stop="requestRevisionAction('restore', scope.row)" @keydown.stop @keyup.stop>
+                        <q-btn flat v-if="editable && scope.row.revision !== definition.revision" round dense color="primary" icon="restore" :aria-label="t('nativeProcesses.restore')" :disable="saving || deletingRevision" @click.stop="requestRevisionAction('restore', scope.row)" @keydown.stop @keyup.stop>
                           <q-tooltip>{{ t('nativeProcesses.restore') }}</q-tooltip>
                         </q-btn>
                         <q-btn v-if="editable && scope.row.revision !== definition.revision" outline round dense color="negative" icon="delete_outline" :aria-label="t('nativeProcesses.deleteRevision')" :disable="saving || deletingRevision" @click.stop="requestRevisionAction('delete', scope.row)" @keydown.stop @keyup.stop>
@@ -169,7 +169,7 @@
               <div v-if="revisionLoading" class="history-state"><q-spinner color="primary" size="32px" /></div>
               <q-banner v-else-if="revisionError" role="alert">
                 {{ t('nativeProcesses.error') }}
-                <template #action><q-btn outline :label="t('nativeProcesses.retry')" @click="selectedRevision !== null && viewRevision(selectedRevision)" /></template>
+                <template #action><q-btn color="primary" outline :label="t('nativeProcesses.retry')" @click="selectedRevision !== null && viewRevision(selectedRevision)" /></template>
               </q-banner>
               <div v-else-if="pastRevision">
                 <BpmnCanvas :key="`${pastRevision.revision}-saved`" :model-value="pastRevision.graph" readonly :show-guide="false" :agents="agents" :humans="humans" />

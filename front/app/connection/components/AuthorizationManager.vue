@@ -85,8 +85,8 @@
       <template #avatar><q-icon name="error" /></template>
       {{ connectionsError }}
       <template #action>
-        <q-btn
-          flat
+        <q-btn outline
+
           color="white"
           icon="refresh"
           :label="$t('common.retry')"
@@ -97,7 +97,7 @@
 
     <q-banner
       v-else-if="!connectionsLoading && connectionOptions.length === 0"
-      class="bg-orange-1 text-warning q-mb-md"
+      class="bg-solaire-orange-light text-warning q-mb-md"
       dense
       rounded
     >
@@ -106,9 +106,9 @@
         ? 'connection.auth.noActiveConnections'
         : 'connection.auth.noMatchingConnections') }}
       <template #action>
-        <q-btn
+        <q-btn outline
           v-if="hasConnectionFilters"
-          flat
+
           color="primary"
           icon="filter_alt_off"
           :label="$t('connection.auth.resetFilters')"
@@ -180,9 +180,9 @@
                 ? $t('connection.auth.noMatchingFunctions')
                 : $t('connection.auth.noFunctions') }}
             </span>
-            <q-btn
+            <q-btn outline
               v-if="functions.length > 0"
-              flat
+
               dense
               color="primary"
               icon="filter_alt_off"
@@ -296,7 +296,7 @@ import { ref, computed, onActivated, onMounted, onUnmounted, watch } from 'vue'
 import type { QTableProps } from 'quasar'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { toolMessageKey } from '@/app/services/presentation'
+import { toolMessageKey } from '@/app/services/facade'
 import { AgentSelect, getAgentSelection } from '@/app/agent'
 import { SystemServiceIcon, ServiceIdentityIcon, ServiceFilterSelect, ServiceOriginBadge } from '@/app/services'
 import connectionService, {

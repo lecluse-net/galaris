@@ -67,10 +67,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useAgentStore } from '../../agent/stores/agentStore'
+import { useAgentStore } from '@/app/agent/facade'
 import type { Task } from '../types'
 import TaskRowMenu from './TaskRowMenu.vue'
-import TopicBadge from '@/app/topic/components/TopicBadge.vue'
+import { TopicBadge } from '@/app/topic'
 import { StatusBadge, richTextExcerpt } from '@/core/util'
 import {
   getTaskOperationalColor,

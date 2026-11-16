@@ -30,10 +30,10 @@
       <ResourceReferenceMenu v-if="content" :uri="`galaris://topic/${topicId}`" :title="content.topic.title" target=".topic-detail-page" />
     </div>
 
-    <q-banner v-if="error" rounded class="bg-red-1 text-negative q-mb-md">
+    <q-banner v-if="error" rounded class="bg-solaire-red-light text-negative q-mb-md">
       <template #avatar><q-icon name="error_outline" /></template>
       {{ error }}
-      <template #action><q-btn outline :label="t('common.retry')" @click="load" /></template>
+      <template #action><q-btn color="primary" outline :label="t('common.retry')" @click="load" /></template>
     </q-banner>
 
     <template v-if="content">
@@ -47,8 +47,8 @@
               v-for="keyword in content.topic.keywords"
               :key="keyword"
               dense
-              color="deep-purple-1"
-              text-color="deep-purple-9"
+              color="solaire-iris-light"
+              text-color="solaire-iris"
             >
               {{ keyword }}
             </q-chip>
@@ -122,7 +122,7 @@
             <q-list v-if="content.memories.length" separator>
               <q-item v-for="memory in content.memories" :key="memory.id" clickable
                 @click="openTarget('memory', memory.id, memory.title, memory.owner_agent_id)">
-                <q-item-section avatar><q-icon name="memory" color="deep-purple" /></q-item-section>
+                <q-item-section avatar><q-icon name="memory" color="solaire-iris" /></q-item-section>
                 <q-item-section>
                   <q-item-label>{{ memory.title }}</q-item-label>
                   <q-item-label v-if="memory.excerpt" caption lines="2">{{ memory.excerpt }}</q-item-label>
@@ -216,9 +216,9 @@ const activeTab = ref<DetailTab>('spaces')
 const selectedTarget = ref<TopicTarget | null>(null)
 
 const metrics = computed(() => content.value ? [
-  { key: 'rooms', label: t('topic.detail.rooms'), value: content.value.summary.rooms, icon: 'meeting_room', color: 'blue-grey' },
+  { key: 'rooms', label: t('topic.detail.rooms'), value: content.value.summary.rooms, icon: 'meeting_room', color: 'solaire-gray' },
   { key: 'tasks', label: t('topic.detail.tasks'), value: content.value.summary.tasks, icon: 'task_alt', color: 'primary' },
-  { key: 'memories', label: t('topic.detail.memories'), value: content.value.summary.memories, icon: 'memory', color: 'deep-purple' },
+  { key: 'memories', label: t('topic.detail.memories'), value: content.value.summary.memories, icon: 'memory', color: 'solaire-iris' },
   { key: 'documents', label: t('topic.detail.documents'), value: content.value.summary.documents, icon: 'description', color: 'secondary' },
   { key: 'datasets', label: t('topic.detail.datasets'), value: content.value.summary.datasets || 0, icon: 'data_object', color: undefined },
 ] : [])

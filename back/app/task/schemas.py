@@ -1,11 +1,12 @@
 from core.util import normalize_html
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from typing import Optional, List, Any, Dict, Literal
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
+from typing import Optional, List, Any, Dict, Literal, cast
 from uuid import UUID
 from datetime import datetime
 from .models import TaskStatus
 from app.agent.contracts import TaskMessage
 from app.agent.contracts import ExecutionEffort, ForcedRoute, ReasoningEffort
+from .trace_projection import project_tool_payload
 
 CoordinationType = Literal["await_reply"]
 
@@ -139,6 +140,25 @@ class Task(TaskBase):
     resolved_by_task_id: Optional[UUID] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_serializer("execution_result")
+    def serialize_execution_result(self, value: Dict[str, Any] | None) -> Dict[str, Any] | None:
+        if value is None or not isinstance(value.get("messages"), list):
+            return value
+        result = dict(value)
+        messages: list[Any] = []
+        for raw in value["messages"]:
+            if not isinstance(raw, dict):
+                messages.append(raw)
+                continue
+            message: Dict[str, Any] = dict(cast(Dict[str, Any], raw))
+            for field in ("tool_arguments", "tool_result"):
+                payload: object = message.get(field)
+                if isinstance(payload, dict):
+                    message[field] = project_tool_payload(cast(Dict[str, Any], payload), limit=None)
+            messages.append(message)
+        result["messages"] = messages
+        return result
 
 
     @field_validator("revision", mode="before")

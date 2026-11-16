@@ -1,11 +1,7 @@
 <template>
   <q-dialog :model-value="mismatch !== null" @update:model-value="!$event && emit('cancel')">
     <q-card v-if="mismatch" class="capture-confirmation galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center">
-        <div class="text-h6">{{ t('evaluation.capture.parametersMismatch') }}</div>
-        <q-space />
-        <q-btn flat round dense icon="close" :aria-label="t('common.close')" @click="emit('cancel')" />
-      </q-card-section>
+      <DialogHeader :title="t('evaluation.capture.parametersMismatch')" :close-label="t('common.close')" :close-popup="false" @close="emit('cancel')" />
       <q-card-section class="galaris-dialog-body">
         <p>{{ t('evaluation.capture.parametersMismatchHelp', { dataset: mismatch.dataset_name }) }}</p>
         <div v-for="difference in mismatch.differences" :key="difference.name" class="q-mb-md">
@@ -17,7 +13,7 @@
         </div>
       </q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn flat :label="t('common.cancel')" @click="emit('cancel')" />
+        <q-btn outline color="primary"  :label="t('common.cancel')" @click="emit('cancel')" />
         <q-btn color="primary" :label="t('evaluation.capture.confirmDatasetParameters')" @click="emit('confirm')" />
       </q-card-actions>
     </q-card>
@@ -25,6 +21,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { useI18n } from 'vue-i18n'
 import type { CaptureMismatch } from '../services/useCaptureConfirmation'
 defineProps<{ mismatch: CaptureMismatch | null }>()

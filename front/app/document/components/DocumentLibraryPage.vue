@@ -100,10 +100,7 @@
 
     <q-dialog v-if="$q.screen.lt.md && canAccessChat" v-model="chatOpen" maximized>
       <q-card class="documents-mobile-chat galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ t('documents.conversation') }}</div><q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('documents.conversation')" :close-label="t('common.close')" />
         <div ref="mobileChatHost" class="documents-mobile-chat-host" />
       </q-card>
     </q-dialog>
@@ -145,7 +142,7 @@
         </q-card-section>
         <q-separator />
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn v-close-popup flat no-caps :label="t('document.cancel')" />
+          <q-btn outline color="primary" v-close-popup  no-caps :label="t('document.cancel')" />
           <q-btn
             color="primary" unelevated no-caps icon="add"
             :loading="creatingDocument"
@@ -160,6 +157,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'

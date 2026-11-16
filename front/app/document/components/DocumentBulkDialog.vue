@@ -1,16 +1,13 @@
 <template>
   <q-dialog v-model="open">
     <q-card class="bulk-dialog galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <div class="text-h6">{{ t('documents.bulk.title', { count: entries.length }) }}</div>
-        <q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-      </q-card-section>
+      <DialogHeader :title="t('documents.bulk.title', { count: entries.length })" :close-label="t('common.close')" />
       <q-card-section class="galaris-dialog-body q-gutter-md">
         <q-select v-model="action" outlined emit-value map-options :options="actions" :label="t('documents.bulk.operation')" :disable="busy" />
         <template v-if="action === 'sharing'">
           <div>{{ t('documents.bulk.sharingHint') }}</div>
           <q-banner v-if="optionsError" role="alert">{{ t('documents.bulk.optionsError') }}
-            <q-btn outline :label="t('documents.retry')" @click="loadOptions" />
+            <q-btn color="primary" outline :label="t('documents.retry')" @click="loadOptions" />
           </q-banner>
           <q-select v-model="recipientKey" outlined emit-value map-options use-input input-debounce="0"
             :options="recipientOptions" :label="t('documents.bulk.recipient')" :loading="loading" :disable="busy || loading" @filter="filterRecipients" />
@@ -22,13 +19,13 @@
             :label="t('documents.bulk.keywords')" :hint="t('documents.bulk.keywordsHint')" :disable="busy" />
         </template>
         <template v-else-if="action === 'owner'">
-          <q-banner v-if="optionsError" role="alert">{{ t('documents.ownerLoadError') }}<q-btn outline :label="t('documents.retry')" @click="loadOptions" /></q-banner>
+          <q-banner v-if="optionsError" role="alert">{{ t('documents.ownerLoadError') }}<q-btn color="primary" outline :label="t('documents.retry')" @click="loadOptions" /></q-banner>
           <OwnerSelect v-model="ownerKey" :options="owners" :loading="loading" :disable="busy || loading" @open="refreshOwners" />
         </template>
         <q-banner v-else-if="action === 'delete'">{{ t('documents.bulk.deleteHint', { count: entries.length }) }}</q-banner>
       </q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn v-close-popup outline :label="t('documents.library.cancel')" />
+        <q-btn color="primary" v-close-popup outline :label="t('documents.library.cancel')" />
         <q-btn :color="action === 'delete' ? 'negative' : 'primary'" :disable="!operation || loading || optionsError || busy"
           :loading="busy" :label="t(action === 'delete' ? 'documents.bulk.delete' : 'documents.library.apply')" @click="submit" />
       </q-card-actions>
@@ -37,6 +34,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DocumentLibraryEntry, DocumentOwnerOption } from '../types'

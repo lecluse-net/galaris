@@ -86,7 +86,7 @@
         </q-card-section>
         <q-separator />
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn v-close-popup flat no-caps :label="t('common.cancel')" />
+          <q-btn outline color="primary" v-close-popup  no-caps :label="t('common.cancel')" />
           <q-btn
             color="primary" unelevated no-caps icon="add"
             :loading="creating"

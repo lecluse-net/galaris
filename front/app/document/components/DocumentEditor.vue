@@ -6,12 +6,12 @@
     <div v-else-if="!currentDocument" class="document-editor-state document-editor-error" :class="{ 'document-editor-error--dark': $q.dark.isActive }" role="alert">
       <q-icon name="warning" size="36px" />
       <span>{{ t('documents.loadError') }}</span>
-      <q-btn flat :label="t('documents.retry')" @click="loadDocument" />
+      <q-btn outline color="primary"  :label="t('documents.retry')" @click="loadDocument" />
     </div>
     <template v-else>
       <q-banner v-if="refreshError" role="alert">
         {{ t('documents.loadError') }}
-        <q-btn flat :label="t('documents.retry')" @click="onWebsocketConnect" />
+        <q-btn outline color="primary"  :label="t('documents.retry')" @click="onWebsocketConnect" />
       </q-banner>
       <q-toolbar class="document-editor-toolbar" :class="{ 'document-editor-toolbar--dialog': headingInDialog }">
         <q-toolbar-title>
@@ -62,8 +62,8 @@
                 :aria-label="t('resourceSummary.open')" @click="openDocumentSummary">
                 <q-tooltip>{{ t('resourceSummary.open') }}</q-tooltip>
               </q-btn>
-              <q-btn
-                flat
+              <q-btn outline
+
                 dense
                 no-caps
                 icon="history"
@@ -96,8 +96,8 @@
             <q-chip
               v-if="currentDocument.deletion_protected"
               dense
-              color="purple-1"
-              text-color="purple-10"
+              color="solaire-violet-light"
+              text-color="solaire-violet"
               icon="lock"
             >
               {{ t('document.protected') }}
@@ -123,8 +123,8 @@
       <q-banner v-if="conflictDocument" class="bg-warning text-dark">
         {{ t("richEditor.conflict") }}
         <template #action>
-          <q-btn flat :label="t('richEditor.keepDraft')" @click="resolveConflict(true)" />
-          <q-btn flat :label="t('richEditor.useRemote')" @click="resolveConflict(false)" />
+          <q-btn outline color="primary"  :label="t('richEditor.keepDraft')" @click="resolveConflict(true)" />
+          <q-btn outline color="primary"  :label="t('richEditor.useRemote')" @click="resolveConflict(false)" />
         </template>
       </q-banner>
       <q-separator />
@@ -238,17 +238,13 @@
     </template>
     <q-dialog v-model="deleteDialogOpen">
       <q-card class="galaris-dialog-card" style="width: 440px; max-width: 90vw">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ t('documents.deleteDocument') }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('documents.deleteDocument')" :close-label="t('common.close')" />
         <q-card-section class="galaris-dialog-body">{{ t('documents.deleteConfirm', { title: editorTitle || currentDocument?.title }) }}</q-card-section>
         <q-card-section v-if="deletionError" role="alert" class="text-negative">
           {{ deletionError }}
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn v-close-popup flat :label="t('common.cancel')" />
+          <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
           <q-btn color="negative" :label="t('documents.deleteDocument')" :loading="deletingDocument" :disable="!canDeleteDocument" @click="deleteDocument" />
         </q-card-actions>
       </q-card>
@@ -257,6 +253,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import DocumentIcon from '@/app/document/components/DocumentIcon.vue'
 import DocumentApplicationBlock from '@/app/document/components/DocumentApplicationBlock.vue'
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'

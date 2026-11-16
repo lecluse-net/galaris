@@ -1,4 +1,4 @@
-import type { BridgeSettingsContribution } from '@/core/params/settingsTypes'
+import type { BridgeSettingsContribution } from '@/core/params/contracts'
 import HermesConfigurationHint from './components/HermesConfigurationHint.vue'
 
 export default {

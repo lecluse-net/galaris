@@ -9,7 +9,7 @@
       <template #avatar><q-icon name="warning" /></template>
       {{ t('task.activity.silenceWarning', { minutes: Math.floor(silenceSeconds / 60) }) }}
       <template v-if="canRecover" #action>
-        <q-btn flat no-caps icon="restart_alt" :label="t('task.activity.recoverCall')"
+        <q-btn outline color="primary"  no-caps icon="restart_alt" :label="t('task.activity.recoverCall')"
           :loading="recovering" :disable="recovering || recovery?.state === 'requested'" @click.stop="recoverCall" />
       </template>
     </q-banner>

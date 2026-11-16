@@ -1,6 +1,6 @@
 <template>
   <div class="q-mt-md">
-    <q-btn flat dense color="primary" icon="refresh" :label="t('llm.capabilityRefresh.action')"
+    <q-btn outline  dense color="primary" icon="refresh" :label="t('llm.capabilityRefresh.action')"
       :loading="loading" @click="refresh" />
     <div v-if="error" role="alert" class="q-mt-sm">{{ t('llm.capabilityRefresh.error') }}</div>
     <div v-if="preview" class="q-mt-sm" role="status">
@@ -14,8 +14,8 @@
             {{ t('llm.detectedCapabilities') }}: {{ capabilityLabels(serviceCapabilities) }} → {{ capabilityLabels(proposedCapabilities) }}
           </li>
         </ul>
-        <q-btn flat :label="t('common.cancel')" @click="preview = null" />
-        <q-btn flat color="primary" :label="t('llm.capabilityRefresh.apply')" @click="apply" />
+        <q-btn outline color="primary"  :label="t('common.cancel')" @click="preview = null" />
+        <q-btn outline  color="primary" :label="t('llm.capabilityRefresh.apply')" @click="apply" />
       </template>
       <div v-else>{{ t('llm.capabilityRefresh.unchanged') }}</div>
     </div>

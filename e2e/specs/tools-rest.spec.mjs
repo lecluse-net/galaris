@@ -1,3 +1,4 @@
+import { openCustomService, addServiceProtocol } from '../services.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 import { selectOption } from '../select-option.mjs'
@@ -23,15 +24,15 @@ test('REST Service configuration persists with connection credentials kept write
   })
   await pageErrors.settle()
   await page.goto('/services')
-  await page.getByRole('button', { name: 'Nouvel outil', exact: true }).click()
+  await openCustomService(page)
   const editor = page.getByRole('dialog')
   const code = `synthetic_rest_${fixture.agent_id}`
   const toolLabel = `Synthetic REST service ${fixture.agent_id}`
   await editor.getByLabel('Nom technique *', { exact: true }).fill(code)
   await editor.getByLabel('Libellé *', { exact: true }).fill(toolLabel)
   await expect(editor.getByRole('button', { name: 'Créer', exact: true })).toBeDisabled()
-  await expect(editor.getByRole('status')).toContainText('Activez au moins une capacité pour créer l’outil.')
-  await editor.getByRole('switch', { name: 'Activer API', exact: true }).click()
+
+  await addServiceProtocol(page, 'REST')
   await expect(editor.getByRole('button', { name: 'Créer', exact: true })).toBeEnabled()
   await expect(editor.getByLabel('Adresse de base de l’API', { exact: true })).toHaveValue('')
   await editor.getByLabel('Adresse de base de l’API', { exact: true }).fill('https://api.example.test/v1')
@@ -50,7 +51,7 @@ test('REST Service configuration persists with connection credentials kept write
   expect(createdResponse.ok(), await createdResponse.text()).toBe(true)
   const tool = await createdResponse.json()
   await expect(editor).toHaveCount(0)
-  await expect(page.getByRole('tab', { name: 'Services personnalisés', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('article', { name: toolLabel, exact: true })).toBeVisible()
   expect(tool.has_api).toBe(true)
   expect(tool.rest_config.base_url).toBe('https://api.example.test/v1')
   expect(tool.rest_config.auth.param).toBe('api_token_2')
@@ -62,7 +63,7 @@ test('REST Service configuration persists with connection credentials kept write
   await page.getByRole('button', { name: 'Nouvelle Connexion', exact: true }).click()
   const connectionEditor = page.getByRole('dialog')
   await selectOption(page, connectionEditor.getByRole('combobox', { name: 'Agent', exact: true }), `${agent.first_name} ${agent.last_name}`)
-  const toolSelect = connectionEditor.getByRole('combobox', { name: 'Outil', exact: true })
+  const toolSelect = connectionEditor.getByRole('combobox', { name: 'Service', exact: true })
   async function chooseGroupedTool(field, screenshot) {
     await expect(field).toBeEnabled()
     await field.press('ArrowDown')
@@ -100,9 +101,12 @@ test('REST Service configuration persists with connection credentials kept write
   expect(await exported.text()).not.toContain(token)
   for (const tab of ['connections', 'authorizations']) {
     await pageErrors.settle()
+    const optionsLoaded = page.waitForResponse(response => new URL(response.url()).pathname === (tab === 'connections'
+      ? '/api/connections/service-options' : '/api/connections/permission-options'))
     await page.goto(`/tools?tab=${tab}`)
+    expect((await optionsLoaded).ok()).toBe(true)
     await pageErrors.settle()
-    const filter = page.getByRole('combobox', { name: 'Filtrer par outil', exact: true })
+    const filter = page.getByRole('combobox', { name: 'Filtrer par service', exact: true })
     await chooseGroupedTool(filter, `${tab}-tool-groups.png`)
     await expect(page.getByRole('option', { name: toolLabel, exact: true })).toHaveCount(0)
     if (tab === 'connections') {
@@ -113,13 +117,14 @@ test('REST Service configuration persists with connection credentials kept write
   }
   await pageErrors.settle()
   await page.goto('/services')
-  await page.getByRole('tab', { name: 'Services personnalisés', exact: true }).click()
-  const row = page.getByRole('row').filter({ hasText: code })
-  await row.getByRole('button', { name: "Modifier l'outil", exact: true }).click()
-  await editor.getByRole('tab', { name: 'API REST', exact: true }).click()
+  // Services share one catalogue of cards.
+  const row = page.getByRole('article', { name: toolLabel, exact: true })
+  await row.getByRole('button', { name: "Modifier le service", exact: true }).click()
+  await editor.getByRole('tab', { name: 'REST', exact: true }).click()
   await expect(editor.getByLabel('Adresse de base de l’API', { exact: true })).toHaveValue('https://api.example.test/v1')
   await expect(editor.getByText('api_token_2', { exact: true })).toBeVisible()
-  await editor.getByRole('switch', { name: 'Activer API', exact: true }).click()
+  await editor.getByRole('button', { name: 'Supprimer le protocole', exact: true }).click()
+  await page.getByRole('dialog').filter({ hasText: 'Supprimer le protocole REST de ce service' }).getByRole('button', { name: 'Supprimer', exact: true }).click()
   const save = page.waitForResponse(response => response.url().endsWith(`/api/services/${tool.id}`) && response.request().method() === 'PUT')
   await editor.getByRole('button', { name: 'Enregistrer', exact: true }).click()
   const updated = await save
@@ -130,8 +135,8 @@ test('REST Service configuration persists with connection credentials kept write
   await page.getByRole('tab', { name: 'Connexions', exact: true }).click()
   await expect(row).toBeHidden()
   await expect(page.getByRole('row').filter({ hasText: toolLabel })).toBeVisible()
-  await page.getByRole('tab', { name: 'Outils', exact: true }).click()
-  await page.getByRole('tab', { name: 'Services personnalisés', exact: true }).click()
+  await page.getByRole('tab', { name: 'Services', exact: true }).click()
+  // Services share one catalogue of cards.
   await row.getByRole('button', { name: 'Supprimer', exact: true }).click()
   const deletion = page.getByRole('dialog')
   await expect(deletion).toContainText('Connexions des agents : 1')

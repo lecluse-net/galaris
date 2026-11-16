@@ -1,7 +1,7 @@
 """Personal memory ownership and live admission of external graph references."""
 from collections.abc import Collection
 from uuid import UUID
-from sqlalchemy import and_, or_, select
+from sqlalchemy import Select, and_, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 from app.agent import Agent
 from app.agent import AgentManagementScope
@@ -11,12 +11,11 @@ from core.database import get_db
 from core.user import HumanActor
 from .contracts import MemoryAccess
 from .models import MemoryItem
-from .source_access import source_access_clause, source_is_readable
+from .source_access import readable_managed_source_ids, source_access_clause, source_is_readable
 
 
-def _structural_access(direct: ColumnElement[bool], *, user_id: int | None = None) -> ColumnElement[bool]:
+def _structural_access(direct: ColumnElement[bool], parents: Select[tuple[UUID]], *, user_id: int | None = None) -> ColumnElement[bool]:
     # Companion nodes convey live source visibility, never a copied policy.
-    parents=select(MemoryItem.id).where(MemoryItem.node_kind=="document",direct).correlate(None)
     attachments=select(DocumentAttachment.memory_item_id).where(DocumentAttachment.active.is_(True),DocumentAttachment.document_id.in_(parents)).correlate(None)
     if user_id is None:
         from sqlalchemy.orm import aliased
@@ -34,13 +33,13 @@ def _direct(agent_id: int) -> ColumnElement[bool]:
 
 
 def readable_item_clause(agent_id: int) -> ColumnElement[bool]:
-    return and_(_structural_access(_direct(agent_id)),source_access_clause())
+    return and_(_structural_access(_direct(agent_id), documents.readable_ids(agent_id)),source_access_clause())
 
 
 def readable_item_for_agents_clause(agent_ids: Collection[int] | None) -> ColumnElement[bool]:
     owned=MemoryItem.owner_agent_id.is_not(None) if agent_ids is None else MemoryItem.owner_agent_id.in_(tuple(agent_ids))
     direct=or_(and_(MemoryItem.node_kind!="document",owned),and_(MemoryItem.source_managed.is_(True),MemoryItem.visibility=="public"),and_(MemoryItem.node_kind=="document",MemoryItem.id.in_(documents.readable_ids_for_agents(agent_ids))))
-    return and_(_structural_access(direct),source_access_clause())
+    return and_(_structural_access(direct, documents.readable_ids_for_agents(agent_ids)),source_access_clause())
 
 
 async def effective_access(item: MemoryItem, agent_id: int | HumanActor, *, evidence_ids: set[UUID] | None = None, team_access: tuple[bool,bool] | None = None, structural_access: bool | None = None) -> MemoryAccess:
@@ -48,6 +47,10 @@ async def effective_access(item: MemoryItem, agent_id: int | HumanActor, *, evid
         return await human_item_access(item,agent_id.user_id)
     if (evidence_ids is not None and item.id not in evidence_ids) or not await source_is_readable(item.id,item.managed_source_kind,agent_id,check_evidence=evidence_ids is None and item.metadata_.get("evidence_validator") is not None):
         return MemoryAccess(False,False)
+    return await _admitted_item_access(item, agent_id, structural_access=structural_access)
+
+
+async def _admitted_item_access(item: MemoryItem, agent_id: int, *, structural_access: bool | None = None) -> MemoryAccess:
     if item.node_kind=="document":
         result=await documents.document_access(item.id,agent_id)
         return MemoryAccess(result.can_read,result.can_write)
@@ -59,18 +62,23 @@ async def effective_access(item: MemoryItem, agent_id: int | HumanActor, *, evid
     return MemoryAccess(item.source_managed and item.visibility=="public",False)
 
 
-async def effective_access_many(items: Collection[MemoryItem],agent_id: int,*,evidence_ids:set[UUID]) -> dict[UUID,MemoryAccess]:
+async def effective_access_many(items: Collection[MemoryItem],agent_id: int,*,evidence_ids:set[UUID], check_sources: bool = True) -> dict[UUID,MemoryAccess]:
+    admitted = evidence_ids
+    if check_sources:
+        admitted = evidence_ids & await readable_managed_source_ids(
+            [(item.id, item.managed_source_kind) for item in items], agent_id)
     structural={item.id for item in items if item.node_kind in {"attachment","folder"}}
     visible=set(await get_db().scalars(select(MemoryItem.id).where(MemoryItem.id.in_(structural),readable_item_clause(agent_id)))) if structural else set[UUID]()
     source_access = await documents.document_access_many([item.id for item in items if item.node_kind == "document"], agent_id)
     result: dict[UUID, MemoryAccess] = {}
     for item in items:
-        if item.node_kind == "document":
+        if item.id not in admitted:
+            result[item.id] = MemoryAccess(False, False)
+        elif item.node_kind == "document":
             source = source_access.get(item.id)
-            result[item.id] = MemoryAccess(bool(source and source.can_read and item.id in evidence_ids),
-                bool(source and source.can_write and item.id in evidence_ids))
+            result[item.id] = MemoryAccess(bool(source and source.can_read), bool(source and source.can_write))
         else:
-            result[item.id] = await effective_access(item,agent_id,evidence_ids=evidence_ids,
+            result[item.id] = await _admitted_item_access(item,agent_id,
                 structural_access=item.id in visible if item.id in structural else None)
     return result
 
@@ -94,7 +102,7 @@ async def managed_item_agent_ids(item: MemoryItem,agent_ids: Collection[int] | N
 
 def human_item_clause(user_id: int,*,write:bool=False) -> ColumnElement[bool]:
     direct=and_(MemoryItem.node_kind=="document",MemoryItem.id.in_(documents.human_ids(user_id,write=write)))
-    return direct if write else _structural_access(direct,user_id=user_id)
+    return direct if write else _structural_access(direct,documents.human_ids(user_id),user_id=user_id)
 
 
 def human_document_clause(user_id:int,*,write:bool=False) -> ColumnElement[bool]:

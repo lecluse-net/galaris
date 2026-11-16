@@ -8,8 +8,8 @@
                 <q-icon name="code" size="16px" class="q-mr-xs" />
                 <span class="toolbar-label">{{ languageLabel }} {{ label }}</span>
             </div>
-            <q-btn
-                flat
+            <q-btn outline
+
                 dense
                 size="sm"
                 color="grey-5"
@@ -234,7 +234,7 @@ watch(() => props.modelValue, (newValue) => {
     const normalized = newValue ?? ''
     if (normalized !== localValue.value) {
         localValue.value = normalized
-        nextTick(syncScroll)
+        void nextTick(syncScroll)
     }
 })
 
@@ -476,7 +476,7 @@ const handleKeydown = (e: KeyboardEvent) => {
         const end = target.selectionEnd
         localValue.value = localValue.value.substring(0, start) + '  ' + localValue.value.substring(end)
 
-        nextTick(() => {
+        void nextTick(() => {
             target.selectionStart = target.selectionEnd = start + 2
         })
         onInput()
@@ -501,7 +501,7 @@ const handleKeydown = (e: KeyboardEvent) => {
 
         localValue.value = localValue.value.substring(0, start) + textToInsert + localValue.value.substring(end)
 
-        nextTick(() => {
+        void nextTick(() => {
             target.selectionStart = target.selectionEnd = start + textToInsert.length
             syncScroll()
         })

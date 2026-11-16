@@ -15,7 +15,7 @@
       <div class="col-12 col-md-4">
         <q-card flat bordered class="cleanup-card full-height">
           <q-card-section class="row items-start no-wrap q-gutter-md">
-            <q-avatar color="blue-1" text-color="primary" icon="task_alt" />
+            <q-avatar color="solaire-blue-light" text-color="primary" icon="task_alt" />
             <div>
               <div class="text-subtitle1 text-weight-medium">{{ t('params.logs.tasks.title') }}</div>
               <div class="text-body2 text-grey-7 q-mt-xs">{{ t('params.logs.tasks.description') }}</div>
@@ -31,7 +31,7 @@
           <q-card-actions align="right" class="cleanup-actions">
             <q-btn
               v-if="canPurgeTasks"
-              outline
+
               no-caps
               color="negative"
               icon="delete_sweep"
@@ -45,7 +45,7 @@
       <div class="col-12 col-md-4">
         <q-card flat bordered class="cleanup-card full-height">
           <q-card-section class="row items-start no-wrap q-gutter-md">
-            <q-avatar color="deep-purple-1" text-color="deep-purple" icon="psychology" />
+            <q-avatar color="solaire-iris-light" text-color="solaire-iris" icon="psychology" />
             <div>
               <div class="text-subtitle1 text-weight-medium">{{ t('params.logs.llm.title') }}</div>
               <div class="text-body2 text-grey-7 q-mt-xs">{{ t('params.logs.llm.description') }}</div>
@@ -61,7 +61,7 @@
           <q-card-actions align="right" class="cleanup-actions">
             <q-btn
               v-if="canPurgeLlmCalls"
-              outline
+
               no-caps
               color="negative"
               icon="delete_sweep"
@@ -75,7 +75,7 @@
       <div class="col-12 col-md-4">
         <q-card flat bordered class="cleanup-card full-height">
           <q-card-section class="row items-start no-wrap q-gutter-md">
-            <q-avatar color="red-1" text-color="negative" icon="error_outline" />
+            <q-avatar color="solaire-red-light" text-color="negative" icon="error_outline" />
             <div>
               <div class="text-subtitle1 text-weight-medium">{{ t('params.logs.incidents.title') }}</div>
               <div class="text-body2 text-grey-7 q-mt-xs">{{ t('params.logs.incidents.description') }}</div>
@@ -91,7 +91,7 @@
           <q-card-actions align="right" class="cleanup-actions">
             <q-btn
               v-if="canPurgeIncidents"
-              outline
+
               no-caps
               color="negative"
               icon="delete_sweep"
@@ -116,10 +116,10 @@
           <p class="text-caption text-grey-7">{{ t('params.logs.irreversible') }}</p>
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn flat no-caps :label="t('common.cancel')" color="grey-7" v-close-popup />
+          <q-btn outline  no-caps :label="t('common.cancel')" color="grey-7" v-close-popup />
           <q-btn
             v-if="cleanupAllowed"
-            flat
+
             no-caps
             :label="t('params.logs.confirm')"
             color="negative"
@@ -136,8 +136,6 @@
 import { computed, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { llmCallService } from '@/app/llm/services/llmCallService'
-import { taskService } from '@/app/task/services/taskService'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { logCleanupService } from '../services/logCleanupService'
 
@@ -148,6 +146,7 @@ const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
 const cleanupTarget = ref<CleanupTarget | null>(null)
 const cleanupLoading = ref(false)
+let dialogGeneration = 0
 
 const canPurgeTasks = computed(() => privilegeStore.hasPrivilege(privileges.TASK_PURGE))
 const canPurgeLlmCalls = computed(() => privilegeStore.hasPrivilege(privileges.LLM_CALL_PURGE))
@@ -161,7 +160,7 @@ const confirmationMessage = computed(() => cleanupTarget.value
   : '')
 
 function openCleanup(target: CleanupTarget): void {
-  if (canPurge(target)) cleanupTarget.value = target
+  if (canPurge(target)) { dialogGeneration++; cleanupTarget.value = target }
 }
 
 function canPurge(target: CleanupTarget): boolean {
@@ -171,26 +170,25 @@ function canPurge(target: CleanupTarget): boolean {
 }
 
 function closeDialog(open: boolean): void {
-  if (!open && !cleanupLoading.value) cleanupTarget.value = null
+  if (!open) { dialogGeneration++; cleanupTarget.value = null }
 }
 
 async function confirmCleanup(): Promise<void> {
   const target = cleanupTarget.value
-  if (!target) return
+  if (!target || cleanupLoading.value) return
+  const generation = dialogGeneration
 
   if (!canPurge(target)) {
     $q.notify({ type: 'negative', message: t('params.logs.denied') })
-    cleanupTarget.value = null
+    if (generation === dialogGeneration) cleanupTarget.value = null
     return
   }
 
   cleanupLoading.value = true
   try {
-    if (target === 'tasks') await taskService.cleanup()
-    else if (target === 'llm') await llmCallService.cleanup()
-    else await logCleanupService.cleanupIncidents()
+    await logCleanupService.cleanup(target)
     $q.notify({ type: 'positive', message: t(`params.logs.${target}.success`) })
-    cleanupTarget.value = null
+    if (generation === dialogGeneration) cleanupTarget.value = null
   } catch (error) {
     console.error(`Failed to purge ${target} logs:`, error)
     $q.notify({ type: 'negative', message: t(`params.logs.${target}.error`) })
@@ -202,9 +200,9 @@ async function confirmCleanup(): Promise<void> {
 
 <style scoped>
 .logs-warning {
-  color: #76540f;
-  border: 1px solid #f0dca6;
-  background: #fffaf0;
+  color: var(--solaire-warning-action-text);
+  border: 1px solid var(--solaire-orange-accent);
+  background: var(--solaire-orange-light);
 }
 
 .cleanup-card {
@@ -219,7 +217,7 @@ async function confirmCleanup(): Promise<void> {
   display: flex;
   gap: 7px;
   align-items: center;
-  color: #537064;
+  color: var(--solaire-green-accent);
   font-size: 0.76rem;
 }
 
@@ -235,9 +233,9 @@ async function confirmCleanup(): Promise<void> {
 }
 
 body.body--dark .logs-warning {
-  color: #e8c777;
-  border-color: #6b5a26;
-  background: #33290f;
+  color: var(--solaire-orange-accent);
+  border-color: var(--solaire-orange-accent);
+  background: var(--solaire-orange-dark);
 }
 
 body.body--dark .cleanup-card {
@@ -245,7 +243,7 @@ body.body--dark .cleanup-card {
 }
 
 body.body--dark .preserved-note {
-  color: #9dbcae;
+  color: var(--solaire-green-accent);
 }
 
 body.body--dark .cleanup-actions {

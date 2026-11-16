@@ -107,10 +107,10 @@
           </div>
         </div>
 
-        <q-banner v-if="store.error" rounded class="bg-red-1 text-negative q-mb-md">
+        <q-banner v-if="store.error" rounded class="bg-solaire-red-light text-negative q-mb-md">
           {{ t('memory.loadError') }}
           <template #action>
-            <q-btn flat color="negative" :label="t('memory.retry')" @click="searchSafely()" />
+            <q-btn  color="negative" :label="t('memory.retry')" @click="searchSafely()" />
           </template>
         </q-banner>
 
@@ -153,16 +153,16 @@
                     <q-chip
                       v-if="props.row.item.node_kind === 'document'"
                       dense
-                      color="orange-1"
-                      text-color="orange-10"
+                      color="solaire-orange-light"
+                      text-color="solaire-orange"
                       icon="description"
                     >
                       {{ t('memory.kinds.document') }}
                     </q-chip>
-                    <q-chip v-if="props.row.item.source_managed" dense color="blue-1" text-color="primary" icon="sync_lock">
+                    <q-chip v-if="props.row.item.source_managed" dense color="solaire-blue-light" text-color="primary" icon="sync_lock">
                       {{ t('memory.generated') }}
                     </q-chip>
-                    <q-chip v-else-if="props.row.item.deletion_protected" dense color="purple-1" text-color="purple-10" icon="lock">
+                    <q-chip v-else-if="props.row.item.deletion_protected" dense color="solaire-violet-light" text-color="solaire-violet" icon="lock">
                       {{ t('memory.protected') }}
                     </q-chip>
                     <q-chip v-if="props.row.item.old_at" dense color="grey-4" text-color="grey-9" icon="history">
@@ -251,8 +251,8 @@
                     <q-chip
                       v-if="props.row.item.node_kind === 'document'"
                       dense
-                      color="orange-1"
-                      text-color="orange-10"
+                      color="solaire-orange-light"
+                      text-color="solaire-orange"
                       icon="description"
                     >
                       {{ t('memory.kinds.document') }}
@@ -260,7 +260,7 @@
                     <q-chip
                       v-if="props.row.item.source_managed"
                       dense
-                      color="blue-1"
+                      color="solaire-blue-light"
                       text-color="primary"
                       icon="sync_lock"
                     >
@@ -269,8 +269,8 @@
                     <q-chip
                       v-else-if="props.row.item.deletion_protected"
                       dense
-                      color="purple-1"
-                      text-color="purple-10"
+                      color="solaire-violet-light"
+                      text-color="solaire-violet"
                       icon="lock"
                     >
                       {{ t('memory.protected') }}
@@ -396,6 +396,8 @@
 </template>
 
 <script setup lang="ts">
+import { useFindingPresentation } from '../findingPresentation'
+const { findingIcon, findingColor, findingLabel } = useFindingPresentation()
 import { DocumentIcon } from '@/app/document'
 import MemoryItemThumbnail from '../components/MemoryItemThumbnail.vue'
 import MemoryAttachmentButton from '../components/MemoryAttachmentButton.vue'
@@ -407,7 +409,7 @@ import { useQuasar, type QTableProps } from 'quasar'
 import { apiErrorDetail, isCancelledRequest } from '@/core/api'
 import { PageHeader } from '@/core/util'
 import { privileges } from '@/core/authorize'
-import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
+import { usePrivilegeStore } from '@/core/authorize/facade'
 import { useAgentChoices } from '@/app/agent'
 import { AgentSelect, useAgentSelectionStore } from '@/app/agent'
 import MemoryGraph from '../components/MemoryGraph.vue'
@@ -422,7 +424,6 @@ import type {
   MemoryGraphNode,
   MemoryGraphRelation,
   MemoryFinding,
-  MemoryFindingKind,
   MemoryNodeKind,
   MemorySortField,
   MemoryVisibility,
@@ -535,24 +536,6 @@ function agentLabel(agentId: number | null): string {
 
 function visibilityIcon(visibility: MemoryVisibility): string {
   return ({ private: 'lock', shared: 'group', public: 'public' })[visibility]
-}
-
-function findingIcon(kind: MemoryFindingKind): string {
-  return ({ duplicate: 'content_copy', contradiction: 'compare_arrows', aging: 'history' })[kind]
-}
-
-function findingColor(kind: MemoryFindingKind): string {
-  return ({ duplicate: 'orange-8', contradiction: 'red-7', aging: 'blue-grey-7' })[kind]
-}
-
-function findingLabel(finding: MemoryFinding): string {
-  const label = t(`memory.findings.kinds.${finding.kind}`)
-  if (finding.score === null) return label
-  const score = new Intl.NumberFormat(locale.value, {
-    style: 'percent',
-    maximumFractionDigits: 1,
-  }).format(finding.score)
-  return `${label} · ${score}`
 }
 
 function openFinding(finding: MemoryFinding): void {

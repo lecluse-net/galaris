@@ -49,7 +49,7 @@ test('a direct Task dialog survives query normalization and follows navigation a
   await fixtures(page)
   await jsonRoute(page, '**/api/tasks/recent?*', { items: [], total: 0,
     summary: { completed: 0, paused: 0, running: 0, errors: 0 } })
-  await mount(page, 'app/task/pages/index.vue', {
+  await mount(page, 'app/index/pages/task.vue', {
     route: `/task?tab=tasks&task_id=${id}`, privileges: ['TASK_ACCESS'],
   })
   const dialog = page.getByRole('dialog')

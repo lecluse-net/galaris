@@ -8,7 +8,7 @@
       <q-banner v-if="error" role="alert" class="q-mb-sm">
         <div class="text-weight-medium">{{ t('connection.oauth.errorTitle') }}</div>
         <div class="oauth-error-detail">{{ error }}</div>
-        <template #action><q-btn flat :label="t('connection.oauth.retry')" :disable="busy || loading" @click="retryAction()" /></template>
+        <template #action><q-btn outline color="primary"  :label="t('connection.oauth.retry')" :disable="busy || loading" @click="retryAction()" /></template>
       </q-banner>
       <div v-if="deviceAuthorization && canEdit" class="q-mb-md">
         <p>{{ t('connection.oauth.deviceInstructions') }}</p>

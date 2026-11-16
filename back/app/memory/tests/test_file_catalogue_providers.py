@@ -23,6 +23,8 @@ from .test_file_catalogue import hits
 
 @pytest.mark.asyncio
 async def test_console_catalogue_over_real_ssh_sftp(db, agents, memory_storage, tmp_path, monkeypatch):
+    import app.console
+    from app.console import ConsoleRunResource
     owner, peer = agents
     class Server(asyncssh.SSHServer):
         def begin_auth(self, username):
@@ -38,17 +40,28 @@ async def test_console_catalogue_over_real_ssh_sftp(db, agents, memory_storage, 
     listener = await asyncssh.create_server(Server, '127.0.0.1', 0,
         server_host_keys=[host_key], process_factory=home,
         sftp_factory=lambda channel: asyncssh.SFTPServer(channel, chroot=str(tmp_path)))
-    execution = SshExecutionTransport(SshConnectionConfig(connection_id=1, host='127.0.0.1',
+    ssh_config = SshConnectionConfig(connection_id=1, host='127.0.0.1',
         port=listener.get_port(), username='synthetic', private_key=SecretStr(client_key.export_private_key().decode()),
-        known_host_key=host_key.export_public_key().decode().strip()))
+        known_host_key=host_key.export_public_key().decode().strip())
+    execution = SshExecutionTransport(ssh_config)
     transport = SshAgentFileTransport(execution)
     async def resolve(_ctx):
         return transport
     monkeypatch.setattr(resource_service, '_console_transport', resolve)
     tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == 'console'))
     tool.global_params = {'services.fileindexing': {'value': 'known_uris', 'forced': False}}
-    db.add(Connection(agent_id=owner.id, service_id=tool.id))
+    connection = Connection(agent_id=owner.id, service_id=tool.id)
+    db.add(connection)
     await db.commit()
+    async def build(agent_id):
+        assert agent_id == owner.id
+        resource = ConsoleRunResource(ssh_config.model_copy(update={"connection_id": connection.id}))
+        resource.execution = execution
+        resource.files = transport
+        return resource
+    # Both standalone file reads and page-owned batch reads use the same real
+    # isolated SSH peer; each page closes its transport before the next opens.
+    monkeypatch.setattr(app.console, "build_run_resource", build)
     ctx = ResourceContext(agent_id=owner.id, runtime='internal', console_resource=object())
     try:
         result = await resource_service.resource_write_text(ctx, 'console://qualification.txt', 'Synthetic SFTP data')

@@ -1,0 +1,265 @@
+/* Dialog chrome never belongs to the content's scroll viewport. */
+.q-dialog__inner > .galaris-dialog-card {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    overflow: hidden !important;
+    min-height: 0;
+}
+
+.galaris-dialog-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.galaris-dialog-form {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    flex-wrap: nowrap;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Keep existing split views and scroll areas sized inside the body. */
+.galaris-dialog-body--layout {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: nowrap;
+
+    > :is(.q-card__section, .q-separator, .q-tabs) {
+        flex-shrink: 0;
+    }
+
+    > :is(.q-scrollarea, .q-tab-panels, .col) {
+        min-height: 120px;
+    }
+}
+
+.galaris-dialog-body--contained {
+    overflow: hidden;
+}
+
+:is(.galaris-dialog-card, .galaris-dialog-form) > :is(.galaris-dialog-title, .q-card__actions, .q-separator, .q-tabs, .role-dialog-actions) {
+    flex-shrink: 0;
+}
+
+/* Share the job-description footer surface across modal action bars. */
+.galaris-dialog-actions,
+:is(.galaris-dialog-card, .galaris-dialog-form) > .q-card__actions,
+.q-dialog__inner > .q-card > .q-card__actions {
+    background: var(--solaire-gray-light);
+}
+
+.body--dark {
+    .galaris-dialog-actions,
+    :is(.galaris-dialog-card, .galaris-dialog-form) > .q-card__actions,
+    .q-dialog__inner > .q-card > .q-card__actions {
+        background: var(--solaire-gray-dark);
+    }
+}
+
+/* One title bar for forms, details, confirmations and fullscreen viewers. */
+.galaris-dialog-title {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 8px;
+    min-height: 56px;
+    padding: 12px 16px !important;
+    margin: 0 !important;
+    background: var(--q-primary) !important;
+    color: white !important;
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 28px;
+    letter-spacing: normal;
+    overflow-wrap: anywhere;
+
+    > * {
+        min-width: 0;
+        margin: 0 !important;
+    }
+
+    :is(.text-h6, .text-subtitle1, .q-toolbar__title) {
+        min-width: 0;
+        padding: 0;
+        font-size: 20px;
+        font-weight: 600 !important;
+        line-height: 28px;
+        letter-spacing: normal;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    .text-caption {
+        color: white !important;
+        font-weight: 400;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    > .q-btn,
+    > .q-icon {
+        flex-shrink: 0;
+    }
+
+    > .q-icon {
+        font-size: 24px !important;
+    }
+
+    .q-btn:not(.q-btn--outline),
+    .q-icon:not(.q-btn--outline .q-icon) {
+        color: white !important;
+    }
+}
+
+/* Override Quasar's 560px cap for shared task and conversation detail dialogs. */
+.q-dialog__inner--minimized > .galaris-detail-dialog {
+    width: min(90vw, calc(100vw - 48px));
+    max-width: min(90vw, calc(100vw - 48px));
+    max-height: calc(100vh - 32px);
+}
+
+/* Match Quasar's maximized dialog treatment whenever the layout is mobile. */
+@media (max-width: 1023.98px) {
+    .q-dialog__inner {
+        padding: 0 !important;
+    }
+
+    .q-dialog__inner > div {
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        max-height: 100% !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+
+    /* Compact Quasar's default component spacing on constrained screens. */
+    .q-card__section--vert,
+    .q-tab-panel {
+        padding: 8px;
+    }
+
+    .q-card__actions {
+        padding: 4px;
+    }
+
+    /* Modal actions keep Quasar's native button padding on mobile. */
+    .q-card__actions:not(.galaris-dialog-actions) .q-btn--rectangle {
+        padding-right: 4px;
+        padding-left: 4px;
+    }
+
+    .q-item {
+        min-height: 40px;
+        padding: 4px 8px;
+    }
+
+    .q-item__section--side {
+        padding-right: 8px;
+    }
+
+    .q-item__section--avatar {
+        min-width: 40px;
+    }
+
+    .q-list--padding {
+        padding: 4px 0;
+    }
+
+    .q-table th,
+    .q-table td {
+        padding: 4px 8px;
+    }
+
+    .mobile-taskbar .user-menu-wrapper {
+        gap: 4px;
+        padding-left: 8px;
+    }
+
+    .page-container .q-tabs .q-tab {
+        min-height: 44px;
+        padding-inline: 8px;
+    }
+
+    .page-container .q-tabs .q-tab__content {
+        gap: 4px;
+    }
+
+    /* Shared compact spacing overrides Quasar utilities, which are themselves important. */
+    $galaris-mobile-spaces: (
+        none: 0,
+        xs: 2px,
+        sm: 4px,
+        md: 8px,
+        lg: 12px,
+        xl: 16px
+    );
+
+    @each $name, $space in $galaris-mobile-spaces {
+        .q-pa-#{$name} { padding: $space !important; }
+        .q-pl-#{$name} { padding-left: $space !important; }
+        .q-pr-#{$name} { padding-right: $space !important; }
+        .q-pt-#{$name} { padding-top: $space !important; }
+        .q-pb-#{$name} { padding-bottom: $space !important; }
+        .q-px-#{$name} {
+            padding-right: $space !important;
+            padding-left: $space !important;
+        }
+        .q-py-#{$name} {
+            padding-top: $space !important;
+            padding-bottom: $space !important;
+        }
+
+        .q-ma-#{$name} { margin: $space !important; }
+        .q-ml-#{$name} { margin-left: $space !important; }
+        .q-mr-#{$name} { margin-right: $space !important; }
+        .q-mt-#{$name} { margin-top: $space !important; }
+        .q-mb-#{$name} { margin-bottom: $space !important; }
+        .q-mx-#{$name} {
+            margin-right: $space !important;
+            margin-left: $space !important;
+        }
+        .q-my-#{$name} {
+            margin-top: $space !important;
+            margin-bottom: $space !important;
+        }
+
+        .q-gutter-x-#{$name},
+        .q-gutter-#{$name} {
+            margin-left: -$space !important;
+
+            > * { margin-left: $space !important; }
+        }
+
+        .q-gutter-y-#{$name},
+        .q-gutter-#{$name} {
+            margin-top: -$space !important;
+
+            > * { margin-top: $space !important; }
+        }
+
+        .q-col-gutter-x-#{$name},
+        .q-col-gutter-#{$name} {
+            margin-left: -$space !important;
+
+            > * { padding-left: $space !important; }
+        }
+
+        .q-col-gutter-y-#{$name},
+        .q-col-gutter-#{$name} {
+            margin-top: -$space !important;
+
+            > * { padding-top: $space !important; }
+        }
+    }
+}

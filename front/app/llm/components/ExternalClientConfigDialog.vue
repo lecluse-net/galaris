@@ -1,11 +1,7 @@
 <template>
   <q-dialog :model-value="true" @hide="emit('close')">
     <q-card class="client-config-dialog galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <div class="text-h6">{{ t('clientConfig.title') }}</div>
-        <q-space />
-        <q-btn flat round dense icon="close" :aria-label="t('common.close')" v-close-popup />
-      </q-card-section>
+      <DialogHeader :title="t('clientConfig.title')" :close-label="t('common.close')" />
       <q-card-section class="galaris-dialog-body">
         <p>{{ t('clientConfig.intro') }}</p>
         <div v-if="loading" role="status" class="row items-center q-gutter-sm">
@@ -15,7 +11,7 @@
         <q-banner v-else-if="loadError" class="client-config-error" rounded>
           {{ t('clientConfig.loadError') }}
           <template #action>
-            <q-btn flat :label="t('common.retry')" @click="loadProfiles" />
+            <q-btn outline color="primary"  :label="t('common.retry')" @click="loadProfiles" />
           </template>
         </q-banner>
         <p v-else-if="!profiles.length" role="status">{{ t('clientConfig.empty') }}</p>
@@ -48,7 +44,7 @@
             </p>
             <div class="row items-center justify-between q-mb-sm">
               <code>{{ configPath }}</code>
-              <q-btn flat color="primary" icon="content_copy" :label="t('clientConfig.copy')" @click="copy(configuration)" />
+              <q-btn outline  color="primary" icon="content_copy" :label="t('clientConfig.copy')" @click="copy(configuration)" />
             </div>
             <q-input
               :model-value="configuration"
@@ -60,7 +56,7 @@
             <div class="row items-center justify-between q-mb-sm">
               <code v-if="client === 'claude'">.claude/settings.local.json</code>
               <span v-else>{{ t('clientConfig.shell') }}</span>
-              <q-btn flat color="primary" icon="content_copy" :label="t('clientConfig.copyTokenSetup')" @click="copy(tokenSetup)" />
+              <q-btn outline  color="primary" icon="content_copy" :label="t('clientConfig.copyTokenSetup')" @click="copy(tokenSetup)" />
             </div>
             <q-input
               :model-value="tokenSetup"
@@ -73,13 +69,14 @@
         </template>
       </q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn flat color="primary" :label="t('common.close')" v-close-popup />
+        <q-btn outline  color="primary" :label="t('common.close')" v-close-popup />
       </q-card-actions>
     </q-card>
   </q-dialog>
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'

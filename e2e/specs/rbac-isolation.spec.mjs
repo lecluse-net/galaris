@@ -16,7 +16,7 @@ const cases = [
     ['GOAL', '/goal'], ['GOAL_CONFIG', '/goal'], ['SKILL', '/skill'],
     ['TOPIC', '/topic'], ['TASK', '/task?tab=tasks'],
     ['LLM_PROVIDER', '/llm?tab=providers'], ['LLM_MODEL', '/llm?tab=models'],
-    ['LLM_PROFILE', '/llm?tab=profiles'], ['TOOL', '/services?tab=tools'],
+    ['LLM_PROFILE', '/llm?tab=profiles'], ['SERVICE', '/services?tab=tools'],
     ['CONNECTION', '/services?tab=connections'], ['MAIL', '/connection/mail'],
     ['CALENDAR', '/connection/calendars'],
   ].flatMap(([prefix, path]) => ['ACCESS', 'EDIT'].map(suffix => [`${prefix}_${suffix}`, path])),
@@ -123,6 +123,8 @@ for (const [code, path] of cases) test(`${code} opens its function without neigh
   if (path === '/memory') await expect(page.getByText(documentReference.title, { exact: true })).toBeVisible()
   if (path === '/dataset') {
     await expect(page).toHaveURL(url => url.pathname === '/documents' && url.searchParams.get('type') === 'data')
+  } else if (path === '/params/audio') {
+    await expect(page).toHaveURL(url => url.pathname === '/params/instructions')
   } else {
     await expect(page).toHaveURL(new RegExp(new URL(path, 'http://test').pathname.replaceAll('/', '\\/')))
   }

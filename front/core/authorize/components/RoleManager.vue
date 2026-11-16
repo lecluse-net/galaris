@@ -33,10 +33,10 @@
 
           <q-item-section side>
             <div class="role-header-actions">
-              <q-btn v-if="canManage" flat round color="primary" icon="edit" size="sm" @click.stop="openEditDialog(role)">
+              <q-btn :aria-label="$t('common.edit')" v-if="canManage" flat round color="primary" icon="edit" size="sm" @click.stop="openEditDialog(role)">
                 <q-tooltip>{{ $t('common.edit') }}</q-tooltip>
               </q-btn>
-              <q-btn v-if="canManage" flat round color="negative" icon="delete" size="sm" @click.stop="confirmDelete(role)">
+              <q-btn :aria-label="$t('common.delete')" v-if="canManage" flat round color="negative" icon="delete" size="sm" @click.stop="confirmDelete(role)">
                 <q-tooltip>{{ $t('common.delete') }}</q-tooltip>
               </q-btn>
             </div>
@@ -115,7 +115,7 @@
               :label="$t('authorize.roles.displayName')"
             />
             <div class="role-dialog-actions galaris-dialog-actions q-mt-md q-pa-md">
-              <q-btn :label="$t('common.cancel')" color="primary" flat v-close-popup />
+              <q-btn outline :label="$t('common.cancel')" color="primary"  v-close-popup />
               <q-btn v-if="canManage" :label="isEdit ? $t('common.save') : $t('common.create')" type="submit" color="primary" />
             </div>
           </q-form>
@@ -173,8 +173,8 @@
         </q-card-section>
 
         <q-card-section class="role-dialog-actions galaris-dialog-actions">
-            <q-btn flat :label="$t('common.close')" color="primary" v-close-popup />
-            <q-btn v-if="canManage" flat :label="$t('common.save')" color="primary" @click="savePrivileges" />
+            <q-btn outline  :label="$t('common.close')" color="primary" v-close-popup />
+            <q-btn outline v-if="canManage"  :label="$t('common.save')" color="primary" @click="savePrivileges" />
         </q-card-section>
       </q-card>
     </q-dialog>

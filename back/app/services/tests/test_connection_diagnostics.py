@@ -4,6 +4,8 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import event, update
+from sqlalchemy.orm import Session
 
 from app.agent.models import Agent, Title
 from app.connection import Connection, connection_service
@@ -13,7 +15,8 @@ from app.services.permission_catalog import agent_permission_catalog
 
 
 @pytest.mark.asyncio
-async def test_saved_mcp_credentials_inactive_connection_and_scoped_permissions(db, monkeypatch):
+@pytest.mark.parametrize("unrelated", [0, 500])
+async def test_saved_mcp_credentials_inactive_connection_and_scoped_permissions(db, monkeypatch, unrelated):
     title = Title(label="Synthetic diagnostic", gender="X")
     tool = Service(code=f"diagnostic_{uuid4().hex}", label="Synthetic diagnostic",
         mcp_config={"type": "http", "url": "https://synthetic.example.test/mcp"},
@@ -43,11 +46,42 @@ async def test_saved_mcp_credentials_inactive_connection_and_scoped_permissions(
     db.add(Connection(service_id=other.id, agent_id=agent.id, active=True)); await db.flush()
     scoped_discovery = AsyncMock(return_value=[("lookup", "Synthetic lookup", "tool")])
     monkeypatch.setattr("app.services.permission_catalog.list_external_mcp_capabilities", scoped_discovery)
-    catalog = await agent_permission_catalog(agent.id, connection_id=connection.id)
-    assert [row.connection_id for row in catalog.connections] == [connection.id]
+    prefix = f"synthetic-unconnected-{uuid4().hex}"
+    db.add_all([Service(code=f"{prefix}-{index}", label="Synthetic unrelated configuration",
+        description="Synthetic unrelated configuration. " * 4096) for index in range(unrelated)])
+    await db.commit()
+    agent_id, connection_id = agent.id, connection.id
+    db.expunge_all()
+    materialized = []
+
+    def loaded(_session, record):
+        if isinstance(record, Service) and record.code.startswith(prefix):
+            materialized.append(len(record.description.encode()))
+
+    event.listen(Session, "loaded_as_persistent", loaded)
+    try:
+        catalog = await agent_permission_catalog(agent_id, connection_id=connection_id)
+    finally:
+        event.remove(Session, "loaded_as_persistent", loaded)
+    print(f"PERMISSION_CATALOG unrelated={unrelated} materialized={len(materialized)} bytes={sum(materialized)}")
+    assert not materialized, "A connection permission view must not load unrelated Service configurations"
+    assert [row.connection_id for row in catalog.connections] == [connection_id]
     assert scoped_discovery.await_count == 1
     assert [(row.name, row.connection_state, row.effective_state) for row in catalog.capabilities] == [("lookup", "disabled", "disabled")]
     assert not catalog.unavailable_catalogs
+    # The same session can retain an old Service object. Reopening the scoped
+    # inventory must expose current metadata and retain the disabled policy.
+    retained = await db.get(Service, tool.id)
+    assert retained is not None and retained.label == "Synthetic diagnostic"
+    await db.execute(update(Service).where(Service.id == tool.id).values(
+        label="Synthetic current diagnostic").execution_options(synchronize_session=False))
+    reopened = await agent_permission_catalog(agent_id, connection_id=connection_id)
+    assert reopened.connections[0].service_label == "Synthetic current diagnostic"
+    assert reopened.capabilities[0].connection_state == "disabled"
+    scoped_discovery.reset_mock()
+    missing = await agent_permission_catalog(agent_id, connection_id=connection_id + 1_000_000)
+    assert not missing.connections and not missing.capabilities and not missing.unavailable_catalogs
+    scoped_discovery.assert_not_awaited()
 
 
 @pytest.mark.asyncio

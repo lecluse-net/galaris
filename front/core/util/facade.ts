@@ -6,11 +6,12 @@ export { createSessionReadCache, createSessionResponseCache, invalidateSessionRe
 export { createSessionCatalogueCache, createSessionImageCache, onReadSessionChanged } from './sessionResources'
 export { queuePreview } from './previewQueue'
 export { saveBlobAsResource } from './resourceViewer'
-export { attachmentReference } from './richText'
+export { attachmentReference } from './documentResource'
 export { thumbnailReady, onThumbnailReady } from './resourceThumbnailEvents'
 export type { ResourceThumbnailReady } from './resourceThumbnailEvents'
 export { contextHelpKey } from './contextHelp'
 export { showConfirmationDialog } from './confirmationDialog'
+export { default as DialogHeader } from './components/DialogHeader.vue'
 export { default as ContextSubmenu } from './components/ContextSubmenu.vue'
 export { default as PersonAvatar } from './components/PersonAvatar.vue'
 export { solaireCss } from './solaireTheme'
@@ -21,9 +22,13 @@ export { browserResourceKind } from './resourceViewer'
 export { registerResourceViewer, findResourceViewer } from './resourceViewers'
 export type { ResourceViewerContribution, ResourceViewerSource } from './resourceViewers'
 export { defineAsyncView } from './asyncView'
+export { startVisiblePolling } from './visiblePolling'
+export { withSessionScope, storeRequests, storeRequestFailure } from './sessionStore'
 
 /** Keep document export independent of the utility component catalogue. */
 export async function preparePortableDocumentSnapshot(...args: Parameters<typeof import('./documentSnapshot').preparePortableDocumentSnapshot>): Promise<string> {
   const snapshot = await import('./documentSnapshot')
   return snapshot.preparePortableDocumentSnapshot(...args)
 }
+export { solaire } from './solaire'
+export { solaireColors } from './solaire'

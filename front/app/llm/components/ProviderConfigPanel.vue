@@ -21,7 +21,7 @@
         class="col provider-config-scroll"
       >
         <q-form ref="providerForm" class="q-pa-md q-gutter-md" @submit.prevent="submit">
-          <q-banner rounded class="provider-guide bg-blue-1 text-blue-10">
+          <q-banner rounded class="provider-guide bg-solaire-blue-light text-solaire-blue">
             <template #avatar><q-icon name="route" color="primary" /></template>
             {{ guideText }}
           </q-banner>
@@ -29,9 +29,9 @@
           <q-banner
             v-if="isChatGptSubscription"
             rounded
-            class="bg-amber-1 text-amber-10"
+            class="bg-solaire-yellow-light text-solaire-yellow"
           >
-            <template #avatar><q-icon name="policy" color="amber-9" /></template>
+            <template #avatar><q-icon name="policy" color="solaire-yellow" /></template>
             <div class="text-weight-bold">{{ t('llm.chatGptPolicyTitle') }}</div>
             <div>{{ t('llm.chatGptPolicyBody') }}</div>
             <div class="q-mt-sm">{{ t('llm.chatGptPolicyThirdParties') }}</div>
@@ -159,11 +159,11 @@
                 v-if="item.documentation_url"
                 :class="effectiveTokenUrl ? 'col-12 col-sm-5' : 'col-12'"
               >
-                <q-btn
+                <q-btn outline color="primary"
                   :href="item.documentation_url"
                   target="_blank"
                   rel="noopener noreferrer"
-                  flat
+
                   icon-right="open_in_new"
                   :label="t('llm.documentation')"
                   class="full-width"
@@ -221,9 +221,9 @@
               </q-input>
               <div class="text-caption">{{ t('llm.managementApiKeyPurpose') }}</div>
               <div class="row items-center q-gutter-sm">
-                <q-btn
+                <q-btn outline color="primary"
                   v-if="item.management_key_url"
-                  flat dense icon="open_in_new" no-caps
+                   dense icon="open_in_new" no-caps
                   :href="item.management_key_url" target="_blank" rel="noopener noreferrer"
                   :label="t('llm.createManagementApiKey', { provider: item.display_name })"
                 />
@@ -241,7 +241,7 @@
               </div>
               <q-btn
                 v-if="canEdit"
-                :color="oauthConnected ? 'orange-8' : 'deep-purple'"
+                :color="oauthConnected ? 'solaire-orange' : 'deep-purple'"
                 :icon="oauthConnected ? 'logout' : 'login'"
                 :label="oauthConnected ? t('llm.disconnectExternalAccount') : t('llm.connectExternalAccount')"
                 :loading="oauthLoading"
@@ -262,7 +262,7 @@
           <q-banner
             v-if="testResult"
             rounded
-            :class="testResult.success ? 'bg-green-1 text-green-10' : 'bg-red-1 text-red-10'"
+            :class="testResult.success ? 'bg-solaire-green-light text-solaire-green' : 'bg-solaire-red-light text-solaire-red'"
           >
             <template #avatar>
               <q-icon :name="testResult.success ? 'check_circle' : 'error'" />
@@ -287,9 +287,9 @@
           <q-tooltip>{{ t('common.delete') }}</q-tooltip>
         </q-btn>
         <q-space />
-        <q-btn
+        <q-btn outline
           v-if="canEdit && item.auth_type !== 'oauth_device'"
-          flat
+
           color="primary"
           icon="wifi_tethering"
           :label="t('llm.testConnection')"
@@ -316,11 +316,7 @@
     </div>
     <q-dialog v-model="removeKeyDialog">
       <q-card class="galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ t('common.confirm') }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('common.confirm')" :close-label="t('common.close')" />
         <q-card-section class="galaris-dialog-body">
           {{ t(keyToRemove === 'api_key' ? 'llm.confirmRemoveApiKey' : 'llm.confirmRemoveManagementApiKey') }}
           <div v-if="keyToRemove === 'api_key' && item?.api_key_required && draft.is_active" class="q-mt-sm">
@@ -328,7 +324,7 @@
           </div>
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn v-close-popup flat :label="t('common.cancel')" />
+          <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
           <q-btn color="negative" :label="t('common.delete')" :disable="!canEdit || saving" @click="removeKey" />
         </q-card-actions>
       </q-card>
@@ -337,6 +333,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, reactive, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { QScrollArea, useQuasar, type QForm } from 'quasar'

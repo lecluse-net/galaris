@@ -85,11 +85,7 @@
 
   <q-dialog v-model="createOpen">
     <q-card class="document-folder-select__dialog galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <div class="text-h6">{{ t('documents.createSubfolder') }}</div>
-        <q-space />
-        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-      </q-card-section>
+      <DialogHeader :title="t('documents.createSubfolder')" :close-label="t('common.close')" />
       <q-card-section class="galaris-dialog-body">
         <div class="text-caption text-grey-7 q-mb-sm">
           {{ t('documents.folderParent', { folder: createParent || t('documents.folderRoot') }) }}
@@ -106,7 +102,7 @@
       </q-card-section>
       <q-separator />
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn v-close-popup flat :label="t('document.cancel')" />
+        <q-btn outline color="primary" v-close-popup  :label="t('document.cancel')" />
         <q-btn color="primary" :label="t('documents.createFolder')" @click="createFolder" />
       </q-card-actions>
     </q-card>
@@ -114,6 +110,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { TreePageHeader, virtualTreeNodes, treePageAncestors } from '@/core/util'
 import { useI18n } from 'vue-i18n'

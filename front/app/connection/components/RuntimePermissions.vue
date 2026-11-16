@@ -5,7 +5,7 @@
       <q-space /><q-btn flat round icon="refresh" :aria-label="t('permissions.refresh')" :loading="loading" @click="load" />
     </div>
     <q-banner v-if="error" role="alert">{{ t('permissions.error') }}
-      <template #action><q-btn outline :label="t('permissions.retry')" @click="load" /></template>
+      <template #action><q-btn color="primary" outline :label="t('permissions.retry')" @click="load" /></template>
     </q-banner>
     <q-table v-model:pagination="pagination" :rows="rows" :columns="columns" row-key="id"
       :loading="loading" :grid="$q.screen.lt.md" wrap-cells
@@ -24,15 +24,12 @@
     </q-table>
     <q-dialog v-model="confirmOpen">
       <q-card style="width: 520px; max-width: 95vw">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ t('permissions.revokeRuntimePermission') }}</div><q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('permissions.cancel')" />
-        </q-card-section>
+        <DialogHeader :title="t('permissions.revokeRuntimePermission')" :close-label="t('permissions.cancel')" />
         <q-card-section>{{ selected && scopeLabel(selected) }} · {{ selected?.capability_name }}</q-card-section>
         <q-card-section>{{ t('permissions.runtimeRevokeExplanation') }}</q-card-section>
         <q-card-section v-if="revokeError" role="alert">{{ t('permissions.error') }}</q-card-section>
         <q-card-actions align="right">
-          <q-btn v-close-popup outline :label="t('permissions.cancel')" />
+          <q-btn color="primary" v-close-popup outline :label="t('permissions.cancel')" />
           <q-btn color="negative" :label="t('permissions.revokeRuntimePermission')" :loading="revoking" @click="revoke" />
         </q-card-actions>
       </q-card>
@@ -41,6 +38,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { QTableColumn, QTableProps } from 'quasar'

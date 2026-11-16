@@ -204,15 +204,11 @@
 
       <q-dialog v-model="deleteDialog">
         <q-card class="confirm-dialog galaris-dialog-card">
-          <q-card-section class="galaris-dialog-title row items-center no-wrap">
-            <div class="text-h6">{{ t('conversation.history.detail.deleteTitle') }}</div>
-            <q-space />
-            <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-          </q-card-section>
+          <DialogHeader :title="t('conversation.history.detail.deleteTitle')" :close-label="t('common.close')" />
           <q-separator />
           <q-card-section class="galaris-dialog-body">{{ t('conversation.history.detail.deleteConfirm') }}</q-card-section>
           <q-card-actions align="right" class="q-px-md q-pb-md galaris-dialog-actions">
-            <q-btn v-close-popup flat :label="t('common.cancel')" />
+            <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
             <q-btn
               color="negative"
               icon="delete"
@@ -228,24 +224,25 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, ref } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import AgentAvatar from '@/app/agent/components/AgentAvatar.vue'
+import { AgentAvatar } from '@/app/agent'
 import type { LLMCall } from '@/app/llm/types'
-import ExecutionResultComponent from '@/app/task/components/ExecutionResult.vue'
+import { ExecutionResultComponent } from '@/app/task'
 import ConversationExecutionDetails from './ConversationExecutionDetails.vue'
-import ConversationDatasetCaptureButton from '@/app/lab/components/ConversationDatasetCaptureButton.vue'
+import { ConversationDatasetCaptureButton } from '@/app/lab'
 import { labSectionPrivileges } from '@/app/lab'
-import ConversationBubble from '@/core/util/components/ConversationBubble.vue'
-import Markdown from '@/core/util/components/Markdown.vue'
-import WaitingResponseIndicator from '@/core/util/components/WaitingResponseIndicator.vue'
+import { ConversationBubble } from '@/core/util'
+import { Markdown } from '@/core/util'
+import { WaitingResponseIndicator } from '@/core/util'
 import { CopyResourceReference, ResourceReferenceMenu, StatusBadge, type StatusBadgeTone } from '@/core/util'
 import type { ConversationMessage, ConversationRoundDetail } from '../types'
 import { conversationService } from '../services/conversationService'
-import TopicAssignmentEditor from '@/app/topic/components/TopicAssignmentEditor.vue'
+import { TopicAssignmentEditor } from '@/app/topic'
 import DeliveryResolution from './DeliveryResolution.vue'
 import ContactAuthorization from './ContactAuthorization.vue'
 

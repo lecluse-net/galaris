@@ -1,6 +1,6 @@
 <template>
   <div class="memory-case-editor q-gutter-md">
-    <q-banner rounded class="bg-blue-1 text-blue-10">
+    <q-banner rounded class="bg-solaire-blue-light text-solaire-blue">
       <template #avatar><q-icon name="memory" /></template>
       {{ t('evaluation.memoryEditor.isolationHelp') }}
     </q-banner>
@@ -56,7 +56,7 @@
             <div class="text-subtitle1 text-weight-medium">{{ t('evaluation.memoryEditor.history') }}</div>
             <div class="text-caption text-grey-7">{{ t('evaluation.memoryEditor.historyHelp') }}</div>
           </div>
-          <q-btn v-if="!readonly && model.history.length < 5" flat round color="primary" icon="add" @click="addMessage('history')" />
+          <q-btn :aria-label="$t('common.add')" v-if="!readonly && model.history.length < 5" flat round color="primary" icon="add" @click="addMessage('history')" />
         </q-card-section>
         <q-separator />
         <q-list v-if="model.history.length" separator>
@@ -66,7 +66,7 @@
             </q-item-section>
             <q-item-section class="speaker-name"><q-input v-model="message.speaker_name" outlined dense :readonly="readonly" :label="t('evaluation.memoryEditor.speakerName')" /></q-item-section>
             <q-item-section><q-input v-model="message.text" autogrow outlined dense :readonly="readonly" /></q-item-section>
-            <q-item-section v-if="!readonly" side><q-btn flat round dense color="negative" icon="delete_outline" @click="model.history.splice(index, 1)" /></q-item-section>
+            <q-item-section v-if="!readonly" side><q-btn :aria-label="$t('common.delete')" flat round dense color="negative" icon="delete_outline" @click="model.history.splice(index, 1)" /></q-item-section>
           </q-item>
         </q-list>
         <q-card-section v-else class="text-grey-7">{{ t('evaluation.memoryEditor.noHistory') }}</q-card-section>
@@ -75,7 +75,7 @@
       <q-card flat bordered>
         <q-card-section class="row items-center">
           <div class="col text-subtitle1 text-weight-medium">{{ t('evaluation.memoryEditor.currentRound') }}</div>
-          <q-btn v-if="!readonly" flat round color="primary" icon="add" @click="addMessage('current')" />
+          <q-btn :aria-label="$t('common.add')" v-if="!readonly" flat round color="primary" icon="add" @click="addMessage('current')" />
         </q-card-section>
         <q-separator />
         <q-list separator>
@@ -83,7 +83,7 @@
             <q-item-section side><q-select v-model="message.speaker_kind" :options="speakerKindOptions" emit-value map-options dense outlined :readonly="readonly" class="role-select" /></q-item-section>
             <q-item-section class="speaker-name"><q-input v-model="message.speaker_name" outlined dense :readonly="readonly" :label="t('evaluation.memoryEditor.speakerName')" /></q-item-section>
             <q-item-section><q-input v-model="message.text" autogrow outlined dense :readonly="readonly" /></q-item-section>
-            <q-item-section v-if="!readonly && model.current.length > 1" side><q-btn flat round dense color="negative" icon="delete_outline" @click="model.current.splice(index, 1)" /></q-item-section>
+            <q-item-section v-if="!readonly && model.current.length > 1" side><q-btn :aria-label="$t('common.delete')" flat round dense color="negative" icon="delete_outline" @click="model.current.splice(index, 1)" /></q-item-section>
           </q-item>
         </q-list>
       </q-card>
@@ -110,7 +110,7 @@
           <div class="col-12 col-md-3"><q-input v-model="memory.id" outlined dense :readonly="readonly" :label="t('evaluation.memoryEditor.localId')" /></div>
           <div class="col-12 col-md-6"><q-input v-model="memory.title" outlined dense :readonly="readonly" :label="t('evaluation.memoryEditor.memoryTitle')" /></div>
           <div class="col-12"><q-input v-model="memory.content" type="textarea" autogrow outlined :readonly="readonly" :label="t('evaluation.memoryEditor.memoryContent')" /></div>
-          <div v-if="!readonly" class="col-auto"><q-btn flat round color="negative" icon="delete_outline" @click="removeMemory(index)" /></div>
+          <div v-if="!readonly" class="col-auto"><q-btn :aria-label="$t('common.delete')" flat round color="negative" icon="delete_outline" @click="removeMemory(index)" /></div>
         </q-card-section>
       </q-expansion-item>
       <q-card-section v-if="!model.existing_memories.length" class="text-center text-grey-7 q-py-lg">
@@ -127,7 +127,7 @@
         <q-btn
           v-if="!readonly"
           outline
-          color="deep-purple"
+          color="solaire-iris"
           icon="auto_awesome"
           :label="t('evaluation.dispatcher.generateExpected')"
           :loading="generatingExpected"
@@ -158,7 +158,7 @@
               </template>
             </div>
           </q-item-section>
-          <q-item-section v-if="!readonly" side><q-btn flat round color="negative" icon="delete_outline" @click="expected.operations.splice(index, 1)" /></q-item-section>
+          <q-item-section v-if="!readonly" side><q-btn :aria-label="$t('common.delete')" flat round color="negative" icon="delete_outline" @click="expected.operations.splice(index, 1)" /></q-item-section>
         </q-item>
       </q-list>
       <q-separator />

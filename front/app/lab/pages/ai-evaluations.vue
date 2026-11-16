@@ -14,7 +14,7 @@
     <q-expansion-item :label="t('evaluation.contract.diagnosisBenchmarks')" icon="science" class="q-mb-md">
       <LabWorkbench mechanism="task_analysis" :can-edit="canEdit" class="q-pa-md" />
     </q-expansion-item>
-    <q-banner v-if="store.error" rounded class="bg-red-1 text-negative q-mb-md">
+    <q-banner v-if="store.error" rounded class="bg-solaire-red-light text-negative q-mb-md">
       <template #avatar><q-icon name="error_outline" /></template>
       {{ t('evaluation.loadError') }}
     </q-banner>
@@ -23,16 +23,16 @@
       <q-card flat bordered class="task-list-card">
         <q-card-section class="task-list-header">
           <div class="row items-center no-wrap q-gutter-sm">
-            <q-icon name="fact_check" color="deep-purple" size="24px" />
+            <q-icon name="fact_check" color="solaire-iris" size="24px" />
             <div class="text-subtitle1 text-weight-medium">{{ t('evaluation.savedTasks') }}</div>
             <q-space />
-            <q-badge outline color="deep-purple" :label="store.tasks.length" />
+            <q-badge outline color="solaire-iris" :label="store.tasks.length" />
           </div>
           <div class="text-caption text-grey-7 q-mt-xs">{{ t('evaluation.savedTasksHelp') }}</div>
         </q-card-section>
         <q-separator />
         <q-card-section class="task-list-controls">
-          <q-btn v-if="canEdit" outline color="deep-purple" icon="add" :label="t('evaluation.addTask')" @click="openCandidates" />
+          <q-btn v-if="canEdit" outline color="solaire-iris" icon="add" :label="t('evaluation.addTask')" @click="openCandidates" />
           <q-input v-model="taskFilter" dense outlined clearable :placeholder="t('evaluation.searchTasks')">
             <template #prepend><q-icon name="search" /></template>
           </q-input>
@@ -93,10 +93,10 @@
             <div class="row items-start q-col-gutter-md">
               <div class="col">
                 <div class="row items-center q-gutter-sm q-mb-xs">
-                  <q-icon name="task_alt" color="deep-purple" size="md" />
+                  <q-icon name="task_alt" color="solaire-iris" size="md" />
                   <div class="text-h6">{{ selectedTask.label }}</div>
                   <q-badge :color="statusColor(selectedTask.status)" :label="selectedTask.status" />
-                  <q-badge v-if="selectedTask.paused" color="orange" :label="t('evaluation.paused')" />
+                  <q-badge v-if="selectedTask.paused" color="solaire-orange" :label="t('evaluation.paused')" />
                 </div>
                 <div class="text-caption text-grey-7">{{ taskResourceUri(selectedTask.task_id) }}</div>
               </div>
@@ -143,7 +143,7 @@
               </div>
               <q-btn
                 v-if="canEdit"
-                color="deep-purple"
+                color="solaire-iris"
                 icon="manage_search"
                 :label="store.selectedDiagnoses.length ? t('evaluation.analyzeAgain') : t('evaluation.analyzeTask')"
                 :loading="store.analyzingTaskId === selectedTask.task_id"
@@ -176,7 +176,7 @@
           <q-card-section class="row items-center q-col-gutter-md">
             <div class="col-12 col-md">
               <div class="row items-center q-gutter-sm">
-                <q-icon name="history" color="deep-purple" size="md" />
+                <q-icon name="history" color="solaire-iris" size="md" />
                 <div>
                   <div class="text-weight-medium">{{ t('evaluation.diagnosisHistory') }}</div>
                   <div class="text-caption text-grey-7">{{ t('evaluation.diagnosisHistoryHelp') }}</div>
@@ -196,7 +196,7 @@
                 @update:model-value="selectDiagnosis"
               />
               <div v-else-if="store.diagnosesLoadingTaskId === store.selectedTaskId" class="row items-center q-gutter-sm text-grey-7">
-                <q-spinner color="deep-purple" />
+                <q-spinner color="solaire-iris" />
                 <span>{{ t('evaluation.loadingDiagnoses') }}</span>
               </div>
               <div v-else class="text-grey-7">{{ t('evaluation.noDiagnoses') }}</div>
@@ -210,15 +210,11 @@
 
     <q-dialog v-model="removeTaskDialog">
       <q-card class="confirm-dialog galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ t('evaluation.removeTask') }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('evaluation.removeTask')" :close-label="t('common.close')" />
         <q-separator />
         <q-card-section class="galaris-dialog-body">{{ t('evaluation.removeTaskConfirm') }}</q-card-section>
         <q-card-actions align="right" class="q-px-md q-pb-md galaris-dialog-actions">
-          <q-btn v-close-popup flat :label="t('common.cancel')" />
+          <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
           <q-btn
             color="negative"
             icon="delete_outline"
@@ -256,7 +252,7 @@
           <q-separator />
           <q-scroll-area class="candidate-scroll">
             <div v-if="store.candidatesLoading" class="flex flex-center q-pa-xl">
-              <q-spinner color="deep-purple" size="40px" />
+              <q-spinner color="solaire-iris" size="40px" />
             </div>
             <q-list v-else-if="store.candidates.length" separator>
               <q-item v-for="candidate in store.candidates" :key="candidate.task_id">
@@ -273,7 +269,7 @@
                 <q-item-section side>
                   <q-btn
                     v-if="canEdit"
-                    color="deep-purple"
+                    color="solaire-iris"
                     icon="add"
                     :label="t('evaluation.add')"
                     :loading="addingTaskId === candidate.task_id"
@@ -292,19 +288,20 @@
       <LabWorkbench v-else :key="labTab" :mechanism="labTab" :can-edit="canEdit" />
     </div>
     <div class="q-mt-md">
-      <q-btn flat color="primary" icon="arrow_back" :label="t('common.back')" to="/lab" />
+      <q-btn outline  color="primary" icon="arrow_back" :label="t('common.back')" to="/lab" />
     </div>
   </q-page>
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { usePrivilegeStore } from '@/core/authorize'
 import { PageHeader, richTextExcerpt, EditorialContent } from '@/core/util'
-import { taskResourceUri } from '@/app/task/resourceUri'
+import { taskResourceUri } from '@/app/task/interface'
 import LabWorkbench from '../components/LabWorkbench.vue'
 import EvaluationAnalysisPanel from '../components/EvaluationAnalysisPanel.vue'
 import { labSections, type LabSectionKey } from '../presentation'

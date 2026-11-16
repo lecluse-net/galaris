@@ -30,9 +30,8 @@ from app.goal.schemas import (
     GoalApiUpdate,
     GoalCommand,
     GoalCreate,
-    GoalJudgement,
+    GoalDecision,
     GoalMessengerReferrerInput,
-    GoalProgress,
     GoalScheduleWindow,
     GoalSettingsConfig,
     GoalUpdate,
@@ -95,20 +94,9 @@ def _configured_goal_tracking_llm(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _judgement(action: str = "CONTINUE") -> GoalJudgement:
-    return GoalJudgement(
+def _judgement(action: str = "CONTINUE") -> GoalDecision:
+    return GoalDecision(
         action=action,  # type: ignore[arg-type]
-        reason="Useful work remains." if action == "CONTINUE" else "Objective reached.",
-        progress=GoalProgress(
-            changed=True,
-            summary="A concrete milestone was completed.",
-            evidence=["Milestone artifact"],
-        ),
-        tracking_content=(
-            "# Goal tracking\n\n"
-            "## Current state\n\nA concrete milestone was completed.\n\n"
-            "## Remaining work\n\nContinue from the completed milestone."
-        ),
     )
 
 
@@ -448,73 +436,14 @@ async def test_completed_parent_cycle_triggers_child_cycle_once(
     assert trigger.consumed_cycle_id == child_cycle.id
 
 
-@pytest.mark.parametrize("encoded_progress", [False, True])
-def test_goal_judgement_rejects_unknown_fields_and_stop_without_evidence(
-    encoded_progress: bool,
-) -> None:
-    payload = _judgement("STOP").model_dump()
-    if encoded_progress:
-        payload["progress"] = json.dumps(payload["progress"])
-    payload["unexpected"] = True
-    with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-        GoalJudgement.model_validate(payload)
-
-    payload = _judgement("STOP").model_dump()
-    payload["progress"]["evidence"] = []
-    if encoded_progress:
-        payload["progress"] = json.dumps(payload["progress"])
-    with pytest.raises(ValidationError, match="STOP requires at least one observable evidence item"):
-        GoalJudgement.model_validate(payload)
-
-
-@pytest.mark.parametrize(
-    "progress",
-    [
-        "{invalid",
-        "null",
-        '"text"',
-        "[]",
-        '{"changed": true}',
-        '{"changed": true, "summary": "   "}',
-        '{"changed": true, "summary": "Milestone", "unexpected": true}',
-    ],
-)
-def test_goal_judgement_rejects_invalid_encoded_progress(progress: str) -> None:
-    payload = _judgement().model_dump()
-    payload["progress"] = progress
-    with pytest.raises(ValidationError):
-        GoalJudgement.model_validate(payload)
-
-
-@pytest.mark.parametrize("encoded_progress", [False, True])
-def test_goal_judgement_accepts_progress_without_changing_its_content(
-    encoded_progress: bool,
-) -> None:
-    expected = _judgement()
-    expected.reason = ("Synthetic decision rationale. " * 200).strip()
-    expected.progress.summary = ("Synthetic progress summary. " * 200).strip()
-    expected.progress.evidence = [
-        f"Evidence {index}: " + ("Synthetic supporting fact. " * 60).strip()
-        for index in range(25)
-    ]
-    payload = expected.model_dump()
-    if encoded_progress:
-        payload["progress"] = json.dumps(payload["progress"])
-    assert GoalJudgement.model_validate_json(json.dumps(payload)) == expected
-
-
-@pytest.mark.parametrize("contract", [GoalJudgement, GoalUpdate, GoalApiUpdate])
+@pytest.mark.parametrize("contract", [GoalUpdate, GoalApiUpdate])
 @pytest.mark.parametrize("repetitions", [1_600, 6_500, 26_000, 110_000])
 def test_goal_tracking_preserves_long_content(
-    contract: type[GoalJudgement] | type[GoalUpdate] | type[GoalApiUpdate],
+    contract: type[GoalUpdate] | type[GoalApiUpdate],
     repetitions: int,
 ) -> None:
     tracking = "<p>" + "Synthetic milestone. " * repetitions + "Final evidence.</p>"
-    payload = (
-        _judgement().model_dump()
-        if contract is GoalJudgement
-        else {"expected_revision": 1}
-    )
+    payload = {"expected_revision": 1}
     payload["tracking_content"] = tracking
 
     assert contract.model_validate_json(json.dumps(payload)).tracking_content == tracking
@@ -930,7 +859,7 @@ async def test_manual_only_due_cycle_is_started_without_scheduled_due_cycles(
 
 
 @pytest.mark.asyncio
-async def test_due_goal_does_not_launch_without_dedicated_tracking_llm(
+async def test_due_goal_launches_without_optional_monitoring_model(
     db, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     agent = await _new_agent(db)
@@ -948,11 +877,11 @@ async def test_due_goal_does_not_launch_without_dedicated_tracking_llm(
         )
     )
 
-    assert await runner.start_due_cycle() is False
+    assert await runner.start_due_cycle() is True
     assert await db.scalar(
         select(GoalCycle.id).where(GoalCycle.goal_id == created.id)
-    ) is None
-    assert await db.scalar(select(Task.id).where(Task.goal_id == created.id)) is None
+    ) is not None
+    assert await db.scalar(select(Task.id).where(Task.goal_id == created.id)) is not None
 
     page = await goal_service.list_page(agent_id=agent_id)
     assert page.tracking_llm_configured is False
@@ -1084,16 +1013,7 @@ async def test_continue_schedules_from_task_finish_and_keeps_paused_goal_paused(
     goal_id, cycle_id = goal.id, cycle.id
     expected_revision = goal.revision
     monkeypatch.setattr(goal_service, "emit_updated", AsyncMock())
-    judgement = GoalJudgement.model_validate({
-        **_judgement("CONTINUE").model_dump(),
-        "reason": ("Synthetic decision rationale. " * 200).strip(),
-        "progress": {
-            "changed": True,
-            "summary": ("Synthetic progress summary. " * 200).strip(),
-            "evidence": [f"Evidence {index}: " + "x" * 1_100 for index in range(25)],
-        },
-        "tracking_content": "<p>" + "Synthetic milestone. " * 110_000 + "Final evidence.</p>",
-    })
+    judgement = _judgement("CONTINUE")
 
     await runner._finish_judgement(  # pyright: ignore[reportPrivateUsage]
         cycle_id,
@@ -1111,11 +1031,10 @@ async def test_continue_schedules_from_task_finish_and_keeps_paused_goal_paused(
     assert persisted_cycle is not None
     assert persisted_goal.status == GoalStatus.PAUSED
     assert persisted_goal.next_cycle_at == finished + timedelta(minutes=10)
-    assert (await goal_service.read_markdown(persisted_goal)).tracking == judgement.tracking_content
+    assert (await goal_service.read_markdown(persisted_goal)).tracking == ""
     assert persisted_cycle.verdict == GoalVerdict.CONTINUE
-    assert persisted_cycle.reason == judgement.reason
-    assert persisted_cycle.progress_summary == judgement.progress.summary
-    assert persisted_cycle.evidence == judgement.progress.evidence
+    assert persisted_cycle.progress_summary is None
+    assert persisted_cycle.evidence == []
     assert persisted_cycle.judge_cost == pytest.approx(0.06)
     assert persisted_cycle.task_cost == pytest.approx(1.25)
 
@@ -1173,23 +1092,13 @@ async def test_terminal_cycle_is_judged_once_and_stop_completes_goal(
     )
     monkeypatch.setattr(
         runner,
-        "run_structured",
+        "evaluate_goal",
         structured,
     )
     monkeypatch.setattr(goal_service, "emit_updated", AsyncMock())
 
     assert await runner.process_terminal_cycle() is True
     await db.refresh(cycle)
-    assert cycle.review_task_id is not None
-    assert goal.status == GoalStatus.ACTIVE
-    assert await runner.process_terminal_cycle() is False
-    review_task = await db.get(Task, cycle.review_task_id)
-    review_task.status = TaskStatus.SUCCESS
-    review_task.feedback = "The original deliverable was independently checked."
-    review_task.set_execution_result(ExecutionResult(prompt="Review", result=review_task.feedback,
-        success=True, messages=[AIMessage(type="tool", tool_name="file_read", content="Verified synthetic artifact", success=True)]))
-    await db.commit()
-    assert await runner.process_terminal_cycle() is True
     assert await runner.process_terminal_cycle() is False
 
     db.expire_all()
@@ -1201,17 +1110,14 @@ async def test_terminal_cycle_is_judged_once_and_stop_completes_goal(
     assert persisted_goal.next_cycle_at is None
     assert persisted_cycle.status == GoalCycleStatus.DECIDED
     assert persisted_cycle.verdict == GoalVerdict.STOP
-    assert persisted_cycle.judge_attempt_count == 2
+    assert persisted_cycle.judge_attempt_count == 1
     assert persisted_cycle.task_cost == pytest.approx(0.75)
-    assert persisted_cycle.judge_cost == pytest.approx(0.04)
-    assert (await goal_service.read_markdown(persisted_goal)).tracking == _judgement(
-        "STOP"
-    ).tracking_content
-    assert structured.await_count == 2
+    assert persisted_cycle.judge_cost == pytest.approx(0.02)
+    assert (await goal_service.read_markdown(persisted_goal)).tracking == ""
+    assert structured.await_count == 1
     tracking_call = structured.await_args.kwargs
     assert tracking_call["task_id"] == task_id
     assert tracking_call["agent_id"] == agent_id
-    assert tracking_call["request_limit"] == 2
     from app.goal.cycle_context import goal_judgement_runtime_instructions
     assert goal_judgement_runtime_instructions() in tracking_call["prompt"]
     assert tracking_call["system_prompt"] == (
@@ -1282,7 +1188,7 @@ async def test_terminal_legacy_messenger_cycle_restores_frozen_requester(
             messages=[],
         )
 
-    monkeypatch.setattr(runner, "run_structured", structured)
+    monkeypatch.setattr(runner, "evaluate_goal", structured)
     monkeypatch.setattr(goal_service, "emit_updated", AsyncMock())
 
     assert await runner.process_terminal_cycle() is True
@@ -1327,10 +1233,11 @@ async def test_terminal_cycle_leaves_running_state_without_tracking_llm(
     db.expire_all()
     persisted = await db.get(GoalCycle, cycle_id)
     assert persisted is not None
-    assert persisted.status == GoalCycleStatus.ERROR
+    assert persisted.status == GoalCycleStatus.DECIDED
     assert persisted.task_finished_at is not None
     assert persisted.task_cost == pytest.approx(0.25)
-    assert persisted.error == "RuntimeError: No Goal model is configured for this agent profile."
+    assert persisted.error is None
+    assert persisted.verdict == GoalVerdict.CONTINUE
 
 
 @pytest.mark.asyncio
@@ -1685,18 +1592,15 @@ async def test_manual_cycle_request_survives_failed_tracking_recovery(
     await db.commit()
     goal_id, task_id = goal.id, task.id
     monkeypatch.setattr("app.task.scheduler.wake", lambda *_args, **_kwargs: None)
-    tracking = "<p>" + "Synthetic milestone. " * 6_500 + "Final evidence.</p>"
-
-    async def judge_long_tracking(**_kwargs) -> StructuredInferenceResult[GoalJudgement]:
-        payload = {**_judgement(verdict).model_dump(), "tracking_content": tracking}
+    async def judge_cycle(**_kwargs) -> StructuredInferenceResult[GoalDecision]:
         return StructuredInferenceResult(
-            output=GoalJudgement.model_validate(payload), cost=0.02, messages=[],
+            output=_judgement(verdict), cost=0.02, messages=[],
         )
 
     monkeypatch.setattr(
         runner,
-        "run_structured",
-        AsyncMock(side_effect=judge_long_tracking),
+        "evaluate_goal",
+        AsyncMock(side_effect=judge_cycle),
     )
 
     command = goal_service.run_now if command_name == "run_now" else goal_service.resume
@@ -1706,24 +1610,12 @@ async def test_manual_cycle_request_survives_failed_tracking_recovery(
     assert await runner.start_due_cycle(manual_only=True) is False
     assert await runner.process_terminal_cycle() is True
 
-    if verdict == "STOP":
-        # The recovered evaluation must now verify its completion claim first.
-        await db.refresh(cycle)
-        review = await db.get(Task, cycle.review_task_id)
-        assert review is not None
-        review.status = TaskStatus.SUCCESS
-        review.feedback = "The original outcome was independently verified."
-        review.set_execution_result(ExecutionResult(prompt="Review", result=review.feedback,
-            success=True, messages=[AIMessage(type="tool", tool_name="file_read", content="Verified synthetic artifact", success=True)]))
-        await db.commit()
-        assert await runner.process_terminal_cycle() is True
-
     should_start = command_name == "run_now" and verdict == "CONTINUE"
     assert await runner.start_due_cycle(manual_only=True) is should_start
     assert await runner.start_due_cycle(manual_only=True) is False
     db.expire_all()
     tasks = list((await db.scalars(select(Task).where(Task.goal_id == goal_id))).all())
-    assert len(tasks) == (2 if should_start or verdict == "STOP" else 1)
+    assert len(tasks) == (2 if should_start else 1)
     previous_task = next(item for item in tasks if item.id == task_id)
     assert previous_task.status == task_status
     assert previous_task.feedback == "Previous work result"
@@ -1737,7 +1629,7 @@ async def test_manual_cycle_request_survives_failed_tracking_recovery(
     persisted_goal = await db.get(Goal, goal_id)
     assert persisted_goal is not None
     assert persisted_goal.manual_run_requested_at is None
-    assert (await goal_service.read_markdown(persisted_goal)).tracking == tracking
+    assert (await goal_service.read_markdown(persisted_goal)).tracking == ""
 
 
 @pytest.mark.asyncio
@@ -1922,8 +1814,11 @@ async def test_failed_judgement_accounts_for_persisted_llm_calls(
     persisted_cycle = await db.get(GoalCycle, cycle_id)
     assert persisted_goal is not None
     assert persisted_cycle is not None
-    assert persisted_goal.status == GoalStatus.ERROR
-    assert persisted_cycle.status == GoalCycleStatus.ERROR
+    assert persisted_goal.status == GoalStatus.ACTIVE
+    assert persisted_cycle.status == GoalCycleStatus.DECIDED
+    assert persisted_cycle.verdict == GoalVerdict.CONTINUE
+    assert persisted_goal.next_cycle_at is not None
+    assert "invalid structured output" in persisted_cycle.error
     assert persisted_cycle.judge_cost == pytest.approx(0.07)
 
 
@@ -2006,7 +1901,8 @@ async def test_failed_judgement_preserves_manual_pause(
     assert persisted_cycle is not None
     assert persisted_goal.status == GoalStatus.PAUSED
     assert "judge unavailable" in (persisted_goal.last_error or "")
-    assert persisted_cycle.status == GoalCycleStatus.ERROR
+    assert persisted_cycle.status == GoalCycleStatus.DECIDED
+    assert persisted_cycle.verdict == GoalVerdict.CONTINUE
 
 
 @pytest.mark.asyncio

@@ -4,7 +4,7 @@
     <ActionContextMenu target=".menu-row" :label="id" :preserve-selection="preserveSelection" :actions="actions(id)" />
     <span>{{ counts[id] ?? 0 }}</span>
   </section>
-  <q-btn outline label="Outside action" @pointerdown.stop @mousedown.stop @click.stop="outside++" />
+  <q-btn outline color="primary" label="Outside action" @pointerdown.stop @mousedown.stop @click.stop="outside++" />
   <p role="status">{{ outside }}</p>
   <input aria-label="Outside input">
   <iframe title="Outside frame" sandbox="allow-scripts" srcdoc="<button onclick=&quot;this.textContent='Frame clicked'&quot;>Frame action</button>" />

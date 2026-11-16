@@ -6,7 +6,7 @@
     </q-input>
     <q-banner v-if="error" role="alert">
       {{ t('richEditor.resources.failed') }}
-      <template #action><q-btn outline :label="t('common.retry')" @click="search" /></template>
+      <template #action><q-btn outline color="primary" :label="t('common.retry')" @click="search" /></template>
     </q-banner>
     <q-list v-if="!error" class="col scroll q-mt-sm" separator>
       <q-item v-for="item in items" :key="item.uri" clickable :disable="busy" @click="emit('select', item)">

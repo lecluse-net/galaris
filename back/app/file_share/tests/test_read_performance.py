@@ -93,6 +93,47 @@ async def test_source_discovery_batches_tools_and_observes_configuration_changes
 
 
 @pytest.mark.asyncio
+async def test_resource_resolution_is_bounded_and_rechecks_active_connections(db, tmp_path, monkeypatch):
+    from app.file_share import file_share_service, interface
+    from app.file_share.tests.local_file_transport import TemporaryFileTransport
+
+    owner, peer = await owners(db)
+    source = Service(code="synthetic-resolver", label="Synthetic source")
+    ordinary = [Service(code=f"resolver-other-{index}", label=f"Other {index}") for index in range(40)]
+    db.add_all([source, *ordinary])
+    await db.flush()
+    connection = Connection(service_id=source.id, agent_id=owner.id, active=True)
+    db.add_all([connection, *[Connection(service_id=tool.id, agent_id=owner.id, active=True) for tool in ordinary]])
+    await db.commit()
+    owner_id, peer_id, connection_id = owner.id, peer.id, connection.id
+    transport = TemporaryFileTransport(tmp_path)
+    monkeypatch.setitem(interface._resource_transports, source.code, lambda _agent: transport)
+    db.expunge_all()
+    sql_connection = await db.connection()
+    statements = []
+    def capture(_connection, _cursor, statement, _parameters, _context, _many):
+        if statement.lstrip().upper().startswith(("SELECT", "WITH")):
+            statements.append(statement)
+    event.listen(sql_connection.sync_connection, "before_cursor_execute", capture)
+    try:
+        resolved, _kind = await file_share_service.resolve_resource_transport_with_service(owner_id, "synthetic-resolver", "fixture.txt")
+    finally:
+        event.remove(sql_connection.sync_connection, "before_cursor_execute", capture)
+    assert resolved is transport
+    assert len(statements) <= 3, f"Resolving one source must not query every other Service: {len(statements)} reads"
+    with pytest.raises(ValueError):
+        await file_share_service.resolve_resource_transport_with_service(peer_id, "synthetic-resolver", "fixture.txt")
+    connection = await db.get(Connection, connection_id)
+    connection.active = False
+    await db.commit()
+    with pytest.raises(ValueError):
+        await file_share_service.resolve_resource_transport_with_service(owner_id, "synthetic-resolver", "fixture.txt")
+    connection.active = True
+    await db.commit()
+    assert (await file_share_service.resolve_resource_transport_with_service(owner_id, "synthetic-resolver", "fixture.txt"))[0] is transport
+
+
+@pytest.mark.asyncio
 async def test_progress_does_not_load_traversal_frontiers_and_preserves_pages(db):
     owner, peer = await owners(db)
     owner_id, peer_id = owner.id, peer.id

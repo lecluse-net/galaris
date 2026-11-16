@@ -16,7 +16,7 @@
         </q-item>
       </q-list>
       <div v-else-if="!loading" class="text-caption">{{ t('documents.historyEmpty') }}</div>
-      <q-btn v-if="hasMore" flat dense no-caps icon="expand_more" class="q-mt-sm"
+      <q-btn outline color="primary" v-if="hasMore"  dense no-caps icon="expand_more" class="q-mt-sm"
         :label="t('memory.historyLoadMore')" :loading="loading" @click="emit('load-more')" />
     </aside>
     <section class="memory-history-preview" :aria-label="t('documents.historyPreview')" :aria-busy="loadingDetail">
@@ -25,7 +25,7 @@
       </div>
       <div v-else-if="detailError" class="text-negative" role="alert">
         {{ t('documents.historyLoadError') }}
-        <q-btn flat dense :label="t('documents.retry')" @click="selectedRevision !== null && selectRevision(selectedRevision)" />
+        <q-btn outline color="primary"  dense :label="t('documents.retry')" @click="selectedRevision !== null && selectRevision(selectedRevision)" />
       </div>
       <template v-else-if="detail">
         <div class="memory-section-title q-mb-xs">

@@ -50,7 +50,7 @@
     <q-banner
       v-if="selectedTool?.code === 'console' && consoleTarget === 'embedded'"
       rounded
-      class="bg-blue-1 text-blue-9 q-mt-md"
+      class="bg-solaire-blue-light text-solaire-blue q-mt-md"
     >
       <template #avatar><q-icon name="verified_user" /></template>
       {{ selectedAgentIsInternal
@@ -90,9 +90,9 @@
             <div class="param-name">{{ localizedParamLabel(param) }} <span v-if="param.required" aria-hidden="true">*</span></div>
             <code v-if="localizedParamLabel(param) !== param.name" class="text-caption">{{ param.name }}</code>
             <div v-if="param.description" class="param-desc text-grey-7">{{ localizedParamDescription(param) }}</div>
-            <q-btn
+            <q-btn outline
               v-if="hasGlobalValue(param.name) && !isGloballyForced(param.name)"
-              flat color="secondary" icon="undo"
+               color="secondary" icon="undo"
               :label="t('connection.useGlobalValue')"
               @click="disableParamOverride(param.name)"
             />
@@ -140,9 +140,9 @@
               <q-chip v-if="isGloballyForced(param.name)" dense color="negative" text-color="white">
                 {{ t('connection.globalForced') }}
               </q-chip>
-              <q-btn
+              <q-btn outline
                 v-else-if="canEdit"
-                flat color="primary" icon="edit"
+                 color="primary" icon="edit"
                 :label="t('connection.customizeGlobal')"
                 @click="enableParamOverride(param)"
               />
@@ -166,7 +166,7 @@
           {{ t('connection.console.automaticModeHint') }}
         </div>
         <div class="row q-gutter-sm">
-          <q-btn
+          <q-btn color="primary"
             v-if="canEdit && !isGloballyForced('known_host_key')"
             outline
             icon="fingerprint"
@@ -175,7 +175,7 @@
             :disable="consoleAction !== null || !effectiveParamValue('host')"
             @click="scanHostKey"
           />
-          <q-btn
+          <q-btn color="primary"
             v-if="canEdit && !isGloballyForced('private_key') && effectiveParamValue('host') !== 'ssh-executor'"
             outline
             icon="key"
@@ -203,12 +203,12 @@
         <div class="text-caption q-mt-sm">{{ t('connection.console.editorDeploymentHint') }}</div>
         <div v-if="editorRuntimeConfigured" class="text-caption q-mt-sm">{{ t('connection.console.editorAutomaticUpdates') }}</div>
         <q-banner v-if="editorDeployed" dense class="q-mt-sm" role="status">{{ t('connection.console.editorReady') }}</q-banner>
-        <q-banner v-if="generatedPublicKey" dense rounded class="bg-blue-1 text-blue-9 q-mt-md">
+        <q-banner v-if="generatedPublicKey" dense rounded class="bg-solaire-blue-light text-solaire-blue q-mt-md">
           <div>{{ t('connection.console.installPublicKey') }}</div>
           <pre class="deployment-commands"><code>{{ deploymentCommands }}</code></pre>
           <div class="row justify-end q-gutter-sm q-mt-sm">
-            <q-btn flat icon="key" :label="t('connection.console.copyPublicKey')" @click="copyPublicKey" />
-            <q-btn flat icon="content_copy" :label="t('connection.console.copyCommands')" @click="copyDeploymentCommands" />
+            <q-btn outline color="primary"  icon="key" :label="t('connection.console.copyPublicKey')" @click="copyPublicKey" />
+            <q-btn outline color="primary"  icon="content_copy" :label="t('connection.console.copyCommands')" @click="copyDeploymentCommands" />
           </div>
         </q-banner>
       </q-card-section>
@@ -217,7 +217,7 @@
     <q-card v-if="selectedTool?.has_mail" flat bordered>
       <q-card-section>
         <div class="text-subtitle2 q-mb-sm">{{ t('connection.mail.title') }}</div>
-        <q-banner dense rounded class="bg-blue-1 text-blue-9 q-mb-md">
+        <q-banner dense rounded class="bg-solaire-blue-light text-solaire-blue q-mb-md">
           <template #avatar><q-icon name="smart_toy" /></template>
           {{ t('connection.mail.disclosure') }}
         </q-banner>
@@ -278,8 +278,8 @@
       </q-card-section>
       <q-separator />
       <q-card-section v-if="pendingHostKey" class="host-key-confirmation-content scroll galaris-dialog-body">
-        <q-banner rounded class="bg-orange-1 text-orange-10 q-mb-lg">
-          <template #avatar><q-icon name="verified_user" color="orange-9" /></template>
+        <q-banner rounded class="bg-solaire-orange-light text-solaire-orange q-mb-lg">
+          <template #avatar><q-icon name="verified_user" color="solaire-orange" /></template>
           {{ t('connection.console.hostKeyVerificationHint') }}
         </q-banner>
 
@@ -310,7 +310,7 @@
       </q-card-section>
       <q-separator />
       <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-        <q-btn v-close-popup flat color="grey-7" :label="t('common.cancel')" />
+        <q-btn outline v-close-popup  color="grey-7" :label="t('common.cancel')" />
         <q-btn
           color="primary"
           icon="verified"
@@ -355,7 +355,7 @@
           :loading="consoleAction === 'editor'" :disable="consoleAction !== null" @click="installEditor">
           <q-tooltip>{{ t('connection.console.editorDeploymentTooltip') }}</q-tooltip>
         </q-btn>
-        <q-btn v-close-popup flat color="primary" :label="t('common.close')" />
+        <q-btn outline v-close-popup  color="primary" :label="t('common.close')" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -374,7 +374,7 @@
       </q-card-section>
       <q-separator />
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn v-close-popup flat color="primary" :label="t('common.close')" />
+        <q-btn outline v-close-popup  color="primary" :label="t('common.close')" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -384,15 +384,15 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
-import { connectionParamLabel, connectionParamMessageKey, connectionParamOptions, sortedConnectionParamEntries } from '@/app/services/presentation'
+import { connectionParamLabel, connectionParamMessageKey, connectionParamOptions, sortedConnectionParamEntries } from '@/app/services/facade'
 import { ConnectionParamInput, ServiceFilterSelect, type ConnectionParamDef, type ServiceIcon } from '@/app/services'
 import { AgentSelect } from '@/app/agent'
-import { consoleService, type ConsoleConnectionStatus } from '@/app/console/services/consoleService'
+import { consoleService, type ConsoleConnectionStatus } from '@/app/console/facade'
 import { mailService, type MailApproverOption } from '@/app/connection/services/mailService'
 import connectionService, { type ConnectionActionResult } from '../services/connectionService'
 import MailFolderAccess from './MailFolderAccess.vue'
 import McpOAuthConnection from './McpOAuthConnection.vue'
-import { authorizedKeysDeploymentCommands } from '@/app/console/sshKeyDeployment'
+import { authorizedKeysDeploymentCommands } from '@/app/console/facade'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { CodeEditor } from '@/core/util'
 

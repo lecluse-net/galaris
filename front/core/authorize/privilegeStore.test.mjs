@@ -10,7 +10,7 @@ function setup() {
   const requests = []
   const { usePrivilegeStore } = loadTypescript(new URL('./stores/privilegeStore.ts', import.meta.url), {
     vue, pinia,
-    '@/core/user/stores/authStore': { useAuthStore: () => auth },
+    '@/core/user/facade': { useAuthStore: () => auth },
     '@/core/authorize/stores/authorizeStore': { useAuthorizeStore: () => authorize },
     '@/core/authorize/services/privilege.service': { privilegeService: {
       getMyPrivileges() { const pending = deferred(); requests.push(pending); return pending.promise },

@@ -4,10 +4,7 @@
   </q-btn>
   <q-dialog v-model="showResult">
     <q-card class="galaris-dialog-card connection-test-dialog">
-      <q-card-section class="galaris-dialog-title row items-center">
-        <div class="text-h6">{{ t('connection.test.title') }}</div><q-space />
-        <q-btn flat round dense icon="close" :aria-label="t('common.close')" v-close-popup />
-      </q-card-section>
+      <DialogHeader :title="t('connection.test.title')" :close-label="t('common.close')" />
       <q-card-section class="galaris-dialog-body" aria-live="polite">
         <p class="text-weight-medium">{{ t(`connection.test.${result?.status ?? 'error'}`) }}</p>
         <q-list v-if="result" separator>
@@ -25,6 +22,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import connectionService, { type ConnectionTestResult } from '../services/connectionService'

@@ -19,8 +19,8 @@ const {
   agentId,
   name = '',
   size = '36px',
-  color = 'blue-grey-2',
-  textColor = 'blue-grey-9',
+  color = 'solaire-gray',
+  textColor = 'solaire-gray',
 } = defineProps<{
   agentId: number
   name?: string

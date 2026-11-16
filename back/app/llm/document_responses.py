@@ -21,8 +21,10 @@ async def route_response_documents(body: dict[str, Any], llm: LLM, send: Send) -
     messages: list[dict[str, Any]] = []
     for raw in as_list(body.get("input")):
         item = as_dict(raw)
-        if not item.get("role"):
-            # Keep stateful tool/reasoning items opaque and in their exact position.
+        if not item.get("role") or item.get("role") == "assistant":
+            # Keep output messages and stateful tool/reasoning items opaque and in
+            # their exact position. Rewriting assistant output_text as input_text
+            # makes the next provider request invalid after document preparation.
             # They still count against input capacity but are never rewritten.
             messages.append({'role': 'assistant', 'content': [], '_galaris_response_item': deepcopy(item)})
             continue

@@ -72,7 +72,7 @@
             </div>
 
             <div class="q-mt-lg">
-              <q-btn
+              <q-btn color="primary"
                 type="submit"
                 class="login-button full-width"
                 :loading="loading"
@@ -86,7 +86,7 @@
           </q-form>
         </q-card-section>
         <q-card-actions v-if="registrationOpen" align="center">
-          <q-btn flat to="/user/register" :label="$t('auth.registerButton')" />
+          <q-btn outline color="primary"  to="/user/register" :label="$t('auth.registerButton')" />
         </q-card-actions>
 
       </q-card>
@@ -140,7 +140,7 @@ async function onSubmit(): Promise<void> {
       position: 'top'
     })
     
-    router.push('/')
+    await router.push('/')
   } catch (err: unknown) {
     error.value = typeof err === 'string' ? err : t('auth.loginError')
   } finally {

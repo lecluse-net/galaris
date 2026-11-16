@@ -7,7 +7,7 @@
         <div class="text-caption text-grey-7">{{ t('userEdit.dangerZone') }}</div>
       </div>
       <q-btn
-        outline
+
         color="negative"
         icon="delete"
         :label="t('userEdit.deleteAccount')"
@@ -19,27 +19,16 @@
 
   <q-dialog v-model="confirmationOpen">
     <q-card class="account-deletion-dialog galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <div class="text-h6">{{ t('userEdit.deleteAccountTitle') }}</div>
-        <q-space />
-        <q-btn
-          flat
-          round
-          dense
-          icon="close"
-          :aria-label="t('common.close')"
-          v-close-popup
-        />
-      </q-card-section>
+      <DialogHeader :title="t('userEdit.deleteAccountTitle')" :close-label="t('common.close')" />
 
       <q-card-section class="galaris-dialog-body">
         {{ t('userEdit.deleteAccountConfirm') }}
       </q-card-section>
 
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn flat color="primary" :label="t('common.cancel')" v-close-popup />
+        <q-btn outline  color="primary" :label="t('common.cancel')" v-close-popup />
         <q-btn
-          flat
+
           color="negative"
           icon="delete"
           :label="t('common.delete')"
@@ -52,6 +41,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util/facade'
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 

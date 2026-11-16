@@ -82,6 +82,7 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
     room = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
     assert room is not None
     agent_id, owner_id, outsider_id, room_id = agent.id, owner.id, outsider.id, room.id
+    profile_id = profile.id
     connection_id = room.connection_id
     initial_documents = await db.scalar(select(func.count()).select_from(Document))
     user_service.set_current_user(owner)
@@ -104,39 +105,43 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
 
     stages: list[str] = []
 
+    # Only the external provider boundary is replaced. The decision admission,
+    # durable inference, call accounting and Goal transition remain real.
+    from app.llm.facade import ProviderDecisionResponse
+    from app.llm.decision_contracts import ChoiceAnswer
+
+    class SyntheticDecisionProvider:
+        async def decide(self, connection, *, model, state, questions, timeout_seconds):
+            stages.append("judge")
+            assert set(questions) == {"action"}
+            assert "Authenticated referrer answer received: express" in state or revoke_question
+            return ProviderDecisionResponse(model=model, answers={"action": ChoiceAnswer(
+                choice="CONTINUE" if revoke_question else "STOP")})
+
+    decision_llm = LLM(llm_provider_id=provider.id, code=f"synthetic-decision-{uuid4().hex}",
+        llm_name="synthetic-decision", label="Synthetic decision boundary",
+        primary_capability="decision", service_capabilities=["decision"])
+    db.add(decision_llm)
+    await db.flush()
+    # Keep dispatcher routing on its text path; enable the specialist only when
+    # the completed cycle reaches monitoring below.
+    decision_llm_id = decision_llm.id
+    monkeypatch.setattr("app.llm.decision_service.decision_provider_for", lambda _connection: SyntheticDecisionProvider())
+
     async def respond(request: httpx.Request) -> httpx.Response:
         assert request.url.host == "example.test"
         body = json.loads(request.content)
         functions = [tool["function"] for tool in body.get("tools", [])]
         output = next((tool for tool in functions
-                       if {"action", "progress", "tracking_content"} <= tool.get("parameters", {}).get("properties", {}).keys()
-                       or {"route", "effort"} <= tool.get("parameters", {}).get("properties", {}).keys()), None)
+                       if {"route", "effort"} <= tool.get("parameters", {}).get("properties", {}).keys()), None)
         tool_name = None
         value = None
         text = None
-        if output is not None and "action" in output["parameters"]["properties"]:
-            stages.append("judge")
-            value = {"action": "STOP", "reason": "Authenticated answer received.",
-                     "progress": {"changed": True, "summary": "Express selected by the referrer.",
-                                  "evidence": ["Authenticated Chat answer: express"]},
-                     "tracking_content": "<p>Authenticated referrer answer: express.</p>"}
-            tool_name = output["name"]
-            if revoke_question:
-                value = {"action": "CONTINUE", "reason": "Question permission was revoked; decision remains unknown.",
-                         "progress": {"changed": False, "summary": "Blocked by denied capability.", "evidence": []},
-                         "tracking_content": "<p>Question permission denied; delivery decision remains unknown.</p>"}
-        elif output is not None:
+        if output is not None:
             stages.append("dispatch")
             value = {"route": "EXEC", "effort": "standard", "language": language,
                      "organization": "direct", "clarification_questions": []}
             tool_name = output["name"]
-        elif "Independently review this Goal" in str(body["messages"]):
-            if any(message.get("role") == "tool" for message in body["messages"]):
-                stages.append("review_done")
-                text = "Inspected the original Task and its authenticated referrer answer: express."
-            else:
-                stages.append("review_read")
-                tool_name, value = "file_read", {"uri": f"galaris://task/{task_id}"}
         elif "SYNTHETIC-ANSWER: express" in str(body["messages"]):
             confirmed = any(call["function"]["name"] == approval_tool
                             for message in body["messages"] for call in message.get("tool_calls", []))
@@ -229,11 +234,14 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
         assert await db.scalar(select(func.count()).select_from(Interaction).where(Interaction.agent_id == agent_id)) == 0
         assert await db.scalar(select(func.count()).select_from(Message).where(Message.connection_id == connection_id)) == 0
         assert await db.scalar(select(func.count()).select_from(Task).where(Task.goal_id == goal_id)) == 1
+        profile = await db.get(LlmProfile, profile_id)
+        profile.decision_llm_id = decision_llm_id
+        await db.commit()
         assert await runner.process_terminal_cycle()
         db.expire_all()
         persisted_goal = await db.get(Goal, goal_id)
         assert persisted_goal.status == GoalStatus.ACTIVE
-        assert "unknown" in (await goal_service.read_markdown(persisted_goal)).tracking
+        assert (await goal_service.read_markdown(persisted_goal)).tracking == ""
         cycle = await db.scalar(select(GoalCycle).where(GoalCycle.goal_id == goal_id))
         assert cycle.verdict == GoalVerdict.CONTINUE
         assert await db.scalar(select(func.count()).select_from(Document)) == initial_documents + 1
@@ -308,41 +316,31 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
     if approval_tool == "goal_update_suivi":
         assert "express" in (await goal_service.read_markdown(await db.get(Goal, goal_id))).tracking
     assert "express" in task.get_execution_result().result
-    assert await runner.process_terminal_cycle()
-    db.expire_all()
-    cycle = await db.scalar(select(GoalCycle).where(GoalCycle.goal_id == goal_id))
-    assert cycle.review_task_id is not None
-    review_task_id = cycle.review_task_id
+    profile = await db.get(LlmProfile, profile_id)
+    profile.decision_llm_id = decision_llm_id
     await db.commit()
-    for _ in range(6):
-        await asyncio.wait_for(scheduler.run_once(), timeout=40)
-        db.expire_all()
-        review = await db.get(Task, review_task_id)
-        if task_service.has_terminal_outcome(review):
-            break
-        await db.commit()
-    assert review.status == TaskStatus.SUCCESS, review.last_error
-    assert any(message.type == "tool" and message.tool_name == "file_read" and message.success
-               for message in review.get_execution_result().messages)
     assert await runner.process_terminal_cycle()
     db.expire_all()
     persisted_goal = await db.get(Goal, goal_id)
     assert persisted_goal.status == GoalStatus.COMPLETED
-    assert "express" in (await goal_service.read_markdown(persisted_goal)).tracking
+    if approval_tool == "goal_update_suivi":
+        assert "express" in (await goal_service.read_markdown(persisted_goal)).tracking
     cycle = await db.scalar(select(GoalCycle).where(GoalCycle.goal_id == goal_id))
     assert cycle.verdict == GoalVerdict.STOP
     assert not await runner.process_terminal_cycle()
     assert not await runner.start_due_cycle()
     assert await db.scalar(select(func.count()).select_from(Document)) == initial_documents + 1
-    assert await db.scalar(select(func.count()).select_from(Task).where(Task.goal_id == goal_id)) == 3
+    assert await db.scalar(select(func.count()).select_from(Task).where(Task.goal_id == goal_id)) == 2
     assert await db.scalar(select(func.count()).select_from(Message).where(
         Message.connection_id == connection_id, Message.direction == "outbound")) == (2 if late_answer else 1) + int(approval_tool == "messenger_send_message_to_user")
     assert approvals == int(approval_tool is not None)
     calls = list(await db.scalars(select(LLMCall).where(LLMCall.agent_id == agent_id)))
     assert {"agent.dispatch", "agent.exec", "goal.tracking"} <= {call.purpose for call in calls}
     assert calls and all(call.status == "completed" and call.error is None for call in calls)
+    monitoring_calls = [call for call in calls if call.purpose == "goal.tracking"]
+    assert len(monitoring_calls) == 1 and monitoring_calls[0].llm_id == decision_llm_id
     assert stages.count("ask") == stages.count("resume") == 1
     assert stages.count("read_tracking") == 1
-    assert stages.count("judge") == 2
-    assert stages.count("review_read") == stages.count("review_done") == 1
+    assert stages.count("judge") == 1
+    assert stages.count("review_read") == stages.count("review_done") == 0
     assert "dispatch" in stages

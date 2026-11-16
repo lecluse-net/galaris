@@ -2,7 +2,7 @@
   <div class="room-discussion">
     <q-banner v-if="error" class="q-ma-sm">
       {{ error }}
-      <template #action><q-btn flat :label="t('common.retry')" @click="loadMessages(failedDirection, true)" /></template>
+      <template #action><q-btn outline color="primary"  :label="t('common.retry')" @click="loadMessages(failedDirection, true)" /></template>
     </q-banner>
     <q-scroll-area ref="scrollArea" class="col" tabindex="0" @scroll="onScroll"
       @wheel.passive="onWheel" @touchstart.passive="beginNavigation" @pointerdown="beginNavigation"

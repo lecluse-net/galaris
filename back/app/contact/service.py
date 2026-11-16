@@ -56,7 +56,7 @@ async def _canonical_contact_index(
     for start in range(0, max(len(messenger_keys), len(user_ids)), 500):
         offset = 0
         while True:
-            records, _total = await list_messenger_contacts(
+            records, total = await list_messenger_contacts(
                 owner_agent_id=owner_agent_id,
                 limit=500,
                 offset=offset,
@@ -69,7 +69,7 @@ async def _canonical_contact_index(
                         by_messenger[(identity.namespace, identity.external_id)] = record
                     elif identity.galaris_user_id is not None:
                         by_galaris_user[identity.galaris_user_id] = record
-            if len(records) < 500:
+            if len(records) < 500 or offset + len(records) >= total:
                 break
             offset += len(records)
     return by_messenger, by_galaris_user

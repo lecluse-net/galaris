@@ -1,6 +1,6 @@
 import { computed, onScopeDispose, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
-import { useAuthStore } from '@/core/user'
+import { useAuthStore } from '@/core/user/facade'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { CONNECTIONS_CHANGED_EVENT } from '@/app/connection'
 import { fetchBrowserAvailability } from '../services/browserService'

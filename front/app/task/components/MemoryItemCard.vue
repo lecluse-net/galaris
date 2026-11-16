@@ -29,7 +29,7 @@
 
             <q-card-section v-if="displayedItem.nodeKind === 'document'" class="q-pa-sm">
                 <div class="row items-center q-gutter-sm">
-                    <q-btn flat dense no-caps color="primary" icon="visibility"
+                    <q-btn outline  dense no-caps color="primary" icon="visibility"
                         :label="t('task.memory.viewDocument')" :disable="!documentId || agentId == null"
                         @click="documentOpen = true" />
                     <q-space />

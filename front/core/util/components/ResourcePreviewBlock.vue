@@ -46,6 +46,7 @@ const { placement = 'below-page', icon = 'insert_drive_file', description = '' }
   disabled?: boolean
 }>()
 const plainDescription = computed(() => {
+  if (!description) return ''
   const content = DOMPurify.sanitize(marked.parse(description, { async: false }), {
     RETURN_DOM_FRAGMENT: true,
     ALLOWED_TAGS: ['p', 'div', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'ul', 'ol', 'li', 'table', 'tr', 'th', 'td', 'pre', 'code', 'a', 'strong', 'em', 'span'],

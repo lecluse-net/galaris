@@ -27,7 +27,7 @@
     </div>
     <div v-if="open && !treeRow" class="document-children" :aria-label="t('documents.library.subdocuments', { name: entry.item.title })" @click.stop>
       <q-banner v-if="errors[branchKey]" dense role="alert">{{ t('documents.loadError') }}
-        <q-btn flat dense :label="t('documents.retry')" @click="emit('retry', entry.item.id)" />
+        <q-btn outline color="primary"  dense :label="t('documents.retry')" @click="emit('retry', entry.item.id)" />
       </q-banner>
       <TreePageGroups :parent="branchKey" :total="totals[branchKey] ?? children[branchKey]?.length ?? 0" :ranges="ranges" :loading="loading" :errors="errors" :load="loadPage" :expanded="expanded" @toggle="(key, open) => emit('page', key, open)">
         <template #default="{ dataKey }">

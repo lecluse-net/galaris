@@ -111,7 +111,7 @@ async def test_text_usages_share_the_expected_profile_tiers() -> None:
     assert model_usages.DISPATCHER == model_usages.TEXT_LOW
     assert model_usages.CONVERSATION == model_usages.TEXT_LOW
     assert model_usages.EXECUTOR == model_usages.TEXT_STANDARD
-    assert model_usages.GOAL == model_usages.TEXT_STANDARD
+    assert model_usages.GOAL == model_usages.DECISION
     assert model_usages.EXECUTOR_HIGH == model_usages.TEXT_HIGH
     assert model_usages.PLANNER == model_usages.TEXT_HIGH
     assert model_usages.LAB == model_usages.TEXT_HIGH
@@ -135,8 +135,11 @@ async def test_decision_selection_is_optional_independent_and_capability_checked
     })
     agent = SimpleNamespace(profile_id=profile.id)
     assert (await llm_service.get_profile_llm(model_usages.DECISION, agent=agent)).id == decision.id
+    await profile_service.use_profile(profile.id)
+    assert (await goal_service.get_tracking_llm()).id == decision.id
     await profile_service.update_profile(profile.id, values={model_usages.DECISION: None})
     assert await llm_service.get_profile_llm(model_usages.DECISION, agent=agent) is None
+    assert await goal_service.get_tracking_llm() is None
     assert (await llm_service.get_profile_llm(model_usages.DISPATCHER, agent=agent)).id == text_model.id
     assert (await profile_service.get_profile(profile.id)).decision_fallback_policy == "disabled"
 
@@ -164,7 +167,7 @@ async def test_llm_subscription_flag_is_persisted_and_editable(db: AsyncSession)
 
 
 @pytest.mark.parametrize("primary_capability", ["chat", "vision"])
-async def test_multimodal_llm_keeps_capabilities_and_supports_goal_tracking(
+async def test_multimodal_llm_keeps_capabilities_without_enabling_goal_monitoring(
     db: AsyncSession, primary_capability: str,
 ) -> None:
     provider = _provider("Multimodal provider")
@@ -199,9 +202,8 @@ async def test_multimodal_llm_keeps_capabilities_and_supports_goal_tracking(
     await profile_service.use_profile(profile.id)
 
     tracking_llm = await goal_service.get_tracking_llm()
-    assert tracking_llm is not None
-    assert tracking_llm.id == llm_id
-    assert (await goal_service.list_page()).tracking_llm_configured is True
+    assert tracking_llm is None
+    assert (await goal_service.list_page()).tracking_llm_configured is False
 
 
 async def test_empty_table_seeds_a_default_profile(db: AsyncSession) -> None:

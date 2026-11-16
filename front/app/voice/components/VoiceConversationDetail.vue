@@ -172,7 +172,7 @@
 
     <q-card-section>
       <div v-if="detailLoading" class="row justify-center q-pa-lg">
-        <q-spinner color="deep-orange" size="32px" />
+        <q-spinner color="solaire-orange" size="32px" />
       </div>
       <q-banner v-else-if="detailError" rounded class="conversation-notice--error">
         {{ detailError }}
@@ -199,22 +199,18 @@
         </q-card-section>
         <q-card-section>{{ t('voice.history.detail.forceHangupConfirm') }}</q-card-section>
         <q-card-actions align="right">
-          <q-btn flat v-close-popup :disable="hangingUp" :label="t('common.cancel')" />
+          <q-btn outline color="primary"  v-close-popup :disable="hangingUp" :label="t('common.cancel')" />
           <q-btn color="negative" icon="call_end" :label="t('voice.history.detail.forceHangup')" :loading="hangingUp" @click="forceHangup" />
         </q-card-actions>
       </q-card>
     </q-dialog>
     <q-dialog v-model="deleteDialog">
       <q-card class="confirm-dialog galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ t('voice.history.detail.deleteTitle') }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('voice.history.detail.deleteTitle')" :close-label="t('common.close')" />
         <q-separator />
         <q-card-section class="galaris-dialog-body">{{ t('voice.history.detail.deleteConfirm') }}</q-card-section>
         <q-card-actions align="right" class="q-px-md q-pb-md galaris-dialog-actions">
-          <q-btn v-close-popup flat :label="t('common.cancel')" />
+          <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
           <q-btn color="negative" icon="delete" :label="t('common.delete')" :loading="deleting" @click="deleteTurn" />
         </q-card-actions>
       </q-card>
@@ -223,18 +219,19 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import AgentAvatar from '@/app/agent/components/AgentAvatar.vue'
+import { AgentAvatar } from '@/app/agent'
 import type { LLMCall } from '@/app/llm/types'
-import ExecutionResultComponent from '@/app/task/components/ExecutionResult.vue'
-import ConversationDatasetCaptureButton from '@/app/lab/components/ConversationDatasetCaptureButton.vue'
+import { ExecutionResultComponent } from '@/app/task'
+import { ConversationDatasetCaptureButton } from '@/app/lab'
 import { labSectionPrivileges } from '@/app/lab'
-import ConversationBubble from '@/core/util/components/ConversationBubble.vue'
-import Markdown from '@/core/util/components/Markdown.vue'
-import WaitingResponseIndicator from '@/core/util/components/WaitingResponseIndicator.vue'
+import { ConversationBubble } from '@/core/util'
+import { Markdown } from '@/core/util'
+import { WaitingResponseIndicator } from '@/core/util'
 import { CopyResourceReference, ResourceReferenceMenu, StatusBadge, type StatusBadgeTone } from '@/core/util'
 import { voiceConversationService } from '../services/voiceConversationService'
 import type {
@@ -243,7 +240,7 @@ import type {
   VoiceConversationTurnDetail,
   VoiceTurnStatus,
 } from '../types'
-import TopicAssignmentEditor from '@/app/topic/components/TopicAssignmentEditor.vue'
+import { TopicAssignmentEditor } from '@/app/topic'
 
 const props = defineProps<{
   conversation: VoiceConversationDetail
@@ -324,7 +321,7 @@ const turnVisual = computed(() => {
   const visuals: Record<VoiceTurnStatus, { color: string; icon: string }> = {
     RUNNING: { color: 'warning', icon: 'pending' },
     COMPLETED: { color: 'positive', icon: 'check_circle' },
-    INTERRUPTED: { color: 'orange', icon: 'mic_off' },
+    INTERRUPTED: { color: 'solaire-orange', icon: 'mic_off' },
     FAILED: { color: 'negative', icon: 'error' },
   }
   return visuals[props.turn.status]

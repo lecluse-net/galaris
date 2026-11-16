@@ -179,7 +179,6 @@ def agenda_event(occurrence: GoalOccurrence, cycle: GoalCycle | None = None, tas
         state=execution_state(occurrence, cycle, task), cycle_id=cycle.id if cycle else None,
         sequence=cycle.sequence if cycle else None,
         task_uri=f"galaris://task/{cycle.task_id}" if cycle and cycle.task_id else None,
-        review_task_uri=f"galaris://task/{cycle.review_task_id}" if cycle and cycle.review_task_id else None,
         started_at=cycle.created_at if cycle else None,
         finished_at=cycle.task_finished_at if cycle else None,
         verdict=cycle.verdict if cycle else None, reason=(cycle.reason or cycle.error) if cycle else None)
@@ -200,7 +199,7 @@ async def agenda_window(agent_id: int, start: datetime, end: datetime, *,
     # Agenda states need neither Task payloads/history nor judgement evidence.
     options = (load_only(Task.id, Task.status, Task.paused, raiseload=True),
         load_only(GoalCycle.id, GoalCycle.goal_id, GoalCycle.sequence, GoalCycle.status,
-            GoalCycle.task_id, GoalCycle.review_task_id, GoalCycle.created_at,
+            GoalCycle.task_id, GoalCycle.created_at,
             GoalCycle.task_finished_at, GoalCycle.verdict, GoalCycle.reason, GoalCycle.error, raiseload=True))
     query = (select(GoalOccurrence, GoalCycle, Task).join(Goal, Goal.id == GoalOccurrence.goal_id)
         .outerjoin(GoalCycle, GoalCycle.id == GoalOccurrence.cycle_id)

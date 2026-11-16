@@ -4,6 +4,7 @@ const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
 const harness = 'test-support/browser/AgentAvatarHarness.vue'
 
 test('management avatars reuse cached bytes across mounts while each consumer owns its image URL', async ({ page }) => {
+  await page.clock.install()
   let reads = 0
   await page.route(/\/api\/agents\/7\/avatar(?:\?.*)?$/, route => { reads++; return route.fulfill({ contentType: 'image/png', body: png }) })
   await mount(page, harness)
@@ -40,6 +41,13 @@ test('management avatars reuse cached bytes across mounts while each consumer ow
   await expect.poll(() => reads).toBe(2)
   await expect(images.first()).toHaveJSProperty('naturalWidth', 1)
   await expect(images.first()).not.toHaveAttribute('src', cached)
+  await page.clock.fastForward(120_000)
+  await page.evaluate(() => window.testApp.setProps({ showManagement: false }))
+  await expect(images).toHaveCount(0)
+  await page.evaluate(() => window.testApp.setProps({ showManagement: true }))
+  await expect(images).toHaveCount(2)
+  await expect(images.first()).toHaveJSProperty('naturalWidth', 1)
+  expect(reads).toBe(2)
 })
 
 test('successful avatar replacement invalidates both authorized endpoints and logout clears mounted images', async ({ page }) => {

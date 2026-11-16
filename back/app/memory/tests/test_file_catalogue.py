@@ -117,7 +117,8 @@ async def maintain_file_duplicates(db):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("root_title", [".", "/", "Personal root"])
-async def test_graph_checks_live_files_with_one_closed_console_per_page(console_catalogue, monkeypatch, root_title):
+@pytest.mark.parametrize("view", ["graph", "list"])
+async def test_memory_views_check_live_files_with_one_closed_console_per_page(console_catalogue, monkeypatch, root_title, view):
     from app.console import ConsoleRunResource
     from app.console.contracts import SshConnectionConfig
     import app.console
@@ -157,12 +158,17 @@ async def test_graph_checks_live_files_with_one_closed_console_per_page(console_
     monkeypatch.setattr(ConsoleRunResource, "close", close)
     request = MemoryGraphRootsRequest(agent_id=ctx.agent_id, limit=100)
     for page_index in range(2):
-        page = await service.list_graph_roots(request)
-        root_node = next(node for node in page.nodes if node.id == root_item.id)
+        if view == "graph":
+            page = await service.list_graph_roots(request)
+            nodes = page.nodes
+            assert next(node for node in nodes if node.id == root_item.id).resource_uri == root_resource.uri
+        else:
+            page = await service.search_items(MemorySearchRequest(agent_id=ctx.agent_id, limit=100))
+            nodes = [hit.item for hit in page.hits]
+        root_node = next(node for node in nodes if node.id == root_item.id)
         assert root_node.title == expected_title
-        assert root_node.resource_uri == root_resource.uri
         assert root_item.title == expected_title
-        titles = {node.title for node in page.nodes}
+        titles = {node.title for node in nodes}
         assert "file-3.txt" not in titles
         assert all(f"file-{index}.txt" in titles for index in range(12) if index != 3)
         assert len(opened) == page_index + 1
@@ -285,7 +291,8 @@ async def test_graph_hierarchy_defers_known_directory_descendants_and_pages_read
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("interruption", ["cancel", "revoke", "rebind"])
-async def test_graph_closes_console_and_hides_changed_bindings(console_catalogue, db, monkeypatch, interruption):
+@pytest.mark.parametrize("view", ["graph", "list"])
+async def test_memory_views_close_console_and_hide_changed_bindings(console_catalogue, db, monkeypatch, interruption, view):
     import asyncio
     from app.console import ConsoleRunResource
     ctx, _transport, connection, _peer = console_catalogue
@@ -308,11 +315,15 @@ async def test_graph_closes_console_and_hides_changed_bindings(console_catalogue
     monkeypatch.setattr(ConsoleRunResource, "close", close)
     monkeypatch.setattr(resource_service, "resource_info", interrupt)
     request = MemoryGraphRootsRequest(agent_id=ctx.agent_id)
+    async def read():
+        if view == "graph":
+            return (await service.list_graph_roots(request)).nodes
+        return (await service.search_items(MemorySearchRequest(agent_id=ctx.agent_id))).hits
     if interruption == "cancel":
         with pytest.raises(asyncio.CancelledError):
-            await service.list_graph_roots(request)
+            await read()
     else:
-        assert not (await service.list_graph_roots(request)).nodes
+        assert not await read()
     assert len(closed) == 1
 
 

@@ -289,42 +289,29 @@ _RUBRICS: dict[EvaluationMechanism, MechanismRubric] = {
     ),
     "goal_tracking": MechanismRubric(
         mechanism="goal_tracking",
-        version="goal_tracking-score:v4",
+        version="goal_tracking-score:v5",
         dimensions=(
             _dimension(
                 "objective_alignment",
                 "Objective alignment",
-                20,
-                "Keeps durable tracking and the continuation decision aligned with the long-running goal.",
+                30,
+                "Keeps the closed CONTINUE/STOP decision aligned with the original long-running goal.",
             ),
             _dimension(
                 "evidence_grounded_progress",
                 "Evidence-grounded progress",
-                25,
-                "Updates progress from verified effects on completion criteria, not the number of "
+                35,
+                "Decides from verified effects on completion criteria, not the number of "
                 "reports, messages, created resources or successful Tasks. Does not convert claims "
                 "into verified accomplishments.",
             ),
             _dimension(
                 "continuation_decision",
                 "Continuation decision",
-                20,
-                "Chooses CONTINUE, REVIEW, PAUSE or STOP consistently with remaining work, evidence, "
+                35,
+                "Chooses only CONTINUE or STOP consistently with remaining work, evidence, "
                 "blockers and the original completion criteria. Unknown methods call for discovery; "
                 "improvement does not require external news. Blocking is never achievement.",
-            ),
-            _dimension(
-                "tracking_continuity",
-                "Tracking continuity",
-                20,
-                "Maintains coherent durable HTML tracking that preserves useful prior context "
-                "while integrating the new cycle without accumulating redundant activity logs.",
-            ),
-            _dimension(
-                "next_step_utility",
-                "Next-step utility",
-                15,
-                "Makes the remaining work, uncertainty and next useful action clear enough to guide another cycle.",
             ),
         ),
     ),

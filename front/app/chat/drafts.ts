@@ -10,15 +10,18 @@ export interface DraftContent {
   reply_to_message_id: string | null
 }
 export interface DraftSnapshot { revision: number; content: DraftContent | null }
-export interface DraftSend { revision: number; clientMessageId: string; replyToMessageId?: string | null }
+export interface DraftSend { revision: number; clientMessageId: string; replyToMessageId?: string | null; fileKeys?: string[]; fallbackFiles?: File[] }
 export interface LocalDraft extends DraftSnapshot {
   dirty: boolean
   mutationKey: string
   pending?: { revision: number; mutationKey: string; content: DraftContent | null }
   removedKeys?: string[]
+  recoverySession?: string
+  baseClientMessageId?: string
+  clearedMessageIds?: string[]
 }
 export const DRAFT_SYNC_MS = 2_000
-export const draftKey = (user: number, room: string): string => `galaris:chat-draft:v1:${user}:${room}`
+export const draftKey = (user: number, room: string, session = ''): string => `galaris:chat-draft:v1:${user}:${room}${session ? `:session:${session}` : ''}`
 export function readLocalDraft(key: string): LocalDraft | null {
   const raw = localStorage.getItem(key)
   return raw ? JSON.parse(raw) as LocalDraft : null

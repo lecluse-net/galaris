@@ -77,6 +77,7 @@ for (const kind of ['document', 'process']) test(`${kind} sharing survives reope
     await page.goto(path)
     const sharing = page.getByRole('combobox', { name: /^(Partage|Sharing)$/, exact: true })
     await expect(sharing).toContainText(/Privé|Private/)
+    await expect(sharing).toHaveAttribute('aria-disabled', 'false')
     await sharing.press('Enter')
     await page.getByRole('textbox', { name: /Rechercher un groupe, une personne ou un agent|Search for a group, person or agent/ }).fill(recipient.display_name)
     const saved = page.waitForResponse(response => new URL(response.url()).pathname === sharingApi && response.request().method() === 'PUT')

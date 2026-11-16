@@ -37,8 +37,8 @@
             <h2 id="home-metrics-title">{{ t('index.actionCenter.metrics.title') }}</h2>
             <p>{{ t('index.actionCenter.metrics.description') }}</p>
           </div>
-          <q-btn
-            flat
+          <q-btn outline
+
             no-caps
             color="primary"
             icon-right="arrow_forward"
@@ -105,7 +105,7 @@
             <q-icon name="cloud_off" />
             <strong>{{ t('index.actionCenter.attention.errorTitle') }}</strong>
             <span>{{ t('index.actionCenter.attention.errorText') }}</span>
-            <q-btn flat no-caps color="negative" icon="refresh" :label="t('index.actionCenter.retry')" @click="loadConversations" />
+            <q-btn  no-caps color="negative" icon="refresh" :label="t('index.actionCenter.retry')" @click="loadConversations" />
           </q-card-section>
 
           <q-list v-else-if="unreadConversations.length" separator class="unread-list">
@@ -148,7 +148,7 @@
 
           <q-separator v-if="canReadChat" />
           <q-card-actions v-if="canReadChat" align="right">
-            <q-btn flat no-caps color="primary" icon-right="arrow_forward" :label="t('index.actionCenter.attention.openChat')" to="/chat" />
+            <q-btn outline  no-caps color="primary" icon-right="arrow_forward" :label="t('index.actionCenter.attention.openChat')" to="/chat" />
           </q-card-actions>
         </q-card>
 
@@ -292,7 +292,7 @@
 
           <q-separator />
           <q-card-actions align="right">
-            <q-btn flat no-caps color="negative" icon-right="arrow_forward" :label="t('index.actionCenter.incidents.openLog')" to="/incident" />
+            <q-btn  no-caps color="negative" icon-right="arrow_forward" :label="t('index.actionCenter.incidents.openLog')" to="/incident" />
           </q-card-actions>
         </q-card>
       </div>

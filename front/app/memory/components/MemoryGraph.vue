@@ -76,18 +76,18 @@
 
     <q-banner
       v-else-if="error"
-      class="memory-graph__banner memory-graph__banner--negative bg-red-1 text-negative"
+      class="memory-graph__banner memory-graph__banner--negative bg-solaire-red-light text-negative"
     >
       <template #avatar><q-icon name="error_outline" /></template>
       {{ t('memory.graph.loadError') }}
       <template #action>
-        <q-btn flat color="negative" :label="t('memory.retry')" @click="reload" />
+        <q-btn  color="negative" :label="t('memory.retry')" @click="reload" />
       </template>
     </q-banner>
 
     <q-banner
       v-if="edgesTruncated"
-      class="memory-graph__banner memory-graph__banner--warning bg-orange-1 text-orange-10"
+      class="memory-graph__banner memory-graph__banner--warning bg-solaire-orange-light text-solaire-orange"
     >
       <template #avatar><q-icon name="filter_alt" /></template>
       {{ t('memory.graph.edgesTruncated') }}
@@ -96,14 +96,14 @@
     <q-banner v-if="threeUnavailable" class="memory-graph__banner memory-graph__banner--warning" role="status">
       {{ t('memory.graph.webglUnavailable') }}
       <template #action>
-        <q-btn flat :label="t('memory.retry')" @click="retryRenderer" />
+        <q-btn outline color="primary"  :label="t('memory.retry')" @click="retryRenderer" />
       </template>
     </q-banner>
 
     <q-banner v-if="viewStateError" class="memory-graph__banner memory-graph__banner--warning">
       {{ t('memory.graph.stateError') }}
       <template #action>
-        <q-btn flat :label="t('memory.retry')" @click="retryViewState" />
+        <q-btn outline color="primary"  :label="t('memory.retry')" @click="retryViewState" />
       </template>
     </q-banner>
 
@@ -241,7 +241,7 @@
           <q-btn outline round dense color="primary" icon="fit_screen" :aria-label="t('memory.graph.fit')" @click="fitGraph">
             <q-tooltip>{{ t('memory.graph.fit') }}</q-tooltip>
           </q-btn>
-          <q-btn
+          <q-btn flat
             round
             dense
             color="primary"

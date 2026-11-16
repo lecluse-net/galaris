@@ -20,7 +20,7 @@
         </q-btn>
       </div>
       <q-separator />
-      <div class="q-pa-sm"><q-btn v-close-popup outline no-caps icon="format_clear" :label="t('richEditor.tableStyles.reset')" class="full-width" @click="emit('select')" /></div>
+      <div class="q-pa-sm"><q-btn color="primary" v-close-popup outline no-caps icon="format_clear" :label="t('richEditor.tableStyles.reset')" class="full-width" @click="emit('select')" /></div>
     </component>
   </component>
 </template>

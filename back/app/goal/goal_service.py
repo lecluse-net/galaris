@@ -469,7 +469,7 @@ async def list_cycles(
 
 
 async def get_tracking_llm(agent_id: int | None = None) -> "LLM | None":
-    """Resolve the profile's chat-capable Goal model without implicit fallback."""
+    """Resolve the optional native decision model; never substitute a text model."""
 
     from app.llm import llm_service
     try:
@@ -480,9 +480,7 @@ async def get_tracking_llm(agent_id: int | None = None) -> "LLM | None":
         return None
     if (
         llm is None
-        or "chat" not in {llm.primary_capability, *llm.service_capabilities}
-        or not llm.input_text
-        or not llm.output_text
+        or "decision" not in {llm.primary_capability, *llm.service_capabilities}
     ):
         return None
     return llm
@@ -1183,6 +1181,27 @@ async def _reset_failed_judgement(goal: Goal) -> bool:
     return True
 
 
+async def recover_obsolete_supervision_pause() -> bool:
+    """Retire one former automatic pause while preserving every human/wait pause."""
+    goal = await get_db().scalar(select(Goal).where(
+        Goal.status == GoalStatus.PAUSED,
+        Goal.pause_reason.in_(("BLOCKED", "REVIEW_UNAVAILABLE")),
+        Goal.deleted_at.is_(None),
+    ).order_by(Goal.updated_at).with_for_update(skip_locked=True).limit(1)
+        .execution_options(populate_existing=True))
+    if goal is None:
+        return False
+    goal.status = GoalStatus.ACTIVE
+    goal.pause_reason = None
+    previous = await _last_cycle(goal.id)
+    if goal.cycle_delay_seconds is not None:
+        finished = previous.task_finished_at if previous is not None else None
+        goal.next_cycle_at = (finished or datetime.now(timezone.utc)) + timedelta(
+            seconds=max(0, goal.cycle_delay_seconds))
+    await _save(goal)
+    return True
+
+
 async def resume(goal_id: UUID, command: GoalCommand) -> GoalRead | None:
     goal = await get_by_id(goal_id, for_update=True)
     if goal is None:
@@ -1232,10 +1251,6 @@ async def complete(goal_id: UUID, command: GoalCommand) -> GoalRead | None:
         return None
     _assert_revision(goal, command)
     last_cycle = await _last_cycle(goal.id)
-    if last_cycle is not None:
-        from .reviews import cancel_review
-
-        await cancel_review(last_cycle)
     if (
         last_cycle is not None
         and last_cycle.status == GoalCycleStatus.ERROR

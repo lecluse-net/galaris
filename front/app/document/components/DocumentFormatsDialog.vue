@@ -1,10 +1,7 @@
 <template>
   <q-dialog v-model="open">
     <q-card class="galaris-dialog-card" style="width: 960px; max-width: 96vw">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <div class="text-h6">{{ t('documents.formatCatalogue.title') }}</div><q-space />
-        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-      </q-card-section>
+      <DialogHeader :title="t('documents.formatCatalogue.title')" :close-label="t('common.close')" />
       <q-card-section>
         <p>{{ t('documents.formatCatalogue.description') }}</p>
         <div v-if="loading" role="status"><q-spinner color="primary" /> {{ t('documents.loading') }}</div>
@@ -29,6 +26,7 @@
   </q-dialog>
 </template>
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { documentFormatCatalogue, findDocumentFormat } from '../documentFormats'

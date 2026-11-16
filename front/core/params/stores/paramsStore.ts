@@ -1,3 +1,5 @@
+import { toRaw } from 'vue'
+import { withSessionScope, storeRequestFailure } from '@/core/util/facade'
 import { defineStore } from 'pinia'
 import { isAxiosError } from 'axios'
 import { sessionGeneration } from '@/core/api'
@@ -16,7 +18,7 @@ interface ParamsState {
 
 const reads = new WeakMap<object, symbol>()
 
-export const useParamsStore = defineStore('params', {
+export const useParamsStore = withSessionScope(defineStore('params', {
     state: (): ParamsState => ({
         params: [],
         loading: false,
@@ -52,10 +54,11 @@ export const useParamsStore = defineStore('params', {
          * Load all parameters from the backend.
          */
         async fetchParams(force = false): Promise<void> {
+            const reportFailure = storeRequestFailure(this, 'fetchParams')
             const request = Symbol()
-            reads.set(this, request)
+            reads.set(toRaw(this), request)
             const generation = sessionGeneration()
-            const current = () => reads.get(this) === request && generation === sessionGeneration()
+            const current = () => reads.get(toRaw(this)) === request && generation === sessionGeneration()
             this.loading = true
             this.error = null
             try {
@@ -66,6 +69,7 @@ export const useParamsStore = defineStore('params', {
                 if (!current() || (error instanceof DOMException && error.name === 'AbortError')) return
                 if (isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0)) this.params = []
                 this.error = error
+                reportFailure(error)
                 console.error('Error fetching params:', error)
             } finally {
                 if (current()) this.loading = false
@@ -109,4 +113,4 @@ export const useParamsStore = defineStore('params', {
             }
         }
     }
-})
+}), { flags: {"fetchParams":"loading","updateParam":"loading"} })

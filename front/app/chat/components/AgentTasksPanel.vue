@@ -76,7 +76,7 @@
                       round
                       dense
                       size="sm"
-                      color="orange-8"
+                      color="solaire-orange"
                       icon="pause"
                       class="agent-task-action"
                       :loading="taskAction(row.task.id) === 'pause'"
@@ -137,12 +137,12 @@
                   <q-icon
                     v-if="isTaskExpanded(row.task) && pauseBadge(row.task)"
                     :name="pauseBadge(row.task)!.icon"
-                    :color="pauseBadge(row.task)!.waiting ? 'blue-7' : 'orange-8'"
+                    :color="pauseBadge(row.task)!.waiting ? 'solaire-blue' : 'solaire-orange'"
                     size="17px"
                     class="agent-task-pause-icon"
                   ><q-tooltip>{{ t(pauseBadge(row.task)!.labelKey) }}</q-tooltip></q-icon>
-                  <q-btn
-                    flat
+                  <q-btn outline
+
                     dense
                     no-caps
                     color="primary"
@@ -837,9 +837,9 @@ watch(
     if (roomId !== previous?.[0] || viewerAgentId !== previous?.[2] || canRead !== previous?.[3]) {
       tasks.value = []
       total.value = 0
+      detailDialogOpen.value = false
+      selectedTaskId.value = null
     }
-    detailDialogOpen.value = false
-    selectedTaskId.value = null
     taskExpansionOverrides.value = {}
     createdTaskIdsAwaitingRefresh.clear()
     showScrollToBottom.value = false

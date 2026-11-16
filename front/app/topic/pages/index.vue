@@ -37,7 +37,7 @@
       {{ t('topic.subtitle') }}
     </div>
 
-    <q-banner v-if="error" rounded class="bg-red-1 text-negative q-mb-md">
+    <q-banner v-if="error" rounded class="bg-solaire-red-light text-negative q-mb-md">
       <template #avatar><q-icon name="error_outline" /></template>
       {{ error }}
     </q-banner>
@@ -105,8 +105,8 @@
                 v-for="keyword in props.row.keywords"
                 :key="keyword"
                 dense
-                color="blue-grey-1"
-                text-color="blue-grey-9"
+                color="solaire-gray-light"
+                text-color="solaire-gray"
               >
                 {{ keyword }}
               </q-chip>
@@ -129,7 +129,7 @@
                 <span>{{ t('topic.publicMemory') }}</span>
               </div>
               <div class="topic-activity-row">
-                <q-icon name="payments" size="xs" color="amber-9" />
+                <q-icon name="payments" size="xs" color="solaire-yellow" />
                 <span class="topic-cost">{{ formatCurrency(props.row.inference_cost) }}</span>
                 <q-tooltip>
                   {{ t('topic.inferenceCostHelp', { count: props.row.llm_calls }) }}
@@ -189,8 +189,8 @@
                       v-for="keyword in props.row.keywords"
                       :key="keyword"
                       dense
-                      color="blue-grey-1"
-                      text-color="blue-grey-9"
+                      color="solaire-gray-light"
+                      text-color="solaire-gray"
                     >
                       {{ keyword }}
                     </q-chip>
@@ -212,7 +212,7 @@
                         <span>{{ t('topic.publicMemory') }}</span>
                       </div>
                       <div class="topic-activity-row">
-                        <q-icon name="payments" size="xs" color="amber-9" />
+                        <q-icon name="payments" size="xs" color="solaire-yellow" />
                         <span class="topic-cost">{{ formatCurrency(props.row.inference_cost) }}</span>
                         <q-tooltip>{{ t('topic.inferenceCostHelp', { count: props.row.llm_calls }) }}</q-tooltip>
                       </div>
@@ -245,57 +245,13 @@
       </q-table>
     </q-card>
 
-    <q-dialog v-model="formDialog">
-      <q-card class="topic-dialog-card galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ editingTopic ? t('topic.editTitle') : t('topic.createTitle') }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('topic.cancel')" />
-        </q-card-section>
-        <q-form class="galaris-dialog-form" @submit.prevent="saveTopic">
-          <q-card-section class="q-gutter-md galaris-dialog-body">
-            <q-input v-model="topicForm.title" outlined autofocus :label="t('topic.title')" :rules="[requiredRule]" />
-            <q-input v-model="topicForm.description" outlined type="textarea" autogrow :label="t('topic.description')" />
-            <q-select
-              v-model="topicForm.keywords"
-              outlined
-              multiple
-              use-input
-              use-chips
-              input-debounce="0"
-              :options="filteredKeywordOptions"
-              :max-values="20"
-              :loading="loadingKeywordOptions"
-              :label="t('topic.keywords')"
-              :hint="t('topic.keywordsHelp')"
-              @filter="filterKeywordOptions"
-              @new-value="addKeyword"
-            >
-              <template #no-option>
-                <q-item>
-                  <q-item-section class="text-grey-7">{{ t('topic.keywordsEmpty') }}</q-item-section>
-                </q-item>
-              </template>
-            </q-select>
-          </q-card-section>
-          <q-separator />
-          <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-            <q-btn v-close-popup flat :label="t('topic.cancel')" />
-            <q-btn color="primary" type="submit" icon="save" :label="t('topic.save')" :loading="saving" />
-          </q-card-actions>
-        </q-form>
-      </q-card>
-    </q-dialog>
+    <TopicFormDialog v-model="formDialog" :topic="editingTopic" @saved="load()" />
 
     <q-dialog v-model="mergeDialog">
       <q-card class="topic-dialog-card galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ t('topic.mergeTitle', { title: activeTopic?.title || '' }) }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('topic.cancel')" />
-        </q-card-section>
+        <DialogHeader :title="t('topic.mergeTitle', { title: activeTopic?.title || '' })" :close-label="t('topic.cancel')" />
         <q-card-section class="q-gutter-md galaris-dialog-body">
-          <q-banner rounded class="bg-blue-1 text-primary">{{ t('topic.mergeHelp') }}</q-banner>
+          <q-banner rounded class="bg-solaire-blue-light text-primary">{{ t('topic.mergeHelp') }}</q-banner>
           <TopicSelect
             v-if="mergeDialog"
             v-model="mergeTargetId"
@@ -308,7 +264,7 @@
         </q-card-section>
         <q-separator />
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn v-close-popup flat :label="t('topic.cancel')" />
+          <q-btn outline color="primary" v-close-popup  :label="t('topic.cancel')" />
           <q-btn color="primary" icon="merge" :label="t('topic.confirm')" :disable="!mergeTargetId" :loading="saving" @click="confirmMerge" />
         </q-card-actions>
       </q-card>
@@ -316,13 +272,9 @@
 
     <q-dialog v-model="splitDialog">
       <q-card class="topic-split-card galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ t('topic.splitTitle', { title: activeTopic?.title || '' }) }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('topic.cancel')" />
-        </q-card-section>
+        <DialogHeader :title="t('topic.splitTitle', { title: activeTopic?.title || '' })" :close-label="t('topic.cancel')" />
         <q-card-section class="galaris-dialog-body">
-          <q-banner rounded class="bg-blue-1 text-primary">{{ t('topic.splitHelp') }}</q-banner>
+          <q-banner rounded class="bg-solaire-blue-light text-primary">{{ t('topic.splitHelp') }}</q-banner>
           <q-card flat bordered class="topic-split-editor q-mt-md">
             <q-card-section>
               <div class="row q-col-gutter-md">
@@ -380,7 +332,7 @@
         </q-card-section>
         <q-separator />
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn v-close-popup flat :label="t('topic.cancel')" />
+          <q-btn outline color="primary" v-close-popup  :label="t('topic.cancel')" />
           <q-btn color="primary" icon="call_split" :label="t('topic.confirm')" :disable="!canSubmitSplit" :loading="saving" @click="confirmSplit" />
         </q-card-actions>
       </q-card>
@@ -388,15 +340,11 @@
 
     <q-dialog v-model="deleteDialog">
       <q-card class="topic-dialog-card galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ t('topic.deleteTitle', { title: activeTopic?.title || '' }) }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('topic.cancel')" />
-        </q-card-section>
+        <DialogHeader :title="t('topic.deleteTitle', { title: activeTopic?.title || '' })" :close-label="t('topic.cancel')" />
         <q-card-section class="galaris-dialog-body">{{ t('topic.deleteHelp') }}</q-card-section>
         <q-separator />
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn v-close-popup flat :label="t('topic.cancel')" />
+          <q-btn outline color="primary" v-close-popup  :label="t('topic.cancel')" />
           <q-btn color="negative" icon="delete" :label="t('topic.delete')" :loading="saving" @click="confirmDelete" />
         </q-card-actions>
       </q-card>
@@ -405,6 +353,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { ActionContextMenu, useResourceCopy, type ContextAction } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -412,12 +361,14 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useQuasar, type QTableColumn, type QTableProps } from 'quasar'
 import { privileges } from '@/core/authorize'
-import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
+import { usePrivilegeStore } from '@/core/authorize/facade'
 import { PageHeader } from '@/core/util'
 import { topicService } from '../services/topicService'
+import TopicFormDialog from '../components/TopicFormDialog.vue'
+import { normalizeTopicInput } from '../topicInput'
 import TopicParticipants from '../components/TopicParticipants.vue'
 import TopicSelect from '../components/TopicSelect.vue'
-import type { Topic, TopicInput, TopicLinkedMemory, TopicMonthlyUsage } from '../types'
+import type { Topic, TopicLinkedMemory, TopicMonthlyUsage } from '../types'
 
 type TableRequest = Parameters<NonNullable<QTableProps['onRequest']>>[0]
 
@@ -462,7 +413,6 @@ type NewKeywordDone = (
 ) => void
 
 const emptyForm = (): TopicFormState => ({ title: '', description: '', keywords: [] })
-const topicForm = reactive<TopicFormState>(emptyForm())
 const splitForm = reactive<TopicFormState>(emptyForm())
 const keywordOptions = ref<string[]>([])
 const filteredKeywordOptions = ref<string[]>([])
@@ -586,16 +536,6 @@ function assignForm(target: TopicFormState, topic: Topic | null = null): void {
   } : emptyForm())
 }
 
-function payload(form: TopicFormState): TopicInput {
-  return {
-    title: form.title.trim(),
-    description: form.description.trim(),
-    keywords: [...new Set(
-      form.keywords.map(value => value.trim().slice(0, 80)).filter(Boolean),
-    )].slice(0, 20),
-  }
-}
-
 async function loadKeywordOptions(): Promise<void> {
   loadingKeywordOptions.value = true
   try {
@@ -649,36 +589,12 @@ function topicActions(topic: Topic): ContextAction[] {
 }
 function openCreate(): void {
   editingTopic.value = null
-  assignForm(topicForm)
   formDialog.value = true
-  void loadKeywordOptions()
 }
 
 function openEdit(topic: Topic): void {
   editingTopic.value = topic
-  assignForm(topicForm, topic)
   formDialog.value = true
-  void loadKeywordOptions()
-}
-
-async function saveTopic(): Promise<void> {
-  if (!topicForm.title.trim()) return
-  saving.value = true
-  try {
-    if (editingTopic.value) {
-      await topicService.update(editingTopic.value, payload(topicForm))
-      $q.notify({ type: 'positive', message: t('topic.updateSuccess') })
-    } else {
-      await topicService.create(payload(topicForm))
-      $q.notify({ type: 'positive', message: t('topic.createSuccess') })
-    }
-    formDialog.value = false
-    await load()
-  } catch {
-    notifyError()
-  } finally {
-    saving.value = false
-  }
 }
 
 function openMerge(topic: Topic): void {
@@ -725,7 +641,7 @@ async function confirmSplit(): Promise<void> {
   saving.value = true
   try {
     const result = await topicService.split(activeTopic.value.id, {
-      ...payload(splitForm),
+      ...normalizeTopicInput(splitForm),
       memory_item_ids: selectedMemories.value.map(memory => memory.id),
     })
     $q.notify({ type: 'positive', message: t('topic.splitSuccess', { links: result.moved_memory_links }) })

@@ -51,13 +51,13 @@ for (const width of [1440, 390]) test(`folder bulk actions preserve distinct set
   const list = page.getByRole('region', { name: folder.name, exact: true })
   await expect(list.getByRole('link', { name: docs[0].title, exact: true })).toBeVisible()
   await expect(list.getByRole('link', { name: docs[1].title, exact: true })).toHaveCount(0)
-  await list.getByRole('checkbox', { name: 'Inclure les sous-dossiers et sous-documents', exact: true }).check()
+  await list.getByRole('switch', { name: 'Inclure les sous-dossiers et sous-documents', exact: true }).check()
   await expect(list.getByRole('link', { name: docs[1].title, exact: true })).toBeVisible()
   async function choose(field, option) {
     await selectOption(page, page.getByRole('dialog').getByRole('combobox', { name: field, exact: true }), option)
   }
   async function action(name) {
-    await list.getByRole('checkbox', { name: `Sélectionner ${docs[0].title}`, exact: true }).check()
+    await list.getByRole('link', { name: docs[0].title, exact: true }).click({ modifiers: ['Control'] })
     await list.getByRole('link', { name: docs[1].title, exact: true }).click({ modifiers: ['Shift'] })
     await expect(list.getByText('2 sélectionné(s)', { exact: true })).toBeVisible()
     await list.getByRole('button', { name: 'Actions sur la sélection', exact: true }).click()
@@ -115,7 +115,7 @@ for (const width of [1440, 390]) test(`folder bulk actions preserve distinct set
     await tree.getByText(docs[1].title, { exact: true }).dragTo(folderTarget)
   } else {
     // Drag from the paginated list through the assembled page into the navigation tree.
-    await list.getByRole('checkbox', { name: 'Sélectionner cette page', exact: true }).check()
+    await list.getByRole('button', { name: 'Sélectionner cette page', exact: true }).click()
     await list.getByRole('link', { name: docs[1].title, exact: true }).dragTo(folderTarget)
   }
   await expect.poll(async () => {
@@ -129,7 +129,7 @@ for (const width of [1440, 390]) test(`folder bulk actions preserve distinct set
   const unclassified = page.getByRole('region', { name: 'Documents non classés', exact: true })
   await expect(unclassified.getByRole('link', { name: docs[2].title, exact: true })).toBeVisible()
   await expect(unclassified.getByRole('link', { name: docs[0].title, exact: true })).toHaveCount(0)
-  await unclassified.getByRole('checkbox', { name: `Sélectionner ${docs[2].title}`, exact: true }).check()
+  await unclassified.getByRole('link', { name: docs[2].title, exact: true }).click({ modifiers: ['Control'] })
   await unclassified.getByRole('button', { name: 'Actions sur la sélection', exact: true }).click()
   await choose('Opération', 'Supprimer les documents')
   await page.getByRole('dialog').getByRole('button', { name: 'Supprimer les documents', exact: true }).click()

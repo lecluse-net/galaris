@@ -9,7 +9,9 @@
 </template>
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { DocumentFileIcon, FolderIcon, solaireColors, type SolaireColor } from '@/core/util'
+import DocumentFileIcon from './DocumentFileIcon.vue'
+import FolderIcon from './FolderIcon.vue'
+import { solaireColors, type SolaireColor } from '../solaire'
 import { loadTagFont, normalizedTagIcon, unicodeIcon } from '../tagIcon'
 const props = withDefaults(defineProps<{ icon?: string | null; size?: string; expanded?: boolean; defaultIcon?: string }>(), { size: '24px', expanded: false })
 const value = computed(() => normalizedTagIcon(props.icon))

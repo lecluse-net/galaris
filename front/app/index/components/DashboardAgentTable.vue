@@ -82,7 +82,7 @@
 import { computed, onBeforeUnmount, reactive, watch } from 'vue'
 import { type QTableColumn } from 'quasar'
 import { useI18n } from 'vue-i18n'
-import { agentService } from '@/app/agent/services/agentService'
+import { agentService } from '@/app/agent/facade'
 import type { AgentUsage } from '../services/dashboardService'
 
 const { agents } = defineProps<{ agents: AgentUsage[] }>()

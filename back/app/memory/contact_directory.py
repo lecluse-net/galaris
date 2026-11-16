@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Collection
+from collections.abc import Collection, Mapping
 from datetime import datetime, timezone
 import json
 from uuid import uuid4
@@ -57,18 +57,18 @@ async def _contact_item(
 
 
 def _display_name(
-    item: MemoryItem, identities: tuple[ContactIdentityRecord, ...]
+    metadata: Mapping[str, object], title: str, identities: tuple[ContactIdentityRecord, ...]
 ) -> str:
-    override = str(item.metadata_.get("display_name_override") or "").strip()
+    override = str(metadata.get("display_name_override") or "").strip()
     if override:
         return override
     for identity in identities:
         if identity.display_name:
             return identity.display_name
-    metadata_name = str(item.metadata_.get("display_name") or "").strip()
+    metadata_name = str(metadata.get("display_name") or "").strip()
     if metadata_name:
         return metadata_name
-    return item.title.removeprefix("Contact — ").strip() or item.title
+    return title.removeprefix("Contact — ").strip() or title
 
 
 async def list_messenger_contacts(
@@ -137,8 +137,9 @@ async def list_messenger_contacts(
     )
     items = tuple(
         (
-            await get_db().scalars(
-                select(MemoryItem)
+            await get_db().execute(
+                select(MemoryItem.id, MemoryItem.owner_agent_id, MemoryItem.title,
+                    MemoryItem.metadata_, MemoryItem.created_at, MemoryItem.updated_at)
                 .where(*filters)
                 .order_by(func.lower(MemoryItem.title), MemoryItem.id)
                 .offset(bounded_offset)
@@ -149,7 +150,7 @@ async def list_messenger_contacts(
     if not items:
         return (), total
 
-    item_ids = [item.id for item in items]
+    item_ids = [item[0] for item in items]
     identities_by_contact: dict[UUID, list[ContactIdentityRecord]] = defaultdict(list)
     identity_rows = (
         await get_db().scalars(
@@ -207,20 +208,20 @@ async def list_messenger_contacts(
         ).all()
     }
     records: list[MessengerContactRecord] = []
-    for item in items:
-        identities = tuple(identities_by_contact[item.id])
-        assert item.owner_agent_id is not None
+    for item_id, owner_id, title, metadata, created_at, updated_at in items:
+        identities = tuple(identities_by_contact[item_id])
+        assert owner_id is not None
         records.append(
             MessengerContactRecord(
-                memory_item_id=item.id,
-                owner_agent_id=item.owner_agent_id,
-                title=item.title,
-                display_name=_display_name(item, identities),
+                memory_item_id=item_id,
+                owner_agent_id=owner_id,
+                title=title,
+                display_name=_display_name(metadata, title, identities),
                 identities=identities,
-                linked_memory_count=linked_counts.get(item.id, 0),
-                created_at=item.created_at,
-                updated_at=item.updated_at,
-                coordinates=ContactCoordinates.model_validate(item.metadata_.get("coordinates", {})),
+                linked_memory_count=linked_counts.get(item_id, 0),
+                created_at=created_at,
+                updated_at=updated_at,
+                coordinates=ContactCoordinates.model_validate(metadata.get("coordinates", {})),
             )
         )
     return tuple(records), total
@@ -230,13 +231,14 @@ async def contact_labels(*, owner_agent_id: int, contact_item_ids: Collection[UU
     """Read authoritative contact labels in one owner-scoped query, without aliases."""
     if not contact_item_ids:
         return {}
-    items = (await get_db().scalars(MemoryItem.histo_filter(select(MemoryItem).where(
+    items = (await get_db().execute(MemoryItem.histo_filter(select(
+        MemoryItem.id, MemoryItem.title, MemoryItem.metadata_).where(
         MemoryItem.id.in_(contact_item_ids),
         MemoryItem.owner_agent_id == owner_agent_id,
         MemoryItem.source_managed.is_(True),
         MemoryItem.managed_source_kind == MESSENGER_CONTACT_SOURCE_KIND,
     )))).all()
-    return {item.id: _display_name(item, ()) for item in items}
+    return {identity: _display_name(metadata, title, ()) for identity, title, metadata in items}
 
 
 async def get_messenger_contact(contact_item_id: UUID) -> MessengerContactRecord | None:

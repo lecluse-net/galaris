@@ -8,7 +8,7 @@
       </div>
       <div v-else-if="error" class="welcome-status" role="alert">
         <span>{{ t('chat.home.agentsError') }}</span>
-        <q-btn flat no-caps :label="t('chat.home.retry')" @click="emit('retry')" />
+        <q-btn outline color="primary"  no-caps :label="t('chat.home.retry')" @click="emit('retry')" />
       </div>
       <div v-else>
         <div class="welcome-agents">

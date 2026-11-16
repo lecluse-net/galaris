@@ -422,10 +422,6 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
                 "metadata": {"inference_cost": gateway_usage.get("inference_cost", 0.0)} if gateway_usage else {},
             })
             yield event("[DONE]")
-        except asyncio.CancelledError:
-            if turn is not None:
-                await asyncio.shield(turn.interrupt())
-            raise
         except Exception as exc:
             logger.exception("Codex streaming turn failed")
             yield event({"error": {"message": _safe_error(exc), "type": "codex_runtime_error"}})
@@ -433,7 +429,13 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
         finally:
             if turn is not None and not completed:
                 try:
-                    await asyncio.shield(turn.interrupt())
+                    if getattr(request.state, "runtime_actor", None) is not None:
+                        # A pending SDK approval can prevent the interrupt RPC
+                        # from replying. The managed context then closes its
+                        # own SDK process; do not strand cleanup on that reply.
+                        await asyncio.wait_for(turn.interrupt(), timeout=5)
+                    else:
+                        await asyncio.shield(turn.interrupt())
                 except Exception:
                     logger.warning("Unable to interrupt unfinished Codex turn", exc_info=True)
 

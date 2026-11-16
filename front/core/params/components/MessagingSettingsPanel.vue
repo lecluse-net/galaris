@@ -148,7 +148,7 @@
                 v-if="testResult"
                 rounded
                 :role="testResult.ok ? 'status' : 'alert'"
-                :class="testResult.ok ? 'bg-green-1 text-positive' : 'bg-orange-1 text-warning'"
+                :class="testResult.ok ? 'bg-solaire-green-light text-positive' : 'bg-solaire-orange-light text-warning'"
                 class="q-mt-md"
             >
                 <div class="text-weight-medium">

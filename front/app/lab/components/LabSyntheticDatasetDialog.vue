@@ -27,7 +27,7 @@
         <div v-if="busy" role="status">{{ t('evaluation.synthetic.generating') }}</div>
       </q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn v-close-popup flat :label="t('common.close')" />
+        <q-btn outline color="primary" v-close-popup  :label="t('common.close')" />
         <q-btn color="primary" icon="auto_awesome" :label="t('evaluation.synthetic.generate')" :loading="busy" :disable="!valid" @click="generate" />
       </q-card-actions>
     </q-card>

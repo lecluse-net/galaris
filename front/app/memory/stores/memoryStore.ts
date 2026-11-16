@@ -89,7 +89,7 @@ export function useMemoryState({ detailsOnly = false } = {}) {
     page.value = options.resetPage
       ? 1
       : Math.max(1, options.page ?? page.value)
-    if (selectedAgentId.value === null) {
+    if (agentId === null) {
       hits.value = []
       hasMore.value = false
       total.value = 0
@@ -103,15 +103,10 @@ export function useMemoryState({ detailsOnly = false } = {}) {
     recallTruncated.value = false
     degradationReason.value = null
     try {
-      if (temporalTimezone.value === null) {
-        const defaults = await memoryService.temporalDefaults()
-        if (request !== searchRequest || agentId !== selectedAgentId.value) return
-        temporalTimezone.value = defaults.timezone
-      }
-      let result = await memoryService.browse({
+      const params = {
         hybrid: true,
-        temporal: temporal.value,
-        agentId: selectedAgentId.value,
+        temporal: { ...temporal.value },
+        agentId,
         query: query.value,
         topicItemId: selectedTopicItemId.value,
         contactItemId: selectedContactItemId.value,
@@ -119,26 +114,21 @@ export function useMemoryState({ detailsOnly = false } = {}) {
         sortDescending: sortDescending.value,
         limit: rowsPerPage.value,
         offset: (page.value - 1) * rowsPerPage.value,
-      })
+      }
+      const [firstPage, newFindings, defaults] = await Promise.all([
+        memoryService.browse(params),
+        memoryService.listFindings(agentId),
+        temporalTimezone.value === null ? memoryService.temporalDefaults() : null,
+      ])
       if (request !== searchRequest || agentId !== selectedAgentId.value) return
+      let result = firstPage
       const lastPage = Math.max(1, Math.ceil(result.total / rowsPerPage.value))
       if (page.value > lastPage) {
         page.value = lastPage
-        result = await memoryService.browse({
-          hybrid: true,
-          temporal: temporal.value,
-          agentId: selectedAgentId.value,
-          query: query.value,
-          topicItemId: selectedTopicItemId.value,
-          contactItemId: selectedContactItemId.value,
-          sortBy: sortBy.value,
-          sortDescending: sortDescending.value,
-          limit: rowsPerPage.value,
-          offset: (page.value - 1) * rowsPerPage.value,
-        })
+        result = await memoryService.browse({ ...params, offset: (lastPage - 1) * params.limit })
       }
-      const newFindings = await memoryService.listFindings(selectedAgentId.value)
       if (request !== searchRequest || agentId !== selectedAgentId.value) return
+      if (defaults !== null) temporalTimezone.value = defaults.timezone
       hits.value = result.hits
       temporalWindow.value = result.temporal_window ?? null
       recallTruncated.value = result.recall_truncated ?? false

@@ -1,63 +1,7 @@
 <template>
-  <q-dialog v-model="showCreateMcpToken">
-    <q-card class="galaris-dialog-card" style="min-width: 400px">
-      <q-card-section class="galaris-dialog-title row items-center">
-        <div class="text-h6">{{ $t('agent.mcp.newToken') }}</div>
-        <q-space />
-        <q-btn icon="close" flat round dense v-close-popup class="text-white" :aria-label="$t('common.close')" />
-      </q-card-section>
-      <q-card-section class="galaris-dialog-body">
-        <q-input
-          v-model="newMcpTokenLabel"
-          :label="$t('agent.mcp.labelOptional')"
-          outlined
-          dense
-          autofocus
-          @keyup.enter="$emit('create-mcp-token')"
-        />
-      </q-card-section>
-      <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn flat :label="$t('common.cancel')" color="primary" v-close-popup />
-        <q-btn
-          v-if="canManageMcp"
-          flat
-          :label="$t('common.create')"
-          color="positive"
-          :loading="loading"
-          @click="$emit('create-mcp-token')"
-        />
-      </q-card-actions>
-    </q-card>
-  </q-dialog>
-
-  <q-dialog v-model="showNewMcpToken">
-    <q-card class="galaris-dialog-card" style="min-width: 500px">
-      <q-card-section class="galaris-dialog-title row items-center">
-        <div class="text-h6">{{ $t('agent.mcp.createdTitle') }}</div>
-        <q-space />
-        <q-btn icon="close" flat round dense v-close-popup class="text-white" :aria-label="$t('common.close')" />
-      </q-card-section>
-      <q-card-section class="galaris-dialog-body">
-        <p class="text-body2">{{ $t('agent.mcp.copyHint') }}</p>
-        <q-input v-model="newMcpTokenValue" readonly outlined type="textarea" autogrow>
-          <template #append>
-            <q-btn flat round icon="content_copy" @click="$emit('copy-token', newMcpTokenValue)" />
-          </template>
-        </q-input>
-      </q-card-section>
-      <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn flat :label="$t('common.close')" color="primary" v-close-popup />
-      </q-card-actions>
-    </q-card>
-  </q-dialog>
-
   <q-dialog v-model="showTitle">
     <q-card class="galaris-dialog-card" style="min-width: 400px">
-      <q-card-section class="galaris-dialog-title row items-center">
-        <div class="text-h6">{{ isTitleEdit ? $t('agent.editTitleDialog') : $t('agent.addTitleDialog') }}</div>
-        <q-space />
-        <q-btn icon="close" flat round dense v-close-popup class="text-white" :aria-label="$t('common.close')" />
-      </q-card-section>
+      <DialogHeader :title="isTitleEdit ? $t('agent.editTitleDialog') : $t('agent.addTitleDialog')" :close-label="$t('common.close')" />
       <q-card-section class="q-pt-md galaris-dialog-body">
         <q-form class="q-gutter-md" @submit="$emit('submit-title')">
           <q-input
@@ -80,7 +24,7 @@
             :rules="[value => !!value || $t('agent.genderRule')]"
           />
           <div class="galaris-dialog-actions row justify-end q-mt-md q-gutter-sm q-pa-md">
-            <q-btn :label="$t('common.cancel')" color="grey" flat v-close-popup />
+            <q-btn outline :label="$t('common.cancel')" color="grey"  v-close-popup />
             <q-btn
               v-if="canEditCatalog"
               :label="isTitleEdit ? $t('common.edit') : $t('common.create')"
@@ -96,11 +40,7 @@
 
   <q-dialog v-model="showGroup">
     <q-card class="galaris-dialog-card" style="min-width: 400px">
-      <q-card-section class="galaris-dialog-title row items-center">
-        <div class="text-h6">{{ isGroupEdit ? $t('agent.editGroupDialog') : $t('agent.addGroupDialog') }}</div>
-        <q-space />
-        <q-btn icon="close" flat round dense v-close-popup class="text-white" :aria-label="$t('common.close')" />
-      </q-card-section>
+      <DialogHeader :title="isGroupEdit ? $t('agent.editGroupDialog') : $t('agent.addGroupDialog')" :close-label="$t('common.close')" />
       <q-card-section class="q-pt-md galaris-dialog-body">
         <q-form class="q-gutter-md" @submit="$emit('submit-group')">
           <q-input
@@ -121,7 +61,7 @@
             :hint="$t('agent.orderHint')"
           />
           <div class="galaris-dialog-actions row justify-end q-mt-md q-gutter-sm q-pa-md">
-            <q-btn :label="$t('common.cancel')" color="grey" flat v-close-popup />
+            <q-btn outline :label="$t('common.cancel')" color="grey"  v-close-popup />
             <q-btn
               v-if="canEditCatalog"
               :label="isGroupEdit ? $t('common.edit') : $t('common.create')"
@@ -178,10 +118,10 @@
       </q-card-section>
       <q-card-section class="galaris-dialog-body">{{ deleteMessage }}</q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn flat :label="$t('common.cancel')" color="primary" v-close-popup />
+        <q-btn outline  :label="$t('common.cancel')" color="primary" v-close-popup />
         <q-btn
           v-if="canEdit"
-          flat
+
           :label="$t('common.delete')"
           color="negative"
           v-close-popup
@@ -193,6 +133,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { titleLabel } from '../titleLabels'
 
 type SelectOption = { label: string; value: string }
@@ -202,7 +143,6 @@ type GroupForm = { id: number | null; name: string; order: number }
 defineProps<{
   canEdit: boolean
   canEditCatalog: boolean
-  canManageMcp: boolean
   loading: boolean
   isTitleEdit: boolean
   isGroupEdit: boolean
@@ -219,8 +159,6 @@ defineProps<{
 defineEmits<{
   'update-title': [value: Partial<TitleForm>]
   'update-group': [value: Partial<GroupForm>]
-  'create-mcp-token': []
-  'copy-token': [value: string]
   'submit-title': []
   'submit-group': []
   'close-harness-logs': []
@@ -228,10 +166,6 @@ defineEmits<{
   'confirm-delete': []
 }>()
 
-const showCreateMcpToken = defineModel<boolean>('showCreateMcpToken', { required: true })
-const newMcpTokenLabel = defineModel<string>('newMcpTokenLabel', { required: true })
-const showNewMcpToken = defineModel<boolean>('showNewMcpToken', { required: true })
-const newMcpTokenValue = defineModel<string>('newMcpTokenValue', { required: true })
 const showTitle = defineModel<boolean>('showTitle', { required: true })
 const showGroup = defineModel<boolean>('showGroup', { required: true })
 const showHarnessLogs = defineModel<boolean>('showHarnessLogs', { required: true })

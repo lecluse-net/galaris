@@ -3,7 +3,7 @@
         header-class="text-purple text-subtitle2" class="dispatch-expansion q-mt-md" dense toggle-indicator expanded>
         <template v-slot:header>
             <q-item-section avatar>
-                <q-icon name="psychology" color="purple" />
+                <q-icon name="psychology" color="solaire-violet" />
             </q-item-section>
             <q-item-section>
                 <q-item-label>{{ $t('task.dispatch.title') }}</q-item-label>
@@ -15,11 +15,11 @@
                         :icon="dispatchResult.success ? 'check_circle' : 'error'"
                         :label="dispatchResult.success ? $t('task.dispatch.success') : $t('task.dispatch.failure')"
                     />
-                    <q-badge color="blue" size="sm">
+                    <q-badge color="solaire-blue" size="sm">
                         <q-icon name="timer" size="xs" class="q-mr-xs" />
                         {{ formatExecutionTime(dispatchResult.execution_time) }}
                     </q-badge>
-                    <q-badge color="purple" size="sm">
+                    <q-badge color="solaire-violet" size="sm">
                         <q-icon name="attach_money" size="xs" class="q-mr-xs" />
                         {{ formatCostShort(dispatchResult.cost) }}
                     </q-badge>
@@ -70,7 +70,7 @@
                                 <!-- ROUTE -->
                                 <div class="col-auto info-item">
                                     <div class="info-label">{{ $t('task.dispatch.route') }}</div>
-                                    <q-badge color="blue" class="text-bold">
+                                    <q-badge color="solaire-blue" class="text-bold">
                                         <q-icon :name="getRouteIcon(dispatchResult.decision.route)" size="xs" class="q-mr-xs" />
                                         {{ dispatchResult.decision.route }}
                                     </q-badge>
@@ -87,7 +87,7 @@
                                 <!-- LANGUE -->
                                 <div class="col-auto info-item" v-if="dispatchResult.decision.language">
                                     <div class="info-label">{{ $t('task.dispatch.language') }}</div>
-                                    <q-badge color="pink" class="text-bold">
+                                    <q-badge color="solaire-fuchsia" class="text-bold">
                                         <q-icon name="translate" size="xs" class="q-mr-xs" />
                                         {{ dispatchResult.decision.language.toUpperCase() }}
                                     </q-badge>
@@ -139,7 +139,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import type { DispatchResult } from '../types'
-import Markdown from '@/core/util/components/Markdown.vue'
+import { Markdown } from '@/core/util'
 import { StatusBadge } from '@/core/util'
 
 const props = defineProps<{
@@ -159,8 +159,8 @@ const getRouteIcon = (route: string): string => {
 
 const getEffortColor = (effort: string): string => {
     switch (effort) {
-        case 'high': return 'deep-orange'
-        case 'standard': return 'blue-grey'
+        case 'high': return 'solaire-orange'
+        case 'standard': return 'solaire-gray'
         default: return 'grey'
     }
 }

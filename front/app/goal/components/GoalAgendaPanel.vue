@@ -16,7 +16,6 @@
       <q-card-actions class="galaris-dialog-actions" align="right">
         <q-btn outline color="primary" icon="flag" :label="t('goal.agenda.openGoal')" @click="selectedResource = { kind: 'goal', id: event.goal_id, title: event.title }" />
         <q-btn v-if="event.task_uri && canReadTasks" color="primary" :label="t('goal.agenda.openTask')" @click="openTask(event.task_uri)" />
-        <q-btn v-if="event.review_task_uri && canReadTasks" outline color="primary" :label="t('goal.agenda.openReview')" @click="openTask(event.review_task_uri)" />
       </q-card-actions>
     </q-card>
   </q-dialog>

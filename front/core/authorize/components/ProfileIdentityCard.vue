@@ -85,7 +85,7 @@
       </q-file>
       <q-btn
         v-if="avatarUrl"
-        flat
+
         dense
         no-caps
         color="negative"

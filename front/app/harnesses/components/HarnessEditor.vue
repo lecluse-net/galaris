@@ -12,10 +12,10 @@
 
       <q-banner v-else-if="loadFailed" role="alert">
         {{ t('harnesses.catalog.loadError') }}
-        <template #action><q-btn flat :label="t('common.retry')" @click="load" /></template>
+        <template #action><q-btn outline color="primary"  :label="t('common.retry')" @click="load" /></template>
       </q-banner>
       <q-form v-else class="q-pa-lg q-gutter-lg" @submit.prevent="save">
-        <q-banner v-if="entry?.provider_code === 'deepseek_harness'" rounded class="bg-orange-1 text-dark">
+        <q-banner v-if="entry?.provider_code === 'deepseek_harness'" rounded class="bg-solaire-orange-light text-dark">
           <template #avatar><q-icon name="science" color="warning" /></template>
           <div class="text-subtitle1 text-weight-bold">{{ t('harnesses.catalog.experimental') }}</div>
           <div>{{ t('harnesses.catalog.experimentalHint') }}</div>
@@ -47,7 +47,7 @@
           </div>
         </div>
 
-        <q-banner v-if="usesGalarisModels" rounded class="bg-blue-1 text-primary">
+        <q-banner v-if="usesGalarisModels" rounded class="bg-solaire-blue-light text-primary">
           <div class="text-subtitle2 text-weight-medium">
             {{ t('harnesses.catalog.galarisRoutingTitle', { provider: providerLabel }) }}
           </div>
@@ -71,8 +71,8 @@
             </q-item>
           </q-list>
           <template #action>
-            <q-btn
-              flat
+            <q-btn outline
+
               color="primary"
               icon="smart_toy"
               :label="t('harnesses.catalog.configureLlmProfiles')"
@@ -161,16 +161,16 @@
           />
         </template>
 
-        <q-banner v-if="entry?.last_error" rounded class="bg-red-1 text-negative">
+        <q-banner v-if="entry?.last_error" rounded class="bg-solaire-red-light text-negative">
           {{ entry.last_error }}
         </q-banner>
 
         <div class="row items-center q-gutter-sm" :class="{ 'galaris-dialog-actions q-pa-md': embedded }">
           <q-space />
-          <q-btn v-if="embedded" flat :label="t('common.cancel')" @click="emit('close')" />
+          <q-btn outline color="primary" v-if="embedded"  :label="t('common.cancel')" @click="emit('close')" />
           <q-btn
             v-if="!isNew && isOpenAi && canEdit"
-            flat
+
             color="negative"
             icon="delete"
             :label="t('harnesses.catalog.delete')"
@@ -197,11 +197,7 @@
 
     <q-dialog v-model="disableDialog">
       <q-card class="harness-detail__confirm galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ t('harnesses.catalog.disableTitle') }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('harnesses.catalog.disableTitle')" :close-label="t('common.close')" />
         <q-card-section class="galaris-dialog-body">
           {{ t('harnesses.catalog.disableConfirm', {
             name: form.name,
@@ -209,7 +205,7 @@
           }) }}
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn v-close-popup flat color="grey-7" :label="t('common.cancel')" />
+          <q-btn outline v-close-popup  color="grey-7" :label="t('common.cancel')" />
           <q-btn
             color="warning"
             :label="t('harnesses.catalog.disable')"
@@ -222,11 +218,7 @@
 
     <q-dialog v-model="deleteDialog">
       <q-card class="harness-detail__confirm galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ t('harnesses.catalog.deleteTitle') }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('harnesses.catalog.deleteTitle')" :close-label="t('common.close')" />
         <q-card-section class="galaris-dialog-body">
           {{ t('harnesses.catalog.deleteConfirm', {
             name: form.name,
@@ -234,7 +226,7 @@
           }) }}
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn v-close-popup flat color="grey-7" :label="t('common.cancel')" />
+          <q-btn outline v-close-popup  color="grey-7" :label="t('common.cancel')" />
           <q-btn
             color="negative"
             :label="t('common.delete')"
@@ -245,12 +237,13 @@
       </q-card>
     </q-dialog>
     <div v-if="!embedded" class="q-mt-md">
-      <q-btn flat color="primary" icon="arrow_back" :label="t('common.back')" :to="isOpenAi ? '/params/harnesses?tab=external' : '/params/harnesses'" />
+      <q-btn outline  color="primary" icon="arrow_back" :label="t('common.back')" :to="isOpenAi ? '/params/harnesses?tab=external' : '/params/harnesses'" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'

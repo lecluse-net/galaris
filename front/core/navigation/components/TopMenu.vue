@@ -31,6 +31,8 @@
             flat
             dense
             icon="expand_more"
+            :aria-label="$t('common.expand')"
+            aria-haspopup="menu"
             class="expand-btn"
           >
             <q-menu>

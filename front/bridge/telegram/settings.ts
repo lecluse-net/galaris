@@ -1,4 +1,4 @@
-import type { BridgeSettingsContribution } from '@/core/params/settingsTypes'
+import type { BridgeSettingsContribution } from '@/core/params/contracts'
 
 export default {
     area: 'messaging',

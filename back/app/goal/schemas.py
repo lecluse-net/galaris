@@ -8,7 +8,7 @@ from typing import Annotated, Literal
 from uuid import UUID
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import AfterValidator, BaseModel, ConfigDict, Field, computed_field, field_validator, model_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from .models import (
     GoalCycleTriggerKind,
@@ -378,7 +378,6 @@ class GoalCycleRead(BaseModel):
     trigger_kind: GoalCycleTriggerKind
     source_cycle_id: UUID | None
     task_id: UUID | None
-    review_task_id: UUID | None = None
     task_label: str | None = None
     task_status: str | None = None
     task_cost: float = 0.0
@@ -400,12 +399,6 @@ class GoalCycleRead(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    @computed_field
-    @property
-    def review_task_uri(self) -> str | None:
-        return f"galaris://task/{self.review_task_id}" if self.review_task_id is not None else None
-
-
 class GoalDetail(GoalRead):
     pass
 
@@ -421,7 +414,6 @@ class GoalAgendaEvent(BaseModel):
     cycle_id: UUID | None = None
     sequence: int | None = None
     task_uri: str | None = None
-    review_task_uri: str | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
     verdict: GoalVerdict | None = None
@@ -488,61 +480,10 @@ class MessengerReferrerOption(BaseModel):
     is_current_user: bool = False
 
 
-class GoalProgress(BaseModel):
+class GoalDecision(BaseModel):
+    """The complete monitoring output: one closed lifecycle choice."""
     model_config = ConfigDict(extra="forbid")
-
-    changed: bool
-    summary: str = Field(min_length=1, description="Summarize concrete progress concisely, preserving useful facts.")
-    evidence: list[str] = Field(default_factory=list, description="Cite relevant observable evidence without repetition.")
-
-    @field_validator("evidence")
-    @classmethod
-    def strip_evidence(cls, values: list[str]) -> list[str]:
-        return [value.strip() for value in values if value.strip()]
-
-    @field_validator("summary")
-    @classmethod
-    def strip_summary(cls, value: str) -> str:
-        stripped = value.strip()
-        if not stripped:
-            raise ValueError("Progress summary must not be empty")
-        return stripped
-
-
-class GoalJudgement(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    action: Literal["CONTINUE", "STOP", "PAUSE", "REVIEW"]
-    reason: str = Field(min_length=1, description="Explain the decision concisely using the Goal's completion criteria.")
-    progress: GoalProgress
-    tracking_content: RequiredTrackingBody = Field(
-        min_length=1,
-        description="Full updated HTML tracking: synthesize current state without losing useful information. No length cap.",
-    )
-
-    @field_validator("progress", mode="before")
-    @classmethod
-    def decode_progress(cls, value: object) -> object:
-        # Some providers encode this nested object as JSON text, even on retry.
-        # Validate the same contract rather than consuming another model call.
-        if isinstance(value, str):
-            return GoalProgress.model_validate_json(value)
-        return value
-
-    @field_validator("reason")
-    @classmethod
-    def strip_reason(cls, value: str) -> str:
-        stripped = value.strip()
-        if not stripped:
-            raise ValueError("Reason must not be empty")
-        return stripped
-
-    @model_validator(mode="after")
-    def require_stop_evidence(self) -> "GoalJudgement":
-        if self.action == "STOP" and not self.progress.evidence:
-            raise ValueError("STOP requires at least one observable evidence item")
-        return self
-
+    action: Literal["CONTINUE", "STOP"]
 
 class GoalRuntimeRead(BaseModel):
     """Operational metadata needed to explain a Goal's availability."""

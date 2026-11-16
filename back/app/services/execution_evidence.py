@@ -15,6 +15,7 @@ from pydantic import ValidationError as PydanticValidationError
 from .contracts import EXECUTION_META_KEY, ToolExecutionContext, tool_execution
 from .authorization import AUTHORIZATION_META_KEY, AuthorizationRequired, AuthorizationClosed
 from .tool_arguments import parameter_advice
+from .tool_errors import argument_validation_diagnostic
 
 
 class ExecutionEvidenceMiddleware(Middleware):
@@ -62,7 +63,7 @@ class ExecutionEvidenceMiddleware(Middleware):
                 result = ToolResult(content=str(exc), is_error=True,
                                     meta={AUTHORIZATION_META_KEY: {"request_id": str(exc.request_id),
                                           "status": exc.status, "disposition": "authorization_closed"}})
-            except ValidationError, PydanticValidationError:
+            except (ValidationError, PydanticValidationError) as exc:
                 # FastMCP distinguishes argument validation from errors inside the body.
                 if execution.entered:
                     raise
@@ -72,6 +73,9 @@ class ExecutionEvidenceMiddleware(Middleware):
                     tool = await context.fastmcp_context.fastmcp.get_tool(context.message.name)
                     if tool is not None:
                         advice = parameter_advice(tool.parameters)
+                errors = argument_validation_diagnostic(exc)
+                if errors:
+                    advice["validation_errors"] = errors
                 result = ToolResult(
                     content="Invalid tool arguments; correct the call to match its schema. " + json.dumps(advice),
                     is_error=True,

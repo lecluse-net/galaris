@@ -33,7 +33,7 @@ from app.dream.evaluation import (
     evaluate_memory_extraction,
     outcome_reflection_system_prompt,
 )
-from app.goal.evaluation import GoalJudgement, goal_tracking_system_prompt, goal_cycle_work_instructions
+from app.goal.evaluation import GoalDecision, evaluate_goal, goal_tracking_system_prompt, goal_cycle_work_instructions
 from app.llm import LLM, LLMCallPurpose, model_usages
 from app.llm.facade import record_text_inferences
 from app.llm.structured_service import (
@@ -140,6 +140,10 @@ class MechanismDefinition:
         return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
     def validate_output(self, value: Any) -> Any:
+        if self.key == "goal_tracking" and isinstance(value, dict):
+            # Imported historical expectations may include a generated synthesis.
+            action = cast(dict[str, Any], value).get("action")
+            return GoalDecision.model_validate({"action": "CONTINUE" if action in ("PAUSE", "REVIEW") else action}).model_dump(mode="json")
         if self.executor is not None and isinstance(value, dict) and "outcome_checks" in value:
             OutcomeChecks.model_validate(value["outcome_checks"])
         if self.key == "topic_classification":
@@ -286,10 +290,10 @@ _DEFINITIONS: tuple[MechanismDefinition, ...] = (
         key="goal_tracking",
         input_format="text",
         output_format="json",
-        output_type=GoalJudgement,
+        output_type=GoalDecision,
         system_prompt=goal_tracking_system_prompt(),
         call_style="structured",
-        marker="You maintain the durable Markdown tracking for a long-running Goal",
+        marker="You decide whether a long-running Goal needs another work cycle",
         default_input=(
             "GOAL TITLE:\n\nGOAL DESCRIPTION:\n\nCURRENT DURABLE TRACKING (HTML):\n\n"
             "LATEST CYCLE:\n1\n\nLATEST TASK STATUS:\nSUCCESS\n\n"
@@ -297,11 +301,10 @@ _DEFINITIONS: tuple[MechanismDefinition, ...] = (
         ),
         default_output={
             "action": "CONTINUE",
-            "reason": "Describe why another cycle is useful.",
-            "progress": {"changed": False, "summary": "No verified progress.", "evidence": []},
-            "tracking_content": "<h1>Goal tracking</h1><p>Describe the current state.</p>",
         },
-        marker_aliases=("You are the post-task evaluator for a long-running Goal",),
+        marker_aliases=("You are the post-task evaluator for a long-running Goal",
+            "You maintain the durable Markdown tracking for a long-running Goal",
+            "You maintain the durable HTML tracking for a long-running Goal"),
     ),
     MechanismDefinition(
         key="task_executor",
@@ -419,9 +422,12 @@ def build_executor_benchmark_prompt(
     processes = cast(list[Any], raw_processes) if isinstance(raw_processes, list) else []
     process_text = json.dumps(processes, ensure_ascii=False, indent=2) if processes else ""
     if definition.executor in {"conversation", "voice"}:
+        from app.services import render_task_capability_context
+
         tool_text = (
-            "Only these effect-free conversation tool contracts are exposed in this benchmark: "
-            + (", ".join(tool_names) or "none") + "."
+            "Functions available in this conversation: "
+            + (", ".join(tool_names) or "none") + ".\n\n"
+            + render_task_capability_context(mapping.get("task_only_services") or ())
         )
     else:
         tool_text = ("These effect-free tools use the case's frozen public function contracts. "
@@ -541,7 +547,7 @@ def _executor_tools(executor: ExecutorKind) -> list[Any]:
 
 def recording_tool_defaults(executor: ExecutorKind, catalog: list[dict[str, Any]] | None) -> dict[str, dict[str, Any]]:
     """Defaults actually bound by the same tool contracts used by the recorder."""
-    if executor == "task" and catalog:
+    if catalog:
         return {str(spec["name"]): {name: definition["default"]
                     for name, definition in spec["parameters"].get("properties", {}).items()
                     if "default" in definition} for spec in catalog}
@@ -558,8 +564,10 @@ def recording_tools(
     response_arguments: dict[str, list[dict[str, Any]]] | None = None,
 ) -> list[Any]:
     """Typed native tool signatures with item-owned, sequential response fixtures."""
-    if executor == "task" and tool_catalog:
-        return _catalog_recording_tools(tool_catalog, available_tools or [], responses, transcript, response_arguments or {})
+    if tool_catalog:
+        selected = (tool_catalog if executor == "task" else
+                    [spec for spec in tool_catalog if spec["name"] in (available_tools or [])])
+        return _catalog_recording_tools(selected, available_tools or [], responses, transcript, response_arguments or {})
     if response_arguments:
         raise ValueError("Argument-scoped fixtures require native tool contracts")
     tools = _executor_tools(executor)
@@ -651,6 +659,13 @@ async def evaluate_mechanism(
     decision_llm: LLM | None = None,
     observations: dict[str, Any] | None = None,
 ) -> tuple[Any, float]:
+    if definition.key == "goal_tracking":
+        if "decision" not in llm.service_capabilities:
+            raise ValueError("Goal monitoring requires a native decision model.")
+        result = await evaluate_goal(llm=llm, prompt=definition.prompt(input_data),
+            system_prompt=system_prompt_override or definition.system_prompt,
+            task_id=None, agent_id=None, purpose=LLMCallPurpose.LAB_MECHANISM_RUN)
+        return result.output.model_dump(mode="json"), result.cost
     if definition.key == "dispatcher":
         result = await evaluate_dispatcher_input(
             input_data=input_data, llm=llm, system_prompt=system_prompt_override

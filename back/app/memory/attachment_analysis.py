@@ -89,8 +89,8 @@ async def attachment_analysis_path(source: AttachmentAnalysisSource, *, max_byte
 async def fill_attachment_description(source: AttachmentAnalysisSource, description: str, *, replace_existing: bool = False) -> bool:
     """Compare and fill atomically; removal, ownership changes and prior text win."""
     db = get_db()
-    document = await db.scalar(select(MemoryItem).where(
-        MemoryItem.id == source.document_id,
+    document = await db.scalar(select(Document).where(
+        Document.id == source.document_id,
     ).with_for_update().execution_options(populate_existing=True))
     if document is None:
         return False

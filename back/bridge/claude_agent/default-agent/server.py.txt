@@ -18,10 +18,10 @@ from uuid import uuid4
 
 from claude_agent_sdk import (
     ClaudeAgentOptions,
+    ClaudeSDKClient,
     HookMatcher,
     PermissionResultAllow,
     PermissionResultDeny,
-    query,
 )
 from claude_agent_sdk.types import AssistantMessage, UserMessage, ToolUseBlock, ToolResultBlock, ResultMessage, StreamEvent
 from fastapi import FastAPI, HTTPException, Request
@@ -341,33 +341,37 @@ async def _run_events(
     emitted_text = ""
     terminal: ResultMessage | None = None
     try:
-        async for message in query(prompt=_prompt_messages(prompt), options=options):
-            while not semantic_events.empty():
-                yield "tool", semantic_events.get_nowait()
-            if isinstance(message, AssistantMessage):
-                for block in message.content:
-                    if isinstance(block, ToolUseBlock):
-                        trace.record_tool_call(block.id, block.name, _bounded_json(block.input))
-            elif isinstance(message, UserMessage) and isinstance(message.content, list):
-                for block in message.content:
-                    if isinstance(block, ToolResultBlock):
-                        tool = trace.complete_tool_result(block.tool_use_id, block.content, failed=block.is_error is True)
-                        if tool is not None:
-                            yield "tool", tool
-            elif isinstance(message, StreamEvent):
-                event = message.event
-                for thinking in trace.consume(event):
-                    yield "tool", thinking
-                if event.get("type") != "content_block_delta":
-                    continue
-                delta = event.get("delta") or {}
-                if delta.get("type") == "text_delta":
-                    content = str(delta.get("text") or "")
-                    if content:
-                        emitted_text += content
-                        yield "text", {"content": content}
-            elif isinstance(message, ResultMessage):
-                terminal = message
+        # Own the SDK transport explicitly: a cancelled async iterator alone does
+        # not guarantee its nested subprocess is closed before we report stopped.
+        async with ClaudeSDKClient(options=options) as client:
+            await client.query(prompt=_prompt_messages(prompt))
+            async for message in client.receive_response():
+                while not semantic_events.empty():
+                    yield "tool", semantic_events.get_nowait()
+                if isinstance(message, AssistantMessage):
+                    for block in message.content:
+                        if isinstance(block, ToolUseBlock):
+                            trace.record_tool_call(block.id, block.name, _bounded_json(block.input))
+                elif isinstance(message, UserMessage) and isinstance(message.content, list):
+                    for block in message.content:
+                        if isinstance(block, ToolResultBlock):
+                            tool = trace.complete_tool_result(block.tool_use_id, block.content, failed=block.is_error is True)
+                            if tool is not None:
+                                yield "tool", tool
+                elif isinstance(message, StreamEvent):
+                    event = message.event
+                    for thinking in trace.consume(event):
+                        yield "tool", thinking
+                    if event.get("type") != "content_block_delta":
+                        continue
+                    delta = event.get("delta") or {}
+                    if delta.get("type") == "text_delta":
+                        content = str(delta.get("text") or "")
+                        if content:
+                            emitted_text += content
+                            yield "text", {"content": content}
+                elif isinstance(message, ResultMessage):
+                    terminal = message
         while not semantic_events.empty():
             yield "tool", semantic_events.get_nowait()
         for thinking in trace.finish():

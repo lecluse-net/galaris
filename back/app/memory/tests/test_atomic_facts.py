@@ -13,6 +13,37 @@ from app.memory.schemas import MemoryAcquisitionCreate
 from app.memory.schemas import MemoryItemUpdate, MemoryPayload
 
 
+@pytest.mark.parametrize("reference", ["memory://contact/not-a-uuid", "document://not-a-uuid",
+    "galaris://task/00000000-0000-0000-0000-000000000001", "https://example.org/fact"])
+def test_fact_references_reject_unsupported_or_malformed_identities_before_checkpointing(reference):
+    from app.memory.facts import MemoryFactReference
+
+    with pytest.raises(ValidationError):
+        AtomicMemoryFact(subject_ref=reference, predicate="preferred_language", value="fr")
+    with pytest.raises(ValidationError):
+        MemoryFactReference(ref=reference)
+
+
+@pytest.mark.asyncio
+async def test_document_fact_reference_uses_document_rights_without_requiring_a_prior_projection(db, agents, memory_storage):
+    from app.document import document_service
+    from app.document import DocumentPermissionError
+
+    owner, peer = agents
+    document = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic policy",
+        content="<p>Weekly meetings.</p>", task_id=None)
+    assert await db.get(MemoryItem, document.id) is None
+    fact = AtomicMemoryFact(subject_ref=f"document://{document.id}", predicate="meeting_frequency", value="weekly")
+    with pytest.raises(DocumentPermissionError):
+        await acquisition_service.acquire_memory(MemoryAcquisitionCreate(agent_id=peer.id,
+            fact=fact, source_ref="synthetic:denied-document-fact"))
+    result = await acquisition_service.acquire_memory(MemoryAcquisitionCreate(agent_id=owner.id,
+        fact=fact, source_ref="synthetic:document-fact"))
+    assert result.status == "stored"
+    assert await db.scalar(select(MemoryLink.id).where(MemoryLink.source_item_id == result.memory_id,
+        MemoryLink.target_item_id == document.id, MemoryLink.relation_type == "fact_subject")) is not None
+
+
 @pytest.mark.parametrize("value", [["weekly", "monthly"], {"first": 1, "second": 2}, "<p>narrated</p>", "First paragraph\nSecond paragraph"])
 def test_atom_rejects_multiple_values_and_editorial_prose(value):
     with pytest.raises(ValidationError):

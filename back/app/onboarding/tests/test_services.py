@@ -208,6 +208,9 @@ async def test_messaging_status_requires_an_active_enabled_bridge_connection(
     )
     await db.flush()
 
+    # The overview uses a fresh session: do not let this fixture's fully loaded
+    # identity map hide columns omitted by its bounded catalogue read.
+    db.expunge(ordinary_tool)
     assert await check_messaging_status() is False
 
     messaging_connection = Connection(

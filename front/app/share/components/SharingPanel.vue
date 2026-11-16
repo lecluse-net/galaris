@@ -49,7 +49,7 @@
               <q-icon :name="target.icon" size="20px" class="sharing-icon" />
               <span class="shortcut-label">{{ target.label }}</span>
               <div class="shortcut-actions">
-                <q-btn v-for="write in [false, true]" :key="String(write)" outline dense no-caps
+                <q-btn color="primary" v-for="write in [false, true]" :key="String(write)" outline dense no-caps
                   :icon="write ? 'edit' : 'visibility'" :label="t(write ? 'resourceSharing.write' : 'resourceSharing.read')"
                   :aria-label="t('resourceSharing.grantRight', { name: target.label, right: t(write ? 'resourceSharing.write' : 'resourceSharing.read') })"
                   :disable="busy || (target.value === 'groups' && !ownerGroupChoices(write).length)" @click="setShortcut(target.value, write)" />

@@ -181,7 +181,7 @@ class DocumentGoalDocumentStore(GoalDocumentStore):
 
     async def search(self, terms: tuple[str, ...]) -> dict[str, frozenset[UUID]]:
         result: dict[str, frozenset[UUID]] = {}
-        for term in terms:
+        for term in dict.fromkeys(terms):
             pattern = f"%{term}%"
             ids = frozenset(
                 (

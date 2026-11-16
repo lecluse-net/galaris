@@ -241,7 +241,7 @@ def test_every_non_dispatch_mechanism_has_a_complete_versioned_semantic_rubric()
             assert rubric.version == "memory_extraction-score"
         else:
             expected_version = (
-                ":v1"
+                ":v5" if rubric.mechanism == "goal_tracking" else ":v1"
                 if rubric.mechanism == "task_analysis"
                 else ":v4"
                 if rubric.mechanism in {"planner", "dispatcher", "goal_tracking"}

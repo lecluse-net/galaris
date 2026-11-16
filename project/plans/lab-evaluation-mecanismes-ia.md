@@ -1,7 +1,9 @@
 # Lab IA — étalonnage, comparaisons et gardes
 
-- Statut : `partial`
+- Statut : `in-progress`
 - Tri documentaire : 2026-11-14 ; campagnes fournisseurs non rejouées.
+- Reprise : 2026-11-15, benchmark opérationnel synthétique et revue des références ;
+  périmètre et accord préalable décrits dans l'[index](README.md#campagne-engagée-le-15-novembre-2026).
 
 ## Contrats à réutiliser
 

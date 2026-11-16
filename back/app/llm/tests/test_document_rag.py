@@ -151,7 +151,9 @@ async def test_protocol_chooses_direct_or_rag_locally_preserving_tools_and_the_s
         from app.llm.document_responses import route_response_documents
         stateful = [{'type': 'function_call', 'call_id': 'synthetic-call', 'name': 'synthetic_tool', 'arguments': '{}'},
                     {'type': 'function_call_output', 'call_id': 'synthetic-call', 'output': 'Synthetic tool result'}]
-        body['input'] = [*stateful, {'role': 'user', 'content': [
+        history = {'type': 'message', 'id': 'msg_synthetic', 'role': 'assistant',
+                   'content': [{'type': 'output_text', 'text': 'Previous answer', 'annotations': []}]}
+        body['input'] = [*stateful, history, {'role': 'user', 'content': [
             {'type': 'input_text', 'text': 'What is the QUARTZ cancellation deadline?'},
             {'type': 'input_file', 'filename': 'Synthetic.txt', 'file_data': data},
         ]}]
@@ -165,6 +167,7 @@ async def test_protocol_chooses_direct_or_rag_locally_preserving_tools_and_the_s
     assert ('input' in requests[0]) is (protocol == 'responses')
     if protocol == 'responses':
         assert requests[0]['input'][:2] == stateful
+        assert requests[0]['input'][2] == history
     wire = json.dumps(requests[0])
     assert '47 days' in wire
     if context == 4096:

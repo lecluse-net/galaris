@@ -68,3 +68,19 @@ for (const component of ['LlmCall', 'LlmCallTaskDetail']) {
     await expect(page.getByRole('button', { name: 'Delete this LLM call' })).toBeVisible()
   })
 }
+
+test('a call opens and reopens its task through the shared resource detail', async ({ page }) => {
+  const task = { id: 'synthetic-task', revision: 1, label: 'Synthetic call task', status: 'SUCCESS', paused: false,
+    objective: 'Saved task objective', agent_id: null, data: {}, plan: null, dispatcher_result: null, execution_result: null, llm_calls: [] }
+  await jsonRoute(page, '**/api/tasks/synthetic-task', task)
+  await jsonRoute(page, '**/api/tasks/synthetic-task/children', [])
+  await jsonRoute(page, '**/api/tasks/activity', [])
+  await jsonRoute(page, '**/api/llm-providers/llms*', [])
+  await mount(page, 'app/llm/components/LlmCall.vue', { props: { call: { ...call, task_id: task.id, task_label: task.label }, taskColor: { name: 'primary', hex: '#087FF5' } } })
+  for (let opening = 0; opening < 2; opening++) {
+    await page.locator('.task-uuid-link').click()
+    await expect(page.getByRole('dialog')).toContainText(task.label)
+    await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+  }
+})

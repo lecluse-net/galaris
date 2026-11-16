@@ -1,6 +1,7 @@
 """Exercise continuation and containment at the external SFTP boundary."""
 
 import json
+from contextlib import asynccontextmanager
 from types import SimpleNamespace
 
 import pytest
@@ -33,8 +34,9 @@ async def test_console_pages_preserve_every_file_and_reject_cross_directory_curs
 
     transport = SshAgentFileTransport(SimpleNamespace(home=home))
 
+    @asynccontextmanager
     async def client():
-        return Sftp()
+        yield Sftp()
 
     async def resolve(_sftp, path):
         return ("/home/synthetic", ".") if path == "." else ("/home/synthetic/other", "other")
@@ -82,10 +84,11 @@ async def test_directory_mutations_against_sftp_preserve_collisions_roots_and_sy
             async def remote_home():
                 return "/home/synthetic"
 
+            @asynccontextmanager
             async def remote_connection():
-                return connection
+                yield connection
 
-            transport = SshAgentFileTransport(SimpleNamespace(home=remote_home, connection=remote_connection))
+            transport = SshAgentFileTransport(SimpleNamespace(home=remote_home, active_connection=remote_connection))
             with pytest.raises(asyncssh.SFTPError):
                 await transport.file_move("tree", "existing")
             assert (tree / "nested" / "file.txt").read_text() == "Synthetic tree bytes"

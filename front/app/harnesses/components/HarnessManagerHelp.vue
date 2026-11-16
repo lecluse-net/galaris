@@ -13,8 +13,8 @@
             </div>
           </div>
           <div class="manager-help__actions">
-            <q-btn flat no-caps icon="help_outline" :label="t('harnesses.preferences.help')" @click="helpOpen = true" />
-            <q-btn flat no-caps icon="refresh" class="manager-help__action" :label="t('harnesses.preferences.check')"
+            <q-btn outline color="primary"  no-caps icon="help_outline" :label="t('harnesses.preferences.help')" @click="helpOpen = true" />
+            <q-btn outline color="primary"  no-caps icon="refresh" class="manager-help__action" :label="t('harnesses.preferences.check')"
               :aria-label="t('harnesses.manager.refresh')" :loading="loading" @click.stop="refresh" />
           </div>
         </div>
@@ -26,10 +26,7 @@
       <HarnessManagerRelease :diagnostics="diagnostics" />
       <q-dialog v-model="helpOpen">
         <q-card class="manager-help__dialog galaris-dialog-card">
-          <q-card-section class="galaris-dialog-title row items-center no-wrap">
-            <div class="text-h6">{{ t('harnesses.preferences.help') }}</div>
-            <q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-          </q-card-section>
+          <DialogHeader :title="t('harnesses.preferences.help')" :close-label="t('common.close')" />
           <q-card-section class="galaris-dialog-body">
         <p>{{ t('harnesses.setup.intro') }}</p>
         <template v-if="diagnostics">
@@ -69,13 +66,14 @@
           <div class="q-mt-sm">{{ t('harnesses.manager.finalCheck') }}</div>
         </q-banner>
       </q-card-section>
-          <q-card-actions align="right"><q-btn v-close-popup flat :label="t('common.close')" /></q-card-actions>
+          <q-card-actions align="right"><q-btn outline color="primary" v-close-popup  :label="t('common.close')" /></q-card-actions>
         </q-card>
       </q-dialog>
   </q-card>
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { managerService, type ManagerDiagnostics } from '../services/managerService'

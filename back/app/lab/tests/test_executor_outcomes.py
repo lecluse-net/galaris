@@ -44,6 +44,13 @@ def test_unavailable_fixture_cannot_grant_a_foreground_capability():
     with pytest.raises(ValueError, match="unavailable"):
         recording_tools("conversation", {"conversation_task_submit": [{}]}, [],
                         available_tools=["conversation_task_status"])
+    # Task catalogues retain their exact-inventory validation; only foreground cases
+    # select subsets of their shared dataset catalogue.
+    with pytest.raises(ValueError, match="match the declared available inventory"):
+        recording_tools("task", {}, [], available_tools=["file_read"], tool_catalog=[
+            {"name": "file_read", "parameters": {"type": "object"}},
+            {"name": "file_edit", "parameters": {"type": "object"}},
+        ])
 
 
 @pytest.mark.asyncio

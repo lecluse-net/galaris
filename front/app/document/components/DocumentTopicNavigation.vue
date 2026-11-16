@@ -44,7 +44,7 @@
     </q-tree>
     <div v-if="!loading && !error && !topics.length" class="text-caption q-pa-sm">{{ t('documents.empty') }}</div>
     <div v-if="mode !== 'agents' && canEditTopics" class="row no-wrap q-gutter-x-sm q-mt-sm">
-      <q-btn class="col-6" outline dense no-caps icon="add" :label="t('topic.createTitle')" :disable="busy" @click="classificationActions?.editTopic()" />
+      <q-btn color="primary" class="col-6" outline dense no-caps icon="add" :label="t('topic.createTitle')" :disable="busy" @click="classificationActions?.editTopic()" />
     </div>
   </div>
 </template>

@@ -1,10 +1,6 @@
 <template>
   <q-card class="team-editor galaris-dialog-card">
-    <q-card-section class="galaris-dialog-title row items-center">
-      <div class="text-h6">{{ membersOnly ? t('team.membersOf', { name: team?.name }) : t(team ? (canEdit || canMembers ? 'team.edit' : 'team.details') : 'team.create') }}</div>
-      <q-space />
-      <q-btn flat round dense icon="close" :aria-label="t('common.close')" @click="emit('close')" />
-    </q-card-section>
+    <DialogHeader :title="membersOnly ? t('team.membersOf', { name: team?.name }) : t(team ? (canEdit || canMembers ? 'team.edit' : 'team.details') : 'team.create')" :close-label="t('common.close')" :close-popup="false" @close="emit('close')" />
     <q-form class="galaris-dialog-form" @submit="save">
       <div class="galaris-dialog-body">
         <div class="team-editor-body">
@@ -20,7 +16,7 @@
           <q-card-section>
             <q-banner v-if="loadError" class="q-mb-md" role="alert">
               {{ t('team.error') }}
-              <template #action><q-btn flat :label="t('team.retry')" @click="loadHumans" /></template>
+              <template #action><q-btn outline color="primary"  :label="t('team.retry')" @click="loadHumans" /></template>
             </q-banner>
             <q-linear-progress v-if="loading" indeterminate class="q-mb-md" />
             <div class="row q-col-gutter-xl">
@@ -79,6 +75,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { isCancelledRequest } from '@/core/api'
 import { useI18n } from 'vue-i18n'

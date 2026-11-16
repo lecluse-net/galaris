@@ -11,8 +11,8 @@
     <div v-else-if="failed" class="markdown-attachment-state text-negative" role="alert">
       <q-icon name="error_outline" size="24px" />
       <span>{{ t('chat.attachmentPreviewError', { name: file.name }) }}</span>
-      <q-btn
-        flat
+      <q-btn outline
+
         dense
         no-caps
         color="primary"

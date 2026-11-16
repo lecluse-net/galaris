@@ -42,8 +42,8 @@
           >
             <q-tooltip>{{ t('fullscreenPreview.fitToScreen') }}</q-tooltip>
           </q-btn>
-          <q-btn
-            flat
+          <q-btn outline
+
             dense
             no-caps
             label="1:1"

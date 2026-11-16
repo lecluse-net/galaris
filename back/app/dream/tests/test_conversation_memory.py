@@ -74,6 +74,37 @@ async def _scope(
 
 
 @pytest.mark.asyncio
+async def test_evidence_message_lookup_rejects_malformed_ids_and_stale_content(db):
+    import hashlib
+    from sqlalchemy import literal, select
+    from sqlalchemy.dialects.postgresql import JSONB
+    from app.dream.evidence_access import conversation_evidence_clause
+
+    _agent, connection, room, _topic, _contact = await _scope(db)
+    message = Message(connection_id=connection.id, service_id=connection.service_id,
+        platform="synthetic", remote_message_id=str(uuid4()), direction="inbound",
+        messenger_room_id=room.id, room_id=room.external_id, text="Synthetic written evidence")
+    db.add(message)
+    await db.flush()
+    digest = hashlib.sha256(message.text.encode()).hexdigest()
+
+    async def admitted(reference, text_hash=digest):
+        metadata = {"source_evidence": [{"message_id": reference, "kind": "written",
+            "version": {"text_sha256": text_hash}}]}
+        row = select(literal(metadata, type_=JSONB).label("metadata")).subquery()
+        return await db.scalar(select(conversation_evidence_clause(row.c.metadata)))
+
+    assert await admitted(str(message.id))
+    for reference in (None, "", "malformed", "x" * 36, str(message.id).upper(),
+                      message.id.hex, str(message.id) + " ", "00000000-0000-0000-0000-000000000000"):
+        assert not await admitted(reference)
+    assert not await admitted(str(message.id), "outdated")
+    message.text = "Synthetic corrected evidence"
+    await db.flush()
+    assert not await admitted(str(message.id))
+
+
+@pytest.mark.asyncio
 async def test_conversation_memory_waits_for_a_non_null_topic(
     db: AsyncSession,
 ) -> None:

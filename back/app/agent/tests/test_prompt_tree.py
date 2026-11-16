@@ -61,12 +61,25 @@ def test_empty_executor_suffix_remains_the_final_tree_node_but_is_not_rendered()
     assert not render_prompt_tree(tree).endswith("executor_prompt_suffix")
 
 
-def test_conversation_executor_requires_an_action_policy() -> None:
+@pytest.mark.parametrize("executor", ["conversation", "voice"])
+def test_conversation_executor_requires_an_action_policy(executor) -> None:
     context = _context()
     context["conversation_action_policy"] = ""
 
     with pytest.raises(ValueError, match="conversation_action_policy is required"):
-        build_executor_prompt_tree("conversation", context, suffix="")
+        build_executor_prompt_tree(executor, context, suffix="")
+
+
+@pytest.mark.parametrize("executor", ["conversation", "voice"])
+def test_custom_conversation_action_policy_is_injected_once(executor) -> None:
+    context = _context()
+    policy = "Synthetic action policy: preserve the requested outcome."
+    context["conversation_action_policy"] = policy
+    tree = build_executor_prompt_tree(executor, context, suffix="Synthetic style preferences.")
+    nodes = [node for node in tree["children"] if policy in node.get("text", "")]
+    assert len(nodes) == 1
+    assert nodes[0]["key"] in {"conversation-rules", "voice-rules"}
+    assert render_prompt_tree(tree).count(policy) == 1
 
 
 def test_conversation_context_kinds_render_as_distinct_sections() -> None:

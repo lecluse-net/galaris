@@ -1,5 +1,5 @@
 {
-  "name": "Galaris operating knowledge fr v2",
+  "name": "Galaris operating knowledge fr v3",
   "description": "Entirely synthetic native Goal management, Memory, Task and Document decisions. Real public tool schemas; effect-free receipts. References are never supplied to candidates.",
   "mechanism": "task_executor",
   "purpose": "validation",
@@ -2243,8 +2243,8 @@
                 "revision": 7,
                 "status": "ACTIVE",
                 "agent_id": 700,
-                "title": "Synthetic equipment readiness",
-                "description": "<p>Verify the demonstration equipment.</p>",
+                "title": "Synthetic inspection",
+                "description": "<p>Inspect the synthetic device weekly.</p>",
                 "tracking_content": "<p>Inspection is pending; no cycle has run.</p>",
                 "cycle_delay_seconds": 3600
               }
@@ -2285,8 +2285,8 @@
               "revision": 7,
               "status": "ACTIVE",
               "agent_id": 700,
-              "title": "Synthetic equipment readiness",
-              "description": "<p>Verify the demonstration equipment.</p>",
+              "title": "Synthetic inspection",
+              "description": "<p>Inspect the synthetic device weekly.</p>",
               "tracking_content": "<p>Inspection is pending; no cycle has run.</p>",
               "cycle_delay_seconds": 3600
             }

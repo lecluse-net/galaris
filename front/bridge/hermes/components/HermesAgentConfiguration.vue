@@ -73,7 +73,7 @@
               <q-icon name="tune" class="q-mr-sm" />{{ t('hermes.envTitle') }}
             </div>
             <q-space />
-            <q-btn flat icon="add" :label="t('hermes.envAdd')" @click="addEnvPair" />
+            <q-btn outline color="primary"  icon="add" :label="t('hermes.envAdd')" @click="addEnvPair" />
           </q-card-section>
           <q-card-section>
             <div class="text-caption text-grey-7 q-mb-sm">{{ t('hermes.envHint') }}</div>
@@ -92,7 +92,7 @@
                 />
               </div>
               <div class="col-2 col-sm-1">
-                <q-btn flat round color="negative" icon="delete" @click="removeEnvPair(index)" />
+                <q-btn :aria-label="$t('common.delete')" flat round color="negative" icon="delete" @click="removeEnvPair(index)" />
               </div>
             </div>
           </q-card-section>
@@ -111,9 +111,9 @@
       </div>
 
       <div class="row justify-end q-mt-md q-gutter-sm">
-        <q-btn
+        <q-btn outline
           v-if="showCancel"
-          flat :label="t('common.cancel')" color="primary"
+           :label="t('common.cancel')" color="primary"
           @click="emit('cancel')"
         />
         <q-btn

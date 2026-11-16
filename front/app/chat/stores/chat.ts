@@ -1,4 +1,5 @@
 import axios from 'axios'
+import type { DraftSend } from '../drafts'
 import type { DocumentFocus } from '@/core/util'
 import { computed, onScopeDispose, ref, shallowRef, watch } from 'vue'
 import { defineStore } from 'pinia'
@@ -119,13 +120,14 @@ export function useChatState(documentId: () => string | null = () => null) {
     if (!connected || !needsCatchUp.value || catchUpTimer !== null) return
     // Socket events can arrive while HTTP is offline, or before the durable commit.
     // Keep one sequential reconciliation loop until the visible response is durable.
-    catchUpTimer = setTimeout(async () => {
+    catchUpTimer = setTimeout(() => { void reconcileCatchUp() }, 3_000)
+  }
+  async function reconcileCatchUp(): Promise<void> {
       catchUpTimer = null
       if (!connected || !needsCatchUp.value) return
       try { await loadRecentMessages() }
       catch { /* A temporary HTTP failure keeps the same durable catch-up pending. */ }
       finally { scheduleCatchUp() }
-    }, 3_000)
   }
   watch(needsCatchUp, needed => { if (needed) scheduleCatchUp(); else stopCatchUp() })
   onScopeDispose(disconnect)
@@ -514,7 +516,7 @@ export function useChatState(documentId: () => string | null = () => null) {
     } catch (error) { if (request.canApply()) handleScopeError(error) }
     finally { loadingRecentMessages.value = false }
   }
-  async function send(text: string, files?: readonly File[], replyToMessageId: string | null = null, topicId: string | null = null, reasoningEffortOverride: ReasoningEffort | null = null, taskRequested = false, displayedDocumentId: string | null = null, language = '', documentFocus: DocumentFocus | null = null, displayedRepositoryId: string | null = null, resourceUris: readonly string[] = [], draft?: { revision: number; clientMessageId: string }): Promise<boolean> {
+  async function send(text: string, files?: readonly File[], replyToMessageId: string | null = null, topicId: string | null = null, reasoningEffortOverride: ReasoningEffort | null = null, taskRequested = false, displayedDocumentId: string | null = null, language = '', documentFocus: DocumentFocus | null = null, displayedRepositoryId: string | null = null, resourceUris: readonly string[] = [], draft?: DraftSend): Promise<boolean> {
     if (!selectedRoom.value?.writable || viewerAgentId.value !== null || sending.value) return false
     const room = selectedRoom.value
     const session = sessionGeneration()
@@ -559,7 +561,7 @@ export function useChatState(documentId: () => string | null = () => null) {
     sending.value = true
     try {
       const sentMessage = files?.length
-        ? await service.upload(room.id, files, text, replyToMessageId, topicId, clientMessageId, reasoningEffortOverride, taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId, resourceUris)
+        ? await service.upload(room.id, files, text, replyToMessageId, topicId, clientMessageId, reasoningEffortOverride, taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId, resourceUris, draft)
         : await service.send(room.id, text, replyToMessageId, topicId, clientMessageId, reasoningEffortOverride, taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId, resourceUris, draft)
       if (!active()) return false
       unconfirmedSend = null

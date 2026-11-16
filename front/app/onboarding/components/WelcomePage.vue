@@ -143,7 +143,7 @@
                   <q-banner v-else-if="languageLoadError" rounded>
                     {{ t('onboarding.error.description') }}
                     <template #action>
-                      <q-btn flat no-caps :label="t('common.retry')" @click="loadLanguage" />
+                      <q-btn outline color="primary"  no-caps :label="t('common.retry')" @click="loadLanguage" />
                     </template>
                   </q-banner>
                   <div v-else-if="configuredLanguage" class="welcome-language__saved" role="status">
@@ -193,18 +193,18 @@
                 <q-separator />
 
                 <div class="step-navigation">
-                  <q-btn
+                  <q-btn outline color="primary"
                     v-if="step.name > 1"
-                    flat
+
                     no-caps
                     icon="arrow_back"
                     :label="t('onboarding.actions.previous')"
                     @click="activeStep = step.name - 1"
                   />
                   <span />
-                  <q-btn
+                  <q-btn outline
                     v-if="step.name < steps.length"
-                    flat
+
                     no-caps
                     color="primary"
                     icon-right="arrow_forward"

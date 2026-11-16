@@ -4,7 +4,7 @@
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <div class="col dialog-heading">
           <div class="text-subtitle1 text-weight-medium">{{ t('evaluation.topicImport.title') }}</div>
-          <div class="text-caption text-blue-1">{{ t('evaluation.topicImport.help') }}</div>
+          <div class="text-caption text-solaire-blue">{{ t('evaluation.topicImport.help') }}</div>
         </div>
         <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
       </q-card-section>
@@ -24,7 +24,7 @@
             @popup-hide="teamMetadata.close"
           >
             <template #prepend>
-              <q-avatar v-if="selectedAgent" color="deep-purple" text-color="white" size="28px">
+              <q-avatar v-if="selectedAgent" color="solaire-iris" text-color="white" size="28px">
                 {{ agentInitials(selectedAgent.label) }}
               </q-avatar>
             </template>
@@ -32,7 +32,7 @@
               <q-item-label v-if="scope.opt.teamHeading" header class="text-weight-bold">{{ scope.opt.teamHeading }}</q-item-label>
               <q-item v-bind="scope.itemProps" :class="{ 'q-virtual-scroll--with-prev': scope.opt.teamHeading }">
                 <q-item-section avatar>
-                  <q-avatar color="deep-purple" text-color="white" size="32px">
+                  <q-avatar color="solaire-iris" text-color="white" size="32px">
                     {{ agentInitials(scope.opt.label) }}
                   </q-avatar>
                 </q-item-section>
@@ -53,7 +53,7 @@
           <q-input v-model="dateFrom" type="datetime-local" outlined stack-label :label="t('evaluation.topicImport.dateFrom')" />
           <q-input v-model="dateTo" type="datetime-local" outlined stack-label :label="t('evaluation.topicImport.dateTo')" />
           <q-btn
-            color="deep-purple"
+            color="solaire-iris"
             outline
             icon="preview"
             :label="t('evaluation.topicImport.preview')"
@@ -66,10 +66,10 @@
         <q-separator />
         <q-scroll-area class="preview-scroll">
           <div v-if="previewLoading" class="flex flex-center q-pa-xl">
-            <q-spinner color="deep-purple" size="42px" />
+            <q-spinner color="solaire-iris" size="42px" />
           </div>
           <div v-else-if="preview" class="preview-content">
-            <q-banner v-if="preview.truncated" rounded class="bg-orange-1 text-orange-10">
+            <q-banner v-if="preview.truncated" rounded class="bg-solaire-orange-light text-solaire-orange">
               <template #avatar><q-icon name="warning_amber" /></template>
               {{ t('evaluation.topicImport.tooMany', { count: preview.total_count }) }}
             </q-banner>
@@ -97,7 +97,7 @@
                     <span class="text-caption text-grey-7">{{ formatDate(item.occurred_at) }}</span>
                   </div>
                   <div class="message-text">{{ item.message.text }}</div>
-                  <q-chip v-if="item.detected_topic" dense outline color="deep-purple" icon="label">
+                  <q-chip v-if="item.detected_topic" dense outline color="solaire-iris" icon="label">
                     {{ t('evaluation.topicImport.detectedTopic') }} · {{ item.detected_topic }}
                   </q-chip>
                 </div>
@@ -114,9 +114,9 @@
 
       <q-separator />
       <q-card-actions align="right" class="q-px-md galaris-dialog-actions">
-        <q-btn v-close-popup outline :label="t('evaluation.close')" />
+        <q-btn color="primary" v-close-popup outline :label="t('evaluation.close')" />
         <q-btn
-          color="deep-purple"
+          color="solaire-iris"
           icon="download"
           :label="t('evaluation.topicImport.importExchange')"
           :loading="importing"

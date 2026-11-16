@@ -1,4 +1,4 @@
-import type { AgentDriverTabContribution } from '@/app/agent/driverTabs'
+import type { AgentDriverTabContribution } from '@/app/agent/contracts'
 import HermesAgentConfiguration from './components/HermesAgentConfiguration.vue'
 
 export default {

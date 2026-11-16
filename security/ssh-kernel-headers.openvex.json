@@ -2,8 +2,8 @@
   "@context": "https://openvex.dev/ns/v0.2.0",
   "@id": "https://github.com/lecluse-net/galaris/security/vex/ssh-linux-headers-2026-11-03",
   "author": "Galaris maintainers",
-  "timestamp": "2026-11-03T21:00:00Z",
-  "version": 1,
+  "timestamp": "2026-11-16T21:00:00Z",
+  "version": 2,
   "statements": [
     {
       "vulnerability": {
@@ -12,6 +12,9 @@
       "products": [
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        },
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-43.43?arch=amd64&distro=ubuntu-26.04"
         }
       ],
       "status": "not_affected",
@@ -25,6 +28,9 @@
       "products": [
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        },
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-43.43?arch=amd64&distro=ubuntu-26.04"
         }
       ],
       "status": "not_affected",
@@ -38,6 +44,9 @@
       "products": [
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        },
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-43.43?arch=amd64&distro=ubuntu-26.04"
         }
       ],
       "status": "not_affected",
@@ -51,6 +60,9 @@
       "products": [
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        },
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-43.43?arch=amd64&distro=ubuntu-26.04"
         }
       ],
       "status": "not_affected",
@@ -77,6 +89,9 @@
       "products": [
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        },
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-43.43?arch=amd64&distro=ubuntu-26.04"
         }
       ],
       "status": "not_affected",
@@ -90,6 +105,9 @@
       "products": [
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        },
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-43.43?arch=amd64&distro=ubuntu-26.04"
         }
       ],
       "status": "not_affected",
@@ -181,6 +199,9 @@
       "products": [
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        },
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-43.43?arch=amd64&distro=ubuntu-26.04"
         }
       ],
       "status": "not_affected",
@@ -194,6 +215,9 @@
       "products": [
         {
           "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-42.42?arch=amd64&distro=ubuntu-26.04"
+        },
+        {
+          "@id": "pkg:deb/ubuntu/linux-libc-dev@7.0.0-43.43?arch=amd64&distro=ubuntu-26.04"
         }
       ],
       "status": "not_affected",

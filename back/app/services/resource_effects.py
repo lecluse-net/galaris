@@ -6,6 +6,7 @@ import json
 from collections.abc import Mapping
 from pathlib import PurePosixPath
 from typing import Any, cast
+from uuid import UUID
 
 from app.agent.contracts import WorkingResource
 from app.agent.task_port import task_port
@@ -106,6 +107,9 @@ async def record_tool_resources(
         ).strip()
         if not document_id:
             return
+        # Sharing tools accept either a UUID or its canonical URI. Normalize
+        # before matching roles so inspecting grants cannot retire production evidence.
+        document_id = str(UUID(document_id.removeprefix("document://")))
         requested_role = _text(arguments, "role")
         working_set = await task_port.get_working_set(ctx.task_id)
         existing = next(
@@ -134,7 +138,8 @@ async def record_tool_resources(
                 resource_type="memory_document",
                 role=role,
                 reference=f"document://{document_id}",
-                label=str(payload.get("title") or arguments.get("title") or ""),
+                label=str(payload.get("title") or arguments.get("title")
+                          or (existing.label if existing is not None else "")),
                 revision=revision,
                 producer_task_id=ctx.task_id,
                 metadata={

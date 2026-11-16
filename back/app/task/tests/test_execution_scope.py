@@ -143,6 +143,73 @@ async def test_native_artifact_creation_with_task_preserves_content_and_domain(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("sharing_reference", ["uuid", "uri"])
+async def test_created_document_remains_editable_after_sharing_and_delegation(
+    scoped_task, monkeypatch, sharing_reference,
+):
+    import json
+    from fastmcp import Client
+    from app.agent.task_port import task_port
+    from app.task.working_set import get_working_set
+
+    task_id, agent_id = scoped_task
+    monkeypatch.setattr(task_port, "record_scope_preflight", SqlAlchemyAgentTaskAdapter().record_scope_preflight)
+    async with get_db_session() as db:
+        owner = await db.get(Agent, agent_id)
+        user = UserModel(email=f"reviewer-{uuid4().hex}@example.test", hashed_password="synthetic")
+        db.add(user)
+        await db.flush()
+        reviewer = Agent(user_id=user.id, code=f"reviewer-{uuid4().hex}", first_name="Synthetic",
+            last_name="Reviewer", title_id=owner.title_id)
+        db.add(reviewer)
+        await db.flush()
+        reviewer_id = reviewer.id
+    server = await _native_creation_server(task_id, agent_id, {
+        "file_sharing": ["file_create", "file_read", "file_edit"],
+        "document": ["document_sharing", "document_share"],
+    })
+    async with Client(server) as client:
+        result = await client.call_tool("file_create", {"path": "document://", "name": "Synthetic draft",
+            "content": "<p>Original paragraph.</p><p>Retained paragraph.</p>"})
+        uri = json.loads(result.content[0].text)["uri"]
+        reference = uri if sharing_reference == "uri" else uri.removeprefix("document://")
+        sharing = await client.call_tool("document_sharing", {"document_id": reference})
+        await client.call_tool("document_share", {"document_id": reference, "agent_id": reviewer_id,
+            "access": "edit", "expected_lock_version": json.loads(sharing.content[0].text)["lock_version"]})
+        async with get_db_session():
+            resources = (await get_working_set(task_id)).active("primary_working_document")
+            assert len(resources) == 1
+            assert resources[0].reference == uri
+            assert resources[0].metadata["produced"] is True
+        async with get_db_session() as db:
+            child = task_service.build(TaskCreate(agent_id=reviewer_id, parent_id=task_id,
+                label="Synthetic review", objective=f"<p>Correct {uri}.</p>"))
+            await initialize_scope(child)
+            db.add(child)
+            await db.flush()
+            child_id = child.id
+        child_server = await _native_creation_server(child_id, reviewer_id,
+            {"file_sharing": ["file_read", "file_edit"]})
+        async with Client(child_server) as colleague:
+            read = await colleague.call_tool("file_read", {"uri": uri})
+            revision = json.loads(read.content[0].text)["revision"]
+            edited = await colleague.call_tool("file_edit", {"uri": uri, "start_line": 1, "end_line": 1,
+                "content": "<p>Reviewed paragraph.</p>", "expected_revision": revision}, raise_on_error=False)
+            assert not edited.is_error, edited
+            read = await client.call_tool("file_read", {"uri": uri})
+            payload = json.loads(read.content[0].text)
+            assert payload["content"] == "<p>Reviewed paragraph.</p><p>Retained paragraph.</p>"
+            sharing = await client.call_tool("document_sharing", {"document_id": reference})
+            await client.call_tool("document_share", {"document_id": reference, "agent_id": reviewer_id,
+                "access": "none", "expected_lock_version": json.loads(sharing.content[0].text)["lock_version"]})
+            denied = await colleague.call_tool("file_edit", {"uri": uri, "start_line": 1, "end_line": 1,
+                "content": "<p>Unauthorized change.</p>", "expected_revision": payload["revision"]}, raise_on_error=False)
+            assert denied.is_error
+            read = await client.call_tool("file_read", {"uri": uri})
+            assert json.loads(read.content[0].text)["content"] == payload["content"]
+
+
+@pytest.mark.asyncio
 async def test_goal_creation_with_task_needs_no_future_uri_and_rechecks_management(scoped_task, monkeypatch):
     from fastmcp import Client
     from sqlalchemy import func, select

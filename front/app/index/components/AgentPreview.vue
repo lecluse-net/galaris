@@ -1,14 +1,14 @@
 <template>
   <div v-if="loading" class="flex flex-center q-pa-xl"><q-spinner color="primary" size="42px" /></div>
-  <q-banner v-else-if="error" role="alert" class="q-ma-md">{{ error }}<template #action><q-btn outline :label="t('common.retry')" @click="retry++" /></template></q-banner>
+  <q-banner v-else-if="error" role="alert" class="q-ma-md">{{ error }}<template #action><q-btn color="primary" outline :label="t('common.retry')" @click="retry++" /></template></q-banner>
   <AgentManagement v-else-if="agent" :preview-agent-id="agent.id" @deleted="emit('deleted')" />
 </template>
 <script setup lang="ts">
 import { ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { defineAsyncView } from '@/core/util/facade'
-import { agentService, type Agent } from '../services/agentService'
-const AgentManagement = defineAsyncView(() => import('../pages/index.vue'))
+import { agentService, type Agent } from '@/app/agent/facade'
+const AgentManagement = defineAsyncView(() => import('../pages/agent.vue'))
 
 const { agentId } = defineProps<{ agentId: number }>()
 const emit = defineEmits<{ loaded: [title: string]; deleted: [] }>()

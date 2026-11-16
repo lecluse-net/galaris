@@ -12,6 +12,7 @@ from app.document import Document
 from app.document import Document
 from core.storage import get_storage
 from app.memory.contracts import ResourceNotFoundError
+from tests.sql_reads import measured_reads
 
 
 @pytest.mark.asyncio
@@ -37,6 +38,11 @@ async def test_goal_documents_bulk_read_reopens_current_content(db, agents, memo
         assert len(statements) <= 1
     finally:
         event.remove(engine, "before_cursor_execute", count)
+    async with measured_reads(db, "goal-search-distinct-terms") as reads:
+        assert await store.search(()) == {}
+        matches = await store.search(("Synthetic", "Synthetic", "missing-probe", "Synthetic"))
+    assert matches == {"Synthetic": frozenset(ids), "missing-probe": frozenset()}
+    assert len(reads) <= len(matches), "Repeated words must not repeat the same database read"
     await store.update(ids[0], content="<p>Updated content</p>")
     assert (await store.read_many(ids))[ids[0]] == "<p>Updated content</p>"
     assert await store.read(ids[0]) == "<p>Updated content</p>"

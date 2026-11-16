@@ -1,5 +1,5 @@
 import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
-import { agent, goal, result } from './data.mjs'
+import { agent, goal } from './data.mjs'
 
 async function goals(page, status = 'ACTIVE', id = 'goal-a', changes = {}) {
   let current = { ...goal, id, status, ...changes }
@@ -439,25 +439,13 @@ for (const mode of ['create', 'edit']) test(`a late category creation cannot sel
 
 test('Goal history loads on demand, recovers from an error and stays lazy after reopening', async ({ page }, testInfo) => {
   await goals(page)
-  const reviewId = '00000000-0000-0000-0000-000000000173'
-  const cycle = { id: 'synthetic-reviewed-cycle', goal_id: 'goal-a', sequence: 2, trigger_kind: 'TEMPORAL',
-    task_id: null, review_task_id: reviewId, review_task_uri: `galaris://task/${reviewId}`,
-    task_label: null, task_status: 'SUCCESS', task_cost: 0, status: 'DECIDED', verdict: 'CONTINUE',
+  const taskId = '00000000-0000-0000-0000-000000000173'
+  const cycle = { id: 'synthetic-completed-cycle', goal_id: 'goal-a', sequence: 2, trigger_kind: 'TEMPORAL',
+    task_id: taskId,
+    task_label: 'Synthetic cycle Task', task_status: 'SUCCESS', task_cost: 0, status: 'DECIDED', verdict: 'CONTINUE',
     reason: 'Synthetic evidence was inspected.', progress_summary: 'Synthetic milestone verified.',
     evidence: ['Synthetic acceptance checks passed.'], task_finished_at: '2026-09-01T12:00:00Z',
-    judge_cost: 0, judge_attempt_count: 1, error: null, created_at: '2026-09-01T11:00:00Z' }
-  const review = { id: reviewId, label: 'Synthetic cycle review', objective: '<p>Check synthetic evidence.</p>',
-    status: 'SUCCESS', paused: false, agent_id: null, tree_parent_id: null, parent_id: null,
-    directly_linked: true, topic_id: null, data: {}, execution_result: result, revision: 1,
-    created_at: '2026-09-01T12:00:00Z', updated_at: null, effort: 'standard', ai: true, cost: 0, messages: [] }
-  await jsonRoute(page, `**/api/tasks/${reviewId}/full`, review)
-  await jsonRoute(page, `**/api/tasks/${reviewId}`, review)
-  await jsonRoute(page, `**/api/tasks/${reviewId}/children`, [])
-  await jsonRoute(page, `**/api/tasks/${reviewId}/budget`, { enabled: false, scope: 'task_tree',
-    provider_hard_cap: false, recorded_tokens: 0, recorded_cost: 0, active_phases: 0,
-    reserved_tokens: 0, reserved_cost: 0, remaining_tokens: null, remaining_cost: null, remaining_seconds: null })
-  await jsonRoute(page, '**/api/tasks/activity', [])
-  await jsonRoute(page, '**/api/topics?*', [])
+    judge_cost: 0, judge_llm_id: 1, judge_attempt_count: 1, error: null, created_at: '2026-09-01T11:00:00Z' }
   let reads = 0
   await page.route('**/api/goals/goal-a/cycles?*', route => {
     reads++
@@ -485,16 +473,16 @@ test('Goal history loads on demand, recovers from an error and stays lazy after 
   await expect(dialog.getByRole('alert')).toHaveCount(0)
   expect(reads).toBe(2)
   await expect(dialog).toContainText('Synthetic acceptance checks passed.')
-  await expect(dialog.getByRole('button', { name: 'Open review', exact: true })).toHaveCount(0)
+  await expect(dialog.getByRole('button', { name: 'Task - Cycle 2', exact: true })).toHaveCount(0)
   await setPrivileges(page, ['GOAL_ACCESS', 'TASK_ACCESS'])
-  const originalUrl = page.url()
-  await dialog.getByRole('button', { name: 'Open review', exact: true }).click()
-  const reviewDialog = page.getByRole('dialog').last()
-  await expect(reviewDialog.getByText('Synthetic cycle review', { exact: true })).toBeVisible()
-  await expect(page).toHaveURL(originalUrl)
-  await reviewDialog.getByRole('button', { name: 'Close', exact: true }).click()
-  await expect(dialog).toHaveCount(1)
-  await expect(dialog).toContainText('Synthetic acceptance checks passed.')
+  await expect(dialog.getByRole('button', { name: 'Task - Cycle 2', exact: true })).toBeVisible()
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 950 })
+    for (const dark of [false, true]) {
+      await page.evaluate(dark => window.testApp.dark(dark), dark)
+      await page.screenshot({ path: testInfo.outputPath(`cycle-decision-${width}-${dark ? 'dark' : 'light'}.png`), fullPage: true, animations: 'disabled' })
+    }
+  }
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
   await open()
@@ -599,4 +587,37 @@ test('closing a saving Goal keeps the next Goal selected when the save completes
     })).toBe('goal-b')
     await expect(dialog).toContainText('Synthetic second Goal')
   } finally { release() }
+})
+
+test('closing a contact search does not cancel the default Goal supervisor lookup', async ({ page }) => {
+  await goals(page)
+  let release, reads = 0
+  const contact = { connection_id: 1, service_id: 1, platform: 'internal', user_id: 'user:1', display_name: 'Synthetic supervisor', is_current_user: true }
+  await page.route('**/api/goals/referrers/messenger?*', async route => {
+    const index = ++reads
+    if (index === 1) await new Promise(resolve => { release = resolve })
+    await route.fulfill({ json: index === 1 ? [contact] : [] })
+  })
+  await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_EDIT'] })
+  await page.getByRole('button', { name: 'New Goal', exact: true }).click()
+  const dialog = page.getByRole('dialog'), selector = page.getByRole('combobox', { name: 'Other human contact', exact: true })
+  try {
+    await expect.poll(() => Boolean(release)).toBe(true)
+    await selector.click()
+    await expect.poll(() => reads).toBeGreaterThan(1)
+    await dialog.getByRole('textbox', { name: 'Title', exact: true }).click()
+    const response = page.waitForResponse('**/api/goals/referrers/messenger?*')
+    release(); await response
+    await expect(dialog.locator('.q-field').filter({ has: selector })).toContainText('Synthetic supervisor')
+    await dialog.getByRole('textbox', { name: 'Title', exact: true }).fill('Synthetic Goal')
+    await dialog.locator('[data-editor-surface]').fill('Synthetic objective')
+    const writes = []
+    await page.route('**/api/goals', async route => {
+      writes.push(route.request().postDataJSON())
+      await route.fulfill({ json: { ...goal, referrer: { ...contact, type: 'MESSENGER' } } })
+    })
+    await dialog.getByRole('button', { name: 'Create', exact: true }).click()
+    await expect.poll(() => writes.length).toBe(1)
+    expect(writes[0].referrer.user_id).toBe(contact.user_id)
+  } finally { release?.() }
 })

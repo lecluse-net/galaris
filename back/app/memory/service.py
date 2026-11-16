@@ -223,7 +223,8 @@ def _item_options(*, revisions: bool = True, contents: bool = True) -> tuple[Any
     )
     if not contents:
         return (*options, defer(MemoryItem.memory_content),
-                selectinload(MemoryItem.document).defer(Document.content),
+                defer(MemoryItem.search_vector),
+                selectinload(MemoryItem.document).defer(Document.content).defer(Document.summary_content).defer(Document.summary_source_text),
                 selectinload(MemoryItem.revisions).defer(MemoryRevision.content) if revisions else raiseload(MemoryItem.revisions))
     return options
 
@@ -362,6 +363,9 @@ def _graph_item_options() -> Load:
         MemoryItem.owner_user_id, MemoryItem.source_managed, MemoryItem.access_count,
         MemoryItem.last_accessed_at, MemoryItem.created_at, MemoryItem.updated_at,
         MemoryItem.activity_at, MemoryItem.metadata_, MemoryItem.primary_url, MemoryItem.file_media_type, raiseload=True,
+    ).options(
+        raiseload(MemoryItem.url_relations),
+        selectinload(MemoryItem.document).load_only(Document.title, Document.visibility, raiseload=True),
     )
 
 
@@ -2317,7 +2321,10 @@ async def search_items(
 
     evidence_ids, sources = await source_evidence_admission({item.id for item, _score in ranked}, request.agent_id,
         include_locations=True)
-    accesses = await effective_access_many([item for item, _score in ranked], request.agent_id, evidence_ids=evidence_ids)
+    # The final admission below owns the live source I/O for this page. Rights
+    # projection must not open the same remote source once again beforehand.
+    accesses = await effective_access_many([item for item, _score in ranked], request.agent_id,
+        evidence_ids=evidence_ids, check_sources=False)
     hits: list[MemorySearchHit] = []
     for item, score in ranked:
         access = accesses[item.id]
@@ -2385,11 +2392,12 @@ async def projected_topic_item_id(topic_id: UUID | None) -> UUID | None:
 async def list_filter_options(agent_id: int) -> MemoryFilterOptions:
     """List the Topic and interlocutor projections usable as exact filters."""
 
+    await prepare_memory_read()
     db = get_db()
     topic_items = list(
         (
-            await db.scalars(
-                select(MemoryItem)
+            await db.execute(
+                select(MemoryItem.id, MemoryItem.title)
                 .where(
                     readable_item_clause(agent_id),
                     MemoryItem.source_managed.is_(True),
@@ -2403,8 +2411,8 @@ async def list_filter_options(agent_id: int) -> MemoryFilterOptions:
     )
     contact_items = list(
         (
-            await db.scalars(
-                select(MemoryItem)
+            await db.execute(
+                select(MemoryItem.id, MemoryItem.title)
                 .where(
                     readable_item_clause(agent_id),
                     MemoryItem.owner_agent_id == agent_id,

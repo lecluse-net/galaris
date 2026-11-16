@@ -9,7 +9,8 @@ from app.task import run_events
 from app.task.trace_projection import project_tool_payload
 
 
-@pytest.mark.parametrize("value", ['é"\\' * 10_000, {"nested": ["payload" * 100] * 100}])
+@pytest.mark.parametrize("value", ['é"\\' * 10_000, {"nested": ["payload" * 100] * 100}],
+    ids=["large-text", "nested-payload"])
 def test_tool_detail_preview_is_bounded_redacted_and_does_not_mutate_the_source(value):
     original = {"query": "Synthetic query", "password": "synthetic-secret", "output": value}
     preview = project_tool_payload(original)
@@ -19,6 +20,19 @@ def test_tool_detail_preview_is_bounded_redacted_and_does_not_mutate_the_source(
     assert preview["truncated"] is True
     assert original["password"] == "synthetic-secret"
     assert original["output"] == value
+    from app.task.schemas import Task as TaskSchema
+    from app.task.models import TaskStatus
+
+    payload = TaskSchema(id=uuid4(), label="Synthetic task", objective="Synthetic objective",
+        status=TaskStatus.SUCCESS, execution_result={"result": "Synthetic completed result",
+            "messages": [{"type": "tool", "tool_arguments": original,
+                "tool_result": {"nested": {"token": "synthetic-secret"}, "output": value}}]})
+    serialized = payload.model_dump(mode="json")["execution_result"]
+    assert serialized["messages"][0]["tool_arguments"]["password"] == "[REDACTED]"
+    assert serialized["messages"][0]["tool_result"]["nested"]["token"] == "[REDACTED]"
+    assert serialized["messages"][0]["tool_arguments"]["output"] == value
+    assert serialized["messages"][0]["tool_result"]["output"] == value
+    assert payload.execution_result["messages"][0]["tool_arguments"]["password"] == "synthetic-secret"
 
 
 @pytest.mark.asyncio

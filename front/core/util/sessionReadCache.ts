@@ -24,7 +24,7 @@ interface CacheOptions<T> {
   sessionEvent: string
   sessionKey?: () => string
   group: string
-  maxAgeMs: number
+  maxAgeMs: number | ((key: string) => number)
   maxEntries: number
   maxBytes?: number
   size?: (value: T) => number
@@ -72,10 +72,11 @@ export function createSessionReadCache<T>(options: CacheOptions<T>): {
   function remember(key: string, value: T): void {
     const size = options.size?.(value) ?? 1
     const limit = options.maxBytes ?? Infinity
-    if (options.maxAgeMs <= 0 || size > limit) return
+    const maxAgeMs = typeof options.maxAgeMs === 'function' ? options.maxAgeMs(key) : options.maxAgeMs
+    if (maxAgeMs <= 0 || size > limit) return
     for (const [id, entry] of values) if (entry.expires <= Date.now()) remove(id)
     remove(key)
-    values.set(key, { value, expires: Date.now() + options.maxAgeMs, bytes: size })
+    values.set(key, { value, expires: Date.now() + maxAgeMs, bytes: size })
     bytes += size
     while (values.size > options.maxEntries || bytes > limit) {
       const oldest = values.keys().next().value

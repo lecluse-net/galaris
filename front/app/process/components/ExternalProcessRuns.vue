@@ -2,7 +2,7 @@
   <section>
     <q-banner v-if="error" role="alert" class="q-mb-sm">
       {{ t('processes.genericError') }}
-      <template #action><q-btn outline :label="t('nativeProcesses.retry')" @click="load" /></template>
+      <template #action><q-btn color="primary" outline :label="t('nativeProcesses.retry')" @click="load" /></template>
     </q-banner>
     <ProcessRunList class="run-table" :rows="listRows" :pagination="pagination" :loading="loading" :show-refresh="false"
       @update:pagination="setPagination" @request="request" @refresh="load" @open="openRun" />

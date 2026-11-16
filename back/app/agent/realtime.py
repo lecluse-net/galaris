@@ -59,6 +59,7 @@ async def build_realtime_agent_context(
     from .prompt_tree import render_prompt_tree
     from core.params import Params, params_service
     from core.params import runtime_settings
+    from app.services import build_task_capability_context
     agent = await agent_service.get(agent_id)
     if agent is None:
         raise ValueError(f"Agent {agent_id} not found")
@@ -149,7 +150,8 @@ async def build_realtime_agent_context(
             "`conversation_task_list`, "
             "`conversation_task_submit`, "
             "`conversation_task_status`, "
-            "`process_list`, `process_get`, and `conversation_process_start`."
+            "`process_list`, `process_get`, and `conversation_process_start`.\n\n"
+            + await build_task_capability_context(agent_id)
         ),
         process_advertisement=process_advertisement,
         linked_work=linked_work_context(linked_work if active_work is None else active_work),
@@ -160,15 +162,7 @@ async def build_realtime_agent_context(
         continuity_context=continuity_context,
         runtime_rules=(
             f"Speak in {language}. Use memory_search only when prior durable context can "
-            "materially change the answer. Before submitting Task work, list active Task "
-            "candidates. Amend only when the same primary artifact or target keeps substantially "
-            "the same success criteria. Create an independent Task for a different target, "
-            "repository, resource, deliverable, or independently verifiable outcome, even when "
-            "it shares the same document or incident. If either outcome can be completed "
-            "without the other, create a new Task and leave existing work unchanged; "
-            "ask one clarifying question if unsure. "
-            "Never claim a Task or Process was started unless its tool returned a durable "
-            "identifier."
+            "materially change the answer."
         ),
     )
     instructions = render_prompt_tree(

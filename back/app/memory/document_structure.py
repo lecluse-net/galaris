@@ -256,7 +256,10 @@ async def sync_document_structure(document: Document, content: bytes | None = No
             DocumentTagAssignment, DocumentTagAssignment.tag_id == DocumentTag.id,
         ).where(DocumentTagAssignment.document_id == document.id, DocumentTag.memory_item_id.is_not(None)))
         desired.update((identity, "in_folder") for identity in folders if identity is not None)
-    await _edges(document.id, desired)
+    # Attachments exist independently of the document's optional graph node.
+    # Reconcile its edges only while that source node exists.
+    if await db.scalar(select(MemoryItem.id).where(MemoryItem.id == document.id)) is not None:
+        await _edges(document.id, desired)
 
 
 async def sync_folder_structure(user_id: int) -> None:

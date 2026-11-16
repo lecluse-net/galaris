@@ -5,3 +5,6 @@ export { default as ServiceOriginBadge } from './components/ServiceOriginBadge.v
 export { default as ServiceFilterSelect } from './components/ServiceFilterSelect.vue'
 export { default as ConnectionParamInput } from './components/ConnectionParamInput.vue'
 export type { Service, ConnectionParamDef, ConnectionParamOption } from './services/serviceApi'
+import { defineAsyncView } from '@/core/util/facade'
+
+export const ServicesList = /* @__PURE__ */ defineAsyncView(() => import('./components/ServicesList.vue'))

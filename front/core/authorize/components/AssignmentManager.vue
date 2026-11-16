@@ -53,7 +53,7 @@
 
       <template v-slot:body-cell-actions="props">
         <q-td :props="props">
-          <q-btn v-if="canManage" flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)">
+          <q-btn :aria-label="$t('common.delete')" v-if="canManage" flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)">
             <q-tooltip>{{ $t('common.delete') }}</q-tooltip>
           </q-btn>
         </q-td>
@@ -143,7 +143,7 @@
             </q-select>
 
             <div class="assignment-dialog-actions galaris-dialog-actions q-mt-md q-pa-md">
-              <q-btn :label="$t('common.cancel')" color="primary" flat v-close-popup />
+              <q-btn outline :label="$t('common.cancel')" color="primary"  v-close-popup />
               <q-btn v-if="canManage" :label="$t('common.create')" type="submit" color="primary" />
             </div>
           </q-form>
@@ -207,7 +207,7 @@ const newItem = ref({
 
 onMounted(async () => {
     // Initial load via onRequest
-    onRequest({
+    await onRequest({
         pagination: pagination.value
     })
     // Load roles for dropdown
@@ -318,7 +318,7 @@ async function saveAssignment() {
         $q.notify({ color: 'positive', message: t('authorize.assignments.created') })
         showDialog.value = false
         // Refresh list
-        onRequest({ pagination: pagination.value })
+        await onRequest({ pagination: pagination.value })
     } catch (error: any) {
         console.error(error)
         let msg = t('authorize.assignments.createError')
@@ -339,7 +339,7 @@ function confirmDelete(item: AssignmentWithRole) {
       await authorizeService.deleteAssignment(item.id)
       $q.notify({ color: 'positive', message: t('authorize.assignments.deleted') })
       // Refresh list
-      onRequest({ pagination: pagination.value })
+      await onRequest({ pagination: pagination.value })
     } catch (error) {
        console.error(error)
       $q.notify({ color: 'negative', message: t('authorize.assignments.deleteError'), icon: 'report_problem' })

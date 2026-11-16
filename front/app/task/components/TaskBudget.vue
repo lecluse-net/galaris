@@ -3,7 +3,7 @@
       <q-expansion-item v-model="showCosts" :label="t('task.costs.title')">
         <TaskCosts v-if="showCosts" :task-id="taskId" />
       </q-expansion-item>
-      <q-btn flat icon="refresh" :label="t('common.refresh')" :loading="loading" @click="load" />
+      <q-btn outline color="primary"  icon="refresh" :label="t('common.refresh')" :loading="loading" @click="load" />
       <p v-if="error" role="alert">{{ error }}</p>
       <template v-if="budget">
         <p>{{ t(budget.enabled ? 'task.budget.enabled' : 'task.budget.unlimited') }}</p>

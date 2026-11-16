@@ -29,7 +29,7 @@
           <div v-else-if="listError" class="document-history-state text-negative">
             <q-icon name="warning" size="28px" />
             <span>{{ t('documents.historyLoadError') }}</span>
-            <q-btn flat color="negative" :label="t('documents.retry')" @click="loadRevisions" />
+            <q-btn  color="negative" :label="t('documents.retry')" @click="loadRevisions" />
           </div>
           <div v-else-if="!revisions.length" class="document-history-state text-grey-7">
             <q-icon name="history_toggle_off" size="30px" />
@@ -41,7 +41,7 @@
               :key="revision.revision"
               clickable
               :active="revision.revision === selectedRevision"
-              active-class="bg-blue-1 text-primary"
+              active-class="bg-solaire-blue-light text-primary"
               @click="selectRevision(revision.revision)"
             >
               <q-item-section avatar>
@@ -51,7 +51,7 @@
                   :name="agentLabel(revision.author_agent_id)"
                   size="34px"
                 />
-                <q-avatar v-else color="blue-grey-1" text-color="blue-grey-8" size="34px">
+                <q-avatar v-else color="solaire-gray-light" text-color="solaire-gray" size="34px">
                   <q-icon name="restore" size="20px" />
                 </q-avatar>
               </q-item-section>
@@ -68,8 +68,8 @@
               </q-item-section>
             </q-item>
             <q-item v-if="hasMore" class="justify-center">
-              <q-btn
-                flat
+              <q-btn outline
+
                 no-caps
                 color="primary"
                 icon="expand_more"
@@ -172,16 +172,12 @@
 
   <q-dialog v-model="restoreOpen">
     <q-card class="document-history-confirm galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <div class="text-h6">{{ t('documents.historyRestoreTitle') }}</div>
-        <q-space />
-        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('documents.historyClose')" />
-      </q-card-section>
+      <DialogHeader :title="t('documents.historyRestoreTitle')" :close-label="t('documents.historyClose')" />
       <q-card-section class="galaris-dialog-body">
         {{ t('documents.historyRestoreConfirm', { revision: selectedRevision }) }}
       </q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn v-close-popup flat no-caps :label="t('documents.historyCancel')" />
+        <q-btn outline color="primary" v-close-popup  no-caps :label="t('documents.historyCancel')" />
         <q-btn
           color="primary"
           unelevated
@@ -197,6 +193,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import '../documentSecondaryView.css'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'

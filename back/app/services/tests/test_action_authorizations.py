@@ -50,6 +50,32 @@ async def pending(action):
 
 
 @pytest.mark.asyncio
+async def test_authorization_policy_lock_does_not_wait_for_unrelated_agent_foreign_keys(action):
+    from sqlalchemy import text
+    from app.agent import authorization_policy
+    from app.task import Task
+
+    async with get_db_session() as caller:
+        caller.add(Task(label="Synthetic admitted work", agent_id=action.agent_id))
+        await caller.flush()
+        # The outer admission owns a KEY SHARE FK lock on Agent until commit.
+        # Authorization must serialize policy changes without waiting on that FK.
+        async with get_db_session() as authorization:
+            await authorization.execute(text("SET LOCAL lock_timeout = '100ms'"))
+            policy = await authorization_policy(action.agent_id, lock=True)
+            assert policy.manager_user_id > 0
+            from sqlalchemy import update
+            from sqlalchemy.exc import DBAPIError
+
+            async with get_db_session() as editor:
+                await editor.execute(text("SET LOCAL lock_timeout = '100ms'"))
+                with pytest.raises(DBAPIError):
+                    await editor.execute(update(Agent).where(Agent.id == action.agent_id).values(
+                        authorization_version=Agent.authorization_version + 1))
+                await editor.rollback()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("runtime", ["internal", "hermes"])
 @pytest.mark.parametrize("state", ["default", "ask", "disabled"])
 async def test_goal_question_needs_no_approval_by_default_but_preserves_explicit_policy(action, runtime, state):

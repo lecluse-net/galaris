@@ -80,7 +80,7 @@
         {{ authorizeStore.roleLabel }}
       </div>
     </div>
-    <q-btn
+    <q-btn flat
       v-if="!avatarUrl || avatarLoadFailed"
       fab
       color="primary"

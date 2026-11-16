@@ -4,7 +4,7 @@
       <div class="service-card-icon bg-grey-2"><ServiceIdentityIcon :service="service" :size="$q.screen.lt.sm ? 64 : 80" /></div>
       <q-card-section class="service-card-details q-pa-md">
         <div class="row items-start no-wrap q-gutter-xs">
-          <q-btn v-if="description" flat dense no-caps align="left" class="service-card-title text-h6 text-weight-bold"
+          <q-btn outline color="primary" v-if="description"  dense no-caps align="left" class="service-card-title text-h6 text-weight-bold"
             :label="label" @click.stop="emit('describe')" />
           <h2 v-else class="service-card-title text-h6 text-weight-bold q-ma-none">{{ label }}</h2>
           <SystemServiceIcon v-if="service.can_disable === false" class="q-mt-sm" />
@@ -30,14 +30,14 @@
       <q-spinner v-if="busy" size="18px" color="primary" />
     </div>
     <q-card-actions align="right" class="q-pa-sm service-card-actions">
-      <q-btn v-if="service.can_edit" flat color="secondary" icon="download" size="sm" :label="t('services.exportYaml')"
+      <q-btn outline v-if="service.can_edit"  color="secondary" icon="download" size="sm" :label="t('services.exportYaml')"
         :aria-label="t('services.exportYaml')" @click="emit('export')"><q-tooltip>{{ t('services.exportYaml') }}</q-tooltip></q-btn>
-      <q-btn v-if="canEdit && service.can_disable !== false && Object.keys(service.connection_schema?.params ?? {}).length"
-        flat color="deep-purple" icon="tune" size="sm" :label="t('services.globalParams')"
+      <q-btn outline v-if="canEdit && service.can_disable !== false && Object.keys(service.connection_schema?.params ?? {}).length"
+         color="solaire-iris" icon="tune" size="sm" :label="t('services.globalParams')"
         :aria-label="t('services.globalParams')" @click="emit('parameters')"><q-tooltip>{{ t('services.globalParams') }}</q-tooltip></q-btn>
-      <q-btn v-if="canEdit && service.can_edit && service.can_disable !== false" class="solaire-warning-action" flat color="warning" icon="edit" size="sm"
+      <q-btn outline v-if="canEdit && service.can_edit && service.can_disable !== false" class="solaire-warning-action"  color="warning" icon="edit" size="sm"
         :label="t('common.edit')" :aria-label="t('services.editService')" @click="emit('edit')"><q-tooltip>{{ t('services.editService') }}</q-tooltip></q-btn>
-      <q-btn v-if="canEdit && service.can_edit && service.can_disable !== false" flat color="negative" icon="delete" size="sm"
+      <q-btn v-if="canEdit && service.can_edit && service.can_disable !== false"  color="negative" icon="delete" size="sm"
         :label="t('common.delete')" :aria-label="t('common.delete')" @click="emit('delete')"><q-tooltip>{{ t('common.delete') }}</q-tooltip></q-btn>
     </q-card-actions>
   </q-card>

@@ -91,7 +91,9 @@ for (const scenario of [
         expect(final.documents[0].revision).toBe(scenario.update ? 2 : 1)
         expect(final.documents[0].content.includes('Background task contribution.')).toBe(scenario.update)
         expect(final.documents[0].content).toContain('Initial content preserved.')
-        expect(final.revisions.sort()).toEqual(scenario.update ? [1, 2] : [1])
+        // Content revision 2 is already durable above. Restorable history keeps
+        // the initial snapshot until the documented five-minute quiet period.
+        expect(final.revisions).toEqual([1])
         expect(final.approvals.map(row => row.status)).toEqual(['completed', scenario.update ? 'completed' : 'denied'])
         expect(final.tasks).toHaveLength(1)
         expect(final.tasks[0].paused).toBe(false)

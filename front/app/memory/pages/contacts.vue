@@ -16,7 +16,7 @@
       </template>
     </PageHeader>
 
-    <q-banner v-if="error" rounded class="bg-red-1 text-negative q-mb-md">
+    <q-banner v-if="error" rounded class="bg-solaire-red-light text-negative q-mb-md">
       <template #avatar><q-icon name="error_outline" /></template>
       {{ t('contacts.loadError') }}
     </q-banner>
@@ -97,8 +97,8 @@
                 :key="identity.id"
                 dense
                 :icon="identity.kind === 'galaris_user' ? 'person' : 'alternate_email'"
-                :color="identity.kind === 'galaris_user' ? 'blue-1' : 'blue-grey-1'"
-                text-color="blue-grey-9"
+                :color="identity.kind === 'galaris_user' ? 'solaire-blue' : 'solaire-gray'"
+                text-color="solaire-gray"
               >
                 {{ identityLabel(identity) }}
                 <q-tooltip v-if="identity.display_name">{{ identity.display_name }}</q-tooltip>
@@ -110,9 +110,9 @@
 
         <template #body-cell-memory="props">
           <q-td :props="props">
-            <q-btn
+            <q-btn outline
               v-if="canViewMemories"
-              flat
+
               dense
               color="primary"
               icon="memory"
@@ -169,9 +169,9 @@
                       {{ identityLabel(identity) }}
                     </q-chip>
                   </div>
-                  <q-btn
+                  <q-btn outline
                     v-if="canViewMemories"
-                    flat
+
                     dense
                     color="primary"
                     icon="memory"
@@ -229,11 +229,7 @@
 
     <q-dialog v-model="mergeDialog">
       <q-card class="contact-merge-dialog galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ t('contacts.mergeTitle') }}</div>
-          <q-space />
-          <q-btn flat round dense icon="close" v-close-popup :aria-label="t('contacts.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('contacts.mergeTitle')" :close-label="t('contacts.close')" />
         <q-card-section class="galaris-dialog-body">
           <p class="q-mt-none">{{ t('contacts.mergeHelp') }}</p>
           <div class="text-subtitle2 q-mb-sm">{{ t('contacts.canonical') }}</div>
@@ -262,7 +258,7 @@
         </q-card-section>
         <q-separator />
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn flat :label="t('contacts.cancel')" v-close-popup />
+          <q-btn outline color="primary"  :label="t('contacts.cancel')" v-close-popup />
           <q-btn
             color="primary"
             icon="merge"
@@ -277,11 +273,7 @@
 
     <q-dialog v-model="forgetDialog">
       <q-card class="contact-forget-dialog galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ t('contacts.forgetTitle') }}</div>
-          <q-space />
-          <q-btn flat round dense icon="close" v-close-popup :aria-label="t('contacts.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('contacts.forgetTitle')" :close-label="t('contacts.close')" />
         <q-card-section class="galaris-dialog-body" v-if="contactToForget">
           <p class="q-mt-none">
             {{ t('contacts.forgetHelp', {
@@ -289,14 +281,14 @@
               count: contactToForget.linked_memory_count,
             }) }}
           </p>
-          <q-banner rounded class="bg-red-1 text-negative">
+          <q-banner rounded class="bg-solaire-red-light text-negative">
             <template #avatar><q-icon name="warning" /></template>
             {{ t('contacts.forgetWarning') }}
           </q-banner>
         </q-card-section>
         <q-separator />
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn flat :label="t('contacts.cancel')" v-close-popup />
+          <q-btn outline color="primary"  :label="t('contacts.cancel')" v-close-popup />
           <q-btn
             color="negative"
             icon="person_remove"
@@ -311,6 +303,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'

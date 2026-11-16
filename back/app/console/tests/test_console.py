@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+import asyncio
 import subprocess
 import sys
 from pathlib import Path
@@ -20,6 +21,159 @@ from app.console.schemas import ConsoleHelperInstallResult
 from app.console.ssh_client import SshExecutionTransport
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("finish", ["complete", "cancel"])
+async def test_idle_connection_cleanup_waits_for_every_active_command(monkeypatch, finish):
+    from app.console import ssh_client
+
+    monkeypatch.setattr(ssh_client, "_IDLE_CLOSE_SECONDS", 0.02)
+    closed = asyncio.Event()
+    started = asyncio.Event()
+    releases = [asyncio.Event(), asyncio.Event()]
+    processes = []
+
+    class Process:
+        def __init__(self, release):
+            self.release = release
+            self.stdin = SimpleNamespace(write_eof=lambda: None)
+            self.stdout = SimpleNamespace(read=AsyncMock(return_value=b""))
+            self.stderr = SimpleNamespace(read=AsyncMock(return_value=b""))
+            self.exit_status = None
+
+        async def wait_closed(self):
+            await self.release.wait()
+            self.exit_status = -1 if closed.is_set() else 0
+
+        def close(self):
+            self.release.set()
+
+    class Connection:
+        def is_closed(self):
+            return closed.is_set()
+
+        async def create_process(self, *_args, **_kwargs):
+            process = Process(releases[len(processes)])
+            processes.append(process)
+            if len(processes) == 2:
+                started.set()
+            return process
+
+        def close(self):
+            closed.set()
+            for release in releases:
+                release.set()
+
+        async def wait_closed(self):
+            await closed.wait()
+
+    private_key, _ = generate_ed25519_keypair()
+    transport = SshExecutionTransport(_config(private_key))
+    monkeypatch.setattr(transport, "_new_connection", AsyncMock(return_value=Connection()))
+    monkeypatch.setattr(transport, "resolve_path", AsyncMock(return_value=("/home/synthetic", ".")))
+    first = asyncio.create_task(transport.exec("first synthetic command"))
+    second = asyncio.create_task(transport.exec("second synthetic command"))
+    try:
+        await asyncio.wait_for(started.wait(), 1)
+        releases[0].set()
+        assert (await first).status == "completed"
+        # Another connection user must not rearm idle cleanup during the long command.
+        await transport.connection()
+        await asyncio.sleep(0.06)
+        assert not closed.is_set() and not second.done()
+        if finish == "cancel":
+            second.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await second
+        else:
+            releases[1].set()
+            assert (await second).status == "completed"
+        await asyncio.wait_for(closed.wait(), 1)
+    finally:
+        for task in (first, second):
+            task.cancel()
+        await asyncio.gather(first, second, return_exceptions=True)
+        await transport.close()
+
+
+@pytest.mark.asyncio
+async def test_persistent_connection_survives_later_borrowers(monkeypatch):
+    from app.console import ssh_client
+
+    monkeypatch.setattr(ssh_client, "_IDLE_CLOSE_SECONDS", 0.01)
+    connection = SimpleNamespace(is_closed=lambda: False, close=lambda: closed.set(),
+        wait_closed=AsyncMock())
+    closed = asyncio.Event()
+    private_key, _ = generate_ed25519_keypair()
+    transport = SshExecutionTransport(_config(private_key))
+    monkeypatch.setattr(transport, "_new_connection", AsyncMock(return_value=connection))
+    try:
+        await transport.persistent_connection()
+        async with transport.active_connection():
+            await transport.connection()
+        await asyncio.sleep(0.04)
+        assert not closed.is_set()
+    finally:
+        await transport.close()
+    assert closed.is_set()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("finish", ["complete", "cancel"])
+async def test_sftp_upload_retains_connection_until_publication_or_cleanup(monkeypatch, finish):
+    from app.console import ssh_client
+    from app.console.file_transport import SshAgentFileTransport
+
+    monkeypatch.setattr(ssh_client, "_IDLE_CLOSE_SECONDS", 0.02)
+    private_key, _ = generate_ed25519_keypair()
+    transport = SshExecutionTransport(_config(private_key))
+    closed = asyncio.Event()
+    started = asyncio.Event()
+    release = asyncio.Event()
+    sftp = SimpleNamespace(posix_rename=AsyncMock(), remove=AsyncMock(), exit=lambda: None)
+
+    class Output:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            pass
+
+        async def write(self, _chunk):
+            started.set()
+            await release.wait()
+
+    sftp.open = lambda *_args, **_kwargs: Output()
+    connection = SimpleNamespace(is_closed=closed.is_set, close=closed.set,
+        wait_closed=AsyncMock(), start_sftp_client=AsyncMock(return_value=sftp))
+    monkeypatch.setattr(transport, "_new_connection", AsyncMock(return_value=connection))
+    files = SshAgentFileTransport(transport)
+    monkeypatch.setattr(files, "_resolve_destination", AsyncMock(return_value=("/home/synthetic/file", "file")))
+
+    async def chunks():
+        yield b"synthetic file bytes"
+
+    upload = asyncio.create_task(files.upload_stream(chunks(), "file"))
+    try:
+        await asyncio.wait_for(started.wait(), 1)
+        await asyncio.sleep(0.06)
+        assert not closed.is_set()
+        if finish == "cancel":
+            upload.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await upload
+            sftp.posix_rename.assert_not_awaited()
+            sftp.remove.assert_awaited_once()
+        else:
+            release.set()
+            assert await upload == ("file", len(b"synthetic file bytes"))
+            sftp.posix_rename.assert_awaited_once()
+        await asyncio.wait_for(closed.wait(), 1)
+    finally:
+        upload.cancel()
+        await asyncio.gather(upload, return_exceptions=True)
+        await transport.close()
+
+
 def _config(private_key: str) -> SshConnectionConfig:
     return SshConnectionConfig(
         connection_id=1,
@@ -28,6 +182,35 @@ def _config(private_key: str) -> SshConnectionConfig:
         private_key=SecretStr(private_key),
         known_host_key="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAITestOnly",
     )
+
+
+def test_unknown_console_outcome_remains_an_error_with_actionable_recovery():
+    from app.console.mcp import _result
+    from app.services.tool_errors import classify_tool_failure
+
+    with pytest.raises(RuntimeError) as caught:
+        _result(ConsoleResult(status="outcome_unknown", duration_ms=300000))
+    failure = classify_tool_failure(caught.value)
+    assert failure.kind == "actionable"
+    assert "do not replay" in failure.detail.lower()
+    assert "300000" in failure.detail
+
+
+@pytest.mark.asyncio
+async def test_missing_console_helper_is_rejected_with_its_actionable_precondition(monkeypatch):
+    from app.services.contracts import ToolCallRejectedError
+    from app.services.tool_errors import classify_tool_failure
+
+    private_key, _ = generate_ed25519_keypair()
+    transport = SshExecutionTransport(_config(private_key))
+    monkeypatch.setattr(transport, "_working_helper", AsyncMock(return_value=None))
+    command = AsyncMock(side_effect=AssertionError("No command may start without the helper"))
+    monkeypatch.setattr(transport, "exec", command)
+    with pytest.raises(ToolCallRejectedError) as caught:
+        await transport.start("synthetic long command")
+    failure = classify_tool_failure(caught.value)
+    assert failure.kind == "invalid_arguments" and "galaris-exec" in failure.detail
+    command.assert_not_awaited()
 
 
 def test_generated_keypair_is_accepted_by_asyncssh() -> None:

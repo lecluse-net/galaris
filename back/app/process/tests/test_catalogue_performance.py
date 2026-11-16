@@ -240,3 +240,55 @@ async def test_single_run_reads_bound_acl_compilation(inference_db, committed_na
     assert settings and set(settings) == {"off"}, "Interactive ACL reads must disable PostgreSQL JIT before querying"
     await db.rollback()
     assert await db.scalar(text("SHOW jit")) == original
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("count", [10, 50, 500])
+@pytest.mark.parametrize("administrative", [False, True])
+async def test_mcp_run_lists_bound_reads_and_preserve_live_scope(db, workflow, count, administrative):
+    from app.connection import Connection
+    from app.connection.facade import set_params_bulk
+    from app.process import mcp
+    from app.services import McpToolContext, ServiceModel
+
+    native = await native_definitions.create(actor_agent_id=workflow.owner.id,
+        title="Synthetic MCP list", graph=graph())
+    hidden = await native_definitions.create(actor_agent_id=workflow.other.id,
+        title="Synthetic inaccessible list", graph=graph())
+    origin = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    runs = [ProcessRun(process_id=native.id if index % 2 else workflow.definition.id,
+        launcher_agent_id=workflow.owner.id, engine_code="galaris" if index % 2 else "fake",
+        correlation_id=uuid4().hex, callback_token="synthetic", status="success",
+        created_at=origin + timedelta(seconds=index), input={"index": index},
+        output={"result": [False, 0, None]}, execution_state={"private": "synthetic"})
+        for index in range(count)]
+    db.add_all(runs)
+    db.add(ProcessRun(process_id=hidden.id, launcher_agent_id=workflow.other.id,
+        engine_code="galaris", correlation_id=uuid4().hex, callback_token="synthetic",
+        status="success", input={}, output={"hidden": True}))
+    db.add(ProcessRun(process_id=native.id, launcher_agent_id=workflow.owner.id,
+        engine_code="galaris", correlation_id=uuid4().hex, callback_token="synthetic",
+        status="success", input={}, output={"retired": True}, deleted_at=origin))
+    connection = None
+    if administrative:
+        service = await db.scalar(select(ServiceModel).where(ServiceModel.code == "process_admin"))
+        connection = Connection(agent_id=workflow.owner.id, service_id=service.id, active=True)
+        db.add(connection)
+        await db.flush()
+        await set_params_bulk(connection.id, {"services.management_scope": "personal"}, scope_edit_authorized=True)
+    await db.commit()
+    identities = [str(run.id) for run in reversed(runs)]
+    actor = workflow.owner.id
+    db.expunge_all()
+    operation = mcp.process_admin_list_runs if administrative else mcp.process_list_runs
+    async with measured_reads(db, f"process-mcp-list-{administrative}-{count}") as reads:
+        results = await operation(McpToolContext(agent_id=actor, runtime="internal"), limit=count)
+    assert [item["id"] for item in results] == identities
+    assert all(item["output"] == {"result": [False, 0, None]} for item in results)
+    assert len(reads) <= 30, "Run list authorization must not issue queries for every row"
+    assert "execution_state" not in reads.result_columns
+    if connection is not None:
+        await db.execute(update(Connection).where(Connection.id == connection.id).values(active=False))
+        await db.commit()
+        with pytest.raises(PermissionError):
+            await operation(McpToolContext(agent_id=actor, runtime="internal"), limit=count)

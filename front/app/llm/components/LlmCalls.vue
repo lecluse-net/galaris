@@ -6,7 +6,7 @@
 
     <q-card v-if="visibleLoading && !visibleCalls.length" flat bordered>
       <q-card-section class="text-center text-grey">
-        <q-spinner color="indigo" class="q-mr-sm" />{{ $t('task.llmCalls.loading') }}
+        <q-spinner color="solaire-iris" class="q-mr-sm" />{{ $t('task.llmCalls.loading') }}
       </q-card-section>
     </q-card>
 

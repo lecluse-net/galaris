@@ -29,10 +29,10 @@
           </q-input>
 
           <q-linear-progress v-if="searching" indeterminate color="primary" class="q-mt-sm" />
-          <q-banner v-else-if="searchError" rounded class="bg-red-1 text-negative q-mt-sm">
+          <q-banner v-else-if="searchError" rounded class="bg-solaire-red-light text-negative q-mt-sm">
             {{ t('memory.linkTargetSearchError') }}
             <template #action>
-              <q-btn flat color="negative" :label="t('memory.retry')" @click="searchTargets" />
+              <q-btn  color="negative" :label="t('memory.retry')" @click="searchTargets" />
             </template>
           </q-banner>
           <div
@@ -53,7 +53,7 @@
               v-ripple
               clickable
               :active="selectedTarget?.id === item.id"
-              active-class="bg-blue-1 text-primary"
+              active-class="bg-solaire-blue-light text-primary"
               @click="selectedTarget = item"
             >
               <q-item-section side class="q-pr-sm">
@@ -85,7 +85,7 @@
           </div>
         </div>
 
-        <q-banner v-if="selectedTarget" rounded class="bg-blue-1 text-primary">
+        <q-banner v-if="selectedTarget" rounded class="bg-solaire-blue-light text-primary">
           <div class="text-caption">{{ t('memory.linkTargetSelected') }}</div>
           <div class="text-weight-medium"><DocumentIcon v-if="selectedTarget.node_kind === 'document'" :document-id="selectedTarget.id" :title="selectedTarget.title" class="q-mr-sm" />{{ selectedTarget.title }}</div>
         </q-banner>
@@ -103,7 +103,7 @@
 
       <q-separator />
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn flat :label="t('memory.cancel')" v-close-popup />
+        <q-btn outline color="primary"  :label="t('memory.cancel')" v-close-popup />
         <q-btn
           color="primary"
           :label="t('memory.save')"

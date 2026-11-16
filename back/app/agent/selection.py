@@ -1,6 +1,7 @@
 """Minimal agent choices, resolved against the same scopes as domain operations."""
 
 from typing import Literal
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -24,6 +25,7 @@ class AgentSelectionOption(BaseModel):
     id: int
     label: str
     has_avatar: bool
+    updated_at: datetime | None = None
     driver: str | None = None
     teams: list[AgentSelectionTeam] = Field(default_factory=list[AgentSelectionTeam])
 
@@ -44,13 +46,18 @@ async def selection_options(scope: AgentSelectionScope) -> list[AgentSelectionOp
             select(TeamModel).where(TeamModel.id.in_(visible_team_ids)).order_by(TeamModel.order, TeamModel.id)
         )
     ]
-    drivers: dict[int, str] = {
-        identity: driver for identity, driver in (await get_db().execute(
-            select(Agent.id, Agent.agent_driver).where(Agent.id.in_([agent.id for agent in visible]))
+    drivers: dict[int, str] = {}
+    versions: dict[int, datetime | None] = {}
+    if scope == "management":
+        metadata = (await get_db().execute(
+            select(Agent.id, Agent.agent_driver, Agent.updated_at).where(Agent.id.in_([agent.id for agent in visible]))
         )).all()
-    } if scope == "management" else {}
+        for identity, driver, updated_at in metadata:
+            drivers[identity] = driver
+            versions[identity] = updated_at
     return [
         AgentSelectionOption(id=agent.id, label=agent.label, has_avatar=agent.has_avatar, driver=drivers.get(agent.id),
+                             updated_at=versions.get(agent.id),
                              teams=[team for team in teams if team.id in agent.team_ids])
         for agent in visible
     ]

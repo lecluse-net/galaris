@@ -1,6 +1,6 @@
 <template>
   <div class="row items-center q-gutter-xs" :aria-label="t('services.capabilities')">
-    <q-badge v-for="value in toolCapabilitySelections(tool)" :key="value" outline color="orange-10" class="capability-badge">
+    <q-badge v-for="value in toolCapabilitySelections(tool)" :key="value" outline color="solaire-orange" class="capability-badge">
       {{ capabilityLabels(value, definitions, t).capability }}
     </q-badge>
   </div>

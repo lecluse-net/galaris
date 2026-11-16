@@ -9,11 +9,11 @@
         <span>{{ t('chat.previousOperations', { count: hiddenCount }) }}</span>
       </span>
       <span class="compact-summary-metrics">
-        <q-badge color="blue-7" class="compact-summary-badge">
+        <q-badge color="solaire-blue" class="compact-summary-badge">
           <q-icon name="timer" size="13px" />
           {{ formatDuration(props.executionResult?.execution_time ?? 0) }}
         </q-badge>
-        <q-badge color="purple-6" class="compact-summary-badge">
+        <q-badge color="solaire-violet" class="compact-summary-badge">
           <q-icon name="attach_money" size="13px" />
           {{ formatCost(props.executionResult?.cost ?? 0) }}
         </q-badge>
@@ -194,7 +194,7 @@ function operationIcon(kind: OperationKind): string {
 
 function operationColor(kind: OperationKind): string {
   return {
-    thinking: 'amber-9',
+    thinking: 'solaire-yellow',
     tool: 'teal',
     text: 'primary',
     image: 'purple',

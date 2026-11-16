@@ -20,13 +20,13 @@
             :label="call.status === 'completed' ? $t('task.dispatch.success') : $t('task.dispatch.failure')"
           />
           <q-spinner-dots v-else :color="taskColor.name" size="20px" />
-          <q-badge v-if="call.duration" color="blue">
+          <q-badge v-if="call.duration" color="solaire-blue">
             <q-icon name="timer" size="xs" class="q-mr-xs" />
             {{ formatDuration(call.duration) }}
           </q-badge>
           <LlmCallTokenBadge :call="call" />
           <q-badge
-            color="purple"
+            color="solaire-violet"
             :title="showApiCost
               ? t('llmCalls.inferenceCost', { cost: formatApiCost(call.inference_cost) })
               : undefined"
@@ -39,7 +39,7 @@
         <div class="call-identifiers q-mt-xs">
           <template v-if="call.task_id">
             <span class="task-uuid-link" :title="$t('llmCalls.task')" @click="taskDialog = true">
-              {{ taskResourceUri(call.task_id) }}
+              {{ `galaris://task/${call.task_id}` }}
             </span>
             <span class="text-grey-7">/</span>
           </template>
@@ -73,12 +73,12 @@
             {{ reasoningEffortLabel }}
             <q-tooltip>{{ t('llm.reasoningEffort') }}</q-tooltip>
           </q-badge>
-          <q-badge v-if="providerName" class="llm-outline-badge" color="teal" outline>
+          <q-badge v-if="providerName" class="llm-outline-badge" color="solaire-cyan" outline>
             {{ providerName }}
           </q-badge>
           <q-space />
-          <q-btn
-            flat
+          <q-btn outline color="primary"
+
             dense
             size="sm"
             :icon="detailsExpanded ? 'expand_less' : 'expand_more'"
@@ -106,37 +106,22 @@
       </div>
     </q-slide-transition>
 
-    <q-dialog v-model="taskDialog">
-      <q-card class="task-dialog galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ $t('llmCalls.task') }}</div>
-          <q-space />
-          <q-btn icon="close" :aria-label="$t('common.close')" flat round dense v-close-popup class="text-white" />
-        </q-card-section>
-
-        <q-separator />
-
-        <q-card-section class="galaris-dialog-body">
-          <TaskDetail :task-id="call.task_id ?? null" />
-        </q-card-section>
-      </q-card>
-    </q-dialog>
+    <ResourceDetailDialog v-if="taskTarget" :target="taskTarget" @close="taskDialog = false" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { ResourceDetailDialog, type ResourceDetailTarget } from '@/core/util'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { copyToClipboard, useQuasar } from 'quasar'
-import { useAgentStore } from '@/app/agent/stores/agentStore'
+import { useAgentStore } from '@/app/agent/facade'
 import { StatusBadge } from '@/core/util'
-import TaskDetail from '@/app/task/components/TaskDetail.vue'
-import { taskResourceUri } from '@/app/task/resourceUri'
 import LlmCallDetails from './LlmCallDetails.vue'
 import LlmCallTokenBadge from './LlmCallTokenBadge.vue'
 import LlmCallStopButton from './LlmCallStopButton.vue'
-import { formatApiCost, formatBilledCost, reasoningEffortColor } from '../presentation'
-import { useLLMProviderStore } from '../stores/llmProviderStore'
+import { formatApiCost, formatBilledCost } from '../presentation'
+import { useCallPresentation } from '../useCallPresentation'
 import type { LlmTaskColor } from '../taskColors'
 import type { LLMCall } from '../types'
 
@@ -156,36 +141,17 @@ const emit = defineEmits<{
   delete: [call: LLMCall]
 }>()
 
-const { t, te, locale } = useI18n()
+const { t, locale } = useI18n()
 const $q = useQuasar()
 const agentStore = useAgentStore()
-const llmStore = useLLMProviderStore()
 const detailsExpanded = ref(false)
 const taskDialog = ref(false)
+const taskTarget = computed<ResourceDetailTarget | null>(() => taskDialog.value && props.call.task_id
+  ? { kind: 'task', id: props.call.task_id, title: t('llmCalls.task') } : null)
 
-onMounted(() => {
-  if (!llmStore.llms.length && !llmStore.loadingLLMs) void llmStore.fetchLLMs()
-})
-
-const llm = computed(() => llmStore.llms.find(item => item.id === props.call.llm_id))
-const modelLabel = computed(() => llm.value?.label || props.call.effective_model || props.call.requested_model)
-const providerName = computed(() => llm.value?.provider_name || props.call.provider_name)
-const reasoningEffortLabel = computed(() => {
-  const effort = props.call.reasoning_effort
-  return effort ? t(`llm.reasoningEfforts.${effort}`) : null
-})
-const reasoningEffortBadgeColor = computed(() => {
-  const effort = props.call.reasoning_effort
-  return effort ? reasoningEffortColor(effort) : 'grey-7'
-})
+const { modelLabel, providerName, reasoningEffortLabel, reasoningEffortBadgeColor, callPurposeLabel } = useCallPresentation(() => props.call)
 const showApiCost = computed(() => props.call.inference_cost !== props.call.cost)
-const callPurposeLabel = computed(() => {
-  const purposeKey = props.call.purpose
-    ? `llmCalls.purposes.${props.call.purpose}`
-    : ''
-  if (!purposeKey) return t(`llmCalls.callTypes.${props.call.call_type}`)
-  return te(purposeKey) ? t(purposeKey) : props.call.purpose ?? purposeKey
-})
+
 const callTitle = computed(() => (
   props.call.task_label
   || props.call.process_label
@@ -323,11 +289,6 @@ async function copyCallId(): Promise<void> {
 .call-id-copy:hover,
 .call-id-copy:focus-visible {
   text-decoration: underline;
-}
-
-.task-dialog {
-  width: min(1100px, calc(100vw - 32px));
-  max-width: 1100px;
 }
 
 .task-uuid-link {

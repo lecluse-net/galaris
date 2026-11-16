@@ -1,4 +1,5 @@
 from typing import Any, cast
+from contextlib import asynccontextmanager, nullcontext
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -113,6 +114,9 @@ async def test_ssh_transport_normalizes_a_missing_sftp_entry() -> None:
         async def connection(self) -> Connection:
             return Connection()
 
+        def active_connection(self):
+            return nullcontext(Connection())
+
     transport = SshAgentFileTransport(cast(Any, Execution()))
 
     with pytest.raises(FileNotFoundError, match="missing.txt"):
@@ -141,6 +145,7 @@ async def ssh_files(tmp_path):
             execution = SimpleNamespace(
                 home=AsyncMock(return_value=str(home)),
                 connection=AsyncMock(return_value=connection),
+                active_connection=lambda: nullcontext(connection),
             )
             yield SshAgentFileTransport(execution), home
     finally:
@@ -203,8 +208,17 @@ async def test_ssh_upload_only_proves_rejection_before_publication_and_after_cle
     transport, home = ssh_files
     destination = home / "annexe.md"
     destination.write_bytes(b"original")
-    sftp = await transport._client()
-    monkeypatch.setattr(transport, "_client", AsyncMock(return_value=sftp))
+    connection = await transport._execution.connection()
+    sftp = await connection.start_sftp_client()
+
+    @asynccontextmanager
+    async def client():
+        try:
+            yield sftp
+        finally:
+            sftp.exit()
+
+    monkeypatch.setattr(transport, "_client", client)
     rename = sftp.posix_rename
 
     async def lost_publish_reply(*args):

@@ -5,12 +5,12 @@
       <q-badge v-if="run?.paused" outline>{{ t('nativeProcesses.paused') }}</q-badge>
       <q-btn flat round icon="refresh" :loading="loading" :aria-label="t('nativeProcesses.refresh')" @click="refresh" />
     </div>
-    <q-btn v-if="run?.parent_run_id" outline icon="arrow_upward" :label="t('nativeProcesses.parent')" :to="`/process/internal/run/${run.parent_run_id}`" />
+    <q-btn color="primary" v-if="run?.parent_run_id" outline icon="arrow_upward" :label="t('nativeProcesses.parent')" :to="`/process/internal/run/${run.parent_run_id}`" />
     <q-input v-if="!summaryInHeader" :model-value="runUrl" outlined dense readonly :label="t('nativeProcesses.runUrl')">
       <template #append><q-btn outline dense color="primary" icon="content_copy" :aria-label="t('nativeProcesses.copyRunUrl')" @click="copyRunUrl" /></template>
     </q-input>
     <q-badge v-else-if="!displayGraph" outline color="primary" class="native-run-id"><ProcessRunReference :id="runId" /></q-badge>
-    <q-banner v-if="error || metricsError" role="alert">{{ error || metricsError }}<template #action><q-btn flat :label="t('nativeProcesses.retry')" @click="refresh" /></template></q-banner>
+    <q-banner v-if="error || metricsError" role="alert">{{ error || metricsError }}<template #action><q-btn outline color="primary"  :label="t('nativeProcesses.retry')" @click="refresh" /></template></q-banner>
     <q-spinner v-if="loading && !run" />
     <template v-if="run">
       <q-card v-if="run.operational && (!summaryInHeader || run.paused || run.operational.blocker?.requires_reconciliation || run.operational.activities.length || run.operational.activities_truncated)" bordered flat>
@@ -53,7 +53,7 @@
           <NativeActivityDetails v-if="selectedNode" :title="selectedTitle" :detail="nodeDetail" :occurrences="activityPage"
             :selected-occurrence="selectedOccurrence" :page-size="activitySize" :loading="activityLoading || nodeLoading" :error="nodeError"
             @select="selectExecution" @page="requestActivityPage" @retry="retryInspection" @close="clearInspection">
-            <q-btn v-if="selectedBody" outline icon="open_in_new" :label="t('nativeProcesses.openBody')" @click="bodyPath = [...bodyPath, selectedNode!]" />
+            <q-btn color="primary" v-if="selectedBody" outline icon="open_in_new" :label="t('nativeProcesses.openBody')" @click="bodyPath = [...bodyPath, selectedNode!]" />
             <q-checkbox v-if="canControl && !terminal" :model-value="run.breakpoints.includes(selectedNode)" :label="t('nativeProcesses.breakpoint')"
               :disable="mutating" @update:model-value="toggleBreakpoint" />
           </NativeActivityDetails>

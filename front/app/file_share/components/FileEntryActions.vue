@@ -17,16 +17,13 @@
     <ActionContextMenu :target="target" :actions="actions" @update:open="checkRepository" />
     <q-dialog v-model="confirmDelete">
       <q-card class="galaris-dialog-card" style="width: 480px; max-width: 95vw">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ t('files.deleteTitle') }}</div><q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('files.deleteTitle')" :close-label="t('common.close')" />
         <q-card-section>
           <p>{{ t(entry.is_collection ? 'files.deleteDirectory' : 'files.deleteFile', { name: entry.name }) }}</p>
           <q-banner v-if="error" role="alert">{{ error }}<p class="q-mb-none q-mt-sm">{{ t('files.deleteError') }}</p></q-banner>
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn v-close-popup outline :label="t('common.cancel')" />
+          <q-btn color="primary" v-close-popup outline :label="t('common.cancel')" />
           <q-btn color="negative" :label="t('common.delete')" :loading="busy" :disable="!canDelete" @click="remove" />
         </q-card-actions>
       </q-card>
@@ -35,6 +32,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'

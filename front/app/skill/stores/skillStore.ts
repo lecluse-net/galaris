@@ -1,4 +1,7 @@
+import { toRaw } from 'vue'
+import { withSessionScope } from '@/core/util/facade'
 import { defineStore } from 'pinia'
+import { sessionGeneration } from '@/core/api'
 
 import {
     skillService,
@@ -25,7 +28,14 @@ interface SkillState {
     error: unknown
 }
 
-export const useSkillStore = defineStore('skill', {
+const selections = new WeakMap<object, symbol>()
+function beginSelection(store: object): () => boolean {
+    const selection = Symbol('skill-selection'), session = sessionGeneration()
+    selections.set(toRaw(store), selection)
+    return () => selections.get(toRaw(store)) === selection && session === sessionGeneration()
+}
+
+export const useSkillStore = withSessionScope(defineStore('skill', {
     state: (): SkillState => ({
         skills: [],
         agents: [],
@@ -205,47 +215,63 @@ export const useSkillStore = defineStore('skill', {
                 this.loading = false
             }
         },
-        async openSkill(skill: Skill): Promise<void> {
+        async openSkill(skill: Skill): Promise<boolean> {
+            const current = beginSelection(this)
             this.currentSkill = skill
+            this.currentFiles = []
             this.currentContent = ''
             this.currentPath = null
             this.contentLoading = true
+            this.error = null
             try {
-                this.currentFiles = (await skillService.getFiles(skill.id)).data
-                const main = this.currentFiles.find(file => file.path === 'SKILL.md')
-                if (main) await this.openFile(main)
+                const files = (await skillService.getFiles(skill.id)).data
+                if (!current()) return false
+                const main = files.find(file => file.path === 'SKILL.md' && file.text)
+                const content = main ? (await skillService.getFileContent(skill.id, main.path)).data.content : ''
+                if (!current()) return false
+                this.currentFiles = files
+                this.currentPath = main?.path ?? null
+                this.currentContent = content
+                return true
             } catch (error) {
+                if (!current()) return false
                 this.error = error
                 console.error('Error opening skill:', error)
                 throw error
             } finally {
-                this.contentLoading = false
+                if (current()) this.contentLoading = false
             }
         },
         async openFile(file: SkillFile): Promise<void> {
+            const current = beginSelection(this), skillId = this.currentSkill?.id
             this.currentPath = file.path
-            if (!file.text || !this.currentSkill) {
-                this.currentContent = ''
+            this.currentContent = ''
+            this.error = null
+            if (!file.text || skillId === undefined) {
+                this.contentLoading = false
                 return
             }
             this.contentLoading = true
             try {
-                this.currentContent = (
-                    await skillService.getFileContent(this.currentSkill.id, file.path)
-                ).data.content
+                const result = await skillService.getFileContent(skillId, file.path)
+                if (current()) this.currentContent = result.data.content
             } catch (error) {
+                if (!current()) return
                 this.error = error
                 console.error('Error reading skill file:', error)
                 throw error
             } finally {
-                this.contentLoading = false
+                if (current()) this.contentLoading = false
             }
         },
         clearCurrent(): void {
+            selections.delete(toRaw(this))
             this.currentSkill = null
             this.currentFiles = []
             this.currentContent = ''
             this.currentPath = null
+            this.contentLoading = false
         },
     },
-})
+}), { flags: { fetchSkills: 'loading', createSkill: 'loading', updateSkill: 'loading',
+    deleteSkill: 'loading', importSkill: 'loading', rescan: 'loading' } })

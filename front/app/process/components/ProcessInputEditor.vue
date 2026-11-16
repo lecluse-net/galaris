@@ -1,10 +1,7 @@
 <template>
   <q-dialog :model-value="true" @update:model-value="emit('close')">
     <q-card class="galaris-dialog-card input-editor">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
-        <div class="text-h6 ellipsis">{{ t('nativeProcesses.inputs.edit', { name: variable.label || variable.name }) }}</div>
-        <q-space /><q-btn flat round dense icon="close" :aria-label="t('common.close')" @click="emit('close')" />
-      </q-card-section>
+      <DialogHeader :title="t('nativeProcesses.inputs.edit', { name: variable.label || variable.name })" :close-label="t('common.close')" :close-popup="false" @close="emit('close')" />
       <q-form @submit="save">
         <q-card-section class="q-gutter-y-md">
           <div>{{ variable.description }}</div>
@@ -28,6 +25,7 @@
   </q-dialog>
 </template>
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { nativeProcessService as service, type ProcessVariable } from '../services/nativeProcessService'

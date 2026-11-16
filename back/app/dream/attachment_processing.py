@@ -109,7 +109,10 @@ async def describe_document(path: Path, source: MediaAnalysisSource) -> str:
     if not isinstance(response, JSONResponse) or response.status_code >= 400:
         raise ValueError("Document-analysis model rejected the attachment")
     payload = cast(dict[str, Any], json.loads(bytes(response.body)))
-    content = payload["choices"][0]["message"]["content"]
+    choice = payload["choices"][0]
+    if choice.get("finish_reason") not in {None, "stop"}:
+        raise ValueError("Document-analysis model did not complete the description")
+    content = choice["message"]["content"]
     if not isinstance(content, str) or not content.strip():
         raise ValueError("Document model returned no textual description")
     return content

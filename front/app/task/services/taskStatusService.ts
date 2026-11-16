@@ -57,21 +57,21 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, TaskStatusConfig> = {
   // Active statuses with animated icons.
   DISPATCH: {
     icon: 'sync',
-    color: 'purple',
+    color: 'solaire-violet',
     badgeTone: 'active',
     labelKey: 'task.status.DISPATCH',
     isAction: true
   },
   EXEC: {
     icon: 'play_circle',
-    color: 'blue',
+    color: 'solaire-blue',
     badgeTone: 'active',
     labelKey: 'task.status.EXEC',
     isAction: true
   },
   PLAN: {
     icon: 'psychology',
-    color: 'teal',
+    color: 'solaire-cyan',
     badgeTone: 'active',
     labelKey: 'task.status.PLAN',
     isAction: true
@@ -132,7 +132,7 @@ export function getTaskStatusBadgeColor(status: TaskStatus | null | undefined): 
   return ({
     active: 'primary',
     success: 'positive',
-    warning: 'orange-10',
+    warning: 'solaire-orange',
     error: 'negative',
     neutral: 'grey-7',
   } satisfies Record<StatusBadgeTone, string>)[getTaskStatusTone(status)]
@@ -186,7 +186,7 @@ export interface PauseBadge {
 }
 
 // Distinguish human pauses from automatic waits visually.
-const PAUSED = { color: 'orange-10', textColor: 'white', icon: 'pause_circle', tone: 'warning', waiting: false } as const
+const PAUSED = { color: 'solaire-orange', textColor: 'white', icon: 'pause_circle', tone: 'warning', waiting: false } as const
 const WAITING = { color: 'primary', textColor: 'white', icon: 'hourglass_top', tone: 'active', waiting: true } as const
 
 /** Return the suspension badge, or null for an active task. */
@@ -216,5 +216,5 @@ export function getTaskOperationalIcon(task: HasTaskOperationalPresentation): st
 export function getTaskOperationalColor(task: HasTaskOperationalPresentation): string {
   const suspension = pauseBadge(task)
   if (!suspension) return getTaskStatusColor(task.status)
-  return suspension.waiting ? 'blue-7' : 'orange-8'
+  return suspension.waiting ? 'solaire-blue' : 'solaire-orange'
 }

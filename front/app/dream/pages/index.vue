@@ -15,7 +15,7 @@
     </q-tabs>
     <q-separator class="q-mb-md" />
 
-    <q-banner v-if="error" rounded class="bg-red-1 text-negative q-mb-md">
+    <q-banner v-if="error" rounded class="bg-solaire-red-light text-negative q-mb-md">
       <template #avatar><q-icon name="error" /></template>
       {{ error }}
     </q-banner>
@@ -530,7 +530,7 @@
             </q-card-section>
 
             <q-card-section v-if="selectedReceipt.last_error">
-              <q-banner rounded class="bg-red-1 text-negative">
+              <q-banner rounded class="bg-solaire-red-light text-negative">
                 <div class="text-weight-medium">{{ t('dream.detail.error') }}</div>
                 <div class="text-caption">{{ selectedReceipt.last_error }}</div>
               </q-banner>
@@ -712,7 +712,7 @@ const runtimeVisual = computed(() => {
     stopped: { icon: 'stop_circle', color: 'grey' },
     starting: { icon: 'pending', color: 'info' },
     running: { icon: 'psychology', color: 'primary' },
-    paused_voice: { icon: 'record_voice_over', color: 'deep-orange' },
+    paused_voice: { icon: 'record_voice_over', color: 'solaire-orange' },
     paused_tasks: { icon: 'monitor_heart', color: 'warning' },
     idle: { icon: 'bedtime', color: 'positive' },
     unavailable: { icon: 'model_training', color: 'negative' },

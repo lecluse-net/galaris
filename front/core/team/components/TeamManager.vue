@@ -1,7 +1,7 @@
 <template>
   <div>
     <q-banner v-if="error" class="q-mb-md" role="alert">
-      {{ t('team.error') }}<template #action><q-btn flat :label="t('team.retry')" @click="load" /></template>
+      {{ t('team.error') }}<template #action><q-btn outline color="primary"  :label="t('team.retry')" @click="load" /></template>
     </q-banner>
     <q-table :rows="teams" :columns="columns" row-key="id" :loading="loading || reordering" :filter="search" :grid="$q.screen.lt.md"
       :rows-per-page-options="[10, 20, 50, 100, 500]" :pagination="{ rowsPerPage: 50 }">
@@ -16,7 +16,7 @@
           <q-td v-if="canEdit" key="position" :props="scope" auto-width>
             <q-btn v-bind="dragHandle(scope.row)" />
           </q-td>
-          <q-td key="name" :props="scope"><q-btn flat no-caps class="text-weight-medium" :label="scope.row.name"
+          <q-td key="name" :props="scope"><q-btn outline color="primary"  no-caps class="text-weight-medium" :label="scope.row.name"
             :disable="loading || reordering || error" @click="edit(scope.row)" /></q-td>
           <q-td key="description" :props="scope">{{ scope.row.description }}</q-td>
           <q-td key="humans" :props="scope"><TeamHumanSummary :team="scope.row" /></q-td>
@@ -37,7 +37,7 @@
           <q-card-section>
             <div class="row items-center">
               <q-btn v-if="canEdit" v-bind="dragHandle(scope.row)" />
-              <q-btn flat no-caps class="text-h6" :label="scope.row.name" :disable="loading || reordering || error" @click="edit(scope.row)" />
+              <q-btn outline color="primary"  no-caps class="text-h6" :label="scope.row.name" :disable="loading || reordering || error" @click="edit(scope.row)" />
               <q-space />
               <q-btn v-if="canEdit || canMembers" flat round icon="edit" :aria-label="t('common.edit')"
                 :disable="loading || reordering || error" @click="edit(scope.row)" />
@@ -61,13 +61,10 @@
     </q-dialog>
     <q-dialog :model-value="!!pendingDelete" @update:model-value="value => { if (!value) pendingDelete = null }">
       <q-card class="galaris-dialog-card" style="width: 500px; max-width: 95vw">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ t('team.deleteTitle') }}</div><q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('team.deleteTitle')" :close-label="t('common.close')" />
         <q-card-section class="galaris-dialog-body">{{ t('team.deleteImpact', { name: pendingDelete?.name }) }}</q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn flat v-close-popup :label="t('common.cancel')" />
+          <q-btn outline color="primary"  v-close-popup :label="t('common.cancel')" />
           <q-btn color="primary" :loading="deleting" :label="t('common.delete')" @click="remove" />
         </q-card-actions>
       </q-card>
@@ -76,6 +73,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onMounted, ref, shallowRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar, type QTableColumn } from 'quasar'

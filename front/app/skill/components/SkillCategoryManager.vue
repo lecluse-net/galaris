@@ -55,7 +55,7 @@
             </q-item-section>
             <q-item-section side>
               <div class="row no-wrap q-gutter-xs">
-                <q-btn
+                <q-btn :aria-label="t('skills.save')"
                   flat
                   round
                   color="primary"
@@ -65,7 +65,7 @@
                 >
                   <q-tooltip>{{ t('skills.save') }}</q-tooltip>
                 </q-btn>
-                <q-btn
+                <q-btn :aria-label="t('skills.delete')"
                   flat
                   round
                   color="negative"
@@ -85,7 +85,7 @@
 
       <q-separator />
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn flat :label="t('skills.categories.close')" v-close-popup />
+        <q-btn outline color="primary"  :label="t('skills.categories.close')" v-close-popup />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -107,7 +107,7 @@
         {{ t('skills.categories.deleteConfirm', { label: categoryToDelete?.label || '' }) }}
       </q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn flat :label="t('skills.cancel')" v-close-popup />
+        <q-btn outline color="primary"  :label="t('skills.cancel')" v-close-popup />
         <q-btn
           color="negative"
           :label="t('skills.delete')"

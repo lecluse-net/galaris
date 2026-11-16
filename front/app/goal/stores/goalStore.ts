@@ -1,7 +1,7 @@
 import { computed, ref, watch, onScopeDispose } from 'vue'
 import { defineStore } from 'pinia'
 import { websocket } from '@/core/websocket'
-import { useAuthStore } from '@/core/user/stores/authStore'
+import { useAuthStore } from '@/core/user/facade'
 import { goalService } from '../services/goalService'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { sessionGeneration } from '@/core/api'
@@ -405,7 +405,12 @@ export function createGoalState() {
     websocket.onEvent('task', 'update', onTaskUpdate)
     websocket.onEvent('goal_settings', 'update', onSettingsUpdate)
     websocket.onEvent('goal_runtime', 'update', onRuntimeUpdate)
+    websocket.onConnect(reconnect)
     isSubscribed.value = true
+  }
+
+  function reconnect(): void {
+    scheduleRefresh({ list: true, tree: true, detail: Boolean(currentGoal.value), cycles: cyclesActive.value })
   }
 
   function unsubscribe(): void {
@@ -432,6 +437,7 @@ export function createGoalState() {
     websocket.offEvent('task', 'update', onTaskUpdate)
     websocket.offEvent('goal_settings', 'update', onSettingsUpdate)
     websocket.offEvent('goal_runtime', 'update', onRuntimeUpdate)
+    websocket.offConnect(reconnect)
     isSubscribed.value = false
   }
 

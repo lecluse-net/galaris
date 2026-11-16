@@ -82,10 +82,54 @@ async def transfer_content(session: AsyncSession, _delta: SchemaTransitionSet) -
             {"description": goal["description_document_id"]})
 
 
+def needs_review_retirement(delta: SchemaTransitionSet) -> bool:
+    return "goal_cycles.review_task_id" in delta.removed_columns
+
+
+async def _review_reference_exists(session: AsyncSession) -> bool:
+    return bool(await session.scalar(text("""SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema='public' AND table_name='goal_cycles'
+          AND column_name='review_task_id')""")))
+
+
+async def review_retirement_complete(session: AsyncSession, _delta: SchemaTransitionSet) -> bool:
+    if await session.scalar(text("SELECT EXISTS (SELECT 1 FROM tasks WHERE data ? 'goal_review')")):
+        return False
+    if await _review_reference_exists(session):
+        return not bool(await session.scalar(text("""SELECT EXISTS (
+            SELECT 1 FROM tasks t JOIN goal_cycles c ON c.review_task_id=t.id
+            WHERE t.data->'retention_reasons' @> '["goal_judgement"]'::jsonb)""")))
+    return True
+
+
+async def retire_review_metadata(session: AsyncSession, _delta: SchemaTransitionSet) -> None:
+    """Retain every Task and its business state; remove only obsolete control metadata."""
+    linked = " OR t.id IN (SELECT review_task_id FROM goal_cycles WHERE review_task_id IS NOT NULL)" if await _review_reference_exists(session) else ""
+    # The optional clause is a fixed SQL literal selected by schema presence, never external input.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+    await session.execute(text("""UPDATE tasks t SET data = CASE
+        WHEN (t.data->'retention_reasons') - 'goal_judgement' = '[]'::jsonb
+          THEN t.data - 'retention_reasons'
+        ELSE jsonb_set(t.data, '{retention_reasons}',
+          (t.data->'retention_reasons') - 'goal_judgement') END
+        WHERE jsonb_typeof(t.data->'retention_reasons')='array'
+          AND (t.data->'retention_reasons') ? 'goal_judgement'
+          AND (t.data ? 'goal_review'""" + linked + ")"))
+    await session.execute(text("UPDATE tasks SET data=data-'goal_review' WHERE data ? 'goal_review'"))
+
+
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     from .agenda_upgrade import register_agenda_upgrade
 
     register_agenda_upgrade(registry)
+    registry.register_action(DbAdminAction(
+        key="app.goal.retire_reviews", phase=DbAdminPhase.BEFORE_EXPAND,
+        checksum="drop-review-control-metadata-preserve-all-task-state-v1",
+        predicate=needs_review_retirement, handler=retire_review_metadata,
+        postcondition=review_retirement_complete,
+        requires_schema=frozenset({"tasks.data", "goal_cycles"}),
+    ))
     registry.register_action(DbAdminAction(
         key="app.goal.prepare_description_retirement", phase=DbAdminPhase.BEFORE_EXPAND,
         checksum="retained-description-reference-allows-new-goals-v1",

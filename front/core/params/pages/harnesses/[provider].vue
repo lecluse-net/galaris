@@ -17,7 +17,7 @@
       />
     </q-card>
     <div class="q-mt-md">
-      <q-btn flat color="primary" icon="arrow_back" :label="t('common.back')" to="/params/harnesses" />
+      <q-btn outline  color="primary" icon="arrow_back" :label="t('common.back')" to="/params/harnesses" />
     </div>
   </q-page>
 </template>

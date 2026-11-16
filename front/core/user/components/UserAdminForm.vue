@@ -48,11 +48,11 @@
           <q-toggle
             v-model="form.is_active"
             :label="$t('userAdmin.accountActive')"
-            color="green"
+            color="solaire-green"
           />
 
           <div class="user-admin-actions galaris-dialog-actions q-pa-md">
-            <q-btn :label="$t('common.cancel')" color="primary" flat v-close-popup />
+            <q-btn outline :label="$t('common.cancel')" color="primary"  v-close-popup />
             <q-btn v-if="canSubmit" :label="isEdit ? $t('common.edit') : $t('common.create')" type="submit" color="primary" :loading="loading" />
           </div>
         </q-form>

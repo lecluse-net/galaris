@@ -23,9 +23,11 @@ class LLMCallService {
     limit: number = 10,
     dateFrom?: string | null,
     dateTo?: string | null,
+    signal?: AbortSignal,
   ): Promise<LLMCall[]> {
     const response = await api.get('/llm-calls/running', {
       params: { limit, date_from: dateFrom || undefined, date_to: dateTo || undefined },
+      signal,
     })
     return response.data
   }

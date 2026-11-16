@@ -1,18 +1,18 @@
 import { test, expect, mount, setPrivileges, jsonRoute } from './fixtures.mjs'
 
-test('Tools deep links select their permitted tab after delayed authorization and follow navigation', async ({ page }) => {
-  for (const path of ['mail/approvers', 'tools', 'file-share/bridges', 'messenger/bridges']) await jsonRoute(page, `**/api/${path}`, [])
+test('Services deep links select their permitted tab after delayed authorization and follow navigation', async ({ page }) => {
+  for (const path of ['mail/approvers', 'services', 'services/capabilities', 'file-share/bridges', 'messenger/bridges']) await jsonRoute(page, `**/api/${path}`, [])
   await jsonRoute(page, '**/api/connections/overview?*', [])
   await jsonRoute(page, '**/api/connections/service-options', [])
   await jsonRoute(page, '**/api/connections/permission-options?*', [])
-  await mount(page, 'app/services/pages/index.vue', { route: '/services?tab=connections', privileges: [] })
+  await mount(page, 'app/index/pages/services.vue', { route: '/services?tab=connections', privileges: [] })
   await expect(page.getByRole('tab')).toHaveCount(0)
   await setPrivileges(page, ['SERVICE_ACCESS', 'CONNECTION_ACCESS', 'PERMISSION_ACCESS'])
   await expect(page.getByRole('tab', { name: 'Connections', exact: true })).toHaveAttribute('aria-selected', 'true')
   await page.evaluate(() => window.testApp.router.push('/services?tab=authorizations'))
   await expect(page.getByRole('tab', { name: 'Authorizations', exact: true })).toHaveAttribute('aria-selected', 'true')
   await setPrivileges(page, ['SERVICE_ACCESS'])
-  await expect(page.getByRole('tab', { name: 'Tools', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tab', { name: 'Services', exact: true })).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('tab', { name: 'Authorizations', exact: true })).toHaveCount(0)
 })
 
@@ -140,7 +140,7 @@ for (const width of [1440, 390]) test(`indexing preferences can be delegated wit
 test('text history access mounts only its own activity and no Agent or Topic administration', async ({ page }) => {
   await jsonRoute(page, '**/api/conversations/messages?*', { items: [], total: 0, page: 1, page_size: 50,
     summary: { idle: 0, ready: 0, running: 0, waiting_approval: 0, paused: 0, errors: 0 } })
-  await mount(page, 'app/task/pages/index.vue', { route: '/task?tab=tasks', privileges: ['CONVERSATION_ACCESS'] })
+  await mount(page, 'app/index/pages/task.vue', { route: '/task?tab=tasks', privileges: ['CONVERSATION_ACCESS'] })
   await expect(page.getByRole('tab')).toHaveCount(1)
   await expect(page.getByRole('tab')).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('combobox').first()).toBeVisible()
@@ -150,7 +150,7 @@ test('text history access mounts only its own activity and no Agent or Topic adm
 
 test('permission-only roles read policy metadata without loading Tool or Connection configuration', async ({ page }) => {
   await jsonRoute(page, '**/api/connections/permission-options?*', [])
-  await mount(page, 'app/services/pages/index.vue', { route: '/services', privileges: ['PERMISSION_ACCESS'] })
+  await mount(page, 'app/index/pages/services.vue', { route: '/services', privileges: ['PERMISSION_ACCESS'] })
   await expect(page.getByRole('tab')).toHaveCount(1)
   await expect(page.getByRole('tab')).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('combobox').first()).toBeVisible()

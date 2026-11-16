@@ -1,6 +1,6 @@
 // Reusable utility components.
 export { default as LibraryIcon } from './components/LibraryIcon.vue'
-export { default as LibraryIconPicker } from './components/LibraryIconPicker.vue'
+export const LibraryIconPicker = /* @__PURE__ */ defineAsyncView(() => import('./components/LibraryIconPicker.vue'))
 export { default as LibrarySplitterHandle } from './components/LibrarySplitterHandle.vue'
 export { default as TreePageHeader } from './components/TreePageHeader.vue'
 export { default as TreePageGroups } from './components/TreePageGroups.vue'
@@ -23,7 +23,7 @@ export { defineAsyncView } from './asyncView'
 export { ResourceDetailDialog, preloadResourceDetail } from './resourceDetail'
 export { ResourceTopicBadge, reassignResourceTopic } from './resourceTopics'
 export type { ResourceSummaryView } from './resourceSummary'
-export const ResourceSummaryButton = defineAsyncView(() => import('./components/ResourceSummaryButton.vue'))
+export const ResourceSummaryButton = /* @__PURE__ */ defineAsyncView(() => import('./components/ResourceSummaryButton.vue'))
 export type { ResourceDetailTarget } from './resourceDetail'
 export { default as ConversationTurnDialog } from './components/ConversationTurnDialog.vue'
 import './resourcePreviewCard.css'
@@ -32,29 +32,25 @@ export { startVisiblePolling } from './visiblePolling'
 export { isPrivateHostname } from './networkAddress'
 export { applyDocumentContrast } from './documentContrast'
 export { default as NetworkAccessNotice } from './components/NetworkAccessNotice.vue'
-export const CodeEditor = defineAsyncView(() => import('./components/CodeEditor.vue'))
+export const CodeEditor = /* @__PURE__ */ defineAsyncView(() => import('./components/CodeEditor.vue'))
 export { default as ResourceAttachments } from './components/ResourceAttachments.vue'
 export { default as RenameFileButton } from './components/RenameFileButton.vue'
 export type { AttachmentSource, ResourceAttachment } from './resourceAttachments'
 export { default as ExecutionDateFilters } from './components/ExecutionDateFilters.vue'
-export const FullscreenPreview = defineAsyncView(() => import('./components/FullscreenPreview.vue'))
+export { FullscreenPreview, AudioResourcePlayer, Model3dThumbnail, Model3dViewer, TextResourcePreview } from './mediaViews'
 export { default as ResourcePreviewBlock } from './components/ResourcePreviewBlock.vue'
-export const AudioResourcePlayer = defineAsyncView(() => import('./components/AudioResourcePlayer.vue'))
 export { default as FolderIcon } from './components/FolderIcon.vue'
 export { default as DocumentFileIcon } from './components/DocumentFileIcon.vue'
 export { folderArtwork } from './folderArtwork'
 export { solaire, solaireColors, type SolaireColor } from './solaire'
 export { solaireCss } from './solaireTheme'
-export const Model3dThumbnail = defineAsyncView(() => import('./components/Model3dThumbnail.vue'))
-export const Model3dViewer = defineAsyncView(() => import('./components/Model3dViewer.vue'))
 export { model3dFormat } from './model3d'
 export type { Model3dSource } from './model3d'
-export const HtmlPreview = defineAsyncView(() => import('./components/HtmlPreview.vue'))
+export const HtmlPreview = /* @__PURE__ */ defineAsyncView(() => import('./components/HtmlPreview.vue'))
 // Backward-compatible alias.
 export const JsonEditor = CodeEditor
-export const Markdown = defineAsyncView(() => import('./components/Markdown.vue'))
-export const TextResourcePreview = defineAsyncView(() => import('./components/TextResourcePreview.vue'))
-export const MarkdownWysiwygEditor = defineAsyncView(() => import('./components/MarkdownWysiwygEditor.vue'))
+export const Markdown = /* @__PURE__ */ defineAsyncView(() => import('./components/Markdown.vue'))
+export const MarkdownWysiwygEditor = /* @__PURE__ */ defineAsyncView(() => import('./components/MarkdownWysiwygEditor.vue'))
 export { default as PageHeader } from './components/PageHeader.vue'
 export { default as GraphViewControls } from './components/GraphViewControls.vue'
 export { default as ContextHelp } from './components/ContextHelp.vue'
@@ -96,11 +92,11 @@ export { registerResourceViewer, findResourceViewer } from './resourceViewers'
 export type { ResourceViewerContribution, ResourceViewerSource } from './resourceViewers'
 export type { StatusBadgeTone } from './statusBadge'
 // Reading a document or using a utility must not initialize the editing engine.
-export const RichTextEditor = defineAsyncComponent(() => import('./components/RichTextEditor.vue'))
+export const RichTextEditor = /* @__PURE__ */ defineAsyncComponent(() => import('./components/RichTextEditor.vue'))
 export type { EditorVoiceControls } from './editorVoice'
 export type { EditorVoiceContext, EditorVoiceSession, EditorVoiceProvider } from './editorVoice'
-export const RichText = defineAsyncView(() => import('./components/RichText.vue'))
-export const EditorialContent = defineAsyncView(() => import('./components/EditorialContent.vue'))
+export const RichText = /* @__PURE__ */ defineAsyncView(() => import('./components/RichText.vue'))
+export const EditorialContent = /* @__PURE__ */ defineAsyncView(() => import('./components/EditorialContent.vue'))
 export { attachmentReference, richTextExcerpt, richLinkHref, searchRichLinks, type RichContentContribution } from './richText'
 export { richLinkTarget, richLinkCard } from './richText'
 export { ResourceThumbnail, DocumentResourceReferences } from './resourceContributions'

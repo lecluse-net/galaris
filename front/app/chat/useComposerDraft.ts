@@ -1,6 +1,6 @@
 import { onBeforeUnmount, ref, watch, type Ref } from 'vue'
 import { useAuthStore } from '@/core/user'
-import { sessionGeneration } from '@/core/api'
+import { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
 import { isAxiosError } from 'axios'
 import { chatService } from './services/chatService'
 import { DRAFT_SYNC_MS, draftBlob, draftKey, readLocalDraft, writeLocalDraft, type DraftContent, type DraftFile, type DraftSend, type LocalDraft } from './drafts'
@@ -19,13 +19,15 @@ export function useComposerDraft(options: {
   topic: () => string | null
   reply: () => string | null
   restoreContext: (topic: string | null, reply: string | null) => void
-  error: (error: unknown) => void
 }) {
   const auth = useAuthStore()
+  const authGeneration = ref(sessionGeneration())
+  const refreshGeneration = (): void => { authGeneration.value = sessionGeneration() }
+  window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, refreshGeneration)
+  window.addEventListener('storage', refreshGeneration)
   const ready = ref(false)
   const saving = ref(false)
   const failed = ref(false)
-  const conflicted = ref(false)
   const replyId = ref<string | null>(null)
   let restoring = false
   let current: Session | null = null
@@ -36,7 +38,8 @@ export function useComposerDraft(options: {
     running: Promise<void> | null; initialized: Promise<void>; paused: boolean; removed: Set<string>; owner: symbol
   }
   function persist(session: Session): void {
-    if (localOwners.get(session.key) === session.owner) writeLocalDraft(session.key, session.record)
+    if (localOwners.get(session.key) !== session.owner) return
+    try { writeLocalDraft(session.key, session.record) } catch { if (current === session) failed.value = true }
   }
   function apply(content: DraftContent | null, session: Session): void {
     if (current !== session) return
@@ -83,13 +86,11 @@ export function useComposerDraft(options: {
     }
     session.record = { ...session.record, dirty: true, mutationKey: crypto.randomUUID(), content: empty ? null : content }
     session.record.removedKeys = [...session.removed]
-    try { persist(session) } catch (error) { failed.value = true; options.error(error) }
+    persist(session)
     // File uploads start immediately, independently of the text throttle.
     if (descriptors.some(item => !item.uploaded)) void flush(session).catch(error => reportFor(session, error))
   }
-  function report(error: unknown): void {
-    if (isAxiosError(error) && error.response?.status === 409) conflicted.value = true
-    if (!failed.value) options.error(error)
+  function report(_error: unknown): void {
     failed.value = true
   }
   function leave(session: Session): void {
@@ -105,7 +106,7 @@ export function useComposerDraft(options: {
     if (session.running) { await session.running; if (session.record.dirty) return flush(session); return }
     session.running = (async () => {
       await session.initialized
-      if (session.generation !== sessionGeneration() || (!session.record.dirty && !session.removed.size)) return
+      if (session.generation !== sessionGeneration() || localOwners.get(session.key) !== session.owner || (!session.record.dirty && !session.removed.size)) return
       if (current === session) saving.value = true
       try {
         async function cleanup(): Promise<void> {
@@ -121,9 +122,30 @@ export function useComposerDraft(options: {
           if (session.generation !== sessionGeneration()) return
           session.record.pending = sent
           persist(session)
-          const saved = await chatService.saveDraft(session.room, sent.revision, sent.mutationKey, sent.content)
+          let saved
+          try {
+            saved = await chatService.saveDraft(session.room, sent.revision, sent.mutationKey, sent.content)
+          } catch (error) {
+            if (!isAxiosError(error) || error.response?.status !== 409) throw error
+            const remote = await chatService.draft(session.room)
+            if (session.generation !== sessionGeneration() || localOwners.get(session.key) !== session.owner) return
+            session.record.revision = remote.revision
+            delete session.record.pending
+            session.record.baseClientMessageId = remote.content?.client_message_id
+            if (!session.record.content && remote.content && !session.record.clearedMessageIds?.includes(remote.content.client_message_id)) {
+              session.record.content = remote.content
+              session.record.dirty = false
+              apply(remote.content, session)
+            } else {
+              session.record.dirty = true
+              session.record.mutationKey = crypto.randomUUID()
+            }
+            persist(session)
+            return
+          }
           if (session.generation !== sessionGeneration()) return
           session.record.revision = saved.revision
+          session.record.baseClientMessageId = saved.content?.client_message_id
           if (session.record.mutationKey === sent.mutationKey) session.record.dirty = false
           delete session.record.pending
           persist(session)
@@ -159,38 +181,62 @@ export function useComposerDraft(options: {
     try { await session.running } finally { session.running = null }
   }
   watch([options.text, options.files, options.resources, options.effort, options.topic, options.reply], capture, { deep: true, flush: 'sync' })
-  watch([options.room, () => auth.user?.id], ([room, user]) => {
+  watch([options.room, () => auth.user?.id, authGeneration], ([room, user]) => {
     if (current) leave(current)
     current = null
     ready.value = false
     failed.value = false
-    conflicted.value = false
     if (!user) return
-    const key = draftKey(user, room)
+    const generation = sessionGeneration()
+    const key = draftKey(user, room, generation)
+    const legacyKey = draftKey(user, room)
+    let legacyScope: string | null = null
     let local: LocalDraft | null = null
-    try { local = readLocalDraft(key) } catch (error) { report(error) }
+    try {
+      local = readLocalDraft(key)
+      if (!local && key !== legacyKey) {
+        const legacy = readLocalDraft(legacyKey)
+        if (legacy && (!legacy.recoverySession || legacy.recoverySession === generation)) {
+          local = legacy
+          legacyScope = legacyKey
+          writeLocalDraft(legacyKey, { ...legacy, recoverySession: generation })
+        }
+      }
+    } catch (error) { report(error) }
     const session: Session = { room, key, generation: sessionGeneration(),
       record: local ?? { revision: 0, content: null, dirty: false, mutationKey: crypto.randomUUID() },
       blobs: new Map(), writes: [], running: null, initialized: Promise.resolve(), paused: false, removed: new Set(), owner: Symbol(key) }
     current = session
     session.removed = new Set(local?.removedKeys ?? [])
     localOwners.set(key, session.owner)
+    persist(session)
     apply(session.record.content, session)
     session.initialized = (async () => {
       try {
         for (const item of session.record.content?.files ?? []) {
-          const file = await draftBlob(key, item.key)
+          let file = await draftBlob(key, item.key)
+          if (!file && legacyScope) {
+            file = await draftBlob(legacyScope, item.key)
+            if (file) await draftBlob(key, item.key, file)
+          }
           if (file) session.blobs.set(item.key, file)
         }
         const remote = await chatService.draft(room)
         if (session.generation !== sessionGeneration()) return
-        if (!session.record.dirty) {
-          session.record = { ...session.record, ...remote }
+        if (!session.record.content && (!session.record.dirty || session.record.revision !== remote.revision)
+          && (!remote.content || !session.record.clearedMessageIds?.includes(remote.content.client_message_id))) {
+          session.record = { ...session.record, ...remote, dirty: false }
+          delete session.record.pending
+          session.record.baseClientMessageId = remote.content?.client_message_id
           persist(session)
           apply(remote.content, session)
         } else if (session.record.revision !== remote.revision) {
-          conflicted.value = true
-          throw new Error('Draft conflict: local changes preserved; server has a newer draft')
+          session.record.revision = remote.revision
+          session.record.baseClientMessageId = remote.content?.client_message_id
+          session.record.mutationKey = crypto.randomUUID()
+          session.record.dirty = true
+          delete session.record.pending
+          persist(session)
         }
         // Replace local placeholders after IndexedDB has loaded, unless typing changed them.
         if (current === session) {
@@ -209,7 +255,7 @@ export function useComposerDraft(options: {
   }, { immediate: true, flush: 'sync' })
   const wake = (): void => {
     const session = current
-    if (session) void flush(session).catch(error => reportFor(session, error))
+    if (session && !session.running && !session.paused) void flush(session).catch(error => reportFor(session, error))
   }
   const timer = window.setInterval(wake, DRAFT_SYNC_MS)
   window.addEventListener('online', wake)
@@ -217,32 +263,47 @@ export function useComposerDraft(options: {
   document.addEventListener('visibilitychange', wake)
   onBeforeUnmount(() => {
     clearInterval(timer)
+    window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, refreshGeneration)
+    window.removeEventListener('storage', refreshGeneration)
     window.removeEventListener('online', wake)
     window.removeEventListener('pagehide', wake)
     document.removeEventListener('visibilitychange', wake)
     if (current) leave(current)
     current = null
   })
-  async function prepare(): Promise<{ token: DraftSend; acknowledge: (accepted: boolean, clear: () => void) => Promise<void> } | undefined> {
+  async function prepare(): Promise<{ token: DraftSend; files: File[]; acknowledge: (accepted: boolean, clear: () => void) => Promise<void> } | undefined> {
     const session = current
     if (!session) return undefined
-    // Fully drain edits occurring during an upload or autosave before publishing.
-    do {
-      if (current !== session || session.generation !== sessionGeneration()) throw new Error('Session changed')
-      await flush(session)
-    } while (session.record.dirty)
-    if (current !== session || !session.record.content) throw new Error('Conversation changed')
+    // Publication owns its files and identity. An optional autosave must never
+    // hold the send button, even when its HTTP request has not returned.
+    if (session.generation !== sessionGeneration()) throw new Error('Session changed')
+    if (!session.record.content) return undefined
     const sent = JSON.parse(JSON.stringify(session.record)) as LocalDraft
     const content = sent.content!
+    const files: File[] = []
+    for (const item of content.files.filter(item => !item.uploaded)) {
+      const file = session.blobs.get(item.key) ?? await draftBlob(session.key, item.key)
+      if (!file) throw new Error('Message attachment is no longer available')
+      session.blobs.set(item.key, file)
+      files.push(file)
+    }
+    if (current !== session || session.generation !== sessionGeneration()) throw new Error('Session changed')
+    if (session.record.mutationKey !== sent.mutationKey) return prepare()
+    const fallbackFiles = content.files.map(item => session.blobs.get(item.key))
     session.paused = true
-    return { token: { revision: sent.revision, clientMessageId: content.client_message_id, replyToMessageId: content.reply_to_message_id }, acknowledge: async (accepted, clear) => {
+    return { files, token: { revision: sent.revision, clientMessageId: content.client_message_id,
+      replyToMessageId: content.reply_to_message_id, fileKeys: content.files.filter(item => item.uploaded).map(item => item.key),
+      fallbackFiles: fallbackFiles.every((file): file is File => Boolean(file)) ? fallbackFiles : undefined }, acknowledge: async (accepted, clear) => {
       session.paused = false
       if (!accepted) return
       // The server increments the cursor while clearing only this sent revision.
       if (session.record.revision === sent.revision) session.record.revision += 1
       if (session.record.mutationKey === sent.mutationKey) {
         session.record.content = null
-        session.record.dirty = false
+        session.record.dirty = true
+        session.record.mutationKey = crypto.randomUUID()
+        session.record.clearedMessageIds = [...new Set([content.client_message_id,
+          sent.baseClientMessageId, sent.pending?.content?.client_message_id].filter((key): key is string => Boolean(key)))]
       } else if (session.record.content) {
         session.record.content.client_message_id = crypto.randomUUID()
       }
@@ -253,7 +314,14 @@ export function useComposerDraft(options: {
         if (options.text.value || options.files.value.length || options.resources.value.length) capture()
       }
       persist(session)
-      for (const item of content.files) await draftBlob(session.key, item.key, null)
+      for (const item of content.files) {
+        session.removed.add(item.key)
+        session.blobs.delete(item.key)
+        void draftBlob(session.key, item.key, null).catch(error => reportFor(session, error))
+      }
+      session.record.removedKeys = [...session.removed]
+      persist(session)
+      void flush(session).catch(error => reportFor(session, error))
     } }
   }
   async function retry(replace = false): Promise<void> {
@@ -269,10 +337,9 @@ export function useComposerDraft(options: {
       persist(session)
     }
     await flush(session)
-    conflicted.value = false
     failed.value = false
   }
   function cancelReply(): void { replyId.value = null; capture() }
   watch(options.reply, (value, previous) => { if (value !== previous) replyId.value = value })
-  return { ready, saving, failed, conflicted, replyId, cancelReply, retry, prepare }
+  return { ready, saving, failed, replyId, cancelReply, retry, prepare }
 }

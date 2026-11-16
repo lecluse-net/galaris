@@ -20,8 +20,8 @@
       <q-select v-model="definitionArchive" :options="archiveOptions" emit-value map-options dense outlined
         class="process-kind-filter" :label="t('processes.catalogue.archive')" />
       <div class="process-toolbar-actions">
-        <q-btn outline icon="refresh" :label="t('processes.refresh')" @click="refreshCatalogue" />
-        <q-btn v-if="canAdmin" outline icon="hub" :label="t('processes.catalogue.integrations')" @click="n8nDialog = true" />
+        <q-btn color="primary" outline icon="refresh" :label="t('processes.refresh')" @click="refreshCatalogue" />
+        <q-btn color="primary" v-if="canAdmin" outline icon="hub" :label="t('processes.catalogue.integrations')" @click="n8nDialog = true" />
       </div>
     </div>
     <div v-if="isDev && canEdit" class="process-add-actions q-mb-md">
@@ -65,7 +65,7 @@
           </q-banner>
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn v-if="canAdmin" outline icon="add" :label="t('processes.importExternal')" to="/process/new-external" />
+          <q-btn color="primary" v-if="canAdmin" outline icon="add" :label="t('processes.importExternal')" to="/process/new-external" />
           <q-btn v-if="canAdmin" color="secondary" icon="sync" :label="t('processes.syncN8n')" :loading="syncingN8n" @click="syncN8n" />
         </q-card-actions>
       </q-card>

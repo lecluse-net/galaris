@@ -10,7 +10,7 @@
     </q-toolbar>
     <q-banner v-if="error" dense role="alert">
       {{ error }}
-      <q-btn outline :label="t('common.retry')" @click="retry" />
+      <q-btn color="primary" outline :label="t('common.retry')" @click="retry" />
     </q-banner>
     <q-linear-progress v-if="initializing || restoring" indeterminate />
     <template v-if="store.enabled">

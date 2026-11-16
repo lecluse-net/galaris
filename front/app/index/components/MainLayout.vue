@@ -50,10 +50,10 @@
 
 <script setup lang="ts">
 import Sidebar from './Sidebar.vue'
-import UserMenu from '@/core/user/components/UserMenu.vue'
+import { UserMenu } from '@/core/user/interface'
 import { shellContributions } from '../shellContributions'
 import { useAppStore } from '@/app/index/stores/appStore'
-import { useAuthStore } from '@/core/user/stores/authStore'
+import { useAuthStore } from '@/core/user/facade'
 import { settings } from '@/core/settings'
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'

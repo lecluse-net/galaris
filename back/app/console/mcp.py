@@ -7,6 +7,7 @@ from uuid import UUID
 
 from app.services.mcp_loader import McpToolContext, mcp_tool
 from app.services.contracts import current_tool_execution
+from app.services import RecoverableToolError
 
 from .console_service import ConsoleRunResource
 
@@ -20,7 +21,12 @@ def _resource(ctx: McpToolContext) -> ConsoleRunResource:
 
 def _result(value: Any) -> dict[str, Any]:
     if getattr(value, "status", None) == "outcome_unknown":
-        raise RuntimeError("Console operation lost its supervisor without a terminal receipt; do not replay it")
+        raise RecoverableToolError(
+            f"SSH command timed out or lost its exit receipt after {value.duration_ms} ms. "
+            "Its outcome is unknown; do not replay it. Inspect the remote state first. "
+            "For long commands, install galaris-exec v2 through Console administration, "
+            "check console_status.operation_recovery_available, then use console_start and console_poll."
+        )
     return value.model_dump(mode="json")
 
 

@@ -1,4 +1,4 @@
-import { attachmentReference } from './richText'
+import { attachmentReference } from './documentResource'
 import { browserResourceKind } from './resourceViewer'
 import { youtubeEmbedUrl, youtubePlayer } from './youtubePlayer'
 

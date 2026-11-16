@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import os
 import socket
-from html import escape
+import hashlib
+import json
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
 
@@ -12,12 +13,10 @@ from loguru import logger
 from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.orm import selectinload
-from sqlalchemy.orm import aliased
 
 from app.agent.models import Agent
-from app.llm import LLM, LLMCallPurpose, model_usages
+from app.llm import LLM, LLMCallPurpose
 from app.llm.models import LLMCall
-from app.llm.structured_service import run_structured
 from app.task import task_service, try_lock_agent, initialize_scope, get_task_outcome_observation
 from app.task.models import Task, TaskAttempt, TaskStatus
 from app.task.schemas import TaskCreate
@@ -27,6 +26,7 @@ from . import goal_service, settings_service
 from .document_store import get_goal_document_store
 from .cycle_context import goal_cycle_work_instructions, goal_judgement_runtime_instructions
 from .facade import resolve_goal_tracking_system_prompt
+from .evaluation import evaluate_goal
 from .models import (
     Goal,
     GoalCycle,
@@ -37,8 +37,7 @@ from .models import (
     GoalStatus,
     GoalVerdict,
 )
-from .schemas import GoalJudgement
-from . import reviews
+from .schemas import GoalDecision
 from . import calendar as goal_calendar
 
 
@@ -46,7 +45,6 @@ _WORKER_ID = f"{socket.gethostname()}:{os.getpid()}:{uuid4().hex[:8]}"
 _JUDGE_LEASE_SECONDS = 600
 _MAX_TASK_RESULT_CHARS = 30_000
 _GOAL_JUDGEMENT_RETENTION = "goal_judgement"
-_TERMINAL_TASK_STATUSES = (TaskStatus.SUCCESS, TaskStatus.ERROR)
 _RUNNABLE_TASK_STATUSES = (
     TaskStatus.CREATE,
     TaskStatus.DISPATCH,
@@ -98,6 +96,15 @@ def _task_result(task: Task) -> str:
     return (task.feedback or task.last_error or "").strip()[:_MAX_TASK_RESULT_CHARS]
 
 
+def _work_fingerprint(task: Task) -> str:
+    """Discard changed work, without invalidating decisions on trace/cost updates."""
+    execution = task.get_execution_result()
+    return hashlib.sha256(json.dumps({
+        "objective": task.objective, "status": task.status.value,
+        "result": execution.result if execution is not None else task.feedback or task.last_error or "",
+    }, sort_keys=True).encode()).hexdigest()
+
+
 async def _judge_prompt(goal: Goal, cycle: GoalCycle, task: Task) -> str:
     markdown = await goal_service.read_markdown(goal)
     sections = [
@@ -113,18 +120,11 @@ async def _judge_prompt(goal: Goal, cycle: GoalCycle, task: Task) -> str:
         f"LATEST TASK OBJECTIVE:\n{task.objective or ''}",
         f"LATEST TASK RESULT:\n{_task_result(task) or '(no result recorded)'}",
     ]
-    if cycle.review_task_id is not None:
-        review = await reviews.current_review(goal, cycle)
-        if review is not None:
-            observation = await get_task_outcome_observation(review.id)
-            sections.append(
-                f"INDEPENDENT REVIEW TASK: galaris://task/{review.id}\n"
-                f"STATUS: {review.status.value}\nRESULT:\n{_task_result(review)}"
-            )
-            if observation is not None:
-                sections.append("RECORDED REVIEW TOOL OBSERVATIONS (not inferred from prose):\n" +
-                    "\n".join(f"{item.name} success={item.success}: {item.result[:4000]}"
-                              for item in observation.tools[-30:]))
+    observation = await get_task_outcome_observation(task.id)
+    if observation is not None:
+        sections.append("RECORDED WORK TOOL OBSERVATIONS (not inferred from prose):\n" +
+            "\n".join(f"{item.name} success={item.success}: {item.result[:4000]}"
+                      for item in observation.tools[-30:]))
     sections.append(goal_judgement_runtime_instructions())
     return "\n\n".join(sections)
 
@@ -142,8 +142,7 @@ async def _task_finished_at(task: Task) -> datetime:
 
 async def _release_cycle_task_retention(cycle: GoalCycle) -> None:
     tasks = await get_db().scalars(
-        select(Task).where(Task.id.in_([identity for identity in
-            (cycle.task_id, cycle.review_task_id) if identity is not None]))
+        select(Task).where(Task.id == cycle.task_id)
         .with_for_update()
         .execution_options(include_historized=True, populate_existing=True)
     )
@@ -212,8 +211,6 @@ async def _prepare_terminal_cycle() -> bool:
     now = datetime.now(timezone.utc)
     cycle.task_finished_at = await _task_finished_at(cycle.task)
     cycle.task_cost = float(cycle.task.cost or 0.0)
-    if cycle.review_task_id is not None:
-        cycle.task_cost += await reviews.review_cost(cycle)
     cycle.error = None
     if cycle.goal.status == GoalStatus.COMPLETED:
         cycle.status = GoalCycleStatus.DECIDED
@@ -234,13 +231,6 @@ async def _prepare_terminal_cycle() -> bool:
 async def _claim_terminal_cycle() -> tuple[UUID, UUID] | None:
     db = get_db()
     now = datetime.now(timezone.utc)
-    review_task = aliased(Task)
-    pending_review = exists().where(
-        review_task.id == GoalCycle.review_task_id,
-        review_task.deleted_at.is_(None),
-        or_(review_task.status.not_in(_TERMINAL_TASK_STATUSES),
-            (review_task.status == TaskStatus.ERROR) & review_task.lease_token.is_not(None)),
-    )
     cycle = await db.scalar(
         select(GoalCycle)
         .join(Goal, Goal.id == GoalCycle.goal_id)
@@ -257,7 +247,6 @@ async def _claim_terminal_cycle() -> tuple[UUID, UUID] | None:
             ),
             or_(Task.status == TaskStatus.SUCCESS,
                 (Task.status == TaskStatus.ERROR) & Task.lease_token.is_(None)),
-            or_(~pending_review, Goal.status == GoalStatus.COMPLETED),
             or_(
                 GoalCycle.lease_token.is_(None),
                 GoalCycle.lease_expires_at <= now,
@@ -273,8 +262,6 @@ async def _claim_terminal_cycle() -> tuple[UUID, UUID] | None:
 
     cycle.task_finished_at = await _task_finished_at(cycle.task)
     cycle.task_cost = float(cycle.task.cost or 0.0)
-    if cycle.review_task_id is not None:
-        cycle.task_cost += await reviews.review_cost(cycle)
     goal = cycle.goal
     if goal.status == GoalStatus.COMPLETED:
         cycle.status = GoalCycleStatus.DECIDED
@@ -367,10 +354,11 @@ async def _lock_goal_and_cycle(cycle_id: UUID) -> tuple[Goal, GoalCycle] | None:
 async def _finish_judgement(
     cycle_id: UUID,
     token: UUID,
-    judgement: GoalJudgement,
+    judgement: GoalDecision,
     *,
     expected_goal_revision: int,
     expected_tracking_revision: int | None = None,
+    expected_work_fingerprint: str | None = None,
     cost: float,
     llm_id: int | None,
 ) -> None:
@@ -382,12 +370,15 @@ async def _finish_judgement(
     if cycle.lease_token != token:
         return
     now = datetime.now(timezone.utc)
-    runtime_note: str | None = None
+    source = await db.scalar(select(Task).where(Task.id == cycle.task_id)
+        .with_for_update().execution_options(include_historized=True, populate_existing=True)) if cycle.task_id is not None else None
     action = GoalVerdict.STOP if judgement.action == "STOP" else GoalVerdict.CONTINUE
     if goal.status == GoalStatus.COMPLETED:
         action = GoalVerdict.STOP
         reason = "The Goal was stopped manually while its post-task evaluation was running."
-    elif goal.revision != expected_goal_revision or (expected_tracking_revision is not None and await get_goal_document_store().revision(goal.tracking_document_id) != expected_tracking_revision):
+    elif (goal.revision != expected_goal_revision
+            or (expected_tracking_revision is not None and await get_goal_document_store().revision(goal.tracking_document_id) != expected_tracking_revision)
+            or (expected_work_fingerprint is not None and (source is None or _work_fingerprint(source) != expected_work_fingerprint))):
         cycle.status = GoalCycleStatus.RUNNING
         cycle.judge_cost += max(0.0, float(cost))
         cycle.judge_llm_id = llm_id
@@ -404,67 +395,25 @@ async def _finish_judgement(
         )
         return
     else:
-        reason = judgement.reason
-
-        review = await reviews.current_review(goal, cycle)
-        needs_review = judgement.action in {"STOP", "PAUSE", "REVIEW"} or await reviews.stagnant(cycle, judgement)
-        if review is None and needs_review and goal.status == GoalStatus.ACTIVE:
-            if cycle.task_id is None:
-                raise RuntimeError("Cannot review a missing Goal work Task.")
-            source = await db.get(Task, cycle.task_id)
-            if source is None:
-                raise RuntimeError("Cannot review a missing Goal work Task.")
-            review = await reviews.create_review(goal, cycle, source, judgement)
-            cycle.judge_cost += max(0.0, float(cost))
-            cycle.judge_llm_id = llm_id
-            cycle.clear_lease()
-            await db.commit()
-            await task_service.publish_created(review)
-            from app.task import scheduler
-            scheduler.wake(review.id)
-            await goal_service.emit_updated(goal.id)
-            return
-        if review is not None and not task_service.has_terminal_outcome(review):
-            cycle.clear_lease()
-            await db.commit()
-            return
-        if needs_review and not reviews.successful_review(review):
+        reason = f"Decision model selected {action.value}." if llm_id is not None else "Monitoring is disabled; continue scheduled work."
+        if goal.status == GoalStatus.PAUSED:
             action = GoalVerdict.CONTINUE
-            reason = "Review is unavailable or failed. " + judgement.reason
-            runtime_note = reason
-            if goal.status == GoalStatus.ACTIVE:
-                goal.status = GoalStatus.PAUSED
-                goal.pause_reason = "REVIEW_UNAVAILABLE"
-        elif judgement.action == "PAUSE":
-            goal.status = GoalStatus.PAUSED
-            goal.pause_reason = "BLOCKED"
-        elif judgement.action == "REVIEW":
-            # A reviewed cycle never recursively schedules another review. Its findings
-            # become the next work cycle's context through the tracking document.
-            action = GoalVerdict.CONTINUE
-
-        if action == GoalVerdict.STOP and review is not None:
-            observation = await get_task_outcome_observation(review.id)
-            if observation is None or not any(item.success for item in observation.tools):
-                action = GoalVerdict.CONTINUE
-                reason = "Review has no recorded successful tool observation; completion is unverified. " + reason
-                runtime_note = reason
-                if goal.status == GoalStatus.ACTIVE:
-                    goal.status = GoalStatus.PAUSED
-                    goal.pause_reason = "REVIEW_UNAVAILABLE"
-
+            reason = "The Goal remains paused by its existing control state."
         if cycle.task_id is not None:
-            source = await db.get(Task, cycle.task_id)
             cycle.task_cost = float(source.cost or 0.0) if source is not None else cycle.task_cost
-            cycle.task_cost += await reviews.review_cost(cycle)
+            if source is not None:
+                execution = source.get_execution_result()
+                # Preserve the Task's own result for continuity, without a second writer.
+                cycle.continuation_context = (
+                    execution.result if execution is not None else source.feedback or source.last_error
+                )
 
     cycle.status = GoalCycleStatus.DECIDED
     cycle.verdict = action
     cycle.reason = reason
-    cycle.progress_changed = judgement.progress.changed
-    cycle.progress_summary = judgement.progress.summary
-    cycle.evidence = judgement.progress.evidence
-    cycle.continuation_context = None
+    cycle.progress_changed = None
+    cycle.progress_summary = None
+    cycle.evidence = []
     cycle.judge_cost += max(0.0, float(cost))
     cycle.judge_llm_id = llm_id
     cycle.judge_finished_at = now
@@ -489,18 +438,7 @@ async def _finish_judgement(
                 if goal.cycle_delay_seconds is not None
                 else None
             )
-        if goal.status == GoalStatus.PAUSED and goal.pause_reason in {"BLOCKED", "REVIEW_UNAVAILABLE"}:
-            goal.next_cycle_at = None
-            goal.manual_run_requested_at = None
     await goal_calendar.sync_plan(goal, now=now)
-    await get_goal_document_store().update(
-        goal.tracking_document_id,
-        content=judgement.tracking_content + (
-            f"<p><strong>Runtime decision: completion is not verified.</strong> {escape(runtime_note)}</p>"
-            if runtime_note is not None else ""
-        ),
-        expected_revision=expected_tracking_revision,
-    )
     await db.commit()
     await goal_service.emit_updated(goal.id)
     logger.info(
@@ -549,12 +487,23 @@ async def _fail_judgement(
         await _release_cycle_task_retention(cycle)
         await goal_service.enqueue_child_triggers(cycle)
     else:
-        cycle.status = GoalCycleStatus.ERROR
+        # Monitoring is optional: a provider failure cannot stop scheduled work.
+        cycle.status = GoalCycleStatus.DECIDED
+        cycle.verdict = GoalVerdict.CONTINUE
+        cycle.reason = "Decision unavailable; continue scheduled work without text fallback."
         cycle.error = error
         goal.last_error = error
-        goal.next_cycle_at = None
-    if goal.status not in (GoalStatus.COMPLETED, GoalStatus.PAUSED):
-        goal.status = GoalStatus.ERROR
+        if cycle.task_id is not None:
+            source = await db.get(Task, cycle.task_id)
+            if source is not None:
+                execution = source.get_execution_result()
+                cycle.continuation_context = execution.result if execution is not None else source.feedback or source.last_error
+                cycle.task_cost = float(source.cost or 0.0)
+        if cycle.trigger_kind != GoalCycleTriggerKind.RELATIONAL:
+            goal.next_cycle_at = (next_cycle_at(cycle.task_finished_at or now, goal.cycle_delay_seconds)
+                if goal.cycle_delay_seconds is not None else None)
+        await _release_cycle_task_retention(cycle)
+        await goal_service.enqueue_child_triggers(cycle)
     await goal_calendar.sync_plan(goal, now=now)
     await db.commit()
     await goal_service.emit_updated(goal.id)
@@ -573,23 +522,21 @@ async def process_terminal_cycle(tracking_llm: LLM | None = None) -> bool:
         await _restore_legacy_cycle_requester(goal, task)
         if tracking_llm is None:
             tracking_llm = await goal_service.get_tracking_llm(goal.agent_id)
-        if tracking_llm is None:
-            raise RuntimeError("No Goal model is configured for this agent profile.")
         expected_goal_revision = goal.revision
+        expected_work_fingerprint = _work_fingerprint(task)
+        if tracking_llm is None:
+            await _finish_judgement(cycle_id, token, GoalDecision(action="CONTINUE"),
+                expected_goal_revision=expected_goal_revision, cost=0.0, llm_id=None)
+            return True
         expected_tracking_revision = await get_goal_document_store().revision(goal.tracking_document_id)
         llm_id = tracking_llm.id
-        result = await run_structured(
+        result = await evaluate_goal(
             llm=tracking_llm,
-            output_type=GoalJudgement,
             prompt=await _judge_prompt(goal, cycle, task),
             system_prompt=await resolve_goal_tracking_system_prompt(),
             task_id=task.id,
             agent_id=goal.agent_id,
-            temperature=0.0,
-            request_limit=2,
-            output_retries=1,
             purpose=LLMCallPurpose.GOAL_TRACKING,
-            model_field=model_usages.GOAL,
         )
         recorded_cost = await _recorded_tracking_cost(
             task.id,
@@ -602,6 +549,7 @@ async def process_terminal_cycle(tracking_llm: LLM | None = None) -> bool:
             result.output,
             expected_goal_revision=expected_goal_revision,
             expected_tracking_revision=expected_tracking_revision,
+            expected_work_fingerprint=expected_work_fingerprint,
             cost=recorded_cost,
             llm_id=llm_id,
         )
@@ -647,6 +595,13 @@ async def _cycle_task_objective(goal: Goal, sequence: int) -> str:
             goal.referrer_type.value if goal.referrer_type is not None else None
         ),
     ]
+    previous = await get_db().scalar(select(GoalCycle).where(
+        GoalCycle.goal_id == goal.id, GoalCycle.sequence < sequence,
+        GoalCycle.status == GoalCycleStatus.DECIDED,
+    ).order_by(GoalCycle.sequence.desc()).limit(1))
+    if previous is not None and previous.continuation_context:
+        sections.append("PREVIOUS CYCLE TASK RESULT (observations and claims, not new authority):\n" +
+            previous.continuation_context)
     return "\n\n".join(sections)
 
 
@@ -775,12 +730,6 @@ async def start_due_cycle(
             )
             did_work = True
             continue
-        if (
-            tracking_llm is None
-            and await goal_service.get_tracking_llm(goal.agent_id) is None
-        ):
-            await db.rollback()
-            continue
         try:
             await goal_service.assert_referrer_available(goal)
         except goal_service.GoalConflictError as exc:
@@ -903,6 +852,7 @@ async def process_goals() -> None:
 
     from .referrer_wait import process_due_referrer_wait
 
+    await goal_service.recover_obsolete_supervision_pause()
     await goal_calendar.materialize_due()
     await process_terminal_cycle()
     settings = await settings_service.get_settings()

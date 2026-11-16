@@ -32,7 +32,7 @@
                             </div>
                         </div>
                         <div class="row items-center q-gutter-x-xs">
-                            <q-badge v-if="task.ai" color="purple">AI</q-badge>
+                            <q-badge v-if="task.ai" color="solaire-violet">AI</q-badge>
                             <StatusBadge
                                 v-if="pauseState"
                                 :tone="pauseState.tone"
@@ -67,7 +67,8 @@
                         </div>
                         <div class="row justify-end q-gutter-sm">
                             <ResourceReferenceMenu :uri="`galaris://task/${task.id}`" :title="task.label" target=".task-detail" />
-                            <TaskLabCaptureMenu
+                            <component
+                                :is="taskDiagnostics?.component"
                                 v-if="canEditLab"
                                 :task-id="task.id"
                                 :task-label="task.label"
@@ -78,11 +79,11 @@
                             <q-btn size="sm" color="secondary" icon="content_copy" :label="$t('task.detail.jsonExport')" @click="copyJsonToClipboard">
                                 <q-tooltip>{{ $t('task.detail.copyJsonTooltip') }}</q-tooltip>
                             </q-btn>
-                            <q-btn v-if="canEdit && canRun" size="sm" color="green" icon="play_arrow" :label="$t('task.detail.run')"
+                            <q-btn v-if="canEdit && canRun" size="sm" color="solaire-green" icon="play_arrow" :label="$t('task.detail.run')"
                                 @click="onRun" :loading="running">
                                 <q-tooltip>{{ $t('task.detail.runTooltip') }}</q-tooltip>
                             </q-btn>
-                            <q-btn v-if="canEdit && canPause" size="sm" color="orange" icon="pause" :label="$t('task.detail.pause')"
+                            <q-btn v-if="canEdit && canPause" size="sm" color="solaire-orange" icon="pause" :label="$t('task.detail.pause')"
                                 @click="onPause" :loading="pausing">
                                 <q-tooltip>{{ $t('task.detail.pauseTooltip') }}</q-tooltip>
                             </q-btn>
@@ -90,7 +91,7 @@
                                 @click="onResume" :loading="pausing">
                                 <q-tooltip>{{ $t('task.detail.resumeTooltip') }}</q-tooltip>
                             </q-btn>
-                            <q-btn v-if="canEdit && canForceTerminate" size="sm" color="negative" outline icon="cancel"
+                            <q-btn v-if="canEdit && canForceTerminate" size="sm" color="negative"  icon="cancel"
                                 :label="$t('task.detail.forceTerminate')" @click="confirmForceTerminate" :loading="forceTerminating">
                                 <q-tooltip>{{ $t('task.detail.forceTerminateTooltip') }}</q-tooltip>
                             </q-btn>
@@ -127,7 +128,7 @@
                 v-if="parentTask"
                 dense
                 rounded
-                class="bg-blue-1 text-primary q-mb-md cursor-pointer"
+                class="bg-solaire-blue-light text-primary q-mb-md cursor-pointer"
                 @click="onTaskClick(parentTask.id)"
             >
                 <template v-slot:avatar>
@@ -135,11 +136,11 @@
                 </template>
                 {{ $t('task.detail.parentTask') }} : <strong>{{ parentTask.label }}</strong>
                 <template v-slot:action>
-                    <q-btn flat icon="open_in_new" :label="$t('task.detail.openParent')" @click.stop="onTaskClick(parentTask.id)" />
+                    <q-btn outline color="primary"  icon="open_in_new" :label="$t('task.detail.openParent')" @click.stop="onTaskClick(parentTask.id)" />
                 </template>
             </q-banner>
 
-            <q-card v-if="activeReplyWaits.length" flat bordered class="q-mb-md bg-blue-1">
+            <q-card v-if="activeReplyWaits.length" flat bordered class="q-mb-md bg-solaire-blue-light">
                 <q-card-section>
                     <div class="row items-start q-col-gutter-md">
                         <div class="col-auto">
@@ -179,16 +180,16 @@
             <q-banner
                 v-if="isDeliveryRecoveryReady"
                 rounded
-                class="bg-amber-1 text-amber-10 q-mb-md"
+                class="bg-solaire-yellow-light text-solaire-yellow q-mb-md"
             >
                 <template v-slot:avatar>
-                    <q-icon name="outbox" color="amber-10" />
+                    <q-icon name="outbox" color="solaire-yellow" />
                 </template>
                 {{ $t('task.detail.deliveryPending', { filename: deliveryRecovery?.filename || '' }) }}
                 <template v-slot:action>
-                    <q-btn
+                    <q-btn outline
                         v-if="canEdit"
-                        flat
+
                         color="primary"
                         icon="replay"
                         :label="$t('task.detail.retryDelivery')"
@@ -198,7 +199,7 @@
                 </template>
             </q-banner>
 
-            <q-card v-if="isAwaitCoordinationTask" flat bordered class="q-mb-md bg-blue-1">
+            <q-card v-if="isAwaitCoordinationTask" flat bordered class="q-mb-md bg-solaire-blue-light">
                 <q-card-section>
                     <div class="row items-start q-col-gutter-md">
                         <div class="col-auto">
@@ -222,9 +223,9 @@
                                     tone="warning"
                                     :label="$t('task.detail.coordinationAwaitPending')"
                                 />
-                                <q-btn
+                                <q-btn outline
                                     v-if="resolvedByTask"
-                                    flat
+
                                     color="primary"
                                     icon="open_in_new"
                                     :label="$t('task.detail.openResolvedTask')"
@@ -302,7 +303,7 @@
                     <q-separator />
                     <q-card-section class="q-pt-sm">
                         <div class="row items-center q-gutter-sm q-mb-sm">
-                            <q-badge color="indigo" outline>
+                            <q-badge color="solaire-iris" outline>
                                 {{ $t('task.detail.contextCapsuleContact') }}: {{ contextCapsule.contact_memory_item_id }}
                             </q-badge>
                             <StatusBadge
@@ -317,7 +318,7 @@
                         <q-list v-if="contextCapsule.entries.length" bordered separator class="rounded-borders">
                             <q-item v-for="entry in contextCapsule.entries" :key="entry.key">
                                 <q-item-section avatar top>
-                                    <q-icon :name="contextKindIcon(entry.kind)" color="indigo" />
+                                    <q-icon :name="contextKindIcon(entry.kind)" color="solaire-iris" />
                                 </q-item-section>
                                 <q-item-section>
                                     <q-item-label class="row items-center q-gutter-x-sm">
@@ -475,9 +476,9 @@ import {
 import { usePrivilegeStore } from '@/core/authorize'
 import { privileges } from '@/core/authorize'
 import { useTaskStore } from '../stores/taskStore'
-import { useAgentStore } from '@/app/agent/stores/agentStore'
-import { agentService, type Agent } from '@/app/agent/services/agentService'
-import { authService, type User } from '@/core/user/services/authService'
+import { useAgentStore } from '@/app/agent/facade'
+import { agentService, type Agent } from '@/app/agent/facade'
+import { authService, type User } from '@/core/user/facade'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
 import { StatusBadge } from '@/core/util'
@@ -485,10 +486,9 @@ import { StatusBadge } from '@/core/util'
 import DispatchResultComponent from './DispatchResult.vue'
 import PlannerResultComponent from './PlannerResult.vue'
 import ExecutionResultComponent from './ExecutionResult.vue'
-import Markdown from '@/core/util/components/Markdown.vue'
-import TaskLabCaptureMenu from '@/app/lab/components/TaskLabCaptureMenu.vue'
-import { hasAnyPrivilege, labSectionPrivileges } from '@/app/lab'
-import TopicAssignmentEditor from '@/app/topic/components/TopicAssignmentEditor.vue'
+import { Markdown } from '@/core/util'
+import { taskDiagnostics } from '../diagnostics'
+import { TopicAssignmentEditor } from '@/app/topic'
 import { mergeTaskSnapshot } from '../taskSnapshot'
 import { useTaskActivity } from '../useTaskActivity'
 import TaskActivitySummary from './TaskActivitySummary.vue'
@@ -504,11 +504,7 @@ const agentStore = useAgentStore()
 // Privileges
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.TASK_EDIT))
-const canEditLab = computed(() => hasAnyPrivilege(privilegeStore.hasPrivilege, [
-    labSectionPrivileges.dispatcher[1],
-    labSectionPrivileges.planner[1],
-    labSectionPrivileges.task_executor[1],
-]))
+const canEditLab = computed(() => taskDiagnostics?.canUse(privilegeStore.hasPrivilege) ?? false)
 
 const terminalStatuses = new Set(['SUCCESS', 'ERROR'])
 // RUN advances a fresh task or one waiting on internal coordination, planning, or
@@ -895,8 +891,8 @@ const awaitPeerLabel = computed(() => {
 
 function getEffortColor(effort: string): string {
     switch (effort) {
-        case 'high': return 'deep-orange'
-        case 'standard': return 'blue-grey'
+        case 'high': return 'solaire-orange'
+        case 'standard': return 'solaire-gray'
         default: return 'grey'
     }
 }
@@ -1169,7 +1165,7 @@ async function reconcileLiveTask(): Promise<void> {
 
 // Watch for taskId changes
 watch(() => props.taskId, () => {
-    loadTask()
+    void loadTask()
 }, { immediate: true })
 
 // The store updates currentTask on each task.update WebSocket event. Its payload
@@ -1229,9 +1225,9 @@ function getHeaderBgClass(status: string): string {
     // Background colors by status.
     const bgClasses: Record<string, string> = {
         'CREATE': 'bg-grey-1',
-        'DISPATCH': 'bg-purple-1',
-        'EXEC': 'bg-blue-1',
-        'PLAN': 'bg-teal-1',
+        'DISPATCH': 'bg-solaire-violet-light',
+        'EXEC': 'bg-solaire-blue-light',
+        'PLAN': 'bg-solaire-cyan-light',
         'SUCCESS': 'bg-positive-1',
         'ERROR': 'bg-negative-1'
     }
@@ -1328,7 +1324,7 @@ body.body--dark .task-metadata-label {
     background-color: rgba(158, 158, 158, 0.1);
 }
 
-.bg-blue-1 {
+.bg-solaire-blue-light {
     background-color: rgba(25, 118, 210, 0.1);
 }
 
@@ -1344,11 +1340,11 @@ body.body--dark .task-metadata-label {
     background-color: rgba(193, 0, 21, 0.1);
 }
 
-.bg-purple-1 {
+.bg-solaire-violet-light {
     background-color: rgba(156, 39, 176, 0.1);
 }
 
-.bg-teal-1 {
+.bg-solaire-cyan-light {
     background-color: rgba(0, 150, 136, 0.1);
 }
 

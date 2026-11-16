@@ -44,6 +44,26 @@ async def resource(db, owner, kind):
 
 
 @pytest.mark.asyncio
+async def test_large_document_classification_reads_indexed_text_without_parsing_a_truncated_html_fragment(
+    db, agents, memory_storage, monkeypatch, revision_clock,
+):
+    from app.document import document_service
+
+    item = await document_service.create_document(owner_agent_id=agents[0].id,
+        title="Synthetic long garden notes", content="<p>" + "Garden observations. " * 5000 + "</p>", task_id=None)
+    await revision_clock.settle()
+    inference = AsyncMock(return_value=(TopicClassification(action="create", title="Gardening"), 0.01))
+    monkeypatch.setattr(classification, "classify", inference)
+    mechanism = classification.document_topic_classification_mechanism
+    claim = await mechanism.claim_one()
+    assert claim is not None and claim.subject_id.startswith(str(item.id))
+    prepared = await mechanism.prepare(claim)
+    assert not prepared.payload.get("stale")
+    assert "Garden observations." in inference.await_args.kwargs["activity"]
+    assert "<p>" not in inference.await_args.kwargs["activity"]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("kind", ["document", "dataset"])
 async def test_classification_checkpoint_preserves_content_and_lists_readable_resources(
     db,

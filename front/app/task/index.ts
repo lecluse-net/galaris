@@ -1,7 +1,8 @@
-import { defineAsyncView } from '@/core/util'
+import { defineAsyncView } from '@/core/util/facade'
 
-export const ExecutionResultComponent = defineAsyncView(() => import('./components/ExecutionResult.vue'))
-export const TaskDetail = defineAsyncView(() => import('./components/TaskDetail.vue'))
+export const ExecutionResultComponent = /* @__PURE__ */ defineAsyncView(() => import('./components/ExecutionResult.vue'))
+export const TaskDetail = /* @__PURE__ */ defineAsyncView(() => import('./components/TaskDetail.vue'))
+export const ActiveTasksPanel = /* @__PURE__ */ defineAsyncView(() => import('./components/ActiveTasksPanel.vue'))
 export { default as TaskActivitySummary } from './components/TaskActivitySummary.vue'
 export { default as TaskStartupTimingPanel } from './components/TaskStartupTiming.vue'
 export type { TaskStartupTiming } from './activity'

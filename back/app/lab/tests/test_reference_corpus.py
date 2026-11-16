@@ -13,7 +13,7 @@ from app.lab.objective_checks import check_output
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("corpus_name, count", [
-    ("reference", 6), ("latency-fr", 4), ("latency-en", 4), ("dispatcher-boundaries", 15),
+    ("reference", 6), ("latency-fr", 12), ("latency-en", 12), ("dispatcher-boundaries", 15),
     ("planner-boundaries", 24), ("task-organization", 8),
     ("outcomes-fr", 12), ("outcomes-en", 12),
     ("outcome-decisions-fr", 3), ("outcome-decisions-en", 3),
@@ -90,7 +90,7 @@ async def test_latency_campaign_uses_native_effect_free_tools_and_separate_measu
         ("conversation_task_submit", {"objective": "<p>Compare Orbe, Nacre and Sillage, sources, costs and final report.</p>"})]
     monkeypatch.setattr(structured_service, "UsageLimits", lambda **kw: UsageLimits(**{**kw, "count_tokens_before_request": False}))
     monkeypatch.setattr(structured_service, "estimate_cost_from_usage", lambda *_: 0.01)
-    for case, proposed in zip(corpus["cases"], calls, strict=True):
+    for case, proposed in zip(corpus["cases"][:4], calls, strict=True):
         step = 0
 
         async def stream(_messages, _info):
@@ -122,7 +122,7 @@ async def test_latency_campaign_uses_native_effect_free_tools_and_separate_measu
 
 
 @pytest.mark.parametrize("language", ["fr", "en"])
-@pytest.mark.parametrize("family", ["outcome_capabilities", "outcome_decisions", "outcome_transfer"])
+@pytest.mark.parametrize("family", ["outcome_capabilities", "outcome_decisions", "outcome_transfer", "latency"])
 def test_outcome_references_use_real_galaris_function_signatures_and_hide_oracles(language, family):
     import inspect
     from app.file_share.mcp import read_file, edit_file, create_file
@@ -132,22 +132,34 @@ def test_outcome_references_use_real_galaris_function_signatures_and_hide_oracle
     from app.lab.mechanism_registry import get_mechanism
     from app.lab.executor_outcomes import selected_call
     from core.util import validate_schema
+    from app.services import load_mcp_tools
+    from app.voice.realtime_tools import realtime_tools
+
+    memory_contract = next(tool.definition.parameters for tool in realtime_tools(
+        agent_id=0, conversation_id="synthetic", transport_kind="synthetic", language=language,
+    ) if tool.definition.name == "memory_search")
 
     functions = {"file_read": read_file, "file_edit": edit_file, "file_create": create_file,
                  "process_get": process_get, "process_start": process_start,
                  "goal_ask_referrer": mcp_goal_ask_referrer, "task_get": mcp_get_task}
+    functions.update({definition.name: definition.function for definition in load_mcp_tools()
+                      if definition.name in {"memory_search", "conversation_task_submit",
+                                             "conversation_task_status", "conversation_process_start"}})
     corpus = json.loads((Path(__file__).parents[1] / f"{family}_corpus_{language}.json").read_text())
     for case in corpus["cases"]:
         _, native = resolve_input(corpus["mechanism"], case["input_data"], corpus["parameters"])
         payload = json.loads(get_mechanism(corpus["mechanism"]).prompt(native))
         assert set(payload) == {"request", "context", "message_context"}
         assert set(payload["context"]) <= {"history", "memories", "resources", "plan", "working_set", "interrupted_objective"}
-        for index, call in enumerate(case["expected_output"]["tool_calls"]):
+        for index, call in enumerate(case["expected_output"].get("tool_calls", [])):
             name, arguments = selected_call(call)
             if name == "file_read":
                 prior_evidence = {"input": payload, "earlier_results": case["expected_output"]["tool_results"][:index]}
                 assert arguments["uri"] in json.dumps(prior_evidence), "A required source must be visible before reading it"
-            inspect.signature(functions[name]).bind(object(), **arguments)
+            if name == "memory_search":
+                validate_schema(arguments, memory_contract)
+            else:
+                inspect.signature(functions[name]).bind(object(), **arguments)
             schema = next(spec["parameters"] for spec in native["tool_catalog"] if spec["name"] == name)
             validate_schema(arguments, schema)
 

@@ -901,6 +901,9 @@ test('search errors and empty results stay explicit and late results cannot repl
   await expect(page.getByText('Unable to search documents.')).toBeVisible()
   await page.getByRole('dialog').getByRole('button', { name: 'Close', exact: true }).click()
   await expect(page.locator('.conversation-pane textarea')).toBeEditable()
+  await page.getByRole('button', { name: 'Search accessible documents', exact: true }).click()
+  await expect(query).toHaveValue('error')
+  await expect(page.getByText('Unable to search documents.')).toBeVisible()
 })
 
 async function visibleTogether(page) {

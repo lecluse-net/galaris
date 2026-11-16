@@ -7,7 +7,7 @@ import { sessionReadCache } from '../../test-support/session-read-cache.mjs'
 test('fresh reads coalesce, expire, evict within the byte budget and never retain failures', async t => {
   t.mock.timers.enable({ apis: ['Date'], now: 0 })
   const { createSessionReadCache } = sessionReadCache()
-  const cache = createSessionReadCache({ group: 'images', maxAgeMs: 60_000, maxEntries: 2, maxBytes: 4, size: value => value.length })
+  const cache = createSessionReadCache({ group: 'images', maxAgeMs: key => key.startsWith('versioned:') ? Infinity : 60_000, maxEntries: 2, maxBytes: 4, size: value => value.length })
   let calls = 0
   const read = key => cache.read(key, async () => { calls++; return 'abc' })
   await Promise.all(Array.from({ length: 50 }, () => read('a')))
@@ -20,6 +20,10 @@ test('fresh reads coalesce, expire, evict within the byte budget and never retai
   t.mock.timers.tick(60_001)
   await read('a')
   assert.equal(calls, 4)
+  await read('versioned:a')
+  t.mock.timers.tick(24 * 60 * 60_000)
+  await read('versioned:a')
+  assert.equal(calls, 5)
   await assert.rejects(cache.read('error', async () => { throw Error('offline') }), /offline/)
   assert.equal(await cache.read('error', async () => 'ok'), 'ok')
 })
@@ -50,7 +54,7 @@ test('one cancelled reader leaves transport alive; the last cancellation aborts 
 test('session changes and mutations invalidate both endpoint caches and reject late responses', async () => {
   const window = new EventTarget()
   const { createSessionReadCache, invalidateSessionReads } = sessionReadCache(window)
-  const options = { group: 'avatar', maxAgeMs: 60_000, maxEntries: 3 }
+  const options = { group: 'avatar', maxAgeMs: Infinity, maxEntries: 3 }
   const chat = createSessionReadCache(options), admin = createSessionReadCache(options)
   assert.equal(await chat.read('7', async () => 'chat'), 'chat')
   assert.equal(await admin.read('7', async () => 'admin'), 'admin')

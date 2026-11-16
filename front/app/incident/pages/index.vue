@@ -63,7 +63,7 @@
           />
         </div>
 
-        <q-banner v-if="error" rounded class="bg-red-1 text-negative q-mb-md">
+        <q-banner v-if="error" rounded class="bg-solaire-red-light text-negative q-mb-md">
           {{ error }}
         </q-banner>
         <q-table
@@ -180,7 +180,7 @@
           />
         </div>
 
-        <q-banner v-if="error" rounded class="bg-red-1 text-negative q-mb-md">
+        <q-banner v-if="error" rounded class="bg-solaire-red-light text-negative q-mb-md">
           {{ error }}
         </q-banner>
         <q-table
@@ -254,7 +254,7 @@
         <div class="galaris-dialog-body">
           <q-card-section v-if="detailLoading" class="text-center q-pa-xl"><q-spinner size="40px" /></q-card-section>
           <q-card-section v-else-if="selectedIncident" class="scroll incident-dialog__body">
-            <q-banner class="bg-red-1 text-negative q-mb-md" rounded>
+            <q-banner class="bg-solaire-red-light text-negative q-mb-md" rounded>
               <div class="text-weight-bold">{{ selectedIncident.error_type }}</div>
               <div class="pre-wrap">{{ selectedIncident.error_message }}</div>
             </q-banner>
@@ -263,10 +263,10 @@
               <div class="col-12 col-md-4"><strong>{{ t('incidents.phase') }}</strong><br>{{ selectedIncident.phase }}</div>
               <div class="col-12 col-md-4"><strong>{{ t('incidents.context') }}</strong><br>{{ contextLabel(selectedIncident) }}</div>
             </div>
-            <q-banner v-if="selectedIncident.redacted_fields.length" rounded class="bg-orange-1 q-mb-sm">
+            <q-banner v-if="selectedIncident.redacted_fields.length" rounded class="bg-solaire-orange-light q-mb-sm">
               {{ t('incidents.redacted', { count: selectedIncident.redacted_fields.length }) }}
             </q-banner>
-            <q-banner v-if="selectedIncident.truncated_fields.length" rounded class="bg-orange-1 q-mb-sm">
+            <q-banner v-if="selectedIncident.truncated_fields.length" rounded class="bg-solaire-orange-light q-mb-sm">
               {{ t('incidents.truncated', { count: selectedIncident.truncated_fields.length }) }}
             </q-banner>
             <div class="row items-center justify-between q-mb-sm">
@@ -308,13 +308,13 @@
           </div>
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" v-if="canEdit" align="right">
-          <q-btn flat :label="t('incidents.close')" v-close-popup />
+          <q-btn outline color="primary"  :label="t('incidents.close')" v-close-popup />
           <q-btn color="primary" :label="t('incidents.saveReview')" :loading="saving" @click="savePattern" />
         </q-card-actions>
       </q-card>
     </q-dialog>
     <div class="q-mt-md">
-      <q-btn flat color="primary" icon="arrow_back" :label="t('common.back')" to="/params" />
+      <q-btn outline  color="primary" icon="arrow_back" :label="t('common.back')" to="/params" />
     </div>
   </q-page>
 </template>

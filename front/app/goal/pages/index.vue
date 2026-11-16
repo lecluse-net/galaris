@@ -79,7 +79,7 @@
       v-if="store.trackingLlmConfigured === false"
       rounded
       inline-actions
-      class="goal-llm-banner bg-red-1 text-negative q-mb-lg"
+      class="goal-llm-banner bg-solaire-red-light text-negative q-mb-lg"
     >
       <template #avatar>
         <q-icon name="warning_amber" size="42px" />
@@ -720,240 +720,11 @@
           name="overview"
           class="goal-overview-tab goal-detail-content"
         >
-          <div class="goal-overview-toolbar">
-            <div class="goal-overview-identities">
-              <div class="goal-overview-identity">
-                <AgentAvatar :agent-id="store.currentGoal.agent_id" :name="store.currentGoal.agent_name" :has-avatar="hasAgentAvatar(store.currentGoal.agent_id)" size="38px" />
-                <div>
-                  <div class="text-caption text-grey-7">{{ t('goal.agent') }}</div>
-                  <div class="text-weight-medium">
-                    {{ store.currentGoal.agent_name || store.currentGoal.agent_code }}
-                  </div>
-                </div>
-              </div>
-              <q-separator vertical class="gt-xs" />
-              <div class="goal-overview-identity">
-                <q-avatar icon="person" color="secondary" text-color="white" size="38px" />
-                <div>
-                  <div class="text-caption text-grey-7">{{ t('goal.referrer') }}</div>
-                  <div class="text-weight-medium">
-                    {{ store.currentGoal.referrer?.display_name || t('goal.referrerMissing') }}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div v-if="canEdit" class="goal-overview-actions">
-              <span v-if="store.currentGoal.status !== 'COMPLETED'" class="inline-block">
-                <q-btn
-                  unelevated
-                  color="positive"
-                  icon="rocket_launch"
-                  :label="t('goal.runNow')"
-                  :loading="commandGoalIds.has(store.currentGoal.id)"
-                  :disable="Boolean(store.currentGoal.current_task_id)"
-                  @click="runCommand('runNow', store.currentGoal)"
-                />
-                <q-tooltip>
-                  {{ store.currentGoal.current_task_id
-                    ? t('goal.runNowUnavailable')
-                    : t('goal.runNowHint') }}
-                </q-tooltip>
-              </span>
-              <q-btn
-                v-else
-                unelevated
-                color="positive"
-                icon="replay"
-                :label="t('goal.restart')"
-                :loading="commandGoalIds.has(store.currentGoal.id)"
-                @click="runCommand('resume', store.currentGoal)"
-              />
-              <q-btn
-                v-if="store.currentGoal.status === 'ACTIVE'"
-                outline
-                color="warning"
-                icon="pause"
-                :label="t('goal.pause')"
-                :loading="commandGoalIds.has(store.currentGoal.id)"
-                @click="runCommand('pause', store.currentGoal)"
-              />
-              <q-btn
-                v-if="
-                  store.currentGoal.status !== 'ACTIVE'
-                  && store.currentGoal.status !== 'COMPLETED'
-                "
-                outline
-                color="positive"
-                icon="play_arrow"
-                :label="store.currentGoal.status === 'ERROR'
-                  ? t('goal.retry')
-                  : t('goal.resume')"
-                :loading="commandGoalIds.has(store.currentGoal.id)"
-                @click="runCommand('resume', store.currentGoal)"
-              />
-              <q-btn
-                v-if="store.currentGoal.status !== 'COMPLETED'"
-                outline
-                color="warning"
-                icon="stop_circle"
-                :label="t('goal.complete')"
-                @click="confirmComplete(store.currentGoal)"
-              />
-              <q-btn
-                outline
-                color="negative"
-                icon="delete"
-                :label="t('goal.delete')"
-                @click="confirmDelete(store.currentGoal)"
-              >
-                <q-tooltip>{{ t('goal.delete') }}</q-tooltip>
-              </q-btn>
-            </div>
-          </div>
-
-          <q-banner v-if="store.currentGoal.last_error" dense rounded class="bg-red-1 text-negative q-mt-md">
-            <template #avatar><q-icon name="error" /></template>
-            {{ store.currentGoal.last_error }}
-          </q-banner>
-
-          <q-banner
-            v-if="store.currentGoal.status === 'PAUSED' && store.currentGoal.pause_reason === 'REFERRER_NO_RESPONSE'"
-            dense
-            rounded
-            class="bg-orange-1 text-warning q-mt-md"
-          >
-            <template #avatar><q-icon name="mark_unread_chat_alt" /></template>
-            {{ t('goal.referrerNoResponsePaused', { count: store.currentGoal.referrer_max_reminders }) }}
-          </q-banner>
-
-          <div class="goal-overview-layout q-mt-md">
-            <main class="goal-overview-main">
-              <section class="goal-overview-section goal-overview-description-section">
-                <div class="goal-description-heading row items-center justify-between q-mb-md">
-                  <div class="goal-overview-section-title">
-                    <q-icon name="flag" color="primary" size="22px" />
-                    <span>{{ t('goal.description') }}</span>
-                  </div>
-                </div>
-                <RichText class="goal-description" :content="store.currentGoal.description" />
-              </section>
-
-              <section class="goal-overview-section">
-                <div class="goal-overview-section-title q-mb-md">
-                  <q-icon name="account_tree" color="secondary" size="22px" />
-                  <span>{{ t('goal.hierarchy') }}</span>
-                </div>
-                <q-list v-if="currentParentNode || currentSubGoalRows.length">
-                  <q-item
-                    v-if="currentParentNode"
-                    clickable
-                    @click="openGoalDetailsById(currentParentNode.id)"
-                  >
-                    <q-item-section avatar>
-                      <q-icon name="arrow_upward" color="primary" />
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label caption>{{ t('goal.parentGoal') }}</q-item-label>
-                      <q-item-label class="text-primary">{{ currentParentNode.title }}</q-item-label>
-                    </q-item-section>
-                  </q-item>
-                  <q-separator v-if="currentParentNode && currentSubGoalRows.length" />
-                  <div
-                    v-if="currentSubGoalRows.length"
-                    class="text-caption text-grey-7 q-px-md q-pt-md q-pb-xs"
-                  >
-                    {{ t('goal.subGoals') }}
-                  </div>
-                  <q-item
-                    v-for="subGoal in currentSubGoalRows"
-                    :key="subGoal.id"
-                    clickable
-                    :style="{
-                      paddingInlineStart: `${12 + Math.max(0, subGoal.depth - 1) * 20}px`,
-                    }"
-                    @click="openGoalDetailsById(subGoal.id)"
-                  >
-                    <q-item-section avatar>
-                      <q-icon name="subdirectory_arrow_right" color="secondary" />
-                    </q-item-section>
-                    <q-item-section>
-                      <q-item-label>{{ subGoal.title }}</q-item-label>
-                    </q-item-section>
-                    <q-item-section side>
-                      <q-chip dense :color="statusColor(subGoal.status)" text-color="white">
-                        {{ statusLabel(subGoal.status) }}
-                      </q-chip>
-                    </q-item-section>
-                  </q-item>
-                </q-list>
-                <div v-else class="goal-overview-empty text-grey-7">
-                  <q-icon name="account_tree" size="24px" />
-                  <span>{{ t('goal.noRelatedGoals') }}</span>
-                </div>
-              </section>
-            </main>
-
-            <aside class="goal-overview-sidebar">
-              <section class="goal-overview-section">
-                <div class="goal-overview-section-title q-mb-sm">
-                  <q-icon name="tune" color="primary" size="22px" />
-                  <span>{{ t('goal.pilotage') }}</span>
-                </div>
-                <div class="goal-pilotage-list">
-                  <div class="goal-pilotage-item">
-                    <q-icon name="bolt" color="secondary" size="20px" />
-                    <div>
-                      <div class="text-caption text-grey-7">{{ t('goal.automaticTriggers') }}</div>
-                      <div v-if="store.currentGoal.recurrence">{{ t("goal.agenda.trigger") }}</div>
-                      <div v-else-if="store.currentGoal.cycle_delay_seconds !== null">
-                        {{ t('goal.temporalTrigger') }} · {{ formatDuration(store.currentGoal.cycle_delay_seconds) }}
-                      </div>
-                      <div v-else-if="parentGoalTitle(store.currentGoal)">
-                        {{ t('goal.afterGoal', { title: parentGoalTitle(store.currentGoal) }) }}
-                      </div>
-                      <div v-else class="text-grey-7">{{ t('goal.manualOnly') }}</div>
-                    </div>
-                  </div>
-                  <div class="goal-pilotage-item">
-                    <q-icon name="event" color="primary" size="20px" />
-                    <div>
-                      <div class="text-caption text-grey-7">{{ t('goal.nextCycle') }}</div>
-                      <div>{{ formatDate(store.currentGoal.next_cycle_at) }}</div>
-                      <q-badge v-if="store.currentGoal.current_task_id" color="primary" outline>
-                        {{ t('goal.currentTask') }}
-                      </q-badge>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              <section class="goal-overview-section">
-                <div class="goal-overview-section-title q-mb-sm">
-                  <q-icon name="bar_chart" color="secondary" size="22px" />
-                  <span>{{ t('goal.activity') }}</span>
-                </div>
-                <div class="goal-activity-grid">
-                  <div class="goal-activity-metric">
-                    <div class="text-h5 text-weight-medium">{{ store.currentGoal.cycle_count }}</div>
-                    <div class="text-caption text-grey-7">{{ t('goal.cycles') }}</div>
-                  </div>
-                  <div class="goal-activity-metric">
-                    <div class="text-h6 text-weight-medium">{{ formatCost(store.currentGoal.total_cost) }}</div>
-                    <div class="text-caption text-grey-7">{{ t('goal.totalCost') }}</div>
-                  </div>
-                  <div class="goal-activity-metric goal-activity-metric--wide">
-                    <div class="text-weight-medium">{{ formatDate(store.currentGoal.last_task_finished_at) }}</div>
-                    <div class="text-caption text-grey-7">{{ t('goal.lastCycle') }}</div>
-                  </div>
-                </div>
-                <div class="goal-cost-breakdown text-caption text-grey-7">
-                  {{ t('goal.taskCost') }} {{ formatCost(store.currentGoal.task_cost) }}
-                  · {{ t('goal.evaluationCost') }} {{ formatCost(store.currentGoal.evaluation_cost) }}
-                </div>
-              </section>
-            </aside>
-          </div>
+          <GoalOverview :goal="store.currentGoal" :parent="currentParentNode" :children="currentSubGoalRows"
+            :can-edit="canEdit" :command-pending="commandGoalIds.has(store.currentGoal.id)"
+            :has-avatar="hasAgentAvatar(store.currentGoal.agent_id)" :parent-title="parentGoalTitle(store.currentGoal)"
+            :timezone="store.settings?.timezone" @command="runCommand($event, store.currentGoal!)"
+            @complete="confirmComplete(store.currentGoal!)" @delete="confirmDelete(store.currentGoal!)" @open-goal="openGoalDetailsById" />
 
         </q-tab-panel>
         <q-tab-panel
@@ -977,111 +748,10 @@
           name="cycles"
           class="goal-detail-content"
         >
-          <q-linear-progress v-if="store.cyclesLoading" indeterminate color="primary" class="q-mb-md" />
-          <q-banner v-if="store.cyclesError" role="alert" class="q-mb-md">
-            {{ t('goal.loadErrors.cycles') }}
-            <template #action><q-btn outline color="primary" :label="t('common.retry')" @click="retryCycles" /></template>
-          </q-banner>
-          <div v-if="!store.cyclesLoading && !store.cyclesError && !store.cycles.length" class="text-grey-7 q-pa-lg text-center">
-            {{ t('goal.noCycles') }}
-          </div>
-          <q-timeline
-            v-else-if="store.cycles.length"
-            class="goal-cycles-timeline"
-            color="primary"
-            layout="comfortable"
-          >
-            <q-timeline-entry
-              v-for="cycle in store.cycles"
-              :key="cycle.id"
-              :title="t('goal.cycleNumber', { number: cycle.sequence })"
-              :subtitle="formatDate(cycle.task_finished_at || cycle.created_at)"
-              :icon="cycle.verdict === 'STOP' ? 'stop_circle' : cycle.verdict === 'CONTINUE' ? 'play_circle' : 'hourglass_top'"
-              :color="cycleColor(cycle)"
-            >
-              <div class="goal-cycle-mobile-date text-caption text-grey-7">
-                {{ formatDate(cycle.task_finished_at || cycle.created_at) }}
-              </div>
-              <q-card flat bordered>
-                <q-card-section>
-                  <div class="goal-cycle-heading row items-center q-gutter-sm q-mb-sm">
-                    <q-chip dense outline :color="cycleColor(cycle)">
-                      {{ cycle.verdict ? verdictLabel(cycle.verdict) : cycleStatusLabel(cycle.status) }}
-                    </q-chip>
-                    <span class="goal-cycle-costs text-caption text-grey-7">
-                      {{ t('goal.taskCost') }} {{ formatCost(cycle.task_cost) }} ·
-                      {{ t('goal.evaluationCost') }} {{ formatCost(cycle.judge_cost) }}
-                    </span>
-                    <q-space />
-                    <q-btn
-                      v-if="cycle.task_id && canViewTasks"
-                      outline
-                      color="primary"
-                      icon="open_in_new"
-                      :label="t('goal.cycleTask', { number: cycle.sequence })"
-                      @click="openTask(cycle.task_id)"
-                    />
-                    <q-btn
-                      v-if="cycle.review_task_id && canViewTasks"
-                      outline
-                      color="primary"
-                      icon="fact_check"
-                      :label="t('goal.agenda.openReview')"
-                      @click="selectedReviewTaskId = cycle.review_task_id ?? null"
-                    />
-                  </div>
-                  <div v-if="cycle.progress_summary" class="q-mb-sm">
-                    <div class="text-caption text-grey-7">{{ t('goal.progress') }}</div>
-                    <div>{{ cycle.progress_summary }}</div>
-                  </div>
-                  <div v-if="cycle.reason" class="q-mb-sm">
-                    <div class="text-caption text-grey-7">{{ t('goal.reason') }}</div>
-                    <div>{{ cycle.reason }}</div>
-                  </div>
-                  <div v-if="cycle.evidence.length" class="q-mb-sm">
-                    <div class="text-caption text-grey-7">{{ t('goal.evidence') }}</div>
-                    <ul class="q-my-xs q-pl-lg">
-                      <li v-for="evidence in cycle.evidence" :key="evidence">{{ evidence }}</li>
-                    </ul>
-                  </div>
-                  <q-banner v-if="cycle.error" dense rounded class="goal-cycle-error bg-red-1 text-negative">
-                    {{ cycle.error }}
-                  </q-banner>
-                </q-card-section>
-              </q-card>
-            </q-timeline-entry>
-          </q-timeline>
-          <div
-            v-if="store.cycleTotal > 0"
-            class="goal-cycle-pagination row items-center justify-between q-gutter-md q-mt-lg"
-          >
-            <div class="goal-cycle-page-size row items-center q-gutter-sm">
-              <span class="text-caption text-grey-7">{{ t('goal.cyclePageSize') }}</span>
-              <q-select
-                :model-value="store.cyclePageSize"
-                :options="[10, 20, 50, 100, 500]"
-                dense
-                outlined
-                style="width: 90px"
-                @update:model-value="setCyclePageSize"
-              />
-              <span class="text-caption text-grey-7">
-                {{ t('goal.cycleRange', {
-                  from: cycleRangeStart,
-                  to: cycleRangeEnd,
-                  total: store.cycleTotal,
-                }) }}
-              </span>
-            </div>
-            <q-pagination
-              v-model="displayCyclePage"
-              :max="store.cyclePageCount"
-              :max-pages="cyclePaginationMaxPages"
-              direction-links
-              boundary-links
-              color="primary"
-            />
-          </div>
+          <GoalCycleHistory :cycles="store.cycles" :loading="store.cyclesLoading" :error="store.cyclesError"
+            :total="store.cycleTotal" :page="store.cyclePage" :page-size="store.cyclePageSize" :timezone="store.settings?.timezone" :can-view-tasks="canViewTasks"
+            @retry="retryCycles" @page="value => store.fetchCycles(store.currentGoal!.id, value).catch(() => undefined)" @page-size="setCyclePageSize"
+            @open-task="openTask" />
         </q-tab-panel>
         <q-tab-panel v-if="canEdit && (!openingGoalId || store.currentGoal?.id === openingGoalId)" name="edit" class="goal-edit-tab q-pa-none">
           <q-form class="goal-form" @submit="submitForm">
@@ -1169,6 +839,7 @@
                           @filter="filterMessengerReferrers"
                           @filter-abort="invalidateMessengerSearch"
                           @popup-hide="invalidateMessengerSearch"
+                          @update:model-value="invalidateMessengerSelection"
                         >
                           <template #no-option>
                             <q-item>
@@ -1342,14 +1013,11 @@
       </q-card>
     </q-dialog>
     <GoalCategoryManager v-if="categoryManagerOpen" v-model="categoryManagerOpen" @changed="categoriesChanged" />
-    <ResourceDetailDialog v-if="goalDialogOpen && selectedReviewTaskId && canViewTasks"
-      :target="{ kind: 'task', id: selectedReviewTaskId, title: '' }"
-      @close="selectedReviewTaskId = null" @changed="retryCycles" />
   </component>
 </template>
 
 <script setup lang="ts">
-import { CopyResourceReference, ResourceReferenceMenu, ResourceDetailDialog, ActionContextMenu, useResourceCopy, type ContextAction } from '@/core/util'
+import { CopyResourceReference, ResourceReferenceMenu, ActionContextMenu, useResourceCopy, type ContextAction } from '@/core/util'
 import { showConfirmationDialog } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
@@ -1357,7 +1025,6 @@ import { useRouter, useRoute } from 'vue-router'
 import { QPage, useInterval, useQuasar, type QTableColumn, type QTableProps } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import {
-  RichText,
   RichTextEditor,
   PageHeader,
   WorkingDocumentEditor,
@@ -1367,6 +1034,10 @@ import { apiErrorDetail, isCancelledRequest, sessionGeneration } from '@/core/ap
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { useAuthStore } from '@/core/user'
 import { AgentAvatar, AgentSelect, getAgentSelection, useAgentSelectionStore, type AgentSelectionOption } from '@/app/agent'
+import GoalCycleHistory from '../components/GoalCycleHistory.vue'
+import { useGoalFormatting, statusColor } from '../presentation'
+import { UNIT_SECONDS, type DurationUnit } from '../durations'
+import GoalOverview from '../components/GoalOverview.vue'
 import GoalScheduleEditor from '../components/GoalScheduleEditor.vue'
 import GoalRecurrenceEditor from '../components/GoalRecurrenceEditor.vue'
 import type { GoalRecurrence } from '../types'
@@ -1382,14 +1053,12 @@ import { createGoalState, useGoalStore } from '../stores/goalStore'
 import type {
   Goal,
   GoalCategory,
-  GoalCycle,
   GoalReferrerInput,
   GoalStatus,
   GoalTreeNode,
   MessengerReferrerOption,
 } from '../types'
 
-type DurationUnit = 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months' | 'years'
 type GoalCommandName = 'pause' | 'resume' | 'complete' | 'runNow'
 type GoalTriggerMode = 'TEMPORAL_DEFAULT' | 'TEMPORAL_CUSTOM' | 'RELATIONAL' | 'CALENDAR'
 type GoalDialogTab = 'overview' | 'tracking' | 'cycles' | 'edit'
@@ -1429,16 +1098,6 @@ function goalActions(goal: Goal): ContextAction[] {
   return actions
 }
 
-const UNIT_SECONDS: Record<DurationUnit, number> = {
-  seconds: 1,
-  minutes: 60,
-  hours: 3600,
-  days: 86400,
-  weeks: 604800,
-  months: 2592000,
-  years: 31536000,
-}
-
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const { action: copyReferenceAction } = useResourceCopy()
@@ -1448,6 +1107,7 @@ const route = useRoute()
 const { previewGoalId } = defineProps<{ previewGoalId?: string }>()
 const emit = defineEmits<{ close: [] }>()
 const store = previewGoalId ? reactive(createGoalState()) : useGoalStore()
+const { formatCost, formatDate, formatDuration } = useGoalFormatting(() => store.settings?.timezone)
 store.listActive = !previewGoalId
 const selectableAgents = ref<AgentSelectionOption[]>([])
 const categories = ref<GoalCategory[]>([])
@@ -1549,9 +1209,8 @@ let initializationSequence = 0
 let formGeneration = 0
 
 const goalDialogOpen = ref(false)
-const selectedReviewTaskId = ref<string | null>(null)
 const openingGoalId = ref<string | null>(null)
-watch(goalDialogOpen, open => { if (!open) { selectedReviewTaskId.value = null; formGeneration++; formSaving.value = false; resetCategoryDraft(); openingGoalId.value = null; store.clearSelection(); if (previewGoalId) emit('close') } })
+watch(goalDialogOpen, open => { if (!open) { formGeneration++; formSaving.value = false; resetCategoryDraft(); openingGoalId.value = null; store.clearSelection(); if (previewGoalId) emit('close') } })
 const goalDialogTab = ref<GoalDialogTab>('overview')
 watch(goalDialogTab, tab => { void store.setCyclesActive(tab === 'cycles').catch(() => undefined) })
 const goalDialogTitle = ref('')
@@ -1564,8 +1223,11 @@ const formSaving = ref(false)
 const commandGoalIds = reactive(new Set<string>())
 const editingGoal = ref<Goal | null>(null)
 const messengerReferrerOptions = ref<MessengerReferrerOption[]>([])
-const messengerSearching = ref(false)
+const messengerSearchLoading = ref(false)
+const messengerSelectionLoading = ref(false)
+const messengerSearching = computed(() => messengerSearchLoading.value || messengerSelectionLoading.value)
 let messengerSearchSequence = 0
+let messengerSelectionSequence = 0
 const form = reactive<GoalFormState>({
   recurrence: defaultRecurrence(),
   categoryId: null,
@@ -1583,10 +1245,14 @@ const form = reactive<GoalFormState>({
 
 function invalidateMessengerSearch(): void {
   messengerSearchSequence += 1
-  messengerSearching.value = false
+  messengerSearchLoading.value = false
 }
-watch(() => form.agentId, invalidateMessengerSearch, { flush: 'sync' })
-watch(goalDialogOpen, open => { if (!open) invalidateMessengerSearch() }, { flush: 'sync' })
+function invalidateMessengerSelection(): void {
+  messengerSelectionSequence += 1
+  messengerSelectionLoading.value = false
+}
+watch(() => form.agentId, () => { invalidateMessengerSearch(); invalidateMessengerSelection() }, { flush: 'sync' })
+watch(goalDialogOpen, open => { if (!open) { invalidateMessengerSearch(); invalidateMessengerSelection() } }, { flush: 'sync' })
 watch(() => authStore.user?.id, () => {
   categoryRequest++
   categories.value = []
@@ -1816,79 +1482,12 @@ const displayPage = computed({
   set: (value: number) => { refreshGoals(value - 1) },
 })
 
-const displayCyclePage = computed({
-  get: () => store.cyclePage,
-  set: (value: number) => {
-    if (store.currentGoal) void store.fetchCycles(store.currentGoal.id, value).catch(() => undefined)
-  },
-})
-
-const cyclePaginationMaxPages = computed(() => ($q.screen.lt.sm ? 3 : 7))
-
-const cycleRangeStart = computed(() => (
-  store.cycleTotal ? (store.cyclePage - 1) * store.cyclePageSize + 1 : 0
-))
-
-const cycleRangeEnd = computed(() => Math.min(
-  store.cyclePage * store.cyclePageSize,
-  store.cycleTotal,
-))
-
 function statusLabel(status: GoalStatus): string {
   return t(`goal.statuses.${status}`)
 }
 
-function statusColor(status: GoalStatus): string {
-  return { ACTIVE: 'positive', PAUSED: 'warning', COMPLETED: 'primary', ERROR: 'negative' }[status]
-}
-
 function statusIcon(status: GoalStatus): string {
   return { ACTIVE: 'play_circle', PAUSED: 'pause_circle', COMPLETED: 'check_circle', ERROR: 'error' }[status]
-}
-
-function cycleStatusLabel(status: GoalCycle['status']): string {
-  return t(`goal.cycleStatuses.${status}`)
-}
-
-function verdictLabel(verdict: NonNullable<GoalCycle['verdict']>): string {
-  return t(`goal.verdicts.${verdict}`)
-}
-
-function cycleColor(cycle: GoalCycle): string {
-  if (cycle.status === 'ERROR') return 'negative'
-  if (cycle.verdict === 'STOP') return 'primary'
-  if (cycle.verdict === 'CONTINUE') return 'positive'
-  if (cycle.status === 'JUDGING') return 'secondary'
-  return 'grey-7'
-}
-
-function formatCost(value: number): string {
-  return new Intl.NumberFormat(locale.value, {
-    style: 'currency',
-    currency: 'USD',
-    currencyDisplay: 'narrowSymbol',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 6,
-  }).format(value || 0)
-}
-
-function formatDate(value: string | null): string {
-  if (!value) return t('goal.never')
-  return new Intl.DateTimeFormat(locale.value, {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: store.settings?.timezone,
-  }).format(new Date(value))
-}
-
-function formatDuration(seconds: number | null): string {
-  if (seconds === null) return t('goal.disabled')
-  if (seconds === 0) return `0 ${t('goal.units.seconds')}`
-  for (const unit of ['years', 'months', 'weeks', 'days', 'hours', 'minutes'] as DurationUnit[]) {
-    const factor = UNIT_SECONDS[unit]
-    if (seconds % factor === 0) return `${seconds / factor} ${t(`goal.units.${unit}`)}`
-  }
-  return `${seconds} ${t('goal.units.seconds')}`
 }
 
 function splitDuration(seconds: number | null): { value: number; unit: DurationUnit } {
@@ -2281,13 +1880,15 @@ function setOwnerAgent(value: number | null): void {
 
 async function selectCurrentUserReferrer(notifyWhenMissing = true): Promise<void> {
   const agentId = form.agentId
-  const sequence = ++messengerSearchSequence
+  const sequence = ++messengerSelectionSequence, generation = formGeneration, session = sessionGeneration()
+  const current = () => sequence === messengerSelectionSequence && generation === formGeneration
+    && session === sessionGeneration() && agentId === form.agentId && goalDialogOpen.value && !disposed
   if (agentId === null) return
-  messengerSearching.value = true
+  messengerSelectionLoading.value = true
   try {
     const options = await goalService.searchMessengerReferrers(agentId, '')
-    if (sequence !== messengerSearchSequence) return
-    messengerReferrerOptions.value = options
+    if (!current()) return
+    if (!messengerSearchLoading.value) messengerReferrerOptions.value = options
     const currentUser = options.find(option => option.is_current_user)
     if (currentUser) {
       form.messengerReferrer = currentUser
@@ -2295,9 +1896,9 @@ async function selectCurrentUserReferrer(notifyWhenMissing = true): Promise<void
       $q.notify({ type: 'warning', message: t('goal.referrerMeUnavailable') })
     }
   } catch (error) {
-    if (sequence === messengerSearchSequence && !isCancelledRequest(error)) notifyError(error)
+    if (current() && !isCancelledRequest(error)) notifyError(error)
   } finally {
-    if (sequence === messengerSearchSequence) messengerSearching.value = false
+    if (sequence === messengerSelectionSequence) messengerSelectionLoading.value = false
   }
 }
 
@@ -2342,7 +1943,7 @@ async function filterMessengerReferrers(
     })
     return
   }
-  messengerSearching.value = true
+  messengerSearchLoading.value = true
   try {
     const options = await goalService.searchMessengerReferrers(agentId, query)
     if (sequence !== messengerSearchSequence) return
@@ -2354,7 +1955,7 @@ async function filterMessengerReferrers(
     if (!isCancelledRequest(error)) notifyError(error)
     abort()
   } finally {
-    if (sequence === messengerSearchSequence) messengerSearching.value = false
+    if (sequence === messengerSearchSequence) messengerSearchLoading.value = false
   }
 }
 
@@ -2582,17 +2183,6 @@ watch(() => previewGoalId ?? route.query.goal_id, value => { if (typeof value ==
   overflow-wrap: anywhere;
 }
 
-.goal-description-heading,
-.goal-cycle-heading,
-.goal-cycle-pagination,
-.goal-cycle-page-size {
-  min-width: 0;
-}
-
-.goal-description {
-  line-height: 1.45;
-}
-
 .goal-llm-banner {
   border: 1px solid color-mix(in srgb, var(--q-negative) 35%, transparent);
   padding: 20px;
@@ -2803,247 +2393,15 @@ watch(() => previewGoalId ?? route.query.goal_id, value => { if (typeof value ==
   gap: 16px;
 }
 
-.goal-overview-toolbar {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 16px;
-  align-items: center;
-  padding: 4px 0 16px;
-  border-bottom: 1px solid rgb(0 0 0 / 10%);
-}
-
-.goal-overview-identities,
-.goal-overview-identity,
-.goal-overview-actions,
-.goal-overview-section-title,
-.goal-pilotage-item {
-  display: flex;
-  align-items: center;
-}
-
-.goal-overview-identities {
-  min-width: 0;
-  gap: 16px;
-}
-
-.goal-overview-identity {
-  min-width: 0;
-  gap: 10px;
-}
-
-.goal-overview-identity > div,
-.goal-pilotage-item > div {
-  min-width: 0;
-  overflow-wrap: anywhere;
-}
-
-.goal-overview-identities .q-separator--vertical {
-  height: 42px;
-}
-
-.goal-overview-actions {
-  justify-content: flex-end;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.goal-overview-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(300px, 0.9fr);
-  gap: 16px;
-  align-items: start;
-}
-
-.goal-overview-main,
-.goal-overview-sidebar {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.goal-overview-sidebar {
-  position: sticky;
-  top: 0;
-}
-
-.goal-overview-section {
-  min-width: 0;
-  padding: 16px;
-  border: 1px solid rgb(0 0 0 / 12%);
-  border-radius: 12px;
-}
-
-:global(.body--dark) .goal-overview-toolbar {
-  border-bottom-color: rgb(255 255 255 / 14%);
-}
-
-:global(.body--dark) .goal-overview-section {
-  border-color: rgb(255 255 255 / 16%);
-}
-
-.goal-overview-description-section {
-  min-height: 280px;
-}
-
-.goal-overview-section-title {
-  gap: 8px;
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-.goal-overview-empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 72px;
-  text-align: center;
-}
-
-.goal-pilotage-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.goal-pilotage-item {
-  gap: 10px;
-  padding: 12px 0;
-}
-
-.goal-pilotage-item + .goal-pilotage-item {
-  border-top: 1px solid rgb(0 0 0 / 8%);
-}
-
-:global(.body--dark) .goal-pilotage-item + .goal-pilotage-item {
-  border-top-color: rgb(255 255 255 / 12%);
-}
-
-.goal-activity-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.goal-activity-metric {
-  min-width: 0;
-  padding: 10px;
-  border-radius: 8px;
-  background: rgb(25 118 210 / 6%);
-  overflow-wrap: anywhere;
-}
-
-:global(.body--dark) .goal-activity-metric {
-  background: rgb(255 255 255 / 7%);
-}
-
-.goal-activity-metric--wide {
-  grid-column: 1 / -1;
-}
-
-.goal-cost-breakdown {
-  margin-top: 10px;
-  overflow-wrap: anywhere;
-}
-
-.goal-cycles-timeline,
-.goal-cycles-timeline :deep(.q-timeline__entry),
-.goal-cycles-timeline :deep(.q-timeline__content),
-.goal-cycles-timeline :deep(.q-card),
-.goal-cycle-costs {
-  min-width: 0;
-}
-
-.goal-cycles-timeline :deep(.q-card),
-.goal-cycle-pagination {
-  width: 100%;
-}
-
-.goal-cycles-timeline :deep(.q-timeline__entry:last-child .q-timeline__dot::after) {
-  content: "";
-}
-
-.goal-cycles-timeline :deep(.q-timeline__title),
-.goal-cycles-timeline :deep(.q-timeline__subtitle),
-.goal-cycle-costs,
-.goal-cycle-error,
-.goal-cycles-timeline li,
-.goal-cycles-timeline .q-card-section > div {
-  overflow-wrap: anywhere;
-}
-
-.goal-cycle-mobile-date {
-  display: none;
-}
-
 @media (min-width: 1200px) {
   .goal-edit-grid {
     grid-template-columns: minmax(0, 13fr) minmax(0, 7fr);
   }
 }
 
-@media (min-width: 1024px) {
-  .goal-cycles-timeline :deep(.q-timeline__subtitle) {
-    width: clamp(170px, 18vw, 220px);
-    padding-right: 16px;
-  }
-
-  .goal-cycles-timeline :deep(.q-timeline__content) {
-    padding-left: 16px;
-  }
-}
-
 @media (max-width: 1023px) {
   .goal-runtime-actions {
     padding-left: 0;
-  }
-
-  .goal-overview-toolbar {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .goal-overview-actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .goal-overview-layout {
-    grid-template-columns: 1fr;
-  }
-
-  .goal-overview-sidebar {
-    position: static;
-  }
-
-  .goal-cycles-timeline {
-    display: block;
-  }
-
-  .goal-cycles-timeline :deep(.q-timeline__entry) {
-    display: block;
-    padding-left: 32px;
-  }
-
-  .goal-cycles-timeline :deep(.q-timeline__subtitle) {
-    display: none;
-  }
-
-  .goal-cycles-timeline :deep(.q-timeline__dot) {
-    position: absolute;
-    min-width: 0;
-  }
-
-  .goal-cycles-timeline :deep(.q-timeline__content) {
-    display: block;
-    width: 100%;
-    padding-top: 0;
-    padding-left: 0;
-  }
-
-  .goal-cycle-mobile-date {
-    display: block;
-    margin-top: -8px;
-    margin-bottom: 8px;
   }
 }
 
@@ -3082,67 +2440,6 @@ watch(() => previewGoalId ?? route.query.goal_id, value => { if (typeof value ==
     gap: 8px;
   }
 
-  .goal-overview-toolbar {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .goal-overview-identities {
-    align-items: stretch;
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .goal-overview-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: 100%;
-  }
-
-  .goal-overview-actions > .q-btn,
-  .goal-overview-actions > .inline-block,
-  .goal-overview-actions > .inline-block > .q-btn {
-    width: 100%;
-  }
-
-  .goal-description-heading,
-  .goal-cycle-heading,
-  .goal-cycle-pagination,
-  .goal-cycle-page-size {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
-  .goal-description-heading,
-  .goal-cycle-heading,
-  .goal-cycle-pagination {
-    gap: 8px;
-  }
-
-  .goal-description-heading .q-btn,
-  .goal-cycle-heading .q-btn {
-    width: 100%;
-  }
-
-  .goal-description-heading .q-space,
-  .goal-cycle-heading .q-space {
-    display: none;
-  }
-
-  .goal-description-heading > *,
-  .goal-cycle-heading > * {
-    margin: 0;
-  }
-
-  .goal-cycle-page-size {
-    gap: 4px;
-  }
-
-  .goal-cycle-pagination :deep(.q-pagination) {
-    align-self: center;
-    max-width: 100%;
-  }
-
   .goal-grid-item {
     padding: 8px;
   }
@@ -3153,10 +2450,6 @@ watch(() => previewGoalId ?? route.query.goal_id, value => { if (typeof value ==
 
   .goal-detail-content {
     padding: 8px;
-  }
-
-  .goal-overview-section {
-    padding: 12px;
   }
 
 }

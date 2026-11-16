@@ -1,3 +1,4 @@
+import * as vue from 'vue'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import * as pinia from 'pinia'
@@ -5,6 +6,7 @@ import * as axios from 'axios'
 import { setImmediate } from 'node:timers/promises'
 import { loadTypescript, deferred } from '../../test-support/load-typescript.mjs'
 import { sessionReadCache } from '../../test-support/session-read-cache.mjs'
+import { sessionStoreScope } from '../../test-support/session-store.mjs'
 
 function setup() {
   let generation = 'one'
@@ -17,8 +19,9 @@ function setup() {
   })
   const titleLabels = loadTypescript(new URL('./titleLabels.ts', import.meta.url), {})
   const { useAgentStore } = loadTypescript(new URL('./stores/agentStore.ts', import.meta.url), {
-    pinia, axios,
+    vue, pinia, axios,
     '@/core/api': api,
+    '@/core/util/facade': sessionStoreScope(window, api.sessionGeneration),
     '../titleLabels': titleLabels,
     '../services/agentService': services,
   })

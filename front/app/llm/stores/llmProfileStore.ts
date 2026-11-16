@@ -1,3 +1,4 @@
+import { withSessionScope } from '@/core/util/facade'
 import { defineStore } from 'pinia'
 import llmProfileService, {
     type LlmProfile,
@@ -17,7 +18,7 @@ interface LLMProfileState {
     error: unknown
 }
 
-export const useLLMProfileStore = defineStore('llmProfile', {
+export const useLLMProfileStore = withSessionScope(defineStore('llmProfile', {
     state: (): LLMProfileState => ({
         profiles: [],
         currentProfileId: null,
@@ -160,4 +161,4 @@ export const useLLMProfileStore = defineStore('llmProfile', {
             this.error = null
         },
     }
-})
+}), { flags: {"fetchProfiles":"loading","createProfile":"loading","updateProfile":"loading","deleteProfile":"loading","useProfile":"applying"} })

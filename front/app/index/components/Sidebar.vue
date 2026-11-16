@@ -84,7 +84,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import LeftMenu from '@/core/navigation/components/LeftMenu.vue'
+import { LeftMenu } from '@/core/navigation'
 import { useAppStore } from '@/app/index/stores/appStore'
 import { useNavigation } from '@/core/navigation'
 import { settings } from '@/core/settings'

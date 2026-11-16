@@ -1,3 +1,4 @@
+import { openCustomService, addServiceProtocol } from '../services.mjs'
 import { notificationPrompt } from '../notification-prompt.mjs'
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
@@ -33,7 +34,7 @@ for (const mobile of [false, true]) {
       const catalog = await (await request.get('/api/services', { headers })).json()
       const internal = catalog.filter(entry => Object.values(entry.connection_schema?.params ?? {})
         .some(parameter => parameter.label?.startsWith('services.connectionParamLabels.')))
-      expect(internal.map(entry => entry.code)).toEqual(expect.arrayContaining(['browser', 'console', 'mail', 'calendar']))
+      expect(internal.map(entry => entry.code)).toEqual(expect.arrayContaining(['browser', 'console']))
       // Check the real backend definitions against each catalogue, without a fallback language hiding missing keys.
       const untranslated = []
       for (const locale of ['fr', 'en', 'zh']) {
@@ -63,7 +64,7 @@ for (const mobile of [false, true]) {
       await expect(page.locator('html')).toHaveAttribute('lang', 'fr')
     }
     if (mobile) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }), { times: 1 })
-    await page.getByRole('button', { name: 'Nouvel outil', exact: true }).click()
+    await openCustomService(page)
     const editor = page.getByRole('dialog')
     const code = `synthetic-params-${fixture.agent_id}`
     await editor.getByLabel('Nom technique *', { exact: true }).fill(code)
@@ -77,7 +78,7 @@ for (const mobile of [false, true]) {
       await editor.getByLabel('Valeur *', { exact: true }).last().fill(value)
       await editor.getByLabel('Libellé du choix', { exact: true }).last().fill(label)
     }
-    await editor.getByRole('switch', { name: 'Activer MCP', exact: true }).check()
+    await addServiceProtocol(page, 'HTTP')
     await editor.getByLabel('URL *', { exact: true }).fill('https://mcp.example.test')
     const create = page.waitForResponse(response => response.url().endsWith('/api/services') && response.request().method() === 'POST')
     await editor.getByRole('button', { name: 'Créer', exact: true }).click()
@@ -88,12 +89,12 @@ for (const mobile of [false, true]) {
     await pageErrors.settle()
     await page.reload()
     if (mobile) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }), { times: 1 })
-    const row = page.locator(mobile ? '.tool-mobile-card' : 'tbody tr').filter({ hasText: code })
-    await row.getByRole('button', { name: "Modifier l'outil", exact: true }).click()
+    const row = page.getByRole('article').filter({ hasText: code })
+    await row.getByRole('button', { name: "Modifier le service", exact: true }).click()
     await expect(editor.getByLabel('Libellé du paramètre', { exact: true })).toHaveValue('Région du service')
     await expect(editor.getByLabel('Libellé du choix', { exact: true }).last()).toHaveValue('Amérique du Nord')
     await editor.getByRole('button', { name: 'Fermer', exact: true }).click()
-    await row.getByRole('button', { name: 'Paramètres globaux', exact: true }).click()
+    await row.getByRole('button', { name: 'Paramètres', exact: true }).click()
     await selectOption(page, editor.getByRole('combobox', { name: 'Région du service *', exact: true }), 'Amérique du Nord')
     await page.screenshot({ path: testInfo.outputPath('global-parameters.png'), animations: 'disabled' })
     const saved = page.waitForResponse(response => response.url().endsWith(`/api/services/${created.id}/global-params`)
@@ -103,7 +104,7 @@ for (const mobile of [false, true]) {
     await expect(editor).toHaveCount(0)
     const globals = await (await request.get(`/api/services/${created.id}/global-params`, { headers })).json()
     expect(globals.params.region.value).toBe('us')
-    await row.getByRole('button', { name: 'Paramètres globaux', exact: true }).click()
+    await row.getByRole('button', { name: 'Paramètres', exact: true }).click()
     await expect(editor.getByRole('combobox', { name: 'Région du service *', exact: true })).toHaveValue('Amérique du Nord')
     await editor.getByRole('button', { name: 'Fermer', exact: true }).click()
     // A file provider supplies tools.fileindexing through the same global/local parameter journey.
@@ -116,7 +117,7 @@ for (const mobile of [false, true]) {
     await pageErrors.settle()
     await page.reload()
     if (mobile) await page.addLocatorHandler(page.locator('.q-drawer__backdrop'), backdrop => backdrop.click({ position: { x: 380, y: 150 } }), { times: 1 })
-    await row.getByRole('button', { name: 'Paramètres globaux', exact: true }).click()
+    await row.getByRole('button', { name: 'Paramètres', exact: true }).click()
     await selectOption(page, editor.getByRole('combobox', { name: 'Indexation des fichiers', exact: true }), 'Uniquement les fichiers déjà connus')
     const savedIndexing = page.waitForResponse(response => response.url().endsWith(`/api/services/${created.id}/global-params`) && response.request().method() === 'PUT')
     await editor.getByRole('button', { name: 'Enregistrer', exact: true }).click()
@@ -171,15 +172,15 @@ for (const mobile of [false, true]) {
       try {
         await page.goto('/services')
         await page.getByRole('tab', { name: 'Services internes à Galaris', exact: true }).click()
-        const browserRow = page.locator('tbody tr').filter({ has: page.getByText('browser', { exact: true }) })
-        await browserRow.getByRole('button', { name: 'Paramètres globaux', exact: true }).click()
+        const browserRow = page.getByRole('article').filter({ has: page.getByText('browser', { exact: true }) })
+        await browserRow.getByRole('button', { name: 'Paramètres', exact: true }).click()
         await expect(editor.getByRole('combobox', { name: 'Accès aux sites publics', exact: true })).toHaveValue('Sites publics autorisés')
         await selectOption(page, editor.getByRole('combobox', { name: 'Accès aux sites publics', exact: true }), 'Sites publics autorisés')
         const savePublic = page.waitForResponse(response => response.url().endsWith(`/api/services/${browser.id}/global-params`) && response.request().method() === 'PUT')
         await editor.getByRole('button', { name: 'Enregistrer', exact: true }).click()
         expect((await savePublic).ok()).toBe(true)
         await expect(editor).toHaveCount(0)
-        await browserRow.getByRole('button', { name: 'Paramètres globaux', exact: true }).click()
+        await browserRow.getByRole('button', { name: 'Paramètres', exact: true }).click()
         await expect(editor.getByRole('combobox', { name: 'Accès aux sites publics', exact: true })).toHaveValue('Sites publics autorisés')
         await editor.getByRole('button', { name: 'Fermer', exact: true }).click()
         await page.goto('/services?tab=connections')

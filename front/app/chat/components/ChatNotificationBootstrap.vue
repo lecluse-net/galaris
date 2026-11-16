@@ -8,8 +8,8 @@
     <div class="text-weight-medium">{{ t('chat.notifications.promptTitle') }}</div>
     <div class="text-caption">{{ t('chat.notifications.promptBody') }}</div>
     <template #action>
-      <q-btn
-        flat
+      <q-btn outline
+
         no-caps
         color="white"
         :label="t('chat.notifications.later')"

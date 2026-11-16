@@ -1,3 +1,6 @@
+<route lang="json">
+{ "path": "/task" }
+</route>
 <template>
   <q-page class="execution-monitoring-page q-pa-md">
     <PageHeader help-key="tasks" :help-text="$t('contextHelpPages.tasks')" :icon="navigationIcon('monitor_heart')" :title="$t('nav.task')" :description="$t('nav.task_desc')">
@@ -97,8 +100,8 @@
                 <p class="text-caption text-grey">{{ $t('task.deleteReversible') }}</p>
               </q-card-section>
               <q-card-actions class="galaris-dialog-actions" align="right">
-                <q-btn flat :label="$t('common.cancel')" color="grey" v-close-popup />
-                <q-btn v-if="canEdit" flat :label="$t('common.delete')" color="negative" @click="confirmDelete" :loading="deleteLoading" />
+                <q-btn outline  :label="$t('common.cancel')" color="grey" v-close-popup />
+                <q-btn v-if="canEdit"  :label="$t('common.delete')" color="negative" @click="confirmDelete" :loading="deleteLoading" />
               </q-card-actions>
             </q-card>
           </q-dialog>
@@ -125,19 +128,17 @@ import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { apiErrorDetail } from '@/core/api'
 import { useRoute, useRouter } from 'vue-router'
 import { useQuasar } from 'quasar'
-import { useTaskStore } from '../stores/taskStore'
+import { useTaskStore, TaskDetail, ActiveTasksPanel } from '@/app/task'
 import { usePrivilegeStore } from '@/core/authorize'
 import { privileges } from '@/core/authorize'
 import { useI18n } from 'vue-i18n'
-import { MetricCard, PageHeader, defineAsyncView } from '@/core/util'
-import type { Task, TaskFull } from '../types'
+import { MetricCard, PageHeader } from '@/core/util'
+import type { Task, TaskFull } from '@/app/task'
 
-const TaskDetail = defineAsyncView(() => import('../components/TaskDetail.vue'))
-const ActiveTasksPanel = defineAsyncView(() => import('../components/ActiveTasksPanel.vue'))
-const LlmActivityPanel = defineAsyncView(() => import('@/app/llm/components/LlmActivityPanel.vue'))
-const ConversationHistory = defineAsyncView(() => import('@/app/conversation/components/ConversationHistory.vue'))
-const VoiceCallHistory = defineAsyncView(() => import('@/app/voice/components/VoiceCallHistory.vue'))
-const ProcessRunsPanel = defineAsyncView(() => import('@/app/process/components/ProcessRunsPanel.vue'))
+import { LlmActivityPanel } from '@/app/llm'
+import { ConversationHistory } from '@/app/conversation'
+import { VoiceCallHistory } from '@/app/voice'
+import { ProcessRunsPanel } from '@/app/process'
 
 type ActivityTab = 'tasks' | 'conversations' | 'voice' | 'llm' | 'processes'
 

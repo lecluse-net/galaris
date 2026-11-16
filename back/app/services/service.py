@@ -704,10 +704,14 @@ async def get_service_record_by_id(service_id: int) -> Optional[ServiceModel]:
     return await db.scalar(select(ServiceModel).where(ServiceModel.id == service_id).execution_options(populate_existing=True))
 
 
-async def get_all_service_records(*, summary_only: bool = False) -> List[ServiceModel]:
+async def get_all_service_records(*, summary_only: bool = False, service_ids: Collection[int] | None = None) -> List[ServiceModel]:
     """Read the catalogue; summary callers hydrate only their selected page later."""
+    if service_ids is not None and not service_ids:
+        return []
     db = get_db()
     query = select(ServiceModel).order_by(ServiceModel.code)
+    if service_ids is not None:
+        query = query.where(ServiceModel.id.in_(service_ids)).execution_options(populate_existing=True)
     if summary_only:
         query = query.options(load_only(ServiceModel.id, ServiceModel.code, ServiceModel.label, raiseload=True))
     result = await db.execute(query)

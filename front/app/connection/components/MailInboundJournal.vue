@@ -14,7 +14,7 @@
     </div>
     <q-banner v-if="error" role="alert" class="q-mb-md">
       {{ t('mailJournal.loadError') }}
-      <template #action><q-btn outline :label="t('permissions.retry')" @click="load" /></template>
+      <template #action><q-btn color="primary" outline :label="t('permissions.retry')" @click="load" /></template>
     </q-banner>
     <q-table v-model:pagination="pagination" :rows="rows" :columns="columns" row-key="id"
       :loading="loading" :grid="$q.screen.lt.md" wrap-cells
@@ -33,16 +33,13 @@
             <div>{{ props.row.sender_address }} · {{ props.row.agent_label }}</div>
             <div>{{ date(props.row.created_at) }} · {{ statusLabel(props.row) }}</div>
           </q-card-section>
-          <q-card-actions><q-btn outline :label="t('mailJournal.view')" @click="open(props.row.id)" /></q-card-actions>
+          <q-card-actions><q-btn color="primary" outline :label="t('mailJournal.view')" @click="open(props.row.id)" /></q-card-actions>
         </q-card></div>
       </template>
     </q-table>
     <q-dialog v-model="detailOpen" @hide="closeDetail">
       <q-card class="inbound-detail galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6 ellipsis">{{ detail?.subject || t('mailJournal.inboundTab') }}</div>
-          <q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="detail?.subject || t('mailJournal.inboundTab')" :close-label="t('common.close')" />
         <q-linear-progress v-if="detailLoading" indeterminate />
         <q-card-section v-if="detail" class="galaris-dialog-body">
           <dl>
@@ -73,7 +70,7 @@
         </q-card-section>
         <q-card-section v-if="detailError" role="alert">{{ t('mailJournal.loadError') }}</q-card-section>
         <q-card-actions align="right" class="galaris-dialog-actions">
-          <q-btn v-close-popup outline :label="t('common.close')" />
+          <q-btn color="primary" v-close-popup outline :label="t('common.close')" />
           <template v-if="authorization?.can_answer && canEdit">
             <q-btn color="negative" :label="t('permissions.denyAction')" :disable="answering" @click="answer(false)" />
             <q-btn color="primary" :label="t('mailJournal.allowProcessing')" :disable="answering" @click="answer(true)" />
@@ -87,6 +84,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
 import { useI18n } from 'vue-i18n'

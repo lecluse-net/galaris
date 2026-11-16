@@ -2,11 +2,13 @@ import { readFileSync } from 'node:fs'
 import { stripTypeScriptTypes } from 'node:module'
 import { test, expect } from '@playwright/test'
 
-const source = stripTypeScriptTypes(readFileSync('/front/core/util/sanitizeHtml.ts', 'utf8'))
-  .replaceAll('export function', 'function')
+const moduleUrl = source => 'data:text/javascript;base64,' + Buffer.from(source).toString('base64')
+const resourceModule = moduleUrl(stripTypeScriptTypes(readFileSync('/front/core/util/documentResource.ts', 'utf8')))
+const source = moduleUrl(stripTypeScriptTypes(readFileSync('/front/core/util/sanitizeHtml.ts', 'utf8'))
+  .replace("from './documentResource'", `from '${resourceModule}'`))
 
 test('rich HTML sanitizer removes active protocols and preserves ordinary content in a real DOM', async ({ page }) => {
-  await page.addScriptTag({ content: `${source}\nwindow.sanitize = sanitizeHtml;` })
+  await page.addScriptTag({ type: 'module', content: `import { sanitizeHtml } from '${source}'; window.sanitize = sanitizeHtml;` })
   const result = await page.evaluate(() => {
     const payload = '<p>Text <strong>bold</strong></p>'
       + '<a href="java&#x09;script:alert(1)">tab</a>'

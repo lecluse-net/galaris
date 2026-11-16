@@ -1,6 +1,6 @@
 import api from '@/core/api'
 import type { AxiosResponse } from 'axios'
-import type { TokenResponse, User } from '@/core/user/services/authService'
+import type { TokenResponse, User } from '@/core/user/contracts'
 
 
 // ==================== Types ====================

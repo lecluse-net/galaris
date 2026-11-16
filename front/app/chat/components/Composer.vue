@@ -212,7 +212,7 @@
                 @click="insertDirective('topic')"
               >
                 <q-item-section side class="command-tag-section">
-                  <q-badge outline color="deep-purple">@topic</q-badge>
+                  <q-badge outline color="solaire-iris">@topic</q-badge>
                 </q-item-section>
                 <q-item-section>{{ t('chat.commandHelp.commands.topic') }}</q-item-section>
               </q-item>
@@ -350,7 +350,6 @@ const draft = useComposerDraft({
   room: () => props.roomId, text, files, resources, effort: reasoningEffortIndex,
   topic: () => props.topicId, reply: () => props.replyTo?.id ?? null,
   restoreContext: (topic) => { if (topic !== props.topicId) emit('update:topicId', topic) },
-  error: error => emit('error', new Error(t('chat.draftError'), { cause: error })),
 })
 const dictating = ref(false)
 const preparingDictation = ref(false)
@@ -797,7 +796,7 @@ function toggleDictation(): void {
 function handleEnter(event: KeyboardEvent): void {
   if (isMobileDevice || event.shiftKey || event.isComposing) return
   event.preventDefault()
-  submit()
+  void submit()
 }
 
 let postedByTouch = false
@@ -989,7 +988,7 @@ async function submit(): Promise<void> {
     const submittedResources = [...resources.value]
     const submittedEffort = reasoningEffortIndex.value
     const accepted = await new Promise<boolean>(acknowledge => emit(
-      'send', outgoingText.value, savedDraft ? undefined : submittedFiles.length ? submittedFiles : undefined,
+      'send', outgoingText.value, savedDraft ? savedDraft.files.length ? savedDraft.files : undefined : submittedFiles.length ? submittedFiles : undefined,
       effortSelectOpen.value ? reasoningEffort.value : undefined, taskRequested.value,
       acknowledge, submittedResources.map(resource => resource.uri), savedDraft?.token,
     ))

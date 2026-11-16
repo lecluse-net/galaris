@@ -47,7 +47,7 @@
     </div>
 
     <q-card flat bordered class="q-mb-lg" role="region" :aria-label="t('mailJournal.pendingTitle')">
-      <q-card-section class="row items-center bg-orange-1 text-orange-10">
+      <q-card-section class="row items-center bg-solaire-orange-light text-solaire-orange">
         <q-icon name="approval" size="sm" class="q-mr-sm" />
         <div>
           <div class="text-h6">{{ t('mailJournal.pendingTitle') }}</div>
@@ -173,7 +173,7 @@
             </q-list>
           </div>
 
-          <q-banner v-if="selected.rejection_reason" rounded class="bg-red-1 text-negative">
+          <q-banner v-if="selected.rejection_reason" rounded class="bg-solaire-red-light text-negative">
             {{ t('mailJournal.rejectionReason') }}: {{ selected.rejection_reason }}
           </q-banner>
 
@@ -193,7 +193,7 @@
           <q-btn outline color="primary" :label="t('common.close')" v-close-popup />
           <template v-if="selected?.status === 'pending_approval' && selected.can_review && canReview">
             <q-btn
-              outline
+
               color="negative"
               icon="block"
               :label="t('mailJournal.reject')"

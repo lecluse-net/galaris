@@ -3,7 +3,7 @@
     <strong>{{ choice.title }}</strong>
     <SafeMessageContent v-if="choice.body" :content="choice.body" />
     <div class="interaction-options">
-      <q-btn
+      <q-btn color="primary"
         v-for="option in choice.options"
         :key="option.id"
         no-caps

@@ -9,12 +9,11 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select
 
-from app.agent import AIMessage, ExecutionResult
 from app.agent.models import Agent, Title
 from app.goal import get_goal_document_store
-from app.goal import goal_service, runner, reviews
+from app.goal import goal_service, runner
 from app.goal.models import Goal, GoalCycle, GoalCycleStatus, GoalStatus, GoalVerdict
-from app.goal.schemas import GoalCommand, GoalJudgement
+from app.goal.schemas import GoalDecision
 from app.goal.tests.factories import make_goal
 from app.llm.structured_service import StructuredInferenceResult
 from app.task import Task, TaskCreate, TaskStatus, initialize_scope, task_service
@@ -32,10 +31,8 @@ def boundaries(monkeypatch):
     monkeypatch.setattr("app.task.scheduler.wake", lambda *_args: None)
 
 
-def decision(action="CONTINUE", *, changed=True, tracking="<p>Improve the existing result.</p>"):
-    return GoalJudgement(action=action, reason="Synthetic decision based on the original outcome.",
-        progress={"changed": changed, "summary": "Observed synthetic outcome.",
-                  "evidence": ["Synthetic observed resource"]}, tracking_content=tracking)
+def decision(action="CONTINUE"):
+    return GoalDecision(action=action)
 
 
 async def setup_cycle(db, *, sequence=1):
@@ -71,217 +68,104 @@ async def setup_cycle(db, *, sequence=1):
 def model(monkeypatch, *decisions):
     inference = AsyncMock(side_effect=[StructuredInferenceResult(output=item, cost=0.01, messages=[])
                                       for item in decisions])
-    monkeypatch.setattr(runner, "run_structured", inference)
+    monkeypatch.setattr(runner, "evaluate_goal", inference)
     return inference
 
 
-async def finish_review(db, cycle, *, success=True, cost=0.2):
-    await db.refresh(cycle)
-    review = await db.get(Task, cycle.review_task_id)
-    assert review is not None
-    review.status = TaskStatus.SUCCESS if success else TaskStatus.ERROR
-    review.cost = cost
-    review.feedback = "Independent inspection found remaining gaps." if success else "Inspection unavailable."
-    if success:
-        review.set_execution_result(ExecutionResult(prompt="Review", result=review.feedback,
-            success=True, messages=[AIMessage(type="tool", tool_name="file_read",
-                content="Synthetic resource revision inspected.", success=True)]))
-    review.lease_token = None
-    await db.commit()
-    return review
-
-
-async def test_review_success_without_observations_is_not_completion(db, monkeypatch):
+@pytest.mark.parametrize("action", ["CONTINUE", "STOP"])
+async def test_judgement_finishes_without_an_extra_task(db, monkeypatch, action):
     goal, cycle, _ = await setup_cycle(db)
-    model(monkeypatch, decision("STOP"), decision("STOP"))
+    inference = model(monkeypatch, decision(action))
     await runner.process_terminal_cycle()
-    review = await db.get(Task, cycle.review_task_id)
-    review.status = TaskStatus.SUCCESS
-    review.feedback = "Everything is complete, without inspection."
-    await db.commit()
-    await runner.process_terminal_cycle()
-    assert goal.status == GoalStatus.PAUSED and goal.completed_at is None
-    assert cycle.verdict == GoalVerdict.CONTINUE
-    assert "no recorded successful tool observation" in cycle.reason
-    assert "completion is not verified" in (await goal_service.read_markdown(goal)).tracking
-
-
-async def test_completion_requires_durable_review_and_counts_its_cost(db, monkeypatch):
-    goal, cycle, source = await setup_cycle(db)
-    inference = model(monkeypatch, decision("STOP"), decision("STOP"))
-    assert await runner.process_terminal_cycle()
-    await db.refresh(cycle)
-    assert cycle.status == GoalCycleStatus.JUDGING and cycle.verdict is None
-    assert goal.status == GoalStatus.ACTIVE
-    review = await db.get(Task, cycle.review_task_id)
-    assert review.agent_id == source.agent_id
-    assert review.parent_id == source.id and review.goal_id == goal.id
-    assert review.requester_user_id == source.requester_user_id
-    assert review.data["execution_scope"] == source.data["execution_scope"]
-    assert "goal_judgement" in review.data["retention_reasons"]
-    for _ in range(3):
-        assert not await runner.process_terminal_cycle()
+    assert cycle.status == GoalCycleStatus.DECIDED
+    assert goal.status == (GoalStatus.COMPLETED if action == "STOP" else GoalStatus.ACTIVE)
+    assert goal.next_cycle_at is not None if action != "STOP" else goal.next_cycle_at is None
     assert inference.await_count == 1
-    await finish_review(db, cycle)
-    assert await runner.process_terminal_cycle()
-    await db.refresh(cycle)
-    assert goal.status == GoalStatus.COMPLETED and cycle.verdict == GoalVerdict.STOP
-    assert cycle.task_cost == pytest.approx(0.6)
-    assert cycle.judge_cost == pytest.approx(0.02)
-    assert "INDEPENDENT REVIEW TASK" in inference.await_args.kwargs["prompt"]
-    await db.refresh(review)
-    assert "goal_judgement" not in review.data.get("retention_reasons", [])
+    assert len(list(await db.scalars(select(Task).where(Task.goal_id == goal.id)))) == 1
 
 
-@pytest.mark.parametrize("action", ["STOP", "PAUSE", "REVIEW"])
-async def test_failed_review_never_completes_goal(db, monkeypatch, action):
-    goal, cycle, _ = await setup_cycle(db)
-    model(monkeypatch, decision(action), decision(action))
-    await runner.process_terminal_cycle()
-    await finish_review(db, cycle, success=False)
-    await runner.process_terminal_cycle()
-    assert goal.status == GoalStatus.PAUSED and goal.completed_at is None
-    assert goal.pause_reason == "REVIEW_UNAVAILABLE" and goal.next_cycle_at is None
-    assert cycle.verdict == GoalVerdict.CONTINUE
-
-
-async def test_critical_review_can_redirect_instead_of_completing(db, monkeypatch):
-    goal, cycle, _ = await setup_cycle(db)
-    revised = "<p>The first approach failed. Improve the existing manual with concrete examples.</p>"
-    model(monkeypatch, decision("STOP"), decision("CONTINUE", tracking=revised))
-    await runner.process_terminal_cycle()
-    await finish_review(db, cycle)
-    await runner.process_terminal_cycle()
-    assert goal.status == GoalStatus.ACTIVE and cycle.verdict == GoalVerdict.CONTINUE
-    assert (await goal_service.read_markdown(goal)).tracking == revised
-    assert goal.next_cycle_at is not None
-    from app.file_share import ResourceContext, resource_read
-    tracking_uri = f"document://{goal.tracking_document_id}"
-    assert tracking_uri in await runner._cycle_task_objective(goal, 2)
-    current = await resource_read(ResourceContext(agent_id=goal.agent_id, runtime="internal"), tracking_uri)
-    assert current.content == revised
-
-
-@pytest.mark.parametrize("change", ["goal", "tracking", "work"])
-async def test_changed_context_invalidates_review_and_preserves_its_cost(db, monkeypatch, change):
-    goal, cycle, _ = await setup_cycle(db)
-    model(monkeypatch, decision("STOP"), decision("STOP"), decision("CONTINUE"))
-    await runner.process_terminal_cycle()
-    first = await finish_review(db, cycle)
-    if change == "goal":
-        goal.description = "<p>Make the revised manual usable.</p>"
-    elif change == "tracking":
-        await get_goal_document_store().update(goal.tracking_document_id, content="<p>New constraints.</p>")
-    else:
-        work = await db.get(Task, cycle.task_id)
-        work.feedback = "A corrected source result after another attempt."
-    await db.commit()
-    await runner.process_terminal_cycle()
-    await db.refresh(cycle)
-    assert cycle.review_task_id != first.id
-    assert goal.status == GoalStatus.ACTIVE and cycle.verdict is None
-    await finish_review(db, cycle, cost=0.3)
-    await runner.process_terminal_cycle()
-    assert cycle.task_cost == pytest.approx(0.9)
-
-
-async def test_stagnation_triggers_review_but_improvement_does_not_require_news(db, monkeypatch):
+async def test_stagnation_continues_on_schedule(db, monkeypatch):
     goal, cycle, _ = await setup_cycle(db, sequence=3)
     db.add_all([GoalCycle(goal_id=goal.id, sequence=n, status=GoalCycleStatus.DECIDED,
         verdict=GoalVerdict.CONTINUE, progress_changed=False) for n in (1, 2)])
     await db.commit()
-    model(monkeypatch, decision(changed=False), decision(changed=True))
+    model(monkeypatch, decision())
     await runner.process_terminal_cycle()
-    await db.refresh(cycle)
-    assert cycle.review_task_id is not None
-    await finish_review(db, cycle)
-    await runner.process_terminal_cycle()
-    assert goal.status == GoalStatus.ACTIVE and cycle.progress_changed is True
-    assert await reviews.stagnant(cycle, decision(changed=True)) is False
+    assert cycle.verdict == GoalVerdict.CONTINUE
+    assert goal.status == GoalStatus.ACTIVE and goal.next_cycle_at is not None
 
 
-async def test_unknown_method_requests_review_without_recursive_reviews(db, monkeypatch):
+async def test_monitoring_preserves_tracking_and_passes_task_result_to_next_cycle(db, monkeypatch):
+    goal, cycle, source = await setup_cycle(db)
+    tracking = "<p>Keep this human-maintained constraint and evidence.</p>"
+    await get_goal_document_store().update(goal.tracking_document_id, content=tracking)
+    revision = await get_goal_document_store().revision(goal.tracking_document_id)
+    source.feedback = "Synthetic verified outcome. " * 2000 + "Unresolved final constraint."
+    await db.commit()
+    model(monkeypatch, decision())
+    await runner.process_terminal_cycle()
+    assert (await goal_service.read_markdown(goal)).tracking == tracking
+    assert await get_goal_document_store().revision(goal.tracking_document_id) == revision
+    assert cycle.continuation_context == source.feedback
+    assert source.feedback in await runner._cycle_task_objective(goal, 2)
+    assert cycle.progress_changed is None and cycle.progress_summary is None
+
+
+@pytest.mark.parametrize("change", ["goal", "tracking", "work"])
+async def test_changed_context_discards_stale_decision_and_preserves_paid_cost(db, monkeypatch, change):
+    goal, cycle, source = await setup_cycle(db)
+
+    async def evaluate(**_kwargs):
+        if change == "goal":
+            goal.description = "<p>Revised original constraint.</p>"
+        elif change == "tracking":
+            await get_goal_document_store().update(goal.tracking_document_id, content="<p>New constraint.</p>")
+        else:
+            source.feedback = "Corrected work result during decision."
+        await db.commit()
+        return StructuredInferenceResult(output=decision("STOP"), cost=0.01, messages=[])
+
+    monkeypatch.setattr(runner, "evaluate_goal", evaluate)
+    await runner.process_terminal_cycle()
+    assert goal.status == GoalStatus.ACTIVE and cycle.verdict is None
+    assert cycle.judge_cost == pytest.approx(0.01)
+    model(monkeypatch, decision())
+    await runner.process_terminal_cycle()
+    assert cycle.verdict == GoalVerdict.CONTINUE and cycle.judge_cost == pytest.approx(0.02)
+
+
+@pytest.mark.parametrize("reason", ["MANUAL", "REFERRER_NO_RESPONSE"])
+async def test_existing_human_pause_cannot_be_completed_by_judgement(db, monkeypatch, reason):
     goal, cycle, _ = await setup_cycle(db)
-    model(monkeypatch, decision("REVIEW"), decision("REVIEW"))
+    goal.status = GoalStatus.PAUSED
+    goal.pause_reason = reason
+    await db.commit()
+    model(monkeypatch, decision("STOP"))
     await runner.process_terminal_cycle()
-    review = await finish_review(db, cycle)
-    await runner.process_terminal_cycle()
-    assert cycle.review_task_id == review.id
-    assert goal.status == GoalStatus.ACTIVE and cycle.verdict == GoalVerdict.CONTINUE
+    assert goal.status == GoalStatus.PAUSED and goal.pause_reason == reason
+    assert cycle.verdict == GoalVerdict.CONTINUE
 
 
-async def test_blocker_pauses_after_review_and_explicit_resume_preserves_history(db, monkeypatch):
+async def test_expired_judge_lease_recovers_once_without_new_tasks(db, monkeypatch):
     goal, cycle, _ = await setup_cycle(db)
-    model(monkeypatch, decision("PAUSE"), decision("PAUSE"))
-    await runner.process_terminal_cycle()
-    await finish_review(db, cycle)
-    await runner.process_terminal_cycle()
-    assert goal.status == GoalStatus.PAUSED and goal.pause_reason == "BLOCKED"
-    assert goal.completed_at is None and goal.next_cycle_at is None
-    monkeypatch.setattr(goal_service, "assert_referrer_available", AsyncMock())
-    await goal_service.resume(goal.id, GoalCommand(expected_revision=goal.revision))
-    assert goal.status == GoalStatus.ACTIVE and cycle.verdict == GoalVerdict.CONTINUE
-    assert goal.next_cycle_at is not None
-
-
-async def test_manual_completion_during_review_closes_without_waiting_for_it(db, monkeypatch):
-    goal, cycle, _ = await setup_cycle(db)
-    inference = model(monkeypatch, decision("STOP"))
-    await runner.process_terminal_cycle()
-    await goal_service.complete(goal.id, GoalCommand(expected_revision=goal.revision))
-    review = await db.get(Task, cycle.review_task_id)
-    assert review.status == TaskStatus.ERROR
-    await runner.process_terminal_cycle()
-    assert goal.status == GoalStatus.COMPLETED and cycle.verdict == GoalVerdict.STOP
-    assert inference.await_count == 1
-
-
-async def test_expired_judge_lease_recovers_without_duplicating_review(db, monkeypatch):
-    goal, cycle, _ = await setup_cycle(db)
-    model(monkeypatch, decision("STOP"), decision("CONTINUE"))
-    await runner.process_terminal_cycle()
-    review = await finish_review(db, cycle)
     cycle.lease_token = uuid4()
     cycle.lease_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
     await db.commit()
-    await runner.process_terminal_cycle()
-    assert cycle.review_task_id == review.id and cycle.verdict == GoalVerdict.CONTINUE
-    assert goal.status == GoalStatus.ACTIVE
-
-
-async def test_manual_pause_during_review_remains_authoritative(db, monkeypatch):
-    goal, cycle, _ = await setup_cycle(db)
-    model(monkeypatch, decision("STOP"), decision("STOP"))
-    await runner.process_terminal_cycle()
-    review = await finish_review(db, cycle)
-    await goal_service.pause(goal.id, GoalCommand(expected_revision=goal.revision))
-    await runner.process_terminal_cycle()
-    assert goal.status == GoalStatus.PAUSED and goal.pause_reason == "MANUAL"
-    assert goal.completed_at is None and cycle.verdict == GoalVerdict.CONTINUE
-    await db.refresh(review)
-    assert "goal_judgement" not in review.data.get("retention_reasons", [])
-
-
-async def test_review_link_survives_notification_failure_without_duplicates(db, monkeypatch):
-    goal, cycle, _ = await setup_cycle(db)
     inference = model(monkeypatch, decision("STOP"))
-    monkeypatch.setattr(task_service, "publish_created", AsyncMock(side_effect=RuntimeError("Synthetic delivery outage")))
-    await runner.process_terminal_cycle()
-    await db.refresh(cycle)
-    assert cycle.review_task_id is not None and cycle.lease_token is None
-    assert cycle.status == GoalCycleStatus.JUDGING and goal.status == GoalStatus.ACTIVE
+    assert await runner.process_terminal_cycle()
     assert not await runner.process_terminal_cycle()
+    assert cycle.verdict == GoalVerdict.STOP and goal.status == GoalStatus.COMPLETED
     assert inference.await_count == 1
 
 
-async def test_concurrent_judges_create_only_one_review(committed_database, monkeypatch):
+async def test_concurrent_judges_apply_only_one_decision(committed_database, monkeypatch):
     from core.database import get_db_session
     async with get_db_session() as session:
         goal, cycle, _ = await setup_cycle(session)
         cycle.status = GoalCycleStatus.JUDGING
         token = uuid4()
         cycle.lease_token = token
-        goal_revision, cycle_id = goal.revision, cycle.id
+        goal_revision, cycle_id, goal_id = goal.revision, cycle.id, goal.id
         await session.commit()
 
     async def finish():
@@ -292,34 +176,34 @@ async def test_concurrent_judges_create_only_one_review(committed_database, monk
     await asyncio.wait_for(asyncio.gather(finish(), finish()), timeout=10)
     async with get_db_session() as session:
         cycle = await session.get(GoalCycle, cycle_id)
-        tasks = list((await session.scalars(select(Task).where(Task.goal_id == goal.id))).all())
-        assert len(tasks) == 2 and cycle.review_task_id in {task.id for task in tasks}
-        assert cycle.judge_cost == pytest.approx(0.01)
+        assert len(list(await session.scalars(select(Task).where(Task.goal_id == goal_id)))) == 1
+        assert cycle.verdict == GoalVerdict.STOP and cycle.judge_cost == pytest.approx(0.01)
 
 
-async def test_accounting_updates_do_not_invalidate_unchanged_work(db, monkeypatch):
-    goal, cycle, source = await setup_cycle(db)
-    model(monkeypatch, decision("STOP"), decision("STOP"))
+async def test_no_decision_model_disables_monitoring_without_blocking_work(db, monkeypatch):
+    goal, cycle, _ = await setup_cycle(db)
+    monkeypatch.setattr(goal_service, "get_tracking_llm", AsyncMock(return_value=None))
+    inference = model(monkeypatch)
     await runner.process_terminal_cycle()
-    review = await finish_review(db, cycle)
-    source.cost += 0.1
-    source.data = {**source.data, "synthetic_trace_accounting": True}
+    assert goal.status == GoalStatus.ACTIVE and goal.next_cycle_at is not None
+    assert cycle.verdict == GoalVerdict.CONTINUE and cycle.judge_cost == 0
+    inference.assert_not_awaited()
+
+
+@pytest.mark.parametrize("reason", ["BLOCKED", "REVIEW_UNAVAILABLE", "MANUAL", "REFERRER_NO_RESPONSE"])
+async def test_recovery_only_resumes_obsolete_automatic_pauses(db, monkeypatch, reason):
+    goal, cycle, _ = await setup_cycle(db)
+    goal.status = GoalStatus.PAUSED
+    goal.pause_reason = reason
+    cycle.status = GoalCycleStatus.DECIDED
+    cycle.verdict = GoalVerdict.CONTINUE
+    cycle.task_finished_at = datetime.now(timezone.utc)
     await db.commit()
-    await runner.process_terminal_cycle()
-    assert goal.status == GoalStatus.COMPLETED and cycle.review_task_id == review.id
-    assert cycle.task_cost == pytest.approx(0.7)
-
-
-async def test_force_terminating_work_cancels_review_and_preserves_goal(db, monkeypatch):
-    goal, cycle, source = await setup_cycle(db)
-    model(monkeypatch, decision("STOP"))
-    await runner.process_terminal_cycle()
-    await task_service.force_terminate(source.id, notify_terminal=False)
-    await db.refresh(cycle)
-    review = await db.get(Task, cycle.review_task_id)
-    assert review.status == TaskStatus.ERROR
-    assert cycle.verdict == GoalVerdict.CONTINUE and goal.status == GoalStatus.ACTIVE
-    assert "goal_judgement" not in review.data.get("retention_reasons", [])
+    obsolete = reason in {"BLOCKED", "REVIEW_UNAVAILABLE"}
+    assert await goal_service.recover_obsolete_supervision_pause() is obsolete
+    assert goal.status == (GoalStatus.ACTIVE if obsolete else GoalStatus.PAUSED)
+    assert goal.pause_reason == (None if obsolete else reason)
+    assert not await goal_service.recover_obsolete_supervision_pause()
 
 
 async def test_provisional_work_error_does_not_start_judgement(db, monkeypatch):
@@ -328,9 +212,9 @@ async def test_provisional_work_error_does_not_start_judgement(db, monkeypatch):
     source.lease_token = uuid4()
     source.lease_expires_at = datetime.now(timezone.utc) + timedelta(minutes=1)
     await db.commit()
-    inference = model(monkeypatch, decision("CONTINUE"))
+    inference = model(monkeypatch, decision())
     assert not await runner.process_terminal_cycle()
-    assert cycle.status == GoalCycleStatus.RUNNING and cycle.review_task_id is None
+    assert cycle.status == GoalCycleStatus.RUNNING
     inference.assert_not_awaited()
     source.lease_token = None
     await db.commit()

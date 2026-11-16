@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { jwtDecode } from 'jwt-decode'
-import { useAuthStore } from '@/core/user/stores/authStore'
+import { useAuthStore } from '@/core/user/facade'
 import { authorizeService, type AssignmentWithRole } from '@/core/authorize/services/authorize.service'
 import { sessionGeneration, SupersededSessionError } from '@/core/api'
 import { localizedAuthorizeLabel } from '../presentation'

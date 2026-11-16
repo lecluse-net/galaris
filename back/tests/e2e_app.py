@@ -475,7 +475,14 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
             from bridge.mail.service import send_outgoing
             from core.util.encryption import encrypt_value
             mail = await db.scalar(select(Service).where(Service.code == "mail"))
-            assert mail is not None
+            if mail is None:
+                # Optional providers are no longer installation defaults. This
+                # journey owns its synthetic definition and account fixtures.
+                mail = Service(code="mail", label="Synthetic mail", mail_config={},
+                               connection_schema={"params": {"password": {"type": "password"}}})
+                db.add(mail)
+                await db.flush()
+            fixture["mail_service_label"] = mail.label
             connection = Connection(service_id=mail.id, agent_id=agent.id, active=True)
             db.add(connection)
             await db.flush()

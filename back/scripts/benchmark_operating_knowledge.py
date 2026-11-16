@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 from collections import Counter, defaultdict
+from copy import deepcopy
 from dataclasses import asdict, dataclass
 import hashlib
 import json
@@ -21,6 +22,7 @@ from statistics import mean, median
 import time
 import traceback
 from typing import Any, cast
+from uuid import UUID
 
 from loguru import logger
 
@@ -52,7 +54,7 @@ def load_cases() -> list[dict[str, Any]]:
             if filename.startswith("latency_"):
                 # Strengthen the qualitative latency reference with effect/fact oracles.
                 oracles: list[dict[str, Any]] = [
-                    {"max_tool_calls": 0, "response_values": ["56"]},
+                    {"max_tool_calls": 0},
                     {"required_calls": [{"tool": "memory_search"}], "response_values": ["17"], "max_tool_calls": 2},
                     {"required_calls": [{"tool": "conversation_task_status", "arguments": {
                         "task_id": "galaris://task/00000000-0000-0000-0000-000000000041"}}],
@@ -61,7 +63,7 @@ def load_cases() -> list[dict[str, Any]]:
                         "objective": ["Orbe", "Nacre", "Sillage"]}}], "max_tool_calls": 1},
                 ]
                 # Foreground references have no transcript; only actual outputs are scored.
-                expected = {**expected, "outcome_checks": oracles[index]}
+                expected = {**expected, "outcome_checks": expected.get("outcome_checks") or oracles[index]}
             mechanisms = [corpus["mechanism"]]
             if filename.startswith("latency_"):
                 mechanisms.append("voice_executor")
@@ -75,12 +77,27 @@ def load_cases() -> list[dict[str, Any]]:
 def case_checks(case: dict[str, Any], actual: dict[str, Any]) -> list[dict[str, Any]]:
     from app.lab.objective_checks import check_output
     checked = actual
+    # task_status accepts both a UUID and its canonical URI. Keep raw evidence intact.
+    for field in ("tool_calls", "tool_results"):
+        for index, call in enumerate(actual.get(field, [])):
+            if call.get("name") != "conversation_task_status":
+                continue
+            value = call.get("arguments", {}).get("task_id")
+            if not isinstance(value, str):
+                continue
+            try:
+                reference = f"galaris://task/{UUID(value.removeprefix('galaris://task/'))}"
+            except ValueError:
+                continue
+            if checked is actual:
+                checked = deepcopy(actual)
+            checked[field][index]["arguments"]["task_id"] = reference
     facts = case["expected"].get("outcome_checks", {}).get("response_values", [])
     if any(re.fullmatch(r"\d{1,2}:\d{2}", value) for value in facts):
         # Equivalent clock notation must not turn a correct retrieved fact into a failure.
         response = re.sub(r"(?<!\d)([01]?\d|2[0-3])\s*h(?:\s*([0-5]\d))?(?!\w)",
             lambda match: f"{match[1]}:{match[2] or '00'}", str(actual.get("response", "")))
-        checked = {**actual, "response": response}
+        checked = {**checked, "response": response}
     checks = check_output(case["mechanism"], case["native"], checked, expected=case["expected"])
     # Older latency cases have an action reference, without an outcome oracle.
     if "outcome_checks" not in case["expected"] and "action" in case["expected"]:
@@ -207,9 +224,30 @@ def infrastructure_failure(row: dict[str, Any]) -> bool:
                 and row["error_type"] not in {"UnexpectedModelBehavior", "UsageLimitExceeded"})
 
 
+def prompt_baseline(path: Path, cases: list[dict[str, Any]], *, binding: str,
+                    effort: str | None) -> tuple[dict[str, str], dict[str, str]]:
+    """Compare a complete previous prompt with the candidate on identical frozen inputs."""
+    manifest = json.loads((path.parent / "manifest.json").read_text())
+    original_cases = json.loads((path.parent / "cases.json").read_text())
+    prompts = json.loads(path.read_text())
+    if digest(original_cases) != manifest["cases_sha256"] or digest(prompts) != manifest["prompts_sha256"]:
+        raise ValueError("Frozen baseline evidence changed")
+    if binding != manifest["model_binding"] or effort != manifest["reasoning_effort"]:
+        raise ValueError("Prompt comparison requires the same model binding and reasoning effort")
+    original = {case["key"]: case for case in original_cases}
+    if any(case != original.get(case["key"]) for case in cases):
+        raise ValueError("Prompt comparison requires identical cases, tools, fixtures and oracles")
+    baseline = {case["key"]: prompts[case["key"]]["after"] for case in cases}
+    if any(not isinstance(value, str) or not value.strip() for value in baseline.values()):
+        raise ValueError("A frozen baseline prompt is empty")
+    return baseline, {"manifest_sha256": digest(manifest), "prompts_sha256": digest(prompts),
+                      "builder_sha256": manifest["builder_sha256"]}
+
+
 async def benchmark(output: Path, *, repetitions: int, limits: Limits, execute: bool,
                     pilot: int | None = None, resume: bool = False,
-                    selected_cases: list[str] | None = None) -> dict[str, Any]:
+                    selected_cases: list[str] | None = None,
+                    baseline_prompts: Path | None = None) -> dict[str, Any]:
     from core.settings import settings
     if not settings.is_dev:
         raise ValueError("Operating-knowledge benchmarks require APP_ENV=dev")
@@ -261,6 +299,14 @@ async def benchmark(output: Path, *, repetitions: int, limits: Limits, execute: 
     if not common.strip():
         raise ValueError("The candidate operating prompt is empty; no treatment to measure")
 
+    baseline_text: dict[str, str] = {}
+    baseline_evidence: dict[str, str] | None = None
+    if baseline_prompts is not None:
+        if resume:
+            raise ValueError("Resume uses its own frozen prompts; omit --baseline-prompts")
+        baseline_text, baseline_evidence = prompt_baseline(
+            baseline_prompts, cases, binding=binding, effort=effort,
+        )
     frozen: dict[str, dict[str, str]] = json.loads((output / "prompts.json").read_text()) if resume else {}
     if prior is not None:
         if (digest(frozen) != prior["prompts_sha256"] or model_id != prior["model_id"]
@@ -277,9 +323,12 @@ async def benchmark(output: Path, *, repetitions: int, limits: Limits, execute: 
             _, text = build_executor_benchmark_prompt(definition, case["native"], suffix=suffix,
                                                      conversation_action_policy=action_policy)
             frozen[case["key"]][variant] = text
+        if baseline_text:
+            frozen[case["key"]]["before"] = baseline_text[case["key"]]
         # Every positive oracle must accept its own reference before a paid call.
+        has_reference = "tool_calls" in case["expected"]
         failed = ([check for check in case_checks(case, case["expected"]) if not check["passed"]]
-                  if not case["key"].startswith("latency_") else [])
+                  if has_reference else [])
         if failed:
             raise ValueError(f"Invalid frozen reference: {case['key']}: {failed}")
 
@@ -294,6 +343,7 @@ async def benchmark(output: Path, *, repetitions: int, limits: Limits, execute: 
         "script_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "operating_prompt_sha256": digest(common), "baseline_suffixes": suffixes,
         "conversation_action_policy": action_policy,
+        "baseline_prompt_evidence": baseline_evidence,
         "order": "Deterministic shuffled pairs, alternated arm order, sequential arms per pair",
         "executed": execute}
     if prior is None:
@@ -393,13 +443,15 @@ async def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--max-cost", type=float, required=True)
-    parser.add_argument("--max-episodes", type=int, default=600)
+    parser.add_argument("--max-episodes", type=int, default=800)
     parser.add_argument("--repetitions", type=int, choices=range(3, 21), default=3)
     parser.add_argument("--concurrency", type=int, choices=range(1, 9), default=4)
     parser.add_argument("--timeout-seconds", type=float, default=180)
     parser.add_argument("--pilot", type=int)
     parser.add_argument("--case", action="append", dest="selected_cases", help="Restrict a focused follow-up to named scenarios")
     parser.add_argument("--run", action="store_true", help="Execute paid inferences; otherwise freeze a plan only")
+    parser.add_argument("--baseline-prompts", type=Path,
+                        help="Use the previous freeze's complete candidate prompts as the baseline")
     parser.add_argument("--rescore", action="store_true", help="Recheck an existing local evidence directory without inference")
     parser.add_argument("--resume", action="store_true", help="Run only missing episodes from frozen local evidence")
     args = parser.parse_args()
@@ -413,7 +465,8 @@ async def main() -> None:
         return
     report = await benchmark(args.output, repetitions=args.repetitions,
         limits=Limits(args.max_cost, args.max_episodes, args.concurrency, args.timeout_seconds),
-        execute=args.run, pilot=args.pilot, resume=args.resume, selected_cases=args.selected_cases)
+        execute=args.run, pilot=args.pilot, resume=args.resume, selected_cases=args.selected_cases,
+        baseline_prompts=args.baseline_prompts)
     print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)
 
 

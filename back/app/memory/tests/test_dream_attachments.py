@@ -22,8 +22,8 @@ from app.dream.service import store_prepared
 from app.memory import service
 from app.document import document_attachment_service as attachments
 from app.memory.facade import attachment_analysis_source, fill_attachment_description
-from app.memory.models import MemoryAutomationJob, MemoryRevision
-from app.document import DocumentAttachment
+from app.memory.models import MemoryAutomationJob, MemoryItem, MemoryRevision
+from app.document import Document, DocumentAttachment
 from app.memory.schemas import MemoryItemCreate, MemoryPayload
 from core.params import runtime_settings
 from core.params.runtime_settings import RuntimeSettings
@@ -79,10 +79,19 @@ def inference(monkeypatch, tmp_path):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("kind", ["text", "document", "image", "video"])
-async def test_rest_cycles_fill_one_empty_item_at_a_time(db, agents, memory_storage, inference, monkeypatch, kind):
+@pytest.mark.parametrize("document_reference", [True, False])
+async def test_rest_cycles_fill_one_empty_item_at_a_time(db, agents, memory_storage, inference, monkeypatch, kind, document_reference):
     owner = agents[0]
     first = await add_attachment(db, owner, kind)
     second = await add_attachment(db, owner, kind)
+    if not document_reference:
+        # The canonical source and attachment companion remain usable without
+        # the document's optional graph reference.
+        for source in (first, second):
+            await db.delete(await db.get(MemoryItem, source.document_id))
+        await db.commit()
+        for source in (first, second):
+            assert await db.get(Document, source.document_id) is not None
     mechanism = AttachmentMemoryMechanism(kind)
     register_mechanism(mechanism)
     setting = f"DREAM_ATTACHMENT_{kind.upper()}_ENABLED"
@@ -99,6 +108,7 @@ async def test_rest_cycles_fill_one_empty_item_at_a_time(db, agents, memory_stor
     assert await scheduler.run_cycle() == 1
     assert await scheduler.run_cycle() == 0
     for source in (first, second):
+        assert (await db.get(MemoryItem, source.item_id, populate_existing=True)).size_bytes > 0
         item, content, *_ = await service.get_item(source.item_id, agent_id=owner.id)
         assert content and item.revision == source.revision + 1
         assert await db.scalar(select(MemoryRevision.id).where(MemoryRevision.item_id == item.id))
@@ -158,12 +168,21 @@ async def test_checkpoint_survives_disable_and_resume_without_new_inference(db, 
 
 
 @pytest.mark.asyncio
-async def test_failure_does_not_block_the_next_attachment(db, agents, memory_storage, inference, monkeypatch):
-    await add_attachment(db, agents[0], "image")
-    await add_attachment(db, agents[0], "image")
-    monkeypatch.setattr(runtime_settings, "DREAM_ATTACHMENT_IMAGE_ENABLED", True)
-    inference[1].side_effect = [RuntimeError("Vision unavailable"), "Une image bleue."]
-    mechanism = AttachmentMemoryMechanism("image")
+@pytest.mark.parametrize("failure", ["image_error", "length", "content_filter"])
+async def test_failure_does_not_block_the_next_attachment(db, agents, memory_storage, inference, monkeypatch, failure):
+    owner_id = agents[0].id
+    kind = "image" if failure == "image_error" else "document"
+    sources = [await add_attachment(db, agents[0], kind) for _ in range(2)]
+    monkeypatch.setattr(runtime_settings, f"DREAM_ATTACHMENT_{kind.upper()}_ENABLED", True)
+    if kind == "image":
+        inference[1].side_effect = [RuntimeError("Vision unavailable"), "Une image bleue."]
+    else:
+        from fastapi.responses import JSONResponse
+
+        inference[2].side_effect = [JSONResponse({"choices": [{"message": {"content": content},
+            "finish_reason": reason}]}) for content, reason in (
+                ("Synthetic incomplete analysis.", failure), ("Synthetic complete analysis.", "stop"))]
+    mechanism = AttachmentMemoryMechanism(kind)
     register_mechanism(mechanism)
     await scheduler.run_cycle()
     assert await mechanism.count_pending() == 1
@@ -171,3 +190,6 @@ async def test_failure_does_not_block_the_next_attachment(db, agents, memory_sto
     db.expire_all()
     receipts = list(await db.scalars(select(DreamReceipt).where(DreamReceipt.mechanism_key == mechanism.key)))
     assert sorted(receipt.status for receipt in receipts) == ["retry", "success"]
+    contents = [(await service.get_item(source.item_id, agent_id=owner_id))[1] for source in sources]
+    assert sum(bool(content) for content in contents) == 1
+    assert all(b"incomplete analysis" not in content for content in contents)

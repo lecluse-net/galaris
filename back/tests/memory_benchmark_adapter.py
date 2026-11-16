@@ -33,7 +33,7 @@ from core.settings import settings
 from core.user import UserModel
 from core.util import local_timezone_name, visible_text
 from scripts.memory_benchmark.experiments import Plan, entity_phrases, fold, plan
-from scripts.memory_benchmark.generate import Memory, Query
+from scripts.memory_benchmark.generate import Corpus, Memory, Query
 
 
 @dataclass
@@ -77,6 +77,31 @@ async def fixture_identity():
         db.add_all([user, title])
         await db.flush()
         return user.id, title.id
+
+
+def scoring_corpus(corpus: Corpus) -> Corpus:
+    """Describe the auxiliary Contact cards actually inserted by load_world."""
+    memories = list(corpus.memories)
+    known = {memory.id for memory in memories}
+    worlds: dict[str, list[Query]] = {}
+    for query in corpus.queries:
+        worlds.setdefault(query.world_id, []).append(query)
+    for world, queries in worlds.items():
+        first = queries[0]
+        contacts = {query.contact_id for query in queries} | {
+            memory.contact_scope for memory in corpus.memories
+            if memory.world_id == world and memory.contact_scope}
+        for identity in sorted(contacts - known):
+            memories.append(Memory(id=identity, world_id=world, language=first.language,
+                title="Synthetic contact boundary", content_html="<p>Synthetic contact boundary.</p>",
+                allowed_actor_ids=(first.actor_id,), contact_scope=None, state="active",
+                known_at=first.timestamp, recorded_at=first.timestamp, event_start=None,
+                event_end=None, valid_from=None, valid_until=None, temporal_anchor=None,
+                source={"id": str(uuid5(NAMESPACE_URL, f"benchmark-contact-source:{identity}")),
+                    "speaker": "Synthetic contact boundary", "text": "Synthetic contact boundary.",
+                    "timestamp": first.timestamp}))
+            known.add(identity)
+    return Corpus(tuple(memories), corpus.queries, corpus.answers)
 
 
 def _write_resources(root, records):
@@ -164,7 +189,7 @@ def install_adapter(monkeypatch, root: Path, reference_sources: Path | None = No
         monkeypatch.setattr(module, "datetime", FixedClock)
     real_rank = retrieval._weighted_rank
     real_search = memory_context.search_memory_detailed
-    real_temporal = memory_context.temporal_hits
+    real_temporal = retrieval.temporal_hits
     previous = None
     previous_rank = None
     if reference_sources is not None:
@@ -315,7 +340,10 @@ def install_adapter(monkeypatch, root: Path, reference_sources: Path | None = No
     if previous is not None:
         previous['retrieval']._weighted_rank = rank_observer
     monkeypatch.setattr(memory_context, "search_memory_detailed", search_observer)
-    monkeypatch.setattr(memory_context, "temporal_hits", calendar_observer)
+    # Dated memories now belong to the independent agenda provider. Keep the
+    # observer only for historical builders that still combine both channels.
+    if hasattr(memory_context, "temporal_hits"):
+        monkeypatch.setattr(memory_context, "temporal_hits", calendar_observer)
     if previous is not None and 'context' in previous:
         previous['context'].search_memory_detailed = search_observer
         previous['context'].temporal_hits = calendar_observer

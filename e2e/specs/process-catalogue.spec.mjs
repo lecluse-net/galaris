@@ -83,7 +83,7 @@ test('the process catalogue loads summaries and opens its editor with the real A
 
   await checkRunSummaries()
   const headers = { Authorization: `Bearer ${session.access_token}` }
-  const toolsResponse = await request.get('/api/processes/tools', { headers })
+  const toolsResponse = await request.get('/api/processes/services', { headers })
   expect(toolsResponse.ok(), await toolsResponse.text()).toBeTruthy()
   const tools = await toolsResponse.json()
   let externalTool = tools.find(tool => tool.code === 'n8n')

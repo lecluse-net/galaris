@@ -8,7 +8,7 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import event, func, select, text
+from sqlalchemy import event, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.models import Agent, Title
@@ -148,24 +148,53 @@ async def test_contact_identity_filters_are_exact_owner_scoped_and_explicit_empt
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("count", [501, 1001])
-async def test_many_reachable_routes_keep_every_canonical_name_and_exact_route(monkeypatch, count):
+async def test_many_reachable_routes_keep_every_canonical_name_and_exact_route(db, memory_storage, monkeypatch, count):
+    owner_id, connection_id, _own_contact, foreign_contact = await seed_reachable_directory(db, 0)
     keys = [f"synthetic-{index:04}" for index in range(count)]
-    records = {key: SimpleNamespace(memory_item_id=uuid4(), display_name=f"Canonical {index:04}",
-        identities=(SimpleNamespace(kind="messenger", namespace="matrix", external_id=key, galaris_user_id=None),))
-        for index, key in enumerate(keys)}
-    users = [(11, 3, "matrix", SimpleNamespace(id=uuid4(), external_id=key,
+    records = [MemoryItem(owner_agent_id=owner_id, memory_resource_id=f"synthetic-{uuid4().hex}",
+        memory_content="Synthetic contact.", memory_content_hash=hashlib.sha256(b"Synthetic contact.").hexdigest(),
+        memory_size_bytes=len(b"Synthetic contact."), search_title=f"Canonical {index:04}",
+        metadata_={"display_name_override": f"Canonical {index:04}"}, source_managed=True,
+        managed_source_kind="messenger_contact", managed_source_ref=uuid4().hex,
+        memory_read_only=True) for index in range(count)]
+    db.add_all(records)
+    await db.flush()
+    identities = [record.id for record in records]
+    db.add_all([MemoryContactIdentity(owner_agent_id=owner_id, contact_item_id=identity,
+        identity_kind="messenger", namespace="matrix", external_id=key,
+        display_name="Synthetic channel alias") for key, identity in zip(keys, identities)])
+    foreign = await db.get(MemoryItem, foreign_contact)
+    db.add(MemoryContactIdentity(owner_agent_id=foreign.owner_agent_id, contact_item_id=foreign_contact,
+        identity_kind="messenger", namespace="matrix", external_id=keys[0],
+        display_name="Synthetic foreign private name"))
+    await db.commit()
+    db.expunge_all()
+    users = [(connection_id, 3, "matrix", SimpleNamespace(id=uuid4(), external_id=key,
         display_name="Synthetic channel name", is_ai=False, agent_id=None, galaris_user_id=None)) for key in keys]
-
-    async def lookup(*, owner_agent_id, limit, offset, messenger_identities=None, galaris_user_ids=None):
-        selected = [records[key] for key in keys if messenger_identities is None or ("matrix", key) in messenger_identities]
-        return tuple(selected[offset:offset + limit]), len(selected)
-
+    # Only the transport-owned directory is replaced; canonical contacts, owner
+    # filtering, batching and projection use the real PostgreSQL workflow.
     monkeypatch.setattr(contact_service, "search_agent_users", AsyncMock(return_value=users))
-    monkeypatch.setattr(contact_service, "list_messenger_contacts", lookup)
-    people = await contact_service.list_reachable_humans(agent_id=7)
+    async with measured_reads(db, f"reachable-many-routes-{count}") as reads:
+        people = await contact_service.list_reachable_humans(agent_id=owner_id)
     assert len(people) == count
     assert [(person.contact_item_id, person.display_name, person.connection_id, person.platform, person.user_id)
-        for person in people] == [(records[key].memory_item_id, records[key].display_name, 11, "matrix", key) for key in keys]
+        for person in people] == [(identity, f"Canonical {index:04}", connection_id, "matrix", key)
+            for index, (key, identity) in enumerate(zip(keys, identities))]
+    assert len(reads) <= 4 * ((count + 499) // 500), "Directory reads must be bounded by identity batches"
+    retained = await db.get(MemoryItem, identities[0])
+    await db.execute(update(MemoryItem).where(MemoryItem.id == retained.id).values(
+        metadata_={"display_name_override": "Synthetic latest canonical"}).execution_options(synchronize_session=False))
+    await db.commit()
+    reopened = await contact_service.list_reachable_humans(agent_id=owner_id)
+    current = next(person for person in reopened if person.contact_item_id == retained.id)
+    assert current.display_name == "Synthetic latest canonical"
+    await db.execute(update(MemoryItem).where(MemoryItem.id == retained.id).values(
+        metadata_={"display_name_override": "Synthetic current sender"}).execution_options(synchronize_session=False))
+    await db.commit()
+    from app.memory import contact_labels
+
+    assert await contact_labels(owner_agent_id=owner_id, contact_item_ids={retained.id, foreign_contact}) == {
+        retained.id: "Synthetic current sender"}
 
 
 @pytest.mark.asyncio

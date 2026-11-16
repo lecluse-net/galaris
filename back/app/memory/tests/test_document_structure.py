@@ -37,7 +37,8 @@ def png():
 
 
 @pytest.mark.asyncio
-async def test_attachment_companion_preserves_description_across_reconciliation_and_live_revocation(db, agents, memory_storage, monkeypatch):
+@pytest.mark.parametrize("document_reference", [True, False])
+async def test_attachment_companion_preserves_description_across_reconciliation_and_live_revocation(db, agents, memory_storage, monkeypatch, document_reference):
     from core import websocket
     owner, reader = agents
     source = await document(owner, "Album")
@@ -50,6 +51,10 @@ async def test_attachment_companion_preserves_description_across_reconciliation_
     before = (await service.get_item(companion_id, agent_id=owner.id))[1]
     assert before == b""
     await documents.set_item_grant(source.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    if not document_reference:
+        await db.delete(source)
+        await db.commit()
+        assert (await service.get_item(companion_id, agent_id=reader.id))[1] == before
     notifications = []
 
     async def emit(subject, action, data, *_args, **_kwargs):
@@ -77,6 +82,11 @@ async def test_attachment_companion_preserves_description_across_reconciliation_
     assert after[0].revision == revision
     assert list(await db.scalars(select(DocumentAttachment.memory_item_id).where(DocumentAttachment.id == attachment.id))) == [companion_id]
     await documents.remove_item_grant(source.id, reader.id, actor_agent_id=owner.id)
+    if not document_reference:
+        reference = await db.get(MemoryItem, source.id)
+        if reference is not None:
+            await db.delete(reference)
+            await db.commit()
     with pytest.raises(service.MemoryPermissionError):
         await service.get_item(companion_id, agent_id=reader.id)
     with pytest.raises(service.MemoryPermissionError):

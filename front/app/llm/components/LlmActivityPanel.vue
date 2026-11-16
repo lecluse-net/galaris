@@ -31,7 +31,7 @@
       </div>
     </div>
 
-    <q-banner v-if="error" rounded class="bg-red-1 text-negative q-mb-md">{{ error }}</q-banner>
+    <q-banner v-if="error" rounded class="bg-solaire-red-light text-negative q-mb-md">{{ error }}</q-banner>
 
     <section class="q-mb-lg">
       <q-card v-if="!runningCalls.length" flat bordered>
@@ -118,7 +118,7 @@ import { websocket } from '@/core/websocket'
 import { usePrivilegeStore, privileges } from '@/core/authorize'
 import { ExecutionDateFilters, startVisiblePolling } from '@/core/util'
 import { getAgentSelection, type AgentSelectionOption } from '@/app/agent'
-import { agentService } from '@/app/agent/services/agentService'
+import { agentService } from '@/app/agent/facade'
 import LlmCall from './LlmCall.vue'
 import { llmCallService } from '../services/llmCallService'
 import { assignTaskColors, callTaskKey, type LlmTaskColor } from '../taskColors'
@@ -160,7 +160,7 @@ const taskColors = computed(() => assignTaskColors([runningCalls.value, recentCa
 const metrics = computed(() => [
   { key: 'completed', label: t('llmCalls.metrics.completed'), value: summary.value.completed, icon: 'check_circle', color: 'positive' },
   { key: 'cost', label: t('llmCalls.metrics.cost'), value: formatCost(summary.value.total_cost), icon: 'payments', color: 'secondary' },
-  { key: 'inferenceCost', label: t('llmCalls.metrics.inferenceCost'), value: formatCost(summary.value.total_inference_cost), icon: 'calculate', color: 'deep-purple' },
+  { key: 'inferenceCost', label: t('llmCalls.metrics.inferenceCost'), value: formatCost(summary.value.total_inference_cost), icon: 'calculate', color: 'solaire-iris' },
   { key: 'running', label: t('llmCalls.metrics.running'), value: summary.value.running, icon: 'motion_photos_on', color: 'primary' },
   { key: 'errors', label: t('llmCalls.metrics.errors'), value: summary.value.errors, icon: 'error', color: 'negative' },
 ])

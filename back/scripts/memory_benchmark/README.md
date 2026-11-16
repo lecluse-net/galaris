@@ -1,5 +1,21 @@
 # Corpus de rappel mémoire conversationnel / Conversational memory recall corpus
 
+## Portée de l'adaptateur courant (15 novembre 2026)
+
+Le brief Memory courant exclut les souvenirs datés : ils sont présentés par le provider
+d'agenda indépendant. L'adaptateur de ce corpus mesure le rappel et l'injection dans
+le brief Memory ordinaire uniquement. Une absence dans ce canal ne prouve donc pas
+l'absence du souvenir dans le contexte complet. Publier les familles temporelles
+séparément et ne pas comparer ce score à un ancien brief fusionnant les deux canaux
+comme si leur périmètre était identique. Les droits, la fraîcheur et les limites du
+provider d'agenda restent couverts par `app/calendar/tests/test_context.py`.
+Les qualifications opt-in de réponses doivent également indiquer les providers montés.
+Le scoreur doit aussi connaître les cartes Contact auxiliaires réellement insérées
+par le harnais. Elles ne deviennent pas des réponses attendues : les inclure dans
+l'inventaire scoré évite de les confondre avec des identifiants étrangers inconnus,
+sans retirer de résultat ni changer les faits requis. Le manifeste distingue ces
+supports des souvenirs du corpus et le test compare l'inventaire à PostgreSQL.
+
 ## Qualification des relances conversationnelles (29 octobre 2026)
 
 Le [compte rendu agrégé](../../../project/audits/2026-10-29-memory-conversation-continuity.md)

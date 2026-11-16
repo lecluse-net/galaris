@@ -1,7 +1,7 @@
 <template>
   <q-badge
     class="llm-output-token-badge"
-    color="blue-grey-6"
+    color="solaire-gray"
     tabindex="0"
     :title="tokenSummary"
     :aria-label="tokenSummary"

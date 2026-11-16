@@ -3,10 +3,10 @@
     <div v-if="loading" class="row justify-center q-pa-lg">
       <q-spinner color="primary" size="36px" />
     </div>
-    <q-banner v-else-if="loadFailed" rounded class="bg-red-1 text-negative">
+    <q-banner v-else-if="loadFailed" rounded class="bg-solaire-red-light text-negative">
       {{ t('common.anError') }}
       <template #action>
-        <q-btn flat :label="t('common.retry')" @click="load" />
+        <q-btn outline color="primary"  :label="t('common.retry')" @click="load" />
       </template>
     </q-banner>
     <BridgeSettingsPanel v-else :contribution="contribution" :show-guide="false" />

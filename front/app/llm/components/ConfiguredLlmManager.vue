@@ -81,16 +81,16 @@
               {{ formatContext(row.context_length) }}
             </span>
             <div class="llm-badges row">
-              <q-badge v-if="row.is_subscription" color="green" outline>
+              <q-badge v-if="row.is_subscription" color="solaire-green" outline>
                 {{ t('llm.subscriptionBadge') }}
               </q-badge>
               <q-badge v-if="hasPrice(row.cost_per_input_token)" color="primary" outline>
                 {{ t('llm.costInShort') }} {{ formatPrice(row.cost_per_input_token) }}
               </q-badge>
-              <q-badge v-if="hasPrice(row.cost_per_cached_input_token)" color="indigo" outline>
+              <q-badge v-if="hasPrice(row.cost_per_cached_input_token)" color="solaire-iris" outline>
                 {{ t('llm.costCacheShort') }} {{ formatPrice(row.cost_per_cached_input_token) }}
               </q-badge>
-              <q-badge v-if="hasPrice(row.cost_per_output_token)" color="teal" outline>
+              <q-badge v-if="hasPrice(row.cost_per_output_token)" color="solaire-cyan" outline>
                 {{ t('llm.costOutShort') }} {{ formatPrice(row.cost_per_output_token) }}
               </q-badge>
             </div>
@@ -182,16 +182,16 @@
                 {{ formatContext(row.context_length) }}
               </div>
               <div class="llm-badges row q-mt-xs">
-                <q-badge v-if="row.is_subscription" color="green" outline>
+                <q-badge v-if="row.is_subscription" color="solaire-green" outline>
                   {{ t('llm.subscriptionBadge') }}
                 </q-badge>
                 <q-badge v-if="hasPrice(row.cost_per_input_token)" color="primary" outline>
                   {{ t('llm.costInShort') }} {{ formatPrice(row.cost_per_input_token) }}
                 </q-badge>
-                <q-badge v-if="hasPrice(row.cost_per_cached_input_token)" color="indigo" outline>
+                <q-badge v-if="hasPrice(row.cost_per_cached_input_token)" color="solaire-iris" outline>
                   {{ t('llm.costCacheShort') }} {{ formatPrice(row.cost_per_cached_input_token) }}
                 </q-badge>
-                <q-badge v-if="hasPrice(row.cost_per_output_token)" color="teal" outline>
+                <q-badge v-if="hasPrice(row.cost_per_output_token)" color="solaire-cyan" outline>
                   {{ t('llm.costOutShort') }} {{ formatPrice(row.cost_per_output_token) }}
                 </q-badge>
               </div>
@@ -288,11 +288,11 @@
                       </q-item-section>
                       <q-item-section side>
                         <div class="row q-gutter-xs">
-                          <q-badge v-if="scope.opt.context_length" color="blue-grey" outline>
+                          <q-badge v-if="scope.opt.context_length" color="solaire-gray" outline>
                             {{ compactNumber(scope.opt.context_length) }}
                           </q-badge>
                           <q-badge v-if="scope.opt.capabilities?.tools" color="primary" outline>Tools</q-badge>
-                          <q-badge v-if="scope.opt.capabilities?.reasoning" color="deep-purple" outline>R</q-badge>
+                          <q-badge v-if="scope.opt.capabilities?.reasoning" color="solaire-iris" outline>R</q-badge>
                         </div>
                       </q-item-section>
                     </q-item>
@@ -309,12 +309,12 @@
                   v-if="modelsLoadError"
                   dense
                   rounded
-                  class="bg-red-1 text-negative q-mt-sm"
+                  class="bg-solaire-red-light text-negative q-mt-sm"
                 >
                   {{ modelsLoadError }}
                   <template #action>
                     <q-btn
-                      flat
+
                       color="negative"
                       icon="refresh"
                       :label="t('common.retry')"
@@ -473,7 +473,7 @@
 
           <q-separator />
           <q-card-actions align="right" class="llm-dialog__actions q-pa-md galaris-dialog-actions">
-            <q-btn v-close-popup flat :label="t('common.cancel')" />
+            <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
             <q-btn
               v-if="canEdit"
               type="submit"
@@ -490,14 +490,10 @@
 
     <q-dialog v-model="deleteDialog">
       <q-card class="galaris-dialog-card" style="width: 480px; max-width: 92vw">
-        <q-card-section class="galaris-dialog-title">
-          <div class="text-h6">{{ t('common.confirm') }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('common.confirm')" :close-label="$t('common.close')" />
         <q-card-section class="galaris-dialog-body">{{ t('llm.confirmDeleteLlm', { name: llmToDelete?.label }) }}</q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn v-close-popup flat :label="t('common.cancel')" />
+          <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
           <q-btn v-if="canEdit" color="negative" :label="t('common.delete')" :loading="store.loading" @click="deleteLlm" />
         </q-card-actions>
       </q-card>
@@ -506,6 +502,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
@@ -635,7 +632,7 @@ const formModalityBadges = computed(() => {
       result.push({
         key,
         label: `${direction === 'input' ? t('llm.input') : t('llm.output')} · ${t(`llm.${name}`)}`,
-        color: direction === 'input' ? 'primary' : 'teal',
+        color: direction === 'input' ? 'primary' : 'solaire-cyan',
       })
     }
   }
@@ -957,18 +954,18 @@ function price(model: LLMModelInfo, key: string): number | null {
 function capabilityMeta(capability: AICapability): { label: string; icon: string; color: string } {
   const values: Record<AICapability, { label: string; icon: string; color: string }> = {
     chat: { label: t('llm.capabilities.chat'), icon: 'chat', color: 'primary' },
-    vision: { label: t('llm.capabilities.vision'), icon: 'visibility', color: 'blue' },
-    image_generation: { label: t('llm.capabilities.image_generation'), icon: 'image', color: 'pink' },
-    embedding: { label: t('llm.capabilities.embedding'), icon: 'scatter_plot', color: 'indigo' },
+    vision: { label: t('llm.capabilities.vision'), icon: 'visibility', color: 'solaire-blue' },
+    image_generation: { label: t('llm.capabilities.image_generation'), icon: 'image', color: 'solaire-fuchsia' },
+    embedding: { label: t('llm.capabilities.embedding'), icon: 'scatter_plot', color: 'solaire-iris' },
     decision: { label: t('llm.capabilities.decision'), icon: 'alt_route', color: '' },
-    transcription: { label: t('llm.capabilities.transcription'), icon: 'graphic_eq', color: 'orange' },
-    speech: { label: t('llm.capabilities.speech'), icon: 'record_voice_over', color: 'purple' },
-    realtime_conversation: { label: t('llm.capabilities.realtime_conversation'), icon: 'spatial_audio', color: 'teal' },
-    audio_understanding: { label: t('llm.capabilities.audio_understanding'), icon: 'hearing', color: 'blue' },
-    video_understanding: { label: t('llm.capabilities.video_understanding'), icon: 'movie', color: 'deep-orange' },
-    sound_generation: { label: t('llm.capabilities.sound_generation'), icon: 'surround_sound', color: 'orange' },
-    music_generation: { label: t('llm.capabilities.music_generation'), icon: 'music_note', color: 'purple' },
-    video_generation: { label: t('llm.capabilities.video_generation'), icon: 'video_library', color: 'deep-orange' },
+    transcription: { label: t('llm.capabilities.transcription'), icon: 'graphic_eq', color: 'solaire-orange' },
+    speech: { label: t('llm.capabilities.speech'), icon: 'record_voice_over', color: 'solaire-violet' },
+    realtime_conversation: { label: t('llm.capabilities.realtime_conversation'), icon: 'spatial_audio', color: 'solaire-cyan' },
+    audio_understanding: { label: t('llm.capabilities.audio_understanding'), icon: 'hearing', color: 'solaire-blue' },
+    video_understanding: { label: t('llm.capabilities.video_understanding'), icon: 'movie', color: 'solaire-orange' },
+    sound_generation: { label: t('llm.capabilities.sound_generation'), icon: 'surround_sound', color: 'solaire-orange' },
+    music_generation: { label: t('llm.capabilities.music_generation'), icon: 'music_note', color: 'solaire-violet' },
+    video_generation: { label: t('llm.capabilities.video_generation'), icon: 'video_library', color: 'solaire-orange' },
   }
   return values[capability]
 }

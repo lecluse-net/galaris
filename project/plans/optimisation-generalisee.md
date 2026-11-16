@@ -10,11 +10,12 @@ La revue exhaustive et la qualification combinée du système restent à termine
 
 ## Priorités de reprise
 
-1. **Process/MCP** : mesurer les chargements et contrôles de droits encore réalisés
-   par élément. Inventorier les consommateurs et préserver scopes, révocation,
-   fraîcheur et contrats des listes avant toute généralisation.
-2. **Services et Contacts** : mesurer le coût des métadonnées globales et des grands
-   ensembles de destinataires. Les gains supplémentaires restent à démontrer.
+1. **Process/MCP** : poursuivre l'inventaire des consommateurs au-delà des deux listes
+   de résumés qualifiées. Préserver scopes, révocation, fraîcheur et contrats avant
+   toute généralisation ; les deux lectures SQL mesurées ne qualifient pas tous les lecteurs.
+2. **Services et Contacts** : étendre la qualification au-delà des permissions ciblées
+   et des contacts canoniques PostgreSQL. Les annuaires distants réels, latences, coûts
+   de transport et gains globaux restent à mesurer.
 3. **Ressources et charge** : compléter la référence au repos, mesurer le RSS réel,
    la concurrence et l’endurance. Distinguer allocations locales, mémoire totale,
    croissance après cycles et capacité mesurée.
@@ -35,8 +36,8 @@ Les prototypes de pagination Topics écartés faute de bénéfice suffisant ne s
 
 - Lire l’état Git et les registres ; comparer leurs empreintes aux sources courantes.
   Réconcilier les ajouts et requalifier seulement les preuves affectées.
-- Commencer par Process/MCP, avec un parcours complet et un budget de mesure borné.
-  Choisir ensuite les lots selon le coût réellement observé.
+- Partir des coûts restant ouverts ci-dessus, avec un parcours complet et un budget
+  de mesure borné. Choisir les lots selon le coût réellement observé.
 - Exécuter `make docs-prepare` après les modifications documentaires, sur des sources stabilisées.
 
 ## Qualification des prochains lots

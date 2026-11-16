@@ -9,6 +9,7 @@ export interface AgentSelectionOption {
   id: number
   label: string
   has_avatar: boolean
+  updated_at?: string | null
   driver?: string | null
   teams?: AgentSelectionTeam[]
 }

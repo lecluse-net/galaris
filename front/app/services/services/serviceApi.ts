@@ -336,8 +336,8 @@ export default {
     refreshCatalog(): Promise<AxiosResponse<ServiceCatalog>> {
         return api.post('/services/catalog/refresh')
     },
-    getServices(): Promise<AxiosResponse<Service[]>> {
-        return api.get('/services')
+    getServices(signal?: AbortSignal): Promise<AxiosResponse<Service[]>> {
+        return api.get('/services', { signal })
     },
 
     getCapabilities(): Promise<AxiosResponse<CapabilityDefinition[]>> {

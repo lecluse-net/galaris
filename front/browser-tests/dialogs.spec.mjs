@@ -1,7 +1,7 @@
 import { test, expect, mount } from './fixtures.mjs'
 
 for (const locale of ['en', 'fr']) test(`confirmations cancel safely, reopen and confirm once (${locale})`, async ({ page }, testInfo) => {
-  await mount(page, 'core/util/components/FolderIcon.vue', { locale })
+  await mount(page, 'core/util/components/FolderIcon.vue', { locale, shell: true })
   const open = async options => page.evaluate(async options => {
     const { showConfirmationDialog } = await import('/core/util/confirmationDialog.ts')
     window.dialogOutcomes ??= []
@@ -53,6 +53,7 @@ for (const locale of ['en', 'fr']) test(`confirmations cancel safely, reopen and
 
 test('detail headers keep long titles readable and can close and reopen', async ({ page }, testInfo) => {
   await mount(page, 'core/util/components/ConversationTurnDialog.vue', {
+    shell: true,
     props: { modelValue: true, title: 'An existing conversation '.repeat(8), closeLabel: 'Close', icon: 'chat' },
     slots: { default: [...Array.from({ length: 80 }, (_, i) => `Conversation paragraph ${i}`), 'Last turn remains readable'] },
   })

@@ -109,6 +109,7 @@
             flat
             dense
             icon="chevron_left"
+            :aria-label="$t('common.previousPage')"
             :disable="store.recentPage === 0 || store.recentLoading"
             @click="store.fetchRecentTasks(store.recentPage - 1)"
           />
@@ -116,6 +117,7 @@
             flat
             dense
             icon="chevron_right"
+            :aria-label="$t('common.nextPage')"
             :disable="!store.recentHasMore || store.recentLoading"
             @click="store.fetchRecentTasks(store.recentPage + 1)"
           />
@@ -129,13 +131,13 @@
 import { onMounted, computed, reactive, watch } from 'vue'
 import { useTaskStore } from '../stores/taskStore'
 import { useAgentChoices } from '@/app/agent'
-import { agentService } from '../../agent/services/agentService'
+import { agentService } from '@/app/agent/facade'
 import { AgentSelect } from '@/app/agent'
 import { ExecutionDateFilters } from '@/core/util'
 import ActiveTaskNode from './ActiveTaskNode.vue'
 import type { Task } from '../types'
-import { useTopicRefs } from '@/app/topic/composables/useTopicRefs'
-import TopicSelect from '@/app/topic/components/TopicSelect.vue'
+import { useTopicRefs } from '@/app/topic/facade'
+import { TopicSelect } from '@/app/topic'
 
 defineEmits<{ select: [taskId: string] }>()
 
@@ -224,7 +226,7 @@ const selectedAgentId = computed<number | null>({
   get: () => store.selectedAgentFilter,
   set: (val) => {
     store.selectedAgentFilter = val
-    store.fetchRecentTasks(0)
+    void store.fetchRecentTasks(0)
   }
 })
 
@@ -261,7 +263,7 @@ async function loadAvatars(): Promise<void> {
 onMounted(async () => {
   await agentStore.fetchAgents()
   await loadAvatars()
-  store.fetchRecentTasks(0)
+  void store.fetchRecentTasks(0)
 })
 </script>
 

@@ -19,7 +19,7 @@ from app.llm.facade import ChoiceQuestion, run_profile_decision
 
 from .deduplication import find_similar_memory_candidates
 from .contact_policy import CONTACT_COORDINATE_MESSAGE, contains_contact_coordinates
-from .facts import AtomicMemoryFact, MemoryFactReference, render_atomic_fact
+from .facts import AtomicMemoryFact, MemoryFactReference, fact_reference, render_atomic_fact
 from .provenance import source_targets
 from .models import (
     MemoryAcquisition,
@@ -176,15 +176,22 @@ async def _resolved_atomic_fact(fact: AtomicMemoryFact, *, agent_id: int,
         if metadata.get("contact_item_id") else f"galaris://agent/{agent_id}")
 
     async def reference(uri: str) -> str:
+        try:
+            uri = fact_reference(uri)
+        except ValueError as exc:
+            raise MemoryConflictError(str(exc)) from exc
         if uri == f"galaris://agent/{agent_id}":
             return f"Agent {agent_id}"
-        for prefix in ("memory://", "document://"):
+        if uri.startswith("document://"):
+            from app.document import get_item_metadata
+
+            document, _access = await get_item_metadata(UUID(uri.removeprefix("document://")), agent_id=agent_id)
+            return "Document" if contains_contact_coordinates(content=document.title) else document.title
+        for prefix in ("memory://",):
             if uri.startswith(prefix):
                 item, _, _, _, _ = await get_item(UUID(uri.removeprefix(prefix)), agent_id=agent_id)
                 if prefix == "memory://" and not item.source_managed:
                     raise MemoryConflictError("A memory reference must identify a source-backed Contact or File.")
-                if prefix == "document://" and item.node_kind != "document":
-                    raise MemoryConflictError("A document reference must identify a real Document.")
                 label = str(item.metadata_.get("display_name_override") or item.metadata_.get("display_name") or item.title)
                 # Email-only contacts and resource titles can themselves contain
                 # coordinates. Keep the identity link without copying its label
@@ -196,6 +203,26 @@ async def _resolved_atomic_fact(fact: AtomicMemoryFact, *, agent_id: int,
     if isinstance(fact.value, MemoryFactReference):
         await reference(fact.value.ref)
     return fact.model_copy(update={"subject_ref": subject}), label
+
+
+async def validate_atomic_fact_references(fact: AtomicMemoryFact, *, agent_id: int) -> None:
+    """Check live identities and ACLs without creating a memory or a graph projection."""
+    from app.document import DocumentNotFoundError, DocumentPermissionError
+    from .service import MemoryNotFoundError, MemoryPermissionError
+
+    try:
+        await _resolved_atomic_fact(fact, agent_id=agent_id, metadata={})
+    except (DocumentNotFoundError, DocumentPermissionError, MemoryNotFoundError, MemoryPermissionError) as exc:
+        raise MemoryConflictError("A fact reference is missing or inaccessible; copy an existing authorized identity.") from exc
+
+
+async def owned_contact_scope(contact_item_id: UUID, *, agent_id: int) -> UUID | None:
+    """Resolve only this agent's private contact; lineage references confer no access."""
+    return await get_db().scalar(select(MemoryItem.id).where(
+        MemoryItem.id == contact_item_id, MemoryItem.owner_agent_id == agent_id,
+        MemoryItem.source_managed.is_(True), MemoryItem.managed_source_kind == "messenger_contact",
+        MemoryItem.visibility == "private",
+    ))
 
 
 async def get_acquisition_record(acquisition_id: UUID) -> MemoryAcquisition | None:
@@ -797,6 +824,10 @@ async def _apply_acquisition_record(
         for role, uri in references:
             if uri.startswith(("memory://", "document://")):
                 target = UUID(uri.split("://", 1)[1])
+                if uri.startswith("document://"):
+                    from .document_projection import refresh
+
+                    await refresh(target)
                 if target != memory_id and await get_db().scalar(select(MemoryLink.id).where(
                     MemoryLink.source_item_id == memory_id, MemoryLink.target_item_id == target,
                     MemoryLink.relation_type == f"fact_{role}")) is None:

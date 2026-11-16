@@ -67,7 +67,7 @@ from .urls import associate_memory_url, memory_urls, register_url_reference_merg
 from .maintenance import detect_for_item as detect_memory_findings
 from core.storage import get_storage, register_storage
 from .bootstrap import register_memory
-from .acquisition_service import acquire_memory
+from .acquisition_service import acquire_memory, validate_atomic_fact_references, owned_contact_scope
 from .deduplication import find_similar_memory_candidates
 from .facade import search_memory, search_memory_detailed
 from .topic_ranking import rank_topic_projections
@@ -153,6 +153,8 @@ __all__ = [
     "TopicMaintenanceResult",
     "TopicMaintenanceSuggestion",
     "acquire_memory",
+    "validate_atomic_fact_references",
+    "owned_contact_scope",
     "get_storage",
     "find_similar_memory_candidates",
     "ensure_topic_memory_link",

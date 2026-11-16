@@ -2,7 +2,7 @@
   <div class="async-view-state q-pa-md" :role="failed ? 'alert' : 'status'" :aria-busy="!failed">
     <template v-if="failed">
       <span>{{ $t('common.viewLoadError') }}</span>
-      <q-btn flat color="primary" icon="refresh" :label="$t('common.retry')" @click="$emit('retry')" />
+      <q-btn outline  color="primary" icon="refresh" :label="$t('common.retry')" @click="$emit('retry')" />
     </template>
     <template v-else>
       <q-spinner color="primary" size="24px" aria-hidden="true" />

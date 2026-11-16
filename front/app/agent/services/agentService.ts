@@ -4,7 +4,9 @@ import type { AxiosResponse } from 'axios'
 
 const avatars = createSessionReadCache<Blob>({
     sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration,
-    group: 'agent-avatar', maxAgeMs: 60_000, maxEntries: 64, maxBytes: 16 * 1024 * 1024, size: blob => blob.size,
+    // A known revision remains reusable for this session; unversioned reads must revalidate.
+    group: 'agent-avatar', maxAgeMs: key => key.endsWith(':') ? 60_000 : Infinity,
+    maxEntries: 64, maxBytes: 16 * 1024 * 1024, size: blob => blob.size,
 })
 
 const referenceOptions = { sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration, maxAgeMs: 60_000 }

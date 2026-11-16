@@ -8,8 +8,8 @@
     </div>
 
     <div class="role-legend">
-      <q-chip dense color="blue-grey" text-color="white" icon="person">{{ t('evaluation.topicEditor.human') }}</q-chip>
-      <q-chip dense color="deep-purple" text-color="white" icon="smart_toy">{{ t('evaluation.topicEditor.ai') }}</q-chip>
+      <q-chip dense color="solaire-gray" text-color="white" icon="person">{{ t('evaluation.topicEditor.human') }}</q-chip>
+      <q-chip dense color="solaire-iris" text-color="white" icon="smart_toy">{{ t('evaluation.topicEditor.ai') }}</q-chip>
       <span class="text-caption text-grey-7">{{ t('evaluation.topicEditor.identitiesIgnored') }}</span>
     </div>
 
@@ -82,7 +82,7 @@
           </div>
 
           <div class="expected-topic">
-            <q-icon name="topic" color="deep-purple" size="22px" />
+            <q-icon name="topic" color="solaire-iris" size="22px" />
             <q-input
               :model-value="expectedTopics[index] ?? ''"
               outlined
@@ -119,7 +119,7 @@
     <div v-if="!readonly" class="add-message-footer">
       <q-btn
         outline
-        color="deep-purple"
+        color="solaire-iris"
         icon="add_comment"
         :label="t('evaluation.topicEditor.addMessage')"
         @click="addMessage"

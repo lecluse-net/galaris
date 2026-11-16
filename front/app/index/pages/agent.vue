@@ -1,3 +1,6 @@
+<route lang="json">
+{ "path": "/agent" }
+</route>
 <template>
   <component :is="previewAgentId ? 'div' : QPage" class="agent-page q-pa-md" :class="{ 'agent-page--preview': previewAgentId !== undefined }">
     <PageHeader v-if="!previewAgentId" help-key="agents" :help-text="$t('contextHelpPages.agents')" :icon="navigationIcon('people')" :title="$t('nav.agent')" :description="$t('nav.agent_desc')" />
@@ -9,6 +12,13 @@
     </q-tabs>
 
     <q-separator v-if="!previewAgentId" />
+
+    <template v-if="canViewAgents">
+      <q-banner v-for="failure in catalogueFailures" :key="failure.action" role="alert" class="q-mt-md">
+        {{ failure.label }} · {{ apiErrorDetail(failure.error) ?? t('common.anError') }}
+        <template #action><q-btn outline color="primary" :label="t('common.retry')" @click="retryCatalogue(failure.action)" /></template>
+      </q-banner>
+    </template>
 
     <q-tab-panels v-model="activeTab" animated>
       <!-- AGENTS TAB -->
@@ -50,7 +60,7 @@
         <div v-if="!previewAgentId" class="agent-page-actions row justify-end q-mb-md q-gutter-sm">
           <q-btn
             v-if="canEdit && managedAgents.length"
-            color="deep-purple"
+            color="solaire-iris"
             icon="restart_alt"
             :label="$t('agent.harness.restartAll')"
             :loading="fleetRestarting"
@@ -199,30 +209,30 @@
                 </q-chip>
                 <div class="agent-action-buttons row items-center justify-end">
                   <template v-if="isManagedRuntime(agent) && canManageAgent(agent)">
-                    <q-btn
+                    <q-btn outline
                       v-if="hasHarnessAction(agent, 'start')"
                       class="agent-action-button solaire-warning-action"
-                      flat color="warning" icon="play_arrow" :label="$t('agent.harness.start')" :aria-label="$t('agent.harness.start')" size="sm"
+                       color="warning" icon="play_arrow" :label="$t('agent.harness.start')" :aria-label="$t('agent.harness.start')" size="sm"
                       :loading="Boolean(harnessActionLoading[agent.id])"
                       :disable="harnessLifecycleBusy(agent)"
                       @click="runHarnessAction(agent, 'start')"
                     >
                       <q-tooltip>{{ $t('agent.harness.start') }}</q-tooltip>
                     </q-btn>
-                    <q-btn
+                    <q-btn outline
                       v-if="hasHarnessAction(agent, 'stop')"
                       class="agent-action-button solaire-warning-action"
-                      flat color="warning" icon="stop" :label="$t('agent.harness.stop')" :aria-label="$t('agent.harness.stop')" size="sm"
+                       color="warning" icon="stop" :label="$t('agent.harness.stop')" :aria-label="$t('agent.harness.stop')" size="sm"
                       :loading="Boolean(harnessActionLoading[agent.id])"
                       :disable="harnessLifecycleBusy(agent)"
                       @click="runHarnessAction(agent, 'stop')"
                     >
                       <q-tooltip>{{ $t('agent.harness.stop') }}</q-tooltip>
                     </q-btn>
-                    <q-btn
+                    <q-btn outline
                       v-if="hasHarnessAction(agent, 'restart')"
                       class="agent-action-button"
-                      flat color="deep-purple" icon="restart_alt" :label="harnessRestartLabel(agent)" :aria-label="harnessRestartLabel(agent)" size="sm"
+                       color="solaire-iris" icon="restart_alt" :label="harnessRestartLabel(agent)" :aria-label="harnessRestartLabel(agent)" size="sm"
                       :loading="harnessActionLoading[agent.id] === 'restart'"
                       :disable="harnessLifecycleBusy(agent)"
                       @click="runHarnessAction(agent, 'restart')"
@@ -230,10 +240,10 @@
                       <q-tooltip>{{ harnessRestartLabel(agent) }}</q-tooltip>
                     </q-btn>
                   </template>
-                  <q-btn
+                  <q-btn outline
                     v-if="canManageAgent(agent)"
                     class="agent-action-button"
-                    flat color="secondary" icon="edit" :label="$t('common.edit')" :aria-label="$t('agent.editServicetip')" size="sm"
+                     color="secondary" icon="edit" :label="$t('common.edit')" :aria-label="$t('agent.editServicetip')" size="sm"
                     @click="openAgentDialog(agent)"
                   >
                     <q-tooltip>{{ $t('agent.editServicetip') }}</q-tooltip>
@@ -241,7 +251,7 @@
                   <q-btn
                     v-if="canManageAgent(agent)"
                     class="agent-action-button"
-                    flat color="negative" icon="delete" :label="$t('common.delete')" :aria-label="$t('agent.deleteServicetip')" size="sm"
+                     color="negative" icon="delete" :label="$t('common.delete')" :aria-label="$t('agent.deleteServicetip')" size="sm"
                     @click="confirmDeleteAgent(agent)"
                   >
                     <q-tooltip>{{ $t('agent.deleteServicetip') }}</q-tooltip>
@@ -290,10 +300,10 @@
 
           <template v-slot:body-cell-actions="props">
             <q-td :props="props" class="text-center">
-              <q-btn v-if="canEditGlobalCatalog" flat round color="primary" icon="edit" size="sm" @click="openTitleDialog(props.row)">
+              <q-btn :aria-label="$t('common.edit')" v-if="canEditGlobalCatalog" flat round color="primary" icon="edit" size="sm" @click="openTitleDialog(props.row)">
                 <q-tooltip>{{ $t('common.edit') }}</q-tooltip>
               </q-btn>
-              <q-btn v-if="canEditGlobalCatalog" flat round color="negative" icon="delete" size="sm" @click="confirmDeleteTitle(props.row)">
+              <q-btn :aria-label="$t('common.delete')" v-if="canEditGlobalCatalog" flat round color="negative" icon="delete" size="sm" @click="confirmDeleteTitle(props.row)">
                 <q-tooltip>{{ $t('common.delete') }}</q-tooltip>
               </q-btn>
             </q-td>
@@ -315,11 +325,7 @@
 
     <q-dialog v-model="showAgentDialog">
       <q-card class="agent-dialog-card galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ isAgentEdit ? $t('agent.editAgent') : $t('agent.addAgent') }}</div>
-          <q-space />
-          <q-btn icon="close" :aria-label="$t('common.close')" flat round dense v-close-popup class="text-white" />
-        </q-card-section>
+        <DialogHeader :title="isAgentEdit ? $t('agent.editAgent') : $t('agent.addAgent')" :close-label="$t('common.close')" />
 
         <q-tabs
           v-if="isAgentEdit"
@@ -351,7 +357,7 @@
 
             <!-- Model configuration for every existing agent -->
             <template v-if="isAgentEdit && agentDialogTab === 'models'">
-              <q-banner class="bg-blue-1 text-primary q-mb-md" dense rounded>
+              <q-banner class="bg-solaire-blue-light text-primary q-mb-md" dense rounded>
                 <template #avatar><q-icon name="info" /></template>
                 {{ $t('agent.models.intro') }}
               </q-banner>
@@ -423,7 +429,7 @@
               </q-card>
 
               <div class="galaris-dialog-actions row justify-end q-mt-md q-gutter-sm q-pa-md">
-                <q-btn :label="$t('common.cancel')" color="grey" flat v-close-popup />
+                <q-btn outline :label="$t('common.cancel')" color="grey"  v-close-popup />
                 <q-btn v-if="canSaveAgent" :label="$t('common.save')" type="submit" color="primary" :loading="agentStore.loading || harnessChangePending" />
               </div>
             </template>
@@ -472,7 +478,7 @@
                     <q-btn
                       v-if="canManageCurrentAgent && agentForm.has_avatar"
                       class="agent-avatar-action"
-                      flat
+
                       color="negative"
                       icon="delete"
                       :label="$t('agent.deleteAvatar')"
@@ -572,7 +578,7 @@
               </template>
 
               <div class="galaris-dialog-actions row justify-end q-gutter-x-sm q-pa-md">
-                <q-btn :label="$t('common.cancel')" color="grey" flat v-close-popup />
+                <q-btn outline :label="$t('common.cancel')" color="grey"  v-close-popup />
                 <q-btn
                   v-if="canSaveAgent"
                   :label="isAgentEdit ? $t('common.edit') : $t('common.create')"
@@ -592,111 +598,7 @@
           />
 
           <!-- MCP tab for every existing agent driver -->
-          <template v-if="isAgentEdit && agentDialogTab === 'mcp' && canManageMcp">
-            <div class="q-gutter-y-md">
-              <q-banner class="bg-info text-white" dense rounded>
-                <template v-slot:avatar><q-icon name="hub" /></template>
-                <div class="text-caption">{{ $t('agent.mcp.intro') }}</div>
-              </q-banner>
-
-              <!-- URL de l'endpoint MCP -->
-              <q-input
-                :model-value="mcpEndpointUrl"
-                :label="$t('agent.mcp.endpointUrl')"
-                filled
-                readonly
-                :hint="$t('agent.mcp.endpointHint')"
-              >
-                <template v-slot:append>
-                  <q-btn flat round dense icon="content_copy" @click="copyText(mcpEndpointUrl)">
-                    <q-tooltip>{{ $t('agent.mcp.copy') }}</q-tooltip>
-                  </q-btn>
-                </template>
-              </q-input>
-
-              <!-- Client configuration snippet (mcpServers). -->
-              <q-input
-                :model-value="mcpConfigSnippet"
-                :label="$t('agent.mcp.configSnippet')"
-                filled
-                readonly
-                type="textarea"
-                autogrow
-                input-style="font-family: monospace; font-size: 12px"
-              >
-                <template v-slot:append>
-                  <q-btn flat round dense icon="content_copy" @click="copyText(mcpConfigSnippet)">
-                    <q-tooltip>{{ $t('agent.mcp.copy') }}</q-tooltip>
-                  </q-btn>
-                </template>
-              </q-input>
-
-              <!-- Tokens -->
-              <div class="row items-center q-mt-md">
-                <div class="text-subtitle2 text-primary">{{ $t('agent.mcp.tokensTitle') }}</div>
-                <q-space />
-                <q-btn
-                  v-if="canManageMcp"
-                  color="primary"
-                  icon="add"
-                  :label="$t('agent.mcp.newToken')"
-                  no-caps
-                  :loading="mcpTokensLoading"
-                  @click="openCreateMcpToken"
-                />
-              </div>
-              <div class="text-caption text-grey-6">{{ $t('agent.mcp.tokensHint') }}</div>
-
-              <q-table
-                :rows="mcpTokens"
-                :columns="mcpTokenColumns"
-                row-key="id"
-                dense
-                flat
-                :loading="mcpTokensLoading"
-                :rows-per-page-options="[0]"
-                hide-bottom
-                :no-data-label="$t('agent.mcp.noToken')"
-              >
-                <template v-slot:body-cell-label="props">
-                  <q-td :props="props">{{ props.row.label || '-' }}</q-td>
-                </template>
-                <template v-slot:body-cell-token="props">
-                  <q-td :props="props"><code>{{ props.row.token }}</code></q-td>
-                </template>
-                <template v-slot:body-cell-enabled="props">
-                  <q-td :props="props">
-                    <q-badge :color="props.row.enabled ? 'positive' : 'grey'">
-                      {{ props.row.enabled ? $t('user.active') : $t('user.inactive') }}
-                    </q-badge>
-                  </q-td>
-                </template>
-                <template v-slot:body-cell-created_at="props">
-                  <q-td :props="props">{{ formatDateTime(props.row.created_at) }}</q-td>
-                </template>
-                <template v-slot:body-cell-actions="props">
-                  <q-td :props="props">
-                    <q-btn
-                      v-if="canManageMcp"
-                      flat round
-                      :color="props.row.enabled ? 'grey' : 'positive'"
-                      :icon="props.row.enabled ? 'block' : 'check_circle'"
-                      @click="toggleMcpToken(props.row)"
-                    >
-                      <q-tooltip>{{ props.row.enabled ? $t('agent.mcp.disable') : $t('agent.mcp.enable') }}</q-tooltip>
-                    </q-btn>
-                    <q-btn v-if="canManageMcp" flat round color="negative" icon="delete" @click="deleteMcpToken(props.row)">
-                      <q-tooltip>{{ $t('common.delete') }}</q-tooltip>
-                    </q-btn>
-                  </q-td>
-                </template>
-              </q-table>
-
-              <div class="galaris-dialog-actions row justify-end q-mt-md q-pa-md">
-                <q-btn :label="$t('common.close')" color="grey" flat v-close-popup />
-              </div>
-            </div>
-          </template>
+          <AgentMcpPanel v-if="isAgentEdit && agentDialogTab === 'mcp' && canManageMcp" :agent="agentForm" :can-manage="canManageMcp" />
         </q-card-section>
       </q-card>
     </q-dialog>
@@ -713,18 +615,7 @@
       @hide="settleHarnessChangeConfirmation(false)"
     >
       <q-card class="galaris-dialog-card" style="width: 560px; max-width: 92vw">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ $t('agent.harness.changeConfirmTitle') }}</div>
-          <q-space />
-          <q-btn
-            icon="close"
-            flat
-            round
-            dense
-            :aria-label="$t('common.close')"
-            @click="settleHarnessChangeConfirmation(false)"
-          />
-        </q-card-section>
+        <DialogHeader :title="$t('agent.harness.changeConfirmTitle')" :close-label="$t('common.close')" :close-popup="false" @close="settleHarnessChangeConfirmation(false)" />
         <q-card-section class="galaris-dialog-body">
           <q-banner rounded class="bg-warning text-dark">
             <template v-slot:avatar><q-icon name="warning" /></template>
@@ -734,8 +625,8 @@
         </q-card-section>
         <q-separator />
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn
-            flat
+          <q-btn outline
+
             color="grey-7"
             :label="$t('common.cancel')"
             @click="settleHarnessChangeConfirmation(false)"
@@ -755,18 +646,7 @@
       @hide="settlePausedHarnessTasksConfirmation(false)"
     >
       <q-card class="galaris-dialog-card" style="width: 620px; max-width: 92vw">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ $t('agent.harness.blockingTasksTitle') }}</div>
-          <q-space />
-          <q-btn
-            icon="close"
-            flat
-            round
-            dense
-            :aria-label="$t('common.close')"
-            @click="settlePausedHarnessTasksConfirmation(false)"
-          />
-        </q-card-section>
+        <DialogHeader :title="$t('agent.harness.blockingTasksTitle')" :close-label="$t('common.close')" :close-popup="false" @close="settlePausedHarnessTasksConfirmation(false)" />
         <q-card-section class="galaris-dialog-body">
           <q-banner v-if="pausedHarnessTasks.length > 0" rounded class="bg-warning text-dark">
             <template v-slot:avatar><q-icon name="pause_circle" /></template>
@@ -791,7 +671,7 @@
           <q-banner
             v-if="activeHarnessTaskCount > 0"
             rounded
-            class="bg-orange-1 text-dark q-mt-md"
+            class="bg-solaire-orange-light text-dark q-mt-md"
           >
             <template v-slot:avatar><q-icon name="schedule" color="warning" /></template>
             {{ $t('agent.harness.activeTasksMessage', { count: activeHarnessTaskCount }) }}
@@ -813,8 +693,8 @@
         </q-card-section>
         <q-separator />
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn
-            flat
+          <q-btn outline
+
             color="grey-7"
             :label="$t('common.cancel')"
             @click="settlePausedHarnessTasksConfirmation(false)"
@@ -855,7 +735,7 @@
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn :label="$t('common.cancel')" color="grey" flat v-close-popup />
+          <q-btn outline :label="$t('common.cancel')" color="grey"  v-close-popup />
           <q-btn
             v-if="richTextAgent && canManageAgent(richTextAgent)"
             :label="$t('common.save')"
@@ -868,10 +748,6 @@
     </q-dialog>
 
     <AgentAuxiliaryDialogs
-      v-model:show-create-mcp-token="showCreateMcpTokenDialog"
-      v-model:new-mcp-token-label="newMcpTokenLabel"
-      v-model:show-new-mcp-token="showNewMcpTokenDialog"
-      v-model:new-mcp-token-value="newMcpTokenValue"
       v-model:show-title="showTitleDialog"
       :title-form="titleForm"
       @update-title="Object.assign(titleForm, $event)"
@@ -882,8 +758,7 @@
       v-model:show-delete="showDeleteDialog"
       :can-edit="canEdit"
       :can-edit-catalog="canEditGlobalCatalog"
-      :can-manage-mcp="canManageMcp"
-      :loading="agentStore.loading || mcpTokensLoading"
+      :loading="agentStore.loading"
       :is-title-edit="isTitleEdit"
       :is-group-edit="isGroupEdit"
       :gender-options="genderOptions"
@@ -892,8 +767,6 @@
       :harness-logs-loading="harnessLogsLoading"
       :harness-log-color="harnessLogColor"
       :delete-message="deleteMessage"
-      @create-mcp-token="confirmCreateMcpToken"
-      @copy-token="copyText"
       @submit-title="onTitleSubmit"
       @submit-group="onGroupSubmit"
       @close-harness-logs="closeHarnessLogs"
@@ -904,14 +777,14 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { showConfirmationDialog } from '@/core/util'
 import { useRoute } from 'vue-router'
 import { navigationIcon } from '@/core/navigation'
 import { ref, onUnmounted, reactive, computed, watch, type Component } from 'vue'
-import { useAgentStore } from '../stores/agentStore'
-import { agentService } from '../services/agentService'
-import type { Agent, AgentManagerInfo, ExecutorDriverInfo, Title, AgentGroup } from '../services/agentService'
-import { titleLabel } from '../titleLabels'
+import { useAgentStore, agentService } from '@/app/agent/facade'
+import type { Agent, AgentManagerInfo, ExecutorDriverInfo, Title, AgentGroup } from '@/app/agent/contracts'
+import { titleLabel } from '@/app/agent/interface'
 import { harnessService } from '@/app/harnesses'
 import type {
   HarnessAction,
@@ -920,22 +793,21 @@ import type {
   HarnessRuntimeState,
   HarnessTaskBlocker,
 } from '@/app/harnesses'
-import { getAgentDriverTab } from '../driverTabs'
-import { mcpTokenService, type AgentMcpToken } from '../services/mcpTokenService'
-import { useLLMProviderStore } from '@/app/llm/stores/llmProviderStore'
-import llmProviderService from '@/app/llm/services/llmProviderService'
-import type { LLMModelInfo } from '@/app/llm/services/llmProviderService'
-import { useParamsStore } from '@/core/params/stores/paramsStore'
-import { useLLMProfileStore } from '@/app/llm/stores/llmProfileStore'
+import { getAgentDriverTab } from '@/app/agent/interface'
+import { useLLMProviderStore } from '@/app/llm/facade'
+import { llmProviderService } from '@/app/llm/facade'
+import type { LLMModelInfo } from '@/app/llm/contracts'
+import { useParamsStore } from '@/core/params/facade'
+import { useLLMProfileStore } from '@/app/llm/facade'
 import { QPage, useQuasar, type QTableColumn } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { isAxiosError } from 'axios'
 import { apiErrorDetail } from '@/core/api'
 import { RichTextEditor, richTextExcerpt, PageHeader, startVisiblePolling } from '@/core/util'
 import { invalidateSessionReads } from '@/core/util/facade'
-import { useHarnessLogs } from '../composables/useHarnessLogs'
-import AgentAuxiliaryDialogs from '../components/AgentAuxiliaryDialogs.vue'
-import AvatarGenerationDialog from '../components/AvatarGenerationDialog.vue'
+import { storeRequests } from '@/core/util/facade'
+import { useHarnessLogs } from '@/app/agent/interface'
+import { AgentAuxiliaryDialogs, AvatarGenerationDialog, AgentMcpPanel } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { TeamManager, TeamMembersDialog } from '@/core/team'
 
@@ -944,6 +816,14 @@ const emit = defineEmits<{ deleted: [] }>()
 const $q = useQuasar()
 const { t } = useI18n()
 const agentStore = useAgentStore()
+const catalogueRequests = storeRequests(agentStore)
+type CatalogueRead = 'fetchAgents' | 'fetchTitles' | 'fetchGroups'
+const catalogueFailures = computed(() => ([
+  { action: 'fetchAgents' as const, label: t('agent.tabAgents') },
+  { action: 'fetchTitles' as const, label: t('agent.tabTitles') },
+  { action: 'fetchGroups' as const, label: t('team.title') },
+]).flatMap(read => catalogueRequests[read.action]?.error ? [{ ...read, error: catalogueRequests[read.action].error }] : []))
+async function retryCatalogue(action: CatalogueRead): Promise<void> { await agentStore[action](true) }
 const llmProviderStore = useLLMProviderStore()
 const paramsStore = useParamsStore()
 const llmProfileStore = useLLMProfileStore()
@@ -983,121 +863,6 @@ const isCurrentAgentDialog = (generation: number): boolean => (
   !pageDisposed && showAgentDialog.value && generation === agentDialogGeneration
 )
 
-// MCP tab: access tokens for the agent's unified MCP server.
-const mcpTokens = ref<AgentMcpToken[]>([])
-const mcpTokensLoading = ref(false)
-const showCreateMcpTokenDialog = ref(false)
-const newMcpTokenLabel = ref('')
-const showNewMcpTokenDialog = ref(false)
-const newMcpTokenValue = ref('')
-
-const mcpEndpointUrl = computed(
-  () => `${window.location.origin}/api/mcp/${agentForm.code || ''}`
-)
-const mcpConfigSnippet = computed(() => JSON.stringify(
-  {
-    mcpServers: {
-      [agentForm.code || 'agent']: {
-        type: 'http',
-        url: mcpEndpointUrl.value,
-        headers: { Authorization: 'Bearer <TOKEN>' },
-      },
-    },
-  },
-  null,
-  2,
-))
-const mcpTokenColumns = computed<QTableColumn[]>(() => [
-  { name: 'label', label: t('agent.mcp.colLabel'), field: 'label', align: 'left' },
-  { name: 'token', label: t('agent.mcp.colToken'), field: 'token', align: 'left' },
-  { name: 'enabled', label: t('agent.mcp.colState'), field: 'enabled', align: 'center' },
-  { name: 'created_at', label: t('agent.mcp.colCreatedAt'), field: 'created_at', align: 'left' },
-  { name: 'actions', label: t('common.actions'), field: 'actions', align: 'right' },
-])
-
-function formatDateTime(dateStr: string) {
-  return new Date(dateStr).toLocaleString()
-}
-
-function copyText(value: string) {
-  navigator.clipboard.writeText(value).then(() => {
-    $q.notify({ type: 'positive', message: t('agent.mcp.copied') })
-  }).catch(() => {
-    $q.notify({ type: 'negative', message: t('agent.mcp.copyFailed') })
-  })
-}
-
-async function loadMcpTokens() {
-  if (!canManageMcp.value || !isAgentEdit.value || !agentForm.id) return
-  mcpTokensLoading.value = true
-  try {
-    const { data } = await mcpTokenService.listTokens(agentForm.id)
-    mcpTokens.value = data
-  } catch (error) {
-    console.error('Error loading MCP tokens:', error)
-    $q.notify({ type: 'negative', message: t('agent.mcp.loadError') })
-  } finally {
-    mcpTokensLoading.value = false
-  }
-}
-
-function openCreateMcpToken() {
-  if (!canManageMcp.value) return
-  newMcpTokenLabel.value = ''
-  showCreateMcpTokenDialog.value = true
-}
-
-async function confirmCreateMcpToken() {
-  if (!canManageMcp.value || !agentForm.id) return
-  mcpTokensLoading.value = true
-  try {
-    const { data } = await mcpTokenService.createToken(
-      agentForm.id,
-      newMcpTokenLabel.value ? { label: newMcpTokenLabel.value } : {},
-    )
-    // Reveal the clear-text token only in this copy dialog, then reload the masked list.
-    newMcpTokenValue.value = data.token
-    showCreateMcpTokenDialog.value = false
-    showNewMcpTokenDialog.value = true
-    await loadMcpTokens()
-  } catch (error) {
-    console.error('Error creating MCP token:', error)
-    $q.notify({ type: 'negative', message: t('agent.mcp.createError') })
-  } finally {
-    mcpTokensLoading.value = false
-  }
-}
-
-async function toggleMcpToken(token: AgentMcpToken) {
-  if (!canManageMcp.value || !agentForm.id) return
-  try {
-    const { data } = await mcpTokenService.updateToken(agentForm.id, token.id, { enabled: !token.enabled })
-    const idx = mcpTokens.value.findIndex(tk => tk.id === token.id)
-    if (idx !== -1) mcpTokens.value[idx] = data
-  } catch (error) {
-    console.error('Error toggling MCP token:', error)
-    $q.notify({ type: 'negative', message: t('agent.mcp.toggleError') })
-  }
-}
-
-async function deleteMcpToken(token: AgentMcpToken) {
-  if (!canManageMcp.value || !agentForm.id) return
-  showConfirmationDialog({
-    title: t('common.deleteConfirmTitle'),
-    message: t('agent.mcp.deleteConfirm'),
-    cancel: true,
-  }).onOk(async () => {
-    try {
-      if (agentForm.id === null) return
-      await mcpTokenService.deleteToken(agentForm.id, token.id)
-      mcpTokens.value = mcpTokens.value.filter(tk => tk.id !== token.id)
-      $q.notify({ type: 'positive', message: t('agent.mcp.deleted') })
-    } catch (error) {
-      console.error('Error deleting MCP token:', error)
-      $q.notify({ type: 'negative', message: t('agent.mcp.deleteError') })
-    }
-  })
-}
 const showRichTextDialog = ref(false)
 const showTitleDialog = ref(false)
 const showGroupDialog = ref(false)
@@ -1633,6 +1398,7 @@ const canManageMcp = computed(() => (
   canManageCurrentAgent.value && privilegeStore.hasPrivilege(privileges.MCP_API_ACCESS)
 ))
 
+
 const activeDriverTab = computed(() => getAgentDriverTab(agentForm.agent_driver))
 
 const pipelineVoiceOptions = computed<VoiceOption[]>(() => [
@@ -1755,7 +1521,6 @@ const openAgentDialog = (agent: Agent | null = null) => {
   const generation = ++agentDialogGeneration
   resetAgentForm()
   agentDialogTab.value = 'general'
-  mcpTokens.value = []
   if (agent) {
     isAgentEdit.value = true
     Object.assign(agentForm, {
@@ -2166,7 +1931,6 @@ watch(canViewParams, allowed => {
 
 // Refresh tab-specific options only when their tab opens.
 watch(agentDialogTab, (tab) => {
-  if (tab === 'mcp') loadMcpTokens()
   if (tab === 'models' && showAgentDialog.value) void loadModelOptions(agentDialogGeneration)
 })
 

@@ -47,8 +47,8 @@ for (const scenario of [
       await dialog.getByRole('button', { name: 'Annuler', exact: true }).first().click()
       await expect(dialog).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'Examiner la demande', exact: true })).toHaveCount(0)
-      const functions = page.getByRole('region', { name: 'Fonctions et prompts des outils', exact: true })
-      await functions.getByRole('complementary', { name: 'Outil', exact: true }).getByRole('button', { name: 'Mail', exact: true }).click()
+      const functions = page.getByRole('region', { name: 'Fonctions et prompts des services', exact: true })
+      await functions.getByRole('complementary', { name: 'Service', exact: true }).getByRole('button', { name: fixture.mail_service_label, exact: true }).click()
       const mailFunction = functions.locator(scenario.mobile ? 'article' : 'tr').filter({ has: page.getByText('mail_send', { exact: true }) })
       await expect(mailFunction).toContainText('Règle configurée: Sur demande')
     } else if (scenario.channel === 'journal') {

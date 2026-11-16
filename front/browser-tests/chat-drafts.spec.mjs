@@ -2,7 +2,10 @@ import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 
 const composer = 'app/chat/components/Composer.vue'
 const props = { roomId: 'room-a', sending: false }
-const local = page => page.evaluate(() => JSON.parse(localStorage.getItem('galaris:chat-draft:v1:1:room-a')))
+const local = page => page.evaluate(async () => {
+  const { draftKey } = await import('/app/chat/drafts.ts')
+  return JSON.parse(localStorage.getItem(draftKey(1, 'room-a', localStorage.getItem('galaris:session-generation') ?? '')))
+})
 const acknowledge = (page, accepted) => page.evaluate(accepted => window.testApp.events.filter(e => e.name === 'send').at(-1).args[4](accepted), accepted)
 
 for (const [width, dark] of [[1440, false], [390, true]]) test(`draft text and attachment survive reload, room navigation and failed send at ${width}px; success keeps later typing`, async ({ page }, testInfo) => {
@@ -121,28 +124,35 @@ test('lost save receipt is retried before synchronizing subsequent typing', asyn
   await expect(page.locator('textarea')).toHaveValue('More recent local text')
 })
 
-test('server conflict preserves local text and requires confirmation before replacement', async ({ page }) => {
+for (const failure of [409, 503, 'pending']) test(`autosave ${failure} never blocks sending local text and files or displays an error`, async ({ page }) => {
   await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })
   await mount(page, composer, { props })
   await page.locator('textarea').fill('Local text to preserve')
-  let remote = { revision: 4, content: { client_message_id: 'server-key', text: 'Other editor text', files: [], resources: [], effort: 2 } }
-  await page.route('**/api/chat/rooms/room-a/draft', route => {
-    if (route.request().method() === 'PUT') {
-      const body = route.request().postDataJSON()
-      if (body.expected_revision !== remote.revision) return route.fulfill({ status: 409, json: { detail: 'Conflict' } })
-      remote = { revision: remote.revision + 1, content: body.content }
-    }
-    return route.fulfill({ json: remote })
+  let saving = false
+  let release
+  const gate = new Promise(resolve => { release = resolve })
+  await page.route('**/api/chat/rooms/room-a/draft', async route => {
+    if (route.request().method() === 'GET') return route.fulfill({ json: { revision: 4, content: null } })
+    saving = true
+    if (failure === 'pending') await gate
+    return route.fulfill({ status: failure === 'pending' ? 503 : failure, json: { detail: 'Synthetic autosave interruption' } })
   })
   await page.evaluate(() => window.dispatchEvent(new Event('online')))
-  const replace = page.getByRole('button', { name: 'Keep this draft', exact: true })
-  await expect(replace).toBeVisible()
+  await expect.poll(() => saving).toBe(true)
+  await page.route('**/api/chat/rooms/room-a/draft/files/*', route => route.fulfill({ status: 503, json: { detail: 'Synthetic upload autosave interruption' } }))
+  await page.locator('input[type=file]').setInputFiles({ name: 'local.txt', mimeType: 'text/plain', buffer: Buffer.from('Local attachment bytes') })
   await expect(page.locator('textarea')).toHaveValue('Local text to preserve')
-  await replace.click()
-  await expect(page.getByRole('dialog')).toBeVisible()
-  expect(remote.content.text).toBe('Other editor text')
-  await page.getByRole('dialog').getByRole('button', { name: 'Keep this draft', exact: true }).click()
-  await expect.poll(() => remote.content.text).toBe('Local text to preserve')
+  await page.getByRole('button', { name: 'Post', exact: true }).click()
+  try {
+    await expect.poll(() => page.evaluate(() => window.testApp.events.filter(e => e.name === 'send').length)).toBe(1)
+    const sent = await page.evaluate(async () => {
+      const args = window.testApp.events.find(e => e.name === 'send').args
+      return { text: args[0], file: await args[1]?.[0]?.text(), errors: window.testApp.events.filter(e => e.name === 'error').length }
+    })
+    expect(sent).toEqual({ text: 'Local text to preserve', file: 'Local attachment bytes', errors: 0 })
+    await acknowledge(page, false)
+    await expect(page.locator('textarea')).toHaveValue('Local text to preserve')
+  } finally { release() }
 })
 
 test('a previous composer cannot overwrite the recovery snapshot after remount', async ({ page }) => {
@@ -168,7 +178,7 @@ test('a previous composer cannot overwrite the recovery snapshot after remount',
   await expect(page.locator('textarea')).toHaveValue('After remount')
 })
 
-test('a second attachment selected during an upload is saved before sending', async ({ page }) => {
+test('a second attachment selected during an upload is sent from local bytes without waiting', async ({ page }) => {
   await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })
   let release
   let uploads = 0
@@ -185,9 +195,93 @@ test('a second attachment selected during an upload is saved before sending', as
   await page.locator('input[type=file]').setInputFiles({ name: 'file-2.txt', mimeType: 'text/plain', buffer: Buffer.from('B') })
   await expect(page.getByRole('button', { name: 'Remove file-2.txt', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Post', exact: true }).click()
-  release()
-  await expect.poll(() => uploads).toBe(2)
   await expect.poll(() => page.evaluate(() => window.testApp.events.filter(e => e.name === 'send').length)).toBe(1)
-  expect((await local(page)).content.files.every(file => file.uploaded)).toBe(true)
+  const sent = await page.evaluate(async () => Promise.all(window.testApp.events.find(e => e.name === 'send').args[1].map(async file => [file.name, await file.text()])))
+  expect(sent).toEqual([['file-1.txt', 'A'], ['file-2.txt', 'B']])
   await acknowledge(page, true)
+  release()
+  await expect(page.getByRole('button', { name: 'Remove file-2.txt', exact: true })).toHaveCount(0)
+})
+
+for (const keepLocal of [true, false]) test(`${keepLocal ? 'a nonempty' : 'an empty'} local draft resolves a different remote snapshot automatically`, async ({ page }) => {
+  await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })
+  await mount(page, composer, { props })
+  await page.locator('textarea').fill('Preferred local draft')
+  await page.evaluate(() => window.dispatchEvent(new Event('online')))
+  await expect.poll(async () => (await local(page)).dirty).toBe(false)
+  if (!keepLocal) await page.evaluate(async () => {
+    const { draftKey, readLocalDraft, writeLocalDraft } = await import('/app/chat/drafts.ts')
+    const key = draftKey(1, 'room-a', localStorage.getItem('galaris:session-generation') ?? '')
+    writeLocalDraft(key, { ...readLocalDraft(key), content: null, dirty: true })
+  })
+  let remote = { revision: 7, content: { client_message_id: '00000000-0000-4000-8000-000000000055', files: [], resources: [], effort: 2, text: 'Different remote draft' } }
+  await page.route('**/api/chat/rooms/room-a/draft', route => {
+    if (route.request().method() === 'PUT') {
+      const body = route.request().postDataJSON()
+      if (body.expected_revision !== remote.revision) return route.fulfill({ status: 409, json: { detail: 'Synthetic conflict' } })
+      remote = { revision: remote.revision + 1, content: body.content }
+    }
+    return route.fulfill({ json: remote })
+  })
+  await mount(page, composer, { props })
+  const expected = keepLocal ? 'Preferred local draft' : 'Different remote draft'
+  await expect(page.locator('textarea')).toHaveValue(expected)
+  await page.evaluate(() => window.dispatchEvent(new Event('online')))
+  await expect.poll(() => remote.content?.text).toBe(expected)
+  expect(await page.evaluate(() => window.testApp.events.filter(e => e.name === 'error').length)).toBe(0)
+})
+
+test('two login sessions of the same user restore their own local drafts', async ({ page }) => {
+  await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })
+  let active = 'first'
+  const remotes = new Map()
+  await page.route('**/api/chat/rooms/room-a/draft', route => {
+    if (route.request().method() === 'PUT') {
+      const body = route.request().postDataJSON()
+      remotes.set(active, { revision: body.expected_revision + 1, content: body.content })
+    }
+    return route.fulfill({ json: remotes.get(active) ?? { revision: 0, content: null } })
+  })
+  await mount(page, composer, { props })
+  for (const [session, text] of [['first', 'First session draft'], ['second', 'Second session draft']]) {
+    active = session
+    await page.evaluate(value => localStorage.setItem('galaris:session-generation', value), session)
+    await mount(page, composer, { props })
+    await expect(page.locator('textarea')).toHaveValue('')
+    await page.locator('textarea').fill(text)
+    await page.evaluate(() => window.dispatchEvent(new Event('online')))
+    await expect.poll(async () => (await local(page)).dirty).toBe(false)
+  }
+  active = 'first'
+  await page.evaluate(() => localStorage.setItem('galaris:session-generation', 'first'))
+  await mount(page, composer, { props })
+  await expect(page.locator('textarea')).toHaveValue('First session draft')
+})
+
+test('a save arriving after successful local publication cannot resurrect the sent draft', async ({ page }) => {
+  await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })
+  let release
+  const gate = new Promise(resolve => { release = resolve })
+  let remote = { revision: 0, content: null }, started = false
+  await page.route('**/api/chat/rooms/room-a/draft', async route => {
+    if (route.request().method() === 'PUT') {
+      const body = route.request().postDataJSON()
+      if (!started) { started = true; await gate }
+      remote = { revision: remote.revision + 1, content: body.content }
+    }
+    return route.fulfill({ json: remote })
+  })
+  await mount(page, composer, { props })
+  await page.locator('textarea').fill('Text before pending save')
+  await page.evaluate(() => window.dispatchEvent(new Event('online')))
+  await expect.poll(() => started).toBe(true)
+  await page.locator('textarea').fill('Latest text actually sent')
+  await page.getByRole('button', { name: 'Post', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => window.testApp.events.filter(e => e.name === 'send').length)).toBe(1)
+  await acknowledge(page, true)
+  await expect(page.locator('textarea')).toHaveValue('')
+  release()
+  await expect.poll(() => remote.revision).toBeGreaterThan(1)
+  expect(remote.content).toBeNull()
+  await expect(page.locator('textarea')).toHaveValue('')
 })

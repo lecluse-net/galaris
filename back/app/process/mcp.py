@@ -351,17 +351,9 @@ async def process_list_runs(
     status: Optional[str] = None,
     limit: int = 20,
 ) -> list[dict[str, Any]]:
-    runs = await process_service.list_runs(
+    summaries = await process_service.list_runs(
         participant_agent_id=ctx.agent_id, workflow_id=workflow_id, status=status, limit=limit
     )
-    visible: list[UUID] = []
-    for run in runs:
-        try:
-            await _require_visible_run(ctx, run.id)
-        except (PermissionError, LookupError):
-            continue
-        visible.append(run.id)
-    summaries = await process_service._run_reads(visible)  # pyright: ignore[reportPrivateUsage]
     return [summary.model_dump(mode="json") for summary in summaries]
 
 
@@ -642,21 +634,13 @@ async def process_admin_list_runs(
     scope = await _process_administration(ctx)
     if agent_id is not None:
         scope.require(agent_id)
-    runs = await process_service.list_runs(
+    summaries = await process_service.list_runs(
         agent_id=agent_id,
         administrative_agent_ids=scope.agent_ids,
         workflow_id=workflow_id,
         status=status,
         limit=limit,
     )
-    visible: list[process_service.ProcessRun] = []
-    for run in runs:
-        try:
-            await _admin_native_run(ctx, run.id)
-        except (PermissionError, LookupError):
-            continue
-        visible.append(run)
-    summaries = await process_service._run_reads([run.id for run in visible])  # pyright: ignore[reportPrivateUsage]
     return [summary.model_dump(mode="json") for summary in summaries]
 
 

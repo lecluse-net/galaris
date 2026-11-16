@@ -22,8 +22,10 @@ function setup(overrides = {}) {
       createWebsocket() {},
       onEvent(resource, action, listener) { events.set(`${resource}:${action}`, listener) },
       offEvent(resource, action) { events.delete(`${resource}:${action}`) },
+      onConnect(listener) { events.set('connect', listener) },
+      offConnect() { events.delete('connect') },
     } },
-    '@/core/user/stores/authStore': { useAuthStore: () => ({ user: { id: 1 } }) },
+    '@/core/user/facade': { useAuthStore: () => ({ user: { id: 1 } }) },
     '@/core/authorize': { privileges: { GOAL_CONFIG_ACCESS: 'GOAL_CONFIG_ACCESS', GOAL_CONFIG_EDIT: 'GOAL_CONFIG_EDIT' },
       usePrivilegeStore: () => ({ hasAnyPrivilege: () => true }) },
     '../services/goalService': { goalService: service },
@@ -59,6 +61,19 @@ test('opening a Goal loads its history only when the cycles tab is requested', a
 })
 
 const settle = async () => { for (let i = 0; i < 15; i++) await Promise.resolve() }
+
+test('reconnection reconciles the active Goal projections and unsubscribing removes recovery', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const { store, events, calls, requests } = setup()
+  store.currentGoal = { id: 'A', revision: 1 }
+  store.subscribe(); events.get('connect')(); events.get('connect')()
+  t.mock.timers.tick(300); await settle()
+  assert.deepEqual(calls, { list: 1, tree: 1, detail: 1, cycles: 0 })
+  requests.get('A').resolve({ id: 'A', revision: 2 }); await settle()
+  assert.equal(store.currentGoal.revision, 2)
+  store.unsubscribe(); assert.equal(events.has('connect'), false)
+  store.$dispose()
+})
 
 test('a global schedule update refreshes announced cycles in list, tree and open detail', async t => {
   t.mock.timers.enable({ apis: ['setTimeout'] })

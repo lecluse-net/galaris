@@ -26,7 +26,7 @@
         <div class="row q-gutter-sm"><q-btn v-if="scope.row.task_uri && canReadTasks" outline color="primary" :label="t('agenda.openTask')" @click="openTask(scope.row.task_uri)" /><q-btn v-if="canRelaunch(scope.row)" outline color="primary" icon="replay" :label="t('agenda.relaunch')" @click="relaunchTarget = scope.row" /></div>
       </q-card-section></q-card></article></template>
     </q-table>
-    <q-dialog v-model="actionDialog"><q-card class="galaris-dialog-card action-dialog"><q-card-section class="galaris-dialog-title row items-center no-wrap"><div class="text-subtitle1">{{ t(editingAction ? 'agenda.editAction' : 'agenda.addAction') }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('agenda.close')" /></q-card-section>
+    <q-dialog v-model="actionDialog"><q-card class="galaris-dialog-card action-dialog"><DialogHeader :title="t(editingAction ? 'agenda.editAction' : 'agenda.addAction')" :close-label="t('agenda.close')" />
       <q-form @submit="saveAction"><q-card-section class="galaris-dialog-body q-gutter-y-md">
         <q-banner v-if="saveError" role="alert">{{ saveError }}</q-banner>
         <q-input v-model="draft.instructions" outlined type="textarea" autogrow :label="t('agenda.instructions')" :maxlength="20000" :rules="[value => Boolean(value?.trim()) || t('agenda.required')]" />
@@ -41,6 +41,7 @@
   </div>
 </template>
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar, type QTableColumn } from 'quasar'

@@ -104,7 +104,7 @@
       </q-input>
 
       <div v-if="models.length" class="row q-gutter-xs">
-        <q-chip v-if="voiceResourceCount" dense square icon="record_voice_over" color="deep-purple-1" text-color="deep-purple-9">
+        <q-chip v-if="voiceResourceCount" dense square icon="record_voice_over" color="solaire-iris-light" text-color="solaire-iris">
           {{ t('llm.voices') }} · {{ voiceResourceCount }}
         </q-chip>
       </div>
@@ -112,10 +112,10 @@
 
     <q-scroll-area v-if="error || emptyState" class="col">
       <div v-if="error" class="q-pa-md">
-        <q-banner rounded class="bg-red-1 text-red-10">
+        <q-banner rounded class="bg-solaire-red-light text-solaire-red">
           <template #avatar><q-icon name="cloud_off" /></template>
           <div>{{ error }}</div>
-          <q-btn flat dense color="negative" :label="t('common.retry')" @click="emit('refresh')" />
+          <q-btn  dense color="negative" :label="t('common.retry')" @click="emit('refresh')" />
         </q-banner>
       </div>
 
@@ -153,7 +153,7 @@
               <div class="col model-copy">
                 <div class="row items-center q-gutter-xs">
                   <span class="text-weight-bold model-name">{{ model.name || model.id }}</span>
-                  <q-badge v-if="model.resource_type === 'voice'" color="purple" outline>
+                  <q-badge v-if="model.resource_type === 'voice'" color="solaire-violet" outline>
                     {{ t('llm.voice') }}
                   </q-badge>
                   <q-badge v-if="model.status" color="warning" outline>{{ model.status }}</q-badge>
@@ -166,13 +166,13 @@
                 </div>
 
                 <div class="row items-center q-gutter-xs q-mt-sm">
-                  <q-chip v-if="model.context_length" dense square color="blue-grey-1" text-color="blue-grey-9" icon="data_object">
+                  <q-chip v-if="model.context_length" dense square color="solaire-gray-light" text-color="solaire-gray" icon="data_object">
                     {{ formatContext(model.context_length) }}
                   </q-chip>
                   <q-chip v-if="model.capabilities?.tools" dense square outline color="primary" icon="construction">
                     {{ t('llm.capabilityTools') }}
                   </q-chip>
-                  <q-chip v-if="model.capabilities?.reasoning" dense square outline color="deep-purple" icon="psychology">
+                  <q-chip v-if="model.capabilities?.reasoning" dense square outline color="solaire-iris" icon="psychology">
                     {{ t('llm.capabilityReasoning') }}
                   </q-chip>
                   <q-chip
@@ -229,7 +229,9 @@
               </div>
 
               <div class="column items-center q-gutter-xs">
-                <q-btn
+                <q-btn :aria-label="!item?.connection
+                      ? t('llm.configureProviderFirst')
+                      : (isConfigured(model.id) ? t('llm.modelAlreadyConfigured') : t('llm.createLlmFromModel'))"
                   v-if="canCreateModel"
                   round
                   unelevated
@@ -245,7 +247,7 @@
                       : (isConfigured(model.id) ? t('llm.modelAlreadyConfigured') : t('llm.createLlmFromModel')) }}
                   </q-tooltip>
                 </q-btn>
-                <q-btn
+                <q-btn :aria-label="t('llm.deleteModelTooltip')"
                   v-if="canEdit && item?.supports_model_management"
                   round
                   flat
@@ -265,11 +267,7 @@
 
     <q-dialog v-model="pullDialog">
       <q-card class="galaris-dialog-card" style="width: 520px; max-width: 92vw">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ t('llm.addModelFor', { name: item?.display_name }) }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('llm.addModelFor', { name: item?.display_name })" :close-label="$t('common.close')" />
         <q-card-section class="galaris-dialog-body">
           <q-input
             v-model="pullModelName"
@@ -282,7 +280,7 @@
           <div class="text-caption text-grey-7 q-mt-md">{{ t('llm.downloadHint') }}</div>
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn v-close-popup flat :label="t('common.cancel')" />
+          <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
           <q-btn
             v-if="canEdit"
             color="primary"
@@ -298,17 +296,13 @@
 
     <q-dialog v-model="deleteDialog">
       <q-card class="galaris-dialog-card" style="width: 480px; max-width: 92vw">
-        <q-card-section class="galaris-dialog-title">
-          <div class="text-h6">{{ t('common.confirm') }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('common.confirm')" :close-label="$t('common.close')" />
         <q-card-section class="galaris-dialog-body">
           {{ t('llm.deleteModelConfirm', { model: modelToDelete, provider: item?.display_name }) }}
           <div class="text-negative text-caption q-mt-sm">{{ t('llm.deleteModelWarning') }}</div>
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn v-close-popup flat :label="t('common.cancel')" />
+          <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
           <q-btn
             v-if="canEdit"
             color="negative"
@@ -323,6 +317,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import type { QScrollArea } from 'quasar'
 import { useI18n } from 'vue-i18n'
@@ -512,7 +507,7 @@ function modalityBadges(model: LLMModelInfo): { key: string; label: string; colo
       result.push({
         key,
         label: labels[name],
-        color: direction === 'input' ? 'primary' : 'teal',
+        color: direction === 'input' ? 'primary' : 'solaire-cyan',
         tip: `${direction === 'input' ? t('llm.input') : t('llm.output')} · ${t(`llm.${name}`)}`,
       })
     }
@@ -524,18 +519,18 @@ function capabilityMeta(capability: ProviderResourceCategory): { label: string; 
   const values: Record<ProviderResourceCategory, { label: string; icon: string; color: string }> = {
     documents: { label: t('llm.documentResources'), icon: 'description', color: 'primary' },
     chat: { label: t('llm.capabilities.chat'), icon: 'chat', color: 'primary' },
-    vision: { label: t('llm.capabilities.vision'), icon: 'visibility', color: 'blue' },
-    image_generation: { label: t('llm.capabilities.image_generation'), icon: 'image', color: 'pink' },
-    embedding: { label: t('llm.capabilities.embedding'), icon: 'scatter_plot', color: 'indigo' },
+    vision: { label: t('llm.capabilities.vision'), icon: 'visibility', color: 'solaire-blue' },
+    image_generation: { label: t('llm.capabilities.image_generation'), icon: 'image', color: 'solaire-fuchsia' },
+    embedding: { label: t('llm.capabilities.embedding'), icon: 'scatter_plot', color: 'solaire-iris' },
     decision: { label: t('llm.capabilities.decision'), icon: 'alt_route', color: '' },
-    transcription: { label: t('llm.capabilities.transcription'), icon: 'graphic_eq', color: 'orange' },
-    speech: { label: t('llm.capabilities.speech'), icon: 'record_voice_over', color: 'purple' },
-    realtime_conversation: { label: t('llm.capabilities.realtime_conversation'), icon: 'spatial_audio', color: 'teal' },
-    audio_understanding: { label: t('llm.capabilities.audio_understanding'), icon: 'hearing', color: 'blue' },
-    video_understanding: { label: t('llm.capabilities.video_understanding'), icon: 'movie', color: 'deep-orange' },
-    sound_generation: { label: t('llm.capabilities.sound_generation'), icon: 'surround_sound', color: 'orange' },
-    music_generation: { label: t('llm.capabilities.music_generation'), icon: 'music_note', color: 'purple' },
-    video_generation: { label: t('llm.capabilities.video_generation'), icon: 'video_library', color: 'deep-orange' },
+    transcription: { label: t('llm.capabilities.transcription'), icon: 'graphic_eq', color: 'solaire-orange' },
+    speech: { label: t('llm.capabilities.speech'), icon: 'record_voice_over', color: 'solaire-violet' },
+    realtime_conversation: { label: t('llm.capabilities.realtime_conversation'), icon: 'spatial_audio', color: 'solaire-cyan' },
+    audio_understanding: { label: t('llm.capabilities.audio_understanding'), icon: 'hearing', color: 'solaire-blue' },
+    video_understanding: { label: t('llm.capabilities.video_understanding'), icon: 'movie', color: 'solaire-orange' },
+    sound_generation: { label: t('llm.capabilities.sound_generation'), icon: 'surround_sound', color: 'solaire-orange' },
+    music_generation: { label: t('llm.capabilities.music_generation'), icon: 'music_note', color: 'solaire-violet' },
+    video_generation: { label: t('llm.capabilities.video_generation'), icon: 'video_library', color: 'solaire-orange' },
   }
   return values[capability]
 }

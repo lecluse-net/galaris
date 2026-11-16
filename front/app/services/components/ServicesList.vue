@@ -17,7 +17,7 @@
       <q-btn v-if="canEdit" color="primary" icon="add" :label="$t('services.newService')" @click="catalogOpen = true" />
     </div>
 
-    <q-banner v-if="serviceStore.error" class="q-mb-md" role="alert">
+    <q-banner v-if="serviceRequests.fetchServices?.error" class="q-mb-md" role="alert">
       {{ $t('services.listLoadError') }}
       <template #action><q-btn outline color="primary" :label="$t('common.retry')" @click="loadServices" /></template>
     </q-banner>
@@ -41,11 +41,7 @@
     </q-table>
     <q-dialog v-model="catalogOpen">
       <q-card class="service-catalog-dialog galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ $t('services.newService') }}</div>
-          <q-space />
-          <q-btn flat round dense icon="close" v-close-popup :aria-label="$t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="$t('services.newService')" :close-label="$t('common.close')" />
         <q-card-section class="scroll galaris-dialog-body">
           <div class="row justify-end q-mb-md">
             <q-btn outline color="primary" icon="add" :label="$t('services.createCustomService')" @click="openCreate" />
@@ -56,11 +52,7 @@
     </q-dialog>
     <q-dialog v-model="descriptionOpen">
       <q-card class="tool-description-dialog galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ descriptionTool ? localizedToolLabel(descriptionTool) : '' }}</div>
-          <q-space />
-          <q-btn icon="close" flat round dense v-close-popup :aria-label="$t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="descriptionTool ? localizedToolLabel(descriptionTool) : ''" :close-label="$t('common.close')" />
         <q-card-section class="scroll galaris-dialog-body">
           <p v-if="descriptionTool?.can_disable === false"><SystemServiceIcon /> {{ $t('services.systemServiceHint') }}</p>
           <Markdown :content="descriptionTool ? toolDescription(descriptionTool) : ''" />
@@ -75,11 +67,7 @@
 
     <q-dialog v-model="importDialogOpen">
       <q-card class="galaris-dialog-card" style="min-width: 480px; max-width: 600px; width: 100%">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ $t('services.importService') }}</div>
-          <q-space />
-          <q-btn icon="close" :aria-label="$t('common.close')" flat round dense v-close-popup class="text-white" @click="resetImport" />
-        </q-card-section>
+        <DialogHeader :title="$t('services.importService')" :close-label="$t('common.close')" @close="resetImport" />
 
         <!-- Step 1: file selection -->
         <template v-if="!importConflict">
@@ -108,7 +96,7 @@
           </q-card-section>
 
           <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-            <q-btn flat :label="$t('common.cancel')" v-close-popup @click="resetImport" />
+            <q-btn outline color="primary"  :label="$t('common.cancel')" v-close-popup @click="resetImport" />
             <q-btn
               v-if="canEdit"
               color="primary" :label="$t('services.import')" icon="upload"
@@ -130,85 +118,22 @@
             </p>
           </q-card-section>
           <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-            <q-btn flat :label="$t('common.cancel')" @click="resetImport" v-close-popup />
-            <q-btn flat :label="$t('services.changeFile')" @click="importConflict = null" />
+            <q-btn outline color="primary"  :label="$t('common.cancel')" @click="resetImport" v-close-popup />
+            <q-btn outline color="primary"  :label="$t('services.changeFile')" @click="importConflict = null" />
             <q-btn v-if="canEdit" color="warning" :label="$t('services.replace')" icon="swap_horiz" :loading="importLoading" @click="doImport(true)" />
           </q-card-actions>
         </template>
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="globalParamsDialogOpen">
-      <q-card class="galaris-dialog-card" style="width: min(820px, 95vw); max-width: 95vw; max-height: 90vh; overflow-y: auto">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ $t('services.globalParamsFor', { name: globalParamsTool ? localizedToolLabel(globalParamsTool) : '' }) }}</div>
-          <q-space />
-          <q-btn icon="close" flat round dense v-close-popup class="text-white" :aria-label="$t('common.close')" />
-        </q-card-section>
-
-        <q-card-section class="galaris-dialog-body">
-          <q-banner dense rounded class="bg-blue-1 text-blue-9 q-mb-md">
-            <template #avatar><q-icon name="info" /></template>
-            {{ $t('services.globalParamsHint') }}
-          </q-banner>
-          <div class="q-gutter-y-md">
-            <div v-for="row in globalParamRows" :key="row.name" class="tool-section">
-              <div class="row items-start q-col-gutter-md">
-                <div class="col">
-                  <div class="text-weight-medium">{{ localizedParamLabel(row, globalParamsTool?.code) }}</div>
-                  <code v-if="localizedParamLabel(row, globalParamsTool?.code) !== row.name" class="text-caption">{{ row.name }}</code>
-                  <div v-if="row.description" class="text-caption text-grey-7 q-mb-sm">
-                    {{ localizedGlobalParamDescription(row) }}
-                  </div>
-                  <ConnectionParamInput
-                    v-model="row.value"
-                    :name="row.name"
-                    :definition="row"
-                    :tool-code="globalParamsTool?.code"
-                    :user-options="approverOptions"
-                    :loading-users="approversLoading"
-                    :placeholder="row.secret && row.configured && !row.clear ? $t('services.secretConfigured') : row.default"
-                    @update:model-value="row.clear = false"
-                  >
-                    <template v-if="row.configured || row.value" #append>
-                      <q-btn
-                        flat round dense icon="close" size="sm"
-                        :aria-label="$t('services.clearGlobalParam')"
-                        @click="clearGlobalParam(row)"
-                      />
-                    </template>
-                  </ConnectionParamInput>
-                </div>
-                <q-toggle
-                  v-model="row.forced"
-                  :disable="row.clear || (!row.configured && !row.value && !row.default)"
-                  :label="$t('services.forceGlobalParam')"
-                  color="negative"
-                  class="col-auto q-mt-lg"
-                  @update:model-value="setGlobalParamForced(row, $event)"
-                />
-              </div>
-            </div>
-          </div>
-        </q-card-section>
-
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn flat :label="$t('common.cancel')" v-close-popup />
-          <q-btn color="primary" :label="$t('common.save')" :loading="savingGlobalParams" @click="saveGlobalParams" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <ServiceGlobalParameters v-model="globalParamsDialogOpen" :tool="globalParamsTool" @saved="loadServices" />
 
     <!-- ============================================================
          Create or edit dialog
     ============================================================ -->
     <q-dialog v-model="dialogOpen">
       <q-card class="tool-editor-dialog galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ editingTool ? $t('services.editService') : $t('services.newService') }}</div>
-          <q-space />
-          <q-btn icon="close" :aria-label="$t('common.close')" flat round dense v-close-popup class="text-white" />
-        </q-card-section>
+        <DialogHeader :title="editingTool ? $t('services.editService') : $t('services.newService')" :close-label="$t('common.close')" />
 
         <q-card-section class="galaris-dialog-body">
           <q-form @submit.prevent="saveTool" class="q-gutter-y-md">
@@ -332,14 +257,14 @@
                         </div>
                         <q-banner
                           v-if="form.mcp_config.auth.token_static_configured"
-                          dense rounded class="bg-orange-1 text-orange-10 q-mt-sm"
+                          dense rounded class="bg-solaire-orange-light text-solaire-orange q-mt-sm"
                         >
-                          <template #avatar><q-icon name="key" color="orange-9" /></template>
+                          <template #avatar><q-icon name="key" color="solaire-orange" /></template>
                           {{ $t('services.legacyStaticTokenConfigured') }}
                           <template #action>
                             <q-btn
                               v-if="canEdit"
-                              flat color="negative" :label="$t('services.removeLegacySecret')"
+                               color="negative" :label="$t('services.removeLegacySecret')"
                               @click="clearLegacyStaticToken"
                             />
                           </template>
@@ -388,7 +313,7 @@
                             />
                           </div>
                           <q-banner dense class="bg-grey-2 text-grey-8 q-mt-sm" rounded>
-                            <template v-slot:avatar><q-icon name="info" color="deep-purple" /></template>
+                            <template v-slot:avatar><q-icon name="info" color="solaire-iris" /></template>
                             {{ $t('services.fileShareCredsHint') }}
                           </q-banner>
                         </template>
@@ -428,7 +353,7 @@
                             />
                           </div>
                           <q-banner dense class="bg-grey-2 text-grey-8 q-mt-sm" rounded>
-                            <template #avatar><q-icon name="info" color="indigo" /></template>
+                            <template #avatar><q-icon name="info" color="solaire-iris" /></template>
                             {{ $t('services.messengerCredsHint') }}
                           </q-banner>
                         </template>
@@ -444,14 +369,14 @@
                         </div>
                         <q-banner
                           v-if="form.listener_config.token_configured"
-                          dense rounded class="bg-orange-1 text-orange-10 q-mt-sm"
+                          dense rounded class="bg-solaire-orange-light text-solaire-orange q-mt-sm"
                         >
-                          <template #avatar><q-icon name="key" color="orange-9" /></template>
+                          <template #avatar><q-icon name="key" color="solaire-orange" /></template>
                           {{ $t('services.legacyListenerTokenConfigured') }}
                           <template #action>
                             <q-btn
                               v-if="canEdit"
-                              flat color="negative" :label="$t('services.removeLegacySecret')"
+                               color="negative" :label="$t('services.removeLegacySecret')"
                               @click="clearLegacyListenerToken"
                             />
                           </template>
@@ -514,7 +439,7 @@
 
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
           <q-btn v-if="editingTool?.can_edit" outline color="primary" icon="download" :label="$t('services.exportYaml')" @click="exportTool(editingTool)" />
-          <q-btn outline :label="$t('common.cancel')" v-close-popup />
+          <q-btn color="primary" outline :label="$t('common.cancel')" v-close-popup />
           <q-btn v-if="canEdit" color="primary" :label="editingTool ? $t('common.save') : $t('common.create')" :loading="saving" :disable="missingCreationCapability" @click="saveTool" />
         </q-card-actions>
       </q-card>
@@ -522,16 +447,12 @@
 
     <q-dialog v-model="protocolDeleteOpen" @hide="pendingProtocolDelete = ''">
       <q-card class="galaris-dialog-card" style="width: min(560px, 95vw); max-width: 95vw">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ $t('services.deleteProtocol') }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="$t('services.deleteProtocol')" :close-label="$t('common.close')" />
         <q-card-section class="galaris-dialog-body">
           {{ $t('services.deleteProtocolConfirm', { name: capabilityLabels(pendingProtocolDelete, capabilityDefinitions, t).protocol }) }}
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn outline :label="$t('common.cancel')" v-close-popup />
+          <q-btn color="primary" outline :label="$t('common.cancel')" v-close-popup />
           <q-btn color="negative" :label="$t('common.delete')" @click="confirmProtocolRemoval" />
         </q-card-actions>
       </q-card>
@@ -539,11 +460,7 @@
 
     <q-dialog v-model="paramDeleteOpen" @hide="pendingParamDelete = null">
       <q-card class="galaris-dialog-card" style="width: min(560px, 95vw); max-width: 95vw">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ $t('services.deleteParamTitle') }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="$t('services.deleteParamTitle')" :close-label="$t('common.close')" />
         <q-card-section class="galaris-dialog-body">
           <p>{{ $t('services.deleteUsedParam', { name: pendingParamDelete?.name || pendingParamDelete?.label || '' }) }}</p>
           <ul>
@@ -552,7 +469,7 @@
           <p class="q-mb-none">{{ $t('services.deleteUsedParamHint') }}</p>
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn outline :label="$t('common.cancel')" v-close-popup />
+          <q-btn color="primary" outline :label="$t('common.cancel')" v-close-popup />
           <q-btn color="negative" :label="$t('common.delete')" @click="confirmRemoveConnParam" />
         </q-card-actions>
       </q-card>
@@ -561,11 +478,7 @@
     <!-- Non-persistent MCP connection test dialog. -->
     <q-dialog v-model="mcpTestDialogOpen" @hide="clearMcpTest">
       <q-card class="mcp-test-dialog galaris-dialog-card" style="min-width: 480px; max-width: 720px; width: 100%">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ $t('services.testMcpTitle') }}</div>
-          <q-space />
-          <q-btn icon="close" :aria-label="$t('common.close')" flat round dense v-close-popup class="text-white" />
-        </q-card-section>
+        <DialogHeader :title="$t('services.testMcpTitle')" :close-label="$t('common.close')" />
 
         <q-card-section class="q-gutter-y-md mcp-test-dialog__body galaris-dialog-body">
           <div class="text-body2 text-grey-7">{{ $t('services.testMcpIntro') }}</div>
@@ -580,7 +493,7 @@
           </div>
 
           <div v-if="form.mcp_config.type !== 'stdio'" class="q-gutter-y-sm">
-            <McpCandidateAgent v-model="candidateAgentId" :label="$t('services.candidateAgent')" />
+            <ManagedAgentSelect v-model="candidateAgentId" :label="$t('services.candidateAgent')" />
             <q-btn outline color="primary" :label="$t('services.candidatePrepare')"
               :disable="!candidateAgentId || preparingCandidate" :loading="preparingCandidate" @click="prepareCandidate" />
             <q-input v-if="candidateReference" :model-value="candidateReference" readonly outlined
@@ -591,7 +504,7 @@
           <q-banner
             v-if="mcpTestResult"
             rounded
-            :class="mcpTestResult.success ? 'bg-green-1 text-positive' : 'bg-red-1 text-negative'"
+            :class="mcpTestResult.success ? 'bg-solaire-green-light text-positive' : 'bg-solaire-red-light text-negative'"
           >
             <template #avatar>
               <q-icon :name="mcpTestResult.success ? 'check_circle' : 'error'" />
@@ -599,7 +512,7 @@
             {{ mcpTestResult.message }}
           </q-banner>
 
-          <q-banner v-else-if="mcpTestError" rounded class="bg-red-1 text-negative">
+          <q-banner v-else-if="mcpTestError" rounded class="bg-solaire-red-light text-negative">
             <template #avatar><q-icon name="error" /></template>
             {{ mcpTestError }}
           </q-banner>
@@ -654,7 +567,7 @@
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn flat :label="$t('common.close')" v-close-popup />
+          <q-btn outline color="primary"  :label="$t('common.close')" v-close-popup />
           <q-btn
             v-if="canEdit"
             color="secondary"
@@ -670,11 +583,7 @@
     <!-- Deletion dialog. -->
     <q-dialog v-model="deleteDialogOpen">
       <q-card class="galaris-dialog-card" style="width: min(600px, 95vw); max-width: 95vw">
-        <q-card-section class="galaris-dialog-title row items-center">
-          <div class="text-h6">{{ $t('services.deleteService') }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="$t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="$t('services.deleteService')" :close-label="$t('common.close')" />
         <q-card-section class="galaris-dialog-body">
           <p>{{ $t('services.deleteMessage', { name: deletingTool ? localizedToolLabel(deletingTool) : '' }) }}</p>
           <div v-if="deleteImpactLoading" role="status" class="row items-center q-gutter-sm">
@@ -697,7 +606,7 @@
           </q-banner>
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
-          <q-btn outline :label="$t('common.cancel')" v-close-popup />
+          <q-btn color="primary" outline :label="$t('common.cancel')" v-close-popup />
           <q-btn v-if="canEdit" color="negative" :label="$t('common.delete')" :loading="deleting" :disable="deleteImpactLoading || !deleteImpact" @click="doDelete" />
         </q-card-actions>
       </q-card>
@@ -707,6 +616,8 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
+import { storeRequests } from '@/core/util/facade'
 import { ref, computed, watch, onMounted, onActivated } from 'vue'
 import ServiceCatalog from './ServiceCatalog.vue'
 import ServiceCard from './ServiceCard.vue'
@@ -717,7 +628,7 @@ import SystemServiceIcon from './SystemServiceIcon.vue'
 import ConnectionParamInput from './ConnectionParamInput.vue'
 import RestConfigEditor from './RestConfigEditor.vue'
 import ConnectionParamSelect from './ConnectionParamSelect.vue'
-import { McpCandidateAgent } from '@/app/connection'
+import { ManagedAgentSelect } from '@/app/agent'
 import { useQuasar } from 'quasar'
 import { useServiceStore } from '../stores/serviceStore'
 import serviceApi from '../services/serviceApi'
@@ -737,7 +648,6 @@ import type {
   ServiceMcpTestRequest,
   ServiceMcpTestDiagnosticStatus,
   ServiceMcpTestResponse,
-  ServiceGlobalParamUpdate,
 } from '../services/serviceApi'
 import api from '@/core/api'
 import { isAxiosError } from 'axios'
@@ -745,13 +655,15 @@ import type { ServiceDeletionImpact } from '../services/serviceApi'
 import { useI18n } from 'vue-i18n'
 import { capabilityCode, capabilityLabels, toolCapabilitySelections } from '../capabilities'
 import type { CapabilityDefinition, CapabilityProtocol } from '../services/serviceApi'
-import { connectionParamLabel, connectionParamMessageKey, sortedConnectionParamEntries, toolMessageKey, toolOrigin, type ServiceOrigin } from '../presentation'
+import { connectionParamLabel, sortedConnectionParamEntries, toolMessageKey, toolOrigin, type ServiceOrigin } from '../presentation'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
-import { mailService, type MailApproverOption } from '@/app/connection'
+import ServiceGlobalParameters from './ServiceGlobalParameters.vue'
 
 const $q = useQuasar()
 const { t, te } = useI18n()
 const serviceStore = useServiceStore()
+const emit = defineEmits<{ deleted: [id: number] }>()
+const serviceRequests = storeRequests(serviceStore)
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.SERVICE_EDIT))
 const search = ref<string | null>('')
@@ -791,17 +703,6 @@ async function prepareCandidate() {
   }
 }
 
-type GlobalParamRow = ConnectionParamDef & {
-  name: string
-  type: string
-  description: string
-  default: string
-  secret: boolean
-  configured: boolean
-  forced: boolean
-  clear: boolean
-  value: string | null
-}
 
 function localizedParamLabel(param: { name: string } & Partial<ConnectionParamDef>, toolCode?: string): string {
   return connectionParamLabel(toolCode, param.name, param, t, te)
@@ -809,92 +710,10 @@ function localizedParamLabel(param: { name: string } & Partial<ConnectionParamDe
 
 const globalParamsDialogOpen = ref(false)
 const globalParamsTool = ref<Service | null>(null)
-const globalParamRows = ref<GlobalParamRow[]>([])
-const savingGlobalParams = ref(false)
-const approvers = ref<MailApproverOption[]>([])
-const approversLoading = ref(false)
-const approverOptions = computed(() => approvers.value.map(user => ({
-  value: String(user.id),
-  label: user.label === user.email ? user.email : `${user.label} · ${user.email}`,
-})))
-
-function localizedGlobalParamDescription(row: GlobalParamRow): string {
-  const key = globalParamsTool.value
-    ? connectionParamMessageKey(globalParamsTool.value.code, row.name, row)
-    : null
-  return key ? t(key) : row.description
-}
-
-async function openGlobalParams(tool: Service): Promise<void> {
+function openGlobalParams(tool: Service): void {
   if (!canEdit.value || tool.can_disable === false) return
-  const { data } = await serviceApi.getGlobalParams(tool.id)
   globalParamsTool.value = tool
-  if (Object.values(tool.connection_schema.params).some(param => param.type === 'user')) await loadApprovers()
-  globalParamRows.value = sortedConnectionParamEntries(tool.connection_schema.params)
-    .filter(([name]) => name !== 'services.management_scope')
-    .map(([name, definition]) => globalParamRow(name, definition, data.params[name]))
   globalParamsDialogOpen.value = true
-}
-
-async function loadApprovers(): Promise<void> {
-  if (approvers.value.length === 0 && !approversLoading.value) {
-    approversLoading.value = true
-    try {
-      approvers.value = (await mailService.listApprovers()).data
-    } catch (error) {
-      $q.notify({
-        type: 'negative',
-        message: `${t('connection.mail.approversError')}: ${error instanceof Error ? error.message : String(error)}`,
-      })
-    } finally {
-      approversLoading.value = false
-    }
-  }
-}
-
-function globalParamRow(name: string, definition: ConnectionParamDef, current?: Service['global_params'][string]): GlobalParamRow {
-  return { ...definition, name, description: definition.description ?? '', default: definition.type === 'password' ? '' : definition.default || '',
-    secret: definition.type === 'password', configured: current?.configured ?? false, forced: current?.forced ?? false, clear: false,
-    value: definition.type === 'password' ? '' : current ? current.value ?? '' : definition.default || '' }
-}
-
-function clearGlobalParam(row: GlobalParamRow): void {
-  row.value = ''
-  row.configured = false
-  row.forced = false
-  row.clear = true
-}
-
-function setGlobalParamForced(row: GlobalParamRow, forced: boolean): void {
-  if (forced && !row.configured && !row.value && row.default) {
-    row.value = row.default
-    row.clear = false
-  }
-}
-
-async function saveGlobalParams(): Promise<void> {
-  if (!globalParamsTool.value || !canEdit.value) return
-  savingGlobalParams.value = true
-  try {
-    const params: Record<string, ServiceGlobalParamUpdate> = {}
-    for (const row of globalParamRows.value) {
-      const typedValue = row.value === '' ? null : row.value
-      params[row.name] = {
-        value: typedValue,
-        forced: row.forced,
-        clear: row.clear || (!row.secret && typedValue === null),
-      }
-    }
-    await serviceApi.updateGlobalParams(globalParamsTool.value.id, params)
-    await serviceStore.fetchServices()
-    globalParamsDialogOpen.value = false
-    $q.notify({ type: 'positive', message: t('services.globalParamsUpdated') })
-  } catch (error: unknown) {
-    const detail = (error as { response?: { data?: { detail?: string } } }).response?.data?.detail
-    $q.notify({ type: 'negative', message: detail || t('services.globalParamsError') })
-  } finally {
-    savingGlobalParams.value = false
-  }
 }
 
 async function updateConversationAccess(tool: Service, enabled: boolean): Promise<void> {
@@ -1788,6 +1607,7 @@ async function doDelete() {
   deleting.value = true
   try {
     await serviceStore.deleteService(target.id, impact.version)
+    emit('deleted', target.id)
     $q.notify({ type: 'positive', message: t('services.deleted') })
     if (deletingTool.value?.id === target.id) deleteDialogOpen.value = false
   } catch (error) {
@@ -1831,9 +1651,9 @@ onActivated(() => {
 
 onMounted(() => {
   void loadServices()
-  fetchFileShareBridges()
-  fetchMessengerBridges()
-  fetchCapabilities()
+  void fetchFileShareBridges()
+  void fetchMessengerBridges()
+  void fetchCapabilities()
 })
 </script>
 

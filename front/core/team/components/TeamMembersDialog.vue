@@ -3,10 +3,7 @@
     <TeamEditor v-if="team && !loading && !error" :key="team.id" :team="team" :contributions="contributions"
       members-only @close="open = false" @saved="open = false" @changed="emit('changed')" />
     <q-card v-else class="galaris-dialog-card" style="width: 600px; max-width: 96vw">
-      <q-card-section class="galaris-dialog-title row items-center">
-        <div class="text-h6">{{ t('team.addMembers') }}</div><q-space />
-        <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-      </q-card-section>
+      <DialogHeader :title="t('team.addMembers')" :close-label="t('common.close')" />
       <q-card-section class="galaris-dialog-body">
         <q-linear-progress v-if="loading" indeterminate />
         <q-banner v-else role="alert">
@@ -19,6 +16,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePrivilegeStore } from '@/core/authorize'

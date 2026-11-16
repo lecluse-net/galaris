@@ -1,7 +1,7 @@
 import { api, AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
 import { createSessionReadCache, invalidateSessionReads, queuePreview, saveBlobAsResource } from '@/core/util/facade'
 import type { DocumentFocus } from '@/core/util'
-import type { DraftContent, DraftFile, DraftSnapshot } from '../drafts'
+import type { DraftContent, DraftFile, DraftSnapshot, DraftSend } from '../drafts'
 import type { MessengerInteraction } from '../types'
 import { isAxiosError } from 'axios'
 import type { CodeWorkspace } from '../code/types'
@@ -28,6 +28,11 @@ export class DictationNotConfiguredError extends Error {
     super('Voice transcription is not configured')
     this.name = 'DictationNotConfiguredError'
   }
+}
+
+function draftFileUnavailable(error: unknown): boolean {
+  return isAxiosError<{ detail?: { code?: string } }>(error)
+    && error.response?.status === 409 && error.response.data.detail?.code === 'draft_file_unavailable'
 }
 
 export const chatService = {
@@ -107,7 +112,17 @@ export const chatService = {
   async document(documentId: string, agentId: number): Promise<ConversationDocumentDetail> { return (await api.get<ConversationDocumentDetail>(`/memory/items/${documentId}`, { params: { agent_id: agentId } })).data },
   async updateDocument(documentId: string, agentId: number, data: ConversationDocumentUpdate): Promise<void> { await api.put(`/memory/items/${documentId}`, data, { headers: { 'X-Editorial-Profile-Version': '1' }, params: { actor_agent_id: agentId } }) },
   async processes(roomId: string, fromMessageId: string, page = 1, pageSize = 50, agentId: number | null = null): Promise<ConversationProcessList> { return (await api.get<ConversationProcessList>(`${base}/rooms/${roomId}/processes`, { params: { from_message_id: fromMessageId, page, page_size: pageSize, agent_id: agentId } })).data },
-  async send(roomId: string, text: string, replyToMessageId: string | null = null, topicId: string | null = null, clientMessageId: string = crypto.randomUUID(), reasoningEffortOverride: ReasoningEffort | null = null, taskRequested = false, displayedDocumentId: string | null = null, language = '', documentFocus: DocumentFocus | null = null, displayedRepositoryId: string | null = null, resourceUris: readonly string[] = [], draft?: { revision: number; clientMessageId: string; replyToMessageId?: string | null }): Promise<MessengerMessage> { return (await api.post<MessengerMessage>(`${base}/rooms/${roomId}/messages`, { client_message_id: draft?.clientMessageId ?? clientMessageId, ...(draft ? { draft_revision: draft.revision } : {}), text, language, ...(resourceUris.length ? { resource_uris: resourceUris } : {}), topic_id: topicId, reply_to_message_id: draft ? draft.replyToMessageId ?? replyToMessageId : replyToMessageId, reasoning_effort_override: reasoningEffortOverride, task_requested: taskRequested, ...(displayedRepositoryId ? { displayed_repository_id: displayedRepositoryId } : {}), ...(displayedDocumentId ? { displayed_document_id: displayedDocumentId, ...(documentFocus ? { document_focus: documentFocus } : {}) } : {}) })).data },
+  async send(roomId: string, text: string, replyToMessageId: string | null = null, topicId: string | null = null, clientMessageId: string = crypto.randomUUID(), reasoningEffortOverride: ReasoningEffort | null = null, taskRequested = false, displayedDocumentId: string | null = null, language = '', documentFocus: DocumentFocus | null = null, displayedRepositoryId: string | null = null, resourceUris: readonly string[] = [], draft?: DraftSend): Promise<MessengerMessage> {
+    const generation = sessionGeneration()
+    try {
+      return (await api.post<MessengerMessage>(`${base}/rooms/${roomId}/messages`, { client_message_id: draft?.clientMessageId ?? clientMessageId, ...(draft ? { draft_revision: draft.revision, draft_file_keys: draft.fileKeys } : {}), text, language, ...(resourceUris.length ? { resource_uris: resourceUris } : {}), topic_id: topicId, reply_to_message_id: draft ? draft.replyToMessageId ?? replyToMessageId : replyToMessageId, reasoning_effort_override: reasoningEffortOverride, task_requested: taskRequested, ...(displayedRepositoryId ? { displayed_repository_id: displayedRepositoryId } : {}), ...(displayedDocumentId ? { displayed_document_id: displayedDocumentId, ...(documentFocus ? { document_focus: documentFocus } : {}) } : {}) })).data
+    } catch (error) {
+      if (!draft?.fallbackFiles?.length || !draftFileUnavailable(error) || generation !== sessionGeneration()) throw error
+      return chatService.upload(roomId, draft.fallbackFiles, text, replyToMessageId, topicId, clientMessageId,
+        reasoningEffortOverride, taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId,
+        resourceUris, { ...draft, fileKeys: [], fallbackFiles: undefined })
+    }
+  },
   async transcribeDictation(roomId: string, audio: Blob, language: string): Promise<DictationResult> {
     const form = new FormData()
     const mimeType = audio.type.split(';', 1)[0] || 'audio/webm'
@@ -123,7 +138,30 @@ export const chatService = {
       throw error
     }
   },
-  async upload(roomId: string, files: readonly File[], text = '', replyToMessageId: string | null = null, topicId: string | null = null, clientMessageId: string = crypto.randomUUID(), reasoningEffortOverride: ReasoningEffort | null = null, taskRequested = false, displayedDocumentId: string | null = null, language = '', documentFocus: DocumentFocus | null = null, displayedRepositoryId: string | null = null, resourceUris: readonly string[] = []): Promise<MessengerMessage> { const form = new FormData(); if (resourceUris.length) form.append("resource_uris", JSON.stringify(resourceUris)); if (displayedRepositoryId) form.append("displayed_repository_id", displayedRepositoryId); for (const file of files) form.append('files', file); form.append('client_message_id', clientMessageId); form.append('language', language); form.append('text', text); if (topicId) form.append('topic_id', topicId); if (replyToMessageId) form.append('reply_to_message_id', replyToMessageId); if (reasoningEffortOverride) form.append('reasoning_effort_override', reasoningEffortOverride); if (taskRequested) form.append('task_requested', 'true'); if (displayedDocumentId) { form.append('displayed_document_id', displayedDocumentId); if (documentFocus) form.append('document_focus', JSON.stringify(documentFocus)); } return (await api.post<MessengerMessage>(`${base}/rooms/${roomId}/attachments`, form)).data },
+  async upload(roomId: string, files: readonly File[], text = '', replyToMessageId: string | null = null, topicId: string | null = null, clientMessageId: string = crypto.randomUUID(), reasoningEffortOverride: ReasoningEffort | null = null, taskRequested = false, displayedDocumentId: string | null = null, language = '', documentFocus: DocumentFocus | null = null, displayedRepositoryId: string | null = null, resourceUris: readonly string[] = [], draft?: DraftSend): Promise<MessengerMessage> {
+    const generation = sessionGeneration()
+    const form = new FormData()
+    if (draft) { form.append('draft_revision', String(draft.revision)); for (const key of draft.fileKeys ?? []) form.append('draft_file_keys', key) }
+    if (resourceUris.length) form.append('resource_uris', JSON.stringify(resourceUris))
+    if (displayedRepositoryId) form.append('displayed_repository_id', displayedRepositoryId)
+    for (const file of files) form.append('files', file)
+    form.append('client_message_id', draft?.clientMessageId ?? clientMessageId)
+    form.append('language', language); form.append('text', text)
+    if (topicId) form.append('topic_id', topicId)
+    const reply = draft?.replyToMessageId ?? replyToMessageId
+    if (reply) form.append('reply_to_message_id', reply)
+    if (reasoningEffortOverride) form.append('reasoning_effort_override', reasoningEffortOverride)
+    if (taskRequested) form.append('task_requested', 'true')
+    if (displayedDocumentId) { form.append('displayed_document_id', displayedDocumentId); if (documentFocus) form.append('document_focus', JSON.stringify(documentFocus)) }
+    try {
+      return (await api.post<MessengerMessage>(`${base}/rooms/${roomId}/attachments`, form)).data
+    } catch (error) {
+      if (!draft?.fallbackFiles?.length || !draftFileUnavailable(error) || generation !== sessionGeneration()) throw error
+      return chatService.upload(roomId, draft.fallbackFiles, text, replyToMessageId, topicId, clientMessageId,
+        reasoningEffortOverride, taskRequested, displayedDocumentId, language, documentFocus, displayedRepositoryId,
+        resourceUris, { ...draft, fileKeys: [], fallbackFiles: undefined })
+    }
+  },
   async markRead(roomId: string, messageId: string | null = null): Promise<void> { await api.post(`${base}/rooms/${roomId}/read`, { message_id: messageId }) },
   async setMuted(roomId: string, muted: boolean): Promise<void> { await api.post(`${base}/rooms/${roomId}/mute`, { muted }) },
   async attachmentBlob(roomId: string, fileId: string, agentId: number | null = null, signal?: AbortSignal): Promise<Blob> { return (await api.get<Blob>(`${base}/rooms/${roomId}/files/${fileId}`, { params: { agent_id: agentId }, responseType: 'blob', signal })).data },

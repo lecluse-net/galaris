@@ -128,6 +128,31 @@ async def source_is_readable(item_id: UUID, source_kind: str | None, agent_id: i
 GraphRequest = TypeVar("GraphRequest", MemoryGraphRootsRequest, MemoryGraphExpandRequest)
 
 
+async def readable_managed_source_ids(sources: Sequence[tuple[UUID, str | None]], agent_id: int) -> set[UUID]:
+    """Share each source owner's live batch check across list and graph pages."""
+    denied: set[UUID] = set()
+    groups: dict[str, list[UUID]] = {}
+    for identity, kind in sources:
+        if kind is not None and kind in _checks:
+            groups.setdefault(kind, []).append(identity)
+    for kind, identities in groups.items():
+        batch_reader = _batch_readers.get(kind)
+        if batch_reader is None:
+            denied.update([identity for identity in identities if not await source_is_readable(identity, kind, agent_id, check_evidence=False)])
+        else:
+            readable = await batch_reader(identities, agent_id)
+            denied.update(set(identities) - readable)
+    managed_ids = [identity for identities in groups.values() for identity in identities]
+    if managed_ids:
+        # A provider read can yield to a revocation or account rebinding. Keep
+        # the final persisted-source check after that I/O, for both consumers.
+        visible = set(await get_db().scalars(select(MemoryItem.id).where(
+            MemoryItem.id.in_(managed_ids), source_access_clause(),
+        )))
+        denied.update(identity for identity in managed_ids if identity not in visible)
+    return {identity for identity, _kind in sources} - denied
+
+
 async def readable_source_ids(endpoints: set[UUID], agent_id: int) -> set[UUID]:
     """Recheck source-owned access in batches for graph pages and saved positions."""
     sources: list[tuple[UUID, str | None]] = []
@@ -135,23 +160,7 @@ async def readable_source_ids(endpoints: set[UUID], agent_id: int) -> set[UUID]:
         sources = list((await get_db().execute(select(MemoryItem.id, MemoryItem.managed_source_kind).where(
             MemoryItem.id.in_(endpoints), MemoryItem.managed_source_kind.in_(_checks),
         ))).tuples().all())
-    denied: set[UUID] = set()
-    groups: dict[str, list[UUID]] = {}
-    for identity, kind in sources:
-        if kind is not None:
-            groups.setdefault(kind, []).append(identity)
-    for kind, identities in groups.items():
-        batch_reader = _batch_readers.get(kind)
-        if batch_reader is None:
-            denied.update([identity for identity in identities if not await source_is_readable(identity, kind, agent_id)])
-        else:
-            readable = await batch_reader(identities, agent_id)
-            denied.update(set(identities) - readable)
-    if sources:
-        visible = set(await get_db().scalars(select(MemoryItem.id).where(
-            MemoryItem.id.in_([identity for identity, _kind in sources]), source_access_clause(),
-        )))
-        denied.update(identity for identity, _kind in sources if identity not in visible)
+    denied = {identity for identity, _kind in sources} - await readable_managed_source_ids(sources, agent_id)
     # New derived facts also need their evidence-owner's live admission, including
     # ordinary memories that have no managed projection kind.
     return await readable_evidence_ids(endpoints - denied, agent_id)

@@ -74,7 +74,7 @@ test('Text and Data documents keep their tree position across folder moves and r
     expect(result.entries.map(entry => entry.item.id)).not.toContain(untouched.id)
     await expect(tree.getByText(untouched.title, { exact: true })).toHaveCount(0)
     await root.getByRole('button').first().click()
-    await page.getByRole('menuitem', { name: isDocument ? /^(Text|Texte)$/ : /^(Data|Données)$/, exact: true }).click()
+    await page.getByRole('menuitem', { name: isDocument ? /^(Text format|Format Texte)$/ : /^(Data format|Format Data)$/, exact: true }).click()
     const dialog = page.getByRole('dialog')
     const createdTitle = `Synthetic created at root ${domain} ${fixture.agent_id}`
     await dialog.getByRole('textbox', { name: /^(Title|Titre)$/, exact: true }).fill(createdTitle)

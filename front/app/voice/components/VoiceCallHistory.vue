@@ -1,6 +1,6 @@
 <template>
   <div>
-    <q-banner v-if="error" rounded class="bg-red-1 text-negative q-mb-md">
+    <q-banner v-if="error" rounded class="bg-solaire-red-light text-negative q-mb-md">
       <template #avatar><q-icon name="error" /></template>
       {{ error }}
     </q-banner>
@@ -332,13 +332,13 @@ import { HistoryToolbar, MetricCard } from '@/core/util'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { QTableColumn, QTableProps } from 'quasar'
-import AgentAvatar from '@/app/agent/components/AgentAvatar.vue'
+import { AgentAvatar } from '@/app/agent'
 import { AgentSelect } from '@/app/agent'
 import { getAgentSelection, type AgentSelectionOption } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { websocket } from '@/core/websocket'
-import ConversationTurnDialog from '@/core/util/components/ConversationTurnDialog.vue'
-import WaitingResponseIndicator from '@/core/util/components/WaitingResponseIndicator.vue'
+import { ConversationTurnDialog } from '@/core/util'
+import { WaitingResponseIndicator } from '@/core/util'
 import { ResourceReferenceMenu, ExecutionDateFilters, StatusBadge, type StatusBadgeTone } from '@/core/util'
 import VoiceConversationDetail from './VoiceConversationDetail.vue'
 import { voiceConversationService } from '../services/voiceConversationService'
@@ -349,9 +349,9 @@ import type {
   VoiceConversationTurn,
   VoiceTurnStatus,
 } from '../types'
-import TopicBadge from '@/app/topic/components/TopicBadge.vue'
-import { useTopicRefs } from '@/app/topic/composables/useTopicRefs'
-import TopicSelect from '@/app/topic/components/TopicSelect.vue'
+import { TopicBadge } from '@/app/topic'
+import { useTopicRefs } from '@/app/topic/facade'
+import { TopicSelect } from '@/app/topic'
 
 type TableRequest = Parameters<NonNullable<QTableProps['onRequest']>>[0]
 
@@ -365,6 +365,7 @@ async function loadAgents(): Promise<void> {
 }
 const conversations = ref<VoiceConversationDetailData[]>([])
 const loading = ref(false)
+let listRequest = 0
 const error = ref('')
 const search = ref('')
 const agentFilter = ref<number | null>(null)
@@ -409,7 +410,7 @@ const callMetrics = computed(() => [
   { status: 'ERROR' as const, label: t('voice.history.metrics.errors'), value: summary.value.errors, icon: 'error', tone: 'red' as const },
 ])
 async function load(page = pagination.value.page, pageSize = pagination.value.rowsPerPage): Promise<void> {
-  if (loading.value) return
+  const request = ++listRequest
   loading.value = true
   error.value = ''
   try {
@@ -423,6 +424,7 @@ async function load(page = pagination.value.page, pageSize = pagination.value.ro
       dateTo: dateTo.value,
       search: search.value,
     })
+    if (request !== listRequest) return
     conversations.value = response.items
     void resolveTopicRefs(response.items.flatMap(item => (
       [item.topic_id, ...item.turns.map(turn => turn.topic_id)]
@@ -436,9 +438,10 @@ async function load(page = pagination.value.page, pageSize = pagination.value.ro
       if (turn) selectedTurn.value = turn
     }
   } catch (reason) {
+    if (request !== listRequest) return
     error.value = reason instanceof Error ? reason.message : t('voice.history.loadError')
   } finally {
-    loading.value = false
+    if (request === listRequest) loading.value = false
   }
 }
 
@@ -563,6 +566,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  listRequest++
   if (realtimeRefreshTimer) clearTimeout(realtimeRefreshTimer)
   websocket.socket?.off('connect', scheduleRealtimeRefresh)
   websocket.offEvent('voice_conversation', 'create', scheduleRealtimeRefresh)

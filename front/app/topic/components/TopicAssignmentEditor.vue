@@ -14,7 +14,7 @@
       v-if="editable"
       class="topic-assignment-save"
       no-caps
-      color="deep-purple"
+      color="solaire-iris"
       icon="save"
       :label="t('topic.saveAssignment')"
       :loading="saving"

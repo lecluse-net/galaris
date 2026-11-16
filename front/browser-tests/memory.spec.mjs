@@ -22,6 +22,39 @@ async function memoryItemFixtures(page) {
   return { item, versions }
 }
 
+for (const width of [1440, 390]) test(`memory starts loading items while auxiliary requests are pending at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 1000 })
+  const { item } = await memoryItemFixtures(page)
+  await jsonRoute(page, '**/api/memory/items/doc-a?*', item)
+  let releaseDefaults, releaseFindings
+  const browseRequests = []
+  await page.route('**/api/memory/temporal/defaults', async route => {
+    await new Promise(resolve => { releaseDefaults = resolve })
+    await route.fulfill({ json: { timezone: 'Europe/Paris', lookahead_hours: 24 } })
+  })
+  await page.route('**/api/memory/findings?*', async route => {
+    await new Promise(resolve => { releaseFindings = resolve })
+    await route.fulfill({ json: [] })
+  })
+  await page.route('**/api/memory/browse', route => {
+    browseRequests.push(route.request().postDataJSON())
+    return route.fulfill({ json: { hits: [{ item, score: 1 }], total: 1, has_more: false } })
+  })
+  try {
+    await mount(page, 'app/memory/pages/index.vue', { route: '/memory?agent=7' })
+    await expect.poll(() => browseRequests.length).toBe(1)
+    await expect.poll(() => typeof releaseDefaults).toBe('function')
+    await expect.poll(() => typeof releaseFindings).toBe('function')
+    expect(browseRequests[0]).toMatchObject({ agent_id: 7, limit: 50, offset: 0 })
+  } finally {
+    releaseDefaults?.()
+    releaseFindings?.()
+  }
+  await expect(page.getByText('Current memory', { exact: true })).toBeVisible()
+  await page.getByText('Current memory', { exact: true }).click()
+  await expect(page.getByRole('dialog').locator('.q-toolbar__title')).toHaveText('Memory - Memory')
+})
+
 for (const width of [1440, 390]) test(`Dream actions refresh the node, preserve drafts and allow retry at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
   const { item } = await memoryItemFixtures(page)
@@ -1354,10 +1387,16 @@ test('overlapping edits keep a durable draft and require an explicit conflict ch
   await page.clock.runFor(1500)
   await expect(page.getByText('This document changed elsewhere.', { exact: false })).toBeVisible()
   expect(updates).toEqual([])
-  expect(await page.evaluate(() => JSON.parse(sessionStorage.getItem('galaris:document-draft:7:doc-a')).draft.title)).toBe('My unsaved title')
+  expect(await page.evaluate(async () => {
+    const { documentDraftKey } = await import('/app/document/documentDraft.ts')
+    return JSON.parse(sessionStorage.getItem(documentDraftKey(1, 7, 'doc-a'))).draft.title
+  })).toBe('My unsaved title')
   await page.getByRole('button', { name: 'Save my draft over the latest version' }).click()
   await page.clock.runFor(1000)
   await expect.poll(() => updates.length).toBe(1)
   expect(updates[0]).toMatchObject({ title: 'My unsaved title', expected_revision: 4 })
-  await expect.poll(() => page.evaluate(() => sessionStorage.getItem('galaris:document-draft:7:doc-a'))).toBeNull()
+  await expect.poll(() => page.evaluate(async () => {
+    const { documentDraftKey } = await import('/app/document/documentDraft.ts')
+    return sessionStorage.getItem(documentDraftKey(1, 7, 'doc-a'))
+  })).toBeNull()
 })

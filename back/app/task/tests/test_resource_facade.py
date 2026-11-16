@@ -45,6 +45,10 @@ async def test_task_resources_are_scoped_to_owner_or_requester(
         status=TaskStatus.SUCCESS,
         agent_id=owner.id,
         requester_agent_id=requester.id,
+        execution_result={"result": "Synthetic completed work", "messages": [{
+            "type": "tool", "tool_arguments": {"query": "Synthetic retained query", "token": "synthetic-private-token"},
+            "tool_result": {"content": "Synthetic retained content. " * 1000, "password": "synthetic-private-password"},
+        }]},
     )
     foreign = Task(
         label="Foreign resource",
@@ -60,10 +64,16 @@ async def test_task_resources_are_scoped_to_owner_or_requester(
 
     assert {row["id"] for row in owner_rows} >= {str(owned.id), str(requested.id)}
     assert {row["id"] for row in requester_rows} == {str(requested.id)}
-    assert await read_task_resource(
+    snapshot = await read_task_resource(
         requested.id,
         actor_agent_id=requester.id,
-    ) is not None
+    )
+    assert snapshot is not None
+    message = snapshot["execution_result"]["messages"][0]
+    assert message["tool_arguments"] == {"query": "Synthetic retained query", "token": "[REDACTED]"}
+    assert message["tool_result"] == {"content": "Synthetic retained content. " * 1000, "password": "[REDACTED]"}
+    await db.refresh(requested)
+    assert requested.execution_result["messages"][0]["tool_arguments"]["token"] == "synthetic-private-token"
     assert await read_task_resource(
         foreign.id,
         actor_agent_id=requester.id,

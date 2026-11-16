@@ -5,13 +5,14 @@ from __future__ import annotations
 from app.llm import model_usages
 
 from typing import Any
+from functools import partial
 from uuid import UUID
 
 from sqlalchemy import String, cast, exists, func, or_, select
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.llm import llm_service
-from app.memory import  search_memory_detailed
+from app.memory import search_memory_detailed, validate_atomic_fact_references, owned_contact_scope
 from app.task import ConversationFollowup, Task, TaskStatus, get_conversation_followup
 from app.task.facade import memory_capture_blocked_tasks
 from app.topic import Topic, service as topic_service
@@ -53,6 +54,17 @@ _MAX_FOLLOWUP_CHARS = 4_000
 _MAX_CONTACT_CHARS = 1_000
 
 
+async def _memory_contact_scope(task: Task) -> UUID | None:
+    contact_id = task.contact_memory_item_id
+    if contact_id is None or task.agent_id is None:
+        return None
+    if task.ai or task.requester_agent_id is not None:
+        # Delegation retains source lineage, including another agent's contact.
+        # It does not transfer that private contact into the executor's memory.
+        return await owned_contact_scope(contact_id, agent_id=task.agent_id)
+    return contact_id
+
+
 def _eligible_task_predicates() -> tuple[ColumnElement[bool], ...]:
     """Require a Topic whose classification receipt is no longer active."""
 
@@ -71,6 +83,7 @@ def _eligible_task_predicates() -> tuple[ColumnElement[bool], ...]:
         or_(
             Task.messenger_connection_id.is_(None),
             Task.ai.is_(True),
+            Task.requester_agent_id.is_not(None),
             Task.contact_memory_item_id.is_not(None),
         ),
         Task.id.not_in(memory_capture_blocked_tasks()),
@@ -334,7 +347,7 @@ class TaskMemoryMechanism:
             query = _novelty_query(task, followup)
             agent_id = task.agent_id
             language = task_language(task)
-            contact_item_id = task.contact_memory_item_id
+            contact_item_id = await _memory_contact_scope(task)
             topic_item_id = topic.memory_item_id
 
         async with get_db_session():
@@ -373,6 +386,7 @@ class TaskMemoryMechanism:
                 task_id=task_id,
                 agent_id=agent_id,
                 language_instruction=language_instruction,
+                fact_validator=partial(validate_atomic_fact_references, agent_id=agent_id),
             )
             return DreamPrepared(payload=prepared.model_dump(mode="json"), cost=cost)
 
@@ -386,10 +400,12 @@ class TaskMemoryMechanism:
                     prepared,
                     reason="Task memory source is no longer available",
                 )
+            contact_item_id = await _memory_contact_scope(task)
             if (
                 task.messenger_connection_id is not None
                 and not task.ai
-                and task.contact_memory_item_id is None
+                and task.requester_agent_id is None
+                and contact_item_id is None
             ):
                 return memory_extraction_unavailable(
                     prepared,
@@ -419,11 +435,11 @@ class TaskMemoryMechanism:
                 "dream_mechanism": self.key,
                 **language_metadata(task_language(task)),
             }
-            if task.contact_memory_item_id is not None:
+            if contact_item_id is not None:
                 metadata.update(
                     {
                         "scope_mode": "topic_contact",
-                        "contact_item_id": str(task.contact_memory_item_id),
+                        "contact_item_id": str(contact_item_id),
                         "topic_item_id": str(topic.memory_item_id),
                     }
                 )
@@ -435,7 +451,7 @@ class TaskMemoryMechanism:
                 source_excerpt=excerpt,
                 memory_created_at=task.created_at,
                 metadata=metadata,
-                contact_item_id=task.contact_memory_item_id,
+                contact_item_id=contact_item_id,
                 topic_item_id=topic.memory_item_id,
                 idempotency_prefix=f"dream:{self.key}:{task.id}",
             )

@@ -2,9 +2,9 @@ import { defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 import { taskService } from '../services/taskService'
 import type { AIResult, Task, TaskCreate, TaskOverview, TaskUpdate } from '../types'
-import type { Agent } from '@/app/agent/services/agentService'
+import type { Agent } from '@/app/agent/contracts'
 import { websocket } from '@/core/websocket'
-import { useAuthStore } from '@/core/user/stores/authStore'
+import { useAuthStore } from '@/core/user/facade'
 import { mergeTaskSnapshot } from '../taskSnapshot'
 import {
   applyTaskLiveRunEvent,
@@ -305,7 +305,7 @@ export const useTaskStore = defineStore('task', () => {
 
   function scheduleRecentRefresh(): void {
     if (recentTimer) clearTimeout(recentTimer)
-    recentTimer = setTimeout(() => fetchRecentTasks(), 300)
+    recentTimer = setTimeout(() => { void fetchRecentTasks() }, 300)
   }
 
   function reconcileAfterConnect(): void {
@@ -387,6 +387,12 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   function unsubscribeFromTasks() {
+    if (recentTimer) clearTimeout(recentTimer)
+    recentTimer = null
+    recentRequest++
+    currentTaskRequest++
+    recentLoading.value = false
+    loading.value = false
     if (unwatchAuth.value) {
       unwatchAuth.value()
       unwatchAuth.value = null

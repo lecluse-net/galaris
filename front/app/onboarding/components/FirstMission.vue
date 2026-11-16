@@ -6,7 +6,7 @@
       <p v-if="!canUseMission">{{ t('onboarding.mission.permission') }}</p>
       <template v-else>
         <q-banner v-if="error" role="alert" class="q-mb-md">{{ t('onboarding.mission.error') }}
-          <template #action><q-btn outline :label="t('common.retry')" @click="retry" /></template>
+          <template #action><q-btn color="primary" outline :label="t('common.retry')" @click="retry" /></template>
         </q-banner>
         <template v-if="!job">
           <q-select v-model="agentId" outlined emit-value map-options :options="agents" option-label="display_name" option-value="agent_id"
@@ -35,8 +35,8 @@
           </q-list>
           <q-card-actions>
             <q-btn outline color="primary" :label="t('onboarding.mission.open')" :to="`/chat?room=${encodeURIComponent(job.room)}`" />
-            <q-btn outline icon="refresh" :label="t('onboarding.mission.refresh')" :loading="busy" @click="retry" />
-            <q-btn v-if="state === 'complete'" outline :label="t('onboarding.mission.again')" @click="reset" />
+            <q-btn color="primary" outline icon="refresh" :label="t('onboarding.mission.refresh')" :loading="busy" @click="retry" />
+            <q-btn color="primary" v-if="state === 'complete'" outline :label="t('onboarding.mission.again')" @click="reset" />
           </q-card-actions>
         </template>
       </template>

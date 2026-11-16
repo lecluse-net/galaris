@@ -36,7 +36,7 @@
         :label="t('chat.callEnableAudio')"
         @click="retryRemoteAudio"
       />
-      <q-btn
+      <q-btn flat
         v-if="callId"
         :color="muted ? 'warning' : 'primary'"
         :icon="muted ? 'mic_off' : 'mic'"

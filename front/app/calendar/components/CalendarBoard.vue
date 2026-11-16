@@ -9,7 +9,7 @@
           role="group" :aria-label="`${t('agenda.create')} · ${label(day, { dateStyle: 'full' })}`" :tabindex="canCreate ? 0 : undefined"
           @click="createDay($event, day)" @keydown.enter.self.prevent="createDay($event, day)" @keydown.space.self.prevent="createDay($event, day)"
           @dragover.prevent @drop.prevent="drop($event, day)">
-          <div class="day-heading"><q-btn flat round dense color="primary" :label="String(Number(day.slice(8)))" :aria-label="label(day, { dateStyle: 'full' })" @click.stop="emit('day', day)" /></div>
+          <div class="day-heading"><q-btn outline  round dense color="primary" :label="String(Number(day.slice(8)))" :aria-label="label(day, { dateStyle: 'full' })" @click.stop="emit('day', day)" /></div>
           <div class="month-events"><CalendarEventChip v-for="event in byDay(day).slice(0, MONTH_VISIBLE_EVENTS)" :key="occurrenceKey(event)" v-bind="chipProps(event)" compact @open="emit('open', $event)" />
             <q-btn v-if="byDay(day).length > MONTH_VISIBLE_EVENTS" outline dense no-caps color="primary" :label="t('agenda.more', { count: byDay(day).length - MONTH_VISIBLE_EVENTS })" @click.stop="emit('day', day)" /></div>
         </div>
@@ -17,7 +17,7 @@
       </div>
     </template>
     <template v-else-if="view === 'week' || view === 'day'">
-      <div class="time-grid-header" :style="gridStyle"><div aria-hidden="true" /><div v-for="day in days" :key="day" :class="{ 'is-today': day === today }"><q-btn flat no-caps color="primary" :label="label(day, { weekday: 'short', day: 'numeric' })" @click="emit('day', day)" /></div></div>
+      <div class="time-grid-header" :style="gridStyle"><div aria-hidden="true" /><div v-for="day in days" :key="day" :class="{ 'is-today': day === today }"><q-btn outline  no-caps color="primary" :label="label(day, { weekday: 'short', day: 'numeric' })" @click="emit('day', day)" /></div></div>
       <div class="all-day-grid" :style="gridStyle"><div class="text-caption q-pa-xs">{{ t('agenda.allDay') }}</div>
         <div v-for="day in days" :key="day" class="all-day-cell" :class="{ 'can-create': canCreate }" role="group"
           :aria-label="`${t('agenda.create')} · ${t('agenda.allDay')} · ${day}`" :tabindex="canCreate ? 0 : undefined"

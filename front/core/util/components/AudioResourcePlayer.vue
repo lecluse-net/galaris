@@ -2,7 +2,7 @@
   <div ref="surface" class="audio-resource-player" :aria-busy="loading">
     <audio controls preload="metadata" :src="url || undefined" :aria-label="source.name" @error="failed = true" />
     <q-spinner v-if="loading" color="primary" size="24px" />
-    <q-btn v-else-if="failed" flat dense no-caps :label="t('richEditor.resources.retryMedia')" @click="loadAudio" />
+    <q-btn outline color="primary" v-else-if="failed"  dense no-caps :label="t('richEditor.resources.retryMedia')" @click="loadAudio" />
   </div>
 </template>
 

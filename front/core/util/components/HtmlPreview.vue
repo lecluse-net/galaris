@@ -9,8 +9,8 @@
           {{ t('htmlPreview.isolated') }}
         </span>
       </span>
-      <q-btn
-        flat
+      <q-btn outline color="primary"
+
         dense
         no-caps
         size="sm"

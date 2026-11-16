@@ -4,10 +4,10 @@
       <div class="row items-start q-col-gutter-md">
         <div class="col">
           <div class="row items-center q-gutter-sm q-mb-sm">
-            <q-icon name="psychology" color="deep-purple" size="md" />
+            <q-icon name="psychology" color="solaire-iris" size="md" />
             <div class="text-h6">{{ t('evaluation.analysisTitle') }}</div>
             <q-badge :color="verdictColor(analysis.verdict)" :label="t(`evaluation.verdict.${analysis.verdict}`)" />
-            <q-badge outline color="deep-purple" :label="t('evaluation.confidence', { value: confidence })" />
+            <q-badge outline color="solaire-iris" :label="t('evaluation.confidence', { value: confidence })" />
           </div>
           <div class="text-body1">{{ analysis.summary }}</div>
         </div>
@@ -75,7 +75,7 @@
               :value="Math.round(cause.confidence * 100)"
               size="46px"
               :thickness="0.18"
-              color="deep-purple"
+              color="solaire-iris"
               track-color="grey-3"
             >
               {{ Math.round(cause.confidence * 100) }}%
@@ -91,7 +91,7 @@
         <q-item v-for="item in analysis.recommendations" :key="`${item.scope}:${item.action}`">
           <q-item-section>
             <div class="row items-center q-gutter-xs q-mb-xs">
-              <q-badge outline color="deep-purple" :label="t(`evaluation.scope.${item.scope}`)" />
+              <q-badge outline color="solaire-iris" :label="t(`evaluation.scope.${item.scope}`)" />
               <q-item-label class="text-weight-medium">{{ item.action }}</q-item-label>
             </div>
             <q-item-label>{{ item.rationale }}</q-item-label>

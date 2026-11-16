@@ -12,7 +12,7 @@
         @dragstart="startTopicDrag" @dragend="clearDrag" @drop="moveTopicDocuments"
         @changed="ids => queueChange({ content_ids: ids, classification_catalog: true, list_changed: true })" @move="moveClassificationSelection" @deleted="removeDocument" @selection="ids => selectedDocumentIds = ids" />
       <div v-show="treeMode === 'folders'" class="q-pa-sm" @dragover.self="dragOver($event, 'root')" @drop.prevent.self="drop(null, true, $event)">
-        <q-banner v-if="tagError" dense class="library-error" role="alert">{{ t('documents.library.tagError') }}<q-btn flat :label="t('documents.retry')" @click="loadTags" /></q-banner>
+        <q-banner v-if="tagError" dense class="library-error" role="alert">{{ t('documents.library.tagError') }}<q-btn outline color="primary"  :label="t('documents.retry')" @click="loadTags" /></q-banner>
         <q-tree v-model:expanded="treeExpanded" :nodes="displayTree" node-key="id" dense no-transition class="document-tree">
           <template #default-header="{ node }">
             <div class="tag-row row items-center no-wrap full-width"
@@ -39,7 +39,7 @@
             <div class="full-width text-caption" @click.stop>
               <q-spinner v-if="branches.loading.value[node.branchKey]" size="16px" />
               <q-banner v-else-if="branchErrors[node.branchKey]" dense role="alert">{{ t('documents.loadError') }}
-                <q-btn flat dense :label="t('documents.retry')" @click="branches.refresh(node.branchKey)" />
+                <q-btn outline color="primary"  dense :label="t('documents.retry')" @click="branches.refresh(node.branchKey)" />
               </q-banner>
               <span v-else-if="branchSnapshots[node.branchKey] && !branches.loading.value[node.branchKey]">{{ t('documents.library.noSubdocuments') }}</span>
             </div>
@@ -49,7 +49,7 @@
           </template>
           <template #header-status="{ node }">
             <div class="full-width text-caption" @click.stop>
-              <div v-if="branchErrors[node.tag.id]" class="library-error q-pa-sm" role="alert">{{ t('documents.loadError') }} <q-btn flat dense :label="t('documents.retry')" @click="branches.load(node.tag.id)" /></div>
+              <div v-if="branchErrors[node.tag.id]" class="library-error q-pa-sm" role="alert">{{ t('documents.loadError') }} <q-btn outline color="primary"  dense :label="t('documents.retry')" @click="branches.load(node.tag.id)" /></div>
               <span v-else-if="branchSnapshots[node.tag.id]">{{ t('documents.library.emptyFolder') }}</span>
             </div>
           </template>
@@ -59,7 +59,7 @@
         <div v-if="!tree.length && !tagError && !branchErrors.root && !branches.loading.value.root" class="text-caption q-pa-sm">{{ t('documents.empty') }}</div>
         <div role="group" :aria-label="t('documents.library.root')" class="row no-wrap q-gutter-x-sm q-mt-sm" :class="{ 'tag-row--drop': dropTarget === 'root' }"
           @dragover="dragOver($event, 'root')" @dragleave="dropTarget = null" @drop.prevent="drop(null, true, $event)">
-          <q-btn v-if="canCreateDocument" class="col" outline dense no-caps icon="note_add" :label="t('documents.library.newDocumentAction')" :disable="busy" :aria-label="t('documents.library.newRootDocument')" @click="emit('create', undefined, undefined, true, undefined, $event)"><q-tooltip>{{ t('documents.library.newRootDocument') }}</q-tooltip></q-btn>
+          <q-btn color="primary" v-if="canCreateDocument" class="col" outline dense no-caps icon="note_add" :label="t('documents.library.newDocumentAction')" :disable="busy" :aria-label="t('documents.library.newRootDocument')" @click="emit('create', undefined, undefined, true, undefined, $event)"><q-tooltip>{{ t('documents.library.newRootDocument') }}</q-tooltip></q-btn>
           <DocumentTagCreateButton :key="userId ?? 'session'" class="col" :parent-id="null" :busy="busy" :save="createTag" />
         </div>
       </div>
@@ -81,7 +81,7 @@
         </div>
         <div v-if="treeMode === 'topics' && onlyUnclassified" class="text-caption q-px-sm q-pb-xs">{{ t('documents.library.withoutTopic') }}</div>
         <div v-if="treeMode === 'agents' && onlyUnclassified" class="text-caption q-px-sm q-pb-xs">{{ t('documents.library.withoutAgent') }}</div>
-        <q-banner v-if="loadError" dense class="library-error" role="alert">{{ t('documents.loadError') }}<q-btn flat :label="t('documents.retry')" @click="reload" /></q-banner>
+        <q-banner v-if="loadError" dense class="library-error" role="alert">{{ t('documents.loadError') }}<q-btn outline color="primary"  :label="t('documents.retry')" @click="reload" /></q-banner>
         <div v-if="selectedDocumentIds.length > 1" class="row items-center q-px-sm">
           <span class="col text-caption" role="status">{{ t('documents.bulk.selected', { count: selectedDocumentIds.length }) }}</span>
           <q-btn flat round dense icon="deselect" :aria-label="t('documents.bulk.clearSelection')" @click="selection.clear" />
@@ -107,13 +107,14 @@
   </q-splitter>
   <q-dialog v-model="deleteDialog">
     <q-card class="tag-dialog galaris-dialog-card">
-      <q-card-section class="galaris-dialog-title row items-center"><span class="text-h6">{{ t('documents.library.deleteTag') }}</span><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" /></q-card-section>
+      <DialogHeader :title="t('documents.library.deleteTag')" :close-label="t('common.close')" />
       <q-card-section class="galaris-dialog-body">{{ t('documents.library.deleteExplanation', { name: editingTag?.name }) }}</q-card-section>
-      <q-card-actions class="galaris-dialog-actions" align="right"><q-btn v-close-popup outline :label="t('documents.library.cancel')" /><q-btn color="negative" :loading="busy" :label="t('documents.library.deleteTag')" @click="editingTag && requestDelete(editingTag, true)" /></q-card-actions>
+      <q-card-actions class="galaris-dialog-actions" align="right"><q-btn color="primary" v-close-popup outline :label="t('documents.library.cancel')" /><q-btn color="negative" :loading="busy" :label="t('documents.library.deleteTag')" @click="editingTag && requestDelete(editingTag, true)" /></q-card-actions>
     </q-card>
   </q-dialog>
 </template>
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { websocket } from '@/core/websocket'
 import { TreePageHeader, TREE_PAGE_SIZE, treePages, treePageKey, treePageFromKey, treePageDataKey, virtualTreeNodes, type TreePage } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
@@ -1108,12 +1109,13 @@ async function changeSession(event: Event): Promise<void> {
   ready = true; await Promise.all([reload(), branches.load('root')])
 }
 onMounted(async () => {
-  window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, changeSession)
+  window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, onSessionEvent)
   ready = true
   await Promise.all([loadTags(), reload(), branches.load('root')])
 })
-onBeforeUnmount(() => { disposed = true; ++generation; ++tagGeneration; listController?.abort(); window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, changeSession) })
+onBeforeUnmount(() => { disposed = true; ++generation; ++tagGeneration; listController?.abort(); window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, onSessionEvent) })
 defineExpose({ reload: refresh, refreshDocuments, removeDocument, updateDocument, startDocumentSelectionDrag, clearDrag })
+function onSessionEvent(event: Event): void { void changeSession(event).catch(error => console.error('Session refresh failed', error)) }
 </script>
 <style scoped>
 .library-navigation { height: 100%; min-height: 0; }

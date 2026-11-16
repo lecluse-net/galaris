@@ -1,7 +1,7 @@
 <template>
   <q-btn-dropdown
     size="sm"
-    color="deep-purple"
+    color="solaire-iris"
     icon="science"
     :label="t('evaluation.capture.addToLab')"
   >
@@ -15,7 +15,7 @@
         @click="openDatasets(item.target, item.available)"
       >
         <q-item-section avatar>
-          <q-icon :name="item.icon" color="deep-purple" />
+          <q-icon :name="item.icon" color="solaire-iris" />
         </q-item-section>
         <q-item-section>
           <q-item-label>{{ t(`evaluation.capture.${item.label}`) }}</q-item-label>

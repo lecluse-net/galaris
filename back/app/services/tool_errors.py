@@ -9,8 +9,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
+from pydantic import ValidationError
+
 from core.i18n import render_prompt, t
-from .contracts import ScopePreflightRejected
+from .contracts import ScopePreflightRejected, ToolCallRejectedError
 
 
 class RecoverableToolError(RuntimeError):
@@ -120,6 +122,22 @@ def _exception_chain(exc: BaseException) -> tuple[BaseException, ...]:
     return tuple(chain)
 
 
+def argument_validation_diagnostic(exc: BaseException) -> list[dict[str, str]]:
+    """Expose bounded validation constraints without submitted inputs or context."""
+
+    for cause in _exception_chain(exc)[:8]:
+        if isinstance(cause, ValidationError):
+            return [
+                {
+                    "path": _public_error_detail(".".join(str(part) for part in error["loc"]), limit=300),
+                    "type": error["type"],
+                    "message": _public_error_detail(error["msg"], limit=500),
+                }
+                for error in cause.errors(include_url=False, include_input=False, include_context=False)[:8]
+            ]
+    return []
+
+
 def _http_status(chain: Sequence[BaseException]) -> int | None:
     for item in chain:
         if type(item).__name__ == "ModelHTTPError":
@@ -177,6 +195,11 @@ def classify_tool_failure(exc: Exception) -> ToolFailure:
             error_type,
             _public_error_detail(exc),
         )
+    if isinstance(exc, ToolCallRejectedError):
+        # These are deliberate pre-effect rejections, including preconditions
+        # checked below mcp.py (for example a missing durable-console helper).
+        detail = _public_error_detail(exc)
+        return ToolFailure(_value_error_kind(detail), error_type, detail)
 
     chain = _exception_chain(exc)
     safe_domain_errors = {
@@ -368,5 +391,6 @@ __all__ = [
     "render_tool_failure",
     "safe_trace",
     "exception_diagnostic",
+    "argument_validation_diagnostic",
     "native_failure_key",
 ]

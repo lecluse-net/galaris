@@ -25,7 +25,7 @@
 
     <div class="row items-center justify-between q-mt-sm q-gutter-sm">
       <span class="text-caption">{{ t('harnesses.preferences.modelsShort') }}</span>
-      <q-btn flat dense no-caps color="primary" icon="psychology" :label="t('harnesses.catalog.configureLlmProfiles')" :to="{ path: '/llm', query: { tab: 'usage' } }" />
+      <q-btn outline  dense no-caps color="primary" icon="psychology" :label="t('harnesses.catalog.configureLlmProfiles')" :to="{ path: '/llm', query: { tab: 'usage' } }" />
     </div>
 
     <section v-for="entry in enabledEntries" :key="entry.id" class="managed-providers__settings q-mt-lg"
@@ -37,14 +37,10 @@
 
     <q-dialog :model-value="pending !== null" @update:model-value="!$event && (pending = null)">
       <q-card class="managed-providers__confirm galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
-          <div class="text-h6">{{ t('harnesses.catalog.disableTitle') }}</div>
-          <q-space />
-          <q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-        </q-card-section>
+        <DialogHeader :title="t('harnesses.catalog.disableTitle')" :close-label="t('common.close')" />
         <q-card-section class="galaris-dialog-body">{{ t('harnesses.catalog.disableConfirm', { name: pending?.name ?? '', count: pending?.assigned_agents ?? 0 }) }}</q-card-section>
         <q-card-actions align="right" class="galaris-dialog-actions">
-          <q-btn v-close-popup flat :label="t('common.cancel')" />
+          <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
           <q-btn color="warning" :label="t('harnesses.catalog.disable')" :loading="busy !== null" :disable="!canEdit" @click="confirmDisable" />
         </q-card-actions>
       </q-card>
@@ -53,6 +49,7 @@
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'

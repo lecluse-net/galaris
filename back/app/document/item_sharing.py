@@ -170,7 +170,7 @@ async def update_agent_sharing(
         if execution is not None:
             execution.outcome = "rejected"
         raise service.DocumentConflictError(
-            "Sharing changed; call memory_sharing again for the current lock_version, then retry"
+            "Sharing changed; call document_sharing again for the current lock_version, then retry"
         )
     data = DocumentSharingUpdate(
         kind=kind, id=target_id,

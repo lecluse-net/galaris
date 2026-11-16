@@ -141,7 +141,7 @@ for (const width of [390, 1440]) {
       first.updated_at = '2026-01-01T12:00:00Z'
       return route.fulfill({ json: { status: 'success', registered: true } })
     })
-    await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
+    await mount(page, 'app/index/pages/agent.vue', { privileges: ['AGENT_EDIT'] })
     const dialog = page.getByRole('dialog').filter({ has: page.getByLabel('First name *', { exact: true }) })
     const generationDialog = page.getByRole('dialog').filter({ has: page.getByLabel('Generation instructions (optional)', { exact: true }) })
     const instructions = generationDialog.getByLabel('Generation instructions (optional)', { exact: true })
@@ -228,7 +228,7 @@ for (const [mode, width] of [['create', 1440], ['edit', 390]]) {
       writes.push(data)
       return route.fulfill({ json: { ...agent, ...data, agent_driver: 'internal' } })
     })
-    await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
+    await mount(page, 'app/index/pages/agent.vue', { privileges: ['AGENT_EDIT'] })
     await expect(page.getByText('Alice Example', { exact: true }).first()).toBeVisible()
     try {
       const started = Date.now()
@@ -272,7 +272,7 @@ test('reopening another agent ignores a late harness selection and retries a fai
     await route.fulfill({ json: { harness_id: 'old' } })
   })
   await jsonRoute(page, '**/api/harnesses/agents/8', { harness_id: 'current' })
-  await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
+  await mount(page, 'app/index/pages/agent.vue', { privileges: ['AGENT_EDIT'] })
   const dialog = page.getByRole('dialog')
   const edit = name => page.locator('.agent-card').filter({ has: page.getByText(name, { exact: true }) }).getByRole('button', { name: 'Edit agent', exact: true })
   try {
@@ -332,7 +332,7 @@ test('models load on demand without losing the saved profile, voice or identity 
     writes.push(data)
     return route.fulfill({ json: { ...saved, ...data } })
   })
-  await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT', 'LLM_PROFILE_ACCESS', 'LLM_MODEL_ACCESS', 'LLM_PROVIDER_ACCESS'] })
+  await mount(page, 'app/index/pages/agent.vue', { privileges: ['AGENT_EDIT', 'LLM_PROFILE_ACCESS', 'LLM_MODEL_ACCESS', 'LLM_PROVIDER_ACCESS'] })
   try {
     await page.getByRole('button', { name: 'Edit agent', exact: true }).click()
     const dialog = page.getByRole('dialog')
@@ -369,7 +369,7 @@ test('reopening agent management refreshes catalogues and reloading retrieves th
   for (const [key, url] of Object.entries({ agents: '**/api/agents?*', titles: '**/api/agents/titles?*', groups: '**/api/agents/groups?*' })) {
     await page.route(url, route => { reads[key]++; return route.fulfill({ json: [] }) })
   }
-  const options = { component: 'app/agent/pages/index.vue', privileges: ['AGENT_EDIT'] }
+  const options = { component: 'app/index/pages/agent.vue', privileges: ['AGENT_EDIT'] }
   await mount(page, options.component, options)
   await expect(page.getByRole('button', { name: 'New Agent', exact: true })).toBeVisible()
   await expect.poll(() => reads).toEqual({ agents: 1, titles: 1, groups: 1 })
@@ -408,7 +408,7 @@ test('agent creation requires a first name but accepts an empty last name', asyn
     }
     return route.fulfill({ status: 201, json: { ...agent, ...data } })
   })
-  await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
+  await mount(page, 'app/index/pages/agent.vue', { privileges: ['AGENT_EDIT'] })
   await page.getByRole('button', { name: 'New Agent', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByLabel('Agent code', { exact: true }).fill('lyra')
@@ -447,7 +447,7 @@ test('a refreshed portrait survives an older catalogue avatar response', async (
     await route.fulfill({ contentType: 'image/png', body: image })
   })
   await page.route('**/api/agents/8/avatar?*', route => route.fulfill({ contentType: 'image/png', body: image }))
-  await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
+  await mount(page, 'app/index/pages/agent.vue', { privileges: ['AGENT_EDIT'] })
   await expect.poll(() => started).toBe(true)
   // Observe disposal at the browser resource boundary, without mocking the loader.
   await page.evaluate(() => {
@@ -491,7 +491,7 @@ test('built-in titles follow the locale and remain keys until renamed', async ({
     const { setLocale } = await import('/core/i18n/index.ts')
     setLocale(language)
   }, language)
-  await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT', 'AGENT_MANAGE_ALL'] })
+  await mount(page, 'app/index/pages/agent.vue', { privileges: ['AGENT_EDIT', 'AGENT_MANAGE_ALL'] })
   await page.getByRole('tab', { name: 'Titles' }).click()
   await expect(page.getByRole('cell', { name: 'Ms', exact: true })).toBeVisible()
   await locale('fr')
@@ -528,7 +528,7 @@ test('internal agents remain editable without external runtime supervision', asy
     supervisionReads++
     return route.fulfill({ status: 503, json: { detail: 'External manager unavailable' } })
   })
-  await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
+  await mount(page, 'app/index/pages/agent.vue', { privileges: ['AGENT_EDIT'] })
   await expect(page.getByText('Alice Example', { exact: true }).first()).toBeVisible()
   await page.getByRole('button', { name: 'New Agent', exact: true }).click()
   await expect(page.getByRole('dialog')).toBeVisible()
@@ -550,7 +550,7 @@ for (const [driver, driverMetadata] of [['hermes', true], ['hermes', false], ['o
     await page.route('**/api/harnesses/agents/7/status', route => route.fulfill(healthy
       ? { json: { status: 'running', managed: true, lifecycle_status: 'ready', capabilities: ['restart', 'stop'], available_actions: ['restart', 'stop'], last_error: null } }
       : { status: 503, json: { detail: 'Manager unavailable' } }))
-    await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
+    await mount(page, 'app/index/pages/agent.vue', { privileges: ['AGENT_EDIT'] })
     const warning = page.locator('.q-banner').filter({ hasText: /manager/i })
     await expect(warning).toBeVisible()
     healthy = true
@@ -571,7 +571,7 @@ test('agent runtime action calls restart once and prevents duplicate submissions
     await pending
     await route.fulfill({ json: { status: 'queued', output: '' } })
   })
-  await mount(page, 'app/agent/pages/index.vue', { privileges: ['AGENT_EDIT'] })
+  await mount(page, 'app/index/pages/agent.vue', { privileges: ['AGENT_EDIT'] })
   const restart = page.getByRole('button', { name: 'Restart', exact: true })
   try {
     await restart.click()
@@ -579,4 +579,32 @@ test('agent runtime action calls restart once and prevents duplicate submissions
     await restart.click({ force: true })
     expect(actions).toEqual(['POST'])
   } finally { release() }
+})
+
+test('MCP tokens recover a read failure, reveal a new token once and clear it on agent replacement', async ({ page }) => {
+  let failed = true, tokens = []
+  await page.route('**/api/agents/7/mcp-tokens', route => {
+    if (route.request().method() === 'POST') {
+      tokens = [{ id: 1, agent_id: 7, label: 'Synthetic client', token: 'masked-token', enabled: true, created_at: '2026-01-01T10:00:00Z' }]
+      return route.fulfill({ json: { ...tokens[0], token: 'synthetic-once-only-token' } })
+    }
+    return route.fulfill(failed ? { status: 503, json: { detail: 'Synthetic token outage' } } : { json: tokens })
+  })
+  await jsonRoute(page, '**/api/agents/8/mcp-tokens', [])
+  await mount(page, 'app/agent/components/AgentMcpPanel.vue', { props: { agent: { id: 7, code: 'synthetic-a' }, canManage: true } })
+  const failure = page.getByRole('alert').filter({ hasText: 'Failed to load tokens' })
+  await expect(failure).toBeVisible()
+  failed = false
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(failure).toHaveCount(0)
+  await page.getByRole('button', { name: 'New token', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('textbox', { name: 'Label (optional)', exact: true }).fill('Synthetic client')
+  await dialog.getByRole('button', { name: 'Create', exact: true }).click()
+  await expect(dialog.filter({ hasText: 'MCP token created' }).getByRole('textbox')).toHaveValue('synthetic-once-only-token')
+  await expect(page.getByRole('cell', { name: 'masked-token', exact: true })).toBeVisible()
+  await page.evaluate(() => window.testApp.setProps({ agent: { id: 8, code: 'synthetic-b' } }))
+  await expect(dialog).toHaveCount(0)
+  await expect(page.getByRole('cell', { name: 'masked-token', exact: true })).toHaveCount(0)
+  expect(await page.locator('input,textarea').evaluateAll(elements => elements.some(element => element.value.includes('synthetic-once-only-token')))).toBe(false)
 })

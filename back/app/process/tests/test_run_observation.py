@@ -14,7 +14,7 @@ from app.connection import Connection
 from app.process import process_service
 from app.process.bpmn import Actor
 from app.process.dbadmin import _backfill_run_participants
-from app.process.mcp import processus_get, process_get_run, process_list_runs
+from app.process.mcp import processus_get, process_get_run, process_list_runs, process_admin_list_runs
 from app.process.native_definitions import create, update
 from app.process.native_runs import inspect_run, list_runs, control_run, inspect_occurrence, run_metrics, children
 from app.process.models import ProcessRun, ProcessNodeRun, ProcessNodeAttempt
@@ -156,6 +156,9 @@ async def test_process_sharing_and_revocable_dedicated_admin_apply_to_every_run_
     assert (await inspect_run(run_id, observer.id))["can_control"]
     assert (await resource_read(denied_ctx, uri)).uri == uri
     assert (await list_runs(observer.id))["total"] == 1
+    admin_ctx = McpToolContext(agent_id=observer.id, runtime="internal")
+    assert [item["id"] for item in await process_list_runs(admin_ctx)] == [str(run_id)]
+    assert [item["id"] for item in await process_admin_list_runs(admin_ctx)] == [str(run_id)]
     await control_run(run_id, observer.id, "pause")
     connection.active = False
     await db.commit()
@@ -163,6 +166,9 @@ async def test_process_sharing_and_revocable_dedicated_admin_apply_to_every_run_
         await inspect_run(run_id, observer.id)
     with pytest.raises(PermissionError):
         await resource_read(denied_ctx, uri)
+    assert await process_list_runs(admin_ctx) == []
+    with pytest.raises(PermissionError):
+        await process_admin_list_runs(admin_ctx)
     # Legacy runs get the same frozen projection, without altering their graph.
     frozen = run.launch_snapshot["definition"]
     run.launch_snapshot = {key: item for key, item in run.launch_snapshot.items() if key != "participant_agents"}

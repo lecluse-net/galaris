@@ -19,7 +19,7 @@
           <span class="lt-md">{{ t('goal.runtime.gridHintMobile') }}</span>
         </div>
         <q-btn
-          flat
+
           dense
           color="negative"
           icon="deselect"
@@ -115,7 +115,7 @@
       <q-banner
         v-if="slots.size === 0"
         rounded
-        class="bg-orange-1 text-warning q-mt-md"
+        class="bg-solaire-orange-light text-warning q-mt-md"
       >
         {{ t('goal.runtime.noSlots') }}
       </q-banner>

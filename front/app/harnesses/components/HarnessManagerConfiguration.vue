@@ -3,7 +3,7 @@
     <q-spinner v-if="loading" />
     <q-banner v-else-if="loadFailed" class="q-mb-md">
       {{ t('harnesses.manager.loadFailed') }}
-      <q-btn flat :label="t('common.retry')" @click="load" />
+      <q-btn outline color="primary"  :label="t('common.retry')" @click="load" />
     </q-banner>
     <template v-else-if="saved">
       <q-form @submit="save" class="q-gutter-y-sm">
@@ -15,18 +15,15 @@
           </q-input>
         </div>
         <div v-if="canEdit" class="row items-center q-gutter-sm">
-          <q-btn v-if="!saved.secret_configured" flat no-caps :label="t('harnesses.setup.generate')" :disable="busy" @click="generate" />
+          <q-btn outline color="primary" v-if="!saved.secret_configured"  no-caps :label="t('harnesses.setup.generate')" :disable="busy" @click="generate" />
           <q-btn unelevated no-caps color="primary" type="submit" :label="t('harnesses.setup.save')" :loading="saving" :disable="busy && !saving" />
-          <q-btn flat no-caps icon="folder_zip" :label="t('harnesses.preferences.prepareInstallation')" @click="installationOpen = true" />
+          <q-btn outline color="primary"  no-caps icon="folder_zip" :label="t('harnesses.preferences.prepareInstallation')" @click="installationOpen = true" />
         </div>
         <div v-if="saved.secret_configured && secret" class="text-caption">{{ t('harnesses.setup.rotation') }}</div>
       </q-form>
       <q-dialog v-if="canEdit" v-model="installationOpen">
         <q-card class="manager-config__dialog galaris-dialog-card">
-          <q-card-section class="galaris-dialog-title row items-center no-wrap">
-            <div class="text-h6">{{ t('harnesses.preferences.prepareInstallation') }}</div>
-            <q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('common.close')" />
-          </q-card-section>
+          <DialogHeader :title="t('harnesses.preferences.prepareInstallation')" :close-label="t('common.close')" />
           <q-card-section class="galaris-dialog-body">
         <p class="text-body2 q-mt-none">{{ t('harnesses.setup.exportHint') }}</p>
         <q-form class="q-gutter-y-md" @submit="exportEnv">
@@ -47,7 +44,7 @@
           <div v-if="dirty" role="status">{{ t('harnesses.setup.saveFirst') }}</div>
           <div class="row q-gutter-sm">
             <q-btn unelevated no-caps color="primary" icon="folder_zip" :label="t('harnesses.release.installationZip')" :disable="busy || dirty || !saved.secret_configured" :loading="packaging" @click="downloadInstallation" />
-            <q-btn flat no-caps type="submit" :label="t('harnesses.setup.export')" :disable="busy || dirty || !saved.secret_configured" :loading="exporting" />
+            <q-btn outline color="primary"  no-caps type="submit" :label="t('harnesses.setup.export')" :disable="busy || dirty || !saved.secret_configured" :loading="exporting" />
           </div>
           <p class="text-caption">{{ t('harnesses.release.privateZip') }}</p>
         </q-form>
@@ -55,9 +52,9 @@
           <p>{{ t('harnesses.setup.privateFile') }}</p>
           <pre class="manager-config__env">{{ environment }}</pre>
           <div class="row q-gutter-sm">
-            <q-btn flat icon="content_copy" :label="t('harnesses.setup.copy')" @click="copy" />
-            <q-btn flat icon="download" :label="t('harnesses.setup.download')" @click="download" />
-            <q-btn flat :label="t('harnesses.setup.hide')" @click="environment = ''" />
+            <q-btn outline color="primary"  icon="content_copy" :label="t('harnesses.setup.copy')" @click="copy" />
+            <q-btn outline color="primary"  icon="download" :label="t('harnesses.setup.download')" @click="download" />
+            <q-btn outline color="primary"  :label="t('harnesses.setup.hide')" @click="environment = ''" />
           </div>
           <p class="q-mt-md">{{ t('harnesses.setup.install') }}</p>
           <pre class="manager-config__env">chmod 600 .env
@@ -69,7 +66,7 @@ make service-logs</pre>
         </div>
         <div v-if="error" role="alert" class="q-mt-md">{{ error }}</div>
           </q-card-section>
-          <q-card-actions align="right"><q-btn v-close-popup flat :label="t('common.close')" /></q-card-actions>
+          <q-card-actions align="right"><q-btn outline color="primary" v-close-popup  :label="t('common.close')" /></q-card-actions>
         </q-card>
       </q-dialog>
     </template>
@@ -78,6 +75,7 @@ make service-logs</pre>
 </template>
 
 <script setup lang="ts">
+import { DialogHeader } from '@/core/util'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { copyToClipboard, exportFile, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'

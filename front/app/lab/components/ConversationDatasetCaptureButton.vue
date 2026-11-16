@@ -1,7 +1,7 @@
 <template>
   <q-btn
     size="sm"
-    color="deep-purple"
+    color="solaire-iris"
     icon="science"
     :label="t('evaluation.capture.addToLab')"
     @click="datasetDialog = true"

@@ -1,9 +1,11 @@
+import * as vue from 'vue'
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import * as pinia from 'pinia'
 import * as axios from 'axios'
 import { loadTypescript } from '../../test-support/load-typescript.mjs'
 import { sessionReadCache } from '../../test-support/session-read-cache.mjs'
+import { sessionStoreScope } from '../../test-support/session-store.mjs'
 
 test('preferences reuse parameters across sections, refresh after edits, expiry and session changes', async t => {
   t.mock.timers.enable({ apis: ['Date'], now: 0 })
@@ -23,7 +25,8 @@ test('preferences reuse parameters across sections, refresh after edits, expiry 
     '@/core/api': api, '@/core/util/facade': sessionReadCache(window),
   })
   const { useParamsStore } = loadTypescript(new URL('./stores/paramsStore.ts', import.meta.url), {
-    pinia, axios, '@/core/api': api, '../services/paramsService': services,
+    vue, pinia, axios, '@/core/api': api, '../services/paramsService': services,
+    '@/core/util/facade': sessionStoreScope(window, api.sessionGeneration),
   })
   const store = useParamsStore(pinia.createPinia())
   try {

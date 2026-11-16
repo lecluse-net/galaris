@@ -99,6 +99,7 @@ class MessageCreate(BaseModel):
 
     client_message_id: UUID
     draft_revision: int | None = Field(default=None, ge=0)
+    draft_file_keys: list[UUID] | None = Field(default=None, max_length=20)
     text: str = Field(default="", max_length=100_000)
     resource_uris: list[str] = Field(default_factory=list[str], max_length=20)
     language: str = Field(default="", max_length=10)
@@ -112,7 +113,7 @@ class MessageCreate(BaseModel):
 
     @model_validator(mode="after")
     def require_content(self) -> MessageCreate:
-        if not self.text.strip() and not self.resource_uris and self.draft_revision is None:
+        if not self.text.strip() and not self.resource_uris and self.draft_revision is None and not self.draft_file_keys:
             raise ValueError("A message needs text or attachments")
         return self
 

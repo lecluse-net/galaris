@@ -106,14 +106,14 @@
                                 </q-item>
                             </q-list>
 
-                            <q-banner v-if="statusError" rounded class="bg-red-1 text-negative q-mt-md">
+                            <q-banner v-if="statusError" rounded class="bg-solaire-red-light text-negative q-mt-md">
                                 {{ t('dreamSettings.linkReconciliation.statusError') }}
                             </q-banner>
 
                             <q-banner
                                 v-if="lastManualResult"
                                 rounded
-                                class="bg-green-1 text-positive q-mt-md"
+                                class="bg-solaire-green-light text-positive q-mt-md"
                             >
                                 <template #avatar><q-icon name="check_circle" /></template>
                                 {{ t('dreamSettings.linkReconciliation.completed', {

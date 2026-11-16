@@ -85,14 +85,15 @@ onMounted(() => {
   websocket.createWebsocket()
   websocket.onEvent('process_run', 'update', runChanged)
   websocket.onEvent('process_run', 'delete', runChanged)
-  websocket.onConnect(reloadCurrent)
+  websocket.onConnect(onObservedEvent)
 })
 onBeforeUnmount(() => {
   clearTimeout(eventTimer)
   websocket.offEvent('process_run', 'update', runChanged)
   websocket.offEvent('process_run', 'delete', runChanged)
-  websocket.offConnect(reloadCurrent)
+  websocket.offConnect(onObservedEvent)
 })
+function onObservedEvent(): void { void reloadCurrent().catch(error => console.error('Live refresh failed', error)) }
 </script>
 <style scoped>
 .process-run-detail-dialog { display: flex; flex-direction: column; width: 1100px; max-width: 96vw; height: 90vh; max-height: 900px; }

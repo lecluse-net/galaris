@@ -9,6 +9,26 @@ Cette revue ne rejoue ni les parcours applicatifs ni les benchmarks.
 
 Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 
+## Campagne engagée le 15 novembre 2026
+
+Les cinq chantiers demandés sont repris dans les suivis existants :
+
+| Chantier | Suivi | Première réception |
+|---|---|---|
+| Réussite des missions | Lab IA | Campagne synthétique avec modèle réel, revue des échecs et de la cohérence des références. |
+| Arrêt et reprise | Fiabilisation conversationnelle | Contrats durables puis qualification des runtimes isolés, sans arrêter de travaux utilisateurs. |
+| Précision mémoire | Amélioration globale de la mémoire | Pièces jointes, droits vivants et recherche dans des PDF synthétiques, dont les pages scannées. |
+| Performance | Optimisation généralisée | Lectures SQL Process/MCP jusqu'à 500 résultats, permissions Services ciblées et annuaires canoniques de 501/1 001 destinataires ; contenu, droits et fraîcheur préservés. |
+| Première mission | Frictions du parcours conversationnel | Accueil, édition, partage et réouverture dans l'application assemblée ; observation de nouveaux utilisateurs encore à organiser. |
+
+L'autorisation porte sur les qualifications, les corrections démontrées et les
+simplifications des mécanismes existants. **Tout nouveau mécanisme applicatif exige
+l'accord explicite de l'utilisateur.** Les propositions de gardes ou de contrôle de
+dérive présentes dans les plans ne sont pas autorisées par cette reprise. Réutiliser
+les outils et tests existants ; ne pas ajouter de dispositif de supervision automatique.
+Les qualifications ciblées ne clôturent ni les plans entiers ni les essais de charge,
+les comptes distants réels ou la réserve indépendante encore manquants.
+
 ## Statuts
 
 | Statut | Signification |
@@ -24,10 +44,10 @@ Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 |---|---|---|
 | [optimisation-generalisee.md](optimisation-generalisee.md) | `in-progress` | Process/MCP par élément, métadonnées Services, grands ensembles Contact, repos/RSS/concurrence/endurance, qualification combinée et couverture restante. |
 | [processus-metier-internes-bpmn.md](processus-metier-internes-bpmn.md) | `partial` | Python généraliste sur VM/hôte dédié, broker de capacités, worker Process distinct et qualifications de charge, reprise et multi-harnais. |
-| [amelioration-globale-memoire.md](amelioration-globale-memoire.md) | `partial` | Embeddings réels, analyses partielles/échouées, recherche précise dans les pièces jointes, campagnes générales de rappel/acquisition et organisation des Topics après preuve de gain. |
+| [amelioration-globale-memoire.md](amelioration-globale-memoire.md) | `in-progress` | Embeddings réels, analyses partielles/échouées, recherche précise dans les pièces jointes, campagnes générales de rappel/acquisition et organisation des Topics après preuve de gain. |
 | [graphe-memoire-multiechelle.md](graphe-memoire-multiechelle.md) | `partial` | Générations serveur, occurrences de fichiers, placement préparé, lecture régionale et qualification des très grands volumes. |
-| [fiabilisation-conversationnelle.md](fiabilisation-conversationnelle.md) | `partial` | Identité sémantique, réserve indépendante, qualification multi-contextes/harnais, comptes externes, coordination de l'arrêt des Goals et parcours natifs restants. |
-| [lab-evaluation-mecanismes-ia.md](lab-evaluation-mecanismes-ia.md) | `partial` | Campagnes annotées réelles, séparation des variances, comparabilité/tendances, gardes, portabilité, campagnes de modèles de décision et mocks d'applications Process. |
+| [fiabilisation-conversationnelle.md](fiabilisation-conversationnelle.md) | `in-progress` | Identité sémantique, réserve indépendante, qualification multi-contextes/harnais, comptes externes, coordination de l'arrêt des Goals et parcours natifs restants. |
+| [lab-evaluation-mecanismes-ia.md](lab-evaluation-mecanismes-ia.md) | `in-progress` | Campagnes annotées réelles, séparation des variances, comparabilité/tendances, gardes, portabilité, campagnes de modèles de décision et mocks d'applications Process. |
 | [ordonnancement-llm-par-fournisseur.md](ordonnancement-llm-par-fournisseur.md) | `partial` | Provenance exhaustive en amont, priorités par opération, transports non tracés, coordination multi-backend et qualification fournisseur/charge. |
 | [outils-mcp-multimedia.md](outils-mcp-multimedia.md) | `partial` | Accès officiel Suno, références/composition/annulation distante et extensions locales. |
 | [programmes-documentaires-json.md](programmes-documentaires-json.md) | `partial` | Parcours d'autorisation des nouvelles applications avec données et qualification création/utilisation/persistance/partage/amélioration par un agent. |

@@ -4,8 +4,8 @@
       <q-input v-model="search" dense outlined clearable :label="t('evaluation.contract.parameterSearch')" class="parameter-search">
         <template #prepend><q-icon name="search" /></template>
       </q-input>
-      <q-btn flat dense no-caps :label="t('evaluation.contract.expandParameters')" @click="expandAll" />
-      <q-btn flat dense no-caps :label="t('evaluation.contract.collapseParameters')" @click="collapseAll" />
+      <q-btn outline color="primary"  dense no-caps :label="t('evaluation.contract.expandParameters')" @click="expandAll" />
+      <q-btn outline color="primary"  dense no-caps :label="t('evaluation.contract.collapseParameters')" @click="collapseAll" />
     </div>
     <div v-if="query && !matchingFields.length" class="text-grey-7 q-pa-md" role="status">{{ t('evaluation.contract.noParameters') }}</div>
     <q-expansion-item

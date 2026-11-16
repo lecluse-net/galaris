@@ -5,11 +5,16 @@
             :description="t(currentSection.descriptionKey)"
         />
 
+        <q-banner v-if="parameterRequests.fetchParams?.error" role="alert" class="q-mb-md">
+            {{ apiErrorDetail(parameterRequests.fetchParams.error) ?? t('common.anError') }}
+            <template #action><q-btn outline color="primary" :label="t('common.retry')" :loading="Boolean(parameterRequests.fetchParams?.pending)" @click="retryParameters" /></template>
+        </q-banner>
+
         <div v-if="paramsStore.loading && !paramsStore.params.length" class="row justify-center q-pa-lg">
             <q-spinner color="primary" size="3em" />
         </div>
 
-        <div v-else class="params-form" :class="{ 'params-form--harnesses': section === 'harnesses' }">
+        <div v-else-if="!parameterRequests.fetchParams?.error || paramsStore.params.length" class="params-form" :class="{ 'params-form--harnesses': section === 'harnesses' }">
             <q-card flat :bordered="section !== 'harnesses'" class="settings-content">
                 <q-tab-panels :model-value="section" class="settings-panels">
                     <q-tab-panel name="system" class="settings-panel">
@@ -108,7 +113,7 @@
                             <div class="text-body2 q-mt-xs">{{ t('params.janusGuideDescription') }}</div>
                             <div class="janus-api-url q-mt-md">
                                 <code>{{ janusApiUrl }}</code>
-                                <q-btn flat round dense icon="content_copy" @click="copyJanusApiUrl">
+                                <q-btn :aria-label="t('params.janusCopyApiUrl')" flat round dense icon="content_copy" @click="copyJanusApiUrl">
                                     <q-tooltip>{{ t('params.janusCopyApiUrl') }}</q-tooltip>
                                 </q-btn>
                             </div>
@@ -163,7 +168,7 @@
             </q-card>
         </div>
         <div class="q-mt-md">
-            <q-btn flat color="primary" icon="arrow_back" :label="t('common.back')" to="/params" />
+            <q-btn outline  color="primary" icon="arrow_back" :label="t('common.back')" to="/params" />
         </div>
     </q-page>
 </template>
@@ -174,6 +179,8 @@ import { computed, ref, watch } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { PageHeader, defineAsyncView } from '@/core/util'
+import { storeRequests } from '@/core/util/facade'
+import { apiErrorDetail } from '@/core/api'
 import { harnessBridgeSettings, harnessOverviewSettings, processBridgeSettings } from '../bridgeSettings'
 import {
     audioMeetingSummaryFields,
@@ -209,6 +216,7 @@ const { section } = defineProps<{ section: PreferenceSectionKey }>()
 const { t } = useI18n()
 const $q = useQuasar()
 const paramsStore = useParamsStore()
+const parameterRequests = storeRequests(paramsStore)
 const privilegeStore = usePrivilegeStore()
 const instructionFields = computed(() => [...executorInstructionFields, ...goalFields]
     .filter(field => privilegeStore.hasAnyPrivilege(parameterReadPrivileges(field.name))))
@@ -277,6 +285,11 @@ async function onParamBlur(name: string): Promise<void> {
 async function copyJanusApiUrl(): Promise<void> {
     await copyToClipboard(janusApiUrl)
     $q.notify({ type: 'positive', message: t('params.janusApiCopied'), timeout: 1500 })
+}
+
+async function retryParameters(): Promise<void> {
+    await paramsStore.fetchParams(true)
+    if (!parameterRequests.fetchParams?.error) syncParamValues()
 }
 
 watch([() => section, canViewSection], async ([, allowed]) => {

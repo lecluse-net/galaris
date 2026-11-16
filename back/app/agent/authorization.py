@@ -17,7 +17,9 @@ class AgentAuthorizationPolicy:
 async def authorization_policy(agent_id: int, *, lock: bool = False) -> AgentAuthorizationPolicy:
     query = select(Agent).where(Agent.id == agent_id).execution_options(populate_existing=True)
     if lock:
-        query = query.with_for_update()
+        # Serialize responsibility/version changes without conflicting with FK
+        # KEY SHARE locks held by admitted Tasks, calls or memory usage records.
+        query = query.with_for_update(key_share=True)
     agent = await get_db().scalar(query)
     if agent is None or agent.deleted_at is not None:
         raise PermissionError("Agent is unavailable")

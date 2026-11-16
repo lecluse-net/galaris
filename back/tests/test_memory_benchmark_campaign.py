@@ -11,6 +11,7 @@ from collections import Counter, defaultdict
 from dataclasses import asdict
 from pathlib import Path
 from statistics import mean
+from uuid import UUID
 
 import pytest
 from sqlalchemy import event, select, text
@@ -23,7 +24,7 @@ from scripts.memory_benchmark.generate import Corpus, generate
 from scripts.memory_benchmark.io import load
 from scripts.memory_benchmark.score import observations, score
 from scripts.memory_benchmark.validate import validate
-from tests.memory_benchmark_adapter import CURRENT, fixture_identity, install_adapter, load_world, observe
+from tests.memory_benchmark_adapter import CURRENT, fixture_identity, install_adapter, load_world, observe, scoring_corpus
 from tests.memory_benchmark_reference import reference_fingerprints
 
 
@@ -186,8 +187,9 @@ async def run_campaign(corpus, output, variants, workers, monkeypatch, root, ref
             stream.close()
     summaries = {}
     reports = {}
+    evaluated = scoring_corpus(corpus)
     for variant in variants:
-        report, per_query = score(corpus, observations(records[variant]), k=defaults.MEMORY_CONTEXT_MAX_ITEMS,
+        report, per_query = score(evaluated, observations(records[variant]), k=defaults.MEMORY_CONTEXT_MAX_ITEMS,
                                   stages=("retrieved", "injected"))
         reports[variant] = report
         _write_json(output / f"{variant}-report.json", report)
@@ -216,7 +218,9 @@ async def run_campaign(corpus, output, variants, workers, monkeypatch, root, ref
         raise RuntimeError("Benchmark source changed during campaign; observations remain diagnostic only")
     manifest = {
         "complete": True, "synthetic": True, "engine": "Galaris actual lexical fallback and agent context capsule",
-        "queries": len(corpus.queries), "memories": len(corpus.memories), "worlds": len(by_world),
+        "queries": len(corpus.queries), "memories": len(evaluated.memories),
+        "authored_memories": len(corpus.memories),
+        "fixture_contact_items": len(evaluated.memories) - len(corpus.memories), "worlds": len(by_world),
         "domains": dict(Counter(q.domain for q in corpus.queries)), "variants": variants, "workers": workers,
         "memory_item_budget": defaults.MEMORY_CONTEXT_MAX_ITEMS, "memory_char_budget": defaults.MEMORY_CONTEXT_MAX_CHARS,
         "candidate_limit_per_search": defaults.MEMORY_RECALL_CANDIDATE_LIMIT,
@@ -302,19 +306,23 @@ async def test_real_adapter_preserves_scope_clock_and_context_budget(monkeypatch
     corpus = generate(repetitions=1, distractors=2, profile_keys=("family",))
     agent = await load_world(corpus.memories, corpus.queries, tmp_path / "resources",
                              user_id=user_id, title_id=title_id)
+    evaluated = scoring_corpus(corpus)
     query = next(q for q in corpus.queries if q.family == "implicit_person_event" and q.language == "fr")
     async with get_db_session() as db:
+        indexed = set(await db.scalars(select(MemoryItem.id).where(MemoryItem.owner_agent_id == agent.id)))
+        assert indexed <= {UUID(memory.id) for memory in evaluated.memories}
         first, details = await observe(query, "baseline", agent, db)
         repeated, _ = await observe(query, "baseline", agent, db)
         candidate, _ = await observe(query, "combined", agent, db)
         assert first["injected"] == repeated["injected"]
         assert len(first["injected"]) <= 8
-        assert details["upcoming_ids"]
+        # This adapter measures the ordinary Memory brief. Dated memories use
+        # the common agenda, exercised in app/calendar/tests/test_context.py.
         assert all(s["mode"] == "lexical" for s in details["searches"])
         # Usage effects were rolled back, despite going through the real renderer.
         assert all(v == 0 for v in await db.scalars(select(MemoryItem.access_count).where(MemoryItem.owner_agent_id == agent.id)))
     for row in (first, candidate):
-        report, _ = score(corpus, parse([row]), stages=("injected",))
+        report, _ = score(evaluated, parse([row]), stages=("injected",))
         assert report["stages"]["injected"]["overall"]["queries_with_forbidden_ids"] == 0
 
 

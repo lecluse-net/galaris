@@ -290,6 +290,7 @@ class RuntimeActor:
         self.approvals: ActionApprovals | None = None
         self.loop: asyncio.AbstractEventLoop | None = None
         self.task: asyncio.Task[Any] | None = None
+        self._cancel_requested = False
         self.state: dict[str, Any] = {"runtime_run_id": identifier, "status": "running",
             "messages": [], "result": "", "authorization_requests": []}
         self.persist()
@@ -343,8 +344,23 @@ class RuntimeActor:
             if self.approvals is not None and self.approvals.receipt_unknown:
                 self.state.update(status="outcome_unknown", result="A local action receipt could not be confirmed.")
             self.persist()
-            if self.loop is not None and self.task is not None:
-                self.loop.call_soon_threadsafe(self.task.cancel)
+            self.cancel()
+
+    def cancel(self) -> None:
+        loop, task = self.loop, self.task
+        if loop is None or task is None:
+            return
+
+        def cancel_once() -> None:
+            # Check on the actor's loop, so simultaneous stop requests cannot
+            # cancel a second time while the SDK is closing its subprocess.
+            # SDKs also use cancellation internally; their task counter does not
+            # tell us whether this actor has already received its stop request.
+            if not task.done() and not self._cancel_requested:
+                self._cancel_requested = True
+                task.cancel()
+
+        loop.call_soon_threadsafe(cancel_once)
 
     async def consume(self, events: AsyncIterator[tuple[str, dict[str, Any]]]) -> None:
         self.loop = asyncio.get_running_loop()
@@ -447,5 +463,5 @@ class RuntimeRuns:
                 raise LookupError("Runtime run not found")
             if actor.approvals is not None:
                 actor.approvals.cancelled.set()
-            if actor.loop is not None and actor.task is not None and not actor.task.done():
-                actor.loop.call_soon_threadsafe(actor.task.cancel)
+            if actor.task is not None and not actor.task.done():
+                actor.cancel()

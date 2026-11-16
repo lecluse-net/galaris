@@ -72,7 +72,9 @@ async def agent_permission_catalog(agent_id: int, *, connection_id: int | None =
     configured = {row.service_id: row for row in await connections.get_connections_by_agent(agent_id, active_only=False)}
     native = mcp_tools_by_service_code()
     result = AgentPermissionCatalog()
-    for record in await service.get_all_service_records():
+    selected = {identity for identity, connection in configured.items()
+        if connection_id is None or connection.id == connection_id}
+    for record in await service.get_all_service_records(service_ids=selected):
         tool = service._to_internal(record)  # pyright: ignore[reportPrivateUsage]
         connection = configured.get(record.id)
         if connection is None:

@@ -21,7 +21,7 @@
             </div>
             <RoomList :search-value="roomSearch" cards :show-filters="!homeUnreadOnly" :rooms="homeRooms" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="false" :loading-more="loadingHomeRooms" :error="homeRoomsError" @select="selectRoom" @changed="roomUpdated" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @view-agent="changeViewerAgent" />
             <div v-if="homeRoomsError" role="alert" class="q-mt-md">
-              {{ t('chat.error') }} <q-btn flat :label="t('chat.home.retry')" @click="homeRoomsRevision++" />
+              {{ t('chat.error') }} <q-btn outline color="primary"  :label="t('chat.home.retry')" @click="homeRoomsRevision++" />
             </div>
             <ChatHomePagination v-model:page="homeRoomsPage" v-model:page-size="homeRoomsPageSize" :total="homeRoomsTotal" :loading="loadingHomeRooms" :label="t('chat.home.conversationPages')" />
           </section>
@@ -152,11 +152,11 @@
       </aside>
     </div>
 
-    <RoomCreateDialog v-model="createDialog" :agents="recipients.agents" :initial-agent-id="initialAgentId" :saving="creatingRoom" :can-edit-topic="canEditConversationTopic" @create="createRoom" />
-    <RoomPreferencesDialog v-model="preferencesDialog" :room="store.selectedRoom" :saving="savingRoomPreferences" :archiving="archivingRoom" :can-edit-topic="canEditConversationTopic" @save="saveRoomPreferences" @archive="setRoomArchived" />
+    <RoomCreateDialog v-if="createDialog" v-model="createDialog" :agents="recipients.agents" :initial-agent-id="initialAgentId" :saving="creatingRoom" :can-edit-topic="canEditConversationTopic" @create="createRoom" />
+    <RoomPreferencesDialog v-if="preferencesDialog" v-model="preferencesDialog" :room="store.selectedRoom" :saving="savingRoomPreferences" :archiving="archivingRoom" :can-edit-topic="canEditConversationTopic" @save="saveRoomPreferences" @archive="setRoomArchived" />
     <ConversationDocumentDialog ref="mobileDocument" v-model="mobileDocumentOpen" :document-id="selectedDocument?.id ?? null"
       :agent-id="selectedDocumentAgentId" :title="selectedDocument?.title ?? t('chat.workingDocument')" :editable="canEditDocuments" @changed="displayedDocumentId = $event.id" @unavailable="displayedDocumentId = null" @deleted="onDocumentDeleted" />
-    <ChatDocumentSearchDialog v-if="canReadDocuments && store.viewerAgentId === null" v-model="documentSearchOpen" @select="openLibraryDocument" />
+    <ChatDocumentSearchDialog v-if="documentSearchMounted && canReadDocuments && store.viewerAgentId === null" v-model="documentSearchOpen" @select="openLibraryDocument" />
     <q-dialog v-model="mobileCodeOpen" maximized>
       <q-card><CodeWorkspacePane v-if="selectedCodeId" :workspace-id="selectedCodeId" @hide="selectedWorkTarget = null" /></q-card>
     </q-dialog>
@@ -173,11 +173,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { apiErrorDetail, sessionGeneration } from '@/core/api'
 import { websocket } from '@/core/websocket'
 import { privileges } from '@/core/authorize'
-import { usePrivilegeStore } from '@/core/authorize/stores/privilegeStore'
+import { usePrivilegeStore } from '@/core/authorize/facade'
 import RoomList from '../components/RoomList.vue'; import MessageTimeline from '../components/MessageTimeline.vue'; import Composer from '../components/Composer.vue'; import AgentTasksPanel from '../components/AgentTasksPanel.vue'; import VoiceCallPanel from '../components/VoiceCallPanel.vue'; import InternalAgentAvatar from '../components/InternalAgentAvatar.vue'
-import RoomPreferencesDialog from '../components/RoomPreferencesDialog.vue'
+import { defineAsyncView } from '@/core/util/facade'
+const RoomPreferencesDialog = defineAsyncView(() => import('../components/RoomPreferencesDialog.vue'))
 import ScrollToBottomButton from '../components/ScrollToBottomButton.vue'
-import RoomCreateDialog from '../components/RoomCreateDialog.vue'
+const RoomCreateDialog = defineAsyncView(() => import('../components/RoomCreateDialog.vue'))
 import ChatWelcome from '../components/ChatWelcome.vue'
 import ChatHomePagination from '../components/ChatHomePagination.vue'
 import ConversationDocumentsPanel from '../components/ConversationDocumentsPanel.vue'
@@ -185,7 +186,7 @@ import ConversationDocumentDialog from '../components/ConversationDocumentDialog
 import ConversationProcessesPanel from '../components/ConversationProcessesPanel.vue'
 import ChatDocumentPane from '../components/ChatDocumentPane.vue'
 import { CodeWorkspacePane, RepositoryBrowser, codeService, codeErrorTranslationKey, useCodeStore, type CodeWorkspace } from '../code'
-import ChatDocumentSearchDialog from '../components/ChatDocumentSearchDialog.vue'
+const ChatDocumentSearchDialog = defineAsyncView(() => import('../components/ChatDocumentSearchDialog.vue'))
 import { documentNavigationKey, resolveWorkingDocument, useDocumentHistory, type WorkingDocumentReference, type WorkingDocumentSnapshot } from '@/core/util'
 import type { ConversationDocumentReference } from '../types'
 import { useChatInboxStore } from '../stores/inbox'
@@ -278,6 +279,8 @@ const documentPane = ref<InstanceType<typeof ChatDocumentPane> | null>(null)
 const mobileDocument = ref<InstanceType<typeof ConversationDocumentDialog> | null>(null)
 watch([() => selectedDocument.value?.id, selectedDocumentAgentId], () => { displayedDocumentId.value = null }, { flush: 'sync' })
 const documentSearchOpen = ref(false)
+const documentSearchMounted = ref(false)
+watch(documentSearchOpen, open => { if (open) documentSearchMounted.value = true })
 const documentLayout = ref<'columns' | 'rows'>('columns')
 const integratedDocument = computed(() => !$q.screen.lt.md && canReadDocuments.value ? selectedDocument.value : null)
 const mobileDocumentOpen = computed({
@@ -494,13 +497,13 @@ async function onDocumentShow(event: { data?: { room_id?: string; document_id?: 
     reportError(error)
   }
 }
-onMounted(() => websocket.onEvent('chat', 'document_show', onDocumentShow))
+onMounted(() => websocket.onEvent('chat', 'document_show', onObservedEvent))
 onMounted(() => websocket.onEvent('chat', 'repository_show', onRepositoryShow))
 onBeforeUnmount(() => {
   codeStore.hide()
   websocket.offEvent('chat', 'repository_show', onRepositoryShow)
   documentDisplayRequest += 1
-  websocket.offEvent('chat', 'document_show', onDocumentShow)
+  websocket.offEvent('chat', 'document_show', onObservedEvent)
 })
 const conversationSurfaceVisible=computed(() => !$q.screen.lt.md || mobileView.value === 'conversation' || integratedDocument.value !== null)
 const { markVisibleMessageRead } = useConversationVisibility({
@@ -713,6 +716,7 @@ onBeforeUnmount(() => {
   removeRoomNavigationGuard()
   store.releaseSelectedRoom()
 })
+function onObservedEvent(event: { data?: { room_id?: string; document_id?: string } }): void { void onDocumentShow(event).catch(error => console.error('Live refresh failed', error)) }
 </script>
 
 <style scoped src="../conversationBackground.css"></style>

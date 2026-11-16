@@ -45,6 +45,7 @@ async def attachment_context(committed_database, monkeypatch, tmp_path):
             b"Synthetic private attachment", name="private.txt")
         token = create_access_token({"sub": owner.email, "user_id": owner.id, "role_id": role.id})
         context = {
+            "user_id": owner.id, "user_email": owner.email, "role_id": role.id,
             "url": f"/api/chat/rooms/{room.id}/attachments",
             "agent_id": agent.id,
             "room_id": room.id, "connection_id": room.connection_id, "room_external_id": room.external_id,
@@ -173,7 +174,8 @@ async def test_process_completion_attaches_real_resources_to_the_chat_reply(atta
 
 
 @pytest.mark.asyncio
-async def test_draft_survives_requests_and_publishes_preuploaded_files_once(attachment_context):
+@pytest.mark.parametrize("explicit_files", [False, True])
+async def test_draft_survives_requests_and_publishes_preuploaded_files_once(attachment_context, explicit_files):
     ctx = attachment_context
     client, headers = ctx['client'], ctx['headers']
     base = f"/api/chat/rooms/{ctx['room_id']}"
@@ -198,6 +200,10 @@ async def test_draft_survives_requests_and_publishes_preuploaded_files_once(atta
         json={**save, 'mutation_key': str(uuid4())})
     assert stale.status_code == 409
     body = {'client_message_id': message_key, 'text': content['text'], 'draft_revision': revision}
+    if explicit_files:
+        body['draft_file_keys'] = [key]
+        body['client_message_id'] = str(uuid4())
+        body['text'] = 'Local text changed after the last autosave'
     sent = await client.post(f'{base}/messages', headers=headers, json=body)
     assert sent.status_code == 201, sent.text
     assert len(sent.json()['files']) == 1
@@ -301,3 +307,70 @@ async def test_drafts_are_unique_and_isolated_by_user_and_room(attachment_contex
         assert (await read_draft(second_user.id, ctx['room_id'])).content.text == 'Other user draft'
         assert (await read_draft(second_user.id, uuid4())).content is None
         assert len(list(await db.scalars(select(ChatDraft).where(ChatDraft.room_id == ctx['room_id'])))) == 2
+
+
+@pytest.mark.asyncio
+async def test_local_message_publication_needs_no_successful_autosave(attachment_context):
+    ctx = attachment_context
+    base = f"/api/chat/rooms/{ctx['room_id']}"
+    body = {'client_message_id': str(uuid4()), 'text': 'Synthetic immediate local message',
+        'draft_revision': 0, 'draft_file_keys': []}
+    first = await ctx['client'].post(f'{base}/messages', headers=ctx['headers'], json=body)
+    assert first.status_code == 201, first.text
+    repeated = await ctx['client'].post(f'{base}/messages', headers=ctx['headers'], json=body)
+    assert repeated.status_code == 201 and repeated.json()['id'] == first.json()['id']
+    assert first.json()['text'] == body['text']
+
+
+@pytest.mark.asyncio
+async def test_browser_sessions_keep_private_drafts_and_files_and_claim_legacy_once(attachment_context):
+    from core.user import refresh_session_service
+
+    ctx = attachment_context
+    client = ctx['client']
+    base = f"/api/chat/rooms/{ctx['room_id']}"
+    key = str(uuid4())
+    upload = await client.post(f'{base}/draft/files/{key}', headers=ctx['headers'],
+        files={'file': ('legacy.txt', b'Synthetic legacy bytes', 'text/plain')})
+    assert upload.status_code == 200, upload.text
+    content = {'client_message_id': str(uuid4()), 'text': 'Synthetic legacy draft', 'files': [upload.json()]}
+    saved = await client.put(f'{base}/draft', headers=ctx['headers'], json={
+        'expected_revision': 0, 'mutation_key': str(uuid4()), 'content': content})
+    assert saved.status_code == 200
+    headers = []
+    async with get_db_session():
+        for _ in range(2):
+            refresh = await refresh_session_service.create_refresh_session(ctx['user_id'])
+            family = await refresh_session_service.family_for_token(refresh)
+            token = create_access_token({'sub': ctx['user_email'], 'user_id': ctx['user_id'],
+                'role_id': ctx['role_id'], 'session_family': family})
+            headers.append({'Authorization': f'Bearer {token}'})
+    first, second = headers
+    adopted = await client.get(f'{base}/draft', headers=first)
+    assert adopted.json() == saved.json()
+    assert (await client.get(f'{base}/draft', headers=second)).json() == {'revision': 0, 'content': None}
+    for auth, text in ((first, 'First session text'), (second, 'Second session text')):
+        response = await client.put(f'{base}/draft', headers=auth, json={
+            'expected_revision': adopted.json()['revision'] if auth == first else 0,
+            'mutation_key': str(uuid4()), 'content': {**content, 'text': text,
+                'files': [upload.json()] if auth == first else []}})
+        assert response.status_code == 200, response.text
+    assert (await client.get(f'{base}/draft', headers=first)).json()['content']['text'] == 'First session text'
+    assert (await client.get(f'{base}/draft', headers=second)).json()['content']['text'] == 'Second session text'
+    # Knowing another session's file key grants neither publication nor deletion.
+    denied = await client.post(f'{base}/messages', headers=second, json={
+        'client_message_id': str(uuid4()), 'text': 'Synthetic forbidden reference', 'draft_file_keys': [key]})
+    assert denied.status_code == 409
+    assert denied.json()['detail']['code'] == 'draft_file_unavailable'
+    assert (await client.delete(f'{base}/draft/files/{key}', headers=second)).status_code == 204
+    # An old draft cursor does not hold publication. Mix its durable bytes with a new upload.
+    published = await client.post(f'{base}/attachments', headers=first, data={
+        'client_message_id': str(uuid4()), 'text': 'Synthetic mixed publication',
+        'draft_revision': adopted.json()['revision'], 'draft_file_keys': [key]},
+        files={'files': ('fresh.txt', b'Synthetic fresh bytes', 'text/plain')})
+    assert published.status_code == 201, published.text
+    assert [item['name'] for item in published.json()['files']] == ['legacy.txt', 'fresh.txt']
+    for item, expected in zip(published.json()['files'], (b'Synthetic legacy bytes', b'Synthetic fresh bytes'), strict=True):
+        assert (await client.get(f"{base}/files/{item['id']}", headers=first)).content == expected
+    assert (await client.get(f'{base}/draft', headers=first)).json()['content']['text'] == 'First session text'
+    assert (await client.get(f'{base}/draft', headers=second)).json()['content']['text'] == 'Second session text'

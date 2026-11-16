@@ -15,7 +15,7 @@
           <div v-if="loading" class="q-pa-md" role="status"><q-spinner color="primary" /></div>
           <div v-else-if="error" class="q-pa-md" role="alert">
             {{ t('chat.documentSearchError') }}
-            <q-btn flat :label="t('chat.retryDocuments')" @click="search" />
+            <q-btn outline color="primary"  :label="t('chat.retryDocuments')" @click="search" />
           </div>
           <div v-else-if="!items.length" class="q-pa-md" role="status">{{ t('chat.noDocumentResults') }}</div>
           <q-list v-else separator>

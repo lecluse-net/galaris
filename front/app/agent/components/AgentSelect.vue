@@ -20,7 +20,7 @@
     <template #no-option="scope">
       <q-item>
         <q-item-section>
-          <q-btn v-if="failed" flat :label="t('common.retry')" @click="refresh" />
+          <q-btn outline color="primary" v-if="failed"  :label="t('common.retry')" @click="refresh" />
           <span v-else>{{ t(scope.search ? 'agent.noSearchResults' : 'agent.noAgent') }}</span>
         </q-item-section>
       </q-item>

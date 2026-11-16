@@ -59,11 +59,11 @@
       </q-card-section>
 
       <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-        <q-btn flat :label="$t('common.cancel')" color="grey" v-close-popup />
+        <q-btn outline  :label="$t('common.cancel')" color="grey" v-close-popup />
         <q-btn
           v-if="canEdit && !isEdit"
           outline
-          color="green"
+          color="solaire-green"
           icon="play_arrow"
           :label="$t('task.form.createAndRun')"
           :loading="loading"
@@ -81,9 +81,9 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import type { Task, TaskCreate, TaskUpdate, ForcedRoute, Effort } from '../types'
-import { agentService } from '@/app/agent/services/agentService'
+import { agentService } from '@/app/agent/facade'
 import { AgentSelect } from '@/app/agent'
-import type { Agent } from '@/app/agent/services/agentService'
+import type { Agent } from '@/app/agent/contracts'
 
 interface FormData {
   label: string
@@ -154,7 +154,7 @@ async function loadAgents() {
 }
 
 onMounted(() => {
-  loadAgents()
+  void loadAgents()
 })
 
 watch(() => props.task, (task) => {
