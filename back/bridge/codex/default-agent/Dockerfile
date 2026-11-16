@@ -1,4 +1,4 @@
-FROM python:3.14-slim-trixie
+FROM python:3.15-slim-trixie
 
 ARG APP_UID=10001
 ARG APP_GID=10001
