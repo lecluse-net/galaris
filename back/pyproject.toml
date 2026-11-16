@@ -39,7 +39,7 @@ dependencies = [
     "httpx2~=2.16",                  # blocking sentinel transport; bounded response decompression
     # Logging and serialization
     "loguru~=0.7",
-    "logfire[fastapi,httpx,sqlalchemy,asyncpg,system-metrics]~=5.3",
+    "logfire[fastapi,httpx,sqlalchemy,asyncpg,system-metrics]~=5.6",
     "PyYAML~=6.0",
     # ════════════════════════════════════════════════════════════════
     # APP — business features used by back/app and back/bridge
