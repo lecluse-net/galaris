@@ -41,7 +41,7 @@ ENV VITE_APP_NAME=${VITE_APP_NAME}
 RUN npm run build
 
 # Production stage
-FROM nginx:stable-alpine@sha256:0e52bd054126cdc040b1276c0af347aeb02a41b9cfe305d6094767ac30e97949 as prod-stage
+FROM nginx:stable-alpine@sha256:901e593c95dc85f5a729f5765516321366ef4ac401821431d408897e95287d0a as prod-stage
 RUN apk upgrade --no-cache
 ENV APP_NAME=galaris
 COPY --from=build-stage /app/dist /usr/share/nginx/html
