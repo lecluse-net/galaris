@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.64.0-noble
+FROM mcr.microsoft.com/playwright:v1.65.1-noble
 WORKDIR /tests
 COPY package*.json ./
 RUN npm ci
