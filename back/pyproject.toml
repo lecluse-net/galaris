@@ -26,7 +26,7 @@ dependencies = [
     "pydantic_core~=2.50",           # version required by latest stable Pydantic
     "python-dotenv~=1.2",
     "email-validator~=2.3",           # Pydantic EmailStr validation
-    "babel>=2.17,<3",                 # Localized country names for contact defaults
+    "babel>=2.18.0,<3",                 # Localized country names for contact defaults
     "phonenumberslite>=9,<10",        # Offline international phone extraction/validation
     # Authentication and cryptography
     "PyJWT>=2.15.1,<3",              # JWT; reject asymmetric keys as HMAC secrets
