@@ -8,7 +8,7 @@ les objectifs, les documents, la mémoire, les modèles IA et les intégrations 
 Un même agent peut discuter avec une personne, consulter ses informations autorisées, produire un
 livrable, solliciter un collègue, déclencher un workflow externe et conserver les connaissances utiles.
 
-Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **1er novembre 2026**, y compris
+Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **16 novembre 2026**, y compris
 les fonctions destinées aux agents, les écrans d’administration et les mécanismes de fond. Il est
 organisé par usages, puis complété par un inventaire des fonctions MCP et une correspondance avec
 **tous les modules déclarés**. Les sources de chaque domaine sont indiquées pour rendre la couverture
@@ -27,7 +27,10 @@ Les dix mécanismes IA du Lab, ses campagnes de processus et les mécanismes de 
 constituent des fonctions distinctes. Les sources et tests décrivent les garanties du logiciel ;
 ce catalogue ne constitue pas une qualification de chaque installation ou fournisseur.
 
-Les inventaires couvrent **284 fonctions MCP natives, 78 modules backend et 40 modules frontend**.
+Les inventaires couvrent **294 fonctions MCP natives, 79 modules backend et 40 modules frontend**.
+Cette revue inclut le code de développement et les changements locaux présents ; elle ne décrit
+pas uniquement la dernière publication. Le client desktop constitue une application de support
+distincte des modules web dénombrés.
 Les fonctionnalités réalisées restent distinctes des intentions du
 [registre des plans](../../../project/plans/README.md) ; les contrôles de
 qualité figurent dans [l’exploitation](#exploitation).
@@ -81,7 +84,7 @@ qualité figurent dans [l’exploitation](#exploitation).
 | **Modèle de décision** | Une ressource spécialisée dans les choix fermés | Choisit parmi des réponses autorisées pour le routage, les sujets ou la mémoire ; la rédaction reste confiée au modèle texte du même profil. |
 | **Harnais** | Le programme qui fait travailler l’agent | Exécute la boucle modèle–outils, restitue sa progression et rend son résultat à Galaris. |
 | **Service / outil** | Une intégration ou un ensemble de capacités | Déclare ses fonctions, ses paramètres et éventuellement ses services de messagerie, de fichiers ou de réception d’événements. |
-| **Connexion** | L’accès d’un agent à un Service | Porte l’activation, la configuration, les credentials et les fonctions autorisées pour cet agent ; les connexions des cinq services système sont obligatoires et protégées. |
+| **Connexion** | L’accès d’un agent à un Service | Porte l’activation, la configuration, les credentials et les fonctions autorisées pour cet agent ; les connexions des six services système sont obligatoires et protégées. |
 | **Inférence durable** | Une requête modèle conservée avant son exécution | Fige demande et autorité, conserve tentatives et résultats, permet lecture, abonnement, pause, arrêt, reprise et rejeu explicites. |
 | **Compétence** | Un paquet de consignes et de ressources | Explique une méthode réutilisable ; ses fichiers peuvent accompagner les instructions. Une compétence ne confère pas de droit sur un Service. |
 | **Conversation / salon** | Un échange sur un canal déterminé | Conserve les messages, leurs auteurs, les fichiers, les sujets et les travaux qui en découlent. |
@@ -221,6 +224,40 @@ son résultat et, lorsqu’il existe, le reçu de livraison.
 La PWA ne transforme pas les agents en logiciel autonome hors connexion : les actions métier ont
 besoin du serveur Galaris et des services qu’elles utilisent.
 
+### Client desktop Windows et Linux
+
+Le client **Electron** ouvre l’interface du serveur Galaris dans une fenêtre dédiée. Les paquets
+x64 prévus sont un installateur Windows NSIS, une AppImage Linux et, facultativement, un paquet
+Debian. Leur disponibilité dépend des fichiers effectivement proposés par la publication.
+L’utilisateur renseigne l’origine HTTPS de son serveur, puis retrouve la connexion habituelle.
+Chaque origine possède ses propres cookies et données locales ; un changement de serveur ne
+révoque pas la session précédente. Une connexion échouée conserve le serveur déjà enregistré.
+
+Les onglets partagent la session du serveur et conservent l’état de leurs pages pendant la
+navigation. Les liens internes ouverts dans un nouvel onglet restent dans le client ; les liens
+externes ouvrent le navigateur habituel. Les titres suivent la page et la langue courantes.
+`Ctrl+T`, `Ctrl+W`, `Ctrl+Tab` et `Ctrl+Maj+Tab` créent, ferment et parcourent les onglets.
+Ils ne sont pas restaurés au redémarrage. Le correcteur français/anglais propose suggestions et
+ajout au dictionnaire ; le téléchargement initial des dictionnaires nécessite Internet.
+
+Windows et AppImage recherchent leurs mises à jour au démarrage puis toutes les six heures.
+Le téléchargement précède une décision explicite de redémarrage ; fermer le client ne lance
+pas l’installation. Debian se met à niveau manuellement. Le client et l’interface servie ont
+des cycles de mise à jour indépendants. Les protections contre la perte de saisie restent
+applicables à la fermeture, au changement de serveur et au redémarrage pour mise à jour.
+
+Les pages serveur n’ont ni accès Node ni preload ; elles restent isolées des fonctions natives.
+Micro, caméra, notifications et lecture du presse-papiers demandent un accord natif. Le serveur
+et le réseau restent nécessaires. La fermeture quitte le client, sans fonctionnement garanti
+en arrière-plan ; périphériques physiques, Web Push et installation signée entre versions
+restent à qualifier sur les plateformes concernées.
+
+Sources : [installation et usages desktop](../user/desktop.md),
+[architecture desktop](../../../project/decisions/0292-desktop-client.md),
+[politiques et tests desktop](../dev/desktop.md).
+
+### Chargement, session et actualisation
+
 Les vues lourdes, éditeurs et onglets se chargent à leur ouverture. Un échec propose **Réessayer**
 sans recharger la page ni effacer les saisies. Les sélections d’agents mutualisent les lectures
 simultanées par périmètre, sans résultat conservé entre ouvertures ; les civilités, groupes et
@@ -241,6 +278,13 @@ s’applique après leur lecture et rejette un choix devenu périmé. Un échec 
 avec l’anglais disponible au démarrage. La PWA restaure son thème et signale sa couleur à Chrome
 au retour au premier plan ; le renouvellement du manifeste/WebAPK Android reste géré par Chrome.
 Son fond natif de secours est sombre, indépendamment de la couleur momentanée de l’interface.
+
+Les instantanés des catalogues sont isolés par session et rôle. Un renouvellement de token
+conserve les données ; une déconnexion ou un changement de rôle les réinitialise. Les lectures
+et sauvegardes concurrentes gardent leur propre diagnostic : une action réussie n’efface pas
+l’erreur d’une autre. Les réponses d’un ancien fichier, agent ou formulaire ne remplacent pas
+la sélection courante. Les lectures périodiques concernées s’arrêtent dans un onglet masqué,
+puis reprennent à son retour ; les événements temps réel restent traités.
 
 Sources : [guide utilisateur](../user/README.md), [PWA](../user/pwa.md),
 [onboarding](../../../back/app/onboarding/), [shell](../../../front/app/index/),
@@ -323,6 +367,12 @@ ancienne réponse.
 
 Les appels vocaux natifs utilisent leur privilège spécifique `CHAT_CALL` dans une conversation
 personnelle ; les règles d’équipes ne doivent pas être interprétées comme leur seul contrôle.
+
+Les agents consultent l’annuaire mixte avec `team_list` et `team_members`, sans délégation
+AgentAdmin. Ils peuvent découvrir les équipes vides, filtrer les membres humains ou agents
+et paginer les résultats ; les comptes humains ne livrent ni adresse électronique ni détail
+de compte. `agent_list` accepte aussi un filtre d’équipe. Cette découverte n’accorde aucun
+droit de contact, de partage ou de gestion.
 
 Sources : [comptes](../../../back/core/user/router.py), [autorisations](../../../back/core/authorize/router.py),
 [équipes](../user/teams.md), [contrat des équipes](../../../back/core/team/contracts.py).
@@ -548,7 +598,7 @@ Les modèles texte sont répartis en quatre niveaux communs :
 |---|---|
 | **Ultra low** | Mécanismes Dream utilisant un modèle |
 | **Low** | Dispatcher et conversations courtes |
-| **Standard** | Exécution standard et suivi des Goals |
+| **Standard** | Exécution standard |
 | **High** | Exécution high, Planner et Lab |
 
 Chaque niveau peut aussi porter un **effort de raisonnement**. Ce réglage du fournisseur est distinct
@@ -618,8 +668,10 @@ restent utilisables, y compris avec un unique modèle local.
 | Sujets des activités et messages | Réutiliser un sujet, détecter une continuité ou demander un nouveau dossier | Rédiger le titre, la description et les mots-clés d’un nouveau sujet ; appliquer la politique de création |
 | Extraction Memory par Dream | Ignorer une source sans fait durable, rattacher des faits déjà couverts ou demander l’extraction | Rédiger et valider les connaissances nouvelles ou incomplètement couvertes |
 | Acquisition Memory | Confirmer l’équivalence complète avec un candidat proche | Recherche, droits, conservation des faits et rattachement idempotent de provenance |
+| Monitoring Goal | Choisir `CONTINUE` ou `STOP` sur les preuves du cycle | Conserver le résultat de la Task ; aucune génération de suivi, revue ou substitution par un modèle texte |
 
-Planner, suivi de Goal et apprentissage restent génératifs. Les règles déterministes de
+Planner et apprentissage restent génératifs. Sans modèle Décision, les Goals poursuivent
+leur planning sans clôture automatique. Les règles déterministes de
 maintenance et de transition n’ajoutent pas d’appel de décision.
 
 La politique **repli texte en cas d’échec** peut autoriser un seul appel au modèle du **même
@@ -1171,6 +1223,16 @@ de le retrouver sans seconde admission. Un reçu tardif n’efface ni un nouveau
 celui d’une autre conversation. Le compositeur redevient disponible après admission même si
 l’actualisation de l’historique échoue ; les erreurs de lecture restent signalées.
 
+Le brouillon privé conserve texte et pièces jointes entre navigation et rechargement.
+Le texte est enregistré localement dès la saisie, les fichiers dans IndexedDB ; une sauvegarde
+serveur intervient toutes les deux secondes et les PJ commencent leur téléversement à la
+sélection. **Poster** utilise le contenu local et les fichiers disponibles sans attendre cette
+sauvegarde. Une coupure ou un conflit de synchronisation se résout en arrière-plan ; le
+brouillon local non vide reste prioritaire. Compte, session de connexion et conversation
+isolent les brouillons. L’admission du message efface seulement la version envoyée, en
+préservant les saisies plus récentes. Il n’existe aucun historique de brouillon ; effacer les
+données du navigateur perd les modifications qui n’ont pas atteint le serveur.
+
 Les marqueurs de lecture sont persistés côté serveur. Les **notifications Web Push**, lorsqu’elles
 sont configurées et autorisées par le navigateur, avertissent des nouveaux messages. La consultation
 d’un message ou du salon peut retirer une notification encore en attente. La mise en sourdine et
@@ -1275,7 +1337,14 @@ inférence de dispatcher préalable, quel que soit le canal texte. Pour un messa
 autre IA, le dispatcher garde son choix `EXEC`/`END` et ses limites de boucle.
 
 Il peut répondre directement, utiliser les outils autorisés en conversation ou confier un travail
-substantiel à une tâche/à un Process. À l’admission d’une tâche, le serveur conserve **la demande
+substantiel à une tâche/à un Process. La politique administrable `ai.conversation-action-policy`
+porte ce choix pour le texte, la voix par tours et la voix temps réel. Une fonction absente
+du dialogue ou un inventaire incomplet ne prouvent pas une impossibilité en Task : celle-ci
+peut explorer les moyens disponibles. Les refus vérifiés, ACL et accords en attente restent
+applicables ; les choix humains indécidés exigent une clarification. La projection des Services
+exclus du dialogue reste locale, sans découverte distante ni ajout d’outils au round.
+
+À l’admission d’une tâche, le serveur conserve **la demande
 source et ses pièces jointes**, puis leur associe un complément de contexte produit par le modèle.
 Ce complément résout les références, reprend les contraintes antérieures utiles et précise le
 périmètre ; il ne remplace pas la demande originale par une synthèse potentiellement incomplète.
@@ -1891,8 +1960,9 @@ par passages successifs.
 ### Paramétrer et organiser les objectifs
 
 - Créer un titre et une description riche ; choisir l’agent responsable et le référent humain.
-- Définir une fréquence entre cycles **ou** un objectif parent comme déclencheur relationnel.
-  Ces deux modes sont exclusifs et la hiérarchie ne peut pas contenir de cycle.
+- Définir une fréquence entre cycles, des dates fixes récurrentes dans un fuseau choisi,
+  **ou** un objectif parent comme déclencheur relationnel. Ces modes sont exclusifs et
+  la hiérarchie ne peut pas contenir de cycle.
 - Consulter l’arbre des objectifs et les liens parent/enfant.
 - Définir des fenêtres hebdomadaires de travail, avec jours et horaires ; la fenêtre d’un Goal
   restreint la fenêtre globale. Les objectifs déclenchés par un parent suivent leur mode propre.
@@ -1904,6 +1974,12 @@ par passages successifs.
   une modification concurrente du Goal provoque toujours un conflit de révision.
 - Supprimer un Goal lorsque son état le permet ; une exécution inachevée doit être traitée auparavant.
 
+Les fréquences acceptent aussi semaines, mois et années. Les catégories sont privées à leur
+créateur et ne modifient aucun droit. Les sous-objectifs héritent du classement de leur racine
+pour le filtre et le tri, tout en conservant leur catégorie propre en cas de détachement.
+La couche Objectifs de l'[Agenda](../user/calendar.md) relie chaque passage échu à son cycle
+et à sa Task ; les modifications de planning conservent le passé.
+
 ### Travail, jugement et suivi
 
 Les critères de fin portent sur le résultat attendu : un rapport créé, un message envoyé ou
@@ -1911,15 +1987,23 @@ une tâche réussie ne prouvent pas à eux seuls que l'objectif est atteint. Un 
 utilement attendre une décision précise du référent ; il ne doit pas produire du contenu
 uniquement pour poursuivre l'activité. Une décision déjà enregistrée se relit à sa source.
 Un refus d'accès reste une limite, sans devenir une demande d'élargissement des droits.
-Le suivi est mis à jour automatiquement à partir du résultat du cycle ; les livraisons
-réellement demandées restent des actions distinctes à effectuer.
+Le résultat de la Task conserve les preuves et devient le contexte du cycle suivant ;
+les livraisons réellement demandées restent des actions distinctes à effectuer.
 
 Un cycle crée une tâche ordinaire, qui passe par l’orchestration commune. À sa fin, le mécanisme de
-suivi examine le résultat, les preuves et le suivi antérieur, puis décide de poursuivre ou de
-conclure. Les décisions, leur justification et les coûts restent consultables.
+monitoring transmet le résultat, les observations et le suivi existant au LLM décisionnel
+du profil pour un seul choix `CONTINUE`/`STOP`, sans modèle texte, synthèse ni revue.
+Sans ce modèle ou en cas de panne, les cycles continuent selon leur planning. Un blocage
+ne provoque pas de pause ; les contrôles humains et les attentes de réponse sont préservés.
+Les décisions, les erreurs et les coûts restent consultables.
 
-Un fournisseur peut renvoyer la progression comme objet ou comme chaîne JSON : le suivi décode
-cette dernière puis valide le même contrat, sans appel modèle supplémentaire pour ce seul écart.
+Les anciens payloads de suivi génératif restent lisibles dans les historiques et jeux du Lab.
+
+La nouvelle Task reçoit la description d’origine, le résultat du cycle précédent et la
+référence `document://` du suivi, à lire par pages selon les besoins ; son objectif n’incorpore
+pas une copie complète de ce document. La référence ne confère aucun droit supplémentaire.
+Une modification du Goal, du suivi ou du travail invalide une décision devenue périmée ;
+un retour tardif du modèle ne peut annuler une pause ou une clôture humaine.
 
 La description est une **colonne HTML du Goal**, sans document ni historique de texte.
 Le suivi reste son unique document associé, avec l'éditeur et les révisions documentaires.
@@ -1927,19 +2011,17 @@ Les agents lisent les deux contenus via `galaris://goal/<uuid>` ; le suivi conse
 son URI `document://`. `goal_update_suivi` conserve le contrôle de révision.
 
 Dans **Préférences → Instructions**, les personnes habilitées peuvent personnaliser le prompt
-du suivi, puis revenir au défaut. Les prochains jugements utilisent ces consignes pour synthétiser
-l’état actuel, conserver les informations utiles et décider de poursuivre. Le défaut fusionne
-les répétitions sans imposer une longueur cible.
+de décision, puis revenir au défaut. Les prochains jugements utilisent ces consignes pour
+choisir `CONTINUE` ou `STOP` ; aucune synthèse du document de suivi n'est générée.
 
 La fiche affiche les cycles récents et paginés, leur tâche, leur état, leur verdict, les appels et
 les coûts. Reprendre un Goal terminé peut ouvrir de nouveaux cycles tout en conservant son histoire.
 Le runner attend lorsque l’agent est déjà occupé et respecte les pauses et horaires applicables.
 
 La demande « Exécuter un cycle maintenant » reste persistée jusqu’à la création de sa tâche.
-Elle contourne les fenêtres horaires mais pas une pause globale explicite. Si elle doit d’abord
-récupérer une évaluation en échec, un verdict `CONTINUE` permet le nouveau cycle sans attendre
-le créneau suivant ; `STOP` annule la demande. « Réessayer le suivi » réévalue seulement le travail
-existant. Ces opérations préservent la tâche et le résultat du cycle précédent.
+Elle contourne les fenêtres horaires mais pas une pause globale explicite. Une panne du modèle
+de monitoring conserve le diagnostic et les coûts, enregistre `CONTINUE` et laisse le travail
+suivant admissible. La Task et le résultat du cycle précédent restent conservés.
 
 La page Objectifs peut lire la disponibilité de l’ordonnancement sans droit d’édition des réglages,
 en distinguant pause globale et période hors horaires, avec la prochaine activation lorsqu’elle
@@ -2360,6 +2442,37 @@ Deux ressources complémentaires sont disponibles :
 Les autres types de documents, tels qu’un type image autonome, ne sont pas encore disponibles.
 Les images et les autres médias peuvent déjà être intégrés ou joints aux documents HTML.
 
+### Formats extensibles et stockage commun
+
+Le **format de document** est identifié par `document_format` et sa version. Les formats
+produit intégrés restent **Texte** (`text`) et **Data** (`data`). Un registre public permet
+à un module de contribuer un codec textuel ou binaire, son éditeur et ses capacités sans
+créer une autre bibliothèque. Un contenu structuré en JSON n’est pas automatiquement un
+document Data. Les formats d’exemple des tests ne sont pas des fonctionnalités livrées.
+
+Tous les formats conservent identité, propriétaires, ACL, classement, révisions et contrôle
+des conflits. Les contenus textuels résident dans PostgreSQL ; les contenus binaires retiennent
+des fichiers immuables `core.storage`, y compris pour les versions historiques. Éditeur,
+aperçu, intégration, miniature, PDF, import et export natif déclarent séparément leur prise
+en charge native, leur repli ou leur indisponibilité. La déclaration d’une capacité ne vaut
+pas qualification de son rendu ni certification d’un plugin.
+
+`GET /api/documents/formats` et `file_schemes` exposent le catalogue. La création et le filtre
+utilisent les commandes ordinaires de Documents ; aucun bouton autonome « Formats de document »
+n’est proposé. Le téléchargement de source, courant ou historique, reste soumis aux ACL,
+même lorsque le format n’est plus installé. Un code ou une version inconnus ne deviennent
+jamais implicitement du HTML. Les intégrations imbriquées bornent profondeur et cycles,
+sans transmettre les droits du document hôte aux ressources citées.
+
+Les anciens codes `html` et `form` convergent vers `text` ; les identités, contenus, versions,
+droits et URI restent conservés. Les anciens champs `document_type` et la route
+`/documents/types` sont retirés. Le registre prépare les contributions ; il ne fournit ni
+installation de plugins à chaud ni conversion automatique entre versions de formats.
+
+Sources : [contrat des formats et qualification](../dev/document-formats.md),
+[cycle de vie et permissions](../../../back/app/document/tests/test_formats.py),
+[migration des formats](../../../back/app/document/tests/test_format_migration.py).
+
 ### Support canonique des contenus rédigés
 
 Les agents utilisent un **document Galaris** pour les rapports, articles, analyses, plans, notes
@@ -2536,9 +2649,14 @@ Sources : [partage des répertoires](../user/documents.md),
 ### Importer ou copier un document
 
 **Nouveau document depuis…** sélectionne un fichier accessible : JSON devient Données ; HTML,
-Markdown et texte brut UTF-8 deviennent Texte. L’import applique le quota de ressources configuré,
-sans plafond propre de 2 Mo. Un format non pris en charge, un contenu invalide ou un refus d’accès
-empêche la création. Le résultat est une copie indépendante, sans lien ni pièce jointe vers la source.
+Markdown et texte brut UTF-8 deviennent Texte. Les PDF et documents bureautiques convertibles
+deviennent du texte éditable avec images et médias publiés comme assets du nouveau document ;
+l’original est conservé en pièce jointe. Un téléversement non convertible peut être conservé
+comme pièce jointe d’un document Texte. Les formats natifs enregistrés suivent leur codec.
+L’import applique le quota de ressources configuré, sans plafond propre de 2 Mo. Un contenu
+invalide, une conversion échouée ou un refus d’accès empêche la publication ; les médias non
+publiés sont nettoyés. Le résultat est indépendant de la source : les imports textuels directs
+ne conservent ni lien ni pièce jointe vers celle-ci.
 
 Le même sélecteur peut copier un document Texte ou Données, y compris personnel. Le type et le
 contenu sont conservés ; les images et pièces jointes d’un Texte reçoivent de nouvelles identités.
@@ -3294,7 +3412,10 @@ Sources : [API des compétences](../../../back/app/skill/router.py), [schémas](
 ### Construire le catalogue
 
 Un Service peut exposer un ensemble de fonctions MCP, un service de fichiers, une messagerie et un
-listener. Il contient un schéma de paramètres et peut définir un modèle de tâche alimenté par les
+listener, ainsi qu’une API REST, Mail ou Calendrier. Un même fournisseur cumule plusieurs
+capacités, avec un protocole par capacité. **Ajouter un protocole** sélectionne le transport
+dans le catalogue et ouvre sa configuration standard ; une chaîne inconnue n’ajoute pas
+d’adapter exécutable. Il contient un schéma de paramètres et peut définir un modèle de tâche alimenté par les
 variables d’un événement entrant.
 
 - Consulter les services intégrés et les services ajoutés ; rechercher leurs fonctions et descriptions.
@@ -3323,10 +3444,32 @@ transactionnelle ; un bilan devenu périmé est refusé puis actualisé. Les res
 et les données externes sont conservées. Cette cascade reste distincte de ServiceAdmin MCP,
 qui refuse de supprimer un Service portant encore des dépendances.
 
-### Cinq services système obligatoires
+### Catalogue portable de Services
 
-**Galaris (`galaris`), Conversation (`conversation`), Documents (`document`), Memory (`memory`) et File Sharing
-(`file_sharing`)** sont des services obligatoires de chaque agent. Leur propriété logicielle
+Les modèles de Services distribués dans le dépôt sont des fiches YAML autonomes : définition,
+résumés FR/EN, version, compatibilité minimale, documentation, crédit et icône embarquée.
+Choisir une fiche prépare l’éditeur standard ; seul son enregistrement crée une copie locale,
+sans connexion automatique ni autorisation supplémentaire. Les icônes accompagnent les Services
+dans les listes et connexions ; leurs formats et contenus sont validés avant affichage.
+
+Une actualisation autorisée lit le dépôt officiel à un même commit et publie un cache atomique.
+Un échec conserve le cache précédent ; les fiches embarquées fournissent le repli compatible.
+Les Services installés, paramètres personnels et secrets ne sont pas remplacés. Les versions
+différentes sont signalées ; leur adoption reste explicite. Les fiches officielles n’embarquent
+ni secrets ni commandes MCP stdio.
+
+Le domaine public utilise désormais `app.services`, `/api/services`, `service_id` et
+`service_code`, ainsi que `SERVICE_ACCESS`/`SERVICE_EDIT` et les fonctions `service_admin_*`.
+Les consommateurs de l’ancienne API `/api/tools` doivent migrer. Le terme « outil MCP » reste
+celui des fonctions du protocole ; la route web historique `/tools` redirige vers Services.
+
+Sources : [format, cache et compatibilité du catalogue](../dev/service-catalog.md),
+[tests du catalogue portable](../../../back/app/services/tests/test_service_catalog.py).
+
+### Six services système obligatoires
+
+**Galaris (`galaris`), Conversation (`conversation`), Documents (`document`), Memory (`memory`), File Sharing
+(`file_sharing`) et Agenda (`agenda`)** sont des services obligatoires de chaque agent. Leur propriété logicielle
 `can_disable=false` n’est pas un réglage utilisateur. DbAdmin crée ou réactive leurs connexions
 et leur accès conversationnel. Les permissions des fonctions restent distinctes de cette
 activation obligatoire.
@@ -3373,6 +3516,12 @@ Cliquer sur un mode global enregistre la règle globale et retire atomiquement l
 de cette connexion ; les surcharges des autres agents sont conservées. La sauvegarde d’une
 règle ne dépend pas d’une nouvelle découverte MCP distante. Ces règles de fonctions s’appliquent
 aussi aux services système, dont les définitions et connexions restent protégées.
+
+Le diagnostic d’une connexion enregistrée résout ses paramètres côté serveur et teste les
+protocoles pris en charge, même si la connexion est inactive. Il ne l’active pas et ne modifie
+pas les permissions ; un protocole sans sonde reste **non vérifié**. Le résultat et les erreurs
+expurgées restent propres à l’opération. La projection des permissions se limite à la connexion
+choisie, sans élargir le périmètre de gestion.
 
 **Browser, Search, Image et Multimedia** disposent de connexions intégrées actives par défaut.
 Browser et Search sont autorisés en conversation à leur première initialisation. **Console SSH,
@@ -3691,6 +3840,27 @@ du modèle d’embeddings. Les modes texte et sémantique conservent la recherch
 Sur l’URI exacte d’un fichier documentaire, les modes texte et sémantique proposent aussi la
 [recherche de passages RAG](#document-rag). Ils ne changent
 pas la sémantique de recherche des collections ni les droits du provider.
+
+### Convertir une ressource en PDF ou une page en image
+
+`file_to_pdf` produit un vrai PDF à partir d’images matricielles, de documents Office ou
+OpenDocument, de RTF, HTML, SVG, Markdown et de textes ou données textuelles pris en charge.
+Un PDF existant est validé puis copié sans réencodage. La conversion n’exige ni modèle IA ni
+Console : elle lit l’URI autorisée et publie dans une destination inscriptible explicite,
+sans modifier la source ni écraser un fichier existant. Le résultat expose URI, pages et
+avertissements. Le HTML est rendu sans scripts ni ressources externes ; les feuilles de calcul
+suivent leur mise en page imprimable. Les limites comprennent 64 Mo en entrée et sortie,
+8 Mo de texte, 100 images/frames et 2 000 pages.
+
+`image_from_pdf` rend une page physique, numérotée à partir de 1, en PNG fidèle, sans inférence
+ni OCR. La source est limitée à 64 Mo ; le rendu conserve la page entière, à 144 dpi au plus
+et 3 000 pixels sur le plus grand côté. Il fournit les dimensions et le nombre de pages.
+Ces conversions permettent notamment de satisfaire le MIME d’une entrée Process sans demander
+une manipulation manuelle. Une sélection de page ambiguë reste à clarifier. Les convertisseurs
+sont isolés et bornés ; l’annulation attend leur arrêt avant de nettoyer les temporaires.
+
+Sources : [conversions et droits des ressources](../architecture/flows/media-resources.md),
+[conversion PDF](../../../back/app/file_share/mcp.py), [page PDF en image](../../../back/app/image/mcp.py).
 
 ### Partages Samba et Windows
 
@@ -4072,6 +4242,15 @@ Le Service **Multimedia** complète la transcription :
   URI et d’une question ;
 - `video_read` analyse une vidéo à partir de son URI et d’une consigne.
 
+Pour `video_read`, `subtitles_uri` fournit facultativement un fichier SRT/WebVTT autorisé ;
+à défaut, Galaris essaie une piste textuelle intégrée, puis la transcription audio du profil.
+Le résultat sépare analyse visuelle et `transcript`, avec texte horodaté, langue, provenance,
+statut et avertissements de couverture. Un extrait borné accompagne le modèle vidéo.
+Les sous-titres incrustés ne sont pas extraits par OCR. Sans audio ou après échec de transcription,
+l’analyse visuelle reste possible avec un diagnostic explicite ; un refus d’accès aux sous-titres
+n’est pas contourné. Les appels de transcription ont leur comptabilisation LLM distincte.
+Une URL de page YouTube relève d’`audio_transcribe`.
+
 Ces usages disposent de modèles spécialisés dans le profil. Ils ne se confondent pas avec la
 reconnaissance des paroles. La matérialisation actuelle des lectures Multimedia est bornée à
 32 Mo et 20 minutes.
@@ -4208,13 +4387,17 @@ Sources : [flux Mail](../architecture/flows/mail.md), [fonctions](../../../back/
 
 Chaque agent dispose d’un **Agenda personnel** interne par défaut, sans compte externe.
 Il peut y créer des rendez-vous et des rappels avec les fonctions `calendar_*` autorisées.
-Une connexion iCal optionnelle ajoute une source HTTPS ; elle ne remplace pas le défaut personnel.
+Les connexions optionnelles ajoutent CalDAV, Google Agenda, Microsoft 365 / Outlook,
+Apple iCloud ou un abonnement iCalendar privé en lecture seule. Elles ne remplacent pas
+le défaut personnel. Les paramètres et accords OAuth appartiennent aux connexions.
 
 `reminder_minutes_before=0` programme une notification à l’heure de l’événement ; une valeur
 positive demande une avance. Déplacer l’événement conserve son alarme relative ;
-`clear_reminder=true` retire le rappel. Un événement sans alarme ne crée aucune tâche.
-Chaque notification crée une tâche suivie par occurrence, avec les informations de l’événement.
-La tâche peut ensuite lancer un Process. Seul son succès marque la relance comme traitée.
+`clear_reminder=true` retire le rappel. Sans action particulière, un événement lance une
+Task à son début. Les alarmes ou actions configurées remplacent ce lancement par défaut.
+Les nouveaux agendas internes et synchronisés activent les lancements ; une désactivation
+enregistrée reste conservée. Chaque occurrence possède son suivi, sans double admission.
+La tâche peut ensuite lancer un Process. Seul son succès marque l'action comme traitée.
 
 **Connaissances → Agenda** (`/calendar`, ancien lien `/connection/calendars` conservé) propose
 les vues mois/semaine/jour/Planning, les récurrences et les lancements de Tasks par événement
@@ -4222,14 +4405,23 @@ du périmètre géré, avec `CALENDAR_ACCESS` ou `CALENDAR_EDIT`. Le détail de 
 conserve ses droits propres. Les agendas sont privés à leur agent ; les fonctions MCP et les
 identités de source sont recontrôlées à l’appel.
 
+La couche **Mémoire** affiche les souvenirs datés, avec ouverture de leur fiche complète
+et droits Memory. Elle ne programme aucune Task ni réservation. Les couches **Objectifs**
+et **Mémoire** conservent leurs ressources d'origine. Les événements peuvent référencer un
+contact privé de l'agent ; ce lien local n'envoie aucune invitation au fournisseur.
+
 `app.calendar` possède le stockage, les événements, les reçus et le suivi. `bridge.calendar`
 fournit le transport HTTPS borné et protégé contre les réseaux privés. Le contenu natif est
 chiffré et édité sous verrou ; les anciens identifiants et historiques iCal restent conservés.
-Le scheduler vérifie le natif chaque minute et HTTPS toutes les quinze minutes.
+Les lectures et modifications utilisent la copie locale ; un outbox synchronise les écritures
+sans écraser les conflits. `pending` ne signifie pas confirmation distante. Le contrôle de
+synchronisation passe chaque minute et applique l'intervalle de la connexion : deux heures
+par défaut, configurable de 1 à 8760 heures pour tous les agendas du même compte. Le journal
+des tentatives et la synchronisation manuelle restent dans la fiche Agenda.
 Les empreintes durables évitent les doubles tâches lors d’une reprise.
 
 L’agenda gère les engagements datés et les rappels ponctuels. Goal conserve un résultat durable,
-ses itérations et ses revues planifiées ; les consignes interdisent de dupliquer un cycle Goal
+ses cycles de travail ; les consignes interdisent de dupliquer un cycle Goal
 dans un rappel. Les tâches de calendrier ne modifient pas l’ordonnancement des objectifs.
 
 Sources : [calendrier](../architecture/flows/calendar.md), [API](../../../back/app/calendar/router.py),
@@ -4313,6 +4505,14 @@ antérieur sont disponibles, sans modifier les runs existants ni proposer de lan
 
 ### Activités, variables et exécution native
 
+Chaque activité possède un type explicite ; son placement dans un couloir ne le change pas.
+L’affectation d’acteur et la méthode de traitement restent deux choix distincts. Une tâche
+peut utiliser l’exécution agentique, un appel LLM unique, du code isolé ou une réponse humaine.
+Le mode LLM sélectionne un modèle texte et une inférence durable, sans Task, outil, retry de
+sortie ni repli de modèle. La sortie structurée `{"output": {...}}` est validée puis intégrée
+uniquement dans les variables de sortie déclarées. Les tâches agentiques et humaines gardent
+leurs restrictions d’acteur ; code et inférence peuvent utiliser un autre acteur ou aucun.
+
 Diagrammes, miniatures et aperçus de déplacement partagent la référence graphique : en-têtes
 d’acteurs ardoise, couloirs alternés et couleurs de cartes par type d’activité, adaptées au thème
 sombre. Les badges d’état de run restent distincts ; les libellés Vrai/Faux sont décalés des liens
@@ -4348,6 +4548,10 @@ objets externes ordinaires ne deviennent pas implicitement des enveloppes typée
 Les définitions historiques v1 gardent leur contrat ; leur conversion vers v2 est explicite.
 
 L’agent recueille les entrées et lance le processus depuis le Chat avec une clé d’idempotence.
+`conversation_process_prepare` conserve les valeurs et fichiers vérifiés dans un dossier
+propre au participant, recherche les informations déjà accessibles et demande seulement les
+éléments manquants. Une demande de lancement incomplète possède un run `waiting`, sans activité
+démarrée ; sa complétude libère ce même run. Annulation et message sans rapport ne lancent rien.
 Un retry technique retrouve le même run ; répondre à une activité ne déclenche pas un autre lancement.
 Les pages servent à concevoir et suivre, sans formulaire de lancement manuel natif. Les activités
 IA peuvent poser une question avec `process_activity_question` : leur tâche existante attend puis
@@ -4447,7 +4651,7 @@ le contexte propre à l’item, les paramètres communs au jeu, la sortie du can
 | Détection des sujets | Séquence de messages | Sujet affecté à chaque message |
 | Extraction mémoire | Échange ou compte rendu de tâche | Décision CREATE/LINK/IGNORE et connaissances retenues |
 | Apprentissage | Issue d’exécution et preuves | Leçons/procédures étayées |
-| Suivi de Goal | Résultat d’un cycle | Verdict et suivi durable |
+| Suivi de Goal | Résultat et preuves d’un cycle | Choix natif `CONTINUE`/`STOP`, sans génération de suivi ni repli texte |
 | Exécuteur de tâches | Demande | Réponse et appels d’outils |
 | Exécuteur conversationnel | Sollicitation courante | Réponse et actions |
 | Exécuteur vocal | Sollicitation transcrite | Réponse orale et actions |
@@ -4614,7 +4818,11 @@ empêche un bilan de progression trompeur. Les cas incomplets et jugements absen
 **Régressions à examiner** retrouve les nouveaux échecs critiques et les passages réussi → échoué
 sur tout le run, ainsi que les écarts par critère commun. **Délai, coût et qualité** présente
 les médianes et effectifs appariés, dont la première sortie de texte ou d’outil observée par le Lab,
-hors file d’attente et juge. Quatre parcours synthétiques FR/EN documentent un protocole reproductible.
+hors file d’attente et juge. Le corpus synthétique FR/EN comporte douze scénarios par langue,
+également joués avec le prompt voix : moyens connus ou inconnus, refus antérieur, demande mixte,
+interdiction vérifiée, choix humain, priorité Process et lectures bornées complètent les cas simples.
+Les oracles examinent appels et reçus simulés ; les réponses et objectifs transférés nécessitent
+aussi une revue sémantique. Cette campagne de prompts n’exerce ni STT/TTS ni effets métier réels.
 Les valeurs manquantes ne valent pas zéro. Une comparaison ne lance aucune inférence, ne modifie
 pas la production et ne prouve pas de supériorité statistique ; elle doit être relancée après de
 nouveaux résultats ou jugements.
@@ -4828,6 +5036,10 @@ droits de consultation ou d’édition des incidents, permet de :
 - appliquer le nettoyage/rétention prévu avec les droits correspondants.
 
 Le journal n’est pas une auto-correction de code : il constitue le dossier durable du problème.
+Les agents autorisés disposent aussi de `incidents_list` et `incident_get`, en lecture seule,
+via Administration. La connexion et sa portée `personal`/`team`/`all` sont revérifiées à chaque
+appel. Les listes sont paginées ; le détail conserve trace expurgée, corrélations et indications
+de troncature. Les diagnostics et compteurs globaux de motifs exigent la portée `all`.
 La reprise opérationnelle et la résolution d’un incident sont deux actions différentes.
 La réussite durable d’un round (`SUCCEEDED`) marque ses occurrences LLM et outils comme récupérées,
 sans effacer leur diagnostic ni résoudre automatiquement le motif agrégé. Les erreurs d’autres
@@ -4854,6 +5066,7 @@ Sources : [dashboard](../../../back/app/dashboard/schemas.py), [appels LLM](../.
 | Messages | Messenger possède conversations, capacités, journal entrant et déduplication ; les bridges traduisent les protocoles. Les fichiers conservent leur URI et provenance dans la chronologie. |
 | Ressources | Document possède Texte/Données, Memory les souvenirs personnels, Process le BPMN et ses runs, Storage les octets ; File Sharing unifie leurs URI sans déplacer leur autorité ni leurs droits. |
 | Interface | Vue/Quasar, Pinia, routes dérivées des fichiers, navigation déclarée, catalogue i18n par domaine et composants partagés chargés à la demande ; contrôles de parité FR/EN, thème et frontière mobile communs. |
+| Composition frontend | Les pages réunissant plusieurs domaines appartiennent au shell `app.index` ; composants et états restent dans leurs domaines et sont consommés par des surfaces publiques. Le graphe courant ne conserve ni cycle entre modules frontend ni import privé inter-domaines. |
 | Temps réel | Abonnements autorisés par domaine, événements après commit, deltas de progression bornés et resynchronisation par snapshot/cursor ; reconnexion sans restauration d’un droit révoqué. |
 | Extensions | Providers IA/fichiers/aperçus, drivers, harnais, moteurs Process, bridges, mécanismes Dream/Lab et contributions DbAdmin possèdent leurs contrats ; présence sur disque et activation sont distinctes. |
 | Isolement | Exécuteurs navigateur/SSH et harnais gérés en services séparés ; sessions IDE en lecture seule ou écriture, code Monty isolé, applications HTML isolées et matérialisations serveur temporaires bornées. |
@@ -4889,13 +5102,12 @@ sur mobile. Les rubriques couvrent :
 | Mémoire | Fenêtre de session, activation et taille du contexte mémoire, anticipation temporelle, candidats et pondérations du rappel, acquisition, doublons, contradictions et vieillissement. |
 | Dream | Activation, création des sujets, consignes des mécanismes, quatre analyses indépendantes de pièces jointes, apprentissage, seuils de preuves/score, nombre de compétences actives, délais et réconciliation des liens. |
 | Voix | Activation, auto-réponse, paramètres audio et découverte des appels. |
-| Audio | Consignes de synthèse de réunion/vidéo, pour segments, réduction et résultat final. |
 | Tâches et exécution | Ordonnancement, concurrence, leases, reprises, budgets, création des objectifs, collaboration, durée maximale par appel LLM, limites d’appels modèle/outils, profondeur et feuilles du Planner selon les capacités des harnais. |
 | Processus | Moteur, références de fichiers, soumission, actualisation, attente, idempotence, reprises et rétention. |
 | Harnais | Politiques propres aux fournisseurs interne, managés ou externes, limites techniques, fichiers binaires du harnais interne, Compose, raccordement et distribution du manager. |
 | Navigateur | Sessions, durée d’inactivité, capacité, délai des actions, viewport, volumes de contenu et de captures. |
 | Recherche | Langue et délai du service de recherche. |
-| Instructions | Prompts système des exécuteurs tâche, conversation et voix, admission des travaux durables et rédaction autour des documents canoniques. |
+| Instructions | Prompts système des exécuteurs tâche, conversation et voix, politique des actions conversationnelles, décision Goal, rédaction autour des documents canoniques et consignes de synthèse audio/vidéo (segments, réduction, résultat final). |
 | Janus | Guide de connexion à la porte d’entrée des agents et alias de modèles. |
 | Journaux | Conservation automatique des traces d’incidents et d’appels LLM, prévisualisation et nettoyage manuel des objets admissibles. |
 
@@ -5061,6 +5273,13 @@ existence n’équivaut pas à une certification de toutes les combinaisons de f
   réintroduisent des défauts dans une copie jetable et vérifient qu’un scénario auparavant vert
   les détecte. Le [catalogue des garanties](../dev/functional-tests.md) et le
   [guide de tests](../dev/testing.md) précisent le périmètre et les commandes.
+- **Contrôles de l’interface et des formats.** Les règles centrales couvrent fermeture des
+  modales, noms accessibles, boutons et palette statique ; elles complètent les interactions
+  dans Vue réel. `make tests-document-formats` vérifie codecs, cycle documentaire, permissions,
+  conflits, assets, import, aperçu, intégration, miniature, PDF, source et absence de contribution.
+  Les preuves doivent viser la version et l’empreinte exactes ; ces moyens de test ne certifient
+  pas un futur plugin tiers. `make tests-desktop` exerce politiques, sessions, mises à jour et
+  parcours Electron synthétiques, sans qualifier les périphériques physiques.
 - **Contrats des harnais.** `make tests-harness-contracts` vérifie acceptation terminale,
   capacités, politiques, checkpoints, annulation et frontières. Les mutations doivent détecter
   les régressions de protocole, d’isolation et de reprise.
@@ -5327,7 +5546,7 @@ d’aperçu, les bridges, les harnais, les mécanismes Dream et les contribution
 <a id="mcp"></a>
 ## 30. Inventaire des fonctions accessibles aux agents
 
-Cet inventaire reprend les **284 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
+Cet inventaire reprend les **294 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
 Il couvre aussi les fonctions réservées aux contrôleurs conversationnels ou à l’administration.
 Toutes ne sont donc pas visibles simultanément par chaque agent. Les schémas d’arguments complets
 sont exposés par MCP ; leurs sources sont reliées aux sections métier ci-dessus.
@@ -5353,6 +5572,8 @@ fonctions explicitement. Pour Messenger, la connexion de transport détermine le
 |---|---|---|
 | `agent_list` | `galaris` | Lister les agents disponibles avec une fiche abrégée et l’URI de leur profil courant. |
 | `agent_get` | `galaris` | Lire l’identité, la personnalité et la fiche de poste complètes d’un agent, avec son URI relisible via `file_read`. |
+| `team_list` | `galaris` | Découvrir les équipes, y compris vides, avec recherche, pagination et effectifs humains/agents, sans accorder de droits. |
+| `team_members` | `galaris` | Lire les membres actifs d’une équipe, filtrés par nom et nature humaine/agent, sans exposer les détails des comptes humains. |
 | `task_run` | `galaris` | Créer une tâche enfant déléguée à un collègue autorisé et renvoyer son URI canonique ; l’agent ne peut pas se cibler lui-même. |
 | `task_get` | `galaris` | Lire l’état opérationnel compact, la révision, la progression, les jalons, la prochaine action, les attentes et le résultat disponible. |
 | `task_work_update` | `galaris` | Enregistrer le suivi par jalons de la tâche courante avec contrôle de propriétaire, phase et révision ; préserver les checkpoints et justifier la révision d’un jalon terminé. |
@@ -5366,6 +5587,7 @@ fonctions explicitement. Pour Messenger, la connexion de transport détermine le
 | `conversation_task_stop` | `conversation` | Annuler une tâche inachevée ou restituer sans modification l’état d’une tâche déjà terminée. |
 | `conversation_choice_resolve` | `conversation` | Résoudre une interaction en attente à partir d’une réponse humaine comprise sans ambiguïté. |
 | `conversation_process_start` | `conversation` | Lancer un processus affecté et le rattacher à la conversation sans attendre sa fin. |
+| `conversation_process_prepare` | `conversation` | Préparer les entrées vérifiées d’un Process affecté dans un dossier durable propre au participant ; recueillir les informations manquantes sans démarrer ses activités. |
 | `document_show` | `conversation` | Demander l’ouverture d’un document lisible dans le salon texte interne courant de l’agent, après contrôle des droits et de la fraîcheur ; ne partage rien et ne s’exécute pas dans une tâche. |
 | `conversation_round_get` | `platform_admin` | Inspection administrative complète d’un round : messages, tentatives, tâches créées/amendées, processus, résultat et appels. |
 
@@ -5525,6 +5747,7 @@ ordinaires restent dans le périmètre de l’agent.
 | `dataset_query` | `file_sharing` | Interroger un document Données autorisé : filtres JSON, projection, tri, pages et agrégats, avec révision attendue. |
 | `file_search` | `file_sharing` | Rechercher noms/contenus d’une collection ou passages RAG d’un fichier documentaire exact, avec pages, positions et droits revérifiés ; conserver le rappel hybride et les chemins autorisés pour Memory. |
 | `file_read` | `file_sharing` | Lire une page de texte/blocs HTML, le JSON d’un Dataset paginé en caractères ou un binaire borné, avec suite de lecture et révision. |
+| `file_to_pdf` | `file_sharing` | Convertir une ressource autorisée en PDF validé, sans modèle ni Console, dans une destination explicite sans écrasement ; restituer pages et avertissements. |
 | `file_create` | `file_sharing` | Créer une ressource texte/binaire, une pièce jointe, un Document HTML `document://` ou un Dataset JSON `data://`, avec son contenu complet. |
 | `file_write` | `file_sharing` | Remplacer le contenu selon ses préconditions et la révision attendue ; conserver le type du document et valider le JSON d’un Dataset. |
 | `file_append` | `file_sharing` | Ajouter du texte ou des blocs HTML à une ressource compatible ; le résultat complet d’un Dataset doit rester du JSON valide. |
@@ -5585,8 +5808,9 @@ l’interface humaine et ne sont pas exposés comme fonctions MCP.
 | `image_generate` | `image` | Générer, modifier ou composer une image avec références et destination ; rendre les dimensions réelles. |
 | `image_read` | `image` | Analyser une image par URI et persister sa description : compagnon Memory d’une pièce jointe documentaire active ou mémoire privée du couple agent/URI ; un échec de stockage interdit le succès. |
 | `audio_transcribe` | `audio` | Transcrire audio/vidéo ou récupérer les sous-titres YouTube, conserver le verbatim et synthétiser les contenus longs. |
+| `image_from_pdf` | `image` | Rendre une page physique de PDF en PNG fidèle dans une destination autorisée, sans inférence ni OCR, en conservant l’original. |
 | `audio_read` | `multimedia` | Analyser sons, musique et événements audibles selon une question. |
-| `video_read` | `multimedia` | Analyser une vidéo avec le modèle spécialisé. |
+| `video_read` | `multimedia` | Analyser une vidéo et compléter les images par des sous-titres fournis/intégrés ou une transcription, avec provenance et couverture explicites. |
 | `sound_generate` | `multimedia` | Lancer une génération de bruitages. |
 | `music_generate` | `multimedia` | Lancer une génération musicale. |
 | `video_generate` | `multimedia` | Lancer une génération vidéo. |
@@ -5614,6 +5838,9 @@ l’interface humaine et ne sont pas exposés comme fonctions MCP.
 |---|---|---|
 | `calendar_list` | `calendar` | Découvrir les calendriers de la connexion active. |
 | `calendar_events` | `calendar` | Lire les occurrences dans une période. |
+| `calendar_event_get` | `calendar` | Lire un événement et sa révision dans la copie locale, avec identité d’occurrence facultative et état de synchronisation distinct. |
+| `calendar_actions` | `calendar` | Lister les actions d’assistant configurées pour un événement autorisé. |
+| `calendar_action_set` | `calendar` | Créer ou modifier sous révision une action avant/après le début ou la fin d’un événement, sans notification immédiate. |
 | `calendar_is_available` | `calendar` | Tester une plage et rendre les conflits. |
 | `calendar_find_free_slots` | `calendar` | Rechercher des créneaux libres selon durée, calendriers et préférences. |
 | `calendar_create_event` | `calendar` | Ajouter un événement à un calendrier inscriptible. |
@@ -5779,6 +6006,13 @@ Ces fonctions exigent également les autorisations d’inspection de Administrat
 | `llm_calls` | `platform_admin` | Obtenir les identifiants des appels récents dans une période horodatée. |
 | `llm_call` | `platform_admin` | Inspecter un appel par UUID ou préfixe unique : requête, réponse, outils, usage, coût, erreurs et contexte associé. |
 
+### Journal des incidents
+
+| Fonction | Famille | Action et résultat |
+|---|---|---|
+| `incidents_list` | `platform_admin` | Lister les défaillances LLM/outils avec filtres, dates et pagination dans la portée administrative courante, sans charger les traces. |
+| `incident_get` | `platform_admin` | Lire les corrélations et la trace expurgée d’un incident autorisé ; aucun rejeu, nettoyage ni changement de statut. |
+
 <a id="couverture"></a>
 ## 31. Couverture des modules et sources
 
@@ -5797,7 +6031,7 @@ les [garanties fonctionnelles testées](../dev/functional-tests.md) et les sourc
 
 ### Modules backend déclarés
 
-Les **78 modules déclarés** sont tous rattachés à une ou plusieurs sections. Les conditions
+Les **79 modules déclarés** sont tous rattachés à une ou plusieurs sections. Les conditions
 d’activation et de configuration restent celles du runtime.
 
 | Module | Fonction couverte / section |
@@ -5851,7 +6085,7 @@ d’activation et de configuration restent celles du runtime.
 | `bridge.code_server` | [Runtime VS Code OSS, sessions, profils et maintenance des éditeurs](#console) |
 | `bridge.mail` | [IMAP, SMTP, validation humaine et historique](#mail) |
 | `app.calendar` | [Agendas personnels, sources et suivi des rappels](#calendrier) |
-| `bridge.calendar` | [Transport iCalendar HTTPS](#calendrier) |
+| `bridge.calendar` | [CalDAV, Google Agenda, Microsoft 365, Apple iCloud et abonnements iCalendar HTTPS](#calendrier) |
 | `bridge.hermes` | [Runtime et configuration Hermès](#harnais) |
 | `bridge.one_bot` | [Adaptateur OneBot v11](#messageries) |
 | `bridge.matrix` | [Messages Matrix](#messageries), [appels](#voix) |
@@ -5893,7 +6127,7 @@ des formulaires/guides aux écrans communs, plutôt qu’une application indépe
 | `core/team` | Équipes et composition des membres |
 | `core/authorize` | Rôles, privilèges, affectations et profil |
 | `core/params` | Préférences par rubrique, harnais et indexation des fichiers |
-| `app/index` | Accueil, bienvenue, dashboard, À propos, crédits, licence et page inconnue |
+| `app/index` | Accueil, bienvenue, dashboard, pages composites Agents/Services/Activité, À propos, crédits, licence et page inconnue |
 | `app/agent` | Fiches, avatars, équipes, civilités et configuration des agents |
 | `app/harnesses` | Catalogue de harnais, détails, Compose et diagnostic du manager |
 | `app/services` | Catalogue, édition, import/export, paramètres et fonctions |
@@ -5946,6 +6180,8 @@ Les fonctions communes ne sont pas toutes des modules activables :
 - services `browser-executor`, `ssh-executor`, recherche SearXNG et TURN : infrastructure des
   capacités navigateur, console, recherche et voix ;
 - `bridge/harness_manager` : service de gestion des instances de harnais, distinct du bridge API ;
+- `desktop/` : client Electron, sélection du serveur HTTPS, sessions isolées, onglets,
+  orthographe, paquets Windows/Linux et mises à jour du client ;
 - outils de construction, tests, sauvegarde et qualification exposés par le `Makefile`.
 
 ### Mettre le catalogue à jour

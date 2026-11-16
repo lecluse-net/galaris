@@ -7,7 +7,7 @@ following their work over time. Conversations, tasks, goals, documents, memory, 
 integrations form a common system. An agent can converse, consult authorized information,
 produce deliverables, involve colleagues, trigger external workflows and retain useful knowledge.
 
-This catalogue describes features present in the repository as of **1 November 2026**,
+This catalogue describes features present in the repository as of **16 November 2026**,
 including agent functions, administration screens and background mechanisms. It is organized
 by use, followed by a native MCP inventory and coverage of **every declared module**. Sources
 make that coverage verifiable. This is the exhaustive reference for preparing the product website.
@@ -22,7 +22,9 @@ verification facilities. The Lab's ten AI mechanisms, its Process campaigns and 
 mechanisms are distinct capabilities. Sources and tests describe software guarantees; this catalogue
 does not qualify every installation or provider.
 
-The inventory covers **284 native MCP functions, 78 backend modules and 40 frontend modules**.
+The inventory covers **294 native MCP functions, 79 backend modules and 40 frontend modules**.
+This review includes development code and local changes, beyond the latest published release.
+The desktop client is a separate support application, outside these web-module counts.
 Implemented features remain distinct from intentions in the [plan register](../../../project/plans/README.md).
 Quality controls appear under [operations](#exploitation).
 
@@ -75,7 +77,7 @@ Quality controls appear under [operations](#exploitation).
 | **Decision model** | Closed-choice resource | Selects allowed answers for routing, topics or memory; writing stays with the same profile's text model. |
 | **Harness** | The program running an agent | Executes the model–tool loop, reports progress and returns a result. |
 | **Service** | Integration or capability set | Declares functions, parameters and optional messaging, file or event services. |
-| **Connection** | An agent's access to a Service | Holds activation, configuration, credentials and allowed functions; the five system-service connections are mandatory and protected. |
+| **Connection** | An agent's access to a Service | Holds activation, configuration, credentials and allowed functions; the six system-service connections are mandatory and protected. |
 | **Durable inference** | Model request recorded before execution | Freezes request/authority, retains attempts/results and supports reading, subscription, pause, stop, resume and replay. |
 | **Skill** | Packaged instructions and resources | Describes a reusable method, possibly with files; grants no Service permissions. |
 | **Conversation / room** | An exchange on a channel | Retains messages, authors, files, topics and resulting work. |
@@ -190,6 +192,8 @@ transport result. Resource origins, executed tools, results and available delive
 - **Development visual reference:** Developers shows palette, components, icons, states and editors
   with synthetic data and nonpersistent interactions. Its route/navigation are excluded outside `dev`.
 
+### Loading, sessions and refresh
+
 The PWA still needs the Galaris server and business services; agents are not autonomous offline.
 Update checks retry even if the browser incorrectly reports offline. Development disables PWA
 caching. Shared identity/agent/privilege loading coalesces requests and rejects old-session results.
@@ -205,6 +209,33 @@ Sources: [user guide](../user/README.md), [PWA](../user/pwa.md),
 [help](../../../back/core/user/help_service.py), [navigation](../user/navigation.md),
 [first mission](../../../front/browser-tests/work-experience.spec.mjs),
 [menu map](../architecture/generated/navigation.md), [HTTP waiting](../../../front/core/apiWaiting.test.mjs).
+
+### Windows and Linux desktop client
+
+The Electron client opens the server interface in a dedicated window. Official releases
+may include a Windows NSIS installer, Linux AppImage and Debian package for x64. Users
+enter their server's HTTPS origin and sign in normally. Each origin keeps separate cookies
+and local data; switching servers does not revoke the previous session.
+
+Tabs share the server session and keep page state while switching. Internal links opened in
+new tabs stay in the client; external links open the usual browser. Titles follow the current
+page and language. `Ctrl+T`, `Ctrl+W`, `Ctrl+Tab` and `Ctrl+Shift+Tab` create, close and switch
+tabs. Tabs are not restored at restart. French/English spellchecking offers suggestions and
+dictionary additions; the initial dictionary download requires Internet access.
+
+Windows and AppImage check for client updates at startup and every six hours. Downloading
+precedes an explicit restart decision; closing the client alone never installs an update.
+Debian upgrades are manual. Client and server updates remain independent. Unsaved-edit
+protection applies when closing, switching servers or restarting for an update.
+
+Server pages have no Node access or preload. Microphone, camera, notifications and clipboard
+reading require native consent. The server and network remain necessary; closing quits the
+client. Physical peripherals, Web Push and signed upgrades between releases still require
+qualification on the target platforms.
+
+Sources: [desktop journey](../user/desktop.md),
+[desktop architecture](../../../project/decisions/0292-desktop-client.md),
+[desktop policies and tests](../dev/desktop.md).
 
 <a id="comptes"></a>
 ## 3. Accounts, roles and teams
@@ -447,7 +478,7 @@ explicitly assigned to an agent or selected in a person's preferences.
 |---|---|
 | **Ultra low** | Model-based Dream mechanisms |
 | **Low** | Dispatcher and short conversations |
-| **Standard** | Standard execution and Goal follow-up |
+| **Standard** | Standard execution |
 | **High** | High execution, Planner and Lab |
 
 Each level may set provider **reasoning effort**, distinct from Task standard/high complexity.
@@ -503,8 +534,10 @@ including a single local LLM.
 | Activity/message topics | Reuse topic, detect continuity or request creation | Write new title/description/keywords and apply creation policy |
 | Dream memory extraction | Ignore sources without durable facts, link covered facts or request extraction | Write/validate new or incompletely covered knowledge |
 | Memory acquisition | Confirm full equivalence with a close candidate | Retrieval, rights, fact preservation and idempotent provenance linking |
+| Goal monitoring | Choose `CONTINUE` or `STOP` from cycle evidence | Preserve the Task result; no generated tracking, review or text-model substitution |
 
-Planner, Goal follow-up and learning remain generative. Deterministic maintenance and
+Planner and learning remain generative. Without a Decision model, Goals continue on their
+schedule without automatic completion. Deterministic maintenance and
 transitions add no decisions. **Text fallback on failure** permits at most one call in the **same
 profile**, low for Dispatcher, ultra low for Dream, or can be disabled. A personal profile lacking
 specialization does not borrow the global one. Authentication, permission/payment refusal,
@@ -1496,42 +1529,52 @@ A Goal gives an agent a continuing purpose and a human referrer reachable throug
 
 ### Configuring and organising Goals
 
-Users configure its title, HTML description, agent, referrer, and either a frequency or a parent-Goal
-trigger. These trigger modes are exclusive and parent relationships cannot cycle. Weekly windows
+Users configure its title, HTML description, agent, referrer, and a frequency, recurring fixed
+dates in a chosen timezone, or a parent-Goal trigger. These modes are exclusive and parent
+relationships cannot cycle. Weekly windows
 intersect with global scheduling rules; each Goal keeps its own mode. Controls include pause,
 resume, finish, manual cycle, global pause and calendar display. Definition edits check revisions;
 the agent cannot change after cycles exist, and unfinished Goals cannot be deleted.
 Attaching or removing a derived Memory projection preserves the edit revision; concurrent
 changes to the Goal itself still cause a revision conflict.
 
+Frequencies also accept weeks, months and years. Categories are private to their creator and
+change no access rights. Subgoals inherit their root's category for filtering and sorting,
+while retaining their own category if detached. The Goals layer in [Agenda](../user/calendar.md)
+links each due passage to its cycle and Task; schedule edits preserve the past.
+
 ### Work, judgement and follow-up
 
-Authorised users can customise the follow-up prompt in **Preferences → Instructions**, then restore
-the default. Subsequent judgements use it to summarise current state, retain useful information
-and decide whether to continue. The default merges repetitions without imposing a target length.
+Authorised users can customise the decision prompt in **Preferences → Instructions**, then restore
+the default. Subsequent judgements use it to choose `CONTINUE` or `STOP`; monitoring generates
+no tracking summary.
 
 Completion criteria concern the intended outcome: a report, sent message or successful Task
 alone does not prove that the Goal is achieved. A cycle can usefully wait for a precise
 referrer decision rather than create content merely to keep working. A decision already
 recorded is read from its source. Access denial remains a limit, not a request to expand
-rights. Follow-up updates automatically from the cycle result; separately requested
+rights. The Task result preserves evidence and becomes next-cycle context; separately requested
 deliveries remain actions to perform.
 
-Each cycle creates an ordinary Task, then judges its result against evidence and previous follow-up
-to continue or stop. Descriptions are Goal-owned HTML columns without Documents or text history.
+Each cycle creates an ordinary Task. When it ends, monitoring passes its result, recorded
+observations and existing tracking to the profile's native Decision model for one
+`CONTINUE`/`STOP` choice, without a text model, summary or review. Without that model, or
+after a monitoring failure, cycles continue on their schedule. Blockers do not pause the
+Goal; human controls and waits for answers retain their authority. Decisions, errors and
+costs remain inspectable.
+
+Descriptions are Goal-owned HTML columns without Documents or text history.
 Tracking remains the sole associated Document with its editor and content revisions. Agents read
 both texts through `galaris://goal/<uuid>`; tracking retains its `document://` URI. Updates through
 `goal_update_suivi` remain revision-protected.
 History includes paginated cycles, Tasks, verdicts, costs and calls. An ended Goal can resume without
 losing history. Scheduling waits for a busy agent and respects configured windows.
 
-A provider may return progress as an object or a JSON-encoded string: follow-up decodes the latter
-and validates the same contract without another model call solely for that encoding difference.
+Historical generative follow-up payloads remain readable in histories and Lab datasets.
 
 “Run now” remains pending until a Task is actually created. It bypasses time windows, but not a
-global pause. A failed judgement can be recovered as CONTINUE, permitting an immediate cycle, or
-STOP, cancelling continuation. Retrying follow-up only reruns evaluation and keeps the old Task
-and result intact.
+global pause. A monitoring-model failure preserves its diagnostic and costs, records `CONTINUE`
+and leaves subsequent work eligible. The previous cycle's Task and result remain intact.
 
 The Goal page can read scheduling availability without settings-edit rights, distinguishing global
 pause from being outside active windows and showing the next active time when known. Live changes
@@ -1860,6 +1903,27 @@ Each document retains independent permissions.
 
 Other document types, such as a standalone image type, are not available; images/media can already
 be embedded in or attached to HTML documents.
+
+### Extensible formats and shared storage
+
+Documents owns identity, metadata, rights, classification and revisions across formats.
+The built-in formats are Text (`text`, editorial HTML) and Data (`data`, JSON). A structured
+format can use JSON without becoming Data. Text content uses `documents.content`; binary
+formats reference immutable `core.storage` files retained by their revisions.
+
+`GET /api/documents/formats` and `file_schemes` expose the catalogue. Creation and filtering
+use ordinary Documents controls, without a separate Document formats button. Current and
+historical source downloads retain ACL checks, including when a format is unavailable.
+Unknown codes or versions are never interpreted as HTML. Nested embeds bound depth and
+cycles without granting access through the host document.
+
+Legacy `html` and `form` codes become `text`, preserving identities, content, versions, rights
+and URIs. The `document_type` fields and `/documents/types` route are removed. The registry
+prepares contributions; it provides neither hot plugin installation nor automatic format upgrades.
+
+Sources: [format contract and qualification](../dev/document-formats.md),
+[lifecycle and permissions](../../../back/app/document/tests/test_formats.py),
+[format migration](../../../back/app/document/tests/test_format_migration.py).
 
 ### Canonical home for authored content
 
@@ -2621,10 +2685,25 @@ mandatory system services.
 Text search also filters the catalogue by localized name, code and description, ignoring case
 and accents. Clearing the search restores the list; an empty match has a dedicated message.
 
-### Five mandatory system services
+### Portable Service catalogue
 
-**Galaris (`galaris`), Conversation (`conversation`), Documents (`document`), Memory (`memory`) and File Sharing
-(`file_sharing`)** belong to every agent. `can_disable=false` is a software property, not a user
+Service cards show icons, descriptions, capabilities and connection counts. **New Service**
+opens a catalogue of Qonto, Nextcloud, GitLab, Matrix, n8n, Redmine and Telegram templates.
+**Configure a copy** uses the standard editor and creates a local definition only when saved;
+it activates no connection and grants no rights. Several protocols can share one Service.
+
+GitHub refresh replaces the cached catalogue atomically, preserving the previous catalogue
+after failure and leaving installed Services unchanged. Offline use retains bundled templates.
+YAML import/export includes the embedded icon without connection secrets. Legacy Mail and
+Calendar connections migrate to custom provider Services, preserving parameters and history.
+
+Sources: [catalogue contract](../dev/service-catalog.md),
+[catalogue guarantees](../../../back/app/services/tests/test_service_catalog.py).
+
+### Six mandatory system services
+
+**Galaris (`galaris`), Conversation (`conversation`), Documents (`document`), Memory (`memory`), File Sharing
+(`file_sharing`) and Agenda (`agenda`)** belong to every agent. `can_disable=false` is a software property, not a user
 setting. DbAdmin creates/reactivates connections and conversational access. Definitions and
 connections stay protected; humans can configure functions with the same **Active**, **Blocked**,
 **On request** modes and inheritance as other Services. Historical ignored system restrictions are
@@ -2931,6 +3010,24 @@ modes retain content search; `memory://` retains hybrid recall in every mode.
 Exact documentary file URIs also support [RAG passage retrieval](#document-rag)
 in text and semantic modes. Collection-search semantics and provider permissions remain unchanged.
 
+### Convert a resource to PDF or a page to an image
+
+`file_to_pdf` converts supported images, Office/OpenDocument, RTF, HTML, SVG, Markdown and
+text resources into a validated PDF. Existing PDFs are validated and copied without
+re-encoding. It uses an authorized source URI and explicit writable destination without
+overwriting, AI inference or Console. Results expose URI, page count and warnings. HTML
+runs no scripts or external resources; spreadsheets retain their printable layout. Limits
+include 64 MB input/output, 8 MB text, 100 images/frames and 2,000 pages.
+
+`image_from_pdf` renders a physical page, numbered from 1, as PNG without inference or OCR.
+The source is limited to 64 MB; output retains the whole page at up to 144 dpi and 3,000 pixels
+on the longest side, with dimensions and page count. These conversions can satisfy a Process
+input MIME without manual handling. Ambiguous page selection requires clarification.
+Converters run with isolation and limits; cancellation drains them before temporary cleanup.
+
+Sources: [resource conversion and rights](../architecture/flows/media-resources.md),
+[PDF conversion](../../../back/app/file_share/mcp.py), [PDF page rendering](../../../back/app/image/mcp.py).
+
 ### Samba and Windows shares
 
 The **Samba / SMB 2–3** bridge exposes a server, share or subdirectory without mounting a disk.
@@ -3235,6 +3332,14 @@ harness can also send current and retained-history attachments directly to compa
 to transport, rights and byte budgets. Specialised tools remain useful for explicit analysis, durable
 transcription and unsupported native formats.
 
+For `video_read`, optional `subtitles_uri` supplies an authorized SRT/WebVTT file; otherwise
+Galaris tries embedded text subtitles, then the profile's speech-to-text model. The result
+separates visual analysis from `transcript`, with timestamps, language, provenance and
+coverage warnings. A bounded excerpt also reaches the video specialist. Burned-in captions
+are not extracted through OCR. Without audio or after transcription failure, visual analysis
+remains available with a warning; a supplied subtitle file's access denial is not bypassed.
+Transcription calls retain their own LLM accounting.
+
 ### Long-running generation
 
 | Function | Output | Integrated providers for this path |
@@ -3326,13 +3431,16 @@ Sources: [Mail flow](../architecture/flows/mail.md), [tools](../../../back/bridg
 
 Every agent has a default internal **Personal agenda** without an external account.
 Agents create appointments and reminders through authorized `calendar_*` functions.
-An optional iCal connection adds an HTTPS source without replacing the personal default.
+Optional connections add CalDAV, Google Calendar, Microsoft 365 / Outlook, Apple iCloud,
+or a read-only private iCalendar subscription. They do not replace the personal default.
+Parameters and OAuth consent belong to connections.
 
 Set `reminder_minutes_before=0` for notification at the event time, or a positive integer for
 advance notice. Moving an event preserves its relative alarm; `clear_reminder=true` removes it.
-An event without an alarm creates no Task. Each notification creates an independently tracked
-Task containing event information. The Task may start a Process; only its success marks the
-reminder processed.
+Without a specific action, an event launches a Task at its start. Configured alarms or
+actions replace that default launch. New internal and synchronized agendas enable launches;
+saved deactivations are preserved. Each occurrence has its own tracking without duplicate
+admission. The Task may start a Process; only its success marks the action processed.
 
 **Knowledge → Agenda** (`/calendar`, with `/connection/calendars` retained) offers Month/Week/Day/
 Schedule views, recurrence and Task launches per event within management scope, requiring
@@ -3340,14 +3448,22 @@ Schedule views, recurrence and Task launches per event within management scope, 
 permissions. Agendas belong to their agent, and MCP function rights and source identities are
 checked again at invocation.
 
+The **Memory** layer shows dated memories and opens their complete details under Memory
+permissions. It schedules no Task and reserves no availability. **Goals** and **Memory**
+layers retain their original resources. Events can reference an agent's private Contact;
+this local link sends no provider invitation.
+
 `app.calendar` owns storage, events, receipts and follow-up. `bridge.calendar` provides bounded
 HTTPS transport with private-network protection. Native content is encrypted and mutations use
-row locks. Historical iCal identities and receipts remain intact. The scheduler checks native
-agendas every minute and HTTPS sources every fifteen minutes. Durable fingerprints prevent
+row locks. Historical iCal identities and receipts remain intact. Reads and edits use the local
+replica; an outbox synchronizes writes without overwriting conflicts. `pending` does not mean
+remote confirmation. Synchronization checks run every minute and respect the connection interval:
+two hours by default, configurable from 1 to 8760 hours for every agenda in the same account.
+Attempt history and manual synchronization remain in Agenda details. Durable fingerprints prevent
 duplicate Tasks during recovery.
 
 The agenda holds dated commitments and punctual reminders. A Goal retains a durable outcome,
-iterations and scheduled reviews. Guidance prohibits duplicating a Goal cycle in a reminder,
+work cycles. Guidance prohibits duplicating a Goal cycle in a reminder,
 and calendar Tasks do not change Goal scheduling.
 
 Sources: [calendar flow](../architecture/flows/calendar.md), [API](../../../back/app/calendar/router.py),
@@ -3531,7 +3647,7 @@ shared dataset parameters, candidate output and judgement.
 | Topic detection | Message sequence | Topic assigned per message. |
 | Memory extraction | Exchange or Task report | CREATE/LINK/IGNORE and retained knowledge. |
 | Learning | Outcome/evidence | Supported lessons/procedures. |
-| Goal follow-up | Cycle result | Verdict and durable follow-up. |
+| Goal follow-up | Cycle result and evidence | Native `CONTINUE`/`STOP` choice, without generated tracking or text fallback. |
 | Task executor | Request | Answer and tool calls. |
 | Conversation executor | Current request | Answer and actions. |
 | Voice executor | Transcribed request | Spoken answer and actions. |
@@ -3662,7 +3778,11 @@ remain explicit.
 **Regressions to inspect** finds new critical failures and pass-to-fail transitions across the
 whole run, with changes by shared criterion. **Latency, cost and quality** reports medians and
 paired counts, including the Lab's first observed text/tool output, excluding queue and judge time.
-Four synthetic FR/EN journeys document a reproducible protocol. Missing values are not zero.
+The synthetic FR/EN corpus contains twelve scenarios per language, also run with the voice
+prompt: known or unknown capabilities, prior refusals, mixed requests, verified restrictions,
+human choices, Process priority and bounded reads complement the simple cases. Oracles examine
+simulated calls and receipts; responses and delegated objectives also need semantic review.
+This prompt campaign exercises neither STT/TTS nor real business effects. Missing values are not zero.
 Comparison launches no inference, changes no production setting and establishes no statistical
 superiority; rerun it after new results or judgements.
 
@@ -3874,13 +3994,12 @@ value saves restore confirmed values. Fields respect edit rights and remain usab
 | Memory | Session window, context activation/size, temporal lookahead, recall candidates/weights, acquisition, duplicates, conflicts and ageing. |
 | Dream | Activation, Topic creation, mechanism prompts, four attachment analyses, learning, evidence/score thresholds, active skills, delays and link reconciliation. |
 | Voice | Activation, auto-answer, audio and call discovery. |
-| Audio | Meeting/video prompts for segment, reduction and final synthesis. |
 | Tasks/execution | Scheduling, concurrency, leases, recovery, budgets, Goals, collaboration, maximum duration per LLM call, model/tool limits and capability-aware Planner depth/leaves. |
 | Processes | Engine, file references, submission, refresh, waiting, idempotency, recovery and retention. |
 | Harnesses | Internal/managed/external policies, technical limits, internal binary files, Compose, manager connection/distribution. |
 | Browser | Sessions, inactivity, capacity, action timeout, viewport, content and capture limits. |
 | Search | Language and timeout. |
-| Instructions | Task/conversation/voice executor prompts, durable-work admission and canonical-document authoring. |
+| Instructions | Task/conversation/voice executor prompts, conversation action policy, Goal decision, canonical-document authoring and audio/video segment, reduction and final-synthesis prompts. |
 | Janus | Agent-gateway connection guide and model aliases. |
 | Logs | Automatic incident/model-trace retention, preview and manual eligible cleanup. |
 
@@ -4240,7 +4359,7 @@ and DbAdmin contributions.
 <a id="mcp"></a>
 ## 30. Inventory of agent-accessible functions
 
-These are the **284 native functions declared with `@mcp_tool` in the reviewed code**, including
+These are the **294 native functions declared with `@mcp_tool` in the reviewed code**, including
 conversation-only and administrative functions. They are not all visible to every agent; MCP exposes
 full argument schemas. External MCP servers discover their own evolving functions at connection time,
 with descriptions/status in the effective catalogue. External-runtime capabilities and discovery
@@ -4258,6 +4377,8 @@ selects the concrete Service.
 |---|---|---|
 | `agent_list` | `galaris` | List available agents with short profiles and current-profile URIs. |
 | `agent_get` | `galaris` | Read full identity, personality and job description, with a `file_read`-readable URI. |
+| `team_list` | `galaris` | Discover teams, including empty teams, with search, pagination and human/agent counts; grants no rights. |
+| `team_members` | `galaris` | Read active team members by name and human/agent kind, without private account details. |
 | `task_run` | `galaris` | Delegate a child Task to an authorised colleague and return its canonical URI; self-targeting is forbidden. |
 | `task_get` | `galaris` | Read compact operational state, revision, progress, milestones, next action, waits and available result. |
 | `task_work_update` | `galaris` | Record current Task milestones with owner, phase and revision checks; preserve checkpoints and justify changes to completed milestones. |
@@ -4271,6 +4392,7 @@ selects the concrete Service.
 | `conversation_task_stop` | `conversation` | Cancel unfinished work or return an already terminal state unchanged. |
 | `conversation_choice_resolve` | `conversation` | Resolve a pending interaction from an unambiguous human reply. |
 | `conversation_process_start` | `conversation` | Start an assigned Process linked to the conversation without awaiting completion. |
+| `conversation_process_prepare` | `conversation` | Prepare verified inputs for an assigned Process in a participant-scoped durable dossier, collecting missing information without starting activities. |
 | `document_show` | `conversation` | Request opening of a readable document in the current internal text room after rights/freshness checks; no sharing or Task invocation. |
 | `conversation_round_get` | `platform_admin` | Full administrative round dossier: messages, attempts, created/amended Tasks, Processes, result and calls. |
 
@@ -4429,6 +4551,7 @@ management needs the specialised connection; ordinary actions stay within the ag
 | `dataset_query` | `file_sharing` | Query authorised Data with JSON filters, projection, sorting, pages and aggregates at an expected revision. |
 | `file_search` | `file_sharing` | Search collection names/content or RAG passages in an exact documentary file, with pages, offsets and renewed access checks; Memory retains hybrid recall and authorized paths. |
 | `file_read` | `file_sharing` | Read paginated text/HTML blocks, Dataset JSON by character or bounded binary, with continuation/revision. |
+| `file_to_pdf` | `file_sharing` | Convert an authorized resource to validated PDF in an explicit destination without overwriting, a model or Console; report pages and warnings. |
 | `file_create` | `file_sharing` | Create text/binary, attachments, HTML Documents `document://` or JSON Datasets `data://`, with complete content. |
 | `file_write` | `file_sharing` | Replace under preconditions/expected revision; retain type and validate Dataset JSON. |
 | `file_append` | `file_sharing` | Append text/HTML to compatible resources; complete Dataset result must remain valid JSON. |
@@ -4487,9 +4610,10 @@ application–Dataset consent is managed in the human UI, not exposed through MC
 |---|---|---|
 | `image_generate` | `image` | Generate/edit/compose using references and destination; return actual dimensions. |
 | `image_read` | `image` | Analyse URI and persist active-attachment Memory description or private agent/URI memory; storage failure prevents success. |
+| `image_from_pdf` | `image` | Render a physical PDF page as PNG in an authorized destination, preserving the original, without inference or OCR. |
 | `audio_transcribe` | `audio` | Transcribe audio/video or fetch YouTube subtitles, retain verbatim and synthesise long content. |
 | `audio_read` | `multimedia` | Analyse sounds/music/audible events against a question. |
-| `video_read` | `multimedia` | Analyse with a specialised video model. |
+| `video_read` | `multimedia` | Analyse video with supplied/embedded subtitles or transcription, retaining provenance and coverage. |
 | `sound_generate` | `multimedia` | Start sound-effect generation. |
 | `music_generate` | `multimedia` | Start music generation. |
 | `video_generate` | `multimedia` | Start video generation. |
@@ -4517,6 +4641,9 @@ application–Dataset consent is managed in the human UI, not exposed through MC
 |---|---|---|
 | `calendar_list` | `calendar` | Discover active-connection calendars. |
 | `calendar_events` | `calendar` | Read occurrences over a period. |
+| `calendar_event_get` | `calendar` | Read a local event and revision, with optional occurrence identity and separate synchronization state. |
+| `calendar_actions` | `calendar` | List configured assistant actions for an authorized event. |
+| `calendar_action_set` | `calendar` | Create or update a revision-checked action before/after an event's start or end, without immediate notification. |
 | `calendar_is_available` | `calendar` | Check a time range and return conflicts. |
 | `calendar_find_free_slots` | `calendar` | Find slots by duration, calendars and preferences. |
 | `calendar_create_event` | `calendar` | Add to a writable calendar. |
@@ -4681,6 +4808,13 @@ These functions additionally require Admin inspection permissions.
 | `llm_calls` | `platform_admin` | Obtain recent call identifiers within a timestamped period. |
 | `llm_call` | `platform_admin` | Inspect UUID/unique-prefix calls: request, response, tools, usage, cost, errors and context. |
 
+### Incident journal
+
+| Function | Family | Action/result |
+|---|---|---|
+| `incidents_list` | `platform_admin` | List LLM/tool failures by filters, dates and pages within administrative scope, without loading traces. |
+| `incident_get` | `platform_admin` | Read an authorized incident's correlations and redacted trace, without replay, cleanup or status changes. |
+
 <a id="couverture"></a>
 ## 31. Module coverage and sources
 
@@ -4695,7 +4829,7 @@ behavioural review. Technical evidence remains in the [generated map](../archite
 
 ### Declared backend modules
 
-All **78 declared modules** map to one or more sections; runtime activation/configuration still applies.
+All **79 declared modules** map to one or more sections; runtime activation/configuration still applies.
 
 | Module | Capability/section |
 |---|---|
@@ -4748,7 +4882,7 @@ All **78 declared modules** map to one or more sections; runtime activation/conf
 | `bridge.code_server` | [VS Code OSS runtime, sessions, profiles and editor maintenance](#console) |
 | `bridge.mail` | [IMAP/SMTP, human approval/history](#mail) |
 | `app.calendar` | [Personal agendas, sources and reminder follow-up](#calendrier) |
-| `bridge.calendar` | [HTTPS iCalendar transport](#calendrier) |
+| `bridge.calendar` | [CalDAV, Google Calendar, Microsoft 365, Apple iCloud and HTTPS iCalendar subscriptions](#calendrier) |
 | `bridge.hermes` | [Hermes runtime/configuration](#harnais) |
 | `bridge.one_bot` | [OneBot v11 adapter](#messageries) |
 | `bridge.matrix` | [Matrix messages](#messageries), [calls](#voix) |
@@ -4790,7 +4924,7 @@ rather than independent applications.
 | `core/team` | Teams/membership |
 | `core/authorize` | Roles, privileges, assignments and profile |
 | `core/params` | Categorised preferences, harnesses and file indexing |
-| `app/index` | Home, welcome, dashboard, About, credits, licence and unknown-page handling |
+| `app/index` | Home, welcome, dashboard, composite Agents/Services/Activity pages, About, credits, licence and unknown-page handling |
 | `app/agent` | Profiles, avatars, teams, forms of address and configuration |
 | `app/harnesses` | Catalogue, details, Compose and manager diagnostics |
 | `app/services` | Catalogue, editing, import/export, parameters/functions |
@@ -4841,6 +4975,8 @@ Not all shared functions are activatable modules:
 - `bridge.youtube`: Audio subtitle support without a separately activated module.
 - `browser-executor`, `ssh-executor`, SearXNG and TURN: browser/console/search/voice infrastructure.
 - `bridge/harness_manager`: harness-instance manager service, separate from the API bridge.
+- `desktop/`: Electron client, HTTPS server selection, isolated sessions, tabs, spellchecking,
+  Windows/Linux packages and client updates.
 - Makefile build, test, backup and qualification tooling.
 
 ### Maintaining completeness
