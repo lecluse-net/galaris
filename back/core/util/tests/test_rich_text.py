@@ -223,6 +223,15 @@ def test_links_reject_unsupported_identity(uri):
     assert not valid_link(uri)
 
 
+@pytest.mark.parametrize("profile", ["rich-text", "document"])
+def test_service_source_reference_can_be_retained_without_an_unsupported_link(profile):
+    uri = f"chat://synthetic-room/{ATTACHMENT}"
+    with pytest.raises(RichTextError, match="Preserve other Service source URIs"):
+        normalize_html(f'<p><a href="{uri}">Source</a></p>', profile=profile)
+    source = f"<p>Original source: <code>{uri}</code></p>"
+    assert normalize_html(source, profile=profile) == source
+
+
 @pytest.mark.parametrize("scheme", ["document", "data", "galaris://contact", "galaris://topic", "galaris://text", "galaris://voice", "galaris://room", "galaris://voice_session"])
 def test_editorial_references_preserve_distinct_resource_schemes(scheme):
     uri = f"{scheme}/{DOCUMENT}" if scheme.startswith("galaris://") else f"{scheme}://{DOCUMENT}"

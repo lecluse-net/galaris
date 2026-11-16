@@ -92,6 +92,19 @@ async def test_messenger_prompt_keeps_explicit_tool_delivery_contract() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("organization", ["direct", "tracked"])
+async def test_task_completion_records_required_blockers_in_both_organizations(organization):
+    request = _request(voice_call=False)
+    request.task_data["organization"] = organization
+    prompt = await executor_service.build_task_prompt(request)
+    assert "task_work_update" in prompt
+    assert "required=true milestone in state=blocked" in prompt
+    assert "work_plan_revision" in prompt
+    assert "preserve any existing milestones" in prompt
+    assert "optional additions required=false" in prompt
+
+
+@pytest.mark.asyncio
 async def test_conversation_task_prompt_delegates_reply_and_files_to_controller() -> None:
     request = _request(voice_call=False)
     request.task_data["origin"] = "conversation"

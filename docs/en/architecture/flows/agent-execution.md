@@ -103,6 +103,9 @@ An optional `blocked` milestone has the same effect on progress and completion.
 At completion, an explicitly persisted required `blocked` milestone prevents contradictory success:
 without an existing durable wait, the Task ends in error without automatic retry, retaining
 its report and completed effects. This guard creates neither a wait nor an authorization.
+Completion instructions also ask `direct` executors to record such blockers with
+`task_work_update`, preserving existing milestones and their tracking revision.
+These instructions depend on model compliance; the guard applies to persisted milestones.
 A rejected conditional document note therefore does not block the main reply; the executor
 discloses the omission in its response. Tracking grants no write permission.
 Changing required status or reopening a `done`/`skipped` milestone requires a revision reason.

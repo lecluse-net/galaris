@@ -322,6 +322,9 @@ ni le partage. Modifier un titre dans le texte ou le libellé d'un lien est une 
 La description d'un objectif est un champ HTML du Goal. Son suivi reste un document, créé
 non classé : il figure dans la liste et pas dans l'arborescence, même à la racine.
 Chaque utilisateur peut ensuite le classer librement. Aucun dossier Objectifs n'est imposé.
+Avec le droit de modification, vous pouvez aussi joindre les justificatifs à ce suivi,
+ou demander à l'agent de les y archiver. Le titre, le propriétaire et le rattachement à
+l'objectif restent pilotés par celui-ci ; ajouter une pièce ne modifie pas le corps du suivi.
 
 Dans la bibliothèque **Documents**, chaque dossier propose une icône **Nouveau document**
 parmi ses actions. Renseignez le titre et le propriétaire : le document est automatiquement

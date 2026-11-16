@@ -397,6 +397,17 @@ async def build_task_prompt(task: Any, extra_context: Optional[dict[str, str]] =
             "when available. If missing user intent changes the scope or expected depth, ask "
             "the requester through the available question tool before those actions."
         )
+    if getattr(task, "task_id", None) is not None:
+        sections["completion_check"] = (
+            "Before finishing, compare the requested outcome with confirmed tool receipts. "
+            "If a required operation remains blocked, record it with task_work_update as a "
+            "required=true milestone in state=blocked, with the observed cause and next action, "
+            "even for organization=direct. Read task_get for work_plan_revision first and "
+            "preserve any existing milestones. A partial update or an explanatory reply does "
+            "not complete the blocked requirement. Keep optional additions required=false; "
+            "a recoverable tool error alone does not make the whole task fail. If tracking is "
+            "unavailable, explicitly report that limitation and the unfinished requirement."
+        )
     if data.get("organization") == "tracked" or isinstance(data.get("work_plan"), dict):
         sections["work_organization"] = (
             "This mission requires durable organization. Before substantive work, inspect "

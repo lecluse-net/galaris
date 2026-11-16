@@ -311,6 +311,13 @@ Le service de rendu doit être reconstruit lors d’une modification de son code
 
 ## Pièces jointes, cartouches et export portable
 
+Les pièces jointes dépendent du droit d'écriture du document parent, y compris pour un
+suivi d'objectif de profil `rich-text`. Leur ajout ne crée pas de révision du corps et ne
+modifie ni le titre, ni le propriétaire, ni le rattachement au Goal. Le profil du corps
+continue de refuser le HTML exécutable. Pour citer une source d'un Service dont le schéma
+n'est pas accepté dans les liens HTML, conserver son URI échappée dans `<code>` ; après
+archivage, utiliser l'URI exacte `document://…/attachments/…` retournée par la copie réussie.
+
 Le profil documentaire accepte les formulaires et scripts dans un contexte isolé, avec la
 barre d'outils et le texte éditable habituels, sans vue Source. Les historiques et exports
 restent inertes. La restauration et les modifications du texte environnant conservent le

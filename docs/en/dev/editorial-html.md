@@ -298,6 +298,13 @@ rendering service when its code changes.
 
 ## Attachments, link cards and portable export
 
+Attachments require write access to their parent Document, including Goal tracking
+Documents with the `rich-text` profile. Adding one creates no body revision and changes
+neither title, owner nor Goal association. The body profile still rejects executable HTML.
+To cite a Service source whose scheme is unsupported in HTML links, retain its escaped URI
+inside `<code>`; after archiving, use the exact `document://…/attachments/…` URI returned
+by the successful copy.
+
 Documents support forms and scripts in isolation, retaining the usual toolbar and editable
 prose, without a Source view. History and exports stay inert. Restoration and surrounding
 prose edits retain stored HTML/CSS/JavaScript, including content supplied by tools and agents.

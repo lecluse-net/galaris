@@ -161,8 +161,8 @@ async def add_document_attachment(
     _assert_document(item)
     if not access.can_write:
         raise service.DocumentPermissionError("Document edit access denied.")
-    if item.content_profile != "document":
-        raise service.DocumentPermissionError("Attachments cannot be added to Goal documents.")
+    # Attachments have their own immutable storage; the body's rich-text profile
+    # limits executable markup, not the files an authorized editor can archive.
     if len(attachments_from_item(item)) >= _MAX_ATTACHMENTS:
         raise ValueError(f"A document accepts at most {_MAX_ATTACHMENTS} attachments.")
     limit = runtime_settings.MEMORY_RESOURCE_MAX_BYTES
@@ -256,8 +256,6 @@ async def _register_document_attachment(
             _assert_document(item)
             if not access.can_write:
                 raise service.DocumentPermissionError("Document edit access denied.")
-            if item.content_profile != "document":
-                raise service.DocumentPermissionError("Attachments cannot be added to Goal documents.")
             attachments = attachments_from_item(item)
             if len(attachments) >= _MAX_ATTACHMENTS:
                 raise ValueError(

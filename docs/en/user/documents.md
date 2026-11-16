@@ -291,6 +291,9 @@ Editing a heading in the body or a link label is a separate action. Titles of
 Goal descriptions are Goal-owned HTML fields. Tracking remains a Document created unclassified:
 it appears in the list, outside the tree including its root. Each user can freely classify it.
 No Goal folder is imposed.
+With write access, you can also attach supporting files to this tracking Document or ask
+the agent to archive them there. Its title, owner and Goal association remain Goal-owned;
+adding an attachment does not change the tracking body.
 
 In the **Documents** library, every folder offers a **New document** icon among its
 actions. Enter the title and owner: the document is automatically placed in that folder,

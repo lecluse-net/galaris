@@ -60,6 +60,14 @@ class RichTextError(ValueError):
     """Invalid editorial content; the caller must preserve the previous revision."""
 
 
+_UNSUPPORTED_LINK = (
+    "Unsupported link reference. Use a supported Web or canonical resource link. "
+    "Preserve other Service source URIs as escaped text inside <code>, without an <a> tag. "
+    "To link an archived file, first copy it to the document's attachments collection "
+    "and use the exact document:// attachment URI returned after success."
+)
+
+
 def attachment_reference(value: str) -> tuple[UUID, UUID] | None:
     uri = urlsplit(value)
     if uri.scheme != "document" or uri.query or uri.fragment:
@@ -371,7 +379,7 @@ class _Parser(HTMLParser):
                     if key in {"data-code-lines", "data-code-nowrap"} and (tag != "code" or value != "true"):
                         raise RichTextError("Unsupported code display option.")
                     if key == "href" and not value.startswith("#") and not valid_link(value):
-                        raise RichTextError("Unsupported link reference.")
+                        raise RichTextError(_UNSUPPORTED_LINK)
                     if tag == "script" and key == "src" and not valid_script_source(value):
                         raise RichTextError("Scripts must use an approved HTTPS library CDN.")
                     attributes[key] = value
@@ -382,7 +390,7 @@ class _Parser(HTMLParser):
                 if key == "style":
                     value = _style(value)
                 elif key == "href" and not valid_link(value):
-                    raise RichTextError("Unsupported link reference.")
+                    raise RichTextError(_UNSUPPORTED_LINK)
                 elif tag == "script" and key == "src" and not valid_script_source(value):
                     raise RichTextError("Scripts must use an approved HTTPS library CDN.")
                 elif tag == "script" and key == "type" and value not in {"module", "importmap", "text/javascript", "application/javascript"}:

@@ -110,6 +110,9 @@ Un complément facultatif `blocked` a le même effet sur la progression et la cl
 À la clôture, un jalon obligatoire persisté explicitement `blocked` empêche un succès contradictoire :
 hors attente durable existante, la tâche termine en erreur sans retry automatique, en conservant
 son bilan et les effets acquis. Cette garde ne crée ni attente ni autorisation.
+La consigne de clôture demande aussi aux exécuteurs `direct` d'enregistrer un tel blocage
+avec `task_work_update`, en conservant les jalons existants et leur révision de suivi.
+Cette consigne dépend de son application par le modèle ; la garde porte sur les jalons persistés.
 Une note documentaire conditionnelle refusée ne bloque donc pas la réponse principale ;
 l'exécuteur signale cette omission dans sa réponse. Le suivi n'accorde aucun droit d'écriture.
 Modifier le caractère obligatoire ou rouvrir un jalon `done`/`skipped` exige une raison de révision.

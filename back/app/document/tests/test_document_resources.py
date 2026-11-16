@@ -43,6 +43,73 @@ async def test_html_attachment_bundle_is_portable_and_keeps_revision(agents, mem
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("method", ["bytes", "upload", "copy", "create"])
+async def test_goal_tracking_attachments_follow_document_acl_without_changing_goal_identity(
+    agents, memory_storage, monkeypatch, tmp_path, method,
+):
+    from uuid import uuid4
+    from fastapi import UploadFile
+    from app.document.goal_document_adapter import DocumentGoalDocumentStore
+    from app.document.schemas import DocumentUpdate
+    from app.file_share import ResourceContext, resource_service
+    from app.file_share.tests.local_file_transport import TemporaryFileTransport
+
+    owner, reader = agents
+    goal_id = uuid4()
+    store = DocumentGoalDocumentStore()
+    identity = await store.create(goal_id=goal_id, owner_agent_id=owner.id,
+        kind="tracking", goal_title="Synthetic setup", content="<p>Setup in progress</p>")
+    await service.set_item_grant(identity, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
+    before, *_ = await service.get_item(identity, agent_id=owner.id)
+    title, metadata, revision = before.title, dict(before.metadata_), before.revision
+    source = b"Synthetic signed agreement for attachment transport only."
+    console = TemporaryFileTransport(tmp_path / "console")
+    console.resolve_path("agreement.txt").write_bytes(source)
+
+    async def resolve(_ctx):
+        return console
+
+    monkeypatch.setattr(resource_service, "_console_transport", resolve)
+    destination = f"document://{identity}/attachments/"
+
+    async def attach(actor):
+        ctx = ResourceContext(agent_id=actor.id, runtime="internal", console_resource=object())
+        if method == "bytes":
+            await attachments.add_document_attachment_bytes(identity, actor_agent_id=actor.id,
+                name="agreement.txt", media_type="text/plain", content=source)
+        elif method == "upload":
+            await attachments.add_document_attachment(identity, actor_agent_id=actor.id,
+                upload=UploadFile(filename="agreement.txt", file=BytesIO(source), size=len(source)))
+        elif method == "copy":
+            await resource_service.resource_copy(ctx, "console://agreement.txt", destination)
+        else:
+            await resource_service.resource_create(ctx, destination, source, name="agreement.txt")
+
+    with pytest.raises(service.DocumentPermissionError):
+        await attach(reader)
+    assert await attachments.list_document_attachments(identity, actor_agent_id=reader.id) == []
+    await attach(owner)
+    attachment, = await attachments.list_document_attachments(identity, actor_agent_id=reader.id)
+    assert attachment.name == "agreement.txt"
+    assert (await attachments.read_document_attachment(identity, attachment.id, actor_agent_id=reader.id))[1] == source
+    current, *_ = await service.get_item(identity, agent_id=owner.id)
+    assert current.revision == revision and current.title == title and current.deletion_protected
+    assert {key: current.metadata_[key] for key in metadata} == metadata
+    with pytest.raises(service.DocumentPermissionError):
+        await service.update_item(identity, DocumentUpdate(title="Changed"), actor_agent_id=owner.id)
+    with pytest.raises(service.DocumentPermissionError):
+        await attachments.delete_document_attachment(identity, attachment.id, actor_agent_id=reader.id)
+    uri = f"{destination}{attachment.id}"
+    await store.update(identity, content=f'<p>Agreement archived: <a href="{uri}">Attachment</a></p>')
+    assert uri in await store.read(identity)
+    assert len(await attachments.list_document_attachments(identity, actor_agent_id=owner.id)) == 1
+    await attachments.delete_document_attachment(identity, attachment.id, actor_agent_id=owner.id)
+    assert await attachments.list_document_attachments(identity, actor_agent_id=owner.id) == []
+    # The historical link remains resolvable after removal from the current list.
+    assert (await attachments.read_document_attachment(identity, attachment.id, actor_agent_id=owner.id))[1] == source
+
+
+@pytest.mark.asyncio
 async def test_link_card_keeps_thumbnail_in_shared_cache_and_checks_write_before_fetch(agents, memory_storage, monkeypatch, tmp_path):
     from core.settings import settings
     monkeypatch.setattr(type(settings), "GALARIS_THUMBNAIL_ROOT", str(tmp_path))
