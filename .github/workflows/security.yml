@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: make security-check
 
   images:
@@ -33,7 +33,7 @@ jobs:
       matrix:
         context: [back, front, browser-executor, ssh-executor]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Build shipped image
         env:
           BUILD_CONTEXT: ${{ matrix.context }}
