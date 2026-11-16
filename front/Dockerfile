@@ -1,5 +1,5 @@
 # Dev stage - used for development (code mounted as volume)
-FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 as dev-stage
+FROM node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 as dev-stage
 
 # The node:alpine image already has a 'node' user with UID 1000
 # which matches the typical host user UID. We use it directly.
@@ -26,7 +26,7 @@ EXPOSE 8484
 CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "8484"]
 
 # Build stage - used only for production build
-FROM node:26-alpine@sha256:c6ad9e9c1d80f6eb607c26b4b0a132ff7a2344fad1c78ea3baa2a7d4c8de6d94 as build-stage
+FROM node:26-alpine@sha256:6bd9ab43c0ec0190ca7b2d193906cb8b7edf6e7f4afa43ddeccd6452710bffb5 as build-stage
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci
