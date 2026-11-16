@@ -13,10 +13,11 @@ from html.parser import HTMLParser
 import re
 from typing import Literal
 from urllib.parse import urlsplit
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import nh3
 from markdown_it import MarkdownIt
+from .resource_uri import FUTURE_RESOURCE_SCHEMES, PROTOCOL_SCHEMES, ResourceUriError, parse_resource_uri
 
 ContentProfile = Literal["rich-text", "document"]
 PROFILE_VERSION = 1
@@ -61,15 +62,17 @@ class RichTextError(ValueError):
 
 
 _UNSUPPORTED_LINK = (
-    "Unsupported link reference. Use a supported Web or canonical resource link. "
-    "Preserve other Service source URIs as escaped text inside <code>, without an <a> tag. "
-    "To link an archived file, first copy it to the document's attachments collection "
-    "and use the exact document:// attachment URI returned after success."
+    "Invalid link reference. Use an HTTP(S) or mailto link, or the exact canonical "
+    "resource URI returned by File Sharing. Resource links are opened inside Galaris "
+    "with the reader's current permissions."
 )
 
 
 def attachment_reference(value: str) -> tuple[UUID, UUID] | None:
-    uri = urlsplit(value)
+    try:
+        uri = urlsplit(value)
+    except ValueError:
+        return None
     if uri.scheme != "document" or uri.query or uri.fragment:
         return None
     parts = uri.path.split("/")
@@ -87,7 +90,10 @@ def attachment_reference(value: str) -> tuple[UUID, UUID] | None:
 def valid_link(value: str) -> bool:
     if not value or any(ord(char) < 33 for char in value) or "\\" in value:
         return False
-    uri = urlsplit(value)
+    try:
+        uri = urlsplit(value)
+    except ValueError:
+        return False
     if uri.scheme in {"https", "http"}:
         return bool(uri.hostname) and not uri.username and not uri.password
     if uri.scheme == "mailto":
@@ -100,36 +106,12 @@ def valid_link(value: str) -> bool:
         except ValueError:
             return False
         return value in {f"document://folders/{identity}", f"document://folders/{identity}/"}
-    if uri.scheme in {"document", "memory", "data"}:
-        try:
-            identity = UUID(uri.netloc)
-        except ValueError:
-            return False
-        return value == f"{uri.scheme}://{identity}"
-    if uri.scheme == "galaris" and uri.netloc in {
-        "contact", "goal", "task", "agent", "topic", "text", "voice", "room", "voice_session"
-    }:
-        if uri.query or uri.fragment or not uri.path.startswith("/"):
-            return False
-        locator = uri.path[1:]
-        if uri.netloc == "agent":
-            return locator.isdecimal() and int(locator) > 0
-        try:
-            return str(UUID(locator)) == locator
-        except ValueError:
-            return False
-    if uri.scheme == "galaris" and uri.netloc in {"process", "processes"}:
-        if uri.query or uri.fragment:
-            return False
-        locator = uri.path.removeprefix("/")
-        if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_.-]{0,254}", locator):
-            return True
-        if uri.netloc == "processes" and locator.startswith("runs/"):
-            try:
-                return locator == f"runs/{UUID(locator[5:])}"
-            except ValueError:
-                return False
-    return False
+    if uri.scheme in (PROTOCOL_SCHEMES - {"file", "data"}) | FUTURE_RESOURCE_SCHEMES:
+        return False
+    try:
+        return str(parse_resource_uri(value, allow_empty=True)) == value
+    except ResourceUriError:
+        return False
 
 
 STYLE_PROPERTIES = {
@@ -602,18 +584,46 @@ def normalize_html(
     if inline:
         grouped.append(HtmlNode("p", children=inline))
     root.children = grouped
+    # The HTML sanitizer parses URLs as browser addresses. Provider locators
+    # (for example chat:direct:...) are opaque and need not be valid URL hosts.
+    # Carry already validated resource hrefs through sanitization out of band;
+    # placeholders are local to this call and never fetched or persisted.
+    resource_links: dict[str, str] = {}
+    prefix = f"https://galaris.invalid/{uuid4()}/"
+
+    def protect_links(node: HtmlNode) -> None:
+        if node.tag == "a" and (href := node.attributes.get("href")):
+            if urlsplit(href).scheme not in {"http", "https", "mailto"}:
+                placeholder = f"{prefix}{len(resource_links)}"
+                resource_links[placeholder] = href
+                node.attributes["href"] = placeholder
+        for child in node.children:
+            if isinstance(child, HtmlNode):
+                protect_links(child)
+
+    protect_links(root)
     serialized = root.html()
     clean = nh3.clean(
         serialized,
         tags=(TAGS - {"img"}) if profile == "rich-text" else TAGS | {"script"},
         attributes={**ATTRIBUTES, "script": {"src", "type", "async", "defer"}} if profile == "document" else ATTRIBUTES,
         clean_content_tags=set() if profile == "document" else {"script", "style"},
-        url_schemes={"https", "http", "mailto", "document", "memory", "data", "galaris"},
+        url_schemes={"https", "http", "mailto", "document"},
         link_rel=None,
         strip_comments=True,
         filter_style_properties=STYLE_PROPERTIES,
     )
-    normalized = parse_html(clean, profile=profile, limit_length=limit_length).html()
+    cleaned_root = parse_html(clean, profile=profile, limit_length=limit_length)
+
+    def restore_links(node: HtmlNode) -> None:
+        if node.tag == "a" and (href := node.attributes.get("href")) in resource_links:
+            node.attributes["href"] = resource_links[href]
+        for child in node.children:
+            if isinstance(child, HtmlNode):
+                restore_links(child)
+
+    restore_links(cleaned_root)
+    normalized = cleaned_root.html()
     text = visible_text(normalized)
     if limit_length and profile != "document" and len(text) > MAX_TEXT_CHARS:
         raise RichTextError("Visible text exceeds its character limit.")

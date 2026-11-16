@@ -301,9 +301,14 @@ rendering service when its code changes.
 Attachments require write access to their parent Document, including Goal tracking
 Documents with the `rich-text` profile. Adding one creates no body revision and changes
 neither title, owner nor Goal association. The body profile still rejects executable HTML.
-To cite a Service source whose scheme is unsupported in HTML links, retain its escaped URI
-inside `<code>`; after archiving, use the exact `document://…/attachments/…` URI returned
-by the successful copy.
+Both profiles retain links to any canonical File Sharing URI, including Chat, Console,
+managed files, collections and connected Services. The shared URI parser checks syntax
+without consulting connections or granting access. Opaque locators survive sanitization.
+Known business references keep their usual views; other links open Files with their exact
+URI, retained while selecting an agent. Access is checked on opening and reopening.
+Citing a source requires no copy; explicit archiving remains a separate operation.
+Document imports retain these references, and Markdown readers use the same application
+routing without changing canonical URIs stored by legacy editors.
 
 Documents support forms and scripts in isolation, retaining the usual toolbar and editable
 prose, without a Source view. History and exports stay inert. Restoration and surrounding

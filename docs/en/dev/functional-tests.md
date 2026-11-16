@@ -847,6 +847,12 @@ revisions and permissions.
 
 `front/browser-tests/tiptap-preservation.spec.mjs` covers the HTML corpus through Tiptap,
 serialization, reopening and reading: canonical references, tables and opaque HTML/CSS/JavaScript.
+`front/browser-tests/resource-links.spec.mjs` covers Service and native URIs in both HTML
+profiles: editing, reopening, agent selection, denial, retry and revocation before cached
+preview reuse on desktop and mobile. URI, HTML and File Sharing API tests verify syntax,
+source-domain privileges and private-file isolation.
+The same scenario covers the Markdown reader and legacy editor; document import tests
+verify opaque Chat locators survive conversion.
 A real Three.js scene exercises the offline isolated runtime, controls and a nonempty
 static capture, without executing code in the editor's origin. Document Source and its Chat focus scenario are retired;
 rendered selection scenarios remain in `chat-document-workspace.spec.mjs`. Source for

@@ -11,7 +11,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { codeLanguageLabel, codeTokens } from './codeHighlight'
 import { EditorialTableView } from './editorialTableView'
-import { attachmentReference, richLinkHref, sanitizeRichHtml, type ContentProfile } from './richText'
+import { attachmentReference, richLinkHref, sanitizeRichHtml, validRichLink, type ContentProfile } from './richText'
 import { documentIdFromResourceUri, documentUriFromLink } from './documentResource'
 import { Checklist, ChecklistItem } from './editorialChecklist'
 import { mathNode } from './editorialMath'
@@ -252,7 +252,7 @@ export function contentExtensions(adapters: ContentAdapters): Extensions {
       const dispose = adapters.linkIcon(icon, id)
       return { dom, contentDOM, ignoreMutation: mutation => mutation.type !== 'selection' && icon.contains(mutation.target), destroy: dispose }
     } },
-  }).configure({ openOnClick: false, autolink: false, protocols: ['document', 'memory', 'data', 'galaris'] }), TextStyleKit, TextAlign.extend({
+  }).configure({ openOnClick: false, autolink: false, isAllowedUri: validRichLink }), TextStyleKit, TextAlign.extend({
     addKeyboardShortcuts() { return adapters.profile === 'document' ? {} : this.parent?.() ?? {} },
   }).configure({ types: ['heading', 'paragraph'] }), Highlight.extend({
     addAttributes() { return { ...this.parent?.(), editorialClass: { default: null, parseHTML: element => element.getAttribute('class'), renderHTML: attrs => attrs.editorialClass ? { class: attrs.editorialClass } : {} } } },

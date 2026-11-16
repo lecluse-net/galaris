@@ -885,6 +885,12 @@ lors d’un changement de contenu et export statique avec polices intégrées sa
 dans Tiptap, la sérialisation, la réouverture et la lecture : références canoniques, tableaux et
 HTML/CSS/JavaScript opaque. Une vraie scène Three.js exerce le runtime isolé hors ligne,
 ses contrôles et une capture statique non vide, sans exécution dans l’origine de l’éditeur.
+`front/browser-tests/resource-links.spec.mjs` couvre les URI de Services et natives dans les
+deux profils HTML : édition, réouverture, choix de l'agent, refus, retry et révocation avant
+réutilisation d'un aperçu en cache sur ordinateur et mobile. Les tests du parseur d'URI,
+du HTML et de l'API File Sharing vérifient syntaxe, droits de domaine et isolation des fichiers.
+Le même scénario couvre le lecteur Markdown et son ancien éditeur ; les tests d'import
+documentaire vérifient la conservation des locators Chat opaques après conversion.
 La vue Source documentaire et son scénario de focus dans Discussion sont retirés ; les
 scénarios de sélection rendue restent dans `chat-document-workspace.spec.mjs`. La vue Source
 des champs `rich-text` reste couverte par `source-editing.spec.mjs`, et `rich-text.spec.mjs`

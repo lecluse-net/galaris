@@ -55,7 +55,12 @@ function suppressDocumentContextMenu(event: MouseEvent): void {
   if (profile === 'document') event.stopPropagation()
 }
 function openUri(uri: string): void {
-  if (!navigateDocument(uri)) detail.value = richLinkTarget(uri)
+  if (navigateDocument(uri)) return
+  detail.value = richLinkTarget(uri)
+  if (!detail.value) {
+    const href = richLinkHref(uri)
+    if (href) window.open(href, '_blank', 'noopener,noreferrer')
+  }
 }
 const pdfPreview = shallowRef<PdfPreviewSource | null>(null)
 const root = useTemplateRef('root')

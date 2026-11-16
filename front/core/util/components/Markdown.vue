@@ -11,6 +11,8 @@ import {
     linkDocumentResourceUris,
 } from '../documentResource'
 import { sanitizeHtml } from '../sanitizeHtml'
+import { canonicalResourceLink } from '../resourceUri'
+import { richLinkHref } from '../richText'
 
 const props = defineProps<{
     content: string | undefined | null
@@ -82,9 +84,19 @@ const asJsonCodeBlock = (content: string): string | null => {
     }
 }
 
-const renderMarkdown = (content: string): string => linkDocumentResourceUris(
-    sanitizeHtml(marked.parse(content, { breaks: true, renderer }) as string),
-)
+const renderMarkdown = (content: string): string => {
+    const html = linkDocumentResourceUris(sanitizeHtml(marked.parse(content, { breaks: true, renderer }) as string))
+    const parsed = new DOMParser().parseFromString(html, 'text/html')
+    for (const link of parsed.body.querySelectorAll('a[href]')) {
+        const uri = link.getAttribute('href') ?? ''
+        if (canonicalResourceLink(uri)) {
+            const href = richLinkHref(uri)
+            if (href) link.setAttribute('href', href)
+            else link.removeAttribute('href')
+        }
+    }
+    return parsed.body.innerHTML
+}
 
 const frontmatterPattern = /^\uFEFF?---[ \t]*\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)/
 

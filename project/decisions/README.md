@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0298 — Liens de ressources canoniques dans le HTML éditorial](0298-canonical-resource-links-in-editorial-html.md)
+
 - [0297 — Politique unifiée des capacités conversationnelles](0297-unified-conversation-capability-policy.md)
 
 - [0296 — Decision-only Goal monitoring](0296-decision-only-goal-monitoring.md)

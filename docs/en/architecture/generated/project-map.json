@@ -2274,6 +2274,7 @@
           "back/app/file_share/operation_memos.py",
           "back/app/file_share/process_provider.py",
           "back/app/file_share/resource_service.py",
+          "back/app/file_share/resource_uri.py",
           "back/app/file_share/router.py",
           "back/app/file_share/transport.py",
           "back/app/file_share/web_transport.py"
@@ -22928,7 +22929,8 @@
           "front/app/file_share/components/MailMessageDialog.vue",
           "front/app/file_share/pages/index.vue",
           "front/app/file_share/pages/settings.vue",
-          "front/app/file_share/presentation.ts"
+          "front/app/file_share/presentation.ts",
+          "front/app/file_share/richContent.ts"
         ],
         "source": "app/file_share",
         "target": "core/util"

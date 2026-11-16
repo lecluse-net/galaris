@@ -57,7 +57,8 @@ const agentId = computed<number | null>({
     ? agents.value.find(agent => String(agent.id) === route.query.agent_id)?.id ?? null : null,
   set: value => {
     if (value === agentId.value) return
-    void router.push({ path: route.path, query: { ...route.query, agent_id: value === null ? undefined : String(value), uri: undefined } })
+    void router.push({ path: route.path, query: { ...route.query, agent_id: value === null ? undefined : String(value),
+      uri: agentId.value === null && value !== null ? route.query.uri : undefined } })
   },
 })
 const loading = ref(false), error = ref(false), session = ref(0)

@@ -400,6 +400,9 @@ def test_imported_html_keeps_media_and_rejects_unowned_images():
     result = _editable_html('<h1 onclick="bad()">Title</h1><script>bad()</script><p><img src="assets/image.png" alt="Chart"></p>',
                             {"assets/image.png": uri})
     assert "<h1>Title</h1>" in result and uri in result and "onclick" not in result and "bad()" not in result
+    source_uri = "chat://chat:direct:7:1:synthetic/11111111-1111-4111-8111-111111111111"
+    linked = _editable_html(f'<p><a href="{source_uri}">Original source</a></p>', {})
+    assert f'href="{source_uri}"' in linked
     for source in ("https://example.invalid/image.png", "file:///private/image.png", "assets/missing.png", uri):
         with pytest.raises(ValueError, match="outside"):
             _editable_html(f'<p><img src="{source}"></p>', {})

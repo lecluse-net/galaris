@@ -163,6 +163,10 @@ de liens avec filtre par nature est supprimée. La sélection de texte et sa mis
 conservées lors de l'insertion d'un seul lien. Le clic sur l'arrière-plan ferme la modale.
 Utilisez **Lien** pour saisir une URL ou une référence Galaris. Le libellé appartient à votre texte ; renommer la cible ne
 casse pas la référence. Un lien ne partage pas sa cible : les droits sont vérifiés à l’ouverture.
+Vous pouvez aussi utiliser directement une URI `chat://`, `console://`, `file://` ou celle
+d'un Service connecté. Le lien conserve la source sans la copier. Il ouvre Fichiers avec
+la référence exacte ; si aucun agent n'est sélectionné, choisissez celui dont les connexions
+permettent d'y accéder. Un refus peut être réessayé après rétablissement de l'accès.
 En lecture, cliquez pour ouvrir la cible. Les liens et cartes vers un document remplacent le
 document dans le contexte courant : la page Documents, le panneau du Chat ou la modale ouverte.
 Dans le Chat, vous restez dans la conversation ; les flèches précédent/suivant sont à droite

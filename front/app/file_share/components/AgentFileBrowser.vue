@@ -334,7 +334,9 @@ async function openEntry(entry: FileEntry, event?: Event, metadataFresh = false)
   if (entry.is_collection) { navigate(entry.uri, true, metadataFresh ? false : 'push'); return }
   target.value = resourceTarget(entry, agentId, locale.value) ?? richLinkTarget(entry.uri, String(entry.metadata?.label ?? entry.name), agentId)
   if (target.value) return
-  if (!metadataFresh && /^(file|document|data|messenger|galaris):\/\//.test(entry.uri)) {
+  // A cached preview never grants access on reopening, including for custom
+  // Service schemes. Recheck metadata/ACLs before using the existing bytes.
+  if (!metadataFresh) {
     await openUri(entry.uri, false)
     return
   }

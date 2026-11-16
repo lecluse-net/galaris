@@ -4,12 +4,14 @@ import { hideInteractiveSource, protectInteractiveHtml } from './interactiveHtml
 import type { ResourceDetailTarget } from './resourceDetail'
 import { defaultReferenceFormatting, type ReferenceFormatting } from './resourceReference'
 import { attachmentReference } from './documentResource'
+import { canonicalResourceLink } from './resourceUri'
 export { attachmentReference } from './documentResource'
 
 export type ContentProfile = 'rich-text' | 'document'
 export const CONTENT_PROFILE_VERSION = 1
 export interface RichLinkTarget { uri: string; title: string; context: string }
 export interface RichContentContribution {
+  fallback?: boolean
   schemes?: readonly string[]
   canonical?: (value: string) => string | null
   search: (query: string, formatting: ReferenceFormatting) => Promise<RichLinkTarget[]>
@@ -22,15 +24,13 @@ export interface RichContentContribution {
 }
 interface ContributionModule { default: RichContentContribution }
 const contributions = Object.values(import.meta.glob<ContributionModule>('../../app/*/richContent.ts', { eager: true })).map(value => value.default)
+  .sort((left, right) => Number(left.fallback ?? false) - Number(right.fallback ?? false))
 export async function richLinkPreviewImage(uri: string, agentId: number | null, signal: AbortSignal): Promise<Blob | null> {
   return await contributions.find(value => value.previewImage)?.previewImage?.(uri, agentId, signal) ?? null
 }
-const uuid = '[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}'
-const internal = new RegExp(`^(?:(?:document|memory|data)://${uuid}|document://folders/${uuid}/?|galaris://(?:contact|goal|task|topic|text|voice|room|voice_session)/${uuid}|galaris://(?:agent|calendar)/[1-9][0-9]*|galaris://process(?:es)?/[A-Za-z_][A-Za-z0-9_.-]{0,254}|galaris://processes/runs/${uuid})$`)
-const attachment = new RegExp(`^document://(${uuid})/attachments/(${uuid})$`)
 export function validRichLink(uri: string): boolean {
   if (/[\s\\]/.test(uri) || [...uri].some(char => char.charCodeAt(0) < 32)) return false
-  if (internal.test(uri) || attachment.test(uri)) return true
+  if (canonicalResourceLink(uri)) return true
   try {
     const url = new URL(uri)
     return (['http:', 'https:'].includes(url.protocol) ? Boolean(url.hostname) : url.protocol === 'mailto:' && Boolean(url.pathname)) && !url.username && !url.password
@@ -38,8 +38,7 @@ export function validRichLink(uri: string): boolean {
 }
 export function richLinkHref(uri: string): string | null {
   if (!validRichLink(uri)) return null
-  if (attachment.test(uri)) return contributions.map(value => value.href(uri)).find(Boolean) ?? null
-  if (!internal.test(uri)) return uri
+  if (!canonicalResourceLink(uri)) return uri
   return contributions.map(value => value.href(uri)).find(Boolean) ?? null
 }
 export function richLinkTarget(uri: string, title = '', agentId: number | null = null): ResourceDetailTarget | null {
@@ -48,7 +47,7 @@ export function richLinkTarget(uri: string, title = '', agentId: number | null =
 export function canonicalRichLink(value: string): string | null {
   if (!validRichLink(value) && !value.startsWith('/')) return null
   return contributions.map(source => source.canonical?.(value)).find(Boolean)
-    ?? (internal.test(value) && richLinkTarget(value) ? value : null)
+    ?? (canonicalResourceLink(value) ? value : null)
 }
 export function richLinkHasCard(uri: string): boolean {
   return validRichLink(uri) && contributions.some(value => value.target?.(uri) && value.card && (value.canCard?.(uri) ?? true))
@@ -86,7 +85,9 @@ export function sanitizeRichHtml(html: string, profile: ContentProfile = 'rich-t
     FORCE_BODY: true,
     ALLOW_DATA_ATTR: false,
     ADD_URI_SAFE_ATTR: ['start', 'colspan', 'rowspan', 'colwidth', 'width', 'height', 'value', 'data-color', 'data-math', 'data-code-lines', 'data-code-nowrap', 'data-checked', 'type', 'async', 'defer'],
-    ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|document:\/\/|memory:\/\/|data:\/\/|galaris:\/\/)/,
+    // Exact href validation follows sanitization; provider schemes are not an
+    // executable browser protocol and are rewritten to application navigation.
+    ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|[a-z][a-z0-9+.-]*:\/\/)/,
   })
   const doc = new DOMParser().parseFromString('<body>' + clean, 'text/html')
   for (const element of doc.body.querySelectorAll<HTMLElement>('*')) {

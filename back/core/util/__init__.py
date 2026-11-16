@@ -50,6 +50,7 @@ from .rich_text import (
     read_html_page,
     replace_visible_text,
     visible_text,
+    valid_link,
 )
 from .editorial_client import require_editorial_client
 from .resource_summary import (
@@ -59,8 +60,36 @@ from .resource_summary import (
     needs_summary as needs_resource_summary,
 )
 from .source_files import source_code_media_type, source_code_response_headers
+from .resource_uri import (
+    FUTURE_RESOURCE_SCHEMES,
+    NATIVE_RESOURCE_SCHEMES,
+    PROTOCOL_SCHEMES,
+    RESERVED_TOOL_CODES,
+    RESOURCE_SCHEME_PATTERN,
+    SYSTEM_SERVICE_CODES,
+    InvalidResourceServiceCodeError,
+    ResourceRevisionConflict,
+    ResourceUri,
+    ResourceUriError,
+    ResourceValidationError,
+    parse_resource_uri,
+    validate_external_service_code,
+)
 
 __all__ = [
+    "FUTURE_RESOURCE_SCHEMES",
+    "NATIVE_RESOURCE_SCHEMES",
+    "PROTOCOL_SCHEMES",
+    "RESERVED_TOOL_CODES",
+    "RESOURCE_SCHEME_PATTERN",
+    "SYSTEM_SERVICE_CODES",
+    "InvalidResourceServiceCodeError",
+    "ResourceRevisionConflict",
+    "ResourceUri",
+    "ResourceUriError",
+    "ResourceValidationError",
+    "parse_resource_uri",
+    "validate_external_service_code",
     "DetectedContactInfo",
     "normalize_contact_coordinate",
     "detect_contact_infos",
@@ -79,6 +108,7 @@ __all__ = [
     "read_html_page",
     "replace_visible_text",
     "visible_text",
+    "valid_link",
     "require_editorial_client",
     "source_code_media_type",
     "source_code_response_headers",

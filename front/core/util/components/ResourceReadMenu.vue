@@ -11,6 +11,7 @@ import { ref, useTemplateRef, watch } from 'vue'
 import type { QMenu } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { richLinkTarget } from '../richText'
+import { canonicalResourceLink } from '../resourceUri'
 import { useResourceCopy } from '../resourceCopy'
 import { useContextMenuDismissal } from '../contextMenuDismissal'
 const { root, content } = defineProps<{ root: HTMLElement | null; content: string }>()
@@ -23,7 +24,7 @@ function show(event: MouseEvent | KeyboardEvent): void {
   if (event instanceof KeyboardEvent && event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
   const link = event.target.closest('a') ?? event.target.closest('.galaris-link-card')?.querySelector('a')
   const value = link?.getAttribute('data-rich-reference') ?? link?.getAttribute('href') ?? ''
-  if (!richLinkTarget(value)) return
+  if (!richLinkTarget(value) && !canonicalResourceLink(value)) return
   event.preventDefault(); event.stopPropagation(); uri.value = value
   document.dispatchEvent(new CustomEvent('galaris-context-menu', { detail: menuId }))
   const rect = link!.getBoundingClientRect()

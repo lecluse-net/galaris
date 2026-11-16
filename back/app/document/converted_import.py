@@ -8,7 +8,7 @@ from html.parser import HTMLParser
 import mimetypes
 from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
-from urllib.parse import unquote
+from urllib.parse import unquote, urlsplit
 from uuid import UUID, uuid4
 
 import nh3
@@ -16,7 +16,7 @@ from loguru import logger
 
 from core.document import OFFICE_EXTENSIONS, prepare_document
 from core.storage import get_attachment_storage
-from core.util import complete_await, complete_io, image_references, normalize_html
+from core.util import complete_await, complete_io, image_references, normalize_html, valid_link
 from .content_limits import validate_document_size
 from .document_attachment_service import validate_attachment_content
 from .document_cloning import PreparedDocumentClone
@@ -45,6 +45,8 @@ class _MediaReferences(HTMLParser):
         self.references = references
         self.owned_uris = set(references.values())
         self.parts: list[str] = []
+        self.resource_links: dict[str, str] = {}
+        self.link_prefix = f"https://galaris.invalid/{uuid4()}/"
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         rewritten: list[tuple[str, str]] = []
@@ -54,6 +56,10 @@ class _MediaReferences(HTMLParser):
                 value = self.references.get(unquote(value), value)
                 if tag == "img" and value not in self.owned_uris:
                     raise ValueError("Converted image is missing or refers outside the imported file")
+                if tag == "a" and valid_link(value) and urlsplit(value).scheme not in {"http", "https", "mailto"}:
+                    placeholder = f"{self.link_prefix}{len(self.resource_links)}"
+                    self.resource_links[placeholder] = value
+                    value = placeholder
             rewritten.append((key, value))
         self.parts.append("<" + tag + "".join(f' {key}="{escape(value, quote=True)}"' for key, value in rewritten) + ">")
 
@@ -79,6 +85,8 @@ def _editable_html(content: str, references: dict[str, str]) -> str:
                     "td": {"colspan", "rowspan"}, "ol": {"start"}},
         clean_content_tags={"script", "style", "iframe", "object", "embed"},
         url_schemes={"https", "http", "mailto", "document", "memory", "data", "galaris"}, link_rel=None)
+    for placeholder, uri in parser.resource_links.items():
+        clean = clean.replace(f'href="{placeholder}"', f'href="{escape(uri, quote=True)}"')
     return normalize_html(clean, profile="document")
 
 

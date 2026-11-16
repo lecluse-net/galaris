@@ -432,6 +432,9 @@ test('shared videos play from range URLs, release access on closing and reopen w
     return [...new Uint8Array(await blob.arrayBuffer())]
   }))
   const uri = 'console://Synthetic.webm'
+  await jsonRoute(page, '**/api/file-share/browser/info?*', {
+    ...entry(uri, 'Synthetic.webm'), media_type: 'video/webm', size: 3 * 1024 ** 3,
+  })
   await jsonRoute(page, '**/api/file-share/browser/entries?*', pageOf('console://', [
     { ...entry(uri, 'Synthetic.webm'), media_type: 'video/webm', size: 3 * 1024 ** 3 },
   ]))
@@ -506,6 +509,7 @@ for (const width of [1440, 390]) test(`tree folders collapse and reopen on repea
 for (const width of [1440, 390]) test(`browse folders, scroll, retry and preview with the keyboard at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
   await setup(page)
+  await jsonRoute(page, '**/api/file-share/browser/info?*', entry('console://reports/final.txt', 'Final report.txt'))
   let failContinuation = true
   const calls = []
   await page.route('**/api/file-share/browser/entries?*', route => {

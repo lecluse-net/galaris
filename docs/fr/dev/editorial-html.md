@@ -314,9 +314,15 @@ Le service de rendu doit être reconstruit lors d’une modification de son code
 Les pièces jointes dépendent du droit d'écriture du document parent, y compris pour un
 suivi d'objectif de profil `rich-text`. Leur ajout ne crée pas de révision du corps et ne
 modifie ni le titre, ni le propriétaire, ni le rattachement au Goal. Le profil du corps
-continue de refuser le HTML exécutable. Pour citer une source d'un Service dont le schéma
-n'est pas accepté dans les liens HTML, conserver son URI échappée dans `<code>` ; après
-archivage, utiliser l'URI exacte `document://…/attachments/…` retournée par la copie réussie.
+continue de refuser le HTML exécutable. Les deux profils conservent les liens vers toute URI
+canonique de File Sharing, y compris Chat, Console, fichiers gérés, collections et Services
+connectés. Le parseur d'URI partagé vérifie la forme sans consulter les connexions ni accorder
+d'accès. Les locators opaques restent inchangés après sanitization. Le lecteur résout les
+références métier connues dans leurs vues habituelles ; les autres ouvrent Fichiers avec
+l'URI exacte, conservée pendant le choix de l'agent. Les droits sont revérifiés à l'ouverture
+et à la réouverture. Une citation n'exige aucune copie ; l'archivage explicite reste distinct.
+L'import de documents conserve ces références, et les lecteurs Markdown les ouvrent par le
+même routage applicatif sans modifier les URI enregistrées par les éditeurs historiques.
 
 Le profil documentaire accepte les formulaires et scripts dans un contexte isolé, avec la
 barre d'outils et le texte éditable habituels, sans vue Source. Les historiques et exports

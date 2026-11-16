@@ -7,6 +7,7 @@ export { createSessionCatalogueCache, createSessionImageCache, onReadSessionChan
 export { queuePreview } from './previewQueue'
 export { saveBlobAsResource } from './resourceViewer'
 export { attachmentReference } from './documentResource'
+export { canonicalResourceLink } from './resourceUri'
 export { thumbnailReady, onThumbnailReady } from './resourceThumbnailEvents'
 export type { ResourceThumbnailReady } from './resourceThumbnailEvents'
 export { contextHelpKey } from './contextHelp'

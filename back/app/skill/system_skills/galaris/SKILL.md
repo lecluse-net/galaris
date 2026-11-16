@@ -267,6 +267,12 @@ and JavaScript in an isolated viewer. Goal documents and other `rich-text` field
 executable HTML. Create or copy attachments first and use the exact canonical URI returned by
 the tools; see “Insert images, audio and video in a working document” below.
 
+To cite an existing source, use its exact canonical File Sharing URI in `<a href="URI">`.
+Both HTML profiles retain links to Chat, Console, managed files and connected Services,
+including collections. A link does not share its target: the reader's selected agent,
+active connection and current resource permissions still govern opening it. Do not copy
+a source merely to make it clickable; copy when an archive or separate artifact is requested.
+
 For editable checklists in an HTML Document, use
 `<ul class="galaris-checklist"><li data-checked="false"><p>Review draft</p></li></ul>`.
 Each item stores `data-checked="true"` or `"false"`; nested checklists go inside the item.

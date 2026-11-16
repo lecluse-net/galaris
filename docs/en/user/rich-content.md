@@ -152,6 +152,10 @@ Selected text and its formatting are preserved when inserting a single link.
 Clicking the backdrop closes the dialog.
 Use **Link** to enter a URL or Galaris reference. The label belongs to your text; renaming the target does not break its reference. A link
 does not share the target: access is checked when it opens. In reading mode, click to open.
+You can also use a `chat://`, `console://`, `file://` or connected Service URI directly.
+The link retains the original source without copying it. It opens Files with the exact
+reference; if no agent is selected, choose one whose connections can access the source.
+After access is restored, retry a denied link.
 Document links and cards replace the document in the current context: the Documents page,
 the Chat pane or the open dialog. In Chat, you stay in the conversation; back/forward arrows
 appear to the right of the title, before the pane positioning buttons. Each context has its own

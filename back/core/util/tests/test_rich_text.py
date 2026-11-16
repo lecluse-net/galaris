@@ -216,7 +216,13 @@ def test_visible_edit_never_changes_attributes():
         "goal://123",
         "//example.com",
         "https://a@b",
-        "galaris://task/not-a-uuid",
+        "file:///etc/passwd",
+        "chat://room/../private",
+        "chat://room/%2e%2e/private",
+        "ssh://host/path",
+        "chat://room/file?token=secret",
+        "chat://room/file#fragment",
+        "chat://[invalid",
     ],
 )
 def test_links_reject_unsupported_identity(uri):
@@ -224,12 +230,20 @@ def test_links_reject_unsupported_identity(uri):
 
 
 @pytest.mark.parametrize("profile", ["rich-text", "document"])
-def test_service_source_reference_can_be_retained_without_an_unsupported_link(profile):
-    uri = f"chat://synthetic-room/{ATTACHMENT}"
-    with pytest.raises(RichTextError, match="Preserve other Service source URIs"):
-        normalize_html(f'<p><a href="{uri}">Source</a></p>', profile=profile)
-    source = f"<p>Original source: <code>{uri}</code></p>"
+@pytest.mark.parametrize("uri", [
+    f"chat://chat:direct:7:1:synthetic/{ATTACHMENT}",
+    "nextcloud://Shared/Report%20%C3%A9t%C3%A9.pdf", "console://exports/report.pdf",
+    f"file://{ATTACHMENT}", "file://", "console://", "nextcloud://Shared/",
+    f"data://{DOCUMENT}/attachments/{ATTACHMENT}", f"document://{DOCUMENT}/attachments/",
+    "galaris://skill/synthetic-guide/SKILL.md", f"galaris://code/{DOCUMENT}",
+    f"galaris://goal/{DOCUMENT}/cycles/", "custom-provider://folder/report.txt",
+])
+def test_resource_links_survive_normalization_without_copying_the_source(profile, uri):
+    from core.util.resource_uri import parse_resource_uri
+    assert str(parse_resource_uri(uri, allow_empty=True)) == uri
+    source = f'<p>Original source: <a href="{uri}">Source</a></p>'
     assert normalize_html(source, profile=profile) == source
+    assert normalize_html(normalize_html(source, profile=profile), profile=profile) == source
 
 
 @pytest.mark.parametrize("scheme", ["document", "data", "galaris://contact", "galaris://topic", "galaris://text", "galaris://voice", "galaris://room", "galaris://voice_session"])
@@ -238,8 +252,9 @@ def test_editorial_references_preserve_distinct_resource_schemes(scheme):
     content = f'<p><a href="{uri}">Synthetic resource</a></p>'
     assert valid_link(uri)
     assert f'href="{uri}"' in normalize_html(content, profile="document")
-    assert not valid_link(uri + "/other")
-    for suffix in ["?other=1", "#fragment", "/attachments/", "/"]:
+    # Resource existence and typed business locators are resolved by their
+    # provider at opening time; stored links validate canonical URI syntax.
+    for suffix in ["?other=1", "#fragment", "/../private", "/%2e%2e/private"]:
         assert not valid_link(uri + suffix)
 
 
@@ -249,7 +264,7 @@ def test_resource_references_keep_the_card_choice_and_validate_the_exact_target(
     assert valid_link(uri)
     assert uri in normalize_html(html, profile="document")
     assert card_class in normalize_html(html, profile="document")
-    for suffix in ["/data", "/attachments/", "?other=1", "#fragment"]:
+    for suffix in ["/../data", "/%2e%2e/private", "?other=1", "#fragment"]:
         assert not valid_link(uri + suffix)
 
 
