@@ -112,7 +112,7 @@ dev = [
     "types-defusedxml~=0.7",
     "debugpy~=1.8",
     "pytest~=9.1",
-    "pytest-asyncio~=1.4",
+    "pytest-asyncio~=1.5",
     "pytest-cov==7.1.0",
     "ruff==0.17.2",
     "devtools~=0.13",
