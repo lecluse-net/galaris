@@ -129,7 +129,7 @@
       </template>
       <template v-slot:body-cell-actions="props">
         <q-td :props="props" @click.stop>
-          <ConnectionTestButton v-if="canTest" :connection-id="props.row.id" />
+          <ConnectionTestButton v-if="canTest" :connection-id="props.row.id" icon-only />
           <q-btn v-if="canInspectPermissions(props.row) && (!canEdit || isSystemTool(props.row.service_id))" flat round color="primary" icon="shield"
             :aria-label="t('permissions.title')" @click="openDialog(props.row)" />
           <q-btn v-if="canEdit && !isSystemTool(props.row.service_id)" flat round color="primary" icon="edit" size="sm" :aria-label="$t('common.edit')" @click="openDialog(props.row)" />
@@ -191,7 +191,7 @@
             <template v-if="canTest || canInspectPermissions(props.row) || (canEdit && !isSystemTool(props.row.service_id))">
               <q-separator />
               <q-card-actions align="right" class="q-px-sm q-py-xs" @click.stop>
-                <ConnectionTestButton v-if="canTest" :connection-id="props.row.id" />
+                <ConnectionTestButton v-if="canTest" :connection-id="props.row.id" icon-only />
                 <q-btn v-if="canInspectPermissions(props.row) && (!canEdit || isSystemTool(props.row.service_id))" flat round color="primary" icon="shield"
                   :aria-label="t('permissions.title')" @click="openDialog(props.row)" />
                 <q-btn

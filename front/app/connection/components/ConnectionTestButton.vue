@@ -1,6 +1,17 @@
 <template>
-  <q-btn outline color="primary" icon="network_check" :label="t('connection.test.button')" :loading="loading" @click.stop="test">
-    <q-tooltip>{{ t('connection.test.savedSettings') }}</q-tooltip>
+  <q-btn
+    :flat="iconOnly"
+    :round="iconOnly"
+    :outline="!iconOnly"
+    :size="iconOnly ? 'sm' : undefined"
+    color="primary"
+    icon="network_check"
+    :label="iconOnly ? undefined : t('connection.test.button')"
+    :aria-label="iconOnly ? t('connection.test.button') : undefined"
+    :loading="loading"
+    @click.stop="test"
+  >
+    <q-tooltip>{{ t(iconOnly ? 'connection.test.button' : 'connection.test.savedSettings') }}</q-tooltip>
   </q-btn>
   <q-dialog v-model="showResult">
     <q-card class="galaris-dialog-card connection-test-dialog">
@@ -27,7 +38,7 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import connectionService, { type ConnectionTestResult } from '../services/connectionService'
 
-const props = defineProps<{ connectionId: number }>()
+const props = defineProps<{ connectionId: number; iconOnly?: boolean }>()
 const { t } = useI18n()
 const loading = ref(false), showResult = ref(false), error = ref('')
 const result = ref<ConnectionTestResult | null>(null)
