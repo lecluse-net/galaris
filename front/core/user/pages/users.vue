@@ -19,6 +19,7 @@
       :rows-per-page-options="[10, 20, 50, 100, 500]"
       v-model:pagination="pagination"
       @request="onRequest"
+      :onRowClick="canUpdate ? onRowClick : undefined"
       class="users-table"
     >
       <template v-slot:top-right>
@@ -31,7 +32,7 @@
 
       <template #item="props">
         <div class="users-grid-item">
-          <q-card flat bordered class="users-grid-card">
+          <q-card flat bordered class="users-grid-card" :class="{ 'cursor-pointer': canUpdate }" @click="openEditDialog(props.row)">
             <q-card-section class="q-pb-sm">
               <div class="row items-center no-wrap q-gutter-sm">
                 <q-avatar color="primary" text-color="white" icon="person" />
@@ -52,11 +53,11 @@
                 <div>{{ new Date(props.row.created_at).toLocaleDateString(locale) }}</div>
               </div>
               <div class="row items-center q-gutter-xs">
-                <q-btn v-if="tabs.length" flat round color="primary" icon="security" :aria-label="$t(tabs[0].labelKey)" @click="openAuthorizations(props.row.id)" />
-                <q-btn v-if="canUpdate" flat round color="primary" icon="edit" size="sm" :aria-label="$t('common.edit')" @click="openEditDialog(props.row)">
+                <q-btn v-if="tabs.length" flat round color="primary" icon="security" :aria-label="$t(tabs[0].labelKey)" @click.stop="openAuthorizations(props.row.id)" />
+                <q-btn v-if="canUpdate" flat round color="primary" icon="edit" size="sm" :aria-label="$t('common.edit')" @click.stop="openEditDialog(props.row)">
                   <q-tooltip>{{ $t('common.edit') }}</q-tooltip>
                 </q-btn>
-                <q-btn v-if="canDelete" flat round color="negative" icon="delete" size="sm" :aria-label="$t('common.delete')" @click="confirmDelete(props.row)">
+                <q-btn v-if="canDelete" flat round color="negative" icon="delete" size="sm" :aria-label="$t('common.delete')" @click.stop="confirmDelete(props.row)">
                   <q-tooltip>{{ $t('common.delete') }}</q-tooltip>
                 </q-btn>
               </div>
@@ -79,11 +80,11 @@
 
       <template v-slot:body-cell-actions="props">
         <q-td :props="props" class="q-gutter-sm">
-          <q-btn v-if="tabs.length" flat round color="primary" icon="security" :aria-label="$t(tabs[0].labelKey)" @click="openAuthorizations(props.row.id)" />
-          <q-btn :aria-label="$t('common.edit')" v-if="canUpdate" flat round color="primary" icon="edit" size="sm" @click="openEditDialog(props.row)">
+          <q-btn v-if="tabs.length" flat round color="primary" icon="security" :aria-label="$t(tabs[0].labelKey)" @click.stop="openAuthorizations(props.row.id)" />
+          <q-btn :aria-label="$t('common.edit')" v-if="canUpdate" flat round color="primary" icon="edit" size="sm" @click.stop="openEditDialog(props.row)">
             <q-tooltip>{{ $t('common.edit') }}</q-tooltip>
           </q-btn>
-          <q-btn :aria-label="$t('common.delete')" v-if="canDelete" flat round color="negative" icon="delete" size="sm" @click="confirmDelete(props.row)">
+          <q-btn :aria-label="$t('common.delete')" v-if="canDelete" flat round color="negative" icon="delete" size="sm" @click.stop="confirmDelete(props.row)">
             <q-tooltip>{{ $t('common.delete') }}</q-tooltip>
           </q-btn>
         </q-td>
@@ -177,12 +178,15 @@ const onRequest: NonNullable<QTableProps['onRequest']> = (request) => {
   void fetchUsers()
 }
 
+const onRowClick: NonNullable<QTableProps['onRowClick']> = (_event, user: User) => openEditDialog(user)
+
 function openCreateDialog() {
   selectedUser.value = null
   showDialog.value = true
 }
 
 function openEditDialog(user: User) {
+  if (!canUpdate.value) return
   selectedUser.value = { ...user } // copy to avoid reactive mutation in table
   showDialog.value = true
 }

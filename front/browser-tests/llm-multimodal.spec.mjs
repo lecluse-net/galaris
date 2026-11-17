@@ -42,12 +42,16 @@ for (const width of [1440, 390]) {
     await expect(dialog).toHaveCount(0)
     expect(writes[0]).toMatchObject({ pricing_auto_update: false, service_capabilities: ['chat', 'vision'], ...model.modalities })
 
-    // Remount from the API response, then edit and save the existing model.
-    await mount(page, 'app/llm/components/ConfiguredLlmManager.vue', options)
+    // Reopen the existing model from the Available models tab.
+    await mount(page, 'app/llm/pages/index.vue', { ...options, route: '/llm?tab=models', shell: true, dark: width < 1024 })
+    if (width < 1024) {
+      await page.locator('.q-drawer__backdrop').click({ position: { x: width - 10, y: 200 } })
+    }
     const item = page.locator(width < 1024 ? '.llm-grid-card' : 'tbody tr').filter({ hasText: model.name })
     await expect(item).toContainText('Chat')
     await expect(item).toContainText('Vision')
-    await item.getByRole('button', { name: 'Edit', exact: true }).click()
+    const label = item.getByText(model.name, { exact: true })
+    await label.click()
     await expect(nightly).not.toBeChecked()
     await expect(dialog.getByText('Manual prices: automatic updates are disabled.', { exact: true })).toBeVisible()
     await expect(dialog.locator('.llm-modalities')).toContainText('Chat')
@@ -55,6 +59,16 @@ for (const width of [1440, 390]) {
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(dialog).toHaveCount(0)
     expect(writes[1]).toMatchObject({ service_capabilities: ['chat', 'vision'], ...model.modalities })
+
+    await item.getByRole('button', { name: 'Delete', exact: true }).click()
+    await expect(dialog.getByText(`Confirm deletion of ${model.name}?`, { exact: true })).toBeVisible()
+    await expect(dialog).toHaveCount(1)
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await setPrivileges(page, ['LLM_MODEL_ACCESS'])
+    await label.click()
+    await expect(dialog).toHaveCount(0)
+    expect(writes).toHaveLength(2)
   })
 }
 

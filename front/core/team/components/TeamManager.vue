@@ -11,13 +11,13 @@
         <q-btn v-if="canEdit" color="primary" icon="add" :label="t('team.create')" :disable="loading || reordering || error" @click="edit()" />
       </template>
       <template #body="scope">
-        <q-tr :props="scope" :data-team-id="scope.row.id" :class="ordering.rowClass(scope.row.id)"
+        <q-tr :props="scope" :data-team-id="scope.row.id"
+          :class="[ordering.rowClass(scope.row.id), { 'cursor-pointer': canOpenTeam }]" @click="canOpenTeam && edit(scope.row)"
           @dragover="ordering.over($event, scope.row.id)" @drop="ordering.drop($event, scope.row.id)">
           <q-td v-if="canEdit" key="position" :props="scope" auto-width>
-            <q-btn v-bind="dragHandle(scope.row)" />
+            <q-btn v-bind="dragHandle(scope.row)" @click.stop />
           </q-td>
-          <q-td key="name" :props="scope"><q-btn outline color="primary"  no-caps class="text-weight-medium" :label="scope.row.name"
-            :disable="loading || reordering || error" @click="edit(scope.row)" /></q-td>
+          <q-td key="name" :props="scope"><span class="team-name text-weight-medium" @click.stop>{{ scope.row.name }}</span></q-td>
           <q-td key="description" :props="scope">{{ scope.row.description }}</q-td>
           <q-td key="humans" :props="scope"><TeamHumanSummary :team="scope.row" /></q-td>
           <q-td v-for="entry in contributions" :key="entry.definition.key" :props="scope">
@@ -25,34 +25,36 @@
               :model-value="memberIds(entry, scope.row.id)" />
           </q-td>
           <q-td key="actions" :props="scope">
-            <q-btn v-if="canEdit || canMembers" flat round icon="edit" :aria-label="t('common.edit')"
-              :disable="loading || reordering || error" @click="edit(scope.row)" />
-            <q-btn v-if="canEdit" flat round icon="delete" :aria-label="t('common.delete')" :disable="reordering" @click="pendingDelete = scope.row" />
+            <q-btn flat round color="primary" :icon="canEdit || canMembers ? 'edit' : 'visibility'"
+              :aria-label="t(canEdit || canMembers ? 'common.edit' : 'common.open')" :disable="!canOpenTeam" @click.stop="edit(scope.row)" />
+            <q-btn v-if="canEdit" flat round color="negative" icon="delete" :aria-label="t('common.delete')" :disable="reordering" @click.stop="pendingDelete = scope.row" />
           </q-td>
         </q-tr>
       </template>
       <template #item="scope">
         <div class="col-12 q-pa-xs" :data-team-id="scope.row.id" :class="ordering.rowClass(scope.row.id)"
-          @dragover="ordering.over($event, scope.row.id)" @drop="ordering.drop($event, scope.row.id)"><q-card flat bordered>
-          <q-card-section>
-            <div class="row items-center">
-              <q-btn v-if="canEdit" v-bind="dragHandle(scope.row)" />
-              <q-btn outline color="primary"  no-caps class="text-h6" :label="scope.row.name" :disable="loading || reordering || error" @click="edit(scope.row)" />
-              <q-space />
-              <q-btn v-if="canEdit || canMembers" flat round icon="edit" :aria-label="t('common.edit')"
-                :disable="loading || reordering || error" @click="edit(scope.row)" />
-              <q-btn v-if="canEdit" flat round icon="delete" :aria-label="t('common.delete')" :disable="reordering" @click="pendingDelete = scope.row" />
-            </div>
-            <div v-if="scope.row.description" class="q-mb-md">{{ scope.row.description }}</div>
-            <div class="text-caption q-mb-xs">{{ t('team.humans') }}</div>
-            <TeamHumanSummary :team="scope.row" />
-            <div v-for="entry in contributions" :key="entry.definition.key" class="q-mt-md">
-              <div class="text-caption q-mb-xs">{{ t(entry.definition.labelKey) }}</div>
-              <component :is="entry.definition.component" :members="entry.members" compact readonly
-                :model-value="memberIds(entry, scope.row.id)" />
-            </div>
-          </q-card-section>
-        </q-card></div>
+          @dragover="ordering.over($event, scope.row.id)" @drop="ordering.drop($event, scope.row.id)">
+          <q-card flat bordered :class="{ 'cursor-pointer': canOpenTeam }" @click="canOpenTeam && edit(scope.row)">
+            <q-card-section>
+              <div class="row items-center">
+                <q-btn v-if="canEdit" v-bind="dragHandle(scope.row)" @click.stop />
+                <span class="team-name text-h6" @click.stop>{{ scope.row.name }}</span>
+                <q-space />
+                <q-btn flat round color="primary" :icon="canEdit || canMembers ? 'edit' : 'visibility'"
+                  :aria-label="t(canEdit || canMembers ? 'common.edit' : 'common.open')" :disable="!canOpenTeam" @click.stop="edit(scope.row)" />
+                <q-btn v-if="canEdit" flat round color="negative" icon="delete" :aria-label="t('common.delete')" :disable="reordering" @click.stop="pendingDelete = scope.row" />
+              </div>
+              <div v-if="scope.row.description" class="q-mb-md">{{ scope.row.description }}</div>
+              <div class="text-caption q-mb-xs">{{ t('team.humans') }}</div>
+              <TeamHumanSummary :team="scope.row" />
+              <div v-for="entry in contributions" :key="entry.definition.key" class="q-mt-md">
+                <div class="text-caption q-mb-xs">{{ t(entry.definition.labelKey) }}</div>
+                <component :is="entry.definition.component" :members="entry.members" compact readonly
+                  :model-value="memberIds(entry, scope.row.id)" />
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
       </template>
     </q-table>
     <q-dialog v-model="editing" @hide="editorClosed">
@@ -100,6 +102,7 @@ const changed = ref(false)
 const pendingDelete = ref<Team | null>(null)
 const deleting = ref(false)
 const reordering = ref(false)
+const canOpenTeam = computed(() => privileges.hasPrivilege('TEAM_ACCESS') && !loading.value && !reordering.value && !error.value)
 const canReorder = computed(() => canEdit.value && !loading.value && !reordering.value && !error.value)
 const ordering = useTeamOrdering(teams, canReorder, move)
 const columns = computed<QTableColumn[]>(() => [
@@ -173,6 +176,7 @@ onMounted(load)
 </script>
 
 <style scoped>
+.team-name { cursor: text; }
 .team-drag-handle { cursor: grab; touch-action: none; color: var(--solaire-gray-accent); }
 .team-drag-handle:active { cursor: grabbing; }
 .team-dragging { opacity: .45; }

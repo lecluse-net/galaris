@@ -36,6 +36,7 @@
       :grid="$q.screen.lt.md"
       :rows-per-page-options="[10, 20, 50, 100, 500]"
       :pagination="{ rowsPerPage: 50 }"
+      :onRowClick="canEdit ? (_event, row) => void openEdit(row) : undefined"
     >
       <template #body-cell-status="{ row }">
         <q-td class="text-center">
@@ -110,14 +111,14 @@
             :loading="checkingLlmId === row.id"
             :disable="checkingAll || checkingLlmId !== null"
             :aria-label="t('llm.checkOne')"
-            @click="checkOneLlm(row)"
+            @click.stop="checkOneLlm(row)"
           >
             <q-tooltip>{{ t('llm.checkOne') }}</q-tooltip>
           </q-btn>
-          <q-btn v-if="canEdit" flat round color="primary" icon="edit" size="sm" :aria-label="t('common.edit')" @click="openEdit(row)">
+          <q-btn v-if="canEdit" flat round color="primary" icon="edit" size="sm" :aria-label="t('common.edit')" @click.stop="openEdit(row)">
             <q-tooltip>{{ t('common.edit') }}</q-tooltip>
           </q-btn>
-          <q-btn v-if="canEdit" flat round color="negative" icon="delete" size="sm" :aria-label="t('common.delete')" @click="confirmDelete(row)">
+          <q-btn v-if="canEdit" flat round color="negative" icon="delete" size="sm" :aria-label="t('common.delete')" @click.stop="confirmDelete(row)">
             <q-tooltip>{{ t('common.delete') }}</q-tooltip>
           </q-btn>
         </q-td>
@@ -125,7 +126,7 @@
 
       <template #item="{ row }">
         <div class="col-12 col-sm-6 q-pa-xs">
-          <q-card flat bordered class="llm-grid-card full-height">
+          <q-card flat bordered class="llm-grid-card full-height" :class="{ 'cursor-pointer': canEdit }" @click="openEdit(row)">
             <q-card-section class="q-pb-sm">
               <div class="llm-grid-card__header">
                 <q-icon
@@ -152,12 +153,12 @@
                     :loading="checkingLlmId === row.id"
                     :disable="checkingAll || checkingLlmId !== null"
                     :aria-label="t('llm.checkOne')"
-                    @click="checkOneLlm(row)"
+                    @click.stop="checkOneLlm(row)"
                   >
                     <q-tooltip>{{ t('llm.checkOne') }}</q-tooltip>
                   </q-btn>
-                  <q-btn flat round color="primary" icon="edit" size="sm" :aria-label="t('common.edit')" @click="openEdit(row)" />
-                  <q-btn flat round color="negative" icon="delete" size="sm" :aria-label="t('common.delete')" @click="confirmDelete(row)" />
+                  <q-btn flat round color="primary" icon="edit" size="sm" :aria-label="t('common.edit')" @click.stop="openEdit(row)" />
+                  <q-btn flat round color="negative" icon="delete" size="sm" :aria-label="t('common.delete')" @click.stop="confirmDelete(row)" />
                 </div>
               </div>
             </q-card-section>

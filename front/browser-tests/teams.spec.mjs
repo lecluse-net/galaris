@@ -2,7 +2,7 @@ import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 import { agent as agentProfile } from './data.mjs'
 
 const catalogue = {
-  teams: [{id:10,name:'Sales',description:'',order:0},{id:20,name:'Direction',description:'',order:1}],
+  teams: [{id:10,name:'Sales',description:'Customer accounts',order:0},{id:20,name:'Direction',description:'Operations',order:1}],
   agents: [{id:1,label:'Atlas',code:'atlas',manager_user_id:9,team_ids:[10]},{id:2,label:'Ada',code:'ada',manager_user_id:9,team_ids:[20]}],
 }
 
@@ -98,14 +98,16 @@ async function addMember(page, kind, name) {
 test('team list shows members with avatars and readers can inspect the dialog without editing', async ({ page }) => {
   await teamFixtures(page, { many: true })
   await mount(page, 'core/team/components/TeamManager.vue', { privileges: ['TEAM_ACCESS'] })
-  const sales = page.getByRole('row').filter({ has: page.getByRole('button', { name: 'Sales', exact: true }) })
+  const sales = page.getByRole('row').filter({ hasText: 'Sales' })
   await expect(sales.getByRole('img', { name: 'Sophie', exact: true })).toBeVisible()
   await expect(sales.getByRole('img', { name: 'Atlas', exact: true })).toBeVisible()
-  const direction = page.getByRole('row').filter({ has: page.getByRole('button', { name: 'Direction', exact: true }) })
+  const direction = page.getByRole('row').filter({ hasText: 'Direction' })
   await expect(direction).toContainText('19')
   await expect(direction).not.toContainText('Worker')
-  await sales.getByRole('button', { name: 'Sales', exact: true }).click()
   const dialog = page.getByRole('dialog')
+  await sales.getByText('Sales', { exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await sales.getByText('Customer accounts', { exact: true }).click()
   await expect(dialog.getByText('Sophie', { exact: true })).toBeVisible()
   await expect(dialog.getByText('Atlas', { exact: true })).toBeVisible()
   await expect(dialog.getByRole('button', { name: /^Remove/ })).toHaveCount(0)
@@ -114,15 +116,22 @@ test('team list shows members with avatars and readers can inspect the dialog wi
   await expect(page.getByRole('button', { name: /^Move / })).toHaveCount(0)
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
+  await sales.getByRole('button', { name: 'Open', exact: true }).press('Enter')
+  await expect(dialog.getByLabel('Name', { exact: true })).toHaveValue('Sales')
 })
 
 for (const viewport of [{ width: 1400, height: 1000 }, { width: 390, height: 850 }]) {
   test(`team editing stages both types of members until save and preserves cancellation at ${viewport.width}`, async ({ page }) => {
     await page.setViewportSize(viewport)
     const writes = await teamFixtures(page, { many: true })
-    await mount(page, 'core/team/components/TeamManager.vue', { privileges: ['TEAM_ACCESS', 'TEAM_EDIT', 'TEAM_MEMBERS_EDIT'] })
-    await page.getByRole('button', { name: 'Sales', exact: true }).click()
+    await mount(page, 'core/team/pages/index.vue', { route: '/team', shell: true, privileges: ['TEAM_ACCESS', 'TEAM_EDIT', 'TEAM_MEMBERS_EDIT'] })
+    if (viewport.width < 1024) {
+      await page.locator('.q-drawer__backdrop').click({ position: { x: viewport.width - 10, y: 200 } })
+    }
     const dialog = page.getByRole('dialog')
+    await page.getByText('Sales', { exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await page.getByText('Customer accounts', { exact: true }).click()
     await dialog.getByLabel('Description', { exact: true }).fill('A detailed team description\n'.repeat(35))
     await dialog.getByRole('region', { name: 'AI agents', exact: true }).scrollIntoViewIfNeeded()
     await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeInViewport()
@@ -133,7 +142,7 @@ for (const viewport of [{ width: 1400, height: 1000 }, { width: 390, height: 850
     await page.getByRole('button', { name: 'Cancel', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     expect(writes).toEqual([])
-    await page.getByRole('button', { name: 'Sales', exact: true }).click()
+    await page.getByText('Customer accounts', { exact: true }).click()
     await expect(page.getByRole('dialog').getByText('Nicolas', { exact: true })).toHaveCount(0)
     await addMember(page, 'Humans', 'Nicolas')
     await addMember(page, 'AI agents', 'Ada')
@@ -145,7 +154,7 @@ for (const viewport of [{ width: 1400, height: 1000 }, { width: 390, height: 850
     await expect.poll(() => writes).toEqual([
       ['edit', 10], ['human', 10, 7, false], ['human', 10, 8, true], ['agent', 10, 1, false], ['agent', 10, 2, true],
     ])
-    await page.getByRole('button', { name: 'Marketing', exact: true }).click()
+    await page.getByText('Customer accounts', { exact: true }).click()
     await expect(page.getByRole('dialog').getByRole('img', { name: 'Nicolas', exact: true })).toBeVisible()
     await expect(page.getByRole('dialog').getByRole('img', { name: 'Ada', exact: true })).toBeVisible()
     await page.screenshot({ path: `/artifacts/team-editor-${viewport.width}.png`, fullPage: true, animations: 'disabled' })
@@ -192,7 +201,7 @@ test('dragging a team persists its position and later editing preserves the orde
   await page.mouse.up()
   await expect.poll(() => writes.filter(write => write[0] === 'move')).toEqual([['move', 20, 10, false]])
   await expect(rows.first()).toContainText('Direction')
-  await page.getByRole('button', { name: 'Direction', exact: true }).click()
+  await rows.first().getByRole('button', { name: 'Edit', exact: true }).click()
   await page.getByRole('dialog').getByLabel('Name', { exact: true }).fill('Leadership')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(0)
