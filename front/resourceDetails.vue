@@ -63,7 +63,8 @@
       <q-card-section>{{ t('task.deleteMessage', { label: taskToDelete?.label }) }}</q-card-section>
       <q-banner v-if="deleteError" class="q-ma-md">{{ deleteError }}</q-banner>
       <q-card-actions align="right">
-        <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" />
+        <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless task confirmation cancellation. -->
+        <q-btn v-close-popup flat :label="t('common.cancel')" />
         <q-btn color="negative" :label="t('common.delete')" :loading="deleting" @click="deleteTask" />
       </q-card-actions>
     </q-card>

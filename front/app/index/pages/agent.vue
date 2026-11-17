@@ -209,30 +209,33 @@
                 </q-chip>
                 <div class="agent-action-buttons row items-center justify-end">
                   <template v-if="isManagedRuntime(agent) && canManageAgent(agent)">
-                    <q-btn outline
+                    <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless agent card action. -->
+                    <q-btn flat
                       v-if="hasHarnessAction(agent, 'start')"
                       class="agent-action-button solaire-warning-action"
-                       color="warning" icon="play_arrow" :label="$t('agent.harness.start')" :aria-label="$t('agent.harness.start')" size="sm"
+                      color="warning" icon="play_arrow" :label="$t('agent.harness.start')" :aria-label="$t('agent.harness.start')" size="sm"
                       :loading="Boolean(harnessActionLoading[agent.id])"
                       :disable="harnessLifecycleBusy(agent)"
                       @click="runHarnessAction(agent, 'start')"
                     >
                       <q-tooltip>{{ $t('agent.harness.start') }}</q-tooltip>
                     </q-btn>
-                    <q-btn outline
+                    <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless agent card action. -->
+                    <q-btn flat
                       v-if="hasHarnessAction(agent, 'stop')"
-                      class="agent-action-button solaire-warning-action"
-                       color="warning" icon="stop" :label="$t('agent.harness.stop')" :aria-label="$t('agent.harness.stop')" size="sm"
+                      class="agent-action-button"
+                      style="color: #D1B306" icon="stop" :label="$t('agent.harness.stop')" :aria-label="$t('agent.harness.stop')" size="sm"
                       :loading="Boolean(harnessActionLoading[agent.id])"
                       :disable="harnessLifecycleBusy(agent)"
                       @click="runHarnessAction(agent, 'stop')"
                     >
                       <q-tooltip>{{ $t('agent.harness.stop') }}</q-tooltip>
                     </q-btn>
-                    <q-btn outline
+                    <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless agent card action. -->
+                    <q-btn flat
                       v-if="hasHarnessAction(agent, 'restart')"
                       class="agent-action-button"
-                       color="solaire-iris" icon="restart_alt" :label="harnessRestartLabel(agent)" :aria-label="harnessRestartLabel(agent)" size="sm"
+                      color="solaire-iris" icon="restart_alt" :label="harnessRestartLabel(agent)" :aria-label="harnessRestartLabel(agent)" size="sm"
                       :loading="harnessActionLoading[agent.id] === 'restart'"
                       :disable="harnessLifecycleBusy(agent)"
                       @click="runHarnessAction(agent, 'restart')"
@@ -240,18 +243,20 @@
                       <q-tooltip>{{ harnessRestartLabel(agent) }}</q-tooltip>
                     </q-btn>
                   </template>
-                  <q-btn outline
+                  <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless agent card action. -->
+                  <q-btn flat
                     v-if="canManageAgent(agent)"
                     class="agent-action-button"
-                     color="secondary" icon="edit" :label="$t('common.edit')" :aria-label="$t('agent.editServicetip')" size="sm"
+                    color="secondary" icon="edit" :label="$t('common.edit')" :aria-label="$t('agent.editServicetip')" size="sm"
                     @click="openAgentDialog(agent)"
                   >
                     <q-tooltip>{{ $t('agent.editServicetip') }}</q-tooltip>
                   </q-btn>
-                  <q-btn
+                  <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless agent card action. -->
+                  <q-btn flat
                     v-if="canManageAgent(agent)"
                     class="agent-action-button"
-                     color="negative" icon="delete" :label="$t('common.delete')" :aria-label="$t('agent.deleteServicetip')" size="sm"
+                    color="negative" icon="delete" :label="$t('common.delete')" :aria-label="$t('agent.deleteServicetip')" size="sm"
                     @click="confirmDeleteAgent(agent)"
                   >
                     <q-tooltip>{{ $t('agent.deleteServicetip') }}</q-tooltip>
@@ -350,6 +355,8 @@
 
         <q-card-section class="q-pt-md q-px-md galaris-dialog-body">
           <q-form
+            v-if="showAgentForm"
+            :id="agentFormId"
             @submit="onAgentSubmit"
             @validation-error="onAgentValidationError"
             class="q-gutter-y-md"
@@ -427,11 +434,6 @@
                   </q-select>
                 </q-card-section>
               </q-card>
-
-              <div class="galaris-dialog-actions row justify-end q-mt-md q-gutter-sm q-pa-md">
-                <q-btn outline :label="$t('common.cancel')" color="grey"  v-close-popup />
-                <q-btn v-if="canSaveAgent" :label="$t('common.save')" type="submit" color="primary" :loading="agentStore.loading || harnessChangePending" />
-              </div>
             </template>
 
             <!-- General tab -->
@@ -576,17 +578,6 @@
                   </div>
                 </q-banner>
               </template>
-
-              <div class="galaris-dialog-actions row justify-end q-gutter-x-sm q-pa-md">
-                <q-btn outline :label="$t('common.cancel')" color="grey"  v-close-popup />
-                <q-btn
-                  v-if="canSaveAgent"
-                  :label="isAgentEdit ? $t('common.edit') : $t('common.create')"
-                  type="submit"
-                  color="primary"
-                  :loading="agentStore.loading || harnessChangePending"
-                />
-              </div>
             </div>
           </q-form>
 
@@ -600,6 +591,20 @@
           <!-- MCP tab for every existing agent driver -->
           <AgentMcpPanel v-if="isAgentEdit && agentDialogTab === 'mcp' && canManageMcp" :agent="agentForm" :can-manage="canManageMcp" />
         </q-card-section>
+        <template v-if="showAgentForm">
+          <q-separator />
+          <q-card-actions align="right" class="galaris-dialog-actions q-pa-md">
+            <q-btn v-close-popup outline color="primary" :label="$t('common.cancel')" />
+            <q-btn
+              v-if="canSaveAgent"
+              :form="agentFormId"
+              type="submit"
+              color="primary"
+              :label="$t(!isAgentEdit ? 'common.create' : agentDialogTab === 'models' ? 'common.save' : 'common.edit')"
+              :loading="agentStore.loading || harnessChangePending"
+            />
+          </q-card-actions>
+        </template>
       </q-card>
     </q-dialog>
 
@@ -781,7 +786,7 @@ import { DialogHeader } from '@/core/util'
 import { showConfirmationDialog } from '@/core/util'
 import { useRoute } from 'vue-router'
 import { navigationIcon } from '@/core/navigation'
-import { ref, onUnmounted, reactive, computed, watch, type Component } from 'vue'
+import { ref, onUnmounted, reactive, computed, useId, watch, type Component } from 'vue'
 import { useAgentStore, agentService } from '@/app/agent/facade'
 import type { Agent, AgentManagerInfo, ExecutorDriverInfo, Title, AgentGroup } from '@/app/agent/contracts'
 import { titleLabel } from '@/app/agent/interface'
@@ -856,6 +861,7 @@ watch([canViewAgents, canViewTeams], () => {
 const activeGroupTab = ref('')
 const currentTeamId = computed(() => agentStore.groups.find(group => String(group.id) === activeGroupTab.value)?.id ?? null)
 const agentDialogTab = ref('general')
+const agentFormId = useId()
 const showAgentDialog = ref(false)
 let agentDialogGeneration = 0
 let modelOptionsGeneration = -1
@@ -868,6 +874,7 @@ const showTitleDialog = ref(false)
 const showGroupDialog = ref(false)
 const showDeleteDialog = ref(false)
 const isAgentEdit = ref(false)
+const showAgentForm = computed(() => !isAgentEdit.value || ['general', 'models'].includes(agentDialogTab.value))
 const isTitleEdit = ref(false)
 const isGroupEdit = ref(false)
 const itemToDelete = ref<Agent | Title | AgentGroup | null>(null)

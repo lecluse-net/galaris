@@ -27,7 +27,7 @@
           <q-card-section class="bg-grey-3 q-py-sm row items-center">
              <div class="text-subtitle1 text-weight-bold">{{ $t('authorize.privilegeLists.unassigned') }}</div>
              <q-space />
-             <q-badge color="grey-7">{{ unassignedPrivileges.length }}</q-badge>
+             <q-badge color="grey-7" class="privilege-count">{{ unassignedPrivileges.length }}</q-badge>
           </q-card-section>
 
           <q-card-section 
@@ -92,7 +92,7 @@
                                 color="primary"
                                 text-color="white"
                                 icon="lock"
-                                size="sm"
+                                size="0.75rem"
                                 class="privilege-chip cursor-pointer"
                              >
                                 {{ localizedAuthorizeLabel(priv) }}
@@ -394,6 +394,11 @@ function confirmDelete(item: PrivilegeList) {
 
 .privilege-list-drop-zone {
     min-height: 100px;
+}
+
+.privilege-count,
+.privilege-list-dialog :deep(.q-field__bottom) {
+    font-size: 0.8125rem;
 }
 
 .privilege-chip {

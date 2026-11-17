@@ -533,6 +533,7 @@ function confirmTaskForceTerminate(task: Task): void {
     title: t('task.detail.forceTerminateConfirmTitle'),
     message: t('task.detail.forceTerminateConfirmMessage', { label: task.label }),
     cancel: true,
+    flatActions: true,
     ok: {
       label: t('task.detail.forceTerminateConfirmAction'),
       color: 'negative',
@@ -804,6 +805,7 @@ function confirmTaskDelete(task: Task): void {
     title: t('task.deleteConfirm'),
     message: `${t('task.deleteMessage', { label: task.label })}\n${t('task.deleteReversible')}`,
     cancel: true,
+    flatActions: true,
     focus: 'cancel',
   }).onOk(() => {
     void deleteTask(task)

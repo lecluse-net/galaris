@@ -100,8 +100,10 @@
                 <p class="text-caption text-grey">{{ $t('task.deleteReversible') }}</p>
               </q-card-section>
               <q-card-actions class="galaris-dialog-actions" align="right">
-                <q-btn outline  :label="$t('common.cancel')" color="grey" v-close-popup />
-                <q-btn v-if="canEdit"  :label="$t('common.delete')" color="negative" @click="confirmDelete" :loading="deleteLoading" />
+                <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless task confirmation actions. -->
+                <q-btn flat :label="$t('common.cancel')" color="grey" v-close-popup />
+                <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless task confirmation actions. -->
+                <q-btn v-if="canEdit" flat :label="$t('common.delete')" color="negative" @click="confirmDelete" :loading="deleteLoading" />
               </q-card-actions>
             </q-card>
           </q-dialog>

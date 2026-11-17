@@ -91,7 +91,8 @@
                                 @click="onResume" :loading="pausing">
                                 <q-tooltip>{{ $t('task.detail.resumeTooltip') }}</q-tooltip>
                             </q-btn>
-                            <q-btn v-if="canEdit && canForceTerminate" size="sm" color="negative"  icon="cancel"
+                            <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the outlined force-termination action. -->
+                            <q-btn v-if="canEdit && canForceTerminate" size="sm" color="negative" outline icon="cancel"
                                 :label="$t('task.detail.forceTerminate')" @click="confirmForceTerminate" :loading="forceTerminating">
                                 <q-tooltip>{{ $t('task.detail.forceTerminateTooltip') }}</q-tooltip>
                             </q-btn>
@@ -136,7 +137,8 @@
                 </template>
                 {{ $t('task.detail.parentTask') }} : <strong>{{ parentTask.label }}</strong>
                 <template v-slot:action>
-                    <q-btn outline color="primary"  icon="open_in_new" :label="$t('task.detail.openParent')" @click.stop="onTaskClick(parentTask.id)" />
+                    <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless action in the task banner. -->
+                    <q-btn flat icon="open_in_new" :label="$t('task.detail.openParent')" @click.stop="onTaskClick(parentTask.id)" />
                 </template>
             </q-banner>
 
@@ -187,9 +189,9 @@
                 </template>
                 {{ $t('task.detail.deliveryPending', { filename: deliveryRecovery?.filename || '' }) }}
                 <template v-slot:action>
-                    <q-btn outline
+                    <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless action in the task banner. -->
+                    <q-btn flat
                         v-if="canEdit"
-
                         color="primary"
                         icon="replay"
                         :label="$t('task.detail.retryDelivery')"
@@ -223,9 +225,9 @@
                                     tone="warning"
                                     :label="$t('task.detail.coordinationAwaitPending')"
                                 />
-                                <q-btn outline
+                                <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless action in the task details. -->
+                                <q-btn flat
                                     v-if="resolvedByTask"
-
                                     color="primary"
                                     icon="open_in_new"
                                     :label="$t('task.detail.openResolvedTask')"
@@ -704,6 +706,7 @@ function confirmForceTerminate() {
         title: t('task.detail.forceTerminateConfirmTitle'),
         message: t('task.detail.forceTerminateConfirmMessage', { label: task.value.label }),
         cancel: true,
+        flatActions: true,
         ok: {
             label: t('task.detail.forceTerminateConfirmAction'),
             color: 'negative'

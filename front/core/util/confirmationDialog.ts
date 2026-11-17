@@ -8,6 +8,7 @@ export interface ConfirmationDialogOptions {
   cancel?: boolean | string | QBtnProps
   focus?: 'ok' | 'cancel' | 'none'
   color?: string
+  flatActions?: boolean
 }
 
 /** Keep Quasar's outcome callbacks while sharing the application's title bar. */

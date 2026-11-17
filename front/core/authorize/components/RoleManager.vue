@@ -60,7 +60,7 @@
                             color="primary"
                             text-color="white"
                             icon="vpn_key"
-                            size="sm"
+                            size="0.75rem"
                             class="role-privilege-chip"
                         >
                             {{ localizedAuthorizeLabel(priv) }}
@@ -81,7 +81,7 @@
                     color="primary"
                     icon="add"
                     :label="$t('authorize.roles.addPrivileges')"
-                    size="sm"
+                    size="0.75rem"
                     @click="openPrivilegesDialog(role)"
                 />
             </div>
@@ -492,6 +492,11 @@ async function savePrivileges() {
 </script>
 
 <style scoped>
+.text-caption,
+.role-dialog :deep(.q-field__bottom) {
+  font-size: 0.8125rem;
+}
+
 .role-header-actions,
 .role-privilege-list,
 .role-dialog-actions {

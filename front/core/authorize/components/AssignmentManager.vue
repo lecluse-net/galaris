@@ -349,6 +349,13 @@ function confirmDelete(item: AssignmentWithRole) {
 </script>
 
 <style scoped>
+.text-caption,
+.assignment-table :deep(.q-table th),
+.assignment-table :deep(.q-table__bottom),
+.assignment-dialog :deep(.q-field__bottom) {
+  font-size: 0.8125rem;
+}
+
 .assignment-grid-item {
   width: 50%;
   padding: 8px;

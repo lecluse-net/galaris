@@ -5,7 +5,8 @@
     </div>
     {{ t('conversation.delivery.unknown') }}
     <template #action>
-      <q-btn outline v-if="editable"  color="primary" :label="t('conversation.delivery.resolve')" @click="show = true" />
+      <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless action in the delivery banner. -->
+      <q-btn v-if="editable" flat color="primary" :label="t('conversation.delivery.resolve')" @click="show = true" />
     </template>
   </q-banner>
   <q-dialog v-model="show">
@@ -18,7 +19,8 @@
         <div v-if="error" role="alert" class="text-negative q-mt-sm">{{ error }}</div>
       </q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">
-        <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
+        <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless cancellation in the text round. -->
+        <q-btn v-close-popup flat :label="t('common.cancel')" />
         <q-btn color="primary" :label="t('common.save')" :loading="saving" :disable="evidence.trim().length < 10" @click="save" />
       </q-card-actions>
     </q-card>

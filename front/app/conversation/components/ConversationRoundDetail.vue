@@ -208,7 +208,8 @@
           <q-separator />
           <q-card-section class="galaris-dialog-body">{{ t('conversation.history.detail.deleteConfirm') }}</q-card-section>
           <q-card-actions align="right" class="q-px-md q-pb-md galaris-dialog-actions">
-            <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
+            <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless cancellation in the text round. -->
+            <q-btn v-close-popup flat :label="t('common.cancel')" />
             <q-btn
               color="negative"
               icon="delete"

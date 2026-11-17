@@ -18,7 +18,7 @@ import { useI18n } from 'vue-i18n'
 import type { ConfirmationDialogOptions } from '../confirmationDialog'
 import DialogHeader from './DialogHeader.vue'
 
-const { title, message, ok = true, cancel = false, focus = 'ok', color = 'primary' } = defineProps<ConfirmationDialogOptions>()
+const { title, message, ok = true, cancel = false, focus = 'ok', color = 'primary', flatActions = false } = defineProps<ConfirmationDialogOptions>()
 defineEmits([...useDialogPluginComponent.emits])
 const dialog = useDialogPluginComponent()
 const { t } = useI18n()
@@ -37,8 +37,8 @@ function focusAction(): void {
 function buttonProps(value: boolean | string | QBtnProps, label: string): QBtnProps {
   const props: QBtnProps = { color, label: typeof value === 'string' ? value : label,
     ...(typeof value === 'object' ? value : {}) }
-  props.flat = false
-  props.outline = props.color !== 'negative'
+  props.flat = flatActions
+  props.outline = !flatActions && props.color !== 'negative'
   return props
 }
 const okProps = computed(() => buttonProps(ok, $q.lang.label.ok))

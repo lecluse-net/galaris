@@ -199,7 +199,8 @@
         </q-card-section>
         <q-card-section>{{ t('voice.history.detail.forceHangupConfirm') }}</q-card-section>
         <q-card-actions align="right">
-          <q-btn outline color="primary"  v-close-popup :disable="hangingUp" :label="t('common.cancel')" />
+          <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless cancellation in the voice round. -->
+          <q-btn flat v-close-popup :disable="hangingUp" :label="t('common.cancel')" />
           <q-btn color="negative" icon="call_end" :label="t('voice.history.detail.forceHangup')" :loading="hangingUp" @click="forceHangup" />
         </q-card-actions>
       </q-card>
@@ -210,7 +211,8 @@
         <q-separator />
         <q-card-section class="galaris-dialog-body">{{ t('voice.history.detail.deleteConfirm') }}</q-card-section>
         <q-card-actions align="right" class="q-px-md q-pb-md galaris-dialog-actions">
-          <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
+          <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless cancellation in the voice round. -->
+          <q-btn v-close-popup flat :label="t('common.cancel')" />
           <q-btn color="negative" icon="delete" :label="t('common.delete')" :loading="deleting" @click="deleteTurn" />
         </q-card-actions>
       </q-card>
