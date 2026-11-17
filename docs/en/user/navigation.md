@@ -328,10 +328,13 @@ is preserved. Prepare an MCP
 candidate under **Services → New Service → Test connection**; send only its temporary reference
 to the agent, keeping secrets server-side.
 
-New authorization requests show the action and its parameters as readable fields.
+Authorization requests explain the proposed action, the parameters to review and the scope
+of the decision. Goals, file operations and Harness commands have descriptive titles.
+The **Permissions** list also supports searching for these titles.
 For an email, review the recipients, Cc and Bcc, subject, message and attachments of the
-prepared email. In **Permissions**, **Technical details** reveals the JSON parameters.
-HTML content remains inert source text. Shortened notifications are marked: open the
+prepared email. Its HTML version is available as source text. A proposed Goal description
+or tracking update keeps its formatting in **Permissions** and in new **Chat** requests.
+In **Permissions**, **Technical details** reveals the JSON parameters. Shortened notifications are marked: open the
 request to read its complete content.
 
 A configurable MCP function request, such as `topic_create`, offers **Allow this action**,
@@ -342,7 +345,9 @@ require confirmation again. Requests use the manager's language (French, English
 falling back to the instance's default language when their profile has none.
 In internal Chat, the “Answer to…” sentence for button responses follows the interface
 language, including after reopening or changing languages. The request title and selected
-option label retain the wording of the original request.
+option label retain the wording of the original request. Once an answer is recorded, the
+authorization card in **Chat** and the request details in **Permissions** show only the
+chosen button.
 
 For a local action of any managed external Harness (Hermes, DeepSeek Harness, Codex,
 Claude Agent or a configured OpenAI Messages Harness), choose

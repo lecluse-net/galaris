@@ -13,7 +13,7 @@ from core.i18n import current_language, is_supported, render_prompt, t
 
 from .contracts import NativeInteractionAnswer, NativeInteractionOption, NativeMessengerInteraction
 from .events import message_journaled
-from .interactions import ChoiceOption, resolve_pending_choice, choice_authorized
+from .interactions import ChoiceOption, choice_authorized, choice_body_html, choice_is_authorization, resolve_pending_choice
 from .models import Interaction, Message, MessengerUser, Room
 
 
@@ -26,21 +26,20 @@ def _snapshot(record: Interaction, *, participant: str | None, authorized: bool)
     if status == "PENDING" and record.expires_at <= datetime.now(timezone.utc):
         status = "EXPIRED"
     selected = (record.resolution or {}).get("option_id")
+    recipient_authorized = authorized and participant is not None and record.user_id in {None, participant}
     return NativeMessengerInteraction(
         id=record.id,
         reference=record.reference,
         title=record.title,
         body=record.body,
+        body_html=choice_body_html(record) if recipient_authorized else None,
         options=[NativeInteractionOption.model_validate(option) for option in record.options],
         free_text=record.free_text,
         status=status,
         expires_at=record.expires_at,
         selected_option_id=selected if isinstance(selected, str) else None,
-        can_answer=(
-            authorized and status == "PENDING"
-            and participant is not None
-            and record.user_id in {None, participant}
-        ),
+        can_answer=recipient_authorized and status == "PENDING",
+        is_authorization=choice_is_authorization(record.kind),
     )
 
 

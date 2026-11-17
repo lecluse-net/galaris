@@ -27,11 +27,13 @@
         <DialogHeader :title="t('permissions.oneAction')" :close-label="t('permissions.cancel')" />
         <q-card-section v-if="detailLoading"><q-spinner :aria-label="t('permissions.loading')" /></q-card-section>
         <q-card-section v-if="selected">
-          <h3 class="text-h6 q-mt-none q-mb-md">{{ selected.presentation?.title ?? selected.preview }}</h3>
+          <h3 class="text-h6 q-mt-none q-mb-md">{{ selected.presentation?.title ?? displayPreview(selected) }}</h3>
+          <p v-if="selected.presentation?.explanation">{{ selected.presentation.explanation }}</p>
           <dl v-if="selected.presentation" class="action-fields">
             <template v-for="(field, index) in selected.presentation.fields" :key="index">
               <dt class="text-weight-medium">{{ field.label }}</dt>
-              <dd>{{ field.value }}</dd>
+              <dd v-if="field.format === 'html'"><RichText :content="field.value" /></dd>
+              <dd v-else class="action-field-text">{{ field.value }}</dd>
             </template>
           </dl>
           <div>{{ t(`permissions.actionStatus.${selected.status}`) }}</div>
@@ -45,7 +47,7 @@
               <pre v-if="selected.arguments" class="action-arguments">{{ JSON.stringify(selected.arguments, null, 2) }}</pre>
             </div>
           </q-expansion-item>
-          <p v-if="selected.can_remember">{{ t(selected.source === 'runtime' ? 'permissions.runtimeScope' : 'permissions.functionScope', { function: selected.capability_name, runtime: selected.runtime }) }}</p>
+          <p v-if="selected.decision_scope">{{ selected.decision_scope }}</p>
           <PermissionToggle v-if="decisionControl" :control="decisionControl" :disabled="answering" class="q-mt-md"
             @change="value => decisionControl?.save(value)" />
         </q-card-section>
@@ -63,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { DialogHeader } from '@/core/util'
+import { DialogHeader, RichText } from '@/core/util'
 import { computed, onActivated, onDeactivated, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
@@ -99,27 +101,29 @@ const decisionControl = computed<PermissionControl | null>(() => {
   const row = selected.value
   if (!row) return null
   const allowed = ['approved', 'executing', 'completed'].includes(row.status)
-  const value = row.status === 'pending' ? 'pending' : row.status === 'denied' || allowed
-    ? `${allowed ? 'allow' : 'deny'}${row.remembered ? '_always' : ''}` : row.status
+  const legacyChoice = row.status === 'denied' || allowed ? `${allowed ? 'allow' : 'deny'}${row.remembered ? '_always' : ''}` : null
+  const value = (row.selected_option_id === undefined ? legacyChoice : row.selected_option_id) ?? row.status
+  const choices = [
+    { value: 'allow', label: t('permissions.allowAction') }, { value: 'deny', label: t('permissions.denyAction') },
+    { value: 'allow_always', label: t(row.source === 'runtime' ? 'permissions.allowRuntimeAction' : 'permissions.allowFunction') },
+    { value: 'deny_always', label: t(row.source === 'runtime' ? 'permissions.denyRuntimeAction' : 'permissions.denyFunction') },
+  ]
+  const statusOption = { value: row.status, label: t(`permissions.actionStatus.${row.status}`), disable: true }
   return { id: 'decision', label: t('permissions.oneAction'), value,
     disabled: !row.can_answer || !canAnswer.value,
-    options: [{ value: 'pending', label: t('permissions.actionStatus.pending'), disable: true },
-      { value: 'allow', label: t('permissions.allowAction') }, { value: 'deny', label: t('permissions.denyAction') },
-      ...(row.can_remember || row.remembered ? [
-        { value: 'allow_always', label: t(row.source === 'runtime' ? 'permissions.allowRuntimeAction' : 'permissions.allowFunction') },
-        { value: 'deny_always', label: t(row.source === 'runtime' ? 'permissions.denyRuntimeAction' : 'permissions.denyFunction') },
-      ] : []),
-      ...(!['pending', 'allow', 'deny', 'allow_always', 'deny_always'].includes(value)
-        ? [{ value, label: t(`permissions.actionStatus.${row.status}`) }] : []),
-    ],
+    options: row.status === 'pending'
+      ? [statusOption, ...(row.can_remember ? choices : choices.slice(0, 2))]
+      : [choices.find(option => option.value === value) ?? statusOption],
     save: async next => {
       if (next !== value && row.can_answer && canAnswer.value && ['allow', 'deny', 'allow_always', 'deny_always'].includes(next)) {
         await answer(next.startsWith('allow'), next.endsWith('_always'))
       }
     } }
 })
-const displayPreview = (row: ActionAuthorization) => row.source === 'domain' && ['mail_send', 'mail_reply', 'mail_forward'].includes(row.capability_name)
-  ? t('permissions.sendMail') : row.preview.split('\n')[0]
+const displayPreview = (row: ActionAuthorization) => row.title ?? (
+  row.source === 'domain' && ['mail_send', 'mail_reply', 'mail_forward'].includes(row.capability_name)
+    ? t('permissions.sendMail') : row.preview.split('\n')[0]
+)
 const columns = computed<QTableColumn[]>(() => [
   { name: 'agent', field: 'agent_id', label: t('permissions.agent'), align: 'left', format: agentLabel },
   { name: 'preview', field: displayPreview, label: t('permissions.question'), align: 'left' },
@@ -159,7 +163,7 @@ async function open(id: string, reveal = true) {
   detailController?.abort()
   const controller = new AbortController()
   detailController = controller
-  selected.value = null
+  if (reveal || selected.value?.id !== id || selected.value.status === 'pending') selected.value = null
   detailLoading.value = true
   if (reveal) detailOpen.value = true
   detailError.value = false
@@ -176,7 +180,13 @@ async function answer(approved: boolean, remember = false) {
   try {
     await answerActionAuthorization(id, approved, remember)
     emit('answered')
-    if (!disposed && detailOpen.value && selected.value?.id === id) await open(id, false)
+    if (!disposed && detailOpen.value && selected.value?.id === id) {
+      const selectedOption = approved ? (remember ? 'allow_always' : 'allow') : (remember ? 'deny_always' : 'deny')
+      selected.value = { ...selected.value, status: approved ? 'approved' : 'denied', selected_option_id: selectedOption,
+        can_answer: false, can_cancel: false, can_remember: false, decision_scope: undefined,
+        arguments: undefined, presentation: undefined }
+      await open(id, false)
+    }
     await load()
   } catch { if (selected.value?.id === id) detailError.value = true }
   finally { answering.value = false }
@@ -209,6 +219,7 @@ onBeforeUnmount(() => { disposed = true; generation++; listController?.abort(); 
 
 <style scoped>
 .action-arguments { white-space: pre-wrap; overflow-wrap: anywhere; }
-.action-fields dd { margin: 4px 0 20px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.action-fields dd { margin: 4px 0 20px; overflow-wrap: anywhere; }
+.action-field-text { white-space: pre-wrap; }
 .action-fields dt { overflow-wrap: anywhere; }
 </style>

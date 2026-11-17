@@ -16,18 +16,21 @@ from core.i18n import current_language
 from core.user import require_web_session
 from core.util import get_encryption_service
 
-from .authorization import answer_action, can_remember_action, redacted_action_arguments
+from .authorization import answer_action, can_remember_action, human_decision_option, redacted_action_arguments
 from .authorization_models import ActionAuthorization
-from .authorization_presentation import present_action
+from .authorization_presentation import approval_scope, approval_title, matching_approval_names, present_authorization
+from .schemas import Service
+from .service import get_service_by_id, get_services_by_ids
 
 router = APIRouter(prefix="/action-authorizations", tags=["permissions"], dependencies=[Depends(require_web_session)])
 
 
-def projection(row: ActionAuthorization) -> dict[str, Any]:
+def projection(row: ActionAuthorization, language: str, service: Service | None) -> dict[str, Any]:
     return {"id": str(row.id), "agent_id": row.agent_id, "approver_user_id": row.approver_user_id,
             "source": row.source, "capability_kind": row.capability_kind, "capability_name": row.capability_name,
             "runtime": row.runtime,
             "status": row.status, "preview": row.preview, "decision_source": row.decision_source,
+            "title": approval_title(row, language, service), "selected_option_id": human_decision_option(row),
             "remembered": row.runtime_permission_id is not None or (row.decision_source == "human" and row.policy_source == "connection" and row.mode in {"enabled", "disabled"}),
             "created_at": row.created_at, "expires_at": row.expires_at, "decided_at": row.decided_at,
             "claimed_at": row.claimed_at, "finished_at": row.finished_at,
@@ -40,6 +43,7 @@ async def list_requests(agent_id: int | None = None, status: str | None = None,
                         q: str = Query("", max_length=500),
                         offset: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=500)) -> dict[str, Any]:
     scope = await current_management_scope()
+    language = await current_language(user_id=scope.user_id)
     query = select(ActionAuthorization)
     if scope.agent_ids is not None:
         query = query.where(or_(ActionAuthorization.agent_id.in_(scope.agent_ids), ActionAuthorization.approver_user_id == scope.user_id))
@@ -49,14 +53,17 @@ async def list_requests(agent_id: int | None = None, status: str | None = None,
         needle = q.strip().lower()
         query = query.where(or_(func.lower(ActionAuthorization.preview).contains(needle, autoescape=True),
             func.lower(ActionAuthorization.capability_name).contains(needle, autoescape=True),
-            func.lower(ActionAuthorization.runtime).contains(needle, autoescape=True)))
+            func.lower(ActionAuthorization.runtime).contains(needle, autoescape=True),
+            func.lower(ActionAuthorization.capability_name).in_(matching_approval_names(needle, language))))
     if status is not None:
         query = query.where(ActionAuthorization.status == status)
     if status == "pending":
         query = query.where(ActionAuthorization.expires_at > datetime.now(timezone.utc))
     total = await get_db().scalar(select(func.count()).select_from(query.subquery()))
     rows = (await get_db().scalars(query.order_by(ActionAuthorization.created_at.desc()).offset(offset).limit(limit))).all()
-    return {"items": [projection(row) for row in rows], "total": total or 0}
+    services = await get_services_by_ids({row.service_id for row in rows if row.service_id is not None})
+    return {"items": [projection(row, language, services.get(row.service_id) if row.service_id is not None else None)
+                      for row in rows], "total": total or 0}
 
 
 def redacted(value: Any) -> Any:
@@ -126,7 +133,9 @@ async def get_request(identifier: UUID) -> dict[str, Any]:
     row = await get_db().get(ActionAuthorization, identifier)
     if row is None or not (scope.allows(row.agent_id) or row.approver_user_id == scope.user_id):
         raise HTTPException(404, "Authorization not found")
-    result = projection(row)
+    language = await current_language(user_id=scope.user_id)
+    service = await get_service_by_id(row.service_id) if row.service_id is not None else None
+    result = projection(row, language, service)
     try:
         policy = await authorization_policy(row.agent_id)
     except PermissionError:
@@ -136,11 +145,13 @@ async def get_request(identifier: UUID) -> dict[str, Any]:
     from datetime import datetime, timezone
     result["can_answer"] = can_answer and row.status == "pending" and row.expires_at > datetime.now(timezone.utc)
     result["can_remember"] = result["can_answer"] and await can_remember_action(row)
+    if result["can_answer"]:
+        result["decision_scope"] = approval_scope(row, language=language, can_remember=result["can_remember"])
     result["can_cancel"] = scope.allows(row.agent_id) and row.status in ("pending", "approved")
     if can_answer and row.encrypted_arguments is not None:
         result["arguments"] = redacted(json.loads(get_encryption_service().decrypt(row.encrypted_arguments)))
-        result["presentation"] = present_action(name=row.capability_name, source=row.source,
-            arguments=result["arguments"], language=await current_language(user_id=scope.user_id))
+        result["presentation"] = await present_authorization(row,
+            arguments=result["arguments"], language=language, service=service)
     return result
 
 

@@ -15,6 +15,40 @@ const endpoint = '**/api/chat/rooms/room-1/interactions/choice-1'
 const options = { locale: 'fr', props: { roomId: 'room-1', interaction: choice } }
 const recordedAnswerStatus = page => page.getByRole('status').filter({ hasText: /^Réponse enregistrée/ })
 
+test('a rich approval body keeps its editorial structure and response controls', async ({ page }, testInfo) => {
+  const room = { id: 'room-1', label: 'Conversation synthétique', agent_id: 7, agent_name: 'Agent synthétique',
+    agent_active: false, writable: true, members: [], unread_count: 0, conversation_type: 'text' }
+  const message = { id: 'approval-message', external_id: 'approval-external', room_id: room.id,
+    files: [], is_mine: false, text: choice.body, created_at: '2026-09-18T12:00:00Z',
+    sender: { display_name: room.agent_name, is_ai: true },
+    interaction: { ...choice, body_html: '<h2>Plan du projet</h2><ul><li>Relire le bilan</li></ul>' } }
+  for (const [path, json] of [
+    ['status', { enabled: true, chat_enabled: true, max_attachment_bytes: 1000000 }],
+    ['rooms?*', { items: [room], total: 1 }],
+    ['rooms/room-1', room],
+    ['rooms/room-1/messages?*', { items: [message], total: 1 }],
+    ['rooms/room-1/activity?*', { items: [], total: 0 }],
+    ['rooms/room-1/speech/status*', { available_agent_ids: [] }],
+    ['rooms/room-1/read', {}],
+    ['rooms/room-1/commands', { commands: [] }],
+    ['inbox', { unread_count: 0 }],
+    ['emojis/frequent', { items: [] }],
+    ['agents/7/avatar', {}],
+  ]) await jsonRoute(page, '**/api/chat/' + path, json)
+  await mount(page, 'app/chat/pages/index.vue', {
+    route: '/chat?room=room-1', privileges: ['CHAT_SEND'], locale: 'fr', shell: true,
+  })
+  const approval = page.getByRole('region', { name: choice.title })
+  for (const [width, dark] of [[1440, false], [390, true]]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.evaluate(value => window.testApp.dark(value), dark)
+    await expect(approval.getByRole('heading', { name: 'Plan du projet' })).toBeVisible()
+    await expect(approval.getByRole('listitem')).toHaveText('Relire le bilan')
+    await expect(approval.getByRole('button', { name: 'Créer ce dossier' })).toBeEnabled()
+    await approval.screenshot({ path: testInfo.outputPath('rich-approval-' + width + '.png'), animations: 'disabled' })
+  }
+})
+
 for (const [locale, expected] of [
   ['fr', 'Réponse à « Demande d’autorisation » (#FA12BC34) : Autoriser cette action'],
   ['en', 'Answer to “Demande d’autorisation” (#FA12BC34): Autoriser cette action'],
@@ -77,16 +111,18 @@ test('the conversation displays actionable choices and preserves ordinary text m
   await expect(create).toHaveAttribute('aria-pressed', 'true')
 })
 
-test('a click submits one exact choice, locks both buttons and survives reopening', async ({ page }) => {
+test('a recorded authorization keeps only its chosen button through refresh and reopening', async ({ page }) => {
+  const pendingAuthorization = { ...choice, is_authorization: true }
+  const resolvedAuthorization = { ...resolved, is_authorization: true }
   let release
   const ready = new Promise(resolve => { release = resolve })
   const submissions = []
   await page.route(`${endpoint}/answer`, async route => {
     submissions.push(route.request().postDataJSON())
     await ready
-    await route.fulfill({ json: resolved })
+    await route.fulfill({ json: resolvedAuthorization })
   })
-  await mount(page, component, options)
+  await mount(page, component, { ...options, props: { ...options.props, interaction: pendingAuthorization } })
   const create = page.getByRole('button', { name: 'Créer ce dossier' })
   const reject = page.getByRole('button', { name: 'Laisser cette activité sans classement' })
   await create.click()
@@ -97,12 +133,14 @@ test('a click submits one exact choice, locks both buttons and survives reopenin
   const acknowledgement = recordedAnswerStatus(page)
   await expect(acknowledgement).toHaveText('Réponse enregistrée.')
   await expect(create).toHaveAttribute('aria-pressed', 'true')
+  await expect(reject).toHaveCount(0)
   // A history request started before the click may return the old pending snapshot.
-  await page.evaluate(interaction => window.testApp.setProps({ interaction }), choice)
+  await page.evaluate(interaction => window.testApp.setProps({ interaction }), pendingAuthorization)
   await expect(create).toBeDisabled()
-  await mount(page, component, { ...options, props: { ...options.props, interaction: resolved } })
+  await mount(page, component, { ...options, props: { ...options.props, interaction: resolvedAuthorization } })
   await expect(acknowledgement).toHaveText('Réponse enregistrée.')
   await expect(create).toBeDisabled()
+  await expect(reject).toHaveCount(0)
   expect(submissions).toHaveLength(1)
 })
 

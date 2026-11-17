@@ -1,10 +1,11 @@
 <template>
   <section class="interaction-choice" :aria-label="choice.title">
     <strong>{{ choice.title }}</strong>
-    <SafeMessageContent v-if="choice.body" :content="choice.body" />
+    <RichText v-if="choice.body_html" :content="choice.body_html" />
+    <SafeMessageContent v-else-if="choice.body" :content="choice.body" />
     <div class="interaction-options">
       <q-btn color="primary"
-        v-for="option in choice.options"
+        v-for="option in visibleOptions"
         :key="option.id"
         no-caps
         outline
@@ -32,6 +33,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { RichText } from '@/core/util'
 import { chatService } from '../services/chatService'
 import type { MessengerInteraction } from '../types'
 import SafeMessageContent from './SafeMessageContent.vue'
@@ -48,6 +50,12 @@ const choice = computed(() => captured.value && ranks[captured.value.status] > r
   ? captured.value : props.interaction)
 const status = computed(() => choice.value.status === 'PENDING' && Date.parse(choice.value.expires_at) <= now.value
   ? 'EXPIRED' : choice.value.status)
+const visibleOptions = computed(() => {
+  const current = choice.value
+  return current.is_authorization && current.selected_option_id && (status.value === 'PROCESSING' || status.value === 'RESOLVED')
+    ? current.options.filter(option => option.id === current.selected_option_id)
+    : current.options
+})
 const canAnswer = computed(() => !props.readonly && props.interaction.can_answer && choice.value.can_answer && status.value === 'PENDING')
 let generation = 0
 watch([() => props.roomId, () => props.interaction.id], () => {
@@ -85,6 +93,7 @@ async function answer(optionId: string): Promise<void> {
 
 <style scoped>
 .interaction-choice { display: grid; gap: 12px; min-width: 0; }
+.interaction-choice :deep(.rich-content) { background-color: var(--chat-surface-raised, var(--rich-background)); }
 .interaction-options { display: flex; flex-wrap: wrap; gap: 8px; }
 .interaction-options :deep(.q-btn) { max-width: 100%; color: var(--solaire-blue-accent); }
 .interaction-option--selected { color: var(--solaire-green-accent) !important; }

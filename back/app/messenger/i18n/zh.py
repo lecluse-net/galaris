@@ -2,6 +2,14 @@
 
 default: dict[str, object] = {
     "messenger_contact_approval": {
+        "first_name": "名字",
+        "last_name": "姓氏",
+        "username": "用户名",
+        "language_code": "资料语言",
+        "is_bot": "自动化账户",
+        "is_premium": "高级账户",
+        "yes": "是",
+        "no": "否",
         "question": "是否允许 ${agent} 在 ${channel} 回复此人？\n\n姓名：${name}\n标识符：${identifier}\n${details}\n\n此授权仅适用于此连接中的此人，不创建 Galaris 账户或共享任何资源。",
     },
     "permissions": {
@@ -14,8 +22,8 @@ default: dict[str, object] = {
         "deny_function": "始终禁止此功能",
         "deny_runtime_action": "始终禁止此类操作",
         "allow_runtime_action": "始终允许此类操作",
-        "runtime_scope": "永久决定允许或禁止此代理通过 ${runtime} 执行 ${function}，适用于任何参数和后续任务。其他类型的操作仍需授权。可在权限页面移除；更换执行框架、配置或负责人后需重新决定。",
-        "function_scope": "永久决定允许或禁止此代理在此连接上使用 ${function}，适用于任何参数。可在权限页面或连接的功能权限中移除此决定。",
+        "runtime_scope": "“允许此操作”仅适用于本次操作。永久决定适用于该代理今后使用 ${runtime} 执行的同类操作，无论参数如何。可在权限页面撤销此决定。",
+        "function_scope": "“允许此操作”仅适用于本次调用。永久决定适用于该代理今后在此连接上对同一功能的所有调用，无论参数如何。可在权限页面撤销此决定。",
         "allow_all_sites": "始终允许所有网站",
         "deny_all_sites": "始终禁止所有网站",
     },

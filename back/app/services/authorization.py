@@ -177,6 +177,17 @@ class AuthorizationClosed(ToolCallRejectedError):
         super().__init__(f"Action authorization is {status}; the operation will not be dispatched again")
 
 
+def human_decision_option(row: ActionAuthorization) -> str | None:
+    """Identify the recorded choice even when the operation later changes status."""
+    if row.decision_source != "human" or row.decided_at is None:
+        return None
+    remembered = row.runtime_permission_id is not None or (
+        row.mode in ("enabled", "disabled") and row.policy_source == "connection"
+    )
+    option = "deny" if row.status == "denied" else "allow"
+    return f"{option}_always" if remembered else option
+
+
 @dataclass
 class PreparedAuthorization:
     action: AuthorizationAction

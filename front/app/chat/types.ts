@@ -6,12 +6,14 @@ export interface MessengerInteraction {
   reference: string
   title: string
   body: string
+  body_html?: string | null
   options: { id: string; label: string }[]
   free_text: boolean
   status: 'PENDING' | 'PROCESSING' | 'RESOLVED' | 'EXPIRED'
   expires_at: string
   selected_option_id: string | null
   can_answer: boolean
+  is_authorization?: boolean
 }
 export interface ChatInboxSummary { unread_count: number }
 export interface PushConfiguration { available: boolean; public_key: string }

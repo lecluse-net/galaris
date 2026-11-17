@@ -12,12 +12,11 @@ from sqlalchemy import or_, select, update, func
 
 from app.messenger import ChoiceOption, ChoiceRequest, ChoiceResolution, PendingChoice, register_choice_handler, request_user_choice, expire_user_choice, settle_user_choice
 from core.database import get_db, get_db_session
-from core.i18n import current_language, render_prompt, t
+from core.i18n import current_language, t
 
-from .authorization import answer_action, can_remember_action, wake_authorization_context, AuthorizationAction, resolve_action_mode
-from .authorization import redacted_action_arguments
+from .authorization import answer_action, can_remember_action, human_decision_option, wake_authorization_context, AuthorizationAction, resolve_action_mode
 from .authorization_models import ActionAuthorization
-from .authorization_presentation import notification_body, present_action
+from .authorization_presentation import ApprovalPresentation, approval_scope, approval_title, notification_content, present_authorization
 from .contracts import ToolCallRejectedError
 from . import authorization_metrics as metrics
 
@@ -27,11 +26,7 @@ KIND = "tool_action_authorization"
 async def sync_authorization_choice(row: ActionAuthorization) -> None:
     """Project the effective decision into Chat, including decisions made through the API."""
     key = f"authorization:{row.id}"
-    if row.decision_source == "human" and row.decided_at is not None:
-        remembered = row.runtime_permission_id is not None or (
-            row.mode in ("enabled", "disabled") and row.policy_source == "connection")
-        option = ("deny_always" if remembered else "deny") if row.status == "denied" else (
-            "allow_always" if remembered else "allow")
+    if option := human_decision_option(row):
         language = await current_language(user_id=row.approver_user_id)
         committed_option = ChoiceOption(id=option, label=t(
             "permissions.deny_runtime_action" if row.source == "runtime" else "permissions.deny_function", language)
@@ -131,27 +126,30 @@ async def deliver_authorization_notifications() -> None:
             language = await current_language(user_id=row.approver_user_id)
             options = [ChoiceOption(id="allow", label=t("permissions.allow_once", language)),
                        ChoiceOption(id="deny", label=t("permissions.deny_once", language))]
-            body = row.preview
-            if row.encrypted_arguments is not None:
-                import json
-                from core.util import get_encryption_service
-                arguments = redacted_action_arguments(json.loads(get_encryption_service().decrypt(row.encrypted_arguments)))
-                body = notification_body(present_action(name=row.capability_name, source=row.source,
-                    arguments=arguments, language=language), language=language)
-            if await can_remember_action(row):
+            can_remember = await can_remember_action(row)
+            if can_remember:
                 runtime = row.source == "runtime"
                 options.append(ChoiceOption(id="allow_always", label=t(
                     "permissions.allow_runtime_action" if runtime else "permissions.allow_function", language)))
                 options.append(ChoiceOption(id="deny_always", label=t(
                     "permissions.deny_runtime_action" if runtime else "permissions.deny_function", language)))
-                body += "\n\n" + render_prompt(t(
-                    "permissions.runtime_scope" if runtime else "permissions.function_scope", language),
-                    function=row.capability_name, runtime=row.runtime)
+            scope = approval_scope(row, language=language, can_remember=can_remember)
+            presentation: ApprovalPresentation
+            if row.encrypted_arguments is not None:
+                import json
+                from core.util import get_encryption_service
+                arguments = json.loads(get_encryption_service().decrypt(row.encrypted_arguments))
+                presentation = await present_authorization(row, arguments=arguments, language=language)
+            else:
+                from .service import get_service_by_id
+                service = await get_service_by_id(row.service_id) if row.service_id is not None else None
+                presentation = {"title": approval_title(row, language, service), "fields": []}
+            body, body_html = notification_content(presentation, language=language, scope=scope)
             interaction = await request_user_choice(
                 agent_id=row.agent_id, user_id=row.approver_user_id,
                 request=ChoiceRequest(
                     kind=KIND, title=t("permissions.title", language),
-                    body=body,
+                    body=body, body_html=body_html,
                     options=options,
                     metadata={"authorization_request_id": str(row.id)},
                     timeout_seconds=max(1, int((row.expires_at - now).total_seconds())), language=language,

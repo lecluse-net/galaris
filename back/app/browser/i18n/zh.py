@@ -2,7 +2,18 @@
 
 default: dict[str, object] = {
     "browser": {
-        "permission_question": "允许此代理的浏览器对 ${origin} 执行 ${action} 访问吗？此决定涵盖该来源的所有路径，并将为此代理保存。",
+        "permission_question": "允许此代理的浏览器在 ${origin} 上${action}吗？该决定会针对这种请求类型保存，并适用于此目标下的所有路径。",
+        "permission_local_question": "允许此代理的浏览器通过本地网络访问 ${origin} 吗？该决定适用于此代理在该目标下的所有路径。",
+        "permission_actions": {
+            "get": "读取数据（GET）",
+            "head": "查看资源元数据（HEAD）",
+            "options": "查看支持的操作（OPTIONS）",
+            "post": "发送数据（POST）",
+            "put": "创建或替换资源（PUT）",
+            "patch": "修改资源的一部分（PATCH）",
+            "delete": "请求删除资源（DELETE）",
+            "websocket": "打开 WebSocket 连接",
+        },
         "all_sites_permission_question": "始终允许此代理的浏览器访问所有网站，不再请求网站授权吗？此授权涵盖所有域名、协议、端口、路径、已配置的 HTTP 方法和 WebSocket。网络过滤器、明确拒绝和单独的本地网络权限仍然有效。您可以在已记住的权限中撤销此授权。",
         "errors": {
             "invalid_url": "URL 无效。请使用不包含登录凭据的 HTTP(S) URL。",

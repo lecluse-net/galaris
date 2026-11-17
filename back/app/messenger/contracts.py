@@ -74,12 +74,14 @@ class NativeMessengerInteraction(BaseModel):
     reference: str
     title: str
     body: str
+    body_html: str | None = None
     options: list[NativeInteractionOption]
     free_text: bool
     status: str
     expires_at: datetime
     selected_option_id: str | None = None
     can_answer: bool = False
+    is_authorization: bool = False
 
 
 class NativeInteractionAnswer(BaseModel):

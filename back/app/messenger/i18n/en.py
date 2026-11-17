@@ -2,6 +2,14 @@
 
 default: dict[str, object] = {
     "messenger_contact_approval": {
+        "first_name": "First name",
+        "last_name": "Last name",
+        "username": "Username",
+        "language_code": "Profile language",
+        "is_bot": "Automated account",
+        "is_premium": "Premium account",
+        "yes": "Yes",
+        "no": "No",
         "question": "Allow ${agent} to reply to this person on ${channel}?\n\nName: ${name}\nIdentifier: ${identifier}\n${details}\n\nConsent applies to this person on this connection. It does not create a Galaris account or share any resource.",
     },
     "permissions": {
@@ -14,8 +22,8 @@ default: dict[str, object] = {
         "allow_runtime_action": "Always allow this action type",
         "deny_function": "Always deny this function",
         "deny_runtime_action": "Always deny this action type",
-        "runtime_scope": "The permanent choice allows or denies ${function} for this agent with the ${runtime} Harness, with any arguments, including future tasks. Other action types still require approval. Remove this decision in Permissions; a change of Harness, configuration or manager requires a new decision.",
-        "function_scope": "The permanent choice allows or denies ${function} for this agent on this connection, with any arguments. Remove this decision in Permissions or the connection's function permissions.",
+        "runtime_scope": "“Allow this action” applies to this operation. A permanent choice applies to future operations of the same type for this agent with ${runtime}, with any arguments. You can remove the decision in Permissions.",
+        "function_scope": "“Allow this action” applies to this call. A permanent choice applies to future calls to this function by this agent on this connection, with any arguments. You can remove the decision in Permissions.",
         "allow_all_sites": "Always allow all sites",
         "deny_all_sites": "Always deny all sites",
     },

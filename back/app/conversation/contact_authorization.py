@@ -93,13 +93,17 @@ async def _request(round_: ConversationRound) -> None:
         return
     language = await current_language(user_id=agent.user_id)
     profile = _profile(message)
-    details = "\n".join(
-        f"{name}: {str(value)[:500]}"
-        for name, value in profile.items()
-    )
+    details: list[str] = []
+    for name in ("first_name", "last_name", "username", "language_code", "is_bot", "is_premium"):
+        value = profile.get(name)
+        if value is None or value == "":
+            continue
+        label = t(f"messenger_contact_approval.{name}", language)
+        text = t("messenger_contact_approval.yes" if value else "messenger_contact_approval.no", language) if isinstance(value, bool) else value[:500]
+        details.append(f"{label} : {text}")
     question = render_prompt(t("messenger_contact_approval.question", language),
         name=sender.display_name or sender.external_id, identifier=sender.external_id,
-        channel=message.platform, agent=f"{agent.first_name} {agent.last_name}".strip(), details=details)
+        channel=message.platform, agent=f"{agent.first_name} {agent.last_name}".strip(), details="\n".join(details))
     await request_permission(connection.agent_id, key, question)
 
 

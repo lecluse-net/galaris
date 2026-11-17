@@ -157,7 +157,9 @@ async def authorize_network(request: NetworkRequest) -> NetworkDecision:
             decisions.append(True)
         else:
             language = await current_language(user_id=policy.manager_user_id)
-            question = render_prompt(t("browser.permission_question", language), action=action, origin=origin)
+            question_key = "browser.permission_local_question" if action == "local" else "browser.permission_question"
+            action_label = t(f"browser.permission_actions.{action}", language) if action != "local" else ""
+            question = render_prompt(t(question_key, language), action=action_label, origin=origin)
             decision = await request_permission(
                 request.owner.agent_id, key, question,
                 always_key=all_sites_key if action != "local" else None,

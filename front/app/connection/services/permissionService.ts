@@ -38,6 +38,9 @@ export interface ActionAuthorization {
   capability_name: string
   status: 'pending' | 'approved' | 'denied' | 'expired' | 'invalidated' | 'executing' | 'completed' | 'failed' | 'outcome_unknown'
   preview: string
+  title?: string
+  selected_option_id?: 'allow' | 'deny' | 'allow_always' | 'deny_always' | null
+  decision_scope?: string
   decision_source: string | null
   remembered?: boolean
   created_at: string
@@ -47,7 +50,7 @@ export interface ActionAuthorization {
   can_remember?: boolean
   can_cancel?: boolean
   arguments?: Record<string, unknown>
-  presentation?: { title: string; fields: { label: string; value: string }[] }
+  presentation?: { title: string; explanation?: string; fields: { label: string; value: string; format?: 'html' }[] }
 }
 
 export async function listActionAuthorizations(params: { agent_id?: number; status?: string; q?: string; offset: number; limit: number }, signal?: AbortSignal) {

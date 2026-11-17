@@ -85,9 +85,9 @@
             v-if="entry.message && (canReadMessage(entry.message) || (allowReply && !entry.message.is_mine))"
             class="message-actions"
           >
-            <q-btn outline color="primary"
+            <!-- eslint-disable-next-line galaris/ui-conventions -- Keep the inline message action borderless. -->
+            <q-btn flat color="primary"
               v-if="canReadMessage(entry.message)"
-
               dense
               no-caps
               :icon-right="speechPlayingMessageId === entry.message.id ? 'stop_circle' : 'volume_up'"
@@ -98,9 +98,9 @@
               class="message-action"
               @click="toggleMessageSpeech(entry.message)"
             />
-            <q-btn outline color="primary"
+            <!-- eslint-disable-next-line galaris/ui-conventions -- Keep the inline message action borderless. -->
+            <q-btn flat color="primary"
               v-if="allowReply && !entry.message.is_mine"
-
               dense
               no-caps
               icon-right="reply"

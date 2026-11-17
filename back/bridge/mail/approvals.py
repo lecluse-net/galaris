@@ -18,7 +18,7 @@ from app.messenger import (
 )
 from core.authorize import Privileges, check_privilege, role_id_ctx
 from core.database import get_db
-from core.i18n import t
+from core.i18n import normalize_language, t
 from core.user import UserModel, user_service
 
 from .models import MailOutboundDelivery
@@ -98,7 +98,7 @@ async def notify_approval(delivery_id: UUID) -> None:
                 return
             await request_user_choice(
                 agent_id=delivery.agent_id, user_id=user.id,
-                request=_request(delivery, user.language or "en"), idempotency_key=_key(delivery.id),
+                request=_request(delivery, normalize_language(user.language)), idempotency_key=_key(delivery.id),
             )
             await db.refresh(delivery)
             delivery.approval_notified_at = datetime.now(timezone.utc)

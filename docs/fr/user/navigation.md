@@ -355,10 +355,14 @@ désactivation ultérieure est conservée.
 Le candidat MCP se prépare depuis **Services → Nouveau service → Tester la connexion** ; seul
 sa référence temporaire est transmise à l’agent, les secrets restent côté serveur.
 
-Les nouvelles demandes d’autorisation présentent l’action et ses paramètres par champs lisibles.
+Les demandes d’autorisation décrivent l’action proposée, les paramètres à vérifier et la portée
+de la décision. Les Objectifs, les manipulations de fichiers et les commandes des harnais
+ont des intitulés métier. La liste de **Permissions** permet aussi de rechercher ces intitulés.
 Pour un e-mail, vérifiez les destinataires, les copies et copies cachées, l’objet, le message
-et les pièces jointes du mail préparé. Dans **Permissions**, **Détails techniques** permet
-de consulter les paramètres JSON. Les contenus HTML restent du texte source inerte.
+et les pièces jointes du mail préparé. Sa version HTML est disponible en texte source.
+La description et le suivi proposés pour un Objectif conservent leur mise en forme dans
+**Permissions** et dans les nouvelles demandes du **Chat**. Dans **Permissions**,
+**Détails techniques** permet de consulter les paramètres JSON.
 Une notification abrégée le signale : ouvrez la demande pour lire le contenu complet.
 
 Une demande d’autorisation pour une fonction MCP configurable, par exemple `topic_create`,
@@ -370,7 +374,9 @@ les autorisations de la connexion. Les demandes suivent la langue du responsable
 anglais ou chinois), puis la langue par défaut de l’installation si son profil n’en définit pas.
 Dans le Chat interne, la phrase « Réponse à… » des réponses par bouton suit la langue de
 l’interface, y compris après réouverture ou changement de langue. Le titre de la demande
-et le libellé du choix restent ceux de la demande d’origine.
+et le libellé du choix restent ceux de la demande d’origine. Après enregistrement d’une
+réponse, la carte d’autorisation du **Chat** et la demande examinée dans **Permissions**
+affichent uniquement le bouton choisi.
 
 Pour une action locale de tout harnais externe géré (Hermès, DeepSeek Harness, Codex,
 Claude Agent ou un harnais OpenAI Messages configuré), choisissez

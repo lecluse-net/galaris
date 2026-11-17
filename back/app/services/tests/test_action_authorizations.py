@@ -50,6 +50,50 @@ async def pending(action):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(("name", "service_code", "field"), [
+    ("goal_create", "goal_management", "description"),
+    ("goal_update", "goal_management", "description"),
+    ("goal_update_suivi", "galaris", "tracking_content"),
+])
+async def test_goal_approval_projects_html_to_the_recipient_chat(action, name, service_code, field):
+    from app.connection import facade as connections
+    from app.messenger import read_internal_interaction
+    from app.messenger.models import Interaction
+    from app.services.authorization_notifications import deliver_authorization_notifications
+    from app.services.authorization_presentation import present_authorization
+    from app.services.mcp_authorization import bind_native_action
+    from app.services.mcp_loader import McpToolContext, load_mcp_tools
+    from app.services.models import Service
+
+    html = "<h2>Planned work</h2><ul><li>Review the result</li></ul>"
+    arguments = {field: html}
+    async with get_db_session() as db:
+        chat = await db.scalar(select(Service).where(Service.code == "chat"))
+        tool = await db.scalar(select(Service).where(Service.code == service_code))
+        await connections.get_or_create_connection(chat.id, action.agent_id)
+        connection = await connections.get_or_create_connection(tool.id, action.agent_id)
+        await connections.set_connection_function_state(connection.id, name, "ask")
+        definition = next(item for item in load_mcp_tools() if item.name == name)
+        goal_action = await bind_native_action(
+            McpToolContext(agent_id=action.agent_id, runtime="internal"), definition, arguments,
+        )
+    identifier = await pending(goal_action)
+    await deliver_authorization_notifications()
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, identifier)
+        choice = await db.get(Interaction, row.interaction_id)
+        assert choice is not None and choice.room_id is not None
+        review = await present_authorization(row, arguments=arguments, language="en")
+        assert [item for item in review["fields"] if item.get("format") == "html"] == [
+            {"label": "Description" if field == "description" else "Tracking", "value": html, "format": "html"},
+        ]
+        choice_view = await read_internal_interaction(row.approver_user_id, UUID(choice.room_id), choice.id)
+        assert choice_view.can_answer and choice_view.is_authorization
+        assert choice_view.body_html is not None and html in choice_view.body_html
+        assert "Review the result" in choice_view.body and "<h2>" not in choice_view.body
+
+
+@pytest.mark.asyncio
 async def test_authorization_policy_lock_does_not_wait_for_unrelated_agent_foreign_keys(action):
     from sqlalchemy import text
     from app.agent import authorization_policy
@@ -796,14 +840,18 @@ async def test_remembered_approval_enables_only_this_connection_function_and_pre
         assert [option["label"] for option in interaction.options] == expected
         assert interaction.metadata_["language"] == selected_language
         assert "Synthetic topic" in interaction.body
+        assert t("approval_preview.actions.topic_create", selected_language) in interaction.body
+        assert "topic_create" not in interaction.body
         assert '{"title":' not in interaction.body
         assert render_prompt(t("permissions.function_scope", selected_language), function="topic_create") in interaction.body
         prompt = await db.get(Message, UUID(interaction.prompt_message_id))
         assert interaction.title in prompt.text
         assert t("messenger_interactions.choose", selected_language) in prompt.text
         assert t("messenger_interactions.reference", selected_language).replace("${reference}", interaction.reference) in prompt.text
-        await answer_internal_interaction(row.approver_user_id, UUID(interaction.room_id), interaction.id,
+        decision = await answer_internal_interaction(row.approver_user_id, UUID(interaction.room_id), interaction.id,
             option_id="allow_always" if approved else "deny_always")
+        assert decision.selected_option_id == ("allow_always" if approved else "deny_always")
+        assert decision.is_authorization and not decision.can_answer
         response = await db.scalar(select(Message).where(
             Message.remote_message_id == f"interaction:{interaction.id}:answer",
             Message.connection_id == interaction.connection_id,
@@ -852,6 +900,7 @@ async def test_function_permissions_list_only_reusable_grants_and_revoke_to_ask(
         action = replace(action, source="mcp", service_id=tool.id, connection_id=connection.id,
             name="topic_create", arguments={"title": "Synthetic topic"})
         manager = await db.get(UserModel, (await db.get(Agent, action.agent_id)).user_id)
+        manager.language = "fr"
         other = UserModel(email=f"scope-{uuid4().hex}@example.test", hashed_password="synthetic")
         role = Role(code=f"permissions-{uuid4().hex}", display_name="Synthetic permission manager")
         role.privileges = list(await db.scalars(select(Privilege).where(
@@ -867,16 +916,22 @@ async def test_function_permissions_list_only_reusable_grants_and_revoke_to_ask(
     path = "/api/connections/function-permissions"
     assert (await client.get(path)).status_code == 401
     once = await pending(action)
+    approvals_path = "/api/services/action-authorizations"
+    listed = await client.get(approvals_path, headers=headers, params={"q": "dossier thématique", "status": "pending"})
+    assert listed.status_code == 200
+    assert [(item["id"], item["title"]) for item in listed.json()["items"]] == [(str(once), "Créer un dossier thématique")]
     assert (await client.get(path, headers=headers)).json()["total"] == 0
     async with get_db_session() as db:
         assert await answer_action(once, user_id=manager.id, approved=True)
-    assert (await client.get(f"/api/services/action-authorizations/{once}", headers=headers)).json()["remembered"] is False
+    detail = (await client.get(f"{approvals_path}/{once}", headers=headers)).json()
+    assert detail["remembered"] is False and detail["selected_option_id"] == "allow"
     assert (await client.get(path, headers=headers)).json()["total"] == 0
     permanent = replace(action, callback_key=str(uuid4()))
     identifier = await pending(permanent)
     async with get_db_session():
         assert await answer_action(identifier, user_id=manager.id, approved=approved, remember=True)
-    assert (await client.get(f"/api/services/action-authorizations/{identifier}", headers=headers)).json()["remembered"] is True
+    detail = (await client.get(f"{approvals_path}/{identifier}", headers=headers)).json()
+    assert detail["remembered"] is True and detail["selected_option_id"] == ("allow_always" if approved else "deny_always")
     result = await client.get(path, headers=headers, params={"limit": 500})
     assert result.status_code == 200
     assert result.json()["total"] == 1

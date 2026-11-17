@@ -36,11 +36,13 @@ class ChoiceRequest(BaseModel):
     """Transport-independent choice request.
 
     ``free_text=True`` accepts free-form answers and makes options optional.
+    ``body_html`` is an optional editorial rendering for the native recipient.
     """
 
     kind: str
     title: str
     body: str = ""
+    body_html: str | None = None
     options: list[ChoiceOption] = Field(default_factory=lambda: [])
     free_text: bool = False
     interpretation_required: bool = False
@@ -90,6 +92,7 @@ _choice_privileges: dict[str, tuple[str, ...]] = {}
 _reminder_guards: dict[str, ReminderGuard] = {}
 _PROCESSING_TIMEOUT_SECONDS = 30
 _REFERENCE_RE = re.compile(r"#([A-F0-9]{8,12})\b", re.IGNORECASE)
+_BODY_HTML_KEY = "_body_html"
 _REMINDER_DELAYS_KEY = "_reminder_delays"
 _REMINDER_DUE_KEY = "_reminder_due"
 _REMINDER_PROMPT_KEY = "interaction_reminder_prompt"
@@ -104,6 +107,10 @@ def register_choice_handler(
     _choice_privileges[kind] = required_privileges
     if reminder_pending is not None:
         _reminder_guards[kind] = reminder_pending
+
+
+def choice_is_authorization(kind: str) -> bool:
+    return "PERMISSION_DECIDE" in _choice_privileges.get(kind, ())
 
 
 async def choice_authorized(kind: str, user_id: int | None, *, assigned: bool = False) -> bool:
@@ -255,8 +262,11 @@ async def create_choice(
 
     reference = uuid4().hex[:8].upper()
     metadata = dict(request.metadata)
+    metadata.pop(_BODY_HTML_KEY, None)
     metadata.pop(_REMINDER_DUE_KEY, None)
     metadata.pop(_REMINDER_DELAYS_KEY, None)
+    if request.body_html:
+        metadata[_BODY_HTML_KEY] = request.body_html
     metadata["interpretation_required"] = request.interpretation_required
     metadata["language"] = _language(request.language)
     if request.reminder_delays:
@@ -285,8 +295,15 @@ async def create_choice(
     return await _send_choice_prompt(messenger, record, request, reply_to=reply_to)
 
 
+def choice_body_html(record: Interaction) -> str | None:
+    """Return the optional editorial projection stored alongside the text body."""
+    value = (record.metadata_ or {}).get(_BODY_HTML_KEY)
+    return value if isinstance(value, str) else None
+
+
 def _choice_metadata(record: Interaction) -> dict[str, Any]:
     metadata = dict(record.metadata_ or {})
+    metadata.pop(_BODY_HTML_KEY, None)
     metadata.pop(_REMINDER_DUE_KEY, None)
     metadata.pop(_REMINDER_DELAYS_KEY, None)
     return metadata

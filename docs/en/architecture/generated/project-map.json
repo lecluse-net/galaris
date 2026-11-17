@@ -4366,6 +4366,7 @@
           "back/app/services/assertions.py",
           "back/app/services/authorization.py",
           "back/app/services/authorization_notifications.py",
+          "back/app/services/authorization_presentation.py",
           "back/app/services/authorization_router.py",
           "back/app/services/authorization_views.py",
           "back/app/services/catalog.py",
@@ -14750,7 +14751,7 @@
         "declared_path": "/action-authorizations",
         "file": "back/app/services/authorization_router.py",
         "handler": "list_requests",
-        "line": 39,
+        "line": 42,
         "method": "GET",
         "module": "app.services"
       },
@@ -14759,7 +14760,7 @@
         "declared_path": "/action-authorizations/runtime-permissions",
         "file": "back/app/services/authorization_router.py",
         "handler": "list_runtime_permissions",
-        "line": 68,
+        "line": 75,
         "method": "GET",
         "module": "app.services"
       },
@@ -14768,7 +14769,7 @@
         "declared_path": "/action-authorizations/runtime-permissions/{identifier}",
         "file": "back/app/services/authorization_router.py",
         "handler": "delete_runtime_permission",
-        "line": 77,
+        "line": 84,
         "method": "DELETE",
         "module": "app.services"
       },
@@ -14777,7 +14778,7 @@
         "declared_path": "/action-authorizations/runtime-policies",
         "file": "back/app/services/authorization_router.py",
         "handler": "read_runtime_policies",
-        "line": 87,
+        "line": 94,
         "method": "GET",
         "module": "app.services"
       },
@@ -14786,7 +14787,7 @@
         "declared_path": "/action-authorizations/runtime-policies",
         "file": "back/app/services/authorization_router.py",
         "handler": "update_runtime_policy",
-        "line": 104,
+        "line": 111,
         "method": "PUT",
         "module": "app.services"
       },
@@ -14795,7 +14796,7 @@
         "declared_path": "/action-authorizations/{identifier}",
         "file": "back/app/services/authorization_router.py",
         "handler": "get_request",
-        "line": 124,
+        "line": 131,
         "method": "GET",
         "module": "app.services"
       },
@@ -14804,7 +14805,7 @@
         "declared_path": "/action-authorizations/{identifier}/answer",
         "file": "back/app/services/authorization_router.py",
         "handler": "answer_request",
-        "line": 154,
+        "line": 165,
         "method": "POST",
         "module": "app.services"
       },
@@ -14813,7 +14814,7 @@
         "declared_path": "/action-authorizations/{identifier}/cancel",
         "file": "back/app/services/authorization_router.py",
         "handler": "cancel_request",
-        "line": 166,
+        "line": 177,
         "method": "POST",
         "module": "app.services"
       },
@@ -22414,6 +22415,7 @@
           "front/app/chat/components/ConversationProcessDialog.vue",
           "front/app/chat/components/ConversationProcessesPanel.vue",
           "front/app/chat/components/DocumentConversationPanel.vue",
+          "front/app/chat/components/InteractionChoice.vue",
           "front/app/chat/components/MarkdownAttachmentPreview.vue",
           "front/app/chat/components/MessageResourcePreviews.vue",
           "front/app/chat/components/MessageTimeline.vue",

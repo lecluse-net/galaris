@@ -2,7 +2,18 @@
 
 default: dict[str, object] = {
     "browser": {
-        "permission_question": "Autoriser le navigateur de cet agent à effectuer un accès ${action} vers ${origin} ? Cette décision couvre tous les chemins de cette destination et sera mémorisée pour cet agent.",
+        "permission_question": "Autoriser le navigateur de cet agent à ${action} sur ${origin} ? La décision est mémorisée pour ce type de requête et couvre tous les chemins de cette destination.",
+        "permission_local_question": "Autoriser le navigateur de cet agent à accéder à ${origin} sur le réseau local ? La décision couvre tous les chemins de cette destination pour cet agent.",
+        "permission_actions": {
+            "get": "lire des données (GET)",
+            "head": "vérifier les informations d’une ressource (HEAD)",
+            "options": "consulter les opérations prises en charge (OPTIONS)",
+            "post": "envoyer des données (POST)",
+            "put": "créer ou remplacer une ressource (PUT)",
+            "patch": "modifier une partie d’une ressource (PATCH)",
+            "delete": "demander la suppression d’une ressource (DELETE)",
+            "websocket": "ouvrir une connexion WebSocket",
+        },
         "all_sites_permission_question": "Toujours autoriser le navigateur de cet agent à accéder à tous les sites sans nouvelle demande d’autorisation de site ? Cela couvre tous les domaines, protocoles, ports, chemins, méthodes HTTP configurées et WebSocket. Les filtres réseau, les refus explicites et les permissions distinctes du réseau local restent applicables. Révoquez cet accord dans les permissions mémorisées.",
         "errors": {
             "invalid_url": "L’URL est invalide. Utilisez une URL HTTP(S) sans identifiants intégrés.",

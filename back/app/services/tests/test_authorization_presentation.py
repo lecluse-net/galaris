@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.services.authorization_presentation import notification_body, present_action
+from app.services.authorization_presentation import notification_content, present_action
 
 
 @pytest.mark.parametrize("language,title,to_label", [("fr", "Envoyer un e-mail", "Destinataires"),
@@ -17,7 +17,8 @@ def test_mail_review_uses_frozen_recipients_content_and_attachments(language, ti
     presentation = present_action(name="mail_send", source="domain", arguments=arguments, language=language)
     assert presentation["title"] == title
     assert presentation["fields"][0] == {"label": to_label, "value": "recipient@example.test"}
-    body = notification_body(presentation, language=language)
+    body, body_html = notification_content(presentation, language=language)
+    assert body_html is None
     for expected in ("copy@example.test", "hidden@example.test", "Synthetic greeting", "Have a good day.", "greeting.txt"):
         assert expected in body
     for technical in ("Original draft", "Old text", "original@example.test", "synthetic-key", "synthetic-delivery", "synthetic-mime", "synthetic-hash"):
@@ -42,8 +43,45 @@ def test_markup_is_inert_and_shortened_notifications_are_explicit():
     presentation = present_action(name="external_action", source="mcp", arguments={
         "content": '<img src="https://example.test/track">\n[Approve](https://example.test)\n```html\n<script>alert(1)</script>\n```',
     }, language="en")
-    body = notification_body(presentation, language="en")
+    body, body_html = notification_content(presentation, language="en")
+    assert body_html is None
     assert "<img" not in body and "<script" not in body and "[Approve](" not in body and "```" not in body
     presentation["fields"][0]["value"] = "x" * 7000
-    assert "Shortened preview" in notification_body(presentation, language="en")
+    shortened, body_html = notification_content(presentation, language="en")
+    assert "Shortened preview" in shortened
+    assert body_html is None
     assert len(presentation["fields"][0]["value"]) == 7000
+
+
+def test_goal_notification_keeps_editorial_structure_and_a_readable_text_fallback():
+    presentation = present_action(name="goal_create", source="mcp", language="fr", html_field="description", arguments={
+        "title": "Bilan <2026>", "description": "<h2>Étapes</h2><ol><li>Relire le <strong>bilan</strong></li></ol>",
+    })
+    body, body_html = notification_content(presentation, language="fr", scope="Portée de la décision.")
+    assert "Relire le bilan" in body and "<h2>" not in body
+    assert body_html is not None and "<strong>bilan</strong>" in body_html
+    assert "Bilan &lt;2026&gt;" in body_html and "Portée de la décision." in body_html
+    presentation["fields"][1]["value"] = "<p>" + "x" * 7000 + "</p>"
+    shortened, body_html = notification_content(presentation, language="fr")
+    assert "Aperçu abrégé" in shortened and body_html is None
+
+
+def test_invalid_goal_markup_stays_literal_in_the_notification():
+    presentation = present_action(name="goal_update", source="mcp", language="en", html_field="description", arguments={
+        "description": "<script>synthetic review script</script><p>Proposed description</p>",
+    })
+    body, body_html = notification_content(presentation, language="en")
+    assert "&lt;script&gt;" in body
+    assert body_html is None
+
+
+def test_codex_review_explains_the_real_command_without_showing_the_transport_envelope():
+    presentation = present_action(
+        name="item/commandExecution/requestApproval", source="runtime", runtime="codex", language="fr",
+        arguments={"request": {"cwd": "/synthetic"}, "item": {"command": "echo synthetic", "status": "waiting"}},
+    )
+    assert presentation["title"] == "Exécuter une commande avec Codex"
+    assert presentation["fields"] == [
+        {"label": "Commande", "value": "echo synthetic"},
+        {"label": "Dossier de travail", "value": "/synthetic"},
+    ]

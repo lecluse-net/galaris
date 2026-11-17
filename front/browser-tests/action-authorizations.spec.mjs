@@ -1,5 +1,37 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 
+test('goal approval renders editorial HTML and preserves literal parameters', async ({ page }, testInfo) => {
+  const row = { id: 'goal-review', agent_id: 7, approver_user_id: 1, source: 'mcp',
+    capability_kind: 'tool', capability_name: 'goal_create', status: 'pending', can_answer: true,
+    preview: 'Goal management: goal_create', title: 'Créer un objectif', arguments: { title: 'Bilan <2026>' },
+    presentation: { title: 'Créer un objectif', explanation: 'Si l’objectif est actif, son premier cycle sera planifié dès sa création.', fields: [
+      { label: 'Titre', value: 'Bilan <2026>' },
+      { label: 'Description', format: 'html',
+        value: '<h2>Livrables proposés</h2><ol><li>Rédiger le bilan</li></ol><script>synthetic review script</script>' },
+    ] } }
+  await jsonRoute(page, '**/api/services/action-authorizations?*', { items: [row], total: 1 })
+  await jsonRoute(page, '**/api/services/action-authorizations/goal-review', row)
+  await mount(page, 'app/connection/components/ActionAuthorizations.vue', {
+    shell: true, locale: 'fr', privileges: ['PERMISSION_ACCESS', 'PERMISSION_DECIDE'],
+  })
+  for (const [width, dark] of [[1440, false], [390, true]]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.evaluate(value => window.testApp.dark(value), dark)
+    await expect(page.getByText(row.title, { exact: true })).toBeVisible()
+    await expect(page.getByText(row.preview, { exact: true })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Examiner la demande' }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByRole('heading', { name: 'Livrables proposés' })).toBeVisible()
+    await expect(dialog.getByText(row.presentation.explanation, { exact: true })).toBeVisible()
+    await expect(dialog.getByRole('listitem').filter({ hasText: 'Rédiger le bilan' })).toBeVisible()
+    await expect(dialog.getByText('Bilan <2026>', { exact: true })).toBeVisible()
+    await expect(dialog.locator('script')).toHaveCount(0)
+    await dialog.screenshot({ path: testInfo.outputPath('goal-review-' + width + '.png'), animations: 'disabled' })
+    await dialog.getByRole('button', { name: 'Annuler', exact: true }).first().click()
+    await expect(dialog).toHaveCount(0)
+  }
+})
+
 for (const width of [390, 1440]) {
   test(`mail approval preserves review content and exposes technical details on demand at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 })
@@ -55,7 +87,7 @@ for (const [locale, reviewName, allowName] of [
     await page.route('**/api/services/action-authorizations/action-a', route => route.fulfill({ json: row }))
     await page.route('**/api/services/action-authorizations/action-a/answer', route => {
       answers.push(route.request().postDataJSON())
-      row.status = 'approved'; row.can_answer = false; row.decision_source = 'human'
+      row.status = 'approved'; row.can_answer = false; row.decision_source = 'human'; row.selected_option_id = 'allow'
       return route.fulfill({ json: { accepted: true } })
     })
     await mount(page, 'app/connection/components/ActionAuthorizations.vue', {
@@ -69,6 +101,7 @@ for (const [locale, reviewName, allowName] of [
     await expect.poll(() => answers).toEqual([{ approved: true }])
     await expect(page.getByRole('dialog').getByRole('button', { name: allowName, exact: true })).toBeDisabled()
     await expect(page.getByRole('dialog').getByRole('button', { name: allowName, exact: true })).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('dialog').getByRole('group').getByRole('button')).toHaveCount(1)
     await page.locator('.q-dialog__backdrop').click({ position: { x: 2, y: 2 } })
     await page.getByRole('button', { name: reviewName, exact: true }).click()
     await expect(page.getByRole('dialog')).toContainText('console://example.txt')
@@ -102,6 +135,12 @@ for (const [locale, inspect, functionAlways, runtimeAlways, functionDeny, runtim
     const row = { id: 'topic-approval', agent_id: 7, approver_user_id: 1, source, runtime: 'hermes',
       capability_kind: 'tool', capability_name: 'topic_create', status: 'pending',
       preview: 'Create a synthetic topic', can_answer: true, can_remember: true }
+    const scope = {
+      en: source === 'runtime' ? 'A permanent choice applies to future operations of this type with Hermès.' : 'A permanent choice applies to future calls on this connection.',
+      fr: source === 'runtime' ? 'Un choix permanent s’applique aux futures opérations de ce type avec Hermès.' : 'Un choix permanent s’applique aux futurs appels sur cette connexion.',
+      zh: source === 'runtime' ? '永久决定适用于今后使用 Hermès 执行的同类操作。' : '永久决定适用于在此连接上的未来调用。',
+    }[locale]
+    row.decision_scope = scope
     const answers = []
     await jsonRoute(page, '**/api/services/action-authorizations?*', { items: [row], total: 1 })
     await page.route('**/api/services/action-authorizations/topic-approval', route => route.fulfill({ json: row }))
@@ -109,6 +148,8 @@ for (const [locale, inspect, functionAlways, runtimeAlways, functionDeny, runtim
       answers.push(route.request().postDataJSON())
       if (answers.length === 1) return route.fulfill({ status: 409, json: { detail: 'Synthetic temporary failure' } })
       row.status = approved ? 'approved' : 'denied'; row.can_answer = false; row.can_remember = false; row.remembered = true
+      row.selected_option_id = approved ? 'allow_always' : 'deny_always'
+      delete row.decision_scope
       return route.fulfill({ json: { accepted: true } })
     })
     await mount(page, 'app/connection/components/ActionAuthorizations.vue', {
@@ -116,7 +157,7 @@ for (const [locale, inspect, functionAlways, runtimeAlways, functionDeny, runtim
     })
     await page.getByRole('button', { name: inspect, exact: true }).click()
     await expect(page.getByRole('dialog')).toContainText('topic_create')
-    if (source === 'runtime') await expect(page.getByRole('dialog')).toContainText('hermes')
+    await expect(page.getByRole('dialog').getByText(scope, { exact: true })).toBeVisible()
     await testInfo.attach(`${source}-${locale}`, { body: await page.getByRole('dialog').screenshot({ animations: 'disabled' }), contentType: 'image/png' })
     const button = page.getByRole('dialog').getByRole('button', { name: always, exact: true })
     await button.focus()
@@ -126,10 +167,12 @@ for (const [locale, inspect, functionAlways, runtimeAlways, functionDeny, runtim
     await expect.poll(() => answers).toEqual([{ approved, remember: true }, { approved, remember: true }])
     await expect(button).toBeDisabled()
     await expect(button).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('dialog').getByRole('group').getByRole('button')).toHaveCount(1)
     await page.keyboard.press('Escape')
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await page.getByRole('button', { name: inspect, exact: true }).click()
     await expect(button).toHaveAttribute('aria-pressed', 'true')
+    await expect(page.getByRole('dialog').getByRole('group').getByRole('button')).toHaveCount(1)
   })
   }
   }

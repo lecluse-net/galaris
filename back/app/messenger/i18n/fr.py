@@ -2,6 +2,14 @@
 
 default: dict[str, object] = {
     "messenger_contact_approval": {
+        "first_name": "Prénom",
+        "last_name": "Nom",
+        "username": "Nom d’utilisateur",
+        "language_code": "Langue du profil",
+        "is_bot": "Compte automatisé",
+        "is_premium": "Compte Premium",
+        "yes": "Oui",
+        "no": "Non",
         "question": "Autorisez-vous ${agent} à répondre à cette personne sur ${channel} ?\n\nNom : ${name}\nIdentifiant : ${identifier}\n${details}\n\nL’accord concerne cette personne sur cette connexion. Il ne crée pas de compte Galaris et ne partage aucune ressource.",
     },
     "permissions": {
@@ -14,8 +22,8 @@ default: dict[str, object] = {
         "deny_function": "Toujours interdire cette fonction",
         "deny_runtime_action": "Toujours interdire ce type d’action",
         "allow_runtime_action": "Toujours autoriser ce type d’action",
-        "runtime_scope": "Le choix permanent autorise ou interdit ${function} pour cet agent avec le harnais ${runtime}, quels que soient ses paramètres, dans les tâches futures aussi. Les autres types d’action restent soumis à autorisation. Retirez cette décision dans Permissions ; un changement de harnais, de configuration ou de responsable exige une nouvelle décision.",
-        "function_scope": "Le choix permanent autorise ou interdit ${function} pour cet agent sur cette connexion, quels que soient ses paramètres. Vous pouvez retirer cette décision dans Permissions ou les autorisations des fonctions de la connexion.",
+        "runtime_scope": "« Autoriser cette action » vaut pour cette opération. Un choix permanent s’applique aux futures opérations de ce même type pour cet agent avec ${runtime}, quels que soient leurs paramètres. La décision peut être retirée dans Permissions.",
+        "function_scope": "« Autoriser cette action » vaut pour cet appel. Un choix permanent s’applique aux futurs appels de cette fonction par cet agent sur cette connexion, quels que soient leurs paramètres. La décision peut être retirée dans Permissions.",
         "allow_all_sites": "Toujours autoriser tous les sites",
         "deny_all_sites": "Toujours interdire tous les sites",
     },
