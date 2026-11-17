@@ -98,6 +98,10 @@ the `solaire-warning-action` class. It complements the 33 base shades without ch
 their accents or other `warning` buttons. Dark mode keeps its existing color.
 The graphic reference's Actions section displays this button.
 
+In light mode, the ChatGPT subscription notice uses dark yellow text `#786700`
+(`--solaire-yellow-text`), with a 5.15:1 contrast ratio against the light yellow background.
+In dark mode, the notice text uses the vivid yellow accent.
+
 ### Permission actions
 
 The Permissions page shares one presentation across toggles, badges and counters:

@@ -9,7 +9,7 @@
           role="group" :aria-label="`${t('agenda.create')} · ${label(day, { dateStyle: 'full' })}`" :tabindex="canCreate ? 0 : undefined"
           @click="createDay($event, day)" @keydown.enter.self.prevent="createDay($event, day)" @keydown.space.self.prevent="createDay($event, day)"
           @dragover.prevent @drop.prevent="drop($event, day)">
-          <div class="day-heading"><q-btn outline  round dense color="primary" :label="String(Number(day.slice(8)))" :aria-label="label(day, { dateStyle: 'full' })" @click.stop="emit('day', day)" /></div>
+          <div class="day-heading"><q-btn flat round dense color="primary" :label="String(Number(day.slice(8)))" :aria-label="label(day, { dateStyle: 'full' })" @click.stop="emit('day', day)" /></div>
           <div class="month-events"><CalendarEventChip v-for="event in byDay(day).slice(0, MONTH_VISIBLE_EVENTS)" :key="occurrenceKey(event)" v-bind="chipProps(event)" compact @open="emit('open', $event)" />
             <q-btn v-if="byDay(day).length > MONTH_VISIBLE_EVENTS" outline dense no-caps color="primary" :label="t('agenda.more', { count: byDay(day).length - MONTH_VISIBLE_EVENTS })" @click.stop="emit('day', day)" /></div>
         </div>
@@ -134,6 +134,7 @@ onBeforeUnmount(() => { clearInterval(clock); cancelSelection(); window.removeEv
 .outside-month { background: var(--solaire-gray-light); }
 .body--dark .outside-month { background: var(--solaire-gray-dark); }
 .day-heading { display: flex; justify-content: space-between; align-items: center; }
+.day-heading .q-btn { min-height: 20px; min-width: 20px; line-height: 1; }
 .is-today { background: var(--solaire-blue-light); }
 .body--dark .is-today { background: var(--solaire-blue-dark); }
 .month-events, .schedule-events { display: grid; gap: 3px; }
@@ -163,6 +164,6 @@ onBeforeUnmount(() => { clearInterval(clock); cancelSelection(); window.removeEv
 .schedule-date { width: 105px; flex-shrink: 0; }
 .schedule-events { flex: 1; min-width: 0; }
 .empty-schedule { text-align: center; padding: 64px 12px; color: var(--solaire-gray-accent); }
-@media (max-width: 1023px) { .month-cell { min-height: 100px; } .month-events { gap: 2px; } .day-heading .q-btn { min-height: 26px; min-width: 26px; font-size: 12px; } .schedule-day { gap: 8px; padding: 8px; } .schedule-date { width: 76px; } }
+@media (max-width: 1023px) { .month-cell { min-height: 100px; } .month-events { gap: 2px; } .day-heading .q-btn { font-size: 12px; } .schedule-day { gap: 8px; padding: 8px; } .schedule-date { width: 76px; } }
 @media (max-width: 599px) { .month-cell { padding: 1px; } .month-events :deep(.event-time) { display: none; } .month-events :deep(.event-heading) { font-size: 10px; } .month-events :deep(.event-status) { gap: 2px; } }
 </style>

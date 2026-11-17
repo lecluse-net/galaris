@@ -99,6 +99,10 @@ et appliqué par la classe `solaire-warning-action`. Il complète les 33 nuances
 sans changer leurs accents ni les autres boutons `warning`. Le mode sombre conserve
 sa couleur habituelle. La section Actions de la référence graphique montre ce bouton.
 
+En thème clair, l’avertissement de l’abonnement ChatGPT utilise le texte jaune foncé
+`#786700` (`--solaire-yellow-text`), avec un contraste de 5,15:1 sur le fond jaune clair.
+En thème sombre, le texte de l’avertissement utilise l’accent jaune vif.
+
 ### Actions d’autorisation
 
 La page Permissions partage une même présentation pour ses bascules, badges et compteurs :

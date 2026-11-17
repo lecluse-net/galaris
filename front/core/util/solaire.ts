@@ -19,6 +19,8 @@ export const solaireColors = Object.keys(solaire) as SolaireColor[]
 /** Readable orange foreground for action labels on light surfaces. */
 export const solaireWarningActionText = '#A35F00'
 
+const solaireYellowText = '#786700'
+
 type SolaireVariants = Record<keyof typeof solaire.blue, string>
 
 /** CSS references for live UI colours; literal values above are for exports. */
@@ -31,7 +33,7 @@ export const solaireCss = Object.fromEntries(solaireColors.map(color => [color, 
 /** Generated from the same source for the application and standalone documents. */
 export const solaireStyles = `:root {\n${solaireColors.flatMap(color => (
   Object.entries(solaire[color]).map(([variant, value]) => `  --solaire-${color}-${variant}: ${value};`)
-)).join('\n')}\n  --solaire-warning-action-text: ${solaireWarningActionText};\n}`
+)).join('\n')}\n  --solaire-warning-action-text: ${solaireWarningActionText};\n  --solaire-yellow-text: ${solaireYellowText};\n}`
   + solaireColors.map(color => `
 .text-solaire-${color} { color: var(--solaire-${color}-accent) !important; }
 .bg-solaire-${color} { background: var(--solaire-${color}-accent) !important; }

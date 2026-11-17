@@ -29,7 +29,7 @@
           <q-banner
             v-if="isChatGptSubscription"
             rounded
-            class="bg-solaire-yellow-light text-solaire-yellow"
+            class="subscription-policy bg-solaire-yellow-light"
           >
             <template #avatar><q-icon name="policy" color="solaire-yellow" /></template>
             <div class="text-weight-bold">{{ t('llm.chatGptPolicyTitle') }}</div>
@@ -41,7 +41,6 @@
                 href="https://openai.com/policies/terms-of-use/"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="text-primary"
               >
                 {{ t('llm.chatGptTermsLink') }}
                 <q-icon name="open_in_new" size="14px" />
@@ -590,6 +589,22 @@ watch(
 
 .provider-guide {
   font-size: 0.82rem;
+}
+
+.subscription-policy {
+  color: var(--solaire-yellow-text);
+}
+
+.subscription-policy a {
+  color: inherit;
+}
+
+body.body--dark .subscription-policy {
+  color: var(--solaire-yellow-accent);
+}
+
+body.body--dark .subscription-policy a {
+  color: var(--q-primary);
 }
 
 .provider-credentials {

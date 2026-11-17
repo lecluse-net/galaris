@@ -97,8 +97,7 @@
                 :key="identity.id"
                 dense
                 :icon="identity.kind === 'galaris_user' ? 'person' : 'alternate_email'"
-                :color="identity.kind === 'galaris_user' ? 'solaire-blue' : 'solaire-gray'"
-                text-color="solaire-gray"
+                :color="identity.kind === 'galaris_user' ? 'solaire-blue-light' : 'solaire-gray-light'"
               >
                 {{ identityLabel(identity) }}
                 <q-tooltip v-if="identity.display_name">{{ identity.display_name }}</q-tooltip>
@@ -110,9 +109,9 @@
 
         <template #body-cell-memory="props">
           <q-td :props="props">
-            <q-btn outline
+            <q-btn
               v-if="canViewMemories"
-
+              flat
               dense
               color="primary"
               icon="memory"
@@ -165,13 +164,14 @@
                       :key="identity.id"
                       dense
                       :icon="identity.kind === 'galaris_user' ? 'person' : 'alternate_email'"
+                      :color="identity.kind === 'galaris_user' ? 'solaire-blue-light' : 'solaire-gray-light'"
                     >
                       {{ identityLabel(identity) }}
                     </q-chip>
                   </div>
-                  <q-btn outline
+                  <q-btn
                     v-if="canViewMemories"
-
+                    flat
                     dense
                     color="primary"
                     icon="memory"
