@@ -15,9 +15,13 @@
       </div>
       <div class="active-task-time">{{ timestamp }}</div>
       <div class="active-task-agent">
-        <q-avatar size="24px" color="grey-3" text-color="grey-7" class="active-task-agent-avatar">
-          <img v-if="agentAvatarUrl" :src="agentAvatarUrl" alt="" />
-          <q-icon v-else name="person" size="16px" />
+        <AgentAvatar v-if="task.agent_id != null" :agent-id="task.agent_id" :name="agentName"
+          :has-avatar="agentOption?.has_avatar" :updated-at="agentOption?.updated_at"
+          size="24px" color="grey-3" text-color="grey-7" class="active-task-agent-avatar">
+          <template #fallback><q-icon name="person" size="16px" /></template>
+        </AgentAvatar>
+        <q-avatar v-else size="24px" color="grey-3" text-color="grey-7" class="active-task-agent-avatar">
+          <q-icon name="person" size="16px" />
         </q-avatar>
         <span class="active-task-agent-name">{{ agentName }}</span>
       </div>
@@ -54,8 +58,7 @@
       v-for="child in childNodes"
       :key="child.id"
       :task="child"
-      :avatar-urls="avatarUrls"
-      :agent-labels="agentLabels"
+      :agents="agents"
       :topic-titles="topicTitles"
       :children-map="childrenMap"
       :depth="(depth || 0) + 1"
@@ -67,6 +70,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { AgentAvatar, type AgentSelectionOption } from '@/app/agent'
 import { useAgentStore } from '@/app/agent/facade'
 import type { Task } from '../types'
 import TaskRowMenu from './TaskRowMenu.vue'
@@ -84,8 +88,7 @@ defineOptions({ name: 'ActiveTaskNode' })
 
 const props = defineProps<{
   task: Task
-  avatarUrls?: Record<number, string>
-  agentLabels?: Record<number, string>
+  agents?: Record<number, AgentSelectionOption>
   topicTitles?: Record<string, string>
   childrenMap?: Map<string, Task[]>
   depth?: number
@@ -139,15 +142,12 @@ const agent = computed(() => {
   if (props.task.agent_id == null) return null
   return agentStore.agents.find(e => e.id === props.task.agent_id) ?? null
 })
+const agentOption = computed(() => props.task.agent_id == null ? undefined : props.agents?.[props.task.agent_id])
 const agentName = computed(() => {
   if (props.task.agent_id == null) return t('task.list.noAgent')
-  if (props.agentLabels?.[props.task.agent_id]) return props.agentLabels[props.task.agent_id]!
+  if (agentOption.value) return agentOption.value.label
   if (!agent.value) return t('task.list.agentId', { id: props.task.agent_id })
   return `${agent.value.first_name} ${agent.value.last_name}`.trim()
-})
-const agentAvatarUrl = computed(() => {
-  if (props.task.agent_id == null) return undefined
-  return props.avatarUrls?.[props.task.agent_id]
 })
 const descriptionText = computed(() => {
   const detail = richTextExcerpt(props.task.objective || '')

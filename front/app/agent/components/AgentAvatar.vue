@@ -6,15 +6,15 @@
     :title="displayName"
     :class="{ 'agent-avatar-fallback': !avatarUrl && !color }"
   >
-    <img v-if="avatarUrl" :src="avatarUrl" :alt="displayName" />
-    <span v-else class="text-weight-medium">{{ initials }}</span>
+    <img v-if="avatarUrl" :key="avatarUrl" :src="avatarUrl" :alt="displayName" @error="imageFailed" />
+    <slot v-else name="fallback"><span class="text-weight-medium">{{ initials }}</span></slot>
   </q-avatar>
 </template>
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
-import { onSessionReadInvalidation } from '@/core/util/facade'
+import { sessionGeneration } from '@/core/api'
+import { onReadSessionChanged, onSessionReadInvalidation } from '@/core/util/facade'
 import { useAgentStore } from '../stores/agentStore'
 import { agentService } from '../services/agentService'
 
@@ -24,7 +24,8 @@ const {
   size = '36px',
   color,
   textColor,
-  hasAvatar,
+  hasAvatar = undefined,
+  updatedAt,
 } = defineProps<{
   agentId: number
   name?: string
@@ -32,6 +33,7 @@ const {
   color?: string
   textColor?: string
   hasAvatar?: boolean
+  updatedAt?: string | null
 }>()
 
 const agentStore = useAgentStore()
@@ -53,44 +55,56 @@ const initials = computed(() => {
 })
 
 const available = computed(() => hasAvatar ?? agent.value?.has_avatar)
+const revision = computed(() => updatedAt ?? agent.value?.updated_at)
+let session: string | null = sessionGeneration()
 watch(
-  () => [agentId, hasAvatar ?? agent.value?.has_avatar, agent.value?.updated_at] as const,
+  [() => agentId, available, revision],
   () => { void loadAvatar() },
   { immediate: true },
 )
 
 function clear(): void {
   request?.abort()
+  request = undefined
   if (avatarUrl.value) URL.revokeObjectURL(avatarUrl.value)
   avatarUrl.value = ''
 }
 
-async function loadAvatar(): Promise<void> {
+function imageFailed(event: Event): void {
+  if ((event.currentTarget as HTMLImageElement).src === avatarUrl.value) clear()
+}
+
+async function loadAvatar(refresh = false): Promise<void> {
   clear()
-  if (!available.value) return
+  if (session === null || !Number.isInteger(agentId) || agentId <= 0) return
+  if (!refresh && available.value === false) return
   const current = new AbortController()
   request = current
   try {
-    const url = await agentService.getAvatarBlobUrl(agentId, current.signal, agent.value?.updated_at)
-    if (current.signal.aborted) URL.revokeObjectURL(url)
-    else avatarUrl.value = url
+    const url = await agentService.getAvatarBlobUrl(agentId, current.signal, revision.value)
+    if (current.signal.aborted) {
+      if (url) URL.revokeObjectURL(url)
+    } else {
+      avatarUrl.value = url
+    }
   } catch {
     // Initials remain the stable fallback when an avatar cannot be loaded.
   }
 }
 
 const unsubscribe = onSessionReadInvalidation('agent-avatar', key => {
-  if (key === undefined || key === String(agentId)) void loadAvatar()
+  if (key === undefined || key === String(agentId)) void loadAvatar(key !== undefined)
 })
-function onSessionChanged(event: Event): void {
-  clear()
-  if ((event as CustomEvent<string | null>).detail) void loadAvatar()
-}
-window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, onSessionChanged)
+const unsubscribeSession = onReadSessionChanged(authenticated => {
+  const next = authenticated ? sessionGeneration() : null
+  if (next === session) return
+  session = next
+  void loadAvatar()
+})
 onBeforeUnmount(() => {
   clear()
   unsubscribe()
-  window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, onSessionChanged)
+  unsubscribeSession()
 })
 </script>
 

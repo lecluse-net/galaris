@@ -23,10 +23,11 @@
                         <div class="row items-center q-gutter-x-sm">
                             <span>{{ task.label }}</span>
                             <div v-if="task.agent_id != null" class="task-header-agent">
-                                <q-avatar size="24px" color="white" text-color="grey-7">
-                                    <img v-if="assignedAgentAvatarUrl" :src="assignedAgentAvatarUrl" alt="" />
-                                    <q-icon v-else name="person" size="16px" />
-                                </q-avatar>
+                                <AgentAvatar :agent-id="task.agent_id" :name="assignedAgentName"
+                                    :has-avatar="currentTaskAgent?.has_avatar" :updated-at="currentTaskAgent?.updated_at"
+                                    size="24px" color="white" text-color="grey-7">
+                                    <template #fallback><q-icon name="person" size="16px" /></template>
+                                </AgentAvatar>
                                 <span class="task-header-agent-name">{{ assignedAgentName }}</span>
                                 <q-tooltip>{{ $t('task.detail.assignedAgent') }}</q-tooltip>
                             </div>
@@ -248,9 +249,13 @@
                     <q-card-section class="q-py-sm">
                         <div class="task-metadata">
                             <div class="task-metadata-item">
-                                <q-avatar size="32px" color="grey-3" text-color="grey-7" class="task-metadata-avatar">
-                                    <img v-if="requesterAgentAvatarUrl" :src="requesterAgentAvatarUrl" alt="" />
-                                    <q-icon v-else name="person_add" size="20px" />
+                                <AgentAvatar v-if="task.requester_agent_id != null" :agent-id="task.requester_agent_id"
+                                    :name="requesterName" :has-avatar="requesterAgent?.has_avatar" :updated-at="requesterAgent?.updated_at"
+                                    size="32px" color="grey-3" text-color="grey-7" class="task-metadata-avatar">
+                                    <template #fallback><q-icon name="person_add" size="20px" /></template>
+                                </AgentAvatar>
+                                <q-avatar v-else size="32px" color="grey-3" text-color="grey-7" class="task-metadata-avatar">
+                                    <q-icon name="person_add" size="20px" />
                                 </q-avatar>
                                 <div>
                                     <div class="task-metadata-label">{{ $t('task.detail.requesterAgent') }}</div>
@@ -461,7 +466,7 @@
 <script setup lang="ts">
 import { ResourceReferenceMenu, showConfirmationDialog } from '@/core/util'
 import { EditorialContent, richTextExcerpt } from '@/core/util'
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useInterval, useQuasar } from 'quasar'
 import type { AIResult, Task, TaskContextCapsule, TaskContextKind, TaskFull } from '../types'
 import { taskService } from '../services/taskService'
@@ -479,6 +484,7 @@ import { usePrivilegeStore } from '@/core/authorize'
 import { privileges } from '@/core/authorize'
 import { useTaskStore } from '../stores/taskStore'
 import { useAgentStore } from '@/app/agent/facade'
+import { AgentAvatar } from '@/app/agent'
 import { agentService, type Agent } from '@/app/agent/facade'
 import { authService, type User } from '@/core/user/facade'
 import { useI18n } from 'vue-i18n'
@@ -845,7 +851,6 @@ const working = computed(() => Boolean(task.value && shouldAnimateTaskStatus({ .
 const currentTaskAgent = ref<Agent | null>(null)
 const requesterAgent = ref<Agent | null>(null)
 const creatorUser = ref<User | null>(null)
-const avatarUrls = reactive<Record<number, string>>({})
 const loading = ref(false)
 const error = ref<string | null>(null)
 let loadTaskRequest = 0
@@ -1032,19 +1037,12 @@ async function loadRelations(t: TaskFull | null): Promise<void> {
 }
 const requesterVisible = computed(() => Boolean(task.value?.requester_agent_id != null || task.value?.created_by != null))
 const assignedAgentName = computed(() => agentDisplayName(currentTaskAgent.value, task.value?.agent_id))
-const assignedAgentAvatarUrl = computed(() => agentAvatarUrl(currentTaskAgent.value))
 const requesterName = computed(() => {
     if (task.value?.requester_agent_id != null) {
         return agentDisplayName(requesterAgent.value, task.value.requester_agent_id)
     }
     return userDisplayName(creatorUser.value, task.value?.created_by)
 })
-const requesterAgentAvatarUrl = computed(() => agentAvatarUrl(requesterAgent.value))
-
-function agentAvatarUrl(agent: Agent | null): string | undefined {
-    if (!agent?.has_avatar) return undefined
-    return avatarUrls[agent.id]
-}
 
 function agentDisplayName(agent: Agent | null, fallbackId?: number | null): string {
     if (agent) {
@@ -1071,15 +1069,6 @@ async function resolveAgent(id: number | null | undefined, fallback?: Agent | nu
     } catch (err) {
         console.error('Failed to load task requester agent:', err)
         return null
-    }
-}
-
-async function loadAgentAvatar(agent: Agent | null): Promise<void> {
-    if (!agent?.has_avatar || avatarUrls[agent.id]) return
-    try {
-        avatarUrls[agent.id] = await agentService.getAvatarBlobUrl(agent.id)
-    } catch (err) {
-        console.error(`Failed to load avatar for agent ${agent.id}:`, err)
     }
 }
 
@@ -1120,14 +1109,13 @@ async function loadTask() {
         }
         task.value = mergedTask
         currentTaskAgent.value = agent || null
-        requesterAgent.value = await resolveAgent(mergedTask.requester_agent_id, agent || null)
-        creatorUser.value = mergedTask.requester_agent_id == null ? await resolveUser(mergedTask.created_by) : null
+        requesterAgent.value = null
+        creatorUser.value = null
+        const requester = await resolveAgent(mergedTask.requester_agent_id, agent || null)
+        const creator = mergedTask.requester_agent_id == null ? await resolveUser(mergedTask.created_by) : null
         if (request !== loadTaskRequest || props.taskId !== taskId) return
-        await Promise.all([
-            loadAgentAvatar(currentTaskAgent.value),
-            loadAgentAvatar(requesterAgent.value)
-        ])
-        if (request !== loadTaskRequest || props.taskId !== taskId) return
+        requesterAgent.value = requester
+        creatorUser.value = creator
         void loadRelations(mergedTask)
     } catch (err) {
         if (request !== loadTaskRequest || props.taskId !== taskId) return

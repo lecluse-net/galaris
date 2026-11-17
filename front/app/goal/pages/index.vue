@@ -1121,8 +1121,8 @@ const categoryCreating = ref(false)
 let categoryRequest = 0
 const categoryOptions = computed(() => categories.value.map(category => ({ label: category.label, value: category.id })))
 const categoryFilterOptions = computed(() => [{ label: t('goal.categories.none'), value: 'none' }, ...categoryOptions.value])
-function hasAgentAvatar(id: number): boolean {
-  return selectableAgents.value.find(agent => agent.id === id)?.has_avatar ?? false
+function hasAgentAvatar(id: number): boolean | undefined {
+  return selectableAgents.value.find(agent => agent.id === id)?.has_avatar
 }
 function categoryLabel(goal: Goal): string {
   return categories.value.find(category => category.id === effectiveCategoryId(goal))?.label ?? ''

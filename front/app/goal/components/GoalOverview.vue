@@ -243,7 +243,7 @@ import type { Goal, GoalTreeNode, GoalStatus } from '../types'
 import { useGoalFormatting, statusColor } from '../presentation'
 const props = defineProps<{
   goal: Goal; parent: GoalTreeNode | null; children: (GoalTreeNode & { depth: number })[]
-  canEdit: boolean; commandPending: boolean; hasAvatar: boolean; parentTitle: string | null
+  canEdit: boolean; commandPending: boolean; hasAvatar?: boolean; parentTitle: string | null
   timezone?: string
 }>()
 const emit = defineEmits<{

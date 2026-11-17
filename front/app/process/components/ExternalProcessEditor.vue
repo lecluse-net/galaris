@@ -114,7 +114,9 @@ let generation = 0
 let confirmation: ReturnType<typeof showConfirmationDialog> | null = null
 
 function agentLabel(agentId: number | null): string { return agents.value.find(agent => agent.id === agentId)?.label ?? '—' }
-function agentHasAvatar(agentId: number): boolean { return agents.value.some(agent => agent.id === agentId && agent.has_avatar) }
+function agentHasAvatar(agentId: number): boolean | undefined {
+  return agents.value.find(agent => agent.id === agentId)?.has_avatar
+}
 function toolLabel(toolId: number | null): string { return processTools.value.find(tool => tool.id === toolId)?.label ?? '—' }
 function onWorkflowChanged(engineProcessId: string): void {
   const workflow = discovered.value.find(item => item.engine_process_id === engineProcessId)

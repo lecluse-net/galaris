@@ -72,8 +72,7 @@
           v-for="task in rootTasks"
           :key="task.id"
           :task="task"
-          :avatar-urls="avatarUrls"
-          :agent-labels="agentLabels"
+          :agents="agentsById"
           :topic-titles="topicTitles"
           :children-map="childrenByParent"
           :depth="0"
@@ -128,11 +127,9 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed, reactive, watch } from 'vue'
+import { onMounted, computed, watch } from 'vue'
 import { useTaskStore } from '../stores/taskStore'
-import { useAgentChoices } from '@/app/agent'
-import { agentService } from '@/app/agent/facade'
-import { AgentSelect } from '@/app/agent'
+import { AgentSelect, useAgentChoices } from '@/app/agent'
 import { ExecutionDateFilters } from '@/core/util'
 import ActiveTaskNode from './ActiveTaskNode.vue'
 import type { Task } from '../types'
@@ -143,7 +140,7 @@ defineEmits<{ select: [taskId: string] }>()
 
 const store = useTaskStore()
 const agentStore = useAgentChoices()
-const avatarUrls = reactive<Record<number, string>>({})
+const agentsById = computed(() => Object.fromEntries(agentStore.agents.map(agent => [agent.id, agent])))
 const { titles: topicTitles, resolveTopicRefs } = useTopicRefs()
 
 watch(
@@ -197,7 +194,6 @@ function buildRootTasks(tasks: Task[]): Task[] {
     .sort((left, right) => compareByDisplayedDate(left, right, -1))
 }
 
-const agentLabels = computed(() => Object.fromEntries(agentStore.agents.map(agent => [agent.id, agent.label])))
 const agentOptions = computed(() =>
   agentStore.agents.map(e => ({
     value: e.id,
@@ -249,21 +245,10 @@ function dateRangeChanged(): void {
   void store.fetchRecentTasks(0)
 }
 
-async function loadAvatars(): Promise<void> {
-  await Promise.all(agentStore.agents.map(async agent => {
-    if (!agent.has_avatar || avatarUrls[agent.id]) return
-    try {
-      avatarUrls[agent.id] = await agentService.getAvatarBlobUrl(agent.id)
-    } catch (error) {
-      console.error(`Failed to load avatar for agent ${agent.id}:`, error)
-    }
-  }))
-}
-
 onMounted(async () => {
-  await agentStore.fetchAgents()
-  await loadAvatars()
   void store.fetchRecentTasks(0)
+  try { await agentStore.fetchAgents() }
+  catch (error) { console.error('Could not load managed agent labels:', error) }
 })
 </script>
 

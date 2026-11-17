@@ -16,19 +16,29 @@ export function createSessionCatalogueCache<T>(group: string, maxAgeMs: number) 
   }
 }
 
-/** Cache authenticated image bytes; mounted consumers own and revoke their object URLs. */
-export function createSessionImageCache(group: string, maxAgeMs: number) {
-  const cache = createSessionReadCache<Blob>({
-    sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration, group,
-    maxAgeMs, maxEntries: 64, maxBytes: 16 * 1024 * 1024, size: blob => blob.size,
-  })
-  return {
-    read(path: string, signal: AbortSignal): Promise<Blob> {
-      return cache.read(path, sharedSignal => queuePreview(async () => (
-        await api.get<Blob>(path, { responseType: 'blob', signal: sharedSignal })
-      ).data, sharedSignal), signal)
-    },
+const imageCaches = new Map<string, ReturnType<typeof createSessionReadCache<Blob | null>>>()
+
+/** Share image bytes among readers of the same authorized endpoint. Callers own their object URLs. */
+export function readSessionImage(
+  group: string, key: string, path: string, signal?: AbortSignal, version?: string,
+): Promise<Blob | null> {
+  let cache = imageCaches.get(group)
+  if (!cache) {
+    cache = createSessionReadCache<Blob | null>({
+      sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration, group,
+      maxAgeMs: (_key, blob) => blob ? 300_000 : 60_000,
+      maxEntries: 64, maxBytes: 16 * 1024 * 1024, size: blob => blob?.size ?? 0,
+    })
+    imageCaches.set(group, cache)
   }
+  return cache.read(key, sharedSignal => queuePreview(async () => {
+    const { data, status } = await api.get<Blob>(path, {
+      responseType: 'blob',
+      signal: sharedSignal,
+      validateStatus: status => (status >= 200 && status < 300) || status === 404,
+    })
+    return status === 404 ? null : data
+  }, sharedSignal), signal, version)
 }
 
 export function onReadSessionChanged(listener: (authenticated: boolean) => void): () => void {

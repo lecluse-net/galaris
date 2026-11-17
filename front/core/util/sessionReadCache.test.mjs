@@ -51,6 +51,35 @@ test('one cancelled reader leaves transport alive; the last cancellation aborts 
   assert.equal(await cache.read('a', async () => 'new'), 'new')
 })
 
+test('unversioned readers share portraits while a newer revision supersedes pending old bytes', async () => {
+  const { createSessionReadCache } = sessionReadCache()
+  const cache = createSessionReadCache({ group: 'images', maxAgeMs: 60_000, maxEntries: 3 })
+  const response = deferred()
+  const first = cache.read('7', () => response.promise, undefined, 'one')
+  const unknown = cache.read('7', () => assert.fail('duplicate read'))
+  response.resolve('first portrait')
+  assert.deepEqual(await Promise.all([unknown, first]), ['first portrait', 'first portrait'])
+  assert.equal(await cache.read('7', () => assert.fail('duplicate read'), undefined, 'one'), 'first portrait')
+
+  const stale = deferred()
+  const old = cache.read('7', () => stale.promise, undefined, 'two')
+  const rejected = assert.rejects(old, { name: 'AbortError' })
+  await setImmediate()
+  assert.equal(await cache.read('7', async () => 'new portrait', undefined, 'three'), 'new portrait')
+  stale.resolve('old portrait')
+  await rejected
+  assert.equal(await cache.read('7', () => assert.fail('duplicate read')), 'new portrait')
+
+  const unversioned = deferred()
+  const pending = cache.read('8', () => unversioned.promise)
+  const superseded = assert.rejects(pending, { name: 'AbortError' })
+  await setImmediate()
+  assert.equal(await cache.read('8', async () => 'verified portrait', undefined, 'one'), 'verified portrait')
+  unversioned.resolve('unversioned portrait')
+  await superseded
+  assert.equal(await cache.read('8', () => assert.fail('duplicate read')), 'verified portrait')
+})
+
 test('session changes and mutations invalidate both endpoint caches and reject late responses', async () => {
   const window = new EventTarget()
   const { createSessionReadCache, invalidateSessionReads } = sessionReadCache(window)

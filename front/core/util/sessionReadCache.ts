@@ -24,7 +24,7 @@ interface CacheOptions<T> {
   sessionEvent: string
   sessionKey?: () => string
   group: string
-  maxAgeMs: number | ((key: string) => number)
+  maxAgeMs: number | ((key: string, value: T) => number)
   maxEntries: number
   maxBytes?: number
   size?: (value: T) => number
@@ -32,10 +32,16 @@ interface CacheOptions<T> {
 
 /** Bounded, session-local reads. Callers choose freshness and own mutable copies/URLs. */
 export function createSessionReadCache<T>(options: CacheOptions<T>): {
-  read: (key: string, load: (signal: AbortSignal) => Promise<T>, signal?: AbortSignal) => Promise<T>
+  read: (key: string, load: (signal: AbortSignal) => Promise<T>, signal?: AbortSignal, version?: string) => Promise<T>
 } {
-  const values = new Map<string, { value: T; expires: number; bytes: number }>()
-  const pending = new Map<string, { controller: AbortController; promise: Promise<T>; readers: number }>()
+  interface PendingRead {
+    controller: AbortController
+    promise: Promise<T>
+    readers: number
+    version?: string
+  }
+  const values = new Map<string, { value: T; expires: number; bytes: number; version?: string }>()
+  const pending = new Map<string, PendingRead>()
   let bytes = 0
   function remove(key: string): void {
     bytes -= values.get(key)?.bytes ?? 0
@@ -69,14 +75,14 @@ export function createSessionReadCache<T>(options: CacheOptions<T>): {
     })
     sessionEvents.add(options.sessionEvent)
   }
-  function remember(key: string, value: T): void {
+  function remember(key: string, value: T, version?: string): void {
     const size = options.size?.(value) ?? 1
     const limit = options.maxBytes ?? Infinity
-    const maxAgeMs = typeof options.maxAgeMs === 'function' ? options.maxAgeMs(key) : options.maxAgeMs
+    const maxAgeMs = typeof options.maxAgeMs === 'function' ? options.maxAgeMs(key, value) : options.maxAgeMs
     if (maxAgeMs <= 0 || size > limit) return
     for (const [id, entry] of values) if (entry.expires <= Date.now()) remove(id)
     remove(key)
-    values.set(key, { value, expires: Date.now() + maxAgeMs, bytes: size })
+    values.set(key, { value, expires: Date.now() + maxAgeMs, bytes: size, version })
     bytes += size
     while (values.size > options.maxEntries || bytes > limit) {
       const oldest = values.keys().next().value
@@ -85,11 +91,11 @@ export function createSessionReadCache<T>(options: CacheOptions<T>): {
     }
   }
   return {
-    async read(key, load, signal) {
+    async read(key, load, signal, version) {
       synchronizeSession()
       signal?.throwIfAborted()
       const cached = values.get(key)
-      if (cached && cached.expires > Date.now()) {
+      if (cached && cached.expires > Date.now() && (version === undefined || version === cached.version)) {
         await Promise.resolve()
         synchronizeSession()
         signal?.throwIfAborted()
@@ -100,6 +106,10 @@ export function createSessionReadCache<T>(options: CacheOptions<T>): {
       }
       remove(key)
       let request = pending.get(key)
+      if (request && version !== undefined && request.version !== version) {
+        clear(key)
+        request = undefined
+      }
       if (!request) {
         const controller = new AbortController()
         const promise = Promise.resolve().then(() => {
@@ -108,12 +118,12 @@ export function createSessionReadCache<T>(options: CacheOptions<T>): {
         }).then(value => {
           synchronizeSession()
           controller.signal.throwIfAborted()
-          remember(key, value)
+          remember(key, value, version)
           return value
         }).finally(() => {
           if (pending.get(key)?.controller === controller) pending.delete(key)
         })
-        request = { controller, promise, readers: 0 }
+        request = { controller, readers: 0, version, promise }
         pending.set(key, request)
       }
       const shared = request

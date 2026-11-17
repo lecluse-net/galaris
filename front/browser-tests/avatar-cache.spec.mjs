@@ -1,7 +1,77 @@
-import { test, expect, mount } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=', 'base64')
 const harness = 'test-support/browser/AgentAvatarHarness.vue'
+
+test('text and phone histories display and reuse portraits without the administration catalogue', async ({ page }, testInfo) => {
+  const date = '2026-01-01T12:00:00Z'
+  const agent = { agent_id: 7, agent_name: 'Test Agent', room_id: 'synthetic-room' }
+  const rows = (row) => Array.from({ length: 8 }, (_, index) => ({ ...agent, ...row, id: `synthetic-${index}` }))
+  await jsonRoute(page, '**/api/agents/selection?scope=management', [{ id: 7, label: 'Test Agent', has_avatar: true }])
+  await jsonRoute(page, '**/api/conversations/messages?*', {
+    items: rows({ created_at: date, channel_kind: 'telegram', payload: { text: 'Synthetic message' }, aggregated_message_count: 1 }),
+    page: 1, page_size: 50, total: 8, summary: { idle: 8, ready: 0, running: 0, errors: 0 },
+  })
+  await jsonRoute(page, '**/api/voice/conversations?*', {
+    items: rows({ started_at: date, duration: 5, transport_kind: 'sip', status: 'COMPLETED', turn_count: 0, turns: [] }),
+    page: 1, page_size: 50, total: 8, summary: { active: 0, completed: 8, cancelled: 0, errors: 0 },
+  })
+  let reads = 0
+  await page.route(/\/api\/agents\/7\/avatar(?:\?.*)?$/, route => {
+    reads++
+    return route.fulfill({ contentType: 'image/svg+xml',
+      body: '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect width="48" height="48" fill="#2364aa"/><circle cx="24" cy="16" r="8" fill="#fff"/><ellipse cx="24" cy="41" rx="15" ry="13" fill="#fff"/></svg>',
+    })
+  })
+  await mount(page, 'app/index/pages/task.vue', {
+    route: '/task', shell: true, privileges: ['CONVERSATION_ACCESS', 'VOICE_HISTORY_ACCESS'],
+  })
+  for (const [history, tab] of [['text', 'Text conversations'], ['phone', 'Phone calls'], ['reopened', 'Text conversations']]) {
+    const currentTab = page.getByRole('tab', { name: tab })
+    await currentTab.click()
+    await expect(currentTab).toHaveAttribute('aria-selected', 'true')
+    const searchLabel = history === 'phone' ? 'Search rooms and transcripts' : 'Search a message, conversation, or participant'
+    await expect(page.getByRole('textbox', { name: searchLabel, exact: true })).toBeVisible()
+    for (const [width, dark] of [[1440, false], [390, true]]) {
+      await page.setViewportSize({ width, height: 900 })
+      await page.evaluate(dark => window.testApp.dark(dark), dark)
+      const rows = width < 1024
+        ? page.locator(history === 'phone' ? '.voice-mobile-card' : '.conversation-mobile-card')
+        : page.getByRole('table')
+      const portraits = rows.getByRole('img', { name: 'Test Agent' })
+      await expect(portraits).toHaveCount(8)
+      await expect.poll(() => portraits.evaluateAll(images => images.map(image => image.naturalWidth))).toEqual(Array(8).fill(48))
+      await portraits.first().scrollIntoViewIfNeeded()
+      await page.screenshot({ path: testInfo.outputPath(`${history}-${width}.png`) })
+    }
+    expect(reads).toBe(1)
+  }
+})
+
+test('owner and activity avatars share missing results and see a newly uploaded portrait', async ({ page }) => {
+  let uploaded = false, reads = 0
+  await page.route(/\/api\/agents\/7\/avatar(?:\?.*)?$/, route => {
+    if (route.request().method() === 'POST') { uploaded = true; return route.fulfill({ status: 204 }) }
+    reads++
+    return uploaded ? route.fulfill({ contentType: 'image/png', body: png }) : route.fulfill({ status: 404 })
+  })
+  await mount(page, harness)
+  await expect.poll(() => reads).toBe(1)
+  await expect(page.locator('.management-avatars')).toHaveText('TATA')
+  await page.evaluate(() => window.testApp.mount({
+    component: 'app/share/components/OwnerAvatar.vue',
+    props: { owner: { kind: 'agent', id: 7, label: 'Test Agent' } },
+  }))
+  await expect(page.locator('.user-avatar')).toHaveText('TA')
+  await page.evaluate(async () => {
+    const { agentService } = await import('/app/agent/services/agentService.ts')
+    await agentService.uploadAvatar(7, new File(['synthetic'], 'avatar.png', { type: 'image/png' }))
+  })
+  await expect(page.getByRole('img', { name: 'Test Agent' })).toHaveJSProperty('naturalWidth', 1)
+  await page.evaluate(component => window.testApp.mount({ component }), harness)
+  await expect(page.getByRole('img', { name: 'Test Agent' })).toHaveCount(2)
+  expect(reads).toBe(2)
+})
 
 test('management avatars reuse cached bytes across mounts while each consumer owns its image URL', async ({ page }) => {
   await page.clock.install()
