@@ -20,6 +20,9 @@
     "package": "npm run build && electron-builder --config electron-builder.cjs --publish never",
     "pack": "npm run build && electron-builder --config electron-builder.cjs --dir --publish never"
   },
+  "overrides": {
+    "minimatch@>=7 <11.0.1": "11.0.9"
+  },
   "dependencies": { "electron-updater": "6.8.11" },
   "devDependencies": {
     "@playwright/test": "1.64.0",

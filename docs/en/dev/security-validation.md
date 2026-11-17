@@ -68,6 +68,23 @@ means that no vulnerabilities were found.
 
 ## Source and shipped-image checks
 
+Python lockfiles enforce `opentelemetry-api>=1.45.2` to fix
+[CVE-2026-126360](https://github.com/open-telemetry/opentelemetry-python/security/advisories/GHSA-mf5v-w3w3-f6cg).
+The resolver keeps compatible SDK and instrumentation versions together.
+Frontend and desktop projects override vulnerable `minimatch` series (7 through 10)
+with 11.0.9; the frontend also overrides `glob` 9 through 13 with 14.0.6.
+These overrides address [CVE-2026-118764](https://github.com/isaacs/minimatch/security/advisories/GHSA-g3hv-75wg-m249)
+and [CVE-2026-118773](https://github.com/isaacs/node-glob/security/advisories/GHSA-3g3m-2fjr-6pw4)
+while retaining older `minimatch` 3/5 and `glob` 7 consumers outside those advisories.
+Validation includes the PWA build, frontend lint/tests, desktop tests and packaging.
+Remove these overrides once parent dependencies naturally accept corrected versions.
+
+Advisory databases are not always synchronized. The npm check on November 17, 2026
+also reports [CVE-2026-112366 / picomatch](https://github.com/advisories/GHSA-fc5q-39xc-vjpf),
+absent from the initial Trivy report. The latest published version, 4.0.7, remains
+affected and the advisory lists no patched release. This finding remains open;
+it is neither excluded nor considered fixed by the updates above.
+
 `make security-check` exports Git-visible project files to a temporary directory,
 excluding live data, `.env`, external reference repositories and local environments.
 Trivy checks locked dependencies and secrets; Semgrep checks Python, JavaScript and

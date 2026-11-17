@@ -72,6 +72,24 @@ Une erreur de registre ne signifie jamais « aucune faille ».
 
 ## Contrôles des sources et images livrées
 
+Les verrous Python imposent `opentelemetry-api>=1.45.2` pour corriger
+[CVE-2026-126360](https://github.com/open-telemetry/opentelemetry-python/security/advisories/GHSA-mf5v-w3w3-f6cg).
+Le résolveur conserve les versions compatibles du SDK et des instrumentations associées.
+Les projets frontend et desktop remplacent les séries vulnérables de `minimatch`
+(7 à 10) par 11.0.9 ; le frontend remplace aussi `glob` 9 à 13 par 14.0.6.
+Ces overrides corrigent [CVE-2026-118764](https://github.com/isaacs/minimatch/security/advisories/GHSA-g3hv-75wg-m249)
+et [CVE-2026-118773](https://github.com/isaacs/node-glob/security/advisories/GHSA-3g3m-2fjr-6pw4)
+sans modifier les anciens consommateurs de `minimatch` 3/5 ou de `glob` 7, hors
+du périmètre de ces avis. Leur validation comprend le build PWA, le lint et les
+tests frontend, ainsi que les tests et le packaging desktop. Ils pourront être
+retirés lorsque les dépendances parentes acceptent naturellement les versions corrigées.
+
+Les bases d’avis ne sont pas toujours synchronisées. La vérification npm du
+17 novembre 2026 signale aussi [CVE-2026-112366 / picomatch](https://github.com/advisories/GHSA-fc5q-39xc-vjpf),
+absente du rapport Trivy initial. La dernière version publiée 4.0.7 reste concernée
+et l’avis n’annonce aucun correctif. Cette alerte reste ouverte ; elle n’est ni
+exclue ni considérée comme corrigée par les mises à jour ci-dessus.
+
 `make security-check` exporte uniquement les fichiers du projet non ignorés par Git :
 les données actives, `.env`, les références externes et les environnements locaux
 n'entrent pas dans les scanners. Trivy vérifie les dépendances verrouillées et les

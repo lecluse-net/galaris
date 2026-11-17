@@ -103,6 +103,10 @@ dependencies = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.uv]
+# CVE-2026-126360: constrain the transitive API without making it a direct dependency.
+constraint-dependencies = ["opentelemetry-api>=1.45.2"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["."]
 

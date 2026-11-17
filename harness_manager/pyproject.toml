@@ -13,3 +13,5 @@ dependencies = [
 
 [tool.uv]
 package = false
+# CVE-2026-126360: retain the security floor while this API is pulled in transitively.
+constraint-dependencies = ["opentelemetry-api>=1.45.2"]
