@@ -111,7 +111,7 @@
           <q-td :props="props">
             <q-btn
               v-if="canViewMemories"
-              flat
+              outline
               dense
               color="primary"
               icon="memory"
@@ -171,7 +171,7 @@
                   </div>
                   <q-btn
                     v-if="canViewMemories"
-                    flat
+                    outline
                     dense
                     color="primary"
                     icon="memory"

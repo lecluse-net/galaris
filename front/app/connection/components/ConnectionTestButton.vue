@@ -1,17 +1,27 @@
 <template>
   <q-btn
-    :flat="iconOnly"
-    :round="iconOnly"
-    :outline="!iconOnly"
-    :size="iconOnly ? 'sm' : undefined"
+    v-if="iconOnly"
+    flat
+    round
+    size="sm"
     color="primary"
     icon="network_check"
-    :label="iconOnly ? undefined : t('connection.test.button')"
-    :aria-label="iconOnly ? t('connection.test.button') : undefined"
+    :aria-label="t('connection.test.button')"
     :loading="loading"
     @click.stop="test"
   >
-    <q-tooltip>{{ t(iconOnly ? 'connection.test.button' : 'connection.test.savedSettings') }}</q-tooltip>
+    <q-tooltip>{{ t('connection.test.button') }}</q-tooltip>
+  </q-btn>
+  <q-btn
+    v-else
+    outline
+    color="primary"
+    icon="network_check"
+    :label="t('connection.test.button')"
+    :loading="loading"
+    @click.stop="test"
+  >
+    <q-tooltip>{{ t('connection.test.savedSettings') }}</q-tooltip>
   </q-btn>
   <q-dialog v-model="showResult">
     <q-card class="galaris-dialog-card connection-test-dialog">
