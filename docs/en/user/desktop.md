@@ -32,6 +32,15 @@ returns to the existing Galaris window.
 
 ## Tabs and spelling
 
+To the left of the tabs, **Back** and **Forward** browse the active tab’s page history.
+They are disabled when no page is available in that direction. The **☰** button opens
+the application menus (server selection, updates, editing, tabs and view); the classic
+menu bar is hidden. **Alt+Left** and **Alt+Right** remain available.
+In a wide window, this compact bar sits to the right of the sidebar, above the page
+title, and follows the sidebar when it collapses. Only the active tab joins the page;
+other tabs remain separated from its edge. In a narrow window, or on an external page,
+the bar spans the window above the content.
+
 The **+** button or **Ctrl+T** opens another Galaris page. **Ctrl+W** closes the current
 tab; **Ctrl+Tab** and **Ctrl+Shift+Tab** switch tabs. Internal links opened with Ctrl+click,
 the middle button or “Open link in new tab” stay in the window. Each page retains its

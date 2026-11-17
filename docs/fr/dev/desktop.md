@@ -54,6 +54,16 @@ Les éditeurs `rich-text` conservent leur menu spécifique ; Maj+clic droit lais
 le menu natif sans modifier la sélection. Les liens internes ouverts en onglet sont isolés
 de leur fenêtre d’origine, conformément aux consommateurs `noopener` existants.
 Les aperçus n’ont aucun preload.
+La barre locale est une vue native placée au-dessus des vues distantes. Dans le shell
+Galaris (`.page-container`), un adaptateur isolé réserve sa hauteur dans le contenu et
+observe le retrait gauche, le thème et la surface de la page. Il transmet uniquement
+ces valeurs de présentation via des messages console bornés du frame principal de
+l’origine sélectionnée, sans exposer d’API distante. Le processus principal borne le
+retrait et recalcule les vues au changement d’onglet, au zoom et au redimensionnement.
+Le menu latéral garde toute sa hauteur. En dessous de 1024 pixels CSS, ou sans ce shell
+(connexion externe, ancienne interface), la barre reprend toute la largeur au-dessus
+de la vue. L’adaptateur et ses observateurs disparaissent avec le document ; le serveur
+n’a pas besoin d’être recompilé pour cette disposition.
 Les permissions refusent les frames et origines tierces et demandent un accord natif pour
 les capacités prises en charge. Les schémas de programmes locaux ne sont jamais transmis
 à `shell.openExternal`. Les certificats invalides restent refusés.

@@ -1,5 +1,6 @@
 {
   "en": {
+    "showMenu": "Open application menu",
     "tabs": "Tabs", "newTab": "New tab", "closeTab": "Close tab", "closeNamedTab": "Close tab: {title}",
     "nextTab": "Next tab", "previousTab": "Previous tab", "openInTab": "Open link in new tab",
     "addToDictionary": "Add to dictionary", "noSuggestions": "No spelling suggestions",
@@ -26,6 +27,7 @@
     "updateFailed": "The desktop update failed. You can continue working and try again later."
   },
   "fr": {
+    "showMenu": "Ouvrir le menu de l’application",
     "tabs": "Onglets", "newTab": "Nouvel onglet", "closeTab": "Fermer l’onglet", "closeNamedTab": "Fermer l’onglet : {title}",
     "nextTab": "Onglet suivant", "previousTab": "Onglet précédent", "openInTab": "Ouvrir le lien dans un nouvel onglet",
     "addToDictionary": "Ajouter au dictionnaire", "noSuggestions": "Aucune suggestion orthographique",
@@ -52,6 +54,7 @@
     "updateFailed": "La mise à jour du client a échoué. Vous pouvez continuer à travailler et réessayer plus tard."
   },
   "zh": {
+    "showMenu": "打开应用菜单",
     "tabs": "标签页", "newTab": "新建标签页", "closeTab": "关闭标签页", "closeNamedTab": "关闭标签页：{title}",
     "nextTab": "下一个标签页", "previousTab": "上一个标签页", "openInTab": "在新标签页中打开链接",
     "addToDictionary": "添加到词典", "noSuggestions": "无拼写建议",

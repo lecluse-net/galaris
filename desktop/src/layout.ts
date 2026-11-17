@@ -1,1 +1,2 @@
-export const tabBarHeight = 48
+export const tabBarHeight = 38
+export const workspaceURL = 'about:blank#galaris-workspace'

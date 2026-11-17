@@ -6,6 +6,7 @@ import path from 'node:path'
 import { externalURL, partitionFor, sameOrigin, serverOrigin } from '../src/policy.ts'
 import { readServer, writeServer } from '../src/preferences.ts'
 import messages from '../renderer/messages.json' with { type: 'json' }
+import { readShellLayout, shellMessage } from '../src/shell.ts'
 
 test('server selection requires a bare HTTPS origin; HTTP is limited to development loopback', () => {
   assert.equal(serverOrigin(' https://example.test:8443/ '), 'https://example.test:8443')
@@ -55,4 +56,14 @@ test('desktop catalogs preserve keys and interpolation parameters in every langu
       assert.deepEqual(catalog[key].match(/\{\w+\}/g)?.sort(), messages.en[key].match(/\{\w+\}/g)?.sort(), key)
     }
   }
+})
+
+test('shell presentation accepts finite geometry and plain colors only', () => {
+  const layout = { integrated: true, left: 260, dark: false, surface: 'rgb(250, 250, 250)', ratio: 1 }
+  assert.deepEqual(readShellLayout(shellMessage + JSON.stringify({ ...layout, command: 'quit' })), layout)
+  for (const message of ['unrelated', shellMessage + '{', shellMessage + 'null',
+    shellMessage + JSON.stringify({ ...layout, left: -1 }),
+    shellMessage + JSON.stringify({ ...layout, surface: 'url(https://example.test/)' }),
+    shellMessage + JSON.stringify({ ...layout, integrated: 'true' }),
+    shellMessage + JSON.stringify(layout).replace('260', '1e999')]) assert.equal(readShellLayout(message), undefined)
 })

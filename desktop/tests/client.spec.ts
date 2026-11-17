@@ -13,6 +13,21 @@ let pageErrors: string[] = []
 
 test.beforeAll(async () => {
   server = createServer((request, response) => {
+    if (request.url === '/shell') {
+      response.writeHead(200, { 'Content-Type': 'text/html' })
+      response.end(`<!doctype html><title>Synthetic workspace</title><style>
+        *{box-sizing:border-box}body{margin:0;font:16px Arial;background:white;color:#292c30}
+        aside{position:fixed;top:0;bottom:0;left:0;width:260px;background:#f5f5f5;padding:16px}
+        .page-container{padding-left:260px}.q-page{padding:20px;min-height:100vh}h1{margin:0 0 20px}.q-dialog__inner--maximized{top:0}
+        .body--dark{background:#101010;color:#eee}.body--dark aside{background:#272727}
+      </style><aside><strong>Synthetic navigation</strong><p><button onclick="document.querySelector('.page-container').style.paddingLeft='80px';document.querySelector('aside').style.width='80px'">Collapse menu</button></p></aside>
+      <main class="page-container"><section class="q-page"><h1>Synthetic workspace</h1><label>Workspace draft<input></label>
+      <button onclick="document.body.classList.toggle('body--dark')">Toggle theme</button>
+      <button onclick="document.querySelector('.q-dialog__inner--maximized').hidden=false">Open full screen dialog</button>
+      <div hidden class="q-dialog__inner--maximized" style="position:fixed;bottom:0;left:260px;right:0;background:white;z-index:6000"><button onclick="this.parentElement.hidden=true">Close full screen dialog</button></div>
+      <a href="/second">Leave shell</a></section></main>`)
+      return
+    }
     if (request.url === '/download') {
       response.writeHead(200, { 'Content-Type': 'text/plain', 'Content-Disposition': 'attachment; filename="synthetic.txt"' })
       response.end('Synthetic desktop export')
@@ -62,7 +77,7 @@ async function launch(expectVisible = true): Promise<Page> {
 async function openServer(launcher: Page, address = origin): Promise<Page> {
   if (!client) throw new Error('Client not running')
   await launcher.getByRole('textbox', { name: 'Server address' }).fill(address)
-  const window = client.waitForEvent('window', page => !page.url().startsWith('galaris-desktop:'))
+  const window = client.waitForEvent('window', page => page.url().startsWith('http'))
   await launcher.getByRole('button', { name: 'Connect', exact: true }).click()
   const remote = await window
   await expect(remote.getByRole('heading', { name: 'Synthetic Galaris server' })).toBeVisible()
@@ -193,7 +208,7 @@ test('launcher supports the keyboard and renders in light, dark and narrow windo
   await client!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setSize(480, 720))
   await launcher.screenshot({ path: '../artifacts/desktop/launcher-narrow.png' })
   await launcher.getByRole('textbox', { name: 'Server address' }).fill(origin)
-  const remote = client!.waitForEvent('window', page => !page.url().startsWith('galaris-desktop:'))
+  const remote = client!.waitForEvent('window', page => page.url().startsWith('http'))
   await launcher.getByRole('textbox', { name: 'Server address' }).press('Enter')
   await expect((await remote).getByRole('heading', { name: 'Synthetic Galaris server' })).toBeVisible()
 })
@@ -223,7 +238,7 @@ test('browser tabs preserve drafts, share the server session and protect unsaved
   const chrome = client!.windows().find(page => page.url().endsWith('?tabs'))!
   await first.getByRole('textbox', { name: 'Draft' }).fill('Unsent synthetic draft')
   await first.getByRole('button', { name: 'Save draft' }).click()
-  const created = client!.waitForEvent('window', page => !page.url().startsWith('galaris-desktop:'))
+  const created = client!.waitForEvent('window', page => page.url().startsWith('http'))
   await chrome.getByRole('button', { name: 'New tab', exact: true }).click()
   const second = await created
   await expect(second.getByRole('heading', { name: 'Synthetic Galaris server' })).toBeVisible()
@@ -234,7 +249,7 @@ test('browser tabs preserve drafts, share the server session and protect unsaved
   await shortcut('Tab', ['control', 'shift'])
   await expect(chrome.getByRole('tab').first()).toHaveAttribute('aria-selected', 'true')
   await expect(first.getByRole('textbox', { name: 'Draft' })).toHaveValue('Unsent synthetic draft')
-  const linked = client!.waitForEvent('window', page => !page.url().startsWith('galaris-desktop:'))
+  const linked = client!.waitForEvent('window', page => page.url().startsWith('http'))
   await first.getByRole('link', { name: 'Internal link' }).click()
   const third = await linked
   await expect(third).toHaveURL(`${origin}/second`)
@@ -247,7 +262,7 @@ test('browser tabs preserve drafts, share the server session and protect unsaved
   await expect.poll(() => third.isClosed()).toBe(true)
   await expect(chrome.getByRole('tab')).toHaveCount(2)
   await expect(second.getByRole('textbox', { name: 'Draft' })).toHaveValue('Second synthetic draft')
-  const keyboardTab = client!.waitForEvent('window', page => !page.url().startsWith('galaris-desktop:'))
+  const keyboardTab = client!.waitForEvent('window', page => page.url().startsWith('http'))
   await shortcut('T')
   const fourth = await keyboardTab
   await expect(fourth.getByRole('heading', { name: 'Synthetic Galaris server' })).toBeVisible()
@@ -257,7 +272,7 @@ test('browser tabs preserve drafts, share the server session and protect unsaved
     await chrome.emulateMedia({ colorScheme })
     await chrome.screenshot({ path: `../artifacts/desktop/tabs-${colorScheme}.png` })
   }
-  await client!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(win => win.webContents.getURL().endsWith('?tabs'))!.setSize(480, 720))
+  await client!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(win => win.webContents.getURL() === 'about:blank#galaris-workspace')!.setSize(480, 720))
   await chrome.screenshot({ path: '../artifacts/desktop/tabs-narrow.png' })
   // A dirty background tab must also veto closing the whole application.
   await first.evaluate(() => { window.onbeforeunload = event => { event.preventDefault(); event.returnValue = ''; return '' } })
@@ -273,6 +288,118 @@ test('browser tabs preserve drafts, share the server session and protect unsaved
   await chrome.getByRole('button', { name: 'Close tab: Synthetic Galaris' }).click()
   await finalClose
   expect(first.isClosed()).toBe(true)
+})
+
+test('history controls follow the active tab and the menu remains accessible with its bar hidden', async () => {
+  const launcher = await launch()
+  const first = await openServer(launcher)
+  const chrome = client!.windows().find(page => page.url().endsWith('?tabs'))!
+  const back = chrome.getByRole('button', { name: 'Back', exact: true })
+  const forward = chrome.getByRole('button', { name: 'Forward', exact: true })
+  await expect(back).toBeDisabled()
+  await expect(forward).toBeDisabled()
+
+  // Full-page navigation and SPA history must both refresh the controls.
+  await first.getByRole('link', { name: 'Internal link' }).evaluate(link => link.removeAttribute('target'))
+  await first.getByRole('link', { name: 'Internal link' }).click()
+  await expect(first).toHaveURL(`${origin}/second`)
+  await expect(back).toBeEnabled()
+  await back.click()
+  await expect(first).toHaveURL(`${origin}/`)
+  await expect(back).toBeDisabled()
+  await expect(forward).toBeEnabled()
+  await forward.click()
+  await expect(first).toHaveURL(`${origin}/second`)
+  await expect(forward).toBeDisabled()
+  await first.evaluate(() => history.pushState({}, '', '/spa'))
+  await back.click()
+  await expect(first).toHaveURL(`${origin}/second`)
+  await expect(forward).toBeEnabled()
+  await first.evaluate(() => history.pushState({}, '', '/replacement'))
+  await expect(forward).toBeDisabled()
+
+  const created = client!.waitForEvent('window', page => page.url().startsWith('http'))
+  await chrome.getByRole('button', { name: 'New tab', exact: true }).click()
+  const second = await created
+  await expect(second.getByRole('heading', { name: 'Synthetic Galaris server' })).toBeVisible()
+  await expect(back).toBeDisabled()
+  await expect(forward).toBeDisabled()
+  await chrome.getByRole('tab').first().click()
+  await expect(back).toBeEnabled()
+  await back.click()
+  await expect(first).toHaveURL(`${origin}/second`)
+  await expect(second).toHaveURL(`${origin}/`)
+  await chrome.getByRole('button', { name: 'Close tab: Synthetic second page', exact: true }).click()
+  await expect(back).toBeDisabled()
+  await expect(forward).toBeDisabled()
+
+  expect(await client!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(win => win.webContents.getURL() === 'about:blank#galaris-workspace')!.isMenuBarVisible())).toBe(false)
+  await client!.evaluate(({ Menu }) => {
+    const tracker = { shown: 0 }
+    ;(globalThis as unknown as { menuTest: typeof tracker }).menuTest = tracker
+    Menu.getApplicationMenu()!.on('menu-will-show', () => { tracker.shown++ })
+  })
+  await chrome.getByRole('button', { name: 'Open application menu', exact: true }).focus()
+  await chrome.getByRole('button', { name: 'Open application menu', exact: true }).press('Enter')
+  await expect.poll(() => client!.evaluate(() => (globalThis as unknown as { menuTest: { shown: number } }).menuTest.shown)).toBe(1)
+  await client!.evaluate(({ Menu, BrowserWindow }) => {
+    Menu.getApplicationMenu()!.closePopup(BrowserWindow.getAllWindows().find(win => win.webContents.getURL() === 'about:blank#galaris-workspace')!)
+    Menu.getApplicationMenu()!.items[0]!.submenu!.items[0]!.click()
+  })
+  await expect(launcher.getByRole('textbox', { name: 'Server address' })).toBeVisible()
+})
+
+test('integrated tabs keep navigation and content reachable through menu, theme, viewport and tab changes', async () => {
+  const first = await openServer(await launch())
+  await first.goto(`${origin}/shell`)
+  const chrome = client!.windows().find(page => page.url().endsWith('?tabs'))!
+  const bounds = async () => client!.evaluate(({ BrowserWindow, WebContentsView }) => {
+    const owner = BrowserWindow.getAllWindows().find(win => win.webContents.getURL() === 'about:blank#galaris-workspace')!
+    const views = owner.contentView.children.filter((view): view is Electron.WebContentsView => view instanceof WebContentsView)
+    return { chrome: views.find(view => view.webContents.getURL().endsWith('?tabs'))!.getBounds(),
+      page: views.find(view => view.webContents.getURL().endsWith('/shell'))!.getBounds() }
+  })
+  await expect(first.locator('html')).toHaveAttribute('data-galaris-desktop-shell', '')
+  const padding = () => first.locator('.page-container').evaluate(element => parseFloat(getComputedStyle(element).paddingLeft))
+  await expect.poll(async () => (await bounds()).chrome.x).toBe(await padding())
+  expect((await bounds()).page.y).toBe(0)
+  expect(await first.locator('h1').evaluate(element => element.getBoundingClientRect().top)).toBeGreaterThanOrEqual((await bounds()).chrome.height)
+  await first.getByRole('textbox', { name: 'Workspace draft' }).fill('Preserved synthetic content')
+  await first.getByRole('button', { name: 'Open full screen dialog' }).click()
+  expect(await first.getByRole('button', { name: 'Close full screen dialog' }).evaluate(element => element.getBoundingClientRect().top)).toBeGreaterThanOrEqual((await bounds()).chrome.height)
+  await first.getByRole('button', { name: 'Close full screen dialog' }).click()
+  await chrome.screenshot({ path: '../artifacts/desktop/integrated-tabs-light.png' })
+  await first.getByRole('button', { name: 'Toggle theme' }).click()
+  await expect(chrome.locator('body')).toHaveClass(/body--dark/)
+  await chrome.screenshot({ path: '../artifacts/desktop/integrated-tabs-dark.png' })
+  await first.getByRole('button', { name: 'Collapse menu' }).click()
+  await expect.poll(async () => (await bounds()).chrome.x).toBe(await padding())
+  const created = client!.waitForEvent('window', page => page.url().startsWith('http'))
+  await chrome.getByRole('button', { name: 'New tab', exact: true }).click()
+  const second = await created
+  await expect(second.getByRole('heading', { name: 'Synthetic Galaris server' })).toBeVisible()
+  await expect.poll(async () => (await bounds()).chrome.x).toBe(0)
+  await chrome.getByRole('tab', { name: 'Synthetic workspace', exact: true }).click()
+  await expect.poll(async () => (await bounds()).chrome.x).toBe(await padding())
+  await expect(first.getByRole('textbox', { name: 'Workspace draft' })).toHaveValue('Preserved synthetic content')
+  await client!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(win => win.webContents.getURL() === 'about:blank#galaris-workspace')!.setSize(800, 720))
+  await expect(first.locator('html')).not.toHaveAttribute('data-galaris-desktop-shell')
+  await expect.poll(async () => (await bounds()).page.y).toBeGreaterThan(0)
+  await expect.poll(async () => (await bounds()).chrome.x).toBe(0)
+  await client!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(win => win.webContents.getURL() === 'about:blank#galaris-workspace')!.setSize(1280, 900))
+  await expect(first.locator('html')).toHaveAttribute('data-galaris-desktop-shell', '')
+  await first.getByRole('link', { name: 'Leave shell' }).click()
+  await expect(first).toHaveURL(`${origin}/second`)
+  await expect.poll(async () => client!.evaluate(({ BrowserWindow, WebContentsView }) => {
+    const owner = BrowserWindow.getAllWindows().find(win => win.webContents.getURL() === 'about:blank#galaris-workspace')!
+    const chrome = owner.contentView.children.find(view => view instanceof WebContentsView && view.webContents.getURL().endsWith('?tabs')) as Electron.WebContentsView
+    return chrome.getBounds().x
+  })).toBe(0)
+  await chrome.getByRole('button', { name: 'Back', exact: true }).click()
+  await expect(first.locator('html')).toHaveAttribute('data-galaris-desktop-shell', '')
+  await expect.poll(async () => (await bounds()).chrome.x).toBe(await padding())
+  expect((await bounds()).page.y).toBe(0)
+  expect(await first.evaluate(() => typeof window.galarisDesktop)).toBe('undefined')
 })
 
 test('French and English spellchecking exposes suggestions and dictionary actions in the native menu', async () => {

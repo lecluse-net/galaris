@@ -56,8 +56,8 @@ function cancel(): void {
 }
 
 function authorize(event: Electron.IpcMainInvokeEvent, workspace = false): void {
-  const owner = workspace ? [remote, candidate].find(item => item?.window.webContents === event.sender)?.window : launcher
-  if (!owner || event.sender !== owner.webContents || event.senderFrame !== owner.webContents.mainFrame || event.senderFrame.url !== (workspace ? tabsURL : launcherURL)) {
+  const contents = workspace ? [remote, candidate].find(item => item?.chrome.webContents === event.sender)?.chrome.webContents : launcher?.webContents
+  if (!contents || event.sender !== contents || event.senderFrame !== contents.mainFrame || event.senderFrame.url !== (workspace ? tabsURL : launcherURL)) {
     throw new Error('Unauthorized desktop request')
   }
 }
@@ -115,16 +115,17 @@ async function connect(input: unknown): Promise<void> {
   const attempt = ++generation
   broadcast()
   const window = new BrowserWindow({
-    width: 1280, height: 900, minWidth: 480, minHeight: 480, show: false, title: 'Galaris',
+    width: 1280, height: 900, minWidth: 480, minHeight: 480, show: false, title: 'Galaris', autoHideMenuBar: true,
     icon: app.isPackaged ? path.join(process.resourcesPath, 'icon.png') : path.join(__dirname, '../../front/public/pwa/icon-512.png'),
-    webPreferences: { ...remotePreferences, session: launcher.webContents.session, preload: path.join(__dirname, 'preload.cjs') }
+    webPreferences: { ...remotePreferences, session: launcher.webContents.session }
   })
   const win = new Workspace(window, origin, configureSession(origin), t, () => {
     quitting = false
     installing = false
     state.error = 'unsavedChanges'
     showLauncher()
-  }, () => { if (remote === win) { state.error = 'connectionFailed'; showLauncher() } })
+  }, () => { if (remote === win) { state.error = 'connectionFailed'; showLauncher() } },
+  { ...remotePreferences, session: launcher.webContents.session, preload: path.join(__dirname, 'preload.cjs') })
   candidate = win
   // A stalled DNS/TLS connection must remain cancellable and recover to the launcher.
   const timeout = setTimeout(() => {
@@ -194,8 +195,8 @@ function buildMenu(): void {
     ] },
     { label: t('view'), submenu: [
       { label: t('reload'), accelerator: 'CmdOrCtrl+R', click: () => remote?.active?.reload() },
-      { label: t('back'), accelerator: 'Alt+Left', click: () => { if (remote?.active?.navigationHistory.canGoBack()) remote.active.navigationHistory.goBack() } },
-      { label: t('forward'), accelerator: 'Alt+Right', click: () => { if (remote?.active?.navigationHistory.canGoForward()) remote.active.navigationHistory.goForward() } },
+      { label: t('back'), accelerator: 'Alt+Left', click: () => remote?.back() },
+      { label: t('forward'), accelerator: 'Alt+Right', click: () => remote?.forward() },
       { label: t('resetZoom'), role: 'resetZoom' }, { label: t('zoomIn'), role: 'zoomIn' }, { label: t('zoomOut'), role: 'zoomOut' },
       { label: t('fullScreen'), role: 'togglefullscreen' }
     ] }
@@ -230,10 +231,13 @@ async function start(): Promise<void> {
     if (!quitting && remote && !remote.window.isDestroyed()) { event.preventDefault(); launcher.hide(); remote.window.show() }
   })
   ipcMain.handle('desktop:state', event => { authorize(event, event.sender !== launcher.webContents); return state })
-  ipcMain.handle('desktop:tabs', event => { authorize(event, true); return (remote?.window.webContents === event.sender ? remote : candidate)?.snapshot() })
+  ipcMain.handle('desktop:tabs', event => { authorize(event, true); return (remote?.chrome.webContents === event.sender ? remote : candidate)?.snapshot() })
   ipcMain.handle('desktop:new-tab', event => { authorize(event, true); void remote?.open() })
   ipcMain.handle('desktop:select-tab', (event, id: unknown) => { authorize(event, true); if (typeof id === 'number') remote?.select(id) })
   ipcMain.handle('desktop:close-tab', (event, id: unknown) => { authorize(event, true); if (typeof id === 'number') return remote?.closeTab(id) })
+  ipcMain.handle('desktop:back', event => { authorize(event, true); remote?.back() })
+  ipcMain.handle('desktop:forward', event => { authorize(event, true); remote?.forward() })
+  ipcMain.handle('desktop:show-menu', event => { authorize(event, true); remote?.showMenu() })
   ipcMain.handle('desktop:connect', (event, server: unknown) => { authorize(event); return connect(server) })
   ipcMain.handle('desktop:cancel', event => { authorize(event); cancel() })
   ipcMain.handle('desktop:check-updates', event => { authorize(event); return updates.check() })

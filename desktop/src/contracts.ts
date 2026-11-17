@@ -20,9 +20,16 @@ export interface DesktopAPI {
   newTab(): Promise<void>
   selectTab(id: number): Promise<void>
   closeTab(id: number): Promise<void>
+  back(): Promise<void>
+  forward(): Promise<void>
+  showMenu(): Promise<void>
   onTabs(listener: (state: TabsState) => void): () => void
 }
 export interface TabsState {
   activeId: number
+  dark: boolean | null
+  surface: string
+  canGoBack: boolean
+  canGoForward: boolean
   tabs: { id: number; title: string; loading: boolean }[]
 }

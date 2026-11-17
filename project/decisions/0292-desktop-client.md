@@ -25,6 +25,16 @@ sandbox remain enabled. Permission requests are limited to the selected server's
 frame and require native consent. HTTPS navigation inside the tab preserves OAuth state.
 External new-window links use an allowlisted URL scheme; resource previews remain sandboxed.
 
+The local tab bar is a separate native view above the server views. A presentation-only
+adapter in an isolated world recognizes the Galaris `.page-container`, reserves the tab
+bar's height in its content, and observes its sidebar inset and theme. Only bounded layout
+messages from the selected origin's main frame are accepted; this channel exposes no
+desktop operations. The owner clamps the inset and keeps each tab's geometry independent.
+The sidebar starts at the top, while the bar sits above the page title. Narrow viewports
+below 1024 CSS pixels and pages without this shell retain a full-width bar above the view.
+Document navigation discards the adapter and its observers. This supports the existing
+server interface without adding a remote preload or coupling desktop delivery to a server build.
+
 The selected origin is committed only after a successful load. Failed, cancelled and
 superseded attempts preserve the previous server. Persistent partitions are keyed by
 origin so changing servers does not reuse cookies or local storage. Returning to an origin

@@ -48,6 +48,15 @@ the affected view; tabs already closed are not restored. No tab list is persiste
 The session enables the `fr` and `en-US` Hunspell dictionaries on Windows/Linux; words are
 processed locally. Electron downloads dictionaries from its default CDN. The context menu
 offers suggestions, dictionary additions and editing actions. Previews have no preload.
+The local tab bar is a native view above the remote views. Inside the Galaris shell
+(`.page-container`), an isolated adapter reserves its height in the content and observes
+the sidebar inset, theme and page surface. It reports only these presentation values
+through bounded console messages from the selected origin's main frame, without exposing
+a remote API. The main process clamps the inset and recalculates views when switching
+tabs, zooming or resizing. The sidebar retains its full height. Below 1024 CSS pixels,
+or without this shell (external sign-in, older interface), the bar spans the window above
+the remote view. The adapter and its observers disappear with the document; this layout
+does not require a server rebuild.
 Rich-text editors retain their custom menu; Shift+right-click allows the native menu
 without changing the selection. Internal links opened in tabs are isolated from their
 opener, matching existing `noopener` consumers.
