@@ -195,7 +195,7 @@ async def test_inline_images_history_and_current_access(agents, memory_storage, 
 
 
 @pytest.mark.asyncio
-async def test_goal_document_rejects_images_from_every_entry(agents, memory_storage):
+async def test_goal_document_archives_attachments_without_allowing_inline_images(agents, memory_storage):
     owner, _ = agents
     document = await create_document(
         owner_agent_id=owner.id,
@@ -206,14 +206,21 @@ async def test_goal_document_rejects_images_from_every_entry(agents, memory_stor
         deletion_protected=True,
     )
     assert document.content_profile == "rich-text"
-    with pytest.raises(service.DocumentPermissionError):
-        await attachments.add_document_attachment_bytes(
-            document.id,
-            actor_agent_id=owner.id,
-            name="image.png",
-            media_type="image/png",
-            content=png(),
-        )
+    attachment = await attachments.add_document_attachment_bytes(
+        document.id,
+        actor_agent_id=owner.id,
+        name="image.png",
+        media_type="image/png",
+        content=png(),
+    )
+    reopened = await read_document(document.id, actor_agent_id=owner.id, task_id=None)
+    assert reopened["content"] == "<p>Tracking</p>"
+    assert document.revision == 1
+    with pytest.raises(RichTextError):
+        await service.update_item(document.id, DocumentUpdate(
+            expected_revision=1,
+            payload=DocumentPayload(text=f'<p><img src="document://{document.id}/attachments/{attachment.id}"></p>'),
+        ), actor_agent_id=owner.id)
 
 
 @pytest.mark.asyncio

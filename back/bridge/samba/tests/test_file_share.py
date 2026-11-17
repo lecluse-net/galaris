@@ -92,6 +92,9 @@ async def test_invalid_tool_root_keeps_the_canonical_uri_in_error_guidance(monke
     async def get_service(service_id):
         return tool
 
+    async def get_services(service_ids):
+        return {service_id: tool for service_id in service_ids}
+
     async def params(connection, **kwargs):
         return None, {"account": "writer", "secret": "synthetic"}
 
@@ -99,14 +102,15 @@ async def test_invalid_tool_root_keeps_the_canonical_uri_in_error_guidance(monke
         pytest.fail("Invalid configuration reached the SMB server")
 
     monkeypatch.setattr(file_share_service.connection_service, "get_connections_by_agent", connections)
-    monkeypatch.setattr(file_share_service.service, "get_service_by_id", get_service)
+    monkeypatch.setattr(file_share_service.service_catalog, "get_service_by_id", get_service)
+    monkeypatch.setattr(file_share_service.service_catalog, "get_services_by_ids", get_services)
     monkeypatch.setattr(file_share_service.connection_service, "get_params_as_dict", params)
     monkeypatch.setattr(sdk, "session", unexpected_network)
     with pytest.raises(ResourceValidationError) as error:
         await files.resource_list(ResourceContext(agent_id=1, runtime="internal"), "team-share://")
     diagnostic = classify_tool_failure(error.value)
     assert diagnostic.kind == "actionable"
-    assert "Service configuration" in diagnostic.detail
+    assert "smb://server[:port][/share[/folder]]" in diagnostic.detail
     assert "base_url" in diagnostic.detail
     assert "existing share" in diagnostic.detail
     assert "Keep using" in diagnostic.detail and "code://" in diagnostic.detail

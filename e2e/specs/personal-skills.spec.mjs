@@ -92,7 +92,7 @@ for (const width of [1440, 390]) {
     await withSidebarDismissal(page, () => page.getByRole('textbox', { name: 'Rechercher une compétence', exact: true }).fill(editedLabel))
     await expect(page.getByText('Désactivée pour tous', { exact: true })).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath('generic-skill-disabled.png'), fullPage: true, animations: 'disabled' })
-    await page.getByRole('button', { name: 'Activer pour tous', exact: true }).click()
+    await withSidebarDismissal(page, () => page.getByRole('button', { name: 'Activer pour tous', exact: true }).click())
     await expect(page.getByRole('button', { name: 'Désactiver pour tous', exact: true })).toBeVisible()
     expect((await (await request.get(`/api/skills/${guide.id}`, { headers })).json()).enabled).toBe(true)
     await page.getByRole('button', { name: 'Passer en personnel', exact: true }).click()

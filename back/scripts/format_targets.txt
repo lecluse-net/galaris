@@ -32,5 +32,5 @@ app/lab/run_claims.py
 app/lab/run_inference.py
 app/memory/library_queries.py
 app/memory/item_projection.py
-bridge/calendar/calculation.py
-bridge/calendar/ical_worker.py
+app/calendar/calculation.py
+app/calendar/ical_worker.py

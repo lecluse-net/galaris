@@ -233,3 +233,53 @@ async def test_native_pointer_keeps_unflushed_text_and_independent_commits(commi
                                  read_in_own_session(other_pointer, b'Other pointer'))
         finally:
             db_session_ctx.reset(token)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("explicit_revision", [False, True])
+async def test_native_document_read_keeps_its_payload_when_a_save_replaces_the_pointer(
+    committed_database, memory_storage, monkeypatch, explicit_revision,
+):
+    from core.database import get_db_session
+    from core.user import HumanActor
+    from app.document.schemas import DocumentUpdate
+
+    async with get_db_session() as seed:
+        user = UserModel(email="synthetic-racing-reader@example.test", hashed_password="unused", is_active=True)
+        seed.add(user)
+        await seed.flush()
+        actor = HumanActor(user.id)
+        item, _ = await service.create_item(DocumentItemCreate(title="Synthetic concurrent document",
+            media_type="text/html", payload=DocumentPayload(text="<p>Original</p>")), owner_user_id=user.id)
+        item = await service.update_item(item.id, DocumentUpdate(payload=DocumentPayload(text="<p>Intermediate café</p>")),
+            actor_agent_id=actor)
+        identity, revision, pointer = item.id, item.revision, item.resource_id
+
+    authorize = service.assert_item_access
+    replaced = False
+
+    async def replace_after_authorization(item, actor, **options):
+        nonlocal replaced
+        access = await authorize(item, actor, **options)
+        if not replaced and not options.get("write"):
+            replaced = True
+            async with get_db_session():
+                await service.update_item(identity, DocumentUpdate(payload=DocumentPayload(text="<p>Latest</p>")),
+                    actor_agent_id=actor)
+            # The intermediate draft is intentionally absent from checkpoint history.
+            from core.storage import ResourceNotFoundError
+            with pytest.raises(ResourceNotFoundError):
+                await get_storage("native").read(pointer)
+        return access
+
+    monkeypatch.setattr(service, "assert_item_access", replace_after_authorization)
+    async with get_db_session():
+        loaded, content, access, _, _ = await service.get_item(identity, agent_id=actor,
+            revision=revision if explicit_revision else None, include_revisions=False)
+        assert replaced and access.can_read
+        assert loaded.revision == revision
+        assert content == "<p>Intermediate café</p>".encode()
+        assert content.decode() == loaded.content
+    async with get_db_session():
+        loaded, content, _, _, _ = await service.get_item(identity, agent_id=actor)
+        assert loaded.revision == revision + 1 and content == b"<p>Latest</p>"

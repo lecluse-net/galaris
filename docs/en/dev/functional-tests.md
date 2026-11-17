@@ -2035,6 +2035,19 @@ valid avatar so optional missing-image reads cannot mask unexpected authorizatio
 outside-scope rejection, team catalogue access and denied uploads/deletions. The session-race
 journeys exercise page-owned Document invalidation subscriptions and create Memory and
 Document resources through their owning APIs before delaying authentication on the first direct load.
+`front/core/user/authStore.test.mjs` also protects an explicit login from delayed storage
+events belonging to the previous account. `front/app/console/storeConcurrency.test.mjs`
+checks that guest navigation never starts Console availability reads, preventing a loop
+of unauthorized requests and session refreshes.
+Document scenarios in `front/browser-tests/galaris-links.spec.mjs` also run in WebKit:
+a modified click must open the correct reference even when native caret movement
+rebuilds the link. `document-browser-history.spec.mjs` then exercises visits through
+the library, dialogs and Chat.
+`front/browser-tests/document-topics.spec.mjs` interleaves an editor update with
+an ownership transfer: the list must reconcile after the operation.
+`app/document/tests/test_document_read_performance.py` uses two real sessions to check
+that a concurrent save cannot separate native text from the revision already loaded,
+including reads requesting an explicit current revision.
 Before a deliberate reload, they wait for
 the relevant HTTP responses. `e2e/page-errors.mjs` retains JavaScript and network errors;
 it excludes a native WebKit XHR error only when cancellation of that same request is observed.

@@ -61,9 +61,7 @@ async def get_runtime_global_params(
 ) -> tuple[dict[str, Any], set[str]]:
     from . import service
 
-    return await service.get_runtime_global_params(
-        service_id, decrypt_passwords=decrypt_passwords
-    )
+    return await service.get_runtime_global_params(service_id, decrypt_passwords=decrypt_passwords)
 
 
 from .administration_lock import lock_services, finish_write
@@ -114,7 +112,11 @@ from .authorization import (
     invalidate_authorization_context,
 )
 
-from .deletion import register_service_deletion_cleanup, ServiceDeletionSelection, AfterServiceDeletion
+from .deletion import (
+    register_service_deletion_cleanup,
+    ServiceDeletionSelection,
+    AfterServiceDeletion,
+)
 
 __all__ = [
     "canonical_service_call",
@@ -227,7 +229,10 @@ async def execute_workflow_tool(
             except PermissionError:
                 if evidence.entered:
                     raise
-                return {"status": "rejected", "error": "The Service is not authorized for this agent"}
+                return {
+                    "status": "rejected",
+                    "error": "The Service is not authorized for this agent",
+                }
         else:
             # External APIs use their declared MCP connection. Credentials stay
             # inside the shared loader and its live authorization middleware.

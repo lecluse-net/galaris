@@ -16,7 +16,7 @@ test('browser and document arrows share visits in Documents, dialogs and Chat', 
   const headers = { Authorization: `Bearer ${session.access_token}`, 'X-Editorial-Profile-Version': '1' }
   async function create(title, html) {
     const response = await createDocument(request, { headers, data: {
-      owner_agent_id: fixture.agent_id, title, node_kind: 'document',
+      owner_agent_id: fixture.agent_id, title: `${title} ${fixture.agent_id}`, node_kind: 'document',
       media_type: 'text/html', payload: { text: html },
     } })
     expect(response.ok(), await response.text()).toBeTruthy()

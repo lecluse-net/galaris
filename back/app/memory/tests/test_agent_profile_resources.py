@@ -39,8 +39,13 @@ async def test_directory_profile_uri_is_live_without_documents(db, agents, monke
     await db.commit()
     assert json.loads((await files.resource_read(ctx, uri)).content)["job_description"] == owner.job_description
 
+    # The shared directory exposes peer profiles independently of dialogue rights.
+    peer_profile = json.loads((await files.resource_read(
+        ResourceContext(agent_id=peer.id, runtime="internal"), uri,
+    )).content)
+    assert peer_profile == json.loads((await files.resource_read(ctx, uri)).content)
     with pytest.raises(FileNotFoundError):
-        await files.resource_read(ResourceContext(agent_id=peer.id, runtime="internal"), uri)
+        await files.resource_read(ResourceContext(agent_id=-1, runtime="internal"), uri)
     with pytest.raises(PermissionError):
         await files.resource_write(ctx, uri, b"{}")
     assert await db.scalar(select(func.count()).select_from(MemoryItem)) == 0

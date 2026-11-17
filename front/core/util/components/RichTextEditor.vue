@@ -1,5 +1,5 @@
 <template>
-  <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown="editorKeydown" @keyup="syncKeyboardSelection" @pointerdown.capture="pointerRequest++" @click.capture="editorClick" @contextmenu.capture="openContextMenu" @galaris-document-object-focus="selectEmbeddedObject">
+  <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown="editorKeydown" @keyup="syncKeyboardSelection" @pointerdown.capture="pointerRequest++" @mousedown.capture="editorMouseDown" @click.capture="editorClick" @contextmenu.capture="openContextMenu" @galaris-document-object-focus="selectEmbeddedObject">
     <div class="editorial-toolbars">
       <EditorialToolbar v-if="editor" :editor="editor" :revision="revision" :mode="toolbarMode" :document="profile === 'document'" :source="sourceMode" :find-open="findOpen" :outline-open="outlineOpen" :full-width="effectiveLayout === 'full'" :fullscreen="fullscreen" :fits="fits" :disabled-actions="disabledActions" @action="action">
         <template v-if="personalVoice" #voice>
@@ -659,6 +659,12 @@ async function showContextMenu(event: MouseEvent, request: number): Promise<void
     pointerSelection = selection
     pointerMenu.value?.show(event)
   }
+}
+function editorMouseDown(event: MouseEvent): void {
+  // A modified click opens the link. Native caret movement can rebuild its mark
+  // view before mouseup in WebKit, leaving the click on the editor instead.
+  if (event.button === 0 && (event.ctrlKey || event.metaKey)
+    && event.target instanceof Element && event.target.closest('[data-editor-surface] a')) event.preventDefault()
 }
 function editorClick(event: MouseEvent): void {
   if (!(event.target instanceof Element) || !event.target.closest('[data-editor-surface]')) return

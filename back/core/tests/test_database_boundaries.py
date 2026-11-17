@@ -14,6 +14,7 @@ BACK_ROOT = Path(__file__).resolve().parents[2]
 # listener, runtime gateway, or infrastructure orchestration. Application services
 # and native MCP functions deliberately do not belong here.
 ALLOWED_DATABASE_SESSION_BOUNDARIES = {
+    "app/calendar/service.py",  # Scheduler sync gives each concurrent feed its own short session.
     "app/agent/openai_service.py",
     "app/chat/events.py",
     "app/chat/push_service.py",  # Post-commit signal receiver and delivery worker.

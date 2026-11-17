@@ -495,6 +495,40 @@ test('closing a topic cancels its pending virtual range and reopening restores t
   release()
 })
 
+test('an editor update during an owner transfer reconciles the list after the mutation', async ({ page }) => {
+  const data = await fixture(page)
+  data.profile.document_library_mode = 'agents'
+  await mount(page, 'app/document/components/DocumentLibraryNavigation.vue', { props: { selectedDocumentId: null },
+    user: data.profile, privileges: ['DOCUMENT_EDIT', 'TOPIC_EDIT'], containerStyle: { height: '950px', width: '500px' } })
+  const tree = page.getByRole('tree', { name: 'Agents', exact: true })
+  await tree.getByText('Synthetic owner Alpha', { exact: true }).click()
+  await tree.getByText('All documents', { exact: true }).first().click()
+  const list = page.getByRole('list', { name: 'Unclassified documents', exact: true })
+  await expect(list.getByText('Synthetic inbox', { exact: true })).toBeVisible()
+  let releaseList, releaseCatalog
+  await page.route('**/api/documents/library', async route => {
+    if (!releaseList && data.ownerWrites.length && route.request().postDataJSON().agent_classification === 'unclassified') {
+      await new Promise(resolve => { releaseList = resolve })
+    }
+    return route.fallback()
+  })
+  await page.route('**/api/documents/library/agents', async route => {
+    if (!releaseCatalog && data.ownerWrites.length) await new Promise(resolve => { releaseCatalog = resolve })
+    return route.fallback()
+  })
+  await page.clock.install()
+  await tree.getByText('Synthetic plan', { exact: true }).dragTo(list)
+  await expect.poll(() => Boolean(releaseList)).toBe(true)
+  await page.evaluate(item => window.testApp.invoke('updateDocument', item), data.values[0].item)
+  releaseList()
+  await expect.poll(() => Boolean(releaseCatalog)).toBe(true)
+  // Let the queued editor refresh become due while the transfer still owns busy.
+  await page.clock.runFor(101)
+  releaseCatalog()
+  await expect(list.getByText('Synthetic plan', { exact: true })).toBeVisible()
+  expect(data.values[0].item.owner_agent_id).toBeNull()
+})
+
 for (const width of [390, 1280]) test(`the saved agent view groups by owner and tag and preserves unassigned documents at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
   const data = await fixture(page)

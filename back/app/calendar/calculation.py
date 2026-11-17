@@ -45,7 +45,7 @@ async def _calculate(
                     failure = json.loads(stdout)
                     code = str(failure["error_category"])
                     location = str(failure["error_location"])
-                except (ValueError, KeyError, TypeError):
+                except ValueError, KeyError, TypeError:
                     code, location = f"worker_exit_{process.returncode}", None
                 raise CalendarCalculationError(code, location)
             return stdout
@@ -55,7 +55,9 @@ async def _calculate(
             await process.wait()
 
 
-async def events_between(content: bytes, start: datetime, end: datetime, zone: str = "UTC", *, compact: bool = False) -> list[ParsedEvent]:
+async def events_between(
+    content: bytes, start: datetime, end: datetime, zone: str = "UTC", *, compact: bool = False
+) -> list[ParsedEvent]:
     return TypeAdapter(list[ParsedEvent]).validate_json(
         await _calculate("events", content, start, end, zone, "compact" if compact else "full")
     )

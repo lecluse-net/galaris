@@ -1,7 +1,9 @@
 import { createDocument } from '../documents.mjs'
 import { test, expect } from '@playwright/test'
+import { notificationPrompt } from '../notification-prompt.mjs'
 
 test('two document applications collect into the same Dataset with isolated JavaScript', async ({ page, request }, testInfo) => {
+  await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: /^(Plus tard|Later)$/, exact: true }).click())
   const fixture = await (await request.post('/api/__test/seed')).json()
   const refresh = page.waitForResponse(response => response.url().endsWith('/api/auth/refresh'))
   await page.goto('/user/login'); await refresh

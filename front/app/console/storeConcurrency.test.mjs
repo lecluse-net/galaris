@@ -5,6 +5,26 @@ import * as pinia from 'pinia'
 import { deferred, loadTypescript } from '../../test-support/load-typescript.mjs'
 import { sessionStoreScope } from '../../test-support/session-store.mjs'
 
+test('guest navigation never starts executor availability reads after logout', () => {
+  let token = null
+  let requests = 0
+  const store = { availability: null, loadAvailability: () => { requests++ } }
+  const { default: navigation } = loadTypescript(new URL('./navigation.ts', import.meta.url), {
+    '@/core/authorize': { privileges: {} },
+    '@/core/api': { getStoredAccessToken: () => token },
+    './stores/consoleStore': { useConsoleStore: () => store },
+  })
+  const visible = navigation.admin.children.executor.visible
+  assert.equal(visible(), false)
+  assert.equal(requests, 0)
+  token = 'synthetic-session'
+  visible()
+  assert.equal(requests, 1)
+  token = null
+  assert.equal(visible(), false)
+  assert.equal(requests, 1)
+})
+
 test('executor status and availability reject old reads after retry and session replacement', async () => {
   const window = new EventTarget(), statuses = [], availability = []
   let session = 'first'

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
+import { selectOption } from '../select-option.mjs'
 
 test('Goal descriptions and private categories persist while tracking stays independently classified', async ({ page, request }) => {
   const errors = collectPageErrors(page)
@@ -26,8 +27,7 @@ test('Goal descriptions and private categories persist while tracking stays inde
   await page.goto('/goal')
   await page.getByRole('button', { name: /^(Nouvel objectif|New Goal)$/ }).click()
   const dialog = page.getByRole('dialog')
-  await dialog.getByRole('combobox', { name: 'Agent', exact: true }).click()
-  await page.getByRole('option', { name: selectedAgent.label, exact: true }).click()
+  await selectOption(page, dialog.getByRole('combobox', { name: 'Agent', exact: true }), selectedAgent.label)
   await dialog.getByRole('textbox', { name: /^(Titre|Title)$/ }).fill(`Synthetic editorial Goal ${fixture.agent_id}`)
   await dialog.locator('[data-editor-surface]').fill('Initial objective')
   await dialog.getByRole('button', { name: /^(Nouvelle catégorie|New category)$/ }).click()

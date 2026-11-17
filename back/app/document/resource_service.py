@@ -1251,14 +1251,18 @@ async def get_item(item_id: UUID, *, agent_id: int | HumanActor, revision: int |
         entry = await get_db().scalar(select(DocumentRevision).where(DocumentRevision.document_id == item_id, DocumentRevision.revision == revision))
         if entry is None:
             raise DocumentNotFoundError("Document revision not found")
-        content = await get_storage(entry.provider_code).read(entry.resource_id)
+        content = (entry.content.encode("utf-8") if entry.provider_code == "native" and entry.content is not None
+            else await get_storage(entry.provider_code).read(entry.resource_id))
         return item, content, access, entry.content_type, entry.media_type
     from .dataset_port import dataset_compatibility
     adapter = dataset_compatibility()
     if item.document_format == "dataset" and adapter is not None and await adapter.contains(item_id):
         state = await adapter.read(item_id, agent_id)
         return item, str(state["content"]).encode(), access, "text", "application/json"
-    content = await get_storage(item.provider_code).read(item.resource_id)
+    # Native text belongs to this row. Looking its pointer up again can lose an
+    # uncheckpointed draft replaced by a concurrent save after the metadata read.
+    content = (item.content.encode("utf-8") if item.provider_code == "native" and item.content is not None
+        else await get_storage(item.provider_code).read(item.resource_id))
     if hashlib.sha256(content).hexdigest() != item.content_hash:
         raise DocumentConflictError("Document content does not match its resource")
     if record_llm_access:

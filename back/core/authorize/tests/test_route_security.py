@@ -149,6 +149,9 @@ def test_broad_user_route_allowlist_is_exact() -> None:
         # Scoped display metadata only; TEAM_ACCESS is checked for the teams catalogue.
         # HTTP tests in app/agent/tests/test_selection.py enforce the actual data scope.
         ("app.agent.router", "read_agent_selection"),
+        # Own memberships without directory privileges; scoped peers otherwise.
+        # core/team/tests/test_authorization.py exercises anonymous and outsider access.
+        ("core.team.router", "human_selection"),
         ("app.llm.personal_router", "get_preferences"),
         ("app.llm.personal_router", "put_preferences"),
         ("app.llm.personal_router", "get_options"),

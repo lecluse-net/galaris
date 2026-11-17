@@ -38,13 +38,14 @@ for (const width of [1440, 390]) {
       await errors.settle()
       await page.goto(path)
       await closeSidebar()
-      await expect(page.getByText(folder.name, { exact: true })).toBeVisible()
+      const folderNode = page.getByRole('tree').getByText(folder.name, { exact: true })
+      await expect(folderNode).toBeVisible()
       await errors.settle()
       for (const [name, mimeType, buffer] of [
         ['Synthetic large.svg', 'image/svg+xml', Buffer.from(svg)],
         ['Synthetic raster.png', 'image/png', Buffer.from(raster.split(',')[1], 'base64')],
       ]) {
-        await page.getByText(folder.name, { exact: true }).click({ button: 'right' })
+        await folderNode.click({ button: 'right' })
         await page.getByRole('menuitem', { name: /^(Modifier le dossier|Edit folder)$/, exact: true }).click()
         await expect(page.getByRole('textbox', { name: /^(Nom|Name)$/, exact: true })).toBeFocused()
         const trigger = page.getByRole('button', { name: new RegExp(`^(Icône du dossier|Icon for folder) ${folder.name}$`) })

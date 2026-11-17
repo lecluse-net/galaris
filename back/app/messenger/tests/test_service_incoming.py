@@ -54,7 +54,7 @@ async def _wire_common(
     kind: str = "nextcloud_talk",
 ) -> tuple[AsyncMock, AsyncMock]:
     """Patch ``_process_incoming`` surroundings and return task/contact calls."""
-    from app.services import service
+    from app.services import service as service_catalog
     from app.connection import connection_service
     from app.agent import agent_service
     from app.messenger import contact_memory, interactions, directory, facade, ingest
@@ -80,7 +80,7 @@ async def _wire_common(
     )
     connection = SimpleNamespace(id=7, service_id=3, agent_id=agent_id, active=True)
 
-    monkeypatch.setattr(service, "get_service_by_id", AsyncMock(return_value=tool))
+    monkeypatch.setattr(service_catalog, "get_service_by_id", AsyncMock(return_value=tool))
     monkeypatch.setattr(connection_service, "get_connection", AsyncMock(return_value=connection))
     monkeypatch.setattr(
         connection_service, "get_connections_by_param", AsyncMock(return_value=[connection])

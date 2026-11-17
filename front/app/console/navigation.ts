@@ -1,8 +1,10 @@
 import type { NavigationTree } from '@/core/navigation'
 import { privileges } from '@/core/authorize'
+import { getStoredAccessToken } from '@/core/api'
 import { useConsoleStore } from './stores/consoleStore'
 
 function isEmbeddedExecutorInUse(): boolean {
+  if (!getStoredAccessToken()) return false
   const store = useConsoleStore()
   void store.loadAvailability()
   return store.availability === true

@@ -643,6 +643,8 @@ async def test_attachment_message_publishes_all_uploaded_files_together(
         None,
         "fr",
         focus,
+        draft_file_keys=[],
+        draft_revision=None,
     )
 
     assert result is publish.return_value
@@ -696,6 +698,8 @@ async def test_attachment_message_discards_files_when_a_later_upload_fails(
             None,
             None,
             displayed_repository_id=None,
+            draft_file_keys=[],
+            draft_revision=None,
         )
 
     assert raised.value.status_code == 422
@@ -733,6 +737,8 @@ async def test_attachment_message_reports_oversized_upload_as_413(
             None,
             None,
             displayed_repository_id=None,
+            draft_file_keys=[],
+            draft_revision=None,
         )
 
     assert raised.value.status_code == 413

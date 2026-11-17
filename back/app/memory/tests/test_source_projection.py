@@ -280,7 +280,7 @@ async def test_source_projection_links_rebuilds_updates_and_deletes_with_source(
 
 
 @pytest.mark.asyncio
-async def test_reconciliation_preserves_cycle_reports_with_unsupported_links(
+async def test_reconciliation_preserves_cycle_reports_with_canonical_resource_links(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
@@ -310,8 +310,9 @@ async def test_reconciliation_preserves_cycle_reports_with_unsupported_links(
     assert "Audit terminé : script d’audit" in visible_text(html)
     assert "Ancienne tâche" in visible_text(html)
     assert '<strong>script d’audit</strong>' in html
-    assert 'href="console://' not in html
-    assert 'href="galaris://task/not-a-uuid"' not in html
+    # Stored references are checked syntactically; resolving a resource still enforces access.
+    assert 'href="console://work/memory-cycle34/audit_censoring.py"' in html
+    assert 'href="galaris://task/not-a-uuid"' in html
     assert 'href="https://example.com/audit"' in html
     assert cycle.progress_summary == report
     previous_revision = item.revision

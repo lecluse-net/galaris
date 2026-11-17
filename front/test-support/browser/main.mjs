@@ -43,6 +43,7 @@ window.testApp = {
     const target = (await import(/* @vite-ignore */ `/${component}`)).default
     for (const name of setProps) props[name] = new Set(props[name])
     const currentProps = shallowRef(props)
+    const targetRef = shallowRef()
     const events = []
     const listeners = Object.fromEntries((Array.isArray(target.emits) ? target.emits : Object.keys(target.emits ?? {})).map(name => [
       `on${name[0].toUpperCase()}${name.slice(1)}`,
@@ -51,7 +52,7 @@ window.testApp = {
         if (name.startsWith('update:')) currentProps.value = { ...currentProps.value, [name.slice(7)]: args[0] }
       },
     ]))
-    const renderTarget = () => h(target, { ...currentProps.value, ...listeners },
+    const renderTarget = () => h(target, { ...currentProps.value, ...listeners, ref: targetRef },
       Object.fromEntries(Object.entries(slots).map(([name, paragraphs]) => [name, () => paragraphs.map(text => h('p', text))])))
     const shellComponent = shell ? (await import('/app/index/components/MainLayout.vue')).default : null
     if (shellComponent) {
@@ -74,6 +75,7 @@ window.testApp = {
       pinia, router, auth, privileges, events,
       notify(options) { app.config.globalProperties.$q.notify(options) },
       async setProps(values) { currentProps.value = { ...currentProps.value, ...values }; await nextTick() },
+      async invoke(name, ...args) { await targetRef.value[name](...args); await nextTick() },
       async navigate(value) { await router.push(value); await nextTick() },
       async dark(value) { app.config.globalProperties.$q.dark.set(value); await nextTick() },
       async patchStore(modulePath, exportName, state) {

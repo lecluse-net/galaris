@@ -97,7 +97,7 @@ services:
     volumes:
       - ${GALARIS_E2E_ARTIFACT_DIR:-./artifacts/e2e}:/artifacts
       - ./front/core/util/sanitizeHtml.ts:/front/core/util/sanitizeHtml.ts:ro
-      - ./front/core/util/documentResource.ts:/front/core/util/documentResource.ts:ro
+      - ./front/core/util/resourceUri.ts:/front/core/util/resourceUri.ts:ro
       - pwa-site:/pwa-site
     depends_on:
       frontend:

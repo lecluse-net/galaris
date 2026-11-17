@@ -12,10 +12,19 @@ function setup({ deferProfile = false } = {}) {
   globalThis.window = new EventTarget()
   let generation = 'initial'
   const requests = []
+  const logins = []
   const localeLoads = []
   const profileWrites = []
   const profileResponses = []
   const authService = {
+    async login() {
+      generation = 'login-pending'
+      const pending = deferred()
+      logins.push(pending)
+      const response = await pending.promise
+      this.saveToken(response.access_token)
+      return response
+    },
     saveToken(token) {
       generation = `next-${token}`
       storage.set('access_token', token)
@@ -42,10 +51,30 @@ function setup({ deferProfile = false } = {}) {
       i18n: { global: { t: key => key } } },
   })
   const store = useAuthStore(pinia.createPinia())
-  return { store, requests, localeLoads, profileWrites, profileResponses, storage, changeGeneration() { generation = 'changed' }, close() {
+  return { store, requests, logins, localeLoads, profileWrites, profileResponses, storage, changeGeneration() { generation = 'changed' }, close() {
     store.$dispose(); globalThis.window = previous.window; globalThis.localStorage = previous.localStorage
   } }
 }
+
+test('queued storage notifications from the previous account cannot cancel an explicit login', async () => {
+  const state = setup()
+  try {
+    state.storage.set('access_token', 'account-a')
+    const login = state.store.login({ email: 'synthetic-b@example.test', password: 'synthetic' })
+    const outcome = login.then(value => ({ value }), error => ({ error }))
+    // A refresh in another tab queued this event before login advanced the generation.
+    const event = new Event('storage')
+    Object.defineProperty(event, 'key', { value: 'access_token' })
+    window.dispatchEvent(event)
+    state.logins[0].resolve({ access_token: 'account-b', token_type: 'bearer' })
+    await setImmediate()
+    state.requests[0].resolve({ id: 1, email: 'synthetic-a@example.test' })
+    state.requests[1]?.resolve({ id: 2, email: 'synthetic-b@example.test' })
+    const result = await outcome
+    assert.deepEqual(result, { value: { access_token: 'account-b', token_type: 'bearer' } })
+    assert.equal(state.store.user.id, 2)
+  } finally { state.close() }
+})
 
 test('document view preferences serialize rapid tab choices and keep the latest tab visible', async () => {
   const state = setup({ deferProfile: true })

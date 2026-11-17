@@ -83,7 +83,8 @@ test(`real IDE loads and edits through the Galaris gateway (runtime stopped: ${s
     await expect(writable).toBeAttached()
     await writable.focus()
     await page.keyboard.press(`${modifier}+a`)
-    await writable.pressSequentially(unsaved, { delay: 20 })
+    await page.keyboard.insertText(unsaved)
+    await expect(fresh.locator('.monaco-editor').filter({ has: writable }).locator('.view-lines')).toContainText(unsaved)
   }
   // Revocation watches close old-cookie streams within ten seconds. The native
   // client must reconnect using the renewed cookie without reloading its buffer.

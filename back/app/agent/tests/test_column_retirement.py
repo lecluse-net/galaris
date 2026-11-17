@@ -105,7 +105,7 @@ async def test_real_upgrade_preserves_teams_hermes_and_deleted_assistant_identit
         registry.register_action(DbAdminAction(key="test.agent.defer_contract", phase=DbAdminPhase.AFTER_EXPAND,
             checksum="synthetic", predicate=lambda _: True, handler=prepare, postcondition=ready, required=False))
         staged = await orchestrator.synchronize_database(target_registry=registry)
-        assert staged.exit_code == 0 and staged.verdict is DbAdminVerdict.DEGRADED
+        assert staged.exit_code == 1 and staged.verdict is DbAdminVerdict.DEGRADED
         async with committed_database() as session:
             owner = await session.get(Agent, current)
             profile = Agent(user_id=owner.user_id, title_id=owner.title_id, code="synthetic-staged-new-profile",

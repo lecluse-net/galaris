@@ -22548,6 +22548,7 @@
       },
       {
         "files": [
+          "front/app/console/navigation.ts",
           "front/app/console/services/consoleService.ts",
           "front/app/console/stores/consoleStore.ts"
         ],

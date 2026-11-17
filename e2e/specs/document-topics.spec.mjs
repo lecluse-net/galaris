@@ -6,6 +6,21 @@ import { notificationPrompt } from '../notification-prompt.mjs'
 test('topic/tag moves persist while preserving the editor, other tags and manual placement', async ({ page, request }, testInfo) => {
   test.setTimeout(120_000)
   const errors = collectPageErrors(page)
+  async function dragDocument(source, destination) {
+    await source.hover()
+    const start = await source.boundingBox()
+    expect(start).not.toBeNull()
+    await page.mouse.down()
+    try {
+      // Establish the native drag on its source before crossing another draggable node.
+      await page.mouse.move(start.x + start.width / 2 + 8, start.y + start.height / 2, { steps: 8 })
+      // Enter the target, then deliver dragover twice at the same point. A list's
+      // edge and center can hit different children, especially in WebKit.
+      await destination.hover({ position: { x: 5, y: 5 } })
+      await destination.hover()
+      await destination.hover()
+    } finally { await page.mouse.up() }
+  }
   await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: /^(Plus tard|Later)$/, exact: true }).click())
   const fixture = await (await request.post('/api/__test/seed')).json()
   await page.goto('/user/login')
@@ -51,9 +66,9 @@ test('topic/tag moves persist while preserving the editor, other tags and manual
   await expect(page.getByRole('textbox', { name: /^(Titre|Title)$/, exact: true })).toHaveValue(items[0].title)
   await errors.settle()
   const saved = page.waitForResponse(response => response.url().endsWith(`/topics/documents/${items[0].id}/classification`) && response.request().method() === 'PUT')
-  await plan.dragTo(tree.getByText('target', { exact: true }))
+  await dragDocument(plan, tree.getByText('target', { exact: true }))
   const response = await saved
-  expect(response.status(), await response.text()).toBe(204)
+  expect(response.status()).toBe(204)
   await errors.settle()
   const current = (await checked(await request.get(`/api/documents/${items[0].id}`, { headers }))).item
   expect(current.topic_id).toBe(topics[1].id)
@@ -117,7 +132,7 @@ test('topic/tag moves persist while preserving the editor, other tags and manual
   await page.screenshot({ path: testInfo.outputPath('agents-in-application.png'), animations: 'disabled' })
   await agentTree.getByText(/^(Tous les documents|All documents)$/, { exact: true }).click()
   const transferred = page.waitForResponse(response => response.url().endsWith(`/documents/${items[0].id}/owner`) && response.request().method() === 'PATCH')
-  await agentTree.getByText(items[0].title, { exact: true }).dragTo(list)
+  await dragDocument(agentTree.getByText(items[0].title, { exact: true }), list)
   expect((await transferred).status()).toBe(200)
   await expect(list.getByText(items[0].title, { exact: true })).toBeVisible()
   const owned = (await checked(await request.get(`/api/documents/${items[0].id}`, { headers }))).item
@@ -139,7 +154,7 @@ test('topic/tag moves persist while preserving the editor, other tags and manual
   const batchResponse = page.waitForResponse(response => response.url().endsWith('/documents/library/owners') && response.request().method() === 'POST')
   const destination = agentTree.getByText(branch.title, { exact: true })
   // Assert the submitted selection and persisted owners rather than a transient hover class.
-  await list.getByText(personal.title, { exact: true }).dragTo(destination)
+  await dragDocument(list.getByText(personal.title, { exact: true }), destination)
   const command = (await batchRequest).postDataJSON()
   expect(command.documents.map(entry => entry.document_id).sort()).toEqual([personal.id, items[0].id].sort())
   await page.locator('a[href="/"]').first().click()

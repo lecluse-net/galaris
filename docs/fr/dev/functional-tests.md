@@ -2146,6 +2146,19 @@ lecteur authentifié, le refus hors périmètre, le catalogue des équipes et le
 et de suppression. Les parcours de courses de session vérifient les abonnements Document
 propres aux pages et créent les ressources Memory et Document via leur API propriétaire avant de retarder
 l’authentification au premier chargement direct.
+`front/core/user/authStore.test.mjs` protège aussi une connexion explicite contre les
+événements de stockage retardés du compte précédent. `front/app/console/storeConcurrency.test.mjs`
+vérifie que la navigation déconnectée ne déclenche aucune lecture de disponibilité Console,
+afin d’éviter une boucle de requêtes non autorisées et de renouvellement de session.
+Les scénarios documentaires de `front/browser-tests/galaris-links.spec.mjs` tournent aussi
+dans WebKit : un clic avec modificateur doit ouvrir la bonne référence même si le
+déplacement natif du curseur reconstruit le lien. `document-browser-history.spec.mjs`
+vérifie ensuite les visites dans la bibliothèque, les modales et Discussion.
+`front/browser-tests/document-topics.spec.mjs` intercale une mise à jour de l’éditeur
+pendant un transfert de propriétaire : la liste doit se réconcilier après l’opération.
+`app/document/tests/test_document_read_performance.py` vérifie avec deux sessions réelles
+qu’une sauvegarde concurrente ne sépare pas le texte natif de la révision déjà lue,
+y compris lorsqu’une révision courante explicite est demandée.
 Avant un rechargement volontaire, ils attendent les réponses HTTP concernées. Le collecteur
 `e2e/page-errors.mjs` conserve les erreurs JavaScript et réseau ; il exclut une erreur XHR
 native de WebKit uniquement si une annulation de la même requête est observée.

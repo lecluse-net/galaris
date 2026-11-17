@@ -457,6 +457,7 @@ async def test_populated_upgrade_through_dbadmin_preserves_content_and_resumes_a
         await connection.execute(text("ALTER TABLE documents DROP CONSTRAINT documents_file_id_fkey"))
         await connection.execute(text("ALTER TABLE document_revisions DROP CONSTRAINT document_revisions_file_id_fkey"))
         await connection.execute(text("ALTER TABLE file_derivatives DROP CONSTRAINT file_derivatives_file_id_fkey"))
+        await connection.execute(text("ALTER TABLE chat_draft_files DROP CONSTRAINT chat_draft_files_file_id_fkey"))
         await connection.execute(text("DROP TABLE file_owners, file_aliases, files, file_stores"))
         await connection.execute(text("DELETE FROM dbadmin_actions WHERE key LIKE 'core.storage.%'"))
 

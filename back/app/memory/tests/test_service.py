@@ -31,6 +31,7 @@ from app.memory.schemas import MemoryGraphExpandRequest, MemoryGraphCursor, Memo
 from app.document.schemas import DocumentGrantUpdate
 from core.storage import get_storage
 from .conftest import create_memory_task
+from app.document.tests.revision_helpers import revision_clock as revision_clock
 from app.topic import TopicClassification, service as topic_service
 
 
@@ -279,6 +280,7 @@ async def test_acl_search_revisions_links_and_physical_forget(
     db: AsyncSession,
     agents: tuple[Agent, Agent],
     memory_storage: Path,
+    revision_clock,
 ) -> None:
     owner, peer = agents
     item, created = await create_document_reference(
@@ -337,6 +339,7 @@ async def test_acl_search_revisions_links_and_physical_forget(
     )
     updated_resource_id = updated.resource_id
     assert updated.revision == 2  # Sharing has its own lock version.
+    await revision_clock.settle()
     revisions = (await documents.list_document_content_revisions(
         item.id, actor_agent_id=owner.id
     )).items

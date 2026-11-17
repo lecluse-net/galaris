@@ -95,11 +95,11 @@ async def _scope(db, monkeypatch, platform="telegram", *, onebot_stack=None):
     # use the real native Chat and canonical permission/interaction services.
     monkeypatch.setattr(service, "messenger_for_agent", AsyncMock(return_value=None))
     if platform == "one_bot":
-        from app.services import ConnectionParamDef, ConnectionSchema, MessengerConfig, ServiceUpdate, service
+        from app.services import ConnectionParamDef, ConnectionSchema, MessengerConfig, ServiceUpdate, service as service_catalog
         from app.connection import connection_service
         from bridge.one_bot.tests.adapter import connected_adapter
 
-        await service.update_service(tool.id, ServiceUpdate(
+        await service_catalog.update_service(tool.id, ServiceUpdate(
             messenger_config=MessengerConfig(service="one_bot", settings={"platform": "qq"},
                 param_map={"user_id": "adapter_bot", "token": "token"}),
             connection_schema=ConnectionSchema(params={
@@ -124,10 +124,10 @@ async def _scope(db, monkeypatch, platform="telegram", *, onebot_stack=None):
         await connection_service.set_param(connection.id, "token", "synthetic-token")
         return agent, manager, outsider, connection, messenger
     if platform == "whatsapp":
-        from app.services import ConnectionParamDef, ConnectionSchema, MessengerConfig, ServiceUpdate, service
+        from app.services import ConnectionParamDef, ConnectionSchema, MessengerConfig, ServiceUpdate, service as service_catalog
         from app.connection import connection_service
 
-        await service.update_service(tool.id, ServiceUpdate(
+        await service_catalog.update_service(tool.id, ServiceUpdate(
             messenger_config=MessengerConfig(service="whatsapp",
                 settings={"app_secret": "synthetic-meta-secret", "verify_token": "synthetic-verify-token"},
                 param_map={"access_token": "token", "phone_number_id": "meta_phone"}),

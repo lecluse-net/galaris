@@ -11,9 +11,12 @@ from app.lab.models import LabEvaluationCase, LabEvaluationDataset
 def test_item_context_cannot_override_shared_settings(mechanism):
     contract = CONTRACTS[mechanism]
     descriptor = contract.descriptor()
-    # Executor fixtures support a shared default and an explicit per-case tool
-    # reply. Other item context remains isolated from benchmark parameters.
-    overrides = {"tool_responses", "tool_response_arguments"} if mechanism.endswith("_executor") else set()
+    # Executor cases may carry their observed catalogue/resources and tool replies.
+    # Missing overrides inherit shared defaults; other experiment settings stay isolated.
+    overrides = {
+        "tool_responses", "tool_response_arguments", "available_tools",
+        "task_only_services", "available_processes", "resources",
+    } if mechanism.endswith("_executor") else set()
     assert not (
         descriptor["context_schema"]["properties"].keys()
         & descriptor["parameters_schema"]["properties"].keys()

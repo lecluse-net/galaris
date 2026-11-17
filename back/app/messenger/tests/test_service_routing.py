@@ -66,10 +66,10 @@ async def test_task_messaging_rejects_another_agents_pinned_connection(
         "get_connection",
         AsyncMock(return_value=connection),
     )
-    from app.services import service
+    from app.services import service as service_catalog
 
     get_service_record = AsyncMock(return_value=SimpleNamespace(id=9))
-    monkeypatch.setattr(service, "get_service_record", get_service_record)
+    monkeypatch.setattr(service_catalog, "get_service_record", get_service_record)
     task = SimpleNamespace(
         id=uuid4(),
         agent_id=7,
@@ -118,7 +118,7 @@ async def test_agent_messenger_chooses_chat_then_a_stable_available_connection(
     monkeypatch: pytest.MonkeyPatch,
     internal: bool,
 ) -> None:
-    from app.services import service
+    from app.services import service as service_catalog
 
     connections = [
         SimpleNamespace(id=17, agent_id=7, service_id=3, active=True),
@@ -140,7 +140,7 @@ async def test_agent_messenger_chooses_chat_then_a_stable_available_connection(
         AsyncMock(return_value=connections),
     )
     monkeypatch.setattr(
-        service,
+        service_catalog,
         "get_service_by_id",
         AsyncMock(side_effect=lambda service_id: tools[service_id]),
     )
@@ -159,7 +159,7 @@ async def test_user_search_combines_every_connection_without_collapsing_ids(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.messenger import directory
-    from app.services import service
+    from app.services import service as service_catalog
 
     telegram = SimpleNamespace(id=17, agent_id=7, service_id=3, active=True)
     matrix = SimpleNamespace(id=29, agent_id=7, service_id=4, active=True)
@@ -231,7 +231,7 @@ async def test_user_search_combines_every_connection_without_collapsing_ids(
         AsyncMock(return_value=[telegram, matrix]),
     )
     monkeypatch.setattr(
-        service,
+        service_catalog,
         "get_service_by_id",
         AsyncMock(side_effect=lambda service_id: tools[service_id]),
     )

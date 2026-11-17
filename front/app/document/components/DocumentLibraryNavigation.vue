@@ -524,7 +524,10 @@ async function moveTopicDocuments(topicId: string | null, keyword?: string | nul
     dismiss?.()
     if (values.length > 1 && authSessionGeneration() === authSnapshot) $q.notify({ type: failed.length ? 'negative' : 'positive',
       message: failed.length ? t('documents.bulk.moveFailed') : t('documents.bulk.moved', { count: values.length }) })
-    if (session === sessionGeneration) busy.value = false
+    if (session === sessionGeneration) {
+      busy.value = false
+      if (pendingChanges.length) void flushChanges()
+    }
   }
 }
 async function moveClassificationSelection(contexts: { entry: DocumentLibraryEntry; keyword: string | null }[], target: string | null, keyword?: string | null): Promise<void> {

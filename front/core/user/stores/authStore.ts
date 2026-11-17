@@ -189,7 +189,11 @@ export const useAuthStore = defineStore('auth', () => {
         loading.value = true
         error.value = null
         try {
-            const response = await authService.login(credentials)
+            const pendingLogin = authService.login(credentials)
+            // login advances the generation before waiting for its cookie lock.
+            // Queued storage events from the former session must not supersede it.
+            observedGeneration = sessionGeneration()
+            const response = await pendingLogin
             if (operation !== authOperation) throw new SupersededSessionError()
             token.value = response.access_token
             await fetchCurrentUser({ required: true })

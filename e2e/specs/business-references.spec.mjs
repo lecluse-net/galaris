@@ -87,6 +87,9 @@ test('activity and topic references persist as compact cards and open modals aft
   const topicLink = editor.getByRole('link', { name: topic.title, exact: true })
   await expect(topicLink).toBeVisible()
   expect((await topicSaved).ok()).toBeTruthy()
+  // Resolving a pasted reference may queue another save after its initial text.
+  await expect.poll(async () => (await checked(await request.get(`/api/documents/${document.id}`, { headers }))).item.payload.text)
+    .toContain(`galaris://topic/${topic.id}`)
   const persisted = await checked(await request.get(`/api/documents/${document.id}`, { headers }))
   expect(persisted.item.payload.text).toContain(`galaris://task/${task.id}`)
   expect(persisted.item.payload.text).toContain(`galaris://topic/${topic.id}`)
