@@ -786,7 +786,7 @@ async def build_turn(
     round_.status = "RUNNING"
     await get_db().commit()
     newest = task_messages[-1]
-    from app.messenger import list_pending_choices
+    from app.messenger import explicit_reply_reference, list_pending_choices
 
     pending_choices = await list_pending_choices(
         agent_id=connection.agent_id,
@@ -794,9 +794,11 @@ async def build_turn(
         service_id=newest.service_id,
         room_id=str(room.id),
         user_id=newest.sender_external_id,
+        prioritize_reply=hydrated[-1],
     )
     from .process_interactions import PROCESS_HUMAN_INTERACTION, process_interaction_context, live_process_choices
     pending_choices = await live_process_choices(pending_choices, requester_user_id=hydrated[-1].requester_user_id)
+    explicit_reference = await explicit_reply_reference(hydrated[-1], pending_choices)
     from core.util import get_encryption_service
     resume_checkpoint = _read_round_checkpoint(round_)
     from .facade import active_work_snapshot
@@ -835,6 +837,7 @@ async def build_turn(
         pending_interactions=tuple(
             {
                 "reference": choice.reference,
+                **({"explicit_reply": True} if choice.reference == explicit_reference else {}),
                 "kind": choice.kind,
                 "title": choice.title[:500],
                 "body": choice.body[:2_000],

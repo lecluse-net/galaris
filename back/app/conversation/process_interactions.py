@@ -22,11 +22,19 @@ from .models import ConversationProcessLink, ConversationRound, ConversationRoun
 
 
 PROCESS_HUMAN_INTERACTION = "process_human_activity"
+_ACTIVITY_QUESTION_REMINDER_DELAYS = (24 * 60 * 60, 48 * 60 * 60)
 
 
 class ProcessHumanMessenger:
     def __init__(self) -> None:
-        register_choice_handler(PROCESS_HUMAN_INTERACTION, self.choose)
+        register_choice_handler(PROCESS_HUMAN_INTERACTION, self.choose, reminder_pending=self.question_pending)
+
+    @staticmethod
+    async def question_pending(choice: PendingChoice) -> bool:
+        question_id = choice.metadata.get("question_id")
+        return bool(question_id) and await human_activity_pending(
+            UUID(str(choice.metadata["attempt_id"])), question_id=UUID(str(question_id)),
+        )
 
     async def requester(self, run_id: UUID, agent_id: int) -> int | None:
         return await get_db().scalar(select(ConversationRound.requester_user_id)
@@ -61,6 +69,7 @@ class ProcessHumanMessenger:
             options=[ChoiceOption(id="true", label="True"), ChoiceOption(id="false", label="False")] if request.decision else [],
             free_text=not request.decision, interpretation_required=not request.decision,
             timeout_seconds=10 * 365 * 24 * 3600, language=language,
+            reminder_delays=_ACTIVITY_QUESTION_REMINDER_DELAYS if request.question_id is not None else (),
             metadata={"attempt_id": str(request.attempt_id), "run_id": str(request.run_id),
                 "assigned_user_id": request.user_id, "input": request.input,
                 "outputs": request.outputs, "files": request.files, "decision": request.decision, "partial": request.partial,

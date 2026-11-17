@@ -354,6 +354,13 @@ choix irréversible. L’agent doit alors poser une question courte et attendre 
 deviner. Une question est un résultat valide du tour en cours ; répondez dans la même
 conversation pour continuer.
 
+Utilisez **Répondre** sur la question ou sa relance, ou indiquez sa référence `#…`.
+Les nouvelles demandes de clarification du Planner sont relancées dans la même conversation
+après environ 4 heures puis 24 heures et expirent au bout de trois jours.
+Lorsqu’une tâche de Process pose une question en cours d’activité, les deux relances sont
+espacées davantage, après environ un jour puis trois jours. Les relances portent la référence
+de la question initiale et cessent dès que la réponse est enregistrée.
+
 Deux attentes doivent être distinguées. Pour choisir l’organisation d’une mission ambiguë,
 l’agent peut poser une nouvelle question si votre réponse laisse une ambiguïté essentielle.
 La même tâche conserve vos précisions précédentes et attend sans démarrer le travail.

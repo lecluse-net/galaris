@@ -20,6 +20,7 @@ default: dict[str, object] = {
         "deny_all_sites": "始终禁止所有网站",
     },
     "messenger_interactions": {
+        "reminder": "提醒：${title}",
         "answer": "对“${title}”的回复 (#${reference})：${answer}",
         "choose": "请回复相应的编号：",
         "choose_or_text": "请回复相应的编号，或输入文本：",

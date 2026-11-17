@@ -45,6 +45,23 @@ async def test_absent_decision_model_or_forced_response_skips_catalog_and_infere
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("configured", [False, True])
+async def test_explicit_reply_identifies_its_wait_without_inference(monkeypatch, inputs, configured):
+    if not configured:
+        monkeypatch.setattr(routing, "resolve_agent_decision_models", AsyncMock(return_value=(None, None, False)))
+    infer = AsyncMock(side_effect=AssertionError("An exact reply needs no continuity inference"))
+    monkeypatch.setattr(routing, "run_decision", infer)
+    inputs["pending_interactions"] = (
+        {"reference": "A1234567", "body": "Which date?"},
+        {"reference": "B1234567", "body": "Which file?", "explicit_reply": True},
+    )
+    result = await routing.analyze_conversation_work(**inputs)
+    assert result.continuity_status == "selected"
+    assert result.continuity.reference == "B1234567"
+    infer.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("relation", ["answer", "related"])
 async def test_correlates_exact_wait_or_progress_and_independent_new_process(monkeypatch, inputs, relation):
     task_id, run_id, definition_id = uuid4(), uuid4(), 401

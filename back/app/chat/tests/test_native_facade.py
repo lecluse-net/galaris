@@ -372,6 +372,68 @@ async def test_internal_choices_reload_and_resolve_once_in_the_exact_human_scope
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("reply_to_reminder", [False, True])
+async def test_pending_question_reminds_once_and_reply_targets_that_question(
+    committed_database, monkeypatch: pytest.MonkeyPatch, reply_to_reminder: bool,
+) -> None:
+    from app.messenger import ChoiceRequest, MessengerFacade, create_choice, deliver_choice_reminders
+    from app.messenger import interactions, service as messenger_service
+    from app.messenger.models import Interaction
+
+    async with get_db_session() as db:
+        agent, owner, _ = await _scope(db)
+        room = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
+        assert room is not None
+        messenger = MessengerFacade(await InternalMessenger.from_connection_id(room.connection_id), room.connection_id)
+        handler = AsyncMock()
+        reminder_guard = AsyncMock(return_value=True)
+        monkeypatch.setitem(interactions._choice_handlers, "question-reminder-test", handler)
+        monkeypatch.setitem(interactions._reminder_guards, "question-reminder-test", reminder_guard)
+        monkeypatch.setattr(messenger_service, "messenger_for_agent_connection", AsyncMock(return_value=messenger))
+        pending = await create_choice(
+            messenger, agent_id=agent.id, room_id=str(room.id), user_id=f"user:{owner.id}",
+            request=ChoiceRequest(kind="question-reminder-test", title="Quel délai ?", body="Date de livraison",
+                free_text=True, reminder_delays=(4 * 3600, 20 * 3600), timeout_seconds=3 * 86400),
+        )
+        other = await create_choice(
+            messenger, agent_id=agent.id, room_id=str(room.id), user_id=f"user:{owner.id}",
+            request=ChoiceRequest(kind="question-reminder-test", title="Quel format ?", free_text=True),
+        )
+        assert pending.prompt_message_id is not None
+        prompt = await db.get(Message, UUID(pending.prompt_message_id))
+        assert prompt is not None
+        reminder_query = select(Message).where(
+            Message.messenger_room_id == room.id, Message.reply_to == prompt.remote_message_id,
+            Message.direction == "outbound",
+        )
+        await deliver_choice_reminders(now=pending.created_at + timedelta(hours=3))
+        assert await db.scalar(reminder_query) is None
+
+        async def run_due_reminders() -> None:
+            async with get_db_session():
+                await deliver_choice_reminders(now=pending.created_at + timedelta(hours=5))
+
+        await asyncio.gather(run_due_reminders(), run_due_reminders())
+        reminders = (await db.scalars(reminder_query)).all()
+        assert len(reminders) == 1
+        assert pending.reference in (reminders[0].text or "")
+        assert "Date de livraison" in (reminders[0].text or "")
+        reminder_guard.assert_awaited_once()
+        response = await native_facade.publish_internal_message(
+            user_id=owner.id, room_id=room.id, client_message_id=uuid4(), text="Vendredi",
+            reply_to_message_id=reminders[0].id if reply_to_reminder else prompt.id,
+        )
+        assert response is not None
+        handler.assert_awaited_once()
+        assert handler.await_args is not None and handler.await_args.args[1].interaction_id == pending.id
+        assert await db.scalar(select(Interaction.status).where(Interaction.id == other.id)) == "PENDING"
+        assert await db.scalar(select(ConversationRoundMessage)) is None
+
+        await deliver_choice_reminders(now=pending.created_at + timedelta(hours=48))
+        assert len((await db.scalars(reminder_query)).all()) == 1
+
+
+@pytest.mark.asyncio
 async def test_button_answer_is_journaled_before_handler_and_survives_its_retry(
     db: AsyncSession, monkeypatch: pytest.MonkeyPatch,
 ) -> None:

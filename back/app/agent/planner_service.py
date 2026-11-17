@@ -93,7 +93,8 @@ _PLAN_RESULT_MAX_CHARS_PER_STEP = 4000
 _PLANNER_HISTORY_MAX_MESSAGES = 30
 _PLANNER_HISTORY_MAX_CHARS_PER_MESSAGE = 1500
 _TOOL_DESCRIPTION_MAX_CHARS = 80
-_CLARIFICATION_TIMEOUT_SECONDS = 30 * 60
+_CLARIFICATION_TIMEOUT_SECONDS = 3 * 24 * 60 * 60
+_CLARIFICATION_REMINDER_DELAYS = (4 * 60 * 60, 20 * 60 * 60)
 _BLOCKED_PREFIX = "BLOCKED:"
 _BLOCKED_RECOVERY_DATA_KEY = "blocked_recovery"
 _PLAN_SKIPPED_DATA_KEY = "plan_skipped"
@@ -726,7 +727,7 @@ async def _request_clarification(
         return False
 
     from app.messenger import resolve_task_messaging
-    from app.messenger.interactions import ChoiceRequest, create_choice, register_choice_handler
+    from app.messenger.interactions import ChoiceRequest, create_choice
 
     room_id = _message_origin_room_id(task)
     if not room_id:
@@ -756,7 +757,7 @@ async def _request_clarification(
     task_service.suspend(task, task_service.PAUSE_CLARIFY)
     await task_service.save(task)
 
-    register_choice_handler(PLANNER_CLARIFICATION_INTERACTION, _handle_clarification_answer)
+    register_clarification_interaction()
     try:
         await create_choice(
             messenger,
@@ -769,6 +770,7 @@ async def _request_clarification(
                 free_text=True,
                 metadata={"task_id": str(task.id), "clarification_round": round_index},
                 timeout_seconds=_CLARIFICATION_TIMEOUT_SECONDS,
+                reminder_delays=_CLARIFICATION_REMINDER_DELAYS,
                 language=_task_language(task),
             ),
         )
@@ -787,6 +789,26 @@ async def _request_clarification(
         len(cleaned),
     )
     return True
+
+
+def register_clarification_interaction() -> None:
+    from app.messenger import register_choice_handler
+
+    register_choice_handler(
+        PLANNER_CLARIFICATION_INTERACTION, _handle_clarification_answer,
+        reminder_pending=_clarification_reminder_pending,
+    )
+
+
+async def _clarification_reminder_pending(interaction: PendingChoice) -> bool:
+    task = await task_service.get_by_id(UUID(str(interaction.metadata["task_id"])))
+    if (task is None or task.status != TaskStatus.PLAN
+            or not task_service.is_paused_for(task, task_service.PAUSE_CLARIFY)
+            or task_service.is_held_by_user(task)):
+        return False
+    data = task.data or {}
+    return (interaction.metadata.get("clarification_round", 0) == len(as_list(data.get("clarifications")))
+            and bool(data.get("clarification_questions")))
 
 
 async def _handle_clarification_answer(

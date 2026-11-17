@@ -316,6 +316,13 @@ authorizing the agent to process their messages.
 
 Essential information may be missing: recipient, file, period, authorization, or an irreversible choice. The Agent must then ask a short question and wait rather than guess. A question is a valid result of the current turn; reply in the same conversation to continue.
 
+Use **Reply** on the question or its reminder, or include its `#…` reference.
+New Planner clarification requests prompt reminders in the same conversation after about
+4 hours and 24 hours. These requests expire after three days.
+When a Process Task asks a question during an activity, the reminders are spaced further apart,
+after about one day and three days. Reminders carry the original question reference and stop
+once the answer is recorded.
+
 Two waits have different outcomes. When choosing the organization of an ambiguous mission,
 the agent may ask another question if your answer leaves an essential ambiguity. The same Task
 retains earlier answers and waits without starting work. An old reply cannot resolve the new

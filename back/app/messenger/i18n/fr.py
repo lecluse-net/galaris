@@ -128,6 +128,7 @@ default: dict[str, object] = {
         "unreadable_content": "[illisible]",
     },
     "messenger_interactions": {
+        "reminder": "Rappel — ${title}",
         "answer": "Réponse à « ${title} » (#${reference}) : ${answer}",
         "choose": "Réponds avec le numéro correspondant :",
         "choose_or_text": "Réponds avec le numéro correspondant, ou en texte libre :",

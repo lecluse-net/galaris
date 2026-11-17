@@ -54,6 +54,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from bridge.mail import retry_approval_notifications
         from app.task import register_runtime_settings, scheduler as task_scheduler
         from app.chat import reconcile_storage, register_scheduler_jobs as register_chat_jobs
+        from app.agent.planner_service import register_clarification_interaction
+        from app.messenger import deliver_choice_reminders
         from app.code import reconcile_sessions as reconcile_code_sessions
         from app.incident import prune_traces as prune_incident_traces
         from app.llm import prune_traces as prune_llm_traces
@@ -66,6 +68,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         await configure_default_engine(task_scheduler.register_periodic_job, task_scheduler.unregister_periodic_job)
         register_runtime_settings()
+        register_clarification_interaction()
+        task_scheduler.register_periodic_job("messenger-choice-reminders", deliver_choice_reminders, interval=60.0)
         from app.contact.facade import register_contact_runtime, process_contact_discovery
         register_contact_runtime()
         task_scheduler.register_periodic_job("contact-discovery", process_contact_discovery, interval=1.0, timeout=150.0)

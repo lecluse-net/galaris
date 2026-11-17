@@ -106,12 +106,20 @@ async def analyze_conversation_work(
     analysis = ConversationWorkAnalysis()
     if force_response:
         return analysis
+    candidates = _work_candidates(active_work or (), pending_interactions)
+    explicit = next((
+        candidates.get(f"interaction:{item.get('reference')}")
+        for item in pending_interactions if item.get("explicit_reply") is True
+    ), None)
+    if explicit is not None:
+        analysis = ConversationWorkAnalysis(
+            continuity_status="selected", continuity=explicit, reason="explicit_reply",
+        )
     with llm_call_accounting() as accounting:
         try:
             decision, fallback, allow_fallback = await resolve_agent_decision_models(agent)
             if decision is None:
-                return analysis.model_copy(update={"reason": "decision_model_not_configured"})
-            candidates = _work_candidates(active_work or (), pending_interactions)
+                return analysis if explicit is not None else analysis.model_copy(update={"reason": "decision_model_not_configured"})
             continuity_complete = active_work is not None and len(candidates) <= _CANDIDATE_LIMIT
             candidates = dict(list(candidates.items())[:_CANDIDATE_LIMIT])
             processes: dict[str, ConversationProcessTarget] = {}
@@ -127,6 +135,8 @@ async def analyze_conversation_work(
                     target = ConversationProcessTarget.model_validate(item)
                     processes[str(target.definition_id)] = target
                     process_data.append(item)
+            if explicit is not None and not processes:
+                return analysis.model_copy(update={"process_status": "none" if process_complete else "uncertain"})
             prompt = json.dumps({
                 "current_message": objective, "short_history": history,
                 "continuity_candidates": {key: value.model_dump(mode="json") for key, value in candidates.items()},
@@ -151,6 +161,10 @@ async def analyze_conversation_work(
                         **{key: value.model_dump_json() for key, value in processes.items()}},
                 ),
             }
+            if explicit is not None:
+                # The independent new-process intent can coexist with an exact
+                # reply. Only the new-process axis needs model input here.
+                del questions["continuity"]
             inference = await run_decision(DecisionInferenceRequest(
                 llm_id=decision.id, fallback_llm_id=fallback.id if fallback else None,
                 allow_text_fallback=allow_fallback, prompt=prompt, system_prompt=_SYSTEM_PROMPT,
@@ -160,12 +174,12 @@ async def analyze_conversation_work(
                 parameters={"temperature": 0.0, "max_tokens": 256}, questions=questions,
             ))
             inference.output.validate_questions(questions)
-            continuity = inference.output.answers["continuity"].choice
+            continuity = inference.output.answers["continuity"].choice if explicit is None else None
             process = inference.output.answers["process"].choice
             analysis = ConversationWorkAnalysis(
-                continuity_status=("selected" if continuity in candidates else
+                continuity_status=("selected" if explicit is not None or continuity in candidates else
                     "none" if continuity == "none" and continuity_complete else "uncertain"),
-                continuity=candidates.get(continuity),
+                continuity=explicit if continuity is None else candidates.get(continuity),
                 process_status=("selected" if process in processes else
                     "none" if process == "none" and process_complete else "uncertain"),
                 process=processes.get(process), reason="decision_completed",
@@ -173,7 +187,8 @@ async def analyze_conversation_work(
             )
         except Exception:
             logger.warning("Conversation dispatch analysis unavailable round={}; executor retains routing", round_id)
-            analysis = ConversationWorkAnalysis(reason="analysis_unavailable")
+            if explicit is None:
+                analysis = ConversationWorkAnalysis(reason="analysis_unavailable")
     if accounting.costs:
         analysis.cost = accounting.cost
     return analysis

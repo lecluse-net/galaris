@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional
+from typing import Annotated, Any, Optional
 from uuid import UUID, uuid4
 
 from loguru import logger
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import delete, or_, select, update
+from sqlalchemy import String, cast as sql_cast, delete, or_, select, update
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.messenger.facade import MessengerFacade
@@ -45,6 +46,7 @@ class ChoiceRequest(BaseModel):
     interpretation_required: bool = False
     metadata: dict[str, Any] = Field(default_factory=lambda: {})
     timeout_seconds: int = 300
+    reminder_delays: tuple[Annotated[int, Field(gt=0)], ...] = ()
     language: str = ""
 
     model_config = ConfigDict(extra="ignore")
@@ -82,16 +84,26 @@ class PendingChoice:
 
 
 ChoiceHandler = Callable[[PendingChoice, ChoiceResolution], Awaitable[None]]
+ReminderGuard = Callable[[PendingChoice], Awaitable[bool]]
 _choice_handlers: dict[str, ChoiceHandler] = {}
 _choice_privileges: dict[str, tuple[str, ...]] = {}
+_reminder_guards: dict[str, ReminderGuard] = {}
 _PROCESSING_TIMEOUT_SECONDS = 30
 _REFERENCE_RE = re.compile(r"#([A-F0-9]{8,12})\b", re.IGNORECASE)
+_REMINDER_DELAYS_KEY = "_reminder_delays"
+_REMINDER_DUE_KEY = "_reminder_due"
+_REMINDER_PROMPT_KEY = "interaction_reminder_prompt"
 
 
-def register_choice_handler(kind: str, handler: ChoiceHandler, *, required_privileges: tuple[str, ...] = ()) -> None:
+def register_choice_handler(
+    kind: str, handler: ChoiceHandler, *, required_privileges: tuple[str, ...] = (),
+    reminder_pending: ReminderGuard | None = None,
+) -> None:
     """Register a domain handler for an interaction kind."""
     _choice_handlers[kind] = handler
     _choice_privileges[kind] = required_privileges
+    if reminder_pending is not None:
+        _reminder_guards[kind] = reminder_pending
 
 
 async def choice_authorized(kind: str, user_id: int | None, *, assigned: bool = False) -> bool:
@@ -176,6 +188,34 @@ def _message_scope(message: Message) -> tuple[Optional[str], Optional[str]]:
     return room_id, user_id
 
 
+async def _reply_prompt_id(message: Message) -> str | None:
+    room_id, _ = _message_scope(message)
+    if not message.reply_to or not room_id:
+        return None
+    row = (await get_db().execute(select(
+        sql_cast(Message.id, String), Message.metadata_[_REMINDER_PROMPT_KEY].as_string(),
+    ).where(
+        Message.connection_id == message.connection_id,
+        sql_cast(Message.messenger_room_id, String) == room_id,
+        Message.direction == "outbound",
+        Message.remote_message_id == message.reply_to,
+    ))).one_or_none()
+    return (row[1] or row[0]) if row is not None else None
+
+
+def _explicit_references(message: Message) -> set[str]:
+    return {value.upper() for value in _REFERENCE_RE.findall(message.text or "")}
+
+
+async def explicit_reply_reference(message: Message, choices: list[PendingChoice]) -> str | None:
+    """Identify a reply against the caller's live, scoped choices without inference."""
+    references = _explicit_references(message)
+    if references:
+        return next((choice.reference for choice in choices if references == {choice.reference.upper()}), None)
+    prompt_id = await _reply_prompt_id(message)
+    return next((choice.reference for choice in choices if prompt_id and choice.prompt_message_id == prompt_id), None)
+
+
 async def create_choice(
     messenger: MessengerFacade,
     *,
@@ -215,8 +255,12 @@ async def create_choice(
 
     reference = uuid4().hex[:8].upper()
     metadata = dict(request.metadata)
+    metadata.pop(_REMINDER_DUE_KEY, None)
+    metadata.pop(_REMINDER_DELAYS_KEY, None)
     metadata["interpretation_required"] = request.interpretation_required
     metadata["language"] = _language(request.language)
+    if request.reminder_delays:
+        metadata[_REMINDER_DELAYS_KEY] = list(request.reminder_delays)
     if normalized_key:
         metadata["idempotency_key"] = normalized_key
     record = Interaction(
@@ -241,6 +285,25 @@ async def create_choice(
     return await _send_choice_prompt(messenger, record, request, reply_to=reply_to)
 
 
+def _choice_metadata(record: Interaction) -> dict[str, Any]:
+    metadata = dict(record.metadata_ or {})
+    metadata.pop(_REMINDER_DUE_KEY, None)
+    metadata.pop(_REMINDER_DELAYS_KEY, None)
+    return metadata
+
+
+def _schedule_choice_reminder(record: Interaction, now: datetime) -> None:
+    metadata = dict(record.metadata_)
+    delays = metadata.pop(_REMINDER_DELAYS_KEY, [])
+    metadata.pop(_REMINDER_DUE_KEY, None)
+    if delays:
+        due = now + timedelta(seconds=delays[0])
+        if due < record.expires_at:
+            metadata[_REMINDER_DUE_KEY] = due.isoformat()
+            metadata[_REMINDER_DELAYS_KEY] = delays[1:]
+    record.metadata_ = metadata
+
+
 async def _send_choice_prompt(
     messenger: MessengerFacade, record: Interaction, request: ChoiceRequest,
     *, reply_to: str | None = None,
@@ -254,6 +317,8 @@ async def _send_choice_prompt(
             reply_to=reply_to,
         )
         record.prompt_message_id = str(sent.id)
+        if record.metadata_.get(_REMINDER_DELAYS_KEY):
+            _schedule_choice_reminder(record, datetime.now(timezone.utc))
         await db.commit()
     except Exception:
         await db.delete(record)
@@ -287,6 +352,14 @@ async def resolve_from_message(
         scope_clauses.append(Interaction.user_id == user_id)
     if not scope_clauses:
         return None
+    references = _explicit_references(message)
+    if len(references) > 1:
+        return None
+    reference = next(iter(references), None)
+    prompt_id = await _reply_prompt_id(message) if message.reply_to and reference is None else None
+    if message.reply_to and reference is None and prompt_id is None:
+        return None
+    targeted = reference is not None or prompt_id is not None
     query = (
         select(Interaction)
         .where(
@@ -296,17 +369,19 @@ async def resolve_from_message(
             *scope_clauses,
         )
         .order_by(Interaction.created_at.desc())
-        .with_for_update(skip_locked=True)
+        .with_for_update(skip_locked=not targeted)
     )
     query = query.where(Interaction.connection_id == connection_id)
     if agent_id is not None:
         query = query.where(Interaction.agent_id == agent_id)
+    if reference is not None:
+        query = query.where(Interaction.reference == reference)
+    elif prompt_id is not None:
+        query = query.where(Interaction.prompt_message_id == prompt_id)
     records = list((await db.execute(query)).scalars().all())
 
-    reference_match = _REFERENCE_RE.search(message.text or "")
-    reference = reference_match.group(1).upper() if reference_match else None
     answer_text = _REFERENCE_RE.sub("", message.text or "").strip()
-    if reference is None and any(record.metadata_.get("interpretation_required") for record in records):
+    if not targeted and any(record.metadata_.get("interpretation_required") for record in records):
         # The same "yes" or file can concern a Process instead of another pending
         # approval. Let the conversation controller disambiguate before any effect.
         return None
@@ -314,8 +389,6 @@ async def resolve_from_message(
     for record in records:
         # Text and files need interpretation: proximity alone is never an answer.
         if record.metadata_.get("interpretation_required"):
-            continue
-        if reference is not None and record.reference.upper() != reference:
             continue
         choice = _pending_from_record(record)
         option = _option_from_answer(choice.options, answer_text)
@@ -325,7 +398,7 @@ async def resolve_from_message(
 
     if not compatible:
         return None
-    if reference is None and len(compatible) > 1:
+    if len(compatible) > 1:
         logger.warning(
             "Multiple interactions match a message in room {}; an explicit reference is required",
             room_id,
@@ -366,6 +439,7 @@ async def list_pending_choices(
     limit: int = 10,
     offset: int = 0,
     kind: str | None = None,
+    prioritize_reply: Message | None = None,
 ) -> list[PendingChoice]:
     """Return live choices visible to one exact conversation participant.
 
@@ -383,6 +457,15 @@ async def list_pending_choices(
         if user_id
         else Interaction.user_id.is_(None)
     )
+    priority: ColumnElement[bool] | None = None
+    if prioritize_reply is not None:
+        references = _explicit_references(prioritize_reply)
+        if len(references) == 1:
+            priority = Interaction.reference == next(iter(references))
+        elif not references:
+            prompt_id = await _reply_prompt_id(prioritize_reply)
+            if prompt_id is not None:
+                priority = Interaction.prompt_message_id == prompt_id
     query = (
         select(Interaction)
         .where(
@@ -394,12 +477,12 @@ async def list_pending_choices(
             Interaction.room_id == room_id,
             user_clause,
         )
-        .order_by(Interaction.created_at.desc())
-        .offset(max(0, offset))
-        .limit(max(1, min(limit, 20)))
     )
     if kind is not None:
         query = query.where(Interaction.kind == kind)
+    if priority is not None:
+        query = query.order_by(priority.desc().nulls_last())
+    query = query.order_by(Interaction.created_at.desc()).offset(max(0, offset)).limit(max(1, min(limit, 20)))
     return [
         _pending_from_record(record)
         for record in (await get_db().scalars(query)).all()
@@ -523,7 +606,7 @@ async def resolve_pending_choice(
         interaction_id=record.id,
         kind=record.kind,
         option_id=option.id,
-        metadata=dict(record.metadata_ or {}),
+        metadata=_choice_metadata(record),
         text=response_text.strip() or None,
     )
     processing_token = uuid4()
@@ -551,7 +634,7 @@ def _pending_from_record(record: Interaction) -> PendingChoice:
         title=record.title,
         body=record.body,
         options=[ChoiceOption.model_validate(option) for option in record.options],
-        metadata=dict(record.metadata_ or {}),
+        metadata=_choice_metadata(record),
         expires_at=record.expires_at,
         reference=record.reference,
         free_text=record.free_text,
@@ -670,6 +753,60 @@ async def retry_pending_interactions() -> None:
         await _deliver_record(interaction_id, token)
 
 
+async def deliver_choice_reminders(*, now: datetime | None = None) -> None:
+    """Claim due reminders durably before calling the transport."""
+    from .service import messenger_for_agent_connection
+
+    db = get_db()
+    due = Interaction.metadata_[_REMINDER_DUE_KEY].as_string()
+    for _ in range(5):
+        current = now or datetime.now(timezone.utc)
+        record = await db.scalar(select(Interaction).where(
+            Interaction.status == "PENDING", Interaction.expires_at > current,
+            Interaction.prompt_message_id.is_not(None),
+            due <= current.isoformat(),
+        ).order_by(due, Interaction.id).limit(1).with_for_update(skip_locked=True)
+            .execution_options(populate_existing=True))
+        if record is None:
+            return
+        # Advance before the external send. Other workers or restarts cannot send
+        # the same slot again, even if its transport receipt was lost.
+        _schedule_choice_reminder(record, current)
+        await db.commit()
+        choice = _pending_from_record(record)
+        try:
+            async with asyncio.timeout(10):
+                guard = _reminder_guards.get(choice.kind)
+                if (guard is None or choice.agent_id is None or choice.connection_id is None
+                        or not choice.room_id or not choice.prompt_message_id
+                        or not await _recipient_authorized(record) or not await guard(choice)):
+                    continue
+                messenger = await messenger_for_agent_connection(choice.agent_id, choice.connection_id)
+                prompt = await db.scalar(select(Message.remote_message_id).where(
+                    sql_cast(Message.id, String) == choice.prompt_message_id,
+                    Message.connection_id == choice.connection_id,
+                    sql_cast(Message.messenger_room_id, String) == choice.room_id,
+                    Message.direction == "outbound",
+                ))
+                if prompt is None or await db.scalar(select(Interaction.id).where(
+                    Interaction.id == choice.id, Interaction.status == "PENDING",
+                    Interaction.expires_at > (now or datetime.now(timezone.utc)),
+                )) is None:
+                    continue
+                language = _language(choice.metadata.get("language"))
+                reminder = ChoiceRequest(
+                    kind=choice.kind, title=_message(language, "reminder", title=choice.title),
+                    body=choice.body, options=choice.options, free_text=choice.free_text, language=language,
+                )
+                await messenger.send_to_room(
+                    choice.room_id, _render_choice_text(reminder, choice.reference), reply_to=prompt,
+                    journal_metadata={_REMINDER_PROMPT_KEY: choice.prompt_message_id},
+                )
+        except Exception:
+            await db.rollback()
+            logger.exception("Could not send reminder for Messenger interaction {}", choice.id)
+
+
 async def request_user_choice(
     *, agent_id: int, user_id: int, request: ChoiceRequest, idempotency_key: str,
 ) -> PendingChoice:
@@ -757,7 +894,7 @@ async def settle_user_choice(*, agent_id: int, kind: str, idempotency_key: str, 
         raise ValueError("The committed choice must match a persisted option.")
     record.resolution = _resolution_payload(ChoiceResolution(
         interaction_id=record.id, kind=record.kind, option_id=option_id,
-        metadata=dict(record.metadata_ or {}), text=option["label"],
+        metadata=_choice_metadata(record), text=option["label"],
     ))
     record.status = "RESOLVED"
     record.resolved_at = datetime.now(timezone.utc)

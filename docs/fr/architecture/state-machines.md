@@ -138,6 +138,8 @@ Une question d'organisation suspend en `PLAN`. Sa réponse conserve les précisi
 applique `REASSESS_ORGANIZATION` ; le routage choisit de nouveau avec cette réponse.
 Un nouveau choix `clarify` ouvre une autre attente en `PLAN` sur la même tâche, uniquement
 après réponse aux séries précédentes. Les retours des anciennes interactions sont ignorés.
+Pour une nouvelle clarification du Planner, l’interaction planifie deux relances à quatre
+heures puis vingt-quatre heures environ. Son échéance est de trois jours.
 Sans réponse à l'échéance, ou sans canal de question, `FAIL` termine la tâche en `ERROR`,
 sans retry automatique, y compris lorsque l'échec est enregistré pendant `CREATE`.
 

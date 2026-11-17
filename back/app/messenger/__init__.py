@@ -106,6 +106,8 @@ from .interactions import (
     register_choice_handler,
     resolve_pending_choice,
     resolve_from_message,
+    explicit_reply_reference,
+    deliver_choice_reminders,
     apply_interpreted_response,
 )
 from .session import ConversationSessionSnapshot, build_conversation_session
@@ -309,6 +311,8 @@ __all__ = [
     "register_choice_handler",
     "resolve_pending_choice",
     "resolve_from_message",
+    "explicit_reply_reference",
+    "deliver_choice_reminders",
     "apply_interpreted_response",
     "ConversationSessionSnapshot",
     "build_conversation_session",
