@@ -128,6 +128,8 @@ Voir [Tester les comportements](testing.md).
 | `quality` | Enchaîner les contrôles locaux ; certains nécessitent la stack de développement active. |
 | `validate` | Qualifier un instantané isolé, incluant les changements non committés, sans stack de développement. |
 | `security-check` | Scanner dépendances, secrets et code sensible. |
+| `dependencies-audit` | Produire le [rapport de dépendances et versions](security-validation.md) de tous les sous-projets ; `FAIL_ON=HIGH` par défaut, `ALL_VERSIONS=1` pour les versions transitives, images locales avec `IMAGES='image1 image2'`. |
+| `tests-dependencies-audit` | Vérifier la découverte, les rapports et les échecs scanner/registre sur des cas synthétiques. |
 | `tests-restore` | Répéter la restauration DB, fichiers et clés sur des données isolées. |
 | `tests-upgrade` | Répéter une mise à jour isolée depuis `UPGRADE_PREVIOUS_IMAGE` ou `UPGRADE_FROM`. |
 | `build-release` | Construire/exporter les images immuables de `RELEASE_REF` (HEAD committé par défaut). |

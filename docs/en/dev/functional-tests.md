@@ -1653,7 +1653,15 @@ and both agents' scopes.
 transaction boundaries and after the response; `core/user/tests/test_refresh_session.py`
 covers combined account/session validation, legacy tokens, expiry, revocation and UserToken.
 `make tests-release-check` executes publication scripts with real Git and synthetic scanner/API
-boundaries: missing, failed, cancelled, stale or fork Security evidence is rejected, the latest result is
+boundaries. `make tests-dependencies-audit` covers nested project discovery, development
+dependencies and Dockerfile pins, unfixed findings, thresholds, newly uncovered files
+and scanner/registry errors while retaining other results. Run the real report with
+`make dependencies-audit`, independently of publication checks.
+The command test uses real Git and the reporter, a synthetic scanner and synthetic
+registry metadata: uncommitted changes are included, ignored data and symlinks are
+excluded, package scripts never run, and timestamped caching covers expiry, forced
+refresh and concurrent writes.
+Publication scripts reject missing, failed, cancelled, stale or fork Security evidence; the latest result is
 selected, the exact commit is archived and source findings stop image builds.
 `tests/test_release_publication.py` checks that publication depends on this gate and uses
 the qualified commit. Functional failures do not prevent publication; image scans also reject

@@ -523,6 +523,19 @@ security-check: ## Scan versioned dependencies, secrets and security-sensitive c
 	@bash bin/security-check.sh
 .PHONY: security-check
 
+dependencies-audit: export IMAGES := $(IMAGES)
+dependencies-audit: export FAIL_ON := $(or $(FAIL_ON),HIGH)
+dependencies-audit: export ALL_VERSIONS := $(ALL_VERSIONS)
+dependencies-audit: export REFRESH_VERSIONS := $(REFRESH_VERSIONS)
+dependencies-audit: ## Report vulnerabilities and published versions across all dependency projects (optional IMAGES, FAIL_ON)
+	@bash bin/dependencies-audit.sh
+.PHONY: dependencies-audit
+
+tests-dependencies-audit: ## Verify dependency discovery, complete reports and scanner/registry failure handling
+	@bash bin/dependencies-audit.sh --test
+	@bash bin/test-dependencies-audit.sh
+.PHONY: tests-dependencies-audit
+
 release-check: ## Require exact-commit Security CI and fresh source security before publication
 	@bash bin/check-release.sh
 .PHONY: release-check

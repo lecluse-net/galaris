@@ -1746,6 +1746,15 @@ le refus avant création de tâche et les portées des deux agents.
 aux changements de rôle, aux fins de transaction et après la réponse ;
 `core/user/tests/test_refresh_session.py` couvre le contrôle compte/session regroupé,
 les jetons historiques, l’expiration, la révocation et les UserToken.
+`make tests-dependencies-audit` couvre la découverte des projets
+imbriqués, les dépendances de développement et versions dans les Dockerfiles, les alertes
+sans correctif, les seuils, les nouveaux fichiers non couverts et les erreurs de
+scanner/registre avec conservation des autres résultats. Le rapport réel se lance par
+`make dependencies-audit`, indépendamment du contrôle de publication.
+Le test de commande utilise Git et le rapporteur réels, un scanner simulé et des
+métadonnées de registre synthétiques : changements non committés conservés, données
+ignorées et liens symboliques exclus, aucun script de paquet exécuté, cache horodaté
+avec expiration, rafraîchissement forcé et protection contre les écritures concurrentes.
 `make tests-release-check` exécute les scripts de publication avec Git réel et des frontières
 scanner/API synthétiques : refus des preuves Security absentes, échouées, annulées, périmées ou issues
 d’un fork, sélection du dernier résultat, archive du commit exact et arrêt de la construction

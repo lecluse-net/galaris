@@ -127,6 +127,8 @@ See [Testing behavior](testing.md).
 | `quality` | Run local checks; some require the active development stack. |
 | `validate` | Qualify an isolated snapshot, including uncommitted changes, without the development stack. |
 | `security-check` | Scan dependencies, secrets and sensitive code. |
+| `dependencies-audit` | Produce the [dependency and version report](security-validation.md) across subprojects; `FAIL_ON=HIGH` by default, `ALL_VERSIONS=1` for transitive versions, local images with `IMAGES='image1 image2'`. |
+| `tests-dependencies-audit` | Verify discovery, reporting and scanner/registry failures using synthetic cases. |
 | `tests-restore` | Rehearse database, file and key restoration on isolated data. |
 | `tests-upgrade` | Rehearse an isolated upgrade from `UPGRADE_PREVIOUS_IMAGE` or `UPGRADE_FROM`. |
 | `build-release` | Build/export immutable images from `RELEASE_REF` (committed HEAD by default). |

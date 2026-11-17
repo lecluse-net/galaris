@@ -2,6 +2,72 @@
 
 # Security validation
 
+## Dependency audit and available versions
+
+```bash
+make dependencies-audit
+make dependencies-audit FAIL_ON=MEDIUM
+make dependencies-audit ALL_VERSIONS=1
+make dependencies-audit REFRESH_VERSIONS=1
+make dependencies-audit IMAGES='galaris-backend galaris-frontend my-harness-image'
+make tests-dependencies-audit
+```
+
+Docker, Git, jq and access to public registries are required. The application stack
+does not need to run. The audit changes no manifest, lockfile or installed package
+and executes no package installation scripts. It scans a snapshot of Git-visible
+files, including uncommitted changes; `.env`, data, caches, external references and
+symbolic links are excluded.
+
+Each run writes `artifacts/dependencies/audit-*/summary.md` and `report.json`, alongside
+the inventory, raw Trivy reports and individual scan logs. Reports list every severity,
+advisory identifiers and links, installed versions, published fixes or their absence,
+and the latest published PyPI/npm versions for direct and vulnerable dependencies.
+`ALL_VERSIONS=1` adds available versions for every transitive dependency; registry
+lookups are paced to avoid overwhelming the service. Vulnerability analysis always
+covers every locked version. A different version is not automatically
+compatible: the JSON retains Python/Node requirements and declared ranges still need review.
+Public version metadata is cached for at most one hour with its timestamp;
+`REFRESH_VERSIONS=1` forces a fresh lookup. Failures are not cached and a failed refresh
+never silently reuses an old answer. This cache does not replace Trivy's updated
+vulnerability database.
+
+Discovery walks every subproject: backend, frontend, desktop, Harness manager,
+executors, tests and documentation tooling. `uv.lock`, `package-lock.json` and
+`npm-shrinkwrap.json` cover transitive and development dependencies; `requirements*.txt`
+and Python/npm versions installed directly in Dockerfiles cover explicit declarations.
+A new project declaring dependencies without a supported lockfile, or a dependency
+file missing from scanner output, produces a coverage error.
+
+Base images, tools copied from images, scanners, Git sources downloaded during builds
+and GitHub Actions are also inventoried. Actions are compared with their
+latest published release. Docker Hub lookups report the current digest of the same
+tag, without selecting another major series or following every tag. Local images,
+variable references and other registries explicitly require a built-image scan.
+For downloaded Git sources, the report shows the latest published release or the
+default-branch HEAD when no release exists. Resolved dependencies are still scanned
+in the built image, without executing these sources during the audit.
+
+`IMAGES` accepts space-separated images **already present locally**. They are exported
+and scanned without exposing the Docker socket to the scanner. This adds system
+packages and dependencies actually installed by SDKs or external images, which a
+lockfile-only audit cannot see. Transitive dependencies of plain requirements and
+sources downloaded during builds need this additional scan. Host packages and the
+host kernel are outside its scope.
+
+Exit codes are **0** when no finding reaches the requested threshold, **1** when at
+least one does, and **2** for an incomplete audit (network, scanner, missing image,
+invalid report or missing coverage). The default threshold is `HIGH`: unfixed
+HIGH/CRITICAL findings fail too. Lower severities remain visible. The maintenance
+report retains raw findings without the publication exceptions/VEX described below.
+
+The **Dependency audit** workflow runs manually in Actions, each Tuesday at 06:41 UTC,
+and on PRs changing dependencies or their tooling. It retains reports for 30 days
+and does not change the publication Security workflow rules. A registry error never
+means that no vulnerabilities were found.
+
+## Source and shipped-image checks
+
 `make security-check` exports Git-visible project files to a temporary directory,
 excluding live data, `.env`, external reference repositories and local environments.
 Trivy checks locked dependencies and secrets; Semgrep checks Python, JavaScript and

@@ -2,6 +2,76 @@
 
 # Validation de sécurité
 
+## Audit des dépendances et versions disponibles
+
+```bash
+make dependencies-audit
+make dependencies-audit FAIL_ON=MEDIUM
+make dependencies-audit ALL_VERSIONS=1
+make dependencies-audit REFRESH_VERSIONS=1
+make dependencies-audit IMAGES='galaris-backend galaris-frontend mon-image-harnais'
+make tests-dependencies-audit
+```
+
+Docker, Git, jq et un accès aux registres publics sont nécessaires. Aucune stack
+applicative n’a besoin de tourner. L’audit ne change ni manifeste, ni verrou, ni paquet
+installé et n’exécute aucun script d’installation. Il analyse un instantané des fichiers
+non ignorés par Git, incluant les changements non committés ; `.env`, données, caches,
+références externes et liens symboliques restent exclus.
+
+Chaque exécution écrit `artifacts/dependencies/audit-*/summary.md` et `report.json`,
+avec l’inventaire, les rapports Trivy bruts et les journaux de chaque scan. Le rapport
+liste toutes les sévérités, les identifiants et liens des avis, les versions présentes,
+les correctifs publiés ou leur absence, puis les dernières versions publiées sur PyPI
+et npm pour les dépendances directes et vulnérables. `ALL_VERSIONS=1` ajoute les versions
+disponibles de toutes les transitives ; ces recherches respectent une cadence limitée
+pour éviter de saturer les registres. L’analyse des failles couvre toujours toutes les
+versions verrouillées. Une version différente n’est pas automatiquement compatible : les contraintes
+Python/Node sont conservées dans le JSON et les plages déclarées restent à examiner.
+Les métadonnées de versions publiques sont mises en cache au plus une heure avec leur
+horodatage ; `REFRESH_VERSIONS=1` force une nouvelle consultation. Les échecs ne sont pas
+mis en cache et une erreur de rafraîchissement ne réutilise pas silencieusement une ancienne
+réponse. Ce cache ne remplace pas la base de vulnérabilités actualisée par Trivy.
+
+La découverte parcourt tous les sous-projets : backend, frontend, desktop, gestionnaire
+de harnais, exécuteurs, tests et outillage de documentation. Les verrous `uv.lock`,
+`package-lock.json` et `npm-shrinkwrap.json` couvrent les dépendances transitives et
+de développement ; les `requirements*.txt` et les versions Python/npm installées
+directement dans les Dockerfiles couvrent leurs déclarations explicites. Un nouveau
+projet avec des dépendances sans verrou pris en charge, ou un fichier non reconnu
+par le scanner, produit une erreur de couverture.
+
+Les images de base, les outils copiés depuis des images, les scanners, les dépôts Git
+téléchargés pendant les builds et les Actions GitHub figurent aussi dans l’inventaire. Les Actions
+sont comparées à leur dernière release publiée. Pour Docker Hub, l’audit indique le
+digest actuel du même tag, sans choisir une autre série majeure ni suivre tous les tags.
+Les images locales, références variables et autres registres restent explicitement
+signalés comme nécessitant une image construite.
+Pour les sources Git téléchargées, le rapport indique la dernière release publiée ou,
+à défaut, le HEAD de la branche par défaut ; le scan des dépendances résolues reste
+celui de l’image construite, sans exécuter ces sources pendant l’audit.
+
+`IMAGES` accepte des images **déjà présentes localement**, séparées par des espaces.
+Elles sont exportées puis analysées, sans donner le socket Docker au scanner. Ce scan
+ajoute les paquets système et les dépendances effectivement installées par les SDK ou
+images externes, absents d’un audit des seuls verrous. Les dépendances transitives de
+simples requirements et les sources téléchargées pendant une construction exigent ce
+complément. Il ne s’agit pas d’un audit du noyau ou des paquets de l’hôte.
+
+Le code de sortie est **0** sans alerte atteignant le seuil demandé, **1** avec au moins
+une alerte à ce seuil, **2** si l’audit est incomplet (réseau, scanner, image absente,
+rapport invalide ou couverture manquante). Le seuil par défaut est `HIGH` : les alertes
+HIGH/CRITICAL sans correctif échouent aussi. Les alertes plus faibles restent visibles.
+Le rapport de maintenance conserve les alertes brutes, sans les exceptions/VEX du
+contrôle de publication décrit ci-dessous.
+
+Le workflow **Dependency audit** s’exécute manuellement dans Actions, chaque mardi
+à 06:41 UTC et sur les PR qui changent les dépendances ou leur outillage. Il conserve
+les rapports 30 jours et ne modifie pas les règles du workflow Security de publication.
+Une erreur de registre ne signifie jamais « aucune faille ».
+
+## Contrôles des sources et images livrées
+
 `make security-check` exporte uniquement les fichiers du projet non ignorés par Git :
 les données actives, `.env`, les références externes et les environnements locaux
 n'entrent pas dans les scanners. Trivy vérifie les dépendances verrouillées et les

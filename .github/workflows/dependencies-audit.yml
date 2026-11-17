@@ -1,0 +1,44 @@
+name: Dependency audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '41 6 * * 2'
+  pull_request:
+    paths:
+      - '**/package.json'
+      - '**/package-lock.json'
+      - '**/npm-shrinkwrap.json'
+      - '**/pyproject.toml'
+      - '**/uv.lock'
+      - '**/requirements*.txt'
+      - '**/Dockerfile*'
+      - 'compose*.yaml'
+      - '.github/workflows/**'
+      - 'tooling/dependencies/**'
+      - 'bin/dependencies-audit.sh'
+      - 'bin/test-dependencies-audit.sh'
+      - 'Makefile'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dependency-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: make tests-dependencies-audit
+      - run: make dependencies-audit
+      - name: Preserve full dependency report and scanner logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependencies-audit
+          path: artifacts/dependencies/audit-*/
+          retention-days: 30
