@@ -376,7 +376,9 @@ onBeforeUnmount(() => { alive = false; initialGeneration++; context.abort(); eve
 .calendar-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
 .calendar-date-navigation, .calendar-utilities { display: contents; }
 .agent-select { width: var(--calendar-sidebar-width); flex-shrink: 0; margin-right: calc(var(--calendar-column-gap) - 10px); }
-.calendar-display-settings { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-left: auto; }
+.calendar-display-settings { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; margin-left: auto; }
+/* Match the height of the dense Quasar timezone field. */
+.view-toggle { min-height: 40px; }
 .timezone-select { width: 210px; max-width: 100%; }
 .calendar-period { font-size: 20px; font-weight: 500; line-height: 1.4; margin: 0; flex: 1; min-width: 180px; }
 .calendar-layout { display: grid; grid-template-columns: var(--calendar-sidebar-width) minmax(0, 1fr); gap: var(--calendar-column-gap); }
