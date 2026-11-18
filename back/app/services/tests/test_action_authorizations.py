@@ -1016,6 +1016,7 @@ async def test_internal_runtime_is_excluded_from_external_action_type_consent(ru
 async def test_runtime_type_consent_survives_new_tasks_and_is_revocable(runtime_action):
     from app.services.authorization import can_remember_action
     from app.services.authorization_notifications import deliver_authorization_notifications
+    from app.services.authorization_presentation import runtime_label
     from app.services.runtime_permissions import revoke_permission
     from app.connection import Connection
     from app.messenger import answer_internal_interaction
@@ -1033,7 +1034,8 @@ async def test_runtime_type_consent_survives_new_tasks_and_is_revocable(runtime_
         assert not await answer_action(identifier, user_id=manager_id + 100000, approved=True, remember=True)
         interaction = await db.get(Interaction, row.interaction_id)
         assert "allow_always" in [option["id"] for option in interaction.options]
-        assert runtime_action.name in interaction.body and runtime_action.runtime in interaction.body
+        assert runtime_label(runtime_action.runtime, "en") in interaction.body
+        assert runtime_action.arguments["command"] in interaction.body
         await answer_internal_interaction(manager_id, UUID(interaction.room_id), interaction.id, option_id="allow_always")
         await db.refresh(row)
         permission_id = row.runtime_permission_id

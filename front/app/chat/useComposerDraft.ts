@@ -30,6 +30,7 @@ export function useComposerDraft(options: {
   const failed = ref(false)
   const replyId = ref<string | null>(null)
   let restoring = false
+  let pageSuspended = false
   let current: Session | null = null
   const identities = new WeakMap<File, DraftFile>()
   interface Session {
@@ -101,17 +102,20 @@ export function useComposerDraft(options: {
   function reportFor(session: Session, error: unknown): void {
     if (current === session) report(error)
   }
+  function canSync(session: Session): boolean {
+    return !pageSuspended && session.generation === sessionGeneration()
+  }
   async function flush(session: Session): Promise<void> {
-    if (session.paused) return
+    if (session.paused || !canSync(session)) return
     if (session.running) { await session.running; if (session.record.dirty) return flush(session); return }
     session.running = (async () => {
       await session.initialized
-      if (session.generation !== sessionGeneration() || localOwners.get(session.key) !== session.owner || (!session.record.dirty && !session.removed.size)) return
+      if (!canSync(session) || localOwners.get(session.key) !== session.owner || (!session.record.dirty && !session.removed.size)) return
       if (current === session) saving.value = true
       try {
         async function cleanup(): Promise<void> {
           for (const key of session.removed) {
-            if (session.generation !== sessionGeneration()) return
+            if (!canSync(session)) return
             await chatService.discardDraftFile(session.room, key)
             session.removed.delete(key)
             session.record.removedKeys = [...session.removed]
@@ -119,7 +123,7 @@ export function useComposerDraft(options: {
           }
         }
         async function push(sent: { revision: number; mutationKey: string; content: DraftContent | null }): Promise<void> {
-          if (session.generation !== sessionGeneration()) return
+          if (!canSync(session)) return
           session.record.pending = sent
           persist(session)
           let saved
@@ -127,6 +131,7 @@ export function useComposerDraft(options: {
             saved = await chatService.saveDraft(session.room, sent.revision, sent.mutationKey, sent.content)
           } catch (error) {
             if (!isAxiosError(error) || error.response?.status !== 409) throw error
+            if (!canSync(session)) return
             const remote = await chatService.draft(session.room)
             if (session.generation !== sessionGeneration() || localOwners.get(session.key) !== session.owner) return
             session.record.revision = remote.revision
@@ -159,7 +164,7 @@ export function useComposerDraft(options: {
           if (item.uploaded) continue
           const file = session.blobs.get(item.key)
           if (!file) throw new Error('Draft attachment missing from local storage')
-          if (session.generation !== sessionGeneration()) return
+          if (!canSync(session)) return
           const uploaded = await chatService.uploadDraftFile(session.room, item.key, file)
           // A deletion during upload must not reintroduce the file.
           const live = session.record.content?.files.find(value => value.key === item.key)
@@ -255,18 +260,26 @@ export function useComposerDraft(options: {
   }, { immediate: true, flush: 'sync' })
   const wake = (): void => {
     const session = current
-    if (session && !session.running && !session.paused) void flush(session).catch(error => reportFor(session, error))
+    if (document.visibilityState === 'visible' && session && !session.running && !session.paused) {
+      void flush(session).catch(error => reportFor(session, error))
+    }
   }
+  // The local snapshot already contains the latest draft. Starting XHR during
+  // pagehide can fail before it leaves WebKit, even on the same origin.
+  const suspendPage = (): void => { pageSuspended = true }
+  const resumePage = (): void => { pageSuspended = false; wake() }
   const timer = window.setInterval(wake, DRAFT_SYNC_MS)
   window.addEventListener('online', wake)
-  window.addEventListener('pagehide', wake)
+  window.addEventListener('pagehide', suspendPage)
+  window.addEventListener('pageshow', resumePage)
   document.addEventListener('visibilitychange', wake)
   onBeforeUnmount(() => {
     clearInterval(timer)
     window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, refreshGeneration)
     window.removeEventListener('storage', refreshGeneration)
     window.removeEventListener('online', wake)
-    window.removeEventListener('pagehide', wake)
+    window.removeEventListener('pagehide', suspendPage)
+    window.removeEventListener('pageshow', resumePage)
     document.removeEventListener('visibilitychange', wake)
     if (current) leave(current)
     current = null

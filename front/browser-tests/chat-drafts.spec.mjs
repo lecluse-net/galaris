@@ -79,6 +79,36 @@ test('offline typing is recoverable immediately and retries synchronization afte
   await expect(page.locator('textarea')).toHaveValue('Offline synthetic text')
 })
 
+test('leaving a document keeps the draft local and returning synchronizes it', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-01-01T12:00:00Z') })
+  await page.clock.pauseAt(new Date('2026-01-01T12:01:00Z'))
+  await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })
+  let remote = { revision: 0, content: null }
+  const writes = []
+  await page.route('**/api/chat/rooms/room-a/draft', route => {
+    if (route.request().method() === 'PUT') {
+      const body = route.request().postDataJSON()
+      writes.push(body.content.text)
+      remote = { revision: remote.revision + 1, content: body.content }
+    }
+    return route.fulfill({ json: remote })
+  })
+  await mount(page, composer, { props })
+  const text = 'Draft before leaving the page'
+  await page.locator('textarea').fill(text)
+  await expect.poll(async () => (await local(page)).content.text).toBe(text)
+
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })))
+  // Let immediate work run without reaching the periodic autosave.
+  await page.clock.runFor(100)
+  expect(writes).toEqual([])
+  expect((await local(page)).content.text).toBe(text)
+
+  await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })))
+  await expect.poll(() => remote.content?.text).toBe(text)
+  await expect(page.locator('textarea')).toHaveValue(text)
+})
+
 test('late server reads cannot replace text typed during loading', async ({ page }) => {
   await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })
   let finish
