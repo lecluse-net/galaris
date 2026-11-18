@@ -8,7 +8,7 @@
     </div>
     <div class="tab-list row items-center no-wrap" role="tablist" :aria-label="t('tabs')" @keydown="navigate">
       <q-card v-for="tab in state.tabs" :key="tab.id" flat bordered class="tab-item row items-center no-wrap" :class="{ 'tab-item--active': state.activeId === tab.id }" @auxclick.middle.prevent="api.closeTab(tab.id)">
-        <q-btn flat dense no-caps class="tab-select" role="tab" :aria-selected="state.activeId === tab.id" :tabindex="state.activeId === tab.id ? 0 : -1" :title="tab.title" :data-tab-id="tab.id" @click="api.selectTab(tab.id)">
+        <q-btn flat dense no-caps :ripple="false" class="tab-select" role="tab" :aria-selected="state.activeId === tab.id" :tabindex="state.activeId === tab.id ? 0 : -1" :title="tab.title" :data-tab-id="tab.id" @click="api.selectTab(tab.id)">
           <q-spinner v-if="tab.loading" size="14px" class="q-mr-xs" /><span class="ellipsis">{{ tab.title }}</span>
         </q-btn>
         <q-btn flat dense round size="xs" icon="close" class="q-mr-xs" :aria-label="t('closeNamedTab', { title: tab.title })" @click="api.closeTab(tab.id)" />
