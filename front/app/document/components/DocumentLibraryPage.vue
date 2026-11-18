@@ -1,5 +1,5 @@
 <template>
-  <q-page class="documents-page q-pa-md" :class="{ 'viewport-page--desktop': !$q.screen.lt.md }">
+  <q-page class="documents-page q-py-md q-pl-md" :class="{ 'viewport-page--desktop': !$q.screen.lt.md }">
     <PageHeader help-key="documents" :help-text="$t('contextHelpPages.documents')" :icon="navigationIcon('description')" :title="t('nav.documents')" :description="t('nav.documents_desc')">
       <template #title-after>
         <div class="row items-center q-gutter-xs">
@@ -607,7 +607,12 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .documents-workspace, .documents-splitter { min-height: min(760px, calc(100vh - 260px)); }
-.documents-workspace { position: relative; display: flex; }
+.documents-workspace {
+  position: relative;
+  display: flex;
+  border-top-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
 .documents-splitter { flex: 1; min-width: 0; }
 .documents-conversation-splitter { height: 100%; min-width: 0; min-height: 0; }
 .documents-conversation-splitter :deep(> .q-splitter__panel) { min-height: 0; }

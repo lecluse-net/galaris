@@ -3,7 +3,7 @@
 </route>
 
 <template>
-  <q-page class="files-page q-pa-md" :class="{ 'viewport-page--desktop': !$q.screen.lt.md }" :style-fn="pageStyle">
+  <q-page class="files-page q-py-md q-pl-md" :class="{ 'viewport-page--desktop': !$q.screen.lt.md }" :style-fn="pageStyle">
     <PageHeader icon="folder_open" :title="t('nav.files')" :description="t('nav.files_desc')" />
     <div v-if="agentId !== null" class="row items-center no-wrap q-gutter-md q-mb-md">
       <AgentSelect v-model="agentId" class="file-agent col" :options="agentOptions" :load-agents="false" outlined dense :label="t('agent.selectPlaceholder')" :loading="loading" />
@@ -94,6 +94,10 @@ onBeforeUnmount(() => { controller?.abort(); window.removeEventListener(AUTH_TOK
 <style scoped>
 .files-page { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0; }
 .files-page > :not(.file-browser-container):not(.file-agent-picker) { flex-shrink: 0; }
+.files-page :deep(.file-browser-container > .file-workspace) {
+  border-top-right-radius: 0;
+  border-bottom-left-radius: 0;
+}
 .file-agent { max-width: 420px; }
 .file-loaded { flex-shrink: 0; color: var(--solaire-gray-accent); }
 .file-agent-picker { --file-agent-surface: #fff; --file-agent-border: rgba(35, 46, 66, .14); --file-agent-text: #252b36; flex: 1; min-height: 0; overflow: auto; padding-bottom: 16px; }
