@@ -69,7 +69,8 @@ def test_same_label_results_keep_their_own_task_reference() -> None:
 
 
 @pytest.mark.asyncio
-async def test_wait_resume_and_finish_consumes_children_before_publishing_parent(db, monkeypatch):
+@pytest.mark.parametrize("wait_for_approval", [False, True])
+async def test_wait_resume_and_finish_consumes_children_before_publishing_parent(db, monkeypatch, wait_for_approval):
     from app.agent import executor_service
     from app.agent.contracts import ExecutionResult
     parent = _task(agent_id=None, label="Coordinate synthetic budgets", plan={"steps": []})
@@ -80,9 +81,13 @@ async def test_wait_resume_and_finish_consumes_children_before_publishing_parent
     await db.commit()
     monkeypatch.setattr("app.task.runner.go_next", lambda *_args, **_kwargs: None)
     waiting = ExecutionResult(prompt="Coordinate", result="", success=False,
-        schema_version="galaris.execution-result/v2", disposition="waiting_for_children")
+        schema_version="galaris.execution-result/v2",
+        disposition="waiting_for_authorization" if wait_for_approval else "waiting_for_children",
+        authorization_requests=[uuid4()] if wait_for_approval else [])
     await executor_service._update_task_after_execution(parent, waiting, base_cost=0)
     assert parent.status == TaskStatus.DISPATCH and parent.paused
+    assert task_service.is_paused_for(parent, task_service.PAUSE_CHILD)
+    assert task_service.is_paused_for(parent, task_service.PAUSE_APPROVAL) == wait_for_approval
     child.status = TaskStatus.SUCCESS
     child.feedback = "Synthetic budget saved."
     await task_service.save(child)
@@ -96,6 +101,11 @@ async def test_wait_resume_and_finish_consumes_children_before_publishing_parent
     monkeypatch.setattr(task_service, "publish_updated", observe_publish)
     await collab.resume_completed_await_parents()
     await db.refresh(parent)
+    if wait_for_approval:
+        assert task_service.is_paused_for(parent, task_service.PAUSE_APPROVAL)
+        assert not task_service.is_paused_for(parent, task_service.PAUSE_CHILD)
+        task_service.release(parent, task_service.PAUSE_APPROVAL)
+        await task_service.save(parent)
     assert not parent.paused and parent.status == TaskStatus.DISPATCH
     assert f"galaris://task/{child.id}" in collab.collab_context(parent)
     assert "Synthetic budget saved." in collab.collab_context(parent)

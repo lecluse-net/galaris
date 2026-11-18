@@ -534,9 +534,9 @@ async def suspend_on_pending_children(task: Task) -> bool:
         return False
     from app.task.workflow import TaskEvent, transition
 
-    # This transition happens before EXECUTION_SUCCEEDED/FAILED. A terminal Task is never used
-    # as a provisional coordination state and therefore never needs to be reopened.
-    transition(task, TaskEvent.INTERRUPT_EXECUTION)
+    # An authorization wait can already have moved this run to its resume phase.
+    if task.status != TaskStatus.DISPATCH:
+        transition(task, TaskEvent.INTERRUPT_EXECUTION)
     if any(await_marker(c) is not None for c in fresh):
         task_service.suspend(task, task_service.PAUSE_AWAIT)
     if any(_is_delegated(c) for c in fresh):
