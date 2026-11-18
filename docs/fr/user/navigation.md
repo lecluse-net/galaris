@@ -533,6 +533,12 @@ les besoins, ainsi que le résultat du cycle précédent. Le suivi reste modifia
 modèle de monitoring ne le réécrit. Seul le LLM décisionnel du profil peut répondre
 `CONTINUE` ou `STOP`. Sans ce modèle, les tâches continuent selon leur planning sans
 clôture automatique. Un blocage ou une panne du monitoring ne met pas le Goal en pause.
+
+Si l’agent vous pose une question pour un objectif, répondez dans le fil de discussion.
+En cas d’ambiguïté, ajoutez la référence de la question à votre réponse. Le fil affiche un
+accusé de réception, puis l’état constaté à la fin du cycle. Si le cycle initial a échoué,
+Galaris transmet votre réponse au prochain cycle autorisé. Le message de suivi indique
+si l’objectif est terminé ou demande encore du travail.
 Les pauses humaines et les questions au référent conservent leur fonctionnement.
 
 La page **Processus** affiche ses listes sans attendre le contrôle du moteur externe ni

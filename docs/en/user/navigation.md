@@ -490,6 +490,12 @@ rewrites it. Only the profile's decision model can choose `CONTINUE` or `STOP`. 
 that model, Tasks continue on schedule without automatic completion. A blocker or monitoring
 outage does not pause the Goal. Human pauses and referrer questions retain their behavior.
 
+If the agent asks you a question about a Goal, reply in the conversation. Include the
+question reference if there is any ambiguity. The thread shows an acknowledgement
+and then the outcome of the cycle. If the original cycle failed, Galaris passes your answer
+to the next eligible cycle. The follow-up shows whether the Goal is complete or still
+needs work.
+
 The **Processes** page displays its lists without waiting for the external engine check or
 agent catalogue. Execution details and their diagram load only when you open an execution;
 you can close its dialog during loading and reopen it.

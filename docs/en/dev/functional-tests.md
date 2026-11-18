@@ -2255,7 +2255,10 @@ after reminder and pause, and permission revoked after tool advertisement. A fou
 journey covers a confirmation requiring approval: outsider rejected, manager consent,
 reconciliation worker, checkpoint resumption and exactly one send. A fifth reads the
 Goal revision through `file_read`, resumes after consent to update tracking, and checks
-the persisted update before judgement. Agent creation uses its normal service and
+the persisted update before judgement. The failed-cycle journey exhausts its reminders
+while the Goal stays active and verifies that a new cycle receives the answer while
+preserving the original failure. It also checks the acknowledgement and final outcome
+in the Chat journal. Agent creation uses its normal service and
 mandatory connections. Assertions
 inspect persisted effects: rejected outsider, duplicate reply admitted once, no completion
 while waiting, at most one reminder, no documents beyond description/tracking, and no new

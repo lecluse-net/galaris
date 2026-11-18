@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from loguru import logger
-from sqlalchemy import select
+from sqlalchemy import Select, String, cast, or_, select
+from sqlalchemy.orm import aliased
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.messenger import ChoiceRequest, create_choice, register_choice_handler
 from app.messenger.models import Interaction
@@ -16,7 +18,7 @@ from app.task.models import Task, TaskStatus
 from core.database import get_db
 from core.i18n import default_language, is_supported, render_prompt, t
 
-from .models import Goal, GoalReferrerType, GoalStatus
+from .models import Goal, GoalCycle, GoalCycleStatus, GoalReferrerType, GoalStatus
 from . import calendar as goal_calendar
 
 if TYPE_CHECKING:
@@ -31,6 +33,62 @@ REFERRER_REPLY_INTERVAL_SECONDS = 24 * 60 * 60
 _INTERACTION_TIMEOUT_SECONDS = 10 * 365 * 24 * 60 * 60
 _REMINDER_SEND_RETRY_SECONDS = 5 * 60
 _MAX_QUESTION_CHARS = 8_000
+RECOVERY_CYCLE_KEY = "recovery_cycle_id"
+_RECOVERY_FEEDBACK_ATTEMPT_KEY = "recovery_feedback_attempted_cycle_id"
+
+
+def _failed_cycle_answers() -> Select[tuple[Interaction]]:
+    """Find captured answers still needed after failure, scoped to the current referrer."""
+
+    recovery_cycle = aliased(GoalCycle)
+    recovery_task = aliased(Task)
+    recovery_id = Interaction.metadata_[RECOVERY_CYCLE_KEY].as_string()
+    # A successful recovery Task may have been purged since its cycle finished.
+    applied = (
+        select(recovery_cycle.id)
+        .outerjoin(recovery_task, recovery_task.id == recovery_cycle.task_id)
+        .where(
+            recovery_cycle.goal_id == Goal.id,
+            cast(recovery_cycle.id, String) == recovery_id,
+            or_(recovery_task.status == TaskStatus.SUCCESS, recovery_cycle.task_id.is_(None)),
+        )
+        .correlate(Goal, Interaction)
+        .exists()
+    )
+    return (
+        select(Interaction)
+        .join(GoalCycle, cast(GoalCycle.task_id, String) == Interaction.metadata_["task_id"].as_string())
+        .join(Task, Task.id == GoalCycle.task_id)
+        .where(
+            GoalCycle.goal_id == Goal.id,
+            Goal.referrer_type == GoalReferrerType.MESSENGER,
+            Interaction.kind == REFERRER_INTERACTION_KIND,
+            Interaction.status == "RESOLVED",
+            Interaction.agent_id == Goal.agent_id,
+            Interaction.connection_id == Goal.referrer_connection_id,
+            Interaction.user_id == Goal.referrer_user_id,
+            Interaction.metadata_["goal_id"].as_string() == cast(Goal.id, String),
+            Interaction.resolution["text"].as_string().is_not(None),
+            Task.status == TaskStatus.ERROR,
+            Task.lease_token.is_(None),
+            Task.deleted_at.is_(None),
+            ~applied,
+        )
+        .correlate(Goal)
+    )
+
+
+def pending_cycle_recovery() -> ColumnElement[bool]:
+    return _failed_cycle_answers().where(
+        Interaction.metadata_[RECOVERY_CYCLE_KEY].as_string().is_(None)
+    ).exists()
+
+
+async def failed_cycle_answers(goal_id: UUID) -> list[Interaction]:
+    return list((await get_db().scalars(
+        _failed_cycle_answers().where(Goal.id == goal_id)
+        .order_by(Interaction.resolved_at, Interaction.id)
+    )).all())
 
 
 def _task_data(task: Task) -> dict[str, Any]:
@@ -55,6 +113,105 @@ def _language(task: Task) -> str:
 
 def _message(language: str, key: str, **values: Any) -> str:
     return render_prompt(t(f"goal_referrer.{key}", language), **values)
+
+
+async def _send_feedback(goal: Goal, interaction: PendingChoice | Interaction, key: str) -> None:
+    if (
+        goal.referrer_type != GoalReferrerType.MESSENGER
+        or interaction.agent_id != goal.agent_id
+        or interaction.connection_id is None
+        or interaction.connection_id != goal.referrer_connection_id
+        or interaction.user_id != goal.referrer_user_id
+        or not interaction.room_id
+    ):
+        return
+    from app.messenger import service as messenger_service
+
+    metadata = interaction.metadata_ if isinstance(interaction, Interaction) else interaction.metadata
+    language = str(metadata.get("language") or "")
+    if not is_supported(language):
+        language = default_language()
+    try:
+        messenger = await messenger_service.messenger_for_agent_connection(
+            goal.agent_id, interaction.connection_id
+        )
+        await messenger.send_to_room(interaction.room_id, _message(
+            language, key, goal=goal.title, reference=interaction.reference, goal_id=goal.id,
+        ))
+    except Exception:
+        logger.exception("Could not send Goal feedback for referrer interaction {}", interaction.id)
+
+
+def _outcome_feedback_key(goal: Goal, task: Task) -> str:
+    if goal.status == GoalStatus.COMPLETED:
+        return "answer_completed"
+    if task.status == TaskStatus.ERROR:
+        return "answer_cycle_error"
+    if goal.status == GoalStatus.PAUSED:
+        return "answer_paused"
+    return "answer_processed"
+
+
+async def notify_cycle_answer_outcome(goal: Goal, task: Task) -> None:
+    """Report the outcome of a cycle that resumed normally after the answer."""
+    if goal.referrer_type != GoalReferrerType.MESSENGER or task.status != TaskStatus.SUCCESS:
+        return
+    # Fan-in can finish before Messenger closes the interaction, especially
+    # when the model completes immediately after receiving the answer.
+    folded_answer = select(Task.id).where(
+        Task.parent_id == task.id,
+        cast(Task.id, String) == Interaction.metadata_["await_task_id"].as_string(),
+        Task.data[collab.FANNED_IN_KEY].as_boolean().is_(True),
+    ).correlate(Interaction).exists()
+    records = (await get_db().scalars(select(Interaction).where(
+        Interaction.kind == REFERRER_INTERACTION_KIND,
+        Interaction.status.in_(("PROCESSING", "RESOLVED")),
+        Interaction.agent_id == goal.agent_id,
+        Interaction.connection_id == goal.referrer_connection_id,
+        Interaction.user_id == goal.referrer_user_id,
+        Interaction.metadata_["goal_id"].as_string() == str(goal.id),
+        folded_answer,
+    ))).all()
+    for record in records:
+        await _send_feedback(goal, record, _outcome_feedback_key(goal, task))
+
+
+async def process_recovered_cycle_feedback() -> bool:
+    """Report one finished recovery, including after a restart between judgement and delivery."""
+    db = get_db()
+    cycle_id = Interaction.metadata_[RECOVERY_CYCLE_KEY].as_string()
+    attempted_id = Interaction.metadata_[_RECOVERY_FEEDBACK_ATTEMPT_KEY].as_string()
+    row = (await db.execute(
+        select(Interaction, Goal, GoalCycle, Task)
+        .join(GoalCycle, cast(GoalCycle.id, String) == cycle_id)
+        .join(Goal, Goal.id == GoalCycle.goal_id)
+        .join(Task, Task.id == GoalCycle.task_id)
+        .where(
+            Interaction.kind == REFERRER_INTERACTION_KIND,
+            Interaction.status == "RESOLVED",
+            Interaction.agent_id == Goal.agent_id,
+            Interaction.connection_id == Goal.referrer_connection_id,
+            Interaction.user_id == Goal.referrer_user_id,
+            Goal.referrer_type == GoalReferrerType.MESSENGER,
+            Goal.deleted_at.is_(None),
+            GoalCycle.status == GoalCycleStatus.DECIDED,
+            cycle_id.is_distinct_from(attempted_id),
+        )
+        .order_by(GoalCycle.judge_finished_at, Interaction.id)
+        .with_for_update(of=Interaction, skip_locked=True)
+        .execution_options(populate_existing=True)
+        .limit(1)
+    )).one_or_none()
+    if row is None:
+        return False
+    interaction, goal, cycle, task = row
+    interaction.metadata_ = {
+        **interaction.metadata_, _RECOVERY_FEEDBACK_ATTEMPT_KEY: str(cycle.id),
+    }
+    # A transport without an idempotency key cannot safely replay an uncertain send.
+    await db.commit()
+    await _send_feedback(goal, interaction, _outcome_feedback_key(goal, task))
+    return True
 
 
 def _parse_datetime(value: Any) -> datetime | None:
@@ -183,7 +340,11 @@ async def ask_human_referrer(
     ):
         raise ValueError(_message(language, "human_required"))
 
-    existing = await _current_goal_wait(goal.id)
+    existing = next(
+        (wait for wait in await _goal_waits(goal.id)
+         if not task_service.has_terminal_outcome(wait)),
+        None,
+    )
     if existing is not None:
         marker = _wait_marker(existing) or {}
         return _message(
@@ -306,6 +467,7 @@ async def _handle_referrer_answer(
 
     goal_id = wait.goal_id
     parent = await task_service.get_by_id(wait.parent_id) if wait.parent_id else None
+    goal: Goal | None = None
     auto_resumed = False
     if goal_id is not None:
         from . import goal_service
@@ -321,7 +483,7 @@ async def _handle_referrer_answer(
             goal.pause_reason = None
             goal.last_error = None
             await goal_calendar.sync_plan(goal)
-            if parent is not None:
+            if parent is not None and not task_service.has_terminal_outcome(parent):
                 task_service.release(parent, task_service.PAUSE_USER)
             auto_resumed = True
 
@@ -334,14 +496,16 @@ async def _handle_referrer_answer(
         },
     )
     await task_service.save(wait)
-    if auto_resumed and parent is not None:
+    if auto_resumed and parent is not None and not task_service.has_terminal_outcome(parent):
         await task_service.save(parent)
 
-    await collab.resolve_external_await(wait.id, answer)
+    resolved = await collab.resolve_external_await(wait.id, answer)
     if goal_id is not None:
         from . import goal_service
 
         await goal_service.emit_updated(goal_id)
+    if resolved and goal is not None:
+        await _send_feedback(goal, interaction, "answer_received")
     logger.info("Goal referrer await {} resolved by human answer", wait.id)
 
 
@@ -389,42 +553,43 @@ async def process_due_referrer_wait(now: datetime | None = None) -> bool:
     wait_kind = Task.data[collab.AWAIT_KEY]["kind"].as_string()
     next_action_at = Task.data[collab.AWAIT_KEY]["next_action_at"].as_string()
     query = (
-        select(Task)
+        select(Task.id, Task.goal_id, next_action_at)
+        .join(Goal, Goal.id == Task.goal_id)
         .where(
             Task.paused.is_(True),
-            Task.goal_id.is_not(None),
+            Task.deleted_at.is_(None),
             Task.parent_id.is_not(None),
+            Goal.deleted_at.is_(None),
             wait_kind == REFERRER_WAIT_KIND,
             next_action_at.is_not(None),
         )
         .order_by(next_action_at.asc())
         .limit(100)
     )
-    candidates = list((await get_db().scalars(Task.histo_filter(query))).all())
-    for candidate in candidates:
-        marker = _wait_marker(candidate)
-        due_at = _parse_datetime((marker or {}).get("next_action_at"))
-        if marker is None or due_at is None or due_at > current:
+    candidates = (await get_db().execute(query)).all()
+    for wait_id, goal_id, scheduled_at in candidates:
+        due_at = _parse_datetime(scheduled_at)
+        if due_at is None or due_at > current:
             continue
 
+        # Match answer handling's lock order and leave contended Goals untouched.
+        goal = await get_db().scalar(
+            select(Goal).where(Goal.id == goal_id, Goal.deleted_at.is_(None))
+            .with_for_update(skip_locked=True)
+        )
+        if goal is None:
+            await get_db().rollback()
+            continue
         wait = await get_db().scalar(
-            select(Task).where(Task.id == candidate.id).with_for_update(skip_locked=True)
+            select(Task).where(Task.id == wait_id, Task.goal_id == goal.id, Task.paused.is_(True),
+                Task.deleted_at.is_(None)).with_for_update(skip_locked=True)
+            .execution_options(populate_existing=True)
         )
         marker = _wait_marker(wait) if wait is not None else None
         due_at = _parse_datetime((marker or {}).get("next_action_at"))
         if wait is None or marker is None or due_at is None or due_at > current:
             await get_db().rollback()
             continue
-
-        goal = await get_db().scalar(
-            select(Goal).where(Goal.id == wait.goal_id).with_for_update(skip_locked=True)
-        )
-        if goal is None:
-            marker["next_action_at"] = None
-            marker["error"] = "Goal unavailable"
-            _set_wait_marker(wait, marker)
-            await task_service.save(wait)
-            return True
 
         if goal.status != GoalStatus.ACTIVE:
             marker = {
@@ -445,9 +610,16 @@ async def process_due_referrer_wait(now: datetime | None = None) -> bool:
             await get_db().rollback()
             continue
 
+        parent = await task_service.get_by_id(wait.parent_id) if wait.parent_id else None
+        parent_can_resume = parent is not None and not task_service.has_terminal_outcome(parent)
         reminders_sent = _integer(marker.get("reminders_sent"))
         if reminders_sent >= goal.referrer_max_reminders:
-            await _pause_for_no_response(goal, wait, marker, current)
+            if parent_can_resume:
+                await _pause_for_no_response(goal, wait, marker, current)
+            else:
+                # A reminder for a finished cycle must not pause subsequent cycles.
+                _set_wait_marker(wait, {**marker, "next_action_at": None})
+                await task_service.save(wait)
             return True
 
         interaction = await _interaction_for_wait(wait, marker)
@@ -469,10 +641,11 @@ async def process_due_referrer_wait(now: datetime | None = None) -> bool:
                 "error": "Pending Messenger interaction unavailable",
             }
             _set_wait_marker(wait, marker)
-            goal.status = GoalStatus.ERROR
-            goal.next_cycle_at = None
-            goal.last_error = _message(_language(wait), "interaction_unavailable")
-            await goal_calendar.sync_plan(goal, now=current)
+            if parent_can_resume:
+                goal.status = GoalStatus.ERROR
+                goal.next_cycle_at = None
+                goal.last_error = _message(_language(wait), "interaction_unavailable")
+                await goal_calendar.sync_plan(goal, now=current)
             await task_service.save(wait)
             from . import goal_service
 

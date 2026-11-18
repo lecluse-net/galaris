@@ -419,6 +419,14 @@ Un cycle crée une tâche ordinaire, attend son état terminal, passe au jugemen
 un verdict. `CONTINUE` programme le cycle temporel suivant lorsqu'une fréquence existe ; `STOP`
 clôt l’objectif. Une pause empêche la création de nouveaux cycles sans effacer l’historique.
 
+Une réponse à la question d’un cycle en erreur reste attachée à l’interaction Messenger.
+Le worker la transmet au prochain cycle éligible du même objectif, y compris avant la
+prochaine échéance. L’admission respecte les pauses, les plages horaires et l’exclusion
+des cycles concurrents. Si la reprise échoue, le cycle planifié ou manuel suivant retrouve
+la réponse sans déclencher de boucle immédiate. Une relance de l’ancien cycle ne peut plus
+mettre l’objectif en pause. Le fil reçoit un accusé de réception puis l’état constaté à la
+fin du cycle qui traite la réponse, sous réserve de disponibilité du transport.
+
 Le monitoring utilise exclusivement le modèle **Décision** du profil de l'agent pour un
 choix fermé `CONTINUE` ou `STOP`, avec un appel maximum et aucun repli texte. Il ne génère
 ni synthèse du suivi, ni commentaire de progression, ni Task de revue. `STOP` signifie que

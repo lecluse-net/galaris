@@ -14,6 +14,23 @@ default: dict[str, object] = {
             "Question sent to ${referrer}. This Task is now waiting for the answer; reminders "
             "and any Goal pause are handled automatically."
         ),
+        "answer_received": (
+            "Answer received for Goal “${goal}” (#${reference}). "
+            "View Goal progress · galaris://goal/${goal_id}"
+        ),
+        "answer_completed": "Goal “${goal}” is complete. View progress · galaris://goal/${goal_id}",
+        "answer_processed": (
+            "The cycle for Goal “${goal}” that received your answer is complete. "
+            "The Goal is still active. View progress · galaris://goal/${goal_id}"
+        ),
+        "answer_paused": (
+            "Your answer is saved. Goal “${goal}” is paused. "
+            "View progress · galaris://goal/${goal_id}"
+        ),
+        "answer_cycle_error": (
+            "The recovery cycle for Goal “${goal}” failed. Your answer is saved for the next cycle. "
+            "View progress · galaris://goal/${goal_id}"
+        ),
         "reminder": (
             "🔔 **Reminder ${number}/${maximum} — Goal “${goal}”**\n\n"
             "${question}\n\nKeep reference #${reference} in your answer."

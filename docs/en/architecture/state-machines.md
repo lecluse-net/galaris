@@ -426,6 +426,14 @@ A cycle creates an ordinary Task, waits for its terminal state, moves to judgmen
 persists a verdict. `CONTINUE` schedules the next time-based cycle when a frequency exists; `STOP`
 closes the objective. A pause prevents the creation of new cycles without erasing history.
 
+A reply to a failed cycle's question remains attached to its Messenger interaction. The
+worker supplies it to the next eligible cycle of the same Goal, which can start before
+the next scheduled date. Admission respects pauses, operating windows, and cycle
+exclusivity. If recovery fails, the next scheduled or manually requested cycle receives
+the answer without an immediate retry loop. Reminders from the failed cycle can no
+longer pause the Goal. The thread receives an acknowledgement and the observed outcome
+of the cycle that uses the answer when the transport is available.
+
 Each Goal chooses exactly one automatic trigger: delay after work, fixed-date recurrence
 or a parent Goal cycle. Fixed cadence retains versioned planning segments and durable
 passages, uniquely associated with their cycles and Tasks. Edits replace only the future;

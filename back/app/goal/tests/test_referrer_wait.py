@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import cast
 from uuid import UUID, uuid4
 from unittest.mock import AsyncMock
 
@@ -30,15 +29,16 @@ class _FakeMessenger:
     kind = "test_messenger"
     self_id = "goal-agent"
 
-    def __init__(self, service_id: int) -> None:
+    def __init__(self, service_id: int, connection_id: int) -> None:
         self.service_id = service_id
+        self.connection_id = connection_id
         self.sent: list[tuple[str, str]] = []
 
     async def ensure_direct_room(self, user_id: str) -> Room:
         assert user_id == "human-referrer"
         return Room(
             id=UUID("00000000-0000-0000-0000-000000000201"),
-            connection_id=0,
+            connection_id=self.connection_id,
             external_id="dm-human-referrer",
             label="Human Referrer",
             kind="direct",
@@ -52,7 +52,7 @@ class _FakeMessenger:
         self.sent.append((room_id, text))
         return Message(
             id=uuid4(),
-            connection_id=cast(int, None),
+            connection_id=self.connection_id,
             service_id=self.service_id,
             platform=self.kind,
             remote_message_id=f"sent-{len(self.sent)}",
@@ -121,7 +121,8 @@ async def test_human_question_reminds_once_pauses_then_answer_resumes(
     db.add_all([goal, parent])
     await db.commit()
 
-    messenger = _FakeMessenger(tool.id)
+    connection_id = connection.id
+    messenger = _FakeMessenger(tool.id, connection_id)
     monkeypatch.setattr(
         "app.messenger.service.messenger_for_agent_connection",
         AsyncMock(return_value=messenger),
@@ -202,7 +203,7 @@ async def test_human_question_reminds_once_pauses_then_answer_resumes(
 
     incoming = Message(
         id=uuid4(),
-        connection_id=cast(int, None),
+        connection_id=connection_id,
         service_id=service_id,
         platform="test_messenger",
         remote_message_id="human-answer",
@@ -225,7 +226,7 @@ async def test_human_question_reminds_once_pauses_then_answer_resumes(
     )
     incoming.room = Room(
         id=UUID("00000000-0000-0000-0000-000000000201"),
-        connection_id=0,
+        connection_id=connection_id,
         external_id="dm-human-referrer",
         label="Human Referrer",
         kind="direct",
@@ -247,3 +248,5 @@ async def test_human_question_reminds_once_pauses_then_answer_resumes(
     assert wait.status == TaskStatus.SUCCESS
     assert interaction.status == "RESOLVED"
     assert "Use option B" in collab.collab_context(parent)
+    assert len(messenger.sent) == 3
+    assert f"Answer received for Goal “{goal.title}” (#{interaction_reference})." in messenger.sent[-1][1]

@@ -7,6 +7,7 @@ import socket
 import hashlib
 import json
 from datetime import datetime, timedelta, timezone
+from html import escape
 from uuid import UUID, uuid4
 
 from loguru import logger
@@ -22,7 +23,7 @@ from app.task.models import Task, TaskAttempt, TaskStatus
 from app.task.schemas import TaskCreate
 from core.database import get_db
 
-from . import goal_service, settings_service
+from . import goal_service, referrer_wait, settings_service
 from .document_store import get_goal_document_store
 from .cycle_context import goal_cycle_work_instructions, goal_judgement_runtime_instructions
 from .facade import resolve_goal_tracking_system_prompt
@@ -227,6 +228,8 @@ async def _prepare_terminal_cycle() -> bool:
         cycle.status = GoalCycleStatus.JUDGING
     await db.commit()
     await goal_service.emit_updated(cycle.goal_id)
+    if cycle.status == GoalCycleStatus.DECIDED:
+        await referrer_wait.notify_cycle_answer_outcome(cycle.goal, cycle.task)
     return True
 
 
@@ -276,6 +279,7 @@ async def _claim_terminal_cycle() -> tuple[UUID, UUID] | None:
         await goal_service.enqueue_child_triggers(cycle)
         await db.commit()
         await goal_service.emit_updated(goal.id)
+        await referrer_wait.notify_cycle_answer_outcome(goal, cycle.task)
         return None
 
     token = uuid4()
@@ -443,6 +447,8 @@ async def _finish_judgement(
     await goal_calendar.sync_plan(goal, now=now)
     await db.commit()
     await goal_service.emit_updated(goal.id)
+    if source is not None:
+        await referrer_wait.notify_cycle_answer_outcome(goal, source)
     logger.info(
         "Goal {} cycle {} judged {} (task=${:.6f}, judge=${:.6f})",
         goal.id,
@@ -481,6 +487,7 @@ async def _fail_judgement(
     error = f"{type(exc).__name__}: {exc}"[:4000]
     cycle.judge_finished_at = now
     cycle.clear_lease()
+    source = await db.get(Task, cycle.task_id) if cycle.task_id is not None else None
     if goal.status == GoalStatus.COMPLETED:
         cycle.status = GoalCycleStatus.DECIDED
         cycle.verdict = GoalVerdict.STOP
@@ -495,12 +502,10 @@ async def _fail_judgement(
         cycle.reason = "Decision unavailable; continue scheduled work without text fallback."
         cycle.error = error
         goal.last_error = error
-        if cycle.task_id is not None:
-            source = await db.get(Task, cycle.task_id)
-            if source is not None:
-                execution = source.get_execution_result()
-                cycle.continuation_context = execution.result if execution is not None else source.feedback or source.last_error
-                cycle.task_cost = float(source.cost or 0.0)
+        if source is not None:
+            execution = source.get_execution_result()
+            cycle.continuation_context = execution.result if execution is not None else source.feedback or source.last_error
+            cycle.task_cost = float(source.cost or 0.0)
         if cycle.trigger_kind != GoalCycleTriggerKind.RELATIONAL:
             goal.next_cycle_at = (next_cycle_at(cycle.task_finished_at or now, goal.cycle_delay_seconds)
                 if goal.cycle_delay_seconds is not None else None)
@@ -509,6 +514,8 @@ async def _fail_judgement(
     await goal_calendar.sync_plan(goal, now=now)
     await db.commit()
     await goal_service.emit_updated(goal.id)
+    if source is not None:
+        await referrer_wait.notify_cycle_answer_outcome(goal, source)
     logger.error("Goal {} cycle {} judgement failed: {}", goal.id, cycle.sequence, error)
 
 
@@ -624,6 +631,7 @@ async def start_due_cycle(
         GoalCycleTrigger.goal_id == Goal.id,
         GoalCycleTrigger.consumed_cycle_id.is_(None),
     )
+    pending_referrer_recovery = referrer_wait.pending_cycle_recovery()
     temporal_due = and_(
         Goal.cycle_delay_seconds.is_not(None),
         Goal.next_cycle_at.is_not(None),
@@ -638,6 +646,7 @@ async def start_due_cycle(
             temporal_due,
             goal_calendar.pending_passage(now),
             pending_relational_trigger,
+            pending_referrer_recovery,
         ),
     )
     if manual_only:
@@ -668,6 +677,7 @@ async def start_due_cycle(
                     temporal_due,
                     goal_calendar.pending_passage(now),
                     pending_relational_trigger,
+                    pending_referrer_recovery,
                 ),
             )
         )
@@ -706,7 +716,13 @@ async def start_due_cycle(
         is_calendar = bool(await db.scalar(select(goal_calendar.pending_passage(now)).where(Goal.id == goal.id)))
         if is_calendar and not is_manual:
             selected_relational_trigger = None
-        if not is_manual and selected_relational_trigger is None and not is_temporal and not is_calendar:
+        recovered_answers = await referrer_wait.failed_cycle_answers(goal.id)
+        recovery_only = not (
+            is_manual or selected_relational_trigger is not None or is_temporal or is_calendar
+        )
+        if recovery_only and not any(
+            not answer.metadata_.get(referrer_wait.RECOVERY_CYCLE_KEY) for answer in recovered_answers
+        ):
             await db.rollback()
             continue
         if (
@@ -760,6 +776,23 @@ async def start_due_cycle(
         )
         sequence = (previous.sequence if previous is not None else 0) + 1
         cycle_id = uuid4()
+        objective = await _cycle_task_objective(goal, sequence)
+        if recovered_answers:
+            objective += (
+                "\n\n<p>AUTHENTICATED REFERRER ANSWERS FROM FAILED CYCLES</p>"
+                "<p>Use these answers for the current Goal. Check existing effects before acting "
+                "and avoid asking the same question again.</p>"
+            )
+            for answer in recovered_answers:
+                text = str((answer.resolution or {}).get("text") or "")
+                objective += (
+                    f"<p>Question #{escape(answer.reference)}</p>"
+                    f"<blockquote>{escape(answer.body)}</blockquote>"
+                    f"<p>Referrer answer</p><blockquote>{escape(text)}</blockquote>"
+                )
+                answer.metadata_ = {
+                    **answer.metadata_, referrer_wait.RECOVERY_CYCLE_KEY: str(cycle_id),
+                }
         task_data: dict[str, object] = {
             "goal_cycle_id": str(cycle_id),
             "goal_sequence": sequence,
@@ -788,7 +821,7 @@ async def start_due_cycle(
         task = task_service.build(
             TaskCreate(
                 label=f"{goal.title} — cycle {sequence}"[:400],
-                objective=await _cycle_task_objective(goal, sequence),
+                objective=objective,
                 agent_id=goal.agent_id,
                 goal_id=goal.id,
                 messenger_connection_id=goal.referrer_connection_id,
@@ -826,7 +859,7 @@ async def start_due_cycle(
         )
         db.add_all([task, cycle])
         await db.flush()
-        await goal_calendar.attach_cycle(goal, cycle, now=now, manual=is_manual)
+        await goal_calendar.attach_cycle(goal, cycle, now=now, manual=is_manual or recovery_only)
         if selected_relational_trigger is not None:
             selected_relational_trigger.consumed_cycle_id = cycle_id
             selected_relational_trigger.consumed_at = now
@@ -852,15 +885,14 @@ async def start_due_cycle(
 async def process_goals() -> None:
     """Finish one launched cycle, then start scheduled Goal activity when allowed."""
 
-    from .referrer_wait import process_due_referrer_wait
-
     await goal_service.recover_obsolete_supervision_pause()
     await goal_calendar.materialize_due()
     await process_terminal_cycle()
+    await referrer_wait.process_recovered_cycle_feedback()
     settings = await settings_service.get_settings()
     if not settings.is_active:
         if settings.inactive_reason == "OUTSIDE_SCHEDULE":
             await start_due_cycle(manual_only=True)
         return
-    await process_due_referrer_wait()
+    await referrer_wait.process_due_referrer_wait()
     await start_due_cycle()

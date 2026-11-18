@@ -2372,6 +2372,9 @@ après annonce de l'outil. Un quatrième parcours traite une confirmation soumis
 autorisation : refus d'un tiers, consentement du responsable, worker de réconciliation,
 reprise du checkpoint et envoi unique. Un cinquième lit la révision du Goal par `file_read`,
 reprend après consentement pour modifier son suivi et vérifie l'écriture avant jugement.
+Le parcours de reprise après erreur vérifie l’épuisement des relances sans pause du Goal,
+la transmission de la réponse à un nouveau cycle et la conservation de l’échec initial.
+Il vérifie également l’accusé de réception et l’état final dans le journal du Chat.
 L'agent est créé par son service normal, avec ses connexions obligatoires.
 Ils contrôlent les effets persistés : rejet d'un tiers, réponse
 dupliquée admise une seule fois, pas de clôture pendant l'attente, un rappel maximum,

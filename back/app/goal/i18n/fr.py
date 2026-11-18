@@ -14,6 +14,23 @@ default: dict[str, object] = {
             "Question envoyée à ${referrer}. Cette tâche attend maintenant sa réponse ; "
             "les relances et la pause éventuelle de l’objectif sont gérées automatiquement."
         ),
+        "answer_received": (
+            "Réponse reçue pour l’objectif « ${goal} » (#${reference}). "
+            "Suivi de l’objectif · galaris://goal/${goal_id}"
+        ),
+        "answer_completed": "L’objectif « ${goal} » est terminé. Suivi · galaris://goal/${goal_id}",
+        "answer_processed": (
+            "Le cycle de l’objectif « ${goal} » qui a reçu votre réponse est terminé. "
+            "L’objectif reste actif. Suivi · galaris://goal/${goal_id}"
+        ),
+        "answer_paused": (
+            "Votre réponse reste enregistrée. L’objectif « ${goal} » est en pause. "
+            "Suivi · galaris://goal/${goal_id}"
+        ),
+        "answer_cycle_error": (
+            "Le cycle de reprise de l’objectif « ${goal} » a échoué. Votre réponse reste enregistrée "
+            "pour le prochain cycle. Suivi · galaris://goal/${goal_id}"
+        ),
         "reminder": (
             "🔔 **Relance ${number}/${maximum} — objectif « ${goal} »**\n\n"
             "${question}\n\nRépondez en conservant la référence #${reference}."

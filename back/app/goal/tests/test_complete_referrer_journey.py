@@ -30,6 +30,7 @@ from app.messenger import create_internal_room, publish_internal_message
 from app.messenger.models import Interaction, Message
 from app.task import scheduler, task_service
 from app.task.models import Task, TaskStatus
+from app.task.workflow import TaskEvent, transition
 from app.services import ServiceModel
 from app.services.authorization import answer_action
 from app.services.authorization_notifications import reconcile_authorizations
@@ -40,11 +41,13 @@ from core.user import UserModel, user_service
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("language", ["fr", "en"])
-@pytest.mark.parametrize(("late_answer", "revoke_question", "approval_tool"), [
-    (False, False, None), (True, False, None), (False, True, None),
-    (False, False, "messenger_send_message_to_user"), (False, False, "goal_update_suivi"),
+@pytest.mark.parametrize(("late_answer", "revoke_question", "approval_tool", "failed_cycles"), [
+    (False, False, None, 0), (True, False, None, 0), (False, True, None, 0),
+    (False, False, "messenger_send_message_to_user", 0), (False, False, "goal_update_suivi", 0),
+    pytest.param(False, False, None, 1, id="answer-after-cycle-error"),
+    pytest.param(False, False, None, 2, id="answer-survives-recovery-error"),
 ])
-async def test_complete_human_decision_journey(inference_db, monkeypatch, language, late_answer, revoke_question, approval_tool):
+async def test_complete_human_decision_journey(inference_db, monkeypatch, language, late_answer, revoke_question, approval_tool, failed_cycles):
     db = inference_db
     owner = UserModel(email=f"goal-owner-{uuid4().hex}@example.test", display_name="Synthetic owner",
                       hashed_password="unused", is_active=True, language=language)
@@ -260,6 +263,20 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
     assert not await runner.process_terminal_cycle()
     await db.commit()
 
+    if failed_cycles:
+        failed_task_id = task_id
+        transition(task, TaskEvent.FAIL)
+        task_service.clear_pauses(task)
+        task.last_error = "Synthetic execution failed after the question was sent."
+        await task_service.save(task)
+        assert await runner.process_terminal_cycle()
+        assert not await runner.start_due_cycle()
+        # The last reminder from a dead cycle must never pause the Goal.
+        reminder_at = datetime.now(timezone.utc) + timedelta(days=1, seconds=1)
+        assert await referrer_wait.process_due_referrer_wait(reminder_at)
+        assert await referrer_wait.process_due_referrer_wait(reminder_at + timedelta(days=1, seconds=1))
+        assert (await db.get(Goal, goal_id)).status == GoalStatus.ACTIVE
+
     if late_answer:
         wait = await db.scalar(select(Task).where(Task.parent_id == task_id))
         assert wait is not None
@@ -287,6 +304,38 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
     assert (await db.get(Interaction, interaction_id)).status == "RESOLVED"
     assert await db.scalar(select(func.count()).select_from(Message).where(
         Message.connection_id == connection_id, Message.direction == "inbound")) == 1
+    outbound = select(Message.text).where(
+        Message.connection_id == connection_id, Message.direction == "outbound"
+    ).order_by(Message.journal_position)
+    receipt_text = "Réponse reçue" if language == "fr" else "Answer received"
+    notices = list((await db.scalars(outbound)).all())
+    assert sum(text.startswith(receipt_text) for text in notices) == 1
+    assert f"#{reference}" in notices[-1]
+    if failed_cycles:
+        assert await runner.start_due_cycle()
+        task_id = await db.scalar(select(GoalCycle.task_id).where(
+            GoalCycle.goal_id == goal_id, GoalCycle.sequence == 2))
+        assert task_id is not None
+        assert (await db.get(Task, failed_task_id)).status == TaskStatus.ERROR
+        assert not await runner.start_due_cycle()
+    if failed_cycles == 2:
+        recovery_task = await db.get(Task, task_id)
+        assert "SYNTHETIC-ANSWER: express" in recovery_task.objective
+        transition(recovery_task, TaskEvent.FAIL)
+        await task_service.save(recovery_task)
+        assert await runner.process_terminal_cycle()
+        assert await referrer_wait.process_recovered_cycle_feedback()
+        assert not await referrer_wait.process_recovered_cycle_feedback()
+        assert not await runner.start_due_cycle()
+
+        persisted_goal = await db.get(Goal, goal_id)
+        assert persisted_goal.status == GoalStatus.ACTIVE
+        persisted_goal.next_cycle_at = datetime.now(timezone.utc)
+        await db.commit()
+        assert await runner.start_due_cycle()
+        task_id = await db.scalar(select(GoalCycle.task_id).where(
+            GoalCycle.goal_id == goal_id, GoalCycle.sequence == 3))
+        assert task_id is not None
 
     approvals = 0
     for _ in range(6):
@@ -305,7 +354,7 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
             assert (await db.get(Goal, goal_id)).status == GoalStatus.ACTIVE
             assert not await runner.process_terminal_cycle()
             assert await db.scalar(select(func.count()).select_from(Message).where(
-                Message.connection_id == connection_id, Message.direction == "outbound")) == 1
+                Message.connection_id == connection_id, Message.direction == "outbound")) == 2
             assert not await answer_action(authorization.id, user_id=outsider_id, approved=True)
             assert await answer_action(authorization.id, user_id=owner_id, approved=True)
             approvals += 1
@@ -325,14 +374,20 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
     assert persisted_goal.status == GoalStatus.COMPLETED
     if approval_tool == "goal_update_suivi":
         assert "express" in (await goal_service.read_markdown(persisted_goal)).tracking
-    cycle = await db.scalar(select(GoalCycle).where(GoalCycle.goal_id == goal_id))
+    cycle = await db.scalar(select(GoalCycle).where(GoalCycle.task_id == task_id))
     assert cycle.verdict == GoalVerdict.STOP
     assert not await runner.process_terminal_cycle()
     assert not await runner.start_due_cycle()
+    if failed_cycles:
+        assert await referrer_wait.process_recovered_cycle_feedback()
+        assert not await referrer_wait.process_recovered_cycle_feedback()
     assert await db.scalar(select(func.count()).select_from(Document)) == initial_documents + 1
-    assert await db.scalar(select(func.count()).select_from(Task).where(Task.goal_id == goal_id)) == 2
-    assert await db.scalar(select(func.count()).select_from(Message).where(
-        Message.connection_id == connection_id, Message.direction == "outbound")) == (2 if late_answer else 1) + int(approval_tool == "messenger_send_message_to_user")
+    assert await db.scalar(select(func.count()).select_from(Task).where(Task.goal_id == goal_id)) == 2 + failed_cycles
+    notices = list((await db.scalars(outbound)).all())
+    assert len(notices) == 3 + int(late_answer) + failed_cycles + int(approval_tool == "messenger_send_message_to_user")
+    completed_text = "est terminé" if language == "fr" else "is complete"
+    assert completed_text in notices[-1]
+    assert f"galaris://goal/{goal_id}" in notices[-1]
     assert approvals == int(approval_tool is not None)
     calls = list(await db.scalars(select(LLMCall).where(LLMCall.agent_id == agent_id)))
     assert {"agent.dispatch", "agent.exec", "goal.tracking"} <= {call.purpose for call in calls}
