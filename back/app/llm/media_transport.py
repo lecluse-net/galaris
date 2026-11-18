@@ -7,7 +7,7 @@ import asyncio
 import httpx
 
 from core.util import as_dict, read_response
-from .media_contracts import MediaOperation, MediaRequest, MediaResult, MediaRequestRejected
+from .media_contracts import MediaOperation, MediaProviderUnavailable, MediaRequest, MediaResult, MediaRequestRejected
 from .provider_facade import ProviderConnection
 
 MAX_MEDIA_BYTES = 100_000_000
@@ -27,7 +27,9 @@ async def media_http(
             headers={auth_header: credential, "Accept-Encoding": "identity"}, json=body,
         ) as response:
             if not response.is_success:
-                if 400 <= response.status_code < 500 and response.status_code != 408:
+                if response.status_code in {408, 429} or 500 <= response.status_code < 600:
+                    raise MediaProviderUnavailable(f"Media provider unavailable (HTTP {response.status_code}).")
+                if 400 <= response.status_code < 500:
                     raise MediaRequestRejected(f"Media provider rejected the request (HTTP {response.status_code}).")
                 raise ValueError(f"Media provider returned HTTP {response.status_code}.")
             limit = MAX_MEDIA_BYTES if binary else 2_000_000
@@ -46,12 +48,16 @@ async def media_json(
 class GenerationProvider:
     """Defaults for providers with no analysis or remote polling service."""
 
+    supports_composition = False
+
     def supports(self, operation: MediaOperation, model: str) -> bool:
         return False
 
     def validate(self, request: MediaRequest) -> None:
         if not self.supports(request.operation, request.model):
             raise ValueError("This provider does not support the selected operation/model.")
+        if request.composition is not None and not self.supports_composition:
+            raise ValueError("This provider does not support structured music composition.")
 
     async def analyze(
         self, connection: ProviderConnection, request: MediaRequest,

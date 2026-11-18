@@ -49,7 +49,6 @@ les comptes distants réels ou la réserve indépendante encore manquants.
 | [fiabilisation-conversationnelle.md](fiabilisation-conversationnelle.md) | `in-progress` | Identité sémantique, réserve indépendante, qualification multi-contextes/harnais, comptes externes, coordination de l'arrêt des Goals et parcours natifs restants. |
 | [lab-evaluation-mecanismes-ia.md](lab-evaluation-mecanismes-ia.md) | `in-progress` | Campagnes annotées réelles, séparation des variances, comparabilité/tendances, gardes, portabilité, campagnes de modèles de décision et mocks d'applications Process. |
 | [ordonnancement-llm-par-fournisseur.md](ordonnancement-llm-par-fournisseur.md) | `partial` | Provenance exhaustive en amont, priorités par opération, transports non tracés, coordination multi-backend et qualification fournisseur/charge. |
-| [outils-mcp-multimedia.md](outils-mcp-multimedia.md) | `partial` | Accès officiel Suno, références/composition/annulation distante et extensions locales. |
 | [programmes-documentaires-json.md](programmes-documentaires-json.md) | `partial` | Parcours d'autorisation des nouvelles applications avec données et qualification création/utilisation/persistance/partage/amélioration par un agent. |
 
 ## Conceptions

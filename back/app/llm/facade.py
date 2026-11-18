@@ -26,7 +26,7 @@ from .provider_quota import amount_window, quota_number, quota_reset, read_quota
 from .subscription_policy import ensure_subscription_confirmation
 from .media_transport import GenerationProvider, media_http, media_json
 from .media_facade import SelectedMediaResource, start_media_call, finish_media_call, analyze_input_video as analyze_input_video
-from .media_contracts import MediaRequestRejected
+from .media_contracts import MediaProviderUnavailable, MediaRequestRejected, VideoFrame, VideoFrameProvider, VideoFrameRole
 from .capabilities import AICapability, with_capability, default_modalities
 from .handlers import LLMModelInfo
 from .provider_catalog import ProviderProfile, resolve_provider_profile
@@ -386,7 +386,9 @@ __all__ = [
     "ProviderResponsesPolicy", "register_image_generation_provider", "register_model_metadata",
     "register_openai_protocol_adapter", "register_responses_policy",
     "AICapability", "with_capability", "LLMModelInfo", "ProviderProfile", "register_provider", "register_resource_discovery",
-    "GenerationProvider", "media_http", "media_json", "SelectedMediaResource", "start_media_call", "finish_media_call", "MediaRequestRejected",
+    "GenerationProvider", "media_http", "media_json", "SelectedMediaResource", "start_media_call", "finish_media_call",
+    "MediaProviderUnavailable", "MediaRequestRejected",
+    "VideoFrame", "VideoFrameProvider", "VideoFrameRole",
     "AgentRunUsage",
     "aggregate_agent_run_usage",
     "get_managed_runtime_credential",

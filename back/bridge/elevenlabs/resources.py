@@ -10,6 +10,7 @@ from app.llm.capabilities import AICapability, with_capability
 from app.llm.handlers import LLMModelInfo
 from app.llm.provider_facade import ProviderConnection
 from core.util import as_dict, as_list
+from .multimedia import MUSIC_MODELS
 
 
 def _headers(connection: ProviderConnection) -> dict[str, str]:
@@ -26,7 +27,7 @@ class ElevenLabsResourceDiscovery:
         capability: AICapability,
     ) -> list[LLMModelInfo]:
         if capability in {"music_generation", "sound_generation"}:
-            names = ("music_v1", "music_v2") if capability == "music_generation" else ("eleven_text_to_sound_v2",)
+            names = MUSIC_MODELS if capability == "music_generation" else ("eleven_text_to_sound_v2",)
             return [with_capability(LLMModelInfo(
                 id=name, name=name, metadata_source="provider-catalog",
                 service_capabilities=[capability],

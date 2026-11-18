@@ -767,6 +767,21 @@ L’onglet **Appels téléphoniques** montre les appels actifs ou terminés, leu
 réponses, appels LLM et erreurs. Un tour vocal peut aussi créer une tâche de fond ; celle-ci apparaît
 alors dans l’onglet **tâches** et continue après la fin de l’appel.
 
+### Composer un morceau avec Eleven Music
+
+Avec un modèle Eleven Music configuré dans le profil Multimédia de l'agent, demandez un morceau
+en indiquant les sections, leurs durées et les paroles à reprendre, puis une destination de fichiers.
+L'agent suit la génération jusqu'à ce que le fichier soit enregistré à cette destination.
+Un incident temporaire de suivi laisse la génération en attente pendant la reprise automatique.
+Voir le [guide Multimédia](../components/multimedia.md).
+
+### Générer une vidéo à partir d'images avec Seedance
+
+Avec un modèle BytePlus Seedance configuré dans le profil Multimédia de l'agent, joignez
+une image de début et éventuellement une image de fin. Indiquez la scène à générer et
+la destination du fichier. L'agent utilise les URI des pièces jointes et suit la génération
+jusqu'à la livraison de la vidéo. Voir le [guide Multimédia](../components/multimedia.md).
+
 ### Résumer un audio, une vidéo ou une vidéo YouTube
 
 Avec le service Multimédia et un spécialiste vidéo configurés, l'agent peut aussi analyser

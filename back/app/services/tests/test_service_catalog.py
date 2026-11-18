@@ -20,7 +20,7 @@ from app.services.service_icons import ServiceIcon
 
 def test_bundled_presets_are_self_contained_supported_and_secret_free():
     entries = catalog.bundled_catalog().entries
-    assert {entry.definition.code for entry in entries} >= {"qonto", "nextcloud", "gitlab", "matrix", "n8n", "redmine", "telegram"}
+    assert {entry.definition.code for entry in entries} >= {"qonto", "nextcloud", "gitlab", "matrix", "n8n", "redmine", "telegram", "suno"}
     for entry in entries:
         assert entry.compatible
         assert entry.definition.icon is not None

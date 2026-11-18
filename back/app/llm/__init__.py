@@ -101,6 +101,7 @@ from .media_contracts import (
     MediaProvider,
     MediaRequest,
     MediaResult,
+    MusicComposition,
     register_media_provider,
 )
 from .media_facade import available_media_functions, resolve_media_resource
@@ -126,6 +127,7 @@ __all__ = [
     "MediaProvider",
     "MediaRequest",
     "MediaResult",
+    "MusicComposition",
     "register_media_provider",
     "available_media_functions",
     "resolve_media_resource",

@@ -7,8 +7,10 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 
+import httpx
+
 from app.llm import MediaArtifact, MediaOperation, MediaRequest, MediaResult
-from app.llm.facade import GenerationProvider, media_http, media_json
+from app.llm.facade import GenerationProvider, MediaProviderUnavailable, MediaRequestRejected, media_http, media_json
 from app.llm import ProviderConnection
 from core.util import as_dict, as_list
 
@@ -60,18 +62,21 @@ class OpenRouterMedia(GenerationProvider):
         if request.operation == "music_generate":
             return await self._music(connection, request)
         # Validate against the live provider catalog before submitting a billable request.
-        catalog = await media_json(connection, "GET", "videos/models")
+        try:
+            catalog = await media_json(connection, "GET", "videos/models")
+        except (MediaProviderUnavailable, httpx.TransportError, TimeoutError) as exc:
+            raise MediaRequestRejected("OpenRouter's video catalog is temporarily unavailable. No generation was submitted.") from exc
         model = next((as_dict(item) for item in as_list(catalog.get("data"))
                       if as_dict(item).get("id") == request.model), None)
         if model is None:
-            raise ValueError("The selected video model is unavailable in the provider catalog.")
+            raise MediaRequestRejected("The selected video model is unavailable in the provider catalog.")
         body: dict[str, Any] = {"model": request.model, "prompt": request.prompt}
         for key, plural in (("duration", "durations"), ("resolution", "resolutions"), ("aspect_ratio", "aspect_ratios")):
             value = getattr(request, key)
             if value is not None:
                 supported = as_list(model.get(f"supported_{plural}"))
                 if supported and value not in supported:
-                    raise ValueError(f"Unsupported {key}: {value}; supported values: {supported}.")
+                    raise MediaRequestRejected(f"Unsupported {key}: {value}; supported values: {supported}.")
                 body[key] = value
         payload = await media_json(connection, "POST", "videos", body=body)
         external_id = str(payload.get("id") or "")
@@ -126,7 +131,11 @@ class OpenRouterMedia(GenerationProvider):
         path = f"videos/{quote(external_id, safe='')}"
         payload = await media_json(connection, "GET", path)
         status = payload.get("status")
-        if status in {"failed", "expired", "cancelled"}:
+        usage_cost = as_dict(payload.get("usage")).get("cost")
+        cost = float(usage_cost) if isinstance(usage_cost, (int, float)) else None
+        if status == "cancelled":
+            return MediaResult("cancelled", external_id=external_id, cost=cost)
+        if status in {"failed", "expired"}:
             return MediaResult("error", external_id=external_id, error=f"Provider video status: {status}.")
         if status != "completed":
             return MediaResult("running", external_id=external_id)
@@ -137,6 +146,4 @@ class OpenRouterMedia(GenerationProvider):
         for index in range(count):
             content = await media_http(connection, "GET", f"{path}/content?index={index}", binary=True)
             artifacts.append(MediaArtifact(str(index), "video/mp4", content=content))
-        cost = as_dict(payload.get("usage")).get("cost")
-        return MediaResult("success", external_id=external_id, artifacts=tuple(artifacts),
-                           cost=float(cost) if isinstance(cost, (int, float)) else None)
+        return MediaResult("success", external_id=external_id, artifacts=tuple(artifacts), cost=cost)

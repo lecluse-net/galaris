@@ -30,7 +30,7 @@ async def start(ctx: McpToolContext, input_data: dict[str, Any], invocation_key:
             if existing.input.get("request_fingerprint") != digest:
                 raise ValueError("The invocation_key belongs to different arguments.")
             return await read(ctx, existing.id)
-    payload = await MediaGenerationExecutor().prepare_input(ctx.agent_id, input_data)
+    payload = await MediaGenerationExecutor().prepare_input(ctx.agent_id, input_data, task_id=ctx.task_id)
     payload["request_fingerprint"] = digest
     authority = current_execution_authority() or LLMExecutionAuthority(requester_user_id=get_current_user_id())
     dispatch: dict[str, Any] = {"input": payload}

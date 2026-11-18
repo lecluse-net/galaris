@@ -5,7 +5,7 @@ from urllib.parse import quote
 
 from app.llm import MediaArtifact, MediaOperation, MediaRequest, MediaResult
 from app.llm.facade import AICapability, with_capability, LLMModelInfo
-from app.llm.facade import GenerationProvider, media_json, MediaRequestRejected
+from app.llm.facade import GenerationProvider, MediaProviderUnavailable, MediaRequestRejected, media_json
 from app.llm import ProviderConnection
 from core.util import as_dict, as_list
 
@@ -66,8 +66,11 @@ class SunoApiMedia(GenerationProvider):
             if request.duration is not None:
                 body["duration"] = request.duration
         payload = await media_json(connection, "POST", endpoint, body=body)
-        if payload.get("code") != 200:
-            raise MediaRequestRejected(f"SunoAPI rejected generation (code {payload.get('code')}).")
+        code = payload.get("code")
+        if code != 200:
+            if isinstance(code, int) and 400 <= code < 500 and code not in {408, 455}:
+                raise MediaRequestRejected(f"SunoAPI rejected generation (code {code}).")
+            raise MediaProviderUnavailable("SunoAPI did not confirm generation admission.")
         external_id = str(as_dict(payload.get("data")).get("taskId") or "")
         if not external_id:
             raise RuntimeError("SunoAPI returned no task identifier.")
@@ -75,8 +78,11 @@ class SunoApiMedia(GenerationProvider):
 
     async def poll(self, connection: ProviderConnection, request: MediaRequest, external_id: str) -> MediaResult:
         payload = await media_json(connection, "GET", f"generate/record-info?taskId={quote(external_id, safe='')}")
-        if payload.get("code") != 200:
-            raise ValueError(f"SunoAPI status unavailable (code {payload.get('code')}).")
+        code = payload.get("code")
+        if code != 200:
+            if isinstance(code, int) and 400 <= code < 500 and code not in {408, 429, 455}:
+                raise MediaRequestRejected(f"SunoAPI refused the status request (code {code}).")
+            raise MediaProviderUnavailable("SunoAPI could not provide the generation status.")
         data = as_dict(payload.get("data"))
         status = str(data.get("status") or "")
         if status in {"CREATE_TASK_FAILED", "GENERATE_AUDIO_FAILED", "SENSITIVE_WORD_ERROR"}:

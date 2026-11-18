@@ -484,13 +484,13 @@ tests restent l’autorité sur le comportement.
 | `app.messenger` | `core.util` | `back/app/messenger/ingest.py`, `back/app/messenger/interface.py`, `back/app/messenger/link_preview.py` |
 | `app.multimedia` | `app.agent` | `back/app/multimedia/generation_execution.py`, `back/app/multimedia/router.py` |
 | `app.multimedia` | `app.audio` | `back/app/multimedia/transcripts.py` |
-| `app.multimedia` | `app.file_share` | `back/app/multimedia/delivery.py`, `back/app/multimedia/generation_execution.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py` |
-| `app.multimedia` | `app.llm` | `back/app/multimedia/generation_execution.py`, `back/app/multimedia/generation_service.py`, `back/app/multimedia/generation_worker.py`, `back/app/multimedia/mcp.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py`, `back/app/multimedia/transcripts.py` |
+| `app.multimedia` | `app.file_share` | `back/app/multimedia/delivery.py`, `back/app/multimedia/generation_execution.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py`, `back/app/multimedia/video_frames.py` |
+| `app.multimedia` | `app.llm` | `back/app/multimedia/generation_execution.py`, `back/app/multimedia/generation_service.py`, `back/app/multimedia/generation_worker.py`, `back/app/multimedia/mcp.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py`, `back/app/multimedia/transcripts.py`, `back/app/multimedia/video_frames.py` |
 | `app.multimedia` | `app.services` | `back/app/multimedia/generation_service.py`, `back/app/multimedia/generation_worker.py`, `back/app/multimedia/mcp.py`, `back/app/multimedia/service.py` |
 | `app.multimedia` | `core.authorize` | `back/app/multimedia/router.py` |
 | `app.multimedia` | `core.database` | `back/app/multimedia/delivery.py`, `back/app/multimedia/generation_execution.py`, `back/app/multimedia/generation_service.py`, `back/app/multimedia/generation_store.py`, `back/app/multimedia/generation_worker.py`, `back/app/multimedia/models.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/router.py` |
 | `app.multimedia` | `core.user` | `back/app/multimedia/generation_service.py` |
-| `app.multimedia` | `core.util` | `back/app/multimedia/generation_execution.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py` |
+| `app.multimedia` | `core.util` | `back/app/multimedia/generation_execution.py`, `back/app/multimedia/generation_worker.py`, `back/app/multimedia/provider_results.py`, `back/app/multimedia/service.py`, `back/app/multimedia/video_frames.py` |
 | `app.onboarding` | `app.agent` | `back/app/onboarding/router.py`, `back/app/onboarding/services.py` |
 | `app.onboarding` | `app.connection` | `back/app/onboarding/services.py` |
 | `app.onboarding` | `app.llm` | `back/app/onboarding/services.py` |
@@ -2508,12 +2508,12 @@ Aucune composante cyclique détectée.
 | `messenger_send_audio_message` | `messenger` | `app.messenger` | `mcp_send_audio_message` | `back/app/messenger/mcp.py:657` |
 | `messenger_send_file_to_user` | `messenger` | `app.messenger` | `mcp_send_file_to_user` | `back/app/messenger/mcp.py:971` |
 | `messenger_send_message_to_user` | `messenger` | `app.messenger` | `mcp_send_message_to_user` | `back/app/messenger/mcp.py:383` |
-| `audio_read` | `multimedia` | `app.multimedia` | `audio_read` | `back/app/multimedia/mcp.py:13` |
-| `multimedia_get_run` | `multimedia` | `app.multimedia` | `multimedia_get_run` | `back/app/multimedia/mcp.py:52` |
-| `music_generate` | `multimedia` | `app.multimedia` | `music_generate` | `back/app/multimedia/mcp.py:36` |
-| `sound_generate` | `multimedia` | `app.multimedia` | `sound_generate` | `back/app/multimedia/mcp.py:29` |
-| `video_generate` | `multimedia` | `app.multimedia` | `video_generate` | `back/app/multimedia/mcp.py:44` |
-| `video_read` | `multimedia` | `app.multimedia` | `video_read` | `back/app/multimedia/mcp.py:18` |
+| `audio_read` | `multimedia` | `app.multimedia` | `audio_read` | `back/app/multimedia/mcp.py:14` |
+| `multimedia_get_run` | `multimedia` | `app.multimedia` | `multimedia_get_run` | `back/app/multimedia/mcp.py:67` |
+| `music_generate` | `multimedia` | `app.multimedia` | `music_generate` | `back/app/multimedia/mcp.py:43` |
+| `sound_generate` | `multimedia` | `app.multimedia` | `sound_generate` | `back/app/multimedia/mcp.py:36` |
+| `video_generate` | `multimedia` | `app.multimedia` | `video_generate` | `back/app/multimedia/mcp.py:52` |
+| `video_read` | `multimedia` | `app.multimedia` | `video_read` | `back/app/multimedia/mcp.py:19` |
 | `conversation_round_get` | `platform_admin` | `app.conversation` | `conversation_round_get` | `back/app/conversation/mcp.py:248` |
 | `documentation_catalog` | `platform_admin` | `app.services` | `documentation_catalog` | `back/app/services/mcp.py:37` |
 | `documentation_search` | `platform_admin` | `app.services` | `documentation_search` | `back/app/services/mcp.py:50` |

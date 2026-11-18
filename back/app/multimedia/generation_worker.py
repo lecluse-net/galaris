@@ -2,15 +2,28 @@
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from uuid import UUID, uuid4
-from sqlalchemy import and_, or_, select, update
+
+import httpx
+from sqlalchemy import and_, func, or_, select, update
 from app.llm import LLMExecutionAuthority, MediaRequest, llm_execution_scope
+from app.llm.facade import MediaProviderUnavailable, MediaRequestRejected
 from app.services.facade import AuthorizationClosed, AuthorizationSuspended, continued_deferred_dispatch, claim_deferred_dispatch, finish_action
 from core.database import get_db
+from core.util import BufferedAdmissionDeferred
 from .generation_contracts import MediaGenerationError, MediaGenerationSnapshot
 from .generation_store import TERMINAL_STATUSES, publish, snapshot
 from .models import MediaGeneration
 from .generation_execution import MediaGenerationExecutor
+from .provider_results import InvalidMediaOutput
 from .service import authorize
+from .video_frames import VideoFrameError
+
+
+def _is_settled_result(result: MediaGenerationSnapshot) -> bool:
+    return result.status in TERMINAL_STATUSES or (
+        result.status == "unknown" and result.error is not None and result.error.code == "submission_unknown"
+    )
+
 
 async def settle_authorization(identifier: UUID, result: MediaGenerationSnapshot) -> None:
     db = get_db()
@@ -30,8 +43,8 @@ async def advance(identifier: UUID) -> MediaGenerationSnapshot:
     row = await db.get(MediaGeneration, identifier, populate_existing=True)
     if row is None:
         raise LookupError("multimedia operation not found")
-    if row.status in TERMINAL_STATUSES:
-        result = snapshot(row)
+    result = snapshot(row)
+    if _is_settled_result(result):
         await db.commit()
         await settle_authorization(identifier, result)
         return result
@@ -64,19 +77,41 @@ async def advance(identifier: UUID) -> MediaGenerationSnapshot:
     except (PermissionError, AuthorizationClosed):
         result = await publish(identifier, MediaGenerationSnapshot(status="error", error=MediaGenerationError(
             code="authorization_unavailable", message="The operation authorization is no longer available")))
+    except BufferedAdmissionDeferred:
+        await db.rollback()
+        result = await publish(identifier, MediaGenerationSnapshot(status="waiting", error=MediaGenerationError(
+            code="capacity_waiting", message="The operation is waiting for local media processing capacity.")))
+    except (MediaProviderUnavailable, httpx.TransportError, TimeoutError):
+        await db.rollback()
+        result = await publish(identifier, MediaGenerationSnapshot(status="waiting", error=MediaGenerationError(
+            code="provider_retrying", message="The provider result is temporarily unavailable. Tracking will retry automatically.")))
+    except (InvalidMediaOutput, MediaRequestRejected) as exc:
+        await db.rollback()
+        result = await publish(identifier, MediaGenerationSnapshot(status="error", error=MediaGenerationError(
+            code="provider_output_invalid" if isinstance(exc, InvalidMediaOutput) else "provider_status_refused",
+            message=str(exc))))
+    except VideoFrameError as exc:
+        await db.rollback()
+        result = await publish(identifier, MediaGenerationSnapshot(status="error", error=MediaGenerationError(
+            code="invalid_video_frame", message=str(exc))))
     except ValueError:
         await db.rollback()
         result = await publish(identifier, MediaGenerationSnapshot(status="error", error=MediaGenerationError(
             code="generation_invalid", message="The admitted media request or provider configuration is no longer valid")))
-    if result.status in TERMINAL_STATUSES:
+    if _is_settled_result(result):
         await settle_authorization(identifier, result)
     return result
 
 async def tick() -> None:
     """Advance one operation under an expiring lease shared by all scheduler workers."""
     db, now = get_db(), datetime.now(timezone.utc)
+    settled = or_(
+        MediaGeneration.status.in_(TERMINAL_STATUSES),
+        and_(MediaGeneration.status == "unknown",
+             func.coalesce(MediaGeneration.error["code"].astext, "") == "submission_unknown"),
+    )
     row = await db.scalar(select(MediaGeneration).where(
-        or_(MediaGeneration.status.not_in(TERMINAL_STATUSES), and_(
+        or_(~settled, and_(
             MediaGeneration.authorization_settled.is_(False),
             MediaGeneration.dispatch["authorization_permit"].astext.is_not(None))),
         or_(MediaGeneration.lease_expires_at.is_(None), MediaGeneration.lease_expires_at < now),
@@ -88,11 +123,15 @@ async def tick() -> None:
     identifier, lease = row.id, uuid4()
     row.lease_token, row.lease_expires_at = lease, now + timedelta(seconds=1500)
     await db.commit()
+    next_check = None
     try:
-        await advance(identifier)
+        result = await advance(identifier)
+        if result.status in {"running", "waiting", "unknown"} and not _is_settled_result(result):
+            delay = 30 if result.error or result.status == "unknown" else 10
+            next_check = datetime.now(timezone.utc) + timedelta(seconds=delay)
     finally:
         if not db.is_active:
             await db.rollback()
         await db.execute(update(MediaGeneration).where(MediaGeneration.id == identifier, MediaGeneration.lease_token == lease)
-            .values(lease_token=None, lease_expires_at=None, updated_at=datetime.now(timezone.utc)))
+            .values(lease_token=None, lease_expires_at=next_check, updated_at=datetime.now(timezone.utc)))
         await db.commit()

@@ -1,7 +1,9 @@
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
+import httpx
 import pytest
 import pytest_asyncio
 from fastmcp import Client
@@ -14,6 +16,7 @@ from app.connection.models import Connection
 from app.llm import MediaArtifact, MediaRequest, MediaResult, available_media_functions
 from app.llm.profile_models import LlmProfile
 from app.llm.provider_models import LLM, LLMProvider
+from app.memory.tests.conftest import agents as agents, memory_storage as memory_storage
 from app.multimedia.generation_execution import MediaGenerationExecutor
 from app.multimedia.models import MediaGeneration, MediaOutputReceipt
 from app.process import process_service
@@ -149,6 +152,100 @@ async def test_media_generations_are_tools_not_business_processes(db, media_agen
     server = await mcp_loader.build_agent_mcp(item.agent.id, allowed_tool_names={"multimedia_get_run"})
     async with Client(server) as client:
         assert {tool.name for tool in await client.list_tools()} == {"multimedia_get_run"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("change", [None, "access_revoked", "content_replaced"])
+async def test_seedance_uses_only_the_authorized_admitted_frames(db, media_agent, agents, memory_storage,
+                                                               monkeypatch, change):
+    from base64 import b64decode
+    from hashlib import sha256
+    from io import BytesIO
+
+    from PIL import Image
+
+    from app.document.item_sharing import update_agent_sharing
+    from app.file_share import ResourceContext, resource_create, resource_read
+    from app.multimedia import provider_results, video_frames
+    from app.multimedia.generation_worker import tick
+    from app.multimedia.mcp import multimedia_get_run, video_generate
+    from bridge.byteplus import PROFILE, media
+
+    item = media_agent
+    owner, _ = agents
+    item.connection.active = True
+    item.provider.catalog_code = item.provider.provider_type = "byteplus"
+    item.provider.base_url = PROFILE.base_url
+    item.model.llm_name = "dreamina-seedance-2-0-260128"
+    item.model.primary_capability = "video_generation"
+    item.model.service_capabilities = ["video_generation"]
+    item.profile.video_generation_llm_id = item.model.id
+    await db.commit()
+
+    owner_context = ResourceContext(owner.id, "internal")
+    source = await resource_create(owner_context, "document://", b"<p>Synthetic frames</p>", name="Synthetic frames")
+    source_id = UUID(source.uri.split("://")[1])
+    await update_agent_sharing(source_id, agent_id=owner.id, kind="agent", target_id=item.agent.id, access="read")
+    frame_uris: list[str] = []
+    images: list[bytes] = []
+    for name, color in (("start", "green"), ("end", "blue")):
+        image = BytesIO()
+        Image.new("RGB", (320, 320), color).save(image, format="PNG")
+        content = image.getvalue()
+        images.append(content)
+        attachment = await resource_create(owner_context, f"{source.uri}/attachments/", content, name=f"{name}.png")
+        frame_uris.append(attachment.uri)
+    destination = await resource_create(ResourceContext(item.agent.id, "internal"), "document://",
+                                        b"<p>Synthetic video</p>", name="Synthetic video")
+    await db.commit()
+
+    transport = AsyncMock(side_effect=[{"id": "video-job"}, {
+        "status": "succeeded", "content": {"video_url": "https://cdn.example.test/generated.mp4"},
+    }])
+    monkeypatch.setattr(media, "media_json", transport)
+    output_bytes = b"\x00\x00\x00\x18ftypmp42synthetic"
+    monkeypatch.setattr(provider_results, "read_public_https_bytes", AsyncMock(
+        return_value=SimpleNamespace(content=output_bytes)))
+    ctx = mcp_loader.McpToolContext(agent_id=item.agent.id, runtime="internal")
+    arguments = {"first_frame_uri": frame_uris[0], "last_frame_uri": frame_uris[1], "invocation_key": "frames"}
+    started = await video_generate(ctx, "A color transition", f"{destination.uri}/attachments/", **arguments)
+    replay = await video_generate(ctx, "A color transition", f"{destination.uri}/attachments/", **arguments)
+    assert replay["run_id"] == started["run_id"]
+    run_id = UUID(started["run_id"])
+    transport.assert_not_awaited()
+    if change == "access_revoked":
+        await update_agent_sharing(source_id, agent_id=owner.id, kind="agent", target_id=item.agent.id, access="none")
+        await db.commit()
+    if change == "content_replaced":
+        original_materialize = video_frames.materialize_resource
+
+        async def materialize_changed_file(ctx, uri, path, **kwargs):
+            result = await original_materialize(ctx, uri, path, **kwargs)
+            if uri == frame_uris[0]:
+                path.write_bytes(images[1])
+            return result
+
+        monkeypatch.setattr(video_frames, "materialize_resource", materialize_changed_file)
+
+    await tick()
+    result = await multimedia_get_run(ctx, run_id)
+    if change is not None:
+        assert result["status"] == "error"
+        transport.assert_not_awaited()
+        if change == "content_replaced":
+            assert result["error"]["code"] == "invalid_video_frame"
+        return
+
+    assert result["status"] == "success"
+    outbound = transport.await_args_list[0].kwargs["body"]["content"]
+    roles = ["first_frame", "last_frame"]
+    assert [entry["role"] for entry in outbound[1:]] == roles
+    assert [b64decode(entry["image_url"]["url"].split(",")[1]) for entry in outbound[1:]] == images
+    assert result["output"]["reference_frames"] == [
+        {"role": role, "sha256": sha256(image).hexdigest()} for role, image in zip(roles, images, strict=True)
+    ]
+    stored = await resource_read(ResourceContext(item.agent.id, "internal"), result["output"]["files"][0]["uri"])
+    assert b64decode(stored.content) == output_bytes
 
 
 
@@ -344,9 +441,9 @@ async def test_interrupted_file_creation_never_repeats_blindly(db, media_agent, 
     await engine._receive(run.id, MediaResult("success", artifacts=(MediaArtifact("track", "audio/mpeg", content=b"ID3audio"),)))
     create = AsyncMock(side_effect=TimeoutError)
     monkeypatch.setattr(module, "resource_create", create)
-    with pytest.raises(TimeoutError):
-        await engine.advance(reference)
-    assert (await engine.advance(reference)).status == "unknown"
+    first = await engine.advance(reference)
+    assert first.status == "unknown" and first.error.code == "delivery_unknown"
+    assert (await engine.advance(reference)) == first
     assert create.await_count == 1
 
 
@@ -390,7 +487,6 @@ async def test_analysis_probes_real_audio_and_rejects_it_as_video(monkeypatch):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("decision", ["attach", "retry_absent"])
 async def test_delivery_repair_requires_expired_lease_and_preserves_generation(db, media_agent, monkeypatch, decision):
-    from datetime import datetime, timedelta, timezone
     from app.multimedia import generation_execution as module, delivery
     from app.multimedia.models import MediaDeliveryResolution
     run, reference = await _run(db, media_agent)
@@ -398,8 +494,7 @@ async def test_delivery_repair_requires_expired_lease_and_preserves_generation(d
     await engine._receive(run.id, MediaResult("success", artifacts=(MediaArtifact("track", "audio/mpeg", content=b"ID3audio"),)))
     create = AsyncMock(side_effect=TimeoutError)
     monkeypatch.setattr(module, "resource_create", create)
-    with pytest.raises(TimeoutError):
-        await engine.advance(reference)
+    assert (await engine.advance(reference)).status == "unknown"
     receipt = (await db.scalars(select(MediaOutputReceipt).where(MediaOutputReceipt.generation_id == run.id))).one()
     request = delivery.DeliveryRepair(attempt_number=1, decision=decision,
         evidence="Destination checked by the operator", uri="console:///tmp/recovered.mp3" if decision == "attach" else None)
@@ -488,7 +583,7 @@ async def test_remote_output_recovery_resumes_downloads_without_duplicating_save
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("state", ["running", "waiting", "error"])
+@pytest.mark.parametrize("state", ["running", "waiting", "error", "cancelled"])
 async def test_provider_poll_updates_durable_observation_without_new_submission(db, media_agent, monkeypatch, state):
     from app.llm import resolve_media_resource
     selected = await resolve_media_resource(media_agent.agent.id, "music_generate")
@@ -508,6 +603,80 @@ async def test_provider_poll_updates_durable_observation_without_new_submission(
         again = await MediaGenerationExecutor().advance(reference)
         assert again.status == "error"
         poll.assert_awaited_once()
+    if state == "cancelled":
+        assert snapshot.output == {"cost": None, "cost_quality": "unknown"}
+        late_success = MediaResult("success", artifacts=(MediaArtifact("late", "audio/mpeg", content=b"ID3late"),))
+        await MediaGenerationExecutor()._receive(run.id, late_success)
+        assert (await MediaGenerationExecutor().advance(reference)) == snapshot
+        poll.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", ["rate_limit", "unavailable", "timeout", "download", "expired_link"])
+async def test_worker_recovers_an_admitted_generation_after_a_temporary_failure(db, media_agent, monkeypatch, failure):
+    from app.llm import resolve_media_resource
+    from app.llm.facade import media_json
+    from app.multimedia import generation_execution, provider_results
+    from app.multimedia.generation_worker import tick
+    from app.multimedia.mcp import multimedia_get_run, music_generate
+
+    item = media_agent
+    item.connection.active = True
+    await db.commit()
+    selected = await resolve_media_resource(item.agent.id, "music_generate")
+    transport_calls = 0
+
+    def respond(request):
+        nonlocal transport_calls
+        transport_calls += 1
+        if transport_calls == 1:
+            if failure == "timeout":
+                raise httpx.ReadTimeout("no response", request=request)
+            if failure in {"rate_limit", "unavailable"}:
+                return httpx.Response(429 if failure == "rate_limit" else 503)
+        return httpx.Response(200, json={"output": f"https://media.test/track-{transport_calls}.mp3"})
+
+    http_client = httpx.AsyncClient
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: http_client(transport=httpx.MockTransport(respond), **kwargs))
+
+    async def poll(_provider, connection, request, external_id):
+        payload = await media_json(connection, "GET", "status")
+        return MediaResult("success", external_id=external_id, artifacts=(
+            MediaArtifact("track", "audio/mpeg", url=payload["output"]),
+        ))
+
+    async def download(url, *, max_bytes):
+        if failure == "download" and transport_calls == 1:
+            raise httpx.ReadTimeout("download interrupted")
+        if failure == "expired_link" and url.endswith("track-1.mp3"):
+            request = httpx.Request("GET", url)
+            httpx.Response(403, request=request).raise_for_status()
+        return SimpleNamespace(content=b"ID3synthetic")
+
+    submit = AsyncMock(return_value=MediaResult("running", external_id="accepted-job"))
+    create = AsyncMock(return_value=SimpleNamespace(uri="console:///tmp/song.mp3"))
+    monkeypatch.setattr(type(selected.provider), "submit", submit)
+    monkeypatch.setattr(type(selected.provider), "poll", poll)
+    monkeypatch.setattr(provider_results, "read_public_https_bytes", download)
+    monkeypatch.setattr(generation_execution, "resource_create", create)
+    monkeypatch.setattr(generation_execution, "validate_destination", AsyncMock(return_value="console:///tmp/"))
+
+    ctx = mcp_loader.McpToolContext(agent_id=item.agent.id, runtime="internal")
+    started = await music_generate(ctx, "Piano", "console:///tmp/", invocation_key="recover-provider-status")
+    identifier = UUID(started["run_id"])
+    await tick()
+    status = await multimedia_get_run(ctx, identifier)
+    assert status["status"] == "waiting" and status["error"]["code"] == "provider_retrying"
+    await tick()
+    assert transport_calls == 1
+    row = await db.get(MediaGeneration, identifier, populate_existing=True)
+    row.lease_expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+    await db.commit()
+    await tick()
+    status = await multimedia_get_run(ctx, identifier)
+    assert status["status"] == "success" and status["output"]["files"][0]["uri"] == "console:///tmp/song.mp3"
+    submit.assert_awaited_once()
+    create.assert_awaited_once()
 
 
 @pytest.mark.asyncio

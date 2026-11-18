@@ -35,6 +35,12 @@ Suno Platform. Cette intégration utilise `https://api.sunoapi.org/api/v1`. Le c
 une URL publique HTTPS de Galaris (`APP_HOST`). Son payload
 ne modifie pas les runs : Galaris récupère l'état auprès du fournisseur avec sa clé.
 
+Pour le [MCP officiel de Suno](https://help.suno.com/en/articles/14551425), la fiche **Suno** du
+catalogue utilise le connecteur MCP HTTP. Après avoir enregistré le Service, connecter le
+compte Suno avec [OAuth depuis la Connexion](../admin/service-administration.md).
+Les créations utilisent les crédits du compte et apparaissent dans sa bibliothèque Suno.
+La récupération d'un fichier via ce connecteur et sa livraison par Galaris restent à qualifier.
+
 ## Utilisation par les agents
 
 Les lectures prennent `uri` et une question `prompt`. Les fichiers restent dans leur Service
@@ -61,10 +67,14 @@ La génération devient réussie après écriture dans la destination. Maximum :
 
 `invocation_key` identifie une seule demande : la réutiliser pour retenter cette demande,
 utiliser une nouvelle clé pour produire une autre variation. Sans clé, chaque invocation est distincte.
-En cas de réponse perdue à la soumission, Galaris ne relance pas automatiquement la génération.
-En cas d'interruption ambiguë d'une écriture distante, vérifier la destination avant toute relance.
+Une soumission dont la réponse est perdue reste `unknown`. Pour une génération dont le
+fournisseur a confirmé l'identifiant, une panne temporaire du suivi ou du téléchargement
+produit un état `waiting` et Galaris reprend le suivi sans nouvelle soumission.
+Une écriture distante interrompue retourne `delivery_unknown` dès que son issue est incertaine.
+Vérifier la destination avant toute relance de la livraison.
 Les reçus privés en base conservent les octets jusqu'à leur livraison canonique puis les effacent.
-L'annulation distante n'est pas annoncée sans confirmation du fournisseur.
+Une annulation confirmée par BytePlus ou OpenRouter est affichée comme `cancelled`, avec un coût
+inconnu si le fournisseur ne le communique pas. La demande d'annulation distante reste indisponible.
 
 Les options dépendent du fournisseur : ElevenLabs produit les effets jusqu'à 30 secondes et
 la musique à partir de 3 secondes ; SunoAPI accepte les paroles en mode personnalisé avec
@@ -72,15 +82,27 @@ style et titre ; Lyria reçoit des indications musicales et de paroles ; Seedanc
 durées, ratios et résolutions pris en charge. Les options non prises en charge sont refusées.
 Les coûts non fournis par l'API sont marqués inconnus dans le résultat.
 
+Avec BytePlus Seedance, `video_generate` accepte `first_frame_uri` et, avec cette première
+image, `last_frame_uri`. Indiquer des URI canoniques de fichiers JPEG ou PNG fixes, de 5 Mo
+au plus par image, avec des côtés de 300 à 6 000 pixels et un ratio largeur/hauteur de 0,4 à 2,5.
+Galaris revérifie les droits et le contenu avant la soumission. Le résultat conserve les rôles
+et empreintes SHA-256 dans `reference_frames`.
+
+Avec Eleven Music, `music_generate` accepte un objet `composition`. Chaque élément de `sections`
+indique `name`, `duration_ms` (3 000 à 120 000), et éventuellement `lyrics` (une chaîne par ligne),
+`styles` et `avoid_styles`. Le plan peut aussi définir les deux listes de styles au niveau global.
+Le `prompt` donne la direction générale en 200 caractères maximum. Le total est limité à 600 secondes.
+Fournir les styles, durées et paroles dans le plan et omettre les options musicales de premier niveau.
+
 ## Installation et validation
 
 L'image backend inclut FFmpeg/FFprobe : reconstruire l'image si l'installation précède cette
 fonctionnalité. En développement, `make sync-db` ajoute le schéma et les connexions ; en
 production, le chemin habituel est `make update`.
 
-Les contrats ont des tests avec transports simulés ; ils ne prouvent pas les droits commerciaux
-ou crédits d'un compte. Les fonctions avancées (personas, remixes, références audio/images et
-plans de composition ElevenLabs) ne sont pas encore exposées.
+Les tests avec transports simulés couvrent le déroulement, les erreurs de suivi, les reprises et
+les plans de composition. Les droits commerciaux et les crédits d'un compte se qualifient avec
+un essai réel. Les personas, remixes et autres références multimodales restent des extensions.
 
 Sources des contrats : [OpenRouter audio](https://openrouter.ai/docs/guides/overview/multimodal/audio),
 [OpenRouter vidéo](https://openrouter.ai/docs/guides/overview/multimodal/video-generation),

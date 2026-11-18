@@ -17,7 +17,7 @@ class MultimediaCheckpoint(BaseModel):
     # rejected for this run only, before any non-idempotent provider operation.
     multimedia_version: Literal[1] = 1
     submission: Literal["started", "accepted", "unknown"] | None = None
-    provider_state: Literal["running", "waiting", "unknown", "success", "error"] | None = None
+    provider_state: Literal["running", "waiting", "unknown", "success", "error", "cancelled"] | None = None
     external_id: str | None = None
     call_id: str | None = None
     output_count: int = Field(default=0, ge=0, le=4)

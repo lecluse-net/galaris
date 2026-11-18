@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal, Protocol
+from typing import Annotated, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -17,6 +17,32 @@ MediaOperation = Literal[
 
 class MediaRequestRejected(ValueError):
     """The provider definitively refused admission; no generation was accepted."""
+
+
+class MediaProviderUnavailable(ValueError):
+    """A provider endpoint is temporarily unable to serve a request."""
+
+
+MusicStyle = Annotated[str, Field(min_length=1, max_length=200)]
+LyricLine = Annotated[str, Field(min_length=1, max_length=200, pattern=r"^[^\r\n]+$")]
+
+
+class MusicSection(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=100, pattern=r"^[^\r\n\[\]]+$")
+    duration_ms: int = Field(ge=3_000, le=120_000)
+    lyrics: list[LyricLine] = Field(default_factory=list, max_length=30)
+    styles: list[MusicStyle] = Field(default_factory=list, max_length=16)
+    avoid_styles: list[MusicStyle] = Field(default_factory=list, max_length=16)
+
+
+class MusicComposition(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    sections: list[MusicSection] = Field(min_length=1, max_length=30)
+    styles: list[MusicStyle] = Field(default_factory=list, max_length=16)
+    avoid_styles: list[MusicStyle] = Field(default_factory=list, max_length=16)
 
 
 class MediaRequest(BaseModel):
@@ -33,6 +59,7 @@ class MediaRequest(BaseModel):
     loop: bool = False
     resolution: str | None = Field(default=None, max_length=20)
     aspect_ratio: str | None = Field(default=None, max_length=20)
+    composition: MusicComposition | None = None
 
 
 @dataclass(frozen=True)
@@ -45,12 +72,31 @@ class MediaArtifact:
 
 @dataclass(frozen=True)
 class MediaResult:
-    state: Literal["running", "success", "error", "unknown"]
+    state: Literal["running", "success", "error", "cancelled", "unknown"]
     external_id: str = ""
     artifacts: tuple[MediaArtifact, ...] = ()
     text: str = ""
     cost: float | None = None
     error: str = ""
+
+
+VideoFrameRole = Literal["first_frame", "last_frame"]
+
+
+@dataclass(frozen=True)
+class VideoFrame:
+    role: VideoFrameRole
+    media_type: Literal["image/jpeg", "image/png"]
+    width: int
+    height: int
+    content: bytes = field(repr=False)
+
+
+@runtime_checkable
+class VideoFrameProvider(Protocol):
+    async def submit_with_frames(
+        self, connection: ProviderConnection, request: MediaRequest, frames: tuple[VideoFrame, ...],
+    ) -> MediaResult: ...
 
 
 class MediaProvider(Protocol):

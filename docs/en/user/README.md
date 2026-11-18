@@ -664,6 +664,20 @@ In a turn's detail in **Phone Calls**, agent managers with Task edit permission 
 remains explicit. Deleting a turn retains its content until audio cleanup completes.
 Reopening follows the persisted request through temporary service interruptions.
 
+### Composing a Track with Eleven Music
+
+With an Eleven Music model in the agent's Multimedia profile, ask for a track and provide the
+sections, their durations, the lyrics to use, and a file destination. The agent tracks the
+generation until the file is saved there. A temporary tracking failure leaves the generation
+waiting while Galaris retries. See the [Multimedia guide](../components/multimedia.md).
+
+### Generating a Video from Images with Seedance
+
+With a BytePlus Seedance model in the agent's Multimedia profile, attach an opening image
+and optionally an ending image. Describe the scene and specify the file destination.
+The agent uses the attachment URIs and tracks generation until the video is delivered.
+See the [Multimedia guide](../components/multimedia.md).
+
 ### Summarizing Audio, Video, or a YouTube Video
 
 With the Multimedia Service and a configured video specialist, the Agent can analyse both

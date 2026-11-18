@@ -7,3 +7,4 @@ services:
 - n8n.yaml
 - redmine.yaml
 - telegram.yaml
+- suno.yaml

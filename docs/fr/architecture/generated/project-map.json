@@ -3759,7 +3759,8 @@
           "back/app/multimedia/delivery.py",
           "back/app/multimedia/generation_execution.py",
           "back/app/multimedia/provider_results.py",
-          "back/app/multimedia/service.py"
+          "back/app/multimedia/service.py",
+          "back/app/multimedia/video_frames.py"
         ],
         "source": "app.multimedia",
         "target": "app.file_share"
@@ -3772,7 +3773,8 @@
           "back/app/multimedia/mcp.py",
           "back/app/multimedia/provider_results.py",
           "back/app/multimedia/service.py",
-          "back/app/multimedia/transcripts.py"
+          "back/app/multimedia/transcripts.py",
+          "back/app/multimedia/video_frames.py"
         ],
         "source": "app.multimedia",
         "target": "app.llm"
@@ -3818,8 +3820,10 @@
       {
         "files": [
           "back/app/multimedia/generation_execution.py",
+          "back/app/multimedia/generation_worker.py",
           "back/app/multimedia/provider_results.py",
-          "back/app/multimedia/service.py"
+          "back/app/multimedia/service.py",
+          "back/app/multimedia/video_frames.py"
         ],
         "source": "app.multimedia",
         "target": "core.util"
@@ -9912,7 +9916,7 @@
       {
         "file": "back/app/multimedia/mcp.py",
         "handler": "audio_read",
-        "line": 13,
+        "line": 14,
         "module": "app.multimedia",
         "name": "audio_read",
         "namespace": "multimedia"
@@ -9920,7 +9924,7 @@
       {
         "file": "back/app/multimedia/mcp.py",
         "handler": "multimedia_get_run",
-        "line": 52,
+        "line": 67,
         "module": "app.multimedia",
         "name": "multimedia_get_run",
         "namespace": "multimedia"
@@ -9928,7 +9932,7 @@
       {
         "file": "back/app/multimedia/mcp.py",
         "handler": "music_generate",
-        "line": 36,
+        "line": 43,
         "module": "app.multimedia",
         "name": "music_generate",
         "namespace": "multimedia"
@@ -9936,7 +9940,7 @@
       {
         "file": "back/app/multimedia/mcp.py",
         "handler": "sound_generate",
-        "line": 29,
+        "line": 36,
         "module": "app.multimedia",
         "name": "sound_generate",
         "namespace": "multimedia"
@@ -9944,7 +9948,7 @@
       {
         "file": "back/app/multimedia/mcp.py",
         "handler": "video_generate",
-        "line": 44,
+        "line": 52,
         "module": "app.multimedia",
         "name": "video_generate",
         "namespace": "multimedia"
@@ -9952,7 +9956,7 @@
       {
         "file": "back/app/multimedia/mcp.py",
         "handler": "video_read",
-        "line": 18,
+        "line": 19,
         "module": "app.multimedia",
         "name": "video_read",
         "namespace": "multimedia"
