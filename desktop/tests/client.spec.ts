@@ -18,14 +18,23 @@ test.beforeAll(async () => {
       response.end(`<!doctype html><title>Synthetic workspace</title><style>
         *{box-sizing:border-box}body{margin:0;font:16px Arial;background:white;color:#292c30}
         aside{position:fixed;top:0;bottom:0;left:0;width:260px;background:#f5f5f5;padding:16px}
-        .page-container{padding-left:260px}.q-page{padding:20px;min-height:100vh}h1{margin:0 0 20px}.q-dialog__inner--maximized{top:0}
+        .page-container{padding-left:260px}.q-page{padding:20px;min-height:100vh}h1{margin:0 0 20px}
+        .q-dialog__inner--maximized,.fullscreen-preview{position:fixed;inset:0;background:white;z-index:6000}
+        .fullscreen-preview{background:#202020;color:white;z-index:7000}
         .body--dark{background:#101010;color:#eee}.body--dark aside{background:#272727}
       </style><aside><strong>Synthetic navigation</strong><p><button onclick="document.querySelector('.page-container').style.paddingLeft='80px';document.querySelector('aside').style.width='80px'">Collapse menu</button></p></aside>
       <main class="page-container"><section class="q-page"><h1>Synthetic workspace</h1><label>Workspace draft<input></label>
       <button onclick="document.body.classList.toggle('body--dark')">Toggle theme</button>
       <button onclick="document.querySelector('.q-dialog__inner--maximized').hidden=false">Open full screen dialog</button>
-      <div hidden class="q-dialog__inner--maximized" style="position:fixed;bottom:0;left:260px;right:0;background:white;z-index:6000"><button onclick="this.parentElement.hidden=true">Close full screen dialog</button></div>
-      <a href="/second">Leave shell</a></section></main>`)
+      <button onclick="document.querySelector('.fullscreen-preview').hidden=false">Open full screen preview</button>
+      <a href="/second">Leave shell</a></section></main>
+      <div hidden class="q-dialog__inner--maximized" role="dialog" aria-label="Synthetic full screen dialog">
+        <button onclick="this.parentElement.hidden=true">Close full screen dialog</button>
+        <button onclick="document.querySelector('.fullscreen-preview').hidden=false">Preview from dialog</button>
+      </div>
+      <div hidden class="fullscreen-preview" role="dialog" aria-label="Synthetic full screen preview">
+        <button onclick="this.parentElement.hidden=true">Close full screen preview</button>
+      </div>`)
       return
     }
     if (request.url === '/download') {
@@ -445,7 +454,8 @@ test('integrated tabs keep navigation and content reachable through menu, theme,
   const bounds = async () => client!.evaluate(({ BrowserWindow, WebContentsView }) => {
     const owner = BrowserWindow.getAllWindows().find(win => win.webContents.getURL() === 'about:blank#galaris-workspace')!
     const views = owner.contentView.children.filter((view): view is Electron.WebContentsView => view instanceof WebContentsView)
-    return { chrome: views.find(view => view.webContents.getURL().endsWith('?tabs'))!.getBounds(),
+    const bar = views.find(view => view.webContents.getURL().endsWith('?tabs'))!
+    return { chrome: { ...bar.getBounds(), visible: bar.getVisible() },
       page: views.find(view => view.webContents.getURL().endsWith('/shell'))!.getBounds() }
   })
   await expect(first.locator('html')).toHaveAttribute('data-galaris-desktop-shell', '')
@@ -455,8 +465,14 @@ test('integrated tabs keep navigation and content reachable through menu, theme,
   expect(await first.locator('h1').evaluate(element => element.getBoundingClientRect().top)).toBeGreaterThanOrEqual((await bounds()).chrome.height)
   await first.getByRole('textbox', { name: 'Workspace draft' }).fill('Preserved synthetic content')
   await first.getByRole('button', { name: 'Open full screen dialog' }).click()
-  expect(await first.getByRole('button', { name: 'Close full screen dialog' }).evaluate(element => element.getBoundingClientRect().top)).toBeGreaterThanOrEqual((await bounds()).chrome.height)
-  await first.getByRole('button', { name: 'Close full screen dialog' }).click()
+  await expect.poll(async () => (await bounds()).chrome.visible).toBe(false)
+  const closeDialog = first.getByRole('button', { name: 'Close full screen dialog' })
+  expect(await closeDialog.evaluate(element => element.getBoundingClientRect().top)).toBeLessThan((await bounds()).chrome.height)
+  await first.getByRole('button', { name: 'Preview from dialog' }).click()
+  await first.getByRole('button', { name: 'Close full screen preview' }).click()
+  await expect.poll(async () => (await bounds()).chrome.visible).toBe(false)
+  await closeDialog.click()
+  await expect.poll(async () => (await bounds()).chrome.visible).toBe(true)
   await chrome.screenshot({ path: '../artifacts/desktop/integrated-tabs-light.png' })
   await first.getByRole('button', { name: 'Toggle theme' }).click()
   await expect(chrome.locator('body')).toHaveClass(/body--dark/)
@@ -475,6 +491,16 @@ test('integrated tabs keep navigation and content reachable through menu, theme,
   await expect(first.locator('html')).not.toHaveAttribute('data-galaris-desktop-shell')
   await expect.poll(async () => (await bounds()).page.y).toBeGreaterThan(0)
   await expect.poll(async () => (await bounds()).chrome.x).toBe(0)
+  await first.getByRole('button', { name: 'Open full screen preview' }).click()
+  await expect.poll(bounds).toMatchObject({ chrome: { visible: false }, page: { y: 0 } })
+  await shortcut('Tab')
+  await expect(chrome.getByRole('tab', { name: 'Synthetic Galaris', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect.poll(async () => (await bounds()).chrome.visible).toBe(true)
+  await shortcut('Tab', ['control', 'shift'])
+  await expect.poll(bounds).toMatchObject({ chrome: { visible: false }, page: { y: 0 } })
+  await first.getByRole('button', { name: 'Close full screen preview' }).click()
+  await expect.poll(async () => (await bounds()).chrome.visible).toBe(true)
+  await expect.poll(async () => (await bounds()).page.y).toBeGreaterThan(0)
   await client!.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().find(win => win.webContents.getURL() === 'about:blank#galaris-workspace')!.setSize(1280, 900))
   await expect(first.locator('html')).toHaveAttribute('data-galaris-desktop-shell', '')
   await first.getByRole('link', { name: 'Leave shell' }).click()

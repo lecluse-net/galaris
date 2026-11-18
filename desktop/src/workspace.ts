@@ -60,7 +60,9 @@ export class Workspace {
     const { width, height } = this.window.getContentBounds()
     for (const [id, view] of this.views) {
       const zoom = view.webContents.getZoomFactor()
-      const top = this.shells.get(id)?.integrated && width / zoom >= 1024 ? 0 : Math.round(tabBarHeight * zoom)
+      const shell = this.shells.get(id)
+      const integrated = shell?.integrated && width / zoom >= 1024
+      const top = integrated || shell?.fullscreen ? 0 : Math.round(tabBarHeight * zoom)
       view.setBounds({ x: 0, y: top, width, height: Math.max(0, height - top) })
     }
     const zoom = this.active?.getZoomFactor() ?? 1
@@ -68,6 +70,7 @@ export class Workspace {
     const left = shell?.integrated && width / zoom >= 1024 ? Math.min(Math.round(shell.left * zoom), Math.max(0, width - 240)) : 0
     this.chrome.webContents.setZoomFactor(zoom)
     this.chrome.setBounds({ x: left, y: 0, width: width - left, height: Math.round(tabBarHeight * zoom) })
+    this.chrome.setVisible(!shell?.fullscreen)
   }
   select(id: number): void {
     if (!this.views.has(id)) return

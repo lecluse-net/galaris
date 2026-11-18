@@ -59,11 +59,12 @@ test('desktop catalogs preserve keys and interpolation parameters in every langu
 })
 
 test('shell presentation accepts finite geometry and plain colors only', () => {
-  const layout = { integrated: true, left: 260, dark: false, surface: 'rgb(250, 250, 250)', ratio: 1 }
+  const layout = { integrated: true, fullscreen: true, left: 260, dark: false, surface: 'rgb(250, 250, 250)', ratio: 1 }
   assert.deepEqual(readShellLayout(shellMessage + JSON.stringify({ ...layout, command: 'quit' })), layout)
   for (const message of ['unrelated', shellMessage + '{', shellMessage + 'null',
     shellMessage + JSON.stringify({ ...layout, left: -1 }),
     shellMessage + JSON.stringify({ ...layout, surface: 'url(https://example.test/)' }),
     shellMessage + JSON.stringify({ ...layout, integrated: 'true' }),
+    shellMessage + JSON.stringify({ ...layout, fullscreen: 'true' }),
     shellMessage + JSON.stringify(layout).replace('260', '1e999')]) assert.equal(readShellLayout(message), undefined)
 })

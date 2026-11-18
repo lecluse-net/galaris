@@ -50,10 +50,13 @@ processed locally. Electron downloads dictionaries from its default CDN. The con
 offers suggestions, dictionary additions and editing actions. Previews have no preload.
 The local tab bar is a native view above the remote views. Inside the Galaris shell
 (`.page-container`), an isolated adapter reserves its height in the content and observes
-the sidebar inset, theme and page surface. It reports only these presentation values
+the sidebar inset, theme, page surface and presence of a fullscreen overlay. It reports
+only these presentation values
 through bounded console messages from the selected origin's main frame, without exposing
 a remote API. The main process clamps the inset and recalculates views when switching
-tabs, zooming or resizing. The sidebar retains its full height. Below 1024 CSS pixels,
+tabs, zooming or resizing. A fullscreen preview or maximized dialog hides the active
+tab’s bar and uses the entire content area. The bar returns when the last fullscreen
+overlay closes. The sidebar retains its full height. Below 1024 CSS pixels,
 or without this shell (external sign-in, older interface), the bar spans the window above
 the remote view. The adapter and its observers disappear with the document; this layout
 does not require a server rebuild.

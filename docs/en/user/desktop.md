@@ -41,6 +41,7 @@ In a wide window, this compact bar sits to the right of the sidebar, above the p
 title, and follows the sidebar when it collapses. Only the active tab joins the page;
 other tabs remain separated from its edge. In a narrow window, or on an external page,
 the bar spans the window above the content.
+Fullscreen previews and dialogs hide the bar until they close.
 
 The **+** button after the last tab or **Ctrl+T** opens another Galaris page. **Ctrl+W** closes the current
 tab; **Ctrl+Tab** and **Ctrl+Shift+Tab** switch tabs. Internal links opened with Ctrl+click,

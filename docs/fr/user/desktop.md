@@ -42,6 +42,7 @@ Sur un écran large, cette barre compacte se place à droite du menu latéral, a
 du titre de la page, et suit le repli du menu. Seul l’onglet actif rejoint la page ; les
 autres restent espacés de son bord. En fenêtre étroite, ou sur une page externe,
 la barre occupe toute la largeur au-dessus du contenu.
+Les aperçus et les modales plein écran masquent la barre jusqu’à leur fermeture.
 
 Le bouton **+**, après le dernier onglet, ou **Ctrl+T** ouvre une nouvelle page Galaris. **Ctrl+W** ferme l’onglet
 courant ; **Ctrl+Tab** et **Ctrl+Maj+Tab** changent d’onglet. Les liens internes ouverts

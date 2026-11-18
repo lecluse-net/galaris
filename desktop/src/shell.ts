@@ -1,7 +1,7 @@
 import { tabBarHeight } from './layout.ts'
 
 export const shellMessage = 'galaris-desktop-layout:'
-export interface ShellLayout { integrated: boolean; left: number; dark: boolean; surface: string; ratio: number }
+export interface ShellLayout { integrated: boolean; fullscreen: boolean; left: number; dark: boolean; surface: string; ratio: number }
 
 /** Presentation only. Remote pages cannot invoke desktop commands through this channel. */
 export function readShellLayout(message: string): ShellLayout | undefined {
@@ -10,17 +10,20 @@ export function readShellLayout(message: string): ShellLayout | undefined {
     const value: unknown = JSON.parse(message.slice(shellMessage.length))
     if (!value || typeof value !== 'object') return
     const entry = value as Record<string, unknown>
-    if (typeof entry.integrated !== 'boolean' || typeof entry.dark !== 'boolean'
+    if (typeof entry.integrated !== 'boolean' || typeof entry.fullscreen !== 'boolean' || typeof entry.dark !== 'boolean'
       || typeof entry.left !== 'number' || !Number.isFinite(entry.left) || entry.left < 0
       || typeof entry.ratio !== 'number' || !Number.isFinite(entry.ratio) || entry.ratio <= 0
       || typeof entry.surface !== 'string' || !/^rgb\(\d{1,3}, \d{1,3}, \d{1,3}\)$/.test(entry.surface)) return
-    return { integrated: entry.integrated, left: entry.left, dark: entry.dark, surface: entry.surface, ratio: entry.ratio }
+    return { integrated: entry.integrated, fullscreen: entry.fullscreen, left: entry.left, dark: entry.dark, surface: entry.surface, ratio: entry.ratio }
   } catch { return }
 }
 
 /** Runs in an isolated world, without Node, a preload, or a privileged remote API. */
 function observeShell(height: number, prefix: string): void {
+  const fullscreenSelector = '.fullscreen-preview, .q-dialog__inner--maximized'
+  const layoutSelector = `.page-container, ${fullscreenSelector}`
   let container: HTMLElement | null = null
+  let overlays: Element[] = []
   let previous = ''
   let frame = 0
   const style = document.createElement('style')
@@ -30,7 +33,6 @@ function observeShell(height: number, prefix: string): void {
     :root[data-galaris-desktop-shell] .page-container .q-page:not(.messenger-page) { min-height: calc(100vh - ${height + 50}px) !important; }
     :root[data-galaris-desktop-shell] .page-container:has(> .viewport-page--desktop) > .viewport-page--desktop { min-height: 0 !important; }
     :root[data-galaris-desktop-shell] .page-container .messenger-page { height: calc(100dvh - ${height}px) !important; min-height: 0 !important; }
-    :root[data-galaris-desktop-shell] .q-dialog__inner--maximized { top: ${height}px; }
   `
   document.head.append(style)
   const resize = new ResizeObserver(() => schedule())
@@ -44,17 +46,29 @@ function observeShell(height: number, prefix: string): void {
     }
     const integrated = Boolean(container && innerWidth >= 1024)
     document.documentElement.toggleAttribute('data-galaris-desktop-shell', integrated)
+    overlays = Array.from(document.querySelectorAll(fullscreenSelector))
+    const fullscreen = document.fullscreenElement !== null
+      || overlays.some(element => element.checkVisibility({ visibilityProperty: true }))
     const left = integrated && container ? parseFloat(getComputedStyle(container).paddingLeft) || 0 : 0
     const dark = document.body.classList.contains('body--dark')
     const candidates = [container?.querySelector('.q-page'), container, document.body]
     const surface = candidates.map(element => element && getComputedStyle(element).backgroundColor)
       .find(color => color && /^rgb\(/.test(color)) || (dark ? 'rgb(16, 16, 16)' : 'rgb(255, 255, 255)')
-    const message = JSON.stringify({ integrated, left, dark, surface, ratio: devicePixelRatio })
+    const message = JSON.stringify({ integrated, fullscreen, left, dark, surface, ratio: devicePixelRatio })
     if (message !== previous) { previous = message; console.debug(prefix + message) }
   }
   function schedule(): void { if (!frame) frame = requestAnimationFrame(update) }
-  new MutationObserver(records => { if (!container?.isConnected || records.some(record => record.target === container)) schedule() }).observe(document.body, { childList: true, subtree: true })
-  new MutationObserver(schedule).observe(document.body, { attributes: true, attributeFilter: ['class', 'style'] })
+  function affectsLayout({ target, type, addedNodes }: MutationRecord): boolean {
+    if (target === document.body || target === container) return true
+    if (type === 'attributes') {
+      return target instanceof Element && (target.matches(layoutSelector) || overlays.some(overlay => target.contains(overlay)))
+    }
+    return Array.from(addedNodes).some(node => node instanceof Element && (node.matches(layoutSelector) || node.querySelector(layoutSelector)))
+  }
+  new MutationObserver(records => {
+    if (container?.isConnected === false || overlays.some(element => !element.isConnected) || records.some(affectsLayout)) schedule()
+  }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] })
+  document.addEventListener('fullscreenchange', schedule)
   addEventListener('resize', schedule)
   addEventListener('pageshow', () => { if (container) resize.observe(container); previous = ''; schedule() })
   addEventListener('pagehide', () => { resize.disconnect(); cancelAnimationFrame(frame); frame = 0 }, { once: true })
