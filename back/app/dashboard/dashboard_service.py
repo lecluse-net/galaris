@@ -47,8 +47,10 @@ async def _totals(
         select(
             task_period,
             func.count(Task.id).label("tasks"),
-            func.count(Task.id).filter(Task.status == TaskStatus.SUCCESS).label("successes"),
-            func.count(Task.id).filter(Task.status == TaskStatus.ERROR).label("errors"),
+            func.count(Task.id).filter(Task.status == TaskStatus.SUCCESS,
+                                       Task.data["objective_blocker"].as_string().is_(None)).label("successes"),
+            func.count(Task.id).filter(Task.status == TaskStatus.ERROR,
+                                       Task.data.contains({"plan_skipped": True}).is_not(True)).label("errors"),
         )
         .where(Task.created_at >= previous_start, Task.created_at < end)
         .group_by(task_period)
@@ -210,9 +212,10 @@ async def _agent_usage(
             Task.agent_id.label("agent_id"),
             func.count(Task.id).label("tasks"),
             func.count(Task.id)
-            .filter(Task.status == TaskStatus.SUCCESS)
+            .filter(Task.status == TaskStatus.SUCCESS, Task.data["objective_blocker"].as_string().is_(None))
             .label("successful_tasks"),
-            func.count(Task.id).filter(Task.status == TaskStatus.ERROR).label("task_errors"),
+            func.count(Task.id).filter(Task.status == TaskStatus.ERROR,
+                                       Task.data.contains({"plan_skipped": True}).is_not(True)).label("task_errors"),
         )
         .where(
             Task.agent_id.is_not(None),

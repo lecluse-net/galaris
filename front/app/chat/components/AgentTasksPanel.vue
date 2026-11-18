@@ -31,7 +31,7 @@
             class="agent-task-row"
             :class="{
               'agent-task-row--collapsed': !isTaskExpanded(row.task),
-              'agent-task-row--error': row.task.status === 'ERROR',
+              'agent-task-row--error': getTaskDisplayStatus(row.task) === 'ERROR',
             }"
             :style="rowStyle(row.depth)"
             :aria-label="t('chat.openTask', { label: taskDisplayLabel(row.task) })"
@@ -50,7 +50,7 @@
                 <span
                   class="agent-task-status-dot"
                   role="img"
-                  :aria-label="t(pauseBadge(row.task)?.labelKey ?? `task.status.${row.task.status}`)"
+                  :aria-label="t(pauseBadge(row.task)?.labelKey ?? `task.status.${getTaskDisplayStatus(row.task)}`)"
                 >
                   <q-spinner v-if="shouldAnimateTaskStatus({ ...row.task, operationalState: activitySnapshots[row.task.id]?.operational.operational_state })" :color="getTaskOperationalColor(row.task)" size="14px" />
                   <q-icon v-else :name="getTaskOperationalIcon(row.task)" :color="getTaskOperationalColor(row.task)" size="15px" />
@@ -152,7 +152,7 @@
                     @click.stop="openTask(row.task.id)"
                   />
                 </div>
-                <TaskActivitySummary v-if="isTaskExpanded(row.task)" :activity="activitySnapshots[row.task.id]" :unavailable="activityUnavailable" />
+                <TaskActivitySummary v-if="isTaskExpanded(row.task)" :activity="activitySnapshots[row.task.id]" :outcome="row.task.outcome" :unavailable="activityUnavailable" />
                 <CompactTaskOperations
                   v-if="isTaskExpanded(row.task)"
                   display="summary"
@@ -232,6 +232,8 @@ import { apiErrorDetail } from '@/core/api'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { websocket } from '@/core/websocket'
 import {
+  canRetryTask,
+  getTaskDisplayStatus,
   getTaskOperationalColor,
   getTaskOperationalIcon,
   isUserPaused,
@@ -427,10 +429,6 @@ function canResumeTask(task: Task): boolean {
 
 function canRunTask(task: Task): boolean {
   return canPauseTask(task) && (task.status === 'CREATE' || task.paused)
-}
-
-function canRetryTask(task: Task): boolean {
-  return task.status === 'ERROR'
 }
 
 function canForceTerminateTask(task: Task): boolean {

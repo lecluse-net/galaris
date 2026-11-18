@@ -190,6 +190,8 @@ export default {
         PLAN: 'Planification',
         SUCCESS: 'Terminée',
         ERROR: 'Erreur',
+        BLOCKED: 'Terminée · objectif non atteint',
+        SKIPPED: 'Étape non exécutée',
         unknown: 'Inconnu',
       },
       notify: {
@@ -219,6 +221,7 @@ export default {
       },
       detail: {
         detailedState: 'État détaillé',
+        objectiveNextAction: 'Prochaine action — {action}',
         copyIdTitle: 'Cliquer pour copier l\'identifiant de la tâche',
         jsonExport: 'JSON Export',
         copyJsonTooltip: 'Copier les données JSON de la tâche',
@@ -558,6 +561,8 @@ export default {
         PLAN: 'Planning',
         SUCCESS: 'Completed',
         ERROR: 'Error',
+        BLOCKED: 'Completed · objective unmet',
+        SKIPPED: 'Step not run',
         unknown: 'Unknown',
       },
       notify: {
@@ -587,6 +592,7 @@ export default {
       },
       detail: {
         detailedState: 'Detailed state',
+        objectiveNextAction: 'Next action — {action}',
         copyIdTitle: 'Click to copy the Task identifier',
         jsonExport: 'JSON Export',
         copyJsonTooltip: 'Copy the task JSON data',
@@ -860,7 +866,7 @@ export default {
         forcedRoute: '模式', forcedEffort: '强度', forcedHint: '自动 = 由调度器决定', auto: '自动', routeExec: '直接执行', routePlan: '规划', autoApprove: '自动批准',
         autoApproveHint: '自动批准此任务及其子任务中执行器提出的审批请求。',
       },
-      status: { CREATE: '已创建', DISPATCH: '调度', EXEC: '执行', PLAN: '规划', SUCCESS: '已完成', ERROR: '错误', unknown: '未知' },
+      status: { CREATE: '已创建', DISPATCH: '调度', EXEC: '执行', PLAN: '规划', SUCCESS: '已完成', ERROR: '错误', BLOCKED: '已结束 · 目标未达成', SKIPPED: '步骤未执行', unknown: '未知' },
       notify: {
         editDenied: '您没有编辑任务的权限', deleteDenied: '您没有删除任务的权限', cleanupDenied: '您没有清空列表的权限', updated: '任务已成功更新', cleaned: '任务列表已清空',
         cleanupError: '清空列表时出错', deleted: '任务已成功删除', deleteError: '删除时出错', runSuccess: '任务已成功继续', runError: '启动任务时出错',
@@ -870,6 +876,7 @@ export default {
       },
       detail: {
         detailedState: '详细状态',
+        objectiveNextAction: '下一步 — {action}',
         copyIdTitle: '点击复制任务标识符', jsonExport: '导出 JSON', copyJsonTooltip: '复制任务 JSON 数据', pausedBadge: '已暂停', waitingColleague: '等待同事',
         waitingClarification: '等待说明', waitingHumanInput: '等待您的回复', waitingPlan: '等待某一步骤', waitingSubtask: '等待子任务', run: '运行', runTooltip: '恢复或继续任务', retry: '重试',
         retryTooltip: '从安全恢复点重新启动此任务', retryDelivery: '重试投递', retryDeliveryTooltip: '发送现有最终文件，不重新生成工作成果',

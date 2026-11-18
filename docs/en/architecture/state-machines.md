@@ -86,6 +86,10 @@ Phases: `CREATE`, `DISPATCH`, `EXEC`, `PLAN`, `SUCCESS`, `ERROR`. `PAUSE` is a
 historical PostgreSQL value; current suspension uses `Task.paused` while preserving
 the resume phase.
 
+A required milestone blocked at the end of normal execution yields the `SUCCESS` phase and
+the `BLOCKED` business outcome. An open durable wait preserves the resume phase. The business
+outcome is exposed through `outcome`. See [0299](../../../project/decisions/0299-task-objective-blockers.md).
+
 | Event | Sources | Target |
 |---|---|---|
 | `ROUTE_TO_EXECUTION` | CREATE, DISPATCH | DISPATCH |
@@ -100,6 +104,8 @@ the resume phase.
 | `RECOVER_EXECUTION` | EXEC | DISPATCH |
 | `RETRY` | ERROR | DISPATCH |
 | `RETRY_PLAN` | ERROR | PLAN |
+| `RETRY_BLOCKED` | SUCCESS with BLOCKED outcome | DISPATCH |
+| `RETRY_BLOCKED_PLAN` | SUCCESS with BLOCKED outcome | PLAN |
 | `RETRY_CLOSING_ACTION` | SUCCESS | DISPATCH |
 | `RETRY_DELIVERY` | SUCCESS, ERROR | DISPATCH |
 | `RETRY_ROUTING` | ERROR | CREATE |

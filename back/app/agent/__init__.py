@@ -3,7 +3,7 @@
 Concrete runtimes are loaded lazily by the registry. Keeping this package importable
 without Pydantic AI or Hermes prevents cycles with task contracts.
 """
-from .work_contracts import WorkPlan, WorkMilestone, work_plan_progress
+from .work_contracts import WorkPlan, WorkMilestone, objective_blocker, work_plan_progress
 from .reasoning_guard import ReasoningPatternGuard as ReasoningPatternGuard
 
 from .scope_contracts import ExecutionScopeV1, EffectDescriptorV1, ScopePreflightV1
@@ -249,7 +249,7 @@ async def terminate_paused_agent_tasks(agent_id: int) -> AgentTaskBlockers:
 
 __all__ = [
     "list_team_directory", "list_team_members",
-    "WorkPlan", "WorkMilestone", "work_plan_progress",
+    "WorkPlan", "WorkMilestone", "objective_blocker", "work_plan_progress",
     "ExecutionScopeV1", "EffectDescriptorV1", "ScopePreflightV1", "SCOPE_KEY", "PREFLIGHT_KEY",
     "admitted_scope", "amend_scope", "parse_scope", "preflight",
     "register_plan_inventory_reader",

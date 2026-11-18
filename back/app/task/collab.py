@@ -24,11 +24,13 @@ import json
 from loguru import logger
 from sqlalchemy import select
 
+from app.agent import objective_blocker
 from core.database import get_db
 from core.i18n import default_language, is_supported, render_prompt, t
 
 from . import task_service
 from .models import Task, TaskStatus
+from .schemas import task_outcome
 
 # Centralized keys for ``task.data``.
 AWAIT_KEY = "awaiting_reply"        # On S: peer, room, and deadline.
@@ -455,6 +457,7 @@ async def resolve_from_peer_task(peer_task: Task) -> None:
     child = await task_service.get_by_id(await_id)
     if child is None or await_marker(child) is None or child.status in _TERMINAL:
         return
+    data = {**_data(child), RESOLVED_BY_KEY: str(peer_task.id)}
     if peer_task.status == TaskStatus.ERROR:
         from app.task.workflow import TaskEvent, transition
 
@@ -464,10 +467,13 @@ async def resolve_from_peer_task(peer_task: Task) -> None:
         from app.task.workflow import TaskEvent, transition
 
         transition(child, TaskEvent.COORDINATION_SUCCEEDED)
-        child.feedback = (peer_task.feedback or "").strip() or _message(
+        blocker = objective_blocker(peer_task.data)
+        if blocker:
+            data["objective_blocker"] = blocker
+        child.feedback = (peer_task.feedback or "").strip() or blocker or _message(
             child, "empty_response"
         )
-    child.data = {**_data(child), RESOLVED_BY_KEY: str(peer_task.id)}
+    child.data = data
     task_service.clear_pauses(child)  # A terminal await is no longer suspended.
     await task_service.save(child)
     logger.info("ask_agent: await {} resolved by peer task {}", child.id, peer_task.id)
@@ -612,9 +618,12 @@ def _render_await_result(child: Task) -> str:
     """Render one peer result with its status for the resume context."""
     marker = await_marker(child) or {}
     who = str(marker.get("peer_display") or child.label)
-    heading = f"### {who} (galaris://task/{child.id}, {child.status.value})"
+    outcome = task_outcome(child.status, child.data)
+    heading = f"### {who} (galaris://task/{child.id}, {outcome})"
     if child.status == TaskStatus.ERROR:
         return f"{heading}\n⚠️ {(child.feedback or _message(child, 'no_response')).strip()}"
+    if outcome == "BLOCKED" and (blocker := objective_blocker(child.data)):
+        return f"{heading}\n{blocker}\n\n{(child.feedback or '').strip()}"
     return f"{heading}\n{(child.feedback or _message(child, 'empty_response')).strip()}"
 
 

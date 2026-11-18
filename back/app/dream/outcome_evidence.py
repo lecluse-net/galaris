@@ -134,9 +134,9 @@ def _task_observations(observation: TaskOutcomeObservation) -> list[TaskOutcomeE
         TaskOutcomeEvidenceItem(
             reference=f"galaris://task/{observation.task_id}",
             kind="terminal_result",
-            status=observation.status,
+            status="BLOCKED" if observation.objective_blocker else observation.status,
             name=_error_class(observation.error),
-            detail=_safe(observation.result or observation.error, 2_000),
+            detail=_safe(observation.objective_blocker or observation.result or observation.error, 2_000),
         )
     ]
     for attempt in observation.attempts[:_MAX_ATTEMPTS]:

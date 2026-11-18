@@ -13,7 +13,7 @@ from uuid import UUID
 from sqlalchemy import and_, exists, func, or_, select
 from sqlalchemy.orm import defer, load_only
 
-from app.agent import Agent
+from app.agent import Agent, objective_blocker
 from app.agent.evaluation import (
     PlannerLabConfiguration,
     planner_evaluation_system_prompt,
@@ -646,6 +646,7 @@ async def _list_memory_extraction_candidates(
         Task.id, Task.label, Task.objective, Task.created_at, raiseload=True,
     )).where(
         Task.status == TaskStatus.SUCCESS,
+        Task.data["objective_blocker"].as_string().is_(None),
         Task.agent_id.is_not(None),
         Task.topic_id.is_not(None),
         Task.deleted_at.is_(None),
@@ -1299,6 +1300,7 @@ async def _import_memory_extraction_source_case(
     if (
         task is not None
         and task.status == TaskStatus.SUCCESS
+        and objective_blocker(task.data) is None
         and task.agent_id is not None
         and task.topic_id is not None
     ):

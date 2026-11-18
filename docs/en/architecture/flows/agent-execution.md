@@ -100,9 +100,10 @@ Required milestones (`required=true`, the historical default) remain separate fr
 additions (`required=false`). An unavailable addition may be `skipped` with an observation;
 its omission remains visible without counting as unfinished required work in progress.
 An optional `blocked` milestone has the same effect on progress and completion.
-At completion, an explicitly persisted required `blocked` milestone prevents contradictory success:
-without an existing durable wait, the Task ends in error without automatic retry, retaining
-its report and completed effects. This guard creates neither a wait nor an authorization.
+When execution completes normally with no durable wait, a persisted required `blocked`
+milestone produces the terminal phase `SUCCESS` and business outcome `BLOCKED`. The reason,
+report and completed effects are retained. The Planner closes dependent steps and propagates
+the blocker to the parent plan. The milestone check is deterministic.
 Completion instructions also ask `direct` executors to record such blockers with
 `task_work_update`, preserving existing milestones and their tracking revision.
 These instructions depend on model compliance; the guard applies to persisted milestones.

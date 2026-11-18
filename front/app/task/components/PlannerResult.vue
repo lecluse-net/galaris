@@ -14,7 +14,13 @@
             <q-item-section side v-if="plan">
                 <div class="row q-gutter-xs">
                     <StatusBadge
-                        v-if="statusSuccess !== null"
+                        v-if="status === 'BLOCKED'"
+                        tone="warning"
+                        icon="warning_amber"
+                        :label="$t('task.status.BLOCKED')"
+                    />
+                    <StatusBadge
+                        v-else-if="statusSuccess !== null"
                         :tone="statusSuccess ? 'success' : 'error'"
                         :icon="statusSuccess ? 'check_circle' : 'error'"
                         :label="statusSuccess ? $t('task.dispatch.success') : $t('task.dispatch.failure')"
@@ -189,13 +195,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import type { Effort, PlanStep, TaskPlan, TaskStatus } from '../types'
+import type { Effort, PlanStep, TaskOutcome, TaskPlan } from '../types'
 import { Markdown } from '@/core/util'
 import { StatusBadge, richTextExcerpt } from '@/core/util'
 
 const props = defineProps<{
     plan: TaskPlan | null
-    status?: TaskStatus
+    status?: TaskOutcome
+    completedSteps?: number
     planning?: boolean
 }>()
 
@@ -222,6 +229,7 @@ const clarificationQuestions = computed<string[]>(() =>
 )
 const cursor = computed(() => Number(props.plan?.cursor ?? 0))
 const completedRootSteps = computed(() => {
+    if (props.completedSteps !== undefined) return props.completedSteps
     if (props.status === 'SUCCESS') return rootSteps.value.length
     return Math.min(Math.max(cursor.value, 0), rootSteps.value.length)
 })
@@ -279,7 +287,7 @@ const flattenedSteps = computed<FlatStep[]>(() => {
                 announce: step.announce?.trim() || '',
                 effort: step.effort,
                 childCount: children.length,
-                isCurrentRoot: depth === 0 && index === cursor.value && props.status !== 'SUCCESS',
+                isCurrentRoot: depth === 0 && index === cursor.value && props.status !== 'SUCCESS' && props.status !== 'BLOCKED',
             })
             if (children.length) visit(children, depth + 1, path)
         })

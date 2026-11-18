@@ -8,7 +8,7 @@ import { showConfirmationDialog, useResourceCopy } from '@/core/util'
 import { ActionContextMenu, type ContextAction } from '@/core/util'
 import type { Task } from '../types'
 import { useTaskStore } from '../stores/taskStore'
-import { isUserPaused } from '../services/taskStatusService'
+import { canRetryTask, isUserPaused } from '../services/taskStatusService'
 const { task } = defineProps<{ task: Task }>()
 const emit = defineEmits<{ select: [id: string] }>()
 const { t } = useI18n(), $q = useQuasar(), permissions = usePrivilegeStore(), store = useTaskStore()
@@ -46,7 +46,7 @@ const actions = computed<ContextAction[]>(() => {
       ? { key: 'resume', icon: 'play_arrow', label: t('task.detail.resume'), disabled: busy.value, run: () => command('resume') }
       : { key: 'pause', icon: 'pause', label: t('task.detail.pause'), disabled: busy.value, run: () => command('pause') })
   }
-  if (task.status === 'ERROR') result.push({ key: 'retry', icon: 'replay', label: t('task.detail.retry'), disabled: busy.value, run: () => command('retry') })
+  if (canRetryTask(task)) result.push({ key: 'retry', icon: 'replay', label: t('task.detail.retry'), disabled: busy.value, run: () => command('retry') })
   if (!terminal) result.push({ key: 'terminate', icon: 'cancel', label: t('task.detail.forceTerminate'), negative: true, separator: true, disabled: busy.value, run: terminate })
   return result
 })

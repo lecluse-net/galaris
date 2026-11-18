@@ -35,7 +35,13 @@
             <q-item-section side v-if="displayedExecutionResult && !running">
                 <div class="row q-gutter-xs">
                     <StatusBadge
-                        v-if="!executionSuspended"
+                        v-if="terminalOutcome"
+                        :tone="terminalOutcome.badgeTone"
+                        :icon="terminalOutcome.icon"
+                        :label="$t(terminalOutcome.labelKey)"
+                    />
+                    <StatusBadge
+                        v-else-if="!executionSuspended"
                         :tone="executionSucceeded ? 'success' : 'error'"
                         :icon="executionSucceeded ? 'check_circle' : 'error'"
                         :label="executionSucceeded ? $t('task.dispatch.success') : $t('task.dispatch.failure')"
@@ -296,11 +302,14 @@ import { StatusBadge } from '@/core/util'
 import { LlmCalls } from '@/app/llm'
 import ExecutionMemoryPanel from './ExecutionMemoryPanel.vue'
 import TaskBudget from './TaskBudget.vue'
+import { getTaskStatusConfig } from '../services/taskStatusService'
+import type { TaskOutcome } from '../types'
 
 const props = withDefaults(defineProps<{
     executionResult: ExecutionResult | null
     /** Durable domain outcome, authoritative over failed intermediate LLM attempts. */
     executionSuccess?: boolean
+    taskOutcome?: TaskOutcome
     /** Whether the task is running; show this block immediately with live feedback. */
     running?: boolean
     /** A suspended Task has no business outcome yet, even if its transport was cancelled. */
@@ -327,6 +336,9 @@ const activeTab = ref('trace')
 const expandedSteps = ref<Set<string>>(new Set())
 const { t } = useI18n()
 const $q = useQuasar()
+const terminalOutcome = computed(() =>
+    props.taskOutcome === 'BLOCKED' || props.taskOutcome === 'SKIPPED' ? getTaskStatusConfig(props.taskOutcome) : null,
+)
 
 const reconstructedExecutionResult = computed<ExecutionResult | null>(() => {
     if (props.executionResult || !props.llmCalls?.length) return null

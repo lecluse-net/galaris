@@ -80,6 +80,7 @@ import {
   getTaskOperationalColor,
   getTaskOperationalIcon,
   getTaskStatusTone,
+  getTaskDisplayStatus,
   pauseBadge,
   shouldAnimateTaskStatus
 } from '../services/taskStatusService'
@@ -131,8 +132,8 @@ function formatEpochSeconds(value: unknown): string {
 
 const statusIcon    = computed(() => getTaskOperationalIcon(props.task))
 const statusColor   = computed(() => getTaskOperationalColor(props.task))
-const statusTone    = computed(() => getTaskStatusTone(props.task.status))
-const statusLabel   = computed(() => t(`task.status.${props.task.status}`))
+const statusTone    = computed(() => getTaskStatusTone(getTaskDisplayStatus(props.task)))
+const statusLabel   = computed(() => t(`task.status.${getTaskDisplayStatus(props.task)}`))
 const isAction      = computed(() => shouldAnimateTaskStatus(props.task))
 const timestamp     = computed(() => {
   const messageTime = formatEpochSeconds(props.task.data?.time)

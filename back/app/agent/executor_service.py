@@ -18,7 +18,6 @@ from app.agent.contracts import (
     AIMessage,
     AIResult,
     ExecutionResult,
-    HarnessFailure,
     TaskPhase,
     TaskTransition,
 )
@@ -740,22 +739,25 @@ async def _update_task_after_execution(
     # children; fan-in later resumes synthesis without replaying side effects.
     waiting_for_children = False if waiting_for_input else await task_port.suspend_on_pending_children(task)
     if not waiting_for_children and not waiting_for_authorization and not waiting_for_input:
-        # Input reconciliation reloads progress committed by native tools. A declared
-        # blocker cannot be overridden by the model's otherwise successful final text.
-        # This creates no wait or retry and does not turn incidental tool errors into failures.
-        raw_plan = _string_keyed_dict(getattr(task, "data", None)).get("work_plan")
+        # Input reconciliation reloads the progress committed by native tools.
+        data = _string_keyed_dict(getattr(task, "data", None))
+        raw_plan = data.get("work_plan")
+        if "objective_blocker" in data:
+            data.pop("objective_blocker")
+            task.data = data
         if execution_result.success and raw_plan is not None:
             try:
                 plan = WorkPlan.model_validate(raw_plan)
             except ValidationError:
                 plan = None  # Optional historical tracking must remain readable.
-            blocked = [item.key for item in plan.milestones
+            blocked = [item for item in plan.milestones
                        if item.required and item.state == "blocked"] if plan else []
             if blocked:
-                execution_result.success = False
-                execution_result.failure = HarnessFailure(code="runtime", retry="never",
-                    message="Work remains blocked: " + ", ".join(blocked))
-                execution_result.metadata = {**execution_result.metadata, "blocked_milestones": blocked}
+                reason = "\n".join(f"{item.label}: {item.observation}" for item in blocked)
+                task.data = {**data, "objective_blocker": reason[:4000]}
+                execution_result.metadata = {
+                    **execution_result.metadata, "blocked_milestones": [item.key for item in blocked]
+                }
         task_port.transition(
             task,
             TaskTransition.EXECUTION_SUCCEEDED

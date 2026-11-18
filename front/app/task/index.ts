@@ -22,6 +22,8 @@ export {
   getTaskStatusBadgeColor,
   getTaskStatusBadgeTextColor,
   getTaskStatusTone,
+  getTaskDisplayStatus,
+  canRetryTask,
   getTaskOperationalColor,
   getTaskOperationalIcon,
   getTaskStatusColor,

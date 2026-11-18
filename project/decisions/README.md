@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0299 — Résultat métier des tâches bloquées](0299-task-objective-blockers.md)
+
 - [0298 — Liens de ressources canoniques dans le HTML éditorial](0298-canonical-resource-links-in-editorial-html.md)
 
 - [0297 — Politique unifiée des capacités conversationnelles](0297-unified-conversation-capability-policy.md)

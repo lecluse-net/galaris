@@ -44,6 +44,7 @@ from .conversation_context import conversation_context_block
 from .delivery_evidence import receipt_matches_artifact, receipt_source, references_exact_resource
 from .model_resolver import require_agent_profile_model
 from .task_port import task_port
+from .work_contracts import objective_blocker
 from .planner_contracts import (
     Plan as Plan,
     PlanBrief as PlanBrief,
@@ -480,7 +481,7 @@ async def get_progress(task_id: UUID) -> Optional[dict[str, Any]]:
                 frontier.append(child.id)
                 continue
             visited_children.append(child)
-            if child.status == TaskStatus.SUCCESS:
+            if child.status == TaskStatus.SUCCESS and objective_blocker(child.data) is None:
                 done += 1
             elif child.status in (
                 TaskStatus.DISPATCH,
@@ -489,7 +490,7 @@ async def get_progress(task_id: UUID) -> Optional[dict[str, Any]]:
             ):
                 current = child.label
 
-    if current is None and root.status == TaskStatus.SUCCESS:
+    if current is None and root.status == TaskStatus.SUCCESS and objective_blocker(root.data) is None:
         current = _translate_for_task(root, "planner.completed")
     elif current is None and root.status == TaskStatus.ERROR:
         failed = next(
@@ -1029,7 +1030,9 @@ async def _advance_plan(task: Task) -> None:
 
     if current.status == TaskStatus.SUCCESS and _blocked_reason(current) is not None:
         # Give the planner one bounded chance to insert a materially different action.
-        if not plan.get("failure_task_id") and not (plan.get("collection") and cursor == 0) and await _try_recover_blocked_plan(task, current, children, steps, cursor):
+        if (objective_blocker(current.data) is None and not plan.get("failure_task_id")
+                and not (plan.get("collection") and cursor == 0)
+                and await _try_recover_blocked_plan(task, current, children, steps, cursor)):
             return
         logger.info("Planner: step {} of {} is BLOCKED; aborting", cursor, task.id)
         await _continue_after_failure(task, children, current)
@@ -1473,6 +1476,18 @@ async def _finalize(
                 "failure_reason": failure_reason,
             }
         )
+    data = dict(task.data or {})
+    data.pop("objective_blocker", None)
+    failed_id = (task.plan or {}).get("failure_task_id")
+    blocked_reason = next((objective_blocker(child.data) for child in children
+                           if str(child.id) == failed_id and child.status == TaskStatus.SUCCESS), None)
+    if not success and failure_code is None and blocked_reason and not any(
+        child.status == TaskStatus.ERROR and not _task_data_flag(child, _PLAN_SKIPPED_DATA_KEY)
+        for child in children
+    ):
+        data["objective_blocker"] = blocked_reason
+        success = True
+    task.data = data or None
     task.set_execution_result(
         ExecutionResult(
             prompt=task.objective or "",
@@ -1948,7 +1963,9 @@ def _compose_plan_context(mission: str, plan_block: str, current_step: str, resu
 
 
 def _blocked_reason(task: Task) -> Optional[str]:
-    """Extract the execution contract's ``BLOCKED:`` marker from a leaf result."""
+    """Read structured blockers and the historical planner marker."""
+    if reason := objective_blocker(task.data):
+        return reason
     result = _result_of(task).strip()
     if result.upper().startswith(_BLOCKED_PREFIX):
         return result

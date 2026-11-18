@@ -4,7 +4,7 @@
  * Defines icons, colors, translation keys, and animation state.
  */
 
-import type { TaskStatus } from '../types'
+import type { Task, TaskOutcome, TaskStatus } from '../types'
 import { i18n } from '@/core/i18n'
 import type { StatusBadgeTone } from '@/core/util'
 import { ACTION_STATUSES, shouldAnimateTaskStatus } from '../taskActivity'
@@ -30,7 +30,7 @@ export interface TaskStatusConfig {
 /**
  * Presentation for every task status.
  */
-export const TASK_STATUS_CONFIG: Record<TaskStatus, TaskStatusConfig> = {
+export const TASK_STATUS_CONFIG: Record<TaskOutcome, TaskStatusConfig> = {
   // Static statuses.
   CREATE: {
     icon: 'add_circle_outline',
@@ -51,6 +51,20 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, TaskStatusConfig> = {
     color: 'negative',
     badgeTone: 'error',
     labelKey: 'task.status.ERROR',
+    isAction: false
+  },
+  BLOCKED: {
+    icon: 'warning_amber',
+    color: 'solaire-orange',
+    badgeTone: 'warning',
+    labelKey: 'task.status.BLOCKED',
+    isAction: false
+  },
+  SKIPPED: {
+    icon: 'skip_next',
+    color: 'grey-7',
+    badgeTone: 'neutral',
+    labelKey: 'task.status.SKIPPED',
     isAction: false
   },
 
@@ -92,22 +106,30 @@ const DEFAULT_STATUS_CONFIG: TaskStatusConfig = {
 /**
  * Return a complete status presentation.
  */
-export function getTaskStatusConfig(status: TaskStatus | null | undefined): TaskStatusConfig {
+export function getTaskStatusConfig(status: TaskOutcome | null | undefined): TaskStatusConfig {
   if (!status) return DEFAULT_STATUS_CONFIG
   return TASK_STATUS_CONFIG[status] ?? DEFAULT_STATUS_CONFIG
+}
+
+export function getTaskDisplayStatus(task: Pick<HasTaskOperationalPresentation, 'status' | 'outcome'>): TaskOutcome {
+  return task.outcome ?? task.status
+}
+
+export function canRetryTask(task: Task): boolean {
+  return task.status === 'ERROR' || (task.outcome === 'BLOCKED' && !task.is_coordination)
 }
 
 /**
  * Return a status icon.
  */
-export function getTaskStatusIcon(status: TaskStatus | null | undefined): string {
+export function getTaskStatusIcon(status: TaskOutcome | null | undefined): string {
   return getTaskStatusConfig(status).icon
 }
 
 /**
  * Return a status color.
  */
-export function getTaskStatusColor(status: TaskStatus | null | undefined): string {
+export function getTaskStatusColor(status: TaskOutcome | null | undefined): string {
   return getTaskStatusConfig(status).color
 }
 
@@ -147,7 +169,7 @@ export function getTaskStatusBadgeTextColor(status: TaskStatus | null | undefine
 }
 
 /** Return the semantic status-badge tone used throughout Activity. */
-export function getTaskStatusTone(status: TaskStatus | null | undefined): StatusBadgeTone {
+export function getTaskStatusTone(status: TaskOutcome | null | undefined): StatusBadgeTone {
   return getTaskStatusConfig(status).badgeTone
 }
 
@@ -204,17 +226,18 @@ export function pauseBadge(task: HasPause): PauseBadge | null {
 }
 
 interface HasTaskOperationalPresentation extends HasPause {
-  status?: TaskStatus | null
+  status: TaskStatus
+  outcome?: TaskOutcome | null
 }
 
 /** Return the pause/wait icon when suspended, otherwise the resume-phase icon. */
 export function getTaskOperationalIcon(task: HasTaskOperationalPresentation): string {
-  return pauseBadge(task)?.icon ?? getTaskStatusIcon(task.status)
+  return pauseBadge(task)?.icon ?? getTaskStatusIcon(getTaskDisplayStatus(task))
 }
 
 /** Return the pause/wait color when suspended, otherwise the resume-phase color. */
 export function getTaskOperationalColor(task: HasTaskOperationalPresentation): string {
   const suspension = pauseBadge(task)
-  if (!suspension) return getTaskStatusColor(task.status)
+  if (!suspension) return getTaskStatusColor(getTaskDisplayStatus(task))
   return suspension.waiting ? 'solaire-blue' : 'solaire-orange'
 }

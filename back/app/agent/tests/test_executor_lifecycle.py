@@ -254,11 +254,13 @@ async def test_final_cost_uses_attempt_base_cost(monkeypatch: pytest.MonkeyPatch
     ("blocked", True, "input"), ("blocked", True, "children"), ("blocked", True, "authorization"),
 ])
 async def test_final_outcome_preserves_declared_work_blockers(monkeypatch, milestone_state, required, wait):
-    """Required blockers prevent success; an unavailable optional note does not."""
+    """Expose unmet required work separately from execution failures and waits."""
     from app.agent import WorkPlan, planner_service
     from app.task import collab
+    from app.task.schemas import Task as TaskSchema
 
-    task = Task(id=uuid4(), label="Synthetic archive maintenance", status=TaskStatus.EXEC, cost=0.0)
+    task = Task(id=uuid4(), label="Synthetic archive maintenance", status=TaskStatus.EXEC, cost=0.0,
+                ai=True, effort="standard", auto_approve=False, objective_media_type="text/html")
     milestone = {
         "key": "archives", "label": "Update selected archives", "acceptance": "Changes saved",
         "state": milestone_state, "observation": "Missing target authorization" if milestone_state == "blocked" else "Checked",
@@ -301,12 +303,12 @@ async def test_final_outcome_preserves_declared_work_blockers(monkeypatch, miles
         assert stored.failure is None
         assert "blocked_milestones" not in stored.metadata
     elif milestone_state == "blocked" and required:
-        assert task.status == TaskStatus.ERROR
-        assert stored.success is False
-        assert stored.failure is not None and stored.failure.retry == "never"
+        assert task.status == TaskStatus.SUCCESS
+        assert stored.success is True
+        assert stored.failure is None
         assert stored.metadata["blocked_milestones"] == ["archives"]
-        from app.task.scheduler import _retry_is_safe
-        assert _retry_is_safe(task, TaskStatus.DISPATCH) is False
+        assert TaskSchema.model_validate(task).model_dump(mode="json")["outcome"] == "BLOCKED"
+        assert task.data and "Missing target authorization" in task.data["objective_blocker"]
     else:
         assert task.status == TaskStatus.SUCCESS
         assert stored.success is True

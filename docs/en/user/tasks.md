@@ -161,8 +161,10 @@ The executor can update it with
 `task_work_update` on its active Task, with revision checks. Up to twenty milestones are
 retained; declaring one complete does not replace evidence of the result or its delivery.
 Tracking has its own revision, so execution checkpoints do not block progress updates.
-If a required milestone remains explicitly blocked at completion, the Task ends in error and retains
-its partial report, without automatic retry. Existing durable waits take precedence.
+If execution completes normally with a required milestone blocked, the Task shows
+**Completed · objective unmet**. The reason, next action and partial report remain available.
+An open wait keeps the Task waiting. Plan steps that depend on the missing result are skipped.
+**Retry** resumes blocked work and preserves successfully completed steps.
 An unavailable optional addition, such as a conditional document note, does not fail the main
 reply. The agent explains its omission in the report; it is excluded from applicable milestones
 in progress without being declared completed. Write permissions are still required.
@@ -348,7 +350,8 @@ persisted costs remain complete.
 | Execution | the Agent is working or calling Services |
 | Plan | Galaris is creating or advancing through the steps |
 | Paused | the Task is waiting for a response, a child step, or a resume |
-| Success | the workflow ended without a declared error |
+| Completed | execution ended and no required blocker was reported |
+| Completed · objective unmet | execution ended and a required milestone remains blocked |
 | Error | the attempt failed or was interrupted after the authorized retries |
 
 The **Text conversations** and **Phone Calls** tabs use their own statuses. “Up to date” means that all known messages have been processed; “Waiting” means that a new round can be claimed; “In progress” means that a controller is currently responding.

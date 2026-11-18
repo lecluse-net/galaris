@@ -10,6 +10,7 @@ from enum import Enum
 from typing import Final
 
 from .models import Task, TaskStatus
+from .schemas import AWAIT_KEY, task_outcome
 
 
 class TaskAction(str, Enum):
@@ -36,6 +37,8 @@ class TaskEvent(str, Enum):
     RECOVER_EXECUTION = "recover_execution"
     RETRY = "retry"
     RETRY_PLAN = "retry_plan"
+    RETRY_BLOCKED = "retry_blocked"
+    RETRY_BLOCKED_PLAN = "retry_blocked_plan"
     RETRY_CLOSING_ACTION = "retry_closing_action"
     RETRY_DELIVERY = "retry_delivery"
     RETRY_ROUTING = "retry_routing"
@@ -112,6 +115,12 @@ TRANSITIONS: Final[dict[TaskEvent, TransitionRule]] = {
     TaskEvent.RETRY_PLAN: TransitionRule(
         frozenset({TaskStatus.ERROR}), TaskStatus.PLAN
     ),
+    TaskEvent.RETRY_BLOCKED: TransitionRule(
+        frozenset({TaskStatus.SUCCESS}), TaskStatus.DISPATCH
+    ),
+    TaskEvent.RETRY_BLOCKED_PLAN: TransitionRule(
+        frozenset({TaskStatus.SUCCESS}), TaskStatus.PLAN
+    ),
     TaskEvent.RETRY_CLOSING_ACTION: TransitionRule(
         frozenset({TaskStatus.SUCCESS}), TaskStatus.DISPATCH
     ),
@@ -159,8 +168,14 @@ def transition(task: Task, event: TaskEvent) -> TaskStatus:
     rule = TRANSITIONS[event]
     if task.status not in rule.sources:
         raise InvalidTaskTransition(task.status, event)
+    if event in (TaskEvent.RETRY_BLOCKED, TaskEvent.RETRY_BLOCKED_PLAN) and not can_retry_blocked(task):
+        raise InvalidTaskTransition(task.status, event)
     task.status = rule.target
     return rule.target
+
+
+def can_retry_blocked(task: Task) -> bool:
+    return task_outcome(task.status, task.data) == "BLOCKED" and not isinstance((task.data or {}).get(AWAIT_KEY), dict)
 
 
 def scheduler_action(status: TaskStatus) -> TaskAction | None:

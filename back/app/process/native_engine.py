@@ -645,14 +645,16 @@ class NativeProcessEngine:
             observation = await get_task_outcome_observation(attempt.task_id)
             if observation is None or observation.status not in {"SUCCESS", "ERROR"}:
                 return None
-            if observation.status == "ERROR":
+            if observation.status == "ERROR" or observation.objective_blocker is not None:
                 task = await task_service.get_by_id(attempt.task_id)
                 if task is not None and task.lease_owner:
                     return None
                 attempt.status = "failed"
-                attempt.error = observation.error
+                attempt.error = observation.objective_blocker or observation.error
                 attempt.finished_at = now()
                 await get_db().commit()
+                if observation.objective_blocker is not None:
+                    raise ProcessEngineError("task_objective_blocked", observation.objective_blocker)
                 raise ValueError(observation.error or "Task failed")
             if graph.typed:
                 submitted = occurrence.context.get("activity_result")

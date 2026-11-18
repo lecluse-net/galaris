@@ -1,7 +1,7 @@
 <template>
   <div v-if="activity" class="task-activity text-caption q-py-xs" role="status">
     <span>{{ activity.operational.operational_state === 'TERMINAL' && activity.phase
-      ? t(`task.status.${activity.phase}`)
+      ? t(`task.status.${outcome ?? activity.phase}`)
       : t(`task.activity.${activity.pause_pending ? 'pausePending' : activity.operational.operational_state}`) }}</span>
     <span v-if="activity.attempt_number"> · {{ t('task.activity.attempt', { number: activity.attempt_number }) }}</span>
     <span v-if="showLastActivity && activity.last_activity_at"> · {{ t('task.activity.lastActivity', { time: date(activity.last_activity_at) }) }}</span>
@@ -55,8 +55,10 @@ import { apiErrorDetail } from '@/core/api'
 import { taskService } from '../services/taskService'
 import { activitySilenceSeconds, type TaskActivitySnapshot, type TaskCallRecoveryState } from '../activity'
 import TaskStartupTiming from './TaskStartupTiming.vue'
-const { activity, unavailable = false, showLastActivity = true } = defineProps<{
+import type { TaskOutcome } from '../types'
+const { activity, outcome, unavailable = false, showLastActivity = true } = defineProps<{
   activity?: TaskActivitySnapshot
+  outcome?: TaskOutcome
   unavailable?: boolean
   showProvenance?: boolean
   showLastActivity?: boolean

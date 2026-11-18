@@ -180,7 +180,7 @@ import { formatBilledCost, LlmCallTokenBadge, useLlmCallProgress } from '@/app/l
 import { llmCallService } from '@/app/llm/facade'
 import type { LLMCall, LLMToolCall } from '@/app/llm/types'
 import { taskService } from '@/app/task/interface'
-import { getTaskStatusConfig, isTaskStatusAction } from '@/app/task/interface'
+import { getTaskDisplayStatus, getTaskStatusConfig, isTaskStatusAction } from '@/app/task/interface'
 import type { AIMessage, Task } from '@/app/task/types'
 import { websocket } from '@/core/websocket'
 import DashboardSectionHeader from './DashboardSectionHeader.vue'
@@ -231,7 +231,7 @@ function agentAvatarUrl(agentId?: number): string | undefined {
 }
 
 function taskStatus(task: Task) {
-  return getTaskStatusConfig(task.status)
+  return getTaskStatusConfig(getTaskDisplayStatus(task))
 }
 
 function taskExcerpt(task: Task): string {

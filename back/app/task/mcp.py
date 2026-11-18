@@ -15,13 +15,13 @@ from sqlalchemy import String, cast, func, select, true
 from app.agent.contracts import ExecutionEffort, ExecutionResult, ForcedRoute
 from app.agent.models import Agent
 from app.task.models import Task, TaskAmendment, TaskAttempt, TaskStatus
-from app.task.schemas import Task as TaskSchema, TaskCreate
+from app.task.schemas import Task as TaskSchema, TaskCreate, task_outcome
 from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
 from core.database import get_db
 from core.i18n import default_language, is_supported, render_prompt, t
 from core.util import as_dict, visible_text
 from .access import agent_task_filter, require_agent_task_access
-from app.agent import WorkPlan
+from app.agent import WorkPlan, objective_blocker
 
 _OBJECTIVES_LIMIT = 4_000
 _FEEDBACK_LIMIT = 8_000
@@ -80,7 +80,7 @@ def _message(key: str, language: str, **values: Any) -> str:
     name="task_get",
     description=(
         "Return a compact operational view of a task with its canonical resource URI, target "
-        "agent, requester, objective, feedback, actionable terminal diagnostics, progress, "
+        "agent, requester, objective, feedback, business outcome, terminal diagnostics, progress, "
         "amendment eligibility, and explicit "
         "waits such as the colleague, question, and deadline. Accept a canonical "
         "galaris://task/ URI, a full UUID, or a unique UUID prefix."
@@ -486,6 +486,7 @@ async def get_task(
     from app.task.operational_state import inspect_operational_state
 
     operational = await inspect_operational_state(resolved_task)
+    outcome = _task_outcome(resolved_task)
     from .activity_snapshot import activity_snapshots
 
     activity = (await activity_snapshots([resolved_task]))[0]
@@ -525,7 +526,8 @@ async def get_task(
         "sender_agent": requester_payload,
         "ai": task.get("ai"),
         "status": status.value if isinstance(status, TaskStatus) else str(status),
-        "outcome": _task_outcome(resolved_task),
+        "outcome": outcome,
+        "objective_blocker": objective_blocker(resolved_task.data) if outcome == "BLOCKED" else None,
         "paused": bool(task.get("paused")),
         "objectives": objectives,
         "objectives_chars": objectives_chars,
@@ -719,9 +721,7 @@ async def inspect_task(
 
 
 def _task_outcome(task: Task) -> str:
-    """Expose a skipped plan leaf without falsifying its durable Task phase."""
-    data = task.data if isinstance(task.data, dict) else {}
-    return "SKIPPED" if data.get("plan_skipped") is True else task.status.value
+    return task_outcome(task.status, task.data)
 
 
 async def inspect_tasks(

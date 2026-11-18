@@ -7,6 +7,14 @@ import json
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 
+def objective_blocker(data: Mapping[str, Any] | None) -> str | None:
+    """Read the reason a completed execution could not meet its objective."""
+    value = (data or {}).get("objective_blocker")
+    if isinstance(value, str):
+        return value.strip() or None
+    return None
+
+
 class WorkMilestone(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     key: str = Field(min_length=1, max_length=80, pattern=r"^[a-zA-Z0-9_-]+$")

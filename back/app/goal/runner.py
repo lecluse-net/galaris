@@ -122,6 +122,8 @@ async def _judge_prompt(goal: Goal, cycle: GoalCycle, task: Task) -> str:
     ]
     observation = await get_task_outcome_observation(task.id)
     if observation is not None:
+        if observation.objective_blocker:
+            sections.append(f"LATEST TASK OBJECTIVE UNMET:\n{observation.objective_blocker}")
         sections.append("RECORDED WORK TOOL OBSERVATIONS (not inferred from prose):\n" +
             "\n".join(f"{item.name} success={item.success}: {item.result[:4000]}"
                       for item in observation.tools[-30:]))

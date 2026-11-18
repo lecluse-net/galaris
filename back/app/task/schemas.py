@@ -1,9 +1,10 @@
 from core.util import normalize_html
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, field_serializer, field_validator, model_validator
 from typing import Optional, List, Any, Dict, Literal, cast
 from uuid import UUID
 from datetime import datetime
 from .models import TaskStatus
+from app.agent import objective_blocker
 from app.agent.contracts import TaskMessage
 from app.agent.contracts import ExecutionEffort, ForcedRoute, ReasoningEffort
 from .trace_projection import project_tool_payload
@@ -33,6 +34,14 @@ class TaskBudget(BaseModel):
 
 AWAIT_KEY = "awaiting_reply"
 RESOLVED_BY_KEY = "resolved_by_task_id"
+
+
+def task_outcome(status: TaskStatus, data: dict[str, Any] | None) -> str:
+    if (data or {}).get("plan_skipped") is True:
+        return "SKIPPED"
+    if status == TaskStatus.SUCCESS and objective_blocker(data):
+        return "BLOCKED"
+    return status.value
 
 
 # Task schemas
@@ -140,6 +149,11 @@ class Task(TaskBase):
     resolved_by_task_id: Optional[UUID] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field
+    @property
+    def outcome(self) -> str:
+        return task_outcome(self.status, self.data)
 
     @field_serializer("execution_result")
     def serialize_execution_result(self, value: Dict[str, Any] | None) -> Dict[str, Any] | None:

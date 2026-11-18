@@ -2,6 +2,7 @@ import type { ExecutionResult } from '@/app/agent/contracts'
 export type { AIMessage, AIResult, ExecutionResult } from '@/app/agent/contracts'
 // Suspension is represented by paused and data.pause_reasons rather than a status.
 export type TaskStatus = 'CREATE' | 'DISPATCH' | 'EXEC' | 'PLAN' | 'SUCCESS' | 'ERROR'
+export type TaskOutcome = TaskStatus | 'BLOCKED' | 'SKIPPED'
 export type CoordinationType = 'await_reply'
 
 // Dispatcher overrides; null or undefined delegates the decision to the dispatcher.
@@ -70,6 +71,7 @@ export interface Task {
   label: string
   objective?: string
   status: TaskStatus
+  outcome?: TaskOutcome
   paused: boolean
   ai: boolean
   feedback?: string

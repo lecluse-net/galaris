@@ -189,14 +189,16 @@ async def test_awaited_for_incoming_returns_await(monkeypatch: pytest.MonkeyPatc
 # Resolution when the peer task completes.
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("blocker", [None, "The input file is unavailable."])
 async def test_resolve_from_peer_task_closes_await_with_result(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, blocker: str | None,
 ) -> None:
     parent_id = uuid4()
     await_id = uuid4()
     await_child = _await_child(parent_id, "lyra", TaskStatus.PAUSE, id=await_id)
-    peer_task = _task(feedback="Here is my complete report.", status=TaskStatus.SUCCESS,
-                      data={collab.RESOLVES_KEY: str(await_id)})
+    feedback = "Please provide the file." if blocker else "Here is my complete report."
+    peer_task = _task(feedback=feedback, status=TaskStatus.SUCCESS,
+                      data={collab.RESOLVES_KEY: str(await_id), "objective_blocker": blocker})
 
     monkeypatch.setattr(collab.task_service, "get_by_id", AsyncMock(return_value=await_child))
     monkeypatch.setattr(collab.task_service, "update", AsyncMock())
@@ -206,8 +208,14 @@ async def test_resolve_from_peer_task_closes_await_with_result(
     await collab.resolve_from_peer_task(peer_task)
 
     assert await_child.status == TaskStatus.SUCCESS
-    assert await_child.feedback == "Here is my complete report."
+    assert await_child.feedback == feedback
     assert (await_child.data or {})[collab.RESOLVED_BY_KEY] == str(peer_task.id)
+    rendered = collab._render_await_result(await_child)
+    if blocker:
+        assert "BLOCKED" in rendered
+        assert blocker in rendered
+    else:
+        assert "SUCCESS" in rendered
     fan_in.assert_awaited_once_with(parent_id)
 
 

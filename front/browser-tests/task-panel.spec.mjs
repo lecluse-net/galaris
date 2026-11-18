@@ -44,9 +44,10 @@ test('a late message boundary preserves an open task detail but a room change cl
 for (const [action, label, initial, next] of [
   ['run', 'RUN', { status: 'CREATE' }, { status: 'EXEC' }],
   ['retry', 'Retry', { status: 'ERROR' }, { status: 'EXEC' }],
+  ['retry', 'Retry', { status: 'SUCCESS', outcome: 'BLOCKED' }, { status: 'EXEC', outcome: 'EXEC' }],
   ['pause', 'Pause this task and its sub-tasks', { status: 'EXEC' }, { status: 'EXEC', paused: true, data: { pause_reasons: ['user'] } }],
   ['resume', 'Resume this task and its sub-tasks', { status: 'EXEC', paused: true, data: { pause_reasons: ['user'] } }, { status: 'EXEC', paused: false, data: {} }],
-]) test(`chat task menu executes ${action} and reconciles the returned state`, async ({ page }, testInfo) => {
+]) test(`chat task menu executes ${action}${initial.outcome === 'BLOCKED' ? ' for an unmet objective' : ''} and reconciles the returned state`, async ({ page }, testInfo) => {
   const items = [{ ...task(1), ...initial }]
   const commands = []
   await jsonRoute(page, '**/api/tasks/recent?*', { items: [], total: 0 })
@@ -57,6 +58,8 @@ for (const [action, label, initial, next] of [
   })
   await panel(page, items, 1, [], ['TASK_EDIT'])
   const row = page.locator('.agent-task-row')
+  const blocked = row.getByRole('img', { name: 'Completed · objective unmet' })
+  if (initial.outcome === 'BLOCKED') await expect(blocked).toBeVisible()
   await row.click({ button: 'right' })
   await expect(page.getByRole('menuitem', { name: 'Copy reference', exact: true })).toBeVisible()
   if (action === 'retry') await page.screenshot({ path: testInfo.outputPath('task-actions.png') })
@@ -65,6 +68,7 @@ for (const [action, label, initial, next] of [
   expect(commands[0]).toEqual({ method: 'POST', body: action === 'retry' ? { expected_revision: 1 } : null })
   await row.click({ button: 'right' })
   await expect(page.getByRole('menuitem', { name: label, exact: true })).toHaveCount(0)
+  if (initial.outcome === 'BLOCKED') await expect(blocked).toHaveCount(0)
   await expect(page.getByRole('dialog')).toHaveCount(0)
   await setPrivileges(page, [])
   await expect(page.getByRole('menuitem', { name: /^(RUN|Retry|Pause this task and its sub-tasks|Resume this task and its sub-tasks|Permanently stop the task and unblock related workflows|Delete task)$/ })).toHaveCount(0)

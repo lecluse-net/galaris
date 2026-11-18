@@ -88,6 +88,10 @@ Phases : `CREATE`, `DISPATCH`, `EXEC`, `PLAN`, `SUCCESS`, `ERROR`. `PAUSE` est u
 valeur historique PostgreSQL ; la suspension courante utilise `Task.paused` tout en conservant
 la phase de reprise.
 
+Un jalon obligatoire bloqué à la fin d'une exécution normale donne la phase `SUCCESS` et
+le résultat métier `BLOCKED`. Une attente durable ouverte conserve la phase de reprise.
+Le résultat métier est exposé via `outcome`. Voir [0299](../../../project/decisions/0299-task-objective-blockers.md).
+
 | Événement | Sources | Cible |
 |---|---|---|
 | `ROUTE_TO_EXECUTION` | CREATE, DISPATCH | DISPATCH |
@@ -102,6 +106,8 @@ la phase de reprise.
 | `RECOVER_EXECUTION` | EXEC | DISPATCH |
 | `RETRY` | ERROR | DISPATCH |
 | `RETRY_PLAN` | ERROR | PLAN |
+| `RETRY_BLOCKED` | SUCCESS avec résultat BLOCKED | DISPATCH |
+| `RETRY_BLOCKED_PLAN` | SUCCESS avec résultat BLOCKED | PLAN |
 | `RETRY_CLOSING_ACTION` | SUCCESS | DISPATCH |
 | `RETRY_DELIVERY` | SUCCESS, ERROR | DISPATCH |
 | `RETRY_ROUTING` | ERROR | CREATE |

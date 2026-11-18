@@ -78,6 +78,7 @@ def _eligible_task_predicates() -> tuple[ColumnElement[bool], ...]:
     )
     return (
         Task.status == TaskStatus.SUCCESS,
+        Task.data["objective_blocker"].as_string().is_(None),
         Task.agent_id.is_not(None),
         Task.topic_id.is_not(None),
         or_(

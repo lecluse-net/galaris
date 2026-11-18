@@ -1,7 +1,7 @@
 <template>
     <q-card v-if="task" class="task-detail" flat bordered>
         <!-- Header -->
-        <q-card-section :class="getHeaderBgClass(task.status)">
+        <q-card-section :class="getHeaderBgClass(getTaskDisplayStatus(task))">
             <div class="row items-center">
                 <!-- Suspension takes visual precedence over the stored resume phase. -->
                 <q-spinner
@@ -44,8 +44,8 @@
                                 {{ $t(`task.dispatch.effortLevels.${subtaskEffort}`) }}
                             </q-badge>
                             <StatusBadge
-                                :tone="getTaskStatusTone(task.status)"
-                                :label="t(`task.status.${task.status}`)"
+                                :tone="getTaskStatusTone(getTaskDisplayStatus(task))"
+                                :label="t(`task.status.${getTaskDisplayStatus(task)}`)"
                             />
                         </div>
                     </div>
@@ -382,8 +382,8 @@
                                     <span v-if="row.child?.cost" class="text-caption text-grey">${{ row.child.cost.toFixed(4) }}</span>
                                     <StatusBadge
                                         v-if="row.child"
-                                        :tone="getTaskStatusTone(row.child.status)"
-                                        :label="t(`task.status.${row.child.status}`)"
+                                        :tone="getTaskStatusTone(getTaskDisplayStatus(row.child))"
+                                        :label="t(`task.status.${getTaskDisplayStatus(row.child)}`)"
                                     />
                                     <StatusBadge
                                         v-if="row.child && pauseBadge(row.child)"
@@ -404,6 +404,12 @@
                 </q-card-section>
             </q-card>
 
+            <q-banner v-if="objectiveBlocker" rounded class="bg-solaire-orange-light q-mt-md">
+                <template #avatar><q-icon name="warning_amber" color="solaire-orange" /></template>
+                <div class="task-objective-blocker">{{ objectiveBlocker }}</div>
+                <div v-if="objectiveNextAction" class="q-mt-xs">{{ t('task.detail.objectiveNextAction', { action: objectiveNextAction }) }}</div>
+            </q-banner>
+
             <!-- Dispatch Block (Expandable) -->
             <DispatchResultComponent
                 v-if="executionExpected"
@@ -414,7 +420,8 @@
             <PlannerResultComponent
                 v-if="executionExpected"
                 :plan="task.plan || null"
-                :status="task.status"
+                :status="getTaskDisplayStatus(task)"
+                :completed-steps="task.outcome === 'BLOCKED' ? planDoneCount : undefined"
                 :planning="task.status === 'PLAN' && working"
             />
 
@@ -422,6 +429,7 @@
             <!-- Expandable execution trace, visible from EXEC start with live feedback. -->
             <ExecutionResultComponent
                 :execution-result="executionResultForDisplay"
+                :task-outcome="task.outcome"
                 :running="task.status === 'EXEC' && working"
                 :suspended="!terminalStatuses.has(task.status) && (task.paused || ['PAUSED', 'WAITING'].includes(activitySnapshots[task.id]?.operational.operational_state ?? ''))"
                 :feedback="task.feedback || null"
@@ -436,6 +444,7 @@
                         </h3>
                         <TaskActivitySummary
                             :activity="activitySnapshots[task.id]"
+                            :outcome="task.outcome"
                             :unavailable="activityUnavailable"
                             :show-last-activity="false"
                             show-provenance
@@ -471,6 +480,8 @@ import { useInterval, useQuasar } from 'quasar'
 import type { AIResult, Task, TaskContextCapsule, TaskContextKind, TaskFull } from '../types'
 import { taskService } from '../services/taskService'
 import {
+  getTaskDisplayStatus,
+  canRetryTask,
   getTaskStatusIcon,
   getTaskStatusColor,
   getTaskOperationalColor,
@@ -538,9 +549,17 @@ const canResume = computed(() => {
 const canForceTerminate = computed(() => {
     return Boolean(task.value && !terminalStatuses.has(task.value.status))
 })
-const canRetry = computed(() => task.value?.status === 'ERROR')
+const canRetry = computed(() => Boolean(task.value && canRetryTask(task.value)))
 // Distinguish user pauses from internal waiting states in the status badge.
 const pauseState = computed(() => (task.value ? pauseBadge(task.value) : null))
+const objectiveBlocker = computed(() => {
+  const blocker = task.value?.data?.objective_blocker
+  return task.value?.outcome === 'BLOCKED' && typeof blocker === 'string' ? blocker : ''
+})
+const objectiveNextAction = computed(() => {
+  const action = task.value?.data?.work_plan?.next_action
+  return typeof action === 'string' ? action : ''
+})
 const running = ref(false)
 const pausing = ref(false)
 const forceTerminating = ref(false)
@@ -911,11 +930,11 @@ const planSteps = computed<Array<{ objective?: string; label?: string }>>(
 )
 const planCursor = computed(() => Number(task.value?.plan?.cursor ?? 0))
 const planDoneCount = computed(() => {
-  if (task.value?.status === 'SUCCESS') return planRows.value.length
-  return displayChildren.value.filter(c => c.status === 'SUCCESS').length
+  if (task.value && getTaskDisplayStatus(task.value) === 'SUCCESS') return planRows.value.length
+  return planRows.value.filter(row => row.child && getTaskDisplayStatus(row.child) === 'SUCCESS').length
 })
 function planStepState(idx: number): 'done' | 'current' | 'failed' | 'pending' {
-  if (task.value?.status === 'SUCCESS') return 'done'
+  if (task.value && getTaskDisplayStatus(task.value) === 'SUCCESS') return 'done'
   if (idx < planCursor.value) return 'done'
   if (idx === planCursor.value) return task.value?.status === 'ERROR' ? 'failed' : 'current'
   return 'pending'
@@ -992,10 +1011,10 @@ const planRows = computed<PlanRow[]>(() => {
 })
 
 function rowIcon(row: PlanRow): string {
-  return row.child ? getTaskStatusIcon(row.child.status) : planStepIcon(row.idx)
+  return row.child ? getTaskStatusIcon(getTaskDisplayStatus(row.child)) : planStepIcon(row.idx)
 }
 function rowColor(row: PlanRow): string {
-  return row.child ? getTaskStatusColor(row.child.status) : planStepColor(row.idx)
+  return row.child ? getTaskStatusColor(getTaskDisplayStatus(row.child)) : planStepColor(row.idx)
 }
 
 // Load child and parent tasks for navigation.
@@ -1212,7 +1231,7 @@ watch(
 // Delegate status presentation to the shared service.
 
 
-function getHeaderBgClass(status: string): string {
+function getHeaderBgClass(status?: string | null): string {
     // Background colors by status.
     const bgClasses: Record<string, string> = {
         'CREATE': 'bg-grey-1',
@@ -1220,14 +1239,19 @@ function getHeaderBgClass(status: string): string {
         'EXEC': 'bg-solaire-blue-light',
         'PLAN': 'bg-solaire-cyan-light',
         'SUCCESS': 'bg-positive-1',
+        'BLOCKED': 'bg-solaire-orange-light',
         'ERROR': 'bg-negative-1'
     }
-    return bgClasses[status] || 'bg-grey-1'
+    return bgClasses[status ?? ''] || 'bg-grey-1'
 }
 
 </script>
 
 <style scoped>
+.task-objective-blocker {
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
 .task-detail {
     min-height: 400px;
 }

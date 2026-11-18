@@ -218,9 +218,13 @@ async def test_dashboard_preserves_scoped_calendar_totals_with_bounded_queries(d
     excluded_end = datetime(2026, 1, 31, 23, tzinfo=timezone.utc)
     previous_task = Task(label="Previous", agent_id=agents[0].id, created_at=before, status=TaskStatus.ERROR)
     current_task = Task(label="Current", agent_id=agents[0].id, created_at=boundary, status=TaskStatus.SUCCESS)
+    blocked_task = Task(label="Blocked", agent_id=agents[0].id, created_at=boundary, status=TaskStatus.SUCCESS,
+                        data={"objective_blocker": "The input is missing."})
+    skipped_task = Task(label="Skipped", agent_id=agents[0].id, created_at=boundary, status=TaskStatus.ERROR,
+                        data={"plan_skipped": True})
     deleted_task = Task(label="Deleted", agent_id=agents[0].id,
                         created_at=datetime(2020, 1, 1, tzinfo=timezone.utc), deleted_at=boundary)
-    db.add_all([previous_task, current_task, deleted_task,
+    db.add_all([previous_task, current_task, blocked_task, skipped_task, deleted_task,
                 Task(label="Other agent", agent_id=agents[1].id, created_at=boundary, status=TaskStatus.SUCCESS)])
     await db.flush()
     db.add_all([
@@ -251,9 +255,13 @@ async def test_dashboard_preserves_scoped_calendar_totals_with_bounded_queries(d
     finally:
         event.remove(connection.sync_connection, "before_cursor_execute", capture)
     assert len(statements) <= 5, "one dashboard read must not repeat monthly aggregations"
-    expected = {"all": (2, 4, 140, 14), "first": (1, 2, 50, 5), "empty": (0, 0, 0, 0)}[scope]
+    expected = {"all": (4, 4, 140, 14), "first": (3, 2, 50, 5), "empty": (0, 0, 0, 0)}[scope]
     assert (dashboard.totals.tasks, dashboard.totals.llm_calls,
             dashboard.totals.tokens, dashboard.totals.cost) == expected
+    assert dashboard.totals.task_errors == 0
+    assert dashboard.totals.task_success_rate == pytest.approx(
+        {"all": 50.0, "first": 100.0 / 3, "empty": 0.0}[scope]
+    )
     assert dashboard.totals.average_llm_duration == (8 if scope == "all" else 6 if scope == "first" else 0)
     assert dashboard.previous_totals.tasks == (0 if scope == "empty" else 1)
     assert dashboard.previous_totals.cost == (0 if scope == "empty" else 1)
@@ -263,7 +271,8 @@ async def test_dashboard_preserves_scoped_calendar_totals_with_bounded_queries(d
     assert len(dashboard.agents) == {"all": 3, "first": 1, "empty": 0}[scope]
     if scope != "empty":
         first = next(item for item in dashboard.agents if item.agent_id == agents[0].id)
-        assert (first.tasks, first.llm_calls, first.cost, first.average_llm_duration) == (1, 2, 5, 6)
+        assert (first.tasks, first.llm_calls, first.cost, first.average_llm_duration) == (3, 2, 5, 6)
+        assert (first.successful_tasks, first.task_errors) == (1, 0)
 
 
 @pytest.mark.asyncio

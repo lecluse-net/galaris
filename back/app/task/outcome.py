@@ -10,10 +10,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
+from app.agent import objective_blocker
 from core.database import get_db
 
 from .conversation import ConversationFollowup, get_conversation_followup
-from .models import Task, TaskAttempt
+from .models import Task, TaskAttempt, TaskStatus
 
 
 class TaskAttemptObservation(BaseModel):
@@ -49,6 +50,7 @@ class TaskOutcomeObservation(BaseModel):
     label: str
     objective: str = ""
     status: str
+    objective_blocker: str | None = None
     result: str = ""
     error: str = ""
     effort: str
@@ -155,6 +157,7 @@ async def get_task_outcome_observation(task_id: UUID) -> TaskOutcomeObservation 
         label=task.label,
         objective=task.objective or "",
         status=task.status.value,
+        objective_blocker=objective_blocker(data) if task.status == TaskStatus.SUCCESS else None,
         result=execution.result if execution is not None else "",
         error=task.last_error or "",
         effort=task.effort,

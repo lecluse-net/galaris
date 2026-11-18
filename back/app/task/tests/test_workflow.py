@@ -25,6 +25,7 @@ def test_generated_event_sequences_preserve_terminal_and_rejection_invariants(se
     import random
 
     explicit_retries = {TaskEvent.RETRY, TaskEvent.RETRY_PLAN,
+                        TaskEvent.RETRY_BLOCKED, TaskEvent.RETRY_BLOCKED_PLAN,
                         TaskEvent.RETRY_DELIVERY, TaskEvent.RETRY_ROUTING,
                         TaskEvent.RETRY_CLOSING_ACTION}
     random_source = random.Random(seed)
@@ -87,6 +88,12 @@ def test_terminal_task_cannot_restart_without_explicit_retry_path() -> None:
     task = _task(TaskStatus.SUCCESS)
     with pytest.raises(InvalidTaskTransition):
         transition(task, TaskEvent.START_EXECUTION)
+    with pytest.raises(InvalidTaskTransition):
+        transition(task, TaskEvent.RETRY_BLOCKED)
+
+    task.data = {"objective_blocker": "Input file unavailable"}
+    transition(task, TaskEvent.RETRY_BLOCKED)
+    assert task.status == TaskStatus.DISPATCH
 
     failed = _task(TaskStatus.ERROR)
     transition(failed, TaskEvent.RETRY)

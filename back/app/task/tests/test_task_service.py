@@ -144,16 +144,20 @@ async def test_retry_uses_delivery_only_recovery_for_failed_plan(
 
 
 @pytest.mark.asyncio
-async def test_retry_nested_finished_plan_reopens_failed_leaf_without_replaying_success(db, monkeypatch):
+@pytest.mark.parametrize("blocked", [False, True])
+async def test_retry_nested_finished_plan_reopens_unfinished_leaf_without_replaying_success(db, monkeypatch, blocked):
     from app.agent import planner_service
 
-    root = _task(status=TaskStatus.ERROR, plan={"steps": [{}, {}], "cursor": 2})
+    status = TaskStatus.SUCCESS if blocked else TaskStatus.ERROR
+    marker = {"objective_blocker": "Input file unavailable"} if blocked else {}
+    root = _task(status=status, data=marker, plan={"steps": [{}, {}], "cursor": 2})
     done = _task(parent_id=root.id, status=TaskStatus.SUCCESS, data={"plan_step": 0},
                  execution_result={"prompt": "", "result": "Saved", "success": True})
-    group = _task(parent_id=root.id, status=TaskStatus.ERROR, data={"plan_step": 1},
+    group = _task(parent_id=root.id, status=status, data={"plan_step": 1, **marker},
                   plan={"steps": [{}], "cursor": 1})
-    leaf = _task(parent_id=group.id, status=TaskStatus.ERROR, data={"plan_step": 0},
-                 last_error="ReasoningDegenerationError: synthetic repeated reasoning", feedback="Previous failure")
+    leaf = _task(parent_id=group.id, status=status, data={"plan_step": 0, **marker},
+                 last_error=None if blocked else "ReasoningDegenerationError: synthetic repeated reasoning",
+                 feedback="Please supply the input file" if blocked else "Previous failure")
     db.add_all([root, done, group, leaf])
     await db.commit()
     monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
@@ -170,7 +174,10 @@ async def test_retry_nested_finished_plan_reopens_failed_leaf_without_replaying_
     assert group.plan["cursor"] == 0
     assert leaf.status == TaskStatus.DISPATCH and not leaf.paused
     assert leaf.last_error is None
-    assert leaf.data["reasoning_recovery_requested"] is True
+    if blocked:
+        assert all("objective_blocker" not in (task.data or {}) for task in (root, group, leaf))
+    else:
+        assert leaf.data["reasoning_recovery_requested"] is True
 
 
 @pytest.mark.asyncio

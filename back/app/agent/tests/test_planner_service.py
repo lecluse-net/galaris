@@ -1988,16 +1988,17 @@ def test_blocked_reason_detection():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("structured", [False, True])
 async def test_blocked_leaf_aborts_plan(
-    mocks: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+    mocks: dict[str, Any], monkeypatch: pytest.MonkeyPatch, structured: bool,
 ) -> None:
     parent = _task(
         plan={"steps": [{"objective": "o1", "label": "l1"}, {"objective": "o2", "label": "l2"}], "cursor": 0},
     )
-    child0 = _task(
-        status=TaskStatus.SUCCESS, data={"plan_step": 0},
-        feedback="BLOCKED: the requested source does not exist", label="l1",
-    )
+    reason = "The requested source does not exist."
+    child0 = _task(status=TaskStatus.SUCCESS, label="l1",
+                   data={"plan_step": 0, **({"objective_blocker": reason} if structured else {})},
+                   feedback=reason if structured else f"BLOCKED: {reason}")
     child1 = _task(
         parent_id=parent.id,
         status=TaskStatus.DISPATCH,
@@ -2024,14 +2025,19 @@ async def test_blocked_leaf_aborts_plan(
 
     await advance(parent)
 
-    # A SUCCESS leaf that reports BLOCKED aborts without starting the next step.
-    assert parent.status == TaskStatus.ERROR
     assert child1.status == TaskStatus.ERROR
+    assert child1.data and child1.data["plan_skipped"] is True
     assert child1.paused is False
     assert len(mocks["created"]) == 0
-    assert "BLOCKED" in (parent.feedback or "")
     assert parent.data is not None
-    assert parent.data["blocked_recovery"]["status"] == "fail"
+    assert reason in (parent.feedback or "")
+    if structured:
+        assert parent.status == TaskStatus.SUCCESS
+        assert parent.data["objective_blocker"] == reason
+        recovery.assert_not_awaited()
+    else:
+        assert parent.status == TaskStatus.ERROR
+        assert parent.data["blocked_recovery"]["status"] == "fail"
 
 
 @pytest.mark.asyncio

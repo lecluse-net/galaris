@@ -183,8 +183,11 @@ expose le suivi par jalons enregistré. L’exécuteur peut le mettre à jour
 avec `task_work_update`, sur sa tâche active, avec contrôle de révision. Jusqu’à vingt jalons
 sont conservés ; un jalon déclaré terminé ne remplace pas la preuve du résultat ou de sa livraison.
 Le suivi possède sa propre révision : les sauvegardes d’exécution ne bloquent pas ses mises à jour.
-Si un jalon obligatoire reste explicitement bloqué à la clôture, la tâche termine en erreur et conserve
-son bilan partiel, sans réessai automatique. Les attentes durables existantes restent prioritaires.
+Si l'exécution se termine normalement avec un jalon obligatoire bloqué, la tâche affiche
+**Terminée · objectif non atteint**. Le motif, la prochaine action et le bilan partiel restent
+consultables. Une attente déjà ouverte conserve la tâche en attente. Les étapes d'un plan
+qui dépendent du résultat manquant sont écartées. **Réessayer** relance le travail bloqué et
+préserve les étapes déjà réussies.
 Un complément facultatif indisponible, par exemple une note documentaire conditionnelle,
 ne fait pas échouer la réponse principale. L'agent explique son omission dans le bilan ;
 ce complément est exclu des jalons applicables dans la progression, sans être déclaré réalisé.
@@ -395,7 +398,8 @@ automatiquement. La réponse finale et les coûts conservés restent complets.
 | Exécution | l’agent travaille ou appelle des outils |
 | Plan | Galaris crée ou avance dans les étapes |
 | En pause | la tâche attend une réponse, une étape fille ou une reprise |
-| Succès | le workflow s’est terminé sans erreur déclarée |
+| Terminée | l’exécution s’est terminée et aucun blocage obligatoire n’est signalé |
+| Terminée · objectif non atteint | l’exécution s’est terminée et un jalon obligatoire reste bloqué |
 | Erreur | la tentative a échoué ou a été interrompue après les reprises autorisées |
 
 Les onglets **Conversations textuelles** et **Appels téléphoniques** utilisent leurs propres états.

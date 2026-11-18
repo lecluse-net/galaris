@@ -35,7 +35,7 @@ from app.agent.contracts import ReasoningEffort
 from app.agent import prepare_run_retry
 from .models import Task, TaskAttempt, TaskAttemptStatus, TaskStatus
 from .schemas import TaskUpdate, TaskCreate, Task as TaskSchema, TaskOverview
-from .workflow import TaskEvent, transition
+from .workflow import TaskEvent, can_retry_blocked, transition
 from ..agent.models import Agent
 
 _TERMINAL_STATUSES = (TaskStatus.SUCCESS, TaskStatus.ERROR)
@@ -259,7 +259,10 @@ def build(task_data: TaskCreate) -> Task:
     new_task = Task(**data)
     # Preserve the admitted demand when a later amendment replaces the objective.
     # This server-owned field cannot be supplied or patched through TaskUpdate.
-    new_task.data = {**(new_task.data or {}), "_original_demand": new_task.objective or ""}
+    task_metadata = dict(new_task.data or {})
+    task_metadata.pop("objective_blocker", None)
+    task_metadata["_original_demand"] = new_task.objective or ""
+    new_task.data = task_metadata
     if messages is not None:
         new_task.messages = messages
     # A task created as paused without an explicit reason is a human hold. Materialize the
@@ -625,7 +628,7 @@ async def update(
 
 
 async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
-    """Explicit command to retry a failed task."""
+    """Explicit command to retry failed or blocked work."""
 
     task = await _get_by_id_for_update(task_id)
     if task is None:
@@ -639,6 +642,9 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
             )
         )
     data = dict(task.data) if isinstance(task.data, dict) else {}
+    blocked = can_retry_blocked(task)
+    if blocked and task.lease_token is not None:
+        raise TaskEditConflict(await tr("task_api.errors.action_running"))
     raw_recovery = data.get(_DELIVERY_RECOVERY_DATA_KEY)
     recovery = (
         type_cast(dict[str, Any], raw_recovery)
@@ -722,7 +728,7 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
         task.execution_result = None
         task.feedback = None
     elif task.plan is not None:
-        if task.status != TaskStatus.ERROR:
+        if task.status != TaskStatus.ERROR and not blocked:
             raise TaskEditConflict(render_prompt(
                 await tr("task_api.errors.cannot_restart"), status=task.status.value,
             ))
@@ -749,15 +755,16 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
                 if failed_id and 0 <= (index := int((child.data or {}).get("plan_step", -1))) < len(steps)
                 and steps[index].get("run_after_failure") is True)
             unfinished = [int((child.data or {}).get("plan_step", 0)) for child in siblings
-                          if child.status != TaskStatus.SUCCESS or child.id in closing_ids
+                          if child.status != TaskStatus.SUCCESS or can_retry_blocked(child) or child.id in closing_ids
                           or str(child.id) == failed_id]
             materialized_steps = {int((child.data or {}).get("plan_step", -1)) for child in siblings}
             unfinished.extend(index for index in range(len(steps)) if index not in materialized_steps)
             node_plan["cursor"] = min(unfinished) if unfinished else len(steps)
             node.plan = node_plan
         for node in locked:
-            retry_closing = node.status == TaskStatus.SUCCESS and node.id in closing_ids
-            if node.status == TaskStatus.SUCCESS and not retry_closing:
+            retry_blocked = can_retry_blocked(node)
+            retry_closing = node.status == TaskStatus.SUCCESS and not retry_blocked and node.id in closing_ids
+            if node.status == TaskStatus.SUCCESS and not (retry_closing or retry_blocked):
                 continue
             node_data = dict(node.data or {})
             if "ReasoningDegenerationError" in (node.last_error or "") or (
@@ -771,9 +778,13 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
             node_data = prepare_run_retry(node_data)
             node_data.pop("plan_skipped", None)
             node_data.pop("plan_skipped_after_task_id", None)
+            node_data.pop("objective_blocker", None)
+            if retry_blocked:
+                transition(node, TaskEvent.RETRY_BLOCKED_PLAN if node.plan is not None else TaskEvent.RETRY_BLOCKED)
+            else:
+                transition(node, TaskEvent.RETRY_CLOSING_ACTION if retry_closing
+                           else TaskEvent.RETRY_PLAN if node.plan is not None else TaskEvent.RETRY)
             node.data = node_data
-            transition(node, TaskEvent.RETRY_CLOSING_ACTION if retry_closing
-                       else TaskEvent.RETRY_PLAN if node.plan is not None else TaskEvent.RETRY)
             clear_pauses(node)
             if node.id != task.id:
                 suspend(node, PAUSE_PLAN)
@@ -791,8 +802,9 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
         ).get("metadata", {}).get("reasoning_recovery_exhausted"):
             data["reasoning_recovery_requested"] = True
         data = prepare_run_retry(data)
+        data.pop("objective_blocker", None)
+        transition(task, TaskEvent.RETRY_BLOCKED if blocked else TaskEvent.RETRY)
         task.data = data
-        transition(task, TaskEvent.RETRY)
         transition(task, TaskEvent.ROUTE_TO_EXECUTION)
         task.execution_result = None
         task.feedback = None
@@ -1487,7 +1499,7 @@ def _apply_monitoring_state_filter(
     paused_only: bool,
 ) -> Select[Any]:
     if errors_only:
-        query = query.where(Task.status == TaskStatus.ERROR)
+        query = query.where(Task.status == TaskStatus.ERROR, Task.data.contains({"plan_skipped": True}).is_not(True))
     if paused_only:
         query = query.where(
             Task.status.not_in(_TERMINAL_STATUSES),
@@ -1595,7 +1607,7 @@ async def summarize_recent(
         func.count(Task.id).filter(non_terminal, Task.paused.is_(False)),
         func.count(Task.id).filter(Task.status == TaskStatus.SUCCESS),
         func.count(Task.id).filter(non_terminal, Task.paused.is_(True)),
-        func.count(Task.id).filter(Task.status == TaskStatus.ERROR),
+        func.count(Task.id).filter(Task.status == TaskStatus.ERROR, Task.data.contains({"plan_skipped": True}).is_not(True)),
     )
     if agent_id is not None:
         query = query.where(Task.agent_id == agent_id)

@@ -107,9 +107,10 @@ Les jalons obligatoires (`required=true`, défaut historique) restent séparés 
 facultatifs (`required=false`). Un complément impossible peut être `skipped` avec une observation ;
 son omission reste visible, sans compter comme travail obligatoire inachevé dans la progression.
 Un complément facultatif `blocked` a le même effet sur la progression et la clôture.
-À la clôture, un jalon obligatoire persisté explicitement `blocked` empêche un succès contradictoire :
-hors attente durable existante, la tâche termine en erreur sans retry automatique, en conservant
-son bilan et les effets acquis. Cette garde ne crée ni attente ni autorisation.
+Si l'exécution se termine normalement hors attente durable, un jalon obligatoire persisté
+`blocked` donne la phase terminale `SUCCESS` et le résultat métier `BLOCKED`. Le motif, le bilan
+et les effets acquis sont conservés. Le Planner clôt les étapes dépendantes et transmet le blocage
+au plan parent. La vérification des jalons est déterministe.
 La consigne de clôture demande aussi aux exécuteurs `direct` d'enregistrer un tel blocage
 avec `task_work_update`, en conservant les jalons existants et leur révision de suivi.
 Cette consigne dépend de son application par le modèle ; la garde porte sur les jalons persistés.
