@@ -23,6 +23,7 @@ let candidate: Workspace | undefined
 let generation = 0
 let quitting = false
 let installing = false
+let updatePromptPending = false
 let state: DesktopState
 let updates: ReturnType<typeof configureUpdates>
 let interval: NodeJS.Timeout | undefined
@@ -36,6 +37,7 @@ function broadcast(): void {
   if (launcher && !launcher.isDestroyed()) launcher.webContents.send('desktop:changed', state)
 }
 function showLauncher(): void {
+  if (launcher.isDestroyed()) return
   launcher.show()
   launcher.focus()
   broadcast()
@@ -105,7 +107,7 @@ function configureSession(origin: string): Electron.Session {
 }
 
 async function connect(input: unknown): Promise<void> {
-  if (state.connecting) return
+  if (state.connecting || quitting || installing) return
   let origin: string
   try { origin = serverOrigin(input, !app.isPackaged) } catch {
     state.error = 'invalidServer'; broadcast(); return
@@ -121,7 +123,7 @@ async function connect(input: unknown): Promise<void> {
   })
   const win = new Workspace(window, origin, configureSession(origin), t, () => {
     quitting = false
-    installing = false
+    if (installing) return
     state.error = 'unsavedChanges'
     showLauncher()
   }, () => { if (remote === win) { state.error = 'connectionFailed'; showLauncher() } },
@@ -147,7 +149,7 @@ async function connect(input: unknown): Promise<void> {
     }
     if (attempt !== generation || window.isDestroyed()) return
     // Commit the tiny preference atomically without yielding to a cancelled attempt.
-    try { writeServer(app.getPath('userData'), origin) } catch {
+    try { if (origin !== state.server) writeServer(app.getPath('userData'), origin) } catch {
       if (attempt === generation) state.error = 'saveFailed'
       throw new Error('saveFailed')
     }
@@ -159,7 +161,7 @@ async function connect(input: unknown): Promise<void> {
     window.on('closed', () => {
       if (remote !== win) return
       remote = undefined
-      if (installing) { installing = false; showLauncher(); updates.install(); return }
+      if (installing) return
       if (quitting) { setImmediate(() => app.quit()); return }
       if (!quitting && (launcher.isDestroyed() || !launcher.isVisible())) app.quit()
     })
@@ -176,6 +178,7 @@ async function connect(input: unknown): Promise<void> {
   } finally {
     clearTimeout(timeout)
     broadcast()
+    offerUpdate()
   }
 }
 
@@ -194,7 +197,7 @@ function buildMenu(): void {
       { label: t('previousTab'), accelerator: 'Ctrl+Shift+Tab', click: () => remote?.cycle(-1) }
     ] },
     { label: t('view'), submenu: [
-      { label: t('reload'), accelerator: 'CmdOrCtrl+R', click: () => remote?.active?.reload() },
+      { label: t('reload'), accelerator: 'CmdOrCtrl+R', click: () => remote?.reload() },
       { label: t('back'), accelerator: 'Alt+Left', click: () => remote?.back() },
       { label: t('forward'), accelerator: 'Alt+Right', click: () => remote?.forward() },
       { label: t('resetZoom'), role: 'resetZoom' }, { label: t('zoomIn'), role: 'zoomIn' }, { label: t('zoomOut'), role: 'zoomOut' },
@@ -228,7 +231,13 @@ async function start(): Promise<void> {
   launcher.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
   launcher.on('close', event => {
     cancel()
-    if (!quitting && remote && !remote.window.isDestroyed()) { event.preventDefault(); launcher.hide(); remote.window.show() }
+    if (!quitting && remote && !remote.window.isDestroyed()) {
+      event.preventDefault()
+      launcher.hide()
+      remote.window.show()
+      remote.window.focus()
+      remote.active?.focus()
+    }
   })
   ipcMain.handle('desktop:state', event => { authorize(event, event.sender !== launcher.webContents); return state })
   ipcMain.handle('desktop:tabs', event => { authorize(event, true); return (remote?.chrome.webContents === event.sender ? remote : candidate)?.snapshot() })
@@ -237,6 +246,7 @@ async function start(): Promise<void> {
   ipcMain.handle('desktop:close-tab', (event, id: unknown) => { authorize(event, true); if (typeof id === 'number') return remote?.closeTab(id) })
   ipcMain.handle('desktop:back', event => { authorize(event, true); remote?.back() })
   ipcMain.handle('desktop:forward', event => { authorize(event, true); remote?.forward() })
+  ipcMain.handle('desktop:reload', event => { authorize(event, true); remote?.reload() })
   ipcMain.handle('desktop:show-menu', event => { authorize(event, true); remote?.showMenu() })
   ipcMain.handle('desktop:connect', (event, server: unknown) => { authorize(event); return connect(server) })
   ipcMain.handle('desktop:cancel', event => { authorize(event); cancel() })
@@ -250,12 +260,12 @@ async function start(): Promise<void> {
   })
   updates = configureUpdates(autoUpdater, enabled ? 'idle' : app.isPackaged ? 'manual' : 'disabled', update => {
     state.update = update; broadcast()
-  }, () => { void confirmInstall() })
+  }, () => { updatePromptPending = true; offerUpdate() })
   buildMenu()
   await launcher.loadURL(launcherURL)
-  showLauncher()
-  if (state.server) void connect(state.server)
-  if (enabled) {
+  if (state.server) await connect(state.server)
+  else showLauncher()
+  if (enabled && !quitting && !launcher.isDestroyed()) {
     void updates.check()
     interval = setInterval(() => { void updates.check() }, 6 * 60 * 60 * 1000)
     interval.unref()
@@ -263,20 +273,44 @@ async function start(): Promise<void> {
 }
 
 let prompting = false
+function offerUpdate(): void {
+  if (!updatePromptPending || state.connecting || quitting || launcher.isDestroyed()) return
+  updatePromptPending = false
+  void confirmInstall()
+}
 async function confirmInstall(): Promise<void> {
-  if (prompting || state.update.status !== 'ready') return
+  if (prompting || state.connecting || quitting || launcher.isDestroyed() || state.update.status !== 'ready') return
+  const workspace = remote
+  const owner = launcher.isVisible() ? launcher : workspace?.window
+  if (!owner || owner.isDestroyed()) return
   prompting = true
   try {
-    const owner = remote && !remote.window.isDestroyed() ? remote.window : launcher
     const result = await dialog.showMessageBox(owner, {
       type: 'info', title: t('updates'), message: t('updateReady'),
       buttons: [t('later'), t('restart')], defaultId: 0, cancelId: 0, noLink: true
     })
-    if (result.response === 1) {
-      if (remote && !remote.window.isDestroyed()) { installing = true; void remote.close() }
-      else updates.install()
+    if (result.response !== 1 || quitting || state.connecting || remote !== workspace) return
+    installing = true
+    if (workspace && !await workspace.close()) {
+      if (workspace.window.isDestroyed()) return
+      launcher.hide()
+      workspace.window.show()
+      workspace.window.focus()
+      await dialog.showMessageBox(workspace.window, {
+        type: 'warning', title: t('updates'), message: t('unsavedChanges'), buttons: [t('later')]
+      })
+      return
     }
-  } catch (error) { recordFailure('update:restart', error) } finally { prompting = false }
+    launcher.hide()
+    updates.install()
+  } catch (error) {
+    recordFailure('update:restart', error)
+    state.error = 'updateFailed'
+    showLauncher()
+  } finally {
+    installing = false
+    prompting = false
+  }
 }
 
 if (!app.requestSingleInstanceLock()) app.quit()

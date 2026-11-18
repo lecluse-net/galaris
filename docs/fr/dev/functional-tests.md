@@ -3262,6 +3262,8 @@ Les changements non enregistrés empêchent de quitter ou de changer de serveur 
 perdre la session en cours ; le redémarrage d’installation passe par cette même fermeture.
 Les onglets conservent leurs brouillons, partagent les cookies du serveur, ouvrent les liens
 internes et respectent les raccourcis et le refus de fermeture d’une page modifiée.
+Un rechargement automatique refusé par un éditeur préserve le brouillon sans ouvrir le
+sélecteur de serveur. Le bouton de rechargement cible l’onglet actif.
 `page-title.spec.mjs` vérifie les titres de navigation traduits, les en-têtes spécifiques,
 leur réinitialisation et la révocation de droits ; Electron vérifie les titres d’onglets en arrière-plan.
 La vérification orthographique contrôle les langues fr/en-US et le menu natif avec des

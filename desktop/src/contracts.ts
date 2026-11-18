@@ -22,6 +22,7 @@ export interface DesktopAPI {
   closeTab(id: number): Promise<void>
   back(): Promise<void>
   forward(): Promise<void>
+  reload(): Promise<void>
   showMenu(): Promise<void>
   onTabs(listener: (state: TabsState) => void): () => void
 }

@@ -4,6 +4,7 @@
       <q-btn flat dense round color="primary" size="sm" icon="menu" :aria-label="t('showMenu')" :title="t('showMenu')" aria-haspopup="menu" @click="api.showMenu()" />
       <q-btn flat dense round color="primary" size="sm" icon="arrow_back" :aria-label="t('back')" :title="t('back')" :disable="!state.canGoBack" @click="api.back()" />
       <q-btn flat dense round color="primary" size="sm" icon="arrow_forward" :aria-label="t('forward')" :title="t('forward')" :disable="!state.canGoForward" @click="api.forward()" />
+      <q-btn flat dense round color="primary" size="sm" icon="refresh" :aria-label="t('reload')" :title="t('reload')" :disable="!state.tabs.length" @click="api.reload()" />
     </div>
     <div class="tab-list row items-center no-wrap" role="tablist" :aria-label="t('tabs')" @keydown="navigate">
       <q-card v-for="tab in state.tabs" :key="tab.id" flat bordered class="tab-item row items-center no-wrap" :class="{ 'tab-item--active': state.activeId === tab.id }" @auxclick.middle.prevent="api.closeTab(tab.id)">
@@ -61,11 +62,12 @@ async function navigate(event: KeyboardEvent): Promise<void> {
 .body--dark .desktop-tabs::before { border-color: rgba(255, 255, 255, 0.28); }
 .tab-controls { flex-shrink: 0; }
 .tab-controls .q-btn, .desktop-tabs > .q-btn { min-height: 26px; min-width: 24px; }
-.tab-list { flex: 1; min-width: 0; height: 100%; overflow-x: auto; gap: 4px; scrollbar-width: none; }
+.tab-list { flex: 0 1 auto; min-width: 0; height: 100%; overflow-x: auto; gap: 4px; scrollbar-width: none; }
 .tab-item { position: relative; flex: 0 0 auto; height: 30px; max-width: 260px; border-radius: 7px; background: rgba(0, 0, 0, 0.035); color: inherit; }
 .tab-item--active { align-self: flex-end; height: 34px; border-radius: 7px 7px 0 0; border-bottom: 0; background: var(--desktop-page-surface); }
 .body--dark .tab-item { border-color: rgba(255, 255, 255, 0.28); }
 .body--dark .tab-item:not(.tab-item--active) { background: rgba(255, 255, 255, 0.04); }
 .tab-select { min-width: 64px; max-width: 220px; min-height: 0; height: 100%; padding: 0 10px; font-size: 14px; }
 .tab-select :deep(.q-focus-helper) { border-radius: inherit; }
+.tab-select:not(:focus-visible) :deep(.q-focus-helper) { opacity: 0; }
 </style>

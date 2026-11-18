@@ -13,6 +13,7 @@ const api: DesktopAPI = {
   closeTab: (id: number) => ipcRenderer.invoke('desktop:close-tab', id),
   back: () => ipcRenderer.invoke('desktop:back'),
   forward: () => ipcRenderer.invoke('desktop:forward'),
+  reload: () => ipcRenderer.invoke('desktop:reload'),
   showMenu: () => ipcRenderer.invoke('desktop:show-menu'),
   onTabs(listener) {
     const handler = (_event: Electron.IpcRendererEvent, state: TabsState) => listener(state)

@@ -14,6 +14,7 @@ export class Workspace {
   private shells = new Map<number, ShellLayout>()
   private activeId = 0
   private closing: Promise<boolean> | undefined
+  private readonly pendingCloses = new WeakMap<Electron.WebContents, Promise<boolean>>()
   private destroying = false
 
   constructor(
@@ -87,6 +88,10 @@ export class Workspace {
   forward(): void {
     if (this.active?.navigationHistory.canGoForward()) { this.active.navigationHistory.goForward(); this.active.focus() }
   }
+  reload(): void {
+    const contents = this.active
+    if (!this.closing && contents && !this.pendingCloses.has(contents)) contents.reload()
+  }
   showMenu(): void {
     this.active?.focus()
     const bounds = this.chrome.getBounds()
@@ -127,7 +132,6 @@ export class Workspace {
       if (mainFrame && code !== -3 && !this.destroying) this.failed()
     })
     contents.on('render-process-gone', () => { if (!this.destroying) this.failed() })
-    contents.on('will-prevent-unload', () => { this.select(contents.id); this.blocked() })
     contents.on('destroyed', () => {
       if (!this.window.isDestroyed()) this.window.contentView.removeChildView(view)
       const ids = [...this.views.keys()]
@@ -157,14 +161,25 @@ export class Workspace {
   }
   private closeContents(contents: Electron.WebContents): Promise<boolean> {
     if (contents.isDestroyed()) return Promise.resolve(true)
-    return new Promise(resolve => {
+    const pending = this.pendingCloses.get(contents)
+    if (pending) return pending
+    const close = new Promise<boolean>(resolve => {
       const cleanup = () => { contents.removeListener('destroyed', closed); contents.removeListener('will-prevent-unload', blocked) }
       const closed = () => { cleanup(); resolve(true) }
-      const blocked = () => { cleanup(); resolve(false) }
+      // Navigation and automatic reloads can also be vetoed by beforeunload.
+      const blocked = () => {
+        cleanup()
+        resolve(false)
+        this.select(contents.id)
+        this.blocked()
+      }
       contents.once('destroyed', closed)
       contents.once('will-prevent-unload', blocked)
-      contents.close({ waitForBeforeUnload: true })
     })
+    this.pendingCloses.set(contents, close)
+    contents.close({ waitForBeforeUnload: true })
+    void close.then(() => this.pendingCloses.delete(contents))
+    return close
   }
   async closeTab(id = this.activeId): Promise<void> {
     if (this.closing) return
@@ -173,14 +188,14 @@ export class Workspace {
   }
   close(): Promise<boolean> {
     if (this.closing) return this.closing
-    this.closing = (async () => {
+    this.closing = Promise.resolve().then(async () => {
       // Ask the active page first; every remaining page also keeps its unload protection.
       const contents = [...this.views.values()].map(view => view.webContents)
       contents.sort((left, right) => Number(right.id === this.activeId) - Number(left.id === this.activeId))
       for (const page of contents) if (!await this.closeContents(page)) return false
-      this.window.destroy()
+      this.destroy()
       return true
-    })()
+    })
     void this.closing.then(closed => { if (!closed) this.closing = undefined })
     return this.closing
   }

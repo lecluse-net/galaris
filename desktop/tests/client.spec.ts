@@ -232,6 +232,80 @@ test('unsaved edits can prevent quitting and switching servers without losing th
   await remote.evaluate(() => { window.onbeforeunload = null })
 })
 
+test('an automatic page reload preserves dirty work without opening server selection or blocking quit', async () => {
+  const launcher = await launch()
+  const remote = await openServer(launcher)
+  const draft = remote.getByRole('textbox', { name: 'Draft' })
+  await draft.click()
+  await draft.fill('Work in progress during an update')
+  await remote.evaluate(() => {
+    window.onbeforeunload = event => { event.preventDefault(); event.returnValue = '' }
+  })
+  // Playwright accepts beforeunload dialogs automatically unless the test handles them.
+  remote.once('dialog', dialog => { void dialog.dismiss().catch(() => {}) })
+  await client!.evaluate(async ({ webContents }) => {
+    const contents = webContents.getAllWebContents().find(page => page.getURL().startsWith('http:'))!
+    await new Promise<void>(resolve => {
+      contents.once('will-prevent-unload', () => resolve())
+      // This matches the renderer-initiated reload on a PWA controller change.
+      void contents.executeJavaScript('window.location.reload()').catch(() => {})
+    })
+  })
+  const launcherWindow = await client!.browserWindow(launcher)
+  expect(await launcherWindow.evaluate(window => window.isVisible())).toBe(false)
+  await expect(draft).toHaveValue('Work in progress during an update')
+  await draft.fill('Still editing')
+  await remote.evaluate(() => { window.onbeforeunload = null })
+  const exited = client!.waitForEvent('close')
+  await client!.evaluate(({ BrowserWindow }) => {
+    BrowserWindow.getAllWindows().find(win => win.webContents.getURL() === 'about:blank#galaris-workspace')!.close()
+  })
+  await exited
+  client = undefined
+})
+
+test('an update restart refused by an editor returns to the current workspace', async () => {
+  const launcher = await launch()
+  const remote = await openServer(launcher)
+  const draft = remote.getByRole('textbox', { name: 'Draft' })
+  await draft.click()
+  await draft.fill('Preserve this draft before updating')
+  await remote.evaluate(() => {
+    window.onbeforeunload = event => { event.preventDefault(); event.returnValue = '' }
+  })
+  remote.once('dialog', dialog => { void dialog.dismiss().catch(() => {}) })
+  await client!.evaluate(({ dialog }) => {
+    const require = process.getBuiltinModule('module').createRequire(`${process.cwd()}/package.json`)
+    const { autoUpdater } = require('electron-updater') as typeof import('electron-updater')
+    const prompts: { owner: string; message: string }[] = []
+    ;(globalThis as unknown as { updatePrompts: typeof prompts }).updatePrompts = prompts
+    // Simulate a completed download and the native confirmation.
+    dialog.showMessageBox = (async (owner: Electron.BrowserWindow, options: Electron.MessageBoxOptions) => {
+      prompts.push({ owner: owner.webContents.getURL(), message: options.message })
+      return { response: options.type === 'info' ? 1 : 0, checkboxChecked: false }
+    }) as typeof dialog.showMessageBox
+    autoUpdater.emit('update-downloaded', {
+      version: '99.0.0', files: [], downloadedFile: 'synthetic-update', path: 'synthetic-update',
+      sha512: '', releaseDate: '2026-01-01T00:00:00.000Z'
+    })
+  })
+  await expect.poll(() => client!.evaluate(() => (
+    globalThis as unknown as { updatePrompts: { owner: string; message: string }[] }
+  ).updatePrompts)).toEqual([
+    { owner: 'about:blank#galaris-workspace', message: expect.stringContaining('update is ready') },
+    { owner: 'about:blank#galaris-workspace', message: expect.stringContaining('unsaved changes') }
+  ])
+  const launcherWindow = await client!.browserWindow(launcher)
+  expect(await launcherWindow.evaluate(window => window.isVisible())).toBe(false)
+  await expect(draft).toHaveValue('Preserve this draft before updating')
+  await draft.fill('Continue editing')
+  await remote.evaluate(() => { window.onbeforeunload = null })
+  const exited = client!.waitForEvent('close')
+  await client!.evaluate(({ app }) => app.quit())
+  await exited
+  client = undefined
+})
+
 test('browser tabs preserve drafts, share the server session and protect unsaved edits', async () => {
   const launcher = await launch()
   const first = await openServer(launcher)
@@ -290,7 +364,7 @@ test('browser tabs preserve drafts, share the server session and protect unsaved
   expect(first.isClosed()).toBe(true)
 })
 
-test('history controls follow the active tab and the menu remains accessible with its bar hidden', async () => {
+test('navigation controls follow the active tab and the menu remains accessible with its bar hidden', async () => {
   const launcher = await launch()
   const first = await openServer(launcher)
   const chrome = client!.windows().find(page => page.url().endsWith('?tabs'))!
@@ -329,6 +403,21 @@ test('history controls follow the active tab and the menu remains accessible wit
   await back.click()
   await expect(first).toHaveURL(`${origin}/second`)
   await expect(second).toHaveURL(`${origin}/`)
+
+  const firstDraft = first.getByRole('textbox', { name: 'Draft' })
+  const secondDraft = second.getByRole('textbox', { name: 'Draft' })
+  await firstDraft.fill('Reset by reload')
+  await secondDraft.fill('Preserved in the background')
+  await chrome.getByRole('button', { name: 'Reload', exact: true }).press('Enter')
+  await expect(firstDraft).toHaveValue('')
+  await expect(secondDraft).toHaveValue('Preserved in the background')
+  await expect(first).toHaveURL(`${origin}/second`)
+  await expect(back).toBeEnabled()
+  await chrome.getByRole('tab', { name: 'Synthetic second page', exact: true }).click()
+  await firstDraft.fill('Reset by keyboard shortcut')
+  await shortcut('R')
+  await expect(firstDraft).toHaveValue('')
+
   await chrome.getByRole('button', { name: 'Close tab: Synthetic second page', exact: true }).click()
   await expect(back).toBeDisabled()
   await expect(forward).toBeDisabled()

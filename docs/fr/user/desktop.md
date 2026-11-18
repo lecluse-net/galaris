@@ -34,7 +34,8 @@ Fermer cette fenêtre de configuration ramène à la fenêtre Galaris déjà ouv
 
 À gauche des onglets, les flèches **Précédent** et **Suivant** parcourent l’historique
 de la page dans l’onglet actif. Elles sont désactivées lorsqu’aucune page n’est disponible
-dans ce sens. Le bouton **☰** ouvre les menus de l’application (changement de serveur,
+dans ce sens. Le bouton **Recharger** ou **Ctrl+R** recharge la page de l’onglet actif.
+Le bouton **☰** ouvre les menus de l’application (changement de serveur,
 mises à jour, édition, onglets et affichage) ; la barre de menus classique est masquée.
 Les raccourcis **Alt+Gauche** et **Alt+Droite** restent disponibles.
 Sur un écran large, cette barre compacte se place à droite du menu latéral, au-dessus
@@ -42,7 +43,7 @@ du titre de la page, et suit le repli du menu. Seul l’onglet actif rejoint la 
 autres restent espacés de son bord. En fenêtre étroite, ou sur une page externe,
 la barre occupe toute la largeur au-dessus du contenu.
 
-Le bouton **+** ou **Ctrl+T** ouvre une nouvelle page Galaris. **Ctrl+W** ferme l’onglet
+Le bouton **+**, après le dernier onglet, ou **Ctrl+T** ouvre une nouvelle page Galaris. **Ctrl+W** ferme l’onglet
 courant ; **Ctrl+Tab** et **Ctrl+Maj+Tab** changent d’onglet. Les liens internes ouverts
 avec Ctrl+clic, le bouton central ou « Ouvrir le lien dans un nouvel onglet » restent dans
 la fenêtre. Chaque page conserve sa navigation et ses brouillons pendant les changements
