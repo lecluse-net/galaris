@@ -600,6 +600,12 @@ test('calendar timezone selection, date navigation, all views and event deletion
     await page.getByRole('group', { name: 'Calendar view', exact: true }).getByRole('button', { name: view, exact: true }).click()
     await expect(page.getByRole('button', { name: /Synthetic overlapping appointment/ })).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath(`calendar-${view.toLowerCase()}.png`), fullPage: true })
+    if (view === 'Week') {
+      await page.getByRole('region', { name: 'Week', exact: true }).getByRole('button', { name: /\bThursday\b/ }).press('Enter')
+      const day = page.getByRole('region', { name: 'Day', exact: true })
+      await expect(day.getByText(/\bThursday\b/)).toBeVisible()
+      await expect(day.getByRole('button', { name: /\bThursday\b/ })).toHaveCount(0)
+    }
   }
   await page.getByRole('button', { name: /Prepare synthetic review/ }).click()
   await page.getByRole('button', { name: 'Delete event', exact: true }).click()

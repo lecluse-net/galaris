@@ -1,7 +1,7 @@
 <template>
   <section ref="board" class="calendar-board" :aria-label="t(`agenda.views.${view}`)">
     <template v-if="view === 'month'">
-      <div class="month-weekdays"><div>{{ t('agenda.weekNumberHeader') }}</div><div v-for="day in days.slice(0, 7)" :key="day">{{ label(day, { weekday: 'short' }) }}</div></div>
+      <div class="month-weekdays"><div>{{ t('agenda.weekNumberHeader') }}</div><div v-for="day in days.slice(0, 7)" :key="day">{{ label(day, { weekday: 'long' }) }}</div></div>
       <div class="month-grid">
         <template v-for="(day, index) in days" :key="day">
         <div v-if="index % 7 === 0" class="month-week-number" :aria-label="t('agenda.weekNumber', { week: isoWeekNumber(day) })">{{ isoWeekNumber(day) }}</div>
@@ -20,8 +20,17 @@
       </div>
     </template>
     <template v-else-if="view === 'week' || view === 'day'">
-      <div class="time-grid-header" :style="gridStyle"><div aria-hidden="true" /><div v-for="day in days" :key="day" :class="{ 'is-today': day === today }"><q-btn outline  no-caps color="primary" :label="label(day, { weekday: 'short', day: 'numeric' })" @click="emit('day', day)" /></div></div>
-      <div class="all-day-grid" :style="gridStyle"><div class="text-caption q-pa-xs">{{ t('agenda.allDay') }}</div>
+      <div class="time-grid-header" :style="gridStyle">
+        <div aria-hidden="true" />
+        <template v-for="day in days" :key="day">
+          <!-- eslint-disable-next-line galaris/ui-conventions -- Week date cells use grid separators without button outlines. -->
+          <q-btn v-if="view === 'week'" flat dense no-caps class="time-grid-date" :label="label(day, { weekday: 'long', day: 'numeric' })" @click="emit('day', day)" />
+          <div v-else class="time-grid-date time-grid-date--static">
+            {{ label(day, { weekday: 'long', day: 'numeric' }) }}
+          </div>
+        </template>
+      </div>
+      <div class="all-day-grid" :style="gridStyle"><div class="text-caption q-pa-xs">{{ t('agenda.allDayRow') }}</div>
         <div v-for="day in days" :key="day" class="all-day-cell" :class="{ 'can-create': canCreate }" role="group"
           :aria-label="`${t('agenda.create')} · ${t('agenda.allDay')} · ${day}`" :tabindex="canCreate ? 0 : undefined"
           @click="createDay($event, day)" @keydown.enter.self.prevent="createDay($event, day)" @keydown.space.self.prevent="createDay($event, day)"
@@ -45,7 +54,8 @@
     <template v-else>
       <div v-if="!events.length" class="empty-schedule"><q-icon name="event_available" size="44px" /><p>{{ t('agenda.noEvents') }}</p></div>
       <template v-for="day in days" :key="day"><section v-if="byDay(day).length" class="schedule-day">
-        <q-btn outline no-caps color="primary" class="schedule-date" :label="label(day, { weekday: 'short', day: 'numeric', month: 'short' })" @click="emit('day', day)" />
+        <!-- eslint-disable-next-line galaris/ui-conventions -- Keep schedule dates as borderless date navigation. -->
+        <q-btn flat dense no-caps padding="2px 4px" color="primary" class="schedule-date" :label="label(day, { weekday: 'short', day: 'numeric', month: 'short' })" @click="emit('day', day)" />
         <div class="schedule-events"><CalendarEventChip v-for="event in byDay(day)" :key="occurrenceKey(event)" v-bind="chipProps(event)" @open="emit('open', $event)" /></div>
       </section></template>
     </template>
@@ -131,7 +141,8 @@ onBeforeUnmount(() => { clearInterval(clock); cancelSelection(); window.removeEv
 .calendar-board { border: 1px solid var(--q-separator-color, rgba(0,0,0,.12)); border-radius: 8px; overflow: hidden; background: #fff; }
 .body--dark .calendar-board { background: var(--q-dark, var(--solaire-gray-dark)); }
 .month-weekdays, .month-grid { display: grid; grid-template-columns: 30px repeat(7, minmax(0, 1fr)); }
-.month-weekdays { text-align: center; padding: 10px 0; font-size: 12px; }
+.month-weekdays, .time-grid-date, .schedule-date { font-size: 12px; }
+.month-weekdays { align-items: center; text-align: center; padding: 10px 0; overflow-wrap: anywhere; }
 .month-week-number { text-align: center; padding: 10px 2px; font-size: 12px; border-top: 1px solid rgba(128,128,128,.25); border-right: 1px solid rgba(128,128,128,.25); }
 .month-cell { min-height: 142px; border-top: 1px solid rgba(128,128,128,.25); border-right: 1px solid rgba(128,128,128,.25); padding: 3px; min-width: 0; }
 .outside-month { background: var(--solaire-gray-light); }
@@ -142,7 +153,10 @@ onBeforeUnmount(() => { clearInterval(clock); cancelSelection(); window.removeEv
 .body--dark .is-today { background: var(--solaire-blue-dark); }
 .month-events, .schedule-events { display: grid; gap: 3px; }
 .time-grid-header, .all-day-grid, .time-columns { display: grid; }
-.time-grid-header { text-align: center; align-items: center; border-bottom: 1px solid rgba(128,128,128,.25); }
+.time-grid-header { text-align: center; border-bottom: 1px solid rgba(128,128,128,.25); }
+.time-grid-date { min-width: 0; min-height: 28px; padding: 2px 4px; overflow-wrap: anywhere; }
+.time-grid-date.q-btn { border-left: 1px solid rgba(128,128,128,.25); border-radius: 0; }
+.time-grid-date--static { display: grid; place-items: center; }
 .all-day-cell { border-left: 1px solid rgba(128,128,128,.25); padding: 3px; min-height: 36px; }
 .can-create { cursor: pointer; }
 .can-create:focus-visible { outline: 2px solid var(--solaire-blue-accent); outline-offset: -2px; }
@@ -163,10 +177,18 @@ onBeforeUnmount(() => { clearInterval(clock); cancelSelection(); window.removeEv
 .now-line { position: absolute; width: 100%; height: 2px; pointer-events: none; background: var(--solaire-red-accent); z-index: 2; }
 .slot-selection { position: absolute; left: 0; right: 2px; z-index: 3; pointer-events: none; border: 2px solid var(--solaire-blue-accent); border-radius: 4px; background: var(--solaire-blue-light); padding: 5px; font-size: 12px; }
 .body--dark .slot-selection { background: var(--solaire-blue-dark); }
-.schedule-day { display: flex; align-items: flex-start; gap: 20px; padding: 14px; border-bottom: 1px solid rgba(128,128,128,.25); }
+.schedule-day { display: flex; align-items: flex-start; gap: 20px; padding: 8px 14px; border-bottom: 1px solid rgba(128,128,128,.25); }
 .schedule-date { width: 105px; flex-shrink: 0; }
 .schedule-events { flex: 1; min-width: 0; }
 .empty-schedule { text-align: center; padding: 64px 12px; color: var(--solaire-gray-accent); }
 @media (max-width: 1023px) { .month-cell { min-height: 100px; } .month-events { gap: 2px; } .day-heading .q-btn { font-size: 12px; } .schedule-day { gap: 8px; padding: 8px; } .schedule-date { width: 76px; } }
-@media (max-width: 599px) { .month-cell { padding: 1px; } .month-events :deep(.event-time) { display: none; } .month-events :deep(.event-heading) { font-size: 10px; } .month-events :deep(.event-status) { gap: 2px; } }
+@media (max-width: 599px) {
+  .month-cell { padding: 1px; }
+  .month-events :deep(.event-time) { display: none; }
+  .month-events :deep(.event-heading) { font-size: 10px; }
+  .month-events :deep(.event-status) { gap: 2px; }
+  .month-weekdays, .time-grid-date, .schedule-date { font-size: 11px; }
+  .month-weekdays { padding-block: 6px; }
+  .time-grid-date.q-btn { padding-inline: 1px; line-height: 1.2; }
+}
 </style>
