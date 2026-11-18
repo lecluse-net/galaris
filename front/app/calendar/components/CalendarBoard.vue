@@ -9,7 +9,10 @@
           role="group" :aria-label="`${t('agenda.create')} · ${label(day, { dateStyle: 'full' })}`" :tabindex="canCreate ? 0 : undefined"
           @click="createDay($event, day)" @keydown.enter.self.prevent="createDay($event, day)" @keydown.space.self.prevent="createDay($event, day)"
           @dragover.prevent @drop.prevent="drop($event, day)">
-          <div class="day-heading"><q-btn outline round dense color="primary" :label="String(Number(day.slice(8)))" :aria-label="label(day, { dateStyle: 'full' })" @click.stop="emit('day', day)" /></div>
+          <div class="day-heading">
+            <!-- eslint-disable-next-line galaris/ui-conventions -- Keep month day numbers as borderless date navigation. -->
+            <q-btn flat round dense color="primary" :label="String(Number(day.slice(8)))" :aria-label="label(day, { dateStyle: 'full' })" @click.stop="emit('day', day)" />
+          </div>
           <div class="month-events"><CalendarEventChip v-for="event in byDay(day).slice(0, MONTH_VISIBLE_EVENTS)" :key="occurrenceKey(event)" v-bind="chipProps(event)" compact @open="emit('open', $event)" />
             <q-btn v-if="byDay(day).length > MONTH_VISIBLE_EVENTS" outline dense no-caps color="primary" :label="t('agenda.more', { count: byDay(day).length - MONTH_VISIBLE_EVENTS })" @click.stop="emit('day', day)" /></div>
         </div>

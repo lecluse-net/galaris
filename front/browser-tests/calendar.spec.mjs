@@ -499,7 +499,11 @@ test('creating an event preserves all-day inclusive dates, recurrence and a fail
 test('clicking a blank day creates an all-day appointment while existing events and day navigation remain usable', async ({ page }) => {
   const model = await calendar(page)
   await start(page)
-  const day = page.locator('.month-cell').filter({ has: page.getByRole('button', { name: 'Thursday, November 12, 2026', exact: true }) })
+  const dayNumber = page.getByRole('button', { name: 'Thursday, November 12, 2026', exact: true })
+  await expect(dayNumber).toBeVisible()
+  const borders = await dayNumber.evaluate(button => [getComputedStyle(button).borderTopWidth, getComputedStyle(button, '::before').borderTopWidth])
+  expect(borders).toEqual(['0px', '0px'])
+  const day = page.locator('.month-cell').filter({ has: dayNumber })
   await day.click({ position: { x: 8, y: 115 } })
   const editor = page.getByRole('dialog')
   await expect(editor.getByRole('checkbox', { name: 'All day', exact: true })).toBeChecked()
@@ -509,7 +513,7 @@ test('clicking a blank day creates an all-day appointment while existing events 
   await expect.poll(() => model.writes.find(row => row.method === 'create')?.body).toMatchObject({ start: '2026-11-12', end: '2026-11-13' })
   await expect(page.getByRole('dialog').getByText('Synthetic whole-day appointment', { exact: true })).toBeVisible()
   await page.keyboard.press('Escape')
-  await page.getByRole('button', { name: 'Thursday, November 12, 2026', exact: true }).click()
+  await dayNumber.click()
   await expect(page.getByRole('region', { name: 'Day', exact: true })).toBeVisible()
 })
 
