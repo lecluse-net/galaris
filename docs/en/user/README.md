@@ -434,8 +434,8 @@ alone no longer grants access to everyone's data.
 
 ### Using a Messaging System
 
-In the default installation, `galaris-lab` and `galaris-knowledge` are globally disabled
-and individually enabled only for the **Galaris** Agent created during setup.
+By default, the **Galaris** Agent receives `galaris-lab`, `galaris-knowledge` and
+`galaris-plugin-development` individually. Global assignment for these skills is disabled.
 Permissions remain configurable, and updates preserve previously saved choices.
 
 The **Messenger** entry opens Galaris’s native messaging system when it is enabled and your role has the necessary permissions. You can create separate direct conversations with an Agent, search rooms, track unread messages, reply, attach a file, record a voice note, and start a browser call. The **Activity** panel shows publishable steps and Services from the round. Archiving a conversation removes it from the current list without deleting its history; you can find it again in the archives. Internal messaging does not offer group creation or participant management.

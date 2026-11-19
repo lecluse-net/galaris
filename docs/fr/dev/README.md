@@ -10,6 +10,7 @@ font foi ; les plans décrivent les extensions encore ouvertes.
 | Contrat du catalogue de services | [Services](service-catalog.md) |
 | Créer un bundle de plugin déclaratif | [Plugins](plugin-bundles.md) |
 | Choisir une façade et reproduire un Sample | [Guide auteur de plugins](plugin-authoring.md) |
+| Inspecter, installer et activer un plugin par HTTP | [API Plugins](plugin-api.md) |
 | Trouver modules, routes, modèles et outils | [Cartographie générée](../architecture/generated/project-map.md) |
 | Comprendre les frontières et transitions | [Architecture, invariants et flux](../architecture/README.md) |
 | Comprendre les choix structurels | [Décisions acceptées](../../../project/decisions/README.md) |

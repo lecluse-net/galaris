@@ -36,6 +36,12 @@ skills `galaris-lab` et `galaris-knowledge`. Leurs défauts globaux et la connex
 Les synchronisations ultérieures respectent la révocation de ces droits et les réglages
 utilisateur ; elles n’ajoutent pas ce nouveau défaut aux agents déjà initialisés.
 
+La compétence système `galaris-plugin-development` est aussi autorisée à la création.
+Pour un assistant existant, `app.skill.assignments` utilise `galaris.agent_id` pour créer
+son affectation initiale si elle manque. La synchronisation préserve les affectations
+existantes, y compris les révocations. Le défaut global de cette compétence est désactivé.
+Elle guide la création de plugins et les droits d’exécution restent propres aux outils.
+
 Sur une installation neuve, aucun responsable humain n'existe encore pendant
 DbAdmin. Un observateur du cycle de vie utilisateur rejoue le même dataset après
 la création du premier administrateur. Le verrou transactionnel partagé avec
@@ -46,4 +52,4 @@ créés atomiquement ; un échec reste réessayable sans laisser de marqueur par
 
 `app/agent/tests/test_default_agent.py` couvre l'inscription, la création, les
 collisions, les modifications, la révocation des droits, la suppression, la
-reprise après échec et les appels concurrents.
+reprise après échec, les appels concurrents et l’affectation du skill plugins à la mise à jour.

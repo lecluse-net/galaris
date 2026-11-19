@@ -4514,6 +4514,7 @@
       },
       {
         "files": [
+          "back/app/skill/dbadmin.py",
           "back/app/skill/learning_policy.py"
         ],
         "source": "app.skill",

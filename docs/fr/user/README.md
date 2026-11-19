@@ -518,10 +518,9 @@ suivie et attend son résultat, sans nécessiter de conversation avec un humain.
 la demande par son lien tâche. Son acceptation ne confirme ni une réponse du collègue ni
 l'accomplissement de l'action demandée ; les droits de contact et de partage restent nécessaires.
 
-Dans l’installation par défaut, les compétences `galaris-lab` et `galaris-knowledge` sont
-bloquées globalement et autorisées individuellement pour le seul agent **Galaris** créé
-à l’installation. Les autorisations restent modifiables et les mises à jour conservent
-les choix déjà enregistrés.
+Par défaut, l’agent **Galaris** reçoit individuellement `galaris-lab`, `galaris-knowledge`
+et `galaris-plugin-development`. L’affectation globale de ces compétences est désactivée.
+Les autorisations restent modifiables et les mises à jour conservent les choix déjà enregistrés.
 
 L'entrée **Messenger** ouvre la messagerie native de Galaris lorsqu'elle est activée et que votre
 rôle possède les droits nécessaires. Vous pouvez créer des conversations directes distinctes avec

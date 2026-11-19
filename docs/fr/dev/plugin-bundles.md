@@ -9,6 +9,7 @@ d'une fiche dans l'éditeur crée une copie indépendante lors de l'enregistreme
 Les Services existants, Connexions et droits suivent leurs parcours habituels.
 Le [guide auteur](plugin-authoring.md) fournit les sources des Samples et la commande
 de signature.
+L’[API Plugins](plugin-api.md) détaille les routes d’aperçu, d’installation et d’activation.
 
 ## Préparer une archive
 
@@ -58,8 +59,9 @@ L'installateur vérifie toujours l'intégrité, le signataire et le contrat des 
 
 ## Ajouter des contributions exécutables
 
-Utiliser `format_version: 2` pour réunir des fiches de Service et plusieurs contributions
-exécutables dans un même ZIP. Les chemins et les empreintes sont déterminés par le type.
+Utiliser `format_version: 2` pour réunir des fiches de Service, des modèles de données et
+des contributions exécutables dans un même ZIP. Les chemins et les empreintes sont déterminés
+par le type.
 
 | Famille | Fichiers et contrat `1` |
 |---|---|
@@ -84,7 +86,7 @@ et les opérations qui en dépendent. Services et Connexions conservent leurs pa
 
 `plugin_format(context)` renvoie un `DocumentFormatDefinition` binaire dont le code,
 le fournisseur et la version correspondent au manifeste. Le module web exporte
-`createFormat(host)` et renvoie `editor`, `snapshot` et éventuellement `preview`.
+`createFormat(host)` et renvoie `editor`, `snapshot` et éventuellement `preview` et `embed`.
 `host` fournit `vue`, `useI18n`, `solaire`, `saveBlobAsResource` et les composants
 `QBanner`, `QBtn`, `QBtnToggle`, `QSpace`, `QSpinner` sous `host.quasar`. L'éditeur reçoit
 `DocumentContentSource`. Le module web est public pendant l'activation.
@@ -95,6 +97,12 @@ Les plugins qui utilisent la barre commune prennent le composant dans
 `host.DocumentToolbar`. Déclarer une version minimale de Galaris qui fournit
 ce composant et vérifier l'ouverture de l'éditeur sur cette version.
 [Contrat de la barre d'outils](document-formats.md)
+
+Pour afficher le format en mode Intégré dans un autre document, déclarer `embed`
+dans les surfaces du codec et renvoyer le composant `embed` depuis `createFormat(host)`.
+Ce composant reçoit la source autorisée en lecture seule. Un éditeur peut lui-même composer
+des références avec `host.DocumentLink`, `host.DocumentCard` et `host.DocumentEmbed`.
+[Contrat des références](document-references.md)
 
 `python_requirements` accepte les dépendances préinstallées à version exacte.
 Les entrées `runtime_requirements` déclarent `code` et `image` épinglée par digest.

@@ -158,7 +158,7 @@ async def initialize_galaris_agent_skills(agent_id: int) -> None:
             AgentSkill.agent_id == agent_id,
             AgentSkill.skill_id.in_(select(Skill.id).where(
                 Skill.owner_agent_id.is_(None),
-                Skill.code.in_(("galaris-lab", "galaris-knowledge"))
+                Skill.code.in_(("galaris-lab", "galaris-knowledge", storage.PLUGIN_DEVELOPMENT_SKILL_CODE))
             )),
         ).values(active=True)
     )

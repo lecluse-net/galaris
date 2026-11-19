@@ -32,6 +32,7 @@ MAX_COMPRESSION_RATIO = 250
 _IGNORED_ARCHIVE_PARTS = {"__MACOSX"}
 _IGNORED_ARCHIVE_FILES = {".DS_Store"}
 SYSTEM_SKILLS_ROOT = Path(__file__).parent / "system_skills"
+PLUGIN_DEVELOPMENT_SKILL_CODE = "galaris-plugin-development"
 _TEXT_EXTENSIONS = {
     ".css", ".csv", ".env", ".html", ".ini", ".js", ".json", ".jsx",
     ".md", ".py", ".rst", ".sh", ".sql", ".toml", ".ts", ".tsx",
@@ -67,6 +68,7 @@ SYSTEM_SKILLS = (
     SystemSkill(code="galaris", label="Galaris", default_enabled=True),
     SystemSkill(code="galaris-lab", label="Galaris Lab", default_enabled=False),
     SystemSkill(code="galaris-knowledge", label="Connaissance de Galaris", default_enabled=False),
+    SystemSkill(code=PLUGIN_DEVELOPMENT_SKILL_CODE, label="Développement de plugins Galaris", default_enabled=False),
 )
 
 

@@ -27,7 +27,7 @@ Les dix mécanismes IA du Lab, ses campagnes de processus et les mécanismes de 
 constituent des fonctions distinctes. Les sources et tests décrivent les garanties du logiciel ;
 ce catalogue ne constitue pas une qualification de chaque installation ou fournisseur.
 
-Les inventaires couvrent **294 fonctions MCP natives, 79 modules backend et 40 modules frontend**.
+Les inventaires couvrent **294 fonctions MCP natives, 80 modules backend et 41 modules frontend**.
 Cette revue inclut le code de développement et les changements locaux présents ; elle ne décrit
 pas uniquement la dernière publication. Le client desktop constitue une application de support
 distincte des modules web dénombrés.
@@ -465,8 +465,8 @@ Ses connexions et compétences ordinaires sont initialisées. Ses connexions **A
 **AgentAdmin** et **ServiceAdmin** sont activées lors de cette création. Administration permet
 notamment de consulter la documentation ; cette connexion peut aussi
 autoriser les inspections d’exécution selon les fonctions accordées. Ce cas diffère du défaut
-inactif de cette connexion pour les autres agents. Les compétences `galaris-knowledge` et `galaris-lab`
-sont autorisées individuellement pour cet assistant à sa création, tout en restant désactivées
+inactif de cette connexion pour les autres agents. Les compétences `galaris-knowledge`, `galaris-lab`
+et `galaris-plugin-development` sont autorisées individuellement pour cet assistant, tout en restant désactivées
 globalement. La connexion Lab reste inactive : disposer de la compétence ne suffit pas à exécuter ses outils.
 
 Lors de cette création, toutes ses connexions intégrées proposant une portée reçoivent `all`
@@ -3335,6 +3335,11 @@ et opérations sur le fichier principal restent protégés selon le contrat.
 Les compétences apprises par Dream sont des packages personnels, avec score et preuves.
 Elles deviennent utilisables lorsque leur état et leurs seuils le permettent.
 
+Le skill système `galaris-plugin-development` guide l’agent dans la création et la qualification
+d’un plugin. Il est attribué par défaut à l’assistant Galaris, à la création ou lors d’une mise à
+jour si l’affectation manque. Les accès au code source, à la signature et à l’administration
+restent régis par leurs autorisations. [Guide auteur](../dev/plugin-authoring.md)
+
 La matrice présente **Global (tous)**, **Catégorie** et **Cet agent** avec des commandes Actif/Bloqué.
 Seule la règle applicable apparaît sélectionnée : la dérogation de compétence pour l’agent prévaut,
 puis sa règle de catégorie, puis le réglage global. L’absence de sélection dans une colonne signale l’héritage
@@ -6031,7 +6036,7 @@ les [garanties fonctionnelles testées](../dev/functional-tests.md) et les sourc
 
 ### Modules backend déclarés
 
-Les **79 modules déclarés** sont tous rattachés à une ou plusieurs sections. Les conditions
+Les **80 modules déclarés** sont tous rattachés à une ou plusieurs sections. Les conditions
 d’activation et de configuration restent celles du runtime.
 
 | Module | Fonction couverte / section |
@@ -6045,6 +6050,7 @@ d’activation et de configuration restent celles du runtime.
 | `app.incident` | [Journal de défaillances et suivi des correctifs](#supervision) |
 | `app.services` | [Catalogue, intégrations, recherche et restrictions de fonctions](#outils) |
 | `app.documentation` | [Corpus produit installé, provenance, recherche hybride et accès agentique](#outils), [actualisation de l’index partagé](#exploitation) |
+| `app.plugin` | [Installation, activation et retrait de bundles signés](../dev/plugin-bundles.md), [API Plugins](../dev/plugin-api.md) |
 | `app.agent` | [Identité, administration déléguée et portraits](#agents), [organisation adaptative, portée, plans et preuves de livraison](#taches), [API agents et Janus](#modeles) |
 | `app.share` | [Partage commun, droits exclusifs par ressource, groupes et révocation](#documents) |
 | `app.harness` | [Exécution interne Pydantic AI](#harnais) |
@@ -6118,7 +6124,7 @@ d’activation et de configuration restent celles du runtime.
 
 ### Modules frontend déclarés
 
-Les **40 modules frontend** suivants sont couverts. Les contributions de bridge ajoutent généralement
+Les **41 modules frontend** suivants sont couverts. Les contributions de bridge ajoutent généralement
 des formulaires/guides aux écrans communs, plutôt qu’une application indépendante.
 
 | Module | Écrans ou contribution |
@@ -6146,6 +6152,7 @@ des formulaires/guides aux écrans communs, plutôt qu’une application indépe
 | `app/topic` | Liste, détail et réorganisation des sujets |
 | `app/goal` | Objectifs, arbre, cycles, référents, horaires et suivi |
 | `app/document` | Bibliothèque Texte/Données, résumés courants, rédaction avec conversation, applications, droits, dossiers personnels, miniatures et partage |
+| `app/plugin` | Administration des plugins, import de bundles, activation et retrait |
 | `app/memory` | Souvenirs privés, liste/recherche, temporalité et simulation, graphe à branches repliables, fichiers, emplacements et contacts |
 | `app/lab` | Analyse de tâches, jeux synthétiques contextualisés, évaluation par mécanisme, cohérence et revues attribuées |
 | `app/incident` | Incidents, familles et revue |

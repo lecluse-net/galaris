@@ -384,7 +384,8 @@ rattaché au premier administrateur actif, avec son avatar dédié fourni dans l
 le harnais interne, le profil courant par défaut, les connexions `platform_admin`
 (documentation comprise), `service_admin`, `agent_admin`, `process_admin`, `goal_management`,
 `skills` et `chat` actives avec `services.management_scope=all` et les compétences
-`galaris-lab` et `galaris-knowledge` autorisées individuellement. Leur défaut global reste désactivé.
+`galaris-lab`, `galaris-knowledge` et `galaris-plugin-development` autorisées individuellement.
+Leur défaut global reste désactivé.
 S'il n'y a pas encore d'administrateur, la première inscription rejoue ce même dataset.
 Le paramètre global interne `galaris.agent_id` conserve l'identifiant de cet agent après
 renommage et suppression : les synchronisations suivantes ne recréent pas cet agent et
@@ -396,6 +397,10 @@ créent la catégorie **Galaris** et y classent les compétences système Galari
 L’affectation utilise `update_only_null=True` : un classement personnalisé est conservé.
 Les autorisations globales et individuelles sont conservées ; les règles d’une catégorie
 Galaris déjà configurée s’appliquent aux compétences qui la rejoignent.
+
+`app.skill.assignments` ajoute l’autorisation initiale de `galaris-plugin-development` à
+l’assistant enregistré quand l’affectation est absente. Une synchronisation conserve
+l’état d’une affectation existante, y compris une désactivation.
 
 Les civilités des agents (`titles`) sont initialisées avec les clés i18n
 `agent_titles.mr` (`M`) et `agent_titles.ms` (`F`) dans le champ `label` existant,

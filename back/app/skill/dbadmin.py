@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent import Agent, list_driver_specs
 from core.dbadmin import DbAdminAction, DbAdminPhase, SchemaTransitionSet, DbAdminDataSource, DbAdminDataset, DbAdminRegistry, DbAdminReconciler
+from core.params import Param, Params
 
 from . import storage
 from .models import AgentSkill, Skill, SkillCategory
@@ -125,12 +126,17 @@ async def _assignment_rows(
             )
         ).all()
     )
-    skill_ids = tuple(int(value) for value in (await session.scalars(
-        select(Skill.id).where(Skill.owner_agent_id.is_(None))
-    )).all())
+    skills = (await session.execute(
+        select(Skill.id, Skill.code).where(Skill.owner_agent_id.is_(None))
+    )).tuples().all()
+    galaris_agent_id = await session.scalar(select(Param.value).where(Param.name == Params.GALARIS_AGENT_ID))
     return tuple(
-        {"agent_id": agent_id, "skill_id": skill_id, "active": None}
-        for skill_id in skill_ids
+        {
+            "agent_id": agent_id,
+            "skill_id": skill_id,
+            "active": True if code == storage.PLUGIN_DEVELOPMENT_SKILL_CODE and str(agent_id) == galaris_agent_id else None,
+        }
+        for skill_id, code in skills
         for agent_id in agent_ids
     )
 
@@ -194,7 +200,7 @@ def datasets() -> tuple[DbAdminDataset, ...]:
             natural_key=("agent_id", "skill_id"),
             rows=_assignment_rows,
             update_columns=(),
-            depends_on=("app.skill.galaris_category_assignments",),
+            depends_on=("app.skill.galaris_category_assignments", "core.params.declarations"),
         ),
     )
 

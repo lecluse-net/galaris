@@ -26,6 +26,18 @@ eligibility and then the execution trace.
 A skill is relevant when its method serves the request; appearing in the catalog is not a
 reason to load it for an unrelated self-contained answer or simple calculation.
 
+## Ask an agent to create a plugin
+
+The **Galaris** assistant receives the **Galaris plugin development** skill
+(`galaris-plugin-development`) by default. For another agent, open **Configure → Skills →
+Authorizations** and enable it for that agent. Specify the outcome, target Galaris version and
+accessible sources. For example, ask the agent to prepare an importable JSON template or a
+REST connector, with tests and signing commands.
+
+The skill guides source and bundle preparation. The run's workspace and tools determine whether
+the agent can build and qualify the archive. The signing key and installation authorization
+are managed separately. [Plugin authoring guide](../dev/plugin-authoring.md)
+
 ## Learn through the weekly retrospective
 
 The weekly retrospective can create a personal package or revise an existing procedure from

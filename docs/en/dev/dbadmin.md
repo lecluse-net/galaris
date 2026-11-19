@@ -340,7 +340,8 @@ first active administrator, with its dedicated avatar bundled in the backend, th
 the current default LLM profile, active `platform_admin` (including documentation access),
 `service_admin`, `agent_admin`, `process_admin`, `goal_management`, `skills` and `chat`
 connections with `services.management_scope=all`, and an
-individual authorization for the `galaris-lab` and `galaris-knowledge` skills. Their global defaults remain disabled.
+individual authorization for `galaris-lab`, `galaris-knowledge` and `galaris-plugin-development`.
+Their global defaults remain disabled.
 If no administrator exists yet, the first signup replays the same dataset.
 The internal global `galaris.agent_id` parameter retains the agent's ID after renaming and deletion:
 later synchronizations neither recreate the agent nor reset its settings or revoked
@@ -352,6 +353,10 @@ create the **Galaris** category and assign uncategorized Galaris system skills t
 Assignments use `update_only_null=True` to preserve custom classifications.
 Global and individual authorizations are preserved; any existing Galaris category rules
 apply to skills joining that category.
+
+`app.skill.assignments` adds the initial `galaris-plugin-development` authorization to the recorded
+assistant when no assignment exists. Synchronization preserves existing assignment states,
+including explicit revocation.
 
 Agent titles (`titles`) are initialized with i18n keys `agent_titles.mr` (`M`) and
 `agent_titles.ms` (`F`) in the existing `label` field by

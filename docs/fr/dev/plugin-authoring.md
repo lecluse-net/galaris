@@ -9,6 +9,9 @@ Galaris fournit les droits, les transactions, les révisions et les commandes
 de bibliothèque. La [conception du chargeur](../../../project/plans/infrastructure-plugins-galaris.md)
 décrit les autres familles et leur état de réalisation.
 
+Le [contrat du bundle](plugin-bundles.md) définit ce que le chargeur accepte. L’[API Plugins](plugin-api.md)
+documente l’aperçu, l’installation et l’activation des versions signées.
+
 ## Samples à reproduire
 
 En `APP_ENV=dev`, **Administrer → Plugins** affiche les trois Samples du dépôt.
@@ -164,6 +167,133 @@ Dessin (Sample) garde son code de développement distinct de Dessin (ZIP).
 | Distribuer des skills ou données | [Développement Galaris](README.md), [DbAdmin](dbadmin.md) | Sample Données livre un modèle importable. Les packs de skills et les jeux permanents gérés par le registre restent prévus. |
 | Ajouter un panneau, un éditeur de fichiers externe ou un nouveau protocole | [Plan d'extension](../../../project/plans/infrastructure-plugins-galaris.md) | Les ports de publication correspondants restent à définir. |
 
+## Exemples à adapter
+
+### Distribuer un modèle de données
+
+Placer ce `manifest.json` dans le dossier de préparation. Adapter la plage à la version de
+Galaris que vous qualifiez. Le packager calcule `sha256` avant de signer le manifeste.
+
+```json
+{
+  "format_version": 2,
+  "code": "example.inventory",
+  "version": "1.0.0",
+  "label": {"fr": "Inventaire de démonstration", "en": "Demo inventory"},
+  "description": {"fr": "Modèle JSON importable.", "en": "Importable JSON template."},
+  "minimum_galaris_version": "0.3.2",
+  "maximum_galaris_version_exclusive": "1.0.0",
+  "contributions": [{
+    "family": "data_template",
+    "code": "example.inventory",
+    "label": {"fr": "Inventaire", "en": "Inventory"},
+    "contract_version": 1
+  }]
+}
+```
+
+Dans le même dossier, créer `data/example.inventory.json`.
+
+```json
+[
+  {"sku": "DEMO-001", "quantity": 3, "available": true},
+  {"sku": "DEMO-002", "quantity": 0, "available": false}
+]
+```
+
+Construire le ZIP avec la clé de l’éditeur `example` en réutilisant la commande de signature
+du guide. Après activation, télécharger le modèle sur sa carte ou via l’API. Dans
+**Documents → Nouveau document depuis…**, importer le JSON. Modifier la quantité dans la copie
+et vérifier que le modèle téléchargé garde ses valeurs.
+
+### Connecter un Service REST ou MCP
+
+Pour REST, créer un dossier avec ce `manifest.json`. La contribution `service_preset`
+porte le code de la fiche YAML.
+
+```json
+{
+  "format_version": 1,
+  "code": "example.stock",
+  "version": "1.0.0",
+  "label": {"fr": "Stock", "en": "Stock"},
+  "description": {"fr": "Connecteur REST.", "en": "REST connector."},
+  "minimum_galaris_version": "0.3.2",
+  "maximum_galaris_version_exclusive": "1.0.0",
+  "contributions": [{
+    "family": "service_preset",
+    "code": "example-stock",
+    "label": {"fr": "Service Stock", "en": "Stock service"},
+    "contract_version": 1
+  }]
+}
+```
+
+Créer `services/example-stock.yaml` avec le même code de contribution.
+
+```yaml
+code: example-stock
+label: Example Stock
+catalog:
+  format_version: 1
+  version: 1.0.0
+  summary:
+    en: Read stock from a configured connection.
+    fr: Lire le stock via une connexion configurée.
+capabilities:
+  - rest.api
+rest_config:
+  base_url: ${connection:url}
+  auth:
+    type: bearer
+    param: token
+connection_schema:
+  params:
+    url: {type: string, label: URL, required: true}
+    token: {type: password, label: Token, required: true}
+```
+
+Configurer une copie du Service après activation. Dans sa Connexion, renseigner l’URL et le
+jeton d’un serveur synthétique. Utiliser une route de lecture connue, par exemple `GET /status`.
+Pour MCP, garder la même structure de manifeste avec une nouvelle identité, par exemple
+`example.inventory-tools`, et le code de contribution `example-inventory-tools`. Placer cette
+fiche dans `services/example-inventory-tools.yaml`.
+
+```yaml
+code: example-inventory-tools
+label: Example Inventory Tools
+catalog:
+  format_version: 1
+  version: 1.0.0
+  summary:
+    en: Connect to an inventory MCP server.
+    fr: Connecter un serveur MCP d’inventaire.
+capabilities:
+  - http.mcp
+mcp_config:
+  type: http
+  auth:
+    type: none
+    url_param: url
+connection_schema:
+  params:
+    url: {type: string, label: URL, required: true}
+```
+
+Renseigner dans la Connexion l’adresse MCP Streamable HTTP du serveur synthétique. Vérifier
+la découverte des fonctions et appeler une fonction de lecture de la fixture. Si la cible
+exige une authentification, choisir le mode documenté par le [catalogue de Services](service-catalog.md).
+
+### Implémenter une contribution exécutable
+
+| Cas | Exemple à reproduire et scénario à vérifier |
+|---|---|
+| Document signé | Le build du Sample Dessin place le codec derrière `plugin_format(context)` et exporte `createFormat(host)` côté navigateur. Le document créé ouvre un PNG autorisé, enregistre avec sa révision lue et propose un aperçu historique. Tester le téléchargement de l’original après retrait. |
+| Éditeur de document avec références | Utiliser `host.DocumentLink`, `host.DocumentCard` et `host.DocumentEmbed` dans le module Vue pour composer les références. L’éditeur choisit les modes par type. Pour permettre à d’autres documents d’intégrer ce format, déclarer la capacité Embed des deux côtés et fournir un lecteur complet en lecture seule. [Contrat des références](document-references.md) |
+| Fournisseur IA | Le Sample Fournisseur IA renvoie un `ProviderProfile` depuis `plugin_provider(context)` et utilise le transport OpenAI-compatible de l’hôte. Vérifier une réponse avec une connexion synthétique et ses paramètres. |
+| Conversion de pièce jointe | Le Sample Conversion renvoie un `PreviewConverter` depuis `plugin_converter(context)`. Il reconnaît `.sample-note`, borne la lecture, valide UTF-8 et produit un aperçu temporaire. Vérifier que le téléchargement normal conserve les octets originaux. |
+| Protocole de fichiers | Le Sample Partage de fichiers publie `plugin_file_share_protocol(context)` et une fiche dans le même ZIP. Tester la liste et la lecture de `note.txt` avec les paramètres de Connexion, puis le refus d’écriture du transport en lecture seule. |
+
 ## Recette pour un agent auteur
 
 1. Choisir la ligne de la matrice et lire son contrat, son Sample et son test.
@@ -178,12 +308,13 @@ Les skills `galaris-plugin-author` et `galaris-plugin-qualification` sont dans
 `.agents/skills`. Ils guident respectivement la construction et la vérification
 sous le contrôle de l'opérateur.
 
-Un agent travaillant sur le dépôt utilise ces skills dans son espace de travail.
-Pour les proposer à des agents Galaris, importer les deux fichiers `SKILL.md`
-ou leurs ZIP individuels via **Configurer → Compétences → Importer**, puis les
-affecter aux agents auteurs et qualificateurs. Donner aux agents concernés l'accès
-au dépôt et aux outils de test nécessaires. Les liens vers les contrats et les Samples
-pointent vers le dépôt. Voir le [guide des compétences](../user/skills.md) pour les droits.
+L’agent Galaris fourni avec l’application reçoit le skill système
+`galaris-plugin-development` par défaut. Il le charge à la demande. Pour un autre agent,
+l’affecter dans **Configurer → Compétences → Autorisations**. Le skill peut lire ces
+guides via les fonctions de documentation autorisées. La construction et la qualification
+d’un ZIP demandent aussi un espace de travail, les outils adéquats et un accès aux sources
+ou aux exemples. La clé privée reste dans l’environnement de signature de l’éditeur.
+Voir le [guide des compétences](../user/skills.md) pour les droits.
 
 ```bash
 make tests ARGS='app/plugin/tests app/document/tests/test_sample_drawing.py app/document/tests/test_formats.py'

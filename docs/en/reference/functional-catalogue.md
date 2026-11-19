@@ -22,7 +22,7 @@ verification facilities. The Lab's ten AI mechanisms, its Process campaigns and 
 mechanisms are distinct capabilities. Sources and tests describe software guarantees; this catalogue
 does not qualify every installation or provider.
 
-The inventory covers **294 native MCP functions, 79 backend modules and 40 frontend modules**.
+The inventory covers **294 native MCP functions, 80 backend modules and 41 frontend modules**.
 This review includes development code and local changes, beyond the latest published release.
 The desktop client is a separate support application, outside these web-module counts.
 Implemented features remain distinct from intentions in the [plan register](../../../project/plans/README.md).
@@ -370,8 +370,8 @@ administrator. Fresh installs wait for registration; existing installs receive t
 Ordinary skills/connections are initialized. **Administration**, **AgentAdmin** and **ServiceAdmin**
 are enabled at creation. Administration covers product documentation and permitted execution
 inspections, unlike its inactive default for other
-agents. The assistant individually receives `galaris-knowledge` and `galaris-lab` at creation,
-while both remain globally disabled. The Lab connection stays inactive: having its skill does
+agents. The assistant individually receives `galaris-knowledge`, `galaris-lab` and
+`galaris-plugin-development`, while global assignment remains disabled. The Lab connection stays inactive: having its skill does
 not grant permission to execute Lab tools.
 
 At creation, all its built-in connections offering a scope start active with `all`, including
@@ -2649,6 +2649,11 @@ created. Documentation access alone does not assign them to other agents. Update
 assignments/revocations, and administrators can change permissions. Assignment does not replace Service
 permissions, particularly the Lab connection, which remains inactive by default.
 
+The `galaris-plugin-development` system skill guides plugin authoring and qualification.
+The Galaris assistant receives it by default at creation or on upgrade if no assignment exists.
+Source, signing and administration access follow their own authorizations.
+[Plugin authoring guide](../dev/plugin-authoring.md)
+
 A **Galaris** category initially groups system `galaris` and `galaris-*` skills without a category,
 preserving custom classifications. Descriptions and classification/permission controls remain
 usable in narrow desktop panels.
@@ -4829,7 +4834,7 @@ behavioural review. Technical evidence remains in the [generated map](../archite
 
 ### Declared backend modules
 
-All **79 declared modules** map to one or more sections; runtime activation/configuration still applies.
+All **80 declared modules** map to one or more sections; runtime activation/configuration still applies.
 
 | Module | Capability/section |
 |---|---|
@@ -4842,6 +4847,7 @@ All **79 declared modules** map to one or more sections; runtime activation/conf
 | `app.incident` | [Failure journal and remediation](#supervision) |
 | `app.services` | [Catalogue, integrations, search and function restrictions](#outils) |
 | `app.documentation` | [Installed corpus, provenance, hybrid search and agent access](#outils), [shared-index refresh](#exploitation) |
+| `app.plugin` | [Install, activate and remove signed bundles](../dev/plugin-bundles.md), [Plugin API](../dev/plugin-api.md) |
 | `app.agent` | [Identity, delegated administration and portraits](#agents), [adaptive organization, scope, plans and delivery evidence](#taches), [agent API/Janus](#modeles) |
 | `app.share` | [Shared permissions, exclusive resource policies, groups and revocation](#documents) |
 | `app.harness` | [Internal Pydantic AI execution](#harnais) |
@@ -4915,7 +4921,7 @@ All **79 declared modules** map to one or more sections; runtime activation/conf
 
 ### Declared frontend modules
 
-All **40 frontend modules** are covered. Bridges usually contribute forms/guides to shared screens,
+All **41 frontend modules** are covered. Bridges usually contribute forms/guides to shared screens,
 rather than independent applications.
 
 | Module | Screens/contribution |
@@ -4943,6 +4949,7 @@ rather than independent applications.
 | `app/topic` | Topic list/detail/reorganisation |
 | `app/goal` | Objectives, tree, cycles, referrers, schedules and follow-up |
 | `app/document` | Text/Data library, current summaries, authoring with conversation, apps, rights, personal folders, thumbnails and sharing |
+| `app/plugin` | Plugin administration, bundle import, activation and removal |
 | `app/memory` | Private memories, list/search, temporal simulation, graph with folded branches, files, locations and contacts |
 | `app/lab` | Task diagnosis, contextual synthetic datasets, mechanism evaluation, consistency and attributed reviews |
 | `app/incident` | Incidents, families and review |

@@ -555,7 +555,7 @@ tests restent l’autorité sur le comportement.
 | `app.skill` | `core.authorize` | `back/app/skill/router.py` |
 | `app.skill` | `core.database` | `back/app/skill/interface.py`, `back/app/skill/learning_policy.py`, `back/app/skill/learning_service.py`, `back/app/skill/models.py`, `back/app/skill/personal_catalogue.py`, `back/app/skill/router.py`, `back/app/skill/skill_service.py` |
 | `app.skill` | `core.dbadmin` | `back/app/skill/dbadmin.py`, `back/app/skill/learning_upgrade.py`, `back/app/skill/skill_service.py` |
-| `app.skill` | `core.params` | `back/app/skill/learning_policy.py` |
+| `app.skill` | `core.params` | `back/app/skill/dbadmin.py`, `back/app/skill/learning_policy.py` |
 | `app.skill` | `core.user` | `back/app/skill/interface.py`, `back/app/skill/router.py` |
 | `app.skill` | `core.util` | `back/app/skill/interface.py`, `back/app/skill/learning_service.py`, `back/app/skill/ownership_recovery.py`, `back/app/skill/projection.py`, `back/app/skill/skill_service.py` |
 | `app.task` | `app.agent` | `back/app/task/__init__.py`, `back/app/task/activity_snapshot.py`, `back/app/task/agent_adapter.py`, `back/app/task/amendment_service.py`, `back/app/task/budget.py`, `back/app/task/call_recovery.py`, `back/app/task/collab.py`, `back/app/task/execution_scope.py`, `back/app/task/facade.py`, `back/app/task/live_checkpoint.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/operational_state.py`, `back/app/task/outcome.py`, `back/app/task/replacement.py`, `back/app/task/router.py`, `back/app/task/run_events.py`, `back/app/task/runner.py`, `back/app/task/scheduler.py`, `back/app/task/schemas.py`, `back/app/task/task_service.py`, `back/app/task/work_tracking.py`, `back/app/task/working_set.py` |

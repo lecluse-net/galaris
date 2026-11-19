@@ -9,6 +9,9 @@ owns permissions, publication, revisions and the library. The
 [plugin plan](../../../project/plans/infrastructure-plugins-galaris.md) tracks
 the other extension families.
 
+The [bundle contract](plugin-bundles.md) defines what the loader accepts. The
+[Plugin API](plugin-api.md) documents previewing, installing and activating signed releases.
+
 ## Working reference samples
 
 In `APP_ENV=dev`, **Administer → Plugins** shows the three checkout samples.
@@ -153,6 +156,133 @@ Deactivate and uninstall the release, then verify the original download. Drawing
 | Skills and data | [Development guide](README.md), existing domain importers and [DbAdmin](dbadmin.md). Sample Data distributes an importable template. Skill packs and registry-managed datasets remain planned. |
 | Panels, external file editors and installable new protocols | Refer to the [plugin plan](../../../project/plans/infrastructure-plugins-galaris.md) for the publication contracts still to design. |
 
+## Examples to adapt
+
+### Distribute a data template
+
+Put this `manifest.json` in the staging directory. Adjust the range to the Galaris version
+you qualify. The packager computes `sha256` before signing the manifest.
+
+```json
+{
+  "format_version": 2,
+  "code": "example.inventory",
+  "version": "1.0.0",
+  "label": {"fr": "Inventaire de démonstration", "en": "Demo inventory"},
+  "description": {"fr": "Modèle JSON importable.", "en": "Importable JSON template."},
+  "minimum_galaris_version": "0.3.2",
+  "maximum_galaris_version_exclusive": "1.0.0",
+  "contributions": [{
+    "family": "data_template",
+    "code": "example.inventory",
+    "label": {"fr": "Inventaire", "en": "Inventory"},
+    "contract_version": 1
+  }]
+}
+```
+
+In the same directory, create `data/example.inventory.json`.
+
+```json
+[
+  {"sku": "DEMO-001", "quantity": 3, "available": true},
+  {"sku": "DEMO-002", "quantity": 0, "available": false}
+]
+```
+
+Build the ZIP with the `example` publisher key using the signing command above. After activation,
+download the template from its card or through the API. Import the JSON using
+**Documents → New document from…**. Change a quantity in the copy and verify that another download
+of the template retains the original quantities.
+
+### Connect a REST or MCP Service
+
+For REST, create a directory with this `manifest.json`. The `service_preset` contribution
+uses the code of the YAML preset.
+
+```json
+{
+  "format_version": 1,
+  "code": "example.stock",
+  "version": "1.0.0",
+  "label": {"fr": "Stock", "en": "Stock"},
+  "description": {"fr": "Connecteur REST.", "en": "REST connector."},
+  "minimum_galaris_version": "0.3.2",
+  "maximum_galaris_version_exclusive": "1.0.0",
+  "contributions": [{
+    "family": "service_preset",
+    "code": "example-stock",
+    "label": {"fr": "Service Stock", "en": "Stock service"},
+    "contract_version": 1
+  }]
+}
+```
+
+Create `services/example-stock.yaml` with the same contribution code.
+
+```yaml
+code: example-stock
+label: Example Stock
+catalog:
+  format_version: 1
+  version: 1.0.0
+  summary:
+    en: Read stock from a configured connection.
+    fr: Lire le stock via une connexion configurée.
+capabilities:
+  - rest.api
+rest_config:
+  base_url: ${connection:url}
+  auth:
+    type: bearer
+    param: token
+connection_schema:
+  params:
+    url: {type: string, label: URL, required: true}
+    token: {type: password, label: Token, required: true}
+```
+
+Configure a copy of the Service after activation. Set a synthetic server URL and token on its
+Connection. Use a known read-only route such as `GET /status`.
+For MCP, use the same manifest structure with a new identity such as `example.inventory-tools`
+and a contribution code of `example-inventory-tools`. Put this preset in
+`services/example-inventory-tools.yaml`.
+
+```yaml
+code: example-inventory-tools
+label: Example Inventory Tools
+catalog:
+  format_version: 1
+  version: 1.0.0
+  summary:
+    en: Connect to an inventory MCP server.
+    fr: Connecter un serveur MCP d’inventaire.
+capabilities:
+  - http.mcp
+mcp_config:
+  type: http
+  auth:
+    type: none
+    url_param: url
+connection_schema:
+  params:
+    url: {type: string, label: URL, required: true}
+```
+
+Set the synthetic server's Streamable HTTP MCP endpoint in the Connection. Verify tool
+discovery and call a read-only function on the fixture. If the target requires authentication,
+choose a mode described in the [Services catalogue](service-catalog.md).
+
+### Implement an executable contribution
+
+| Case | Example to follow and scenario to verify |
+|---|---|
+| Signed document format | The Drawing Sample build wraps the codec in `plugin_format(context)` and exports `createFormat(host)` for the browser. A document opens an authorized PNG, saves against the observed revision and provides a historical preview. Verify that the original can still be downloaded after removal. |
+| Document editor with references | Use `host.DocumentLink`, `host.DocumentCard` and `host.DocumentEmbed` in the Vue module to compose references. The editor chooses modes per resource type. Declare Embed support on both sides and supply a complete read-only viewer so other documents can embed the format. [Reference contract](document-references.md) |
+| AI provider | Sample AI Provider returns a `ProviderProfile` from `plugin_provider(context)` and uses the host's OpenAI-compatible transport. Verify a response through a synthetic Connection and its parameters. |
+| Attachment conversion | Sample Preview Converter returns a `PreviewConverter` from `plugin_converter(context)`. It recognizes `.sample-note`, reads a bounded amount, validates UTF-8 and produces a temporary preview. Verify an ordinary download preserves the original bytes. |
+| File protocol | Sample File Sharing publishes `plugin_file_share_protocol(context)` and a preset in the same ZIP. Test listing and reading `note.txt` through Connection parameters, then verify that the read-only transport refuses writes. |
+
 ## Agent authoring workflow
 
 Use the `galaris-plugin-author` and `galaris-plugin-qualification` skills in
@@ -161,12 +291,12 @@ permission denials, retry and removal, and report the evidence for the exact
 bundle and capabilities. Codec results, API integration and browser journeys
 provide different evidence.
 
-Agents working in the repository use these skills in their workspace. To make them
-available to Galaris agents, import the two `SKILL.md` files or their individual ZIP
-files via **Configure → Skills → Import**, then assign them to authors and reviewers.
-Give those agents access to the repository and the tools needed for testing. Links
-to contracts and Samples point to the repository. See the [Skills guide](../user/skills.md)
-for access and assignment permissions.
+The bundled Galaris assistant receives the `galaris-plugin-development` system skill by default.
+It loads the skill on demand. Assign it to another agent through **Configure → Skills → Authorizations**.
+The skill can read these guides through authorized documentation functions. Building and qualifying
+a ZIP also requires a workspace, suitable tools and access to source or examples. The private key
+stays in the publisher's signing environment. See the [Skills guide](../user/skills.md) for access
+and assignment permissions.
 
 ```bash
 make tests ARGS='app/plugin/tests app/document/tests/test_sample_drawing.py app/document/tests/test_formats.py'

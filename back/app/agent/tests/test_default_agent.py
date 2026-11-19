@@ -4,13 +4,14 @@ import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.agent.defaults import default_agent_dataset
 from app.agent.models import Agent, Title
 from app.connection import Connection
 from app.connection.facade import get_management_scope, has_active_service_function, set_params_bulk
 from app.skill import AgentSkill, skill_service
+from app.skill.dbadmin import datasets as skill_datasets
 from app.services import ServiceModel, has_documentation_access, has_galaris_admin_access, initialize_admin_agent_connections
 from app.services.dbadmin import datasets as tool_datasets
 from core.authorize import Assignment, Role
@@ -18,6 +19,9 @@ from core.database import get_db_session
 from core.dbadmin import DbAdminDatasetResult, reconcile_dataset
 from core.user import UserModel, notify_user_access_changed
 from core.params import Param, Params
+
+
+GALARIS_SPECIALIST_SKILLS = ("galaris-lab", "galaris-knowledge", "galaris-plugin-development")
 
 
 async def _admin(db):
@@ -78,7 +82,7 @@ async def test_new_galaris_has_all_internal_tools_and_function_permissions(db):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("skill_code", ["galaris-lab", "galaris-knowledge"])
+@pytest.mark.parametrize("skill_code", GALARIS_SPECIALIST_SKILLS)
 @pytest.mark.parametrize("custom_avatar", [b"synthetic-custom-avatar", None])
 async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_deletion(db, skill_code, custom_avatar):
     dataset = default_agent_dataset()
@@ -198,9 +202,32 @@ async def test_seed_preserves_existing_galaris_agent(db):
     assert await has_documentation_access(existing.id)
     existing_skills = await skill_service.get_assigned_codes(existing.id)
     proposal_skills = await skill_service.get_assigned_codes(proposal.id)
-    for code in ("galaris-lab", "galaris-knowledge"):
+    for code in GALARIS_SPECIALIST_SKILLS:
         assert code not in existing_skills
         assert code in proposal_skills
+
+
+@pytest.mark.asyncio
+async def test_upgrade_assigns_plugin_skill_to_existing_galaris_and_preserves_revocation(db):
+    await _admin(db)
+    await reconcile_dataset(db, default_agent_dataset())
+    agent = await _proposal(db)
+    agent.code = "renamed-assistant"
+    code = "galaris-plugin-development"
+    skill = await skill_service.get_by_code(code)
+    assert skill is not None
+    await db.execute(delete(AgentSkill).where(
+        AgentSkill.agent_id == agent.id, AgentSkill.skill_id == skill.id,
+    ))
+    assert code not in await skill_service.get_assigned_codes(agent.id)
+
+    assignments = next(dataset for dataset in skill_datasets() if dataset.key == "app.skill.assignments")
+    assert (await reconcile_dataset(db, assignments)).inserted == 1
+    assert code in await skill_service.get_assigned_codes(agent.id)
+
+    await skill_service.set_agent_authorization(skill.id, agent.id, "disabled")
+    assert await reconcile_dataset(db, assignments) == DbAdminDatasetResult()
+    assert code not in await skill_service.get_assigned_codes(agent.id)
 
 
 @pytest.mark.asyncio
@@ -232,7 +259,7 @@ async def test_seed_failure_rolls_back_agent_and_grants_and_can_retry(db, monkey
     monkeypatch.setattr(module, method, initialize)
     assert (await reconcile_dataset(db, default_agent_dataset())).inserted == 1
     assert await has_documentation_access((await _proposal(db)).id)
-    assert {"galaris-lab", "galaris-knowledge"} <= set(
+    assert set(GALARIS_SPECIALIST_SKILLS) <= set(
         await skill_service.get_assigned_codes((await _proposal(db)).id)
     )
 
@@ -298,7 +325,7 @@ async def test_first_signup_immediately_proposes_manageable_galaris(client, monk
         "/api/skills/authorizations", headers=headers, params={"agent_id": agent["id"]},
     )
     assert authorizations.status_code == 200, authorizations.text
-    for code in ("galaris-lab", "galaris-knowledge"):
+    for code in GALARIS_SPECIALIST_SKILLS:
         skill = next(row for row in authorizations.json()["authorizations"] if row["code"] == code)
         assert skill["agent_state"] == "enabled" and skill["effective"] is True
         assert skill["global_state"] == "disabled"

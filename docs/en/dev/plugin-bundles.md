@@ -7,6 +7,7 @@ A release may contain multiple presets. Selecting a release publishes them in th
 catalogue in one transaction. Saving a preset in the Service editor creates an independent
 copy. Existing Services, connections and authorizations follow their ordinary workflows.
 The [authoring guide](plugin-authoring.md) includes the reference sources and signing commands.
+The [Plugin API](plugin-api.md) documents the preview, installation and activation routes.
 
 ## Prepare an archive
 
@@ -54,7 +55,7 @@ process. The installer always verifies integrity, publisher trust and preset con
 
 ## Add executable contributions
 
-Use `format_version: 2` to combine Service presets and executable contributions in
+Use `format_version: 2` to combine Service presets, data templates and executable contributions in
 one ZIP. The contribution family determines the file paths and digests.
 
 | Family | Files and contract `1` |
@@ -80,7 +81,7 @@ on it. Services and Connections retain their parameters.
 
 `plugin_format(context)` returns a binary `DocumentFormatDefinition` matching the
 declared code, provider and version. The browser module exports `createFormat(host)`
-and returns `editor`, `snapshot` and optional `preview`. `host` supplies `vue`,
+and returns `editor`, `snapshot` and optional `preview` and `embed`. `host` supplies `vue`,
 `useI18n`, `solaire`, `saveBlobAsResource` and the `QBanner`, `QBtn`, `QBtnToggle`,
 `QSpace`, and `QSpinner` components under `host.quasar`. The editor receives
 `DocumentContentSource`. The browser module is public while active.
@@ -90,6 +91,11 @@ the host provides on demand.
 Plugins that use the shared toolbar get the component from `host.DocumentToolbar`.
 Declare a minimum Galaris version that provides it and verify that the editor opens on
 that version. [Toolbar contract](document-formats.md)
+
+To let another document show the format in Embed mode, declare `embed` in the codec's
+surfaces and return the `embed` component from `createFormat(host)`. It receives the authorized
+read-only source. An editor can compose its own references with `host.DocumentLink`,
+`host.DocumentCard` and `host.DocumentEmbed`. [Reference contract](document-references.md)
 
 `python_requirements` accepts exact versions of preinstalled dependencies.
 `runtime_requirements` entries declare a `code` and digest-pinned `image`. The

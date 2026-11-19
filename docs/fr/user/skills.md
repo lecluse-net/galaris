@@ -26,6 +26,18 @@ modèle la choisira. Pour comprendre un oubli, vérifiez son éligibilité puis 
 Une compétence est pertinente lorsque sa méthode sert la demande ; sa présence dans le catalogue
 ne justifie pas de la charger pour une réponse autonome ou un calcul simple sans rapport.
 
+## Demander à un agent de créer un plugin
+
+L’assistant **Galaris** dispose par défaut de la compétence **Développement de plugins Galaris**
+(`galaris-plugin-development`). Pour un autre agent, ouvrez **Configurer → Compétences →
+Autorisations** et activez-la pour cet agent. Donnez le résultat attendu, la version de Galaris à
+cibler et les sources accessibles. Par exemple, demandez à l’agent de préparer un modèle JSON
+importable ou un connecteur REST, avec ses tests et les commandes de signature.
+
+La compétence guide la préparation du code et du bundle. L’espace de travail et les outils
+du run déterminent si l’agent peut construire et qualifier l’archive. La clé de signature et
+l’autorisation d’installation sont gérées séparément. [Guide auteur de plugins](../dev/plugin-authoring.md)
+
 ## Apprendre pendant la rétrospective hebdomadaire
 
 La rétrospective hebdomadaire peut créer un package personnel avec son `SKILL.md` ou réviser une
