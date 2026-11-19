@@ -404,6 +404,22 @@ et ouvre la cible en lecture seule.
 Les commandes communes ne sont pas répétées. Pour modifier un lien ou une équation,
 sélectionnez-le puis utilisez le bouton correspondant dans la barre d'outils.
 
+<a id="mcp-tables"></a>
+## Insérer un tableau depuis un service MCP
+
+Dans **Discussion**, demandez à l’agent d’interroger un service MCP compatible.
+Le tableau s’affiche sous sa réponse. Si le service fournit un formulaire de lecture
+et que la Connexion l’autorise, ouvrez **Filtrer**, choisissez vos critères et validez.
+
+Sur ordinateur, ouvrez un Document Texte modifiable dans le panneau de **Discussion**.
+Cliquez sur **Insérer dans le document** sous le tableau. Les lignes affichées et le nom
+du service sont ajoutés à la fin du document. Le tableau est éditable, suit les révisions
+habituelles du document et apparaît dans son export PDF.
+
+La conversation conserve le résultat initial. La réouverture de l’historique le relit
+sans interroger le service. Les filtres s’appliquent pendant la consultation en cours.
+Le document conserve les lignes que vous avez insérées.
+
 ## Classer par dossiers, sujets ou agents
 
 Les onglets **Dossiers**, **Sujets** et **Agents** changent immédiatement la vue de la

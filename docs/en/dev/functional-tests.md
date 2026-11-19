@@ -70,6 +70,13 @@ Process worker restart recovery, durable revocation, catalogue attestations and
 preserved Connections after protocol removal. `plugin-release-lifecycle.spec.mjs`
 checks that the editor and its revisions survive Python and JavaScript loading failures.
 
+`app/services/tests/test_action_authorizations.py` exercises the mounted Sample MCP
+over Streamable HTTP, form retrieval, filtering and refusal when the tool is no longer
+enabled. `app/chat/tests/test_attachment_http.py` verifies that history restores the
+initial table without a network call and that filtering stays bound to its room.
+`chat-document-workspace.spec.mjs` checks that the filtered table is saved as editable
+HTML, restored on reopening and included in the PDF export request.
+
 `app/calendar/tests/test_contacts.py` protects optional event references to the agent's private
 Contacts: MCP creation/updates, explicit removal, preservation across edits and remote refreshes,
 history, merge/forget lifecycle, recurrence splitting and due-Task context without expanded

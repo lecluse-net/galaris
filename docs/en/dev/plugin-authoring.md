@@ -273,6 +273,22 @@ Set the synthetic server's Streamable HTTP MCP endpoint in the Connection. Verif
 discovery and call a read-only function on the fixture. If the target requires authentication,
 choose a mode described in the [Services catalogue](service-catalog.md).
 
+In development, the same server provides `sample_inventory`. Use
+`http://127.0.0.1:8000/api/plugin-samples/mcp/` from the backend, enable the Service
+for conversations and assign an active Connection to the agent. To try **Filter**
+in internal Chat, set the `sample_inventory` tool and the `ui://sample/inventory.html`
+resource to **Enabled** in that Connection. Ask the agent to use Sample MCP to show stock.
+The **Lyon** filter should return two rows with quantities of 18 and 7. The sample server
+uses JSON responses over Streamable HTTP.
+
+The server provides `structuredContent.table` with a `title`, 1 to 16 `columns` and
+up to 100 `rows`. Each row has one JSON scalar or `null` per column. The form uses
+`_meta.ui.resourceUri` with a self-contained `text/html;profile=mcp-app` resource.
+The tool declares `annotations.readOnlyHint` and allows calls from the app. Galaris
+checks current Connection permissions and lets the form call the same tool again.
+Connection credentials stay on the server.
+[Chat workflow](../user/documents.md#mcp-tables)
+
 ### Implement an executable contribution
 
 | Case | Example to follow and scenario to verify |

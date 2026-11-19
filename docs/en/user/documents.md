@@ -366,6 +366,21 @@ a click selects while editing and opens the target in read-only views.
 Common commands are not repeated. To edit a link or equation, select it
 and use the corresponding toolbar button.
 
+<a id="mcp-tables"></a>
+## Insert a table from an MCP service
+
+In **Chat**, ask the agent to query a compatible MCP service. The table appears below
+its reply. If the service provides a read-only form and the Connection allows it, select
+**Filter**, set your criteria and apply them.
+
+On desktop, open an editable Text document in the **Chat** workspace. Select **Insert
+into document** below the table. This appends the displayed rows and the service name.
+The editable table follows the document’s usual revision history and appears in PDF exports.
+
+Conversation history keeps the initial result and reads it again when you reopen the chat
+without calling the service. Filters apply to the current view. The document keeps the rows
+you inserted.
+
 ## Organize by folders, topics or agents
 
 Use **Folders**, **Topics** and **Agents** to switch library views immediately. Your last

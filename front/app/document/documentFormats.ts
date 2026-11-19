@@ -28,6 +28,7 @@ export interface DocumentContentSource {
 }
 export interface DocumentFormatEditorHandle {
   insertResource?: (html: string) => void
+  appendHtml?: (html: string) => boolean
   commitDraft?: () => void
   flush?: () => Promise<boolean>
   discardDraft?: () => Promise<void> | void

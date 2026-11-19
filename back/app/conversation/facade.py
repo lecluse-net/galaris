@@ -7,13 +7,30 @@ from collections.abc import Awaitable, Callable, Mapping
 from uuid import UUID
 
 from loguru import logger
+from pydantic import JsonValue
 from sqlalchemy import Select, select, update
 
 from core.database import get_db, get_db_session
 from app.messenger import Message
 from app.agent import AgentManagementScope
+from app.services.contracts import McpPresentation, McpTable as McpTable, ToolCallRejectedError
 
 from .contracts import ConversationRuntimeEvent, ConversationTurn
+
+
+async def request_conversation_mcp_view(
+    presentation: McpPresentation, *, agent_id: int, user_id: int, room_id: UUID,
+    arguments: dict[str, JsonValue] | None = None,
+) -> str | McpTable:
+    """Open or filter a view previously published by this conversation."""
+    from app.services.facade import request_mcp_presentation
+
+    try:
+        return await request_mcp_presentation(
+            presentation, agent_id=agent_id, user_id=user_id, room_id=room_id, arguments=arguments,
+        )
+    except ToolCallRejectedError as exc:
+        raise PermissionError("MCP view access was refused") from exc
 
 
 def process_input_evaluation_spec() -> tuple[type[object], str]:
@@ -238,6 +255,8 @@ async def publish_round_activity(round_id: UUID) -> None:
 
 
 __all__ = [
+    "McpTable",
+    "request_conversation_mcp_view",
     "inherit_reply_topics",
     "ConversationActivityListener",
     "ConversationRuntimeListener",

@@ -46,6 +46,8 @@ const emit = defineEmits<{
 interface FlushableEditor {
   flush?: () => Promise<boolean>
   captureFocus?: () => DocumentFocus | null
+  canAppendHtml?: boolean
+  appendHtml?: (html: string) => boolean
 }
 
 const editor = useTemplateRef<FlushableEditor>('editor')
@@ -54,7 +56,12 @@ async function flush(): Promise<boolean> {
   return await editor.value?.flush?.() ?? true
 }
 
-defineExpose({ flush, captureFocus: () => editor.value?.captureFocus?.() ?? null })
+defineExpose({
+  flush,
+  captureFocus: () => editor.value?.captureFocus?.() ?? null,
+  canAppendHtml: () => editor.value?.canAppendHtml === true,
+  appendHtml: (html: string) => editor.value?.appendHtml?.(html) ?? false,
+})
 
 function isDocumentSnapshot(value: unknown): value is WorkingDocumentSnapshot {
   if (!value || typeof value !== 'object') return false

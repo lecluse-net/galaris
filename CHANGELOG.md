@@ -49,6 +49,9 @@ The historical tags `0.1` and `0.2` remain aliases of `0.1.0` and `0.2.0`.
   attachments. Reply-needed badges remain visible after messages are read. Planner
   clarification questions can send reminders in their original conversation.
   [Task guide](docs/en/user/tasks.md)
+- View and filter **MCP tables** in internal Chat. On desktop, insert the displayed
+  rows and their source into an open Text document as editable HTML.
+  [MCP tables in documents](docs/en/user/documents.md#insert-a-table-from-an-mcp-service)
 - Search the **agent directory** by team, manage the current team's membership
   from Agents, and browse team rosters through read-only agent tools. Give avatar
   generation appearance and style instructions. Administrators can customize

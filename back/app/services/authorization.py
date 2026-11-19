@@ -424,7 +424,7 @@ async def _remember_configuration_fingerprint(action: AuthorizationAction) -> st
         "reason": action.configuration.get("reason", definition.approval_reason if definition else None)})
 
 
-async def claim_action(action: AuthorizationAction) -> UUID | None:
+async def claim_action(action: AuthorizationAction, *, enabled_only: bool = False) -> UUID | None:
     """Commit a one-use claim. Pending calls raise a control signal without keeping a session."""
     if not action.name or len(action.name.encode("utf-8")) > (2000 if action.kind == "resource" else 255):
         raise ToolCallRejectedError("Invalid bounded action identity")
@@ -462,6 +462,8 @@ async def claim_action(action: AuthorizationAction) -> UUID | None:
         policy = await authorization_policy(action.agent_id, lock=True)
         approver = action.approver_user_id or policy.manager_user_id
         mode, origin = await resolve_action_mode(action)
+        if enabled_only and mode != "enabled":
+            raise ToolCallRejectedError("This surface requires a currently enabled capability")
         if mode == "disabled":
             raise ToolCallRejectedError("The capability is disabled")
         # Serialize quota and identity changes consistently: agent, human, operation.

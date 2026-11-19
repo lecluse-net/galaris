@@ -110,6 +110,7 @@ from .emoji_service import (
     record_emoji_use,
 )
 from .thumbnail_service import schedule_html_thumbnail
+from .mcp_apps import McpAppDocument, McpAppFilter, McpTable, read_mcp_app
 from .schemas import (
     AttachmentResourceUris,
     DocumentConversationPreference,
@@ -657,6 +658,24 @@ async def read_messages(
     )
     if result is None:
         raise _not_found()
+    return result
+
+
+@router.get("/rooms/{room_id}/messages/{message_id}/mcp-apps/{presentation_id}")
+@authorize(privileges=SEND, assertion=InternalRoomAccessAssertion)
+async def open_message_mcp_app(room_id: UUID, message_id: UUID, presentation_id: UUID) -> McpAppDocument:
+    result = await read_mcp_app(await _user_id(), room_id, message_id, presentation_id)
+    assert isinstance(result, str)
+    return McpAppDocument(html=result)
+
+
+@router.post("/rooms/{room_id}/messages/{message_id}/mcp-apps/{presentation_id}")
+@authorize(privileges=SEND, assertion=InternalRoomAccessAssertion)
+async def filter_message_mcp_app(
+    room_id: UUID, message_id: UUID, presentation_id: UUID, data: McpAppFilter,
+) -> McpTable:
+    result = await read_mcp_app(await _user_id(), room_id, message_id, presentation_id, arguments=data.arguments)
+    assert isinstance(result, McpTable)
     return result
 
 

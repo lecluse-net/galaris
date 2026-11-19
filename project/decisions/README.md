@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0303 — MCP tables in Chat and Text Documents](0303-mcp-tables-in-chat-and-documents.md)
+
 - [0302 — Weekly agent retrospective](0302-weekly-agent-retrospective.md)
 
 - [0301 — Native mind map documents](0301-native-mind-map-documents.md)

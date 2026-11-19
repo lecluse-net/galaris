@@ -26,6 +26,7 @@ from core.user import UserModel as User
 from app.agent import Agent
 from app.connection import Connection
 from app.services import ServiceModel as Service
+from app.services.contracts import MCP_PRESENTATIONS_KEY, read_presentations
 
 from . import journal
 from .document_focus import DocumentFocus
@@ -813,6 +814,8 @@ async def _message_dto(
         direction=message.direction,
         text=_visible_message_text(message.text),
         resource_uris=message.resource_uris,
+        mcp_presentations=read_presentations((message.metadata_ or {}).get(MCP_PRESENTATIONS_KEY))
+        if message.platform == INTERNAL_PLATFORM and message.direction == "outbound" else [],
         topic_id=effective_topic_id,
         topic_overridden=message.topic_overridden,
         sender=sender_dto,

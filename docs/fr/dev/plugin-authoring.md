@@ -284,6 +284,23 @@ Renseigner dans la Connexion l’adresse MCP Streamable HTTP du serveur synthét
 la découverte des fonctions et appeler une fonction de lecture de la fixture. Si la cible
 exige une authentification, choisir le mode documenté par le [catalogue de Services](service-catalog.md).
 
+En développement, le même serveur propose `sample_inventory`. Utiliser
+`http://127.0.0.1:8000/api/plugin-samples/mcp/` depuis le backend, autoriser le Service
+dans les conversations et affecter une Connexion active à l’agent. Pour essayer **Filtrer**
+dans le Chat interne, mettre l’outil `sample_inventory` et la ressource
+`ui://sample/inventory.html` en mode **Actif** dans la Connexion. Demander à l’agent
+d’utiliser l’outil Sample MCP pour afficher le stock. Le filtre **Lyon** doit donner deux
+lignes dont les quantités sont 18 et 7. Le serveur de démonstration utilise des réponses
+JSON sur Streamable HTTP.
+
+Le tableau est fourni par `structuredContent.table` avec un `title`, entre 1 et
+16 `columns` et jusqu’à 100 `rows`. Chaque ligne contient une valeur scalaire JSON
+ou `null` par colonne. Le formulaire utilise `_meta.ui.resourceUri` et une ressource HTML
+autonome de type `text/html;profile=mcp-app`. L’outil déclare `annotations.readOnlyHint`
+et autorise les appels depuis l’application. Galaris vérifie les droits courants sur la
+Connexion et autorise le formulaire à rappeler le même outil. Les secrets de Connexion
+restent côté serveur. [Parcours dans le Chat](../user/documents.md#mcp-tables)
+
 ### Implémenter une contribution exécutable
 
 | Cas | Exemple à reproduire et scénario à vérifier |

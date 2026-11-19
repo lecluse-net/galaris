@@ -1,9 +1,9 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 import { agent, document as documentFixture } from './data.mjs'
 
-async function workspace(page, editable = true, extraDocuments = [], content = '<p>Initial document body</p>') {
+async function workspace(page, editable = true, extraDocuments = [], content = '<p>Initial document body</p>', messageFields = {}) {
   const room = { id: 'room-a', label: 'Document conversation', agent_id: 7, agent_name: 'Alice', agent_active: false, source: null, writable: true, members: [], muted: false, archived: false, unread_count: 0, conversation_type: 'text' }
-  const message = { id: 'message-a', room_id: room.id, text: 'Conversation remains available', files: [], sender: null, created_at: '2026-09-01T12:00:00Z', is_mine: true, status: 'sent' }
+  const message = { id: 'message-a', room_id: room.id, text: 'Conversation remains available', files: [], sender: null, created_at: '2026-09-01T12:00:00Z', is_mine: true, status: 'sent', ...messageFields }
   let document = { ...documentFixture, media_type: 'text/html', content_profile: 'document', payload: { text: content } }
   let denied = false
   let refuseSave = false
@@ -71,6 +71,69 @@ async function openFromSearch(page) {
   await page.getByLabel('Open document Off-list document', { exact: true }).click()
   await expect(page.locator('.chat-document-pane')).toContainText('document body')
 }
+
+test('an MCP form filters its table and inserts the displayed rows into the working document', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 950 })
+  const table = { title: 'Synthetic stock', columns: ['Site', 'Quantity'], rows: [['Lyon', 18], ['Lille', 52]] }
+  const mcp = [{ id: 'result-a', source: 'Sample MCP', tool_name: 'stock', resource_uri: 'ui://stock/form.html', table }]
+  const calls = []
+  await page.route('**/api/chat/rooms/room-a/messages/message-a/mcp-apps/result-a', route => {
+    const request = route.request()
+    calls.push(request.method())
+    if (request.method() === 'POST') {
+      expect(request.postDataJSON()).toEqual({ arguments: { site: 'Lyon' } })
+      return route.fulfill({ json: { ...table, rows: [['Lyon', 18]] } })
+    }
+    return route.fulfill({ json: { html: `
+      <form><label>Site <select><option>Lyon</option><option>Lille</option></select></label>
+      <button disabled>Apply</button></form>
+      <script>
+        const send = message => parent.postMessage({jsonrpc:'2.0', ...message}, '*')
+        document.querySelector('form').onsubmit = event => {
+          event.preventDefault()
+          send({id:2, method:'tools/call', params:{name:'stock', arguments:{site:document.querySelector('select').value}}})
+        }
+        addEventListener('message', event => {
+          if (event.data?.id !== 1) return
+          send({method:'ui/notifications/initialized'})
+          document.querySelector('button').disabled = false
+        })
+        send({id:1,method:'ui/initialize',params:{protocolVersion:'2026-01-26'}})
+      </script>` } })
+  })
+  const state = await workspace(page, true, [], undefined, { mcp_presentations: mcp })
+  const displayed = page.getByRole('table', { name: 'Synthetic stock' })
+  await expect(displayed).toContainText('52')
+  expect(calls).toEqual([])
+  await page.getByRole('button', { name: 'Filter', exact: true }).click()
+  const form = page.frameLocator('iframe[title="MCP result filters"]').frameLocator('iframe')
+  await form.getByRole('button', { name: 'Apply' }).click()
+  await expect(displayed).not.toContainText('Lille')
+  await expect(displayed).toContainText('18')
+  expect(calls).toEqual(['GET', 'POST'])
+  await openFromSearch(page)
+  await page.getByRole('button', { name: 'Insert into document', exact: true }).click()
+  await expect.poll(() => state.documentWrites.at(-1)?.payload?.text).toContain('<table')
+  const pane = page.locator('.chat-document-pane')
+  await expect(pane).toContainText('Initial document body')
+  await expect(pane.getByRole('table')).toContainText('Lyon')
+  await expect(pane.getByRole('table')).not.toContainText('Lille')
+  await pane.getByRole('button', { name: 'Close working document', exact: true }).click()
+  await openFromSearch(page)
+  await expect(pane.getByRole('table')).toContainText('18')
+  let printHtml
+  await page.route('**/api/documents/doc-b/export-pdf', route => {
+    printHtml = route.request().postDataJSON().html
+    return route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.7\nfixture' })
+  })
+  const exported = page.waitForEvent('download')
+  await pane.getByRole('button', { name: 'Export as PDF', exact: true }).click()
+  await exported
+  expect(printHtml).toContain('Lyon')
+  expect(printHtml).toContain('18')
+  expect(printHtml).not.toContain('Lille')
+  expect(calls).toEqual(['GET', 'POST'])
+})
 
 async function linkedWorkspace(page, editable = true) {
   const ids = [1, 2, 3].map(index => `00000000-0000-4000-8000-00000000008${index}`)

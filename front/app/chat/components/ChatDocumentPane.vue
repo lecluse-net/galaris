@@ -37,7 +37,12 @@ provide(documentWorkspaceViewKey, {
 const editor = useTemplateRef<InstanceType<typeof WorkingDocumentEditor>>('editor')
 async function flush(): Promise<boolean> { return await editor.value?.flush() ?? true }
 async function close(): Promise<void> { if (await flush()) emit('close') }
-defineExpose({ flush, captureFocus: () => editor.value?.captureFocus() ?? null })
+defineExpose({
+  flush,
+  captureFocus: () => editor.value?.captureFocus() ?? null,
+  canAppendHtml: () => !fullscreen.value && (editor.value?.canAppendHtml() ?? false),
+  appendHtml: (html: string) => !fullscreen.value && (editor.value?.appendHtml(html) ?? false),
+})
 watch(() => document, value => { title.value = value.title })
 function changed(value: WorkingDocumentSnapshot): void {
   if (value.id !== document.id) return

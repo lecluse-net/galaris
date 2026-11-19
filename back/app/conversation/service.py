@@ -20,6 +20,7 @@ from sqlalchemy.orm import aliased
 from app.agent.contracts import AIResult, AgentRunCheckpoint, ExecutionResult, ReasoningEffort, TaskMessage
 from app.agent import assess_checkpoint, message_prompt
 from app.messenger.contracts import DocumentFocus
+from app.services.contracts import MCP_PRESENTATIONS_KEY
 from app.connection import Connection
 from app.messenger import (
     CONVERSATION_OUTPUT_PENDING_METADATA_KEY,
@@ -1069,9 +1070,10 @@ async def complete_round(
         return "STALE_AFTER_EFFECT"
 
     text = _conversation_response_text(outcome)
+    presentations = outcome.mcp_presentations
     sent_message: Message | None = None
     publish_message: Message | None = None
-    if text:
+    if text or presentations:
         from app.messenger import get_messenger
 
         if not round_.effect_started:
@@ -1093,6 +1095,8 @@ async def complete_round(
                 journal_metadata={
                     CONVERSATION_OUTPUT_PENDING_METADATA_KEY: True,
                     CONVERSATION_ROUND_METADATA_KEY: str(round_id),
+                    **({MCP_PRESENTATIONS_KEY: [item.model_dump(mode="json") for item in presentations]}
+                       if presentations else {}),
                 },
             )
         except ConversationLeaseLostError:
@@ -1127,7 +1131,7 @@ async def complete_round(
     round_.status = "COMPLETED" if round_.voice_session_id else "SUCCEEDED"
     round_.encrypted_checkpoint = None
     round_.last_error = None
-    round_.delivery_state = "DELIVERED" if text else "SKIPPED"
+    round_.delivery_state = "DELIVERED" if sent_message is not None else "SKIPPED"
     round_.finished_at = _now()
     await _mark_round_inputs_consumed(round_.id, round_.finished_at)
     _clear_round_lease(round_)

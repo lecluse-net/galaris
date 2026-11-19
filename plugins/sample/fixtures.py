@@ -11,11 +11,13 @@ import httpx
 from core.authorize import Privileges, authorize, independent_auth
 
 from .inventory import MCP_ENDPOINT, REST_ENDPOINT, REST_TOKEN
+from .mcp_inventory import register_inventory
 
 
 def mount(app: FastAPI) -> None:
     router = APIRouter(prefix="/api/plugin-samples", include_in_schema=False)
     server = FastMCP("Sample MCP")
+    register_inventory(server)
 
     @server.tool()
     def sample_value() -> str:
@@ -68,7 +70,7 @@ def mount(app: FastAPI) -> None:
                     return {"value": "sample-ok"}
         raise HTTPException(status_code=502)
 
-    mcp_app = server.http_app(path="/", stateless_http=True)
+    mcp_app = server.http_app(path="/", stateless_http=True, json_response=True)
     original_lifespan = app.router.lifespan_context
 
     @asynccontextmanager

@@ -9,7 +9,7 @@ import inspect
 import weakref
 from collections.abc import Awaitable, Callable, Collection, Sequence
 from contextvars import Context
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from functools import lru_cache
 from typing import Any, Literal, TypeVar, cast
 from uuid import UUID, uuid4
@@ -26,6 +26,7 @@ from fastmcp.resources.template import ResourceTemplate
 from fastmcp.server.providers.proxy import ProxyProvider
 from fastmcp.tools.base import Tool
 from loguru import logger
+from pydantic import JsonValue
 from sqlalchemy import select
 
 from app.agent.contracts import (
@@ -50,6 +51,7 @@ from core.params import runtime_settings
 
 from .contracts import ScopePreflightRejected, ToolCallRejectedError, ToolPermissionRejectedError, current_tool_execution
 from .execution_evidence import ExecutionEvidenceMiddleware
+from .mcp_presentation import MCP_APP_EXTENSION, McpPresentation, McpPresentationSink, McpTable, app_tool_visible_to
 from .tool_arguments import ToolArgumentsMiddleware
 from .schemas import McpConfig, Service as ServiceConfiguration
 
@@ -305,6 +307,7 @@ class _ResilientProxyProvider(ProxyProvider):
         discovery_source: str | None = None,
         discovery_failures: set[str] | None = None,
         live_connection: tuple[int, int, int, bool] | None = None,
+        mcp_apps: bool = False,
         **kwargs: Any,
     ) -> None:
         super().__init__(*args, **kwargs)  # pyright: ignore[reportUnknownMemberType]
@@ -312,6 +315,7 @@ class _ResilientProxyProvider(ProxyProvider):
         self._discovery_source = discovery_source
         self._discovery_failures = discovery_failures
         self._live_connection = live_connection
+        self._mcp_apps = mcp_apps
 
     async def _live_disabled(self) -> set[str]:
         if self._live_connection is None:
@@ -355,7 +359,8 @@ class _ResilientProxyProvider(ProxyProvider):
     async def _get_tool(self, name: str, version: Any = None) -> Tool | None:
         if name in await self._live_disabled():
             return None
-        return await super()._get_tool(name, version)
+        tool = await super()._get_tool(name, version)
+        return tool if tool is None or not self._mcp_apps or app_tool_visible_to(tool, "model") else None
 
     async def _list_tools(self) -> Sequence[Tool]:
         try:
@@ -363,7 +368,7 @@ class _ResilientProxyProvider(ProxyProvider):
             blocked = await self._live_disabled()
             if blocked:
                 tools = [tool for tool in tools if tool.name not in blocked]
-            return tools
+            return [tool for tool in tools if app_tool_visible_to(tool, "model")] if self._mcp_apps else tools
         except Exception as exc:
             if self._discovery_source and self._discovery_failures is not None:
                 self._discovery_failures.add(self._discovery_source)
@@ -1043,6 +1048,56 @@ class MountedAgentMcp(FastMCP):
         return frozenset(tool.name for tool in await self.native_server.list_tools())
 
 
+async def request_mcp_presentation(
+    presentation: McpPresentation, *, agent_id: int, user_id: int, room_id: UUID,
+    arguments: dict[str, JsonValue] | None = None,
+) -> str | McpTable:
+    """Use only the original, currently enabled read tool or its declared UI resource."""
+    from jsonschema import validators  # pyright: ignore[reportMissingTypeStubs]
+    from mcp.types import TextResourceContents
+    from .authorization import AuthorizationAction, claim_action, tool_authorization_configuration
+    from .mcp_presentation import MCP_APP_MIME, MAX_APP_HTML_BYTES, app_read_tool, app_resource_uri, presented_table
+
+    uri = presentation.resource_uri
+    if uri is None:
+        raise PermissionError("The result has no interactive view")
+    service, params, _ = await resolve_live_connection(
+        agent_id, presentation.connection_id, presentation.service_id,
+        function_name=presentation.tool_name, conversation_only=True,
+    )
+    if service.mcp is None or service.mcp.type != "http":
+        raise PermissionError("The connection no longer uses Streamable HTTP")
+    async with Client(_external_transport(service, params), init_timeout=5, timeout=10,
+                      extensions=[MCP_APP_EXTENSION]) as client:
+        tool = next((candidate for candidate in await client.list_tools() if candidate.name == presentation.tool_name), None)
+        if tool is None or app_resource_uri(tool) != uri or not app_read_tool(tool):
+            raise PermissionError("The original read tool or view is unavailable")
+        action = AuthorizationAction(
+            agent_id=agent_id, service_id=presentation.service_id, connection_id=presentation.connection_id,
+            name=tool.name, arguments=arguments or {}, runtime="internal", context_key=f"principal:chat:{room_id}",
+            callback_key=str(uuid4()), approver_user_id=user_id,
+            configuration={"tool": tool_authorization_configuration(service), "params": params, "schema": tool.input_schema},
+        )
+        if arguments is not None:
+            cast(Any, validators).validator_for(tool.input_schema)(tool.input_schema).validate(arguments)
+        await claim_action(action, enabled_only=True)
+        if arguments is None:
+            await claim_action(replace(action, name=uri, arguments={"uri": uri}, kind="resource"), enabled_only=True)
+            contents = await client.read_resource(uri)
+            if len(contents) != 1:
+                raise ValueError("Expected one MCP App document")
+            content = contents[0]
+            if (not isinstance(content, TextResourceContents) or str(content.uri) != uri
+                    or content.mime_type != MCP_APP_MIME or not 0 < len(content.text.encode()) <= MAX_APP_HTML_BYTES):
+                raise ValueError("Unsupported MCP App document")
+            return content.text
+        result = await client.call_tool(tool.name, arguments)
+        table = presented_table(result.structured_content)
+        if result.is_error or table is None:
+            raise ValueError("The MCP tool did not return a valid table")
+        return table
+
+
 async def build_agent_mcp(
     agent_id: int,
     *,
@@ -1057,6 +1112,8 @@ async def build_agent_mcp(
     """Build an agent's aggregate native and external MCP server."""
     from app.connection import facade as connection_service
     from app.services import service
+
+    presentation_sink = cast(McpPresentationSink | None, (resources or {}).get("mcp_presentation_sink"))
 
     mcp = MountedAgentMcp(f"Galaris — Agent {agent_id}")
     server_ref = weakref.ref(mcp)
@@ -1104,22 +1161,28 @@ async def build_agent_mcp(
                 context_key=authorization_context_key(task_id, resources or {}),
                 runtime_grant_id=UUID(str(resources["runtime_grant_id"])) if resources and resources.get("runtime_grant_id") else None,
                 conversation_only=conversation_only,
+                presentation_sink=presentation_sink if tool.mcp.type == "http" else None,
+                source_label=tool.label,
             ))
             # Capture identities only. An old run must not capture old credentials.
-            def live_factory(agent: int, connection_id: int, service_id: int, conversational: bool) -> Callable[[], Awaitable[Client[Any]]]:
+            def live_factory(agent: int, connection_id: int, service_id: int, conversational: bool,
+                             mcp_apps: bool) -> Callable[[], Awaitable[Client[Any]]]:
                 async def client() -> Client[Any]:
                     from .live_external import resolve_live_connection
 
                     current, current_params, _ = await resolve_live_connection(agent, connection_id, service_id, conversation_only=conversational)
-                    return Client(_external_transport(current, current_params))
+                    return Client(_external_transport(current, current_params),
+                                  extensions=[MCP_APP_EXTENSION] if mcp_apps else None)
                 return client
 
+            mcp_apps = presentation_sink is not None and tool.mcp.type == "http"
             proxy.add_provider(_ResilientProxyProvider(
-                live_factory(agent_id, connection.id, connection.service_id, conversation_only),
+                live_factory(agent_id, connection.id, connection.service_id, conversation_only, mcp_apps),
                 disabled_functions=disabled_functions,
                 discovery_source=tool.code,
                 discovery_failures=discovery_failures,
                 live_connection=(agent_id, connection.id, connection.service_id, conversation_only),
+                mcp_apps=mcp_apps,
             ))
             mcp.mount(proxy, namespace=tool.code)
             logger.info("MCP loader: proxy mounted {} ({})", tool.code, tool.mcp.type)

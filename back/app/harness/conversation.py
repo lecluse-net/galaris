@@ -61,6 +61,7 @@ from app.agent.contracts import TaskMessage as Message
 from app.agent.contracts import AgentRunControl, ResolvedModel, ConversationWorkAnalysis
 from app.process import build_agent_process_advertisement, agent_process_dispatch_candidates
 from app.services.agent_registry import AgentToolAdvertisement
+from app.services.contracts import MAX_PRESENTATIONS, McpPresentation
 from app.services.mcp_loader import McpToolContext
 from core.database import get_db_session, release_db_transaction
 from core.i18n import t
@@ -901,12 +902,22 @@ class HarnessConversationController:
             if checkpoint is not None:
                 turn = replace(turn, produced_document_references=checkpoint.produced_document_references)
             toolset = None
+            presentations: list[McpPresentation] = []
+
+            def present(result: McpPresentation) -> None:
+                if len(presentations) < MAX_PRESENTATIONS:
+                    presentations.append(result)
+
             tool_advertisement = AgentToolAdvertisement("No tools are mounted for this response.", frozenset())
             process_advertisement = ""
             if not turn.force_response:
                 toolset, tool_advertisement = await build_conversation_toolset(
                     turn.agent_id,
-                    resources={"conversation_turn": turn},
+                    resources={
+                        "conversation_turn": turn,
+                        **({"mcp_presentation_sink": present}
+                           if turn.origin == "text" and turn.messaging_context.get("platform") == "internal" else {}),
+                    },
                 )
                 process_advertisement = await build_agent_process_advertisement(
                     turn.agent_id,
@@ -1162,6 +1173,7 @@ class HarnessConversationController:
                 text="" if interruption is not None and interruption.requested else text,
                 metadata={"interrupted": True} if interruption is not None and interruption.requested else {},
                 execution_result=execution_result,
+                mcp_presentations=tuple(presentations),
             )
 
 

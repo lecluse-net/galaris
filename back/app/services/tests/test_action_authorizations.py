@@ -50,6 +50,72 @@ async def pending(action):
 
 
 @pytest.mark.asyncio
+async def test_streamable_http_mcp_app_captures_and_filters_only_an_enabled_read_tool(action, monkeypatch):
+    from contextlib import asynccontextmanager
+    import httpx
+    from fastmcp import Client
+    from fastmcp.client.transports import StreamableHttpTransport
+
+    from app.connection import facade as connections
+    from app.connection.models import Connection
+    from app.services import mcp_loader
+    from app.services.contracts import ToolCallRejectedError
+    from app.services.models import Service
+    from core.api import create_app
+    from plugins.sample.fixtures import mount
+    from plugins.sample.mcp_inventory import APP_URI
+
+    @asynccontextmanager
+    async def lifespan(_app):
+        yield
+
+    application = create_app(lifespan)
+    mount(application)
+
+    def client_factory(**kwargs):
+        return httpx.AsyncClient(transport=httpx.ASGITransport(app=application), **kwargs)
+
+    endpoint = "http://localhost/api/plugin-samples/mcp/"
+    transport = StreamableHttpTransport(endpoint, httpx_client_factory=client_factory)
+    monkeypatch.setattr(mcp_loader, "_external_transport", lambda *_args: transport)
+    presentations = []
+    room_id = uuid4()
+    async with get_db_session() as db:
+        service = Service(code="test_inventory", label="Inventory", conversation_enabled=True,
+            mcp_config={"type": "http", "url": endpoint})
+        db.add(service)
+        await db.flush()
+        connection = Connection(service_id=service.id, agent_id=action.agent_id, active=True)
+        db.add(connection)
+        await db.flush()
+        connection_id = connection.id
+        await connections.set_connection_function_state(connection_id, "sample_inventory", "enabled")
+        await connections.set_connection_function_state(connection_id, APP_URI, "enabled", capability_kind="resource")
+        server = await mcp_loader.build_agent_mcp(
+            action.agent_id, conversation_only=True, resources={"mcp_presentation_sink": presentations.append},
+        )
+
+    async with application.router.lifespan_context(application):
+        async with Client(server) as client:
+            result = await client.call_tool("test_inventory_sample_inventory")
+            assert len(result.structured_content["table"]["rows"]) == 4
+        presentation, = presentations
+        assert presentation.table.rows == result.structured_content["table"]["rows"]
+        assert presentation.resource_uri == APP_URI
+        params = dict(agent_id=action.agent_id, user_id=action.approver_user_id or 0, room_id=room_id)
+        async with get_db_session() as db:
+            params["user_id"] = (await db.get(Agent, action.agent_id)).user_id
+        html = await mcp_loader.request_mcp_presentation(presentation, **params)
+        assert '<select name="site">' in html
+        filtered = await mcp_loader.request_mcp_presentation(presentation, **params, arguments={"site": "Lyon"})
+        assert [row[-1] for row in filtered.rows] == [18, 7]
+        async with get_db_session():
+            await connections.set_connection_function_state(connection_id, "sample_inventory", "ask")
+        with pytest.raises(ToolCallRejectedError):
+            await mcp_loader.request_mcp_presentation(presentation, **params, arguments={"site": "Lille"})
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(("name", "service_code", "field"), [
     ("goal_create", "goal_management", "description"),
     ("goal_update", "goal_management", "description"),

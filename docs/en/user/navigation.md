@@ -522,6 +522,11 @@ or transcription; unavailable analysis and incomplete coverage are reported expl
 The Chat home screen shows all conversations, like the chat window's **Conversations** section,
 then agents. Older and empty conversations are included, with the same filters and usual pagination.
 
+Compatible MCP tools display a table below the reply in internal Chat. **Filter** opens
+the service's form and refreshes the table on request. On desktop, open an editable Text
+Document next to the chat and choose **Insert into document**. The displayed rows are added
+as editable HTML with the source name. [Insert an MCP table](documents.md#mcp-tables)
+
 During a response, **Pause response** gives you time to compose a supplement.
 Sending it automatically continues with both your original request and the supplement.
 **Resume response** continues without a new message; **Stop response** abandons the current

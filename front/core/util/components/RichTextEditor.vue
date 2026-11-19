@@ -571,6 +571,11 @@ function insertAt(value: Anchor, markup: string, focus = true): void {
   if (focus) current.view.focus()
 }
 function insertResource(markup: string): void { if (readonly) return; const value = anchor(); insertAt(value, markup); release(value) }
+function appendHtml(markup: string): boolean {
+  const current = editor.value
+  if (!current || current.isDestroyed || readonly || sourceMode.value) return false
+  return current.commands.insertContentAt(current.state.doc.content.size, editableHtml(markup))
+}
 function insertDictation(text: string): void { if (readonly || sourceMode.value || !text.trim()) return; const current = editor.value; if (!current) return; const { $from, $to } = current.state.selection; const before = $from.parent.textBetween(Math.max(0, $from.parentOffset - 1), $from.parentOffset), after = $to.parent.textBetween($to.parentOffset, Math.min($to.parent.content.size, $to.parentOffset + 1)); const value = (before && !/\s/.test(before) ? ' ' : '') + text.trim() + (after && !/\s|[,.;:!?]/.test(after) ? ' ' : ''); current.chain().focus().insertContent(value.split(/\r?\n/).flatMap((line, i) => [...(i ? [{ type: 'hardBreak' }] : []), ...(line ? [{ type: 'text', text: line }] : [])])).run() }
 const uploadProgress = shallowRef<{ name: string; index: number; total: number; progress: number } | null>(null)
 let uploadRequest: AbortController | undefined
@@ -1478,5 +1483,5 @@ watch([pageLayout, editor], ([value, current]) => {
   else delete current.view.dom.dataset.documentLayout
 })
 onBeforeUnmount(() => { stop(); imageCache.clear(); document.removeEventListener('selectionchange', syncReadingSelection); document.removeEventListener('keydown', trackKeyboardModifiers, true); document.removeEventListener('keyup', trackKeyboardModifiers, true); window.removeEventListener('blur', resetKeyboardModifiers); observer?.disconnect(); if (layoutFrame !== undefined) cancelAnimationFrame(layoutFrame); scrollPadding?.dispose(); editor.value?.destroy(); urls.forEach(URL.revokeObjectURL); urls.clear() })
-defineExpose({ editor, insertResource, insertDictation, action, selectResource, resizeSelectedImage, syncReferenceSize })
+defineExpose({ editor, insertResource, appendHtml, insertDictation, action, selectResource, resizeSelectedImage, syncReferenceSize })
 </script>

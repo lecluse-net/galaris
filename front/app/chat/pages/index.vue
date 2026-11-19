@@ -50,7 +50,7 @@
               </q-menu>
             </q-btn><q-btn v-if="canCustomizeSelectedRoom" flat round icon="settings" :aria-label="t('chat.roomPreferences.open')" @click="preferencesDialog=true" /><VoiceCallPanel v-if="store.viewerAgentId === null && store.selectedRoom.agent_active && canCall && store.callAvailable" :room-id="store.selectedRoom.id" :language="locale" :active-call-id="store.activeCall?.call_id" :stopping-call-id="store.stoppingCallId" :ended-call-id="store.endedCallId" :mobile="$q.screen.lt.md" @error="reportError" @starting="store.prepareCallStart" @stopping="store.markCallStopping" @ended="refreshAfterCallEnded" /></q-toolbar>
           <div class="message-scroll-zone">
-            <q-scroll-area ref="messageScrollArea" class="message-scroll" @scroll="onMessageScroll" @wheel.passive="beginConversationHistoryNavigation" @touchstart.passive="beginConversationHistoryNavigation"><div v-if="store.loadingOlderMessages" class="history-loader"><q-spinner color="primary" size="20px" /></div><MessageTimeline :room-id="store.selectedRoom.id" :messages="store.messages" :activity="store.activity" :live-round="store.liveRound" :pending-transcriptions="store.pendingVoiceTranscriptions" :agent-id="store.selectedRoom.agent_id" :agent-name="store.selectedRoom.agent_name" :loading="store.loadingSelectedRoom" :viewer-agent-id="store.viewerAgentId" :show-agent-avatars="!store.selectedRoom.source" :allow-reply="canWriteSelectedRoom" @controlled="store.refreshSelected" :can-read-documents="canReadDocuments" :can-edit-documents="canEditDocuments" @open-document="openConversationDocument" @open-repository="openRepository" @open-directory="openDirectory" @reply="message => replyingTo = message" @topic-changed="refreshMessageTopics" @history-navigation="beginConversationHistoryNavigation" @block-rendered="scrollRenderedConversationToBottom" @layout-changed="keepConversationAtBottom" @message-visible="markVisibleMessageRead" /></q-scroll-area>
+            <q-scroll-area ref="messageScrollArea" class="message-scroll" @scroll="onMessageScroll" @wheel.passive="beginConversationHistoryNavigation" @touchstart.passive="beginConversationHistoryNavigation"><div v-if="store.loadingOlderMessages" class="history-loader"><q-spinner color="primary" size="20px" /></div><MessageTimeline :room-id="store.selectedRoom.id" :messages="store.messages" :activity="store.activity" :live-round="store.liveRound" :pending-transcriptions="store.pendingVoiceTranscriptions" :agent-id="store.selectedRoom.agent_id" :agent-name="store.selectedRoom.agent_name" :loading="store.loadingSelectedRoom" :viewer-agent-id="store.viewerAgentId" :show-agent-avatars="!store.selectedRoom.source" :allow-reply="canWriteSelectedRoom" @controlled="store.refreshSelected" :can-insert-mcp-table="canInsertMcpTable" @insert-mcp-table="insertMcpTable" :can-read-documents="canReadDocuments" :can-edit-documents="canEditDocuments" @open-document="openConversationDocument" @open-repository="openRepository" @open-directory="openDirectory" @reply="message => replyingTo = message" @topic-changed="refreshMessageTopics" @history-navigation="beginConversationHistoryNavigation" @block-rendered="scrollRenderedConversationToBottom" @layout-changed="keepConversationAtBottom" @message-visible="markVisibleMessageRead" /></q-scroll-area>
             <ScrollToBottomButton :visible="showScrollToBottom" @click="scrollConversationToBottom" />
           </div>
           <template v-if="canWriteSelectedRoom"><q-separator /><Composer :before-send="prepareMessage" :room-id="store.selectedRoom.id" :agent-id="store.selectedRoom.agent_id" :sending="store.sending" :commands="store.commands" :reply-to="replyingTo" :topic-id="selectedTopicId" :can-select-topic="canSelectTopic" :max-attachment-bytes="store.status?.max_attachment_bytes ?? 0" @send="sendMessage" @cancel-reply="replyingTo=null" @update:topic-id="selectedTopicId=$event" @error="reportError" /></template>
@@ -276,6 +276,15 @@ const documentNavigationBusy = ref(false)
 let pendingHistoryPosition: number | undefined
 const displayedDocumentId = ref<string | null>(null)
 const documentPane = ref<InstanceType<typeof ChatDocumentPane> | null>(null)
+const canInsertMcpTable = computed(() => store.viewerAgentId === null
+  && Boolean(displayedDocumentId.value && documentPane.value?.canAppendHtml()))
+async function insertMcpTable(html: string): Promise<void> {
+  const pane = documentPane.value
+  if (!pane || !canInsertMcpTable.value || !pane.appendHtml(html)) return
+  if (!await pane.flush()) {
+    $q.notify({ type: 'warning', message: t('chat.mcpResult.draft') })
+  }
+}
 const mobileDocument = ref<InstanceType<typeof ConversationDocumentDialog> | null>(null)
 watch([() => selectedDocument.value?.id, selectedDocumentAgentId], () => { displayedDocumentId.value = null }, { flush: 'sync' })
 const documentSearchOpen = ref(false)

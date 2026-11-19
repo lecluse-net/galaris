@@ -558,6 +558,12 @@ L’accueil de **Discussion** présente toutes les conversations, comme la rubri
 **Conversations** de la fenêtre de chat, puis les agents. Les conversations anciennes et
 sans message sont incluses, avec les mêmes filtres et la pagination habituelle.
 
+Les outils MCP compatibles affichent leur tableau sous la réponse dans le Chat interne.
+**Filtrer** ouvre le formulaire du service et actualise le tableau à la demande.
+Sur ordinateur, ouvrez un Document Texte modifiable à côté du chat, puis choisissez
+**Insérer dans le document**. Les lignes affichées sont ajoutées en HTML éditable,
+avec le nom de la source. [Insérer un tableau MCP](documents.md#mcp-tables)
+
 Pendant une réponse, **Mettre en pause** vous laisse le temps de rédiger un complément.
 L’envoi du message reprend automatiquement avec la demande initiale et votre complément.
 **Reprendre la réponse** permet de continuer sans nouveau message ; **Arrêter la réponse**

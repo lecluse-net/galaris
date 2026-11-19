@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, JsonValue, model_validator, SerializeAsAn
 from app.agent import AIMessage, AIResult
 from app.agent.contracts import AgentRunCheckpoint, ReasoningEffort
 from app.process import ProcessRunRead
+from app.services.contracts import McpPresentation
 from app.task import TaskRead
 
 from .trace_projection import public_mapping, public_text
@@ -177,6 +178,7 @@ class ConversationOutcome:
     effect_started: bool = False
     metadata: Mapping[str, object] = field(default_factory=dict[str, object])
     execution_result: AIResult | None = None
+    mcp_presentations: tuple[McpPresentation, ...] = ()
 
 
 class ConversationExecutionError(RuntimeError):

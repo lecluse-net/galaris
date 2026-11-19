@@ -16,14 +16,18 @@ from mcp.types import CallToolRequestParams, GetPromptRequestParams, ReadResourc
 from .authorization import AUTHORIZATION_META_KEY, AuthorizationAction, AuthorizationClosed, AuthorizationRequired, claim_action, finish_action, tool_authorization_configuration
 from .contracts import EXECUTION_META_KEY, current_tool_execution
 from .mcp_loader import resolve_live_connection
+from .mcp_presentation import McpPresentation, McpPresentationSink, app_read_tool, app_resource_uri, presented_table
 
 
 class ExternalAuthorizationMiddleware(Middleware):
     def __init__(self, agent_id: int, connection_id: int, service_id: int, *, runtime: str,
-                 context_key: str, conversation_only: bool, runtime_grant_id: UUID | None = None) -> None:
+                 context_key: str, conversation_only: bool, runtime_grant_id: UUID | None = None,
+                 presentation_sink: McpPresentationSink | None = None, source_label: str = "") -> None:
         self.agent_id, self.connection_id, self.service_id = agent_id, connection_id, service_id
         self.runtime, self.context_key, self.conversation_only = runtime, context_key, conversation_only
         self.runtime_grant_id = runtime_grant_id
+        self.presentation_sink = presentation_sink
+        self.source_label = source_label
 
     async def _claim(self, context: MiddlewareContext[Any], name: str, arguments: dict[str, Any],
                      kind: Literal["tool", "resource", "prompt"], schema: object, *, policy_name: str | None = None) -> UUID | None:
@@ -75,6 +79,14 @@ class ExternalAuthorizationMiddleware(Middleware):
                 result.meta.pop(AUTHORIZATION_META_KEY, None)
                 result.meta.pop(EXECUTION_META_KEY, None)
             await finish_action(identifier, receipt=result, outcome="outcome_unknown" if result.is_error else "completed")
+            if self.presentation_sink is not None and not result.is_error:
+                table = presented_table(result.structured_content)
+                if table is not None and len(context.message.name) <= 255:
+                    self.presentation_sink(McpPresentation(
+                        source=self.source_label[:200], connection_id=self.connection_id, service_id=self.service_id,
+                        tool_name=context.message.name, table=table,
+                        resource_uri=app_resource_uri(tool) if app_read_tool(tool) else None,
+                    ))
             return result
         except (AuthorizationRequired, AuthorizationClosed) as exc:
             return ToolResult(content=str(exc), is_error=True, meta=self._control(exc))

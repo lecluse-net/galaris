@@ -1,7 +1,7 @@
 """Multipart binding, resource ACLs and persistence through the actual Chat API."""
 
 import json
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 from uuid import UUID, uuid4
 
 import pytest
@@ -115,6 +115,45 @@ async def test_invalid_internal_references_publish_nothing_and_store_no_upload(a
     assert not ctx["root"].exists() or not list(ctx["root"].rglob("*"))
     async with get_db_session() as db:
         assert await db.scalar(select(Message).where(Message.remote_message_id == identifier)) is None
+
+
+@pytest.mark.asyncio
+async def test_mcp_table_reopens_from_the_message_and_only_its_room_can_filter(attachment_context, monkeypatch):
+    from app.chat import mcp_apps
+    from app.conversation.contracts import ConversationOutcome
+    from app.conversation.service import claim_next_round, complete_round
+    from app.services.contracts import McpPresentation, McpTable
+
+    ctx = attachment_context
+    base = f'/api/chat/rooms/{ctx["room_id"]}/messages'
+    response = await ctx["client"].post(base, headers=ctx["headers"], json={
+        "client_message_id": str(uuid4()), "text": "Show synthetic stock", "language": "en",
+    })
+    assert response.status_code == 201, response.text
+    table = McpTable(title="Stock", columns=["Site", "Count"], rows=[["Lyon", 18], ["Lille", 52]])
+    presentation = McpPresentation(source="Sample", connection_id=89, service_id=71, tool_name="stock",
+        resource_uri="ui://sample/stock", table=table)
+    async with get_db_session():
+        round_ = await claim_next_round("sample-stock-worker")
+        assert round_ is not None
+        assert await complete_round(round_.id, ConversationOutcome(text="Stock by site", mcp_presentations=(presentation,)),
+                                    lease_token=round_.lease_token) == "SUCCEEDED"
+    outbound = AsyncMock(return_value=McpTable(title="Stock", columns=table.columns, rows=[["Lyon", 18]]))
+    monkeypatch.setattr(mcp_apps, "request_conversation_mcp_view", outbound)
+    reopened = await ctx["client"].get(base, headers=ctx["headers"])
+    reply = next(item for item in reopened.json()["items"] if item["text"] == "Stock by site")
+    assert reply["mcp_presentations"] == [presentation.model_dump(mode="json")]
+    outbound.assert_not_awaited()
+    endpoint = f'{base}/{reply["id"]}/mcp-apps/{presentation.id}'
+    wrong_room = endpoint.replace(str(ctx["room_id"]), str(uuid4()))
+    denied = await ctx["client"].post(wrong_room, headers=ctx["headers"], json={"arguments": {"site": "Lyon"}})
+    assert denied.status_code == 403
+    outbound.assert_not_awaited()
+    filtered = await ctx["client"].post(endpoint, headers=ctx["headers"], json={"arguments": {"site": "Lyon"}})
+    assert filtered.status_code == 200, filtered.text
+    assert filtered.json()["rows"] == [["Lyon", 18]]
+    outbound.assert_awaited_once_with(presentation, agent_id=ctx["agent_id"], user_id=ctx["user_id"],
+                                      room_id=ctx["room_id"], arguments={"site": "Lyon"})
 
 
 @pytest.mark.asyncio

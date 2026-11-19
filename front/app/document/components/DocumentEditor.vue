@@ -1111,7 +1111,12 @@ async function discardDraft(): Promise<void> {
 }
 
 const canEditMindMap = computed(() => canEditDocument.value && currentDocument.value?.document_format === 'mindmap')
-defineExpose({ flush: flushEditor, discardDraft, requestRowAction, captureFocus, canEditMindMap })
+const canAppendHtml = computed(() => canEditDocument.value && currentDocument.value?.document_format === 'text'
+  && !historyOpen.value && !summaryOpen.value && !conflictDocument.value && Boolean(richEditor.value?.appendHtml))
+function appendHtml(html: string): boolean {
+  return canAppendHtml.value && (richEditor.value?.appendHtml?.(html) ?? false)
+}
+defineExpose({ flush: flushEditor, discardDraft, requestRowAction, captureFocus, canEditMindMap, canAppendHtml, appendHtml })
 
 async function resolveInlineImage(documentId: string, attachmentId: string, signal?: AbortSignal): Promise<Blob> {
   return documentService.documentAttachmentBlob(documentId, attachmentId, requestAgentId.value, signal)

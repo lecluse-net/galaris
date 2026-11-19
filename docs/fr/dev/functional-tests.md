@@ -73,6 +73,13 @@ les révocations persistantes, les attestations du catalogue et la reprise des C
 après retrait d'un protocole. `plugin-release-lifecycle.spec.mjs` éprouve la conservation
 de l'éditeur et de ses révisions après un échec de chargement Python ou JavaScript.
 
+`app/services/tests/test_action_authorizations.py` exerce le Sample MCP monté
+sur Streamable HTTP, la lecture du formulaire, le filtrage et le refus lorsque
+l’outil n’est plus actif. `app/chat/tests/test_attachment_http.py` vérifie que
+l’historique restitue le tableau initial sans appel réseau et que le filtre reste
+lié à la conversation. `chat-document-workspace.spec.mjs` vérifie que le tableau
+filtré est sauvegardé en HTML éditable, relu et transmis à l’export PDF.
+
 `app/calendar/tests/test_contacts.py` protège la référence facultative vers un contact privé
 de l’agent : création et modification MCP, retrait explicite, conservation lors des éditions
 et rafraîchissements distants, historique, fusion/oubli, découpage des récurrences et contexte

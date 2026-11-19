@@ -7,6 +7,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
+from app.services.contracts import McpPresentation
 
 from .document_focus import DocumentFocus as DocumentFocus
 
@@ -99,6 +100,7 @@ class NativeMessengerMessage(BaseModel):
     direction: str
     text: str
     resource_uris: list[str] = Field(default_factory=list[str])
+    mcp_presentations: list[McpPresentation] = Field(default_factory=list[McpPresentation])
     topic_id: UUID | None = None
     topic_overridden: bool = False
     sender: NativeMessengerMember | None = None

@@ -37,6 +37,7 @@ from .service_catalog import (
 
 from .rest_contracts import RestAuth, RestConfig, RestEffectIntent, RestError, RestRequest, RestRequestRejected, RestResponse
 from .rest import execute_rest_request, find_rest_effect
+from .mcp_loader import request_mcp_presentation as request_mcp_presentation
 
 
 async def has_active_admin_function(agent_id: int, function: str) -> bool:

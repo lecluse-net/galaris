@@ -134,6 +134,12 @@
             />
             <div v-else-if="entry.pendingTranscription && entry.text" class="message-text">{{ entry.text }}</div>
             <SafeMessageContent v-else-if="entry.text" class="message-text" :content="entry.text" :streaming="Boolean(entry.liveRound?.active)" />
+            <template v-if="entry.message?.mcp_presentations?.length">
+              <McpResultCard v-for="presentation in entry.message.mcp_presentations" :key="presentation.id"
+                :room-id="roomId" :message-id="entry.message.id" :presentation="presentation"
+                :can-filter="allowReply && viewerAgentId === null" :can-insert="canInsertMcpTable"
+                @insert="emit('insertMcpTable', $event)" />
+            </template>
             <MessageResourcePreviews
               v-if="entry.message && !entry.message.id.startsWith('pending:') && (entry.message.resource_uris?.length || hasPreviewableReference(entry.message.text))"
               :room-id="roomId"
@@ -340,6 +346,7 @@ import { apiErrorDetail, AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
 import { browserResourceKind, FullscreenPreview, isolatedBrowserResourceUrl, TextResourcePreview, shouldOpenInline, model3dFormat, Model3dThumbnail, Model3dViewer, queuePreview, type Model3dSource } from '@/core/util'
 import { TopicBadge, useTopicRefs, type TopicAssignmentChangeScope } from '@/app/topic'
 import SafeMessageContent from './SafeMessageContent.vue'
+import McpResultCard from './McpResultCard.vue'
 import InteractionChoice from './InteractionChoice.vue'
 import InternalAgentAvatar from './InternalAgentAvatar.vue'
 import InternalParticipantAvatar from './InternalParticipantAvatar.vue'
@@ -356,7 +363,7 @@ import { visibleMessageText } from '../messageDirectives'
 import { displayMessageText } from '../messagePresentation'
 import { conversationTimelineEntries, conversationTimelineEntryText, conversationTimelineRenderKey, shouldShowLiveConversationRound } from '../liveState'
 
-const props = withDefaults(defineProps<{ roomId: string; messages: MessengerMessage[]; activity: ConversationActivity[]; liveRound: LiveAgentRound | null; pendingTranscriptions?: PendingVoiceTranscription[]; agentId: number; agentName: string; loading?: boolean; viewerAgentId?: number | null; showAgentAvatars?: boolean; allowReply?: boolean; canReadDocuments?: boolean; canEditDocuments?: boolean }>(), {
+const props = withDefaults(defineProps<{ roomId: string; messages: MessengerMessage[]; activity: ConversationActivity[]; liveRound: LiveAgentRound | null; pendingTranscriptions?: PendingVoiceTranscription[]; agentId: number; agentName: string; loading?: boolean; viewerAgentId?: number | null; showAgentAvatars?: boolean; allowReply?: boolean; canReadDocuments?: boolean; canEditDocuments?: boolean; canInsertMcpTable?: boolean }>(), {
   pendingTranscriptions: () => [],
   loading: false,
   viewerAgentId: null,
@@ -364,8 +371,10 @@ const props = withDefaults(defineProps<{ roomId: string; messages: MessengerMess
   allowReply: true,
   canReadDocuments: false,
   canEditDocuments: false,
+  canInsertMcpTable: false,
 })
 const emit = defineEmits<{
+  insertMcpTable: [html: string]
   reply: [message: MessengerMessage]
   openDocument: [document: Pick<ConversationDocumentReference, 'id' | 'label'>]
   openRepository: [id: string]

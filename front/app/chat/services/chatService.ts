@@ -3,6 +3,7 @@ import { createSessionReadCache, invalidateSessionReads, queuePreview, saveBlobA
 import type { DocumentFocus } from '@/core/util'
 import type { DraftContent, DraftFile, DraftSnapshot, DraftSend } from '../drafts'
 import type { MessengerInteraction } from '../types'
+import type { McpTable } from '../mcpApps'
 import { isAxiosError } from 'axios'
 import type { CodeWorkspace } from '../code/types'
 import type { ActiveCall, ChatCommandCatalog, ChatIdentityMapping, ChatInboxSummary, ChatViewerAgent, ConversationActivityPage, ConversationActivityDetail, ConversationDocumentDetail, ConversationDocumentList, ConversationDocumentReference, ConversationDocumentUpdate, ConversationProcessList, ConversationTaskTree, DictationResult, FrequentEmojiList, MessagePage, MessageResourcePreview, MessageSpeechStatus, MessageTopicChangeScope, MessageTopicUpdateResult, MessengerMessage, MessengerRoom, MessengerStatus, Page, PushConfiguration, PushSubscriptionPayload, PushSubscriptionRead, ReasoningEffort, RecipientCatalog, VoiceCallStatus, WebRtcIceCandidate } from '../types'
@@ -36,6 +37,16 @@ function draftFileUnavailable(error: unknown): boolean {
 }
 
 export const chatService = {
+  async openMcpApp(roomId: string, messageId: string, id: string, signal: AbortSignal): Promise<string> {
+    return (await api.get<{ html: string }>(
+      base + '/rooms/' + roomId + '/messages/' + messageId + '/mcp-apps/' + id, { signal },
+    )).data.html
+  },
+  async filterMcpApp(roomId: string, messageId: string, id: string, args: Record<string, unknown>, signal: AbortSignal): Promise<McpTable> {
+    return (await api.post<McpTable>(
+      base + '/rooms/' + roomId + '/messages/' + messageId + '/mcp-apps/' + id, { arguments: args }, { signal },
+    )).data
+  },
   async discardDraftFile(room: string, key: string): Promise<void> { await api.delete(`${base}/rooms/${room}/draft/files/${key}`) },
   async draft(room: string): Promise<DraftSnapshot> { return (await api.get<DraftSnapshot>(`${base}/rooms/${room}/draft`)).data },
   async saveDraft(room: string, revision: number, mutationKey: string, content: DraftContent | null): Promise<DraftSnapshot> { return (await api.put<DraftSnapshot>(`${base}/rooms/${room}/draft`, { expected_revision: revision, mutation_key: mutationKey, content })).data },
