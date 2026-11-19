@@ -8,7 +8,7 @@ les objectifs, les documents, la mémoire, les modèles IA et les intégrations 
 Un même agent peut discuter avec une personne, consulter ses informations autorisées, produire un
 livrable, solliciter un collègue, déclencher un workflow externe et conserver les connaissances utiles.
 
-Ce catalogue décrit les fonctionnalités présentes dans le dépôt au **16 novembre 2026**, y compris
+Ce catalogue décrit les fonctionnalités présentes dans le dépôt, y compris
 les fonctions destinées aux agents, les écrans d’administration et les mécanismes de fond. Il est
 organisé par usages, puis complété par un inventaire des fonctions MCP et une correspondance avec
 **tous les modules déclarés**. Les sources de chaque domaine sont indiquées pour rendre la couverture
@@ -27,7 +27,7 @@ Les dix mécanismes IA du Lab, ses campagnes de processus et les mécanismes de 
 constituent des fonctions distinctes. Les sources et tests décrivent les garanties du logiciel ;
 ce catalogue ne constitue pas une qualification de chaque installation ou fournisseur.
 
-Les inventaires couvrent **294 fonctions MCP natives, 80 modules backend et 41 modules frontend**.
+Les inventaires couvrent **302 fonctions MCP natives, 80 modules backend et 41 modules frontend**.
 Cette revue inclut le code de développement et les changements locaux présents ; elle ne décrit
 pas uniquement la dernière publication. Le client desktop constitue une application de support
 distincte des modules web dénombrés.
@@ -49,7 +49,7 @@ qualité figurent dans [l’exploitation](#exploitation).
 10. [Tâches, planification et collaboration](#taches)
 11. [Objectifs durables](#objectifs)
 12. [Mémoire et recherche de connaissances](#memoire)
-13. [Documents, Datasets et applications](#documents)
+13. [Documents, cartes mentales, Datasets et applications](#documents)
 14. [Dossiers thématiques](#sujets)
 15. [Dream et apprentissage](#dream)
 16. [Bibliothèque de compétences](#skills)
@@ -1281,6 +1281,10 @@ le rendu éditable du Document HTML, avec la révision observée. L’utilisateu
 peut sélectionner un passage puis écrire « reformule ce passage » : le focus dans le champ de chat
 ne fait pas perdre la sélection du document.
 
+Pour une carte mentale, le contexte peut indiquer le document ouvert et sa révision affichée.
+La sélection d’un nœud ou d’un groupe de nœuds reste dans l’éditeur. Une demande sur une branche
+peut indiquer son titre ou son chemin pour que l’agent retrouve son identifiant avant d’écrire.
+
 Le contexte est borné : jusqu’à 4 000 caractères sélectionnés, 6 000 caractères visibles et
 160 caractères de chaque côté du curseur, avec indication des extraits tronqués. Les positions
 portent sur le texte affiché en unités UTF-16, pas sur des offsets dans le HTML enregistré.
@@ -2422,30 +2426,27 @@ Sources : [API Memory](../../../back/app/memory/router.py), [schémas](../../../
 [garanties de recherche documentaire](../../../back/app/memory/tests/test_document_retrieval.py).
 
 <a id="documents"></a>
-## 13. Documents, Datasets et applications
+## 13. Documents, cartes mentales, Datasets et applications
 
 Un document peut servir de texte de travail, de support multimédia ou de **page applicative**.
 Une même page HTML peut réunir une explication éditable, un formulaire, un calculateur et un
 graphique. Ses données durables peuvent vivre dans des documents **Données**, aussi appelés
-**Datasets**, partagés avec d’autres pages. `app.document` possède les deux types **Texte**
-et **Données**, leurs métadonnées, droits, classements et révisions communs.
-`app.document.text` fournit le HTML et `app.document.data` le JSON ; `app.dataset`
-reste un relais de compatibilité. Les droits de chaque document restent indépendants.
-
-Deux ressources complémentaires sont disponibles :
+**Datasets**, partagés avec d’autres pages. `app.document` possède les formats **Texte**,
+**Données** et **Carte mentale**, avec des métadonnées, classements et révisions communs.
+`app.document.text` fournit le HTML, `app.document.data` les Données JSON et
+`app.document.mindmap` les cartes structurées. `app.dataset` reste un relais de compatibilité.
+Les droits de chaque document restent indépendants.
 
 | Ressource | Contenu et usages | Éditeur |
 |---|---|---|
 | **Texte** | HTML enrichi, médias, formulaires, CSS et JavaScript ; rapports, simulateurs et petites applications. | Tiptap et interface Quasar, sans vue Source dans les documents. |
 | **Données** | JSON : tableau de réponses, paramètres de simulation, référentiel ou résultats structurés. | CodeEditor avec coloration syntaxique JSON. |
-
-Les autres types de documents, tels qu’un type image autonome, ne sont pas encore disponibles.
-Les images et les autres médias peuvent déjà être intégrés ou joints aux documents HTML.
+| **Carte mentale** | Arborescence de nœuds avec titres, notes, contenus riches, cases à cocher et références. | Éditeur graphique dans la bibliothèque Documents. |
 
 ### Formats extensibles et stockage commun
 
 Le **format de document** est identifié par `document_format` et sa version. Les formats
-produit intégrés restent **Texte** (`text`) et **Data** (`data`). Un registre public permet
+intégrés sont **Texte** (`text`), **Données** (`data`) et **Carte mentale** (`mindmap`). Un registre public permet
 à un module de contribuer un codec textuel ou binaire, son éditeur et ses capacités sans
 créer une autre bibliothèque. Un contenu structuré en JSON n’est pas automatiquement un
 document Data. Les formats d’exemple des tests ne sont pas des fonctionnalités livrées.
@@ -2472,6 +2473,81 @@ installation de plugins à chaud ni conversion automatique entre versions de for
 Sources : [contrat des formats et qualification](../dev/document-formats.md),
 [cycle de vie et permissions](../../../back/app/document/tests/test_formats.py),
 [migration des formats](../../../back/app/document/tests/test_format_migration.py).
+
+### Cartes mentales
+
+#### Édition des nœuds et des branches
+
+- Créer une branche sœur ou enfant, naviguer entre les nœuds, plier ou déplier les descendants et
+  modifier le titre ou la note sur place. La saisie d’une lettre ou d’un chiffre sur un nœud texte
+  sélectionné ouvre l’édition et ajoute le caractère au titre. L’aide clavier regroupe les raccourcis.
+- Ajouter une icône, un lien ou une case à cocher à un nœud. Cliquer sur la case ou appuyer sur
+  **Espace** hors édition alterne son état, qui est enregistré. Une nouvelle branche sœur sous
+  un nœud à case reçoit une case vide. Un nouvel enfant commence sans case. En cours de saisie,
+  **Espace** ajoute un caractère.
+- Passer un nœud en texte enrichi pour utiliser la mise en forme, les listes, les tableaux et les
+  insertions de l’éditeur Texte directement dans le nœud. La barre d’outils suit la sélection.
+  Les réglages de page et de marges appartiennent au document Texte.
+- Sélectionner une plage avec **Maj+flèches** ou **Maj+clic**, ou ajouter et retirer des nœuds avec
+  **Ctrl/Cmd+clic**. **Tout sélectionner** inclut les branches repliées. Les opérations par lot
+  couvrent la coupe, la copie, le collage dans la même carte, la suppression et les cases à cocher.
+- Réordonner les branches ou changer leur parent en les déposant avant, après ou dans un nœud.
+  Le déplacement conserve les identifiants, l’ordre et les descendants des branches. La copie
+  crée des branches distinctes avec leurs descendants. Les opérations s’annulent et se rétablissent.
+
+#### Ressources et presse-papiers
+
+- Déposer un document depuis la liste ou l’arborescence pour créer un enfant qui référence
+  le document. Les fichiers locaux déposés et les images web admissibles deviennent des
+  pièces jointes de la carte avant leur insertion. Un lien web déposé crée une référence.
+- Hors édition, coller du texte crée un enfant par ligne, lignes vides comprises. Une URL seule
+  sur sa ligne devient un lien. La commande d’insertion d’un lien crée un enfant. Dans un nœud
+  en cours d’édition, le collage s’effectue à la position de saisie.
+- Sélectionner une référence pour afficher ses actions contextuelles. Un clic simple conserve son
+  aperçu monté et la sélection suit le changement de mode. **Ctrl/Cmd+clic** ou **Ouvrir** suit la
+  référence. Les dimensions d’un lecteur redimensionnable sont enregistrées pour cette occurrence.
+
+#### Recherche, affichage et échanges
+
+- Rechercher et remplacer dans les titres, notes et contenus riches, même dans les branches
+  repliées. Le résultat révèle son nœud et le remplacement global est annulable en une fois.
+  La mise en forme et les destinations des liens sont conservées.
+- Déplacer et zoomer la vue à la souris ou au toucher, ajuster à toute la carte et rétablir le zoom
+  à 100 %. Le plein écran conserve la barre d’outils et les boutons de navigation du document.
+  Le zoom, le repli et le plein écran relèvent de l’affichage.
+- Enregistrer un thème (**Solaire**, **Océan**, **Forêt** ou **Monochrome**) et une couleur de fond
+  personnalisée. Les thèmes suivent le mode clair ou sombre. Le fond personnalisé garde sa couleur.
+- Importer et exporter FreeMind/Freeplane (`.mm`), OPML, XMind avec `content.json` et le format Galaris
+  (`.mindmap`). Les échanges structurés avec les autres applications conservent les branches,
+  titres, notes en texte et liens portables. Le format natif conserve aussi le contenu riche,
+  les cases et l’apparence de la carte.
+- Exporter le diagramme entier en PNG, l’imprimer en A4 paysage ou télécharger un ZIP avec
+  le diagramme HTML et les pièces jointes. Le rendu graphique inclut les branches repliées.
+  Le PDF reprend l’arborescence textuelle et peut être partagé depuis le menu du système sur mobile.
+
+#### Actions de l’agent
+
+L’agent peut choisir ce format pour un résultat durable qui se prête à une arborescence, ou
+réutiliser une carte pertinente. Le service Document peut exposer ces outils dans le Chat ou
+dans une tâche, selon les droits et les fonctions autorisées.
+
+- `mindmap_create` crée une carte privée, avec au plus 100 branches initiales fournies dans
+  l’ordre parent-enfant. Il renvoie l’URI, la révision et l’identifiant de la racine.
+- `mindmap_read` lit la dernière révision enregistrée. Il pagine les branches et leurs
+  identifiants stables. Avec un identifiant de nœud, il lit aussi son contenu riche par tranches.
+- `mindmap_edit` applique un lot atomique de 1 à 50 ajouts, modifications, déplacements ou
+  suppressions à la révision attendue. Supprimer une branche emporte ses descendants.
+  Si la révision est devenue obsolète, l’agent relit la carte avant de réconcilier les modifications.
+
+La lecture est active par défaut. La création et la modification sont Sur demande par défaut et
+suivent la politique effective de la connexion. Le partage est explicite. Le Chat interne peut
+transmettre l’URI et la révision de la carte ouverte. Pour désigner un nœud, l’utilisateur peut
+donner son titre ou son chemin. L’agent demande une précision si plusieurs branches correspondent.
+
+[Guide utilisateur](../user/documents.md) · [Contrat technique](../dev/document-formats.md) ·
+[Tests du format et du MCP](../../../back/app/document/tests/test_mindmap.py) ·
+[Tests de l’éditeur](../../../front/browser-tests/mindmap.spec.mjs) ·
+[Garanties et parcours intégré](../dev/functional-tests.md)
 
 ### Support canonique des contenus rédigés
 
@@ -2503,11 +2579,11 @@ concurrent. Cette politique ne convertit pas les anciens fichiers et ne modifie 
 
 ### Bibliothèque documentaire
 
-- Choisir Texte ou Données, nommer le document et choisir son propriétaire humain ou agent dans le
+- Choisir Texte, Données ou Carte mentale, nommer le document et choisir son propriétaire humain ou agent dans le
   périmètre autorisé ; les contrats maintiennent un agent éditeur lorsque nécessaire.
 - Rechercher dans les titres et contenus, filtrer les documents accessibles et parcourir les
   dossiers/sous-dossiers.
-- Retrouver les Textes et Données dans **Connaissances → Documents** ; filtrer par type
+- Retrouver les Textes, Données et Cartes mentales dans **Connaissances → Documents** ; filtrer par type
   avant pagination, en conservant les autres critères de recherche.
 - Déplacer un document dans un dossier et changer son propriétaire selon les règles d’accès.
 - Retrouver les documents liés à une conversation ou à un Goal ; les documents métier protégés
@@ -2926,13 +3002,29 @@ une réponse tardive d’un autre fichier est écartée.
 
 ### Liens métier, cartes et navigation documentaire
 
-Les liens Galaris couvrent agents, Documents, Datasets, tâches, Goals, Topics, discussions,
-rounds texte, appels/tours vocaux, définitions Process et runs. Le sélecteur **Objets Galaris**
-et **Copier la référence** fournissent une URI stable et un titre. Les cartes compactes montrent
-les informations essentielles et l’état au moment de leur insertion ; leur ouverture consulte
-la ressource actuelle en modale, sans copier son contenu ni accorder de droit. Les cartes d’agent
-présentent avatar, nom et poste ; les processus et runs peuvent intégrer leur diagramme.
-**Afficher l’URL** rétablit le lien sans supprimer l’objet.
+Le sélecteur **Objets Galaris** et **Copier la référence** fournissent une URI stable et un titre.
+Les références couvrent notamment agents, documents, dossiers, contacts, tâches, Goals, sujets,
+discussions, échanges texte, appels et tours vocaux, agenda, processus et exécutions.
+Dans les documents Texte et les nœuds enrichis des cartes mentales, la barre contextuelle propose
+les modes que la ressource sélectionnée prend en charge. Chaque occurrence conserve son propre mode.
+
+- **Lien** affiche le titre et l’icône disponible. Les pages Web ordinaires s’insèrent par défaut
+  en lien. Pour une page Web, le mode Carte dépend du service d’aperçu.
+- **Carte** affiche un aperçu compact. Les cartes d’agent montrent l’avatar, le nom et le poste.
+  Les agents, tâches, objectifs, discussions et documents Données proposent Lien et Carte.
+  Pour les agents, les documents Texte et les processus, le sélecteur privilégie le lien dans un
+  document Texte et la carte dans une carte mentale.
+- **Intégré** affiche le lecteur dans le document hôte. Il est proposé pour les documents Texte et
+  Carte mentale, les processus et leurs exécutions, ainsi que les images, médias et PDF pris en
+  charge. Les images compatibles s’insèrent par défaut en Intégré. Les lecteurs de documents et
+  de processus redimensionnables conservent leurs dimensions par occurrence et défilent lorsque
+  leur contenu déborde.
+
+La bordure et l’ombre dépendent du mode et du document hôte. En carte mentale, le nœud fournit
+la bordure des cartes et des documents ou processus intégrés seuls. Les images s’affichent sans
+bordure. Un même objet peut apparaître dans plusieurs nœuds avec des modes et tailles différents.
+Les droits sur la cible sont vérifiés séparément. Une intégration récursive ou trop profonde
+affiche un lien de repli.
 
 Un lien documentaire s’ouvre dans son contexte courant : bibliothèque, panneau du Chat ou modale.
 Chaque contexte possède son historique précédent/suivant ; **Ouvrir dans une modale** garde aussi
@@ -2947,12 +3039,13 @@ propres à la sélection. Échap, clic extérieur et clavier ferment ou parcoure
 Les blocs de code proposent langage, indentation, copie et numéros de ligne, activés par défaut
 pour les nouveaux blocs. Les tableaux possèdent des galeries de styles adaptés au thème.
 Les raccourcis de type Writer, l’aide clavier et les transformations de préfixes (`#`, listes,
-citations) complètent les barres. En lecture seule, liens et objets s’ouvrent directement ;
-les menus d’édition sont absents, avec sélection et copie au clavier toujours possibles.
+citations) complètent les barres. Les menus d’édition sont absents en lecture seule. Dans un document
+Texte ou une carte mentale en édition, **Ctrl/Cmd+clic** sur une référence documentaire ouvre sa
+cible. Le clic simple sélectionne la référence.
 L’aperçu d’une application est une copie statique de son rendu, sans réexécution des scripts.
 
 Sources : [contenus riches](../user/rich-content.md), [références métier](../user/navigation.md),
-[processus cités](../user/internal-processes.md).
+[modes par type de ressource](../dev/document-references.md), [processus cités](../user/internal-processes.md).
 
 ### Importer par collage
 
@@ -3750,7 +3843,7 @@ contrôle l’accès** ; le nom affiché ne remplace pas son identité.
 |---|---|
 | `file://<uuid>` | Fichiers internes indépendants et pièces jointes accessibles, octets immuables et nom officiel commun. |
 | `console://` | Fichiers du home de la console active de l’agent ; ce schéma n’est annoncé que si cette console existe. |
-| `document://` | Bibliothèque commune Texte/Données, dossiers `document://folders/` et pièces jointes `document://<uuid>/attachments/` ; droits propres à chaque document. |
+| `document://` | Bibliothèque commune, dont les documents Texte, Données et Carte mentale. Dossiers `document://folders/` et pièces jointes `document://<uuid>/attachments/` avec les droits propres à chaque document. |
 | `data://` | URI canonique des documents Données JSON ; même identité documentaire, avec compatibilité des anciens liens vérifiés. |
 | `memory://` | Recherche et lecture des connaissances autorisées. |
 | `galaris://` | Projections d’objets métier : tâches, rounds texte, tours vocaux, Goals, cycles et processus selon les collections exposées. |
@@ -3767,7 +3860,7 @@ contrôle l’accès** ; le nom affiché ne remplace pas son identité.
 
 ### Explorateur des fichiers d’un agent
 
-L’emplacement **Documents** regroupe Texte et Données dans leur hiérarchie de répertoires,
+L’emplacement **Documents** regroupe les documents dans leur hiérarchie de répertoires,
 avec les documents non classés à la racine et les seuls enfants directs dans chaque dossier.
 Il n’y a plus d’emplacement Données séparé ; les URI `data://` restent utilisables. Les noms des
 répertoires alimentent le fil d’Ariane, y compris sur un lien direct. Un même document peut apparaître
@@ -5069,7 +5162,7 @@ Sources : [dashboard](../../../back/app/dashboard/schemas.py), [appels LLM](../.
 | Persistance | PostgreSQL/pgvector, SQLAlchemy async, transactions, historique et verrouillage optimiste ; leases et claims pour répartir les exécutions durables. DbAdmin dérive le schéma et applique les contributions idempotentes. |
 | Orchestration | Agent fournit façade, registre, résolution, dispatcher, planner et résultat ; Harness exécute Pydantic AI ; tâche possède états, tentatives et scheduler. Les drivers rendent un unique résultat terminal après leurs événements. |
 | Messages | Messenger possède conversations, capacités, journal entrant et déduplication ; les bridges traduisent les protocoles. Les fichiers conservent leur URI et provenance dans la chronologie. |
-| Ressources | Document possède Texte/Données, Memory les souvenirs personnels, Process le BPMN et ses runs, Storage les octets ; File Sharing unifie leurs URI sans déplacer leur autorité ni leurs droits. |
+| Ressources | Document possède les documents typés, Memory les souvenirs personnels, Process le BPMN et ses runs, Storage les octets. File Sharing unifie leurs URI sans déplacer leur autorité ni leurs droits. |
 | Interface | Vue/Quasar, Pinia, routes dérivées des fichiers, navigation déclarée, catalogue i18n par domaine et composants partagés chargés à la demande ; contrôles de parité FR/EN, thème et frontière mobile communs. |
 | Composition frontend | Les pages réunissant plusieurs domaines appartiennent au shell `app.index` ; composants et états restent dans leurs domaines et sont consommés par des surfaces publiques. Le graphe courant ne conserve ni cycle entre modules frontend ni import privé inter-domaines. |
 | Temps réel | Abonnements autorisés par domaine, événements après commit, deltas de progression bornés et resynchronisation par snapshot/cursor ; reconnexion sans restauration d’un droit révoqué. |
@@ -5500,7 +5593,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | Chat natif | Humain–agent ; les salons de groupe de transports externes ne constituent pas une messagerie native universelle entre humains. |
 | Apprentissage de compétences | Off par défaut ; observation et apprentissage explicites avec preuves et seuils. |
 | Collaboration documentaire | Sauvegarde, révisions, conflits et partage ; pas une promesse de coédition simultanée caractère par caractère. |
-| Documents et Datasets | `app.document` possède Texte (HTML, `document://`) et Données (JSON, `data://`) dans une bibliothèque commune ; chaque document conserve ses droits et ses versions. |
+| Formats documentaires | `app.document` réunit Texte (HTML, `document://`), Données (JSON, `data://`) et Carte mentale (arborescence JSON, `document://`). Chaque document conserve ses droits et ses versions. |
 | Applications documentaires | Affichage automatique de HTML/CSS/JavaScript isolés et texte éditable, sans vue Source ; les ressources externes ordinaires sont bloquées. Le CPU et la mémoire du navigateur ne sont pas plafonnés par ce mécanisme. |
 | Accès applicatif aux Datasets | Droits actuels du lecteur et accord personnel pour la version du document ; refus par défaut. L’accès en écriture permet aussi un remplacement complet, sans permission « ajout uniquement » distincte. |
 | Données et quotas applicatifs | JSON borné, sans schéma métier imposé ; 30 écritures et 4 000 000 octets résultants par minute et couple utilisateur–Dataset, partagés entre applications. |
@@ -5551,7 +5644,7 @@ d’aperçu, les bridges, les harnais, les mécanismes Dream et les contribution
 <a id="mcp"></a>
 ## 30. Inventaire des fonctions accessibles aux agents
 
-Cet inventaire reprend les **294 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
+Cet inventaire reprend les **302 fonctions natives déclarées par `@mcp_tool` dans le code inspecté**.
 Il couvre aussi les fonctions réservées aux contrôleurs conversationnels ou à l’administration.
 Toutes ne sont donc pas visibles simultanément par chaque agent. Les schémas d’arguments complets
 sont exposés par MCP ; leurs sources sont reliées aux sections métier ci-dessus.
@@ -5695,6 +5788,9 @@ Les 23 fonctions exigent ServiceAdmin. Les définitions intégrées et les dél�
 | `goal_complete` | `goal_management` | Marquer l’objectif terminé et arrêter les cycles futurs. |
 | `goal_run_now` | `galaris` | Demander un cycle immédiat selon les conditions d’activation et de disponibilité. |
 | `goal_ask_referrer` | `galaris` | Poser une question corrélée au référent humain, attendre sa réponse et appliquer rappels/pause. |
+| `goal_retrospective_evidence` | `galaris` | Pendant la rétrospective hebdomadaire, échantillonner ses propres tâches terminées et lire les observations expurgées et références de preuve. |
+| `goal_retrospective_learn` | `galaris` | Appliquer une amélioration étayée à une compétence personnelle pendant la rétrospective. |
+| `goal_retrospective_record` | `galaris` | Enregistrer le suivi HTML de la rétrospective active avec la révision attendue. |
 | `goal_delete` | `goal_management` | Supprimer logiquement un Goal lorsque aucun cycle inachevé ne l’empêche. |
 
 La lecture des Goals et cycles utilise aussi `file_list`, `file_search` et `file_read` sur leurs
@@ -5720,6 +5816,11 @@ ordinaires restent dans le périmètre de l’agent.
 | `memory_summarize` | `memory` | Synthétiser avec le modèle de l’agent faits attribués, décisions, engagements et questions ouvertes, au maximum 200 messages et 32 000 caractères, sans remplacement des souvenirs existants ni stockage après erreur modèle. |
 | `document_sharing` | `document` | Lire partages, destinataires possibles et version de verrouillage ; recherche/filtre/pagination des destinataires. |
 | `document_share` | `document` | Partage ciblé pour un document de travail propriétaire. |
+| `document_revision_list` | `document` | Paginer les révisions de contenu enregistrées d’un document accessible, de la plus récente à la plus ancienne. |
+| `document_revision_compare` | `document` | Comparer deux révisions enregistrées et, pour un format de dessin compatible, les changements de pixels dans une région facultative. |
+| `mindmap_create` | `document` | Créer une carte mentale privée, éventuellement avec des branches initiales, et renvoyer son URI et sa révision. |
+| `mindmap_read` | `document` | Lire la carte enregistrée, les identifiants des nœuds et la révision, ou le HTML d’une branche par tranches. |
+| `mindmap_edit` | `document` | Ajouter, modifier, déplacer ou supprimer des branches en une opération atomique avec la révision attendue. |
 | `skills_list` | `skills` | Découvrir les compétences dans le périmètre administrable/autorisé. |
 | `skill_read` | `skills` | Lire une compétence et ses informations ; fichiers auxiliaires accessibles via la façade de ressources. |
 | `skill_update` | `skills` | Modifier le libellé du package avec sa révision attendue. |
@@ -6060,7 +6161,7 @@ d’activation et de configuration restent celles du runtime.
 | `app.webhook` | [Module sans endpoint générique actif ; entrées externes via les intégrations dédiées](#processus) |
 | `app.llm` | [Modèles, profils, passerelles, crédits et inférences durables](#modeles), [lecture et analyses documentaires](#harnais), [traces et coûts](#supervision) |
 | `app.topic` | [Dossiers thématiques et classement](#sujets) |
-| `app.document` | [Documents Texte/Données, résumés courants, versions, applications, droits et classement](#documents), [rédaction et conversation contextuelle](#chat) |
+| `app.document` | [Documents Texte, Données et Carte mentale, résumés courants, versions, applications, droits et classement](#documents), [rédaction et conversation contextuelle](#chat) |
 | `app.memory` | [Souvenirs privés par agent, rappel, graphe et références documentaires facultatives](#memoire) |
 | `app.dataset` | [Compatibilité vers `app.document.data` : URI et API JSON historiques](#documents) |
 | `app.contact` | [Contacts et identités multicanaux](#messageries) |
@@ -6151,7 +6252,7 @@ des formulaires/guides aux écrans communs, plutôt qu’une application indépe
 | `app/dream` | Suivi, historique et actions immédiates sur les nœuds Memory ; indexation administrée dans Préférences → Fichiers |
 | `app/topic` | Liste, détail et réorganisation des sujets |
 | `app/goal` | Objectifs, arbre, cycles, référents, horaires et suivi |
-| `app/document` | Bibliothèque Texte/Données, résumés courants, rédaction avec conversation, applications, droits, dossiers personnels, miniatures et partage |
+| `app/document` | Bibliothèque et éditeurs Texte, Données et Carte mentale, résumés courants, rédaction avec conversation, applications, droits, dossiers personnels, miniatures et partage |
 | `app/plugin` | Administration des plugins, import de bundles, activation et retrait |
 | `app/memory` | Souvenirs privés, liste/recherche, temporalité et simulation, graphe à branches repliables, fichiers, emplacements et contacts |
 | `app/lab` | Analyse de tâches, jeux synthétiques contextualisés, évaluation par mécanisme, cohérence et revues attribuées |

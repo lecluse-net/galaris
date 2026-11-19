@@ -71,6 +71,22 @@ Documents also form a **knowledge base**: authorised searches can retrieve their
 and attachments. Sharing with a human, agent or team makes joint work accessible without copying it
 everywhere.
 
+## Organise a project with a mind map
+
+A **mind map** is a document in **Knowledge → Documents**, with its own sharing rights and
+revision history. Nodes can contain rich text, notes, images and checkboxes. Compatible resources
+can appear as links, cards or embedded content, depending on their type.
+
+Select multiple branches to drag them to a new location or edit them together. Drop documents or
+files onto a node, or paste a list to create one child per line. Maps also support find and replace,
+fullscreen, themes and a custom background colour. Import or export the outline in FreeMind/Freeplane,
+OPML, recent XMind or Galaris format. Export the whole diagram as a PNG or print it.
+
+An agent can choose to create a mind map when the result is best organised as a hierarchy. Document
+service tools also let it read and edit branches according to its access rights and required
+approvals. Internal Chat can tell the agent which map is open. To target a node, give its title
+or path in the map. [Use mind maps](user/documents.md)
+
 ## Turn a document into a usable tool
 
 The Documents library can also open its own conversation with an agent, preserving selection,

@@ -437,8 +437,8 @@ aux bundles déclaratifs tant que les contributions exécutables tierces n'ont p
 de contrat d'exécution isolé et qualifié au retrait.
 
 Restent ouverts l'isolation du code tiers et la supervision de ses dépendances, les
-migrations de schéma propres aux plugins, les autres façades installables et la publication
-officielle de l'App Store.
+migrations de schéma propres aux plugins, les autres façades installables et l'hébergement
+officiel de l'App Store.
 
 ## Lots et réception
 

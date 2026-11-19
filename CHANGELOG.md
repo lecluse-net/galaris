@@ -4,7 +4,6 @@ All notable changes to Galaris are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-The historical tags `0.1` and `0.2` remain aliases of `0.1.0` and `0.2.0`.
 
 ## [Unreleased]
 
@@ -100,6 +99,11 @@ The historical tags `0.1` and `0.2` remain aliases of `0.1.0` and `0.2.0`.
 - A **weekly retrospective Goal** lets each agent apply verified lessons to its
   personal skills. Users can reschedule or pause it. Existing learned packages,
   evidence and activation thresholds are retained. [Skills guide](docs/en/user/skills.md)
+- **Managed agent harnesses** now use Hermes 0.23.2, DeepSeek Harness
+  0.2.2-rc.5 (prerelease), Claude Agent SDK 0.2.185 and Codex SDK 0.170.0.
+  To upgrade an existing instance, wait for the agent's Tasks to finish and
+  choose **Update** in the harness supervision view. This recreates the instance
+  and clears its local data. [Harness Manager guide](docs/en/components/harness-manager.md#runtime-versions)
 - **`make update`** builds the selected checkout on any branch or tag, independently
   of `APP_ENV`. It builds before replacing services, requires complete database
   convergence before startup and waits for readiness. Use `VERSION` to select a

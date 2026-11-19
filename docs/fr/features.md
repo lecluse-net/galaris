@@ -83,6 +83,25 @@ Ces documents sont aussi une **base de connaissance** : leur contenu, leurs réf
 pièces jointes peuvent être retrouvés dans les recherches autorisées. Partager avec une personne,
 un agent ou une équipe rend le travail commun accessible sans le recopier partout.
 
+## Organiser un projet en carte mentale
+
+Une **carte mentale** est un document à part entière dans **Connaissances → Documents**,
+avec ses droits de partage et son historique. Ses nœuds accueillent du texte enrichi,
+des notes, des images et des cases à cocher. Les ressources compatibles peuvent s’afficher
+en lien, en carte ou en contenu intégré, selon leur type.
+
+Sélectionnez plusieurs branches pour les déplacer par glisser-déposer ou agir dessus en une fois.
+Déposez des documents ou des fichiers sur un nœud, ou collez une liste pour créer un enfant par
+ligne. La carte propose aussi la recherche et le remplacement, le plein écran, des thèmes et une
+couleur de fond personnalisable. Importez ou exportez l’arborescence en FreeMind/Freeplane, OPML,
+XMind récent ou au format Galaris. Exportez le diagramme entier en PNG ou imprimez-le.
+
+Un agent peut choisir de créer une carte quand le résultat se prête à une arborescence. Les outils
+du service Document lui permettent aussi de lire et de modifier les branches selon ses droits
+et les approbations requises. Le Chat interne peut lui indiquer quelle carte est ouverte.
+Pour cibler un nœud, indiquez son titre ou son chemin dans la carte.
+[Utiliser les cartes mentales](user/documents.md)
+
 ## Faire d’un document un outil utilisable
 
 Un document peut contenir un formulaire, un calculateur, un graphique ou une petite application.

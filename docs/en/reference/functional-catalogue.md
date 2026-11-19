@@ -7,7 +7,7 @@ following their work over time. Conversations, tasks, goals, documents, memory, 
 integrations form a common system. An agent can converse, consult authorized information,
 produce deliverables, involve colleagues, trigger external workflows and retain useful knowledge.
 
-This catalogue describes features present in the repository as of **16 November 2026**,
+This catalogue describes features present in the repository,
 including agent functions, administration screens and background mechanisms. It is organized
 by use, followed by a native MCP inventory and coverage of **every declared module**. Sources
 make that coverage verifiable. This is the exhaustive reference for preparing the product website.
@@ -22,7 +22,7 @@ verification facilities. The Lab's ten AI mechanisms, its Process campaigns and 
 mechanisms are distinct capabilities. Sources and tests describe software guarantees; this catalogue
 does not qualify every installation or provider.
 
-The inventory covers **294 native MCP functions, 80 backend modules and 41 frontend modules**.
+The inventory covers **302 native MCP functions, 80 backend modules and 41 frontend modules**.
 This review includes development code and local changes, beyond the latest published release.
 The desktop client is a separate support application, outside these web-module counts.
 Implemented features remain distinct from intentions in the [plan register](../../../project/plans/README.md).
@@ -42,7 +42,7 @@ Quality controls appear under [operations](#exploitation).
 10. [Tasks, planning and collaboration](#taches)
 11. [Durable goals](#objectifs)
 12. [Memory and knowledge retrieval](#memoire)
-13. [Documents, Datasets and applications](#documents)
+13. [Documents, mind maps, Datasets and applications](#documents)
 14. [Topics](#sujets)
 15. [Dream and learning](#dream)
 16. [Skill library](#skills)
@@ -1029,6 +1029,10 @@ position and an excerpt of currently visible text. This covers rendered HTML Doc
 with the observed revision. Selecting a passage then typing “rephrase this passage”
 keeps the document selection even after focus moves to the chat composer.
 
+For a mind map, the context can identify the open document and its displayed revision.
+Selection of a node or group of nodes stays in the editor. A request about a branch can give
+its title or path so the agent can look up its ID before writing.
+
 Context is bounded to 4,000 selected characters, 6,000 visible characters and 160 characters on
 each side of the cursor, with truncation markers. Positions use UTF-16 units of displayed text,
 not saved-HTML offsets. Changing document/content invalidates old positions; closing stops
@@ -1887,27 +1891,26 @@ Additional references: [Memory acquisition](../../../back/app/memory/acquisition
 [Document retrieval tests](../../../back/app/memory/tests/test_document_retrieval.py).
 
 <a id="documents"></a>
-## 13. Documents, Datasets and applications
+## 13. Documents, mind maps, Datasets and applications
 
 Documents are shared working material: text, multimedia or an application page combining editable
 explanations, forms, calculations and charts. Data documents, also called Datasets, can hold
-durable data shared by several pages. `app.document` owns both **Text** and **Data**, with
-common metadata, rights, classification and revision contracts. `app.document.text` supplies
-HTML and `app.document.data` supplies JSON; `app.dataset` remains a compatibility relay.
+durable data shared by several pages. `app.document` owns **Text**, **Data** and **Mind Map**, with
+common metadata, classification and revision contracts. `app.document.text` supplies HTML,
+`app.document.data` supplies Data JSON and `app.document.mindmap` supplies structured maps.
+`app.dataset` remains a compatibility relay.
 Each document retains independent permissions.
 
 | Resource | Content | Editor |
 |---|---|---|
 | Text | Rich HTML, media, forms, CSS and JavaScript; reports, simulators and small applications. | Tiptap with a Quasar interface, without a document Source view. |
 | Data | JSON values, response arrays, simulation parameters, reference data and structured results. | JSON CodeEditor. |
-
-Other document types, such as a standalone image type, are not available; images/media can already
-be embedded in or attached to HTML documents.
+| Mind Map | A tree of nodes with titles, notes, rich content, checkboxes and references. | Graphical editor in the Documents library. |
 
 ### Extensible formats and shared storage
 
 Documents owns identity, metadata, rights, classification and revisions across formats.
-The built-in formats are Text (`text`, editorial HTML) and Data (`data`, JSON). A structured
+The built-in formats are Text (`text`, editorial HTML), Data (`data`, JSON) and Mind Map (`mindmap`). A structured
 format can use JSON without becoming Data. Text content uses `documents.content`; binary
 formats reference immutable `core.storage` files retained by their revisions.
 
@@ -1924,6 +1927,78 @@ prepares contributions; it provides neither hot plugin installation nor automati
 Sources: [format contract and qualification](../dev/document-formats.md),
 [lifecycle and permissions](../../../back/app/document/tests/test_formats.py),
 [format migration](../../../back/app/document/tests/test_format_migration.py).
+
+### Mind maps
+
+#### Editing nodes and branches
+
+- Create sibling or child branches, move between nodes, fold or unfold descendants and edit titles
+  or notes in place. Typing a letter or digit on a selected text node starts editing and adds it
+  to the title. Keyboard help lists the shortcuts.
+- Add an icon, link or checkbox to a node. Clicking the checkbox or pressing **Space** outside
+  editing toggles its saved state. A new sibling below a node with a checkbox gets an empty box.
+  A new child starts without a checkbox. **Space** inserts a character while editing.
+- Convert a node to rich text for formatting, lists, tables and insertions from the Text editor
+  inside the node. The toolbar follows the selection. Page layout and margins belong to the
+  Text document.
+- Select a range with **Shift+arrow keys** or **Shift+click**, or add and remove nodes with
+  **Ctrl/Cmd+click**. **Select all** includes folded branches. Batch actions cover cut, copy,
+  paste within the same map, deletion and checkbox changes.
+- Reorder or reparent branches by dropping them before, after or inside a node. Moves preserve
+  IDs, order and descendants. Copying creates distinct branches with their descendants.
+  Operations can be undone and redone.
+
+#### Resources and clipboard
+
+- Drop a document from the list or tree to create a child that references it. Local files and
+  eligible web images become map attachments before insertion. Dropping a web link adds a reference.
+- Outside editing, pasting text creates one child per line, including empty lines. A line containing
+  only a URL becomes a link. The insert-link action creates a child. While editing a node, pasting
+  inserts content at the current editing position.
+- Select a reference to reveal contextual actions. A click keeps its preview mounted, and
+  selection follows mode changes. **Ctrl/Cmd+click** or **Open** follows the reference.
+  Resizable viewers save dimensions for that occurrence.
+
+#### Search, display and interchange
+
+- Find and replace across titles, notes and rich content, including folded branches. A match
+  reveals its node. Replace All can be undone as one operation and preserves formatting and
+  link destinations.
+- Pan and zoom by mouse or touch, fit the whole map and reset to 100%. Fullscreen keeps the
+  toolbar and document navigation buttons. Zoom, folding and fullscreen are view settings.
+- Save a theme (**Solaire**, **Ocean**, **Forest** or **Monochrome**) and a custom background
+  colour. Themes follow light or dark mode. A custom background keeps its colour.
+- Import and export FreeMind/Freeplane (`.mm`), OPML, XMind with `content.json` and Galaris
+  format (`.mindmap`). Interchange with other applications preserves branches, titles,
+  plain-text notes and portable links. The native format also preserves rich content,
+  checkboxes and the map's appearance.
+- Export the complete diagram as PNG, print it on a landscape A4 page, or download a ZIP with
+  the HTML diagram and its attachments. The diagram includes folded branches. PDF uses a text
+  outline and can be shared from the system menu on mobile.
+
+#### Agent actions
+
+An agent can choose this format for durable work that is best organised as a hierarchy or reuse
+an appropriate map. The Document service can expose these tools in Chat or a Task, depending
+on access and available tools.
+
+- `mindmap_create` creates a private map with up to 100 initial branches in parent-first order.
+  It returns the URI, revision and root ID.
+- `mindmap_read` reads the latest saved revision. It paginates branches and stable IDs and can
+  page through a node's rich content when given its ID.
+- `mindmap_edit` applies an atomic batch of 1 to 50 additions, edits, moves or removals at the
+  expected revision. Removing a branch removes its descendants. If the revision is stale, the
+  agent rereads the map before reconciling its changes.
+
+Read is enabled by default. Creation and editing are Ask by default and follow the effective
+connection policy. Sharing is explicit. Internal Chat can send the URI and revision of the open
+map. The user can give a node's title or path to identify it. The agent asks for clarification
+if more than one branch matches.
+
+[User guide](../user/documents.md) · [Technical contract](../dev/document-formats.md) ·
+[Format and MCP tests](../../../back/app/document/tests/test_mindmap.py) ·
+[Editor tests](../../../front/browser-tests/mindmap.spec.mjs) ·
+[Guarantees and end-to-end journey](../dev/functional-tests.md)
 
 ### Canonical home for authored content
 
@@ -1950,12 +2025,12 @@ This policy neither converts old files nor changes their permissions.
 
 ### Library, ownership and deletion
 
-Users can choose Text or Data, select an authorised human/agent owner (retaining an editor agent
+Users can choose Text, Data or Mind Map, select an authorised human/agent owner (retaining an editor agent
 where required), search titles/content, filter by access, browse folders, move documents,
 change ownership subject to its own rules, and find conversation/Goal-related documents. The library
 shows owner, sharing, revision and collaborators; supports existing/new keywords; and provides
 canonical `document://<uuid>` links. Protected business documents retain their restrictions.
-**Knowledge → Documents** lists both Text and Data; the type filter applies before pagination
+**Knowledge → Documents** lists Text, Data and Mind Map documents; the type filter applies before pagination
 and combines with other search criteria.
 
 The library unites human access and managed-agent access without duplicating shared documents.
@@ -2279,12 +2354,26 @@ than injection into the editor. Failed reads can retry and stale responses for o
 
 ### Business links, cards and document navigation
 
-Galaris links cover agents, Documents, Datasets, Tasks, Goals, Topics, discussions, text rounds,
-calls/voice turns, Process definitions and runs. **Galaris objects** search and **Copy reference**
-provide stable URIs and titles. Compact cards show essential information and insertion-time state;
-opening reads the current object in a modal without copying content or granting access. Agent
-cards show avatar/name/job; Processes and runs can embed their diagram. **Show URL** restores a
-link without deleting the object.
+**Galaris objects** search and **Copy reference** provide stable URIs and titles.
+References include agents, documents, folders, contacts, Tasks, Goals, Topics, discussions, text
+rounds, calls and voice turns, calendars, Process definitions and runs.
+In Text documents and rich-text mind map nodes, the contextual toolbar offers the modes the
+selected resource supports. Each occurrence keeps its own mode.
+
+- **Link** shows the title and available icon. Ordinary web pages are inserted as links by default.
+  Card mode for a web page depends on the preview service.
+- **Card** shows a compact preview. Agent cards show the avatar, name and role. Agents, Tasks,
+  Goals, discussions and Data documents offer Link and Card. For agents, Text documents and
+  Processes, the picker defaults to Link in a Text document and Card in a mind map.
+- **Embed** shows the viewer in the host document. Text and Mind Map documents, Processes and their
+  runs, and supported images, media and PDFs can be embedded. Supported images are embedded by
+  default. Resizable document and Process viewers retain dimensions per occurrence and scroll when
+  their content overflows.
+
+The border and shadow depend on the mode and host document. In mind maps, the node supplies the
+border for cards and standalone document or Process embeds. Images have no border. The same
+object can appear in several nodes with different modes and sizes. Access to the target is checked
+separately. A recursive or overly deep embed falls back to a link.
 
 Document links open in the current library, Chat panel or modal, each with back/forward history.
 **Open in a modal** also preserves the current Document. Changes save before navigation; failure
@@ -2297,11 +2386,12 @@ paragraph insertion, styles, links, captions and removal follow selection. Escap
 and keyboard close or navigate menus. Code blocks support language, indentation, copy and line
 numbers, enabled by default for new blocks. Tables have theme-aware style galleries. Writer-style
 shortcuts, keyboard help and heading/list/quote prefix transformations complement toolbars.
-Read-only links/objects open directly without editing menus; keyboard selection/copy remain.
+Editing menus are absent in read-only mode. While editing a Text document or mind map,
+**Ctrl/Cmd+click** on a document reference opens the target. A click selects the reference.
 Application previews use static copies of the current rendering without rerunning scripts.
 
 Sources: [rich content](../user/rich-content.md), [business references](../user/navigation.md),
-[embedded Processes](../user/internal-processes.md).
+[modes by resource type](../dev/document-references.md), [embedded Processes](../user/internal-processes.md).
 
 ### Importing pasted content
 
@@ -2934,7 +3024,7 @@ controlling access; a display name is not its identity.
 |---|---|
 | `file://<uuid>` | Independent internal files and accessible attachments, with immutable bytes and one official name. |
 | `console://` | Active agent console home; advertised only when that console exists. |
-| `document://` | Common Text/Data library, `document://folders/` collections and `document://<uuid>/attachments/`, with each document's rights. |
+| `document://` | Common library, including Text, Data and Mind Map documents. Folders at `document://folders/` and attachments at `document://<uuid>/attachments/` retain document access checks. |
 | `data://` | JSON Data documents, with the common Document rights and revision contracts. |
 | `memory://` | Authorised knowledge search/read. |
 | `galaris://` | Exposed projections of Tasks, text rounds, voice turns, Goals, cycles and Processes. |
@@ -2951,7 +3041,7 @@ controlling access; a display name is not its identity.
 
 ### Agent file explorer
 
-**Documents** combines Text and Data in a folder hierarchy, with unfiled documents at the root
+**Documents** groups documents in a folder hierarchy, with unfiled documents at the root
 and only direct children within each folder. There is no separate Data location; `data://` URIs
 remain usable. Folder names supply breadcrumbs, including direct links. Documents may appear in
 several classifications with a stable URI. Access to a descendant makes its ancestors visible.
@@ -3966,7 +4056,7 @@ Sources: [dashboard](../../../back/app/dashboard/schemas.py), [calls](../../../b
 | Persistence | PostgreSQL/pgvector, async SQLAlchemy, transactions, history and optimistic locking; leases/claims distribute durable executions. DbAdmin derives schema and applies idempotent contributions. |
 | Orchestration | Agent owns facade, registry, resolution, dispatcher, planner and result application; Harness runs Pydantic AI; Task owns states, attempts and scheduling. Drivers emit exactly one terminal result after events. |
 | Messaging | Messenger owns conversations, capabilities, inbound journal and deduplication; bridges translate protocols. Attachments retain canonical URIs/provenance in chronology. |
-| Resources | Document owns Text/Data, Memory personal memories, Process BPMN/runs and Storage bytes; File Sharing unifies URIs without moving authority or permissions. |
+| Resources | Document owns typed documents, Memory personal memories, Process BPMN/runs and Storage bytes. File Sharing unifies URIs without moving authority or permissions. |
 | Interface | Vue/Quasar, Pinia, file-derived routes, declared navigation, domain i18n and lazy shared components; common FR/EN parity, theme and mobile boundary. |
 | Live updates | Authorised domain subscriptions, post-commit events, bounded progress deltas and snapshot/cursor resynchronisation; reconnection never restores revoked rights. |
 | Extensions | AI/file/preview providers, drivers, harnesses, Process engines, bridges, Dream/Lab mechanisms and DbAdmin contributions have explicit contracts; disk presence differs from activation. |
@@ -4313,7 +4403,7 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Native chat | Human–agent; external group rooms do not imply universal native human messaging. |
 | Learned skills | Off by default; explicit observation/learning with thresholds and evidence. |
 | Document collaboration | Saves, revisions, conflicts and sharing, not keystroke-level concurrent editing. |
-| Documents and Datasets | `app.document` owns Text (HTML, `document://`) and Data (JSON, `data://`) in one library; each document retains its rights and versions. |
+| Document formats | `app.document` provides Text (HTML, `document://`), Data (JSON, `data://`) and Mind Map (JSON tree, `document://`) in one library. Each document retains its rights and versions. |
 | Document applications | Automatically rendered isolated HTML/CSS/JS and editable prose, without a Source view; ordinary external loading blocked, browser CPU/memory not capped. |
 | Dataset application access | Reader ACLs plus personal content-version consent, denied by default; write includes replacement, not a separate append-only permission. |
 | Data quotas | Bounded JSON without business schema; 30 writes/4,000,000 resulting bytes per minute per user–Dataset across apps. |
@@ -4364,7 +4454,7 @@ and DbAdmin contributions.
 <a id="mcp"></a>
 ## 30. Inventory of agent-accessible functions
 
-These are the **294 native functions declared with `@mcp_tool` in the reviewed code**, including
+These are the **302 native functions declared with `@mcp_tool` in the reviewed code**, including
 conversation-only and administrative functions. They are not all visible to every agent; MCP exposes
 full argument schemas. External MCP servers discover their own evolving functions at connection time,
 with descriptions/status in the effective catalogue. External-runtime capabilities and discovery
@@ -4500,6 +4590,9 @@ These 23 functions require ServiceAdmin. Built-in definitions and human delegati
 | `goal_complete` | `goal_management` | Finish the objective and stop future cycles. |
 | `goal_run_now` | `galaris` | Request an immediate cycle under activation/availability conditions. |
 | `goal_ask_referrer` | `galaris` | Ask a correlated human question, await reply and apply reminders/pause. |
+| `goal_retrospective_evidence` | `galaris` | During weekly review, sample the agent's own terminal Tasks and read redacted observations and evidence references. |
+| `goal_retrospective_learn` | `galaris` | Apply an evidence-backed improvement to a personal skill during weekly review. |
+| `goal_retrospective_record` | `galaris` | Save HTML tracking for the active retrospective at the expected revision. |
 | `goal_delete` | `goal_management` | Logically delete when no unfinished cycle prevents it. |
 
 Goals/cycles also use `file_list`, `file_search` and `file_read` on `galaris://` collections. Cross-agent
@@ -4524,6 +4617,11 @@ management needs the specialised connection; ordinary actions stay within the ag
 | `memory_summarize` | `memory` | Use the agent model for attributed facts, decisions, commitments and open questions from ≤200 messages/32,000 characters, without replacing memory or saving after model failure. |
 | `document_sharing` | `document` | Read sharing, possible recipients and lock version, with recipient search/filter/pagination. |
 | `document_share` | `document` | Targeted sharing for owned working documents. |
+| `document_revision_list` | `document` | Paginate saved content revisions for an accessible document, newest first. |
+| `document_revision_compare` | `document` | Compare two saved revisions, including pixel changes in an optional region for supported drawing formats. |
+| `mindmap_create` | `document` | Create a private mind map with optional initial branches and return its URI and revision. |
+| `mindmap_read` | `document` | Read the saved map, node IDs and revision, or page through one branch's HTML. |
+| `mindmap_edit` | `document` | Add, edit, move or remove branches in one atomic operation at the expected revision. |
 | `skills_list` | `skills` | Discover skills within permitted/administrable scope. |
 | `skill_read` | `skills` | Read skill/details; support files use the resource facade. |
 | `skill_update` | `skills` | Update the package label using its expected revision. |
@@ -4857,7 +4955,7 @@ All **80 declared modules** map to one or more sections; runtime activation/conf
 | `app.webhook` | [No active generic endpoint; dedicated integration input](#processus) |
 | `app.llm` | [Models, profiles, gateways, credits and durable inference](#modeles), [document reading/analysis](#harnais), [traces/costs](#supervision) |
 | `app.topic` | [Topics and classification](#sujets) |
-| `app.document` | [Text/Data documents, current summaries, versions, applications, rights and filing](#documents), [authoring and contextual conversation](#chat) |
+| `app.document` | [Text, Data and Mind Map documents, current summaries, versions, applications, rights and filing](#documents), [authoring and contextual conversation](#chat) |
 | `app.memory` | [Private agent memories, recall, graph and optional document references](#memoire) |
 | `app.dataset` | [Compatibility relay to `app.document.data`: legacy JSON URIs and API](#documents) |
 | `app.contact` | [Contacts and cross-channel identities](#messageries) |
@@ -4948,7 +5046,7 @@ rather than independent applications.
 | `app/dream` | Tracking, history and immediate Memory-node actions; indexing administered in Preferences → Files |
 | `app/topic` | Topic list/detail/reorganisation |
 | `app/goal` | Objectives, tree, cycles, referrers, schedules and follow-up |
-| `app/document` | Text/Data library, current summaries, authoring with conversation, apps, rights, personal folders, thumbnails and sharing |
+| `app/document` | Library and editors for Text, Data and Mind Map, current summaries, authoring with conversation, apps, rights, personal folders, thumbnails and sharing |
 | `app/plugin` | Plugin administration, bundle import, activation and removal |
 | `app/memory` | Private memories, list/search, temporal simulation, graph with folded branches, files, locations and contacts |
 | `app/lab` | Task diagnosis, contextual synthetic datasets, mechanism evaluation, consistency and attributed reviews |
