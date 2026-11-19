@@ -253,6 +253,9 @@ async def _run_events(
         return {}
 
     async def permission(tool_name: str, input_data: dict[str, Any], _context: Any):
+        if actor and actor.approvals and "galaris" in mcp_servers and tool_name.startswith("mcp__galaris__"):
+            # The managed MCP proxy checks the live Service policy and owns the continuation.
+            return PermissionResultAllow(updated_input=input_data)
         call_id = str(getattr(_context, "tool_use_id", "") or "")
         if await authorize_local(tool_name, input_data, call_id):
             return PermissionResultAllow(updated_input=input_data)

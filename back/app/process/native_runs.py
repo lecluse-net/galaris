@@ -214,6 +214,9 @@ async def inspect_occurrence(identity: UUID, node_identity: UUID, actor: int | A
 def _inspection_receipt(receipt: dict[str, Any] | None) -> dict[str, Any] | None:
     """An observer sees approval evidence, without the engine's continuation capability."""
     result = deepcopy(receipt)
+    if result is not None and isinstance(result.get("call"), str) and "signature" in result:
+        for key in ("arguments", "signature", "calls", "deadline", "reply", "rest_effect", "rest_effect_retry_at"):
+            result.pop(key, None)
     if result is not None and isinstance(result.get("authorization"), dict):
         result["authorization"].pop("continuation", None)
     return result

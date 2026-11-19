@@ -42,10 +42,11 @@ des tokens et du coût. L'usage du SDK reste un repli `partial` lorsque le gatew
 trace ; il ne peut donc pas masquer un coût fournisseur exact ni une estimation tarifaire
 explicitement qualifiée par Galaris.
 
-Le SDK utilise `permission_mode="default"` et son callback de permission consulte
-l'autorisation Galaris de l'action exacte. Un refus bloque l'effet ; le runtime ne peut
-pas simuler un accord humain. Les accords mémorisés par type d'action restent liés à
-l'agent, au harnais et à sa configuration, avec contrôle unitaire avant effet.
+Le SDK utilise `permission_mode="default"`. Pour ses outils locaux, le callback vérifie
+l'autorisation Galaris de l'action exacte. Les appels au serveur MCP Galaris configuré
+passent par le proxy du run et suivent les modes et droits de la fonction du Service.
+Le serveur MCP gère la demande d'accord et sa continuation sur le même appel. Les accords
+mémorisés pour les outils locaux restent liés à l'agent, au harnais et à sa configuration.
 Le nombre de tours et d'outils suit les limites figées dans
 `AgentRunEnvelopeV1`.
 

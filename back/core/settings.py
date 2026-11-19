@@ -33,6 +33,9 @@ class Settings(BaseSettings):
     # with each authenticated request by app.browser.
     BROWSER_EXECUTOR_URL: ClassVar[str] = "http://browser-executor:3000"
 
+    PROCESS_PYTHON_RUNNER_URL: str = ""
+    PROCESS_PYTHON_RUNNER_TOKEN: SecretStr = SecretStr("")
+
     # Browser-to-backend WebRTC crosses the container and client NAT boundaries.
     # TURN REST credentials are minted per authenticated user; the shared secret
     # never leaves the backend.

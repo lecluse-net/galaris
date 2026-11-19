@@ -26,6 +26,7 @@ from app.process.native_engine import NativeProcessEngine
 from app.task import TaskStatus, task_service
 from app.task.workflow import TaskEvent, transition
 from app.services.tests.test_rest import api_server
+import os
 
 
 def test_legacy_service_references_in_saved_bpmn_and_run_snapshots_remain_readable():
@@ -362,7 +363,8 @@ async def test_http_native_and_lab_pagination_accepts_encoded_sizes_with_real_au
     from core.user.user_service import encrypt_password
     from core.authorize.models import Assignment, Role, Privilege
     from app.agent import AgentManagementScope
-    from app.lab.process_evaluation import create_synthetic_dataset, start_campaign, ProcessCaseInput
+    from app.lab.process_evaluation import create_synthetic_dataset, start_campaign, tick, ProcessCaseInput
+    from scripts.qualify_lab import report_process_campaign
 
     owner, other_agent = committed_native
     db = inference_db
@@ -390,7 +392,8 @@ async def test_http_native_and_lab_pagination_accepts_encoded_sizes_with_real_au
     assert sharing_options.json()["owner"]["kind"] == "user"
     assert sharing_options.json()["owner"]["id"] == user_id
     assert (await client.get("/api/processes/internal/sharing-options", headers=headers, params={"agent_id": other_agent_id})).status_code == 403
-    definition_graph = Workflow(nodes=[Node(id="begin", kind="start"), Node(id="finish", kind="end")],
+    definition_graph = Workflow(nodes=[Node(id="begin", kind="start"),
+        Node(id="finish", kind="end", config={"output": {"$expr": "input"}})],
         flows=[Flow(id="a", source="begin", target="finish")])
     created = await client.post("/api/processes/internal/definitions", headers=headers, json={
         "agent_id": owner_id, "owner": "user", "title": "Synthetic HTTP definition",
@@ -453,15 +456,25 @@ async def test_http_native_and_lab_pagination_accepts_encoded_sizes_with_real_au
     assert (await client.get(file_path, headers=headers)).content == source.read_bytes()
     scope = AgentManagementScope(user_id, frozenset({owner_id}))
     dataset = await create_synthetic_dataset(scope, agent_id=owner_id, title="Synthetic HTTP inputs",
-        cases=[ProcessCaseInput(input={})], invocation_key=uuid4().hex)
+        cases=[ProcessCaseInput(input={"quantity": 3}, expected={"quantity": 3})], invocation_key=uuid4().hex)
     campaign = await start_campaign(scope, agent_id=owner_id, code=code,
         dataset_id=UUID(dataset["dataset_id"]), title="Synthetic HTTP campaign", invocation_key=uuid4().hex)
     campaign_id = campaign.id
     await db.commit()
+    await tick()
+    campaign_path = f"/api/evaluation/process-campaigns/{campaign_id}"
+    admitted_case = (await client.get(campaign_path, headers=headers)).json()["items"][0]
+    await process_service.process_start_jobs(engine_code="galaris")
+    await finish_run(db, UUID(admitted_case["run_id"]))
+    await tick()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url=client.base_url, headers=headers) as reporter:
+        report = await report_process_campaign(reporter, campaign_id)
+    assert report["qualified"] and report["exact_matches"] == 1 and report["definition_revision"] == 1
+    assert (await client.get(campaign_path, headers=outsider_headers)).status_code == 403
     paths = ["/api/processes/internal/definitions", f"/api/processes/internal/definitions/{code}/history",
         "/api/processes/internal/runs", f"/api/processes/internal/runs/{run_id}",
         f"/api/processes/internal/runs/{run_id}/activities/begin",
-        f"/api/processes/internal/runs/{run_id}/children", f"/api/evaluation/process-campaigns/{campaign_id}"]
+        f"/api/processes/internal/runs/{run_id}/children", campaign_path]
     for path in paths:
         for size in (50, 500):
             response = await client.get(path, headers=headers, params={"page": "1", "page_size": str(size)})
@@ -667,15 +680,16 @@ async def test_definition_acl_current_save_history_restore_and_frozen_run(db, na
 
 
 @pytest.mark.asyncio
-async def test_activity_inspection_is_independent_of_global_pagination_and_scoped_to_run_and_body(db, native):
+@pytest.mark.parametrize("count", [55, 505])
+async def test_activity_inspection_is_independent_of_global_pagination_and_scoped_to_run_and_body(db, native, count):
     from app.process.native_runs import activity_occurrences, inspect_run, inspect_occurrence
     owner, stranger = native
     definition = await create(actor_agent_id=owner.id, title="Synthetic activity inspection", graph=graph())
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
     await process_service.process_start_jobs(engine_code="galaris")
     nested = [ProcessNodeRun(run_id=launched.run_id, node_key="work", occurrence=f"synthetic-loop:{index}", admission_order=index,
-        status="success", context={"body_path": ["loop"], "loop": {"index": index}}, output={"sample": index}) for index in range(55)]
-    current = ProcessNodeRun(run_id=launched.run_id, node_key="work", occurrence="synthetic-current", admission_order=55,
+        status="success", context={"body_path": ["loop"], "loop": {"index": index}}, output={"sample": index}) for index in range(count)]
+    current = ProcessNodeRun(run_id=launched.run_id, node_key="work", occurrence="synthetic-current", admission_order=count,
         status="running", context={}, output={"sample": "current"})
     db.add_all([*nested, current])
     await db.flush()
@@ -687,9 +701,10 @@ async def test_activity_inspection_is_independent_of_global_pagination_and_scope
     root = await activity_occurrences(launched.run_id, "work", owner.id)
     assert root["total"] == 1 and root["items"][0]["id"] == str(current.id)
     second_page = await activity_occurrences(launched.run_id, "work", owner.id, body_path=["loop"], page=2)
-    assert second_page["total"] == 55
-    assert [entry["iteration"] for entry in second_page["items"]] == [4, 3, 2, 1, 0]
-    assert (await activity_occurrences(launched.run_id, "work", owner.id, body_path=["loop"], page_size=500))["total"] == 55
+    assert second_page["total"] == count
+    assert [entry["iteration"] for entry in second_page["items"]] == list(reversed(range(count)))[50:100]
+    wide_page = await activity_occurrences(launched.run_id, "work", owner.id, body_path=["loop"], page_size=500)
+    assert wide_page["total"] == count and len(wide_page["items"]) == min(count, 500)
     assert (await activity_occurrences(launched.run_id, "work", owner.id, body_path=["other-loop"]))["items"] == []
     detail = await inspect_occurrence(launched.run_id, current.id, owner.id)
     assert detail["attempts"][0]["input"] == {"sample": "input"}
@@ -774,8 +789,8 @@ async def tick_run(db, run_id, *, result=None, fail_first=False, fail_always=Fal
     return await process_service.refresh_run(run_id)
 
 
-async def finish_run(db, run_id, **kwargs):
-    for _ in range(60):
+async def finish_run(db, run_id, *, max_ticks=60, **kwargs):
+    for _ in range(max_ticks):
         run = await tick_run(db, run_id, **kwargs)
         if run.status in process_service.TERMINAL_STATUSES:
             return run
@@ -795,6 +810,235 @@ def typed_graph():
     value.inputs = ["amount", "accepted"]
     value.nodes[1].inputs = value.nodes[1].outputs = list(value.outputs)
     return value
+
+
+@pytest_asyncio.fixture
+async def claude_qualification_api(committed_database):
+    import asyncio
+    import socket
+
+    import uvicorn
+
+    from main import app
+
+    # The backend container has a DNS alias only in the isolated qualification network.
+    with socket.socket() as listener:
+        listener.bind(("0.0.0.0", 0))
+        listener.listen()
+        origin = f"http://backend:{listener.getsockname()[1]}/api"
+        server = uvicorn.Server(uvicorn.Config(app, log_level="warning", lifespan="off", timeout_graceful_shutdown=2))
+        worker = asyncio.create_task(server.serve(sockets=[listener]))
+        try:
+            async with asyncio.timeout(10):
+                while not server.started:
+                    if worker.done():
+                        await worker
+                        pytest.fail("The qualification API stopped before startup")
+                    await asyncio.sleep(.01)
+            yield origin
+        finally:
+            server.should_exit = True
+            await asyncio.wait_for(worker, 10)
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(not os.environ.get("QUALIFY_PROCESS_CLAUDE_URL"), reason="requires the disposable Claude SDK runtime")
+@pytest.mark.parametrize("scenario", ["valid", "invalid", "mcp", "mcp_ask", "mcp_cancel", "mcp_cancel_lost_stop"],
+    ids=["integrates-output", "rejects-invalid-output", "submits-via-mcp", "submits-after-mcp-approval",
+         "cancels-pending-mcp-approval", "retries-lost-mcp-stop-confirmation"])
+async def test_bpmn_activity_uses_real_claude_harness(inference_db, committed_native, claude_qualification_api, scenario, monkeypatch):
+    import asyncio
+
+    import httpx
+
+    from app.agent import agent_skill_revision
+    from app.connection import connection_service
+    from app.connection.facade import set_connection_function_state
+    from app.file_share import ResourceContext, resource_create
+    from app.harnesses import get_provider
+    from app.harnesses.models import AgentHarness
+    from app.harnesses.openai_client import OpenAIHarnessClient
+    from app.llm.profile_models import LlmProfile
+    from app.llm.provider_models import LLM, LLMProvider
+    from app.mcp import mcp_token_service
+    from app.process.native_runs import inspect_run
+    from app.process.schemas import ProcessFileInput
+    from app.services import ServiceModel
+    from app.services.authorization import answer_action
+    from app.services.authorization_models import ActionAuthorization
+    from app.services.authorization_notifications import reconcile_authorizations
+    from app.task import scheduler
+    from app.task.models import Task, TaskAttempt
+    from core.params import Params, params_service
+    from core.util import get_encryption_service
+    from tests.authorization_fixtures import grant_privileges
+
+    db = inference_db
+    owner, outsider = committed_native
+    origin = os.environ["QUALIFY_PROCESS_CLAUDE_URL"]
+    token = "qualification-token"
+    await params_service.set(Params.HARNESS_CLAUDE_AGENT_ENABLED, "true")
+    llm_provider = LLMProvider(name="Synthetic Claude provider", base_url=f"{origin}/v1")
+    db.add(llm_provider)
+    await db.flush()
+    model = LLM(llm_provider_id=llm_provider.id, code="process-qualification", llm_name="qualification", label="Qualification")
+    db.add(model)
+    await db.flush()
+    profile = LlmProfile(code="process-qualification", label="Synthetic Claude activity", text_standard_llm_id=model.id)
+    db.add(profile)
+    await db.flush()
+    owner.profile_id = profile.id
+    owner.agent_driver = "openai_messages"
+    mcp_token = await mcp_token_service.ensure_system_token(owner.id)
+    mcp_url = f"{claude_qualification_api}/mcp/{owner.code}"
+    loses_confirmation = scenario == "mcp_cancel_lost_stop"
+    cancelled = scenario in {"mcp_cancel", "mcp_cancel_lost_stop"}
+    requires_approval = scenario == "mcp_ask" or cancelled
+    uses_mcp = scenario == "mcp" or requires_approval
+    unobserved_stops = []
+    if loses_confirmation:
+        cancel_control_run = OpenAIHarnessClient.cancel_control_run
+
+        async def lose_stop_confirmation(client, runtime_run_id):
+            stopped = await cancel_control_run(client, runtime_run_id)
+            if not unobserved_stops:
+                unobserved_stops.append(runtime_run_id)
+                raise httpx.ReadTimeout("Synthetic loss of the runtime stop response")
+            return stopped
+
+        monkeypatch.setattr(OpenAIHarnessClient, "cancel_control_run", lose_stop_confirmation)
+    if requires_approval:
+        await grant_privileges(db, owner.user_id, "PERMISSION_DECIDE")
+    for service_code, function in (("file_sharing", "file_read"), ("galaris", "process_activity_complete")):
+        service = await db.scalar(select(ServiceModel).where(ServiceModel.code == service_code))
+        connection = await connection_service.get_or_create_connection(service.id, owner.id)
+        await set_connection_function_state(connection.id, function,
+            "ask" if requires_approval and function == "process_activity_complete" else "enabled")
+    async with httpx.AsyncClient(base_url=origin, trust_env=False) as client:
+        result = await client.post("/__qualification/configure-mcp", json={"url": mcp_url, "token": mcp_token})
+        result.raise_for_status()
+    assignment = AgentHarness(agent_id=owner.id, provider_code="claude_agent", lifecycle_status="ready",
+        runtime_base_url=f"{origin}/v1", runtime_model="qualification",
+        runtime_token_encrypted=get_encryption_service().encrypt(token), capabilities=sorted(get_provider("claude_agent").capabilities()),
+        provider_metadata={"skill_revision": await agent_skill_revision(owner.id),
+            "galaris_extensions": True, "model_passthrough": True})
+    db.add(assignment)
+    await db.commit()
+
+    value = typed_graph()
+    value.inputs = ["amount"]
+    value.outputs = ["accepted"]
+    activity = value.nodes[1]
+    activity.title = "Synthetic review"
+    activity.inputs = ["amount"]
+    activity.outputs = ["accepted"]
+    marker = "qualification-mcp-output" if uses_mcp else f"qualification-{scenario}-output"
+    activity.config = {"prompt": f"@standard {marker}. Return the typed review result."}
+    definition = await create(actor_agent_id=owner.id, title="Synthetic external review", graph=value)
+    inputs = {"amount": {"type": "int", "value": 42}}
+    attachment = await resource_create(ResourceContext(agent_id=owner.id, runtime="internal"),
+        "file://", b"Synthetic attachment content", name="qualification.txt")
+    files = [ProcessFileInput(uri=attachment.uri)]
+    with pytest.raises(PermissionError):
+        await process_service.start_process(agent_id=outsider.id, workflow_id=definition.code, input_data=inputs, files=files)
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data=inputs, files=files)
+    run_id = launched.run_id
+    await process_service.process_start_jobs(engine_code="galaris")
+    await db.commit()
+    request_id = None
+    async with asyncio.timeout(45):
+        while True:
+            run = await process_service.refresh_run(run_id)
+            if run.status in process_service.TERMINAL_STATUSES:
+                break
+            await scheduler.run_once()
+            pending = list(await db.scalars(select(ActionAuthorization)
+                .where(ActionAuthorization.agent_id == owner.id, ActionAuthorization.status == "pending")))
+            if pending:
+                requested = [(row.source, row.capability_name) for row in pending]
+                assert requires_approval and request_id is None, f"Unexpected runtime request: {requested}"
+                assert requested == [("mcp", "process_activity_complete")]
+                occurrence = await db.scalar(select(ProcessNodeRun).where(
+                    ProcessNodeRun.run_id == run_id, ProcessNodeRun.node_key == "work"))
+                assert "activity_result" not in occurrence.context
+                request_id = pending[0].id
+                if cancelled:
+                    cancellation = await process_service.cancel_run(run_id)
+                    if loses_confirmation:
+                        assert cancellation.status == "cancelling" and unobserved_stops
+                        assert not await answer_action(request_id, user_id=owner.user_id, approved=True)
+                else:
+                    assert await answer_action(request_id, user_id=owner.user_id, approved=True)
+                    await reconcile_authorizations()
+            await asyncio.sleep(.05)
+
+    activity_work = list(await db.scalars(select(ProcessNodeAttempt).join(ProcessNodeRun)
+        .where(ProcessNodeRun.run_id == run_id, ProcessNodeRun.node_key == "work")))
+    attempt, = activity_work
+    assert attempt.input == inputs
+    task = await db.get(Task, attempt.task_id)
+    assert task.status == (TaskStatus.ERROR if cancelled else TaskStatus.SUCCESS), task.execution_result
+    assert task.data["process_run_id"] == str(run_id)
+    task_attempts = list(await db.scalars(select(TaskAttempt).where(TaskAttempt.task_id == task.id)
+        .order_by(TaskAttempt.attempt_number)))
+    assert len(task_attempts) == (2 if scenario == "mcp_ask" else 1)
+    checkpoint = task_attempts[-1].data["agent_checkpoint"]
+    if loses_confirmation:
+        assert unobserved_stops == [checkpoint["runtime_run_id"]]
+    assert {item.data["agent_checkpoint"]["runtime_run_id"] for item in task_attempts} == {checkpoint["runtime_run_id"]}
+    async with httpx.AsyncClient(base_url=origin, trust_env=False) as client:
+        result = await client.get(f"/v1/galaris/runs/{checkpoint['runtime_run_id']}", headers={"Authorization": f"Bearer {token}"})
+        result.raise_for_status()
+        runtime_status = result.json()
+        # A poll can observe revoked MCP authority before the stop command reaches Claude.
+        expected_statuses = {"cancelled", "outcome_unknown"} if cancelled else {"completed"}
+        assert runtime_status["status"] in expected_statuses, runtime_status
+        assert runtime_status["stopped"] is True, runtime_status
+        result = await client.get(f"/__qualification/model-requests/{task.id}")
+        result.raise_for_status()
+        prompts = result.json()["prompts"]
+    assert prompts
+    prompt = prompts[0]
+    assert marker in prompt and attachment.uri in prompt and "42" in prompt
+    assert "Synthetic attachment content" not in prompt
+    with pytest.raises(PermissionError):
+        await inspect_run(run_id, outsider.id)
+    dataset = (await read_run_data(run_id, owner.id))["data"]
+    assert dataset["amount"] == {"type": "int", "value": 42}
+    assert (await run_files(run_id))[0]["uri"] == attachment.uri
+    if requires_approval:
+        assert request_id is not None
+        approval = await db.get(ActionAuthorization, request_id, populate_existing=True)
+        assert approval is not None and approval.status == ("invalidated" if cancelled else "completed")
+        if cancelled:
+            assert not await answer_action(request_id, user_id=owner.user_id, approved=True)
+    if uses_mcp:
+        occurrence = await db.get(ProcessNodeRun, attempt.node_run_id, populate_existing=True)
+        assert "Synthetic attachment content" in prompts[-1], runtime_status
+        if cancelled:
+            assert "activity_result" not in occurrence.context
+        else:
+            assert "Synthetic review finished." in runtime_status["result"], runtime_status
+            assert occurrence.context.get("activity_result") == {"output": {"accepted": {"type": "bool", "value": True}},
+                "message": "Synthetic MCP receipt"}, run.error_message
+        run_context = get_encryption_service().decrypt(checkpoint["data"]["run_context"])
+        async with httpx.AsyncClient(trust_env=False) as client:
+            result = await client.post(mcp_url, headers={"Authorization": f"Bearer {mcp_token}",
+                "X-Galaris-Run-Context": run_context, "Accept": "application/json, text/event-stream"},
+                json={"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {
+                    "name": "process_activity_complete", "arguments": {"output": {"accepted": False}}}})
+            assert result.status_code == 403
+    should_complete = scenario != "invalid" and not cancelled
+    assert dataset["accepted"] == {"type": "bool", "value": should_complete}
+    if should_complete:
+        assert run.status == "success" and run.output == {"accepted": dataset["accepted"]}
+    else:
+        assert run.output is None
+        if cancelled:
+            assert run.status == "cancelled" and (await process_service.refresh_run(run_id)).status == "cancelled"
+        else:
+            assert run.status == "error" and run.error_code == "node_failed" and "accepted" in run.error_message
+        assert not await db.scalar(select(ProcessNodeRun.id).where(ProcessNodeRun.run_id == run_id, ProcessNodeRun.node_key == "end"))
 
 
 @pytest.mark.asyncio
@@ -1142,6 +1386,88 @@ async def test_typed_calls_map_local_names_and_preserve_legacy_child_json(db, na
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(not os.environ.get("QUALIFY_N8N_URL"), reason="requires the disposable n8n qualification instance")
+async def test_n8n_qualification_maps_a_result_between_two_native_runs(inference_db, committed_native, monkeypatch):
+    import asyncio
+    from pathlib import Path
+    from app.process.schemas import ProcessDefinitionCreate
+    from app.process.values import Variable
+    from app.services import ServiceModel
+    from bridge.n8n import N8NProcessEngine
+    from core.params import runtime_settings
+
+    db = inference_db
+    owner, outsider = committed_native
+    url = os.environ["QUALIFY_N8N_URL"]
+    api_key = Path(os.environ["QUALIFY_N8N_TOKEN_FILE"]).read_text().strip()
+    monkeypatch.setattr(runtime_settings, "PROCESS_N8N_BASE_URL", url)
+    monkeypatch.setattr(runtime_settings, "PROCESS_N8N_WEBHOOK_BASE_URL", url)
+    monkeypatch.setattr(runtime_settings, "PROCESS_N8N_API_TOKEN", api_key)
+    monkeypatch.setattr(runtime_settings, "PROCESS_N8N_WEBHOOK_AUTH_TOKEN", "")
+    engine = N8NProcessEngine()
+    monkeypatch.setitem(registry._engines, "n8n", engine)
+    errors = []
+    start = engine.start_run
+
+    async def record_start_failure(*args, **kwargs):
+        try:
+            return await start(*args, **kwargs)
+        except Exception as error:
+            errors.append((type(error).__name__, str(error)))
+            raise
+
+    monkeypatch.setattr(engine, "start_run", record_start_failure)
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "n8n"))
+    if tool is None:
+        tool = ServiceModel(code="n8n", label="Synthetic n8n bridge", connection_schema={})
+        db.add(tool)
+        await db.flush()
+    await process_service.create_definition(ProcessDefinitionCreate(agent_id=owner.id, service_id=tool.id,
+        engine_process_id="QualificationCycle01", label="Synthetic n8n workflow"))
+    child_graph = Workflow(
+        schema_version="galaris.bpmn/v2", variables=[Variable(name="confirmed", type="int", nullable=False)],
+        nodes=[Node(id="start", kind="start"), Node(id="end", kind="end", outputs=["confirmed"])],
+        flows=[Flow(id="done", source="start", target="end")])
+    child_graph.inputs = ["confirmed"]
+    child = await create(actor_agent_id=owner.id, title="Synthetic native successor", graph=child_graph)
+    parent_graph = Workflow(
+        schema_version="galaris.bpmn/v2", variables=[
+            Variable(name="amount", type="int", nullable=False, default={"type": "int", "value": 7}),
+            Variable(name="returned", type="int", nullable=True), Variable(name="confirmed", type="int", nullable=True)],
+        nodes=[Node(id="start", kind="start"),
+            Node(id="external", kind="call", inputs=["amount"], outputs=["returned"], config={
+                "process_code": "QualificationCycle01", "input_mapping": {"amount": {"$expr": "data.amount"}},
+                "external_output": {"returned": {"$expr": "result.amount"}}}),
+            Node(id="internal", kind="call", inputs=["returned"], outputs=["confirmed"], config={
+                "process_code": child.code, "input_mapping": {"confirmed": {"$expr": "data.returned"}},
+                "external_output": {"confirmed": {"$expr": "result.confirmed"}}}),
+            Node(id="end", kind="end", outputs=["confirmed"])],
+        flows=[Flow(id="out", source="start", target="external"), Flow(id="back", source="external", target="internal"),
+            Flow(id="finish", source="internal", target="end")])
+    parent = await create(actor_agent_id=owner.id, title="Synthetic mixed workflow", graph=parent_graph)
+    with pytest.raises(PermissionError):
+        await process_service.start_process(agent_id=outsider.id, workflow_id=parent.code, input_data={})
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=parent.code, input_data={})
+    async with asyncio.timeout(45):
+        while True:
+            await process_service.process_start_jobs(engine_code="galaris")
+            await process_service.process_start_jobs(engine_code="n8n")
+            assert not errors, errors
+            run = await process_service.refresh_run(launched.run_id)
+            if run.status in process_service.TERMINAL_STATUSES:
+                break
+            for nested in await db.scalars(select(ProcessRun).where(ProcessRun.parent_run_id == run.id)):
+                await process_service.refresh_run(nested.id)
+            await asyncio.sleep(.1)
+    assert run.status == "success", run.error_message
+    assert run.output == {"confirmed": {"type": "int", "value": 10}}
+    successful = list(await db.scalars(select(ProcessRun).where(ProcessRun.parent_run_id == run.id,
+        ProcessRun.status == "success")))
+    assert {nested.engine_code for nested in successful} == {"galaris", "n8n"}
+    assert len(successful) == 2
+
+
+@pytest.mark.asyncio
 async def test_native_poll_before_admission_does_not_skip_the_start_job(db, native):
     owner, _ = native
     definition = await create(actor_agent_id=owner.id, title="Synthetic early observation", graph=typed_graph())
@@ -1256,8 +1582,10 @@ async def test_typed_parallel_end_events_validate_output_only_after_all_branches
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("denied", [False, True])
-async def test_typed_rest_activity_uses_the_live_connection_and_retains_remote_denials(db, native, api_server, denied):
+@pytest.mark.parametrize(("path", "error_code"), [
+    ("synthetic", None), ("denied", "rest_http_error"), ("../outside", "node_failed"),
+])
+async def test_typed_rest_activity_uses_the_live_connection_and_retains_remote_denials(db, native, api_server, path, error_code):
     from app.services import service
     from app.services.schemas import ServiceCreate
     from app.connection import connection_service
@@ -1270,18 +1598,23 @@ async def test_typed_rest_activity_uses_the_live_connection_and_retains_remote_d
     output = Variable(name="method", type="string", nullable=False)
     value = Workflow(schema_version="galaris.bpmn/v2", variables=[output],
         nodes=[Node(id="start", kind="start"), Node(id="api", kind="rest", outputs=["method"],
-            config={"service_code": tool.code, "request": {"method": "POST", "path": "denied" if denied else "synthetic"},
+            config={"service_code": tool.code, "request": {"method": "POST", "path": path},
                 "external_output": {"method": {"$expr": "result.body.method"}}}), Node(id="end", kind="end", outputs=["method"])],
         flows=[Flow(id="a", source="start", target="api"), Flow(id="b", source="api", target="end")])
     definition = await create(actor_agent_id=owner.id, title="Synthetic REST activity", graph=value)
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
     await process_service.process_start_jobs(engine_code="galaris")
     run = await finish_run(db, launched.run_id)
-    assert len(requests) == 1
-    if denied:
-        assert run.status == "error" and run.error_code == "rest_http_error"
-        assert "403" in run.error_message
+    if error_code:
+        assert run.status == "error" and run.error_code == error_code
+        if error_code == "node_failed":
+            assert requests == []
+            assert "relative path" in run.error_message
+        else:
+            assert len(requests) == 1
+            assert "403" in run.error_message
     else:
+        assert len(requests) == 1
         assert run.status == "success", run.error_message
         assert run.output == {"method": {"type": "string", "value": "POST"}}
 
@@ -1319,20 +1652,943 @@ async def test_typed_result_integration_recovers_a_lost_ack_without_reexecuting_
 
 
 @pytest.mark.asyncio
-async def test_inline_code_has_no_backend_fallback_without_a_qualified_runner(db, native, monkeypatch):
-    from app.process import isolated_code
+@pytest.mark.parametrize(("kind", "error_code"), [("code", "isolated_runner_unavailable"), ("python", "remote_python_unavailable")])
+async def test_inline_code_has_no_backend_fallback_without_a_qualified_runner(db, native, monkeypatch, kind, error_code):
+    from app.process import isolated_code, remote_python
     owner, _ = native
-    monkeypatch.setattr(isolated_code, "_runner", None)
+    if kind == "code":
+        monkeypatch.setattr(isolated_code, "_runner", None)
+    monkeypatch.setattr(remote_python, "configured_python_runner", lambda: None)
     value = typed_graph()
-    value.nodes[1].kind = "code"
+    value.nodes[1].kind = kind
     value.nodes[1].config = {"code": "raise AssertionError('must never run in the backend')"}
     definition = await create(actor_agent_id=owner.id, title="Synthetic confinement gate", graph=value)
-    assert (await read(definition.code, owner.id))["diagnostics"][0]["code"] == "isolated_runner_unavailable"
+    assert (await read(definition.code, owner.id))["diagnostics"][0]["code"] == error_code
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
     await process_service.process_start_jobs(engine_code="galaris")
     run = await finish_run(db, launched.run_id)
-    assert run.status == "error" and run.error_code == "isolated_runner_unavailable"
+    assert run.status == "error" and run.error_code == error_code
     assert (await read_run_data(run.id, owner.id))["data"] == {"amount": {"type": "int", "value": 7}, "accepted": {"type": "bool", "value": False}}
+
+
+def dedicated_python_enabled() -> bool:
+    return os.environ.get("QUALIFY_PROCESS_PYTHON") == "1"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("scenario", "dedicated"), [
+    *[(scenario, False) for scenario in ("mcp", "mcp_ask", "mcp_ask_revoked", "rest", "revoked_rest", "foreign_handle",
+        "unknown_rest", "stopped_rest", "expired_rest", "replayed_rest", "changed_rest", "invalid_rest", "mcp_file_lost")],
+    *[pytest.param(scenario, True, id=f"{scenario}-dedicated",
+        marks=pytest.mark.skipif(not dedicated_python_enabled(), reason="requires a dedicated TLS runner"))
+        for scenario in ("rest", "revoked_rest", "unknown_rest", "stopped_rest", "mcp_ask_revoked", "expired_rest",
+            "replayed_rest", "changed_rest", "mcp_file_lost")],
+])
+async def test_python_capability_uses_live_service_scope_and_recovers_lost_reply(
+    inference_db, committed_native, api_server, monkeypatch, scenario, dedicated,
+):
+    import asyncio
+    from datetime import datetime, timedelta
+    from app.connection import connection_service
+    from app.connection.facade import set_connection_function_state
+    from app.process import remote_python
+    from app.process import code_broker
+    from app.process.code_capabilities import CapabilityCall
+    from app.process.engine import ProcessEngineError
+    from app.process.isolated_code import CodeObservation
+    from app.process.native_runs import control_run, inspect_run
+    from app.services import ServiceModel, service
+    from app.services.schemas import ServiceCreate
+    from core.user import UserModel
+
+    db = inference_db
+    owner, other = committed_native
+    launcher_id = owner.id
+    base, requests = api_server
+    mcp = scenario.startswith("mcp")
+    lost_file = scenario == "mcp_file_lost"
+    lost_rest = scenario in {"unknown_rest", "stopped_rest"}
+    approver = None
+    requester_user_id = None
+    executor = owner
+    if dedicated and scenario in {"rest", "revoked_rest"}:
+        requester = UserModel(email=f"python-requester-{uuid4().hex}@example.test", hashed_password="synthetic")
+        db.add(requester)
+        await db.flush()
+        requester_user_id = requester.id
+        owner.user_id = requester.id
+        other.user_id = requester.id
+        executor = other
+    if scenario.startswith("mcp_ask") or lost_file:
+        from tests.authorization_fixtures import grant_privileges
+        approver = UserModel(email=f"python-approver-{uuid4().hex}@example.test", hashed_password="synthetic")
+        db.add(approver)
+        await db.flush()
+        await grant_privileges(db, approver.id, "PERMISSION_DECIDE")
+        owner.user_id = approver.id
+    if lost_file:
+        provider = await db.scalar(select(ServiceModel).where(ServiceModel.code == "file_sharing"))
+        connection = await connection_service.get_or_create_connection(provider.id, owner.id)
+        await set_connection_function_state(connection.id, "file_create", "ask")
+        operation, arguments = "file_create", {"path": "file://", "name": "lost-receipt.txt", "content": "Synthetic"}
+        execute = code_broker.execute_workflow_tool
+
+        async def lose_file_acknowledgement(**kwargs):
+            result = await execute(**kwargs)
+            if result["status"] == "completed":
+                raise ConnectionError("Synthetic file receipt lost")
+            return result
+
+        monkeypatch.setattr(code_broker, "execute_workflow_tool", lose_file_acknowledgement)
+    elif mcp:
+        target = await create(actor_agent_id=owner.id, title="Synthetic target", graph=graph())
+        provider = await db.scalar(select(ServiceModel).where(ServiceModel.code == "galaris"))
+        connection = await connection_service.get_or_create_connection(provider.id, owner.id)
+        await set_connection_function_state(connection.id, "process_definition_read", "ask" if approver else "enabled")
+        operation, arguments = "process_definition_read", {"process_code": target.code}
+    else:
+        provider = await service.create_service(ServiceCreate(code=f"synthetic_api_{uuid4().hex}",
+            label="Synthetic API", rest_config={"base_url": base, "auth": {"type": "bearer"}},
+            connection_schema={"params": {"api_token": {"type": "password", "required": False}}}))
+        launcher_connection = await connection_service.get_or_create_connection(provider.id, owner.id)
+        await connection_service.set_params_bulk(launcher_connection.id, {"api_token": "synthetic-launcher-token"})
+        connection = await connection_service.get_or_create_connection(provider.id, executor.id)
+        if executor is not owner:
+            await connection_service.set_params_bulk(connection.id, {"api_token": "synthetic-executor-token"})
+        operation, arguments = provider.code, {
+            "method": "POST", "path": "../outside" if scenario == "invalid_rest" else "synthetic",
+        }
+
+    accepted_calls = {"replayed_rest": 2, "changed_rest": 1}.get(scenario)
+    arguments_per_call = ([{**arguments, "json_body": {"position": i}} for i in range(accepted_calls + 1)]
+        if accepted_calls is not None else [arguments])
+
+    if lost_rest:
+        send = code_broker.execute_rest_request
+
+        async def lose_service_reply(**kwargs):
+            await send(**kwargs)
+            raise ConnectionError("Synthetic response lost after the external effect")
+
+        monkeypatch.setattr(code_broker, "execute_rest_request", lose_service_reply)
+
+    class Runner(remote_python.RemotePythonRunner):
+        calls = []
+        replies = []
+        stopped = False
+
+        async def submit(self, invocation):
+            assert invocation.agent_id == owner.id
+            assert invocation.handles.keys() == {"lookup"}
+            self.calls = [CapabilityCall(id=uuid4(),
+                handle=uuid4() if scenario == "foreign_handle" else UUID(invocation.handles["lookup"]),
+                arguments=parameters) for parameters in arguments_per_call]
+            return CodeObservation(status="queued")
+
+        async def observe(self, identity):
+            if self.stopped:
+                return CodeObservation(status="cancelled", stopped=True)
+            if len(self.replies) < len(self.calls):
+                return CodeObservation(status="running", capability_call=self.calls[len(self.replies)])
+            accepted = self.replies[-1]["status"] == "completed"
+            return CodeObservation(status="success", stopped=True, result={"output": {"accepted": accepted}})
+
+        async def reply(self, invocation_id, call_id, result):
+            assert call_id == self.calls[len(self.replies)].id
+            self.replies.append(result)
+
+        async def cancel(self, invocation_id):
+            self.stopped = True
+            return CodeObservation(status="cancelled", stopped=True)
+
+    runner = (remote_python.configured_python_runner() if dedicated else
+        Runner("https://synthetic-runner.example.test", "synthetic-runner-key-for-testing-only"))
+    assert runner is not None
+    replies = []
+    forward = runner.reply
+    if accepted_calls is not None:
+        observe = runner.observe
+        observed_calls = {}
+
+        async def observe_replay(invocation_id):
+            observation = await observe(invocation_id)
+            call = observation.capability_call
+            if call is None:
+                return observation
+            observed_calls.setdefault(call.id, call)
+            if len(observed_calls) <= accepted_calls:
+                return observation
+            first_call = next(iter(observed_calls.values()))
+            replay = first_call if scenario == "replayed_rest" else call.model_copy(update={"id": first_call.id})
+            return observation.model_copy(update={"capability_call": replay})
+
+        monkeypatch.setattr(runner, "observe", observe_replay)
+
+    async def lose_first_reply(invocation_id, call_id, result):
+        replies.append(result)
+        if len(replies) == 1:
+            raise ProcessEngineError("remote_python_unreachable", "Synthetic lost reply", retryable=True)
+        return await forward(invocation_id, call_id, result)
+
+    monkeypatch.setattr(runner, "reply", lose_first_reply)
+    monkeypatch.setattr(remote_python, "configured_python_runner", lambda: runner)
+    value = typed_graph()
+    if executor is not owner:
+        value.execution_agent_id = executor.id
+    node = value.nodes[1]
+    node.kind = "python"
+    source = f"""for parameters in {arguments_per_call!r}:
+    try:
+        result = call_service("lookup", parameters)
+    except RuntimeError:
+        return {{"accepted": False}}
+    assert result["status_code"] == 200 and result["body"]["target"] == "/v1/synthetic"
+    assert "synthetic-executor-token" not in repr(result)
+    assert "synthetic-launcher-token" not in repr(result)
+return {{"accepted": True}}
+"""
+    node.config = {"code": source if dedicated else "return {}", "dataset_code": True,
+        "capabilities": {"lookup": {"kind": "mcp" if mcp else "rest", "operation": operation}}}
+    definition = await create(actor_agent_id=owner.id, title="Synthetic Python service call", graph=value)
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code,
+        input_data={}, requester_user_id=requester_user_id)
+    await process_service.process_start_jobs(engine_code="galaris")
+    loop = asyncio.get_running_loop()
+    deadline = loop.time() + 45
+    while loop.time() < deadline:
+        if dedicated:
+            await asyncio.sleep(.1)
+        run = await process_service.refresh_run(launched.run_id)
+        if run.status in process_service.TERMINAL_STATUSES:
+            break
+        attempt = await db.scalar(select(ProcessNodeAttempt).join(ProcessNodeRun)
+            .where(ProcessNodeRun.run_id == launched.run_id).execution_options(populate_existing=True))
+        if lost_rest and run.status == "cancelling" and attempt is not None:
+            occurrence = await db.get(ProcessNodeRun, attempt.node_run_id, populate_existing=True)
+            if occurrence.context["code_jobs"]["activity"].get("stopped"):
+                break
+        if attempt and attempt.status == "broker_ready":
+            if lost_file and "authorization" in attempt.receipt:
+                attempt_id = attempt.id
+                with pytest.raises(ConnectionError, match="Synthetic file receipt lost"):
+                    await code_broker.execute_code_capability(attempt_id)
+                await db.rollback()
+                await db.refresh(attempt)
+                assert attempt.status == "started"
+                from uuid import uuid5
+                from app.services.facade import has_completed_workflow_tool_receipt
+                evidence = dict(request_id=UUID(attempt.receipt["authorization"]["request_id"]),
+                    agent_id=launcher_id, task_id=attempt.task_id, tool_name="file_create",
+                    operation_id=uuid5(attempt.id, attempt.receipt["call"]))
+                assert await has_completed_workflow_tool_receipt(**evidence)
+                for mismatch in ({"agent_id": launcher_id + 1000}, {"task_id": uuid4()}, {"operation_id": uuid4()}):
+                    assert not await has_completed_workflow_tool_receipt(**{**evidence, **mismatch})
+                attempt.receipt = {**attempt.receipt, "deadline": "2000-01-01T00:00:00+00:00"}
+                await db.commit()
+                continue
+            if scenario == "revoked_rest":
+                conn = await connection_service.get_connection(connection.id)
+                conn.active = False
+                await db.commit()
+            if scenario == "expired_rest":
+                occurrence = await db.get(ProcessNodeRun, attempt.node_run_id, populate_existing=True)
+                started = datetime.fromisoformat(occurrence.context["code_jobs"]["activity"]["created"])
+                with monkeypatch.context() as clock:
+                    clock.setattr(code_broker, "_now", lambda: started + timedelta(minutes=15))
+                    await code_broker.execute_code_capability(attempt.id)
+                continue
+            if lost_rest:
+                attempt_id = attempt.id
+                with pytest.raises(ConnectionError, match="Synthetic response lost"):
+                    await code_broker.execute_code_capability(attempt_id)
+                await db.rollback()
+                await code_broker.execute_code_capability(attempt_id)
+                await db.refresh(attempt)
+                assert attempt.status == "started"
+                assert len(requests) == 1 and not replies
+                if scenario == "stopped_rest":
+                    occurrence = await db.get(ProcessNodeRun, attempt.node_run_id, populate_existing=True)
+                    invocation_id = UUID(occurrence.context["code_jobs"]["activity"]["id"])
+                    await db.commit()
+                    async with asyncio.timeout(15):
+                        while not (await runner.cancel(invocation_id)).stopped:
+                            await asyncio.sleep(.1)
+                else:
+                    attempt.receipt = {**attempt.receipt, "deadline": "2000-01-01T00:00:00+00:00"}
+                    await db.commit()
+                continue
+            await code_broker.execute_code_capability(attempt.id)
+        elif attempt and attempt.status == "broker_authorization" and approver is not None:
+            from app.services.facade import answer_action
+            from app.process.native_runs import inspect_occurrence
+            assert not replies
+            receipt = (await inspect_occurrence(run.id, attempt.node_run_id, owner.id))["attempts"][0]["receipt"]
+            assert "continuation" not in receipt["authorization"] and "arguments" not in receipt
+            assert await answer_action(UUID(receipt["authorization"]["request_id"]), user_id=approver.id, approved=True)
+            if scenario == "mcp_ask_revoked":
+                await set_connection_function_state(connection.id, "process_definition_read", "disabled")
+    else:
+        pytest.fail("The Python capability workflow did not reach a terminal state")
+
+    if lost_file:
+        from core.storage import StoredFile
+        from app.process.models import ProcessRunEvent
+        assert run.status == "error" and run.error_code == "effect_outcome_unknown"
+        occurrence = await db.get(ProcessNodeRun, attempt.node_run_id, populate_existing=True)
+        assert not replies and occurrence.context["code_jobs"]["activity"]["stopped"]
+        assert await db.scalar(select(func.count()).select_from(StoredFile).where(StoredFile.name == "lost-receipt.txt")) == 1
+        events = list(await db.scalars(select(ProcessRunEvent).where(ProcessRunEvent.run_id == run.id,
+            ProcessRunEvent.event_type == "python.capability.receipt")))
+        assert len(events) == 1 and events[0].payload["reconciled"] is True
+        assert (await inspect_run(run.id, launcher_id))["operational"]["blocker"] is None
+    elif accepted_calls is not None:
+        assert run.status == "error" and run.error_code == "remote_python_protocol"
+        assert [json.loads(request["content"]) for request in requests] == [
+            {"position": i} for i in range(accepted_calls)]
+        assert len(replies) == accepted_calls + 1
+    elif scenario == "foreign_handle":
+        assert run.status == "error" and run.error_code == "remote_python_protocol"
+        assert not replies and not requests
+    elif lost_rest:
+        assert run.status == "cancelling" and run.error_code == "effect_outcome_unknown"
+        snapshot = await inspect_run(run.id, launcher_id)
+        assert snapshot["node_statuses"]["work"] == "unknown"
+        assert snapshot["operational"]["blocker"] == {"code": "effect_outcome_unknown", "requires_reconciliation": True}
+        assert snapshot["operational"]["available_actions"] == ["cancel"]
+        for action in ("resume", "step"):
+            with pytest.raises(ValueError, match="reconciliation"):
+                await control_run(run.id, launcher_id, action)
+        assert len(requests) == 1 and not replies
+    else:
+        assert run.status == "success", run.error_message
+        assert run.output["accepted"]["value"] == (scenario not in {"revoked_rest", "mcp_ask_revoked", "expired_rest", "invalid_rest"})
+        assert len(replies) == 2 and replies[0] == replies[1]
+        assert len(requests) == (1 if scenario == "rest" else 0)
+        if scenario == "expired_rest":
+            assert replies[0] == {"status": "rejected", "error": "Capability expired"}
+        if scenario == "invalid_rest":
+            assert replies[0] == {"status": "rejected", "error": "Invalid REST destination or relative path"}
+        if dedicated and scenario == "rest":
+            assert requests[0]["headers"]["authorization"] == "Bearer synthetic-executor-token"
+        if mcp and scenario != "mcp_ask_revoked":
+            assert replies[0]["output"]["code"] == target.code
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("stop_before_receipt", [False, True], ids=["continues", "stopping"])
+async def test_python_broker_settles_late_receipt_without_repeating_the_effect_or_overwriting_data(
+    inference_db, committed_native, api_server, monkeypatch, stop_before_receipt,
+):
+    import asyncio
+    from datetime import datetime
+
+    from app.connection import connection_service
+    from app.process import code_broker, remote_python
+    from app.process.code_capabilities import CapabilityCall
+    from app.process.isolated_code import CodeObservation
+    from app.process.models import ProcessRunEvent
+    from app.process.native_runs import inspect_run
+    from app.process.run_data import integrate_workflow_values
+    from app.services import service
+    from app.services.schemas import ServiceCreate
+    from core.database import get_db_session
+
+    db = inference_db
+    owner, _ = committed_native
+    launcher_id = owner.id
+    base, requests = api_server
+    provider = await service.create_service(ServiceCreate(code=f"synthetic_delayed_{uuid4().hex}",
+        label="Synthetic delayed receipt", rest_config={"base_url": base, "auth": {"type": "none"}}))
+    await connection_service.get_or_create_connection(provider.id, launcher_id)
+    response_received = asyncio.Event()
+    release_response = asyncio.Event()
+    send = code_broker.execute_rest_request
+
+    async def hold_service_response(**kwargs):
+        result = await send(**kwargs)
+        response_received.set()
+        await release_response.wait()
+        return result
+
+    monkeypatch.setattr(code_broker, "execute_rest_request", hold_service_response)
+
+    class Runner(remote_python.RemotePythonRunner):
+        async def submit(self, invocation):
+            self.call = CapabilityCall(id=uuid4(), handle=UUID(invocation.handles["write"]),
+                arguments={"method": "POST", "path": "synthetic"})
+            self.reply_received = False
+            self.stopped = False
+            return CodeObservation(status="queued")
+
+        async def observe(self, identity):
+            if self.stopped:
+                return CodeObservation(status="cancelled", stopped=True)
+            if self.reply_received:
+                return CodeObservation(status="success", stopped=True, result={"output": {"accepted": True}})
+            return CodeObservation(status="running", capability_call=self.call)
+
+        async def reply(self, invocation_id, call_id, result):
+            assert call_id == self.call.id and result["status"] == "completed"
+            self.reply_received = True
+
+        async def cancel(self, invocation_id):
+            self.stopped = True
+            return CodeObservation(status="cancelled", stopped=True)
+
+    runner = Runner("https://synthetic-runner.example.test", "synthetic-runner-key-for-testing-only")
+    monkeypatch.setattr(remote_python, "configured_python_runner", lambda: runner)
+    value = typed_graph()
+    activity = value.nodes[1]
+    activity.kind = "python"
+    activity.outputs = ["accepted"]
+    activity.config = {"code": "return {}", "dataset_code": True,
+        "capabilities": {"write": {"kind": "rest", "operation": provider.code}}}
+    definition = await create(actor_agent_id=launcher_id, title="Synthetic concurrent broker", graph=value)
+    launched = await process_service.start_process(agent_id=launcher_id, workflow_id=definition.code, input_data={})
+    await process_service.process_start_jobs(engine_code="galaris")
+    for _ in range(12):
+        await process_service.refresh_run(launched.run_id)
+        attempt = await db.scalar(select(ProcessNodeAttempt).join(ProcessNodeRun)
+            .where(ProcessNodeRun.run_id == launched.run_id).execution_options(populate_existing=True))
+        if attempt is not None and attempt.status == "broker_ready":
+            break
+    else:
+        pytest.fail("The workflow did not stage the synthetic REST call")
+    attempt_id = attempt.id
+    await db.commit()
+
+    async def run_broker_worker():
+        async with get_db_session():
+            await code_broker.execute_code_capability(attempt_id)
+
+    worker = asyncio.create_task(run_broker_worker())
+    expected_note = {"type": "string", "value": "Concurrent branch output"}
+    try:
+        async with asyncio.timeout(10):
+            await response_received.wait()
+            await run_broker_worker()
+            async with get_db_session():
+                await integrate_workflow_values(launched.run_id, command="synthetic-concurrent-branch",
+                    baseline={}, changes={"note": expected_note}, files=[], actor_agent_id=launcher_id)
+            assert len(requests) == 1 and not runner.reply_received
+            if stop_before_receipt:
+                await db.refresh(attempt)
+                assert attempt.status == "started"
+                expiry = datetime.fromisoformat(attempt.receipt["deadline"])
+                with monkeypatch.context() as clock:
+                    clock.setattr(code_broker, "_now", lambda: expiry)
+                    while not runner.stopped:
+                        await process_service.refresh_run(launched.run_id)
+                blocked = await inspect_run(launched.run_id, launcher_id)
+                assert blocked["status"] == "cancelling"
+                assert blocked["operational"]["blocker"]["requires_reconciliation"]
+    finally:
+        release_response.set()
+        await asyncio.wait_for(worker, timeout=10)
+
+    await db.refresh(attempt)
+    assert attempt.receipt["reply"]["output"]["status_code"] == 200
+    run = await finish_run(db, launched.run_id)
+    assert run.status == ("error" if stop_before_receipt else "success"), run.error_message
+    data = (await read_run_data(run.id, launcher_id))["data"]
+    assert data["note"] == expected_note
+    assert data["accepted"]["value"] is not stop_before_receipt
+    assert len(requests) == 1 and runner.reply_received is not stop_before_receipt
+    assert await db.scalar(select(func.count()).select_from(ProcessRunEvent).where(
+        ProcessRunEvent.run_id == run.id, ProcessRunEvent.event_type == "python.capability.receipt")) == 1
+    snapshot = await inspect_run(run.id, launcher_id)
+    assert snapshot["operational"]["blocker"] is None
+    assert snapshot["operational"]["available_actions"] == []
+    if stop_before_receipt:
+        assert run.error_code == "effect_outcome_unknown" and run.output is None
+    else:
+        assert run.output["accepted"] == {"type": "bool", "value": True}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("real_provider", [False, pytest.param(True, marks=pytest.mark.skipif(
+    not os.environ.get("QUALIFY_N8N_DATA_TABLE_URL"), reason="requires the disposable n8n Data Tables API"))])
+async def test_python_reconciles_n8n_insert_with_read_only_evidence(inference_db, committed_native, monkeypatch, real_provider):
+    import asyncio
+    from datetime import datetime, timedelta
+    from urllib.parse import parse_qs
+
+    import httpx
+
+    from app.connection import connection_service
+    from app.process import code_broker, remote_python
+    from app.process.code_capabilities import CapabilityCall
+    from app.process.isolated_code import CodeObservation
+    from app.process.models import ProcessRunEvent
+    from app.process.native_runs import inspect_occurrence, inspect_run
+    from app.services import service
+    from app.services.schemas import ServiceCreate
+    from core.database import get_db_session
+
+    db = inference_db
+    owner, _ = committed_native
+    rows = []
+    reads = []
+    evidence = "confirmed"
+    client_factory = httpx.AsyncClient
+    token = "synthetic-n8n-api-key"
+    table = "synthetic-table"
+    base = "https://n8n.example.test/api/v1"
+    if real_provider:
+        root = os.environ["QUALIFY_N8N_DATA_TABLE_URL"]
+        base = f"{root}/api/v1"
+        async with client_factory(base_url=root) as client:
+            response = await client.post("/rest/owner/setup", json={"email": "qualification@example.test",
+                "firstName": "Synthetic", "lastName": "Operator", "password": "Synthetic-Password-123!"})
+            response.raise_for_status()
+            response = await client.post("/rest/api-keys", json={"label": "Synthetic qualification", "expiresAt": None,
+                "scopes": ["dataTable:create", "dataTableRow:create", "dataTableRow:read"]})
+            response.raise_for_status()
+            token = response.json()["data"]["rawApiKey"]
+            response = await client.post("/api/v1/data-tables", headers={"X-N8N-API-KEY": token}, json={
+                "name": "Synthetic inventory", "columns": [{"name": name, "type": "string"}
+                    for name in ("operation_reference", "item")]})
+            response.raise_for_status()
+            table = response.json()["id"]
+    else:
+        async def n8n(request):
+            assert request.headers["x-n8n-api-key"] == token
+            assert request.url.path == f"/api/v1/data-tables/{table}/rows"
+            if request.method == "POST":
+                async with get_db_session() as reader:
+                    admitted = await reader.get(ProcessNodeAttempt, attempt_id)
+                    row, = json.loads(request.content)["data"]
+                    assert row["operation_reference"] == admitted.receipt["rest_effect"]["reference"]
+                rows.append({"id": len(rows) + 1, **row})
+                return httpx.Response(201, json=rows[-1:])
+            assert request.method == "GET"
+            reads.append(request)
+            query = parse_qs(request.url.query.decode())
+            assert query["limit"] == ["2"]
+            filter_, = json.loads(query["filter"][0])["filters"]
+            row, = rows
+            assert filter_ == {"columnName": "operation_reference", "condition": "eq", "value": row["operation_reference"]}
+            if evidence == "not_found":
+                return httpx.Response(404)
+            result = {"missing": [], "foreign": [{**row, "operation_reference": str(uuid4())}],
+                "mismatched": [{**row, "item": "Different item"}], "ambiguous": [row, {**row, "id": 2}]}.get(evidence, [row])
+            return httpx.Response(200, json={"data": result, "nextCursor": None})
+
+        transport = httpx.MockTransport(n8n)
+        monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: client_factory(transport=transport, **kwargs))
+
+    provider = await service.create_service(ServiceCreate(code=f"synthetic_n8n_{uuid4().hex}", label="Synthetic n8n",
+        rest_config={"base_url": base, "auth": {"type": "header", "header_name": "X-N8N-API-KEY"},
+            "effect_receipt": "n8n_data_table_insert"},
+        connection_schema={"params": {"api_token": {"type": "password"}}}))
+    connection = await connection_service.get_or_create_connection(provider.id, owner.id)
+    await connection_service.set_params_bulk(connection.id, {"api_token": token})
+    arguments = {"method": "POST", "path": f"data-tables/{table}/rows",
+        "json_body": {"data": [{"item": "Synthetic item"}], "returnType": "all"}}
+    send = code_broker.execute_rest_request
+    dispatches = []
+
+    async def lose_receipt(**kwargs):
+        result = await send(**kwargs)
+        assert result.status_code in {200, 201}, result.body
+        dispatches.append(result.body[0]["id"])
+        raise ConnectionError("Synthetic lost n8n receipt")
+
+    class Runner(remote_python.RemotePythonRunner):
+        stopped = False
+
+        async def submit(self, invocation):
+            self.call = CapabilityCall(id=uuid4(), handle=UUID(invocation.handles["write"]), arguments=arguments)
+            return CodeObservation(status="queued")
+
+        async def observe(self, identity):
+            return CodeObservation(status="running", capability_call=self.call)
+
+        async def reply(self, invocation_id, call_id, result):
+            pytest.fail("A receipt used to finish cancellation must never resume the sandbox")
+
+        async def cancel(self, invocation_id):
+            self.stopped = True
+            return CodeObservation(status="cancelled", stopped=True)
+
+    runner = Runner("https://synthetic-runner.example.test", "synthetic-runner-key-for-testing-only")
+    monkeypatch.setattr(remote_python, "configured_python_runner", lambda: runner)
+    monkeypatch.setattr(code_broker, "execute_rest_request", lose_receipt)
+    workflow = typed_graph()
+    activity = workflow.nodes[1]
+    activity.kind = "python"
+    activity.config = {"code": "return {}", "dataset_code": True,
+        "capabilities": {"write": {"kind": "rest", "operation": provider.code}}}
+    definition = await create(actor_agent_id=owner.id, title="Synthetic inventory workflow", graph=workflow)
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
+    run_id = launched.run_id
+    await process_service.process_start_jobs(engine_code="galaris")
+    for _ in range(12):
+        await process_service.refresh_run(run_id)
+        attempt = await db.scalar(select(ProcessNodeAttempt).join(ProcessNodeRun).where(ProcessNodeRun.run_id == run_id)
+            .execution_options(populate_existing=True))
+        if attempt is not None and attempt.status == "broker_ready":
+            break
+    else:
+        pytest.fail("The workflow did not stage the n8n insertion")
+    attempt_id = attempt.id
+    await db.commit()
+
+    async def process_receipt():
+        async with get_db_session():
+            await code_broker.execute_code_capability(attempt_id)
+
+    with pytest.raises(ConnectionError, match="lost n8n receipt"):
+        await process_receipt()
+    await db.refresh(attempt)
+    assert attempt.status == "started"
+    clock = datetime.fromisoformat(attempt.receipt["deadline"])
+    monkeypatch.setattr(code_broker, "_now", lambda: clock)
+    for _ in range(4):
+        await process_service.refresh_run(run_id)
+    observed = await inspect_run(run_id, owner.id)
+    assert runner.stopped and observed["status"] == "cancelling"
+    assert observed["operational"]["blocker"]["code"] == "effect_outcome_unknown"
+    occurrence = await inspect_occurrence(run_id, attempt.node_run_id, owner.id)
+    assert "rest_effect" not in occurrence["attempts"][0]["receipt"]
+    assert attempt_id in await code_broker.discover_code_capability_calls(50, [])
+    await connection_service.set_params_bulk(connection.id, {"api_token": "rotated-synthetic-key"})
+    await db.commit()
+    await process_receipt()
+    assert not reads
+    assert attempt_id not in await code_broker.discover_code_capability_calls(50, [])
+    await connection_service.set_params_bulk(connection.id, {"api_token": token})
+    await db.commit()
+    if not real_provider:
+        for evidence in ("not_found", "missing", "foreign", "mismatched", "ambiguous"):
+            clock += timedelta(seconds=31)
+            await process_receipt()
+            run = await process_service.refresh_run(run_id)
+            assert run.status == "cancelling"
+        evidence = "confirmed"
+        assert len(reads) == 5
+    clock += timedelta(seconds=31)
+    await asyncio.gather(process_receipt(), process_receipt())
+    if not real_provider:
+        assert len(reads) == 6
+    run = await finish_run(db, run_id)
+    assert run.status == "error" and run.error_code == "effect_outcome_unknown" and run.output is None
+    await process_receipt()
+    assert len(dispatches) == 1
+    await db.refresh(attempt)
+    assert attempt.receipt["reply"]["output"] == {"row_id": dispatches[0]}
+    events = list(await db.scalars(select(ProcessRunEvent).where(ProcessRunEvent.run_id == run_id,
+        ProcessRunEvent.event_type == "python.capability.receipt")))
+    assert len(events) == 1 and events[0].payload["reconciled"]
+    assert (await inspect_run(run_id, owner.id))["operational"]["blocker"] is None
+    if real_provider:
+        async with client_factory() as client:
+            response = await client.get(f"{base}/{arguments['path']}", headers={"X-N8N-API-KEY": token})
+            response.raise_for_status()
+            row, = response.json()["data"]
+            assert row["id"] == dispatches[0] and row["item"] == "Synthetic item"
+
+
+@pytest.mark.asyncio
+async def test_python_output_cannot_attach_another_agents_private_file(db, native, monkeypatch):
+    from app.file_share import ResourceContext, resource_create
+    from app.process import remote_python
+    from app.process.isolated_code import CodeObservation
+
+    owner, other = native
+    foreign = await resource_create(ResourceContext(agent_id=other.id, runtime="internal"),
+        "file://", b"Synthetic restricted data", name="private.txt")
+
+    class Runner(remote_python.RemotePythonRunner):
+        async def submit(self, invocation):
+            return CodeObservation(status="success", stopped=True,
+                result={"output": {"accepted": True}, "output_files": [{"uri": foreign.uri}]})
+
+    runner = Runner("https://synthetic-runner.example.test", "synthetic-runner-key-for-testing-only")
+    monkeypatch.setattr(remote_python, "configured_python_runner", lambda: runner)
+    value = typed_graph()
+    value.nodes[1].kind = "python"
+    value.nodes[1].config = {"dataset_code": True, "code": "return {'accepted': True}"}
+    definition = await create(actor_agent_id=owner.id, title="Synthetic private reference", graph=value)
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
+    await process_service.process_start_jobs(engine_code="galaris")
+    run = await finish_run(db, launched.run_id)
+    assert run.status == "error"
+    data = await read_run_data(run.id, owner.id)
+    assert data["files"] == []
+    assert data["data"]["accepted"]["value"] is False
+
+
+@pytest.mark.asyncio
+async def test_an_expired_python_progress_lease_cannot_integrate_or_admit_its_successor(db, native, monkeypatch):
+    from datetime import timedelta
+    from app.process import remote_python
+    from app.process.isolated_code import CodeObservation
+    from app.process.native_engine import now
+
+    owner, _ = native
+
+    class Runner(remote_python.RemotePythonRunner):
+        expired = False
+
+        async def submit(self, invocation):
+            return CodeObservation(status="queued")
+
+        async def observe(self, identity):
+            if not self.expired:
+                run = await db.get(ProcessRun, launched.run_id)
+                state = {**run.engine_metadata["native"], "lease_until": (now() - timedelta(seconds=1)).isoformat()}
+                run.engine_metadata = {**run.engine_metadata, "native": state}
+                await db.commit()
+                self.expired = True
+            return CodeObservation(status="success", stopped=True, result={"output": {"accepted": True}})
+
+    runner = Runner("https://synthetic-runner.example.test", "synthetic-runner-key-for-testing-only")
+    monkeypatch.setattr(remote_python, "configured_python_runner", lambda: runner)
+    graph = typed_graph()
+    graph.nodes[1].kind = "python"
+    graph.nodes[1].config = {"dataset_code": True, "code": "return {'accepted': True}"}
+    definition = await create(actor_agent_id=owner.id, title="Synthetic expired lease", graph=graph)
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
+    await process_service.process_start_jobs(engine_code="galaris")
+    for _ in range(10):
+        await process_service.refresh_run(launched.run_id)
+        if runner.expired:
+            break
+    assert runner.expired
+    assert (await read_run_data(launched.run_id, owner.id))["data"]["accepted"]["value"] is False
+    assert not await db.scalar(select(ProcessNodeRun.id).where(
+        ProcessNodeRun.run_id == launched.run_id, ProcessNodeRun.node_key == "end"))
+    run = await finish_run(db, launched.run_id)
+    assert run.status == "success" and run.output["accepted"]["value"] is True
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("transport", [
+    "local",
+    pytest.param("dedicated", marks=pytest.mark.skipif(not dedicated_python_enabled(), reason="requires a dedicated TLS runner")),
+])
+async def test_default_python_passes_files_through_the_broker_and_to_its_successor(
+    inference_db, committed_native, monkeypatch, transport,
+):
+    import asyncio
+    import sys
+    from pathlib import Path
+    from app.connection import connection_service
+    from app.connection.facade import set_connection_function_state
+    from app.file_share import ResourceContext, resource_create
+    from app.process import code_broker, remote_python
+    from app.process.engine import ProcessEngineError
+    from app.process.isolated_code import CodeObservation
+    from app.process.values import Variable
+    from app.services import ServiceModel
+
+    db = inference_db
+    owner, _ = committed_native
+    source = await resource_create(ResourceContext(agent_id=owner.id, runtime="internal"),
+        "file://", b"Invented input", name="source.txt")
+    provider = await db.scalar(select(ServiceModel).where(ServiceModel.code == "file_sharing"))
+    connection = await connection_service.get_or_create_connection(provider.id, owner.id)
+    for name in ("file_create", "file_read"):
+        await set_connection_function_state(connection.id, name, "enabled")
+
+    class LocalTransport(remote_python.RemotePythonRunner):
+        """Execute only the synthetic fixture through the real guest bootstrap."""
+        process = None
+        pending = None
+
+        async def submit(self, invocation):
+            assert self.process is None
+            self.process = await asyncio.create_subprocess_exec(sys.executable, "-IBu",
+                str(Path(__file__).resolve().parents[4] / "process-runner/sandbox.py"),
+                stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE)
+            self.process.stdin.write(json.dumps({"source": invocation.source, "values": invocation.values,
+                "handles": invocation.handles}).encode() + b"\n")
+            await self.process.stdin.drain()
+            return CodeObservation(status="queued")
+
+        async def observe(self, identity):
+            if self.pending is not None:
+                return self.pending
+            raw = await asyncio.wait_for(self.process.stdout.readline(), 5)
+            if not raw:
+                assert await self.process.wait() != 0
+                return CodeObservation(status="error", stopped=True)
+            frame = json.loads(raw)
+            if "call" in frame:
+                self.pending = CodeObservation(status="running", capability_call=frame["call"])
+                return self.pending
+            assert await self.process.wait() == 0
+            return CodeObservation(status="success", stopped=True, result=frame["result"])
+
+        async def reply(self, invocation_id, call_id, result):
+            self.process.stdin.write(json.dumps(result).encode() + b"\n")
+            await self.process.stdin.drain()
+            self.pending = None
+
+        async def cancel(self, invocation_id):
+            if self.process is not None and self.process.returncode is None:
+                self.process.kill()
+                await self.process.wait()
+            return CodeObservation(status="cancelled", stopped=True)
+
+    base = remote_python.configured_python_runner() if transport == "dedicated" else LocalTransport(
+        "https://synthetic-runner.example.test", "synthetic-runner-key-for-testing-only")
+    assert base is not None, "Dedicated qualification requires HTTPS URL and token"
+    replies = {}
+    reply = base.reply
+
+    async def lose_first_reply(invocation, call_id, result):
+        count = replies.get(call_id, 0) + 1
+        replies[call_id] = count
+        if count == 1:
+            raise ProcessEngineError("remote_python_unreachable", "Synthetic lost broker acknowledgement", retryable=True)
+        return await reply(invocation, call_id, result)
+
+    monkeypatch.setattr(base, "reply", lose_first_reply)
+    monkeypatch.setattr(remote_python, "configured_python_runner", lambda: base)
+    complete_task = task_service.complete_workflow_operation
+    finalization_interrupted = False
+
+    class LostTaskAcknowledgement(Exception):
+        pass
+
+    async def lose_create_finalization(task_id, result, *, error=None):
+        nonlocal finalization_interrupted
+        pending = await db.scalar(select(ProcessNodeAttempt).where(ProcessNodeAttempt.task_id == task_id,
+            ProcessNodeAttempt.status == "broker_settling"))
+        if pending is not None and pending.receipt["capability"] == "create" and not finalization_interrupted:
+            finalization_interrupted = True
+            raise LostTaskAcknowledgement
+        await complete_task(task_id, result, error=error)
+
+    monkeypatch.setattr(task_service, "complete_workflow_operation", lose_create_finalization)
+    value = typed_graph()
+    value.variables.extend([Variable(name="input_files", type="string", nullable=False,
+        default={"type": "string", "value": "synthetic"}),
+        Variable(name="report", type="File", nullable=True, mime_type="text/plain"),
+        Variable(name="proof", type="string", nullable=True)])
+    value.outputs = ["amount", "report", "proof"]
+    node = value.nodes[1]
+    node.kind = "python"
+    node.inputs = ["amount", "input_files"]
+    node.outputs = ["amount", "report"]
+    node.config = {"dataset_code": True, "capabilities": {
+        "read": {"kind": "mcp", "operation": "file_read"}, "create": {"kind": "mcp", "operation": "file_create"}},
+        "code": """import json
+body = json.loads(call_service("read", {"uri": input_files[0]["uri"]})["value"])["content"]
+created = json.loads(call_service("create", {
+    "path": "file://", "name": "result.txt", "content": dataset["input_files"] + ": " + body
+})["value"])
+output_files = [{"uri": created["uri"]}]
+return {"amount": amount + 1, "report": created["uri"]}
+"""}
+    value.nodes.insert(2, Node(id="verify", kind="tool_call", inputs=["report"], outputs=["proof"], config={
+        "tool": "file_read", "tool_arguments": {"uri": {"$expr": "input.report"}},
+        "external_output": {"proof": {"$expr": "result.value"}}}))
+    value.flows[1].target = "verify"
+    value.flows.append(Flow(id="verify_end", source="verify", target="end"))
+    definition = await create(actor_agent_id=owner.id, title="Synthetic Python file round trip", graph=value)
+    from app.process import ProcessFileInput
+    launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code,
+        input_data={}, files=[ProcessFileInput(uri=source.uri)])
+    await process_service.process_start_jobs(engine_code="galaris")
+    try:
+        async with asyncio.timeout(45):
+            while True:
+                run = await tick_run(db, launched.run_id)
+                if run.status in process_service.TERMINAL_STATUSES:
+                    break
+                for attempt in await db.scalars(select(ProcessNodeAttempt).join(ProcessNodeRun).where(
+                    ProcessNodeRun.run_id == run.id, ProcessNodeAttempt.status.in_(("broker_ready", "broker_settling")))):
+                    try:
+                        await code_broker.execute_code_capability(attempt.id)
+                    except LostTaskAcknowledgement:
+                        await db.rollback()
+                if transport == "dedicated":
+                    await asyncio.sleep(.1)
+    finally:
+        if isinstance(base, LocalTransport):
+            await base.cancel(uuid4())
+    assert run.status == "success", run.error_message
+    assert run.output["amount"]["value"] == 8
+    assert json.loads(run.output["proof"]["value"])["content"] == "synthetic: Invented input"
+    report = run.output["report"]["value"]
+    files = (await read_run_data(run.id, owner.id))["files"]
+    assert [entry["uri"] for entry in files] == [source.uri, report]
+    assert sorted(replies.values()) == [2, 2]
+    assert finalization_interrupted
+    from core.storage import StoredFile
+    assert await db.scalar(select(func.count()).select_from(StoredFile).where(StoredFile.name == "result.txt")) == 1
+    from app.process.models import ProcessRunEvent
+    assert await db.scalar(select(func.count()).select_from(ProcessRunEvent).where(
+        ProcessRunEvent.run_id == run.id, ProcessRunEvent.event_type == "python.capability.receipt")) == 2
+
+
+@pytest.mark.asyncio
+@pytest.mark.skipif(not dedicated_python_enabled(), reason="requires a dedicated TLS runner")
+async def test_dedicated_python_runner_isolates_invocations_and_confirms_the_exact_stop():
+    import asyncio
+    from app.process.isolated_code import CodeInvocation
+    from app.process.remote_python import configured_python_runner
+
+    runner = configured_python_runner()
+    assert runner is not None, "Dedicated qualification requires HTTPS URL and token"
+    first = CodeInvocation(uuid4(), uuid4(), uuid4(), 1, "activity", "while True: pass", {})
+    second = CodeInvocation(uuid4(), uuid4(), uuid4(), 2, "activity", """
+from pathlib import Path
+import os
+import resource
+import socket
+import threading
+
+assert not Path("/run/runner/token").exists()
+assert not Path("/var/run/docker.sock").exists()
+assert "PROCESS_PYTHON_RUNNER_TOKEN" not in os.environ
+assert all(name == "lo" for _, name in socket.if_nameindex())
+marker = Path("/tmp/isolated-process-marker")
+assert not marker.exists()
+marker.write_text("synthetic")
+assert resource.getrlimit(resource.RLIMIT_NPROC) == (16, 16)
+release = threading.Event()
+threads = []
+try:
+    for _ in range(16):
+        thread = threading.Thread(target=release.wait)
+        thread.start()
+        threads.append(thread)
+except RuntimeError:
+    assert len(threads) == 15
+else:
+    raise AssertionError("Python exceeded its process and thread limit")
+finally:
+    release.set()
+    for thread in threads:
+        thread.join()
+output = {"checked": True}
+""", {})
+    third = CodeInvocation(uuid4(), uuid4(), uuid4(), 1, "activity", second.source, {})
+
+    async def stopped(identity, *, cancel=False):
+        async with asyncio.timeout(20):
+            while True:
+                observed = await (runner.cancel(identity) if cancel else runner.observe(identity))
+                if observed.stopped:
+                    return observed
+                await asyncio.sleep(.2)
+
+    try:
+        await runner.submit(first)
+        await runner.submit(second)
+        cancelled, completed = await asyncio.gather(stopped(first.id, cancel=True), stopped(second.id))
+        assert cancelled.status == "cancelled"
+        assert completed.status == "success" and completed.result["output"] == {"checked": True}
+        assert (await runner.submit(first)).status == "cancelled"
+        await runner.submit(third)
+        assert (await stopped(third.id)).status == "success"
+    finally:
+        for invocation in (first, second, third):
+            await stopped(invocation.id, cancel=True)
 
 
 @pytest.mark.asyncio
@@ -1836,6 +3092,7 @@ async def test_managed_human_can_still_launch_an_assigned_external_process(db, n
         input_data={"synthetic": True}, requester_user_id=human.id)
     run = await db.get(ProcessRun, launched.run_id)
     assert run.engine_code == "fake" and run.requester_user_id == human.id and run.data == {}
+    assert (await process_service.refresh_run(run.id)).status == "queued"
     with pytest.raises(PermissionError):
         await process_service.start_process(agent_id=colleague.id, workflow_id=definition.engine_process_id,
             input_data={}, requester_user_id=human.id)
@@ -2112,8 +3369,8 @@ async def test_loops_are_durable_sequential_and_preserve_each_result(db, native,
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("values", [[], ["first", "second"]])
-async def test_nested_for_while_keeps_occurrences_separate_after_restart(db, native, values):
+@pytest.mark.parametrize(("values", "extra_depth"), [([], 0), (["first", "second"], 0), (list(range(12)), 3)])
+async def test_nested_for_while_keeps_occurrences_separate_after_restart(db, native, values, extra_depth):
     owner, _ = native
     inner = Workflow(nodes=[Node(id="inner_start", kind="start"),
         Node(id="inner_work", kind="task", config={"prompt": "Invent an iteration"}),
@@ -2125,6 +3382,13 @@ async def test_nested_for_while_keeps_occurrences_separate_after_restart(db, nat
         Node(id="outer_end", kind="end", config={"output": {"$expr": "results.inner_loop"}})],
         flows=[Flow(id="outer_a", source="outer_start", target="inner_loop"),
             Flow(id="outer_b", source="inner_loop", target="outer_end")])
+    for level in reversed(range(extra_depth)):
+        key = f"nested_{level}"
+        outer = Workflow(nodes=[Node(id=f"{key}_start", kind="start"),
+            Node(id=key, kind="for", body=outer, config={"items": "[0]"}),
+            Node(id=f"{key}_end", kind="end")], flows=[
+            Flow(id=f"{key}_in", source=f"{key}_start", target=key),
+            Flow(id=f"{key}_out", source=key, target=f"{key}_end")])
     definition_graph = Workflow(nodes=[Node(id="start", kind="start"),
         Node(id="outer_loop", kind="for", body=outer, config={"items": "input.values"}),
         Node(id="end", kind="end", config={"output": {"$expr": "results.outer_loop"}})],
@@ -2135,12 +3399,14 @@ async def test_nested_for_while_keeps_occurrences_separate_after_restart(db, nat
     await tick_run(db, launched.run_id)
     registry.register(NativeProcessEngine())
     db.expire_all()
-    run = await finish_run(db, launched.run_id, workspace_update=lambda attempt, data: {**data, "count": data.get("count", 0) + 1})
+    run = await finish_run(db, launched.run_id, max_ticks=60 + extra_depth * len(values) * 8,
+        workspace_update=lambda attempt, data: {**data, "count": data.get("count", 0) + 1})
     assert run.status == "success", run.error_message
     assert run.output == ({"values": values, "count": 2 * len(values)} if values else {"values": []})
     occurrences = list(await db.scalars(select(ProcessNodeRun).where(ProcessNodeRun.run_id == run.id, ProcessNodeRun.node_key == "inner_work")))
     assert len(occurrences) == 2 * len(values)
-    assert all(node.status == "success" and node.context["body_path"] == ["outer_loop", "inner_loop"] for node in occurrences)
+    path = ["outer_loop", *(f"nested_{level}" for level in range(extra_depth)), "inner_loop"]
+    assert all(node.status == "success" and node.context["body_path"] == path for node in occurrences)
 
 
 @pytest.mark.asyncio

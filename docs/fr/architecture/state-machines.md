@@ -602,9 +602,15 @@ validées sont conservées avant l'intégration : une réponse externe acquise p
 `returned` avant `completed`, sans réémission de l'appel après interruption. La réception
 du résultat et son intégration sont deux étapes distinctes ; le reçu du run rend la seconde
 idempotente. Une erreur de contrat interdit l'intégration et toute admission du successeur.
+Le moteur relit le contexte de l'occurrence sous le verrou du run avant d'avancer.
+Un reçu remis par la Task après la sélection du lot est disponible à cette relecture.
 Les tâches à plusieurs prédécesseurs attendent toutes leurs arrivées de la même invocation.
 Les phases de code conservent leurs identités et observations dans l'occurrence :
 `queued`/`running` restent en attente, et `success` n'est utilisable qu'avec `stopped=true`.
+Une capacité Python passe de `broker_ready` à `started` avant l'effet. Une réponse MCP
+acquise est persistée en `broker_settling` avant la clôture ou suspension de la Task.
+La reprise de cette étape termine uniquement la Task puis publie `broker_returned` ou
+`broker_authorization`. Un résultat sans Task de contexte passe directement à `broker_returned`.
 Une annulation attend elle aussi la confirmation physique ; aucun résultat tardif ne
 rouvre un terminal. L'adapter Monty ferme son worker isolé avant de confirmer l'arrêt.
 Seule cette computation pure peut être recalculée après perte du résultat ; les effets
@@ -622,8 +628,21 @@ est réutilisé sans nouvel appel après reprise du moteur.
 Pour les processus internes, la première erreur d'exécution interdit toute nouvelle
 activité et demande l'arrêt des tâches et enfants actifs. Le run passe par `cancelling`
 puis `error` après confirmation des arrêts, en conservant `error_code` et les données.
+Pour un harnais réseau en attente d'un accord MCP, l'annulation révoque le contexte
+et l'accord en attente. Le Process attend la confirmation d'arrêt de cette exécution.
+Une requête REST rejetée localement avant envoi fait échouer l'activité REST. Pour
+une capacité REST de Python, le broker conserve et remet un reçu de refus.
 Un effet externe incertain renvoie `effect_outcome_unknown` et reste en arrêt en cours
-jusqu'à réconciliation. Aucun traitement de secours ou réessai automatique n'est exécuté.
+jusqu'à réconciliation. Pour un appel du broker Python déjà admis, ce diagnostic
+reste visible si le runner s'arrête avant que le reçu de l'appel soit enregistré.
+Une fois le reçu tardif de l'appel original et tous les arrêts confirmés,
+le run peut devenir terminal. Le diagnostic reste dans son historique et le suivi
+cesse de présenter la réconciliation comme un blocage actif.
+Aucun traitement de secours ou réessai automatique n'est exécuté.
+Pour une création locale approuvée, le reçu du journal Services peut clôturer la Task
+de contexte pendant l'arrêt. La sandbox doit toujours confirmer son arrêt propre.
+Un run en file d'attente sans identifiant distant reste sous la responsabilité du
+worker de démarrage. Une lecture ne peut pas le faire passer à `unknown`.
 
 La finalisation d'une attente est distincte du statut du run : `await_resolved_at` reste nul
 jusqu'à la clôture de la tâche enfant et à la reprise de son parent. Cette étape est rejouable

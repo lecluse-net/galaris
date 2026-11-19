@@ -16,7 +16,7 @@ from app.task import TaskCreate, TaskStatus, task_service, get_task_outcome_obse
 from core.database import get_db
 
 from . import process_service
-from .bpmn import Node, Workflow, decision_activity, activity_variables, selected_variables, normalize_activity_result
+from .bpmn import ACTIVITY_KINDS, PYTHON_ACTIVITY_KINDS, Node, Workflow, decision_activity, activity_variables, selected_variables, normalize_activity_result
 from .activity_prompts import build_activity_prompt
 from .llm_decisions import simple_llm, observe_decision, stop_decision
 from .values import normalize_patch, validate_values, loads_values, unwrap, external_patch, ValueContractError
@@ -211,12 +211,10 @@ class NativeProcessEngine:
         await get_db().commit()
         try:
             if state.get("status") in process_service.TERMINAL_STATUSES:
-                occurrences = []
+                occurrence_ids = []
             else:
-                occurrences = await self._frontier(record.id, claim)
-            for occurrence in occurrences:
-                if occurrence.status not in {"ready", "waiting"}:
-                    continue
+                occurrence_ids = await self._frontier(record.id, claim)
+            for occurrence_id in occurrence_ids:
                 current = await self._fenced(record.id, claim)
                 if current is None:
                     break
@@ -225,6 +223,10 @@ class NativeProcessEngine:
                     break
                 if state.get("status") in process_service.TERMINAL_STATUSES:
                     break
+                # Activity commands can update the context after frontier selection and its commit.
+                occurrence = await get_db().get(ProcessNodeRun, occurrence_id, populate_existing=True)
+                if occurrence is None or occurrence.status not in {"ready", "waiting"}:
+                    continue
                 # Active effects finish under pause. A step admits one occurrence;
                 # its composite descendants are admitted until its own completion.
                 if occurrence.status == "ready":
@@ -283,7 +285,7 @@ class NativeProcessEngine:
                 await get_db().commit()
             raise
 
-    async def _frontier(self, identity: UUID, claim: str) -> list[ProcessNodeRun]:
+    async def _frontier(self, identity: UUID, claim: str) -> list[UUID]:
         """Rotate a bounded snapshot of the frontier, including waiting effects.
 
         New admissions join the next cycle. They cannot indefinitely overtake
@@ -296,21 +298,22 @@ class NativeProcessEngine:
         cutoff = int(state.get("frontier_cutoff", state.get("frontier_sequence", 0)))
         cursor = int(state.get("frontier_cursor", 0))
 
-        async def batch() -> list[ProcessNodeRun]:
-            return list(await get_db().scalars(select(ProcessNodeRun).where(
+        async def batch() -> list[tuple[UUID, int]]:
+            rows = await get_db().execute(select(ProcessNodeRun.id, ProcessNodeRun.admission_order).where(
                 ProcessNodeRun.run_id == identity, ProcessNodeRun.status.in_(("ready", "waiting")),
                 ProcessNodeRun.admission_order > cursor, ProcessNodeRun.admission_order <= cutoff,
-            ).order_by(ProcessNodeRun.admission_order, ProcessNodeRun.id).limit(50)))
+            ).order_by(ProcessNodeRun.admission_order, ProcessNodeRun.id).limit(50))
+            return list(rows.tuples())
 
         occurrences = await batch()
         if not occurrences:
             cursor = 0
             cutoff = int(state.get("frontier_sequence", 0))
             occurrences = await batch()
-        state.update(frontier_cursor=occurrences[-1].admission_order if occurrences else 0, frontier_cutoff=cutoff)
+        state.update(frontier_cursor=occurrences[-1][1] if occurrences else 0, frontier_cutoff=cutoff)
         current.engine_metadata = {**current.engine_metadata, "native": state}
         await get_db().commit()
-        return occurrences
+        return [node_identity for node_identity, _ in occurrences]
 
     async def _ancestor_paused(self, run: ProcessRun) -> bool:
         """Walk persisted ancestry iteratively; never recurse through engine calls."""
@@ -331,7 +334,10 @@ class NativeProcessEngine:
 
     async def _fenced(self, identity: UUID, claim: str) -> ProcessRun | None:
         record = await self._lock(identity)
-        if record.status in process_service.TERMINAL_STATUSES or record.engine_metadata.get("native", {}).get("lease") != claim:
+        state = record.engine_metadata.get("native", {})
+        expires = state.get("lease_until")
+        if (record.status in process_service.TERMINAL_STATUSES or state.get("lease") != claim
+                or not isinstance(expires, str) or datetime.fromisoformat(expires) <= now()):
             await get_db().commit()
             return None
         return record
@@ -358,7 +364,7 @@ class NativeProcessEngine:
                     raise ValueError("An IF result must be a boolean")
                 values["decision"] = decision
                 values["output"] = result
-            if node.kind in {"task", "human_task", "call", "tool_call", "rest", "code", "program"}:
+            if node.kind in ACTIVITY_KINDS:
                 result = await self._effect(run, occurrence, node, claim)
                 if result is None:
                     return
@@ -396,11 +402,24 @@ class NativeProcessEngine:
                         candidate.pop(name, None)
                     validate_values(candidate, path=f"{node.id}.data")
                     from .native_actors import execution_agent
+                    assigned_agent = execution_agent(graph, node, run.launcher_agent_id)
+                    if node.kind == "python":
+                        # Existing manifest entries were already checked. A new
+                        # URI must not leak another owner's file metadata.
+                        known = {item["uri"] for item in values["files"]}
+                        new_files = [ProcessFileInput.model_validate(item) for item in output_files if item["uri"] not in known]
+                        if new_files:
+                            await get_db().commit()
+                            await process_service.validate_file_references(assigned_agent, run.id, new_files)
+                            current = await self._fenced(run.id, claim)
+                            if current is None or current.engine_metadata["native"].get("cancel_requested"):
+                                await get_db().commit()
+                                return
                     await integrate_workflow_values(run.id,
                         command=f"activity:{occurrence.id}", baseline=occurrence.context["integration_baseline"],
                         changes=changes, files=output_files, remove=remove, files_mode=files_mode,
                         baseline_files=occurrence.context.get("input_files", []),
-                        actor_agent_id=execution_agent(graph, node, run.launcher_agent_id))
+                        actor_agent_id=assigned_agent)
                 values["output"] = result
                 values.setdefault("results", {})[node.id] = result
                 values = {**await self._workspace_values(run, occurrence), "output": result,
@@ -434,7 +453,7 @@ class NativeProcessEngine:
             state = deepcopy(current.engine_metadata["native"])
             attempt = await get_db().scalar(select(ProcessNodeAttempt).where(ProcessNodeAttempt.node_run_id == occurrence.id)
                 .order_by(ProcessNodeAttempt.number.desc()).limit(1))
-            if node.kind in {"tool_call", "rest", "program"} and attempt is not None and attempt.status == "started":
+            if node.kind in {"tool_call", "rest", "program", "python"} and attempt is not None and attempt.status == "started":
                 occurrence.status = "unknown"
                 occurrence.finished_at = None
                 state.update(status="cancelling", paused=True, cancel_requested=True, failure=True,
@@ -459,19 +478,8 @@ class NativeProcessEngine:
         if attempt is None or attempt.status == "failed":
             # Recheck live sharing before admitting another effect. Already
             # accepted effects retain their receipt and are still observed.
-            from .native_definitions import get as get_definition
-            actor: Any = run.launcher_agent_id
-            if run.requester_user_id is not None:
-                from app.agent import management_scope_for
-                from core.user import get_user_record
-                user = await get_user_record(run.requester_user_id)
-                if user is None or not user.is_active:
-                    raise PermissionError("The human workflow launcher is inactive")
-                actor = await management_scope_for(user, get_db())
-                actor.require(run.launcher_agent_id)
-            await get_definition(str(run.launch_snapshot["workflow_id"]), actor)
-            from .native_actors import validate_assignments
-            await validate_assignments(local_graph(run, occurrence), actor)
+            from .native_actors import validate_execution_access
+            await validate_execution_access(run, local_graph(run, occurrence))
             previous = attempt
             workspace = occurrence.context.get("preparation_snapshot")
             if workspace is None:
@@ -783,14 +791,20 @@ class NativeProcessEngine:
                 await get_db().commit()
                 mapped = resolve(node.config.get("external_output", {"$expr": "result"}), {"result": result})
                 result = external_patch(activity_variables(graph, node), mapped, path=f"{node.id}.output", typed_values=node.config.get("external_output_typed", False))
-        elif node.kind == "code":
+        elif node.kind in PYTHON_ACTIVITY_KINDS:
             source = str(node.config["code"])
-            code_values: dict[str, Any] = {"input": attempt.input, "input_files": occurrence.context.get("input_files", []), "output": {}, "output_files": []}
+            input_files = occurrence.context.get("input_files", [])
+            code_values: dict[str, Any] = {"input": attempt.input, "input_files": input_files, "output": {}, "output_files": []}
             if node.config.get("dataset_code") is True:
                 from .isolated_code import dataset_program
                 dataset = {name: unwrap(value) for name, value in attempt.input.items()}
-                source = dataset_program(source, dataset)
+                existing = occurrence.context.get("code_jobs", {}).get("activity")
+                # Preserve the uploaded program identity if an older worker already froze its inputs.
+                python_files = node.kind == "python" and (existing is None or "input_files" in existing["values"])
+                source = dataset_program(source, dataset, python_files=python_files)
                 code_values = {"dataset": dataset}
+                if python_files:
+                    code_values.update(input_files=input_files, output_files=[])
             code_result = await self._code_phase(run, occurrence, node, claim, "activity", source, code_values)
             if code_result is None:
                 return None
@@ -864,31 +878,71 @@ class NativeProcessEngine:
                           phase: Literal["preprocess", "activity", "postprocess"], source: str, values: dict[str, Any]) -> dict[str, Any] | None:
         from .isolated_code import CodeInvocation, require_isolated_code_runner
         from .native_actors import execution_agent
-        runner = require_isolated_code_runner()
+        from .remote_python import RemotePythonRunner, configured_python_runner
+        from .code_broker import stage_call
+        remote = node.kind == "python" and phase == "activity"
+        runner = configured_python_runner() if remote else require_isolated_code_runner()
+        if runner is None:
+            raise ProcessEngineError("remote_python_unavailable", "Python requires an isolated runner on a dedicated host")
         jobs: dict[str, Any] = deepcopy(occurrence.context.get("code_jobs", {}))
+        runner_identity = runner.identity if remote and isinstance(runner, RemotePythonRunner) else None
         if phase not in jobs:
-            jobs[phase] = {"id": str(uuid5(occurrence.id, phase)), "values": deepcopy(values), "submitted": False}
+            jobs[phase] = {"id": str(uuid5(occurrence.id, phase)), "values": deepcopy(values), "submitted": False,
+                           "runner": runner_identity, "created": now().isoformat(),
+                           "handles": {name: str(uuid4()) for name in node.config.get("capabilities", {})} if remote else {}}
             occurrence.context = {**occurrence.context, "code_jobs": deepcopy(jobs)}
             await get_db().commit()
         job: dict[str, Any] = jobs[phase]
         if "result" in job:
             return deepcopy(job["result"])
+        if job.get("runner") != runner_identity:
+            raise ProcessEngineError("remote_python_unavailable", "The original Python runner is required for reconciliation")
+        if remote:
+            created = datetime.fromisoformat(job["created"])
+            limit = timedelta(minutes=17 if job["submitted"] else 2)
+            if now() >= created + limit:
+                raise ProcessEngineError("remote_python_timeout", "Python exceeded its reconciliation window")
         invocation = CodeInvocation(id=UUID(job["id"]), run_id=run.id, occurrence_id=occurrence.id,
             agent_id=execution_agent(local_graph(run, occurrence), node, run.launcher_agent_id),
-            phase=phase, source=source, values=deepcopy(job["values"]))
-        observation = await runner.observe(invocation.id) if job["submitted"] and not getattr(runner, "replay_safe", False) else await runner.submit(invocation)
-        if await self._fenced(run.id, claim) is None:
+            phase=phase, source=source, values=deepcopy(job["values"]), handles=job.get("handles", {}))
+        if remote:
+            await get_db().commit()
+        try:
+            observation = await runner.observe(invocation.id) if job["submitted"] and not getattr(runner, "replay_safe", False) else await runner.submit(invocation)
+        except ProcessEngineError as error:
+            if remote and error.retryable:
+                return None
+            raise
+        current = await self._fenced(run.id, claim)
+        if current is None or current.engine_metadata["native"].get("cancel_requested"):
+            await get_db().commit()
             return None
         if len(json.dumps(observation.model_dump(mode="json"), ensure_ascii=False, allow_nan=False).encode()) > 2_000_000:
             raise ValueError("Isolated execution response exceeds the JSON limit")
         job["submitted"] = True
         job["stopped"] = observation.stopped
         job["status"] = observation.status
+        call = observation.capability_call
+        reply = None
+        if isinstance(runner, RemotePythonRunner):
+            if call is not None:
+                reply = await stage_call(current, occurrence, node, invocation.handles, call)
+            elif observation.stopped and observation.status == "success":
+                pending = await get_db().scalar(select(ProcessNodeAttempt.id).where(ProcessNodeAttempt.node_run_id == occurrence.id,
+                    ProcessNodeAttempt.status.in_(("broker_ready", "broker_authorization", "broker_settling", "started"))))
+                if pending is not None:
+                    raise ProcessEngineError("remote_python_protocol", "Python completed before its capability call")
         if observation.stopped and observation.status == "success":
             job["result"] = deepcopy(observation.result)
         occurrence.context = {**occurrence.context, "code_jobs": deepcopy(jobs)}
         await get_db().commit()
-        if observation.status in {"error", "cancelled", "unknown"}:
+        if reply is not None and call is not None and isinstance(runner, RemotePythonRunner):
+            try:
+                await runner.reply(invocation.id, call.id, reply)
+            except ProcessEngineError as error:
+                if not error.retryable:
+                    raise
+        if observation.status == "unknown" or observation.stopped and observation.status in {"error", "cancelled"}:
             raise ProcessEngineError("isolated_code_failed", observation.diagnostic or "Isolated execution did not succeed")
         return deepcopy(job["result"]) if "result" in job else None
 
@@ -1156,6 +1210,8 @@ class NativeProcessEngine:
         # observes cancellation and releases its claim; a crashed claim expires.
         stopped = not (state.get("lease_until") and datetime.fromisoformat(state["lease_until"]) > now())
         from .isolated_code import isolated_code_runner
+        from .remote_python import configured_python_runner
+        from .code_broker import reconcile_stopping_file_creation
         code_occurrences = list(await get_db().scalars(select(ProcessNodeRun).where(ProcessNodeRun.run_id == record.id)))
         for occurrence in code_occurrences:
             stopped = await stop_decision(occurrence) and stopped
@@ -1163,11 +1219,19 @@ class NativeProcessEngine:
             for job in jobs.values():
                 if job.get("stopped"):
                     continue
-                runner = isolated_code_runner()
+                runner = configured_python_runner() if job.get("runner") else isolated_code_runner()
+                if job.get("runner") and getattr(runner, "identity", None) != job["runner"]:
+                    runner = None
                 if runner is None:
                     stopped = False
                     continue
-                observation = await runner.cancel(UUID(job["id"]))
+                try:
+                    observation = await runner.cancel(UUID(job["id"]))
+                except ProcessEngineError as error:
+                    if not error.retryable:
+                        raise
+                    stopped = False
+                    continue
                 job.update(stopped=observation.stopped, status=observation.status)
                 stopped = stopped and observation.stopped
             occurrence.context = {**occurrence.context, "code_jobs": jobs}
@@ -1186,12 +1250,10 @@ class NativeProcessEngine:
                         attempt.task_id = admitted.id
                         await get_db().commit()
             if attempt.task_id:
-                task = await task_service.get_by_id(attempt.task_id)
-                if task and task.status not in {TaskStatus.SUCCESS, TaskStatus.ERROR}:
-                    await task_service.cancel(task.id, task.revision)
-                    stopped = False
-                if task and task.lease_owner:
-                    stopped = False
+                if attempt.status == "started" and (attempt.receipt or {}).get("call"):
+                    await reconcile_stopping_file_creation(record.id, attempt.id)
+                    await get_db().commit()
+                stopped = await task_service.stop_activity_task(attempt.task_id) and stopped
             if attempt.status == "started":
                 stopped = False
         # Tasks may launch processes through MCP as well as call activities.

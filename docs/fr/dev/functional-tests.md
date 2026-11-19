@@ -1344,6 +1344,58 @@ et la conservation du traitement lors d'un changement d'acteur.
 la reprise du chargement après erreur, l'enregistrement et la réouverture en lecture seule.
 Le premier fichier protège aussi les droits et reçus humains, la modification du Dataset par retour Python ordinaire et
 le vrai worker Monty : accès système/réseau refusés, boucle et saturation bornées.
+Le test du broker Python dans `test_native_bpmn.py` utilise les vraies façades de Services
+avec PostgreSQL et remplace le transport runner. Il couvre une approbation MCP, une connexion
+REST révoquée, une référence étrangère et la redélivrance d'un reçu sans rejouer l'effet.
+Les scénarios REST direct et Python vérifient qu'une requête rejetée localement ne contacte
+pas le fournisseur. Le scénario de réponse REST perdue conserve l'intention incertaine.
+`test_python_reconciles_n8n_insert_with_read_only_evidence` vérifie une insertion unique,
+le refus des preuves absentes, étrangères, contradictoires ou multiples, la connexion d'origine
+et un seul reçu face à deux workers. `make qualify-process-n8n` ajoute le même parcours
+de perte de reçu sur l'API réelle d'une instance n8n 2.48.5 jetable.
+`make qualify-process-harness` fait exécuter une activité BPMN v2 par le scheduler de
+Tasks, le vrai SDK Claude Agent et le serveur MCP Galaris dans un réseau Docker isolé.
+Le modèle est déterministe. Les scénarios vérifient une sortie valide et un type incompatible,
+puis la lecture du fichier par `file_read` et le résultat remis par `process_activity_complete`.
+Une fonction active avance sans accord supplémentaire. En mode Sur demande, le test vérifie
+que le reçu n'existe qu'après l'accord, que le même run agentique reprend et que le contexte
+révoqué refuse un appel tardif. Les scénarios d'annulation vérifient l'arrêt de Claude, le rejet
+d'un accord tardif et la préservation des données. Si la première confirmation d'arrêt se perd,
+le Process reste en annulation jusqu'à ce que le harnais confirme l'arrêt.
+Les droits de lancement et de lecture du Process sont aussi vérifiés.
+Les résultats détaillés sont conservés sous `artifacts/process-harness-qualification/`.
+Les composants Chromium exercent les trois choix du diagramme. La qualification du superviseur et de `runsc`
+sur une VM dédiée reste suivie dans le plan BPMN.
+Le parcours de fichiers utilise le bootstrap CPython, le stockage et les outils MCP réels.
+Il perd une réponse du broker et interrompt la clôture de la Task pour vérifier une seule
+création et la consommation de son URI par le successeur. Les scénarios locaux couvrent
+aussi un refus d'URI privée, une révocation après accord et un bail Python expiré.
+`test_worker_concurrency.py` vérifie les slots indépendants et redémarre le vrai processus
+de travail après sa terminaison dans la base isolée. `test_python_supervisor.py` injecte
+une panne Docker qui dépasse les premières tentatives de nettoyage et des reçus Docker
+perdus. `make qualify-process-python` vérifie le transport TLS, l'arrêt physique et les
+capacités du broker sur la VM de test. `test_python_runner_endurance.py` y qualifie 112
+calculs à quatre en parallèle et mesure le délai d'obtention de leurs reçus d'arrêt.
+La variante Monty vérifie le nettoyage après perte de la réponse de soumission.
+Les scénarios REST vérifient la connexion de l'agent
+affecté, le refus après révocation, l'expiration à quinze minutes et le rejet d'un ancien
+identifiant ou d'un appel dont les arguments ont changé. Après la perte du résultat REST,
+l'inspection garde le blocage de réconciliation et le debugger refuse la reprise même si
+la sandbox s'arrête avant l'échéance.
+Deux sessions PostgreSQL exercent la livraison tardive d'un reçu REST. Un second worker
+ne renvoie pas la requête, une modification concurrente du run reste intacte et le suivi
+retire le blocage de réconciliation lorsque l'arrêt se termine avec le reçu d'origine.
+Le scénario File Sharing perd le reçu du broker après une création locale approuvée.
+Le journal de Services suffit pour clôturer la Task et le test vérifie exactement un
+fichier créé. Une preuve d'un autre agent, d'une autre tâche ou d'un autre appel est refusée.
+
+Le test `test_n8n_qualification_maps_a_result_between_two_native_runs` utilise le fichier
+`back/bridge/n8n/tests/fixtures/qualification-cycle.json` importé et publié sur un n8n
+jetable. Depuis le conteneur de tests, `QUALIFY_N8N_URL` désigne cette instance et
+`QUALIFY_N8N_TOKEN_FILE` un fichier privé contenant une clé de lecture des workflows
+et exécutions. Deux BPMN encadrent l'exécution n8n et vérifient sa transformation
+de la variable, le refus d'un agent étranger et le départ après une lecture anticipée.
+Les tests locaux couvrent aussi cinq niveaux de boucle et la pagination de 505 occurrences.
 Les parcours Chromium assemblés exécutent une tâche code, puis un IF code ou le clic
 humain False dans Chat pour les anciennes définitions. Les composants vérifient les deux
 poignées et la conservation du mode lors du déplacement entre acteurs.

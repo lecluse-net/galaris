@@ -1254,6 +1254,57 @@ of processing when changing actors. `native-processes.spec.mjs` exercises the se
 catalogue retry, saving and reopening read-only. The original decision tests also cover
 run-data updates from ordinary Python return values and the
 real Monty worker: denied host/network access and bounded loops/memory exhaustion.
+The Python broker test in `test_native_bpmn.py` uses the real Service facades and PostgreSQL
+and substitutes the runner transport. It covers MCP approval, a revoked REST connection,
+a foreign reference and receipt redelivery without repeating the effect. The direct REST and
+Python scenarios verify that a locally rejected request never reaches the provider. The lost
+REST reply scenario retains the uncertain intent.
+`test_python_reconciles_n8n_insert_with_read_only_evidence` verifies a single insert, rejection
+of missing, foreign, contradictory, or duplicate proof, the original connection, and a single
+receipt across two workers. `make qualify-process-n8n` also exercises a lost receipt against
+the real API of a disposable n8n 2.48.5 instance.
+`make qualify-process-harness` executes a BPMN v2 activity through the Task scheduler,
+the real Claude Agent SDK, and the Galaris MCP server on an isolated Docker network.
+The model is deterministic. The cases verify valid and incompatible output, then read a file
+through `file_read` and submit output through `process_activity_complete`. An enabled function
+proceeds without additional approval. In On demand mode, the test verifies that the receipt
+appears after approval, the same agent run resumes, and the revoked context rejects a late call.
+The cancellation cases verify Claude has stopped, a late approval is rejected, and data is
+preserved. If the first stop acknowledgement is lost, the Process remains in `cancelling`
+until the harness confirms the stop. Process launch and read permissions are also checked.
+Detailed results are retained under `artifacts/process-harness-qualification/`.
+Chromium components exercise the three diagram choices. The BPMN plan tracks supervisor
+and `runsc` qualification on a dedicated VM.
+The file journey uses the CPython bootstrap, real storage and real MCP file tools.
+It loses a broker reply and interrupts Task completion to verify a single creation
+and use of the resulting URI by the successor. Local scenarios also cover denial
+of a private URI, revocation after approval and an expired Python lease.
+`test_worker_concurrency.py` covers independent slots and restarts the real worker
+after its process exits against the isolated database. `test_python_supervisor.py`
+injects a Docker outage that outlasts the first cleanup attempts and lost Docker
+acknowledgements. `make qualify-process-python` exercises TLS, physical stop and the
+broker's capabilities on the test VM. `test_python_runner_endurance.py` qualifies 112
+calculations on that VM with four concurrent requests and measures time to the stop receipt.
+The Monty case checks cleanup after a lost submission response.
+The REST scenarios cover the assigned agent's
+connection, revocation, expiry at fifteen minutes, and rejection of a stale call ID
+or changed arguments. After a REST result is lost, run inspection still shows the
+reconciliation blocker and the debugger rejects resumption if the sandbox stops
+before the deadline.
+Two PostgreSQL sessions exercise delivery of a late REST receipt. The second worker
+sends no duplicate request, a concurrent run-data change is preserved, and the tracker
+clears the active blocker when stopping completes with the original receipt.
+The File Sharing scenario loses the broker receipt after an approved local creation.
+The Services journal supplies the evidence needed to close the context Task, and the
+test checks that a single file was created. Evidence from another agent, task, or call is rejected.
+
+`test_n8n_qualification_maps_a_result_between_two_native_runs` uses
+`back/bridge/n8n/tests/fixtures/qualification-cycle.json`, imported and published on a
+disposable n8n instance. From the test container, `QUALIFY_N8N_URL` points to that instance
+and `QUALIFY_N8N_TOKEN_FILE` names a private file containing a key with workflow and
+execution read access. Two BPMN runs surround the n8n execution and verify its variable
+transformation, denial for an unrelated agent, and admission after an early read.
+Local tests also cover five loop levels and pagination over 505 occurrences.
 Assembled Chromium journeys execute a code task, followed by a code IF or the human
 False button in Chat for historical definitions. Component tests cover both handles and
 preserved processing when moving between actors.

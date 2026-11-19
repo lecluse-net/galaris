@@ -3,16 +3,16 @@ import { emptyGraph, type BpmnGraph, type BpmnNode, type NodeKind } from './serv
 // Existing parallel nodes remain readable; ordinary links express new splits and joins.
 export type ActivityKind = NodeKind | 'llm_task'
 export type ProcessingMode = 'ai' | 'llm' | 'code' | 'human'
-export const activityKinds: ActivityKind[] = ['task', 'llm_task', 'code', 'human_task', 'if', 'for', 'while', 'call', 'tool_call', 'rest', 'end']
+export const activityKinds: ActivityKind[] = ['task', 'llm_task', 'code', 'python', 'tool_call', 'rest', 'human_task', 'if', 'for', 'while', 'call', 'end']
 export const nodeIcons: Record<NodeKind, string> = { start: 'play_arrow', end: 'stop', task: 'smart_toy', human_task: 'person',
-  if: 'alt_route', parallel: 'call_split', for: 'repeat', while: 'loop', call: 'account_tree', tool_call: 'build', rest: 'http', code: 'code', program: 'code' }
+  if: 'alt_route', parallel: 'call_split', for: 'repeat', while: 'loop', call: 'account_tree', tool_call: 'build', rest: 'http', code: 'code', python: 'terminal', program: 'code' }
 const identity = (prefix: string): string => prefix + '_' + crypto.randomUUID().replaceAll('-', '').slice(0, 12)
 export const defaultDecisionCode = '# Example: return variable_2 != "pas mon projet"\nreturn True'
 export const defaultTaskCode = '# Example: return {"variable_1": variable_1 + 1}\nreturn {}'
 
 export function processingMode(node: BpmnNode): ProcessingMode {
   if (node.kind === 'human_task' || node.kind === 'if' && node.config.mode === 'human') return 'human'
-  if (node.kind === 'code' || node.kind === 'if' && node.config.mode === 'code') return 'code'
+  if (node.kind === 'code' || node.kind === 'python' || node.kind === 'if' && node.config.mode === 'code') return 'code'
   return node.config.ai_mode === 'llm' ? 'llm' : 'ai'
 }
 
@@ -23,7 +23,7 @@ export function canAssignActivityActor(node: BpmnNode, key: string, graph: BpmnG
   if (node.kind === 'if' && node.config.mode === 'human') return actor?.kind === 'human'
   if (node.kind === 'if' && node.config.mode === 'ai' && node.config.ai_mode !== 'llm') return actor?.kind !== 'human'
   if (node.kind === 'task' && node.config.ai_mode !== 'llm') return actor?.kind === 'agent' || !key
-  return ['task', 'code', 'if'].includes(node.kind) || actor?.kind !== 'human'
+  return ['task', 'code', 'python', 'if'].includes(node.kind) || actor?.kind !== 'human'
 }
 
 export function assignActivityActor(node: BpmnNode, key: string, graph: BpmnGraph): BpmnNode {
@@ -47,8 +47,8 @@ export function createActivity(activity: ActivityKind, graph: BpmnGraph, actorKe
   const config: Record<string, unknown> = kind === 'task' || kind === 'human_task' ? { prompt: '' } : kind === 'for' ? { items: 'input.items' } : kind === 'while' ? { condition: 'false' } : {}
   if (kind === 'if' && graph.schema_version === 'galaris.bpmn/v2') Object.assign(config, { mode: 'ai', ai_mode: 'llm', prompt: '', code: defaultDecisionCode })
   if (activity === 'llm_task') Object.assign(config, { ai_mode: 'llm' })
-  if (kind === 'code') Object.assign(config, { code: defaultTaskCode, dataset_code: true })
-  if (actor && ['task', 'human_task', 'code', 'if'].includes(kind)) config.actor = actor.id
+  if (kind === 'code' || kind === 'python') Object.assign(config, { code: defaultTaskCode, dataset_code: true })
+  if (actor && ['task', 'human_task', 'code', 'python', 'if'].includes(kind)) config.actor = actor.id
   return { id, kind, title: '', config, body, x: 0, y: 0 }
 }
 

@@ -263,9 +263,134 @@ Avec `dataset_code: true`, la tâche reçoit un snapshot JSON détaché des donn
 utilisables comme identifiants Python deviennent des paramètres locaux ; toutes les clés restent
 accessibles par `dataset["nom"]`. Un IF peut utiliser `return variable_2 != "pas mon projet"` ;
 une tâche retourne un dictionnaire de sorties ordinaires, converties et validées avant intégration.
-Les données ne sont jamais interpolées dans le code. Ce runner ne fournit ni CPython généraliste,
-ni packages tiers, ni capacités MCP/REST. L'exécution arbitraire sur VM/hôte distinct et son broker
-de capacités restent hors de ce périmètre.
+Les données passent par le snapshot JSON. Le calcul Monty utilise uniquement ses entrées locales.
+
+<a id="python-capabilities"></a>
+
+### Python isolé et capacités de Services
+
+Le type `python` utilise CPython via un superviseur sur hôte dédié.
+Le programme suit la même convention de retour et de variables que `code`. Le mode créé
+par l'éditeur fournit aussi `input_files`, la liste des références des pièces jointes.
+Le programme peut affecter ou compléter `output_files` avec des objets `{"uri": "..."}`
+et continuer à renvoyer ses variables par `return`. Process vérifie les nouvelles URI
+avec les droits de l'agent exécutant avant d'ajouter les références au manifeste.
+Les variables métier portant un nom réservé (`input_files`, `output_files` ou `call_service`)
+restent accessibles par `dataset["nom"]`. Les octets passent par les capacités déclarées
+comme `file_read` et `file_create`.
+
+L'éditeur signale
+une configuration de runner manquante ou invalide. L'exécution échoue si le runner d'origine est indisponible
+au-delà de sa fenêtre de réconciliation. Les phases de préparation et d'intégration utilisent Monty.
+
+Le nœud peut déclarer jusqu'à seize capacités sous `config.capabilities`.
+
+```json
+{
+  "lookup": {"kind": "mcp", "operation": "process_definition_read"},
+  "items": {"kind": "rest", "operation": "synthetic_inventory"}
+}
+```
+
+`call_service("lookup", {"process_code": "synthetic"})` rend la sortie MCP.
+`call_service("items", {"method": "GET", "path": "items"})` rend le statut HTTP,
+les en-têtes filtrés et le corps REST. Galaris vérifie les droits de l'agent exécutant
+et les autorisations MCP en vigueur. Chaque appel possède une intention et un reçu liés
+à l'exécution. Le broker refuse une nouvelle admission à partir de quinze minutes.
+Il renvoie le reçu courant à l'identique pour une redélivrance du même appel. Il refuse
+la réutilisation d'un identifiant remplacé ou accompagné de paramètres modifiés.
+Si un effet externe a été admis et que son reçu manque, l'arrêt du runner conserve le
+diagnostic `effect_outcome_unknown` et bloque la reprise en attendant une réconciliation.
+Pour une création locale `file://` approuvée, Services peut confirmer la création dans
+son journal. Le moteur utilise cette preuve liée à l'appel original pour terminer l'arrêt
+et clôturer la Task de contexte sans recréer le fichier. Un appel sans preuve reste en attente.
+La réponse MCP est persistée avant la clôture de sa Task de contexte. En cas d'interruption
+à cette frontière, le worker poursuit la clôture à partir du reçu.
+
+#### Réconciliation d'une insertion n8n
+
+Pour une capacité REST de Python, réglez `rest_config.effect_receipt` sur `n8n_data_table_insert`
+dans le Service, avec une URL de base se terminant par `/api/v1` et l'authentification
+par en-tête `X-N8N-API-KEY`. La clé reste dans la Connexion active de l'agent exécutant et
+autorise l'insertion et la lecture des lignes. Créez une colonne texte `operation_reference`
+dans la Data Table. Le script appelle `POST data-tables/<id>/rows` avec une seule ligne
+de valeurs scalaires dans `json_body.data`, sans ajouter cette colonne, d'en-tête ou de
+paramètre de requête. Le broker ajoute une référence générée côté serveur et l'enregistre
+avant l'envoi avec une empreinte de la requête et de la connexion effective.
+
+Pendant l'arrêt, le worker cherche la référence par `GET` avec la connexion d'origine.
+Une seule ligne portant la référence et les valeurs de la requête confirme l'insertion.
+Une réponse absente ou contradictoire, ou un changement de clé ou de destination, laisse
+le diagnostic actif. Le reçu confirmé clôt l'incertitude après l'arrêt de la sandbox.
+Les autres opérations REST conservent le comportement générique. `make qualify-process-n8n`
+exerce ce parcours avec une instance jetable de l'[API n8n Data Tables](https://github.com/n8n-io/n8n-docs/blob/main/docs/build/work-with-data/data-tables.md).
+
+#### Déployer le superviseur
+
+Utiliser une VM Linux dédiée avec Docker et le runtime `runsc`. Autoriser seulement
+l'accès entrant TCP 8443 depuis le backend. Garder la VM hors des réseaux de l'API
+et de PostgreSQL. Le superviseur utilise le socket Docker local pour créer et
+supprimer les sandboxes. Chaque sandbox démarre avec un système de fichiers racine
+en lecture seule, un répertoire temporaire borné et une seule interface loopback.
+[Configuration gVisor pour Docker](https://gvisor.dev/docs/user_guide/quick_start/docker/) ·
+[Réseau Docker none](https://docs.docker.com/engine/network/drivers/none/)
+
+Construire les cibles `sandbox` et `supervisor`, puis publier et provisionner leurs
+images par digest sur la VM.
+
+```bash
+docker build --target sandbox -t "$SANDBOX_TAG" process-runner
+docker build --target supervisor -t "$SUPERVISOR_TAG" process-runner
+```
+
+Préparer un répertoire privé contenant `tls.crt`, `tls.key` et `token`. Le backend
+doit faire confiance au certificat pour le nom DNS du runner. Utiliser un jeton
+dédié aléatoire d'au moins 32 caractères ASCII. Utiliser un superviseur par daemon
+Docker et conserver le volume nommé pour préserver les reçus après redémarrage.
+
+```bash
+docker run --name process-python-runner --restart unless-stopped \
+  --publish "$RUNNER_BIND_IP:8443:8443" \
+  --mount type=bind,src=/var/run/docker.sock,dst=/var/run/docker.sock \
+  --mount "type=bind,src=$RUNNER_TLS_DIRECTORY,dst=/run/runner,readonly" \
+  --mount type=volume,src=process-python-state,dst=/var/lib/process-runner \
+  --env "PROCESS_PYTHON_IMAGE=$SANDBOX_IMAGE" "$SUPERVISOR_IMAGE"
+```
+
+Configurer `PROCESS_PYTHON_RUNNER_URL=https://<runner>:8443` et
+`PROCESS_PYTHON_RUNNER_TOKEN` dans le backend. Les limites initiales sont quatre
+sandboxes simultanées, 128 Mio de mémoire, un demi-cœur, 8 Mio de stockage temporaire,
+quinze minutes et seize appels de capacité par exécution. Linux borne le groupe Docker
+à 128 tâches, y compris les threads de gVisor et des hooks OCI. Dans la sandbox, Python
+et ses descendants partagent une limite stricte de seize processus et threads.
+Si le daemon Docker devient indisponible, le superviseur garde la place de la sandbox
+occupée et réessaie le nettoyage avec un intervalle progressif plafonné à 30 secondes.
+Le reçu d'arrêt est enregistré après confirmation de la suppression ou de l'absence
+du conteneur. Rétablir l'accès au daemon permet au même superviseur de finir le nettoyage.
+Qualifier l'ensemble sur la VM avec des processus synthétiques avant de l'activer
+pour les utilisateurs.
+
+Exporter les deux paramètres du runner de test dans l'environnement de qualification,
+puis lancer `make qualify-process-python`. La commande utilise une base PostgreSQL
+éphémère et exerce le transport TLS réel, un aller-retour de fichier avec le broker,
+la perte d'un accusé de réception à deux frontières, l'arrêt d'une exécution distincte
+des autres et le refus d'un dix-septième processus ou thread dans le script. Les scénarios
+du broker vérifient la connexion REST de l'agent affecté, les révocations REST et MCP,
+la perte d'une réponse REST après l'effet externe, ainsi que les refus d'expiration
+et de rejeu. Le test d'expiration avance l'horloge du broker au seuil de quinze minutes.
+L'essai d'endurance soumet 112 petits calculs synthétiques, à quatre en parallèle.
+Chaque calcul vérifie son résultat et attend le reçu d'arrêt. La campagne dispose de
+dix minutes, puis de soixante secondes pour confirmer l'arrêt des appels restants en cas
+d'échec. Elle conserve le débit et les latences médiane et p95, mesurées de la soumission
+au reçu d'arrêt, dans `artifacts/process-python-qualification/endurance-*.json`.
+
+#### Worker Process
+
+L'API supervise un processus de travail distinct dans l'image backend. Le worker possède
+la progression périodique, l'admission, les effets de services et la réconciliation.
+Les slots des appels longs sont indépendants. L'API applique les droits des destinataires
+aux événements reçus par un canal Unix privé. La consultation HTTP et MCP lit les données
+persistées. Les commandes explicites de contrôle conservent leur autorisation habituelle.
 
 ## Profil historique v1
 

@@ -42,7 +42,7 @@ les comptes distants réels ou la réserve indépendante encore manquants.
 
 | Plan | Statut | Reste à faire |
 |---|---|---|
-| [processus-metier-internes-bpmn.md](processus-metier-internes-bpmn.md) | `partial` | Python généraliste sur VM/hôte dédié, broker de capacités, worker Process distinct et qualifications de charge, reprise et multi-harnais. |
+| [processus-metier-internes-bpmn.md](processus-metier-internes-bpmn.md) | `partial` | Endurance en VM, réconciliation File Sharing et n8n Data Tables, aller-retour réel n8n et parcours BPMN local avec le SDK Claude Agent vérifiés. Restent l'infrastructure cible et les campagnes avec les comptes et charges représentatifs. |
 | [amelioration-globale-memoire.md](amelioration-globale-memoire.md) | `in-progress` | Embeddings réels, analyses partielles/échouées, recherche précise dans les pièces jointes, campagnes générales de rappel/acquisition et organisation des Topics après preuve de gain. |
 | [graphe-memoire-multiechelle.md](graphe-memoire-multiechelle.md) | `partial` | Générations serveur, occurrences de fichiers, placement préparé, lecture régionale et qualification des très grands volumes. |
 | [fiabilisation-conversationnelle.md](fiabilisation-conversationnelle.md) | `in-progress` | Identité sémantique, réserve indépendante, qualification multi-contextes/harnais, comptes externes, coordination de l'arrêt des Goals et parcours natifs restants. |

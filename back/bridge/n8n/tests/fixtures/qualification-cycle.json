@@ -1,0 +1,89 @@
+{
+  "id": "QualificationCycle01",
+  "name": "Synthetic qualification return",
+  "active": false,
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "qualification-cycle",
+        "responseMode": "responseNode"
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f865017a-85d1-4b39-9001-1fb6441fa2ca",
+      "name": "Webhook",
+      "webhookId": "30df6acd-8154-4d82-9c6b-5a419621360f"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { executionId: $execution.id, amount: $json.amount } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        220,
+        0
+      ],
+      "id": "3acd1b59-3e11-4ba2-b954-d81eeecc93f7",
+      "name": "Reply"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "synthetic-result",
+              "name": "amount",
+              "type": "number",
+              "value": "={{ $json.body.amount + 3 }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        120,
+        0
+      ],
+      "id": "3c8fc942-560c-44e7-9417-611fb174c4a1",
+      "name": "Compute"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Compute",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute": {
+      "main": [
+        [
+          {
+            "node": "Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataSuccessExecution": "all"
+  }
+}

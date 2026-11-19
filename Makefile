@@ -425,6 +425,19 @@ tests: ## Run backend tests in an isolated, ephemeral PostgreSQL environment
 	@bash bin/test-back.sh $(TEST_ARGS_BACK) $(ARGS)
 .PHONY: tests
 
+qualify-process-python: ## Qualify isolation, physical stop, the MCP/REST broker and endurance on a dedicated TLS runner
+	@bash -c 'test -n "$$PROCESS_PYTHON_RUNNER_URL" && test -n "$$PROCESS_PYTHON_RUNNER_TOKEN" || { echo "Set PROCESS_PYTHON_RUNNER_URL and PROCESS_PYTHON_RUNNER_TOKEN for the dedicated test VM" >&2; exit 2; }'
+	@QUALIFY_PROCESS_PYTHON=1 bash bin/test-back.sh app/process/tests/test_native_bpmn.py app/process/tests/test_python_runner_endurance.py -k 'dedicated'
+.PHONY: qualify-process-python
+
+qualify-process-n8n: ## Qualify REST effect recovery against a disposable n8n Data Tables API
+	@BACKEND_TEST_N8N=1 bash bin/test-back.sh app/process/tests/test_native_bpmn.py -k 'reconciles_n8n_insert'
+.PHONY: qualify-process-n8n
+
+qualify-process-harness: ## Qualify a BPMN activity through the real Claude SDK with a local model
+	@bash bin/test-harness-runtimes.sh --process
+.PHONY: qualify-process-harness
+
 tests-samba: ## Verify the SMB bridge against an isolated Samba server and PostgreSQL
 	@BACKEND_TEST_SAMBA=1 bash bin/test-back.sh bridge/samba/tests app/file_share/tests
 .PHONY: tests-samba
@@ -592,7 +605,7 @@ regression-check: ## Verify regression test links against successful test and mu
 	docker compose -f compose.test.yaml run --rm --no-deps backend python scripts/check_regression_evidence.py
 .PHONY: regression-check
 
-qualify-lab: ## Start an explicitly budgeted Lab run or compare completed runs (ARGS, LAB_ACCESS_TOKEN)
+qualify-lab: ## Start or compare budgeted Lab runs or verify a Process campaign (ARGS, LAB_ACCESS_TOKEN)
 	docker compose -f compose.test.yaml run --rm --no-deps -e LAB_ACCESS_TOKEN backend python scripts/qualify_lab.py $(ARGS)
 
 benchmark-operating-knowledge: ## Freeze or run paired operating-prompt benchmarks in dev (ARGS='--max-cost 5 [--run]')

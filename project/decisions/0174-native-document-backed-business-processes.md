@@ -7,6 +7,29 @@ Le choix de stockage documentaire ci-dessous est remplacé depuis le 2026-10-17 
 [décision 0197](0197-process-owned-bpmn-storage.md) : BPMN, historique et droits sont
 possédés par Process ; les Documents sont exclusivement éditoriaux HTML.
 
+### Runner CPython et broker de capacités — 2026-11-18
+
+Le type BPMN `python` sélectionne un superviseur sur VM dédiée, authentifié en TLS.
+Le superviseur crée une sandbox `runsc` jetable par invocation. Process part de la
+définition figée pour émettre les capacités de l'agent exécutant et conserve intentions,
+autorisations et reçus dans le backend. Les appels MCP et REST utilisent les façades
+Services existantes. Le runner reçoit des références par invocation et les résultats
+filtrés. Les conditions d'activation et de qualification sont décrites dans le
+[guide du profil natif](../../docs/fr/dev/native-processes.md#python-capabilities).
+
+Le Service REST peut activer la réconciliation d'une insertion unitaire dans une
+Data Table n8n. Galaris fixe une référence avant l'envoi et confirme la ligne par
+lecture seule avec la connexion d'origine. Process consigne le reçu d'arrêt.
+
+La progression périodique appartient à un processus de travail supervisé par l'API.
+Le canal Unix privé relaie les événements vers le processus qui applique les droits
+WebSocket. Les lectures restent passives. Pour le broker, la réponse durable précède
+la clôture de la Task de contexte afin que cette clôture puisse reprendre indépendamment.
+À l'arrêt, une création locale `file://` approuvée peut être réconciliée en lecture du
+journal de Services. La preuve doit correspondre à l'agent, à la Task, à la connexion
+et à l'identité de l'appel. Process persiste cette preuve avant de clôturer la Task
+et attend toujours la confirmation de l'arrêt de la sandbox.
+
 ### Décisions binaires et calculs Python purs — 2026-10-16
 
 Les IF configurés ont deux sorties True/False et trois modes dépendant de l'acteur :

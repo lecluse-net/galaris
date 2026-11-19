@@ -28,8 +28,8 @@ from .management_scope import (
 from .assertions import service_can_edit as service_can_edit
 
 
-from .rest_contracts import RestAuth, RestConfig, RestError, RestRequest, RestResponse
-from .rest import execute_rest_request
+from .rest_contracts import RestAuth, RestConfig, RestEffectIntent, RestError, RestRequest, RestRequestRejected, RestResponse
+from .rest import execute_rest_request, find_rest_effect
 
 
 async def has_active_admin_function(agent_id: int, function: str) -> bool:
@@ -127,11 +127,15 @@ __all__ = [
     "resolve_connection_references",
     "RestAuth",
     "RestConfig",
+    "RestEffectIntent",
     "RestError",
     "RestRequest",
+    "RestRequestRejected",
     "RestResponse",
     "execute_rest_request",
+    "find_rest_effect",
     "execute_workflow_tool",
+    "has_completed_workflow_tool_receipt",
     "register_runtime_authorization_configuration",
     "register_runtime_dispatch_guard",
     "register_runtime_authorization_waiter",
@@ -188,6 +192,21 @@ __all__ = [
     "HUMAN_ONLY_SERVICE_CODES",
     "administration",
 ]
+
+
+async def has_completed_workflow_tool_receipt(*, request_id: UUID, agent_id: int, task_id: UUID,
+                                              tool_name: str, operation_id: UUID) -> bool:
+    """Verify a recorded outcome for the exact admitted tool operation without dispatching it."""
+    from core.database import get_db
+    from .authorization import fingerprint
+    from .authorization_models import ActionAuthorization
+
+    row = await get_db().get(ActionAuthorization, request_id, populate_existing=True)
+    if row is None or row.status != "completed" or row.encrypted_receipt is None or row.connection_id is None:
+        return False
+    expected = fingerprint((agent_id, "internal", f"task:{task_id}", str(operation_id),
+                            "mcp", "tool", tool_name, row.connection_id))
+    return row.operation_key == expected
 
 
 async def execute_workflow_tool(

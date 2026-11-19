@@ -385,7 +385,16 @@ async def test_stale_detail_retains_execution_and_reports_unavailable_observatio
         "provider": ProcessEngineError("unreachable", "offline", retryable=True)}[failure]
     detail = await service.get_run_detail(run.id, refresh_if_stale=True)
     assert not detail.fresh
-    assert detail.status in {"running", "unknown"} and detail.finished_at is None
+    assert detail.status == "running" and detail.finished_at is None
+    assert run.engine_metadata["refresh_failures"] == "broken-legacy-counter"
+    assert not any(event.event_type == "engine.refresh.failed" for event in detail.events)
+    workflow.engine.get_run.assert_not_awaited()
+    identity = run.id
+    with pytest.raises(ProcessEngineError):
+        await service.refresh_run(identity)
+    run = await service.get_run(identity)
+    detail = await service.get_run_detail(identity, refresh_if_stale=True)
+    assert not detail.fresh
     assert run.engine_metadata["refresh_failures"] == 1
     assert any(event.event_type == "engine.refresh.failed" for event in detail.events)
 

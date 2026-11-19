@@ -1,6 +1,7 @@
 """Isolated, fair Process admission branches for each registered engine."""
 
 import asyncio
+from collections.abc import Awaitable, Callable, Collection
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
@@ -12,6 +13,60 @@ from .engine import IntegratedProcessEngine
 from core.params import runtime_settings
 from datetime import datetime, timedelta, timezone
 from loguru import logger
+
+
+class EffectSlots:
+    """A slow effect occupies only its own slot, across scheduler ticks."""
+
+    def __init__(self, discover: Callable[[int, Collection[UUID]], Awaitable[list[UUID]]],
+                 execute: Callable[[UUID], Awaitable[None]], *, capacity: int = 4) -> None:
+        self.discover = discover
+        self.execute = execute
+        self.capacity = capacity
+        self.active: dict[UUID, asyncio.Task[None]] = {}
+        self.stopping = False
+
+    async def tick(self) -> None:
+        slots = self.capacity - len(self.active)
+        if slots <= 0 or self.stopping:
+            return
+        identities = await self.discover(slots, self.active.keys())
+        await get_db().commit()
+        if self.stopping:
+            return
+        for identity in identities:
+            if identity not in self.active:
+                self.active[identity] = asyncio.create_task(self._run(identity), name=f"process-effect-{identity}")
+
+    async def _run(self, identity: UUID) -> None:
+        try:
+            async with asyncio.timeout(360), get_db_session():
+                await self.execute(identity)
+        except Exception as error:
+            # The durable intent remains in the attempt if dispatch was possible.
+            logger.warning("Process effect job {} failed ({})", identity, type(error).__name__)
+        finally:
+            self.active.pop(identity, None)
+
+    async def stop(self) -> None:
+        self.stopping = True
+        if self.active:
+            _, pending = await asyncio.wait(tuple(self.active.values()), timeout=6)
+            for task in pending:
+                task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
+
+
+class ProcessEffectWorkers:
+    def __init__(self) -> None:
+        from .activity_jobs import discover_external_activities, execute_external_activity
+        from .code_broker import discover_code_capability_calls, execute_code_capability
+
+        self.external = EffectSlots(discover_external_activities, execute_external_activity)
+        self.python = EffectSlots(discover_code_capability_calls, execute_code_capability)
+
+    async def stop(self) -> None:
+        await asyncio.gather(self.external.stop(), self.python.stop())
 
 
 async def start_engine_jobs(engine_code: str) -> int:

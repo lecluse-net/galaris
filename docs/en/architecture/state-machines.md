@@ -588,9 +588,15 @@ is never automatically resent. Validated output is retained before
 integration: an acquired external response goes through `returned` before `completed`,
 without resending the call after interruption. Acquiring a result and integrating it are
 separate steps; a run receipt makes integration idempotent. Contract failures prevent
-integration and successor admission. Multi-predecessor activities wait for all arrivals
+integration and successor admission. Before advancing, the engine reloads the occurrence
+context under the run lock. This includes any Task receipt submitted after batch selection.
+Multi-predecessor activities wait for all arrivals
 of the same invocation. Code phases retain invocation keys and observations in their
 occurrence: `queued`/`running` wait, and `success` is usable only with `stopped=true`.
+A Python capability moves from `broker_ready` to `started` before dispatch. An acquired
+MCP reply is persisted as `broker_settling` before its Task completes or suspends.
+Recovery finishes only the Task and then publishes `broker_returned` or
+`broker_authorization`. Results without a context Task move directly to `broker_returned`.
 Cancellation also waits for physical stop; late output cannot reopen a terminal.
 The Monty adapter closes its isolated worker before confirming stop. Only this pure
 computation may repeat after a lost result; external effects are never replayed.
@@ -606,9 +612,21 @@ Terminal states: `success`, `error`, `cancelled`.
 
 For internal processes, the first execution error stops admissions and requests cancellation
 of active tasks and child runs. The run goes through `cancelling` to `error` after confirmed
-stops, preserving `error_code` and data. An uncertain external effect returns
-`effect_outcome_unknown` and remains stopping until reconciliation. No recovery activity
+stops, preserving `error_code` and data. Cancelling a network harness that is waiting for MCP
+approval revokes its context and pending approval. The Process waits for that run to stop.
+A REST request rejected locally before sending fails
+the REST activity. For a Python REST capability, the broker stores and delivers a rejection
+receipt. An uncertain external effect returns
+`effect_outcome_unknown` and remains stopping until reconciliation. For an admitted
+Python broker call, the diagnostic stays visible if the runner stops before the call
+receipt is recorded. Once a late receipt for the original call and all stops are
+confirmed, the run can become terminal. The diagnostic remains in its history and
+the tracker clears the active reconciliation blocker. No recovery activity
 or automatic process retry executes.
+For an approved local file creation, the Services journal receipt can close the
+context Task while stopping. The sandbox must still confirm its own stop.
+A queued run without an external identity remains under the start worker's control.
+Reading it cannot move it to `unknown`.
 
 Waiting-task finalization is separate from run status: `await_resolved_at` remains null until
 the child Task is closed and its parent resumed. Callbacks, refresh and periodic reconciliation

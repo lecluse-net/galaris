@@ -9,6 +9,7 @@ from xml.etree import ElementTree as ET
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from .code_capabilities import capabilities
 from .expressions import parse_expression
 from .values import Variable, validate_declarations, normalize_patch, normalize_reply
 
@@ -29,8 +30,9 @@ class Flow(BaseModel):
     condition: str | None = None
 
 
-NodeKind: TypeAlias = Literal["start", "end", "task", "human_task", "tool_call", "rest", "code", "program", "call", "if", "parallel", "for", "while"]
-ACTIVITY_KINDS = frozenset({"task", "human_task", "tool_call", "rest", "code", "program", "call"})
+NodeKind: TypeAlias = Literal["start", "end", "task", "human_task", "tool_call", "rest", "code", "python", "program", "call", "if", "parallel", "for", "while"]
+PYTHON_ACTIVITY_KINDS = frozenset({"code", "python"})
+ACTIVITY_KINDS = frozenset({"task", "human_task", "tool_call", "rest", "program", "call"}) | PYTHON_ACTIVITY_KINDS
 
 
 class Actor(BaseModel):
@@ -260,13 +262,17 @@ def validate_graph(graph: Workflow, _identities: set[str] | None = None,
         for script in ("preprocess", "postprocess", "code"):
             if script in node.config and (not graph.typed or not isinstance(node.config[script], str) or len(node.config[script]) > 100_000):
                 raise ValueError(f"{node.id}: scripts require bounded Python source and the typed profile")
-        if node.kind == "code" and (not graph.typed or not str(node.config.get("code", "")).strip()):
+        if node.kind in PYTHON_ACTIVITY_KINDS and (not graph.typed or not str(node.config.get("code", "")).strip()):
             raise ValueError(f"{node.id}: a Code activity requires Python source and the typed profile")
+        if "capabilities" in node.config:
+            if node.kind != "python":
+                raise ValueError(f"{node.id}: only Isolated Python may declare capabilities")
+            capabilities.validate_python(node.config["capabilities"])
         actor_key = node.config.get("actor")
         if actor_key is not None:
             if not isinstance(actor_key, str) or actor_key not in actors:
                 raise ValueError("An activity references an unknown actor")
-            unrestricted = direct_llm or node.kind == "code" or node.kind == "if" and mode == "code"
+            unrestricted = direct_llm or node.kind in PYTHON_ACTIVITY_KINDS or node.kind == "if" and mode == "code"
             required = "human" if node.kind == "human_task" else "agent" if not unrestricted and (node.kind == "task" or graph.typed and node.kind in ACTIVITY_KINDS) else None
             if required and actors[actor_key].kind != required:
                 raise ValueError("Human and agent tasks cannot exchange actor types")
@@ -377,7 +383,7 @@ def compile_bpmn(xml: str) -> Workflow:
             service_kind = properties.pop("activity_kind", None)
             kind = properties.pop("loop_kind", "for") if tag == "subProcess" else _TAGS[tag]
             if service_kind is not None:
-                if (tag, service_kind) not in {("serviceTask", "rest"), ("scriptTask", "code")}:
+                if (tag, service_kind) not in {("serviceTask", "rest"), ("scriptTask", "code"), ("scriptTask", "python")}:
                     raise ValueError("Unsupported service activity kind")
                 kind = service_kind
             x, y = positions.get(child.get("id", ""), (0, 0))
@@ -426,12 +432,12 @@ def to_bpmn(graph: Workflow, code: str = "workflow") -> str:
                     if node.config.get("actor") == actor.id:
                         ET.SubElement(lane, f"{{{BPMN}}}flowNodeRef").text = node.id
         for node in workflow.nodes:
-            tag = "subProcess" if node.body else "serviceTask" if node.kind == "rest" else "scriptTask" if node.kind == "code" else _TAGS_BACK[node.kind]
+            tag = "subProcess" if node.body else "serviceTask" if node.kind == "rest" else "scriptTask" if node.kind in PYTHON_ACTIVITY_KINDS else _TAGS_BACK[node.kind]
             element = ET.SubElement(parent, f"{{{BPMN}}}{tag}", {"id": node.id, "name": node.title})
             extension = ET.SubElement(element, f"{{{BPMN}}}extensionElements")
             ET.SubElement(extension, f"{{{GALARIS}}}variables").text = json.dumps({"inputs": node.inputs, "outputs": node.outputs})
             config = {**node.config, **({"loop_kind": node.kind} if node.body else {})}
-            if node.kind in {"rest", "code"}:
+            if node.kind == "rest" or node.kind in PYTHON_ACTIVITY_KINDS:
                 config["activity_kind"] = node.kind
             ET.SubElement(extension, f"{{{GALARIS}}}config").text = json.dumps(config, ensure_ascii=False, allow_nan=False)
             if node.body:

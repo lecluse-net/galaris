@@ -78,11 +78,16 @@ async def read(code: str, actor: int | AgentManagementScope) -> dict[str, Any]:
     graph = compile_bpmn(record.bpmn_xml)
     from .program_contracts import program_executor
     from .isolated_code import isolated_code_runner
+    from .remote_python import configured_python_runner
+    remote_python_available = configured_python_runner() is not None
     diagnostics: list[dict[str, str]] = []
     bodies = [graph]
     while bodies:
         body = bodies.pop()
         for node in body.nodes:
+            if node.kind == "python" and not remote_python_available:
+                diagnostics.append({"node": node.id, "severity": "warning", "code": "remote_python_unavailable",
+                    "message": "Isolated Python requires a configured runner on a dedicated host"})
             if isolated_code_runner() is None and (node.kind == "code" or node.kind == "if" and node.config.get("mode") == "code" or any(str(node.config.get(phase, "")).strip() for phase in ("preprocess", "postprocess"))):
                 diagnostics.append({"node": node.id, "severity": "warning", "code": "isolated_runner_unavailable",
                     "message": "Python requires a qualified runner on a separate VM or host"})

@@ -46,6 +46,9 @@ test('an agentic activity keeps its selected execution agent without adding a la
   const definition = await created.json(), path = `/api/processes/internal/definitions/${definition.code}`
   await page.goto(`/process/internal/${definition.code}`)
   await page.getByRole('button', { name: /^(Output of Start|Sortie de Début)$/ }).click()
+  for (const name of [/^(Isolated Python|Python isolé)$/, /^(MCP call|Appel MCP)$/, /^(REST call|Appel REST)$/]) {
+    await expect(page.getByRole('button', { name })).toBeVisible()
+  }
   await page.getByRole('button', { name: /^(Agentic AI|IA agentique)$/ }).click()
   const panel = page.getByRole('complementary', { name: /^(Activity settings|Paramètres de l’activité)$/ })
   await panel.getByRole('textbox', { name: /^(Title|Titre)$/ }).fill('Synthetic agentic work')

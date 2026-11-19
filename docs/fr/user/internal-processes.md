@@ -60,6 +60,31 @@ d'interface ne remplace pas les droits API et MCP.
 
 ## Construire et enregistrer
 
+Le menu des poignées du diagramme propose **Calcul (Monty)**, **Python isolé**,
+**Appel MCP** et **Appel REST**. Utilisez **Python isolé** pour un programme CPython
+sur le runner dédié. Dans cette activité, le champ **Capacités MCP et REST** déclare
+les opérations que le programme peut appeler via `call_service`. Les activités
+**Appel MCP** et **Appel REST** exécutent chacune un appel déclaré directement dans
+le diagramme. [Configurer le code et ses capacités](../dev/native-processes.md#python-capabilities)
+
+Si la configuration ou la requête REST est rejetée avant envoi, **Appel REST** termine
+en erreur. Dans **Python isolé**, `call_service` signale ce refus au programme.
+
+Dans **Python isolé**, `input_files` contient les références des fichiers du run.
+Ajoutez les URI produites dans `output_files` pour les rendre visibles comme pièces
+jointes aux étapes suivantes. Utilisez `return` pour renseigner les variables de sortie.
+Chaque exécution possède son propre répertoire `/tmp`, supprimé à la fin du script.
+Si le runner perd l'accès à Docker pendant une annulation, le processus reste en cours
+d'arrêt jusqu'à confirmation du nettoyage de la sandbox.
+Si un appel MCP ou REST déjà admis a un résultat incertain, le suivi continue de signaler
+la réconciliation nécessaire après l'arrêt de la sandbox.
+Si le reçu de cet appel arrive ensuite et que l'arrêt est confirmé, le suivi clôt le
+blocage. L'erreur initiale reste dans l'historique du processus.
+Pour une création de fichier local approuvée, le journal de Services peut aussi
+confirmer le résultat lorsque le reçu du broker a été perdu.
+Pour une insertion Python dans une Data Table n8n configurée à cet effet, le suivi
+peut aussi lever le blocage après avoir retrouvé la ligne de l'appel d'origine.
+
 Quand vous demandez à l'agent de lancer un processus, il doit d'abord réunir toutes les
 entrées sélectionnées dans l'étape Début. Il réutilise les informations connues, recherche
 les documents accessibles et vous demande les renseignements ou pièces encore manquants.
@@ -297,6 +322,8 @@ les fichiers initiaux sont copiés dans ses pièces jointes, selon le contrat hi
 
 Depuis le panneau **Processus** du Chat, la liste des exécutions d'un processus ou le suivi des processus dans Tâches,
 ouvrir un run affiche une modale centrée sur son diagramme enregistré au lancement.
+Si vous annulez un processus dont une activité Claude Agent attend un accord MCP,
+l'accord est révoqué et le suivi reste en cours d'arrêt jusqu'à confirmation de l'arrêt de Claude.
 Dans le Chat, les runs se lisent du plus ancien au plus récent, en bas. Remonter la liste
 charge les runs plus anciens en conservant la position de lecture. L'arrivée d'un nouveau
 run fait défiler la liste vers le bas ; une simple mise à jour d'état conserve la position.
@@ -339,6 +366,9 @@ exécution. **Arrêter l’exécution** demande confirmation, ferme les demandes
 et interrompt les tâches et enfants. Une exécution arrêtée ne peut plus être reprise.
 Un résultat d'opération incertain exige une réconciliation avant reprise ; une longue
 attente ne suffit pas à déclarer un blocage.
+
+Dans une activité Claude Agent, une fonction MCP **Sur demande** attend l'accord avant
+d'agir. La même activité se poursuit après la décision.
 
 Les agents utilisent `processus_get` pour cette vue. Les droits du processus autorisent
 la lecture de ses runs et de leurs données ; son droit d'écriture autorise les contrôles.
@@ -391,6 +421,8 @@ Une capacité Service ne remplace pas l'accès au processus et à ses données.
 puis lance une campagne réelle. Chaque cas conserve son run, ses mesures et un contrôle
 exact facultatif de sortie. Les vrais Services autorisés sont utilisés ; les mocks sont
 reportés à une seconde phase.
+Pour qualifier une campagne, renseignez la sortie attendue de chaque cas et relevez
+son identifiant dans le Lab pour produire le [rapport de qualification](../dev/testing.md).
 
 Les secrets restent dans les Connections. Les nœuds Service appellent des opérations MCP
 déclarées. L'activité API REST utilise la connexion de son agent et une requête relative

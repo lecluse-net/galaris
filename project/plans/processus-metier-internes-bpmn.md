@@ -31,13 +31,119 @@ La capacité REST existante de Services et ses connexions sont réutilisées sel
 
 Chaque lot termine par un parcours complet avant généralisation.
 
+Une première implémentation relie le type `python` au superviseur TLS sur hôte dédié
+et aux capacités MCP/REST déclarées par activité. Le mode par défaut intègre variables
+et références de fichiers. Le worker dédié est supervisé par l'API, avec lectures
+passives et slots indépendants pour ses appels longs. L'isolation et le redémarrage du
+superviseur ont été vérifiés sur le runtime `runsc` réel dans une VM dédiée jetable.
+Voir le [contrat d'intégration](../../docs/fr/dev/native-processes.md#python-capabilities).
+
 | Lot | Travail restant | Réception |
 |---|---|---|
-| Runner distant | Qualifier le Python généraliste, le runtime, le protocole authentifié, le déploiement séparé, les limites et la supervision. | Accès interdits refusés, agents/runs isolés, boucle et saturation arrêtées, environnement détruit et capacités libérées ; runner hostile sans accès au backend. |
-| Broker MCP/REST | Donner au code des capacités temporaires médiées par Galaris, sans accès direct aux secrets ou au réseau. | Auteur distinct de l'exécutant, droits révoqués pendant l'attente, référence expirée/rejouée refusée et effet incertain sans nouvel appel. |
-| Worker Process distinct | Séparer la progression durable de l'API en réutilisant jobs, occurrences, leases et reçus. | Une attente longue libère les branches et autres runs ; aucun travail utilisateur lors d'une simple lecture ; worker périmé incapable de publier ou doubler le successeur. |
-| Reprise de l'extension | Qualifier crash, annulation et nettoyage avec le vrai runner et le broker. | Réconciliation après résultat perdu ; arrêt physique du bon run confirmé ; reprise sans double effet ni écrasement des données concurrentes. |
-| Charge et consommateurs | Campagnes multi-harnais/n8n, profondeurs et volumes métier, parcours interne → externe → interne. | Réponses/ressources conformes, droits et interfaces préservés, croissance des données/journaux mesurée et limites publiées. |
+| Runner distant | Reproduire la qualification et l'endurance sur l'infrastructure de déploiement cible. | Limites et budget de ressources vérifiés sur le profil cible. |
+| Consommateurs | Campagnes assemblées avec des harnais externes et des volumes métier représentatifs. | Réponses, ressources, droits et interfaces préservés avec les comptes de qualification et leur charge réelle. |
+
+`make qualify-process-python` inclut un lot reproductible de 112 calculs à quatre en parallèle
+et enregistre le rapport agrégé de débit et de latence. L'exécution de ce lot sur le runner
+cible reste à qualifier.
+
+### Point de reprise du 18 novembre 2026
+
+- Acquis : endurance de cinq minutes sur VM de qualification, récupération d'un reçu
+  File Sharing perdu et parcours BPMN → n8n réel → BPMN. Les environnements
+  jetables ont été supprimés.
+- Vérifications : 11 scénarios TLS, 184 tests de régression ciblés et 94 tests
+  d'adaptateurs de harnais réussis. `make typecheck` et `git diff --check` réussis.
+  Le corpus et les contrats d'architecture ont passé les contrôles sur instantané.
+  Des modifications concurrentes ont interrompu la publication de la cartographie.
+- Le 19 novembre, le premier fournisseur REST qualifié est n8n Data Tables. Après une
+  perte simulée de reçu, l'API n8n 2.48.5 a confirmé la ligne d'origine par lecture seule
+  et le Process a terminé son arrêt. Le test vérifie une seule insertion. Voir le
+  [contrat et la commande de qualification](../../docs/fr/dev/native-processes.md#réconciliation-dune-insertion-n8n).
+- À la reprise, identifier l'infrastructure cible et les comptes de qualification
+  des harnais externes.
+
+### Qualification locale du parcours Claude Agent
+
+`make qualify-process-harness` relie le moteur BPMN v2, le scheduler Task, le SDK Claude
+Agent épinglé et le serveur MCP Galaris. Les scénarios vérifient les sorties valides et
+invalides, la lecture du contenu via son URI, la remise d'un reçu MCP sans accord
+supplémentaire en mode Actif et sa conservation après un accord en mode Sur demande.
+La reprise observe le même run agentique et le contexte révoqué refuse un appel tardif.
+L'annulation pendant un accord MCP vérifie l'arrêt du SDK, le refus d'un accord tardif
+et le maintien de l'état `cancelling` si la première confirmation d'arrêt se perd.
+Le modèle est synthétique. La qualification des comptes et de la charge métier sur
+l'infrastructure cible reste ouverte.
+Les campagnes **Lab → Processus** disposent d'une vérification agrégée avec
+`make qualify-lab` et `--process-campaign`. Elle contrôle toutes les pages, les sorties
+attendues et la révision BPMN. Voir le [parcours de qualification](../../docs/fr/dev/testing.md#qualification-des-modèles-et-des-bridges).
+
+### Qualification du runner sur VM dédiée
+
+Le 18 novembre 2026, le superviseur et la sandbox ont tourné dans une VM Debian 12
+x86-64 avec un noyau 6.1, Docker 20.10 et gVisor `release-20261116.0`. La VM n'avait
+aucun port publié sur l'hôte. Le transport entre le backend de test et le superviseur
+validait le certificat et le nom DNS de bout en bout.
+
+- Les sondes ont vérifié la racine en lecture seule, le stockage temporaire privé,
+  le réseau sans sortie et l'absence de montages de données. Un certificat non approuvé,
+  un nom DNS incorrect et un jeton absent ou erroné empêchent l'accès.
+- Le premier démarrage échouait avec le plafond de seize tâches du groupe Docker.
+  Le groupe Linux d'une sandbox active a confirmé les plafonds de 128 tâches,
+  128 Mio de mémoire et un demi-cœur. gVisor a refusé un dix-septième processus
+  ou thread du programme et une écriture dépassant les 8 Mio de `/tmp`.
+- Une sortie hors limite produit un reçu d'erreur avec arrêt confirmé. Quatre
+  exécutions simultanées ont été admises, la cinquième a reçu HTTP 429 et a réussi
+  après libération des places. Aucun conteneur de sandbox ne subsistait après le test.
+- Après un `SIGKILL` du superviseur alors que la sandbox tournait sous `runsc`,
+  le redémarrage a supprimé la sandbox. La consultation et le rejeu de la requête
+  ont rendu le même reçu terminal sans relancer l'exécution.
+- Une suspension du daemon Docker pendant 38 secondes a reproduit un blocage
+  au-delà des trois tentatives de nettoyage initiales. Après correction, le même
+  superviseur a supprimé la sandbox dès le retour de Docker et a enregistré un reçu
+  d'annulation stable. Le reçu est resté en attente pendant l'indisponibilité.
+- Le parcours BPMN a transmis une variable et un fichier à Python. Après la perte
+  simulée d'une réponse du broker et l'interruption de la clôture de la Task, le MCP
+  de fichiers a créé une seule sortie, consommée par l'activité suivante.
+- Sur la même VM jetable, le broker REST a utilisé la connexion de l'agent affecté,
+  distinct de l'agent lanceur, sans restituer ses identifiants au script. La révocation
+  REST a empêché tout appel, et celle du droit MCP a prévalu sur un accord donné.
+  Une réponse REST perdue après l'effet a laissé un seul appel externe, une sandbox
+  arrêtée et un Process en attente de réconciliation.
+- Sur VM, un appel présenté au seuil de quinze minutes, simulé avec l'horloge du
+  broker, a déclenché zéro requête externe. Une redélivrance exacte du reçu courant
+  a conservé le résultat. Le rejeu d'une ancienne identité et la réutilisation d'une
+  identité avec d'autres arguments ont été refusés sans nouvel appel au Service.
+- Si la sandbox s'arrête après un appel REST admis mais avant la réception du résultat,
+  le suivi conserve désormais `effect_outcome_unknown`. L'inspection signale le blocage
+  et le debugger refuse Reprendre et Pas à pas. La clôture de l'incertitude reste
+  ouverte quand aucune preuve du résultat n'est disponible côté Service.
+- Une charge courte sur la VM QEMU émulée a terminé 40 exécutions de calcul en
+  119 secondes, à quatre en parallèle, sans conteneur résiduel. Du dépôt de la requête
+  au reçu terminal, la médiane était de 11,8 secondes et le p95 de 16,6 secondes.
+  Le fichier SQLite des reçus est passé de 12 à 24 Kio pendant ce test.
+- Sur ce même profil QEMU, 112 exécutions synthétiques ont terminé en 301 secondes
+  à quatre en parallèle, sans sandbox résiduelle. Du dépôt au reçu, la médiane était de 9,8 secondes
+  et le p95 de 14,0 secondes. Le fichier des reçus est passé de 12 à 44 Kio. Les mesures
+  ponctuelles ont observé jusqu'à 28,1 Mio par sandbox et le quota d'un demi-cœur.
+
+### Reçu tardif et modification concurrente
+
+Dans des sessions PostgreSQL séparées, un reçu REST arrivé tardivement a permis de
+terminer l'arrêt sans nouvel appel au Service de test ni écrasement d'une mise à jour
+concurrente des données. L'inspection retire le blocage actif et conserve le diagnostic
+historique. Quand le run reste actif, le même parcours intègre le résultat du broker
+et la mise à jour concurrente. Le test utilise un fournisseur HTTP synthétique et un
+transport runner simulé.
+
+### Intégration n8n, profondeur et pagination
+
+Un n8n 2.48.5 isolé a reçu une valeur d'un BPMN parent et a retourné sa transformation
+via le bridge. Un second BPMN a consommé cette valeur. Une lecture anticipée laisse
+désormais l'admission au worker et ne fait pas basculer le run enfant en `unknown`.
+Les tests PostgreSQL couvrent aussi cinq niveaux de boucle avec 24 activités persistées
+et l'inspection de 505 occurrences par page bornée à 500. Les suites des adaptateurs
+Codex, Claude Agent et Hermes vérifient les contrats de reprise et d'arrêt en test.
 
 ## Intermédiaire de confiance pour MCP et REST
 
@@ -54,6 +160,32 @@ Le programme demande une opération par un protocole limité. Un intermédiaire 
   permissions fines Galaris ;
 - enregistre intentions et reçus. Un redémarrage ne rejoue pas les appels précédents d'un
   programme dont les effets sont incertains.
+
+### Preuve requise pour réconcilier un effet sans reçu
+
+Le broker connaît la tentative, l'identifiant de l'appel et l'empreinte des arguments.
+Ce lien suffit à remettre le reçu du worker qui avait déjà pris en charge l'appel. Pour
+une réponse définitivement perdue, le Service doit aussi disposer d'une référence de
+corrélation reconnue par le fournisseur et fixée avant l'envoi. La preuve de résultat doit
+porter sur cette référence, le Service et le même compte distant. Le chemin de vérification
+appartient au Service et doit pouvoir être utilisé en lecture seule.
+
+| Résultat établi par le fournisseur | Comportement attendu du Process |
+|---|---|
+| Effet confirmé ou rejet définitif documenté pour la référence exacte | Conserver un reçu lié à l'appel d'origine et terminer l'arrêt une fois les activités arrêtées. Le reçu ne relance ni la sandbox ni une étape suivante. |
+| Absence d'effet attestée explicitement pour cette référence | Enregistrer le résultat et clôturer l'incertitude. Une nouvelle exécution passe par l'autorisation ordinaire. |
+| Traitement en cours, référence inconnue ou réponse sans preuve définitive | Maintenir `effect_outcome_unknown` et laisser le suivi visible. Un délai dépassé ou un HTTP 404 générique ne prouve pas l'absence d'effet. |
+
+File Sharing fournit une première preuve pour `file_create` approuvé vers `file://`.
+Le journal de Services confirme la création pour l'identité exacte de l'appel. Le moteur
+enregistre la preuve et clôt la Task de contexte à partir de ce reçu. Le test de perte
+du reçu broker vérifie un seul fichier créé et refuse les preuves d'un autre agent,
+d'une autre tâche ou d'une autre opération. Une capacité REST générique sans moyen de
+recherche fiable côté fournisseur conserve son blocage. Le premier contrat REST couvre
+une insertion unitaire dans une Data Table n8n. La recherche filtrée est bornée à deux
+lignes et confirme uniquement une correspondance unique sur la référence et les valeurs
+d'origine. La suite synthétique exerce le refus des preuves contradictoires et une
+redélivrance concurrente aboutissant à un seul reçu.
 
 Réutiliser `app.services.execute_rest_request`. Le confinement à l'adresse configurée
 protège les identifiants ; il est distinct des permissions métier du tiers.

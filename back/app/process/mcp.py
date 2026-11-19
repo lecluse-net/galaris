@@ -360,7 +360,7 @@ async def process_list_runs(
 @mcp_tool("galaris", approval='enabled', approval_reason='Governed bounded read or polling',
 
     name="process_get_run",
-    description="Return a run allowed by its Process sharing policy or dedicated Process administration and refresh it when needed.",
+    description="Read the persisted run allowed by its Process sharing policy or dedicated Process administration.",
 )
 async def process_get_run(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
     await _require_visible_run(ctx, _run_id(run_id))
@@ -647,7 +647,7 @@ async def process_admin_list_runs(
 @mcp_tool("process_admin", approval='enabled', approval_reason='Governed bounded read or polling',
 
     name="process_admin_get_run",
-    description="Return the complete details of any agent's process run.",
+    description="Read the persisted details of any agent's process run. The legacy refresh_if_stale flag only requests a freshness indication.",
 )
 async def process_admin_get_run(
     ctx: McpToolContext,  # noqa: ARG001

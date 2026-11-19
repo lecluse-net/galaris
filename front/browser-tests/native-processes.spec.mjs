@@ -228,6 +228,17 @@ test('a new workflow can be built from its start handle and retains typed human 
     expect.objectContaining({ source: task.id, target: submitted.nodes.find(node => node.kind === 'end').id })])
 })
 
+for (const [label, kind] of [['Isolated Python', 'python'], ['MCP call', 'tool_call'], ['REST call', 'rest']]) {
+  test(`the diagram can insert a dedicated ${label} activity`, async ({ page }) => {
+    const value = { ...graph(), schema_version: 'galaris.bpmn/v2' }
+    await mount(page, 'app/process/components/BpmnCanvas.vue', { props: { modelValue: value } })
+    await page.getByRole('button', { name: 'Output of Start', exact: true }).click()
+    await page.getByRole('button', { name: label, exact: true }).click()
+    const lastGraph = () => page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue').at(-1)?.value)
+    await expect.poll(async () => (await lastGraph())?.nodes.at(-1).kind).toBe(kind)
+  })
+}
+
 test('handle menus insert into an existing flow without losing its condition or destination', async ({ page }) => {
   const value = graph()
   value.nodes[1].kind = 'if'; value.flows[1].condition = 'input.ready'
@@ -366,7 +377,7 @@ test(`agentic assignment uses the chosen agent without creating a redundant lane
   const open = () => mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_READ', 'PROCESS_EDIT'] })
   await open()
   if (scenario === 'convert') {
-    await page.getByRole('button', { name: 'Code · work', exact: true }).click()
+    await page.getByRole('button', { name: 'Calculation (Monty) · work', exact: true }).click()
     await page.getByRole('combobox', { name: 'Processing', exact: true }).click()
     await page.getByRole('option', { name: 'Agentic AI', exact: true }).click()
   } else {
@@ -1213,29 +1224,29 @@ for (const [side, label] of [['variables', 'Process variables']]) {
 test('invalid tool argument drafts survive node changes and prevent saving until repaired', async ({ page }) => {
   const writes = await definitionFixtures(page, true, 'tool_call')
   await mount(page, 'app/process/components/NativeProcessEditor.vue', { props: { code: 'invented_process' }, privileges: ['PROCESS_READ', 'PROCESS_EDIT'] })
-  await page.getByRole('button', { name: 'Tool operation · work', exact: true }).click()
+  await page.getByRole('button', { name: 'MCP call · work', exact: true }).click()
   const mapping = page.getByRole('textbox', { name: 'Tool arguments (JSON)', exact: true })
   await mapping.fill('{')
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   await expect(mapping).toHaveCount(0)
-  await page.getByRole('button', { name: 'Tool operation · work', exact: true }).click()
+  await page.getByRole('button', { name: 'MCP call · work', exact: true }).click()
   await expect(mapping).toHaveValue('{')
   await page.getByRole('complementary', { name: 'Activity settings', exact: true }).getByRole('textbox', { name: 'Title', exact: true }).focus()
   await page.keyboard.press('Escape')
   await expect(mapping).toHaveCount(0)
-  await page.getByRole('button', { name: 'Tool operation · work', exact: true }).click()
+  await page.getByRole('button', { name: 'MCP call · work', exact: true }).click()
   await expect(mapping).toHaveValue('{')
   // The side panel stays usable while interacting with the rest of the page.
   await page.getByRole('heading', { name: 'Process editor', exact: true }).click()
   await expect(mapping).toHaveValue('{')
-  await page.getByRole('button', { name: 'Tool operation · work', exact: true }).click()
+  await page.getByRole('button', { name: 'MCP call · work', exact: true }).click()
   await page.getByRole('button', { name: 'End · end', exact: true }).click()
-  await page.getByRole('button', { name: 'Tool operation · work', exact: true }).click()
+  await page.getByRole('button', { name: 'MCP call · work', exact: true }).click()
   await expect(mapping).toHaveValue('{')
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   expect(writes).toEqual([])
-  await page.getByRole('button', { name: 'Tool operation · work', exact: true }).click()
+  await page.getByRole('button', { name: 'MCP call · work', exact: true }).click()
   await expect(mapping).toHaveValue('{')
   await mapping.fill('{"amount": 8}')
   await page.getByRole('button', { name: 'Close settings', exact: true }).click()

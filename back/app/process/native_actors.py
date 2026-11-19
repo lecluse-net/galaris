@@ -55,6 +55,22 @@ async def validate_assignments(graph: Workflow, scope: int | AgentManagementScop
             await validate_assignments(node.body, scope)
 
 
+async def validate_execution_access(run: ProcessRun, graph: Workflow) -> None:
+    """Recheck sharing and actor scope before a workflow admits a new effect."""
+    from app.agent import management_scope_for
+    from .native_definitions import get as get_definition
+
+    actor: int | AgentManagementScope = run.launcher_agent_id
+    if run.requester_user_id is not None:
+        user = await get_user_record(run.requester_user_id)
+        if user is None or not user.is_active:
+            raise PermissionError("The human workflow launcher is inactive")
+        actor = await management_scope_for(user, get_db())
+        actor.require(run.launcher_agent_id)
+    await get_definition(str(run.launch_snapshot["workflow_id"]), actor)
+    await validate_assignments(graph, actor)
+
+
 def execution_agent(graph: Workflow, node: Node, fallback: int) -> int:
     actor = next((actor for actor in graph.actors if actor.id == node.config.get("actor")), None)
     if actor is not None and actor.kind == "agent" and actor.agent_id is not None:

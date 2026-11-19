@@ -3,7 +3,7 @@ import type { SharingState as DocumentSharing, SharingUpdate as DocumentSharingL
 import type { OwnerOption } from '@/app/share'
 import { createOwnerOptionsCache } from '@/app/share/facade'
 
-export type NodeKind = 'start' | 'end' | 'task' | 'human_task' | 'tool_call' | 'rest' | 'code' | 'program' | 'call' | 'if' | 'parallel' | 'for' | 'while'
+export type NodeKind = 'start' | 'end' | 'task' | 'human_task' | 'tool_call' | 'rest' | 'code' | 'python' | 'program' | 'call' | 'if' | 'parallel' | 'for' | 'while'
 import { valueTypes as sharedValueTypes } from '@/app/dataset/contracts'
 export const valueTypes = sharedValueTypes.filter(type => type !== 'Dataset')
 export type ValueType = typeof valueTypes[number]

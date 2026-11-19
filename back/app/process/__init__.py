@@ -39,43 +39,47 @@ from .retention import register_retention_guard
 from .replacement import replacement_blocked_task_ids, coordinate_replacement
 from .program_contracts import ProgramExecutor, register_program_executor
 from .isolated_code import CodeInvocation, CodeObservation, IsolatedCodeRunner, register_isolated_code_runner
+from .workers import ProcessEffectWorkers
 
 registry.register(FakeProcessEngine())
 from .native_engine import NativeProcessEngine
 registry.register(NativeProcessEngine())
 
 
-async def configure_default_engine(register: PeriodicJobRegistrar, unregister: PeriodicJobRemover) -> None:
-    """Apply and watch database-backed process-engine configuration."""
+def configure_default_engine() -> None:
+    """Apply and watch database-backed process-engine selection."""
     from core.params import runtime_settings
-    from core.params import Params, params_service
+    from core.params import params_service
 
     registry.set_default(runtime_settings.PROCESS_ENGINE_DEFAULT)
 
-    async def refresh_process_runtime(name: str, _value: str | None) -> None:
-        if name == Params.PROCESS_ENGINE_DEFAULT:
-            registry.set_default(runtime_settings.PROCESS_ENGINE_DEFAULT)
-        if name == Params.PROCESS_REFRESH_STALENESS_SECONDS:
-            register_scheduler_jobs(register, unregister)
+    params_service.register_change_listener(_refresh_default_engine)
 
-    params_service.register_change_listener(refresh_process_runtime)
+async def _refresh_default_engine(name: str, _value: str | None) -> None:
+    from core.params import Params, runtime_settings
+    if name == Params.PROCESS_ENGINE_DEFAULT:
+        registry.set_default(runtime_settings.PROCESS_ENGINE_DEFAULT)
 
-def register_scheduler_jobs(register: PeriodicJobRegistrar, unregister: PeriodicJobRemover) -> None:
-    """Register maintenance jobs after all modules load, avoiding import cycles."""
-    from core.params import runtime_settings
-    from functools import partial
-    from .engine import IntegratedProcessEngine
-    from .workers import start_engine_jobs
-    from .activity_jobs import run_external_activity_jobs
-    from .human_requests import deliver_human_requests
+def register_trace_retention() -> None:
     from app.llm import register_trace_release
     from .retention import released_trace_ids
 
     register_trace_release("process_run", released_trace_ids)
 
+def register_scheduler_jobs(register: PeriodicJobRegistrar, unregister: PeriodicJobRemover,
+                            effects: ProcessEffectWorkers) -> None:
+    """Register maintenance jobs after all modules load, avoiding import cycles."""
+    from core.params import runtime_settings
+    from functools import partial
+    from .engine import IntegratedProcessEngine
+    from .workers import start_engine_jobs
+    from .human_requests import deliver_human_requests
     unregister("process-outbox")
     unregister("process-refresh")
-    register("process-external-activities", run_external_activity_jobs, interval=1.0, timeout=360)
+    register("process-external-activities", effects.external.tick, interval=1.0)
+    from .remote_python import configured_python_runner
+    if configured_python_runner() is not None:
+        register("process-python-capabilities", effects.python.tick, interval=1.0)
     register("process-human-requests", deliver_human_requests, interval=1.0, timeout=60)
     for code in registry.codes():
         engine = registry.get(code)
@@ -135,6 +139,8 @@ __all__ = [
     "process_service",
     "registry",
     "configure_default_engine",
+    "register_trace_retention",
+    "ProcessEffectWorkers",
     "register_scheduler_jobs",
     "register_retention_guard",
     "replacement_blocked_task_ids",

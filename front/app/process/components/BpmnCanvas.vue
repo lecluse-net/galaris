@@ -252,7 +252,7 @@ const dropTarget = computed(() => {
   const lane = layout.value.lanes[Math.floor((current.preview.y + 44) / layout.value.laneHeight)]
   if (lane === undefined) return { lane: null, allowed: false, create: false }
   const required = node.kind === 'task' ? 'agent' : node.kind === 'human_task' ? 'human' : null
-  if (props.modelValue.schema_version === 'galaris.bpmn/v2' && ['task', 'human_task', 'code', 'if'].includes(node.kind)) return { lane, allowed: canAssignActivityActor(node, lane, props.modelValue), create: false }
+  if (props.modelValue.schema_version === 'galaris.bpmn/v2' && ['task', 'human_task', 'code', 'python', 'if'].includes(node.kind)) return { lane, allowed: canAssignActivityActor(node, lane, props.modelValue), create: false }
   return { lane, allowed: required ? lane === '' ? required === 'agent' : actor(lane)?.kind === required : lane === String(node.config.actor ?? ''), create: false }
 })
 const contentWidth = computed(() => Math.max(laneHeaderWidth, ...props.modelValue.nodes.map(node => savedPosition(node).x + nodeWidth(node) + 48)))
@@ -475,7 +475,7 @@ function onFullscreenKey(event: KeyboardEvent): void {
 }
 function activityLabel(kind: ActivityKind): string { return t(kind === 'task' && props.modelValue.schema_version === 'galaris.bpmn/v2' ? 'nativeProcesses.processingModes.ai' : kind === 'llm_task' ? 'nativeProcesses.processingModes.llm' : 'nativeProcesses.kinds.' + kind) }
 function activityTypeLabel(node: BpmnNode): string { return activityLabel(node.kind === 'task' && node.config.ai_mode === 'llm' ? 'llm_task' : node.kind) }
-const availableKinds = computed(() => activityKinds.filter(kind => props.modelValue.schema_version === 'galaris.bpmn/v2' || !['llm_task', 'code'].includes(kind)))
+const availableKinds = computed(() => activityKinds.filter(kind => props.modelValue.schema_version === 'galaris.bpmn/v2' || !['llm_task', 'code', 'python', 'rest'].includes(kind)))
 function add(anchor: string, side: 'input' | 'output', kind: ActivityKind, branch = false, outcome?: boolean): void {
   if (props.readonly) return
   const next = insertActivity(props.modelValue, anchor, side, kind, branch, outcome)
@@ -556,7 +556,7 @@ function stop(event: PointerEvent): void {
     const next: BpmnGraph = { ...props.modelValue, ...(created ? { actors: [...(props.modelValue.actors ?? []), created] } : {}), nodes: props.modelValue.nodes.map(node => {
       const p = savedPosition(node)
       if (node.id !== current.id) return { ...node, ...p }
-      const task = ['task', 'human_task', 'code', 'if'].includes(node.kind)
+      const task = ['task', 'human_task', 'code', 'python', 'if'].includes(node.kind)
       const assigned = task && (created || props.modelValue.actors?.length) ? assignActivityActor(node, actorKey || '', { ...props.modelValue, actors: created ? [...(props.modelValue.actors ?? []), created] : props.modelValue.actors }) : node
       return { ...assigned, x: current.preview.x, y: Math.max(32, current.preview.y) }
     }) }

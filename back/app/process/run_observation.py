@@ -78,7 +78,8 @@ async def observe_run(run: ProcessRun, *, can_control: bool, visible_children: s
         last_event.created_at if last_event else None) if value is not None)
     for task in task_states.values():
         last_activity = max(last_activity, datetime.fromisoformat(task["updated_at"]))
-    uncertain = run.status == "unknown" or state.get("error", {}).get("code") == "effect_outcome_unknown"
+    uncertain = (run.status not in TERMINAL_STATUSES and
+        (run.status == "unknown" or state.get("error", {}).get("code") == "effect_outcome_unknown"))
     stopping = run.status == "cancelling" or bool(state.get("cancel_requested"))
     in_flight = any(signal["kind"] in {"agent_task", "task_queue", "llm_inference", "external_operation", "code_execution", "engine"} for signal in signals)
     phase = run.status

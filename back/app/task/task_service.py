@@ -66,6 +66,7 @@ DELEGATED_KEY = "delegated"
 RETENTION_KEY = "retention_reasons"
 _DELIVERY_RECOVERY_DATA_KEY = "delivery_recovery"
 _AGENT_RUN_CHECKPOINT_DATA_KEY = "_agent_run_checkpoint"
+_STOPPED_ACTIVITY_RUN_KEY = "_stopped_activity_run"
 _FORCE_TERMINATE_FOLLOWUP_TIMEOUT = 5.0
 
 
@@ -228,11 +229,13 @@ async def get_by_id(task_id: UUID, *, for_update: bool = False) -> Optional[Task
     return result.scalar_one_or_none()
 
 
-async def _get_by_id_for_update(task_id: UUID) -> Optional[Task]:
+async def _get_by_id_for_update(task_id: UUID, *, refresh: bool = False) -> Optional[Task]:
     """Load and lock a task for a transactional HTTP command."""
 
     db = get_db()
     query = select(Task).where(Task.id == task_id).with_for_update()
+    if refresh:
+        query = query.execution_options(populate_existing=True)
     return await db.scalar(Task.histo_filter(query))
 
 
@@ -467,10 +470,17 @@ async def workflow_operation(task_id: UUID) -> AsyncGenerator[bool]:
 async def suspend_workflow_operation(task_id: UUID) -> None:
     """Await one-operation authorization without leaving a runnable context Task."""
     from . import scheduler
-    task = await _get_by_id_for_update(task_id)
+    task = await _get_by_id_for_update(task_id, refresh=True)
     if task is None or task.ai or not (task.data or {}).get("workflow_operation"):
         raise ValueError("This Task is not a workflow operation context")
     token = task.lease_token
+    if task.status in {TaskStatus.SUCCESS, TaskStatus.ERROR} or (
+        task.status == TaskStatus.DISPATCH and "workflow_operation" in pause_reasons(task)
+    ):
+        await get_db().commit()
+        if token is not None:
+            await scheduler.finish_inline_execution(task_id, token)
+        return
     transition(task, TaskEvent.INTERRUPT_EXECUTION)
     suspend(task, "workflow_operation")
     await save(task)
@@ -481,7 +491,7 @@ async def suspend_workflow_operation(task_id: UUID) -> None:
 
 async def complete_workflow_operation(task_id: UUID, result: dict[str, Any], *, error: str | None = None) -> None:
     """Complete the durable, non-agent Task which owns a workflow Tool context."""
-    task = await _get_by_id_for_update(task_id)
+    task = await _get_by_id_for_update(task_id, refresh=True)
     if task is None:
         raise LookupError("Workflow operation Task not found")
     if task.ai or not (task.data or {}).get("workflow_operation"):
@@ -847,6 +857,58 @@ async def request_cancellation(task: Task) -> None:
     task.feedback = task.last_error
     task.next_attempt_at = None
     clear_pauses(task)
+
+
+async def stop_activity_task(task_id: UUID) -> bool:
+    """Stop a workflow-owned Task and confirm any suspended managed actor has stopped."""
+    from app.agent import cancel as cancel_agent_run
+
+    db = get_db()
+    task = await _get_by_id_for_update(task_id, refresh=True)
+    if task is None:
+        await db.commit()
+        return True
+    if task.status not in _TERMINAL_STATUSES:
+        await request_cancellation(task)
+        await save(task)
+
+    data = task.data or {}
+    local_stopped = task.lease_token is None and task.lease_owner is None
+    raw: object = data.get(_AGENT_RUN_CHECKPOINT_DATA_KEY)
+    checkpoint = type_cast(dict[str, Any], raw) if isinstance(raw, dict) else {}
+    # The network Harness retains a live actor during approval, even after its
+    # Task lease and transient agent-run identity have been released.
+    if (checkpoint.get("status") != "waiting_for_authorization"
+            or checkpoint.get("driver_code") != "openai_messages"):
+        await db.commit()
+        return local_stopped
+    run_key = str(checkpoint.get("request_run_id") or "")
+    if run_key and data.get(_STOPPED_ACTIVITY_RUN_KEY) == run_key:
+        await db.commit()
+        return local_stopped
+
+    await db.commit()  # Release the Task lock before revoking authority and calling the driver.
+    try:
+        receipt = await cancel_agent_run("openai_messages", UUID(run_key), task_id=task_id)
+    except (RuntimeError, ValueError):
+        logger.warning("Could not request stop for the activity's managed actor task={}", task_id)
+        return False
+    if receipt.state != "confirmed" or receipt.scope != "remote":
+        return False
+
+    task = await _get_by_id_for_update(task_id, refresh=True)
+    if task is None:
+        await db.commit()
+        return True
+    data = task.data or {}
+    matches = task.status in _TERMINAL_STATUSES and data.get(_AGENT_RUN_CHECKPOINT_DATA_KEY) == checkpoint
+    stopped = matches and task.lease_token is None and task.lease_owner is None
+    if matches and data.get(_STOPPED_ACTIVITY_RUN_KEY) != run_key:
+        task.data = {**data, _STOPPED_ACTIVITY_RUN_KEY: run_key}
+        await save(task)
+    else:
+        await db.commit()
+    return stopped
 
 
 async def force_terminate(

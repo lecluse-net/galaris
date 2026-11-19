@@ -245,6 +245,22 @@ explicitly starts a campaign. `--baseline <uuid> --candidate <uuid>` compares co
 The report is `artifacts/lab-qualification.json`. Model judgments do not prove external
 delivery; retain independent human review for critical errors.
 
+For a BPMN journey, prepare synthetic cases in **Lab → Processes** with an exact
+expected output for each case. Use the same cases and BPMN revision in one campaign
+per harness test account. When a campaign finishes, produce a report with
+`LAB_ACCESS_TOKEN` provided in the environment.
+
+```bash
+make qualify-lab ARGS='--base-url https://<test-instance> --process-campaign <uuid>'
+```
+
+The command reads every campaign page. It requires successful and distinct runs,
+matching outputs and a single BPMN revision. The report in
+`artifacts/process-campaign-qualification.json` includes counts and available median
+and p95 latencies. Pass a distinct path under `/repo/artifacts/` to `--output` to keep
+reports for individual accounts. Verify permissions, file access and the harness
+account in the assembled journey.
+
 For Matrix, supply `MATRIX_QUALIFICATION_SENDER_TOKEN` and `MATRIX_QUALIFICATION_OBSERVER_TOKEN`
 through the environment, then run `make qualify-matrix` with these `ARGS`:
 `--homeserver <HTTPS> --sender <test-account> --observer <second-test-account>

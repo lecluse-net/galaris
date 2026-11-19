@@ -32,9 +32,10 @@ restent dans `process_runs.data`, liées aux fichiers par
 `process_run_files`, sans Dataset. Les références de
 fichiers passent entre activités sans transfert ; les octets ne sont demandés que pour
 une opération explicite via File Sharing. Le profil historique v1 reste interprété tel quel.
-Les phases Python utilisent le port de runner et un worker Monty neuf pour les computations
-pures, sans capacités hôte. Le Python généraliste et son broker restent à qualifier sur une
-VM/hôte distinct ; les tests locaux ne constituent pas une qualification de sécurité globale.
+Les phases de calcul utilisent le port de runner et un worker Monty neuf. Une activité
+Python isolée utilise le superviseur distant via TLS. Galaris associe chaque capacité
+MCP/REST déclarée à l'invocation et consigne son intention et son reçu. La qualification
+sur une VM dédiée et le runtime `runsc` est suivie dans le plan BPMN.
 
 Un appel d’outil retourne directement une sortie structurée. Les workflows métier, par exemple
 ceux gérés dans n8n, utilisent un `ProcessRun` durable afin que l’agent puisse attendre,
@@ -190,6 +191,11 @@ le consentement humain porte sur l’appel corrigé. Voir
 5. Le worker démarre l’engine avec un `correlation_id` et un callback token propres au run.
 
 ## Progression et fin
+
+Un processus de travail supervisé distinct de l'API exécute les jobs et les
+rafraîchissements périodiques. Le canal Unix privé remonte les notifications
+à l'API qui applique les règles de visibilité WebSocket. La lecture HTTP ou
+MCP utilise l'état déjà persisté.
 
 Un engine renvoie un snapshot par callback ou par `refresh_run`. Chaque événement est ajouté
 à `process_run_events`, puis la transition est validée par la matrice commune. Les payloads,

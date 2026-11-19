@@ -97,6 +97,27 @@ _room_display_requests: dict[str, object] = {}
 _event_subscriptions: dict[str, frozenset[str]] = {}
 _event_authorizations: dict[str, EventAuthorization] = {}
 _session_monitor: asyncio.Task[None] | None = None
+_event_relay: Callable[[str, str, dict[str, Any], BaseRoom | None], Awaitable[None]] | None = None
+
+
+def set_event_relay(
+    relay: Callable[[str, str, dict[str, Any], BaseRoom | None], Awaitable[None]] | None,
+) -> None:
+    """Send worker notifications to the process which owns authenticated sockets."""
+    global _event_relay
+    _event_relay = relay
+
+
+async def receive_worker_event(
+    subject: str, action: str, data: dict[str, Any], room_kind: str | None, resource: str | None,
+) -> None:
+    room = None
+    if room_kind is not None:
+        policy = _resource_room_policies.get(room_kind)
+        if policy is None or resource is None:
+            return
+        room = policy.room_type(resource)
+    await emit(subject, action, data, room)
 
 
 def register_event_authorization(subject: str, authorize: EventAuthorization) -> None:
@@ -243,6 +264,9 @@ async def emit(
         data: Data to transmit.
         room: Optional resource room, authorized again for each recipient.
     """
+    if _event_relay is not None:
+        await _event_relay(subject, action, data, room)
+        return
     if _sio:
         required_privileges = _EVENT_PRIVILEGES.get(subject)
         if required_privileges is None:

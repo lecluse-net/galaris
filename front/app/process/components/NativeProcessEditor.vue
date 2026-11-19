@@ -43,7 +43,7 @@
           {{ t('nativeProcesses.variables.legacy') }}
           <template v-if="editable" #action><q-btn outline color="primary"  :label="t('nativeProcesses.variables.upgrade')" @click="upgradeProfile" /></template>
         </q-banner>
-        <q-banner v-for="diagnostic in definition?.diagnostics" :key="diagnostic.node + diagnostic.code">{{ diagnostic.node }} · {{ t(diagnostic.code === 'isolated_runner_unavailable' ? 'nativeProcesses.codeUnavailable' : 'nativeProcesses.programUnavailable') }}</q-banner>
+        <q-banner v-for="diagnostic in definition?.diagnostics" :key="diagnostic.node + diagnostic.code">{{ diagnostic.node }} · {{ t(diagnostic.code === 'remote_python_unavailable' ? 'nativeProcesses.remotePythonUnavailable' : diagnostic.code === 'isolated_runner_unavailable' ? 'nativeProcesses.codeUnavailable' : 'nativeProcesses.programUnavailable') }}</q-banner>
         <div class="editor-workspace">
           <div class="editor-diagram">
             <q-breadcrumbs v-if="bodyPath.length" class="q-mb-sm"><q-breadcrumbs-el :label="title || t('nativeProcesses.editor')" @click="bodyPath = []" />
@@ -81,7 +81,8 @@
                     <q-input v-if="selected.kind === 'for'" :model-value="configString('items')" outlined :readonly="!editable" :label="t('nativeProcesses.items')" @update:model-value="setConfig('items', String($event ?? ''))" />
                     <q-input v-if="selected.kind === 'while'" :model-value="configString('condition')" outlined :readonly="!editable" :label="t('nativeProcesses.whileCondition')" @update:model-value="setConfig('condition', String($event ?? ''))" />
                     <q-input v-if="selected.kind === 'call'" :model-value="configString('process_code')" outlined :readonly="!editable" :label="t('nativeProcesses.processCode')" @update:model-value="setConfig('process_code', String($event ?? ''))" />
-                    <CodeEditor v-if="selected.kind === 'code' || selected.kind === 'if' && currentMode === 'code'" :key="`${selected.id}-code`" :model-value="configString('code')" language="python" :readonly="!editable" :label="t('nativeProcesses.pythonCode')" @update:model-value="setConfig('code', $event)" />
+                    <CodeEditor v-if="selected.kind === 'python' || selected.kind === 'code' || selected.kind === 'if' && currentMode === 'code'" :key="`${selected.id}-code`" :model-value="configString('code')" language="python" :readonly="!editable" :label="t('nativeProcesses.pythonCode')" @update:model-value="setConfig('code', $event)" />
+                    <CodeEditor v-if="selected.kind === 'python'" :key="`${selected.id}-capabilities`" :model-value="configJson('capabilities')" language="json" :readonly="!editable" :label="t('nativeProcesses.pythonCapabilities')" @update:model-value="setConfigJson('capabilities', $event)" />
                     <q-input v-if="selected.kind === 'tool_call'" :model-value="configString('tool')" outlined :readonly="!editable" :label="t('nativeProcesses.tool')" @update:model-value="setConfig('tool', String($event ?? ''))" />
                     <template v-if="selected.kind === 'rest'">
                       <q-input :model-value="configString('service_code')" outlined :readonly="!editable" :label="t('nativeProcesses.restTool')" @update:model-value="setConfig('service_code', String($event ?? ''))" />
@@ -304,7 +305,7 @@ function setProcessingMode(value: unknown): void {
     }
   }
 }
-const contractActivity = computed(() => Boolean(selected.value && ['task', 'human_task', 'tool_call', 'rest', 'code', 'program', 'call'].includes(selected.value.kind)))
+const contractActivity = computed(() => Boolean(selected.value && ['task', 'human_task', 'tool_call', 'rest', 'code', 'python', 'program', 'call'].includes(selected.value.kind)))
 function toggleScript(phase: 'preprocess' | 'postprocess', enabled: boolean): void { editNode(node => { const config = { ...node.config }; if (enabled) config[phase] = ''; else delete config[phase]; return { ...node, config } }) }
 function setVariables(values: ProcessVariable[]): void {
   if (editable.value) graph.value = updateProcessVariables(graph.value, values)

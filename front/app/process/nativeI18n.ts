@@ -42,6 +42,8 @@ const en = {
   programUnavailable: 'The documentary program executor is not installed',
   restTool: 'Tool providing the REST API', restRequest: 'REST request (JSON)',
   codeUnavailable: 'An isolated code runner is required to execute Python.', pythonCode: 'Python program', preprocess: 'Custom input preparation (Python)', postprocess: 'Custom result integration (Python)',
+  remotePythonUnavailable: 'Isolated Python requires a configured runner on a dedicated host.',
+  pythonCapabilities: 'MCP and REST capabilities (JSON)',
   execution: {
     details: 'Activity execution', close: 'Close execution details', occurrence: 'Execution', pageSize: 'Executions per page',
     started: 'Started: {date}', finished: 'Finished: {date}', output: 'Output data', input: 'Input data',
@@ -112,7 +114,7 @@ const en = {
   directCost: 'Direct billed cost', inclusiveCost: 'Billed cost including children', inferenceCost: 'Inference value including children', duration: 'Elapsed time', unknown: 'Unavailable',
   partial: 'Accounting is partial', occurrences: 'Activity occurrences', error: 'Unable to complete this action', retry: 'Retry',
   estimated: '{count} calls have estimated costs',
-  kinds: { start: 'Start', end: 'End', task: 'Task', human_task: 'Human task', tool_call: 'Tool operation', rest: 'REST API', code: 'Code', program: 'Program',
+  kinds: { start: 'Start', end: 'End', task: 'Task', human_task: 'Human task', tool_call: 'MCP call', rest: 'REST call', code: 'Calculation (Monty)', python: 'Isolated Python', program: 'Program',
     call: 'Call process', if: 'Conditional choice', parallel: 'Parallel gateway', for: 'FOR loop', while: 'WHILE loop' },
 }
 const fr: typeof en = {
@@ -159,6 +161,8 @@ const fr: typeof en = {
   programUnavailable: 'L’exécuteur de programmes documentaires n’est pas installé',
   restTool: 'Tool fournissant l’API REST', restRequest: 'Requête REST (JSON)',
   codeUnavailable: 'Un runner isolé est requis pour exécuter Python.', pythonCode: 'Programme Python', preprocess: 'Préparation personnalisée des entrées (Python)', postprocess: 'Intégration personnalisée des résultats (Python)',
+  remotePythonUnavailable: 'Python isolé requiert un runner configuré sur un hôte dédié.',
+  pythonCapabilities: 'Capacités MCP et REST (JSON)',
   execution: {
     details: 'Exécution de l’activité', close: 'Fermer les détails d’exécution', occurrence: 'Exécution', pageSize: 'Exécutions par page',
     started: 'Début : {date}', finished: 'Fin : {date}', output: 'Données de sortie', input: 'Données d’entrée',
@@ -229,7 +233,7 @@ const fr: typeof en = {
   directCost: 'Coût facturé direct', inclusiveCost: 'Coût facturé avec les sous-processus', inferenceCost: 'Valeur d’inférence avec les sous-processus', duration: 'Temps écoulé', unknown: 'Indisponible',
   partial: 'Les métriques sont partielles', occurrences: 'Occurrences des activités', error: 'Impossible de terminer cette action', retry: 'Réessayer',
   estimated: '{count} appels ont un coût estimé',
-  kinds: { start: 'Début', end: 'Fin', task: 'Tâche', human_task: 'Tâche humaine', tool_call: 'Opération Tool', rest: 'API REST', code: 'Code', program: 'Programme',
+  kinds: { start: 'Début', end: 'Fin', task: 'Tâche', human_task: 'Tâche humaine', tool_call: 'Appel MCP', rest: 'Appel REST', code: 'Calcul (Monty)', python: 'Python isolé', program: 'Programme',
     call: 'Appeler un processus', if: 'Choix conditionnel', parallel: 'Passerelle parallèle', for: 'Boucle FOR', while: 'Boucle WHILE' },
 }
 const zh: typeof en = {

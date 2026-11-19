@@ -1110,7 +1110,7 @@ user explicitly requests another method. Use `process_list` to refresh the catal
   engines receive authorized temporary download access. Do not copy the source locally first.
 - `process_list_runs(workflow_id: str | None = None, status: str | None = None, limit: int = 20) -> list[dict]`
   lists runs launched by the current agent.
-- `process_get_run(run_id: str) -> dict` refreshes and returns a visible run.
+- `process_get_run(run_id: str) -> dict` reads a visible run's persisted status and outputs.
 - `processus_get(run_id: str | None = None) -> dict` reads the operational state of an
   internal run. A run UUID or `galaris://processes/runs/<uuid>` reference is accepted. The same
   read-only reference supports File Sharing `file_info`, `file_read` and export through
@@ -1227,12 +1227,14 @@ Connection. HTTP errors stop the activity. Calls forward prepared inputs and map
 child data back to parent variables; all ordinary incoming predecessors must finish before one successor admission.
 File references travel without downloading or copying their contents.
 
-Inline Code uses kind `code` and `config.code`; optional `preprocess`/`postprocess` are Python
-source. An absent script uses default preparation/integration; an explicitly empty script
-prepares no values or integrates no changes. Python requires a qualified runner on a separate
-VM/host. Without it execution fails with `isolated_runner_unavailable`; there is no backend
-fallback. The runner adapter port alone does not certify a sandbox. Documentary `program`
-activities retain their separate executor.
+Inline calculations use kind `code` and Monty. Kind `python` executes `config.code` through
+the separately configured runner. Its default mode provides `dataset` and `input_files`.
+Use `return` for declared output variables and add canonical attachment URIs to `output_files`.
+For file contents, use an authorized `file_read` or `file_create` capability declared for
+that step and invoked through `call_service`. Unavailable remote execution reports
+`remote_python_unavailable`. Optional `preprocess`/`postprocess` phases use Monty.
+An absent script uses default preparation or integration. An explicitly empty script prepares
+no values or integrates no changes. Documentary `program` activities retain their separate executor.
 
 Each run stores its business variables in `process_runs.data` and its file links in
 `process_run_files`; no Dataset or Document is created. Historical v1 tasks can edit

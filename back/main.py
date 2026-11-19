@@ -10,6 +10,9 @@ from fastapi import FastAPI
 from core.api import create_app, setup_public_docs, setup_api_routers
 from core import websocket
 from modules import configure_dream_media, load_llm_provider_modules
+from scripts.process_worker import ProcessWorker
+
+process_worker = ProcessWorker()
 
 
 # Provider bridges register immutable profiles and optional service adapters.
@@ -45,7 +48,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await params_service.load_params()
         from core.observability import configure_runtime_observability
         await configure_runtime_observability()
-        from app.process import configure_default_engine, register_scheduler_jobs
+        from app.process import configure_default_engine, register_trace_retention
         from app.llm import register_scheduler_jobs as register_llm_scheduler_jobs
         from app.goal import register_scheduler_jobs as register_goal_jobs
         from app.lab import register_scheduler_jobs as register_lab_jobs
@@ -66,7 +69,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from app.task.progress import record_progress_metrics as record_task_progress
         from app.conversation.progress import record_progress_metrics as record_conversation_progress
 
-        await configure_default_engine(task_scheduler.register_periodic_job, task_scheduler.unregister_periodic_job)
+        configure_default_engine()
+        register_trace_retention()
+        params_service.register_change_listener(process_worker.reload_settings)
         register_runtime_settings()
         register_clarification_interaction()
         task_scheduler.register_periodic_job("messenger-choice-reminders", deliver_choice_reminders, interval=60.0)
@@ -86,7 +91,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         task_scheduler.register_periodic_job(
             "documentation-index", refresh_documentation_index, interval=30.0, timeout=90.0,
         )
-        register_scheduler_jobs(task_scheduler.register_periodic_job, task_scheduler.unregister_periodic_job)
         from app.file_share import repair_tick, prune_index_history, refresh_known_tick
         task_scheduler.register_periodic_job("file-index-repair", repair_tick, interval=2.0, timeout=90.0)
         task_scheduler.register_periodic_job("file-index-history", prune_index_history, interval=3600.0)
@@ -208,6 +212,14 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 start=start_task_scheduler,
                 stop=task_scheduler.stop,
                 is_running=task_scheduler.is_running,
+            ),
+            RuntimeComponent(
+                name="process_worker",
+                start=process_worker.start,
+                stop=process_worker.stop,
+                is_running=process_worker.is_running,
+                start_timeout=30.0,
+                stop_timeout=20.0,
             ),
             RuntimeComponent(
                 name="conversation_scheduler",

@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import func, select
 from core.database import get_db_session
 from core.user.models import User
 from app.agent.models import Agent, Title
@@ -14,7 +14,7 @@ from app.services.models import Service
 from app.process.models import ProcessDefinition, ProcessRun, ProcessStartJob
 from app.process.schemas import EngineRunSnapshot, EngineStartResult
 from app.process import registry
-from app.process.workers import start_engine_jobs
+from app.process.workers import EffectSlots, start_engine_jobs
 
 
 @pytest.mark.asyncio
@@ -115,3 +115,101 @@ async def test_slow_admission_does_not_block_other_run_and_parallel_worker_canno
     assert sorted(admitted) == sorted(ids)
     async with get_db_session() as db:
         assert set(await db.scalars(select(ProcessRun.status).where(ProcessRun.id.in_(ids)))) == {"running"}
+
+
+@pytest.mark.asyncio
+async def test_slow_effect_keeps_other_slots_available_on_later_ticks(committed_database):
+    slow, first_fast, next_fast = [uuid4() for _ in range(3)]
+    ready = [slow, first_fast]
+    started = asyncio.Event()
+    release = asyncio.Event()
+    executed = []
+
+    async def discover(limit, exclude):
+        return [identity for identity in ready if identity not in exclude][:limit]
+
+    async def execute(identity):
+        executed.append(identity)
+        ready.remove(identity)
+        if identity == slow:
+            started.set()
+            await release.wait()
+
+    slots = EffectSlots(discover, execute, capacity=2)
+    try:
+        async with get_db_session():
+            await slots.tick()
+        initial = slots.active[first_fast]
+        await asyncio.wait_for(started.wait(), 5)
+        await asyncio.wait_for(initial, 5)
+        ready.append(next_fast)
+        async with get_db_session():
+            await slots.tick()
+        await asyncio.wait_for(slots.active[next_fast], 5)
+        assert len(executed) == 3 and set(executed) == {slow, first_fast, next_fast}
+        assert not release.is_set() and slow in slots.active
+    finally:
+        release.set()
+        await slots.stop()
+
+
+@pytest.mark.asyncio
+async def test_dedicated_worker_restarts_and_consumes_a_durable_admission(committed_database, monkeypatch):
+    from os import getpid
+    from app.process import process_service
+    from app.process.bpmn import Flow, Node, Workflow
+    from app.process.models import ProcessNodeRun
+    from app.process.native_definitions import create
+    from app.process.values import Variable
+    from core.runtime import RuntimeComponent, RuntimeSupervisor
+    from scripts.process_worker import ProcessWorker
+
+    async with get_db_session() as db:
+        database_name = await db.scalar(select(func.current_database()))
+        assert database_name.startswith("test_concurrency_")
+        monkeypatch.setenv("POSTGRES_DB", database_name)
+        title = Title(label="Synthetic worker recovery", gender="X")
+        user = User(email="worker-recovery@example.test", hashed_password="synthetic", is_active=True)
+        db.add_all([title, user])
+        await db.flush()
+        agent = Agent(user_id=user.id, code="worker-recovery", first_name="Synthetic", last_name="Worker", title_id=title.id)
+        db.add(agent)
+        await db.flush()
+        agent_id = agent.id
+        definition = await create(actor_agent_id=agent.id, title="Synthetic worker recovery", graph=Workflow(
+            schema_version="galaris.bpmn/v2", variables=[Variable(name="proof", type="int", nullable=False)],
+            nodes=[Node(id="start", kind="start"), Node(id="compute", kind="code", outputs=["proof"],
+                config={"dataset_code": True, "code": "return {'proof': 7}"}),
+                Node(id="end", kind="end", outputs=["proof"])],
+            flows=[Flow(id="admit", source="start", target="compute"), Flow(id="finish", source="compute", target="end")],
+        ))
+        code = definition.code
+
+    worker = ProcessWorker()
+    supervisor = RuntimeSupervisor(monitor_interval=.1, jitter=lambda delay: delay)
+    supervisor.configure((RuntimeComponent(
+        name="process_worker", start=worker.start, stop=worker.stop, is_running=worker.is_running,
+        start_timeout=30, stop_timeout=20, restart_initial_delay=.1, restart_max_delay=1,
+    ),))
+    try:
+        await supervisor.start()
+        assert worker.is_running() and worker.process.pid != getpid()
+        previous = worker.process
+        previous.kill()
+        await previous.wait()
+        async with get_db_session():
+            admitted = await process_service.start_process(agent_id=agent_id, workflow_id=code, input_data={})
+        async with asyncio.timeout(30):
+            while True:
+                async with get_db_session():
+                    run = await process_service.get_run_detail(admitted.run_id, refresh_if_stale=True)
+                if run.status in process_service.TERMINAL_STATUSES:
+                    break
+                await asyncio.sleep(.1)
+        assert worker.is_running() and worker.process.pid != previous.pid
+        assert run.status == "success" and run.output == {"proof": {"type": "int", "value": 7}}
+        async with get_db_session() as db:
+            assert await db.scalar(select(func.count()).select_from(ProcessNodeRun).where(
+                ProcessNodeRun.run_id == run.id, ProcessNodeRun.node_key == "compute")) == 1
+    finally:
+        await supervisor.stop()

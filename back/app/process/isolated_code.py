@@ -1,6 +1,6 @@
 """Bounded Python-subset execution in Monty workers, without host capabilities."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
 from uuid import UUID
 import keyword
@@ -15,19 +15,22 @@ import unicodedata
 from pydantic import BaseModel, ConfigDict, Field
 
 from .engine import ProcessEngineError
+from .code_capabilities import CapabilityCall
 
 
-def dataset_program(source: str, dataset: dict[str, Any]) -> str:
+def dataset_program(source: str, dataset: dict[str, Any], *, python_files: bool = False) -> str:
     """Build source for the isolated runner; no user source executes here.
 
     Non-identifiers and reserved names remain accessible through dataset[name].
     Every invocation receives a detached JSON snapshot, never a live DB object.
     """
+    reserved = {"dataset", "input_files", "output_files", "call_service"} if python_files else {"dataset"}
     names = sorted(name for name in dataset if name.isidentifier() and not keyword.iskeyword(name)
-        and not name.startswith("_") and name != "dataset" and unicodedata.normalize("NFKC", name) == name)
+        and not name.startswith("_") and name not in reserved and unicodedata.normalize("NFKC", name) == name)
     parameters = ", ".join(["dataset", *names])
     arguments = ", ".join(["dataset", *(f"dataset[{name!r}]" for name in names)])
-    return f"def _galaris_activity({parameters}):\n{textwrap.indent(source, '    ')}\n\noutput = _galaris_activity({arguments})\n"
+    file_scope = "    global output_files\n" if python_files else ""
+    return f"def _galaris_activity({parameters}):\n{file_scope}{textwrap.indent(source, '    ')}\n\noutput = _galaris_activity({arguments})\n"
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +42,7 @@ class CodeInvocation:
     phase: Literal["preprocess", "activity", "postprocess"]
     source: str
     values: dict[str, Any]
+    handles: dict[str, str] = field(default_factory=dict[str, str])
 
 
 class CodeObservation(BaseModel):
@@ -47,6 +51,7 @@ class CodeObservation(BaseModel):
     stopped: bool = False
     result: dict[str, Any] = Field(default_factory=dict)
     diagnostic: str = Field(default="", max_length=2000)
+    capability_call: CapabilityCall | None = None
 
 
 class IsolatedCodeRunner(Protocol):

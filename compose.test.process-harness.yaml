@@ -1,0 +1,29 @@
+# Real Claude SDK with a deterministic local transport. No published ports or egress.
+services:
+  claude-test:
+    image: ${PROCESS_HARNESS_TEST_IMAGE:?Select the qualified Claude image}
+    entrypoint: ["python", "/probe.py", "process_claude"]
+    command: []
+    environment:
+      HOME: /tmp/qualification-home
+      CLAUDE_CONFIG_DIR: /data/claude
+      CLAUDE_AGENT_WORKSPACE: /data/workspace
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs:
+      - /tmp:mode=1777
+      - /data:mode=1777
+    volumes:
+      - ./back/scripts/qualify_harness_runtime.py:/probe.py:ro
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8642/health').close()"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  backend:
+    environment:
+      QUALIFY_PROCESS_CLAUDE_URL: http://claude-test:8642
+networks:
+  default:
+    internal: true

@@ -39,10 +39,11 @@ shared client aggregates these persisted traces and treats them as the primary t
 source. SDK usage remains a `partial` fallback when the gateway produced no trace; it therefore
 cannot hide an exact provider cost or a pricing estimate explicitly qualified by Galaris.
 
-The SDK uses `permission_mode="default"`; its permission callback checks Galaris authorization
-for the exact action. A refusal prevents the effect; the runtime cannot simulate human approval.
-Remembered action-type grants remain bound to the agent, harness and configuration, with a
-single-action check before each effect. Turn and Service counts follow the limits frozen in
+The SDK uses `permission_mode="default"`. For local tools, its callback checks Galaris
+authorization for the exact action. Calls to the configured Galaris MCP server pass through
+the run's proxy and follow the Service function's mode and permissions. The MCP server
+manages the approval request and continues the same call. Remembered local-tool grants
+remain bound to the agent, harness and configuration. Turn and Service counts follow the limits frozen in
 `AgentRunEnvelopeV1`.
 
 `start`, `restart`, and `update` build or recreate the image pinned by `requirements.txt`.

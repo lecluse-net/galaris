@@ -1,20 +1,22 @@
-"""Start explicitly budgeted Lab runs or compare completed runs through the public API."""
+"""Start budgeted Lab runs, compare model results, or verify a Process campaign."""
 
 from __future__ import annotations
 
 import argparse
 import asyncio
-from collections import defaultdict
+from collections import Counter, defaultdict
 import hashlib
 import json
+from math import ceil
 import os
 from pathlib import Path
-from statistics import mean
+from statistics import mean, median
 from typing import Any
 from urllib.parse import urlparse
+from uuid import UUID
 
 import httpx
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
 from app.lab.schemas import EvaluationRunDetail, EvaluationRunStart
 
@@ -25,6 +27,85 @@ class Policy(BaseModel):
     minimum_score: float = Field(default=80, ge=0, le=100)
     required_categories: list[str] = Field(default_factory=lambda: ["security", "robustness", "nominal"])
     zero_failure_categories: list[str] = Field(default_factory=lambda: ["security"])
+
+
+class ProcessEvidence(BaseModel):
+    model_config = ConfigDict(hide_input_in_errors=True)
+    id: UUID | None = None
+    status: str | None = None
+    exact_check: StrictBool | None = None
+    definition_revision: int | None = Field(default=None, ge=1)
+    duration_seconds: float | None = Field(default=None, ge=0, allow_inf_nan=False)
+
+
+class ProcessCase(BaseModel):
+    model_config = ConfigDict(hide_input_in_errors=True)
+    id: UUID
+    position: int = Field(ge=0)
+    status: str
+    run_id: UUID | None
+    evidence: ProcessEvidence
+
+
+class ProcessCampaignPage(BaseModel):
+    model_config = ConfigDict(hide_input_in_errors=True)
+    id: UUID
+    status: str
+    total: int = Field(ge=0)
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1)
+    items: list[ProcessCase]
+
+
+async def report_process_campaign(client: httpx.AsyncClient, identifier: UUID) -> dict[str, Any]:
+    """Qualify only unique, complete runs with recorded exact output checks."""
+    async def fetch(page: int) -> ProcessCampaignPage:
+        response = await client.get(f"/api/evaluation/process-campaigns/{identifier}", params={"page": page})
+        response.raise_for_status()
+        return ProcessCampaignPage.model_validate(response.json())
+
+    first = await fetch(1)
+    cases: list[ProcessCase] = []
+    pages = max(1, (first.total + first.page_size - 1) // first.page_size)
+    for number in range(1, pages + 1):
+        page = first if number == 1 else await fetch(number)
+        if (page.id, page.status, page.total, page.page, page.page_size) != (
+            identifier, first.status, first.total, number, first.page_size,
+        ):
+            raise ValueError("Process campaign changed during inspection")
+        expected_items = min(first.page_size, first.total - (number - 1) * first.page_size)
+        if len(page.items) != expected_items:
+            raise ValueError("Process campaign page is incomplete")
+        cases.extend(page.items)
+
+    failures: list[str] = []
+    if first.status != "completed" or not cases:
+        failures.append("Campaign must contain completed cases")
+    if ([case.position for case in cases] != list(range(first.total))
+            or len({case.id for case in cases}) != first.total):
+        failures.append("Case positions or identities are missing or duplicated")
+    if (len({case.run_id for case in cases}) != first.total
+            or any(case.run_id is None or case.evidence.id != case.run_id for case in cases)):
+        failures.append("Each case must identify a distinct Process run with matching evidence")
+    if any(case.status != "success" or case.evidence.status != "success" for case in cases):
+        failures.append("Every Process run must succeed")
+    if any(case.evidence.exact_check is not True for case in cases):
+        failures.append("Every case must have a passing exact output check")
+    revisions = {case.evidence.definition_revision for case in cases}
+    if len(revisions) != 1 or None in revisions:
+        failures.append("All cases must use a single recorded Process definition revision")
+
+    durations = sorted(case.evidence.duration_seconds for case in cases if case.evidence.duration_seconds is not None)
+    return {
+        "campaign_id": str(identifier), "qualified": not failures, "failures": failures,
+        "status": first.status, "case_count": first.total,
+        "case_statuses": dict(Counter(case.status for case in cases)),
+        "exact_matches": sum(case.evidence.exact_check is True for case in cases),
+        "definition_revision": next(iter(revisions)) if len(revisions) == 1 else None,
+        "duration_samples": len(durations),
+        "median_seconds": round(median(durations), 3) if durations else None,
+        "p95_seconds": round(durations[ceil(0.95 * len(durations)) - 1], 3) if durations else None,
+    }
 
 
 def compare(baseline: EvaluationRunDetail, candidate: EvaluationRunDetail, policy: Policy) -> dict[str, Any]:
@@ -100,11 +181,12 @@ async def main() -> None:
     parser.add_argument("--baseline")
     parser.add_argument("--candidate")
     parser.add_argument("--start-dataset")
+    parser.add_argument("--process-campaign", type=UUID, help="Verify an existing Lab Process campaign without mutating it")
     parser.add_argument("--llm-id", type=int)
     parser.add_argument("--judge-llm-id", type=int)
     parser.add_argument("--max-cost", type=float)
     parser.add_argument("--policy", type=Path, default=Path(__file__).parents[1] / "lab-qualification.json")
-    parser.add_argument("--output", type=Path, default=Path("/repo/artifacts/lab-qualification.json"))
+    parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     address = urlparse(str(args.base_url))
     if address.scheme != "https" and not (address.scheme == "http" and address.hostname in {"localhost", "127.0.0.1", "::1"}):
@@ -114,12 +196,17 @@ async def main() -> None:
     token = os.environ.get("LAB_ACCESS_TOKEN")
     if not token:
         parser.error("LAB_ACCESS_TOKEN is required")
-    policy = Policy.model_validate_json(args.policy.read_text())
+    if args.process_campaign and (args.start_dataset or args.baseline or args.candidate
+                                  or args.llm_id is not None or args.judge_llm_id is not None or args.max_cost is not None):
+        parser.error("Process campaign verification is a separate operation")
     prefix = f"/api/evaluation/{args.mechanism}"
     async with httpx.AsyncClient(base_url=args.base_url, headers={"Authorization": f"Bearer {token}"}, timeout=30) as client:
-        if args.start_dataset:
+        if args.process_campaign:
+            result = await report_process_campaign(client, args.process_campaign)
+        elif args.start_dataset:
             if args.llm_id is None or args.max_cost is None or args.baseline or args.candidate:
                 parser.error("Starting requires --llm-id and --max-cost; comparison is a separate operation")
+            policy = Policy.model_validate_json(args.policy.read_text())
             payload = EvaluationRunStart(llm_id=args.llm_id, judge_llm_id=args.judge_llm_id,
                                          max_cost=args.max_cost, repetitions=policy.repetitions)
             response = await client.post(f"{prefix}/datasets/{args.start_dataset}/runs", json=payload.model_dump())
@@ -128,14 +215,17 @@ async def main() -> None:
         else:
             if not args.baseline or not args.candidate:
                 parser.error("Comparison requires --baseline and --candidate")
+            policy = Policy.model_validate_json(args.policy.read_text())
             runs: list[EvaluationRunDetail] = []
             for identifier in (args.baseline, args.candidate):
                 response = await client.get(f"{prefix}/runs/{identifier}")
                 response.raise_for_status()
                 runs.append(EvaluationRunDetail.model_validate(response.json()))
             result = compare(runs[0], runs[1], policy)
-        args.output.parent.mkdir(parents=True, exist_ok=True)
-        args.output.write_text(json.dumps(result, indent=2) + "\n")
+        default_report = "process-campaign-qualification.json" if args.process_campaign else "lab-qualification.json"
+        output = args.output or Path("/repo/artifacts") / default_report
+        output.parent.mkdir(parents=True, exist_ok=True)
+        output.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
         print(json.dumps(result))
         if not args.start_dataset and not result["qualified"]:
             raise SystemExit(1)

@@ -3912,7 +3912,6 @@
           "back/app/process/native_access.py",
           "back/app/process/native_actors.py",
           "back/app/process/native_definitions.py",
-          "back/app/process/native_engine.py",
           "back/app/process/native_router.py",
           "back/app/process/native_runs.py",
           "back/app/process/native_sharing.py",
@@ -3995,6 +3994,7 @@
           "back/app/process/activity_jobs.py",
           "back/app/process/bpmn.py",
           "back/app/process/catalogue.py",
+          "back/app/process/code_broker.py",
           "back/app/process/dbadmin.py",
           "back/app/process/input_preparation.py",
           "back/app/process/mcp.py",
@@ -4024,6 +4024,7 @@
         "files": [
           "back/app/process/activity_controls.py",
           "back/app/process/activity_jobs.py",
+          "back/app/process/code_broker.py",
           "back/app/process/native_engine.py",
           "back/app/process/process_service.py",
           "back/app/process/retention.py",
@@ -4050,6 +4051,7 @@
           "back/app/process/activity_controls.py",
           "back/app/process/activity_jobs.py",
           "back/app/process/catalogue.py",
+          "back/app/process/code_broker.py",
           "back/app/process/dataset_usage.py",
           "back/app/process/events.py",
           "back/app/process/export.py",
@@ -4124,6 +4126,13 @@
       },
       {
         "files": [
+          "back/app/process/remote_python.py"
+        ],
+        "source": "app.process",
+        "target": "core.settings"
+      },
+      {
+        "files": [
           "back/app/process/native_router.py",
           "back/app/process/process_service.py",
           "back/app/process/run_data.py",
@@ -4141,7 +4150,6 @@
           "back/app/process/native_access.py",
           "back/app/process/native_actors.py",
           "back/app/process/native_definitions.py",
-          "back/app/process/native_engine.py",
           "back/app/process/process_service.py"
         ],
         "source": "app.process",
@@ -4289,6 +4297,7 @@
           "back/app/services/catalog_refresh_service.py",
           "back/app/services/deletion.py",
           "back/app/services/documentation_service.py",
+          "back/app/services/facade.py",
           "back/app/services/mandatory_services.py",
           "back/app/services/mcp_loader.py",
           "back/app/services/models.py",
@@ -25973,6 +25982,8 @@
       "POSTGRES_PASSWORD",
       "POSTGRES_PORT",
       "POSTGRES_USER",
+      "PROCESS_PYTHON_RUNNER_TOKEN",
+      "PROCESS_PYTHON_RUNNER_URL",
       "WEBRTC_ICE_URLS",
       "WEBRTC_TURN_HOST",
       "WEBRTC_TURN_MODE",
@@ -26007,6 +26018,8 @@
       "POSTGRES_PASSWORD",
       "POSTGRES_PORT",
       "POSTGRES_USER",
+      "PROCESS_PYTHON_RUNNER_TOKEN",
+      "PROCESS_PYTHON_RUNNER_URL",
       "SSH_EXECUTOR_CPUS",
       "SSH_EXECUTOR_MEMORY_LIMIT",
       "TZ",

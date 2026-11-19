@@ -1,0 +1,18 @@
+# Disposable n8n API for the Process REST qualification.
+services:
+  n8n-test:
+    image: docker.n8n.io/n8nio/n8n:2.48.5@sha256:c0ea1246a81a34ce8e2b3cfb1f718b97de64b0a1b3747ad24d6d431826bb71ad
+    environment:
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+      N8N_SECURE_COOKIE: "false"
+    tmpfs:
+      - /home/node/.n8n:uid=1000,gid=1000,mode=0700
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:5678/healthz/readiness').then(r => { if (!r.ok) process.exitCode = 1 })"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+  backend:
+    environment:
+      QUALIFY_N8N_DATA_TABLE_URL: http://n8n-test:5678

@@ -147,6 +147,64 @@ def test_lab_qualification_cannot_hide_a_critical_or_incomparable_result(fault):
     assert result["qualified"] == (fault is None), result
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("fault", [None, "mixed_revision", "duplicate_run", "missing_check",
+    "different_output", "wrong_evidence", "failed_run", "incomplete_campaign", "changed_page"])
+async def test_process_campaign_qualification_checks_all_pages_without_exporting_run_data(fault):
+    from uuid import uuid4
+
+    import httpx
+
+    from scripts.qualify_lab import report_process_campaign
+
+    identifier = uuid4()
+    cases = []
+    for position in range(51):
+        run = str(uuid4())
+        cases.append({"id": str(uuid4()), "position": position, "status": "success", "run_id": run,
+            "evidence": {"id": run, "status": "success", "definition_revision": 7,
+                "duration_seconds": float(position + 1), "exact_check": True,
+                "output": {"result": "synthetic private output"}, "data": {"input": "synthetic private input"}}})
+    last = cases[-1]
+    if fault == "mixed_revision":
+        last["evidence"]["definition_revision"] = 8
+    elif fault == "duplicate_run":
+        last["run_id"] = last["evidence"]["id"] = cases[0]["run_id"]
+    elif fault == "missing_check":
+        last["evidence"]["exact_check"] = None
+    elif fault == "different_output":
+        last["evidence"]["exact_check"] = False
+    elif fault == "wrong_evidence":
+        last["evidence"]["id"] = str(uuid4())
+    elif fault == "failed_run":
+        last["status"] = last["evidence"]["status"] = "error"
+
+    observed_pages = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        assert request.method == "GET"
+        assert request.url.path == f"/api/evaluation/process-campaigns/{identifier}"
+        page = int(request.url.params["page"])
+        observed_pages.append(page)
+        return httpx.Response(200, json={"id": str(identifier), "page": page, "page_size": 50,
+            "status": "running" if fault == "incomplete_campaign" else "completed",
+            "total": 52 if fault == "changed_page" and page == 2 else 51,
+            "items": cases[(page - 1) * 50:page * 50]})
+
+    async with httpx.AsyncClient(base_url="https://qualification.invalid", transport=httpx.MockTransport(respond)) as client:
+        if fault == "changed_page":
+            with pytest.raises(ValueError, match="changed during inspection"):
+                await report_process_campaign(client, identifier)
+            assert observed_pages == [1, 2]
+            return
+        report = await report_process_campaign(client, identifier)
+    assert observed_pages == [1, 2]
+    assert report["qualified"] == (fault is None), report
+    assert report["case_count"] == 51 and report["median_seconds"] == 26 and report["p95_seconds"] == 49
+    assert "synthetic private" not in json.dumps(report)
+    assert last["run_id"] not in json.dumps(report)
+
+
 @pytest.mark.parametrize("fault", [None, "missing_test", "skipped_test", "surviving_mutation", "xml_entity"])
 def test_regression_links_require_executed_tests_and_detected_faults(tmp_path, fault):
     from scripts.check_regression_evidence import check

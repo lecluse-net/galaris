@@ -3,6 +3,7 @@
 from typing import Literal
 from urllib.parse import urlsplit
 import re
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
 
@@ -27,6 +28,7 @@ class RestConfig(BaseModel):
     header_params: dict[str, str] = Field(default_factory=dict)
     timeout: int = Field(default=60, ge=1, le=300)
     max_response_bytes: int = Field(default=2_097_152, ge=1, le=16_777_216)
+    effect_receipt: Literal["n8n_data_table_insert"] | None = None
 
     @model_validator(mode="after")
     def validate_configuration(self) -> "RestConfig":
@@ -84,5 +86,14 @@ class RestResponse(BaseModel):
     body: JsonValue
 
 
+class RestEffectIntent(BaseModel):
+    reference: UUID
+    binding: str
+
+
 class RestError(ValueError):
     """Safe failure message; remote URLs and credentials never appear in exceptions."""
+
+
+class RestRequestRejected(RestError):
+    """Local validation rejected the request before sending it to the provider."""

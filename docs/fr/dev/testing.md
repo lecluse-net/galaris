@@ -270,6 +270,22 @@ lance explicitement une campagne. `--baseline <uuid> --candidate <uuid>` compare
 terminées. Le rapport est `artifacts/lab-qualification.json`. Une note de juge ne prouve pas
 une livraison externe ; conserver la revue humaine indépendante pour les erreurs critiques.
 
+Pour un parcours BPMN, préparer dans **Lab → Processus** des cas synthétiques avec une
+sortie attendue exacte pour chacun. Rejouer les mêmes cas et la même révision BPMN dans
+une campagne par compte de harnais de test. Une fois la campagne terminée, produire son
+rapport avec `LAB_ACCESS_TOKEN` fourni dans l'environnement.
+
+```bash
+make qualify-lab ARGS='--base-url https://<instance-de-test> --process-campaign <uuid>'
+```
+
+La commande lit toutes les pages de la campagne. Elle exige une réussite par cas, des
+runs distincts, des sorties conformes et une seule révision BPMN. Le fichier
+`artifacts/process-campaign-qualification.json` conserve les compteurs et les latences
+médiane et p95 disponibles. Pour conserver les rapports par compte, passer un chemin
+distinct à `--output` sous `/repo/artifacts/`.
+Vérifier les droits, l'accès aux fichiers et le compte du harnais dans le parcours assemblé.
+
 Pour Matrix, fournir `MATRIX_QUALIFICATION_SENDER_TOKEN` et `MATRIX_QUALIFICATION_OBSERVER_TOKEN`
 par environnement, puis `make qualify-matrix` avec ces arguments dans `ARGS` :
 `--homeserver <HTTPS> --sender <compte-test> --observer <second-compte-test>

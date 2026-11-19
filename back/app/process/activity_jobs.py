@@ -1,14 +1,14 @@
 """Durable external activities outside native graph progression passes."""
 
-import asyncio
+from collections.abc import Collection
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
 
-from core.database import get_db, get_db_session
-from app.services.facade import RestRequest, execute_rest_request, execute_workflow_tool
+from core.database import get_db
+from app.services.facade import RestRequest, RestRequestRejected, execute_rest_request, execute_workflow_tool
 from app.task import task_service
 from .models import ProcessNodeAttempt, ProcessNodeRun, ProcessRun
 from .process_service import TERMINAL_STATUSES
@@ -92,7 +92,7 @@ async def execute_external_activity(identity: UUID) -> None:
                     continuation=prepared.get("authorization", {}).get("continuation"))
                 if tool_receipt["status"] == "completed":
                     result = tool_receipt["output"]
-    except PermissionError as exc:
+    except (PermissionError, RestRequestRejected) as exc:
         safe_failure = node.kind == "rest" or attempt.status == "claiming"
         error = str(exc) if safe_failure else "Tool outcome is unknown; reconcile before retrying"
     except Exception:
@@ -135,21 +135,10 @@ async def execute_external_activity(identity: UUID) -> None:
             await task_service.complete_workflow_operation(attempt.task_id, attempt.receipt or {}, error=attempt.error)
 
 
-async def run_external_activity_jobs() -> int:
-    """Scheduler root: each concurrent HTTP activity owns its DB session."""
-    identities = list(await get_db().scalars(select(ProcessNodeAttempt.id)
+async def discover_external_activities(limit: int, exclude: Collection[UUID]) -> list[UUID]:
+    return list(await get_db().scalars(select(ProcessNodeAttempt.id)
         .join(ProcessNodeRun, ProcessNodeRun.id == ProcessNodeAttempt.node_run_id)
         .join(ProcessRun, ProcessRun.id == ProcessNodeRun.run_id)
         .where(ProcessNodeAttempt.status.in_(("rest_ready", "tool_ready")), ProcessNodeRun.status == "waiting",
-            ProcessRun.status.not_in(TERMINAL_STATUSES))
-        .order_by(ProcessNodeAttempt.created_at, ProcessNodeAttempt.id).limit(4)))
-    await get_db().commit()
-
-    async def execute(identity: UUID) -> None:
-        async with get_db_session():
-            await execute_external_activity(identity)
-
-    async with asyncio.TaskGroup() as group:
-        for identity in identities:
-            group.create_task(execute(identity))
-    return len(identities)
+            ProcessRun.status.not_in(TERMINAL_STATUSES), ProcessNodeAttempt.id.not_in(exclude))
+        .order_by(ProcessNodeAttempt.created_at, ProcessNodeAttempt.id).limit(limit)))

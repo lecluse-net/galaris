@@ -27,10 +27,10 @@ where permitted on each step, process inputs derived from its root Start node, d
 inputs are transmitted and selected outputs can be integrated. Business values stay in `process_runs.data` and links in `process_run_files`,
 without a Dataset. File references travel between
 activities without transfers; bytes are requested only for explicit File Sharing
-operations. Historical v1 remains interpreted under its original contract. Python phases
-use the runner port and a fresh Monty worker for pure computations without host capabilities.
-General Python and its broker still require qualification on a separate VM/host; local tests
-do not constitute a global security qualification.
+operations. Historical v1 remains interpreted under its original contract. Calculation phases
+use the runner port and a fresh Monty worker. An Isolated Python activity uses the remote
+supervisor over TLS. Galaris binds each declared MCP/REST capability to the invocation and
+records its intent and receipt. The BPMN plan tracks qualification on a dedicated VM with `runsc`.
 
 A tool call returns a structured output directly. Business workflows, such as those managed
 in n8n, use a durable `ProcessRun` so the Agent can wait, resume, cancel, and analyze them
@@ -183,6 +183,10 @@ covers the corrected call. See
 5. The worker starts the engine with a `correlation_id` and callback token specific to the run.
 
 ## Progress and Completion
+
+A supervised worker process separate from the API runs jobs and periodic refreshes.
+A private Unix connection relays notifications to the API, which applies WebSocket
+visibility rules. HTTP and MCP reads use the persisted state.
 
 An engine returns a snapshot through a callback or through `refresh_run`. Each event is added
 to `process_run_events`, then the transition is validated by the common matrix. Payloads,

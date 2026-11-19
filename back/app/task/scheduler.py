@@ -169,19 +169,25 @@ def _retry_policy(error: str, consecutive_failures: int) -> tuple[int, float, bo
     return max_attempts, delay, network
 
 
-def start() -> None:
+_maintenance_only = False
+
+
+def start(*, maintenance_only: bool = False) -> None:
     """Start the scheduling loop if it is not already running."""
-    global _scheduler_task, _wake_event, _loop, _watching_changes
+    global _scheduler_task, _wake_event, _loop, _watching_changes, _maintenance_only
     if _scheduler_task is not None and not _scheduler_task.done():
         return
     _loop = asyncio.get_running_loop()
+    _maintenance_only = maintenance_only
     _wake_event = asyncio.Event()
-    if not _watching_changes:
+    if not maintenance_only and not _watching_changes:
         watch_committed_changes({Task: (
             "status", "paused", "agent_id", "next_attempt_at", "lease_token", "deleted_at",
         )}, wake)
         _watching_changes = True
-    _scheduler_task = asyncio.create_task(_run_loop(), name="task-scheduler")
+    _scheduler_task = asyncio.create_task(
+        _run_loop(maintenance_only=maintenance_only), name="task-scheduler"
+    )
     logger.info("Task scheduler started")
 
 
@@ -213,7 +219,7 @@ def unregister_periodic_job(name: str) -> None:
     _periodic_last_run.pop(name, None)
 
 
-async def stop() -> None:
+async def stop(*, drain_periodic: float = 0) -> None:
     """Stop the scheduling loop cleanly."""
     global _scheduler_task, _wake_event, _loop
     task = _scheduler_task
@@ -229,6 +235,8 @@ async def stop() -> None:
         pass
     for running_task in list(_running.values()):
         running_task.cancel()
+    if drain_periodic > 0 and _periodic_running:
+        await asyncio.wait(tuple(_periodic_running.values()), timeout=drain_periodic)
     for periodic_task in list(_periodic_running.values()):
         periodic_task.cancel()
     if _running:
@@ -261,7 +269,7 @@ def wake(
     task_uuid = UUID(str(task_id)) if task_id is not None else None
 
     def _wake() -> None:
-        if fast and task_uuid is not None:
+        if fast and task_uuid is not None and not _maintenance_only:
             _queue_fast_path(task_uuid)
         _set_wake()
 
@@ -305,13 +313,13 @@ def _set_wake() -> None:
         event.set()
 
 
-async def _run_loop() -> None:
+async def _run_loop(*, maintenance_only: bool = False) -> None:
     global _work_pending
     scan_at = 0.0
     while True:
         try:
             event = _wake_event
-            scan = time.monotonic() >= scan_at or _work_pending
+            scan = not maintenance_only and (time.monotonic() >= scan_at or _work_pending)
             _work_pending = False
             if event is not None:
                 # Clear before querying: a commit during the query must survive
@@ -327,11 +335,11 @@ async def _run_loop() -> None:
                 scan_at = time.monotonic() + await _next_scan_delay()
             # Maintenance keeps its own cadence without rescanning the task
             # queue every time a periodic observer or outbox job is due.
-            due = [scan_at]
+            due = [] if maintenance_only else [scan_at]
             for name, job in _periodic_jobs.items():
                 if name not in _periodic_running:
                     due.append(_periodic_last_run.get(name, 0.0) + job.interval)
-            await _wait_for_work(timeout=max(0.0, min(due) - time.monotonic()))
+            await _wait_for_work(timeout=max(0.0, min(due, default=time.monotonic() + 1) - time.monotonic()))
         except asyncio.CancelledError:
             raise
         except Exception:

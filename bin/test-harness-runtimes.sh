@@ -6,11 +6,16 @@ source_root=$PWD
 temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT
 report_dir="$source_root/artifacts/harness-runtimes"
+runtimes=(codex claude_agent hermes deepseek_harness)
+if [[ "${1:-}" == --process ]]; then
+  report_dir="$source_root/artifacts/process-harness-qualification"
+  runtimes=(claude_agent)
+fi
 mkdir -p "$report_dir"
 report="$report_dir/summary.txt"
 : > "$report"
 failed=0
-for runtime in codex claude_agent hermes deepseek_harness; do
+for runtime in "${runtimes[@]}"; do
   context="$temporary/$runtime"
   mkdir -p "$context"
   cp back/bridge/"$runtime"/default-agent/Dockerfile "$context/"
@@ -49,6 +54,15 @@ for runtime in codex claude_agent hermes deepseek_harness; do
   fi
   digest=$(docker image inspect "$image" --format '{{.Id}}')
   printf 'Testing %s %s\n' "$runtime" "$digest"
+  if [[ "${1:-}" == --process ]]; then
+    if ! PROCESS_HARNESS_TEST_IMAGE="$image" bash bin/test-back.sh app/process/tests/test_native_bpmn.py \
+      -k 'uses_real_claude_harness' > "$report_dir/$runtime.log" 2>&1; then
+      printf 'FAIL BPMN via %s %s (see %s.log)\n' "$runtime" "$digest" "$runtime" | tee "$report" >&2
+      exit 1
+    fi
+    printf 'PASS BPMN via %s %s source=%s\n' "$runtime" "$digest" "$context_hash" | tee "$report"
+    exit 0
+  fi
   if docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges \
       --read-only --memory 4g --cpus 2 --pids-limit 256 \
       --tmpfs /tmp:mode=1777 --tmpfs /root:mode=1777 --tmpfs /home:mode=1777 \

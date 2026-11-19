@@ -2,17 +2,23 @@
 
 import asyncio
 import base64
+import hmac
 import json
+from collections.abc import Awaitable, Callable
 from contextlib import nullcontext
 from typing import Any, cast
 from urllib.parse import quote, quote_plus, unquote, urlsplit
+from uuid import UUID, uuid4
 
 import httpx
 import logfire
 from pydantic import JsonValue, ValidationError
 
 from . import service
-from .rest_contracts import RestConfig, RestError, RestRequest, RestResponse, validate_rest_base_url
+from . import n8n_receipt
+from .authorization import fingerprint
+from .rest_contracts import (RestConfig, RestEffectIntent, RestError, RestRequest, RestRequestRejected, RestResponse,
+                             validate_rest_base_url)
 
 
 def _request_url(base: str, path: str) -> str:
@@ -27,23 +33,46 @@ def _request_url(base: str, path: str) -> str:
     if (parts.scheme or parts.netloc or parts.query or parts.fragment or decoded.startswith("//")
             or "\\" in decoded or any(ord(char) < 32 for char in decoded)
             or any(part in {".", ".."} for part in decoded.split("/")) or "%" in decoded):
-        raise RestError("REST path must stay relative to the configured base URL")
+        raise ValueError("REST path must stay relative to the configured base URL")
     return base.rstrip("/") + "/" + path.lstrip("/")
 
 
 async def execute_rest_request(*, agent_id: int, service_code: str, request: RestRequest,
-                               connection_id: int | None = None) -> RestResponse:
+                               connection_id: int | None = None,
+                               admit_effect: Callable[[RestEffectIntent], Awaitable[bool]] | None = None) -> RestResponse:
     """Invoke any endpoint through the agent's active connection, without per-operation grants.
 
     Callers are responsible for admitting their authenticated execution context. This is a
     domain facade, not an HTTP proxy or an automatically exposed MCP function. HTTP error
-    statuses are returned as results; transport failures never retry a potentially applied effect.
+    statuses are returned as results. RestRequestRejected guarantees that local validation
+    failed before sending. Transport failures never retry a potentially applied effect.
     """
+    return await _execute_rest_request(agent_id=agent_id, service_code=service_code, request=request,
+        connection_id=connection_id, admit_effect=admit_effect)
+
+
+async def find_rest_effect(*, agent_id: int, service_code: str, request: RestRequest, intent: RestEffectIntent) -> int | None:
+    """Return a confirmed provider row identity without repeating a mutation."""
+    try:
+        row = n8n_receipt.insert_row(request)
+        if row is None:
+            return None
+        response = await _execute_rest_request(agent_id=agent_id, service_code=service_code,
+            request=n8n_receipt.lookup_request(request.path, intent.reference), expected_effect=(intent, request))
+        return n8n_receipt.confirmed_row_id(response, row, intent.reference)
+    except (PermissionError, ValueError):
+        return None
+
+
+async def _execute_rest_request(*, agent_id: int, service_code: str, request: RestRequest,
+                                connection_id: int | None = None,
+                                admit_effect: Callable[[RestEffectIntent], Awaitable[bool]] | None = None,
+                                expected_effect: tuple[RestEffectIntent, RestRequest] | None = None) -> RestResponse:
     from app.connection.facade import get_connection_by_agent_service, get_connection, get_params_as_dict
 
     tool = await service.get_service_record(service_code)
     if tool is None or not tool.rest_config:
-        raise RestError("REST API is not enabled for this Service")
+        raise RestRequestRejected("REST API is not enabled for this Service")
     connection = (await get_connection(connection_id) if connection_id is not None
                   else await get_connection_by_agent_service(tool.id, agent_id))
     if connection is not None:
@@ -53,19 +82,19 @@ async def execute_rest_request(*, agent_id: int, service_code: str, request: Res
     try:
         config = RestConfig.model_validate(tool.rest_config)
     except ValidationError:
-        raise RestError("Invalid REST Service configuration") from None
+        raise RestRequestRejected("Invalid REST Service configuration") from None
     _, params = await get_params_as_dict(connection)
 
     def value(name: str) -> str:
         result: Any = params.get(name)
         if result is None or result == "":
-            raise RestError("A required REST connection parameter is missing")
+            raise RestRequestRejected("A required REST connection parameter is missing")
         return str(result)
 
     def header_value(name: str) -> str:
         result = value(name)
         if not result.isascii() or "\r" in result or "\n" in result:
-            raise RestError("A REST connection header parameter is invalid")
+            raise RestRequestRejected("A REST connection header parameter is invalid")
         return result
 
     base = config.base_url
@@ -74,10 +103,10 @@ async def execute_rest_request(*, agent_id: int, service_code: str, request: Res
     try:
         url = _request_url(base, request.path)
     except ValueError:
-        raise RestError("Invalid REST destination or relative path") from None
+        raise RestRequestRejected("Invalid REST destination or relative path") from None
     headers = httpx.Headers(request.headers)
     if any(name in headers for name in ("host", "content-length", "transfer-encoding", "connection")):
-        raise RestError("Transport headers cannot be supplied by a REST caller")
+        raise RestRequestRejected("Transport headers cannot be supplied by a REST caller")
     secret_names = {name for name, definition in tool.connection_schema.get("params", {}).items()
                     if definition.get("type") == "password"}
     secrets = {str(params[name]) for name in secret_names if params.get(name)}
@@ -103,6 +132,23 @@ async def execute_rest_request(*, agent_id: int, service_code: str, request: Res
                 headers["Authorization" if auth.type == "bearer" else auth.header_name] = (
                     "Bearer " + token if auth.type == "bearer" else token)
 
+    effect: RestEffectIntent | None = None
+    supports_receipt = (config.effect_receipt == "n8n_data_table_insert" and auth.type == "header"
+        and auth.header_name.lower() == "x-n8n-api-key" and urlsplit(base).path.rstrip("/").endswith("/api/v1"))
+
+    def effect_binding(original: RestRequest, reference: UUID) -> str:
+        return fingerprint(("n8n-data-table-insert/v1", reference, tool.id, connection.id, agent_id, base.rstrip("/"),
+            dict(headers.items()), original.model_dump(mode="json")))
+
+    if expected_effect is not None:
+        intent, original = expected_effect
+        if not supports_receipt or not hmac.compare_digest(effect_binding(original, intent.reference), intent.binding):
+            raise RestRequestRejected("The original REST connection is unavailable for reconciliation")
+    elif admit_effect is not None and supports_receipt and (row := n8n_receipt.insert_row(request)) is not None:
+        reference = uuid4()
+        effect = RestEffectIntent(reference=reference, binding=effect_binding(request, reference))
+        request = n8n_receipt.insert_with_reference(request, row, reference)
+
     def redact(text: str) -> str:
         for secret in sorted(secrets, key=len, reverse=True):
             for representation in (secret, quote(secret, safe=""), quote_plus(secret)):
@@ -119,17 +165,23 @@ async def execute_rest_request(*, agent_id: int, service_code: str, request: Res
         return value
 
     kwargs: dict[str, Any] = {}
-    if "json_body" in request.model_fields_set:
-        kwargs["content"] = json.dumps(request.json_body, ensure_ascii=False, allow_nan=False).encode("utf-8")
-        headers.setdefault("Content-Type", "application/json")
-    elif request.text_body is not None:
-        kwargs["content"] = request.text_body.encode("utf-8")
+    try:
+        if "json_body" in request.model_fields_set:
+            kwargs["content"] = json.dumps(request.json_body, ensure_ascii=False, allow_nan=False).encode("utf-8")
+            headers.setdefault("Content-Type", "application/json")
+        elif request.text_body is not None:
+            kwargs["content"] = request.text_body.encode("utf-8")
+    except ValueError:
+        raise RestRequestRejected("REST request body cannot be encoded") from None
+    if effect is not None and admit_effect is not None and not await admit_effect(effect):
+        raise RestRequestRejected("The Process stopped before sending the REST request")
+    timeout = min(config.timeout, 5) if expected_effect is not None else config.timeout
     try:
         # Query authentication necessarily places a credential in the transport URL.
         # Do not let automatic HTTP instrumentation export that URL to telemetry.
         with logfire.suppress_instrumentation() if auth.type == "query" else nullcontext():
-            async with asyncio.timeout(config.timeout):
-                async with httpx.AsyncClient(timeout=config.timeout, follow_redirects=False, trust_env=False) as client:
+            async with asyncio.timeout(timeout):
+                async with httpx.AsyncClient(timeout=timeout, follow_redirects=False, trust_env=False) as client:
                     async with client.stream(request.method, url, params=query, headers=headers, auth=authentication, **kwargs) as response:
                         content = bytearray()
                         async for chunk in response.aiter_bytes(chunk_size=65536):

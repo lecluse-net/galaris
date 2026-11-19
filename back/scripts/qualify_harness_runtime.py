@@ -12,6 +12,7 @@ import importlib.util
 import json
 import os
 from pathlib import Path
+import re
 import signal
 import sys
 import threading
@@ -25,6 +26,12 @@ gate: dict[str, Any] = {}
 
 
 class ModelService(BaseHTTPRequestHandler):
+    def message_answer(self, body: dict[str, Any]) -> str:
+        return ANSWER
+
+    def message_tool(self, body: dict[str, Any]) -> dict[str, Any] | None:
+        return None
+
     def log_message(self, format: str, *args: Any) -> None:
         pass
 
@@ -163,18 +170,21 @@ class ModelService(BaseHTTPRequestHandler):
             ]
             self.events([(kind, {"type": kind, "sequence_number": i, **payload}) for i, (kind, payload) in enumerate(types)])
         elif "/messages" in self.path:
+            answer = self.message_answer(body)
             message = {"id": "msg_qualification", "type": "message", "role": "assistant", "model": body.get("model"),
-                       "content": [{"type": "text", "text": ANSWER}], "stop_reason": "end_turn", "stop_sequence": None,
+                       "content": [{"type": "text", "text": answer}], "stop_reason": "end_turn", "stop_sequence": None,
                        "usage": {"input_tokens": 10, "output_tokens": 2}}
+            tool_use = self.message_tool(body)
             if gate and not gate.get("model_dispatched") and any(tool.get("name") == "Write" for tool in body.get("tools", [])):
                 gate["model_dispatched"] = True
-                item = {"type": "tool_use", "id": "call_qualification", "name": "Write", "input": {"file_path": gate["path"], "content": "approved"}}
-                message.update(content=[item], stop_reason="tool_use")
+                tool_use = {"type": "tool_use", "id": "call_qualification", "name": "Write", "input": {"file_path": gate["path"], "content": "approved"}}
+            if tool_use is not None:
+                message.update(content=[tool_use], stop_reason="tool_use")
                 if body.get("stream"):
                     self.events([
                         ("message_start", {"type": "message_start", "message": {**message, "content": [], "stop_reason": None}}),
-                        ("content_block_start", {"type": "content_block_start", "index": 0, "content_block": {**item, "input": {}}}),
-                        ("content_block_delta", {"type": "content_block_delta", "index": 0, "delta": {"type": "input_json_delta", "partial_json": json.dumps(item["input"])}}),
+                        ("content_block_start", {"type": "content_block_start", "index": 0, "content_block": {**tool_use, "input": {}}}),
+                        ("content_block_delta", {"type": "content_block_delta", "index": 0, "delta": {"type": "input_json_delta", "partial_json": json.dumps(tool_use["input"])}}),
                         ("content_block_stop", {"type": "content_block_stop", "index": 0}),
                         ("message_delta", {"type": "message_delta", "delta": {"stop_reason": "tool_use", "stop_sequence": None}, "usage": {"output_tokens": 2}}),
                         ("message_stop", {"type": "message_stop"}),
@@ -188,7 +198,7 @@ class ModelService(BaseHTTPRequestHandler):
             self.events([
                 ("message_start", {"type": "message_start", "message": {**message, "content": [], "stop_reason": None}}),
                 ("content_block_start", {"type": "content_block_start", "index": 0, "content_block": {"type": "text", "text": ""}}),
-                ("content_block_delta", {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": ANSWER}}),
+                ("content_block_delta", {"type": "content_block_delta", "index": 0, "delta": {"type": "text_delta", "text": answer}}),
                 ("content_block_stop", {"type": "content_block_stop", "index": 0}),
                 ("message_delta", {"type": "message_delta", "delta": {"stop_reason": "end_turn", "stop_sequence": None}, "usage": {"output_tokens": 2}}),
                 ("message_stop", {"type": "message_stop"}),
@@ -440,9 +450,78 @@ async def http_adapter(runtime: str) -> None:
             thread.join(timeout=5)
 
 
+def serve_process_claude() -> None:
+    """Expose the real managed Claude runtime with a loopback model for the BPMN test."""
+    observations: dict[str, list[str]] = {}
+
+    class ProcessModel(ModelService):
+        def message_answer(self, body: dict[str, Any]) -> str:
+            prompt = json.dumps(body.get("messages", []), ensure_ascii=False)
+            task = self.headers.get("X-Galaris-Task-Id")
+            if task:
+                observations.setdefault(task, []).append(prompt)
+            if "qualification-mcp-output" in prompt:
+                return "Synthetic review finished."
+            accepted = ({"type": "string", "value": "invalid"} if "qualification-invalid-output" in prompt
+                        else {"type": "bool", "value": True})
+            return json.dumps({"accepted": accepted})
+
+        def message_tool(self, body: dict[str, Any]) -> dict[str, Any] | None:
+            messages = body.get("messages", [])
+            prompt = json.dumps(messages, ensure_ascii=False)
+            if "qualification-mcp-output" not in prompt:
+                return None
+            results = {block["tool_use_id"]: block for message in messages
+                if isinstance(message.get("content"), list)
+                for block in message["content"] if block.get("type") == "tool_result"}
+            if "toolu_submit_review" in results:
+                return None
+            if "toolu_read_attachment" in results:
+                read_result = results["toolu_read_attachment"]
+                if read_result.get("is_error") or "Synthetic attachment content" not in json.dumps(read_result):
+                    return None
+                return {"type": "tool_use", "id": "toolu_submit_review", "name": "mcp__galaris__process_activity_complete",
+                    "input": {"output": {"accepted": True}, "message": "Synthetic MCP receipt"}}
+            attachment = re.search(r"file://[0-9a-f-]{36}", prompt)
+            if attachment is None:
+                return None
+            return {"type": "tool_use", "id": "toolu_read_attachment", "name": "mcp__galaris__file_read",
+                "input": {"uri": attachment[0]}}
+
+    with ThreadingHTTPServer(("127.0.0.1", 0), ProcessModel) as server:
+        origin = f"http://127.0.0.1:{server.server_port}"
+        os.environ.update({"ANTHROPIC_BASE_URL": origin, "ANTHROPIC_AUTH_TOKEN": "qualification-token",
+            "CLAUDE_AGENT_API_TOKEN": "qualification-token", "ENABLE_TOOL_SEARCH": "false"})
+        Path.home().mkdir(parents=True, exist_ok=True)
+        for directory in ("skills", "workspace", "claude"):
+            (Path("/data") / directory).mkdir(exist_ok=True)
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        root = Path("/opt/claude-agent")
+        sys.path.insert(0, str(root))
+        module = module_from_file(str(root / "server.py"))
+
+        @module.app.get("/__qualification/model-requests/{task_id}")
+        def model_request(task_id: str) -> dict[str, list[str]]:
+            return {"prompts": observations.get(task_id, [])}
+
+        @module.app.post("/__qualification/configure-mcp")
+        def configure_mcp(settings: dict[str, str]) -> dict[str, bool]:
+            url = settings["url"]
+            if not re.fullmatch(r"http://backend:[0-9]+/api/mcp/[a-zA-Z0-9_-]+", url):
+                raise ValueError("Expected the isolated qualification backend")
+            os.environ.update({"GALARIS_MCP_URL": url, "GALARIS_MCP_TOKEN": settings["token"]})
+            return {"configured": True}
+
+        importlib.import_module("uvicorn").run(module.app, host="0.0.0.0", port=8642, log_level="warning")
+
+
 def main() -> None:
-    signal.alarm(90)
     runtime = sys.argv[1]
+    if runtime == "process_claude":
+        serve_process_claude()
+        return
+    signal.alarm(90)
     Path.home().mkdir(parents=True, exist_ok=True)
     Path("/data/skills").mkdir(parents=True, exist_ok=True)
     server = ThreadingHTTPServer(("127.0.0.1", 0), ModelService)

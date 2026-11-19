@@ -555,6 +555,13 @@ async def resolve_engine_run(
     return run
 
 
+async def validate_file_references(agent_id: int, run_id: UUID, files: Sequence[ProcessFileInput]) -> None:
+    if len(files) > 500:
+        raise ValueError("A run accepts at most 500 file references")
+    async with asyncio.timeout(10):
+        await _resolve_files(agent_id, "internal", files, run_id=run_id, references_only=True)
+
+
 async def _resolve_files(
     agent_id: int,
     runtime: str,
@@ -1162,19 +1169,10 @@ async def _run_reads(run_ids: Sequence[UUID] | Select[tuple[UUID]]) -> list[Proc
 
 
 async def get_run_detail(run_id: UUID, *, refresh_if_stale: bool = False) -> Optional[ProcessRunDetail]:
-    fresh = True
+    """Read persisted state. The legacy flag requests a freshness indication."""
     run = await get_run(run_id)
     if run is None:
         return None
-    if refresh_if_stale and run.status not in TERMINAL_STATUSES:
-        staleness = runtime_settings.PROCESS_REFRESH_STALENESS_SECONDS
-        last = run.updated_at or run.created_at
-        if (_utcnow() - last).total_seconds() >= staleness:
-            try:
-                run = await refresh_run(run.id)
-            except Exception as exc:
-                logger.warning("Skipped process refresh for {}: {}", run.id, exc)
-                fresh = False
     event_rows = (
         await get_db().execute(
             select(ProcessRunEvent)
@@ -1197,7 +1195,13 @@ async def get_run_detail(run_id: UUID, *, refresh_if_stale: bool = False) -> Opt
         for task_id in [run.task_id, run.await_task_id, *(call.task_id for call in llm_rows)]
         if task_id is not None
     }
-    base = await _run_read(run, fresh=fresh)
+    base = await _run_read(run)
+    if base.status not in TERMINAL_STATUSES:
+        fresh = not bool((base.engine_metadata or {}).get("last_refresh_error"))
+        if refresh_if_stale:
+            last = base.updated_at or base.created_at
+            fresh = fresh and (_utcnow() - last).total_seconds() < runtime_settings.PROCESS_REFRESH_STALENESS_SECONDS
+        base = base.model_copy(update={"fresh": fresh})
     return ProcessRunDetail(**base.model_dump(), events=[
         ProcessRunEventRead.model_validate(event) for event in event_rows
     ], task_ids=sorted(task_ids, key=str), llm_calls=[
@@ -1393,7 +1397,9 @@ async def refresh_run(run_id: UUID, *, confirm_terminal_stop: bool = False) -> P
     reference = _engine_run_reference(run)
     if uncertain_terminal and not reference.engine_run_id:
         return run
-    if run.status == "queued" and run.launch_snapshot.get("authorization_permit") and run.engine_run_id is None:
+    # The start job owns admission. An engine without a submitted identity
+    # can only report "unknown", which would otherwise consume that job.
+    if run.status == "queued" and reference.engine_run_id is None:
         return run
     engine = registry.get(run.engine_code)
     try:
@@ -1504,7 +1510,7 @@ async def refresh_active_runs(*, engine_code: str | None = None, parallel: bool 
                         ),
                     ),
                 )
-                .order_by(ProcessRun.created_at)
+                .order_by(func.coalesce(ProcessRun.updated_at, ProcessRun.created_at), ProcessRun.id)
                 .limit(max(1, min(batch_size, 100)))
             )
         ).scalars().all()
