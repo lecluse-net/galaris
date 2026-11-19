@@ -1238,6 +1238,8 @@ async def test_dream_file_version_is_acquired_once_and_new_version_is_eligible(c
     from app.dream.service import mark_success
     from app.file_share import FileCatalogueEnrichmentPort
     from core.params import runtime_settings
+    from tests.sql_reads import measured_reads
+
     ctx, transport, connection, peer = console_catalogue
     monkeypatch.setattr(interface, '_file_catalogue', FileCatalogueEnrichmentPort())
     monkeypatch.setattr(runtime_settings, 'DREAM_ATTACHMENT_TEXT_ENABLED', True)
@@ -1248,13 +1250,17 @@ async def test_dream_file_version_is_acquired_once_and_new_version_is_eligible(c
     monkeypatch.setattr(mechanism_module, 'analyze_attachment', analyze)
     await resource_service.resource_write_text(ctx, 'console://dream-version.txt', 'Original synthetic text')
     mechanism = mechanism_module.file_catalogue_mechanism
+    assert await mechanism.count_pending() == 1
     hash_claim = await mechanism.claim_one()
     assert hash_claim.subject_kind == 'file_fingerprint'
+    assert await mechanism.count_pending() == 0
     prepared = await mechanism.prepare(hash_claim)
     assert await mechanism.apply(hash_claim, prepared.payload) == 1
     await mark_success(hash_claim, result_count=1)
+    assert await mechanism.count_pending() == 1
     claim = await mechanism.claim_one()
     assert claim is not None
+    assert await mechanism.count_pending() == 0
     prepared = await mechanism.prepare(claim)
     assert await mechanism.apply(claim, prepared.payload) == 1
     await mark_success(claim, result_count=1)
@@ -1262,6 +1268,15 @@ async def test_dream_file_version_is_acquired_once_and_new_version_is_eligible(c
     assert invocations == ['Original synthetic text']
     await resource_service.resource_write_text(ctx, 'console://dream-version.txt', 'Changed source with a different size', overwrite=True)
     assert await mechanism.claim_one() is not None
+    for index in range(12):
+        await resource_service.resource_write_text(ctx, f'console://pending-{index}.txt', f'Synthetic text {index}')
+    async with measured_reads(db, "dream-file-catalogue-12-pending") as reads:
+        assert await mechanism.count_pending() == 12
+    assert 0 < len(reads) <= 8
+
+    connection.active = False
+    await db.commit()
+    assert await mechanism.count_pending() == 0
 
 
 @pytest.mark.asyncio

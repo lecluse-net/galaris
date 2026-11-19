@@ -11,7 +11,7 @@ import json
 import re
 from uuid import UUID
 
-from sqlalchemy import String, and_, case, cast as sql_cast, exists, func, literal, or_, select
+from sqlalchemy import String, and_, cast as sql_cast, exists, func, literal, or_, select
 from sqlalchemy.dialects.postgresql import aggregate_order_by
 
 from app.conversation import (
@@ -82,9 +82,10 @@ def _round_subject() -> Any:
         Message.metadata_["conversation_audio_transcripts"].is_not(None),
     ).correlate(ConversationRound).scalar_subquery()
     identity = sql_cast(ConversationRound.id, String)
-    revision = func.concat(audio_revision, "|", document_revision)
-    return case((or_(audio_revision != "", document_revision != ""), func.concat(identity, ":",
-        func.encode(func.sha256(func.convert_to(revision, "UTF8")), "hex"))), else_=identity)
+    # The separator alone denotes an empty media revision. concat_ws skips its null digest.
+    revision = func.nullif(func.concat(audio_revision, "|", document_revision), "|")
+    digest = func.encode(func.sha256(func.convert_to(revision, "UTF8")), "hex")
+    return func.concat_ws(":", identity, digest)
 
 
 def _eligible_round_predicates() -> tuple[Any, ...]:
@@ -417,31 +418,26 @@ class ConversationMemoryMechanism:
             return await profile_service.has_any_profile_value(model_usages.DREAM)
 
     async def count_pending(self) -> int:
-        async with get_db_session():
-            scanned = exists(
-                select(DreamReceipt.id).where(
+        # Compute the media revision once per eligible round before matching its receipt.
+        subjects = (
+            select(_round_subject().label("subject_id"))
+            .where(*_eligible_round_predicates())
+            .cte("eligible_conversation_subjects")
+            .prefix_with("MATERIALIZED", dialect="postgresql")
+        )
+        return int(
+            await get_db().scalar(
+                select(func.count())
+                .select_from(subjects)
+                .outerjoin(DreamReceipt, and_(
                     DreamReceipt.mechanism_key == self.key,
                     DreamReceipt.subject_kind == "conversation_round",
-                    DreamReceipt.subject_id == _round_subject(),
-                )
+                    DreamReceipt.subject_id == subjects.c.subject_id,
+                ))
+                .where(or_(DreamReceipt.id.is_(None), unverified_memory_application()))
             )
-            needs_application_proof = exists(
-                select(DreamReceipt.id).where(
-                    DreamReceipt.mechanism_key == self.key,
-                    DreamReceipt.subject_kind == "conversation_round",
-                    DreamReceipt.subject_id == _round_subject(),
-                    unverified_memory_application(),
-                )
-            )
-            return int(
-                await get_db().scalar(
-                    select(func.count(ConversationRound.id)).where(
-                        *_eligible_round_predicates(),
-                        or_(~scanned, needs_application_proof),
-                    )
-                )
-                or 0
-            )
+            or 0
+        )
 
     async def claim_one(self) -> DreamClaim | None:
         retry = await claim_retry(

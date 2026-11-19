@@ -58,35 +58,47 @@ class FileCatalogueMechanism:
 
     async def count_pending(self) -> int:
         port = file_catalogue_port()
-        if port is None or not await self.is_available():
+        if port is None:
             return 0
-        async with get_db_session():
-            receipts = await get_db().scalars(select(DreamReceipt).where(
-                DreamReceipt.mechanism_key == self.key,
-                DreamReceipt.subject_kind == "file_directory",
-                DreamReceipt.status.in_(("running", "retry", "error")),
-            ))
-            claimed = [{**discovery_subject(receipt.prepared_payload or {}),
-                "status": receipt.status} for receipt in receipts]
-            count = await port.discovery_pending(claimed)
-            for source in await port.fingerprints():
-                if await get_db().scalar(select(DreamReceipt.id).where(DreamReceipt.mechanism_key == self.key,
-                    DreamReceipt.subject_kind == "file_fingerprint", DreamReceipt.subject_id == f"{source['identity']}:{source['version']}:sha256")) is None:
-                    count += 1
-            if not enrichment_enabled():
-                return count
-            candidates = await port.candidates()
-            for source in candidates:
-                if not source.get("file_sha256"):
-                    continue
-                for kind in media_kinds(source["descriptor"]):
-                    if not getattr(runtime_settings, f"DREAM_ATTACHMENT_{kind.upper()}_ENABLED"):
-                        continue
-                    subject = analysis_identity(source, kind)
-                    if await get_db().scalar(select(DreamReceipt.id).where(DreamReceipt.mechanism_key == self.key, DreamReceipt.subject_id == subject)) is None:
-                        count += 1
-                        break
+        db = get_db()
+        receipts = await db.scalars(select(DreamReceipt).where(
+            DreamReceipt.mechanism_key == self.key,
+            DreamReceipt.subject_kind == "file_directory",
+            DreamReceipt.status.in_(("running", "retry", "error")),
+        ))
+        claimed = [
+            {**discovery_subject(receipt.prepared_payload or {}), "status": receipt.status}
+            for receipt in receipts
+        ]
+        count = await port.discovery_pending(claimed)
+
+        fingerprint_subjects = [
+            f"{source['identity']}:{source['version']}:sha256" for source in await port.fingerprints()
+        ]
+        receipt_subjects = select(DreamReceipt.subject_id).where(DreamReceipt.mechanism_key == self.key)
+        if fingerprint_subjects:
+            handled = set(await db.scalars(receipt_subjects.where(
+                DreamReceipt.subject_kind == "file_fingerprint",
+                DreamReceipt.subject_id.in_(fingerprint_subjects),
+            )))
+            count += sum(subject not in handled for subject in fingerprint_subjects)
+
+        if not enrichment_enabled():
             return count
+        analysis_subjects = [
+            [
+                analysis_identity(source, kind)
+                for kind in media_kinds(source["descriptor"])
+                if getattr(runtime_settings, f"DREAM_ATTACHMENT_{kind.upper()}_ENABLED")
+            ]
+            for source in await port.candidates()
+            if source.get("file_sha256")
+        ]
+        subjects = {subject for candidate in analysis_subjects for subject in candidate}
+        if subjects:
+            handled = set(await db.scalars(receipt_subjects.where(DreamReceipt.subject_id.in_(subjects))))
+            count += sum(any(subject not in handled for subject in candidate) for candidate in analysis_subjects)
+        return count
 
     async def claim_one(self) -> DreamClaim | None:
         port = file_catalogue_port()

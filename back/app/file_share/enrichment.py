@@ -7,7 +7,7 @@ from typing import Any
 from sqlalchemy import select, Select, or_, func, update
 from core.database import get_db
 from app.memory import catalogue_projection_write
-from .catalogue import project_entry, descriptor_version
+from .catalogue import catalogue_binding_is_current, project_entry, descriptor_version
 from .models import FileCatalogEntry
 from .resource_contracts import ResourceContext
 from .resource_observation import suspend_observations
@@ -108,15 +108,14 @@ class FileCatalogueEnrichmentPort:
         return await generate(source, force=force)
 
     async def fingerprints(self) -> list[dict[str, object]]:
-        from .catalogue import current_binding, ObservationScope
-        entries = await get_db().scalars(select(FileCatalogEntry).where(
+        entries = await get_db().execute(select(FileCatalogEntry, catalogue_binding_is_current()).where(
             FileCatalogEntry.present.is_(True), FileCatalogEntry.memory_node_id.is_not(None),
             FileCatalogEntry.descriptor["is_collection"].as_boolean().is_(False),
             or_(FileCatalogEntry.fingerprint_version.is_(None), FileCatalogEntry.fingerprint_version != FileCatalogEntry.source_version),
         ).order_by(func.coalesce(FileCatalogEntry.enrichment_attempted_at, FileCatalogEntry.last_seen_at), FileCatalogEntry.id).limit(500))
         result: list[dict[str, object]] = []
-        for entry in entries:
-            if entry.connection_id is not None and await current_binding(ObservationScope(entry.connection_id, entry.agent_id, entry.binding_stamp, entry.runtime, entry.operation_started_at)):
+        for entry, current_binding in entries:
+            if current_binding:
                 result.append({"identity": str(entry.id), "uri": entry.uri, "agent_id": entry.agent_id,
                     "runtime": entry.runtime, "version": entry.source_version})
         return result
@@ -142,17 +141,20 @@ class FileCatalogueEnrichmentPort:
         return await discover_directory(subject, attempt=attempt, max_attempts=max_attempts)
 
     async def candidates(self) -> list[dict[str, object]]:
-        from .catalogue import current_binding, ObservationScope
-        entries = await get_db().scalars(pending_enrichments().order_by(func.coalesce(FileCatalogEntry.enrichment_attempted_at, FileCatalogEntry.last_seen_at), FileCatalogEntry.id).limit(500))
+        entries = await get_db().execute(
+            pending_enrichments().add_columns(catalogue_binding_is_current())
+            .order_by(func.coalesce(FileCatalogEntry.enrichment_attempted_at, FileCatalogEntry.last_seen_at), FileCatalogEntry.id)
+            .limit(500)
+        )
         result: list[dict[str, object]] = []
-        for entry in entries:
-            if entry.connection_id is None or entry.enrichment_version == descriptor_version(entry.descriptor):
+        for entry, current_binding in entries:
+            if not current_binding:
                 continue
-            if not await current_binding(ObservationScope(entry.connection_id, entry.agent_id, entry.binding_stamp,
-                entry.runtime, entry.operation_started_at)):
+            version = descriptor_version(entry.descriptor)
+            if entry.enrichment_version == version:
                 continue
             result.append({"identity": str(entry.id), "uri": entry.uri, "agent_id": entry.agent_id,
-                "runtime": entry.runtime, "version": descriptor_version(entry.descriptor), "descriptor": entry.descriptor,
+                "runtime": entry.runtime, "version": version, "descriptor": entry.descriptor,
                 "file_sha256": entry.file_sha256, "memory_item_id": str(entry.memory_node_id)})
         return result
 

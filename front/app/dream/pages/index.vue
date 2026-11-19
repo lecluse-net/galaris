@@ -22,6 +22,12 @@
 
     <q-tab-panels v-model="activeTab" animated class="bg-transparent">
       <q-tab-panel name="tracking" class="q-pa-none">
+        <q-linear-progress
+          v-if="overviewRequests > 0 && !overview"
+          indeterminate
+          color="primary"
+          :aria-label="t('common.loading')"
+        />
         <div v-if="overview" class="row q-col-gutter-md q-mb-lg">
           <div v-for="metric in metrics" :key="metric.key" class="col-12 col-sm-6 col-md-3">
             <q-card
@@ -583,6 +589,7 @@ const privilegeStore = usePrivilegeStore()
 const canViewTasks = computed(() => privilegeStore.hasAnyPrivilege([privileges.TASK_ACCESS, privileges.TASK_EDIT]))
 const activeTab = ref<'tracking' | 'history'>('tracking')
 const overview = ref<DreamOverview | null>(null)
+const overviewRequests = ref(0)
 const receipts = ref<DreamReceiptSummary[]>([])
 const selectedReceipt = ref<DreamReceiptDetail | null>(null)
 const { id: detailTaskId, target: detailTaskTarget } = useResourceDetail('task')
@@ -770,7 +777,12 @@ const outcomeDiagnostics = computed<DreamOutcomeDiagnostics | null>(() => {
 })
 
 async function loadOverview(): Promise<void> {
-  overview.value = await dreamService.overview()
+  overviewRequests.value += 1
+  try {
+    overview.value = await dreamService.overview()
+  } finally {
+    overviewRequests.value -= 1
+  }
 }
 
 async function loadReceipts(

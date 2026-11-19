@@ -76,6 +76,16 @@ def _catalogue_bindings() -> CTE:
     ).prefix_with("MATERIALIZED", dialect="postgresql")
 
 
+def catalogue_binding_is_current() -> ColumnElement[bool]:
+    """Project binding validity without changing the candidate window."""
+    bindings = _catalogue_bindings()
+    return exists(select(bindings.c.id).where(
+        bindings.c.id == FileCatalogEntry.connection_id,
+        bindings.c.agent_id == FileCatalogEntry.agent_id,
+        bindings.c.stamp == FileCatalogEntry.binding_stamp,
+    )).correlate(FileCatalogEntry)
+
+
 def catalogue_access_clause(item_id: InstrumentedAttribute[UUID | None]) -> ColumnElement[bool]:
     bindings = _catalogue_bindings()
     return exists(select(FileCatalogEntry.id).join(
