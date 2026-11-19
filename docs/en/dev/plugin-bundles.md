@@ -98,11 +98,18 @@ per code in `PLUGIN_RUNTIME_BINDINGS`. Galaris checks for HTTP 200 at `/health`
 before loading and passes resolved URLs in `context.endpoints`. The development
 override covers the Galaris version range only.
 
-The standard single-process backend publishes prepared registries after the
-transaction. A loading error during activation preserves the previous selection and records
-an event. Loading failures and unexpected installation errors are recorded in
-`/data/update-diagnostics` with the stage, release version, and redacted cause.
-At startup, it checks selected archives and their dependencies before accepting
+The API publishes prepared registries after the transaction. The Process worker
+reads the PostgreSQL selection at startup and reconciles it every two seconds.
+It withdraws obsolete contributions before preparing replacements. Operations
+already in progress can finish.
+
+Before selecting a release, Chromium loads each self-contained module in a fresh
+context with no application access or network requests and checks the `createFormat`
+export. An import failure preserves the previous selection and records an event.
+Calling `createFormat(host)`, mounting the editor and exercising interactions still
+require qualification in the assembled frontend. Diagnostics in `/data/update-diagnostics`
+retain the stage, release version and redacted cause of loading and installation failures.
+At startup, the API checks selected archives and their dependencies before accepting
 requests. Deactivation withdraws contributions and browser modules. The original
 documents, their revisions and local configurations are preserved.
 
@@ -130,9 +137,32 @@ python -m plugins.sample.package sign-index catalogue.pem index.json index.sig
 Publish the digest-addressed archives first and then the new index and signature. Galaris keeps
 the last accepted index on the catalogue volume. An older sequence or a removed revocation
 cannot replace it. The cache stays usable until expiry. Downloads recheck the index, digest,
-and publisher signature. Revocations block acquisition from the catalogue. Administrators
-control activation and removal of already installed versions. The local mirror and manual
-import retain their own flows.
+and publisher signature. The API checks for catalogue revocations every minute and
+deactivates affected releases. The registry retains the block by digest after index
+expiry, a catalogue outage or uninstallation. A revoked digest can no longer be
+imported manually or reactivated. Documents, revisions, local Services and Connections
+retain their data.
 
-Container supervision, third-party isolation, and the official publication pipeline remain in
-the [plugin plan](../../../project/plans/infrastructure-plugins-galaris.md).
+### Stage a declarative publication
+
+The publisher uses the keys in `PLUGIN_TRUSTED_PUBLISHERS` to verify ZIPs.
+For each `<name>.zip`, supply `<name>.qualification.json` and its binary Ed25519
+signature `<name>.qualification.sig` from an authority separate from the publisher
+and catalogue. The attestation has `format_version: 1`, `digest` (ZIP SHA-256),
+`source_repository` (HTTPS), `source_commit` (Git hash), `report_digest` (SHA-256
+of the report retained by the qualifier), and `checks` containing
+`bundle`, `compatibility`, `permissions`, `localization`, and `lifecycle`.
+
+```bash
+python -m app.plugin.publication ./candidates ./next-catalogue \
+  --catalogue-key catalogue.pem --qualification-key qualification-public.hex \
+  --previous ./current-catalogue --revoke "$revoked_digest"
+```
+
+Omit `--previous` and `--revoke` for a first publication. The publisher creates a new
+signed directory, continues the previous sequence and revocations, and stages
+digest-addressed archives with their attestations. The operator publishes
+`index.json`, `index.sig`, and `archives/` after review. Executable contributions
+use the channel for publishers explicitly approved by the operator. Third-party
+isolation and official hosting remain in the
+[plugin plan](../../../project/plans/infrastructure-plugins-galaris.md).

@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, LargeBinary, String, Text, UniqueConstraint, func, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, LargeBinary, String, Text, UniqueConstraint, false, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
@@ -26,6 +26,7 @@ class PluginRelease(Base):
     presets: Mapped[str] = mapped_column(Text)
     archive: Mapped[bytes | None] = mapped_column(LargeBinary, deferred=True)
     installed: Mapped[bool] = mapped_column(Boolean)
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     active: Mapped[bool] = mapped_column(Boolean)
     forced_host: Mapped[str | None] = mapped_column(String(64))
 

@@ -84,7 +84,7 @@ def _fetch(url: str, limit: int) -> bytes:
             return bytes(data)
 
 
-def _verify(envelope: bytes, key: bytes) -> CatalogueIndex:
+def verify_signed_index(envelope: bytes, key: bytes) -> CatalogueIndex:
     if not SIGNATURE_BYTES < len(envelope) <= SIGNATURE_BYTES + MAX_INDEX_BYTES:
         raise ValueError("Invalid signed catalogue size")
     body = envelope[SIGNATURE_BYTES:]
@@ -99,7 +99,7 @@ def _load_cache(path: Path, key: bytes) -> tuple[CatalogueIndex, bytes] | None:
         return None
     with os.fdopen(descriptor, "rb") as source:
         data = source.read(SIGNATURE_BYTES + MAX_INDEX_BYTES + 1)
-    return _verify(data, key), data
+    return verify_signed_index(data, key), data
 
 
 def _save_cache(path: Path, data: bytes) -> None:
@@ -119,6 +119,23 @@ def _save_cache(path: Path, data: bytes) -> None:
         os.close(descriptor)
 
 
+def _cache_path(base: str, key: bytes) -> Path:
+    root = settings.PLUGIN_CATALOG_DIRECTORY / ".remote"
+    if root.is_symlink():
+        raise ValueError("Invalid catalogue cache directory")
+    return root / sha256(base.encode() + key).hexdigest()
+
+
+def cached_revocations() -> frozenset[str]:
+    """Read the last signed watermark, including after expiry or an upstream outage."""
+    location = _origin()
+    if location is None:
+        return frozenset()
+    base, key = location
+    cached = _load_cache(_cache_path(base, key), key)
+    return frozenset(cached[0].revoked) if cached is not None else frozenset()
+
+
 def snapshot() -> tuple[str, CatalogueIndex] | None:
     location = _origin()
     if location is None:
@@ -129,15 +146,12 @@ def snapshot() -> tuple[str, CatalogueIndex] | None:
         signature = _fetch(base + "index.sig", SIGNATURE_BYTES)
         if len(signature) == SIGNATURE_BYTES:
             envelope = signature + _fetch(base + "index.json", MAX_INDEX_BYTES)
-            candidate = _verify(envelope, key), envelope
+            candidate = verify_signed_index(envelope, key), envelope
     except (httpx.HTTPError, InvalidSignature, ValueError):
         pass
 
-    root = settings.PLUGIN_CATALOG_DIRECTORY / ".remote"
-    root.mkdir(mode=0o700, parents=True, exist_ok=True)
-    if root.is_symlink():
-        raise ValueError("Invalid catalogue cache directory")
-    path = root / sha256(base.encode() + key).hexdigest()
+    path = _cache_path(base, key)
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     lock = os.open(path.with_suffix(".lock"), os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW, 0o600)
     try:
         fcntl.flock(lock, fcntl.LOCK_EX)

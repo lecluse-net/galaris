@@ -11,7 +11,7 @@ tests restent l’autorité sur le comportement.
 
 - 80 modules backend déclarés ;
 - 41 modules frontend déclarés ;
-- 650 arêtes de dépendance backend ;
+- 652 arêtes de dépendance backend ;
 - 231 arêtes de dépendance frontend ;
 - 308 arêtes entre domaines `app`/`bridge` ;
 - 30 paires de domaines directement bidirectionnelles ;
@@ -506,8 +506,10 @@ tests restent l’autorité sur le comportement.
 | `app.plugin` | `app.services` | `back/app/plugin/bundles.py`, `back/app/plugin/service.py` |
 | `app.plugin` | `core.authorize` | `back/app/plugin/router.py` |
 | `app.plugin` | `core.database` | `back/app/plugin/models.py`, `back/app/plugin/service.py` |
+| `app.plugin` | `core.secrets` | `back/app/plugin/runtime.py` |
 | `app.plugin` | `core.update_diagnostics` | `back/app/plugin/service.py` |
 | `app.plugin` | `core.user` | `back/app/plugin/service.py` |
+| `app.plugin` | `core.util` | `back/app/plugin/runtime.py` |
 | `app.process` | `app.agent` | `back/app/process/catalogue.py`, `back/app/process/dataset_usage.py`, `back/app/process/events.py`, `back/app/process/facade.py`, `back/app/process/input_editing.py`, `back/app/process/input_provenance.py`, `back/app/process/mcp.py`, `back/app/process/native_access.py`, `back/app/process/native_actors.py`, `back/app/process/native_definitions.py`, `back/app/process/native_router.py`, `back/app/process/native_runs.py`, `back/app/process/native_sharing.py`, `back/app/process/process_service.py`, `back/app/process/resource_facade.py`, `back/app/process/resource_previews.py`, `back/app/process/router.py`, `back/app/process/run_resources.py` |
 | `app.process` | `app.console` | `back/app/process/native_engine.py`, `back/app/process/process_service.py`, `back/app/process/router.py` |
 | `app.process` | `app.dataset` | `back/app/process/values.py` |
@@ -2254,8 +2256,8 @@ Aucune composante cyclique détectée.
 | `multimedia_output_receipts` | `MediaOutputReceipt` | `app.multimedia` | non | `multimedia_generations.id` | `back/app/multimedia/models.py:40` |
 | `params` | `Param` | `core.params` | non | — | `back/core/params/models.py:7` |
 | `permission_decisions` | `PermissionDecision` | `app.messenger` | oui | `agents.id`, `messenger_interactions.id`, `users.id` | `back/app/messenger/models.py:234` |
-| `plugin_development_samples` | `DevelopmentSampleState` | `app.plugin` | non | — | `back/app/plugin/models.py:47` |
-| `plugin_events` | `PluginEvent` | `app.plugin` | non | `plugin_releases.id`, `users.id` | `back/app/plugin/models.py:33` |
+| `plugin_development_samples` | `DevelopmentSampleState` | `app.plugin` | non | — | `back/app/plugin/models.py:48` |
+| `plugin_events` | `PluginEvent` | `app.plugin` | non | `plugin_releases.id`, `users.id` | `back/app/plugin/models.py:34` |
 | `plugin_releases` | `PluginRelease` | `app.plugin` | non | — | `back/app/plugin/models.py:13` |
 | `privilege_list_defaults` | `PrivilegeListDefault` | `core.authorize` | non | — | `back/core/authorize/models.py:55` |
 | `privilege_lists` | `PrivilegeList` | `core.authorize` | non | — | `back/core/authorize/models.py:42` |

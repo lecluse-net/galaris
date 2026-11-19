@@ -44,8 +44,10 @@ Manifest version 2 adds document formats, AI provider profiles, preview converte
 JSON data templates and file sharing protocols. Backend entry points and browser modules require both a verified
 signature and an explicit operator publisher allowlist. They run with host trust.
 The main composition prepares complete replacement registries before committing the
-selection and publishes them in the same process. A failed preparation keeps the old
-selection and records the failed activation. Startup rebuilds the effective registries
+selection and publishes them in the same process. The API and Process worker reconcile
+the local registries with the committed selection. A failed preparation or Chromium
+entry point import keeps the old selection and records the failed activation.
+Startup rebuilds the effective registries
 from compatible signed selections and their artifacts in PostgreSQL. Operators can inspect
 redacted loading and installation failures in the private update diagnostics directory.
 The file sharing protocol registry is published with the other contributions. Removing
@@ -57,5 +59,8 @@ catalogue mirrors signed ZIPs and shares the manual import and confirmation flow
 A curated HTTPS catalogue can distribute digest-addressed archives through the same import.
 Its independent signed index has a bounded expiry, a durable sequence watermark and
 cumulative revocations. It rechecks both the index and the publisher signature on download.
-Third-party isolation, multi-process generation coordination, other protocol families and the
-official publication pipeline remain in the [implementation plan](../plans/infrastructure-plugins-galaris.md).
+Revocation deactivates the local release and permanently blocks reinstalling or selecting
+that digest. The registry preserves dependent resources. A declarative publication
+stager verifies a separately signed qualification for every served archive and retains
+the sequence and revocation history. Third-party executable isolation, official hosting
+and other protocol families remain in the [implementation plan](../plans/infrastructure-plugins-galaris.md).

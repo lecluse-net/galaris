@@ -14,9 +14,9 @@ PluginCode = Annotated[str, StringConstraints(
 Digest = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 Compatibility = Literal[
     "supported", "host_version", "untrusted_publisher", "unsupported_service",
-    "native_publisher_required", "missing_dependency", "runtime_unconfigured",
+    "native_publisher_required", "missing_dependency", "runtime_unconfigured", "revoked",
 ]
-Operation = Literal["installed", "activated", "deactivated", "removed", "activation_error"]
+Operation = Literal["installed", "activated", "deactivated", "removed", "activation_error", "revoked"]
 
 
 def version_parts(value: str) -> tuple[int, ...]:

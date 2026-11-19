@@ -419,10 +419,21 @@ confirme qu'un échec de chargement backend de la v2 laisse la v1 utilisable, qu
 révisions se téléchargent après retrait et que l'éditeur fonctionne après réinstallation.
 Le typage strict, les traductions et la documentation FR/EN ont été vérifiés.
 
-**Premier chantier à la reprise.** Étendre ce parcours à un vrai redémarrage avec
-PostgreSQL et les fichiers conservés, puis à une v2 incompatible uniquement côté navigateur
-et à deux processus backend. Vérifier le chargement de la version sélectionnée, la
-lisibilité des révisions et le retrait des contributions sur tous les processus.
+**Durcissement du cycle de vie.** L'API et le worker Process réconcilient la sélection
+persistée dans leurs registres locaux. Une version dont le module JavaScript échoue
+à l'import dans Chromium ne remplace pas la version active. Le préparateur hors ligne
+du catalogue déclaratif exige une attestation de qualification indépendante. Les
+révocations signées sont conservées en base et bloquent toute nouvelle sélection du digest.
+
+**Reprise vérifiée.** Un redémarrage du backend et de son worker sur une pile
+Chromium isolée a conservé PostgreSQL et le volume des fichiers. La version
+sélectionnée, le contenu sauvegardé et sa première révision sont restés lisibles.
+
+**Chantiers suivants.** Étendre le contrôle Chromium à `createFormat(host)` et
+au montage du composant avec la version du SDK de l'instance. Définir les autorités,
+l'hébergement et le déploiement du catalogue public. Garder la publication ouverte
+aux bundles déclaratifs tant que les contributions exécutables tierces n'ont pas
+de contrat d'exécution isolé et qualifié au retrait.
 
 Restent ouverts l'isolation du code tiers et la supervision de ses dépendances, les
 migrations de schéma propres aux plugins, les autres façades installables et la publication
@@ -446,7 +457,7 @@ Voir le [contrat livré](../../docs/fr/dev/plugin-bundles.md) pour les limites.
 | 4 — Frontend, retrait et qualification | Format externe utilisable sans rebuild du frontend, contenu récupérable après retrait. Une fiche de plugin composite affiche toutes ses contributions et les différences entre versions. Parcours d'administration complet, dont refus RBAC, retour arrière, désinstallation, réinstallation et purge séparée. |
 | 5 — Mode isolé | Tester le refus des accès hors périmètre, la protection du cœur et l'arrêt complet après désactivation. |
 | 6 — Schéma propre aux plugins | Objets SQL conservés après retrait du code, reprise d'une action interrompue, retour arrière compatible et suppression uniquement par la purge prévue. |
-| 7 — App Store | Catalogue HTTPS administré, index signé et téléchargement vérifié disponibles dans Plugins. Restent la chaîne de publication, l'état de fraîcheur dans l'IHM et la politique des révocations de versions déjà installées. |
+| 7 — App Store | Catalogue HTTPS administré, index signé et téléchargement vérifié. Staging déclaratif avec attestation indépendante et retrait persistant des digests révoqués. Restent l'hébergement officiel, la rotation des clés et l'état de fraîcheur dans l'IHM. |
 
 Le TCK associe au digest du bundle les preuves d'intégrité, reproductibilité,
 compatibilité, RBAC, parité FR/EN et reprise du cycle de vie. Les scénarios de réception

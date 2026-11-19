@@ -51,6 +51,13 @@ le téléchargement de source et le catalogue avec erreur/retry ; les suites exi
 conservent les garanties d'aperçu, d'impression et d'export PDF. Voir le
 [contrat des formats](document-formats.md) pour distinguer capacité déclarée et qualification.
 
+`app/document/tests/test_sample_drawing.py` relit les pixels historiques, compare deux
+versions et leurs zones, et vérifie les refus d’accès.
+`app/plugin/tests/test_plugins.py` couvre la reprise après redémarrage du worker Process,
+les révocations persistantes, les attestations du catalogue et la reprise des Connexions
+après retrait d'un protocole. `plugin-release-lifecycle.spec.mjs` éprouve la conservation
+de l'éditeur et de ses révisions après un échec de chargement Python ou JavaScript.
+
 `app/calendar/tests/test_contacts.py` protège la référence facultative vers un contact privé
 de l’agent : création et modification MCP, retrait explicite, conservation lors des éditions
 et rafraîchissements distants, historique, fusion/oubli, découpage des récurrences et contexte
@@ -65,12 +72,6 @@ les politiques de conversation retirent les fonctions `calendar_*` du catalogue.
 `app/calendar/tests/test_providers.py` exerce Google Calendar et Microsoft Graph sur une
 frontière HTTP synthétique : découverte et lecture seule, allers-retours en base, création
 sans doublon après perte de réponse, ETag, conservation sur réponse incomplète, journées
-`app/document/tests/test_sample_drawing.py` relit les pixels historiques, compare deux
-versions et leurs zones, et vérifie les refus d’accès.
-`app/plugin/tests/test_plugins.py` couvre les diagnostics, le catalogue signé et la reprise
-des Connexions après retrait d'un protocole. `plugin-release-lifecycle.spec.mjs` éprouve
-une archive historique figée, l'échec d'une mise à jour et le retour de l'éditeur dans la pile assemblée.
-
 entières et exceptions récurrentes au changement d’heure. `test_mcp_oauth.py` couvre aussi
 les autorisations agenda Google/Microsoft/CalDAV, la rotation des refresh tokens et
 l’indépendance des grants MCP. `mcp-oauth.spec.mjs` exerce les deux autorisations côte à

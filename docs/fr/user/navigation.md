@@ -838,6 +838,9 @@ et choisir une autre version. Les préréglages apparaissent après activation d
 **Configurer → Services & connexions → Nouveau service**. Enregistrer une fiche crée un Service local.
 Dans **Plugins**, la désactivation retire le préréglage du catalogue et la
 désinstallation conserve les Services et Connexions déjà créés.
+Si le catalogue signé révoque une version, sa carte indique le motif du blocage et
+son historique enregistre le retrait de l'activation. Les contenus déjà enregistrés
+restent accessibles selon leurs droits.
 
 **Catalogue** affiche les archives signées mises à disposition par l'opérateur.
 Sélectionnez une version pour passer par l'aperçu et l'installation. Un éditeur signé

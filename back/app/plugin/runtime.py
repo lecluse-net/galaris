@@ -1,18 +1,28 @@
 """Prepare an effective set of trusted executable contributors before publishing it."""
 
+import asyncio
+from base64 import b64encode
 from collections.abc import Callable, Iterable
+from hashlib import sha256
 from importlib.metadata import PackageNotFoundError, version
 from urllib.parse import urlsplit
 
 import httpx
+from pydantic import BaseModel
 
 from core import settings
+from core.secrets import browser_executor_token
+from core.util import post_buffered
 
 from .bundles import Bundle
 from .contracts import DocumentContribution, RuntimeRequirement
 
 _prepare: Callable[[tuple[Bundle, ...]], Callable[[], None]] | None = None
 _active: dict[str, Bundle] = {}
+
+
+class _ModuleQualification(BaseModel):
+    qualified: bool
 
 
 def register_runtime(prepare: Callable[[tuple[Bundle, ...]], Callable[[], None]]) -> None:
@@ -60,8 +70,35 @@ async def verify_runtimes(requirements: list[RuntimeRequirement]) -> None:
                 raise ValueError(f"Runtime {requirement.code} health probe returned HTTP {response.status_code}")
 
 
+async def verify_document_modules(bundle: Bundle) -> None:
+    async with asyncio.timeout(15):
+        for item in bundle.manifest.contributions:
+            if not isinstance(item, DocumentContribution):
+                continue
+            try:
+                response = await post_buffered(
+                    f"{settings.BROWSER_EXECUTOR_URL}/v1/qualify-plugin-module",
+                    headers={"x-galaris-browser-token": browser_executor_token()},
+                    json={"source_base64": b64encode(bundle.assets[item.frontend_path]).decode("ascii")},
+                    max_bytes=1024,
+                    timeout=10,
+                )
+                if not _ModuleQualification.model_validate_json(response).qualified:
+                    raise ValueError("Browser module was not qualified")
+            except (httpx.HTTPError, TimeoutError, ValueError, RuntimeError) as exc:
+                raise ValueError(f"Browser module for {item.code} could not be qualified") from exc
+
+
 def effective(digest: str) -> bool:
     return any(bundle.digest == digest for bundle in _active.values())
+
+
+def active_bundles() -> tuple[Bundle, ...]:
+    return tuple(_active.values())
+
+
+def generation_fingerprint() -> str:
+    return sha256("".join(sorted(bundle.digest for bundle in _active.values())).encode("ascii")).hexdigest()
 
 
 def prepare_generation(bundles: Iterable[Bundle]) -> Callable[[], None]:

@@ -51,16 +51,18 @@ test('a broken signed update preserves the browser editor and its saved bytes', 
   await page.goto(`/documents?document_id=${id}`)
   await expect(page.getByText('Content saved before update', { exact: true })).toBeVisible()
 
-  const update = await install('2.0.0')
-  const failure = await request.post(`/api/plugins/${code}/2.0.0/activate`, {
-    headers, data: { host_identity: update },
-  })
-  expect(failure.status()).toBe(409)
-  expect(await failure.json()).toEqual({ detail: 'activation_error' })
-  await page.reload()
-  await expect(page.getByText('Content saved before update', { exact: true })).toBeVisible()
-  const selected = await request.get(`/api/plugins/${code}`, { headers })
-  expect((await selected.json()).releases.filter(release => release.active).map(release => release.manifest.version)).toEqual(['1.0.0'])
+  for (const version of ['2.0.0', '3.0.0']) {
+    const update = await install(version)
+    const failure = await request.post(`/api/plugins/${code}/${version}/activate`, {
+      headers, data: { host_identity: update },
+    })
+    expect(failure.status()).toBe(409)
+    expect(await failure.json()).toEqual({ detail: 'activation_error' })
+    await page.reload()
+    await expect(page.getByText('Content saved before update', { exact: true })).toBeVisible()
+    const selected = await request.get(`/api/plugins/${code}`, { headers })
+    expect((await selected.json()).releases.filter(release => release.active).map(release => release.manifest.version)).toEqual(['1.0.0'])
+  }
 
   for (const operation of ['deactivate', 'remove']) {
     const result = await request.post(`/api/plugins/${code}/1.0.0/${operation}`, {

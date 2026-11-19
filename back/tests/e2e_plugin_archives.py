@@ -54,9 +54,10 @@ def configure() -> None:
         type(settings).APP_VERSION = "0.3.2"
 
 
-def _fixture(version: Literal["1.0.0", "2.0.0"]) -> bytes:
-    backend = (_BACKEND_V1 if version == "1.0.0" else "def invalid syntax").encode()
-    frontend = _FRONTEND_V1.encode()
+def _fixture(version: Literal["1.0.0", "2.0.0", "3.0.0"]) -> bytes:
+    backend = ("def invalid syntax" if version == "2.0.0" else _BACKEND_V1).encode()
+    frontend = ("throw new Error('Synthetic browser entry failure');\n" + _FRONTEND_V1
+                if version == "3.0.0" else _FRONTEND_V1).encode()
     manifest = json.dumps({"format_version": 2, "code": _CODE, "version": version, "label": _LABEL,
         "description": _LABEL, "minimum_galaris_version": "0.1.0", "maximum_galaris_version_exclusive": "999.0.0",
         "contributions": [{"family": "document_format", "code": _CODE, "label": _LABEL, "version": 1,
@@ -71,5 +72,5 @@ def _fixture(version: Literal["1.0.0", "2.0.0"]) -> bytes:
 
 
 @router.get("/{version}")
-async def fixture(version: Literal["1.0.0", "2.0.0"]) -> Response:
+async def fixture(version: Literal["1.0.0", "2.0.0", "3.0.0"]) -> Response:
     return Response(_fixture(version), media_type="application/zip")

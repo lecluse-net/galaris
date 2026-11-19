@@ -41,7 +41,7 @@ def _bundles() -> Iterator[tuple[Bundle, bytes]]:
             continue
 
 
-def _remote() -> tuple[str, remote_catalog.CatalogueIndex] | None:
+def remote_snapshot() -> tuple[str, remote_catalog.CatalogueIndex] | None:
     try:
         return remote_catalog.snapshot()
     except (OSError, ValueError, InvalidSignature, httpx.InvalidURL) as exc:
@@ -49,8 +49,16 @@ def _remote() -> tuple[str, remote_catalog.CatalogueIndex] | None:
         return None
 
 
+def cached_revocations() -> frozenset[str]:
+    try:
+        return remote_catalog.cached_revocations()
+    except (OSError, ValueError, InvalidSignature) as exc:
+        logger.warning("Remote plugin revocation cache unavailable ({})", type(exc).__name__)
+        return frozenset()
+
+
 def list_catalogue() -> list[Bundle]:
-    remote = _remote()
+    remote = remote_snapshot()
     revoked: set[str] = set(remote[1].revoked) if remote else set()
     seen: dict[tuple[str, str], Bundle] = {}
     for bundle, _content in _bundles():
@@ -68,7 +76,7 @@ def list_catalogue() -> list[Bundle]:
 
 
 def catalogue_archive(digest: str) -> bytes | None:
-    remote = _remote()
+    remote = remote_snapshot()
     if remote and digest in remote[1].revoked:
         return None
     local = next((content for bundle, content in _bundles() if bundle.digest == digest), None)
@@ -82,7 +90,7 @@ def catalogue_archive(digest: str) -> bytes | None:
                     content = remote_catalog.archive(base, release)
                 except httpx.HTTPError as exc:
                     raise ValueError("Remote plugin archive is unavailable") from exc
-                latest = _remote()
+                latest = remote_snapshot()
                 if (latest and latest[0] == base and latest[1].current(datetime.now(timezone.utc))
                         and digest not in latest[1].revoked and release in latest[1].releases):
                     return content

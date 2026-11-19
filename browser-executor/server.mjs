@@ -11,6 +11,7 @@ import { BrowserLifecycle } from "./browser-lifecycle.mjs";
 import { PDF_HTML_MAX_BYTES, renderStaticPdf } from "./pdf.mjs";
 import { MODEL_MAX_BYTES, renderModelThumbnail } from './model-thumbnail.mjs';
 import { SVG_MAX_BYTES, renderSvgThumbnail } from './svg-thumbnail.mjs';
+import { qualifyPluginModule } from './plugin-module.mjs';
 
 import {
   BrowserRequestError,
@@ -35,7 +36,7 @@ const browsers = new BrowserLifecycle(
     void shutdown(1);
   },
 );
-let pdfJobs = 0;
+let isolatedRenderJobs = 0;
 
 function sendJson(response, status, payload) {
   const body = Buffer.from(JSON.stringify(payload));
@@ -452,9 +453,18 @@ async function route(request, response) {
     sendJson(response, 200, await open(body));
   } else if (request.url === "/v1/render-html") {
     sendJson(response, 200, await renderHtml(body));
+  } else if (request.url === '/v1/qualify-plugin-module') {
+    if (isolatedRenderJobs >= 2) throw new BrowserRequestError('capacity_reached', 'Renderer capacity has been reached.', 503);
+    isolatedRenderJobs += 1;
+    try {
+      await qualifyPluginModule(await browsers.get(), body.source_base64);
+      sendJson(response, 200, { qualified: true });
+    } finally {
+      isolatedRenderJobs -= 1;
+    }
   } else if (['/v1/render-pdf', '/v1/render-model-thumbnail', '/v1/render-svg-thumbnail'].includes(request.url)) {
-    if (pdfJobs >= 2) throw new BrowserRequestError('capacity_reached', 'PDF capacity has been reached.', 503);
-    pdfJobs += 1;
+    if (isolatedRenderJobs >= 2) throw new BrowserRequestError('capacity_reached', 'PDF capacity has been reached.', 503);
+    isolatedRenderJobs += 1;
     try {
       const model = request.url === '/v1/render-model-thumbnail';
       const svg = request.url === '/v1/render-svg-thumbnail';
@@ -464,7 +474,7 @@ async function route(request, response) {
       response.writeHead(200, { 'content-type': model || svg ? 'image/png' : 'application/pdf', 'content-length': result.length, 'cache-control': 'no-store' });
       response.end(result);
     } finally {
-      pdfJobs -= 1;
+      isolatedRenderJobs -= 1;
     }
   } else if (request.url === "/v1/action") {
     sendJson(response, 200, await performAction(body));
@@ -499,7 +509,7 @@ const server = http.createServer((request, response) => {
 
 const sweeper = setInterval(() => {
   void sessions.sweep(Date.now())
-    .then(() => browsers.closeIfIdle(sessions.occupied > 0 || pdfJobs > 0))
+    .then(() => browsers.closeIfIdle(sessions.occupied > 0 || isolatedRenderJobs > 0))
     .catch(() => console.error("browser session cleanup failed"));
 }, 10_000);
 sweeper.unref();

@@ -25,6 +25,7 @@ class WorkerMessage(BaseModel):
     data: dict[str, Any] = Field(default_factory=dict[str, Any])
     room_kind: str | None = None
     resource: str | None = None
+    plugin_generation: str = ""
 
 
 class WorkerChannel:
@@ -57,6 +58,7 @@ class ProcessWorker:
         self.publisher: asyncio.Task[None] | None = None
         self.channel: WorkerChannel | None = None
         self.last_heartbeat = 0.0
+        self.plugin_generation = ""
 
     def is_running(self) -> bool:
         return (self.process is not None and self.process.returncode is None
@@ -99,6 +101,7 @@ class ProcessWorker:
                 message = WorkerMessage.model_validate_json(frame)
                 if message.kind == "heartbeat":
                     self.last_heartbeat = time.monotonic()
+                    self.plugin_generation = message.plugin_generation
                     ready.set()
                 elif message.kind == "event":
                     try:
@@ -109,6 +112,7 @@ class ProcessWorker:
             logger.warning("Process worker channel closed ({})", type(error).__name__)
         finally:
             self.last_heartbeat = 0.0
+            self.plugin_generation = ""
             ready.set()
 
     @staticmethod
@@ -159,7 +163,9 @@ async def run_worker(fd: int) -> None:
     # providers and MCP policies. Its API lifespan is owned by the parent.
     import_module("main")
     from app.agent import register_dispatcher_output_contracts
-    from app.plugin.facade import restore_executable_plugins
+    from app.plugin.facade import (
+        RUNTIME_RECONCILE_INTERVAL, generation_fingerprint, reconcile_executable_plugins, restore_executable_plugins,
+    )
     from app.process import ProcessEffectWorkers, configure_default_engine, register_scheduler_jobs
     from app.task import register_runtime_settings, scheduler
     from core.database import engine, get_db_session, wait_for_db
@@ -187,7 +193,7 @@ async def run_worker(fd: int) -> None:
 
     async def heartbeat() -> None:
         while scheduler.is_running():
-            await channel.send(WorkerMessage(kind="heartbeat"))
+            await channel.send(WorkerMessage(kind="heartbeat", plugin_generation=generation_fingerprint()))
             await asyncio.sleep(HEARTBEAT_SECONDS)
         writer.close()
 
@@ -204,6 +210,9 @@ async def run_worker(fd: int) -> None:
         register_dispatcher_output_contracts()
         prepare_contact_detection()
         websocket.set_event_relay(emit)
+        scheduler.register_periodic_job(
+            "plugins-reconcile", reconcile_executable_plugins, interval=RUNTIME_RECONCILE_INTERVAL, timeout=30.0,
+        )
         scheduler.start(maintenance_only=True)
         notifications = asyncio.create_task(heartbeat(), name="process-worker-heartbeat")
         logger.info("Dedicated Process worker ready")

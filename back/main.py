@@ -50,7 +50,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # services start reading their typed in-memory view.
     from core.params import params_service
     async with get_db_session():
-        from app.plugin.facade import restore_executable_plugins
+        from app.plugin.facade import (
+            RUNTIME_RECONCILE_INTERVAL, reconcile_executable_plugins, refresh_catalogue_revocations, restore_executable_plugins,
+        )
 
         await restore_executable_plugins()
         # DbAdmin has already reconciled persistent datasets in the entrypoint.
@@ -81,6 +83,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
         configure_default_engine()
         register_trace_retention()
+        task_scheduler.register_periodic_job(
+            "plugins-reconcile", reconcile_executable_plugins, interval=RUNTIME_RECONCILE_INTERVAL, timeout=30.0,
+        )
+        task_scheduler.register_periodic_job(
+            "plugin-catalogue-revocations", refresh_catalogue_revocations, interval=60.0, timeout=30.0,
+        )
         params_service.register_change_listener(process_worker.reload_settings)
         register_runtime_settings()
         register_clarification_interaction()

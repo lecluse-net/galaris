@@ -3927,6 +3927,13 @@
       },
       {
         "files": [
+          "back/app/plugin/runtime.py"
+        ],
+        "source": "app.plugin",
+        "target": "core.secrets"
+      },
+      {
+        "files": [
           "back/app/plugin/service.py"
         ],
         "source": "app.plugin",
@@ -3938,6 +3945,13 @@
         ],
         "source": "app.plugin",
         "target": "core.user"
+      },
+      {
+        "files": [
+          "back/app/plugin/runtime.py"
+        ],
+        "source": "app.plugin",
+        "target": "core.util"
       },
       {
         "files": [
@@ -12386,7 +12400,7 @@
         "file": "back/app/plugin/models.py",
         "foreign_keys": [],
         "history_mixin": false,
-        "line": 47,
+        "line": 48,
         "module": "app.plugin",
         "table": "plugin_development_samples"
       },
@@ -12398,7 +12412,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 33,
+        "line": 34,
         "module": "app.plugin",
         "table": "plugin_events"
       },

@@ -770,6 +770,9 @@ another release. Presets appear after activation in **Configure → Services &
 connections → New service**. Saving a preset creates a local Service.
 Deactivation withdraws the preset from the catalogue. Uninstallation keeps the
 Services and connections already created.
+If the signed catalogue revokes a release, its card shows why activation is blocked
+and its history records the deactivation. Saved content remains available under
+its existing access rights.
 
 **Catalogue** lists signed archives supplied by the operator. Select a release to
 open preview and installation. An approved signed editor adds its format to Documents

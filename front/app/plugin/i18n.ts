@@ -37,6 +37,7 @@ export default {
         activated: 'Version {version} activée',
         deactivated: 'Version {version} désactivée',
         removed: 'Version {version} désinstallée',
+        revoked: 'Version {version} révoquée par le catalogue',
       },
       messages: {
         native_publisher_required: 'Cet éditeur doit être autorisé à exécuter du code sur cette instance.',
@@ -44,6 +45,7 @@ export default {
         missing_dependency: 'Une dépendance Python requise est absente ou à une autre version.',
         runtime_unconfigured: 'Un service d’exécution requis doit être configuré avec l’image indiquée.',
         activation_error: 'Le chargement du plugin a échoué. La sélection précédente est conservée.',
+        revoked: 'Le catalogue signé a révoqué cette version.',
         supported: 'Compatible avec cette instance.',
         host_version: 'Version de Galaris hors plage ou branche sans version de release.',
         untrusted_publisher: 'Le signataire de cette archive ne fait pas partie des éditeurs approuvés.',
@@ -101,6 +103,7 @@ export default {
         activated: 'Version {version} activated',
         deactivated: 'Version {version} deactivated',
         removed: 'Version {version} uninstalled',
+        revoked: 'Version {version} revoked by the catalogue',
       },
       messages: {
         native_publisher_required: 'This publisher must be authorized to run code on this instance.',
@@ -108,6 +111,7 @@ export default {
         missing_dependency: 'A required Python dependency is unavailable at the requested version.',
         runtime_unconfigured: 'A required runtime service must be configured with the listed image.',
         activation_error: 'The plugin failed to load. The previous selection is preserved.',
+        revoked: 'The signed catalogue revoked this release.',
         supported: 'Compatible with this instance.',
         host_version: 'Galaris version outside the supported range or branch without a release version.',
         untrusted_publisher: 'The archive signer is not a trusted publisher.',
@@ -165,6 +169,7 @@ export default {
         activated: '已启用版本 {version}',
         deactivated: '已停用版本 {version}',
         removed: '已卸载版本 {version}',
+        revoked: '目录已撤销版本 {version}',
       },
       messages: {
         native_publisher_required: '必须授权此发布者在该实例上运行代码。',
@@ -172,6 +177,7 @@ export default {
         missing_dependency: '缺少所需的 Python 依赖项版本。',
         runtime_unconfigured: '必须使用指定镜像配置所需的运行时服务。',
         activation_error: '插件加载失败。已保留之前的选择。',
+        revoked: '已签名的目录撤销了此版本。',
         supported: '与此实例兼容。',
         host_version: 'Galaris 版本不在支持范围内，或分支没有发行版本。',
         untrusted_publisher: '归档签名者不是受信任的发布者。',

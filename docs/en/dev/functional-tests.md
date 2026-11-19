@@ -49,6 +49,13 @@ covers contributed editing, inert fallback, source downloads and catalogue retry
 existing suites retain preview, printing and PDF export guarantees. See the
 [format contract](document-formats.md) for declarations versus qualification.
 
+`app/document/tests/test_sample_drawing.py` reads historical pixels, compares versions
+and regions, and checks access denials.
+`app/plugin/tests/test_plugins.py` covers
+Process worker restart recovery, durable revocation, catalogue attestations and
+preserved Connections after protocol removal. `plugin-release-lifecycle.spec.mjs`
+checks that the editor and its revisions survive Python and JavaScript loading failures.
+
 `app/calendar/tests/test_contacts.py` protects optional event references to the agent's private
 Contacts: MCP creation/updates, explicit removal, preservation across edits and remote refreshes,
 history, merge/forget lifecycle, recurrence splitting and due-Task context without expanded
@@ -63,13 +70,6 @@ functions from the catalogue.
 `app/calendar/tests/test_providers.py` exercises Google Calendar and Microsoft Graph on
 a synthetic HTTP boundary: discovery/read-only access, DB round trips, creation retries
 after lost replies, ETags, incomplete-response preservation, all-day dates and recurrence
-`app/document/tests/test_sample_drawing.py` reads historical pixels, compares versions
-and regions, and checks access denials.
-`app/plugin/tests/test_plugins.py` covers
-diagnostics, the signed catalogue, and preserved Connections after protocol removal.
-`plugin-release-lifecycle.spec.mjs` uses a frozen archive and checks a failed update and
-editor recovery in the assembled stack.
-
 exceptions across daylight-saving changes. `test_mcp_oauth.py` also covers calendar consent
 for Google/Microsoft/CalDAV, refresh-token rotation and independent MCP grants.
 `mcp-oauth.spec.mjs` exercises both authorizations together, error recovery and targeted

@@ -4,6 +4,7 @@ import asyncio
 from collections.abc import Callable
 from hashlib import sha256
 import re
+from time import monotonic
 from typing import Literal
 from uuid import uuid4
 
@@ -18,7 +19,7 @@ from core.database import get_db
 from core.update_diagnostics import record_update_failure
 from core.user import get_current_user_id
 
-from . import runtime
+from . import catalog, runtime
 from .bundles import Bundle, publisher_key, read_bundle
 from .contracts import (
     Compatibility, FileShareProtocolContribution, InventoryEntry, Manifest, Operation, PluginDetail, PluginEventRead, Preview,
@@ -33,6 +34,9 @@ _samples: dict[str, SampleRelease] = {}
 _sample_presets: tuple[ServiceCreate, ...] = ()
 _disabled_samples: frozenset[str] = frozenset()
 _runtime_changes = asyncio.Lock()
+_runtime_retry_after: dict[str, float] = {}
+RUNTIME_RECONCILE_INTERVAL = 2.0
+_RUNTIME_RETRY_INTERVAL = 60.0
 
 
 def register_development_samples(samples: list[SampleRelease], presets: list[ServiceCreate]) -> None:
@@ -103,7 +107,7 @@ def inspect_bundle(bundle: Bundle) -> Preview:
 
 def _release(record: PluginRelease) -> Release:
     manifest = Manifest.model_validate_json(record.manifest)
-    compatibility = _compatibility(manifest, record.signer, _PRESETS.validate_json(record.presets))
+    compatibility = "revoked" if record.revoked else _compatibility(manifest, record.signer, _PRESETS.validate_json(record.presets))
     forced = settings.is_dev and record.forced_host == host_identity()
     return Release(
         manifest=manifest,
@@ -164,14 +168,44 @@ async def _restore_sample_states() -> None:
 
 async def restore_executable_plugins() -> None:
     """Restore enabled checkout samples and compatible signed releases before serving."""
+    await _apply_catalogue_revocations(await asyncio.to_thread(catalog.cached_revocations))
+    async with _runtime_changes:
+        await _lock_plugins()
+        await _reconcile_selected_plugins(recheck=True)
+
+
+async def reconcile_executable_plugins() -> None:
+    """Converge this process on the database selection, including after missed changes."""
+    if _runtime_changes.locked():
+        return
+    async with _runtime_changes:
+        locked = await get_db().scalar(select(func.pg_try_advisory_xact_lock(func.hashtextextended("plugin-releases", 0))))
+        if locked:
+            await _reconcile_selected_plugins()
+
+
+async def _reconcile_selected_plugins(*, recheck: bool = False) -> None:
     await _restore_sample_states()
-    records = (await get_db().scalars(select(PluginRelease).where(PluginRelease.active).order_by(PluginRelease.code))).all()
-    runtime.prepare_generation(())()
+    records = (await get_db().scalars(select(PluginRelease).where(
+        PluginRelease.active, PluginRelease.installed, PluginRelease.revoked.is_(False),
+    ).order_by(PluginRelease.code))).all()
+    selected: dict[str, PluginRelease] = {}
     for record in records:
         release = _release(record)
-        if not release.manifest.executable or not (
+        if release.manifest.executable and (
             release.compatibility == "supported" or release.compatibility == "host_version" and release.forced
         ):
+            selected[record.digest] = record
+    active = runtime.active_bundles()
+    retained = tuple(bundle for bundle in active if bundle.digest in selected and not recheck)
+    if retained != active:
+        # Withdraw obsolete contributions before probing any replacements.
+        runtime.prepare_generation(retained)()
+    for digest in _runtime_retry_after.keys() - selected.keys():
+        del _runtime_retry_after[digest]
+    operation = "startup" if recheck else "reconcile"
+    for digest, record in selected.items():
+        if runtime.effective(digest) or (not recheck and _runtime_retry_after.get(digest, 0) > monotonic()):
             continue
         stage = "verify_archive"
         try:
@@ -180,8 +214,10 @@ async def restore_executable_plugins() -> None:
             await runtime.verify_runtimes(bundle.manifest.runtime_requirements)
             stage = "publish_registries"
             runtime.prepare_change(record.code, bundle)()
+            _runtime_retry_after.pop(digest, None)
         except Exception as exc:
-            await _record_failure(exc, operation="startup", stage=stage,
+            _runtime_retry_after[digest] = monotonic() + _RUNTIME_RETRY_INTERVAL
+            await _record_failure(exc, operation=operation, stage=stage,
                                   code=record.code, version=record.version, digest=record.digest)
 
 
@@ -195,6 +231,37 @@ def _event(record: PluginRelease, operation: Operation, *, forced: bool = False)
         host_revision=settings.APP_BUILD_REVISION if forced else None,
         host_identity=host_identity() if forced else None,
     ))
+
+
+async def refresh_catalogue_revocations() -> None:
+    """Apply signed catalogue revocations to local releases and preserve saved resources."""
+    remote = await asyncio.to_thread(catalog.remote_snapshot)
+    if remote is not None:
+        await _apply_catalogue_revocations(frozenset(remote[1].revoked))
+
+
+async def _apply_catalogue_revocations(digests: frozenset[str]) -> None:
+    if not digests:
+        return
+    async with _runtime_changes:
+        await _lock_plugins()
+        db = get_db()
+        records = (await db.scalars(select(PluginRelease).where(
+            PluginRelease.digest.in_(digests), PluginRelease.revoked.is_(False),
+        ))).all()
+        if not records:
+            return
+        revoked = {record.digest for record in records}
+        active = runtime.active_bundles()
+        retained = tuple(bundle for bundle in active if bundle.digest not in revoked)
+        publish = runtime.prepare_generation(retained) if retained != active else None
+        for record in records:
+            record.revoked = True
+            record.active = False
+            _event(record, "revoked")
+        await db.commit()
+        if publish is not None:
+            publish()
 
 
 async def install(bundle: Bundle, content: bytes, digest: str, force: bool, expected_host: str) -> Release:
@@ -232,6 +299,8 @@ async def _install(bundle: Bundle, content: bytes, digest: str, force: bool, exp
     record = await _get_release(code, version)
     if record is not None and record.digest != bundle.digest:
         raise PluginError("version_conflict")
+    if (record is not None and record.revoked) or bundle.digest in await asyncio.to_thread(catalog.cached_revocations):
+        raise PluginError("revoked")
     if record is not None and record.installed and record.forced_host == forced_host:
         return _release(record)
     publish: Callable[[], None] | None = None
@@ -387,6 +456,8 @@ async def _change_state(
     if operation == "activate":
         if not record.installed:
             raise PluginError("not_installed")
+        if record.revoked or record.digest in await asyncio.to_thread(catalog.cached_revocations):
+            raise PluginError("revoked")
         if summary.compatibility != "supported" and not (
             summary.compatibility == "host_version" and summary.forced and expected_host == summary.host_identity
         ):
@@ -405,6 +476,9 @@ async def _change_state(
                     await runtime.verify_runtimes(replacement.manifest.runtime_requirements)
                 stage = "prepare_registries"
                 publish = runtime.prepare_change(code, replacement)
+                if replacement is not None:
+                    stage = "verify_browser_modules"
+                    await runtime.verify_document_modules(replacement)
             except Exception as exc:
                 await _record_failure(exc, operation="activate", stage=stage,
                                       code=record.code, version=record.version, digest=record.digest)

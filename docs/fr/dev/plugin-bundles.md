@@ -103,11 +103,18 @@ avec la même `image` et une `url` par code. Avant le chargement, Galaris attend
 sur `/health` et fournit les URL résolues dans `context.endpoints`. Le forçage dev
 porte uniquement sur la version de Galaris.
 
-Le backend standard à un processus publie les registres préparés après la transaction.
-Un échec de chargement à l'activation conserve la sélection précédente et ajoute un événement
-au journal. Les échecs de chargement et les erreurs inattendues d'installation sont consignés
-dans `/data/update-diagnostics` avec l'étape, la version et la cause expurgée.
-Au démarrage, il vérifie les archives sélectionnées et leurs dépendances avant d'admettre les requêtes.
+L'API publie les registres préparés après la transaction. Le worker Process relit
+la sélection dans PostgreSQL au démarrage et la réconcilie toutes les deux secondes.
+Il retire les contributions obsolètes avant de préparer leurs remplaçantes. Les
+opérations déjà engagées peuvent se terminer.
+
+Avant la sélection, Chromium charge chaque module autonome dans un contexte neuf,
+sans accès à l'application ni requêtes réseau, et vérifie l'export `createFormat`.
+Un échec d'import conserve la sélection précédente et ajoute un événement au journal.
+L'appel de `createFormat(host)`, le montage et les interactions de l'éditeur restent
+à qualifier dans le frontend assemblé. Les diagnostics de `/data/update-diagnostics`
+gardent l'étape, la version et la cause expurgée des échecs de chargement et d'installation.
+Au démarrage, l'API vérifie les archives sélectionnées et leurs dépendances avant de servir les requêtes.
 La désactivation retire les contributions et leurs modules. Elle conserve les documents,
 leurs révisions et les configurations locales.
 
@@ -136,9 +143,32 @@ Publiez d'abord les archives par empreinte, puis le nouvel index et sa signature
 garde le dernier index accepté dans le volume du catalogue. Un ancien numéro d'index ou
 une révocation retirée ne peut le remplacer. L'index en cache reste utilisable jusqu'à
 expiration. Le téléchargement vérifie à nouveau l'index, l'empreinte et la signature
-de l'éditeur. Les révocations bloquent l'acquisition depuis le catalogue. L'activation
-et le retrait des versions déjà installées restent des opérations de l'administrateur.
-Le miroir local et l'import manuel ont leurs propres parcours.
+de l'éditeur. L'API relève les révocations du catalogue chaque minute et désactive
+les versions concernées. Le registre conserve le blocage par empreinte même après
+l'expiration de l'index, une panne du catalogue ou la désinstallation. Une empreinte
+révoquée ne peut plus être importée manuellement ni réactivée. Les documents, révisions,
+Services locaux et Connexions conservent leurs données.
 
-La supervision des conteneurs, l'isolation d'éditeurs tiers et la chaîne de publication
-officielle restent suivies dans le [plan des plugins](../../../project/plans/infrastructure-plugins-galaris.md).
+### Préparer une publication déclarative
+
+Le préparateur utilise les clés éditeur de `PLUGIN_TRUSTED_PUBLISHERS` pour vérifier
+les ZIP. Pour chaque `<nom>.zip`, fournir `<nom>.qualification.json` et sa signature
+Ed25519 binaire `<nom>.qualification.sig`, émise par une autorité distincte de l'éditeur
+et du catalogue. L'attestation a `format_version: 1`, `digest` (SHA-256 du ZIP),
+`source_repository` (HTTPS), `source_commit` (empreinte Git), `report_digest`
+(SHA-256 du rapport conservé par le qualificateur) et les contrôles
+`bundle`, `compatibility`, `permissions`, `localization` et `lifecycle` dans `checks`.
+
+```bash
+python -m app.plugin.publication ./candidats ./catalogue-suivant \
+  --catalogue-key catalogue.pem --qualification-key qualification-public.hex \
+  --previous ./catalogue-courant --revoke "$revoked_digest"
+```
+
+Pour la première publication, omettre `--previous` et `--revoke`. Le préparateur crée
+un nouveau répertoire signé, conserve la séquence et les révocations du précédent,
+et fournit les archives indexées par empreinte avec leurs attestations. L'opérateur
+publie `index.json`, `index.sig` et `archives/` après contrôle. Les contributions
+exécutables sont réservées au circuit des éditeurs explicitement approuvés par
+l'opérateur. L'isolation des éditeurs tiers et l'hébergement officiel sont suivis
+dans le [plan des plugins](../../../project/plans/infrastructure-plugins-galaris.md).

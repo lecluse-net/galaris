@@ -193,6 +193,161 @@ def test_bundle_rejects_unverified_or_undeclared_members(bundle_factory, options
         read_bundle(bundle_factory(**options))
 
 
+def test_catalogue_publication_checks_provenance_and_preserves_release_history(bundle_factory, monkeypatch, tmp_path):
+    from cryptography.exceptions import InvalidSignature
+
+    from app.plugin.publication import stage_catalogue
+    from app.plugin.remote_catalog import verify_signed_index
+    from plugins.sample.inventory import ROOT
+    from plugins.sample.package import build
+
+    candidates = tmp_path / "candidates"
+    candidates.mkdir()
+    package = candidates / "sample.zip"
+    proof = candidates / "sample.qualification.json"
+    signature = candidates / "sample.qualification.sig"
+    catalogue_key = Ed25519PrivateKey.generate()
+    qualification_key = Ed25519PrivateKey.generate()
+    reviewer = qualification_key.public_key()
+    release = bundle_factory()
+    digest = sha256(release).hexdigest()
+    evidence = {
+        "format_version": 1, "digest": digest, "source_repository": "https://source.example.test/studio",
+        "source_commit": "a" * 40, "report_digest": "b" * 64,
+        "checks": ["bundle", "compatibility", "permissions", "localization", "lifecycle"],
+    }
+
+    def attest():
+        body = json.dumps(evidence).encode()
+        proof.write_bytes(body)
+        signature.write_bytes(qualification_key.sign(body))
+
+    package.write_bytes(release)
+    attest()
+    head = tmp_path / "first"
+    signature.write_bytes(b"x" * 64)
+    with pytest.raises(InvalidSignature):
+        stage_catalogue(candidates, head, catalogue_key, reviewer)
+    assert not head.exists()
+    attest()
+    package.write_bytes(bundle_factory("1.1.0"))
+    with pytest.raises(ValueError, match="archive digest"):
+        stage_catalogue(candidates, head, catalogue_key, reviewer)
+    package.write_bytes(release)
+    first = stage_catalogue(candidates, head, catalogue_key, reviewer)
+    signed = (head / "index.sig").read_bytes() + (head / "index.json").read_bytes()
+    assert verify_signed_index(signed, catalogue_key.public_key().public_bytes_raw()) == first
+    assert (head / "archives" / f"{digest}.zip").read_bytes() == release
+    assert (head / "qualification" / f"{digest}.json").read_bytes() == proof.read_bytes()
+
+    package.unlink()
+    second = tmp_path / "second"
+    index = stage_catalogue(candidates, second, catalogue_key, reviewer, previous=head, revoke=(digest,))
+    assert index.sequence == first.sequence + 1
+    assert index.revoked == [digest] and index.releases == first.releases
+    assert not list((second / "archives").iterdir())
+    assert (head / "archives" / f"{digest}.zip").read_bytes() == release
+    package.write_bytes(release)
+    with pytest.raises(ValueError, match="non-revoked"):
+        stage_catalogue(candidates, tmp_path / "third", catalogue_key, reviewer, previous=second)
+    native_key = Ed25519PrivateKey.generate()
+    monkeypatch.setattr(settings, "PLUGIN_TRUSTED_PUBLISHERS", {
+        **settings.PLUGIN_TRUSTED_PUBLISHERS, "sample": native_key.public_key().public_bytes_raw().hex(),
+    })
+    package.write_bytes(build(ROOT / "preview", native_key))
+    with pytest.raises(ValueError, match="declarative plugins only"):
+        stage_catalogue(candidates, tmp_path / "native", catalogue_key, reviewer)
+
+
+@pytest.mark.asyncio
+async def test_process_worker_follows_committed_selection_and_restores_it_after_restart(
+    committed_database, monkeypatch, tmp_path,
+):
+    import asyncio
+    import sys
+    from types import SimpleNamespace
+
+    from sqlalchemy import func
+
+    from app.llm.provider_catalog import get_provider_profile
+    from app.plugin import runtime, service
+    from plugins.sample.package import build
+    from scripts import process_worker
+
+    key = Ed25519PrivateKey.generate()
+    publishers = {"fixture": key.public_key().public_bytes_raw().hex()}
+    monkeypatch.setattr(settings, "PLUGIN_TRUSTED_PUBLISHERS", publishers)
+    monkeypatch.setattr(settings, "PLUGIN_EXECUTABLE_PUBLISHERS", ["fixture"])
+    monkeypatch.setattr(type(settings), "APP_VERSION", "0.2.0")
+    monkeypatch.setenv("PLUGIN_TRUSTED_PUBLISHERS", json.dumps(publishers))
+    monkeypatch.setenv("PLUGIN_EXECUTABLE_PUBLISHERS", '["fixture"]')
+    async with get_db_session() as db:
+        database = await db.scalar(select(func.current_database()))
+    monkeypatch.setenv("POSTGRES_DB", database)
+    launcher = tmp_path / "worker"
+    launcher.write_text(f"#!{sys.executable}\n"
+        "import asyncio, sys\n"
+        "from core import settings\n"
+        "type(settings).APP_VERSION = '0.2.0'\n"
+        "from scripts.process_worker import run_worker\n"
+        "asyncio.run(run_worker(int(sys.argv[-1])))\n")
+    launcher.chmod(0o700)
+    monkeypatch.setattr(process_worker, "sys", SimpleNamespace(executable=str(launcher)))
+
+    code = "fixture.worker-profile"
+    names = {"fr": "Profil synthétique", "en": "Synthetic profile"}
+    (tmp_path / "manifest.json").write_text(json.dumps({
+        "format_version": 2, "code": code, "version": "1.0.0", "label": names, "description": names,
+        "minimum_galaris_version": "0.1.0", "maximum_galaris_version_exclusive": "1.0.0",
+        "contributions": [{"family": "llm_provider", "code": code, "label": names, "contract_version": 1}],
+    }))
+    (tmp_path / "backend").mkdir()
+    (tmp_path / f"backend/{code}.py").write_text("from app.llm.provider_facade import ProviderProfile\n"
+        "def plugin_provider(context):\n"
+        f"    return ProviderProfile('{code}', 'Synthetic profile', 'openai_compatible', 'api_key', "
+        "'https://synthetic.invalid/v1', None, '', 'smart_toy', 'solaire-blue')\n")
+    archive = build(tmp_path, key)
+    bundle = read_bundle(archive)
+    worker = process_worker.ProcessWorker()
+
+    async def wait_for_generation(expected):
+        async with asyncio.timeout(15):
+            while worker.plugin_generation != expected:
+                assert worker.is_running()
+                await asyncio.sleep(0.1)
+
+    async with get_db_session():
+        await service.restore_executable_plugins()
+        await service.install(bundle, archive, bundle.digest, False, service.host_identity())
+    empty = runtime.generation_fingerprint()
+    try:
+        async with asyncio.timeout(30):
+            await worker.start()
+        assert worker.plugin_generation == empty
+        async with get_db_session():
+            await service.change_state(code, "1.0.0", "activate", service.host_identity())
+        selected = runtime.generation_fingerprint()
+        assert selected != empty and get_provider_profile(code) is not None
+        await wait_for_generation(selected)
+
+        previous_pid = worker.process.pid
+        await worker.stop()
+        async with asyncio.timeout(30):
+            await worker.start()
+        assert worker.process.pid != previous_pid
+        assert worker.plugin_generation == selected
+
+        async with get_db_session():
+            await service.change_state(code, "1.0.0", "deactivate", service.host_identity())
+            await service.change_state(code, "1.0.0", "remove", service.host_identity())
+        assert get_provider_profile(code) is None
+        await wait_for_generation(empty)
+    finally:
+        await worker.stop()
+        async with get_db_session():
+            await service.change_state(code, "1.0.0", "deactivate", service.host_identity())
+
+
 @pytest.mark.asyncio
 async def test_executable_archive_publishes_both_entry_points_and_keeps_documents_on_removal(
     client, monkeypatch, tmp_path, memory_storage, diagnostic_directory,
@@ -232,6 +387,14 @@ def plugin_format(_context):
         validate_binary=lambda _: None, surfaces=frozenset({"editor"}))
 ''')
     browser_code = 'export function createFormat() { return {}; }'
+    qualification_errors = []
+
+    async def verify_document_modules(bundle):
+        if qualification_errors:
+            raise ValueError("Synthetic Chromium module failure")
+        assert bundle.assets["frontend/example.binary.mjs"] == browser_code.encode()
+
+    monkeypatch.setattr(runtime, "verify_document_modules", verify_document_modules)
     (tmp_path / "frontend/example.binary.mjs").write_text(browser_code)
     (tmp_path / "backend/example.binary.ai.py").write_text('''from app.llm.provider_facade import ProviderProfile
 def plugin_provider(_context):
@@ -311,6 +474,24 @@ def plugin_provider(_context):
     assert failure["causes"][0]["locations"]
     detail = await client.get("/api/plugins/example.binary", headers=admin)
     assert detail.json()["events"][0]["operation"] == "activation_error"
+    manifest["version"] = "3.0.0"
+    (tmp_path / "manifest.json").write_text(json.dumps(manifest))
+    backend.write_text("from app.document import DocumentFormatDefinition\n"
+        "def plugin_format(_context):\n"
+        "    return DocumentFormatDefinition('example.binary', 'application/octet-stream', '', 'description', "
+        "lambda _: None, lambda _: '', provider='example.binary', storage_kind='file', "
+        "initial_binary=b'fixture', validate_binary=lambda _: None, surfaces=frozenset({'editor'}))\n")
+    browser_failure_archive = build(tmp_path, key)
+    browser_failure = await _preview(client, admin, browser_failure_archive)
+    assert (await _install(client, admin, browser_failure_archive, browser_failure)).status_code == 200
+    qualification_errors.append("load")
+    failed = await _change(client, admin, browser_failure, "activate")
+    qualification_errors.clear()
+    assert (failed.status_code, failed.json()["detail"]) == (409, "activation_error")
+    assert (await client.get(asset)).status_code == 200
+    reports = [json.loads(path.read_text()) for path in diagnostic_directory.glob("update-*.json")]
+    [failure] = [report for report in reports if report["details"]["plugin_version"] == "3.0.0"]
+    assert failure["details"]["stage"] == "verify_browser_modules"
     from core.database import get_db_session
     from app.plugin.facade import restore_executable_plugins
     async with get_db_session():
@@ -530,6 +711,9 @@ async def test_remote_catalogue_checks_archive_series_expiry_and_revocation(clie
     publish(2)
     assert await versions() == {"1.0.0", "1.1.0"}
     assert (await client.get(remote_path, headers=admin)).content == content
+    report = await _preview(client, admin, content)
+    assert (await _install(client, admin, content, report)).is_success
+    assert (await _change(client, admin, report, "activate")).json()["active"]
     archive_bytes = local
     assert (await client.get(remote_path, headers=admin)).status_code == 503
     archive_bytes = content
@@ -544,9 +728,29 @@ async def test_remote_catalogue_checks_archive_series_expiry_and_revocation(clie
 
     publish(3, revoked=(remote_bundle.digest,))
     assert await versions() == {"1.1.0"}
+    assert (await _change(client, admin, report, "activate")).json() == {"detail": "revoked"}
+    from app.plugin.facade import refresh_catalogue_revocations
+
+    online = False
+    clock = expiry + timedelta(seconds=1)
+    async with get_db_session():
+        await refresh_catalogue_revocations()
+    async with get_db_session():
+        await refresh_catalogue_revocations()
+    detail = (await client.get("/api/plugins/example.studio", headers=admin)).json()
+    [release] = detail["releases"]
+    assert release["installed"] and not release["selected"] and not release["active"]
+    assert release["compatibility"] == "revoked"
+    assert [event["operation"] for event in detail["events"]].count("revoked") == 1
+    clock = initial
+    online = True
     publish(2)
     assert await versions() == {"1.1.0"}
     assert (await client.get(remote_path, headers=admin)).status_code == 404
+    assert (await _change(client, admin, report, "remove")).is_success
+    monkeypatch.setattr(settings, "PLUGIN_CATALOG_REMOTE_URL", "")
+    monkeypatch.setattr(settings, "PLUGIN_CATALOG_REMOTE_PUBLIC_KEY", "")
+    assert (await _install(client, admin, content, report)).json() == {"detail": "revoked"}
 
 
 @pytest.mark.asyncio

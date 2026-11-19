@@ -1,7 +1,7 @@
 import api from '@/core/api'
 import { isAxiosError } from 'axios'
 
-export type PluginCompatibility = 'supported' | 'host_version' | 'untrusted_publisher' | 'unsupported_service' | 'native_publisher_required' | 'missing_dependency' | 'runtime_unconfigured'
+export type PluginCompatibility = 'supported' | 'host_version' | 'untrusted_publisher' | 'unsupported_service' | 'native_publisher_required' | 'missing_dependency' | 'runtime_unconfigured' | 'revoked'
 export type PluginAction = 'activate' | 'deactivate' | 'remove'
 
 export interface LocalizedPluginText {
@@ -61,7 +61,7 @@ export interface PluginDetail {
   releases: PluginInventoryEntry[]
   events: {
     version: string
-    operation: 'installed' | 'activated' | 'deactivated' | 'removed' | 'activation_error'
+    operation: 'installed' | 'activated' | 'deactivated' | 'removed' | 'activation_error' | 'revoked'
     occurred_at: string
     forced: boolean
   }[]
