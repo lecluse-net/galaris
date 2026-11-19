@@ -10,7 +10,6 @@ from .models import (
 )
 from .learning_contracts import (
     LearnedSkillApplyResult,
-    LearnedSkillContext,
     LearnedSkillDecision,
     LearnedSkillOperation,
     LearnedSkillRuntimeRefresher,
@@ -20,7 +19,6 @@ from .learning_contracts import (
 from .learning_service import (
     apply_learning_decision,
     learning_code_prefix,
-    list_learning_context,
 )
 from .schemas import SkillCreate, SkillPublic, SkillUpdate
 from .skill_service import has_configured_skills, initialize_galaris_agent_skills
@@ -50,7 +48,6 @@ __all__ = [
     "AgentSkillCategory",
     "SkillLearningEvidence",
     "LearnedSkillApplyResult",
-    "LearnedSkillContext",
     "LearnedSkillDecision",
     "LearnedSkillOperation",
     "LearnedSkillRuntimeRefresher",
@@ -71,7 +68,6 @@ __all__ = [
     "has_configured_skills",
     "initialize_galaris_agent_skills",
     "list_skill_files",
-    "list_learning_context",
     "learning_code_prefix",
     "list_skill_resources",
     "move_skill_file",

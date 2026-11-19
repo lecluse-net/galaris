@@ -1762,7 +1762,6 @@
           "back/app/dream/mechanisms/resource_summaries.py",
           "back/app/dream/mechanisms/resource_topic_classification.py",
           "back/app/dream/mechanisms/sequential_topic_classification.py",
-          "back/app/dream/mechanisms/skill_learning.py",
           "back/app/dream/mechanisms/task_memory.py",
           "back/app/dream/mechanisms/task_outcome_reflection.py",
           "back/app/dream/mechanisms/topic_classification.py",
@@ -1817,17 +1816,9 @@
       },
       {
         "files": [
-          "back/app/dream/mechanisms/skill_learning.py"
-        ],
-        "source": "app.dream",
-        "target": "app.skill"
-      },
-      {
-        "files": [
           "back/app/dream/dbadmin.py",
           "back/app/dream/mechanisms/conversation_memory.py",
           "back/app/dream/mechanisms/sequential_topic_classification.py",
-          "back/app/dream/mechanisms/skill_learning.py",
           "back/app/dream/mechanisms/task_memory.py",
           "back/app/dream/mechanisms/task_outcome_reflection.py",
           "back/app/dream/mechanisms/topic_classification.py",
@@ -1885,7 +1876,6 @@
           "back/app/dream/mechanisms/resource_summaries.py",
           "back/app/dream/mechanisms/resource_topic_classification.py",
           "back/app/dream/mechanisms/sequential_topic_classification.py",
-          "back/app/dream/mechanisms/skill_learning.py",
           "back/app/dream/mechanisms/stale_memory.py",
           "back/app/dream/mechanisms/task_memory.py",
           "back/app/dream/mechanisms/task_outcome_reflection.py",
@@ -1933,7 +1923,6 @@
           "back/app/dream/mechanisms/memory_extraction.py",
           "back/app/dream/mechanisms/memory_maintenance.py",
           "back/app/dream/mechanisms/resource_topic_classification.py",
-          "back/app/dream/mechanisms/skill_learning.py",
           "back/app/dream/mechanisms/stale_memory.py",
           "back/app/dream/mechanisms/task_memory.py",
           "back/app/dream/mechanisms/task_outcome_reflection.py",
@@ -2288,6 +2277,7 @@
           "back/app/goal/goal_service.py",
           "back/app/goal/hierarchy.py",
           "back/app/goal/models.py",
+          "back/app/goal/retrospective.py",
           "back/app/goal/router.py",
           "back/app/goal/runner.py"
         ],
@@ -2334,6 +2324,7 @@
           "back/app/goal/models.py",
           "back/app/goal/referrer_wait.py",
           "back/app/goal/resource_facade.py",
+          "back/app/goal/retrospective.py",
           "back/app/goal/runner.py"
         ],
         "source": "app.goal",
@@ -2356,6 +2347,7 @@
           "back/app/goal/models.py",
           "back/app/goal/referrer_wait.py",
           "back/app/goal/resource_facade.py",
+          "back/app/goal/retrospective.py",
           "back/app/goal/runner.py"
         ],
         "source": "app.goal",
@@ -2371,7 +2363,8 @@
       },
       {
         "files": [
-          "back/app/goal/referrer_wait.py"
+          "back/app/goal/referrer_wait.py",
+          "back/app/goal/retrospective.py"
         ],
         "source": "app.goal",
         "target": "core.i18n"
@@ -4458,8 +4451,7 @@
       },
       {
         "files": [
-          "back/app/skill/learning_policy.py",
-          "back/app/skill/learning_service.py"
+          "back/app/skill/learning_policy.py"
         ],
         "source": "app.skill",
         "target": "core.params"
@@ -6821,7 +6813,7 @@
           "app.task"
         ]
       ],
-      "domain_edges": 308,
+      "domain_edges": 307,
       "fan_in": [
         {
           "count": 45,
@@ -7117,11 +7109,10 @@
           ]
         },
         {
-          "count": 10,
+          "count": 9,
           "module": "app.skill",
           "modules": [
             "app.agent",
-            "app.dream",
             "app.file_share",
             "app.harness",
             "app.lab",
@@ -7327,27 +7318,6 @@
       "fan_out": [
         {
           "count": 15,
-          "module": "app.dream",
-          "modules": [
-            "app.agent",
-            "app.connection",
-            "app.contact",
-            "app.conversation",
-            "app.dataset",
-            "app.document",
-            "app.goal",
-            "app.llm",
-            "app.memory",
-            "app.messenger",
-            "app.process",
-            "app.skill",
-            "app.task",
-            "app.topic",
-            "app.voice"
-          ]
-        },
-        {
-          "count": 15,
           "module": "app.file_share",
           "modules": [
             "app.agent",
@@ -7383,6 +7353,26 @@
             "app.process",
             "app.services",
             "app.skill",
+            "app.task",
+            "app.topic",
+            "app.voice"
+          ]
+        },
+        {
+          "count": 14,
+          "module": "app.dream",
+          "modules": [
+            "app.agent",
+            "app.connection",
+            "app.contact",
+            "app.conversation",
+            "app.dataset",
+            "app.document",
+            "app.goal",
+            "app.llm",
+            "app.memory",
+            "app.messenger",
+            "app.process",
             "app.task",
             "app.topic",
             "app.voice"
@@ -8948,15 +8938,39 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_ask_referrer",
-        "line": 127,
+        "line": 171,
         "module": "app.goal",
         "name": "goal_ask_referrer",
         "namespace": "galaris"
       },
       {
         "file": "back/app/goal/mcp.py",
+        "handler": "goal_retrospective_evidence",
+        "line": 38,
+        "module": "app.goal",
+        "name": "goal_retrospective_evidence",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/goal/mcp.py",
+        "handler": "goal_retrospective_learn",
+        "line": 54,
+        "module": "app.goal",
+        "name": "goal_retrospective_learn",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/goal/mcp.py",
+        "handler": "goal_retrospective_record",
+        "line": 65,
+        "module": "app.goal",
+        "name": "goal_retrospective_record",
+        "namespace": "galaris"
+      },
+      {
+        "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_run_now",
-        "line": 445,
+        "line": 489,
         "module": "app.goal",
         "name": "goal_run_now",
         "namespace": "galaris"
@@ -8964,7 +8978,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_update_suivi",
-        "line": 268,
+        "line": 312,
         "module": "app.goal",
         "name": "goal_update_suivi",
         "namespace": "galaris"
@@ -9220,7 +9234,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_complete",
-        "line": 419,
+        "line": 463,
         "module": "app.goal",
         "name": "goal_complete",
         "namespace": "goal_management"
@@ -9228,7 +9242,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_create",
-        "line": 153,
+        "line": 197,
         "module": "app.goal",
         "name": "goal_create",
         "namespace": "goal_management"
@@ -9236,7 +9250,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_delete",
-        "line": 473,
+        "line": 517,
         "module": "app.goal",
         "name": "goal_delete",
         "namespace": "goal_management"
@@ -9244,7 +9258,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_pause",
-        "line": 371,
+        "line": 415,
         "module": "app.goal",
         "name": "goal_pause",
         "namespace": "goal_management"
@@ -9252,7 +9266,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_resume",
-        "line": 395,
+        "line": 439,
         "module": "app.goal",
         "name": "goal_resume",
         "namespace": "goal_management"
@@ -9260,7 +9274,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_update",
-        "line": 303,
+        "line": 347,
         "module": "app.goal",
         "name": "goal_update",
         "namespace": "goal_management"
@@ -11458,7 +11472,7 @@
           "goals.id"
         ],
         "history_mixin": false,
-        "line": 359,
+        "line": 364,
         "module": "app.goal",
         "table": "goal_calendar_plans"
       },
@@ -11479,7 +11493,7 @@
           "goals.id"
         ],
         "history_mixin": false,
-        "line": 397,
+        "line": 402,
         "module": "app.goal",
         "table": "goal_cycle_triggers"
       },
@@ -11494,7 +11508,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 235,
+        "line": 240,
         "module": "app.goal",
         "table": "goal_cycles"
       },
@@ -11507,7 +11521,7 @@
           "goals.id"
         ],
         "history_mixin": false,
-        "line": 376,
+        "line": 381,
         "module": "app.goal",
         "table": "goal_occurrences"
       },

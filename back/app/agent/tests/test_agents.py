@@ -438,8 +438,10 @@ async def test_create_internal_harness_materializes_skill_assignments(
 
     db.add.side_effect = add_agent
     ensure_skill_assignment_matrix = AsyncMock()
+    initialize_agent_creation = AsyncMock()
 
     monkeypatch.setattr(agent_service, "get_db", lambda: db)
+    monkeypatch.setattr(agent_service, "initialize_agent_creation", initialize_agent_creation)
     monkeypatch.setattr(
         agent_service.profile_service,
         "ensure_default_profile_id",
@@ -478,6 +480,7 @@ async def test_create_internal_harness_materializes_skill_assignments(
 
     assert created is created_agents[0]
     ensure_skill_assignment_matrix.assert_awaited_once_with(42)
+    initialize_agent_creation.assert_awaited_once_with(42)
     sync_integrated_service_connections.assert_awaited_once_with(42)
 
 

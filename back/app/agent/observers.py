@@ -16,8 +16,20 @@ from .contracts import AgentTask
 
 TerminalTaskObserver = Callable[[AgentTask], None | Awaitable[None]]
 AgentProfileObserver = Callable[[int, str], None | Awaitable[None]]
+AgentCreationInitializer = Callable[[int], Awaitable[None]]
 _terminal_observers: dict[str, TerminalTaskObserver] = {}
 _profile_observers: dict[str, AgentProfileObserver] = {}
+_creation_initializers: dict[str, AgentCreationInitializer] = {}
+
+
+def register_agent_creation_initializer(name: str, initializer: AgentCreationInitializer) -> None:
+    """Register data that must commit with a newly created Agent."""
+    _creation_initializers[name] = initializer
+
+
+async def initialize_agent_creation(agent_id: int) -> None:
+    for initializer in _creation_initializers.values():
+        await initializer(agent_id)
 
 
 def register_terminal_task_observer(

@@ -16,14 +16,14 @@
         <div>
           <div class="text-caption text-grey-7">{{ t('goal.referrer') }}</div>
           <div class="text-weight-medium">
-            {{ goal.referrer?.display_name || t('goal.referrerMissing') }}
+            {{ goal.is_weekly_retrospective ? t('goal.systemReferrer') : goal.referrer?.display_name || t('goal.referrerMissing') }}
           </div>
         </div>
       </div>
     </div>
 
     <div v-if="canEdit" class="goal-overview-actions">
-      <span v-if="goal.status !== 'COMPLETED'" class="inline-block">
+      <span v-if="goal.status !== 'COMPLETED' && !(goal.is_weekly_retrospective && goal.status === 'PAUSED')" class="inline-block">
         <q-btn
           unelevated
           color="positive"
@@ -72,7 +72,7 @@
         @click="emit('command', 'resume')"
       />
       <q-btn
-        v-if="goal.status !== 'COMPLETED'"
+        v-if="!goal.is_weekly_retrospective && goal.status !== 'COMPLETED'"
         outline
         color="warning"
         icon="stop_circle"
@@ -80,7 +80,7 @@
         @click="emit('complete')"
       />
       <q-btn
-
+        v-if="!goal.is_weekly_retrospective"
         color="negative"
         icon="delete"
         :label="t('goal.delete')"

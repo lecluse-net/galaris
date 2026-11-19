@@ -781,6 +781,9 @@ def _assign_referrer(goal: Goal, values: dict[str, Any]) -> None:
 async def assert_referrer_available(goal: Goal) -> None:
     """Reject execution when the durable referrer can no longer be reached."""
 
+    if goal.is_weekly_retrospective:
+        return
+
     if goal.referrer_type == GoalReferrerType.AGENT:
         if goal.referrer_agent_id is None:
             raise GoalConflictError("The Goal's referring agent is no longer available.")
@@ -995,6 +998,16 @@ async def update(
     if goal is None:
         return None
     _assert_revision(goal, data)
+    if goal.is_weekly_retrospective:
+        if {"description", "referrer", "referrer_max_reminders", "parent_goal_id"} & data.model_fields_set:
+            raise GoalConflictError("The weekly retrospective's assignment and purpose are managed by Galaris.")
+        if data.agent_id is not None and data.agent_id != goal.agent_id:
+            raise GoalConflictError("The weekly retrospective stays assigned to its agent.")
+        if ("cycle_delay_seconds" in data.model_fields_set and data.cycle_delay_seconds is not None
+                or "recurrence" in data.model_fields_set and (
+                    data.recurrence is None or data.recurrence.frequency != "WEEKLY" or data.recurrence.interval != 1
+                )):
+            raise GoalConflictError("The weekly retrospective must recur once a week.")
     if "category_id" in data.model_fields_set and goal.category is not None:
         if goal.category.created_by != get_current_user_id():
             raise GoalConflictError("This Goal's category belongs to another user.")
@@ -1250,6 +1263,8 @@ async def complete(goal_id: UUID, command: GoalCommand) -> GoalRead | None:
     if goal is None:
         return None
     _assert_revision(goal, command)
+    if goal.is_weekly_retrospective:
+        raise GoalConflictError("The weekly retrospective can be paused instead of completed.")
     last_cycle = await _last_cycle(goal.id)
     if (
         last_cycle is not None
@@ -1298,6 +1313,8 @@ async def run_now(
     _assert_revision(goal, command)
     if goal.status == GoalStatus.COMPLETED:
         raise GoalConflictError("A completed Goal cannot start another cycle.")
+    if goal.is_weekly_retrospective and goal.status == GoalStatus.PAUSED:
+        raise GoalConflictError("Resume the weekly retrospective before starting a cycle.")
     await assert_referrer_available(goal)
     last_cycle = await _last_cycle(goal.id)
     if last_cycle is not None and last_cycle.verdict is None:
@@ -1324,6 +1341,8 @@ async def delete(goal_id: UUID) -> bool:
     goal = await get_by_id(goal_id, for_update=True)
     if goal is None:
         return False
+    if goal.is_weekly_retrospective:
+        raise GoalConflictError("The weekly retrospective is required. Pause it to suspend future cycles.")
     open_cycle = await get_db().scalar(
         select(GoalCycle.id)
         .where(
@@ -1358,6 +1377,10 @@ async def emit_updated(goal_id: UUID) -> None:
     """Publish a worker-side state change through the regular Goal channel."""
 
     await _emit(goal_id)
+
+
+async def emit_created(goal_id: UUID) -> None:
+    await _emit(goal_id, "create")
 
 
 async def enqueue_child_triggers(cycle: GoalCycle) -> None:

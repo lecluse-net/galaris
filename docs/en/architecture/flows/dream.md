@@ -90,19 +90,8 @@ locators and an attested or unknown version. Late evidence opens a new idempoten
 Application revalidates the checkpoint; reads and recall exclude new derived facts when none of
 their supporting evidence remains available. See [0169](../../../../project/decisions/0169-conversation-memory-acquired-evidence.md).
 
-`skill.learn_task_outcome` transforms only bounded, observable evidence into reusable procedures
-specific to the agent. CREATE, REINFORCE, REVISE, and WEAKEN use personal `skills` packages and their canonical `SKILL.md`, with linked evidence in `skill_learning_evidences`, never Memory. The evidence fingerprint is part of
-the subject's identity: late-arriving material evidence creates a new subject, while an identical
-rescan remains ineffective. All terminal Tasks are eligible, including those completed
-before learning was enabled; Dream processes them from oldest to newest,
-one per pass. `observe` mode retains the checkpointed proposal; `learn` can then
-apply it without a second LLM call.
-
-The smoothed score `(positive + 1) / (positive + negative + 2)` makes reinforcement and
-weakening visible. A first occurrence creates only a candidate. An unsuspended
-procedure is added to the agent's ordinary skills only if `DREAM_SKILL_MIN_EVIDENCE` distinct
-Tasks have confirmed the same repeated action and it reaches `DREAM_SKILL_ACTIVATION_SCORE`,
-within `DREAM_SKILL_MAX_ACTIVE`. The repetition threshold is 3 by default. Its editable canonical files live under `.personal/`, in the same catalogue and projections as other personal packages.
+The [weekly retrospective](../../../../project/decisions/0302-weekly-agent-retrospective.md)
+owns procedural learning. Historical Dream learning receipts remain available.
 
 ## Deterministic effects
 

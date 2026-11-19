@@ -73,6 +73,7 @@ from .context import (
 )
 from .observers import (
     notify_agent_profile,
+    register_agent_creation_initializer as register_agent_creation_initializer,
     register_agent_profile_observer,
     register_terminal_task_observer,
     unregister_agent_profile_observer,

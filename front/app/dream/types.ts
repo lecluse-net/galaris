@@ -62,6 +62,7 @@ export type DreamMechanismKey =
   | 'memory.attachment_video'
   | 'memory.extract_conversation_round'
   | 'memory.reflect_task_outcome'
+  // Historical receipts remain readable after retiring the mechanism.
   | 'skill.learn_task_outcome'
   | 'memory.extract_voice_turn'
   | 'memory.link_topic_source'

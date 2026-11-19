@@ -88,6 +88,8 @@ class Goal(HistoryMixin, Base):
 
     __tablename__ = "goals"
     __table_args__ = (
+        Index("uq_goals_weekly_retrospective_agent", "agent_id", unique=True,
+              postgresql_where=sql_text("is_weekly_retrospective AND deleted_at IS NULL")),
         CheckConstraint(
             "cycle_delay_seconds IS NULL OR cycle_delay_seconds >= 0",
             name="ck_goals_cycle_delay_non_negative",
@@ -154,6 +156,9 @@ class Goal(HistoryMixin, Base):
     referrer_display_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
     referrer_platform: Mapped[str | None] = mapped_column(String(100), nullable=True)
     title: Mapped[str] = mapped_column(String(400), nullable=False)
+    is_weekly_retrospective: Mapped[bool] = mapped_column(
+        nullable=False, default=False, server_default=sql_text("false"),
+    )
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     tracking_document_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True),

@@ -120,22 +120,6 @@ export const parameterAccess: Record<string, readonly string[]> = {
     "DREAM_CONFIG_ACCESS",
     "DREAM_EDIT"
   ],
-  "DREAM_SKILL_ACTIVATION_SCORE": [
-    "DREAM_CONFIG_ACCESS",
-    "DREAM_EDIT"
-  ],
-  "DREAM_SKILL_LEARNING_MODE": [
-    "DREAM_CONFIG_ACCESS",
-    "DREAM_EDIT"
-  ],
-  "DREAM_SKILL_MAX_ACTIVE": [
-    "DREAM_CONFIG_ACCESS",
-    "DREAM_EDIT"
-  ],
-  "DREAM_SKILL_MIN_EVIDENCE": [
-    "DREAM_CONFIG_ACCESS",
-    "DREAM_EDIT"
-  ],
   "DREAM_TOPIC_CREATION_MODE": [
     "DREAM_CONFIG_ACCESS",
     "DREAM_EDIT"

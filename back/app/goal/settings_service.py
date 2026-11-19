@@ -28,7 +28,7 @@ class GoalSettingsUnavailableError(RuntimeError):
     """Raised when deployment reference data has not yet been synchronized."""
 
 
-def _timezone() -> tuple[str, ZoneInfo]:
+def schedule_timezone() -> tuple[str, ZoneInfo]:
     timezone_name = (os.getenv("TZ") or "UTC").strip() or "UTC"
     try:
         return timezone_name, ZoneInfo(timezone_name)
@@ -96,7 +96,7 @@ def evaluate_settings(
     reference = now or datetime.now(timezone.utc)
     if reference.tzinfo is None or reference.utcoffset() is None:
         raise ValueError("Goal schedule evaluation requires a timezone-aware datetime")
-    timezone_name, local_zone = _timezone()
+    timezone_name, local_zone = schedule_timezone()
 
     if config.globally_paused:
         return GoalSettingsRead(
@@ -148,7 +148,7 @@ def evaluate_goal_schedule(
     except ValidationError as exc:
         logger.error("Invalid schedule for Goal; scheduled activity is blocked: {}", exc)
         return False, None
-    _, local_zone = _timezone()
+    _, local_zone = schedule_timezone()
     return _schedule_state(config, now=reference, local_zone=local_zone)
 
 
@@ -182,7 +182,7 @@ def next_schedule_at(
         logger.error("Invalid schedule for Goal; next cycle is unavailable: {}", exc)
         return None
     reference = not_before.astimezone(timezone.utc)
-    _, local_zone = _timezone()
+    _, local_zone = schedule_timezone()
     local_today = reference.astimezone(local_zone).date()
     # Two weekly recurrences also cover an opening lost to the spring clock change.
     horizon = datetime.combine(local_today + timedelta(days=15), time(), tzinfo=local_zone)

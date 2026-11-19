@@ -50,6 +50,24 @@ test('a fixed Goal cadence saves with a timezone and survives reopening', async 
   await expect(dialog.getByLabel('First passage', { exact: true })).toHaveValue('2026-11-17T09:00')
 })
 
+test('a weekly retrospective can pause and resume through the existing Goal commands', async ({ page }) => {
+  const commands = await goals(page, 'ACTIVE', 'goal-a', {
+    is_weekly_retrospective: true, referrer: null, title: 'Weekly retrospective',
+    recurrence: { frequency: 'WEEKLY', interval: 1, timezone: 'UTC',
+      start_at: '2026-11-17T09:00:00Z', max_lateness_minutes: 1440 },
+  })
+  await mount(page, 'app/goal/pages/index.vue', { privileges: ['GOAL_EDIT'] })
+  await page.getByRole('button', { name: 'Goal details', exact: true }).first().click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByText('Assigned by Galaris')).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Delete', exact: true })).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Pause', exact: true }).click()
+  await expect(dialog.getByRole('button', { name: 'Resume', exact: true })).toBeVisible()
+  await dialog.getByRole('button', { name: 'Resume', exact: true }).click()
+  await expect(dialog.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
+  expect(commands.map(item => item.command)).toEqual(['pause', 'resume'])
+})
+
 test.describe('Goal schedule timezone', () => {
   test.use({ timezoneId: 'America/New_York' })
   for (const width of [390, 1440]) test(`announced cycles use the schedule timezone at ${width}px`, async ({ page }, testInfo) => {

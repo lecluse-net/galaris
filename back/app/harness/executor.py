@@ -209,6 +209,7 @@ class AgentExecutor:
             self.agent_id,
             runtime="internal",
             allowed_tool_names=allowed_tool_names,
+            task_id=task_id,
         )
         process_advertisement = await build_agent_process_advertisement(
             self.agent_id,

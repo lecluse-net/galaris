@@ -463,17 +463,11 @@ souvenirs Markdown ordinaires se modifient avec l'éditeur visuel.
 Pour borner durablement le volume, seuls les 100 derniers cycles de chaque Goal possèdent une
 projection mémoire ; les cycles métier plus anciens restent inchangés dans leur table canonique.
 
-`DREAM_SKILL_LEARNING_MODE` vaut `off`, `observe` ou `learn` et reste `off` par défaut. `observe`
-conserve les preuves et propositions dans les reçus Dream sans modifier les compétences ; `learn`
-crée, renforce, révise ou affaiblit des candidates propres à l'agent. Dream parcourt aussi toutes
-les tâches terminales historiques, de manière progressive et idempotente, une opération par
-passage. Une candidate devient une compétence injectable en plus des compétences affectées lorsque le nombre
-de tâches distinctes confirmant la même procédure atteint `DREAM_SKILL_MIN_EVIDENCE` (3 par défaut)
-et que sa note atteint `DREAM_SKILL_ACTIVATION_SCORE`, dans la limite de
-`DREAM_SKILL_MAX_ACTIVE`. Ces seuils sont paramétrables dans **Préférences → Dream**. La page
-**Compétences → Auto-apprises**, masquée lorsque le mode vaut `off`, expose score, preuves et état
-d'injection, et permet de suspendre immédiatement une procédure. Dream ne crée plus de nœud Memory
-`experience` et les anciens nœuds ne sont plus injectés.
+La [rétrospective hebdomadaire](../user/skills.md)
+fait évoluer les compétences personnelles. Chaque agent reçoit cet objectif par défaut. Sa fiche
+permet de déplacer le créneau hebdomadaire, de mettre les prochains passages en pause et de reprendre.
+La mise à jour retire les réglages de l'ancien apprentissage Dream et conserve les seuils déjà
+enregistrés, les packages personnels et leurs preuves.
 
 Les textes courants et historiques des souvenirs, documents et synthèses résident dans
 PostgreSQL. Les fichiers internes et pièces jointes utilisent le registre `files` et

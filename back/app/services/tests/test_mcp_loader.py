@@ -129,11 +129,13 @@ async def test_execute_native_tool_reuses_authorization_and_effect_projection(
         7,
         runtime="internal",
         allowed_tool_names={"messenger_room_send_file"},
+        task_id=task_id,
+        resources=None,
     )
     assert projection.await_count == 2
     projection.assert_awaited_with(
         7, runtime="internal", conversation_only=False,
-        allowed_tool_names={"messenger_room_send_file"}, resources={},
+        allowed_tool_names={"messenger_room_send_file"}, resources={}, task_id=task_id,
     )
     effects.assert_awaited_once()
     assert scope_decision.await_count == 2

@@ -67,6 +67,7 @@ class DocumentGoalDocumentStore(GoalDocumentStore):
         kind: GoalDocumentKind,
         goal_title: str,
         content: str,
+        defer_commit: bool = False,
     ) -> UUID:
         if kind != "tracking":
             raise ValueError(f"Unsupported Goal document kind: {kind!r}.")
@@ -81,6 +82,7 @@ class DocumentGoalDocumentStore(GoalDocumentStore):
                 "goal_document_kind": kind,
             },
             deletion_protected=True,
+            defer_commit=defer_commit,
         )
         return item.id
 

@@ -4,22 +4,19 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 import hashlib
-from typing import Literal
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
 
 from app.agent import Agent
 from core.database import get_db
-from core.params import runtime_settings
 from core.util import complete_io
 
 from . import interface, storage
 from .contracts import SkillPackageCreate, SkillRevisionConflict, SkillScope
 from .learning_contracts import (
-    LearnedSkillAction, LearnedSkillApplyResult, LearnedSkillContext, LearnedSkillDecision, LearnedSkillOperation,
+    LearnedSkillAction, LearnedSkillApplyResult, LearnedSkillDecision, LearnedSkillOperation,
 )
-from .learning_policy import eligible_learning_ids, is_injectable
 from .models import Skill, SkillLearningEvidence
 
 
@@ -27,44 +24,6 @@ def reinforcement_score(positive_weight: float, negative_weight: float) -> float
     positive = max(0.0, float(positive_weight))
     negative = max(0.0, float(negative_weight))
     return round((positive + 1.0) / (positive + negative + 2.0), 6)
-
-
-def learning_mode() -> Literal["off", "observe", "learn"]:
-    return runtime_settings.DREAM_SKILL_LEARNING_MODE
-
-
-async def list_learning_context(agent_id: int, *, limit: int = 20) -> list[LearnedSkillContext]:
-    """Read current personal files, including candidates and manually authored skills."""
-    rows = (await get_db().scalars(select(Skill).where(
-        Skill.owner_agent_id == agent_id,
-    ).order_by(Skill.learning_score.desc(), Skill.id).limit(max(1, min(limit, 50))))).all()
-    eligible = await eligible_learning_ids(agent_id)
-    result: list[LearnedSkillContext] = []
-    for row in rows:
-        def read_source(code: str = row.code) -> tuple[str, str] | None:
-            path = storage.resolve_file(code, "SKILL.md", owner_agent_id=agent_id)
-            with path.open("rb") as stream:
-                content = stream.read(64_001)
-            if len(content) > 64_000:
-                return None
-            markdown = content.decode("utf-8")
-            _, description = storage.metadata_from_markdown(markdown, expected_code=code)
-            return markdown, description
-        try:
-            source = await complete_io(read_source)
-        except (FileNotFoundError, OSError, ValueError):
-            continue
-        if source is None:
-            continue
-        markdown, description = source
-        result.append(LearnedSkillContext(
-            id=row.id, code=row.code, label=row.label,
-            description=description, markdown=markdown,
-            revision=row.revision, score=row.learning_score,
-            evidence_count=row.learning_evidence_count,
-            injectable=row.id in eligible if row.learning_key is not None else True,
-        ))
-    return result
 
 
 async def learning_code_prefix(agent_id: int) -> str:
@@ -88,7 +47,7 @@ async def apply_learning_decision(
         return LearnedSkillApplyResult(changed=0, refresh_required=False)
     db = get_db()
     if await interface.get_agent_scope(agent_id) == SkillScope.USAGE:
-        raise PermissionError("Personal Skills management is required for Dream learning")
+        raise PermissionError("Personal Skills management is required for automatic learning")
     prefix = await learning_code_prefix(agent_id)
     changed = 0
     touched: set[int] = set()
@@ -188,5 +147,4 @@ async def apply_learning_decision(
     return LearnedSkillApplyResult(changed=changed, refresh_required=changed > 0)
 
 
-__all__ = ["apply_learning_decision", "is_injectable", "learning_mode",
-           "learning_code_prefix", "list_learning_context", "reinforcement_score"]
+__all__ = ["apply_learning_decision", "learning_code_prefix", "reinforcement_score"]

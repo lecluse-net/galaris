@@ -299,7 +299,7 @@
                 <q-tooltip>{{ t('goal.editAction') }}</q-tooltip>
               </q-btn>
               <span
-                v-if="canEdit && props.row.status !== 'COMPLETED'"
+                v-if="canEdit && props.row.status !== 'COMPLETED' && !(props.row.is_weekly_retrospective && props.row.status === 'PAUSED')"
                 class="inline-block"
               >
                 <q-btn
@@ -356,7 +356,7 @@
                 </q-tooltip>
               </q-btn>
               <q-btn
-                v-if="canEdit && props.row.status !== 'COMPLETED'"
+                v-if="canEdit && !props.row.is_weekly_retrospective && props.row.status !== 'COMPLETED'"
                 flat
                 round
                 dense
@@ -368,7 +368,7 @@
                 <q-tooltip>{{ t('goal.complete') }}</q-tooltip>
               </q-btn>
               <q-btn
-                v-if="canEdit"
+                v-if="canEdit && !props.row.is_weekly_retrospective"
                 flat
                 round
                 dense
@@ -491,7 +491,7 @@
                   <q-tooltip>{{ t('goal.editAction') }}</q-tooltip>
                 </q-btn>
                 <span
-                  v-if="canEdit && props.row.status !== 'COMPLETED'"
+                  v-if="canEdit && props.row.status !== 'COMPLETED' && !(props.row.is_weekly_retrospective && props.row.status === 'PAUSED')"
                   class="inline-block"
                 >
                   <q-btn
@@ -548,7 +548,7 @@
                   </q-tooltip>
                 </q-btn>
                 <q-btn
-                  v-if="canEdit && props.row.status !== 'COMPLETED'"
+                  v-if="canEdit && !props.row.is_weekly_retrospective && props.row.status !== 'COMPLETED'"
                   flat
                   round
                   dense
@@ -560,7 +560,7 @@
                   <q-tooltip>{{ t('goal.complete') }}</q-tooltip>
                 </q-btn>
                 <q-btn
-                  v-if="canEdit"
+                  v-if="canEdit && !props.row.is_weekly_retrospective"
                   flat
                   round
                   dense
@@ -781,7 +781,11 @@
                       <q-btn dense color="primary" icon="add" :label="t('goal.categories.add')" :loading="categoryCreating" :disable="!categoryDraftLabel.trim() || formSaving" @click="createFormCategory" />
                     </div>
                   </div>
-                  <div>
+                  <div v-if="editingGoal?.is_weekly_retrospective">
+                    <div class="text-subtitle2 q-mb-xs">{{ t('goal.description') }}</div>
+                    <RichText :content="form.description" />
+                  </div>
+                  <div v-else>
                     <div class="text-subtitle2 q-mb-xs">
                       {{ t('goal.description') }} <span class="text-negative">*</span>
                     </div>
@@ -796,7 +800,7 @@
                 </q-card-section>
               </q-card>
               <div class="goal-edit-sidebar">
-                <q-card flat class="goal-referrer-section">
+                <q-card v-if="!editingGoal?.is_weekly_retrospective" flat class="goal-referrer-section">
                   <q-card-section class="q-pa-sm">
                     <div class="goal-role-legend row items-center q-gutter-xs text-primary">
                       <q-icon name="smart_toy" size="18px" />
@@ -889,6 +893,7 @@
                       <span class="text-subtitle2">{{ t('goal.automaticTriggers') }}</span>
                     </div>
                     <q-option-group
+                      v-if="!editingGoal?.is_weekly_retrospective"
                       :model-value="form.triggerMode"
                       :options="triggerModeOptions"
                       color="primary"
@@ -897,7 +902,7 @@
                       class="goal-trigger-options"
                       @update:model-value="setGoalTriggerMode"
                     />
-                    <GoalRecurrenceEditor v-if="form.triggerMode === 'CALENDAR'" v-model="form.recurrence" class="q-mt-sm" />
+                    <GoalRecurrenceEditor v-if="form.triggerMode === 'CALENDAR'" v-model="form.recurrence" :weekly="editingGoal?.is_weekly_retrospective" class="q-mt-sm" />
                     <div v-else-if="form.triggerMode !== 'RELATIONAL'" class="q-mt-sm">
                       <div class="text-subtitle2 q-mb-xs">{{ t('goal.frequency') }}</div>
                       <div class="row q-col-gutter-sm">
@@ -1027,6 +1032,7 @@ import { useRoute } from 'vue-router'
 import { QPage, useInterval, useQuasar, type QTableColumn, type QTableProps } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import {
+  RichText,
   RichTextEditor,
   PageHeader,
   WorkingDocumentEditor,
@@ -1089,14 +1095,16 @@ function goalActions(goal: Goal): ContextAction[] {
   if (!canEdit.value) return actions
   const disabled = commandGoalIds.has(goal.id)
   actions.push({ key: 'edit', icon: 'edit', label: t('goal.editAction'), run: () => openEdit(goal) })
-  if (goal.status !== 'COMPLETED') actions.push(
+  if (goal.status !== 'COMPLETED' && !(goal.is_weekly_retrospective && goal.status === 'PAUSED')) actions.push(
     { key: 'run', icon: 'rocket_launch', label: t('goal.runNow'), disabled: disabled || Boolean(goal.current_task_id), run: () => runCommand('runNow', goal) },
+  )
+  if (!goal.is_weekly_retrospective && goal.status !== 'COMPLETED') actions.push(
     { key: 'complete', icon: 'stop_circle', label: t('goal.complete'), disabled, run: () => confirmComplete(goal) },
   )
   actions.push(goal.status === 'ACTIVE'
     ? { key: 'pause', icon: 'pause', label: t('goal.pause'), disabled, run: () => runCommand('pause', goal) }
     : { key: 'resume', icon: goal.status === 'COMPLETED' ? 'replay' : 'play_arrow', label: t(goal.status === 'COMPLETED' ? 'goal.restart' : goal.status === 'ERROR' ? 'goal.retry' : 'goal.resume'), disabled, run: () => runCommand('resume', goal) })
-  actions.push({ key: 'delete', icon: 'delete', label: t('goal.delete'), disabled, negative: true, separator: true, run: () => confirmDelete(goal) })
+  if (!goal.is_weekly_retrospective) actions.push({ key: 'delete', icon: 'delete', label: t('goal.delete'), disabled, negative: true, separator: true, run: () => confirmDelete(goal) })
   return actions
 }
 
@@ -1667,13 +1675,14 @@ async function submitForm(): Promise<void> {
     || !form.description.trim()
     || !canSaveGoalTrigger.value
   ) return
-  if (form.messengerReferrer === null) return
-  const referrer: GoalReferrerInput = {
+  const weekly = Boolean(editingGoal.value?.is_weekly_retrospective)
+  const referrer: GoalReferrerInput | null = form.messengerReferrer && {
     type: 'MESSENGER',
     connection_id: form.messengerReferrer.connection_id,
     user_id: form.messengerReferrer.user_id,
     display_name: form.messengerReferrer.display_name,
   }
+  if (!weekly && referrer === null) return
   formSaving.value = true
   const generation = formGeneration, session = sessionGeneration()
   const current = () => generation === formGeneration && session === sessionGeneration()
@@ -1694,22 +1703,24 @@ async function submitForm(): Promise<void> {
         expected_revision: editingGoal.value.revision,
         title: form.title.trim(),
         ...(form.categoryId !== (editingGoal.value.category_id ?? null) ? { category_id: form.categoryId } : {}),
-        description: form.description.trim(),
-        agent_id: form.agentId,
-        referrer,
-        cycle_delay_seconds: cycleDelay,
         recurrence,
-        parent_goal_id: parentGoalId,
-        schedule_enabled: scheduleEnabled,
-        schedule,
-        referrer_max_reminders: Math.max(0, Math.trunc(form.referrerMaxReminders)),
+        ...(!weekly && referrer ? {
+          description: form.description.trim(),
+          agent_id: form.agentId ?? undefined,
+          referrer,
+          cycle_delay_seconds: cycleDelay,
+          parent_goal_id: parentGoalId,
+          schedule_enabled: scheduleEnabled,
+          schedule,
+          referrer_max_reminders: Math.max(0, Math.trunc(form.referrerMaxReminders)),
+        } : {}),
       })
       if (!current()) return
       await store.fetchGoal(updated.id)
       if (!current()) return
       if (store.currentGoal) prepareGoalForm(store.currentGoal)
       $q.notify({ type: 'positive', message: t('goal.updated') })
-    } else {
+    } else if (referrer) {
       const created = await store.createGoal({
         title: form.title.trim(),
         category_id: form.categoryId,

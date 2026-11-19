@@ -2436,7 +2436,7 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | Miniatures Office et tableurs | Convertir la première page des fichiers Office et la première page imprimée des tableurs ; éviter OCR et extraction analytique ; séparer les checkpoints de l’analyse complète ; préserver l’original, les droits et le cache partagé ; reprendre après échec et nettoyer les temporaires après annulation ; afficher et télécharger sur desktop et mobile, y compris après réouverture ; proposer uniquement le téléchargement de l’original sans plein écran pour les formats sans lecteur, dans les pièces jointes, fichiers indexés et discussions | `back/app/memory/tests/test_document_thumbnails.py`, `front/browser-tests/document-thumbnails.spec.mjs`, `attachment-previews.spec.mjs`, `e2e/specs/office-thumbnails.spec.mjs` |
 | `contact` | Périmètre agent et `CONTACT_EDIT` (oubli : aussi `MEMORY_EDIT`) ; nom unique, regroupement par sélection/fusion et scission atomique sans suppression d’identité, avec conservation de l’historique ; création de contacts mail indépendants des utilisateurs/agents, validation et doublons concurrents ; rollback des projections lors d’une erreur de scission ; rejet du rattachement direct par API ; Chat interne représenté uniquement par l’utilisateur Galaris et nettoyage idempotent ; brouillon, annulation, reprise et réponses tardives sur mobile/bureau | `test_service.py`, `test_router.py`, `app/memory/tests/test_messenger_contact.py`, `app/memory/tests/test_source_projection.py`, `front/browser-tests/contacts.spec.mjs` |
 | `topic` | Classer et retrouver les sujets, rechercher au-delà de la première page, ignorer les réponses obsolètes | `test_service.py`, `test_router.py`, `test_sequential_detection.py`, `topics.spec.mjs` |
-| `dream` | Extraire/relier des connaissances sans réécrire le contenu existant, reprendre les traitements | `test_memory_extraction.py`, `test_claim_timeout.py`, `test_skill_learning.py` |
+| `dream` | Extraire/relier des connaissances sans réécrire le contenu existant, reprendre les traitements | `test_memory_extraction.py`, `test_claim_timeout.py` |
 | `skill` | Créer/lire une procédure, préserver fichiers et permissions ; MCP réel, isolation/budgets et homonymes ; nouvelles connexions actives avec portée personnelle par défaut, conservation des désactivations et portées explicites ; portée locale usage/personal/team/all, union des équipes et révocation, délégation humaine protégée et sauvegarde atomique ; migration, conversion rejouable et reprise après panne ; consultation humaine | `test_service.py`, `test_storage.py`, `test_learning.py`, `test_personal_packages.py`, `test_agent_reads.py`, `test_mcp.py`, `test_lifecycle.py`, `test_projection.py`, `app/services/tests/test_mandatory_services.py`, `skills.spec.mjs`, `service-parameters.spec.mjs` |
 | `process` | Lancer, suivre, annuler et reprendre un traitement externe ; préserver ses états terminaux | `test_recovery.py`, `test_process_core.py`, `test_router_scope.py`, `test_worker_concurrency.py`, `execution.spec.mjs` |
 | `tools` | Découvrir les outils autorisés, refuser les accès interdits, masquer les secrets ; révocation avant effet dans un serveur natif déjà monté, réactivation et isolation entre agents | `test_admin_access.py`, `test_agent_registry.py`, `test_secrets.py`, `test_resource_effects.py`, `test_live_authorization.py` |
@@ -3228,9 +3228,13 @@ couvertes par `back/core/util/tests/test_rich_text.py`. Le test des restrictions
 Tâche conserve les interdictions de mutation terminale sans figer le nombre d'actions
 non destructives.
 
-### Dream et packages personnels
+### Rétrospective et packages personnels
 
-`app/skill/tests/test_learning.py` suit la création Dream jusqu'au catalogue personnel, au
+`app/goal/tests/test_weekly_retrospective.py` couvre l'attribution, la pause, le passage agenda,
+l'admission, les outils MCP, les preuves de la semaine, l'écriture idempotente et le verdict.
+`goals.spec.mjs` exerce la pause et la reprise dans la fiche Objectif.
+
+`app/skill/tests/test_learning.py` suit l’apprentissage jusqu'au catalogue personnel, au
 fichier canonique, aux capacités du harnais et à la projection. Il couvre isolation du propriétaire,
 seuils, affaiblissement, confirmations de tâches distinctes, rejeu, édition humaine concurrente,
 désactivation conservée et échec de commit sans fichier ni preuve orpheline.

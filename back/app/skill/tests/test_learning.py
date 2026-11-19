@@ -1,11 +1,11 @@
-"""Dream creates and evolves the same personal packages humans and agents manage."""
+"""Evidence-backed learning evolves the same packages humans and agents manage."""
 
 from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
 
-from app.skill import interface, learning_service, personal_catalogue, storage
+from app.skill import interface, learning_policy, learning_service, personal_catalogue, storage
 from app.skill.learning_contracts import LearnedSkillDecision, LearnedSkillOperation
 from app.skill.models import Skill, SkillLearningEvidence
 from app.skill.projection import build_skill_projection
@@ -31,33 +31,27 @@ async def apply(owner, op, fingerprint=None, task=None):
     )
 
 
-def test_learning_mode_exposes_only_the_effective_feature_state(monkeypatch):
-    monkeypatch.setattr(learning_service.runtime_settings, "DREAM_SKILL_LEARNING_MODE", "observe")
-    assert learning_service.learning_mode() == "observe"
-
-
 @pytest.mark.asyncio
 async def test_learning_creates_editable_personal_package_with_one_runtime_path(db, agents, monkeypatch):
     owner, other, _ = agents
     code = f"learned-{owner.code}-check"
-    monkeypatch.setattr(learning_service.runtime_settings, "DREAM_SKILL_MIN_EVIDENCE", 3)
-    monkeypatch.setattr(learning_service.runtime_settings, "DREAM_SKILL_ACTIVATION_SCORE", 0.75)
+    monkeypatch.setattr(learning_policy.runtime_settings, "SKILL_LEARNING_MIN_EVIDENCE", 3)
+    monkeypatch.setattr(learning_policy.runtime_settings, "SKILL_LEARNING_ACTIVATION_SCORE", 0.75)
     assert (await apply(owner, operation("CREATE", code=code))).changed == 1
-    candidate = (await learning_service.list_learning_context(owner.id))[0]
-    package = await db.get(Skill, candidate.id)
+    package = await db.scalar(select(Skill).where(Skill.owner_agent_id == owner.id))
     assert package.owner_agent_id == owner.id and package.creator_agent_id == owner.id
     catalogue, total = await personal_catalogue.list_page(agent_ids=[owner.id])
-    assert total == 1 and catalogue[0].id == candidate.id
+    assert total == 1 and catalogue[0].id == package.id
     assert catalogue[0].learning.evidence_count == 1
     assert not catalogue[0].learning.qualified
-    assert storage.read_text(code, "SKILL.md", owner_agent_id=owner.id) == candidate.markdown
+    assert "Run the verified check." in storage.read_text(code, "SKILL.md", owner_agent_id=owner.id)
     assert not (await build_skill_projection(owner.id)).files
     assert not await interface.list_packages(actor_agent_id=other.id)
     for _ in range(2):
-        await apply(owner, operation("REINFORCE", target=candidate.id))
-    assert [p.id for p in await interface.personal_packages(owner.id)] == [candidate.id]
+        await apply(owner, operation("REINFORCE", target=package.id))
+    assert [p.id for p in await interface.personal_packages(owner.id)] == [package.id]
     snapshot = await build_skill_projection(owner.id)
-    assert len(snapshot.files) == 1 and snapshot.files[0].package_id == candidate.id
+    assert len(snapshot.files) == 1 and snapshot.files[0].package_id == package.id
     assert snapshot.files[0].owner_agent_id == owner.id
     assert not (storage.root() / ".learned").exists()
     capabilities = await build_internal_skill_capabilities(owner.id)
@@ -67,7 +61,7 @@ async def test_learning_creates_editable_personal_package_with_one_runtime_path(
     updated = personal(code, "Human-reviewed procedure.").markdown
     await interface.mutate_file(package.id, "SKILL.md", actor_agent_id=owner.id,
         operation="write", content=updated.encode(), expected_revision=package.revision)
-    assert (await learning_service.list_learning_context(owner.id))[0].markdown == updated
+    assert (await interface.read_package_file(package.id, "SKILL.md", actor_agent_id=owner.id)).content.decode() == updated
     assert (await build_skill_projection(owner.id)).files[0].source.read_text() == updated
     await apply(owner, operation("WEAKEN", target=package.id))
     assert not (await build_skill_projection(owner.id)).files
@@ -85,9 +79,8 @@ async def test_learning_replay_and_same_task_do_not_inflate_independent_evidence
     repeated = await apply(owner, op, "a" * 64, task)
     await apply(owner, op, "b" * 64, task)
     assert first.changed == 1 and repeated.changed == 0
-    context = (await learning_service.list_learning_context(owner.id))[0]
-    assert context.evidence_count == 1
-    assert len((await db.scalars(select(Skill).where(Skill.owner_agent_id == owner.id))).all()) == 1
+    package = (await db.scalars(select(Skill).where(Skill.owner_agent_id == owner.id))).one()
+    assert package.learning_evidence_count == 1
 
 
 @pytest.mark.asyncio
@@ -95,16 +88,17 @@ async def test_late_revision_preserves_human_edits_and_manual_deactivation(db, a
     owner, _, _ = agents
     code = f"learned-{owner.code}-revision"
     await apply(owner, operation("CREATE", code=code))
-    context = (await learning_service.list_learning_context(owner.id))[0]
-    await interface.mutate_file(context.id, "SKILL.md", actor_agent_id=owner.id,
-        operation="write", content=personal(code, "Human edit.").markdown.encode(), expected_revision=context.revision)
-    late = await apply(owner, operation("REVISE", code=code, target=context.id, revision=context.revision))
+    package = (await db.scalars(select(Skill).where(Skill.owner_agent_id == owner.id))).one()
+    observed_revision = package.revision
+    await interface.mutate_file(package.id, "SKILL.md", actor_agent_id=owner.id,
+        operation="write", content=personal(code, "Human edit.").markdown.encode(), expected_revision=observed_revision)
+    late = await apply(owner, operation("REVISE", code=code, target=package.id, revision=observed_revision))
     assert late.changed == 0
     assert "Human edit." in storage.read_text(code, "SKILL.md", owner_agent_id=owner.id)
-    current = (await learning_service.list_learning_context(owner.id))[0]
-    await interface.set_package_enabled(context.id, False, actor_agent_id=owner.id, expected_revision=current.revision)
+    await db.refresh(package)
+    await interface.set_package_enabled(package.id, False, actor_agent_id=owner.id, expected_revision=package.revision)
     for _ in range(4):
-        await apply(owner, operation("REINFORCE", target=context.id))
+        await apply(owner, operation("REINFORCE", target=package.id))
     assert not await interface.personal_packages(owner.id)
     await set_scope(owner.id, "usage")
     empty = await learning_service.apply_learning_decision(agent_id=owner.id,
@@ -114,7 +108,7 @@ async def test_late_revision_preserves_human_edits_and_manual_deactivation(db, a
     with pytest.raises(PermissionError):
         await apply(owner, operation("CREATE", code=f"learned-{owner.code}-forbidden"))
     with pytest.raises(FileNotFoundError):
-        await interface.read_package_file(context.id, "SKILL.md", actor_agent_id=owner.id)
+        await interface.read_package_file(package.id, "SKILL.md", actor_agent_id=owner.id)
 
 
 @pytest.mark.asyncio

@@ -1,6 +1,10 @@
 """French Goal runtime messages."""
 
 default: dict[str, object] = {
+    "goal_retrospective": {
+        "title": "Rétrospective hebdomadaire",
+        "description": "Chaque semaine, examiner le travail récent et améliorer ses compétences personnelles à partir de preuves observables.",
+    },
     "goal_referrer": {
         "question_required": "La question au référent ne peut pas être vide.",
         "question_too_long": "La question ne peut pas dépasser ${maximum} caractères.",

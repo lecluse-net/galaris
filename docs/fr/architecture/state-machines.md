@@ -447,6 +447,10 @@ restent des tâches ordinaires : aucune suppression, annulation ni attente de le
 n'est déclenchée par ce nettoyage. Leurs contenus, états et coûts sont conservés.
 Voir la [décision 0296](../../../project/decisions/0296-decision-only-goal-monitoring.md).
 
+L'objectif système de rétrospective conserve une récurrence hebdomadaire. Une tâche terminée
+produit un verdict `CONTINUE` sous verrou, sans jugement par modèle. La pause suspend les prochains
+passages et le provisionnement conserve l'identité et la pause de l'objectif existant.
+
 Chaque Goal choisit exactement un mode de déclenchement automatique : délai après travail,
 récurrence à dates fixes ou cycle d’un objectif parent. La récurrence conserve des segments
 de planification versionnés et des passages durables, avec un lien unique vers chaque cycle
@@ -539,14 +543,6 @@ sans consommer son budget de tentatives.
 
 Une préemption Voice rend le reçu immédiatement disponible sans consommer son budget d'échec. La
 sortie préparée peut exister dès `running` et reste réutilisée lors d'une reprise.
-Pour `skill.learn_task_outcome`, le premier checkpoint contient les preuves et leur empreinte,
-puis le checkpoint préparé contient les opérations structurées sur les compétences. Un succès `observe`
-peut être réclamé une fois lors du passage à `learn`, sans relancer le modèle. L'application ajoute
-une preuve idempotente et recalcule le score ; elle ne touche pas Memory. Une nouvelle preuve
-tardive ne rouvre pas le reçu terminal : elle crée un autre sujet
-`<task UUID>:<empreinte>`. Toutes les tâches terminales sans reçu sont donc parcourues, historique
-compris, de la plus ancienne à la plus récente. Le scheduler conserve son débit borné à une
-opération par passage ; le rattrapage n'est pas un traitement massif parallèle.
 Le scheduler n'exécute qu'une opération par passage et fait tourner le mécanisme prioritaire pour
 éviter la famine. `DREAM_POLL_SECONDS` commence après la fin de cette opération avant qu'une autre
 puisse démarrer ; la durée de l'opération ne consomme donc jamais cette pause.

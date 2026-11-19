@@ -669,22 +669,6 @@ A Task extraction remains ineligible while its Topic classification receipt is `
 completely finished, then must elapse before the next one. It is not a periodic window in which
 a long LLM call would consume part of the interval.
 
-`skill.learn_task_outcome` complements factual extraction with separate learning based on
-observable evidence: attempts, tool results, children, Goal verdict, human correction,
-and Memory usages. An LLM-free filter removes weak signals, then the structured output cites its
-evidence before creating, strengthening, revising, or weakening a personal `Skill` package. The material
-fingerprint makes rescanning idempotent and allows a separate late correction. Dream also traverses
-historical terminal Tasks from oldest to newest, one per pass; receipts prevent counting the same
-material twice. This mechanism creates no `MemoryItem`.
-
-`DREAM_SKILL_LEARNING_MODE` is `off`, `observe`, or `learn` and remains `off` by default. `observe`
-retains only Dream diagnostics and `learn` applies the checkpointed decision. A skill is first
-stored as a non-injectable personal candidate package. It is promoted and injected in addition to assigned
-skills when at least `DREAM_SKILL_MIN_EVIDENCE` distinct Tasks have confirmed the same
-procedure and it reaches `DREAM_SKILL_ACTIVATION_SCORE`; the repetition threshold is 3 by
-default and `DREAM_SKILL_MAX_ACTIVE` bounds the number of active procedures. These settings are
-administered in `params`, not `.env`.
-
 When a Memory tool writes during a Task, it immediately associates the created or merged item with
 the provenance `task:<uuid>`. The `app.memory` reconciler then derives Topic, contact,
 Contact–Topic, Goal, and Process edges, as well as authoritative conversational scopes.

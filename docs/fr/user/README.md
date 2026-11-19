@@ -348,6 +348,10 @@ L'attente ne signifie pas que l'objectif est atteint.
 
 Dans **Objectifs**, la liste affiche l’avatar et le nom de l’agent responsable.
 Le mode **À dates fixes dans l’agenda** permet une récurrence dans un fuseau choisi.
+Chaque agent reçoit automatiquement un objectif **Rétrospective hebdomadaire**. Dans
+**Objectifs**, vous pouvez le mettre en pause, le reprendre ou déplacer son créneau hebdomadaire.
+Son suivi présente les leçons tirées du travail récent, les accès manquants et les changements
+appliqués à ses [compétences personnelles](skills.md).
 La couche **Objectifs** de l’[Agenda](calendar.md) montre les passages
 futurs puis le cycle et la Task exacts de chaque passage arrivé à échéance. Les changements
 de configuration conservent le passé et ne remplacent que la planification future.

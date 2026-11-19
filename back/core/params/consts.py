@@ -209,10 +209,9 @@ class Params:
     DREAM_ATTACHMENT_IMAGE_ENABLED = "DREAM_ATTACHMENT_IMAGE_ENABLED"
     DREAM_ATTACHMENT_VIDEO_ENABLED = "DREAM_ATTACHMENT_VIDEO_ENABLED"
     DREAM_TOPIC_CREATION_MODE = "DREAM_TOPIC_CREATION_MODE"
-    DREAM_SKILL_LEARNING_MODE = "DREAM_SKILL_LEARNING_MODE"
-    DREAM_SKILL_MIN_EVIDENCE = "DREAM_SKILL_MIN_EVIDENCE"
-    DREAM_SKILL_ACTIVATION_SCORE = "DREAM_SKILL_ACTIVATION_SCORE"
-    DREAM_SKILL_MAX_ACTIVE = "DREAM_SKILL_MAX_ACTIVE"
+    SKILL_LEARNING_MIN_EVIDENCE = "SKILL_LEARNING_MIN_EVIDENCE"
+    SKILL_LEARNING_ACTIVATION_SCORE = "SKILL_LEARNING_ACTIVATION_SCORE"
+    SKILL_LEARNING_MAX_ACTIVE = "SKILL_LEARNING_MAX_ACTIVE"
     DREAM_EXPERIENCE_MODE = "DREAM_EXPERIENCE_MODE"
     DREAM_EXPERIENCE_MAX_ITEMS = "DREAM_EXPERIENCE_MAX_ITEMS"
     DREAM_EXPERIENCE_MAX_CHARS = "DREAM_EXPERIENCE_MAX_CHARS"
@@ -687,20 +686,14 @@ DEFAULT_PARAMS: dict[str, ParamConfig] = {
         "kind": "choice",
         "choices": ("forbid", "propose", "auto"),
     },
-    Params.DREAM_SKILL_LEARNING_MODE: {
-        "value": "off",
-        "runtime_field": "DREAM_SKILL_LEARNING_MODE",
-        "kind": "choice",
-        "choices": ("off", "observe", "learn"),
+    Params.SKILL_LEARNING_MIN_EVIDENCE: {
+        "value": "3", "runtime_field": "SKILL_LEARNING_MIN_EVIDENCE", "kind": "integer"
     },
-    Params.DREAM_SKILL_MIN_EVIDENCE: {
-        "value": "3", "runtime_field": "DREAM_SKILL_MIN_EVIDENCE", "kind": "integer"
+    Params.SKILL_LEARNING_ACTIVATION_SCORE: {
+        "value": "0.75", "runtime_field": "SKILL_LEARNING_ACTIVATION_SCORE", "kind": "float"
     },
-    Params.DREAM_SKILL_ACTIVATION_SCORE: {
-        "value": "0.75", "runtime_field": "DREAM_SKILL_ACTIVATION_SCORE", "kind": "float"
-    },
-    Params.DREAM_SKILL_MAX_ACTIVE: {
-        "value": "20", "runtime_field": "DREAM_SKILL_MAX_ACTIVE", "kind": "integer"
+    Params.SKILL_LEARNING_MAX_ACTIVE: {
+        "value": "20", "runtime_field": "SKILL_LEARNING_MAX_ACTIVE", "kind": "integer"
     },
     Params.DREAM_EXPERIENCE_MODE: {
         "value": "off",
@@ -912,4 +905,8 @@ SECRET_PARAMS: set[str] = {
 }
 
 # These parameters are software-owned and omitted entirely from administration.
-INTERNAL_PARAMS: frozenset[str] = frozenset({Params.AUTH_SECRET_KEY, Params.WEB_PUSH_VAPID_KEYS, Params.GALARIS_AGENT_ID})
+INTERNAL_PARAMS: frozenset[str] = frozenset({
+    Params.AUTH_SECRET_KEY, Params.WEB_PUSH_VAPID_KEYS, Params.GALARIS_AGENT_ID,
+    Params.SKILL_LEARNING_MIN_EVIDENCE, Params.SKILL_LEARNING_ACTIVATION_SCORE,
+    Params.SKILL_LEARNING_MAX_ACTIVE,
+})

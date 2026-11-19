@@ -688,22 +688,6 @@ Une extraction tâche reste inéligible tant que son reçu de classification Top
 entièrement terminée, puis doit s'écouler avant la suivante. Elle ne constitue pas une fenêtre
 périodique dont un appel LLM long consommerait une partie.
 
-`skill.learn_task_outcome` complète l’extraction factuelle avec un apprentissage séparé fondé sur
-des preuves observables : tentatives, résultats d’outils, enfants, verdict Goal, correction humaine
-et usages Memory. Un filtre sans LLM élimine les signaux faibles, puis la sortie structurée cite ses
-preuves avant de créer, renforcer, réviser ou affaiblir un package personnel `Skill`. L’empreinte du matériel
-rend le rescan idempotent et autorise une correction tardive distincte. Dream parcourt aussi les
-Tâches terminales historiques, de la plus ancienne à la plus récente et une seule par passage ; les
-reçus empêchent de compter deux fois le même matériel. Ce mécanisme ne crée aucun `MemoryItem`.
-
-`DREAM_SKILL_LEARNING_MODE` vaut `off`, `observe` ou `learn` et reste `off` par défaut. `observe`
-conserve uniquement les diagnostics Dream et `learn` applique la décision checkpointée. Une compétence
-est d’abord conservée comme package personnel candidat non injectable. Elle est promue et injectée en plus des
-compétences affectées lorsqu'au moins `DREAM_SKILL_MIN_EVIDENCE` tâches distinctes ont confirmé la même
-procédure et qu'elle atteint `DREAM_SKILL_ACTIVATION_SCORE`; le seuil de répétition vaut 3 par
-défaut et `DREAM_SKILL_MAX_ACTIVE` borne le nombre de procédures actives. Ces réglages sont
-administrés dans `params`, pas dans `.env`.
-
 Lorsqu'un tool Memory écrit pendant une tâche, il associe immédiatement l'item créé ou fusionné à
 la provenance `task:<uuid>`. Le réconciliateur d'`app.memory` en déduit ensuite les arêtes Topic,
 contact, Contact–Topic, Goal et Process ainsi que les scopes conversationnels autoritatifs. Il est

@@ -23,7 +23,7 @@ from app.task.models import Task, TaskAttempt, TaskStatus
 from app.task.schemas import TaskCreate
 from core.database import get_db
 
-from . import goal_service, referrer_wait, settings_service
+from . import goal_service, referrer_wait, retrospective, settings_service
 from .document_store import get_goal_document_store
 from .cycle_context import goal_cycle_work_instructions, goal_judgement_runtime_instructions
 from .facade import resolve_goal_tracking_system_prompt
@@ -382,7 +382,7 @@ async def _finish_judgement(
     if goal.status == GoalStatus.COMPLETED:
         action = GoalVerdict.STOP
         reason = "The Goal was stopped manually while its post-task evaluation was running."
-    elif (goal.revision != expected_goal_revision
+    elif not goal.is_weekly_retrospective and (goal.revision != expected_goal_revision
             or (expected_tracking_revision is not None and await get_goal_document_store().revision(goal.tracking_document_id) != expected_tracking_revision)
             or (expected_work_fingerprint is not None and (source is None or _work_fingerprint(source) != expected_work_fingerprint))):
         cycle.status = GoalCycleStatus.RUNNING
@@ -402,6 +402,9 @@ async def _finish_judgement(
         return
     else:
         reason = f"Decision model selected {action.value}." if llm_id is not None else "Monitoring is disabled; continue scheduled work."
+        if goal.is_weekly_retrospective:
+            action = GoalVerdict.CONTINUE
+            reason = "The weekly retrospective continues on its existing schedule."
         if goal.status == GoalStatus.PAUSED:
             action = GoalVerdict.CONTINUE
             reason = "The Goal remains paused by its existing control state."
@@ -528,6 +531,10 @@ async def process_terminal_cycle(tracking_llm: LLM | None = None) -> bool:
     llm_id: int | None = None
     try:
         cycle, goal, task = await _load_claim(cycle_id)
+        if goal.is_weekly_retrospective:
+            await _finish_judgement(cycle_id, token, GoalDecision(action="CONTINUE"),
+                expected_goal_revision=goal.revision, cost=0.0, llm_id=None)
+            return True
         await _restore_legacy_cycle_requester(goal, task)
         if tracking_llm is None:
             tracking_llm = await goal_service.get_tracking_llm(goal.agent_id)
@@ -586,6 +593,8 @@ async def _agent_has_pending_work(agent_id: int, now: datetime) -> bool:
 
 
 async def _cycle_task_objective(goal: Goal, sequence: int) -> str:
+    if goal.is_weekly_retrospective:
+        return retrospective.task_instructions(goal)
     sections = [
         "You are advancing a long-running Goal through one concrete work cycle.",
         f"GOAL TITLE:\n{goal.title}",
@@ -826,6 +835,8 @@ async def start_due_cycle(
                 goal_id=goal.id,
                 messenger_connection_id=goal.referrer_connection_id,
                 data=task_data,
+                forced_route="EXEC" if goal.is_weekly_retrospective else None,
+                forced_effort="standard" if goal.is_weekly_retrospective else None,
             )
         )
         task.requester_user_id = goal.requester_user_id or (
@@ -834,7 +845,9 @@ async def start_due_cycle(
             else None
         )
         # Tracking and previous results are context, never new target authority.
-        task.data = {**(task.data or {}), "_original_demand": goal.description or goal.title}
+        task.data = {**(task.data or {}), "_original_demand": (
+            objective if goal.is_weekly_retrospective else goal.description or goal.title
+        )}
         await initialize_scope(task, source_reference=f"galaris://goal/{goal.id}")
         task_service.retain(task, _GOAL_JUDGEMENT_RETENTION)
         cycle = GoalCycle(

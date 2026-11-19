@@ -298,6 +298,10 @@ to make the choice should be checked before asking. Waiting does not mean the Go
 In **Goals**, the list shows the responsible Agent’s avatar and name.
 In **Cycles**, each cycle shows the applied decision, monitoring state and recorded evidence.
 No review-opening action is offered.
+Each agent receives a **Weekly retrospective** Goal. In **Goals**, you can pause it, resume it or
+move its weekly slot. Its tracking shows lessons from recent work, access gaps and changes
+applied to the agent's [personal skills](skills.md).
+
 **Fixed dates in the agenda** supports recurrence in a chosen timezone. The **Goals** layer
 in the [Agenda](calendar.md) shows future passages, then the exact cycle
 and Task for each elapsed passage. Configuration changes preserve the past and replace

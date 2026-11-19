@@ -2321,7 +2321,7 @@ are in `front/browser-tests/`.
 | Office and spreadsheet thumbnails | Convert the first Office page and first printed spreadsheet page; skip OCR and analytical extraction; separate checkpoints from full analysis; preserve originals, access checks and the shared cache; retry failures and clean temporaries after cancellation; display and download on desktop and mobile, including after reopening; only download originals without fullscreen for formats without a viewer, across attachments, indexed files and chat | `back/app/memory/tests/test_document_thumbnails.py`, `front/browser-tests/document-thumbnails.spec.mjs`, `attachment-previews.spec.mjs`, `e2e/specs/office-thumbnails.spec.mjs` |
 | `contact` | Agent scope and `CONTACT_EDIT` (forgetting: also `MEMORY_EDIT`); single display name, checkbox/merge grouping, atomic splitting without identity deletion and with preserved history; email contacts independent of users/agents, validation and concurrent duplicates; projection rollback on split failure; reject direct attachment through the API; internal Chat uses only the Galaris user identity with idempotent cleanup; draft, cancellation, retry and late responses on mobile/desktop | `test_service.py`, `test_router.py`, `app/memory/tests/test_messenger_contact.py`, `app/memory/tests/test_source_projection.py`, `front/browser-tests/contacts.spec.mjs` |
 | `topic` | Classification, search beyond the first page and stale-response rejection | `test_service.py`, `test_router.py`, `test_sequential_detection.py`, `topics.spec.mjs` |
-| `dream` | Knowledge extraction/linking without rewriting existing content; resumable processing | `test_memory_extraction.py`, `test_claim_timeout.py`, `test_skill_learning.py` |
+| `dream` | Knowledge extraction/linking without rewriting existing content; resumable processing | `test_memory_extraction.py`, `test_claim_timeout.py` |
 | `skill` | Author/read procedures and preserve files/permissions; real MCP, isolation/budgets and runtime name collisions; new connections active with personal scope by default, preserving deactivations and explicit scopes; local usage/personal/team/all connection scope, team union and revocation, protected human delegation and atomic configuration; migration, replayable conversion and crash recovery; human inspection | `test_service.py`, `test_storage.py`, `test_learning.py`, `test_personal_packages.py`, `test_agent_reads.py`, `test_mcp.py`, `test_lifecycle.py`, `test_projection.py`, `app/services/tests/test_mandatory_services.py`, `skills.spec.mjs`, `service-parameters.spec.mjs` |
 | `process` | Start, observe, cancel and recover external work; immutable terminal outcomes | `test_recovery.py`, `test_process_core.py`, `test_router_scope.py`, `test_worker_concurrency.py`, `execution.spec.mjs` |
 | `tools` | Authorized discovery, access denial and secret redaction; revocation before effects on an already mounted native server, reactivation and agent isolation | `test_admin_access.py`, `test_agent_registry.py`, `test_secrets.py`, `test_resource_effects.py`, `test_live_authorization.py` |
@@ -3074,9 +3074,13 @@ Task/Topic detail modals. Identity validation and normalization are covered by
 `back/core/util/tests/test_rich_text.py`. Task-menu restrictions retain terminal mutation
 denials without freezing the number of non-destructive actions.
 
-### Dream and personal packages
+### Retrospective and personal packages
 
-`app/skill/tests/test_learning.py` follows Dream creation through the personal catalogue,
+`app/goal/tests/test_weekly_retrospective.py` covers assignment, pause, agenda passage,
+admission, MCP tools, weekly evidence, idempotent writing and cycle continuation.
+`goals.spec.mjs` exercises pause and resume in Goal details.
+
+`app/skill/tests/test_learning.py` follows evidence-backed learning through the personal catalogue,
 canonical file, Harness capabilities and projection. It covers owner isolation, thresholds,
 weakening, distinct Task confirmations, replay, concurrent human edits, preserved deactivation
 and commit failure without orphaned files or evidence. `test_learning_upgrade.py` covers evidence

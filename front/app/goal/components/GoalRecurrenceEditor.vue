@@ -2,7 +2,7 @@
   <div class="q-gutter-y-sm">
     <q-input :model-value="localStart" type="datetime-local" stack-label outlined dense :label="t('goal.agenda.firstPassage')" :rules="[() => valid || t('goal.agenda.invalidDate')]" @update:model-value="setStart(String($event ?? ''))" />
     <q-select :model-value="model.timezone" :options="zones" use-input input-debounce="0" outlined dense :label="t('goal.agenda.timezone')" @filter="filterZones" @update:model-value="setZone" />
-    <div class="row q-col-gutter-sm">
+    <div v-if="!weekly" class="row q-col-gutter-sm">
       <q-input v-model.number="model.interval" class="col-5" type="number" min="1" max="365" outlined dense :label="t('goal.agenda.every')" :rules="[value => Number.isInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 365 || t('goal.agenda.invalidInterval')]" />
       <q-select v-model="model.frequency" class="col" :options="frequencies" emit-value map-options outlined dense :label="t('goal.agenda.frequency')" />
     </div>
@@ -16,6 +16,7 @@ import { useI18n } from 'vue-i18n'
 import { wallTime, zonedInstant } from '@/core/util'
 import type { GoalRecurrence } from '../types'
 const model = defineModel<GoalRecurrence>({ required: true })
+defineProps<{ weekly?: boolean }>()
 const { t } = useI18n()
 const valid = ref(true)
 const localStart = computed(() => wallTime(model.value.start_at, model.value.timezone))

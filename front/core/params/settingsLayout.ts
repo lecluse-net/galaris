@@ -11,12 +11,9 @@ export const dreamActivityFields = dreamFields.filter(field =>
 export const dreamTopicFields = dreamFields.filter(field => (
     field.name === 'DREAM_TOPIC_CREATION_MODE' || field.input === 'prompt'
 ))
-export const dreamLearningFields = dreamFields.filter(field => field.name.startsWith('DREAM_SKILL_'))
-    .map(field => ({ ...field, advanced: field.name !== 'DREAM_SKILL_LEARNING_MODE' }))
 export const dreamRuntimeFields = dreamFields.filter(field => (
     !dreamActivityFields.some(item => item.name === field.name)
     && !dreamTopicFields.some(item => item.name === field.name)
-    && !dreamLearningFields.some(item => item.name === field.name)
 ))
 
 export const memoryMaintenanceGroups = [

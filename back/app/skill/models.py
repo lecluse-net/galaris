@@ -76,7 +76,7 @@ class Skill(HistoryMixin, Base):
     global_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, default=False, server_default="false"
     )
-    # Dream augments the same personal package; its files remain authoritative.
+    # Learning augments the personal package; its files remain authoritative.
     learning_key: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True), unique=True)
     learning_origin_code: Mapped[str | None] = mapped_column(String(100))
     learning_positive_weight: Mapped[float] = mapped_column(Float, default=0.0, server_default="0")

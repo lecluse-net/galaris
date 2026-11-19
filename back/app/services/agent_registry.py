@@ -58,6 +58,7 @@ async def build_agent_tool_advertisement(
     conversation_only: bool = False,
     include_task_only_tools: bool = False,
     resources: dict[str, Any] | None = None,
+    task_id: UUID | None = None,
 ) -> AgentToolAdvertisement:
     """Build a compact prompt inventory from the same authorization projection as MCP."""
     from app.services import mcp_loader
@@ -68,6 +69,7 @@ async def build_agent_tool_advertisement(
         allowed_tool_names=allowed_tool_names,
         conversation_only=conversation_only,
         resources=resources,
+        task_id=task_id,
     )
 
     grouped: dict[str, list[str]] = {}

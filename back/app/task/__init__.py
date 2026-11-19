@@ -25,7 +25,11 @@ from .conversation import (
     get_conversation_predecessor,
     get_conversation_scope,
 )
-from .outcome import TaskOutcomeObservation, get_task_outcome_observation
+from .outcome import (
+    TaskOutcomeObservation, get_task_outcome_observation,
+    is_executing_task as is_executing_task,
+    list_retrospective_source_tasks as list_retrospective_source_tasks,
+)
 from .startup_timing import STARTUP_TIMING_DATA_KEY, TaskAdmissionTiming, TaskStartupTiming, task_startup_timings
 from .working_set import (
     parse_working_set,

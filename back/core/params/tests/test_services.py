@@ -438,15 +438,12 @@ class TestSet:
                 "admin@example.com",
             )
 
-    def test_dream_learning_is_disabled_by_default(self):
-        assert DEFAULT_PARAMS[Params.DREAM_EXPERIENCE_MODE]["value"] == "off"
-        assert RuntimeSettings().DREAM_EXPERIENCE_MODE == "off"
-        assert DEFAULT_PARAMS[Params.DREAM_SKILL_LEARNING_MODE]["value"] == "off"
+    def test_weekly_learning_keeps_the_existing_skill_eligibility_defaults(self):
+        assert not any(name.startswith("DREAM_SKILL_") for name in DEFAULT_PARAMS)
         defaults = RuntimeSettings()
-        assert defaults.DREAM_SKILL_LEARNING_MODE == "off"
-        assert defaults.DREAM_SKILL_ACTIVATION_SCORE == 0.75
-        assert defaults.DREAM_SKILL_MIN_EVIDENCE == 3
-        assert defaults.DREAM_SKILL_MAX_ACTIVE == 20
+        assert defaults.SKILL_LEARNING_ACTIVATION_SCORE == 0.75
+        assert defaults.SKILL_LEARNING_MIN_EVIDENCE == 3
+        assert defaults.SKILL_LEARNING_MAX_ACTIVE == 20
 
     def test_empty_visible_prompt_restores_its_default(self) -> None:
         assert (

@@ -44,7 +44,6 @@ ALLOWED_DATABASE_SESSION_BOUNDARIES = {
     "app/dream/mechanisms/memory_maintenance.py",
     "app/dream/mechanisms/process_memory.py",
     "app/dream/mechanisms/sequential_topic_classification.py",
-    "app/dream/mechanisms/skill_learning.py",
     "app/dream/mechanisms/stale_memory.py",
     "app/dream/mechanisms/task_memory.py",
     "app/dream/mechanisms/task_outcome_reflection.py",

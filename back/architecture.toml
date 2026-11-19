@@ -90,8 +90,8 @@ max_domain_fan_out = 7
 
 [module."app.dream"]
 # Dream consumes the contact facade; Contacts never imports Dream (ADR 0256).
-allowed_dependencies = ["app.agent", "app.connection", "app.contact", "app.conversation", "app.dataset", "app.document", "app.goal", "app.llm", "app.memory", "app.messenger", "app.process", "app.skill", "app.task", "app.topic", "app.voice"]
-max_domain_fan_out = 15
+allowed_dependencies = ["app.agent", "app.connection", "app.contact", "app.conversation", "app.dataset", "app.document", "app.goal", "app.llm", "app.memory", "app.messenger", "app.process", "app.task", "app.topic", "app.voice"]
+max_domain_fan_out = 14
 
 [module."app.task"]
 allowed_dependencies = ["app.agent", "app.goal", "app.llm", "app.messenger", "app.services"]

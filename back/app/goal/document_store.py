@@ -25,6 +25,7 @@ class GoalDocumentStore(Protocol):
         kind: GoalDocumentKind,
         goal_title: str,
         content: str,
+        defer_commit: bool = False,
     ) -> UUID: ...
 
     async def read(self, document_id: UUID) -> str: ...

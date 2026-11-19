@@ -329,6 +329,7 @@ class GoalCategoryRead(BaseModel):
 
 class GoalRead(GoalScheduleConfig):
     id: UUID
+    is_weekly_retrospective: bool = False
     category_id: int | None = None
     memory_item_id: UUID | None = None
     revision: int

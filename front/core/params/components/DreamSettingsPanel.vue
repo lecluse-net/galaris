@@ -16,9 +16,6 @@
         <SettingsBlock :title="t('configuration.layout.topics')" icon="topic">
             <SettingsFields :fields="dreamTopicFields" />
         </SettingsBlock>
-        <SettingsBlock :title="t('configuration.layout.learning')" icon="school">
-            <SettingsFields :fields="dreamLearningFields" :columns="2" />
-        </SettingsBlock>
 
         <SettingsBlock :title="t('dreamSettings.attachments.title')"
             :description="t('dreamSettings.attachments.hint')" icon="attach_file">
@@ -172,7 +169,7 @@ import {
     type MemoryLinkReconciliationStatus,
 } from '../services/configurationService'
 import { dreamAttachmentFields, dreamLinkReconciliationFields } from '../settingsCatalog'
-import { dreamActivityFields, dreamLearningFields, dreamRuntimeFields, dreamTopicFields } from '../settingsLayout'
+import { dreamActivityFields, dreamRuntimeFields, dreamTopicFields } from '../settingsLayout'
 import { useParamsStore } from '../stores/paramsStore'
 import SettingsFields from './SettingsFields.vue'
 import SettingsBlock from './SettingsBlock.vue'

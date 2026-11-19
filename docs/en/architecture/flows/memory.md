@@ -423,11 +423,9 @@ and remains excluded from recall.
 
 ### Separate Procedural Learning
 
-Task-result analysis reuses certain observable Memory evidence, but it does not belong to this
-domain. The Dream mechanism `skill.learn_task_outcome` creates and strengthens procedures in the
-dedicated `app.skill` tables. It creates no `MemoryItem`, and historical experiences are no longer
-recalled. Its score, injection thresholds, and audit are described in the
-[Dream flow](dream.md) and ADR 0047.
+The weekly retrospective can use observed Memory usage to inform its proposals. Learned procedures
+and their evidence belong to personal packages in `app.skill`.
+See [decision 0302](../../../../project/decisions/0302-weekly-agent-retrospective.md).
 
 Memory search in Tasks is entirely detached from their termination. The
 `app.dream` mechanism `memory.extract_task` takes one successful root Task per cycle that has not

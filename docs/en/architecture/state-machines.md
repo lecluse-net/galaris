@@ -436,6 +436,10 @@ the answer without an immediate retry loop. Reminders from the failed cycle can 
 longer pause the Goal. The thread receives an acknowledgement and the observed outcome
 of the cycle that uses the answer when the transport is available.
 
+The system-assigned retrospective recurs weekly. A terminal Task produces a locked `CONTINUE`
+verdict without model judgement. Pausing suspends future passages, and provisioning preserves the
+identity and pause state of any existing retrospective.
+
 Each Goal chooses exactly one automatic trigger: delay after work, fixed-date recurrence
 or a parent Goal cycle. Fixed cadence retains versioned planning segments and durable
 passages, uniquely associated with their cycles and Tasks. Edits replace only the future;
@@ -527,14 +531,6 @@ budget.
 
 Voice preemption makes the receipt immediately available without consuming its failure budget. The
 prepared output may exist as early as `running` and remains reusable during resumption.
-For `skill.learn_task_outcome`, the first checkpoint contains the evidence and its fingerprint,
-then the prepared checkpoint contains structured operations on the skills. An `observe`
-success may be claimed once during the transition to `learn`, without rerunning the model. The
-application adds idempotent evidence and recalculates the score; it does not touch Memory. A new
-late-arriving piece of evidence does not reopen the terminal receipt: it creates another topic
-`<task UUID>:<fingerprint>`. All terminal Tasks without a receipt are therefore traversed, including history,
-from oldest to newest. The scheduler maintains its throughput bounded to one operation per pass;
-catch-up is not a massive parallel process.
 The scheduler executes only one operation per pass and rotates the priority mechanism to
 prevent starvation. `DREAM_POLL_SECONDS` starts after that operation finishes before another
 can start; the operation duration therefore never consumes this pause.

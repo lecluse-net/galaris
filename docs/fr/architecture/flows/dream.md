@@ -93,19 +93,8 @@ distincts, avec couverture, localisateur et version attestée ou inconnue. Un ap
 ouvre un nouveau reçu idempotent. L'application revalide le checkpoint ; lecture et rappel
 écartent les nouveaux dérivés dont aucune preuve n'est encore disponible. Voir [0169](../../../../project/decisions/0169-conversation-memory-acquired-evidence.md).
 
-`skill.learn_task_outcome` transforme uniquement des preuves observables et bornées en procédures
-réutilisables propres à l'agent. CREATE, REINFORCE, REVISE et WEAKEN utilisent les packages personnels `skills` et leur fichier canonique `SKILL.md`, avec les preuves liées dans `skill_learning_evidences`, jamais Memory. L'empreinte des preuves fait partie de
-l'identité du sujet : une preuve matérielle tardive crée un nouveau sujet, tandis qu'un rescan
-identique reste sans effet. Toutes les tâches terminales sont éligibles, y compris celles terminées
-avant l'activation de l'apprentissage ; Dream les parcourt de la plus ancienne à la plus récente,
-une par passage. Le mode `observe` conserve la proposition checkpointée ; `learn` peut ensuite
-l'appliquer sans second appel LLM.
-
-Le score lissé `(positif + 1) / (positif + négatif + 2)` rend visibles renforcement et
-affaiblissement. Une première occurrence crée seulement une candidate. Une procédure non suspendue
-est ajoutée aux compétences ordinaires de l'agent seulement si `DREAM_SKILL_MIN_EVIDENCE` tâches
-distinctes ont confirmé la même action répétée et si elle atteint `DREAM_SKILL_ACTIVATION_SCORE`,
-dans la limite de `DREAM_SKILL_MAX_ACTIVE`. Le seuil de répétition vaut 3 par défaut. Son contenu est un package personnel éditable sous `.personal/`, intégré au catalogue et aux mêmes projections que les autres packages personnels.
+L'apprentissage procédural appartient à la [rétrospective hebdomadaire](../../../../project/decisions/0302-weekly-agent-retrospective.md).
+Les anciens reçus Dream d'apprentissage restent disponibles dans l'historique.
 
 ## Effets déterministes
 

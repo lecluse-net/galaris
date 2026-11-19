@@ -151,7 +151,20 @@ async def _reconcile_topic_approval_recipients(session: AsyncSession) -> None:
     logger.info("Dream Topic approval recipient reconciliation: repaired={}", len(repaired.all()))
 
 
+async def _retire_skill_learning_receipts(session: AsyncSession) -> None:
+    await session.execute(update(DreamReceipt).where(
+        DreamReceipt.mechanism_key == "skill.learn_task_outcome",
+        DreamReceipt.status.in_(("running", "retry")),
+    ).values(
+        status="error", lease_token=None, lease_owner=None, lease_expires_at=None,
+        last_error="Replaced by the weekly retrospective.",
+    ))
+
+
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    registry.register_reconciler(DbAdminReconciler(
+        key="app.dream.retire_skill_learning_receipts", handler=_retire_skill_learning_receipts,
+    ))
     registry.register_reconciler(
         DbAdminReconciler(
             key="app.dream.topic_approval_recipients",

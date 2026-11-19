@@ -28,7 +28,7 @@ class LLMCallPurpose(StrEnum):
     CONTACT_OWNER = "contact.owner"
     CONTACT_MERGE = "contact.merge"
     DREAM_TASK_OUTCOME_REFLECTION = "dream.task_outcome_reflection"
-    DREAM_SKILL_LEARNING = "dream.skill_learning"
+    DREAM_SKILL_LEARNING = "dream.skill_learning"  # Historical LLM calls.
 
     GOAL_TRACKING = "goal.tracking"
 

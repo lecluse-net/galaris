@@ -1282,7 +1282,10 @@ def revision_for(item: Document, *, author_agent_id: int | None, task_id: UUID |
     return DocumentRevision(document_id=item.id, revision=item.revision, provider_code=item.provider_code, resource_id=item.resource_id, content=item.content, file_id=item.file_id, storage_kind=item.storage_kind, content_hash=item.content_hash, content_type=item.content_type, media_type=item.media_type, content_profile_version=item.content_profile_version, format_version=item.format_version, filename=item.filename, title=item.title, metadata_=dict(item.metadata_), temporal=item.temporal, task_id=task_id, author_agent_id=author_agent_id, author_user_id=author_user_id, document_content_version=document_content_version, document_append=document_append)
 
 
-async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = None, deletion_protected: bool = False, deduplicate: bool = False, owner_user_id: int | None = None, initial_editor_agent_id: int | None = None, workflow_metadata: bool = False, clone_source: DocumentCloneSource | None = None, prepared_clone: PreparedDocumentClone | None = None) -> tuple[Document, bool]:
+async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = None, deletion_protected: bool = False, deduplicate: bool = False, owner_user_id: int | None = None, initial_editor_agent_id: int | None = None, workflow_metadata: bool = False, clone_source: DocumentCloneSource | None = None, prepared_clone: PreparedDocumentClone | None = None, defer_commit: bool = False) -> tuple[Document, bool]:
+    if defer_commit and (data.document_format != "text" or data.provider_code != "native"
+                         or clone_source is not None or prepared_clone is not None):
+        raise ValueError("Deferred creation requires an inline native Text document.")
     if clone_source is not None:
         async with prepare_document_clone(clone_source, decode_payload(data.payload).decode("utf-8"), document_format=data.document_format) as prepared:
             copied = data.model_copy(update={"payload": DocumentPayload(text=prepared.content)})
@@ -1361,6 +1364,9 @@ async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = 
         if data.source is not None:
             task_target, round_target = await _source_targets(data.source.source_kind, data.source.source_ref)
             db.add(DocumentSource(document_id=item.id, source_kind=data.source.source_kind, source_ref=data.source.source_ref, excerpt=data.source.excerpt, content_hash=item.content_hash, metadata_=dict(data.source.metadata), task_id=task_target, conversation_round_id=round_target))
+        if defer_commit:
+            await db.flush()
+            return item, True
         await db.commit()
     except BaseException:
         async def compensate() -> None:

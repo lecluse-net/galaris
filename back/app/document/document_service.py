@@ -177,9 +177,12 @@ async def create_document(
     clone_source: DocumentCloneSource | None = None,
     prepared_clone: PreparedDocumentClone | None = None,
     binary_content: bytes | None = None,
+    defer_commit: bool = False,
 ) -> Document:
     """Create a private, mutable, non-deduplicated working document."""
     if document_format in {"data", "dataset"}:
+        if defer_commit:
+            raise ValueError("Data document creation commits independently.")
         from .data.service import create
         values = dict(metadata or {})
         normalized_folder = _normalize_document_path(folder)
@@ -239,6 +242,7 @@ async def create_document(
         workflow_metadata=workflow_metadata,
         clone_source=clone_source,
         prepared_clone=prepared_clone,
+        defer_commit=defer_commit,
     )
     return item
 

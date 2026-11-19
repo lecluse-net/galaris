@@ -168,6 +168,7 @@ INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
             "contact_list", "contact_get", "contact_create", "contact_update",
             "task_run", "task_get", "task_stop",
             "goal_update_suivi",
+            "goal_retrospective_evidence", "goal_retrospective_learn", "goal_retrospective_record",
             "goal_run_now", "goal_ask_referrer",
             "process_list", "process_get", "process_start", "process_list_runs",
             "process_get_run", "process_analyze_run", "processus_get",

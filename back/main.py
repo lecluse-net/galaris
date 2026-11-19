@@ -344,6 +344,8 @@ register_process_human_messenger(ProcessHumanMessenger())
 # the same governed long-term and Messenger-session snapshots.
 from app.document import register_document
 register_document()
+from goal_retrospective_composition import register_weekly_retrospective
+register_weekly_retrospective()
 from app.contact.facade import read_contact_resource, list_contact_resources, write_contact_resource
 from app.file_share import register_contact_resource_provider, register_document_retriever
 from app.llm.facade import retrieve_prepared_document

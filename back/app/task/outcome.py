@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from datetime import datetime
+from dataclasses import dataclass
 
 from uuid import UUID
 
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.agent import objective_blocker
@@ -69,6 +70,42 @@ class TaskOutcomeObservation(BaseModel):
         default_factory=lambda: list[TaskChildObservation]()
     )
     followup: ConversationFollowup | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RetrospectiveSourceTask:
+    id: UUID
+    status: str
+
+
+async def list_retrospective_source_tasks(
+    agent_id: int, retrospective_goal_id: UUID, start: datetime, end: datetime, *,
+    limit: int, source_id: UUID | None = None,
+) -> list[RetrospectiveSourceTask]:
+    """Select privately owned, terminal work that finished in the review window."""
+    last_attempt = (
+        select(func.max(TaskAttempt.finished_at)).where(TaskAttempt.task_id == Task.id)
+        .correlate(Task).scalar_subquery()
+    )
+    finished_at = func.coalesce(last_attempt, Task.updated_at, Task.created_at)
+    query = select(Task.id, Task.status).where(
+        Task.agent_id == agent_id, Task.deleted_at.is_(None),
+        or_(Task.goal_id.is_(None), Task.goal_id != retrospective_goal_id),
+        Task.status.in_((TaskStatus.SUCCESS, TaskStatus.ERROR)), Task.lease_token.is_(None),
+        finished_at >= start, finished_at < end,
+    )
+    if source_id is not None:
+        query = query.where(Task.id == source_id)
+    rows = await get_db().execute(query.order_by(finished_at.desc(), Task.id).limit(limit))
+    return [RetrospectiveSourceTask(identity, status.value) for identity, status in rows]
+
+
+async def is_executing_task(task_id: UUID, agent_id: int) -> bool:
+    return (await get_db().scalar(select(Task.id).where(
+        Task.id == task_id, Task.agent_id == agent_id,
+        Task.status == TaskStatus.EXEC, Task.paused.is_(False), Task.cancel_requested.is_(False),
+        Task.deleted_at.is_(None),
+    ))) is not None
 
 
 def _duration(attempt: TaskAttempt) -> float | None:

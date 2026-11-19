@@ -446,11 +446,9 @@ conserve ses dates et sa provenance ; le rappel continue de l'exclure.
 
 ### Apprentissage procédural séparé
 
-L'analyse des résultats de tâches réutilise certaines preuves observables de Memory, mais elle
-n'appartient pas à ce domaine. Le mécanisme Dream `skill.learn_task_outcome` crée et renforce des
-procédures dans les tables dédiées d'`app.skill`. Il ne crée aucun `MemoryItem`, et les expériences
-historiques ne sont plus rappelées. Son score, ses seuils d'injection et son audit sont décrits dans
-le [flux Dream](dream.md) et l'ADR 0047.
+La rétrospective hebdomadaire peut tenir compte des usages observés de Memory pour éclairer ses
+propositions. Les procédures apprises et leurs preuves appartiennent aux packages personnels
+d'`app.skill`. Voir la [décision 0302](../../../../project/decisions/0302-weekly-agent-retrospective.md).
 
 La recherche de souvenirs dans les tâches est entièrement détachée de leur terminaison. Le
 mécanisme `memory.extract_task` d'`app.dream` prend une tâche racine réussie non scannée par

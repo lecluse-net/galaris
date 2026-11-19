@@ -26,19 +26,20 @@ modèle la choisira. Pour comprendre un oubli, vérifiez son éligibilité puis 
 Une compétence est pertinente lorsque sa méthode sert la demande ; sa présence dans le catalogue
 ne justifie pas de la charger pour une réponse autonome ou un calcul simple sans rapport.
 
-## Apprendre avec Dream
+## Apprendre pendant la rétrospective hebdomadaire
 
-Dream crée directement un package personnel avec son `SKILL.md`. Sa fiche conserve les preuves,
+La rétrospective hebdomadaire peut créer un package personnel avec son `SKILL.md` ou réviser une
+procédure existante à partir de résultats observés. Sa fiche conserve les preuves,
 le nombre de tâches distinctes confirmées et la fiabilité. Une candidate reste consultable et
-éditable, mais ne devient utilisable qu'après les seuils configurés dans les paramètres Dream
+éditable, mais ne devient utilisable qu'après les seuils des compétences apprises
 (trois tâches et une note de 0,75 par défaut). Une preuve négative peut la rendre à nouveau inéligible.
 Le plafond de compétences apprises reste applicable ; les packages personnels créés manuellement
 conservent leur activation habituelle.
 
 Les mêmes actions permettent d'éditer, désactiver, supprimer ou transférer ces packages.
-Un renforcement ne réactive jamais un package désactivé ; une révision Dream tardive n'écrase
-pas une édition intervenue entre-temps. Dream utilise la délégation de gestion personnelle du
-Service `skills`. Les modes désactivé et observation ne créent aucun package.
+Un renforcement respecte une désactivation explicite et une révision tardive préserve une
+édition intervenue entre-temps. L'écriture exige la délégation de gestion personnelle du service
+`skills`. Vous pouvez suspendre les prochains bilans dans **Objectifs**.
 
 La mise à jour transfère les anciennes compétences apprises, leur historique et leurs suspensions
 vers les packages personnels. Un nom déjà utilisé est conservé et la compétence transférée reçoit

@@ -47,18 +47,31 @@ _LEGACY_OPERATION_PARAMS = (
     Params.BROWSER_VIEWPORT_WIDTH,
     Params.BROWSER_VIEWPORT_HEIGHT,
 )
+_MOVED_SKILL_PARAMS = {
+    "DREAM_SKILL_MIN_EVIDENCE": Params.SKILL_LEARNING_MIN_EVIDENCE,
+    "DREAM_SKILL_ACTIVATION_SCORE": Params.SKILL_LEARNING_ACTIVATION_SCORE,
+    "DREAM_SKILL_MAX_ACTIVE": Params.SKILL_LEARNING_MAX_ACTIVE,
+}
 
 
 async def _declared_rows(session: AsyncSession) -> tuple[dict[str, object], ...]:
     """Seed missing preferences from the supported legacy configuration."""
     legacy = await session.scalar(select(Param.value).where(Param.name == "hermes.default.compose"))
     rows = params_service.declared_rows()
+    skill_values = {
+        _MOVED_SKILL_PARAMS[name]: value
+        for name, value in (await session.execute(
+            select(Param.name, Param.value).where(Param.name.in_(_MOVED_SKILL_PARAMS))
+        )).tuples()
+    }
     existing = set(await session.scalars(select(Param.name).where(
         Param.name.in_(_LEGACY_OPERATION_PARAMS)
     )))
     for row in rows:
         name = str(row["name"])
         parameter_privileges(name)  # New declarations must also declare their functional policy.
+        if name in skill_values:
+            row["value"] = skill_values[name]
         if name == Params.WEB_PUSH_VAPID_KEYS:
             stored = await session.scalar(select(Param).where(Param.name == name))
             if stored is not None:

@@ -26,18 +26,19 @@ eligibility and then the execution trace.
 A skill is relevant when its method serves the request; appearing in the catalog is not a
 reason to load it for an unrelated self-contained answer or simple calculation.
 
-## Learn with Dream
+## Learn through the weekly retrospective
 
-Dream creates a personal package containing its canonical `SKILL.md`. The package detail shows
+The weekly retrospective can create a personal package or revise an existing procedure from
+observed results. The package contains its canonical `SKILL.md` and shows
 its evidence, distinct confirming Tasks and reliability. Candidates can be read and edited, but
-become usable only after the configured Dream thresholds (three Tasks and a score of 0.75 by
+become usable only after meeting the learned-skill thresholds (three Tasks and a score of 0.75 by
 default), within the learned-skill cap. Negative evidence can make them ineligible again.
 Manually authored personal packages retain their ordinary activation policy.
 
 Use the same personal package actions to edit, disable, delete or transfer learned procedures.
-Reinforcement never reactivates a disabled package, and a late Dream revision cannot overwrite
-an intervening edit. Dream uses the personal management delegation of the `skills` Service.
-Disabled and observation modes create no package. Upgrades transfer existing procedures,
+Reinforcement respects explicit deactivation, and a late revision preserves intervening edits.
+Writing requires personal management delegation on the `skills` Service. You can pause future
+reviews in **Goals**. Upgrades transfer existing procedures,
 evidence and suspensions; name collisions preserve both packages under distinct codes.
 The former `?tab=learned` link now opens personal skills.
 

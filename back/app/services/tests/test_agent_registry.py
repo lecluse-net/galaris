@@ -179,10 +179,12 @@ async def test_tool_advertisement_contains_only_projected_native_functions(
     projected = AsyncMock(return_value=definitions)
     monkeypatch.setattr(mcp_loader, "list_enabled_native_mcp_definitions", projected)
 
+    task_id = uuid4()
     advertisement = await agent_registry.build_agent_tool_advertisement(
         12,
         runtime="internal",
         allowed_tool_names={"services_list", "process_start"},
+        task_id=task_id,
     )
 
     assert advertisement.tool_names == frozenset({"services_list", "process_start"})
@@ -194,6 +196,7 @@ async def test_tool_advertisement_contains_only_projected_native_functions(
         allowed_tool_names={"services_list", "process_start"},
         conversation_only=False,
         resources=None,
+        task_id=task_id,
     )
 
 

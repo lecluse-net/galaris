@@ -36,6 +36,12 @@ from .schemas import (
 )
 from . import goal_service, settings_service
 from .facade import GoalOutcomeObservation, get_goal_outcome_for_task
+from .retrospective import (
+    RetrospectiveLearning as RetrospectiveLearning,
+    ensure_weekly_retrospective as ensure_weekly_retrospective,
+    register_retrospective_learning as register_retrospective_learning,
+    weekly_retrospective_created as weekly_retrospective_created,
+)
 from .contact_port import (
     GoalContactDirectoryPort,
     GoalHumanContact,
@@ -54,9 +60,11 @@ def register_scheduler_jobs(register: PeriodicJobRegistrar) -> None:
 
     from .referrer_wait import register_referrer_interaction_handler
     from .runner import process_goals
+    from .retrospective import reconcile_weekly_retrospectives
 
     register_referrer_interaction_handler()
     register("goal-runner", process_goals, interval=2.0)
+    register("goal-weekly-retrospectives", reconcile_weekly_retrospectives, interval=60.0)
 
 
 __all__ = [

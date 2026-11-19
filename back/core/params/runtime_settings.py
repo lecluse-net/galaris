@@ -231,10 +231,9 @@ class RuntimeSettings(BaseModel):
     DREAM_ATTACHMENT_IMAGE_ENABLED: bool = False
     DREAM_ATTACHMENT_VIDEO_ENABLED: bool = False
     DREAM_TOPIC_CREATION_MODE: Literal["forbid", "propose", "auto"] = "propose"
-    DREAM_SKILL_LEARNING_MODE: Literal["off", "observe", "learn"] = "off"
-    DREAM_SKILL_MIN_EVIDENCE: int = Field(default=3, ge=2, le=100)
-    DREAM_SKILL_ACTIVATION_SCORE: float = Field(default=0.75, ge=0.5, le=0.99)
-    DREAM_SKILL_MAX_ACTIVE: int = Field(default=20, ge=1, le=100)
+    SKILL_LEARNING_MIN_EVIDENCE: int = Field(default=3, ge=2, le=100)
+    SKILL_LEARNING_ACTIVATION_SCORE: float = Field(default=0.75, ge=0.5, le=0.99)
+    SKILL_LEARNING_MAX_ACTIVE: int = Field(default=20, ge=1, le=100)
     # Compatibility only for historical Memory experience nodes. New outcome
     # learning is owned by app.skill and never creates Memory items.
     DREAM_EXPERIENCE_MODE: Literal["off", "observe", "learn", "active"] = "off"

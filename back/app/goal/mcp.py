@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated, Any
 from uuid import UUID
 
+from pydantic import Field
 from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
 
-from . import goal_service
+from . import goal_service, retrospective
 from .access import owner_scope, readable_agents
 from app.services.facade import administration_scope
 from .models import GoalStatus
@@ -23,6 +24,49 @@ from .schemas import (
 
 
 _GOAL_MANAGEMENT_TOOL_CODE = "goal_management"
+
+
+async def _weekly_retrospective_available(ctx: McpToolContext) -> bool:
+    return await retrospective.available(ctx.agent_id, ctx.task_id)
+
+
+@mcp_tool("galaris", available_when=_weekly_retrospective_available,
+          approval="enabled", approval_reason="Read evidence for the agent's own weekly retrospective",
+          effect_policy="read", concurrency_policy="safe",
+          description="List a bounded sample of your own terminal Tasks for the current weekly review. "
+                      "Pass one returned source_task_uri to read its redacted observations and evidence references.")
+async def goal_retrospective_evidence(
+    ctx: McpToolContext, source_task_uri: str | None = None,
+) -> dict[str, object]:
+    return await retrospective.evidence(ctx.agent_id, ctx.task_id, source_task_uri)
+
+
+@mcp_tool("galaris", available_when=_weekly_retrospective_available,
+          approval="enabled", approval_reason="Apply verified learning to the agent's own personal skill",
+          effect_policy="idempotent",
+          description="Apply one evidence-backed improvement to your own personal skill during its weekly review. "
+                      "Use an exact source_task_uri and evidence_refs from goal_retrospective_evidence. "
+                      "operation takes action (CREATE, REINFORCE, REVISE, WEAKEN), evidence_refs, rationale, "
+                      "confidence (0 to 1); CREATE requires code (use the returned prefix), label and complete "
+                      "SKILL.md markdown. Existing skills require target_skill_id; REVISE also requires "
+                      "expected_revision and the complete replacement markdown. A changed count of zero "
+                      "means check the current package before claiming a change.")
+async def goal_retrospective_learn(
+    ctx: McpToolContext, source_task_uri: str, operation: dict[str, object],
+) -> dict[str, object]:
+    return await retrospective.learn(ctx.agent_id, ctx.task_id, source_task_uri, operation)
+
+
+@mcp_tool("galaris", available_when=_weekly_retrospective_available,
+          approval="enabled", approval_reason="Save the current Goal's weekly retrospective",
+          effect_policy="idempotent",
+          description="Replace this retrospective's tracking with a short HTML fragment. Use the "
+                      "goal_revision from goal_retrospective_evidence. The active Goal is resolved by the server.")
+async def goal_retrospective_record(
+    ctx: McpToolContext, expected_revision: Annotated[int, Field(ge=1)],
+    tracking_content: Annotated[str, Field(min_length=1, max_length=8_000)],
+) -> dict[str, object]:
+    return await retrospective.record(ctx.agent_id, ctx.task_id, expected_revision, tracking_content)
 
 
 def _goal_id(value: str) -> UUID:

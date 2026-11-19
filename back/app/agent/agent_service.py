@@ -13,7 +13,7 @@ from core.user import user_service
 from app.llm import llm_service, profile_service
 
 from .models import Title, Agent, AgentGroup, AgentTeam
-from .observers import notify_agent_profile
+from .observers import initialize_agent_creation, notify_agent_profile
 from .schemas import AgentCreate, AgentUpdate
 from .voice import parse_voice_selection
 from .facade import validate_agent_driver, resolve_driver
@@ -285,6 +285,7 @@ async def create(agent_data: AgentCreate, *, actor_user_id: int | None = None) -
         if agent_data.team_ids:
             await _replace_teams(new_agent.id, agent_data.team_ids)
         await _ensure_skill_assignment_matrix(new_agent.id)
+        await initialize_agent_creation(new_agent.id)
         await db.commit()
     except IntegrityError as e:
         await db.rollback()

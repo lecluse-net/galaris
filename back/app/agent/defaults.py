@@ -15,7 +15,7 @@ from core.user import UserModel, register_user_access_observer
 
 from .avatars import normalize_avatar
 from .models import Agent, Title
-from .observers import notify_agent_profile
+from .observers import initialize_agent_creation, notify_agent_profile
 
 
 async def _rows(session: AsyncSession) -> tuple[dict[str, object], ...]:
@@ -95,11 +95,14 @@ async def _on_user_access_changed(_user_id: int | None) -> None:
     # another observer (or the request middleware) to accidentally commit.
     async with session.begin_nested():
         result = await reconcile_dataset(session, default_agent_dataset())
+        agent_id = None
+        if result.inserted:
+            stored_id = (await session.scalars(select(Param.value).where(Param.name == Params.GALARIS_AGENT_ID))).one()
+            assert stored_id is not None
+            agent_id = int(stored_id)
+            await initialize_agent_creation(agent_id)
     await session.commit()
-    if result.inserted:
-        stored_id = (await session.scalars(select(Param.value).where(Param.name == Params.GALARIS_AGENT_ID))).one()
-        assert stored_id is not None
-        agent_id = int(stored_id)
+    if agent_id is not None:
         await notify_agent_profile(agent_id, "create")
 
 

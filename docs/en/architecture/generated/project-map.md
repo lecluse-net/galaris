@@ -11,15 +11,15 @@ tests remain authoritative for behavior.
 
 - 79 declared backend modules;
 - 40 declared frontend modules;
-- 645 backend dependency edges;
+- 644 backend dependency edges;
 - 227 frontend dependency edges;
-- 308 edges between `app`/`bridge` domains;
+- 307 edges between `app`/`bridge` domains;
 - 30 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 0 directly bidirectional frontend pairs;
 - 817 detected HTTP/WebSocket handlers;
 - 196 detected SQLAlchemy tables;
-- 294 detected native MCP tools;
+- 297 detected native MCP tools;
 - 57 detected Vue pages.
 
 ## Backend Modules
@@ -306,20 +306,19 @@ tests remain authoritative for behavior.
 | `app.dream` | `app.dataset` | `back/app/dream/mechanisms/dataset_index.py`, `back/app/dream/mechanisms/resource_summaries.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/monitoring_service.py` |
 | `app.dream` | `app.document` | `back/app/dream/manual.py`, `back/app/dream/mechanisms/document_structure.py`, `back/app/dream/mechanisms/file_thumbnails.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/resource_summaries.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/outcome_evidence.py`, `back/app/dream/router.py` |
 | `app.dream` | `app.goal` | `back/app/dream/outcome_evidence.py` |
-| `app.dream` | `app.llm` | `back/app/dream/attachment_processing.py`, `back/app/dream/evaluation.py`, `back/app/dream/evidence_access.py`, `back/app/dream/live_topics.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/contact_reconciliation.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/dataset_index.py`, `back/app/dream/mechanisms/memory_decisions.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/resource_summaries.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/skill_learning.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/scheduler.py`, `back/app/dream/schemas.py` |
+| `app.dream` | `app.llm` | `back/app/dream/attachment_processing.py`, `back/app/dream/evaluation.py`, `back/app/dream/evidence_access.py`, `back/app/dream/live_topics.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/contact_reconciliation.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/dataset_index.py`, `back/app/dream/mechanisms/memory_decisions.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/resource_summaries.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/scheduler.py`, `back/app/dream/schemas.py` |
 | `app.dream` | `app.memory` | `back/app/dream/__init__.py`, `back/app/dream/contracts.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/document_structure.py`, `back/app/dream/mechanisms/file_thumbnails.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/memory_maintenance.py`, `back/app/dream/mechanisms/process_memory.py`, `back/app/dream/mechanisms/stale_memory.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/outcome_evidence.py`, `back/app/dream/router.py`, `back/app/dream/scheduler.py` |
 | `app.dream` | `app.messenger` | `back/app/dream/dbadmin.py`, `back/app/dream/evidence_access.py`, `back/app/dream/live_topics.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py` |
 | `app.dream` | `app.process` | `back/app/dream/mechanisms/process_memory.py` |
-| `app.dream` | `app.skill` | `back/app/dream/mechanisms/skill_learning.py` |
-| `app.dream` | `app.task` | `back/app/dream/dbadmin.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/skill_learning.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/outcome_evidence.py`, `back/app/dream/scheduler.py` |
+| `app.dream` | `app.task` | `back/app/dream/dbadmin.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/outcome_evidence.py`, `back/app/dream/scheduler.py` |
 | `app.dream` | `app.topic` | `back/app/dream/dbadmin.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py` |
 | `app.dream` | `app.voice` | `back/app/dream/monitoring_service.py`, `back/app/dream/scheduler.py` |
 | `app.dream` | `core.authorize` | `back/app/dream/events.py`, `back/app/dream/router.py` |
-| `app.dream` | `core.database` | `back/app/dream/attachment_processing.py`, `back/app/dream/events.py`, `back/app/dream/evidence_access.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/contact_reconciliation.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/dataset_index.py`, `back/app/dream/mechanisms/document_structure.py`, `back/app/dream/mechanisms/file_catalogue.py`, `back/app/dream/mechanisms/file_thumbnails.py`, `back/app/dream/mechanisms/memory_maintenance.py`, `back/app/dream/mechanisms/process_memory.py`, `back/app/dream/mechanisms/resource_summaries.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/skill_learning.py`, `back/app/dream/mechanisms/stale_memory.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/models.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/service.py` |
+| `app.dream` | `core.database` | `back/app/dream/attachment_processing.py`, `back/app/dream/events.py`, `back/app/dream/evidence_access.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/contact_reconciliation.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/dataset_index.py`, `back/app/dream/mechanisms/document_structure.py`, `back/app/dream/mechanisms/file_catalogue.py`, `back/app/dream/mechanisms/file_thumbnails.py`, `back/app/dream/mechanisms/memory_maintenance.py`, `back/app/dream/mechanisms/process_memory.py`, `back/app/dream/mechanisms/resource_summaries.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/stale_memory.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/models.py`, `back/app/dream/monitoring_service.py`, `back/app/dream/service.py` |
 | `app.dream` | `core.dbadmin` | `back/app/dream/dbadmin.py` |
 | `app.dream` | `core.document` | `back/app/dream/attachment_processing.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/file_thumbnails.py` |
 | `app.dream` | `core.i18n` | `back/app/dream/attachment_processing.py`, `back/app/dream/language.py`, `back/app/dream/mechanisms/sequential_topic_classification.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py` |
-| `app.dream` | `core.params` | `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/contact_reconciliation.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/file_catalogue.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/memory_maintenance.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/skill_learning.py`, `back/app/dream/mechanisms/stale_memory.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/registry.py`, `back/app/dream/scheduler.py`, `back/app/dream/service.py` |
+| `app.dream` | `core.params` | `back/app/dream/mechanisms/attachment_memory.py`, `back/app/dream/mechanisms/contact_reconciliation.py`, `back/app/dream/mechanisms/conversation_memory.py`, `back/app/dream/mechanisms/file_catalogue.py`, `back/app/dream/mechanisms/memory_extraction.py`, `back/app/dream/mechanisms/memory_maintenance.py`, `back/app/dream/mechanisms/resource_topic_classification.py`, `back/app/dream/mechanisms/stale_memory.py`, `back/app/dream/mechanisms/task_memory.py`, `back/app/dream/mechanisms/task_outcome_reflection.py`, `back/app/dream/mechanisms/topic_classification.py`, `back/app/dream/registry.py`, `back/app/dream/scheduler.py`, `back/app/dream/service.py` |
 | `app.dream` | `core.preview` | `back/app/dream/manual.py`, `back/app/dream/mechanisms/file_thumbnails.py` |
 | `app.dream` | `core.user` | `back/app/dream/events.py`, `back/app/dream/manual.py`, `back/app/dream/mechanisms/file_thumbnails.py` |
 | `app.dream` | `core.util` | `back/app/dream/attachment_processing.py`, `back/app/dream/contracts.py`, `back/app/dream/mechanisms/resource_topic_classification.py` |
@@ -350,16 +349,16 @@ tests remain authoritative for behavior.
 | `app.file_share` | `core.storage` | `back/app/file_share/browser.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/document_facade.py`, `back/app/file_share/document_rag_cache.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/operation_memos.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py` |
 | `app.file_share` | `core.user` | `back/app/file_share/browser_router.py`, `back/app/file_share/document_folders.py`, `back/app/file_share/document_import.py`, `back/app/file_share/facade.py`, `back/app/file_share/media_access.py` |
 | `app.file_share` | `core.util` | `back/app/file_share/browser_router.py`, `back/app/file_share/document_facade.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/mcp.py`, `back/app/file_share/media_router.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/operation_memos.py`, `back/app/file_share/process_provider.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/resource_uri.py`, `back/app/file_share/router.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
-| `app.goal` | `app.agent` | `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/hierarchy.py`, `back/app/goal/models.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
+| `app.goal` | `app.agent` | `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/hierarchy.py`, `back/app/goal/models.py`, `back/app/goal/retrospective.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.connection` | `back/app/goal/models.py` |
 | `app.goal` | `app.llm` | `back/app/goal/evaluation.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.messenger` | `back/app/goal/goal_service.py`, `back/app/goal/referrer_wait.py` |
 | `app.goal` | `app.services` | `back/app/goal/access.py`, `back/app/goal/mcp.py` |
-| `app.goal` | `app.task` | `back/app/goal/calendar.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/runner.py` |
+| `app.goal` | `app.task` | `back/app/goal/calendar.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/retrospective.py`, `back/app/goal/runner.py` |
 | `app.goal` | `core.authorize` | `back/app/goal/router.py` |
-| `app.goal` | `core.database` | `back/app/goal/calendar.py`, `back/app/goal/category_service.py`, `back/app/goal/events.py`, `back/app/goal/facade.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/runner.py` |
+| `app.goal` | `core.database` | `back/app/goal/calendar.py`, `back/app/goal/category_service.py`, `back/app/goal/events.py`, `back/app/goal/facade.py`, `back/app/goal/goal_service.py`, `back/app/goal/models.py`, `back/app/goal/referrer_wait.py`, `back/app/goal/resource_facade.py`, `back/app/goal/retrospective.py`, `back/app/goal/runner.py` |
 | `app.goal` | `core.dbadmin` | `back/app/goal/agenda_upgrade.py`, `back/app/goal/dbadmin.py` |
-| `app.goal` | `core.i18n` | `back/app/goal/referrer_wait.py` |
+| `app.goal` | `core.i18n` | `back/app/goal/referrer_wait.py`, `back/app/goal/retrospective.py` |
 | `app.goal` | `core.params` | `back/app/goal/facade.py`, `back/app/goal/settings_service.py` |
 | `app.goal` | `core.scheduling` | `back/app/goal/__init__.py` |
 | `app.goal` | `core.storage` | `back/app/goal/dbadmin.py` |
@@ -546,7 +545,7 @@ tests remain authoritative for behavior.
 | `app.skill` | `core.authorize` | `back/app/skill/router.py` |
 | `app.skill` | `core.database` | `back/app/skill/interface.py`, `back/app/skill/learning_policy.py`, `back/app/skill/learning_service.py`, `back/app/skill/models.py`, `back/app/skill/personal_catalogue.py`, `back/app/skill/router.py`, `back/app/skill/skill_service.py` |
 | `app.skill` | `core.dbadmin` | `back/app/skill/dbadmin.py`, `back/app/skill/learning_upgrade.py`, `back/app/skill/skill_service.py` |
-| `app.skill` | `core.params` | `back/app/skill/learning_policy.py`, `back/app/skill/learning_service.py` |
+| `app.skill` | `core.params` | `back/app/skill/learning_policy.py` |
 | `app.skill` | `core.user` | `back/app/skill/interface.py`, `back/app/skill/router.py` |
 | `app.skill` | `core.util` | `back/app/skill/interface.py`, `back/app/skill/learning_service.py`, `back/app/skill/ownership_recovery.py`, `back/app/skill/projection.py`, `back/app/skill/skill_service.py` |
 | `app.task` | `app.agent` | `back/app/task/__init__.py`, `back/app/task/activity_snapshot.py`, `back/app/task/agent_adapter.py`, `back/app/task/amendment_service.py`, `back/app/task/budget.py`, `back/app/task/call_recovery.py`, `back/app/task/collab.py`, `back/app/task/execution_scope.py`, `back/app/task/facade.py`, `back/app/task/live_checkpoint.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/operational_state.py`, `back/app/task/outcome.py`, `back/app/task/replacement.py`, `back/app/task/router.py`, `back/app/task/run_events.py`, `back/app/task/runner.py`, `back/app/task/scheduler.py`, `back/app/task/schemas.py`, `back/app/task/task_service.py`, `back/app/task/work_tracking.py`, `back/app/task/working_set.py` |
@@ -1042,9 +1041,9 @@ tests remain authoritative for behavior.
 
 | Module | Count | Dependencies |
 |---|---:|---|
-| `app.dream` | 15 | `app.agent`, `app.connection`, `app.contact`, `app.conversation`, `app.dataset`, `app.document`, `app.goal`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice` |
 | `app.file_share` | 15 | `app.agent`, `app.connection`, `app.console`, `app.conversation`, `app.document`, `app.documentation`, `app.goal`, `app.image`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.skill`, `app.task`, `bridge.affine` |
 | `app.lab` | 15 | `app.agent`, `app.connection`, `app.conversation`, `app.dataset`, `app.dream`, `app.goal`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.skill`, `app.task`, `app.topic`, `app.voice` |
+| `app.dream` | 14 | `app.agent`, `app.connection`, `app.contact`, `app.conversation`, `app.dataset`, `app.document`, `app.goal`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.task`, `app.topic`, `app.voice` |
 | `bridge.hermes` | 12 | `app.agent`, `app.connection`, `app.file_share`, `app.harnesses`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.skill`, `bridge.harness` |
 | `app.topic` | 11 | `app.agent`, `app.connection`, `app.conversation`, `app.dataset`, `app.document`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.task` |
 | `app.document` | 10 | `app.agent`, `app.conversation`, `app.file_share`, `app.goal`, `app.llm`, `app.memory`, `app.process`, `app.services`, `app.share`, `app.task` |
@@ -1126,7 +1125,7 @@ tests remain authoritative for behavior.
 | `app.process` | 14 | `app.agent`, `app.conversation`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.n8n` |
 | `app.conversation` | 12 | `app.chat`, `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.topic`, `app.voice` |
 | `app.memory` | 11 | `app.calendar`, `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.lab`, `app.messenger`, `app.process`, `app.topic`, `app.voice`, `bridge.hermes` |
-| `app.skill` | 10 | `app.agent`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.onboarding`, `bridge.claude_agent`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
+| `app.skill` | 9 | `app.agent`, `app.file_share`, `app.harness`, `app.lab`, `app.onboarding`, `bridge.claude_agent`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
 | `app.document` | 7 | `app.chat`, `app.dataset`, `app.dream`, `app.file_share`, `app.memory`, `app.process`, `app.topic` |
 | `app.goal` | 6 | `app.document`, `app.dream`, `app.file_share`, `app.lab`, `app.memory`, `app.task` |
 | `app.voice` | 6 | `app.chat`, `app.dream`, `app.lab`, `app.memory`, `bridge.matrix`, `bridge.nextcloud` |
@@ -2163,11 +2162,11 @@ No cyclic component detected.
 | `file_owners` | `ManagedFileOwner` | `app.file_share` | no | `agents.id`, `files.id` | `back/app/file_share/models.py:18` |
 | `file_stores` | `FileStore` | `core.storage` | no | — | `back/core/storage/models.py:59` |
 | `files` | `StoredFile` | `core.storage` | yes | — | `back/core/storage/models.py:14` |
-| `goal_calendar_plans` | `GoalCalendarPlan` | `app.goal` | no | `goals.id` | `back/app/goal/models.py:359` |
+| `goal_calendar_plans` | `GoalCalendarPlan` | `app.goal` | no | `goals.id` | `back/app/goal/models.py:364` |
 | `goal_categories` | `GoalCategory` | `app.goal` | yes | — | `back/app/goal/models.py:76` |
-| `goal_cycle_triggers` | `GoalCycleTrigger` | `app.goal` | no | `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:397` |
-| `goal_cycles` | `GoalCycle` | `app.goal` | no | `goal_cycles.id`, `goals.id`, `llms.id`, `memory_items.id`, `tasks.id` | `back/app/goal/models.py:235` |
-| `goal_occurrences` | `GoalOccurrence` | `app.goal` | no | `goal_calendar_plans.id`, `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:376` |
+| `goal_cycle_triggers` | `GoalCycleTrigger` | `app.goal` | no | `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:402` |
+| `goal_cycles` | `GoalCycle` | `app.goal` | no | `goal_cycles.id`, `goals.id`, `llms.id`, `memory_items.id`, `tasks.id` | `back/app/goal/models.py:240` |
+| `goal_occurrences` | `GoalOccurrence` | `app.goal` | no | `goal_calendar_plans.id`, `goal_cycles.id`, `goals.id` | `back/app/goal/models.py:381` |
 | `goals` | `Goal` | `app.goal` | yes | `agents.id`, `connections.id`, `documents.id`, `goal_categories.id`, `goals.id`, `memory_items.id`, `users.id` | `back/app/goal/models.py:86` |
 | `harness_execution_configurations` | `HarnessExecutionConfiguration` | `app.harnesses` | yes | — | `back/app/harnesses/models.py:18` |
 | `harnesses` | `Harness` | `app.harnesses` | yes | — | `back/app/harnesses/models.py:29` |
@@ -2387,9 +2386,12 @@ No cyclic component detected.
 | `document_analysis_cancel` | `galaris` | `app.llm` | `document_analysis_cancel` | `back/app/llm/mcp.py:54` |
 | `document_analysis_get` | `galaris` | `app.llm` | `document_analysis_get` | `back/app/llm/mcp.py:45` |
 | `document_analyze` | `galaris` | `app.llm` | `document_analyze` | `back/app/llm/mcp.py:29` |
-| `goal_ask_referrer` | `galaris` | `app.goal` | `mcp_goal_ask_referrer` | `back/app/goal/mcp.py:127` |
-| `goal_run_now` | `galaris` | `app.goal` | `mcp_goal_run_now` | `back/app/goal/mcp.py:445` |
-| `goal_update_suivi` | `galaris` | `app.goal` | `mcp_goal_update_suivi` | `back/app/goal/mcp.py:268` |
+| `goal_ask_referrer` | `galaris` | `app.goal` | `mcp_goal_ask_referrer` | `back/app/goal/mcp.py:171` |
+| `goal_retrospective_evidence` | `galaris` | `app.goal` | `goal_retrospective_evidence` | `back/app/goal/mcp.py:38` |
+| `goal_retrospective_learn` | `galaris` | `app.goal` | `goal_retrospective_learn` | `back/app/goal/mcp.py:54` |
+| `goal_retrospective_record` | `galaris` | `app.goal` | `goal_retrospective_record` | `back/app/goal/mcp.py:65` |
+| `goal_run_now` | `galaris` | `app.goal` | `mcp_goal_run_now` | `back/app/goal/mcp.py:489` |
+| `goal_update_suivi` | `galaris` | `app.goal` | `mcp_goal_update_suivi` | `back/app/goal/mcp.py:312` |
 | `process_activity_complete` | `galaris` | `app.process` | `process_activity_complete` | `back/app/process/mcp.py:159` |
 | `process_activity_question` | `galaris` | `app.process` | `process_activity_question` | `back/app/process/mcp.py:174` |
 | `process_analyze_run` | `galaris` | `app.process` | `process_analyze_run` | `back/app/process/mcp.py:378` |
@@ -2421,12 +2423,12 @@ No cyclic component detected.
 | `task_work_update` | `galaris` | `app.task` | `mcp_work_update` | `back/app/task/mcp.py:119` |
 | `team_list` | `galaris` | `app.agent` | `team_list` | `back/app/agent/mcp.py:68` |
 | `team_members` | `galaris` | `app.agent` | `team_members` | `back/app/agent/mcp.py:86` |
-| `goal_complete` | `goal_management` | `app.goal` | `mcp_goal_complete` | `back/app/goal/mcp.py:419` |
-| `goal_create` | `goal_management` | `app.goal` | `mcp_goal_create` | `back/app/goal/mcp.py:153` |
-| `goal_delete` | `goal_management` | `app.goal` | `mcp_goal_delete` | `back/app/goal/mcp.py:473` |
-| `goal_pause` | `goal_management` | `app.goal` | `mcp_goal_pause` | `back/app/goal/mcp.py:371` |
-| `goal_resume` | `goal_management` | `app.goal` | `mcp_goal_resume` | `back/app/goal/mcp.py:395` |
-| `goal_update` | `goal_management` | `app.goal` | `mcp_goal_update` | `back/app/goal/mcp.py:303` |
+| `goal_complete` | `goal_management` | `app.goal` | `mcp_goal_complete` | `back/app/goal/mcp.py:463` |
+| `goal_create` | `goal_management` | `app.goal` | `mcp_goal_create` | `back/app/goal/mcp.py:197` |
+| `goal_delete` | `goal_management` | `app.goal` | `mcp_goal_delete` | `back/app/goal/mcp.py:517` |
+| `goal_pause` | `goal_management` | `app.goal` | `mcp_goal_pause` | `back/app/goal/mcp.py:415` |
+| `goal_resume` | `goal_management` | `app.goal` | `mcp_goal_resume` | `back/app/goal/mcp.py:439` |
+| `goal_update` | `goal_management` | `app.goal` | `mcp_goal_update` | `back/app/goal/mcp.py:347` |
 | `image_from_pdf` | `image` | `app.image` | `image_from_pdf` | `back/app/image/mcp.py:139` |
 | `image_generate` | `image` | `app.image` | `generate_image` | `back/app/image/mcp.py:193` |
 | `image_read` | `image` | `app.image` | `describe_image` | `back/app/image/mcp.py:278` |

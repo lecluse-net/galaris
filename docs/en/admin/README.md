@@ -449,17 +449,10 @@ ordinary Markdown memories can be edited with the visual editor.
 To permanently bound the volume, only the last 100 cycles of each Goal have a
 memory projection; older business cycles remain unchanged in their canonical table.
 
-`DREAM_SKILL_LEARNING_MODE` is set to `off`, `observe`, or `learn` and remains `off` by default.
-`observe` preserves evidence and proposals in Dream receipts without modifying skills; `learn`
-creates, strengthens, revises, or weakens candidates belonging to the Agent. Dream also processes
-all historical terminal Tasks progressively and idempotently, one operation per pass. A candidate
-becomes an injectable skill in addition to assigned skills when the number of distinct
-Tasks confirming the same procedure reaches `DREAM_SKILL_MIN_EVIDENCE` (3 by default)
-and its score reaches `DREAM_SKILL_ACTIVATION_SCORE`, subject to
-`DREAM_SKILL_MAX_ACTIVE`. These thresholds are configurable in **Preferences → Dream**. The
-**Skills → Auto-learned** page, hidden when the mode is `off`, exposes score, evidence, and
-injection state, and allows a procedure to be suspended immediately. Dream no longer creates a
-Memory `experience` node, and old nodes are no longer injected.
+The [weekly retrospective](../user/skills.md) improves
+personal skills. Every agent receives this Goal by default. Its detail view lets authorized
+users move the weekly slot, pause future passages and resume them. The upgrade removes the former
+Dream learning settings and preserves stored thresholds, personal packages and evidence.
 
 Current and historical memory, document and synthesis text resides in PostgreSQL.
 Internal files and attachments use the `files` registry and `/data/files`; thumbnails

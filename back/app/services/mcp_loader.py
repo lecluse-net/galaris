@@ -495,7 +495,7 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                     Context().run(timeout.reschedule, asyncio.get_running_loop().time() + timeout_seconds)
                     visible = await list_enabled_native_mcp_definitions(
                         ctx.agent_id, runtime=ctx.runtime, conversation_only=ctx.conversation_only,
-                        allowed_tool_names={definition.name}, resources=ctx.resources,
+                        allowed_tool_names={definition.name}, resources=ctx.resources, task_id=ctx.task_id,
                     )
                     if not visible:
                         raise ToolCallRejectedError("This tool is no longer authorized or available in this execution.")
@@ -784,6 +784,7 @@ async def list_enabled_native_mcp_definitions(
     allowed_tool_names: Collection[str] | None = None,
     conversation_only: bool = False,
     resources: dict[str, Any] | None = None,
+    task_id: UUID | None = None,
 ) -> tuple[McpToolDefinition, ...]:
     """Return the exact native function definitions visible to an agent.
 
@@ -836,7 +837,7 @@ async def list_enabled_native_mcp_definitions(
         and (allowed_names is None or definition.name in allowed_names)
     )
     ctx = McpToolContext(
-        agent_id=agent_id, runtime=runtime, resources=dict(resources or {}),
+        agent_id=agent_id, runtime=runtime, resources=dict(resources or {}), task_id=task_id,
         conversation_only=conversation_only,
     )
     from app.agent.facade import admin_available
@@ -886,6 +887,8 @@ async def execute_native_mcp_tool(
         agent_id,
         runtime=runtime,
         allowed_tool_names={tool_name},
+        task_id=task_id,
+        resources=resources,
     )
     definition = next(
         (item for item in definitions if item.name == tool_name),
@@ -924,6 +927,7 @@ async def build_agent_galaris_fastmcp(
         allowed_tool_names=allowed_tool_names,
         conversation_only=conversation_only,
         resources=resolved_resources,
+        task_id=task_id,
     )
     if (
         any(definition.service_code == "console" for definition in definitions)

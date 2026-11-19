@@ -50,7 +50,6 @@ def register_default_mechanisms() -> None:
     )
     from .mechanisms.task_memory import task_memory_mechanism
     from .mechanisms.conversation_memory import conversation_memory_mechanism
-    from .mechanisms.skill_learning import skill_learning_mechanism
     from .mechanisms.process_memory import process_memory_mechanism
     from .mechanisms.memory_maintenance import memory_maintenance_mechanism
 
@@ -60,7 +59,6 @@ def register_default_mechanisms() -> None:
     register_mechanism(dataset_topic_classification_mechanism)
     register_mechanism(task_memory_mechanism)
     register_mechanism(conversation_memory_mechanism)
-    register_mechanism(skill_learning_mechanism)
     register_mechanism(process_memory_mechanism)
     register_mechanism(memory_maintenance_mechanism)
     register_mechanism(document_structure_mechanism)

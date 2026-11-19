@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 LearnedSkillAction = Literal["CREATE", "REINFORCE", "REVISE", "WEAKEN"]
@@ -33,19 +33,8 @@ async def refresh_learned_skill_runtime(agent_id: int) -> None:
         await _runtime_refresher(agent_id)
 
 
-class LearnedSkillContext(BaseModel):
-    id: int
-    code: str
-    label: str
-    description: str
-    markdown: str
-    revision: int
-    score: float
-    evidence_count: int
-    injectable: bool
-
-
 class LearnedSkillOperation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     action: LearnedSkillAction
     # UUID accepts already checkpointed Dream decisions from the previous storage.
     target_skill_id: int | UUID | None = None
@@ -87,7 +76,6 @@ class LearnedSkillApplyResult:
 __all__ = [
     "LearnedSkillAction",
     "LearnedSkillApplyResult",
-    "LearnedSkillContext",
     "LearnedSkillDecision",
     "LearnedSkillOperation",
     "LearnedSkillRuntimeRefresher",

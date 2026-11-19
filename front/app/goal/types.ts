@@ -71,6 +71,7 @@ export interface MessengerReferrerOption {
 
 export interface Goal {
   recurrence?: GoalRecurrence | null
+  is_weekly_retrospective?: boolean
   id: string
   category_id: number | null
   effective_category_id?: number | null
