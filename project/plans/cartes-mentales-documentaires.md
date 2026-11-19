@@ -1,6 +1,6 @@
 # Cartes mentales documentaires natives Galaris
 
-- Statut : `design` — orientation produit retenue ; implémentation non commencée.
+- Statut : `partial` — édition structurée et échanges disponibles.
 - Date : 2026-11-05.
 - Demande : un type de document « Carte mentale », avec organisation automatique,
   contenus documentaires Galaris et plusieurs thèmes au choix.
@@ -10,10 +10,11 @@
 
 ## 1. Résultat attendu et choix retenus
 
-Le socle des [formats de document](../../docs/fr/dev/document-formats.md) est désormais
-disponible : façade de contributions, catalogue de capacités, TCK, sources binaires,
-lecteurs de fichiers et points d'intégration. Le format Carte mentale et son éditeur
-restent à réaliser et à qualifier ; ce socle ne démontre pas leur parité documentaire.
+La façade des [formats de document](../../docs/fr/dev/document-formats.md) porte
+le type `mindmap`. L’édition de branches, les outils MCP et les
+conversions structurelles sont décrits dans la [décision 0301](../decisions/0301-native-mind-map-documents.md).
+Les palettes Solaire, Océan, Forêt et Monochrome sont proposées dans l’éditeur. La liste des
+thèmes avancés ci-dessous reste une proposition.
 
 Créer une carte dans la bibliothèque Documents, construire ses branches au clavier ou
 à la souris, enrichir ses nœuds avec les mêmes contenus que les documents Texte et
@@ -74,13 +75,13 @@ code proposé `mindmap`. Conserver `document://<uuid>` ; aucun schéma d'URI sup
 aucune bibliothèque ou politique de partage parallèle. Memory reste privé et Process
 conserve ses définitions BPMN ; une carte n'est ni un graphe Memory ni un processus.
 
-Stocker un JSON versionné dans `documents.content`, avec les révisions Document communes.
-Le média proposé est `application/vnd.galaris.mindmap+json`, à figer avec le contrat.
-Cette enveloppe JSON n'est pas du HTML et ne devient pas un Dataset. Elle contient :
+Le format livré stocke son JSON versionné avec les révisions Document communes, sous
+le média `application/vnd.galaris.mindmap+json`. Il contient la racine, les branches
+ordonnées, leurs titres, leurs notes en texte et leurs liens.
 
-- la version du format et du profil éditorial des corps de nœuds ;
-- une racine, des clés stables de nœuds, leurs parents et leur ordre ;
-- un titre court et un contenu documentaire riche facultatif par nœud ;
+Les extensions du format prévues dans ce plan couvrent les données suivantes.
+
+- la version du profil éditorial et le contenu documentaire riche facultatif par nœud ;
 - le thème et sa version, ainsi que l'orientation de la carte ;
 - les références et options nécessaires aux blocs documentaires.
 
@@ -111,11 +112,9 @@ branches, pour la recherche et les résumés. Exclure DOM de rendu, scripts exé
 contenu de ressources liées : une référence n'est pas une copie à indexer.
 Qualifier les consommateurs de résumé/rappel selon les contrats Document/Memory actuels.
 
-Prévoir création, lecture et modification par les agents via les surfaces File Share
-existantes, avec le même format validé, les mêmes ACL et la révision attendue. Définir
-la représentation textuelle utile et les limites de lecture sans transformer une
-pagination de JSON en source réinscriptible complète. Mettre à jour le skill runtime
-Galaris lorsque ce support existe ; ne pas imposer de nouvel outil MCP sans besoin établi.
+Les agents créent le format natif avec `file_create` et lisent ou modifient les branches
+avec `mindmap_read` et `mindmap_edit`. Les contenus éditoriaux riches devront étendre
+ces contrats et leurs tests de droits et de révision.
 
 ## 4. Édition des branches et disposition automatique
 
@@ -214,6 +213,8 @@ mutable ; un thème inconnu doit conserver la source et proposer un rendu de rep
 Le choix de thème ne modifie ni références, ni arbre, ni assets, ni contenu des nœuds.
 
 ## 7. Insertion, navigation et rendus
+
+Le [plan des références documentaires](affichage-des-references-documentaires.md) définit les modes Lien, Carte et Intégré, les défauts par objet, le sélecteur partagé avec Texte et l’habillage par le nœud. Cette section couvre aussi le parcours propre à l’ouverture d’une carte et les options de révision.
 
 Étendre l'insertion documentaire existante pour choisir/créer une carte. Le bloc inséré
 conserve sa référence et ses paramètres d'affichage ; il ne contient pas un duplicata
@@ -316,14 +317,11 @@ annulation à la fermeture et absence de chargement systématique de toutes les 
   toolbar, return, check the updated preview and export. A second reader exercises
   access denials and revocation without disclosure or loss of the host document.
 
-À la réalisation, mettre à jour les guides Documents et Navigation FR/EN, le catalogue
-fonctionnel, le contrat éditorial et le skill runtime selon les surfaces livrées.
-Documenter le choix structurel dans `project/decisions/` lorsque les contrats sont figés,
-sans présenter ce plan comme du runtime existant. Les guides actuels restent exacts
-pendant la conception : la carte mentale n'y est pas annoncée comme disponible.
+Pour les extensions restantes, maintenir les guides Documents et Navigation FR/EN, le
+catalogue fonctionnel, le contrat éditorial et le skill runtime selon les surfaces livrées.
 
 Utiliser les cibles Make ciblées en conteneurs pour tests backend, composants/E2E,
 `make typecheck`, `make architecture-check`, `make project-context` et `make docs-prepare`
 selon les changements. `make validate` reste réservé à l'utilisateur. Terminer par
 la revue du diff et `git diff --check`. Tenir l'entrée de ce plan à jour à chaque
-changement de statut ; aucune phase n'est aujourd'hui implémentée ou qualifiée.
+changement de statut.

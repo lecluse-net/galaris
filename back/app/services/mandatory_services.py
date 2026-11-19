@@ -208,7 +208,7 @@ INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
     ),
     IntegratedServiceSpec(
         code="document", label="Documents", description=DESCRIPTIONS["document"],
-        mcp_tools=("document_sharing", "document_share"), default_active=True,
+        mcp_tools=("document_sharing", "document_share", "mindmap_create", "mindmap_read", "mindmap_edit"), default_active=True,
     ),
     IntegratedServiceSpec(
         code="file_sharing",

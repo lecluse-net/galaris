@@ -1,4 +1,7 @@
-/** Shared GNOME 2.20 artwork for the main toolbar and contextual commands. */
+import pdfIcon from './icons/bootstrap/file-earmark-pdf-fill.svg?raw'
+import { solaire } from './solaire'
+
+/** Shared artwork for the main toolbar and contextual commands. */
 const icons: Record<string, string> = {
   undo: 'edit-undo', redo: 'edit-redo', bold: 'format-text-bold', italic: 'format-text-italic', underline: 'format-text-underline', strike: 'format-text-strikethrough',
   'shortcuts.indent': 'format-indent-more', 'shortcuts.outdent': 'format-indent-less', link: 'insert-link', galarisLink: 'document-open',
@@ -15,5 +18,6 @@ const icons: Record<string, string> = {
 }
 
 export function editorialIcon(key: string, fallback: string): string {
+  if (key === 'exportPdf') return 'img:data:image/svg+xml,' + encodeURIComponent(pdfIcon.replaceAll('<path ', `<path fill="${solaire.red.accent}" `))
   return icons[key] ? `img:${import.meta.env.BASE_URL}editor-icons/gnome/24x24/${icons[key]}.png` : fallback
 }

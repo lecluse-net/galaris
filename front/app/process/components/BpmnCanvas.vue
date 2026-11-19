@@ -30,7 +30,10 @@
     </div>
     <div class="diagram-content" :class="{ 'has-sidebar': $slots.sidebar }">
     <div class="diagram-main">
-    <div ref="scroll" class="bpmn-scroll" @keydown.esc="connecting = null; cancelDrag()">
+    <div ref="scroll" class="bpmn-scroll" :class="{ 'bpmn-scroll--embedded': embedded }"
+      :tabindex="embedded ? 0 : undefined" :role="embedded ? 'group' : undefined" :aria-label="embedded ? t('nativeProcesses.diagram') : undefined"
+      @pointerdown="embedded && $event.stopPropagation()" @keydown="embedded && $event.stopPropagation()"
+      @keydown.esc="connecting = null; cancelDrag()">
       <div class="diagram-scale" :style="{ width: `${width * zoom}px`, height: `${height * zoom}px` }">
         <div class="diagram-board" :style="{ width: `${width}px`, height: `${height}px`, transform: `scale(${zoom})` }" @pointermove="move" @pointerup="stop" @pointercancel="cancelDrag">
           <div v-for="lane in lanes" :key="lane" class="swimlane" :class="{ 'human-lane': actor(lane)?.kind === 'human', 'drop-allowed': drag?.moved && dropTarget?.lane === lane && dropTarget.allowed || laneDrag?.moved && laneDrag.id === lane, 'drop-forbidden': drag?.moved && dropTarget?.lane === lane && !dropTarget.allowed }"
@@ -150,7 +153,7 @@ import type { BpmnGraph, BpmnNode, BpmnFlow, ProcessActor, ProcessAgentOption } 
 import { activityKinds, nodeIcons, graphLayout, insertActivity, canConnectActivities, connectActivities, assignActivityActor, canAssignActivityActor, laneHeaderWidth, nodeStartX, type ActivityKind } from '../graphEditing'
 import ProcessLaneHeader from './ProcessLaneHeader.vue'
 import ProcessNodeFrame from './ProcessNodeFrame.vue'
-const props = withDefaults(defineProps<{ modelValue: BpmnGraph; readonly?: boolean; showGuide?: boolean; autoFit?: boolean; inspectorLabel?: string; selected?: string | null; selectedFlow?: string | null;
+const props = withDefaults(defineProps<{ modelValue: BpmnGraph; readonly?: boolean; showGuide?: boolean; autoFit?: boolean; embedded?: boolean; inspectorLabel?: string; selected?: string | null; selectedFlow?: string | null;
   agents?: ProcessAgentOption[]; humans?: { id: number; label: string }[];
   humansLoading?: boolean; humansError?: boolean;
   executionAgentId?: number | null; executionEditable?: boolean;
@@ -431,7 +434,7 @@ function focusNode(id: string): void {
     top: Math.max(0, (p.y + 44) * zoom.value - viewport.clientHeight / 2) })
   viewport.scrollIntoView({ block: 'nearest' })
 }
-defineExpose({ focusNode })
+defineExpose({ focusNode, fit })
 function setFullscreen(value: boolean): void {
   if (isFullscreen.value === value) return
   cancelDrag()
@@ -623,6 +626,7 @@ onBeforeUnmount(() => {
 .diagram-editor.fullscreen { position: fixed; z-index: 5999; inset: 0; width: 100vw; height: 100dvh; display: flex; flex-direction: column; border: 0; border-radius: 0; }
 .diagram-editor.fullscreen .bpmn-scroll { flex: 0 1 auto; min-height: 0; max-height: none; }
 .bpmn-scroll { overflow: auto; max-height: 72vh; }
+.bpmn-scroll--embedded { pointer-events: auto; overscroll-behavior: contain; touch-action: pan-x pan-y; }
 .diagram-scale { position: relative; overflow: hidden; }
 .diagram-board { position: absolute; inset: 0 auto auto 0; transform-origin: top left; }
 .swimlane { position: absolute; border-bottom: 1px solid var(--diagram-separator); background: var(--diagram-lane); pointer-events: none; }

@@ -389,9 +389,7 @@ for (const width of [390, 1440]) for (const [kind, html, selector] of contextCas
     expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue'))).toEqual([])
     await page.screenshot({ path: testInfo.outputPath(`${kind}-context-toolbar.png`) })
     if (kind === 'link') {
-      const editLink = page.getByRole('button', { name: 'Insert or edit link', exact: true })
-      if (!await editLink.isVisible()) await page.getByRole('button', { name: 'More tools', exact: true }).click()
-      await editLink.click()
+      await toolbar.getByRole('button', { name: 'Insert or edit link', exact: true }).click()
       await expect(page.getByRole('dialog').getByRole('textbox', { name: 'URL or Galaris reference', exact: true })).toHaveValue('https://example.org/guide')
     } else {
       await toolbar.getByRole('button', { name: 'Insert paragraph after block', exact: true }).click()

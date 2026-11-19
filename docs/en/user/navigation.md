@@ -606,7 +606,7 @@ a task with multiple calls may run for hours. Changes apply to new calls.
 The [document library guide](documents.md) covers creation, folders, sub-documents,
 lists, bulk actions and keyboard shortcuts.
 
-**Knowledge → Documents** (`/documents`) holds and creates Text (HTML) and Data (JSON) documents.
+**Knowledge → Documents** (`/documents`) holds and creates Text (HTML), Data (JSON) and Mind map documents.
 In development, **Drawing (Sample)** provides brush, eraser, undo and PNG saving.
 Use History to review revisions. See the [sample guide](../dev/plugin-authoring.md).
 The editor toolbar's **Conversation** icon opens an existing conversation or starts one with an agent

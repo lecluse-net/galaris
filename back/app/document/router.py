@@ -944,14 +944,19 @@ async def read_managed_document(document_id: UUID, agent_id: Annotated[int | Non
 @router.get("/{document_id}/source")
 @authorize(privileges=[Privileges.DOCUMENT_ACCESS, Privileges.DOCUMENT_EDIT, Privileges.DOCUMENT_ADMIN])
 async def read_document_source(document_id: UUID, agent_id: int | None = Query(default=None, gt=0),
-    revision: int | None = Query(default=None, ge=1)) -> Response:
+    revision: int | None = Query(default=None, ge=1),
+    export_format: str | None = Query(default=None, min_length=1, max_length=32)) -> Response:
     """Recover an authorized native source even when its format plugin is absent."""
     try:
-        from .format_facade import document_source
+        from .format_facade import document_source, export_document_source
         actor = await _document_request_actor(document_id, agent_id)
-        content, media_type = await document_source(document_id, actor, revision=revision)
+        if export_format is None:
+            content, media_type = await document_source(document_id, actor, revision=revision)
+            extension = ""
+        else:
+            content, media_type, extension = await export_document_source(document_id, actor, export_format, revision=revision)
         return Response(content, media_type=media_type,
-            headers={"Content-Disposition": 'attachment; filename="document-source"'})
+            headers={"Content-Disposition": f'attachment; filename="document-source{extension}"'})
     except Exception as exc:
         raise _http_error(exc) from exc
 

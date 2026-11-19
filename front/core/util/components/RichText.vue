@@ -4,7 +4,8 @@
     <ResourceReadMenu v-if="profile !== 'document'" :root="root" :content="rendered" @open="openUri" />
     <Teleport v-for="target in codeCopies" :key="target.key" :to="target.element"><CodeBlockCopyButton :source="target.source" /></Teleport>
     <Teleport v-for="target in documentLinkIcons" :key="target.key" :to="target.element"><WorkingDocumentIcon :document-id="target.documentId" title="" size="1em" readonly /></Teleport>
-    <Teleport v-for="target in embeds" :key="target.key" :to="target.element"><ResourceEmbed :uri="target.uri" :title="target.title" /></Teleport>
+    <Teleport v-for="target in embeds" :key="target.key" :to="target.element"><component :is="target.display === 'card' ? DocumentCard : DocumentEmbed" :uri="target.uri" :display="target.display" :title="target.title" :agent-id="resourceAgentId" :register-actions="registerReferenceActions && target.registerActions"
+      v-bind="target.display === 'embed' ? { reference: target.card, resize: resizeReference && ((size: DocumentEmbedSize) => resizeReference?.(target.index, target.uri, size)) } : {}" /></Teleport>
     <ResourceDetailDialog v-if="detail" :target="detail" @close="detail = null" />
     <PdfPreview v-model="pdfPreview" />
   </div>
@@ -13,14 +14,17 @@
 import { ref, shallowRef, watch, onBeforeUnmount, nextTick, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useDocumentNavigation } from '../documentNavigation'
-import { documentNavigationHref } from '../documentResource'
-import { sanitizeRichHtml, richLinkHref, richLinkTarget, attachmentReference, type ContentProfile } from '../richText'
-import { ResourceEmbed, type ResourceEmbedTarget } from '../resourceEmbed'
-import { embeddedResourceCards, prepareDocumentCard } from '../resourceCards'
+import { documentNavigationHref, documentUriFromLink } from '../documentResource'
+import { resolveDocumentReferenceImage, sanitizeRichHtml, richLinkHref, richLinkIcon, richLinkTarget, attachmentReference, type ContentProfile } from '../richText'
+import type { ResourceEmbedTarget } from '../resourceEmbed'
+import DocumentCard from './DocumentCard.vue'
+import DocumentEmbed from './DocumentEmbed.vue'
+import { applyReferenceAppearance, documentReferenceCards, linkIconElement, referencePlayer, referenceSizeChanges, type DocumentEmbedSize, type DocumentReferenceAction, type RegisterDocumentReferenceActions } from '../documentReference'
+import { embeddedResourceCards, isLinkedImageCard, prepareDocumentCard, renderLinkedImage, resourceCardDisplay, type ResourceImageResolver } from '../resourceCards'
 import { ResourceDetailDialog, type ResourceDetailTarget } from '../resourceDetail'
 import { highlightDocumentCode } from '../codeHighlight'
 import { hideInteractiveSource } from '../interactiveHtml'
-import { createDocumentPlayer, documentPlayer, type PdfPreviewSource } from '../documentMedia'
+import { createDocumentPlayer, type PdfPreviewSource } from '../documentMedia'
 import PdfPreview from './PdfPreview.vue'
 import CodeBlockCopyButton from './CodeBlockCopyButton.vue'
 import ResourceReadMenu from './ResourceReadMenu.vue'
@@ -29,20 +33,35 @@ import { useDocumentLinkIcons } from '../documentLinkIcons'
 import '../editorialTheme.css'
 import { webLinkCardImage, prependWebLinkImage } from '../webLinkPreview'
 import { renderMath } from '../mathRendering'
-const { content, profile = 'rich-text', resolveImage } = defineProps<{
+const { content, profile = 'rich-text', resolveImage, resolveResourceImage, resourceAgentId = null, registerReferenceActions, resizeReference } = defineProps<{
   content: string
   profile?: ContentProfile
   resolveImage?: (documentId: string, attachmentId: string) => Promise<Blob>
+  resolveResourceImage?: ResourceImageResolver
+  resourceAgentId?: number | null
+  registerReferenceActions?: (card: HTMLElement, actions: readonly DocumentReferenceAction[]) => void
+  resizeReference?: (index: number, uri: string, size: DocumentEmbedSize) => void
 }>()
 const rendered = ref('')
 const navigateDocument = useDocumentNavigation()
-const embeds = shallowRef<ResourceEmbedTarget[]>([]), detail = shallowRef<ResourceDetailTarget | null>(null)
+const embeds = shallowRef<Array<ResourceEmbedTarget & { index: number; registerActions: RegisterDocumentReferenceActions }>>([]), detail = shallowRef<ResourceDetailTarget | null>(null)
+let selectedDocumentReference: Element | undefined
 function openReference(event: MouseEvent): void {
   if (!(event.target instanceof Element) || event.target.closest('.q-btn, input, select, textarea, [data-document-player]')) return
+  const embeddedReader = event.target.closest('[data-resource-mode="embed"] > .galaris-resource-embed')
+  if (embeddedReader && root.value?.contains(embeddedReader)) return
   const link = event.target.closest('a')
     ?? (profile === 'document' ? event.target.closest('blockquote.galaris-link-card')?.querySelector('a') : null)
+  selectedDocumentReference?.classList.remove('galaris-reference-selected')
+  selectedDocumentReference = undefined
   if (!link) return
   const uri = link.getAttribute('data-rich-reference') ?? link.getAttribute('href') ?? ''
+  if (profile === 'document' && documentUriFromLink(uri, window.location.origin) && !event.ctrlKey && !event.metaKey) {
+    event.preventDefault()
+    selectedDocumentReference = link.closest('blockquote.galaris-link-card') ?? link
+    selectedDocumentReference.classList.add('galaris-reference-selected')
+    return
+  }
   if (navigateDocument(uri)) { event.preventDefault(); event.stopPropagation(); return }
   const target = richLinkTarget(uri, link.textContent ?? '')
   if (target) { event.preventDefault(); event.stopPropagation(); detail.value = target }
@@ -66,7 +85,13 @@ const pdfPreview = shallowRef<PdfPreviewSource | null>(null)
 const root = useTemplateRef('root')
 const { targets: documentLinkIcons, decorate: decorateDocumentLink } = useDocumentLinkIcons()
 watch([rendered, root], (_value, _old, onCleanup) => {
-  const disposals = [...(root.value?.querySelectorAll('a') ?? [])].map(decorateDocumentLink)
+  const disposals = [...(root.value?.querySelectorAll('a') ?? [])].map(link => {
+    const name = link.dataset.resourceMode === 'link' ? richLinkIcon(link.dataset.richReference ?? '') : undefined
+    if (!name) return decorateDocumentLink(link)
+    const icon = linkIconElement(link.ownerDocument, name)
+    link.prepend(icon)
+    return () => icon.remove()
+  })
   onCleanup(() => disposals.forEach(dispose => dispose()))
 }, { flush: 'post' })
 const codeCopies = shallowRef<Array<{ key: number; element: HTMLElement; source: () => string }>>([])
@@ -81,7 +106,7 @@ watch([rendered, root, () => profile], () => {
   }) : []
 }, { flush: 'post' })
 const { t } = useI18n()
-let generation = 0
+let generation = 0, renderedGeneration = -1
 let urls: string[] = []
 let players: Array<{ dispose: () => void }> = []
 function revoke(): void {
@@ -90,7 +115,20 @@ function revoke(): void {
   players.forEach(player => player.dispose()); players = []
   urls.forEach(URL.revokeObjectURL); urls = []
 }
-watch(() => [content, profile, resolveImage] as const, async (_value, _old, onCleanup) => {
+watch(() => [content, profile, resolveImage, resolveResourceImage, resourceAgentId] as const, async (values, previous, onCleanup) => {
+  // An occurrence resize changes the frame, so its mounted reader keeps its own state.
+  if (profile === 'document' && root.value && renderedGeneration === generation && previous
+      && values.slice(1).every((value, index) => value === previous[index + 1])) {
+    const sizes = referenceSizeChanges(previous[0], content)
+    const cards = sizes && documentReferenceCards(root.value)
+    if (sizes && cards && sizes.length === cards.length) {
+      cards.forEach((card, index) => {
+        if (sizes[index]) card.setAttribute('data-resource-size', sizes[index]!)
+        else card.removeAttribute('data-resource-size')
+      })
+      return
+    }
+  }
   const controller = new AbortController()
   onCleanup(() => controller.abort())
   const current = ++generation
@@ -99,11 +137,8 @@ watch(() => [content, profile, resolveImage] as const, async (_value, _old, onCl
   hideInteractiveSource(doc.body, t('richEditor.embeddedApplication'))
   highlightDocumentCode(doc.body)
   const mathRendering = renderMath(doc.body).catch(() => { /* Keep the visible source fallback if math assets fail. */ })
-  const targets = [...doc.body.querySelectorAll('blockquote.galaris-link-card')].map(card =>
-    [...card.querySelectorAll('a[href]')].map(link => documentPlayer(
-      link.getAttribute('href') ?? '', link.textContent ?? '', [...card.classList],
-    )).find(Boolean),
-  )
+  const targets = [...doc.body.querySelectorAll('blockquote.galaris-link-card')].map(card => referencePlayer(card))
+  applyReferenceAppearance(doc.body)
   doc.body.querySelectorAll('a').forEach(link => {
     link.setAttribute('data-rich-reference', link.getAttribute('href') ?? '')
     const uri = link.getAttribute('href') ?? ''
@@ -117,8 +152,12 @@ watch(() => [content, profile, resolveImage] as const, async (_value, _old, onCl
   })
   const images = [...doc.body.querySelectorAll('img')]
   const webCards = profile === 'document' ? [...doc.body.querySelectorAll('blockquote.galaris-web-card')] : []
+  const linkedImages = profile === 'document' ? [...doc.body.querySelectorAll('blockquote')].filter(isLinkedImageCard) : []
   const references = images.map(image => attachmentReference(image.getAttribute('src') ?? ''))
-  images.forEach(image => image.removeAttribute('src'))
+  images.forEach((image, index) => {
+    if (references[index]) image.setAttribute('data-rich-reference', image.getAttribute('src') ?? '')
+    image.removeAttribute('src')
+  })
   rendered.value = doc.body.innerHTML
   await Promise.all([mathRendering, ...images.map(async (image, index) => {
     const reference = references[index]
@@ -130,6 +169,12 @@ watch(() => [content, profile, resolveImage] as const, async (_value, _old, onCl
       urls.push(url)
       image.src = url
     } catch { /* The alt text remains; no unauthorized preview is retained. */ }
+  }), ...linkedImages.map(async card => {
+    try {
+      const url = await renderLinkedImage(card, (uri, signal, full) => resolveResourceImage?.(uri, signal, full)
+        ?? resolveDocumentReferenceImage(uri, resourceAgentId, signal, full), controller.signal)
+      if (url) { if (current === generation) urls.push(url); else URL.revokeObjectURL(url) }
+    } catch { /* The source reference remains usable when the preview is unavailable. */ }
   }), ...webCards.map(async card => {
     let blob: Blob | null
     try { blob = await webLinkCardImage(card, null, controller.signal) }
@@ -141,12 +186,14 @@ watch(() => [content, profile, resolveImage] as const, async (_value, _old, onCl
     rendered.value = doc.body.innerHTML
     await nextTick()
     if (current !== generation || profile !== 'document') return
+    const cards = root.value ? documentReferenceCards(root.value) : []
     embeds.value = (root.value ? embeddedResourceCards(root.value) : []).flatMap((card, key) => {
       const link = card.querySelector('a'), uri = link?.getAttribute('data-rich-reference') ?? ''
       if (!richLinkTarget(uri)) return []
       prepareDocumentCard(card)
       const element = card.ownerDocument.createElement('div'); element.className = 'galaris-resource-embed'; card.append(element)
-      return [{ key, element, uri, title: link?.textContent ?? '' }]
+      return [{ key, index: cards.indexOf(card), element, card, uri, title: link?.textContent ?? '', display: resourceCardDisplay(card),
+        registerActions: actions => registerReferenceActions?.(card, actions) }]
     })
     root.value?.querySelectorAll('blockquote.galaris-link-card').forEach((card, index) => {
       const target = targets[index]
@@ -157,6 +204,7 @@ watch(() => [content, profile, resolveImage] as const, async (_value, _old, onCl
       card.append(player.element)
       players.push(player)
     })
+    renderedGeneration = current
   }
 }, { immediate: true })
 onBeforeUnmount(() => { ++generation; revoke() })

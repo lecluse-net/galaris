@@ -286,6 +286,11 @@ Read before editing; pass `expected_revision` to `file_edit`, `file_write` and `
 On conflict, read again and reconcile with the current content; never guess a revision or
 slice an HTML tag to fit a page. Ordinary text files still use line offsets.
 
+For historical content, use `document_revision_list` and pass the exact revision shown in
+the chat context to `file_read` or `document_analyze`. `document_revision_compare` compares
+two saved revisions. Drawing supports an optional rectangle in source pixels and returns
+changed pixel counts and bounds. A content hash comparison only establishes whether bytes differ.
+
 **Data documents (Datasets)** hold valid UTF-8 JSON (`application/json`) at `data://<uuid>`.
 Text and Data share the Documents library, metadata, sharing and revisions; each document
 retains its own permissions. Existing `data://` and verified `document://` links remain valid.
@@ -375,6 +380,21 @@ and reread before a new submission; do not reload or create another document to 
 Example: `file_create(path="document://", name="Investigation", content="<h2>Findings</h2><p>Verified evidence.</p>")`.
 For a correction, read its exact URI, then use `file_edit` on the relevant numbered blocks with
 the observed revision. Append a new finding only when it adds distinct information.
+
+For a mind map, call `mindmap_create(title="Investigation map", root_title="Investigation")`.
+Keep the returned `document://` URI. To inspect an existing map, call `mindmap_read`
+and use its stable node IDs and revision for `mindmap_edit`. For example,
+`mindmap_edit(document_id=URI, expected_revision=REVISION, operations=[{"operation":"add","node_id":"findings","parent_id":"root","title":"Findings"}])`.
+Batch related add, edit, move and remove operations. A remove includes descendants.
+In an edit, omitted fields keep their values and an empty string clears a text field.
+Use `note` for plain text, `icon` for a library code such as `emoji:1F4CC`, and
+`body_html` for a complete editorial HTML fragment. Read the node with `node_id`
+and use `next_body_offset` to retrieve its complete existing body before replacement.
+Reference Galaris objects and other Documents' attachments with canonical links.
+For an inline image, copy it first with `file_copy` into `document://<map-uuid>/attachments/`,
+then use the returned URI as the `img` source. Links preserve the target's independent ACL.
+On conflict, reread and reconcile. Use `document_sharing` and `document_share` before
+handing the map to a collaborator.
 
 Apply the same contract when delegating: `task_run(..., objective="<p>Review the evidence in
 <a href='document://DOCUMENT_UUID'>the working document</a> and report discrepancies.</p>")`.
@@ -1249,10 +1269,11 @@ links. Scheduler state and recovery receipts remain separate from business varia
 Cite an internal definition as `galaris://processes/<code>` and an execution as
 `galaris://processes/runs/<uuid>`. A normal titled HTML anchor opens its authorized
 Process or Run modal. To display the BPMN diagram in a Document, write
-`<blockquote class="galaris-link-card galaris-process-diagram"><p><a href="URI">Title</a></p></blockquote>`
+`<blockquote class="galaris-link-card" data-resource-mode="embed"><p><a href="URI">Title</a></p></blockquote>`
 with `file_append` or `file_edit` and the revision read beforehand. Preserve the
 canonical URI; never store BPMN or run JSON in a Document to embed its diagram.
-The viewer supplies zoom controls. Run diagrams retain their frozen definition.
+Use `data-resource-mode="card"` on the same block for a compact preview. The viewer
+supplies zoom controls. Run diagrams retain their frozen definition.
 Readers still need independent access to the Process.
 
 Use `process_run_inspect` for the frozen live graph and paginated occurrences,
@@ -1758,10 +1779,10 @@ it does not apply to Dataset bodies or Goal documents with the `rich-text` profi
 
 ```html
 <figure class="image"><img src="ATTACHMENT_URI" alt="Illustration"></figure>
-<blockquote class="galaris-link-card galaris-media-audio">
+<blockquote class="galaris-link-card galaris-media-audio" data-resource-mode="embed">
   <p><a href="ATTACHMENT_URI">Audio recording</a></p>
 </blockquote>
-<blockquote class="galaris-link-card galaris-media-video">
+<blockquote class="galaris-link-card galaris-media-video" data-resource-mode="embed">
   <p><a href="ATTACHMENT_URI">Video recording</a></p>
 </blockquote>
 ```

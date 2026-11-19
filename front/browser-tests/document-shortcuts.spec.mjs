@@ -228,6 +228,7 @@ test('keyboard links preserve the selection and opening, search and fullscreen r
     const rect = element.getBoundingClientRect()
     return rect.width === window.innerWidth && rect.height === window.innerHeight
   })).toBe(true)
+  await expect.poll(() => page.locator('.tiptap-galaris-editor').evaluate(element => element.contains(document.activeElement))).toBe(true)
   await page.keyboard.press('Escape')
   await expect.poll(() => page.locator('.tiptap-galaris-editor').evaluate(element => element.getBoundingClientRect().height < window.innerHeight)).toBe(true)
 })

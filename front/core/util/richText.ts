@@ -5,6 +5,7 @@ import type { ResourceDetailTarget } from './resourceDetail'
 import { defaultReferenceFormatting, type ReferenceFormatting } from './resourceReference'
 import { attachmentReference } from './documentResource'
 import { canonicalResourceLink } from './resourceUri'
+import { providerImageReference, referenceAttributes, validReferenceAttribute, type DocumentReferenceMode } from './documentReference'
 export { attachmentReference } from './documentResource'
 
 export type ContentProfile = 'rich-text' | 'document'
@@ -20,13 +21,29 @@ export interface RichContentContribution {
   title?: (uri: string, agentId: number | null, formatting: ReferenceFormatting) => Promise<string>
   canCard?: (uri: string) => boolean
   card?: (uri: string, agentId: number | null, formatting: ReferenceFormatting) => Promise<string>
+  embed?: (uri: string, agentId: number | null, signal: AbortSignal) => boolean | Promise<boolean>
+  defaultMode?: (uri: string, host: 'text' | 'mindmap') => DocumentReferenceMode | undefined
+  linkIcon?: string
+  canPreviewImage?: (uri: string) => boolean
   previewImage?: (uri: string, agentId: number | null, signal: AbortSignal) => Promise<Blob | null>
+  fullImage?: (uri: string, agentId: number, signal: AbortSignal) => Promise<Blob | null>
 }
 interface ContributionModule { default: RichContentContribution }
 const contributions = Object.values(import.meta.glob<ContributionModule>('../../app/*/richContent.ts', { eager: true })).map(value => value.default)
   .sort((left, right) => Number(left.fallback ?? false) - Number(right.fallback ?? false))
 export async function richLinkPreviewImage(uri: string, agentId: number | null, signal: AbortSignal): Promise<Blob | null> {
-  return await contributions.find(value => value.previewImage)?.previewImage?.(uri, agentId, signal) ?? null
+  const provider = contributions.find(value => value.previewImage && (value.canPreviewImage?.(uri) ?? true))
+  return await provider?.previewImage?.(uri, agentId, signal) ?? null
+}
+export async function resolveDocumentReferenceImage(href: string, agentId: number | null, signal: AbortSignal, full: boolean): Promise<Blob | null> {
+  const reference = providerImageReference(href)
+  const agent = reference?.agent ?? agentId
+  if (full) {
+    if (!reference || agent == null) return null
+    const provider = contributions.find(value => value.fullImage && value.canPreviewImage?.(reference.uri))
+    return await provider?.fullImage?.(reference.uri, agent, signal) ?? null
+  }
+  return richLinkPreviewImage(reference?.uri ?? href, agent, signal)
 }
 export function validRichLink(uri: string): boolean {
   if (/[\s\\]/.test(uri) || [...uri].some(char => char.charCodeAt(0) < 32)) return false
@@ -51,6 +68,17 @@ export function canonicalRichLink(value: string): string | null {
 }
 export function richLinkHasCard(uri: string): boolean {
   return validRichLink(uri) && contributions.some(value => value.target?.(uri) && value.card && (value.canCard?.(uri) ?? true))
+}
+export function richLinkDefaultMode(uri: string, host: 'text' | 'mindmap'): DocumentReferenceMode {
+  const declared = contributions.find(value => value.target?.(uri) && value.defaultMode)?.defaultMode?.(uri, host)
+  return declared ?? (host === 'mindmap' && richLinkHasCard(uri) ? 'card' : 'link')
+}
+export function richLinkIcon(uri: string): string | undefined {
+  return contributions.find(value => value.target?.(uri) && value.linkIcon)?.linkIcon
+}
+export function richLinkCanEmbed(uri: string, agentId: number | null, signal: AbortSignal): boolean | Promise<boolean> {
+  if (!validRichLink(uri)) return false
+  return contributions.find(value => value.target?.(uri) && value.embed)?.embed?.(uri, agentId, signal) ?? false
 }
 export async function richLinkCard(uri: string, agentId: number | null, formatting = defaultReferenceFormatting): Promise<string> {
   const contribution = contributions.find(value => value.target?.(uri) && value.card && (value.canCard?.(uri) ?? true))
@@ -81,16 +109,20 @@ export function sanitizeRichHtml(html: string, profile: ContentProfile = 'rich-t
   const clean = DOMPurify.sanitize(html, {
     ALLOWED_TAGS: 'p h1 h2 h3 h4 h5 h6 strong em u s blockquote ul ol li hr a table thead tbody tfoot tr th td pre code br mark span figure figcaption caption colgroup col sub sup b i del'.split(' ').concat(profile === 'document' ? ['img'] : []),
     ALLOWED_ATTR: ['href', 'title', 'rel', 'target', 'start', 'colspan', 'rowspan', 'colwidth', 'class', 'src', 'alt', 'width', 'style', 'data-color', 'data-rich-reference', 'height', 'value', 'reversed'],
-    ADD_ATTR: ['data-math', 'data-code-lines', 'data-code-nowrap', 'data-checked'],
+    ADD_ATTR: ['data-math', 'data-code-lines', 'data-code-nowrap', 'data-checked', ...(profile === 'document' ? referenceAttributes : [])],
     FORCE_BODY: true,
     ALLOW_DATA_ATTR: false,
-    ADD_URI_SAFE_ATTR: ['start', 'colspan', 'rowspan', 'colwidth', 'width', 'height', 'value', 'data-color', 'data-math', 'data-code-lines', 'data-code-nowrap', 'data-checked', 'type', 'async', 'defer'],
+    ADD_URI_SAFE_ATTR: ['start', 'colspan', 'rowspan', 'colwidth', 'width', 'height', 'value', 'data-color', 'data-math', 'data-code-lines', 'data-code-nowrap', 'data-checked', 'type', 'async', 'defer', ...referenceAttributes],
     // Exact href validation follows sanitization; provider schemes are not an
     // executable browser protocol and are rewritten to application navigation.
     ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|[a-z][a-z0-9+.-]*:\/\/)/,
   })
   const doc = new DOMParser().parseFromString('<body>' + clean, 'text/html')
   for (const element of doc.body.querySelectorAll<HTMLElement>('*')) {
+    for (const attribute of referenceAttributes) {
+      const value = element.getAttribute(attribute)
+      if (value !== null && (profile !== 'document' || !validReferenceAttribute(element, attribute, value))) element.removeAttribute(attribute)
+    }
     if (element.hasAttribute('data-math') && !((element.tagName === 'SPAN' && element.dataset.math === 'inline') || (element.tagName === 'P' && element.dataset.math === 'block'))) element.removeAttribute('data-math')
     if (element.hasAttribute('data-checked') && (element.tagName !== 'LI' || !['true', 'false'].includes(element.getAttribute('data-checked')!))) element.removeAttribute('data-checked')
     for (const attribute of ['data-code-lines', 'data-code-nowrap']) {
@@ -127,7 +159,10 @@ export function sanitizeRichHtml(html: string, profile: ContentProfile = 'rich-t
     const canonical = link.getAttribute('data-rich-reference')
     if (canonical && validRichLink(canonical)) link.setAttribute('href', canonical)
     link.removeAttribute('data-rich-reference')
-    if (!validRichLink(link.getAttribute('href') ?? '')) link.removeAttribute('href')
+    if (!validRichLink(link.getAttribute('href') ?? '')) {
+      link.removeAttribute('href')
+      for (const attribute of referenceAttributes) link.removeAttribute(attribute)
+    }
     link.setAttribute('rel', 'noopener noreferrer')
     link.setAttribute('target', '_blank')
   }

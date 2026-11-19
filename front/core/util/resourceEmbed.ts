@@ -7,4 +7,6 @@ export const ResourceEmbed = defineAsyncView(async () => {
   if (!provider) throw new Error('Resource embed provider unavailable')
   return (await provider()).default
 })
-export interface ResourceEmbedTarget { key: number; element: HTMLElement; uri: string; title: string }
+export interface ResourceEmbedTarget {
+  key: number; element: HTMLElement; card: HTMLElement; uri: string; title: string; display: 'legacy' | 'card' | 'embed'
+}

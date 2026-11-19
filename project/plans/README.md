@@ -55,7 +55,8 @@ les comptes distants réels ou la réserve indépendante encore manquants.
 
 | Plan | Statut | Portée |
 |---|---|---|
-| [cartes-mentales-documentaires.md](cartes-mentales-documentaires.md) | `design` | Socle des formats disponible ; éditeur natif à placement automatique, contenus complets, thèmes et qualifications restent à réaliser. Référence Planner à préciser. |
+| [cartes-mentales-documentaires.md](cartes-mentales-documentaires.md) | `partial` | Type Document, édition de branches, MCP et échanges disponibles. Contenus riches, thèmes, intégration Texte et qualifications externes restent ouverts. |
+| [affichage-des-references-documentaires.md](affichage-des-references-documentaires.md) | `partial` | Socle Lien, Carte et Intégré dans Texte et Carte mentale. Lecteurs des autres formats et couverture des exports par format à étendre. |
 | [migration-progressive-rust.md](migration-progressive-rust.md) | `design` | Prototypes de runtimes, protocole d'hôte et qualification sans régression ; Pydantic AI conservé comme référence. Aucun driver Rust intégré ni gain démontré. |
 | [supervision-execution-llm.md](supervision-execution-llm.md) | `design` | Pilote petit/gros exécuteur, vérification métier indépendante, attente fournisseur, parcours persistant, puis supervision et escalade expérimentales. |
 | [controle-distant-vnc.md](controle-distant-vnc.md) | `design` | Connexion VNC, captures MCP, simulation clavier/souris, sessions isolées et reprise humaine ; client RFB et compatibilité OS/serveurs à qualifier. |

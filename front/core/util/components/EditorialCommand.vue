@@ -12,7 +12,7 @@
       </q-list>
     </ContextSubmenu>
   </q-item>
-  <EditorialToolButton v-else-if="!item.options" flat dense :icon="item.icon" :label="t('richEditor.' + item.key)" :data-editorial-command="item.key" :aria-pressed="item.active" :disable="item.disabled" :color="item.active ? 'primary' : undefined" :class="{ 'editorial-alignment-active': item.active && ['left', 'center', 'right', 'justify'].includes(item.key) }" @click="emit('action', item.key)" />
+  <EditorialToolButton v-else-if="!item.options" flat dense :icon="item.icon" :label="commandLabel" :no-tooltip="exitFullscreen" :data-editorial-command="item.key" :aria-pressed="item.active" :disable="item.disabled" :color="item.active ? 'primary' : undefined" :class="{ 'editorial-alignment-active': item.active && ['left', 'center', 'right', 'justify'].includes(item.key) }" @click="emit('action', item.key)" />
   <span v-else class="inline-flex">
     <q-btn-dropdown no-caps :flat="!isStyleMenu && (compact || !item.value)" :outline="isStyleMenu || !compact && Boolean(item.value)" dense :icon="!isStyleMenu && (compact || !item.value || item.key === 'fontFamily') ? item.icon : undefined" :label="isStyleMenu || !compact ? item.value : undefined" :aria-label="commandLabel" :disable="item.disabled"
       :class="{ 'editorial-style-selector': isStyleMenu, 'editorial-style-selector--compact': isStyleMenu && compact }"
@@ -61,7 +61,8 @@ const emit = defineEmits<{ action: [key: string, value?: string] }>()
 const { t } = useI18n()
 const hasCallouts = computed(() => item.key === 'callout' || item.options?.some(option => option.action === 'callout'))
 const isStyleMenu = computed(() => item.key === 'heading' && hasCallouts.value)
-const commandLabel = computed(() => t('richEditor.' + (isStyleMenu.value ? 'style' : item.key)))
+const exitFullscreen = computed(() => item.key === 'fullscreen' && item.active === true)
+const commandLabel = computed(() => t(exitFullscreen.value ? 'fullscreenPreview.exitFullscreen' : 'richEditor.' + (isStyleMenu.value ? 'style' : item.key)))
 function optionStyle(key: string, value: string): Record<string, string> {
   if (key === 'fontSize') return { fontSize: value + 'px' }
   if (key === 'heading') return { fontSize: Number(value) ? ['1.8em', '1.5em', '1.3em', '1.1em', '1.1em', '1.1em'][Number(value) - 1]! : '1em' }

@@ -1,9 +1,56 @@
 import { writeFile } from 'node:fs/promises'
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, selectDocumentContext } from './fixtures.mjs'
 import { agent, document as documentFixture } from './data.mjs'
 
 const uri = 'document://00000000-0000-0000-0000-000000000001/attachments/00000000-0000-0000-0000-000000000002'
 const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII='
+
+test('the Text embed saves its size in place and PDF includes content below the fold', async ({ page }) => {
+  await page.setViewportSize({ width: 420, height: 1000 })
+  const id = '00000000-0000-4000-8000-000000000312'
+  const title = 'Measurement handbook'
+  const text = Array.from({ length: 56 }, (_, index) => `<p>Measurement instruction ${index + 1}</p>`).join('')
+  await jsonRoute(page, `**/api/documents/${id}`, { item: {
+    ...documentFixture, id, title, media_type: 'text/html', content_profile: 'document', format_version: 1, payload: { text },
+  }, agent_id: null })
+  await mount(page, 'core/util/components/RichTextEditor.vue')
+  await page.evaluate(({ id, title }) => window.testApp.mount({ component: 'core/util/components/RichTextEditor.vue', props: {
+    profile: 'document',
+    modelValue: `<p>Reference material</p><blockquote class="galaris-link-card" data-resource-mode="embed"><p><a href="document://${id}">${title}</a></p></blockquote><p>Closing note</p>`,
+    exportPdf: async html => { window.embedSnapshot = html; return new Blob(['%PDF-1.7 fixture'], { type: 'application/pdf' }) },
+  } }), { id, title })
+  const viewport = page.getByRole('region', { name: title, exact: true })
+  await expect.poll(() => viewport.evaluate(el => el.scrollHeight - el.clientHeight)).toBeGreaterThan(0)
+  await selectDocumentContext(page, page.getByRole('link', { name: title, exact: true }))
+  const handle = page.getByRole('button', { name: 'Resize embedded content', exact: true })
+  await handle.hover()
+  const initial = await viewport.boundingBox()
+  const corner = await handle.boundingBox()
+  const x = corner.x + corner.width / 2, y = corner.y + corner.height / 2
+  await page.mouse.move(x, y)
+  await page.mouse.down()
+  await page.mouse.move(x + 30, y + 50, { steps: 5 })
+  await page.mouse.up()
+  await expect.poll(async () => (await viewport.boundingBox()).height).toBeCloseTo(initial.height + 50, 0)
+  await expect.poll(async () => (await viewport.boundingBox()).width).toBeCloseTo(initial.width + 30, 0)
+  const resized = await viewport.boundingBox()
+  expect(resized.x).toBeCloseTo(initial.x, 0)
+  expect(resized.y).toBeCloseTo(initial.y, 0)
+  const updates = await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue'))
+  expect(updates).toHaveLength(1)
+  const saved = updates[0].value
+  expect(saved).toMatch(/data-resource-size="[1-9]\d*x[1-9]\d*"/)
+  expect(saved.indexOf('Reference material')).toBeLessThan(saved.indexOf(title))
+  expect(saved.indexOf(title)).toBeLessThan(saved.indexOf('Closing note'))
+  await page.getByRole('button', { name: 'More tools', exact: true }).click()
+  await page.getByRole('button', { name: 'Export as PDF', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => window.embedSnapshot)).toContain('Measurement instruction 56')
+  expect(await page.evaluate(() => window.embedSnapshot)).not.toContain('Resize embedded content')
+  await mount(page, 'core/util/components/RichText.vue', { props: { profile: 'document', content: saved } })
+  await expect.poll(async () => (await viewport.boundingBox()).width).toBeCloseTo(resized.width, 0)
+  await expect.poll(async () => (await viewport.boundingBox()).height).toBeCloseTo(resized.height, 0)
+  await expect(handle).toHaveCount(0)
+})
 
 test('PDF preserves process diagrams and agent portraits without clickable objects', async ({ page, context }, testInfo) => {
   const documentId = '00000000-0000-0000-0000-000000000245'
@@ -55,6 +102,17 @@ test('PDF preserves process diagrams and agent portraits without clickable objec
   await printed.screenshot({ path: testInfo.outputPath('objects.png'), fullPage: true })
   await printed.close()
   expect(await page.evaluate(() => window.testApp.events.filter(event => event.name === 'update:modelValue'))).toEqual([])
+
+  const processLink = editor.getByRole('link', { name: 'Synthetic PDF process', exact: true })
+  await selectDocumentContext(page, processLink)
+  const toolbar = page.getByRole('toolbar', { name: 'Contextual actions', exact: true })
+  await toolbar.getByRole('button', { name: 'Show card', exact: true }).click()
+  await expect(editor.getByRole('button', { name: 'Synthetic PDF review · review', exact: true })).toHaveCount(0)
+  await selectDocumentContext(page, processLink)
+  await toolbar.getByRole('button', { name: 'Show embedded content', exact: true }).click()
+  await expect(editor.getByRole('button', { name: 'Synthetic PDF review · review', exact: true })).toBeVisible()
+  await selectDocumentContext(page, processLink)
+  await toolbar.getByRole('button', { name: 'Fit the diagram', exact: true }).click()
 })
 
 test('a document downloads its current content as a named PDF and remains editable after an export failure', async ({ page }, testInfo) => {

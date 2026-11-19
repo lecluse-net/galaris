@@ -2,6 +2,20 @@
 
 # Functional guarantees catalogue
 
+`app/document/tests/test_mindmap.py` covers structural interchange, library import,
+revision export under the document ACL and atomic MCP branch commands.
+`front/browser-tests/mindmap.spec.mjs` exercises keyboard branch creation,
+reopening the saved document and the export request.
+`e2e/specs/mindmap.spec.mjs` connects real import, editing, reopening and FreeMind
+download in the assembled application.
+
+`document-resources.spec.mjs` protects mode availability by type, the distinction between
+preview and reader, and reopening an image with its appearance and caption.
+`document-print.spec.mjs` covers static rendering and a specialized BPMN command.
+The assembled `e2e/specs/mindmap.spec.mjs` journey exercises Text ↔ Mind map references
+and the fallback on a cycle. The editorial codec validates persisted attributes and
+retains attachments used by a saved alternate presentation.
+
 Recovery scenarios in `front/browser-tests/preferences.spec.mjs` and
 `request-lifecycle.spec.mjs` check operation-specific read errors, retry and preservation
 of a Service form reopened during a save. Pinia interactions run in real Vue with its
@@ -50,8 +64,8 @@ existing suites retain preview, printing and PDF export guarantees. See the
 [format contract](document-formats.md) for declarations versus qualification.
 
 `app/document/tests/test_sample_drawing.py` reads historical pixels, compares versions
-and regions, and checks access denials.
-`app/plugin/tests/test_plugins.py` covers
+and regions, and checks access denials. `chat-document-workspace.spec.mjs` verifies that
+Chat submits the revision loaded in history. `app/plugin/tests/test_plugins.py` covers
 Process worker restart recovery, durable revocation, catalogue attestations and
 preserved Connections after protocol removal. `plugin-release-lifecycle.spec.mjs`
 checks that the editor and its revisions survive Python and JavaScript loading failures.

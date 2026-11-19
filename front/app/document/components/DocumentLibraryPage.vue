@@ -1,5 +1,5 @@
 <template>
-  <q-page class="documents-page q-py-md q-pl-md" :class="{ 'viewport-page--desktop': !$q.screen.lt.md }">
+  <q-page class="documents-page q-py-md q-pl-md" :class="{ 'viewport-page--desktop': !$q.screen.lt.md }" :inert="documentFullscreen">
     <PageHeader help-key="documents" :help-text="$t('contextHelpPages.documents')" :icon="navigationIcon('description')" :title="t('nav.documents')" :description="t('nav.documents_desc')">
       <template #title-after>
         <div class="row items-center q-gutter-xs">
@@ -27,13 +27,14 @@
           <q-splitter v-model="conversationSplitterModel" :limits="conversationSplitterLimits" :disable="!chatOpen || $q.screen.lt.md"
             class="documents-conversation-splitter" :class="{ 'documents-conversation-splitter--closed': !chatOpen || $q.screen.lt.md }">
             <template #before>
+              <div class="documents-main-pane" :class="{ 'documents-main-pane--map-and-list': listBesideMap }">
               <DocumentBulkList v-if="listingOpen" :folder="listingFolder" @dragstart="(event, entries) => navigation?.startDocumentSelectionDrag(event, entries)" @dragend="navigation?.clearDrag()" @action="documentRowAction" @create="(entry, type) => openCreateDocument(undefined, entry, false, type)" @close="listingOpen = false" @select="selectEntry" @deleted="onDocumentDeleted" @changed="ids => navigation?.refreshDocuments(ids)" />
-              <div v-else-if="!selectedDocumentId" class="documents-placeholder text-grey-7">
+              <div v-if="!listingOpen && !selectedDocumentId" class="documents-placeholder text-grey-7">
                 <q-icon name="article" size="48px" />
                 <div>{{ t('documents.selectDocument') }}</div>
               </div>
               <DocumentEditor
-                v-else-if="!$q.screen.lt.md"
+                v-if="!$q.screen.lt.md && selectedDocumentId && (!listingOpen || listBesideMap)"
                 :key="`${selectedAgentId}:${selectedDocumentId}`"
                 ref="documentEditor"
                 :document-id="selectedDocumentId" :agent-id="selectedAgentId"
@@ -41,6 +42,7 @@
                 @loaded="loadedDocumentId = $event.id"
                 @updated="onDocumentUpdated" @unavailable="onDocumentUnavailable" @deleted="onDocumentDeleted"
               />
+              </div>
             </template>
             <template #separator>
               <LibrarySplitterHandle v-model="conversationSplitterModel" :limits="conversationSplitterLimits" :step="2"
@@ -63,12 +65,13 @@
       v-model="mobileDocumentOpen"
       allow-focus-outside
       no-route-dismiss
+      :no-esc-dismiss="documentFullscreen"
       maximized
       @before-hide="flushMobileDocumentEditor"
       @hide="clearMobileDocument"
     >
       <q-card class="documents-mobile-dialog galaris-dialog-card">
-        <q-card-section class="galaris-dialog-title row items-center no-wrap">
+        <q-card-section v-show="!documentFullscreen" class="galaris-dialog-title row items-center no-wrap">
           <DocumentNavigationButtons class="q-mr-sm" :can-go-back="canGoBack" :can-go-forward="canGoForward" @back="navigateHistory(-1)" @forward="navigateHistory(1)" />
           <div ref="mobileHeading" class="documents-mobile-heading">
             <div class="documents-mobile-heading-fallback row items-center no-wrap">
@@ -167,7 +170,7 @@ import { useAgentChoices } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { AgentConversationPanel as DocumentConversationPanel, conversationPanel, type DocumentFocus } from '@/core/util'
 import { OwnerSelect } from '@/app/share'
-import { documentIdFromRouteQuery, documentNavigationKey, documentResourceHref, DocumentNavigationButtons, PageHeader, useDocumentHistory } from '@/core/util'
+import { documentIdFromRouteQuery, documentNavigationKey, documentResourceHref, DocumentNavigationButtons, documentWorkspaceViewKey, PageHeader, useDocumentHistory } from '@/core/util'
 import { websocket } from '@/core/websocket'
 import { DatasetDocumentRedirect, documentService } from '../services/documentService'
 import type { DocumentRowAction } from '@/app/document/libraryShortcuts'
@@ -195,6 +198,7 @@ const libraryDocumentIcon = 'M6.5 5h11a2.5 2.5 0 0 1 2.5 2.5v9a2.5 2.5 0 0 1-2.5
 const $q = useQuasar()
 const route = useRoute()
 const router = useRouter()
+const documentFullscreen = ref(route.query.fullscreen === '1' && Boolean(documentIdFromRouteQuery(route.query.document_id)))
 const agentStore = useAgentChoices()
 const privilegeStore = usePrivilegeStore()
 const canCreateDocument = computed(() => privilegeStore.hasAnyPrivilege([privileges.DOCUMENT_EDIT, privileges.DOCUMENT_ADMIN]))
@@ -215,6 +219,7 @@ const conversationSplitterModel = ref(60)
 const conversationSplitterLimits: [number, number] = [30, 80]
 const listingOpen = ref(false)
 const listingFolder = ref<DocumentTag | null>(null)
+const listBesideMap = computed(() => listingOpen.value && !$q.screen.lt.md && documentEditor.value?.canEditMindMap)
 const selectedNodeKey = ref<string | null>(null)
 const selectedAgentId = ref<number | null>(null)
 const selectedInitialDocument = ref<DocumentDetail | null>(null)
@@ -494,7 +499,10 @@ function onDocumentDeleted(id: string): void {
   // Deleted visits no longer provide a destination, without shifting an in-flight cursor.
   history.forget(id)
   ++selectionGeneration
-  if (selectedDocumentId.value === id) selectedNodeKey.value = null
+  if (selectedDocumentId.value === id) {
+    selectedNodeKey.value = null
+    if (!$q.screen.lt.md) documentFullscreen.value = false
+  }
   if (mobileDocumentId.value === id) mobileDocumentOpen.value = false
   navigation.value?.removeDocument(id)
 }
@@ -530,12 +538,19 @@ async function openRouteDocument(id: string, historyIndex?: number): Promise<voi
 }
 
 provide(documentNavigationKey, id => openRouteDocument(id))
+provide(documentWorkspaceViewKey, {
+  fullscreen: documentFullscreen,
+  canGoBack: () => canGoBack.value,
+  canGoForward: () => canGoForward.value,
+  navigateHistory,
+})
 
 function flushMobileDocumentEditor(): void {
   void mobileDocumentEditor.value?.flush()
 }
 function clearMobileDocument(): void {
   if (mobileDocumentOpen.value) return
+  documentFullscreen.value = false
   mobileDocumentId.value = null
   mobileDocumentAgentId.value = null
 }
@@ -555,10 +570,12 @@ watch(createDocumentOwner, value => {
   const owner = createOwnerChoices.value.find(option => createOwnerValue(option.kind, option.id) === value)
   if (owner?.kind === 'agent') createDocumentActorAgentId.value = owner.id
 })
-watch(() => route.query.document_id, value => {
+watch(() => [route.query.document_id, route.query.fullscreen], async ([value, mode]) => {
   const id = documentIdFromRouteQuery(value)
   const currentId = $q.screen.lt.md ? mobileDocumentId.value : selectedDocumentId.value
-  if (pageMounted && id && id !== currentId) void openRouteDocument(id)
+  if (!pageMounted || !id) return
+  if (id !== currentId) await openRouteDocument(id)
+  if (mode === '1' && id === ($q.screen.lt.md ? mobileDocumentId.value : selectedDocumentId.value)) documentFullscreen.value = true
 })
 onBeforeRouteLeave(async () => {
   // An automatic selection must not replace the navigation while its lazy chunk loads.
@@ -580,6 +597,7 @@ onMounted(async () => {
   const routeId = documentIdFromRouteQuery(route.query.document_id)
   if (routeId) await openRouteDocument(routeId)
   if (disposed) return
+  if (!($q.screen.lt.md ? mobileDocumentId.value : selectedDocumentId.value)) documentFullscreen.value = false
   pageMounted = true
   websocket.createWebsocket()
   websocket.onEvent('document', 'create', realtimeRefresh)
@@ -618,6 +636,17 @@ onBeforeUnmount(() => {
 .documents-splitter--collapsed :deep(> .q-splitter__before), .documents-splitter--collapsed :deep(> .q-splitter__separator) { display: none; }
 .documents-splitter--collapsed :deep(> .q-splitter__after) { width: 100% !important; }
 .documents-splitter :deep(> .q-splitter__before) { overflow: auto; }
+.documents-main-pane { display: contents; }
+.documents-main-pane--map-and-list {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+  height: 100%;
+  min-height: 0;
+}
+.documents-main-pane--map-and-list :deep(> .bulk-list) {
+  overflow: auto;
+  border-inline-end: 1px solid var(--rich-editor-border);
+}
 .documents-placeholder { min-height: min(680px, calc(100vh - 320px)); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
 .document-tree-row { min-width: 0; min-height: 28px; border-radius: 6px; padding: 1px 4px; transition: background-color 120ms ease, box-shadow 120ms ease; }
 .document-tree-row[draggable='true'] { cursor: grab; }

@@ -1,5 +1,12 @@
 <template>
-  <div ref="focusContainer" class="document-editor" :class="{ 'document-editor--summary': summaryOpen }">
+  <span ref="editorOrigin" hidden />
+  <Teleport :to="fullscreenTarget" :disabled="!fullscreen">
+  <div ref="focusContainer" v-bind="$attrs" class="document-editor"
+    :class="{ 'document-editor--summary': summaryOpen, 'document-editor--fullscreen editorial-fullscreen': fullscreen }"
+    tabindex="-1" @keydown.esc="exitFullscreenOnEscape" @keyup.esc="finishFullscreenEscape">
+    <DocumentToolbarFrame v-if="fullscreen && !fullscreenToolbars" :label="t('nav.documents')">
+      <DocumentToolbarNavigation fullscreen-exit />
+    </DocumentToolbarFrame>
     <div v-if="loading" class="document-editor-state">
       <q-spinner color="primary" size="36px" />
     </div>
@@ -13,9 +20,9 @@
         {{ t('documents.loadError') }}
         <q-btn outline color="primary"  :label="t('documents.retry')" @click="onWebsocketConnect" />
       </q-banner>
-      <q-toolbar class="document-editor-toolbar" :class="{ 'document-editor-toolbar--dialog': headingInDialog }">
+      <q-toolbar v-show="!fullscreen" class="document-editor-toolbar" :class="{ 'document-editor-toolbar--dialog': headingInDialog }">
         <q-toolbar-title>
-          <Teleport :to="headingTarget ?? 'body'" :disabled="!headingInDialog">
+          <Teleport :to="headingTarget ?? 'body'" :disabled="!headingInDialog || fullscreen">
             <div class="document-editor-heading" :class="{ 'document-editor-heading--dialog': headingInDialog }">
               <DocumentIcon class="document-editor-heading-icon" :document-id="currentDocument.id" :document-format="currentDocument.document_format" :title="editorTitle || currentDocument.title" :size="headingInDialog ? '32px' : '64px'" plain />
               <q-input
@@ -105,8 +112,22 @@
           </div>
         </q-toolbar-title>
         <div class="document-editor-live-status column items-center no-wrap q-gutter-y-xs">
-          <q-btn v-if="currentDocument.document_format !== 'text'" flat round dense icon="picture_as_pdf" :loading="formatExportBusy" :aria-label="t('documents.exportFormatPdf')" @click="exportFormatPdf"><q-tooltip>{{ t('documents.exportFormatPdf') }}</q-tooltip></q-btn>
-          <q-btn flat round dense icon="download" :loading="formatExportBusy" :aria-label="t('documents.downloadSource')" @click="downloadFormatSource"><q-tooltip>{{ t('documents.downloadSource') }}</q-tooltip></q-btn>
+          <q-btn v-if="!editorProvidesFullscreen && !historyOpen && !summaryOpen" flat dense icon="fullscreen"
+            :aria-label="t('fullscreenPreview.fullscreen')" @click="fullscreen = true">
+            <q-tooltip>{{ t('fullscreenPreview.fullscreen') }}</q-tooltip>
+          </q-btn>
+          <q-btn v-if="currentDocument.document_format !== 'text' && currentDocument.document_format !== 'mindmap'" flat round dense icon="picture_as_pdf" :loading="formatExportBusy" :aria-label="t('documents.exportFormatPdf')" @click="exportFormatPdf"><q-tooltip>{{ t('documents.exportFormatPdf') }}</q-tooltip></q-btn>
+          <q-btn v-if="exchangeExports.length" flat round dense icon="download" :loading="formatExportBusy" :aria-label="t('documents.downloadSource')">
+            <q-tooltip>{{ t('documents.downloadSource') }}</q-tooltip>
+            <q-menu>
+              <q-list>
+                <q-item v-close-popup clickable @click="downloadFormatSource"><q-item-section>{{ t('documents.downloadSource') }}</q-item-section></q-item>
+                <q-item v-for="target in exchangeExports" :key="target.code" v-close-popup clickable
+                  @click="runFormatExport(false, target)"><q-item-section>{{ target.label }}</q-item-section></q-item>
+              </q-list>
+            </q-menu>
+          </q-btn>
+          <q-btn v-else flat round dense icon="download" :loading="formatExportBusy" :aria-label="t('documents.downloadSource')" @click="downloadFormatSource"><q-tooltip>{{ t('documents.downloadSource') }}</q-tooltip></q-btn>
           <div class="row items-center" :class="realtimeStatusClass" role="status" tabindex="0"
             :aria-label="t(realtimeConnected ? 'documents.realtimeActive' : 'documents.realtimeConnecting')">
             <q-icon :name="realtimeConnected ? 'wifi' : 'wifi_off'" size="16px" />
@@ -127,22 +148,22 @@
           <q-btn outline color="primary"  :label="t('richEditor.useRemote')" @click="resolveConflict(false)" />
         </template>
       </q-banner>
-      <q-separator />
+      <q-separator v-show="!fullscreen" />
 
       <q-card-section
         v-if="!historyOpen && !summaryOpen"
         class="row q-col-gutter-xs document-editor-fields q-pa-xs"
       >
-        <div class="document-editor-owner-cell">
+        <div v-show="!fullscreen" class="document-editor-owner-cell">
           <OwnerSelect v-model="editorOwner" class="document-editor-owner-field"
             :options="ownerChoices" :current="selectedOwnerChoice"
             :readonly="!canManageOwner || isGoalDocument(currentDocument)" @open="loadOwnerOptions">
           </OwnerSelect>
         </div>
-        <div class="document-editor-sharing-cell">
+        <div v-show="!fullscreen" class="document-editor-sharing-cell">
           <DocumentSharingPanel :item-id="documentId" resource-kind="document" :editable="canManageSharing" :lock-version="currentDocument?.lock_version" @permission="sharingPermission = $event" @changed="onSharingChanged" />
         </div>
-        <div class="col-12 document-editor-metadata-cell">
+        <div v-show="!fullscreen" class="col-12 document-editor-metadata-cell">
           <q-select
             v-model="editorKeywords"
             class="document-editor-metadata-field document-editor-keywords-field"
@@ -180,6 +201,7 @@
             :upload-file="uploadDocumentFile"
             :export-bundle="exportCurrentBundle"
             @open-attachment="openAttachment"
+            @export-document-pdf="exportFormatPdf"
             :media-type="currentDocument.media_type"
             :profile="currentDocument.content_profile ?? (isGoalDocument(currentDocument) ? 'rich-text' : 'document')"
             :upload-image="isGoalDocument(currentDocument) ? undefined : uploadInlineImage"
@@ -199,10 +221,10 @@
             </template>
           </component>
         </div>
-        <div class="col-12 document-editor-attachments">
+        <div v-show="!fullscreen" class="col-12 document-editor-attachments">
           <DocumentAttachments
             @insert="insertAttachment"
-            :allow-insertion="currentDocument.document_format === 'text'"
+            :allow-insertion="['text', 'mindmap'].includes(currentDocument.document_format)"
             ref="attachmentPanel"
             :content="editorContent"
             :content-media-type="currentDocument.media_type"
@@ -217,7 +239,8 @@
           />
           <DocumentResourceReferences v-if="canEditDocument && !isGoalDocument(currentDocument)" :key="currentDocument.id + ':' + agentId"
             v-model:picker-open="internalPickerOpen" @picked="finishInternalPick"
-            :document-id="currentDocument.id" :agent-id="requestAgentId" :editable="canEditDocument" />
+            :document-id="currentDocument.id" :agent-id="requestAgentId" :editable="canEditDocument"
+            :host="currentDocument.document_format === 'mindmap' ? 'mindmap' : 'text'" />
         </div>
       </q-card-section>
       <DocumentSummaryPanel v-else-if="summaryOpen" ref="summaryPanel"
@@ -226,6 +249,7 @@
         @close="closeDocumentSummary" @updated="onSummaryUpdated" />
       <DocumentHistoryDialog
         v-else
+        ref="historyPanel"
         :document-id="currentDocument.id"
         :current-revision="currentDocument.revision"
         :agent-id="requestAgentId"
@@ -250,13 +274,14 @@
       </q-card>
     </q-dialog>
   </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
-import { DialogHeader } from '@/core/util'
+import { DialogHeader, documentFullscreenKey, documentWorkspaceViewKey } from '@/core/util'
 import DocumentIcon from '@/app/document/components/DocumentIcon.vue'
 import DocumentApplicationBlock from '@/app/document/components/DocumentApplicationBlock.vue'
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue'
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, provide, ref, useTemplateRef, watch } from 'vue'
 import { isAxiosError } from 'axios'
 import { apiErrorDetail, AUTH_TOKEN_CHANGED_EVENT, registerBeforeLogoutHook, sessionGeneration } from '@/core/api'
 import { useAuthStore } from '@/core/user'
@@ -270,7 +295,7 @@ import { websocket } from '@/core/websocket'
 import { useAgentChoices } from '@/app/agent'
 import { OwnerSelect, type OwnerOption } from '@/app/share'
 import { ResourceTopicBadge, reassignResourceTopic } from '@/core/util'
-import { documentFormat, findDocumentFormat, type DocumentContentSource, type DocumentFormatEditorHandle } from '../documentFormats'
+import { documentFormat, findDocumentFormat, type DocumentContentSource, type DocumentExchangeExport, type DocumentFormatEditorHandle } from '../documentFormats'
 import { DatasetDocumentRedirect, documentService } from '../services/documentService'
 import { useDocumentMutations } from '@/app/document/stores/documentMutations'
 import { reconcileLibrarySnapshot } from '@/app/document/librarySnapshot'
@@ -289,6 +314,7 @@ import type {
 import DocumentSharingPanel from './DocumentSharingPanel.vue'
 import DocumentAttachments from '@/app/document/components/DocumentAttachments.vue'
 import { DocumentResourceReferences, richLinkTarget, richLinkCard, useReferenceFormatting } from '@/core/util'
+import { DocumentToolbarFrame, DocumentToolbarNavigation, provideDocumentReferencePath, registerDocumentFullscreenToolbarKey } from '@/core/util/facade'
 import DocumentHistoryDialog from '@/app/document/components/DocumentHistoryDialog.vue'
 import DocumentSummaryPanel from './DocumentSummaryPanel.vue'
 
@@ -309,6 +335,7 @@ interface MemoryRealtimeEvent {
 
 type NewKeywordDone = (value?: string, mode?: 'add' | 'add-unique' | 'toggle') => void
 
+defineOptions({ inheritAttrs: false })
 const props = withDefaults(defineProps<{
   documentId: string
   agentId: number | null
@@ -321,6 +348,7 @@ const props = withDefaults(defineProps<{
   editable: true,
   contentMinHeight: '520px',
 })
+provideDocumentReferencePath(() => [props.documentId])
 
 const emit = defineEmits<{
   loaded: [document: DocumentDetail]
@@ -347,6 +375,47 @@ const documentMutations = useDocumentMutations()
 const privilegeStore = usePrivilegeStore()
 const loading = ref(true)
 const focusContainer = useTemplateRef<HTMLElement>('focusContainer')
+const editorOrigin = useTemplateRef<HTMLElement>('editorOrigin')
+const workspaceView = inject(documentWorkspaceViewKey, null)
+const fullscreen = workspaceView?.fullscreen ?? ref(false)
+const fullscreenTarget = computed(() => editorOrigin.value?.closest('.q-dialog__inner') ?? 'body')
+provide(documentFullscreenKey, fullscreen)
+const fullscreenToolbars = ref(0)
+provide(registerDocumentFullscreenToolbarKey, () => {
+  fullscreenToolbars.value++
+  return () => { fullscreenToolbars.value-- }
+})
+const editorProvidesFullscreen = computed(() => {
+  const item = currentDocument.value
+  return !historyOpen.value && !summaryOpen.value && !!item
+    && ['text', 'mindmap'].includes(documentFormat(item.document_format, item.format_version).code)
+})
+let exitingWithEscape = false
+function exitFullscreenOnEscape(event: KeyboardEvent): void {
+  if (!fullscreen.value || event.defaultPrevented || event.isComposing) return
+  event.preventDefault()
+  event.stopPropagation()
+  exitingWithEscape = true
+  fullscreen.value = false
+}
+function finishFullscreenEscape(event: KeyboardEvent): void {
+  if (!exitingWithEscape) return
+  exitingWithEscape = false
+  event.stopPropagation()
+}
+watch(fullscreen, async active => {
+  const container = focusContainer.value
+  const focused = container?.ownerDocument.activeElement
+  await nextTick()
+  if (active !== fullscreen.value || !container?.isConnected) return
+  if (focused instanceof HTMLElement && container.contains(focused) && focused.getClientRects().length) focused.focus({ preventScroll: true })
+  if ((active || exitingWithEscape) && !container.contains(container.ownerDocument.activeElement)) container.focus({ preventScroll: true })
+}, { flush: 'sync' })
+onMounted(async () => {
+  if (!fullscreen.value) return
+  await nextTick()
+  if (fullscreen.value) focusContainer.value?.focus({ preventScroll: true })
+})
 const documentFocus = useDocumentFocus(focusContainer)
 watch(() => [props.documentId, props.agentId], () => documentFocus.reset(), { flush: 'sync' })
 const titleInput = useTemplateRef<QInput>('titleInput')
@@ -458,6 +527,7 @@ const attachmentsLoading = ref(false)
 const historyOpen = ref(false)
 const summaryOpen = ref(false)
 const summaryPanel = useTemplateRef<InstanceType<typeof DocumentSummaryPanel>>('summaryPanel')
+const historyPanel = useTemplateRef<InstanceType<typeof DocumentHistoryDialog>>('historyPanel')
 const switchingView = ref(false)
 watch(() => [props.documentId, props.agentId], () => { summaryOpen.value = false; historyOpen.value = false })
 const editorGlobalAccess = ref<DocumentGlobalAccess>(0)
@@ -658,8 +728,8 @@ function applyEditorDraft(draft: DocumentDraft): void {
 const {
   autosaveState, conflictDocument, hasUnsavedChanges, acceptDocument, resolveConflict, clearConflict,
   cancelAutosave, isSaving, scheduleAutosave, waitForActiveSave, flushAutosave,
-  mergeDocument, mergeLatestDocument, discardDraft: discardAutosaveDraft,
-  draftKey, preserveDraft, preserveHiddenDraft,
+  mergeDocument, mergeLatestDocument, commitBeforeContentRefresh, discardDraft: discardAutosaveDraft,
+  draftKey, preserveDraft, preserveClosingDraft, preserveHiddenDraft,
 } = useDocumentAutosave({
   identity: props,
   currentDocument,
@@ -672,6 +742,7 @@ const {
   sharingAgents: sharingAgentOptions,
   isBlocked: () => topicChangeInFlight.value || deletingDocument.value,
   realtime: { pending, generation: () => loadGeneration, refresh: refreshFromRealtime, schedule: scheduleRealtimeRefresh },
+  commitEditor: () => richEditor.value?.commitDraft?.(),
   onUpdated: document => emit('updated', document),
   onReloaded: document => applyDocument(document, 'updated'),
 })
@@ -781,6 +852,7 @@ async function closeDocumentSummary(): Promise<void> {
   } catch { refreshError.value = true }
 }
 async function flushEditor(): Promise<boolean> {
+  richEditor.value?.commitDraft?.()
   if (currentDocument.value?.content_type === 'binary' && richEditor.value?.flush && !await richEditor.value.flush()) return false
   return flushMetadata()
 }
@@ -902,6 +974,7 @@ async function refreshFromRealtime(): Promise<void> {
     } else {
       const latest = await documentService.getDocument(document.id, requestAgentId.value)
       if (generation === loadGeneration && currentDocument.value?.id === document.id) {
+        commitBeforeContentRefresh(latest)
         // A clean editor may have acquired a draft during the read.
         if (hasUnsavedChanges.value) {
           mergeDocument(latest)
@@ -921,7 +994,7 @@ async function refreshFromRealtime(): Promise<void> {
 function handleRefreshError(error: unknown): void {
   const status = isAxiosError(error) ? error.response?.status : undefined
   if (!currentDocument.value || status === 401 || status === 403 || status === 404) {
-    preserveDraft()
+    preserveClosingDraft()
     currentDocument.value = null
     emit('unavailable', props.documentId)
   } else refreshError.value = true
@@ -969,7 +1042,7 @@ function onWebsocketConnect(): void {
 }
 
 onMounted(async () => {
-  window.addEventListener('pagehide', preserveDraft)
+  window.addEventListener('pagehide', preserveClosingDraft)
   document.addEventListener('visibilitychange', preserveHiddenDraft)
   window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, changeEditorSession)
   // Labels are optional: their catalogue must not block document loading or realtime setup.
@@ -984,11 +1057,12 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  richEditor.value?.commitDraft?.()
   disposed = true
   loadGeneration += 1
   cancelAutosave()
   if (realtimeTimer) clearTimeout(realtimeTimer)
-  window.removeEventListener('pagehide', preserveDraft)
+  window.removeEventListener('pagehide', preserveClosingDraft)
   document.removeEventListener('visibilitychange', preserveHiddenDraft)
   window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, changeEditorSession)
   removeLogoutHook()
@@ -1017,19 +1091,27 @@ watch([requestedRowAction, loading, ownerOptionsReady], () => {
   }
 }, { flush: 'post' })
 function captureFocus(): DocumentFocus | null {
-  if (loading.value || historyOpen.value || summaryOpen.value || currentDocument.value?.id !== props.documentId) return null
-  const revision = currentDocument.value.revision
+  const current = currentDocument.value
+  if (loading.value || summaryOpen.value || current?.id !== props.documentId) return null
+  const empty = { selection: null, cursor: null, viewport: null }
+  if (historyOpen.value) {
+    const historical = historyPanel.value?.displayedRevision()
+    return historical ? { ...empty, surface: 'history', revision: historical.revision,
+      document_format: historical.document_format ?? current.document_format } : null
+  }
   const anchor = richEditor.value?.captureFocus?.()
-  if (anchor) return { surface: 'format', revision, document_format: currentDocument.value.document_format,
-    anchor, selection: null, cursor: null, viewport: null }
-  return documentFocus.capture(revision)
+  if (anchor) return { ...empty, surface: 'format', revision: current.revision, document_format: current.document_format, anchor }
+  return documentFocus.capture(current.revision) ?? {
+    ...empty, surface: 'format', revision: current.revision, document_format: current.document_format,
+  }
 }
 async function discardDraft(): Promise<void> {
   await richEditor.value?.discardDraft?.()
   await discardAutosaveDraft()
 }
 
-defineExpose({ flush: flushEditor, discardDraft, requestRowAction, captureFocus })
+const canEditMindMap = computed(() => canEditDocument.value && currentDocument.value?.document_format === 'mindmap')
+defineExpose({ flush: flushEditor, discardDraft, requestRowAction, captureFocus, canEditMindMap })
 
 async function resolveInlineImage(documentId: string, attachmentId: string, signal?: AbortSignal): Promise<Blob> {
   return documentService.documentAttachmentBlob(documentId, attachmentId, requestAgentId.value, signal)
@@ -1040,12 +1122,16 @@ async function exportCurrentDocumentPdf(html: string, signal: AbortSignal): Prom
   return documentService.exportDocumentPdf(document.id, html, signal)
 }
 const formatExportBusy = ref(false)
+const exchangeExports = computed(() => {
+  const document = currentDocument.value
+  return document ? documentFormat(document.document_format, document.format_version).exchangeExports ?? [] : []
+})
 const formatContentSource = computed<DocumentContentSource | null>(() => {
   const document = currentDocument.value, agent = requestAgentId.value
   if (!document) return null
   return {
     key: `${document.id}:${document.revision}:${agent}`, revision: document.revision, readonly: !canEditDocument.value,
-    load: signal => documentService.source(document.id, agent, signal),
+    load: signal => documentService.source(document.id, agent, signal, document.revision),
     save: async (content, expectedRevision, signal) => {
       if (!canEditDocument.value || currentDocument.value?.id !== document.id || requestAgentId.value !== agent || !isCurrentEditorSession()) throw new Error('Document changed')
       if (!await flushMetadata()) throw new Error('Unsaved document metadata')
@@ -1063,9 +1149,19 @@ const formatContentSource = computed<DocumentContentSource | null>(() => {
   }
 })
 let formatExportRequest: AbortController | undefined
-async function runFormatExport(pdf: boolean): Promise<void> {
-  const document = currentDocument.value, agent = requestAgentId.value
-  if (!document || formatExportBusy.value) return
+async function runFormatExport(pdf: boolean, target?: DocumentExchangeExport): Promise<void> {
+  const original = currentDocument.value
+  const agent = requestAgentId.value
+  if (!original || formatExportBusy.value) return
+  richEditor.value?.commitDraft?.()
+  if (target && hasUnsavedChanges.value) {
+    if (!await flushAutosave()) {
+      $q.notify({ type: 'negative', message: t('documents.formatExportFailed') })
+      return
+    }
+  }
+  const document = currentDocument.value
+  if (document?.id !== original.id || requestAgentId.value !== agent || !isCurrentEditorSession() || formatExportBusy.value) return
   const request = new AbortController(); formatExportRequest = request
   formatExportBusy.value = true
   try {
@@ -1074,10 +1170,11 @@ async function runFormatExport(pdf: boolean): Promise<void> {
         { key: `${document.id}:${document.revision}:${agent}`, revision: document.revision, readonly: true,
           load: signal => documentService.source(document.id, agent, signal, document.revision),
           save: async () => { throw new Error('Document snapshots are read-only') } }), request.signal)
-      : await documentService.source(document.id, agent, request.signal)
+      : await documentService.source(document.id, agent, request.signal, target ? document.revision : undefined, target?.code)
     if (!request.signal.aborted && currentDocument.value?.id === document.id && requestAgentId.value === agent) {
-      saveBlobAsResource(blob, document.title.replace(/[\\/:*?"<>|]/g, '-') + (pdf ? '.pdf' : document.document_format === 'data' ? '.json' : document.document_format === 'text' ? '.html'
-        : documentFormat(document.document_format, document.format_version).nativeExtension ?? ''))
+      const extension = target?.extension ?? (pdf ? '.pdf' : document.document_format === 'data' ? '.json' : document.document_format === 'text' ? '.html'
+        : documentFormat(document.document_format, document.format_version).nativeExtension ?? '')
+      saveBlobAsResource(blob, document.title.replace(/[\\/:*?"<>|]/g, '-') + extension)
     }
   } catch { if (!request.signal.aborted) $q.notify({ type: 'negative', message: t('documents.formatExportFailed') }) }
   finally { if (formatExportRequest === request) { formatExportBusy.value = false; formatExportRequest = undefined } }
@@ -1098,7 +1195,7 @@ async function uploadInlineImage(file: File, signal: AbortSignal, progress: (val
 
 function invalidateEditorSession(): void {
   if (!sessionActive.value) return
-  preserveDraft()
+  preserveClosingDraft()
   sessionActive.value = false
   ++loadGeneration; ++ownerLoadGeneration; ++keywordLoadGeneration
   cancelAutosave()
@@ -1113,12 +1210,15 @@ function changeEditorSession(event: Event): void {
   if ((event as CustomEvent<string | null>).detail === null || editorSession !== sessionGeneration()) invalidateEditorSession()
 }
 watch(() => authStore.user?.id, id => { if (draftUserId !== null && id !== draftUserId) invalidateEditorSession() }, { flush: 'sync' })
-const removeLogoutHook = registerBeforeLogoutHook(async () => { preserveDraft() })
+const removeLogoutHook = registerBeforeLogoutHook(async () => { preserveClosingDraft() })
 </script>
 
 <style scoped>
 .document-editor { display: flex; flex-direction: column; height: 100%; min-height: 0; min-width: 0; overflow: auto; }
 .document-editor > :not(.document-editor-fields) { flex-shrink: 0; }
+.document-editor--fullscreen { height: 100dvh; max-height: none; overflow: hidden; }
+.document-editor--fullscreen > .document-editor-fields { flex: 1 1 auto; min-height: 0; overflow: auto; display: block; margin: 0; padding: 0; }
+.document-editor--fullscreen > .document-editor-fields > .document-editor-content { min-height: 100%; padding: 0; }
 .document-editor--summary :deep(> .document-summary-panel) { flex: 1 1 auto; min-height: 0; }
 .document-editor-state { min-height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; }
 .document-editor-error { color: var(--solaire-red-accent); background: var(--solaire-red-light); }

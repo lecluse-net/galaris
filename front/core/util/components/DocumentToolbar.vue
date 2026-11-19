@@ -1,5 +1,5 @@
 <template>
-  <DocumentToolbarFrame :label="label" sticky>
+  <DocumentToolbarFrame :label="label" sticky document-navigation fullscreen-exit>
       <div v-for="group in visibleGroups" :key="group.id" class="editorial-toolbar-group"
         role="group" :aria-label="group.label">
         <span class="editorial-toolbar-title">{{ group.label }}</span>

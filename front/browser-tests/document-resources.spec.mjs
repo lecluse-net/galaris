@@ -100,7 +100,7 @@ test('conversation cards show the description collected with their shared thumbn
   expect(await card.evaluate(element => element.getBoundingClientRect().right)).toBeLessThanOrEqual(390)
 })
 
-test('static link cards roundtrip and export', async ({ page }, testInfo) => {
+test('video links, compact cards and embedded players roundtrip and export', async ({ page }, testInfo) => {
   await page.route('https://www.youtube-nocookie.com/embed/**', route => route.fulfill({ contentType: 'text/html', body: '<button>Play</button>' }))
   await mount(page, component)
   await page.evaluate(async ({ uri, png }) => {
@@ -122,6 +122,9 @@ test('static link cards roundtrip and export', async ({ page }, testInfo) => {
   const card = page.locator('[data-editor-surface] .galaris-link-card')
   await expect(card).toContainText('Mont Saint-Michel')
   await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
+  await expect(card.locator('iframe')).toHaveCount(0)
+  await selectDocumentContext(page, card.getByText('Mont Saint-Michel', { exact: true }))
+  await page.getByRole('button', { name: 'Show embedded content', exact: true }).click()
   await expect(card.locator('iframe')).toHaveAttribute('src', 'https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ')
   await expect(card.locator('iframe')).toBeVisible()
   await expect(card.locator('figure.image')).not.toBeVisible()
@@ -144,7 +147,8 @@ test('static link cards roundtrip and export', async ({ page }, testInfo) => {
   await selectDocumentContext(page, card.locator('p').filter({ hasText: 'A video of the island' }))
   await page.getByRole('button', { name: 'Show URL', exact: true }).click()
   await expect(card).toHaveCount(0)
-  await expect(page.locator('[data-editor-surface] a')).toHaveText('https://youtu.be/dQw4w9WgXcQ')
+  await expect(page.locator('[data-editor-surface] a')).toHaveText('Mont Saint-Michel')
+  await expect(page.locator('[data-editor-surface] a')).toHaveAttribute('href', 'https://youtu.be/dQw4w9WgXcQ')
   await page.keyboard.press('Control+z')
   await expect(card).toContainText('Mont Saint-Michel')
   for (const selector of ['p:has(strong)', 'p:last-of-type a', 'p:has-text("A video of the island")']) {
@@ -155,6 +159,9 @@ test('static link cards roundtrip and export', async ({ page }, testInfo) => {
     await page.getByRole('button', { name: 'Show card', exact: true }).click()
     await expect(card).toContainText('Mont Saint-Michel')
     await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
+    await expect(card.locator('iframe')).toHaveCount(0)
+    await selectDocumentContext(page, card.getByText('Mont Saint-Michel', { exact: true }))
+    await page.getByRole('button', { name: 'Show embedded content', exact: true }).click()
     await expect(card.locator('iframe')).toBeVisible()
   }
 })
@@ -172,17 +179,57 @@ test('reading a YouTube card embeds only the official player and leaves plain li
   }
 })
 
-test('the card action is available only for supported references', async ({ page }) => {
+test('reference display modes are offered per resource type', async ({ page }) => {
   await mount(page, component)
   await page.evaluate(async ({ component, uri }) => window.testApp.mount({ component, props: {
-    profile: 'document', modelValue: `<p><a href="${uri}">Attachment</a></p><p><a href="galaris://task/00000000-0000-0000-0000-000000000003">Task</a></p><p><a href="memory://00000000-0000-0000-0000-000000000004">Memory</a></p><p><a href="https://example.org">Website</a></p>`,
+    profile: 'document', modelValue: `<p><a href="${uri}">Attachment</a></p><p><a href="galaris://agent/7">Agent</a></p><p><a href="memory://00000000-0000-0000-0000-000000000004">Memory</a></p><p><a href="https://example.org">Website</a></p><p><a href="galaris://processes/sample">Process</a></p>`,
     createLinkCard: async () => '',
   } }), { component, uri })
-  for (let index = 0; index < 4; index++) {
+  for (let index = 0; index < 5; index++) {
     await selectDocumentContext(page, page.locator('[data-editor-surface] a').nth(index))
-    await expect(page.getByRole('button', { name: 'Show card', exact: true })).toHaveCount(index === 1 || index === 3 ? 1 : 0)
+    await expect(page.getByRole('button', { name: 'Show card', exact: true })).toHaveCount(index === 2 ? 0 : 1)
+    await expect(page.getByRole('button', { name: 'Show embedded content', exact: true })).toHaveCount(index === 4 ? 1 : 0)
     await page.keyboard.press('Escape')
   }
+})
+
+test('image references keep their authored appearance and destination across display modes and reopening', async ({ page }, testInfo) => {
+  await mount(page, component)
+  const destination = 'https://example.org/calibration'
+  const open = modelValue => page.evaluate(({ component, modelValue, uri, png }) => window.testApp.mount({ component, props: {
+    profile: 'document', modelValue,
+    attachments: [{ uri, name: 'sample.png', mediaType: 'image/png', size: 100 }],
+    resolveImage: async () => new Blob([Uint8Array.from(atob(png), value => value.charCodeAt(0))], { type: 'image/png' }),
+  } }), { component, modelValue, uri, png })
+  await page.route(`**/api/documents/${documentId}/attachments/${attachmentId}/thumbnail?*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
+  await open(`<p>Before the sample</p><figure class="image image-style-align-right" style="width: 180px"><a href="${destination}"><img src="${uri}" alt="Sample"></a><figcaption>Calibration <em>evidence</em></figcaption></figure><p>After the sample</p>`)
+  const editor = page.locator('[data-editor-surface]')
+  const tools = page.getByRole('toolbar', { name: 'Contextual actions', exact: true })
+  await selectDocumentContext(page, editor.getByRole('img', { name: 'Sample' }))
+  await tools.getByRole('button', { name: 'Appearance', exact: true }).click()
+  await page.getByRole('switch', { name: 'Border', exact: true }).click()
+  await page.getByRole('switch', { name: 'Shadow', exact: true }).click()
+  await page.keyboard.press('Escape')
+  await selectDocumentContext(page, editor.getByRole('img', { name: 'Sample' }))
+  await tools.getByRole('button', { name: 'Show card', exact: true }).click()
+  await expect(editor.getByRole('link', { name: 'Sample', exact: true })).toBeVisible()
+  await selectDocumentContext(page, editor.getByRole('link', { name: 'Sample', exact: true }))
+  await tools.getByRole('button', { name: 'Show URL', exact: true }).click()
+  await expect(editor.locator('figure')).toHaveCount(0)
+  await open(await editorHtml(page))
+  await selectDocumentContext(page, editor.getByRole('link', { name: 'Sample', exact: true }))
+  await tools.getByRole('button', { name: 'Show embedded content', exact: true }).click()
+  const figure = editor.locator('figure')
+  await expect(figure.getByRole('img', { name: 'Sample' })).toHaveJSProperty('naturalWidth', 1)
+  await expect(figure.locator('figcaption em')).toHaveText('evidence')
+  await expect(figure.locator('a')).toHaveAttribute('href', destination)
+  await expect(figure).toHaveCSS('width', '180px')
+  await expect(figure).toHaveAttribute('data-resource-shadow', 'true')
+  await expect(figure).toHaveAttribute('data-resource-border', '#FFE610')
+  await expect(editor).toContainText('Before the sample')
+  await expect(editor).toContainText('After the sample')
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.screenshot({ path: testInfo.outputPath('restored-embed-mobile.png') })
 })
 
 // Direct upload remains covered through paste after removal of its toolbar shortcut.
@@ -623,7 +670,7 @@ test('a thumbnail download failure can recover on the next card conversion', asy
   const card = page.locator('[data-editor-surface] .galaris-link-card')
   await selectDocumentContext(page, card.getByText('Description', { exact: true }))
   await page.getByRole('button', { name: 'Show URL', exact: true }).click()
-  await selectDocumentContext(page, page.locator('[data-editor-surface] a'))
+  await expect.poll(() => page.evaluate(() => window.getSelection()?.toString())).toBe('News')
   await page.getByRole('button', { name: 'Show card', exact: true }).click()
   await expect(card.locator('img')).toHaveJSProperty('naturalWidth', 1)
   expect(await page.evaluate(() => window.imageCalls)).toBe(2)

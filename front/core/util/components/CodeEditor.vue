@@ -3,6 +3,7 @@
         class="code-editor-container"
         :class="{ 'code-editor--fill': fillHeight }"
     >
+        <slot name="toolbar" :copy="copyContent" :language-label="languageLabel">
         <div class="editor-toolbar">
             <div class="toolbar-left">
                 <q-icon name="code" size="16px" class="q-mr-xs" />
@@ -21,6 +22,7 @@
                 <q-tooltip>{{ $t('common.copy') }}</q-tooltip>
             </q-btn>
         </div>
+        </slot>
         <div
             class="editor-wrapper"
             :class="{ 'has-error': showError && !isValid }"

@@ -97,16 +97,16 @@ décompressé ; une archive accepte au maximum 2 000 entrées et 32 niveaux de r
 
 ## Choisir le format de document
 
-Les noms affichés sont **Format Texte** et **Format Data**.
+Les noms affichés sont **Format Texte**, **Format Data** et **Carte mentale**.
 
-Chaque icône **Nouveau document** ouvre le menu des formats sous l’icône cliquée, avant toute création. Choisissez **Format Texte**
-ou **Format Data**, puis le titre et le propriétaire. Les menus contextuels des documents et
-des dossiers proposent aussi ces deux créations, dans le classement courant. Fermer le
+Chaque icône **Nouveau document** ouvre le menu des formats sous l’icône cliquée, avant toute création. Choisissez **Format Texte**,
+**Format Data** ou **Carte mentale**, puis le titre et le propriétaire. Les menus contextuels des documents et
+des dossiers proposent aussi ces créations, dans le classement courant. Fermer le
 menu ou la fenêtre de création ne crée aucun document.
 
-Le filtre **Format de document** permet de retrouver tous les formats, seulement Texte
-ou seulement Data. Il se combine avec la recherche et les autres filtres avant
-pagination. Les deux formats ont des icônes distinctes, un éditeur et un aperçu adaptés.
+Le filtre **Format de document** permet de sélectionner un format
+et se combine avec la recherche et les autres filtres avant
+pagination. Les formats ont des icônes distinctes, un éditeur et un aperçu adaptés.
 Titre, propriétaire, partage, sujet, mots-clés, résumé et historique suivent les mêmes règles.
 L'éditeur du Format Data conserve un brouillon JSON invalide sans l'enregistrer ni quitter le document.
 
@@ -117,6 +117,118 @@ l'enveloppe commune ; un rendu de repli ne promet pas la mise en page d'un lecte
 Si vous utilisez le retour du navigateur pour fermer sa fenêtre, une confirmation permet
 de conserver le brouillon ou de l'abandonner. L'abandon restaure le dernier contenu enregistré.
 
+
+## Cartes mentales
+
+Dans **Nouveau document**, choisissez **Carte mentale**. Sélectionnez un nœud, puis
+appuyez sur **Entrée** ou cliquez de nouveau sur son titre pour le modifier sur place.
+À l’ouverture de l’édition, le curseur se place à la fin du texte. La barre d’outils
+donne accès à la note, au lien, au changement de branche parente et à l’ordre des branches.
+Sur ordinateur, faites glisser une branche ou une sélection. Visez le haut ou le bas du nœud
+cible pour placer les branches avant ou après lui, ou son centre pour les placer parmi ses enfants.
+Les branches gardent leur ordre et leurs descendants. Un déplacement se défait en une seule fois.
+Les boutons **+** et **−** des nœuds déplient et replient leurs descendants. Le repli
+agit sur l’affichage. La disposition et l’enregistrement suivent les modifications de contenu.
+
+Quand un nœud a le focus, utilisez les flèches pour naviguer, **Tab** ou **Inser**
+pour ajouter un enfant et **Maj+Entrée** pour ajouter une branche sœur. **Espace**
+replie ou déplie une branche sans case à cocher. Depuis le titre, **Alt+flèches** sélectionne un autre nœud.
+**F2** édite le titre et **F3** édite la note. Hors édition, **Ctrl+K** ou le bouton **Lien**
+ajoute un lien dans un nouvel enfant après validation.
+Pendant l’édition du titre, de la note ou du lien, **Entrée** valide et **Échap** annule. **Maj+Entrée** insère un
+saut de ligne dans une note. Depuis un nœud, **Échap**, puis **Tab**, quitte la carte.
+Le bouton **Aide clavier** dans **Affichage** et **Alt+0** ouvrent la liste des raccourcis de la carte.
+
+Dans **Nœud**, choisissez **Ajouter une case à cocher**. Cliquez sur la case ou appuyez
+sur **Espace** sur le nœud hors édition pour la cocher ou la décocher. En édition,
+**Espace** insère un espace. Le document enregistre l’état de la case. Une nouvelle branche sœur
+créée juste sous un nœud avec une case reçoit une case vide, même si la première est cochée.
+Les nouveaux enfants et les branches créées depuis un nœud sans case commencent sans case.
+
+Utilisez **Maj+flèches** ou **Maj+clic** pour sélectionner une plage de nœuds visibles.
+**Ctrl+clic** (**Cmd+clic** sur Mac) sur le nœud l’ajoute à la sélection ou l’en retire.
+Sur un lien, **Ctrl/Cmd+clic** ouvre la référence. La sélection de texte est réservée aux champs en cours d’édition.
+La barre d’outils permet de déplacer, couper, copier ou supprimer les branches sélectionnées,
+ou d’ajouter et de retirer leurs cases à cocher. Dans la même carte, sélectionnez le nœud
+de destination puis collez pour ajouter les branches sous ce nœud. Une coupe déplace les branches
+au collage. Une copie crée des branches distinctes. Le déplacement, la copie et la suppression
+prennent les descendants des branches sélectionnées avec elles.
+
+Hors édition, coller du texte crée un enfant par ligne sous le nœud actif, y compris pour
+les lignes vides. Une ligne qui contient une URL seule devient un enfant avec un lien cliquable.
+En cours d’édition, le collage reste dans le champ ou le contenu riche en cours.
+
+Glissez des documents depuis l’arborescence ou une liste de la bibliothèque pour les référencer
+sous un nœud. Sur ordinateur, la liste détaillée reste à côté de la carte ouverte en édition.
+Déposez un fichier local ou une image web compatible pour l’ajouter aux pièces jointes de la carte,
+puis l’insérer sous le nœud cible. Déposer un lien web ajoute une référence cliquable.
+
+Le groupe **Édition** réunit aussi **Couper**, **Copier** et **Coller**. Les groupes
+de la barre d’outils sont centrés sur chaque ligne et passent à la suivante quand la place manque.
+Dans **Édition**, **Tout sélectionner** (**Ctrl/Cmd+A**) inclut les branches repliées.
+**Annuler la modification** (**Ctrl/Cmd+Z**) et **Rétablir** (**Ctrl/Cmd+Maj+Z**) couvrent
+les opérations sur la carte pendant l’ouverture du document, y compris les déplacements,
+les suppressions et les changements de cases. Pendant la saisie dans un nœud riche,
+les raccourcis agissent sur le texte du nœud.
+
+**Rechercher** (**Ctrl/Cmd+F**) parcourt les titres, les notes et le texte riche, y
+compris dans les branches repliées. **Suivant** révèle le nœud trouvé. **Remplacer**
+modifie une occurrence et **Tout remplacer** forme une modification annulable.
+La mise en forme et les adresses des liens sont conservées.
+
+Pour parcourir la carte, glissez le fond avec la souris ou un doigt, utilisez les
+barres de défilement ou faites défiler avec la molette. Le défilement vertical entraîne
+l’en-tête et les pièces jointes comme dans un document Texte. La barre de défilement
+horizontale reste visible en bas de la carte. Zoomez avec **Ctrl + molette**,
+un pincement ou les boutons de zoom. **Toute la carte**
+ajuste la vue, et le bouton du pourcentage revient à 100 %. Ces gestes ne créent
+pas de révision.
+Dans **Affichage**, **Passer en plein écran** agrandit la carte et conserve ses outils
+et les boutons de navigation documentaire. Les autres formats de document suivent le
+même principe. **Quitter le plein écran** ou **Échap** revient à l’affichage normal.
+
+Dans **Apparence**, **Thèmes de la carte** ouvre quatre palettes de nœuds. **Solaire**, **Océan**,
+**Forêt** et **Monochrome** suivent le mode clair ou sombre de Galaris. Choisissez
+une palette pour l’essayer. **Couleur de fond** ouvre le sélecteur Quasar. Choisissez
+directement une couleur dans le spectre ou saisissez son code hexadécimal. Le choix
+est indépendant du thème des nœuds et garde la même teinte en clair et en sombre.
+**Fond par défaut** rétablit le fond de l’application. **Appliquer** enregistre le
+réglage avec la carte et **Annuler** rétablit la dernière valeur enregistrée.
+
+Dans **Export**, **Exporter en image PNG** télécharge le diagramme entier avec son
+thème et son fond. **Imprimer** ouvre la boîte de dialogue du navigateur avec le
+diagramme ajusté sur une page A4 en paysage. Les deux commandes incluent les branches
+repliées, leurs notes, leurs cases et les images accessibles. Les références à des
+objets interactifs reprennent le titre et le texte de la référence. Les commandes
+préservent la sélection, le zoom et le repli dans l’éditeur.
+**Exporter le document et ses pièces jointes (ZIP)** inclut le diagramme HTML autonome
+et les fichiers du document. Sur mobile, **Partager** prépare le PDF et propose le
+menu du système, ou l’enregistrement du fichier si le partage de PDF est indisponible.
+
+Choisissez **Ajouter du contenu riche** ou pressez **Alt+Entrée** pour éditer un
+paragraphe directement dans le nœud. Le titre existant devient le premier paragraphe.
+Le nœud affiche son contenu directement et **Entrée** y ouvre l’éditeur.
+La barre d’outils s’adapte à la sélection et
+propose alors la mise en forme, les listes et les tableaux. **Insérer un fichier**
+et **Galaris** créent un sous-nœud par ressource dans une branche sélectionnée.
+Pendant l’édition du contenu riche, ces commandes insèrent la ressource à la sélection du texte.
+Un clic sur une image, un lien ou une carte affiche ses actions à la suite des groupes de la barre d’outils.
+Les commandes d’insertion d’un paragraphe avant ou après un bloc sont disponibles pendant l’édition d’un nœud enrichi.
+Choisissez **Ouvrir** pour accéder à la ressource. **Insérer ou modifier un lien** ajoute une URL au nœud. Dans son contenu
+riche, collez une URL, puis sélectionnez-la et choisissez **Afficher une carte**.
+Un nœud qui contient uniquement un lien utilise le cadre et l’espacement d’un nœud texte, y compris pendant la saisie.
+**Galaris** insère aussi une pièce jointe d’un autre document ou un autre objet Galaris.
+Les images sont affichées depuis leur source selon les droits du lecteur.
+Les actions **Afficher une carte** et **Afficher l’URL** permettent de changer
+la présentation des objets compatibles. **Icône du nœud** ouvre le
+même sélecteur d’icônes et d’émojis que les dossiers.
+
+**Nouveau document depuis…** accepte Freeplane et FreeMind (`.mm`), OPML (`.opml`),
+XMind récent (`.xmind` avec `content.json`) et le format Galaris (`.mindmap`).
+Le menu **Télécharger la source** propose les mêmes formats. Les échanges conservent
+l’arborescence, les titres, les notes en texte et les liens portables. Les styles,
+images, pièces jointes et fonctionnalités propres aux applications sources restent
+dans le fichier d’origine. L’export PDF présente le texte et la hiérarchie.
 
 ## Résumé courant et mots-clés
 
@@ -136,12 +248,13 @@ Seul le contenu du document conserve ses versions ; restaurer un ancien contenu 
 ni le résumé ni les mots-clés actuels. La fiche documentaire dans Mémoire montre toujours
 le résumé courant et ne propose plus son ancien historique.
 
-La sauvegarde du travail reste immédiate. Après une modification du contenu, une nouvelle
+La sauvegarde du travail reste immédiate. Pour les contenus stockés en texte, une nouvelle
 version entre dans l'historique après **cinq minutes sans autre modification du contenu**.
 Les sauvegardes rapprochées sont regroupées et le délai survit aux redémarrages. L'état initial
 reste conservé ; revenir à la dernière version conservée ne crée pas de doublon. Le numéro
 technique de version continue de protéger chaque sauvegarde concurrente : les numéros des
-versions présentes dans l'historique peuvent donc avoir des intervalles.
+versions présentes dans l'historique peuvent donc avoir des intervalles. Les formats stockés
+en fichier, comme le sample Dessin, inscrivent chaque sauvegarde modifiée dans l'historique.
 
 Au repos, Dream peut générer une courte description de la nature et de l'utilité du document,
 avec des termes de recherche. Par défaut, il intervient au-delà de **1 000 caractères de texte
@@ -150,6 +263,28 @@ utile**. Une entrée Dream pour actualiser un résumé automatique n'est créée
 depuis sa dernière génération : les petites modifications se cumulent. La mise en forme HTML
 seule ne compte pas. Un résumé saisi manuellement est préservé. Les deux seuils sont réglables
 dans les paramètres Dream et s'appliquent aussi aux jeux de données.
+
+## Choisir l’affichage d’une référence
+
+Dans un document Texte ou le contenu d’un nœud de carte mentale, sélectionnez la référence pour afficher sa barre contextuelle. Choisissez **Lien** pour le titre cliquable, **Carte** pour l’aperçu ou **Intégré** pour le contenu complet. Les boutons disponibles dépendent de l’objet. Un agent propose Lien et Carte. Un processus natif propose aussi Intégré pour parcourir son diagramme. Les images s’insèrent en Intégré et une adresse Web collée dans le texte reste un lien.
+
+Dans une carte mentale, le clic conserve l’aperçu à l’écran. Un document ou un processus intégré seul prend la bordure du nœud. À la sélection, la bordure change de couleur et double d’épaisseur. Les images restent sans bordure. Pour redimensionner une image, cliquez dessus puis faites glisser la poignée.
+
+Dans **Intégré → Apparence**, vous pouvez activer une bordure, choisir sa couleur et activer l’ombre séparément. Le réglage s’enregistre avec la référence sélectionnée. Un document Texte peut intégrer une carte mentale et une carte mentale peut intégrer un document Texte. Chaque lecteur consulte les ressources auxquelles il a accès.
+
+Un document Texte intégré s’affiche dans un cadre arrondi avec défilement interne. Pour un document ou un processus intégré, tirez la poignée en bas à droite pour ajuster la largeur et la hauteur. Au clavier, donnez le focus à la poignée et utilisez les flèches. La taille est enregistrée pour cette occurrence dans le document hôte et retrouvée à la réouverture. Un processus intégré conserve le zoom et le défilement de son diagramme.
+
+## Éditer le texte riche d’un nœud
+
+Sélectionnez un nœud de carte mentale et choisissez **Ajouter du contenu riche** ou
+**Éditer le contenu du nœud**. Le raccourci **Alt+Entrée** ouvre aussi l’éditeur.
+La barre devient celle de l’édition du contenu. Elle
+propose les styles, les listes, les tableaux, les équations et les insertions dans
+le nœud. Sur mobile, ouvrez **Autres outils** pour les commandes supplémentaires.
+Utilisez **Échap** ou **Retour à la carte** pour retrouver les outils de branches et de zoom.
+
+Avec un nœud sélectionné, tapez une lettre, un chiffre ou un signe pour ouvrir
+l’éditeur et l’ajouter à la fin du titre ou du contenu riche.
 
 ## Insérer une carte Contact
 
@@ -165,7 +300,8 @@ aucun accès supplémentaire au carnet de l’agent. Voir aussi [Fichiers](files
 L'icône **Conversation**, dans l'en-tête de la bibliothèque à côté du bouton d'affichage de celle-ci,
 affiche un panneau à droite du document sur ordinateur. Faites glisser la poignée entre
 le document et le chat pour ajuster leurs largeurs, comme entre la bibliothèque et le
-document. Au clavier, placez le focus sur cette poignée et utilisez les flèches gauche/droite.
+document. Au clavier, placez le focus sur la poignée. Utilisez les flèches dans l’axe du
+redimensionnement. Les touches **Début** et **Fin** atteignent les deux limites.
 Recherchez une conversation existante ou utilisez **Nouvelle conversation avec un agent**.
 Les deux sélecteurs ne proposent que les agents ayant accès au document, en lecture ou en
 modification, selon leurs droits personnels, d'équipe ou globaux. La création conserve aussi
@@ -203,6 +339,11 @@ affiché, pas au HTML. Les extraits longs sont tronqués ; changer de document o
 son contenu invalide les anciennes positions. Ce contexte reste dans les métadonnées du
 message : il ne crée pas de révision documentaire et ne modifie aucun droit d'accès.
 
+Quand vous envoyez un message avec une version chargée dans l'historique, l'agent reçoit le
+numéro de cette version. Dans Dessin, le dernier point utilisé au clavier ou au pointeur
+est exprimé dans les pixels du dessin sauvegardé. Avec le droit de lecture, l'agent peut
+lister les révisions, lire une version précise et comparer deux dessins dans une zone.
+
 Dans l'éditeur, **Plan du document** ouvre à gauche une liste des titres, avec un retrait
 selon leur niveau. Tous les titres restent visibles. Le panneau reprend le fond et la
 bordure du document. Cliquer sur
@@ -233,18 +374,21 @@ une ligne enregistre son état dans le document, avec sa sauvegarde et ses révi
 Les états restent visibles après réouverture, en lecture seule et dans les exports.
 Ces listes ne nécessitent aucun jeu de données.
 
-Sur ordinateur comme sur mobile, une barre d'icônes contextuelle apparaît sous la barre
-d'outils principale dans les documents modifiables. Ses commandes suivent la sélection :
+Sur ordinateur comme sur mobile, le groupe **Actions contextuelles** apparaît à la suite
+des autres groupes dans les documents modifiables. Ses commandes suivent la sélection :
 tableau et cellule, image, lien ou bloc de code. Les menus d'icônes donnent accès aux
 propriétés de l'objet sélectionné. Les commandes de texte, de paragraphe et d'insertion
 restent dans la barre principale, avec **Plus d'outils** pour ses commandes supplémentaires.
-Faites glisser la sous-barre horizontalement pour atteindre toutes ses commandes.
-Cette barre reste sous la barre principale pendant le défilement et n'apparaît que si la sélection propose des actions, sans laisser
-de blanc lorsqu'elle disparaît. Le clic droit, **Maj+F10** et l'appui long restent ceux du
+Les commandes contextuelles passent à la ligne quand la place manque et restent avec
+la barre d’outils pendant le défilement. Elles apparaissent quand la sélection propose
+des actions. Le clic droit, **Maj+F10** et l'appui long restent ceux du
 navigateur : correction orthographique, dictionnaire et presse-papiers selon ses capacités.
-En édition, un clic gauche sur un lien ou une carte les sélectionne sans les ouvrir.
-Utilisez **Ouvrir** dans la barre contextuelle, ou **Ctrl/Cmd+clic**, pour suivre leur cible.
-En lecture seule, le clic gauche continue d'ouvrir la cible.
+Un clic simple sélectionne une référence à un document, y compris en lecture seule.
+Utilisez **Ctrl+clic** (**Cmd+clic** sur Mac) pour ouvrir le document, ou **Ouvrir**
+dans la barre contextuelle quand elle est disponible. En plein écran, la destination
+et les documents parcourus avec **Document précédent** ou **Document suivant** restent
+en plein écran. Pour les autres liens et cartes, le clic sélectionne en édition
+et ouvre la cible en lecture seule.
 Les commandes communes ne sont pas répétées. Pour modifier un lien ou une équation,
 sélectionnez-le puis utilisez le bouton correspondant dans la barre d'outils.
 

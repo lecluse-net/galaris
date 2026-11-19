@@ -7,6 +7,7 @@ import { getTaskDisplayStatus, pauseBadge } from './services/taskStatusService'
 const idFrom = (uri: string) => referenceId(uri, 'task', '/task', 'task_id')
 export default {
   schemes: ['galaris'],
+  linkIcon: 'task_alt',
   canonical(value) { const id = idFrom(value); return id ? `galaris://task/${id}` : null },
   async search(query, formatting) {
     const { data } = await api.get<{ items: Task[] }>('/tasks/recent', { params: { limit: 50, q: query } })

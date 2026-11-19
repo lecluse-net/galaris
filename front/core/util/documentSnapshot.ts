@@ -7,7 +7,8 @@ import { hideInteractiveSource } from './interactiveHtml'
 import { solaireStyles } from './solaire'
 import { layoutDocumentRendering } from './layoutDocumentRendering'
 import type { RenderedDocumentResolver } from './renderedDocument'
-import { embeddedResourceCards, prepareDocumentCard } from './resourceCards'
+import { embeddedResourceCards, isLinkedImageCard, prepareDocumentCard, renderLinkedImage, type ResourceImageResolver } from './resourceCards'
+import { applyReferenceAppearance, explicitReferenceMode } from './documentReference'
 import { webLinkCardImage, prependWebLinkImage } from './webLinkPreview'
 import { renderMath, mathSnapshotStyles } from './mathRendering'
 
@@ -20,6 +21,8 @@ export async function preparePortableDocumentSnapshot(
   signal: AbortSignal,
   resolveImage?: (documentId: string, attachmentId: string) => Promise<Blob>,
   resolveRenderedContent?: RenderedDocumentResolver,
+  resolveLinkedImage?: ResourceImageResolver,
+  portableAttachments = false,
 ): Promise<string> {
   let imageBytes = 0
   const html = await prepareDocumentSnapshot(content, title, signal, async blob => {
@@ -37,7 +40,7 @@ export async function preparePortableDocumentSnapshot(
       }
       reader.readAsDataURL(blob)
     })
-  }, resolveImage, false, resolveRenderedContent)
+  }, resolveImage, portableAttachments, resolveRenderedContent, resolveLinkedImage)
   if (new Blob([html]).size > MAX_SNAPSHOT_BYTES) throw new Error('Document snapshot too large')
   return html
 }
@@ -51,10 +54,15 @@ export async function prepareDocumentSnapshot(
   resolveImage?: (documentId: string, attachmentId: string) => Promise<Blob>,
   portableAttachments = false,
   resolveRenderedContent?: RenderedDocumentResolver,
+  resolveLinkedImage?: ResourceImageResolver,
 ): Promise<string> {
   signal.throwIfAborted()
   const doc = new DOMParser().parseFromString(sanitizeRichHtml(content, 'document'), 'text/html')
   doc.querySelectorAll('script').forEach(script => script.remove())
+  applyReferenceAppearance(doc.body)
+  for (const element of doc.querySelectorAll('[data-resource-image], [data-resource-card]')) {
+    element.removeAttribute('data-resource-image'); element.removeAttribute('data-resource-card')
+  }
   const interactive = [...doc.querySelectorAll('pre > code.language-galaris-app, pre > code.language-galaris-raw-html')]
   const resources = embeddedResourceCards(doc)
   resources.forEach(card => prepareDocumentCard(card, false))
@@ -62,20 +70,30 @@ export async function prepareDocumentSnapshot(
   const renderings = resolveRenderedContent ? await Promise.all(interactive.map((code, index) => resolveRenderedContent(
     code.textContent ?? '', code.classList.contains('language-galaris-app') ? 'galaris-app' : 'galaris-raw-html', index, signal,
   ))) : []
-  const resourceRenderings = resolveRenderedContent ? await Promise.all(resources.map((card, index) => resolveRenderedContent(
-    card.querySelector('a')?.getAttribute('href') ?? '', 'galaris-resource-card', index, signal,
-  ))) : []
+  const resourceRenderings = resolveRenderedContent ? await Promise.all(resources.map(async (card, index) => {
+    try { return await resolveRenderedContent(card.querySelector('a')?.getAttribute('href') ?? '', 'galaris-resource-card', index, signal) }
+    catch (error) {
+      signal.throwIfAborted()
+      if (!explicitReferenceMode(card)) throw error
+      return undefined
+    }
+  })) : []
   if (!resolveRenderedContent) hideInteractiveSource(doc.body, title)
   highlightDocumentCode(doc.body)
   await renderMath(doc.body)
   const mathCss = await mathSnapshotStyles(doc.body, signal)
+  const inlineImages = [...doc.querySelectorAll('img')]
+  if (resolveLinkedImage) {
+    const linkedImages = [...doc.querySelectorAll('blockquote')].filter(isLinkedImageCard)
+    await Promise.all(linkedImages.map(card => renderLinkedImage(card, resolveLinkedImage, signal, imageUrl)))
+  }
   doc.querySelectorAll('a').forEach(link => {
     if (portableAttachments && attachmentReference(link.getAttribute('href') ?? '')) return
     const href = richLinkHref(link.getAttribute('href') ?? '')
     if (href) link.href = new URL(href, window.location.href).href
     else link.removeAttribute('href')
   })
-  await Promise.all([...doc.querySelectorAll('img')].map(async image => {
+  await Promise.all(inlineImages.map(async image => {
     const reference = attachmentReference(image.getAttribute('src') ?? '')
     image.removeAttribute('src')
     if (!reference || !resolveImage) throw new Error('Document image unavailable')

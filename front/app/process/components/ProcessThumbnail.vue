@@ -1,5 +1,5 @@
 <template>
-  <div ref="root" class="process-thumbnail process-diagram-theme" :aria-label="title" role="img">
+  <div ref="root" class="process-thumbnail process-diagram-theme" :class="{ 'process-thumbnail--compact': compact }" :aria-label="title" role="img">
     <svg v-if="preview" :viewBox="bounds" aria-hidden="true">
       <line v-for="flow in edges" :key="flow.id" :x1="flow.x1" :y1="flow.y1" :x2="flow.x2" :y2="flow.y2" class="edge" />
       <g v-for="node in graph?.nodes" :key="node.id" :transform="`translate(${node.x},${node.y})`">
@@ -18,7 +18,7 @@ import { useI18n } from 'vue-i18n'
 import { queuePreview } from '@/core/util'
 import { processResourceService, type ProcessResourcePreview } from '../services/processResourceService'
 import { persistLayout } from '../graphEditing'
-const { uri, agentId = null, title } = defineProps<{ uri: string; agentId?: number | null; title: string }>()
+const { uri, agentId = null, title, compact = false } = defineProps<{ uri: string; agentId?: number | null; title: string; compact?: boolean }>()
 const { t } = useI18n()
 const root = useTemplateRef<HTMLElement>('root')
 const preview = shallowRef<ProcessResourcePreview | null>(null)
@@ -55,6 +55,8 @@ onBeforeUnmount(() => { request?.abort(); observer?.disconnect() })
 <style scoped>
 .process-thumbnail { position: relative; width: 100%; height: 100%; min-height: 86px; display: grid; place-items: center; background: var(--diagram-lane); }
 svg { width: 100%; height: 100%; }
+.process-thumbnail--compact { height: auto; min-height: 0; }
+.process-thumbnail--compact svg { height: auto; max-height: 100px; }
 .edge { stroke: var(--diagram-line); stroke-width: 1.8; }
 .node { fill: var(--node-fill); stroke: var(--node-accent); stroke-width: var(--node-border-width); }
 text { fill: var(--diagram-text); font-size: 15px; font-weight: 700; }

@@ -410,7 +410,8 @@ standards de Galaris, puis vérifier le parcours au clavier et en petit viewport
 ## Reprise du chantier
 
 **Livré.** Diagnostics expurgés et persistants dans `/data/update-diagnostics`, Sample
-Partage de fichiers avec protocole et fiche de Service dans le même ZIP et comparaison de PNG dans Dessin. Le catalogue HTTPS administré
+Partage de fichiers avec protocole et fiche de Service dans le même ZIP, contexte de
+révision dans le Chat et comparaison de PNG dans Dessin. Le catalogue HTTPS administré
 vérifie l'index signé, son expiration, les empreintes et les révocations à l'acquisition.
 
 **Vérifié.** 65 tests backend ciblés et 59 scénarios Chromium sont passés. Le

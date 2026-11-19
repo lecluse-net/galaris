@@ -19,6 +19,12 @@ export async function exportDocumentBundle(
       reader.readAsDataURL(blob)
     })
   }, resolveImage, true, resolveRenderedContent)
+  await downloadDocumentBundle(html, title, signal, render)
+}
+
+export async function downloadDocumentBundle(html: string, title: string, signal: AbortSignal,
+  render: (html: string, signal: AbortSignal) => Promise<Blob>,
+): Promise<void> {
   signal.throwIfAborted()
   if (new Blob([html]).size > 12_000_000) throw new Error('Snapshot too large')
   const bundle = await render(html, signal)

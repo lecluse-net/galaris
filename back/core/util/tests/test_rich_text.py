@@ -1,3 +1,5 @@
+from html import escape
+
 import pytest
 
 from core.util.rich_text import (
@@ -178,6 +180,42 @@ def test_media_cards_preserve_type_without_persisting_players(kind):
     assert f"galaris-media-{kind}" in normalized
     assert uri in normalized
     assert normalize_html(normalized, profile="document") == normalized
+
+
+def test_reference_modes_preserve_attachment_layout_for_reopening():
+    uri = f"document://{DOCUMENT}/attachments/{ATTACHMENT}"
+    image = f'<figure class="image" style="width: 180px"><img src="{uri}" alt="Sample"><figcaption>Calibration</figcaption></figure>'
+    markup = (
+        f'<p><a href="{uri}" data-resource-mode="link" data-resource-image="{escape(image, quote=True)}" '
+        'data-resource-border="#854CF0" data-resource-shadow="true">Sample</a></p>'
+    )
+    normalized = normalize_html(markup, profile="document")
+    assert normalize_html(normalized, profile="document") == normalized
+    assert image_references(normalized) == {uri}
+    assert visible_text(normalized) == "Sample"
+    for invalid in (
+        markup.replace('data-resource-mode="link"', 'data-resource-mode="embed"'),
+        markup.replace('#854CF0', 'url(https://example.invalid)'),
+        markup.replace('Calibration', '&lt;script&gt;1&lt;/script&gt;'),
+    ):
+        with pytest.raises(RichTextError, match="Invalid document reference presentation"):
+            normalize_html(invalid, profile="document")
+
+
+def test_reference_dimensions_roundtrip_on_link_card_and_embed():
+    uri = f"document://{DOCUMENT}"
+    link = f'<a href="{uri}" data-resource-mode="link" data-resource-size="640x360">Sample</a>'
+    for markup in (
+        f"<p>{link}</p>",
+        *(f'<blockquote class="galaris-link-card" data-resource-mode="{mode}" data-resource-size="640x360"><p><a href="{uri}">Sample</a></p></blockquote>'
+          for mode in ("card", "embed")),
+    ):
+        normalized = normalize_html(markup, profile="document")
+        assert 'data-resource-size="640x360"' in normalized
+        assert normalize_html(normalized, profile="document") == normalized
+    for value in ("0x80", "640x4097", "640pxx360", "640x360;color:red"):
+        with pytest.raises(RichTextError, match="Invalid document reference presentation"):
+            normalize_html(f"<p>{link.replace('640x360', value)}</p>", profile="document")
 
 
 @pytest.mark.parametrize('source', ['/api/agents', 'https://example.com/a.js', 'https://cdn.jsdelivr.net.evil.invalid/a.js', 'https://cdn.jsdelivr.net:bad/a.js', 'javascript:alert(1)'])

@@ -22,7 +22,7 @@ from core.i18n import tr
 from core.storage import get_storage, prepare_content, resource_is_referenced
 from core.user import HumanActor, get_user_record, UserModel
 from .schemas import DocumentLibraryRequest, DocumentLibraryPage, DocumentOwnerOptions, DocumentSourceCreate
-from core.util import archived_document_html, convert_to_html, visible_text, image_references, attachment_reference, complete_await, complete_io
+from core.util import archived_document_html, convert_to_html, visible_text, image_references, complete_await, complete_io
 from .models import DocumentRevision, DocumentSource
 from .schemas import DocumentItemCreate, DocumentUpdate, DocumentPayload, DocumentGrantUpdate, DocumentDeletionResult, DocumentDetail, DocumentContentRevisionPage, DocumentContentRevisionPublic, DocumentContentRevisionDetail, DocumentContentDiff, DocumentOwnerUpdate, DocumentFolderOption, DocumentGlobalAccessUpdate
 from .contracts import DocumentAccess
@@ -749,6 +749,25 @@ async def list_document_folder_options(agent_id: int) -> list[DocumentFolderOpti
             folder.shared = folder.shared or shared
     return sorted(folders.values(), key=lambda folder: folder.path.casefold())
 
+def _apply_content_images(item: Document, references: set[str]) -> None:
+    from .document_attachment_service import attachments_from_item
+
+    attachments = attachments_from_item(item, include_retained=True)
+    allowed = {f"document://{item.id}/attachments/{value.id}" for value in attachments
+               if value.media_type in {"image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml"}}
+    if references - allowed:
+        raise DocumentPermissionError("The image must belong to this document's attachments.")
+    active = attachments_from_item(item)
+    visible = [attachment for attachment in active if f"document://{item.id}/attachments/{attachment.id}" not in references]
+    metadata = {**item.metadata_, "content_images": sorted(references)}
+    if len(visible) != len(active):
+        visible_ids = {attachment.id for attachment in visible}
+        metadata["document_attachments"] = [attachment.model_dump(mode="json", exclude={"memory_item_id"}) for attachment in visible]
+        metadata["retained_document_attachments"] = [attachment.model_dump(mode="json", exclude={"memory_item_id"})
+            for attachment in attachments if attachment.id not in visible_ids]
+    item.metadata_ = metadata
+
+
 async def update_item(
     item_id: UUID,
     data: DocumentUpdate,
@@ -922,44 +941,19 @@ async def update_item(
                 raise DocumentConflictError(
                     "This content now requires explicit text/html writes. Refresh the client."
                 )
-            if item.node_kind == "document":
-                from .document_attachment_service import attachments_from_item
-
-                allowed = {
-                    str(value.id)
-                    for value in attachments_from_item(item, include_retained=True)
-                    if value.media_type in {"image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml"}
-                }
-                for uri in image_references(content.decode("utf-8")):
-                    reference = attachment_reference(uri)
-                    if (
-                        reference is None
-                        or reference[0] != item.id
-                        or str(reference[1]) not in allowed
-                    ):
-                        raise DocumentPermissionError(
-                            "The image must belong to this document's attachments."
-                        )
             future_media_type = "text/html"
             data = data.model_copy(update={"media_type": "text/html"})
             fields.add("media_type")
             item.content_profile_version = 1
             if item.node_kind == "document":
-                from .document_attachment_service import attachments_from_item
-                references = image_references(content.decode("utf-8"))
-                active = attachments_from_item(item)
-                visible = [attachment for attachment in active
-                    if f"document://{item.id}/attachments/{attachment.id}" not in references]
-                metadata = {
-                    **item.metadata_,
-                    "content_images": sorted(references),
-                }
-                if len(visible) != len(active):
-                    visible_ids = {attachment.id for attachment in visible}
-                    metadata["document_attachments"] = [attachment.model_dump(mode="json", exclude={"memory_item_id"}) for attachment in visible]
-                    metadata["retained_document_attachments"] = [attachment.model_dump(mode="json", exclude={"memory_item_id"})
-                        for attachment in attachments_from_item(item, include_retained=True) if attachment.id not in visible_ids]
-                item.metadata_ = metadata
+                _apply_content_images(item, image_references(content.decode("utf-8")))
+        elif item.document_format == "mindmap":
+            from . import mindmap
+            from .content_limits import validate_document_size
+            source = mindmap.normalize(content.decode("utf-8"))
+            validate_document_size(source)
+            _apply_content_images(item, mindmap.attached_images(source))
+            content = source.encode("utf-8")
         if future_content_type == "text" or future_media_type.startswith("text/"):
             assert_safe_text(content.decode("utf-8", errors="replace"))
         digest = _content_hash(content)
@@ -1343,6 +1337,14 @@ async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = 
     permitted_images = {f"document://{prepared_clone.identity}/attachments/{attachment.id}" for attachment in prepared_clone.attachments} if prepared_clone else set[str]()
     if data.document_format in {"text", "html"} and image_references(content.decode("utf-8", errors="replace")) - permitted_images:
         raise DocumentPermissionError("The image must belong to this document's attachments")
+    if data.document_format == "mindmap":
+        from . import mindmap
+        from .content_limits import validate_document_size
+        source = mindmap.normalize(content.decode("utf-8"))
+        validate_document_size(source)
+        if mindmap.attached_images(source) - permitted_images:
+            raise DocumentPermissionError("The image must belong to this document's attachments")
+        content = source.encode("utf-8")
     if definition.storage_kind == "text":
         assert_safe_text(content.decode("utf-8", errors="replace"))
     assert_safe_value(data.model_dump(exclude={"payload", "source"}))

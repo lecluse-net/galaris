@@ -1,9 +1,14 @@
 import type { RichContentContribution } from '@/core/util'
-import { documentIdFromResourceUri, documentFolderId, documentFolderHref, canonicalFolderLink } from '@/core/util/facade'
+import { attachmentReference, documentIdFromResourceUri, documentFolderId, documentFolderHref, canonicalFolderLink } from '@/core/util/facade'
 const service = async () => (await import('./services/documentService')).documentService
 export default {
   canonical: canonicalFolderLink,
-  previewImage: async (uri, agentId, signal) => (await service()).linkThumbnail(uri, agentId, signal),
+  canPreviewImage: uri => /^https?:\/\//i.test(uri) || Boolean(attachmentReference(uri)),
+  previewImage: async (uri, agentId, signal) => {
+    const attachment = attachmentReference(uri)
+    const documents = await service()
+    return attachment ? documents.documentAttachmentThumbnailBlob(...attachment, agentId, signal) : documents.linkThumbnail(uri, agentId, signal)
+  },
   async search(query) {
     const library = await (await service()).browseDocumentLibrary({ query, limit: 50, include_keywords: false })
     return library.entries.map(({ item }) => ({ uri: `document://${item.id}`, title: item.title, context: String(item.owner_agent_id ?? item.owner_user_id ?? '') }))
@@ -31,6 +36,15 @@ export default {
     return id ? (await (await service()).getManagedDocument(id)).item.title : uri
   },
   canCard: uri => documentIdFromResourceUri(uri) !== null || documentFolderId(uri) !== null,
+  defaultMode: uri => documentFolderId(uri) ? 'card' : undefined,
+  async embed(uri, _agentId, signal) {
+    const id = documentIdFromResourceUri(uri)
+    if (!id) return false
+    const [{ findDocumentFormat }, document] = await Promise.all([
+      import('./documentFormats'), (await service()).getDocument(id, null, signal),
+    ])
+    return Boolean(findDocumentFormat(document.document_format, document.format_version)?.embed)
+  },
   async card(uri, agentId) {
     const folder = documentFolderId(uri)
     if (folder) {

@@ -1,7 +1,11 @@
 <template>
-  <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': fullscreen }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown="editorKeydown" @keyup="syncKeyboardSelection" @pointerdown.capture="pointerRequest++" @mousedown.capture="editorMouseDown" @click.capture="editorClick" @contextmenu.capture="openContextMenu" @galaris-document-object-focus="selectEmbeddedObject">
+  <div ref="root" class="rich-editor tiptap-galaris-editor" :class="{ 'editorial-fullscreen': standaloneFullscreen, 'tiptap-galaris-editor--embedded': surface === 'embedded' }" :style="{ '--editor-min-height': minHeight, '--editor-max-height': autoGrow ? 'none' : maxHeight }" @keydown="editorKeydown" @keyup="syncKeyboardSelection" @pointerdown.capture="pointerRequest++" @mousedown.capture="editorMouseDown" @click.capture="editorClick" @contextmenu.capture="openContextMenu" @galaris-document-object-focus="selectEmbeddedObject">
     <div class="editorial-toolbars">
-      <EditorialToolbar v-if="editor" :editor="editor" :revision="revision" :mode="toolbarMode" :document="profile === 'document'" :source="sourceMode" :find-open="findOpen" :outline-open="outlineOpen" :full-width="effectiveLayout === 'full'" :fullscreen="fullscreen" :fits="fits" :disabled-actions="disabledActions" @action="action">
+      <Teleport :to="toolbarTarget ?? 'body'" :disabled="!toolbarTarget">
+      <EditorialToolbar v-if="editor" :editor="editor" :revision="revision" :mode="toolbarMode" :document="profile === 'document'" :source="sourceMode" :find-open="findOpen" :outline-open="outlineOpen" :full-width="effectiveLayout === 'full'" :fullscreen="fullscreen" :fits="fits" :disabled-actions="disabledActions" :hidden-actions="hiddenActions"
+        :document-navigation="Boolean(managedFullscreen) || toolbarDocumentNavigation" :fullscreen-exit="surface === 'embedded'"
+        @pointerdown.capture="syncKeyboardSelection()" @action="action">
+        <template v-if="$slots['toolbar-leading']" #leading><slot name="toolbar-leading" /></template>
         <template v-if="personalVoice" #voice>
           <EditorialToolButton flat dense :color="voice?.dictating || voice?.dictationPending ? 'negative' : 'primary'" :icon="voice?.dictating || voice?.dictationPending ? 'stop' : 'mic'" :label="voice?.dictating ? voice.labels.finishDictation : voice?.dictationPending ? voice.labels.processing : voice?.labels.dictate ?? ''" :disable="readonly || sourceMode || voice?.reading" @click="voice?.toggleDictation()" />
           <EditorialToolButton flat dense color="primary" :icon="voice?.reading && !voice.paused ? 'pause' : 'play_arrow'" :label="voice?.reading ? voice.paused ? voice.labels.paused : voice.labels.reading : voice?.labels.read ?? ''" :disable="voice?.dictating || voice?.dictationPending" @click="action('read')" />
@@ -16,10 +20,34 @@
             </q-list></q-menu>
           </EditorialToolButton>
         </template>
+        <template #trailing>
+          <Teleport :to="contextToolbarTarget ?? 'body'" :disabled="!contextToolbarTarget">
+            <div v-if="contextToolbarVisible && activeContext && !readonly && !sourceMode && !resourceDetail && !dialogOpen && !mathOpen"
+              class="editorial-toolbar-group editorial-context-toolbar" role="toolbar" :aria-label="t('richEditor.contextActions')" @mousedown.prevent>
+              <span class="editorial-toolbar-title" aria-hidden="true">{{ t('richEditor.contextActions') }}</span>
+              <div class="editorial-toolbar-row">
+                <component :is="referenceComponent" v-if="activeContext.kind === 'resource'" toolbar :modes="referenceModes" :busy="busyCard" @mode="convertReference">
+                  <EditorialContextActions toolbar kind="resource" :actions="contextActions" :readonly="readonly" language="" :languages="[]" :table-classes="null" @action="runContextAction" />
+                  <EditorialToolButton v-for="item in selectedReferenceActions" :key="item.id" flat dense color="primary" :icon="item.icon" :label="item.label" @click="item.run" />
+                  <EditorialToolButton v-if="selectedReference.mode === 'embed' && selectedReference.element?.matches('blockquote, figure, span, img')" flat dense color="primary" icon="palette" :label="t('richEditor.resources.appearance')">
+                    <q-menu>
+                      <div class="q-pa-sm column" @mousedown.stop>
+                        <template v-if="allowImageBorder || !selectedReference.image">
+                          <q-toggle :model-value="Boolean(selectedReference.element?.dataset.resourceBorder)" :label="t('richEditor.resources.embedBorder')" @update:model-value="setReferenceAppearance('border', $event ? solaire.yellow.accent : '')" />
+                          <q-color v-if="selectedReference.element?.dataset.resourceBorder" :model-value="selectedReference.element.dataset.resourceBorder" :palette="solaireColors.map(color => solaire[color].accent)" default-view="palette" no-header no-footer @change="setReferenceAppearance('border', $event ?? '')" />
+                        </template>
+                        <q-toggle :model-value="selectedReference.element?.dataset.resourceShadow === 'true'" :label="t('richEditor.resources.embedShadow')" @update:model-value="setReferenceAppearance('shadow', $event ? 'true' : '')" />
+                      </div>
+                    </q-menu>
+                  </EditorialToolButton>
+                </component>
+                <EditorialContextActions v-else toolbar :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runContextAction" @language="setCodeLanguage" @table-style="applyTableStyle" @focus-editor="editor?.view.focus()" />
+              </div>
+            </div>
+          </Teleport>
+        </template>
       </EditorialToolbar>
-      <div v-if="contextToolbarVisible && activeContext && !readonly && !sourceMode && !resourceDetail && !dialogOpen && !mathOpen" class="editorial-context-toolbar" role="toolbar" :aria-label="t('richEditor.contextActions')" @mousedown.prevent>
-        <EditorialContextActions toolbar :kind="activeContext.kind" :actions="contextActions" :readonly="readonly" :language="selectedAttributes.language ?? ''" :languages="languages" :table-classes="tableClasses" @action="runContextAction" @language="setCodeLanguage" @table-style="applyTableStyle" @focus-editor="editor?.view.focus()" />
-      </div>
+      </Teleport>
     </div>
     <div v-if="findOpen" class="editorial-search-bar" role="search" :aria-label="t('richEditor.find')">
       <q-input ref="searchInput" v-model="fields.search" class="editorial-search-input" dense outlined :label="t('richEditor.find')" @keydown.enter.prevent="findNext" />
@@ -33,8 +61,8 @@
       <q-btn flat round dense icon="close" :aria-label="t('common.close')" @click="closeFind" />
     </div>
     <div class="editorial-workspace">
-      <DocumentOutline v-if="profile === 'document' && outlineOpen && editor" :editor="editor" :revision="revision" @close="outlineOpen = false" />
-    <div class="editorial-body" :data-document-layout="profile === 'document' ? effectiveLayout : undefined">
+      <DocumentOutline v-if="profile === 'document' && !fullscreen && outlineOpen && editor" :editor="editor" :revision="revision" @close="outlineOpen = false" />
+    <div class="editorial-body" :data-document-layout="pageLayout">
       <EditorialSource v-if="sourceMode" :model-value="sourceDraft" :readonly="readonly" :label="t('richEditor.source')" @update:model-value="editSource" />
       <div v-show="!sourceMode" ref="editorHost" />
     </div>
@@ -42,13 +70,14 @@
     <template v-if="!sourceMode">
       <Teleport v-for="target in codeCopies" :key="target.key" :to="target.element"><CodeBlockCopyButton :source="target.source" /></Teleport>
       <Teleport v-for="target in documentLinkIcons" :key="target.key" :to="target.element"><WorkingDocumentIcon :document-id="target.documentId" title="" size="1em" readonly /></Teleport>
-      <Teleport v-for="target in embeddedTargets" :key="target.key" :to="target.element">
+      <Teleport v-for="target in renderedObjects" :key="target.key" :to="target.element">
         <div class="editorial-embedded-rendering">
         <slot name="embedded-code" :source="target.source" :language="target.language" :register-snapshot="(capture: RenderedDocumentCapture | undefined) => registerSnapshot(target.key, capture)"><div class="q-pa-md">{{ t('richEditor.embeddedApplication') }}</div></slot>
         <q-btn v-if="readonly" flat class="editorial-object-preview" :aria-label="t('richEditor.interactivePreview')" @click.stop="objectPreview = target" />
         </div>
       </Teleport>
-      <Teleport v-for="target in resourceEmbeds" :key="target.key" :to="target.element"><ResourceEmbed :uri="target.uri" :title="target.title" :agent-id="resourceAgentId" :register-snapshot="(capture: RenderedDocumentCapture | undefined) => registerResourceSnapshot(target.key, capture)" /></Teleport>
+      <Teleport v-for="target in resourceEmbeds" :key="target.key" :to="target.element"><component :is="target.display === 'card' ? DocumentCard : DocumentEmbed" :uri="target.uri" :display="target.display" :title="target.title" :agent-id="resourceAgentId" :register-actions="(actions: readonly DocumentReferenceAction[]) => registerReferenceActions(target.key, actions)" :register-snapshot="(capture: RenderedDocumentCapture | undefined) => registerResourceSnapshot(target.key, capture)"
+        v-bind="target.display === 'embed' ? { reference: target.card, resize: readonly ? undefined : (size: DocumentEmbedSize) => resizeReferenceCard(target.card, size) } : {}" /></Teleport>
     </template>
       <q-menu v-if="profile !== 'document' && (activeContext || pointerTextContext)" :id="pointerMenuId" ref="pointerMenu" v-model="pointerMenuOpen" :target="editorHost ?? false" no-parent-event touch-position no-refocus separate-close-popup :transition-duration="0" max-width="calc(100vw - 16px)" :max-height="pointerMenuMaxHeight" role="presentation" @escape-key="queueContextFocus" @hide="restoreContextFocus">
         <q-list dense role="menu" :aria-label="t(!activeContext ? 'richEditor.content' : activeContext.kind === 'code' ? 'richEditor.codeTools.toolbar' : activeContext.kind === 'table' ? 'richEditor.table' : activeContext.kind === 'object' ? 'richEditor.embeddedApplication' : activeContext.kind === 'equation' ? 'richEditor.equation.context' : 'richEditor.resources.insert')" @mousedown.prevent>
@@ -93,14 +122,12 @@
         <q-card-actions v-if="dialog !== 'help'" align="right"><q-btn color="primary" v-close-popup outline :label="t('common.cancel')" /><q-btn color="primary" :label="t('richEditor.apply')" :disable="readonly" @click="applyDialog" /></q-card-actions>
       </q-card>
     </q-dialog>
-    <q-dialog v-model="shareOpen" @hide="cancelShare">
-      <q-card class="galaris-dialog-card" style="width: 420px; max-width: 95vw"><DialogHeader :title="t('richEditor.share.title')" :close-label="t('common.close')" /><q-card-section class="galaris-dialog-body"><div v-if="sharePreparing" role="status"><q-spinner />{{ t('richEditor.share.preparing') }}</div><div v-else-if="shareError" role="alert">{{ shareError }}</div><div v-else-if="shareFile">{{ shareFile.name }}</div></q-card-section><q-card-actions align="right"><q-btn color="primary" v-close-popup outline :label="t('common.cancel')" /><q-btn color="primary" v-if="shareError && !shareFile" outline :label="t('common.retry')" @click="prepareShare" /><q-btn v-else color="primary" :disable="!shareFile" :loading="sharing" :label="t(nativeShareData ? 'richEditor.share.action' : 'richEditor.share.save')" @click="shareDocument" /></q-card-actions></q-card>
-    </q-dialog>
+    <DocumentPdfShareDialog v-model="shareOpen" :title="documentTitle" :url="documentUrl" :create-file="createShareFile" />
   </div>
 </template>
 <script setup lang="ts">
 import DialogHeader from './DialogHeader.vue'
-import { computed, defineAsyncComponent, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, useSlots, useTemplateRef, watch } from 'vue'
+import { computed, defineAsyncComponent, inject, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, useSlots, useTemplateRef, watch } from 'vue'
 import { useQuasar, copyToClipboard, type QInput, type QMenu } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { Editor } from '@tiptap/vue-3'
@@ -129,18 +156,26 @@ import RenderedObjectPreview from './RenderedObjectPreview.vue'
 import FullscreenPreview from './FullscreenPreview.vue'
 import { DocumentResourceReferences as InternalResourcePicker } from '../resourceContributions'
 import PdfPreview from './PdfPreview.vue'
-import { contentExtensions, resolveEditorLinks, type EditorObject, type ObjectHost } from '../tiptapContent'
-import { attachmentReference, canonicalRichLink, richLinkCard, richLinkHref, richLinkTarget, richLinkHasCard, richLinkTitle, sanitizeRichHtml, validRichLink, type ContentProfile } from '../richText'
+import { contentExtensions, resizeImageNode, resolveEditorLinks, type EditorObject, type ObjectHost } from '../tiptapContent'
+import { attachmentReference, canonicalRichLink, resolveDocumentReferenceImage, richLinkCard, richLinkCanEmbed, richLinkHref, richLinkTarget, richLinkHasCard, richLinkTitle, sanitizeRichHtml, validRichLink, type ContentProfile } from '../richText'
 import { documentUriFromLink } from '../documentResource'
 import { mountWebLinkPreview } from '../webLinkPreview'
 import { useReferenceFormatting } from '../resourceReference'
 import { useDocumentNavigation } from '../documentNavigation'
+import { documentFullscreenKey } from '../documentFullscreen'
 import { alignImage, imageAlignment } from '../imageAlignment'
 import { protectInteractiveHtml, restoreInteractiveHtml } from '../interactiveHtml'
 import { ResourceDetailDialog, type ResourceDetailTarget } from '../resourceDetail'
-import { ResourceEmbed, type ResourceEmbedTarget } from '../resourceEmbed'
-import { isEmbeddedResourceCard, prepareDocumentCard } from '../resourceCards'
+import type { ResourceEmbedTarget } from '../resourceEmbed'
+import { isEmbeddedResourceCard, isLinkedImageCard, prepareDocumentCard, renderLinkedImage, resourceCardDisplay, type ResourceImageResolver } from '../resourceCards'
 import { documentPlayer, createDocumentPlayer, type PdfPreviewSource } from '../documentMedia'
+import { documentReferenceCards, explicitReferenceMode, referenceAttributes, referenceMode, referencePlayer, referenceUri, resourceLinkElement, validReferenceAttribute, writeDocumentEmbedSize, type DocumentEmbedSize, type DocumentReferenceAction, type DocumentReferenceMode } from '../documentReference'
+import { convertDocumentReference, editableImageType, parseReferenceElement } from '../documentReferenceConversion'
+import DocumentLink from './DocumentLink.vue'
+import DocumentCard from './DocumentCard.vue'
+import DocumentEmbed from './DocumentEmbed.vue'
+import DocumentPdfShareDialog from './DocumentPdfShareDialog.vue'
+import { solaire, solaireColors } from '../solaire'
 import { documentResourceHtml, withAttachmentInventory, type DocumentResource } from '../documentResources'
 import { pasteDocumentHtml } from '../pasteDocumentHtml'
 import { pastedMarkdownHtml } from '../pasteMarkdown'
@@ -148,22 +183,39 @@ import { editorVoiceProvider } from '../editorVoice'
 import { printDocument } from '../printDocument'
 import { createDocumentPdf, exportDocumentPdf } from '../exportDocumentPdf'
 import { exportDocumentBundle } from '../exportDocumentBundle'
-import { saveBlobAsResource } from '../resourceViewer'
+import { createEditorialMatcher } from '../editorialSearch'
 import type { RenderedDocumentCapture, RenderedDocumentResolver } from '../renderedDocument'
 import '../editorialTheme.css'
 const EquationDialog = defineAsyncComponent(() => import('./EquationDialog.vue'))
-const { modelValue, mediaType = 'text/html', profile = 'rich-text', toolbarMode = 'full', readonly = false, minHeight = '240px', maxHeight = '70vh', autoGrow = false, ariaLabel = '', documentTitle = '', documentUrl = '', exportPdf, exportBundle, uploadImage, uploadFile, importImage, resolveImage, attachments = [], createLinkCard, resourceAgentId = null, pickResources } = defineProps<{
+const { modelValue, mediaType = 'text/html', profile = 'rich-text', toolbarMode = 'full', surface = 'page', toolbarTarget, contextToolbarTarget, toolbarDocumentNavigation = false, readonly = false, minHeight = '240px', maxHeight = '70vh', autoGrow = false, ariaLabel = '', documentTitle = '', documentUrl = '', exportPdf, exportBundle, uploadImage, uploadFile, importImage, resolveImage, resolveResourceImage, imageWidthUnit, allowImageBorder = true, allowParagraphInsertion = true, attachments = [], createLinkCard, resourceAgentId = null, pickResources, renderMedia = true, previewActions, contextFocusWithin } = defineProps<{
+  renderMedia?: boolean; previewActions?: readonly DocumentReferenceAction[]; contextFocusWithin?: (target: Node) => boolean
   resourceAgentId?: number | null; modelValue: string; mediaType?: string; profile?: ContentProfile; toolbarMode?: 'full' | 'simple'; readonly?: boolean; minHeight?: string; maxHeight?: string; autoGrow?: boolean; ariaLabel?: string; attachments?: DocumentResource[]
+  surface?: 'page' | 'embedded'
+  toolbarTarget?: HTMLElement
+  contextToolbarTarget?: HTMLElement
+  toolbarDocumentNavigation?: boolean
+  resolveResourceImage?: ResourceImageResolver
+  imageWidthUnit?: 'px'
+  allowImageBorder?: boolean
+  allowParagraphInsertion?: boolean
   createLinkCard?: (url: string) => Promise<string>; pickResources?: () => Promise<string>; exportBundle?: (html: string, signal: AbortSignal) => Promise<Blob>; documentTitle?: string; documentUrl?: string
   uploadFile?: (file: File, signal: AbortSignal, progress: (value: number) => void) => Promise<string>; exportPdf?: (html: string, signal: AbortSignal) => Promise<Blob>
   uploadImage?: (file: File, signal: AbortSignal, progress: (value: number) => void) => Promise<string>; importImage?: (url: string, signal: AbortSignal) => Promise<string>; resolveImage?: (documentId: string, attachmentId: string) => Promise<Blob>
 }>()
-const emit = defineEmits<{ 'update:modelValue': [value: string]; 'open-attachment': [documentId: string, attachmentId: string] }>()
+const emit = defineEmits<{ 'update:modelValue': [value: string]; 'open-attachment': [documentId: string, attachmentId: string]; 'request-exit': [] }>()
 const { t, locale } = useI18n(), $q = useQuasar(), slots = useSlots()
 const referenceFormatting = useReferenceFormatting()
 const navigateDocument = useDocumentNavigation()
+const managedFullscreen = profile === 'document' && surface === 'page' ? inject(documentFullscreenKey, null) : null
+const fullscreen = managedFullscreen ?? ref(false)
+const standaloneFullscreen = computed(() => surface === 'page' && !managedFullscreen && fullscreen.value)
+if (surface === 'page' && !managedFullscreen) provide(documentFullscreenKey, fullscreen)
+const hiddenActions = computed(() => surface === 'embedded' ? [
+  'layout.full', 'fullscreen', 'print', 'exportPdf', 'resources.documentExportBundle', 'share.action',
+  ...(!uploadFile && !uploadImage ? ['resources.uploadFile'] : []),
+] : fullscreen.value ? ['outline'] : [])
 const keyboardShortcuts = computed(() => [
-  ...editorialShortcuts.filter(([, , command]) => (profile !== 'document' || command !== 'shortcuts.contextFocus') && (!readonly || readingShortcutCommands.has(command))).map(([key, binding, , value]) => ({ label: t('richEditor.' + key, { level: Number(value) }), keys: shortcutKeys(binding, Boolean($q.platform.is.safari)) })),
+  ...editorialShortcuts.filter(([, , command]) => !hiddenActions.value.includes(command) && (profile !== 'document' || command !== 'shortcuts.contextFocus') && (!readonly || readingShortcutCommands.has(command))).map(([key, binding, , value]) => ({ label: t('richEditor.' + key, { level: Number(value) }), keys: shortcutKeys(binding, Boolean($q.platform.is.safari)) })),
   ...([
     ...(!readonly ? [
     ['shortcuts.tableNavigation', 'Tab / Shift+Tab'], ['shortcuts.listNesting', 'Tab / Shift+Tab'], ['shortcuts.codeIndentation', 'Tab / Shift+Tab'],
@@ -179,7 +231,7 @@ const root = useTemplateRef('root'), fileInput = useTemplateRef('fileInput'), pl
 const editorHost = useTemplateRef('editorHost'), selectedCardImage = ref('')
 const imagePreview = ref('')
 const imagePreviewOpen = computed({ get: () => Boolean(imagePreview.value), set: (open: boolean) => { if (!open) imagePreview.value = '' } })
-const editor = shallowRef<Editor>(), revision = ref(0), sourceMode = ref(false), sourceDraft = ref(''), fullscreen = ref(false), layout = ref<'fixed' | 'full'>('fixed'), fits = ref(true)
+const editor = shallowRef<Editor>(), revision = ref(0), sourceMode = ref(false), sourceDraft = ref(''), layout = ref<'fixed' | 'full'>('fixed'), fits = ref(true)
 const findOpen = ref(false), searchInput = useTemplateRef<QInput>('searchInput')
 const outlineOpen = ref(false)
 const codeCopies = shallowRef<Array<{ key: number; element: HTMLElement; source: () => string }>>([])
@@ -194,11 +246,19 @@ const pointerTextContext = ref(false)
 let pointerSelection: Selection | undefined, pointerRequest = 0
 let restoreContextOnHide: number | undefined
 const effectiveLayout = computed(() => fits.value ? layout.value : 'full')
+const pageLayout = computed(() => profile === 'document' && surface === 'page' ? effectiveLayout.value : undefined)
 const embeddedTargets = shallowRef<EditorObject[]>([]), resourceEmbeds = shallowRef<ResourceEmbedTarget[]>([]), resourceDetail = shallowRef<ResourceDetailTarget | null>(null), pdfPreview = shallowRef<PdfPreviewSource | null>(null)
 const { targets: documentLinkIcons, mount: mountDocumentLinkIcon, decorate: decorateDocumentLink } = useDocumentLinkIcons()
 const objectPreview = shallowRef<EditorObject | null>(null)
 const captures = new Map<number, RenderedDocumentCapture>(), requests = new Set<AbortController>(), urls = new Set<string>()
 const resourceCaptures = new Map<number, RenderedDocumentCapture>()
+const resourceActions = shallowRef(new Map<number, readonly DocumentReferenceAction[]>())
+function registerReferenceActions(key: number, actions: readonly DocumentReferenceAction[]): void {
+  const next = new Map(resourceActions.value)
+  if (actions.length) next.set(key, actions)
+  else if (!next.delete(key)) return
+  resourceActions.value = next
+}
 const imageCache = new Map<string, Promise<Blob>>()
 const exportJobs = new Map<string, AbortController>(), exportBusy = ref<string[]>([])
 const disabledActions = computed(() => [...exportBusy.value, ...(!exportPdf ? ['exportPdf', 'share.action'] : []), ...(!exportBundle ? ['resources.documentExportBundle'] : [])])
@@ -275,7 +335,18 @@ const rendered: RenderedDocumentResolver = async (source, language, index, signa
   return capture(signal)
 }
 const renderedResolver = computed(() => slots['embedded-code'] || resourceEmbeds.value.length ? rendered : undefined)
+const renderedObjects = computed(() => renderMedia ? embeddedTargets.value : [])
+
+// A host can keep its already-rendered reader visible while this editor owns selection and commands.
+function mountMedia(mount: () => () => void): () => void {
+  if (renderMedia) return mount()
+  let dispose: (() => void) | undefined
+  const stop = watch(() => renderMedia, () => { dispose = mount() }, { once: true })
+  return () => { stop(); dispose?.() }
+}
+
 function resolveAttachment(uri: string, image: HTMLImageElement): () => void {
+  image.dataset.editorAttachment = uri
   let disposed = false, url: string | undefined
   const reference = attachmentReference(uri)
   if (reference && resolveImage) {
@@ -301,17 +372,28 @@ function mountCard(target: ObjectHost): () => void {
   const links = [...target.element.querySelectorAll('a')]
   links.forEach(link => disposals.push(decorateDocumentLink(link)))
   const link = links[0], uri = link?.getAttribute('href') ?? ''
-  for (const image of target.element.querySelectorAll('img')) { const src = image.getAttribute('src') ?? ''; image.dataset.editorAttachment = src; image.removeAttribute('src'); disposals.push(resolveAttachment(src, image)) }
+  for (const image of target.element.querySelectorAll('img')) { const src = image.getAttribute('src') ?? ''; image.removeAttribute('src'); disposals.push(resolveAttachment(src, image)) }
+  if (isLinkedImageCard(target.element)) {
+    const controller = new AbortController()
+    let url: string | undefined
+    void renderLinkedImage(target.element, (uri, signal, full) => resolveResourceImage?.(uri, signal, full)
+      ?? resolveDocumentReferenceImage(uri, resourceAgentId, signal, full), controller.signal).then(preview => {
+      if (!preview) return
+      if (controller.signal.aborted) URL.revokeObjectURL(preview)
+      else url = preview
+    }).catch(() => { /* Leave the reference usable when the preview is unavailable. */ })
+    disposals.push(() => { controller.abort(); if (url) URL.revokeObjectURL(url) })
+  }
   if (profile === 'document') disposals.push(mountWebLinkPreview(target.element, resourceAgentId))
   if (isEmbeddedResourceCard(target.element) && richLinkTarget(uri)) {
     prepareDocumentCard(target.element)
     const element = document.createElement('div'); element.className = 'galaris-resource-embed'; target.element.append(element)
-    const embed = { key: ++hostKey, element, uri, title: link?.textContent ?? '' }
+    const embed = { key: ++hostKey, element, card: target.element, uri, title: link?.textContent ?? '', display: resourceCardDisplay(target.element) }
     queueMicrotask(() => { if (element.isConnected) resourceEmbeds.value = [...resourceEmbeds.value, embed] })
     disposals.push(() => { resourceEmbeds.value = resourceEmbeds.value.filter(value => value.key !== embed.key) })
   } else {
     const resource = attachments.find(value => value.uri === uri)
-    const player = documentPlayer(uri, resource?.name ?? link?.textContent ?? '', [...target.element.classList], resource?.mediaType)
+    const player = referencePlayer(target.element, resource?.mediaType, resource?.name)
     if (player) { const media = createDocumentPlayer(document, player, (doc, id) => resolveImage?.(doc, id), t, value => { pdfPreview.value = value });  media.element.dataset.documentPlayer = ''; target.element.append(media.element); disposals.push(media.dispose) }
   }
   return () => disposals.forEach(dispose => dispose())
@@ -323,7 +405,12 @@ function createEditor(): void {
     element: editorHost.value!,
     content: inputHtml(modelValue), editable: !readonly, enableInputRules: profile === 'document',
     extensions: contentExtensions({ profile, object: (target, mounted) => { embeddedTargets.value = mounted ? [...embeddedTargets.value, target] : embeddedTargets.value.filter(value => value.key !== target.key); if (!mounted) captures.delete(target.key) },
-      card: mountCard, image: resolveAttachment, openImage: navigate, readonly: () => readonly, codeCopy: mountCodeCopy, linkIcon: mountDocumentLinkIcon, editMath: position => openMath('inline', position) }),
+      card: target => mountMedia(() => mountCard(target)),
+      image: (uri, image) => {
+        image.dataset.editorAttachment = uri
+        return mountMedia(() => resolveAttachment(uri, image))
+      }, openImage: navigate, imageWidthUnit, mountMedia, readonly: () => readonly, codeCopy: mountCodeCopy,
+      linkIcon: (element, id) => mountMedia(() => mountDocumentLinkIcon(element, id)), editMath: position => openMath('inline', position) }),
     editorProps: { attributes: { class: 'rich-content', 'aria-label': ariaLabel || t('richEditor.content'), 'data-editor-surface': '', tabindex: '0' },
       decorations: state => {
         if (!findOpen.value) return null
@@ -349,6 +436,12 @@ function createEditor(): void {
       },
       handleKeyDown: (_view, event) => {
         if (event.isComposing || editor.value?.view.composing || isAltGraphInput(event, altGraphPressed)) return false
+        if (event.key === 'Escape' && surface === 'embedded' && !findOpen.value) {
+          event.preventDefault()
+          event.stopPropagation()
+          emit('request-exit')
+          return true
+        }
         syncKeyboardSelection()
         const current = editor.value; if (!current) return false
         const mod = event.ctrlKey || event.metaKey
@@ -363,13 +456,14 @@ function createEditor(): void {
           if (!readonly && profile === 'document' && insertAtObjectEdge()) return true
           const link = window.getSelection()?.anchorNode?.parentElement?.closest('a'); const uri = link?.dataset.richReference ?? link?.getAttribute('href') ?? selectionUri(); if (uri) { navigate(uri); return true }
         }
-        if (event.altKey && !mod && !event.shiftKey && event.key === 'F10') { root.value?.querySelector<HTMLElement>('[role="toolbar"] button')?.focus(); return true }
+        if (event.altKey && !mod && !event.shiftKey && event.key === 'F10') { focusToolbar(); return true }
         if (!mod && !event.altKey && (event.key === 'ContextMenu' || event.shiftKey && event.key === 'F10')) {
           if (profile === 'document') return false
           event.preventDefault(); void openKeyboardContextMenu(); return true
         }
         const shortcut = profile === 'document' ? documentShortcut(event, altGraphPressed) : undefined
         if (shortcut?.[2] === 'find') { event.preventDefault(); showDialog('find'); return true }
+        if (shortcut && hiddenActions.value.includes(shortcut[2])) return false
         if (shortcut && readingShortcutCommands.has(shortcut[2])) { event.preventDefault(); action(shortcut[2], shortcut[3]); return true }
         if (mod && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'f') { showDialog('find'); return true }
         if (readonly) return false
@@ -389,7 +483,17 @@ function createEditor(): void {
         if (shortcut) { event.preventDefault(); const [, , command, value] = shortcut; action(command, value); return true }
         return false
       },
-      handleClick: (_view, pos, event) => { const link = event.target instanceof Element ? event.target.closest('a') : null; if (readonly && event.target instanceof Element && event.target.closest('pre')) editor.value?.commands.setTextSelection(pos); if (!link || !(event.ctrlKey || event.metaKey || readonly)) return false; event.preventDefault(); navigate(link.dataset.richReference ?? link.getAttribute('href') ?? ''); return true },
+      handleClick: (_view, pos, event) => {
+        const link = event.target instanceof Element ? event.target.closest('a') : null
+        if (readonly && event.target instanceof Element && event.target.closest('pre')) editor.value?.commands.setTextSelection(pos)
+        const modified = event.ctrlKey || event.metaKey
+        if (!link || !modified && !readonly) return false
+        const uri = link.dataset.richReference ?? link.getAttribute('href') ?? ''
+        if (!modified && profile === 'document' && documentUriFromLink(uri, window.location.origin)) return false
+        event.preventDefault()
+        navigate(uri)
+        return true
+      },
     },
     onTransaction: ({ transaction, editor: current }) => {
       // Native focus restoration may move the caret inside the same code block;
@@ -432,8 +536,10 @@ function updateContextFocus(event: Event): void {
   const target = event.target
   if (!(target instanceof Node)) return
   if (target instanceof Element && target.closest('.q-menu')) return
-  contextFocused.value = Boolean(root.value?.contains(target))
+  contextFocused.value = Boolean(root.value?.contains(target) || toolbarTarget?.contains(target)
+    || contextToolbarTarget?.contains(target) || contextFocusWithin?.(target))
 }
+function focusToolbar(): void { (toolbarTarget ?? root.value)?.querySelector<HTMLElement>('[role="toolbar"] button')?.focus() }
 onMounted(() => {
   document.addEventListener('focusin', updateContextFocus)
   document.addEventListener('pointerdown', updateContextFocus, true)
@@ -448,7 +554,6 @@ const canInsertBeside = computed(() => {
   const selection = editor.value?.state.selection
   return Boolean(selection instanceof NodeSelection && (selection.node.isBlock || selection.node.type.name === 'inlineMath')) || ['code', 'table'].includes(activeContext.value?.kind ?? '')
 })
-const canConvertCard = computed(() => { void revision.value; const uri = selectionUri(); return profile === 'document' && (richLinkHasCard(uri) || Boolean(createLinkCard) && /^https?:\/\//i.test(uri)) })
 const selectedDocumentUri = computed(() => { void revision.value; return documentUriFromLink(selectionUri(), window.location.origin) })
 const languageNames: Record<string, string> = { javascript: 'JavaScript', typescript: 'TypeScript', graphql: 'GraphQL', cpp: 'C++', cs: 'C#', html: 'HTML', css: 'CSS', scss: 'SCSS', xml: 'XML', yaml: 'YAML', json: 'JSON', sql: 'SQL', php: 'PHP', ini: 'INI' }
 const languages = computed(() => ['plaintext', 'text', 'bash', 'c', 'cs', 'cpp', 'css', 'diff', 'go', 'graphql', 'html', 'ini', 'java', 'javascript', 'json', 'kotlin', 'lua', 'makefile', 'markdown', 'perl', 'php', 'python', 'r', 'ruby', 'rust', 'scss', 'sql', 'swift', 'typescript', 'xml', 'yaml'].map(value => ({ value, label: value === 'plaintext' ? t('richEditor.codeTools.automatic') : value === 'text' ? t('richEditor.codeTools.plainText') : languageNames[value] ?? value[0]!.toUpperCase() + value.slice(1) })))
@@ -560,7 +665,7 @@ async function openInternal(): Promise<void> {
 }
 function navigate(uri: string): void {
   if (uri.startsWith('blob:')) { imagePreview.value = uri; return }
-  if (navigateDocument(uri)) return
+  if (navigateDocument(uri, fullscreen.value)) return
   const target = richLinkTarget(uri, '', resourceAgentId)
   if (target) { resourceDetail.value = target; return }
   const attachment = attachmentReference(uri)
@@ -569,6 +674,57 @@ function navigate(uri: string): void {
   if (href) window.open(href, '_blank', 'noopener,noreferrer')
 }
 function selectionUri(): string { const attrs = selectedAttributes.value; if (attrs.html) return new DOMParser().parseFromString(attrs.html, 'text/html').querySelector('a')?.getAttribute('href') ?? attrs.src ?? ''; return editor.value?.getAttributes('link').href ?? '' }
+function selectResource(uri: string, index: number, kind: 'link' | 'image' | 'card' | 'table'): void {
+  const current = editor.value
+  if (!current || readonly) return
+  const selector = kind === 'image' ? 'img' : kind === 'table' ? 'table' : 'a'
+  const matches = [...current.view.dom.querySelectorAll(selector)].filter(element => !uri
+    || (element.getAttribute('data-rich-reference') ?? element.getAttribute('data-editor-attachment') ?? element.getAttribute('href')) === uri)
+    .filter(element => (kind !== 'card' || element.closest('blockquote.galaris-link-card'))
+      && (kind !== 'link' || !element.closest('.galaris-image-object, blockquote.galaris-link-card')))
+  const target = matches[index]
+  if (!target) return
+  const object = target.closest('.galaris-image-object, blockquote.galaris-link-card')
+  if (object) current.commands.setNodeSelection(current.view.posAtDOM(object, 0))
+  else {
+    const position = current.view.posAtDOM(target.querySelector('td, th') ?? target, 0)
+    if (kind === 'table') current.view.dispatch(current.state.tr.setSelection(TextSelection.near(current.state.doc.resolve(position))))
+    else if (kind === 'link') current.commands.setTextSelection({ from: position, to: current.view.posAtDOM(target, target.childNodes.length) })
+    else current.commands.setTextSelection(position)
+  }
+  current.view.focus()
+}
+function resizeSelectedImage(width: string): void {
+  const current = editor.value, selection = current?.state.selection
+  if (current && selection instanceof NodeSelection) resizeImageNode(current, selection.from, width)
+}
+function resizeReferenceCard(card: HTMLElement, size: DocumentEmbedSize, hostHtml?: string): boolean {
+  const current = editor.value
+  if (!current?.isEditable || !current.view.dom.contains(card)) return false
+  const position = current.view.posAtDOM(card, 0)
+  const node = current.state.doc.nodeAt(position)
+  if (node?.type.name !== 'resourceCard') return false
+  const element = parseReferenceElement(String(node.attrs.html))
+  if (!element || referenceMode(element) !== 'embed') return false
+  writeDocumentEmbedSize(element, size)
+  if (element.dataset.resourceSize === card.dataset.resourceSize) return true
+  if (!validReferenceAttribute(element, 'data-resource-size', element.dataset.resourceSize!)) return false
+  const tr = closeHistory(current.state.tr).setNodeMarkup(position, undefined, { ...node.attrs, html: element.outerHTML })
+  if (current.state.selection instanceof NodeSelection && current.state.selection.from === position) {
+    tr.setSelection(NodeSelection.create(tr.doc, position))
+  }
+  if (hostHtml !== undefined) {
+    lastEmitted = hostHtml
+    tr.setMeta('preventUpdate', true).setMeta('addToHistory', false)
+  }
+  current.view.dispatch(tr)
+  return true
+}
+function syncReferenceSize(index: number, uri: string, size: DocumentEmbedSize, hostHtml: string): void {
+  const current = editor.value
+  const card = current && documentReferenceCards(current.view.dom)[index]
+  if (card && referenceUri(card) === uri) resizeReferenceCard(card, size, hostHtml)
+}
 function openSelection(): void { const attrs = selectedAttributes.value; navigate(attrs.src ?? selectionUri()) }
 function openSelectionDialog(): void {
   const uri = selectedDocumentUri.value
@@ -664,10 +820,12 @@ function editorMouseDown(event: MouseEvent): void {
   // A modified click opens the link. Native caret movement can rebuild its mark
   // view before mouseup in WebKit, leaving the click on the editor instead.
   if (event.button === 0 && (event.ctrlKey || event.metaKey)
-    && event.target instanceof Element && event.target.closest('[data-editor-surface] a')) event.preventDefault()
+    && event.target instanceof Element && event.target.closest('[data-editor-surface] a')
+    && !event.target.closest('[data-resource-mode="embed"] > .galaris-resource-embed')) event.preventDefault()
 }
 function editorClick(event: MouseEvent): void {
   if (!(event.target instanceof Element) || !event.target.closest('[data-editor-surface]')) return
+  if (event.target.closest('[data-resource-mode="embed"] > .galaris-resource-embed')) return
   // A toolbar can take focus before the native selectionchange reaches the editor.
   if (!readonly && !event.target.closest('button, [role="button"], input, select, textarea, [contenteditable="false"]')) syncKeyboardSelection()
   selectedCardImage.value = event.target instanceof HTMLImageElement ? event.target.dataset.editorAttachment ?? event.target.dataset.editorPreview ?? '' : ''
@@ -680,15 +838,16 @@ function editorClick(event: MouseEvent): void {
   const uri = link.getAttribute('data-rich-reference') ?? link.getAttribute('href') ?? ''
   const card = link.closest('blockquote.galaris-link-card')
   const targetKind = richLinkTarget(uri)?.kind
-  const cardTitle = card && card.querySelector('a') === link && (documentUriFromLink(uri, window.location.origin) || targetKind)
+  const documentReference = documentUriFromLink(uri, window.location.origin)
+  const cardTitle = card && card.querySelector('a') === link && (documentReference || targetKind)
   event.preventDefault()
-  if (profile === 'document' && !readonly && !event.ctrlKey && !event.metaKey) {
+  if (profile === 'document' && (!readonly || documentReference) && !event.ctrlKey && !event.metaKey) {
     const current = editor.value
     if (current) {
-      const object = event.target.closest('.galaris-image-object, blockquote.galaris-link-card')
+        const object = event.target.closest('.galaris-image-object, blockquote.galaris-link-card')
       if (object) current.chain().setNodeSelection(current.view.posAtDOM(object, 0)).focus().run()
       else {
-        const position = current.view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos
+          const position = current.view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos
         if (position !== undefined) current.chain().setTextSelection(position).extendMarkRange('link').focus().run()
       }
     }
@@ -761,7 +920,7 @@ function clearDirectFormat(): void {
 function editorKeydown(event: KeyboardEvent): void {
   if (event.key === 'Escape') {
     if (findOpen.value) { event.preventDefault(); event.stopPropagation(); closeFind() }
-    else fullscreen.value = false
+    else if (!managedFullscreen) fullscreen.value = false
     return
   }
   const findShortcut = profile === 'document' ? documentShortcut(event, altGraphPressed)?.[2] === 'find'
@@ -776,14 +935,100 @@ function editorKeydown(event: KeyboardEvent): void {
   }
 }
 function removeSelected(): void { if (selectedType.value === 'resourceCard' || selectedType.value.includes('Image')) editor.value?.commands.deleteSelection(); else editor.value?.chain().focus().unsetLink().run() }
-const busyCard = ref(false), savedCards = new Map<string, string>()
-async function convertCard(): Promise<void> {
-  const current = editor.value; if (!current || readonly || busyCard.value) return
-  if (current.isActive('link')) current.commands.extendMarkRange('link')
-  const at = anchor(), uri = selectionUri(), original = current.state.doc.slice(at.from, at.to).toJSON(); busyCard.value = true
-  try { let markup: string; if (selectedType.value === 'resourceCard') { const saved = String(selectedAttributes.value.html); savedCards.set(uri, saved); const link = document.createElement('a'); link.href = uri; link.textContent = richLinkTarget(uri) ? new DOMParser().parseFromString(saved, 'text/html').querySelector('a')?.textContent ?? uri : uri; markup = '<p>' + link.outerHTML + '</p>' } else markup = savedCards.get(uri) ?? await (richLinkHasCard(uri) ? richLinkCard(uri, resourceAgentId, referenceFormatting()) : createLinkCard!(uri))
-    if (valid(at) && JSON.stringify(current.state.doc.slice(at.from, at.to).toJSON()) === JSON.stringify(original)) insertAt(at, markup)
-  } catch { $q.notify({ type: 'warning', message: t('richEditor.resources.cardUnavailable') }) } finally { release(at); busyCard.value = false }
+const busyCard = ref(false)
+const selectedReference = computed(() => {
+  void revision.value
+  const attrs = selectedAttributes.value, linkAttrs = editor.value?.getAttributes('link') ?? {}
+  const element = attrs.html ? parseReferenceElement(String(attrs.html))
+    : typeof linkAttrs.href === 'string' ? resourceLinkElement(linkAttrs.href, '') : null
+  if (element?.matches('a')) for (const attribute of referenceAttributes) {
+    if (typeof linkAttrs[attribute] === 'string') element.setAttribute(attribute, linkAttrs[attribute])
+  }
+  const source = referenceUri(element) || String(attrs.src ?? '')
+  const uri = documentUriFromLink(source, window.location.origin) ?? canonicalRichLink(source) ?? source
+  const attachment = attachments.find(item => item.uri === uri)
+  const previousCard = element?.dataset.resourceCard ? parseReferenceElement(element.dataset.resourceCard) : null
+  const providerImage = Boolean((element?.matches('blockquote.galaris-link-card.image') || previousCard?.matches('.galaris-link-card.image')) && !attachmentReference(uri))
+  const image = providerImage || Boolean(element?.matches('figure.image, span.image-inline, img') || element?.dataset.resourceImage
+    || editableImageType.test(attachment?.mediaType ?? ''))
+  return { element, uri, attachment, image, providerImage, mode: referenceMode(element) }
+})
+const domainEmbed = ref(false)
+watch([() => selectedReference.value.image || selectedReference.value.mode === 'embed' ? '' : selectedReference.value.uri, () => resourceAgentId], async ([uri, agent], _, cleanup) => {
+  domainEmbed.value = false
+  if (profile !== 'document' || !uri) return
+  const controller = new AbortController()
+  cleanup(() => controller.abort())
+  try {
+    const capability = richLinkCanEmbed(uri, agent, controller.signal)
+    const available = typeof capability === 'boolean' ? capability : await capability
+    if (!controller.signal.aborted) domainEmbed.value = available
+  } catch { /* Keep the modes available locally if capability lookup fails. */ }
+}, { immediate: true })
+const referenceModes = computed<DocumentReferenceMode[]>(() => {
+  const { uri, element, attachment, image, mode } = selectedReference.value
+  if (profile !== 'document' || !validRichLink(uri)) return [mode]
+  const modes: DocumentReferenceMode[] = ['link']
+  if (mode === 'card' || image || attachmentReference(uri) || richLinkHasCard(uri) || element?.dataset.resourceCard || createLinkCard && /^https?:\/\//i.test(uri)) modes.push('card')
+  if (mode === 'embed' || image || domainEmbed.value || documentPlayer(uri, attachment?.name ?? element?.textContent ?? '', [...(element?.classList ?? [])], attachment?.mediaType)) modes.push('embed')
+  return modes
+})
+const referenceComponent = computed(() => ({ link: DocumentLink, card: DocumentCard, embed: DocumentEmbed })[selectedReference.value.mode])
+const selectedReferenceActions = computed(() => {
+  if (!renderMedia) return previewActions ?? []
+  void revision.value
+  const current = editor.value, selection = current?.state.selection
+  if (!(selection instanceof NodeSelection) || !current) return []
+  const selected = current.view.nodeDOM(selection.from)
+  const target = resourceEmbeds.value.find(candidate => candidate.element.parentNode === selected)
+  return target ? resourceActions.value.get(target.key) ?? [] : []
+})
+
+async function convertReference(mode: DocumentReferenceMode): Promise<void> {
+  const current = editor.value, reference = selectedReference.value
+  if (!current || readonly || busyCard.value || mode === reference.mode || !referenceModes.value.includes(mode)) return
+  if (reference.mode === 'link') current.commands.extendMarkRange('link')
+  const at = anchor(), original = current.state.doc.slice(at.from, at.to)
+  const { uri, element, attachment } = reference
+  const title = (reference.mode === 'link' ? original.content.textBetween(0, original.content.size)
+    : element?.querySelector('a')?.textContent?.trim() || element?.querySelector('img')?.alt || (element as HTMLImageElement | null)?.alt)
+    || attachment?.name || uri
+  const createCard = richLinkHasCard(uri) ? () => richLinkCard(uri, resourceAgentId, referenceFormatting())
+    : createLinkCard && /^https?:\/\//i.test(uri) ? () => createLinkCard(uri) : undefined
+  busyCard.value = true
+  try {
+    const markup = await convertDocumentReference({ ...reference, origin: element, title, createCard }, mode)
+    if (!valid(at) || !current.state.doc.slice(at.from, at.to).eq(original)) return
+    const start = at.from
+    insertAt(at, mode === 'link' && reference.mode !== 'link' && current.state.doc.nodeAt(start)?.isBlock ? `<p>${markup}</p>` : markup)
+    if (mode === 'link') {
+      current.state.doc.nodesBetween(start, at.to, (node, position) => {
+        if (!node.isText || !current.schema.marks.link?.isInSet(node.marks)) return
+        current.commands.setTextSelection({ from: Math.max(start, position), to: Math.min(at.to, position + node.nodeSize) })
+      })
+      return
+    }
+    current.state.doc.nodesBetween(Math.max(0, start - 1), Math.min(current.state.doc.content.size, at.to + 1), (node, position) => {
+      if (position < start - 1 || !['resourceCard', 'documentImage', 'inlineImage'].includes(node.type.name)) return
+      const inserted = parseReferenceElement(String(node.attrs.html))
+      if (referenceUri(inserted) === uri && explicitReferenceMode(inserted) === mode) current.commands.setNodeSelection(position)
+    })
+  } catch {
+    if (valid(at)) $q.notify({ type: 'warning', message: t('richEditor.resources.cardUnavailable') })
+  } finally { release(at); busyCard.value = false }
+}
+
+function setReferenceAppearance(key: 'border' | 'shadow', value: string): void {
+  const current = editor.value, element = selectedReference.value.element
+  const selection = current?.state.selection
+  if (!current || !current.isEditable || !element || !(selection instanceof NodeSelection)) return
+  const attribute = key === 'border' ? 'data-resource-border' : 'data-resource-shadow'
+  if (value && !validReferenceAttribute(element, attribute, value)) return
+  element.dataset.resourceMode = 'embed'
+  if (value) element.setAttribute(attribute, value)
+  else element.removeAttribute(attribute)
+  const tr = current.state.tr.setNodeMarkup(selection.from, undefined, { ...selection.node.attrs, html: element.outerHTML })
+  current.view.dispatch(tr.setSelection(NodeSelection.create(tr.doc, selection.from)))
 }
 const dialogOpen = ref(false), dialog = ref('link'); let dialogAnchor: Anchor | undefined
 const emojiOpen = ref(false), emojiTarget = shallowRef<HTMLElement>()
@@ -839,9 +1084,15 @@ function applyDialog(): void {
   if (dialog.value === 'link') {
     const documentUri = documentUriFromLink(fields.value.url.trim(), window.location.origin) ?? canonicalRichLink(fields.value.url.trim()), uri = documentUri ?? fields.value.url
     if (!validRichLink(uri)) return
+    const prior = current.getAttributes('link')
+    const appearance = prior.href === uri ? Object.fromEntries(referenceAttributes.flatMap(attribute => typeof prior[attribute] === 'string' ? [[attribute, prior[attribute]]] : [])) : {}
     if (documentUri && !fields.value.text) void insertDocumentLink(documentUri, anchor(at.from, at.to))
-    else if (at.from !== at.to && fields.value.text === current.state.doc.textBetween(at.from, at.to)) current.chain().focus().setLink({ href: uri }).run()
-    else { const link = document.createElement('a'); link.href = uri; link.textContent = fields.value.text || uri; insertAt(at, link.outerHTML) }
+    else if (at.from !== at.to && fields.value.text === current.state.doc.textBetween(at.from, at.to)) current.chain().focus().setLink({ ...appearance, href: uri }).run()
+    else {
+      const link = resourceLinkElement(uri, fields.value.text)
+      for (const [attribute, value] of Object.entries(appearance)) link.setAttribute(attribute, value)
+      insertAt(at, link.outerHTML)
+    }
   }
   else if (dialog.value === 'fontColor') current.chain().focus().setColor(fields.value.color).run()
   else if (dialog.value === 'backgroundColor') current.chain().focus().setBackgroundColor(fields.value.color).run()
@@ -851,6 +1102,13 @@ function applyDialog(): void {
     const doc = new DOMParser().parseFromString(node.attrs.html, 'text/html'), image = doc.querySelector('img')!; image.alt = fields.value.alt
     const previousFigure = doc.querySelector('figure')
     const figure = doc.createElement('figure'); figure.className = 'image'
+    const original = doc.body.firstElementChild
+    const destination = fields.value.imageStyle === 'inline' ? image : figure
+    if (original) for (const attribute of referenceAttributes) {
+      const value = original.getAttribute(attribute)
+      if (value !== null) destination.setAttribute(attribute, value)
+      if (destination !== image) image.removeAttribute(attribute)
+    }
     alignImage(figure, previousFigure ? imageAlignment(previousFigure) : fields.value.imageStyle === 'wrapText' ? 'right' : 'center', fields.value.imageStyle === 'wrapText')
     if (fields.value.imageLink && !validRichLink(fields.value.imageLink)) return
     const link = fields.value.imageLink ? doc.createElement('a') : null
@@ -905,15 +1163,11 @@ function applyTableProperties(current: Editor): void {
 function findMatches(doc: ProseMirrorNode): Array<{ from: number; to: number }> {
   const values: Array<{ from: number; to: number }> = [], search = fields.value.search
   if (!search) return values
-  const expression = new RegExp(search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), fields.value.matchCase ? 'gu' : 'giu')
+  const find = createEditorialMatcher(search, fields.value.matchCase, fields.value.wholeWords)
   doc.descendants((node, position) => {
     if (!node.isTextblock) return
     const text = node.textBetween(0, node.content.size, '', '\ufffc')
-    for (const match of text.matchAll(expression)) {
-      const offset = match.index
-      if (fields.value.wholeWords && (/[\p{L}\p{N}_]$/u.test(text.slice(0, offset)) || /^[\p{L}\p{N}_]/u.test(text.slice(offset + match[0].length)))) continue
-      values.push({ from: position + 1 + offset, to: position + 1 + offset + match[0].length })
-    }
+    for (const { from, to } of find(text)) values.push({ from: position + 1 + from, to: position + 1 + to })
     return false
   })
   return values
@@ -983,11 +1237,11 @@ const contextActions = computed(() => {
     add('copyReference', 'link', 'copy', () => { void copyToClipboard(selectionUri()).then(() => $q.notify({ type: 'positive', message: t('common.copied') })).catch(() => $q.notify({ type: 'negative', message: t('richEditor.copyError') })) })
     if (selectedDocumentUri.value) add('openInDialog', 'open_in_new', 'openInDialog', openSelectionDialog)
     if (selectedType.value.includes('Image')) add('edit', editorialIcon('edit', 'edit'), 'imageProperties', () => showDialog('image'), readonly)
+    else if (selectedReference.value.mode === 'link') add('edit', editorialIcon('edit', 'edit'), 'link', () => showDialog('link'), readonly)
     if (selectedCardImage.value) add('image', editorialIcon('image', 'image'), 'resources.openImage', () => navigate(selectedCardImage.value))
-    if (canConvertCard.value) add('convert', 'view_agenda', 'resources.' + (selectedType.value === 'resourceCard' ? 'asUrl' : 'asCard'), convertCard, readonly || busyCard.value)
     add('remove', 'delete', selectedType.value === 'resourceCard' || selectedType.value.includes('Image') ? 'remove' : 'removeLink', removeSelected, readonly)
   }
-  if (canInsertBeside.value && !readonly) {
+  if (allowParagraphInsertion && canInsertBeside.value && !readonly) {
     add('insertBefore', editorialIcon('insertBefore', 'vertical_align_top'), selectedType.value === 'inlineMath' ? 'equation.before' : 'insertBefore', () => insertBeside(false))
     add('insertAfter', editorialIcon('insertAfter', 'vertical_align_bottom'), selectedType.value === 'inlineMath' ? 'equation.after' : 'insertAfter', () => insertBeside(true))
   }
@@ -1051,7 +1305,7 @@ function tableAction(key: TableAction): void {
 }
 function indent(amount: number): void { const current = editor.value; if (!current) return; const item = current.isActive('checklistItem') ? 'checklistItem' : current.isActive('listItem') ? 'listItem' : null; if (item) { amount > 0 ? current.commands.sinkListItem(item) : current.commands.liftListItem(item); return }; for (const type of ['paragraph', 'heading']) if (current.isActive(type)) { const style = document.createElement('div'); style.setAttribute('style', current.getAttributes(type).editorialStyle ?? ''); const width = Math.max(0, (parseFloat(style.style.marginLeft) || 0) + amount * 40); if (width) style.style.marginLeft = width + 'px'; else style.style.removeProperty('margin-left'); current.commands.updateAttributes(type, { editorialStyle: style.getAttribute('style') }); break } }
 function action(key: string, value?: string): void {
-  const current = editor.value; if (!current) return
+  const current = editor.value; if (!current || hiddenActions.value.includes(key)) return
   if (toolbarMode === 'simple' && ['resources.uploadFile', 'equation.inline', 'equation.block'].includes(key)) return
   if (key === 'source') { if (profile === 'document') return; if (sourceMode.value) { applyingExternal = true; current.commands.setContent(editableHtml(sourceDraft.value), { emitUpdate: false }); applyingExternal = false }; sourceDraft.value = html(); stop(); sourceMode.value = !sourceMode.value; return }
   if (key === 'fullscreen') { fullscreen.value = !fullscreen.value; return }
@@ -1061,11 +1315,11 @@ function action(key: string, value?: string): void {
   if (key === 'help') { showDialog('help'); return }
   if (key === 'shortcuts.toolbarFocus' || key === 'shortcuts.contextFocus') {
     if (key === 'shortcuts.contextFocus') void openKeyboardContextMenu()
-    else root.value?.querySelector<HTMLElement>('[role="toolbar"] button')?.focus()
+    else focusToolbar()
     return
   }
   if (key === 'print' || key === 'exportPdf' || key === 'resources.documentExportBundle') { void exportAction(key); return }
-  if (key === 'share.action') { void prepareShare(); return }
+  if (key === 'share.action') { if (exportPdf) shareOpen.value = true; return }
   if (key === 'read') { if (personalVoice?.controls.value.reading) personalVoice.controls.value.togglePause(); else personalVoice?.controls.value.read(window.getSelection()?.isCollapsed ? undefined : selectedHtml()); return }
   if (key === 'stopReading') { personalVoice?.stop(); return }
   if (key === 'find' && !sourceMode.value) { if (findOpen.value) closeFind(); else showDialog('find'); return }
@@ -1077,7 +1331,7 @@ function action(key: string, value?: string): void {
   switch (key) {
     case 'insertEmoji':
       release(emojiAnchor); emojiAnchor = anchor()
-      emojiTarget.value = root.value?.querySelector<HTMLElement>('[data-editorial-command="insertEmoji"]') ?? undefined
+      emojiTarget.value = (toolbarTarget ?? root.value)?.querySelector<HTMLElement>('[data-editorial-command="insertEmoji"]') ?? undefined
       emojiOpen.value = true
       break
     case 'equation.inline': openMath('inline'); break
@@ -1124,7 +1378,16 @@ function action(key: string, value?: string): void {
     }
     case 'fontFamily': value ? chain.setFontFamily(value).run() : chain.unsetFontFamily().run(); break; case 'fontSize': chain.setFontSize(value + 'px').run(); break; case 'highlight': chain.toggleHighlight({ color: '#FFE610' }).run(); break
     case 'shortcuts.indent': indent(1); break; case 'shortcuts.outdent': indent(-1); break
-    case 'galarisLink': void openInternal(); break; case 'resources.uploadFile': fileInput.value?.click(); break
+    case 'galarisLink': void openInternal(); break
+    case 'resources.uploadFile':
+    case 'resources.uploadImage': {
+      const input = fileInput.value
+      if (input) {
+        input.accept = key === 'resources.uploadImage' ? 'image/*' : ''
+        input.click()
+      }
+      break
+    }
     case 'insertTable': chain.insertContent({ type: 'tableFigure', content: [{ type: 'table', content: Array.from({ length: 3 }, () => ({ type: 'tableRow', content: Array.from({ length: 3 }, () => ({ type: 'tableCell', content: [{ type: 'paragraph' }] })) })) }] }).run(); break
     case 'dictate': personalVoice?.controls.value.toggleDictation(); break
     default: showDialog(key)
@@ -1167,11 +1430,11 @@ async function setCodeLanguage(language: string): Promise<void> {
   if (editor.value === current && !current.isDestroyed && !readonly) current.view.focus()
 }
 async function exportAction(key: string): Promise<void> { if (exportJobs.has(key)) return; const pending = request(); exportJobs.set(key, pending); exportBusy.value = [...exportJobs.keys()]; try { const content = sourceMode.value ? sourceDraft.value : html(), title = documentTitle || ariaLabel || t('richEditor.content'); if (key === 'print') await printDocument(content, title, pending.signal, resolveImage, renderedResolver.value); else if (key === 'exportPdf' && exportPdf) await exportDocumentPdf(content, title, pending.signal, exportPdf, resolveImage, renderedResolver.value); else if (key === 'resources.documentExportBundle' && exportBundle) await exportDocumentBundle(withAttachmentInventory(content, attachments, t('richEditor.resources.attachments')), title, pending.signal, exportBundle, resolveImage, renderedResolver.value) } catch { if (!pending.signal.aborted) $q.notify({ type: 'negative', message: t(key === 'print' ? 'richEditor.printFailed' : key === 'exportPdf' ? 'richEditor.exportPdfFailed' : 'richEditor.resources.exportFailed') }) } finally { requests.delete(pending); if (exportJobs.get(key) === pending) { exportJobs.delete(key); exportBusy.value = [...exportJobs.keys()] } } }
-const shareOpen = ref(false), sharePreparing = ref(false), sharing = ref(false), shareError = ref(''), shareFile = shallowRef<File | null>(null); let shareRequest: AbortController | undefined
-const nativeShareData = computed<ShareData | null>(() => { if (!shareFile.value || !navigator.share || !navigator.canShare) return null; const files = [shareFile.value]; for (const data of [{ files, title: documentTitle, ...(documentUrl ? { url: documentUrl } : {}) }, { files, title: documentTitle, ...(documentUrl ? { text: documentUrl } : {}) }, { files }]) if (navigator.canShare(data)) return data; return null })
-function cancelShare(): void { shareRequest?.abort(); shareFile.value = null; shareError.value = ''; sharePreparing.value = false }
-async function prepareShare(): Promise<void> { if (!exportPdf) return; cancelShare(); const pending = request(); shareRequest = pending; shareOpen.value = true; sharePreparing.value = true; try { const file = await createDocumentPdf(html(), documentTitle || t('richEditor.content'), pending.signal, exportPdf, resolveImage, renderedResolver.value); if (!pending.signal.aborted) shareFile.value = file } catch { if (!pending.signal.aborted) shareError.value = t('richEditor.exportPdfFailed') } finally { requests.delete(pending); if (shareRequest === pending) sharePreparing.value = false } }
-async function shareDocument(): Promise<void> { if (!shareFile.value || sharing.value) return; sharing.value = true; try { if (nativeShareData.value) await navigator.share(nativeShareData.value); else saveBlobAsResource(shareFile.value, shareFile.value.name); shareOpen.value = false } catch (error) { if (!(error instanceof DOMException && error.name === 'AbortError')) shareError.value = t('richEditor.share.failed') } finally { sharing.value = false } }
+const shareOpen = ref(false)
+function createShareFile(signal: AbortSignal): Promise<File> {
+  if (!exportPdf) return Promise.reject(new Error('PDF export unavailable'))
+  return createDocumentPdf(html(), documentTitle || t('richEditor.content'), signal, exportPdf, resolveImage, renderedResolver.value)
+}
 let observer: ResizeObserver | undefined, layoutFrame: number | undefined
 let scrollPadding: ReturnType<typeof reserveEditorialToolbarSpace> | undefined
 onMounted(() => {
@@ -1179,7 +1442,7 @@ onMounted(() => {
   document.addEventListener('keydown', trackKeyboardModifiers, true)
   document.addEventListener('keyup', trackKeyboardModifiers, true)
   window.addEventListener('blur', resetKeyboardModifiers)
-  if (root.value) scrollPadding = reserveEditorialToolbarSpace(root.value)
+  if (root.value && !toolbarTarget) scrollPadding = reserveEditorialToolbarSpace(root.value)
   observer = new ResizeObserver(() => {
     if (layoutFrame !== undefined) return
     layoutFrame = requestAnimationFrame(() => {
@@ -1209,7 +1472,11 @@ watch(() => readonly, value => {
   revision.value++
 })
 watch(locale, () => { editor.value?.view.dom.setAttribute('aria-label', ariaLabel || t('richEditor.content')); revision.value++ })
-watch([effectiveLayout, editor], () => { if (editor.value && profile === 'document') editor.value.view.dom.dataset.documentLayout = effectiveLayout.value })
+watch([pageLayout, editor], ([value, current]) => {
+  if (!current) return
+  if (value) current.view.dom.dataset.documentLayout = value
+  else delete current.view.dom.dataset.documentLayout
+})
 onBeforeUnmount(() => { stop(); imageCache.clear(); document.removeEventListener('selectionchange', syncReadingSelection); document.removeEventListener('keydown', trackKeyboardModifiers, true); document.removeEventListener('keyup', trackKeyboardModifiers, true); window.removeEventListener('blur', resetKeyboardModifiers); observer?.disconnect(); if (layoutFrame !== undefined) cancelAnimationFrame(layoutFrame); scrollPadding?.dispose(); editor.value?.destroy(); urls.forEach(URL.revokeObjectURL); urls.clear() })
-defineExpose({ editor, insertResource, insertDictation })
+defineExpose({ editor, insertResource, insertDictation, action, selectResource, resizeSelectedImage, syncReferenceSize })
 </script>

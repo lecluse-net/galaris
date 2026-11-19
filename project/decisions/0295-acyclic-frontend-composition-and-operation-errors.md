@@ -39,7 +39,8 @@ session, les droits et les interactions avec le rendu. Le composable vérifie ce
 Les menus utilisent les fichiers internes de navigation. Les contributions de harnais
 fournissent leurs panneaux par chargement différé.
 Le démarrage importe le contrat d’événement Connection sans charger ses sélecteurs.
-La conversion Markdown des extraits d’aperçu se charge à la demande.
+La validation des cartes mentales utilise leur modèle JSON, séparé du rendu éditorial.
+Les aperçus documentaires et la conversion Markdown des extraits se chargent à la demande.
 
 La modale d'import YAML de Service possède le fichier, son aperçu et le cycle de
 confirmation. Une réponse tardive ne modifie pas une modale rouverte. La liste reçoit

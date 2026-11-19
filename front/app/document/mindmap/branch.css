@@ -1,0 +1,59 @@
+.mindmap-branch {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--map-branch-gap);
+  outline: none;
+}
+.mindmap-children {
+  position: relative;
+  display: grid;
+  gap: var(--map-row-gap);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mindmap-children::before,
+.mindmap-children > .mindmap-branch::before,
+.mindmap-children > .mindmap-branch::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  border: 0 solid var(--map-line);
+}
+.mindmap-children::before {
+  inset-inline-start: calc(-1 * var(--map-branch-gap));
+  inset-block-start: 50%;
+  width: calc(var(--map-branch-gap) - var(--map-elbow));
+  border-block-start-width: 1px;
+}
+.mindmap-children > .mindmap-branch::before {
+  inset-inline-start: calc(-1 * var(--map-elbow));
+  inset-block-start: 50%;
+  width: var(--map-elbow);
+  border-block-start-width: 1px;
+}
+.mindmap-children > .mindmap-branch::after {
+  inset-inline-start: calc(-1 * var(--map-elbow));
+  inset-block: calc(-1 * var(--map-row-gap)) 0;
+  border-inline-start-width: 1px;
+}
+.mindmap-children > .mindmap-branch:first-child:not(:only-child)::before {
+  height: var(--map-radius);
+  border-inline-start-width: 1px;
+  border-start-start-radius: var(--map-radius);
+}
+.mindmap-children > .mindmap-branch:first-child::after {
+  inset-block-start: calc(50% + var(--map-radius));
+}
+.mindmap-children > .mindmap-branch:last-child:not(:only-child)::before {
+  inset-block: auto 50%;
+  height: var(--map-radius);
+  border-block-width: 0 1px;
+  border-inline-start-width: 1px;
+  border-end-start-radius: var(--map-radius);
+}
+.mindmap-children > .mindmap-branch:last-child::after {
+  inset-block-end: calc(50% + var(--map-radius));
+}
+.mindmap-children > .mindmap-branch:only-child::after { content: none; }

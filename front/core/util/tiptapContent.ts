@@ -7,14 +7,17 @@ import Subscript from '@tiptap/extension-subscript'
 import Superscript from '@tiptap/extension-superscript'
 import Link from '@tiptap/extension-link'
 import { Table, TableKit } from '@tiptap/extension-table'
-import { Plugin, PluginKey } from '@tiptap/pm/state'
+import { NodeSelection, Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import { codeLanguageLabel, codeTokens } from './codeHighlight'
 import { EditorialTableView } from './editorialTableView'
-import { attachmentReference, richLinkHref, sanitizeRichHtml, validRichLink, type ContentProfile } from './richText'
+import { attachmentReference, richLinkHref, richLinkIcon, sanitizeRichHtml, validRichLink, type ContentProfile } from './richText'
 import { documentIdFromResourceUri, documentUriFromLink } from './documentResource'
 import { Checklist, ChecklistItem } from './editorialChecklist'
 import { mathNode } from './editorialMath'
+import { isLinkedImageCard } from './resourceCards'
+import { decorateReferenceAppearance, linkIconElement, referenceAttributes, referenceSizeChanges } from './documentReference'
+import { mountImageResize } from './imageResize'
 
 export type EditorToolbarGroupName = 'reading' | 'editing' | 'text' | 'paragraph' | 'insert'
 export const calloutKinds = ['info', 'warning', 'question', 'error', 'stop', 'forbidden', 'search'] as const
@@ -26,6 +29,8 @@ export interface ContentAdapters {
   card: (target: ObjectHost) => () => void
   image: (uri: string, image: HTMLImageElement) => () => void
   openImage: (uri: string) => void
+  imageWidthUnit?: 'px'
+  mountMedia: (mount: () => () => void) => () => void
   readonly: () => boolean
   codeCopy: (element: HTMLElement, source: () => string) => () => void
   linkIcon?: (element: HTMLElement, documentId: string) => () => void
@@ -68,15 +73,45 @@ const RawObject = (adapters: ContentAdapters) => Node.create({
   },
 })
 
+export function resizeImageNode(editor: Editor, position: number, width: string): void {
+  const node = editor.state.doc.nodeAt(position)
+  if (!editor.isEditable || !node || !['resourceCard', 'documentImage', 'inlineImage'].includes(node.type.name)) return
+  const copy = new DOMParser().parseFromString(node.attrs.html, 'text/html').body.firstElementChild as HTMLElement
+  if (node.type.name === 'resourceCard' && !isLinkedImageCard(copy)) return
+  copy.style.width = width
+  if (node.type.name !== 'inlineImage') copy.classList.add('image_resized')
+  if (node.type.name !== 'resourceCard') {
+    const image = copy instanceof HTMLImageElement ? copy : copy.querySelector('img')!
+    image.src = String(node.attrs.src)
+    image.style.removeProperty('height')
+    if (image !== copy) image.style.width = '100%'
+  }
+  editor.commands.command(({ tr }) => {
+    tr.setNodeMarkup(position, undefined, { ...node.attrs, html: copy.outerHTML })
+    tr.setSelection(NodeSelection.create(tr.doc, position))
+    return true
+  })
+}
+
 const ResourceCard = (adapters: ContentAdapters) => Node.create({
   name: 'resourceCard', group: 'block', atom: true, draggable: true, priority: 1200,
   addAttributes: () => ({ html: { default: '' } }),
   parseHTML: () => [{ tag: 'blockquote.galaris-link-card', getAttrs: element => ({ html: element.outerHTML }) }],
   renderHTML: ({ node }) => new DOMParser().parseFromString(node.attrs.html, 'text/html').body.firstElementChild as HTMLElement,
   addNodeView: () => ({ node, editor, getPos }) => {
+    let current = node
     const dom = new DOMParser().parseFromString(node.attrs.html, 'text/html').body.firstElementChild as HTMLElement
+    decorateReferenceAppearance(dom)
     dom.contentEditable = 'false'
     const dispose = adapters.card({ html: node.attrs.html, element: dom })
+    let disposeResize: (() => void) | undefined
+    if (isLinkedImageCard(dom)) {
+      dom.classList.add('galaris-image-object')
+      disposeResize = adapters.mountMedia(() => mountImageResize(dom, () => editor.isEditable, () => dom.querySelector('img'), width => {
+        const position = getPos()
+        if (position !== undefined) resizeImageNode(editor, position, width)
+      }, adapters.imageWidthUnit === 'px'))
+    }
     const select = (event: MouseEvent) => {
       if (!editor.isEditable) return
       if (event.target instanceof Element && event.target.closest('.galaris-resource-embed, [data-document-player]')) return
@@ -85,8 +120,18 @@ const ResourceCard = (adapters: ContentAdapters) => Node.create({
     }
     dom.addEventListener('click', select)
     return { dom, ignoreMutation: () => true,
-      stopEvent: event => event.target instanceof Element && Boolean(event.target.closest('.galaris-resource-embed, [data-document-player]')),
-      destroy: () => { dom.removeEventListener('click', select); dispose() } }
+      update: next => {
+        if (next.type !== current.type) return false
+        if (next.attrs.html === current.attrs.html) return true
+        const sizes = referenceSizeChanges(String(current.attrs.html), String(next.attrs.html))
+        if (!sizes) return false
+        current = next
+        if (sizes[0]) dom.dataset.resourceSize = sizes[0]
+        else dom.removeAttribute('data-resource-size')
+        return true
+      },
+      stopEvent: event => event.target instanceof Element && Boolean(event.target.closest('.galaris-resource-embed, [data-document-player], .galaris-image-resize')),
+      destroy: () => { dom.removeEventListener('click', select); disposeResize?.(); dispose() } }
   },
 })
 
@@ -102,6 +147,7 @@ const DocumentImage = (adapters: ContentAdapters, inline: boolean) => Node.creat
   renderHTML: ({ node }) => new DOMParser().parseFromString(node.attrs.html, 'text/html').body.firstElementChild as HTMLElement,
   addNodeView: () => ({ node, editor, getPos }) => {
     const authored = new DOMParser().parseFromString(node.attrs.html, 'text/html').body.firstElementChild as HTMLElement
+    decorateReferenceAppearance(authored)
     const dom = document.createElement(inline ? 'span' : 'div')
     dom.classList.add('galaris-image-object'); dom.contentEditable = 'false'
     if (inline) dom.style.display = 'inline-block'
@@ -115,7 +161,6 @@ const DocumentImage = (adapters: ContentAdapters, inline: boolean) => Node.creat
     const image = authored instanceof HTMLImageElement ? authored : authored.querySelector('img')!
     image.removeAttribute('src'); dom.append(authored)
     const dispose = adapters.image(String(node.attrs.src), image)
-    const handle = document.createElement('span'); handle.className = 'galaris-image-resize'; handle.setAttribute('aria-hidden', 'true'); dom.append(handle)
     const controller = new AbortController()
     dom.addEventListener('click', event => {
       if (!(event instanceof MouseEvent)) return
@@ -128,34 +173,12 @@ const DocumentImage = (adapters: ContentAdapters, inline: boolean) => Node.creat
       event.preventDefault(); event.stopPropagation()
       editor.commands.setNodeSelection(position); editor.view.focus()
     }, { signal: controller.signal })
-    handle.addEventListener('pointerdown', event => {
-      if (!editor.isEditable) return
-      event.preventDefault(); handle.setPointerCapture(event.pointerId)
-      const start = event.clientX, width = image.getBoundingClientRect().width
-      // Resolve 100% in this image's containing block, excluding page/cell padding.
-      // Inline links and table cells need their own basis, not the editor's outer width.
-      const originalWidth = dom.style.width
-      dom.style.width = '100%'
-      const available = dom.getBoundingClientRect().width
-      dom.style.width = originalWidth
-      const move = (next: PointerEvent) => { dom.style.width = Math.min(available || Infinity, Math.max(32, width + next.clientX - start)) + 'px'; authored.style.width = '100%'; image.style.width = '100%' }
-      const end = () => {
-        handle.removeEventListener('pointermove', move); handle.removeEventListener('pointerup', end); handle.removeEventListener('pointercancel', end)
-        const pos = getPos()
-        if (pos === undefined || !editor.isEditable) return
-        const copy = new DOMParser().parseFromString(node.attrs.html, 'text/html').body.firstElementChild as HTMLElement
-        copy.style.width = available > 0 ? Math.min(100, image.getBoundingClientRect().width / available * 100) + '%' : authored.style.width
-        if (!inline) copy.classList.add('image_resized')
-        const img = copy instanceof HTMLImageElement ? copy : copy.querySelector('img')!
-        img.src = String(node.attrs.src)
-        // For a bare inline <img>, the image itself owns the saved percentage.
-        if (img !== copy) img.style.width = '100%'
-        editor.commands.command(({ tr }) => { tr.setNodeMarkup(pos, undefined, { ...node.attrs, html: copy.outerHTML }); return true })
-      }
-      handle.addEventListener('pointermove', move, { signal: controller.signal }); handle.addEventListener('pointerup', end, { once: true, signal: controller.signal }); handle.addEventListener('pointercancel', end, { once: true, signal: controller.signal })
-    }, { signal: controller.signal })
+    const disposeResize = adapters.mountMedia(() => mountImageResize(dom, () => editor.isEditable, () => image, width => {
+      const position = getPos()
+      if (position !== undefined) resizeImageNode(editor, position, width)
+    }, adapters.imageWidthUnit === 'px', authored))
     return { dom, ignoreMutation: () => true,
-      destroy: () => { controller.abort(); dispose() } }
+      destroy: () => { controller.abort(); disposeResize(); dispose() } }
   },
 })
 
@@ -236,6 +259,9 @@ export function contentExtensions(adapters: ContentAdapters): Extensions {
       ...this.parent?.(),
       href: { default: null, parseHTML: element => element.getAttribute('data-rich-reference') ?? element.getAttribute('href') },
       title: { default: null, parseHTML: element => element.getAttribute('title'), renderHTML: attrs => ({ title: /^https?:\/\//i.test(attrs.href ?? '') ? attrs.href : attrs.title }) },
+      ...Object.fromEntries(referenceAttributes.map(attribute => [attribute, {
+        default: null, parseHTML: (element: HTMLElement) => element.getAttribute(attribute),
+      }])),
     } },
     renderHTML({ HTMLAttributes }) { const uri = String(HTMLAttributes.href ?? ''); return ['a', mergeAttributes(HTMLAttributes, { href: richLinkHref(uri) ?? uri, 'data-rich-reference': uri, target: '_blank', rel: 'noopener noreferrer' }), 0] },
     addMarkView() { return ({ HTMLAttributes }) => {
@@ -245,7 +271,13 @@ export function contentExtensions(adapters: ContentAdapters): Extensions {
       }
       const documentUri = documentUriFromLink(uri, window.location.origin)
       const id = documentUri && documentIdFromResourceUri(documentUri)
-      if (!id || !adapters.linkIcon) return { dom }
+      if (!id || !adapters.linkIcon) {
+        const name = dom.dataset.resourceMode === 'link' ? richLinkIcon(uri) : undefined
+        if (!name) return { dom }
+        const icon = linkIconElement(document, name), contentDOM = document.createElement('span')
+        dom.append(icon, contentDOM)
+        return { dom, contentDOM, ignoreMutation: mutation => mutation.type !== 'selection' && icon.contains(mutation.target) }
+      }
       const icon = document.createElement('span'), contentDOM = document.createElement('span')
       icon.className = 'document-link-icon'; icon.contentEditable = 'false'; icon.setAttribute('aria-hidden', 'true')
       dom.append(icon, contentDOM)

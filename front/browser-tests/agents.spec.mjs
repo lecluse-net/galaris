@@ -71,6 +71,10 @@ for (const source of ['file', 'citation']) for (const width of [1440, 390]) test
   await jsonRoute(page, '**/api/file-share/browser/schemes?*', [{ scheme: 'galaris', label: 'Galaris', capabilities: ['list', 'read', 'info'], native: true }])
   const file = { uri: 'galaris://agent/7', name: '7.json', metadata: { label: 'Alice Example' }, is_collection: false, media_type: 'application/json', size: null, capabilities: ['read', 'info'] }
   let deleted = false, denied = true, reads = 0
+  let catalogueReads = 0
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/api/agents') catalogueReads++
+  })
   await page.route('**/api/documents/doc-a/internal-attachments?*', route => route.fulfill({ json: { items: deleted ? [] : [{ ...file, available: true }], lock_version: 1 } }))
   await page.route('**/api/agents/7', route => {
     if (route.request().method() === 'DELETE') { deleted = true; return route.fulfill({ status: 204 }) }
@@ -87,6 +91,7 @@ for (const source of ['file', 'citation']) for (const width of [1440, 390]) test
     await page.locator('.file-tree').getByText('Galaris', { exact: true }).click()
   } else await mount(page, 'core/util/components/RichText.vue', { props: { content: '<p><a href="galaris://agent/7">Alice Example</a></p>', profile: 'document' }, privileges: ['AGENT_EDIT'] })
   const open = () => source === 'file' ? page.getByRole('button', { name: 'Open Alice Example', exact: true }).click() : page.getByRole('link', { name: 'Alice Example', exact: true }).click()
+  const catalogueReadsBeforePreview = catalogueReads
   await open()
   await expect(page.getByRole('dialog').getByRole('alert')).toBeVisible()
   denied = false
@@ -100,6 +105,7 @@ for (const source of ['file', 'citation']) for (const width of [1440, 390]) test
   await card.getByRole('button', { name: 'Edit agent', exact: true }).click()
   const edit = page.getByRole('dialog').last()
   await expect(edit.getByLabel('First name *', { exact: true })).toHaveValue('Alice')
+  expect(catalogueReads).toBe(catalogueReadsBeforePreview)
   await edit.getByRole('button', { name: 'Close', exact: true }).click()
   await expect(page.getByRole('dialog')).toHaveCount(1)
   await page.getByRole('dialog').screenshot({ path: testInfo.outputPath('agent-preview.png') })

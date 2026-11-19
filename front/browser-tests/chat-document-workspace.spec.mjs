@@ -314,6 +314,34 @@ test('document attention bounds long selections and clears positions after a rem
   expect(state.writes[1].document_focus.revision).toBeGreaterThan(state.writes[0].document_focus.revision)
 })
 
+test('chat reports the historical revision on display and returns to the live revision', async ({ page }) => {
+  const state = await workspace(page, false)
+  const version = { revision: 1, document_format: 'text', format_version: 1, media_type: 'text/html',
+    author_agent_id: null, author_user_id: null, created_at: '2026-09-01T12:00:00Z' }
+  await jsonRoute(page, '**/api/documents/doc-b/content-revisions?*', {
+    items: [version], total: 1, limit: 50, offset: 0, has_more: false,
+  })
+  await jsonRoute(page, '**/api/documents/doc-b/content-revisions/1', { ...version, content: '<p>Earlier content</p>' })
+  await jsonRoute(page, '**/api/documents/doc-b/content-revisions/1/diff', {
+    revision: 1, current_revision: 3, additions: 0, deletions: 0, hunks: [],
+  })
+  await openFromSearch(page)
+  await page.getByRole('button', { name: 'Open content history', exact: true }).click()
+  await page.getByRole('button', { name: 'Preview', exact: true }).click()
+  await expect(page.getByText('Earlier content', { exact: true })).toBeVisible()
+  const draft = page.locator('.conversation-pane textarea')
+  await draft.fill('Review this saved version')
+  await page.getByRole('button', { name: 'Post', exact: true }).click()
+  await expect.poll(() => state.writes.length).toBe(1)
+  expect(state.writes[0].document_focus).toMatchObject({ revision: 1, surface: 'history', document_format: 'text' })
+  await page.getByRole('button', { name: 'Back to document', exact: true }).click()
+  await draft.fill('Review the current version')
+  await page.getByRole('button', { name: 'Post', exact: true }).click()
+  await expect.poll(() => state.writes.length).toBe(2)
+  expect(state.writes[1].document_focus.revision).toBe(3)
+  expect(state.writes[1].document_focus.surface).not.toBe('history')
+})
+
   // Source-view attention is retired with document Source. The preceding scenarios
   // cover rendered selections, cursor bounds and stale attention after replacement.
 

@@ -29,3 +29,10 @@ picker has separate resource-browser and business-object tabs. Editor context ac
 and toolbar actions switch links and cards without discarding authored surrounding text;
 readers provide Open and Copy through a context menu. Existing Document navigation and
 Process diagram behavior retain their contracts.
+
+The display mode belongs to each reference occurrence. Text and Mind map share Link,
+Card and Embed bases and the same contextual command contract. The domain declares
+supported modes, reader and optional commands. The host owns placement, appearance,
+selection and revisioned changes. Historical markup retains its existing interpretation.
+The [display contract](../../docs/en/dev/document-references.md) specifies the HTML and
+authorized rendering boundaries.

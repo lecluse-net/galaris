@@ -42,3 +42,13 @@ async def document_source(document_id: UUID, actor: int | HumanActor, *, revisio
     from .resource_service import get_item
     _item, content, _access, _kind, mime = await get_item(document_id, agent_id=actor, revision=revision)
     return content, mime
+
+
+async def export_document_source(document_id: UUID, actor: int | HumanActor, target: str,
+    *, revision: int | None = None) -> tuple[bytes, str, str]:
+    from .resource_service import get_item
+    item, content, _access, _kind, _mime = await get_item(document_id, agent_id=actor, revision=revision)
+    definition = document_format_definition(item.document_format)
+    if definition.export_source is None or definition.version != item.format_version:
+        raise ValueError("This document format does not support the requested conversion")
+    return definition.export_source(content.decode("utf-8"), target)

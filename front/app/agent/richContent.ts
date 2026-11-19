@@ -4,6 +4,7 @@ import type { Agent } from './services/agentService'
 import { agentResourceId } from './resourceUri'
 import { agentService } from './services/agentService'
 export default {
+  linkIcon: 'person',
   async search(query) {
     const { data } = await api.get<Agent[]>('/agents')
     return data.filter(agent => `${agent.first_name} ${agent.last_name} ${agent.job_title}`.toLocaleLowerCase().includes(query.toLocaleLowerCase())).slice(0, 50).map(agent => ({ uri: `galaris://agent/${agent.id}`, title: `${agent.first_name} ${agent.last_name}`, context: agent.job_title ?? '' }))

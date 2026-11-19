@@ -659,7 +659,7 @@ Les changements s’appliquent aux nouveaux appels.
 La [bibliothèque documentaire](documents.md) explique création, dossiers, sous-documents,
 listes, traitements groupés et raccourcis clavier.
 
-**Connaissances → Documents** (`/documents`) sert à retrouver et créer les documents Texte (HTML) et Données (JSON).
+**Connaissances → Documents** (`/documents`) sert à retrouver et créer les documents Texte (HTML), Données (JSON) et Carte mentale.
 En développement, le format **Dessin (Sample)** permet de tracer, gommer, annuler et
 enregistrer une image PNG. L'Historique permet de revoir ses révisions. Le format
 est présenté dans le [guide des Samples](../dev/plugin-authoring.md).

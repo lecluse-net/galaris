@@ -1,7 +1,7 @@
 <template>
-  <q-dialog v-model="open" allow-focus-outside no-route-dismiss :maximized="$q.screen.lt.md" @before-hide="beforeHide">
+  <q-dialog v-model="open" allow-focus-outside no-route-dismiss :no-esc-dismiss="fullscreen" :maximized="$q.screen.lt.md" @before-hide="beforeHide">
     <q-card class="document-navigation-dialog galaris-detail-dialog galaris-dialog-card" :class="cardClass">
-      <q-card-section class="galaris-dialog-title row items-center no-wrap">
+      <q-card-section v-show="!fullscreen" class="galaris-dialog-title row items-center no-wrap">
         <DocumentNavigationButtons class="q-mr-sm" :can-go-back="!busy && history.canGoBack.value" :can-go-forward="!busy && history.canGoForward.value" @back="navigateHistory(-1)" @forward="navigateHistory(1)" />
         <div ref="heading" class="document-dialog-heading">
           <div class="document-dialog-heading-fallback row items-center no-wrap">
@@ -32,7 +32,7 @@ import { computed, onBeforeUnmount, provide, ref, shallowRef, useTemplateRef, wa
 import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { documentNavigationKey, DocumentNavigationButtons, useDocumentHistory, showConfirmationDialog } from '@/core/util'
+import { documentNavigationKey, DocumentNavigationButtons, documentWorkspaceViewKey, useDocumentHistory, showConfirmationDialog } from '@/core/util'
 import { DatasetDocumentRedirect, documentService } from '../services/documentService'
 import type { DocumentDetail } from '../types'
 import DocumentEditor from '@/app/document/components/DocumentEditor.vue'
@@ -66,6 +66,7 @@ const current = shallowRef<DocumentDetail | null>(null)
 const currentAgentId = ref<number | null>(null)
 const currentTitle = computed(() => current.value?.title || title || t('nav.documents'))
 const busy = ref(false)
+const fullscreen = ref(false)
 const loadError = ref(false)
 let generation = 0
 let disposed = false
@@ -137,11 +138,17 @@ async function navigateHistory(direction: -1 | 1): Promise<void> {
 provide(documentNavigationKey, async id => {
   if (current.value?.id !== id) await selectDocument(id)
 })
+provide(documentWorkspaceViewKey, {
+  fullscreen,
+  canGoBack: () => !busy.value && history.canGoBack.value,
+  canGoForward: () => !busy.value && history.canGoForward.value,
+  navigateHistory,
+})
 function onLoaded(document: DocumentDetail): void { current.value = document; emit('loaded', document) }
 function onUpdated(document: DocumentDetail): void { current.value = document; emit('updated', document) }
 function onDeleted(id: string): void { history.forget(id); emit('deleted', id); open.value = false }
 function retry(): void { if (documentId) void selectDocument(documentId, undefined, true) }
-function beforeHide(): void { ++generation; busy.value = false; void flush() }
+function beforeHide(): void { ++generation; busy.value = false; fullscreen.value = false; void flush() }
 watch([open, () => documentId, () => agentId], ([visible, id], previous) => {
   ++generation
   if (!visible) return

@@ -329,6 +329,14 @@ function selectRevision(revision: number): void {
   void loadSelection(revision)
 }
 
+function displayedRevision(): DocumentContentRevisionDetail | null {
+  const current = detail.value
+  return current && !loadingDetail.value && !detailError.value && current.revision === selectedRevision.value
+    ? current : null
+}
+
+defineExpose({ displayedRevision })
+
 async function loadSelection(revision: number): Promise<void> {
   const generation = ++selectionGeneration
   loadingDetail.value = true

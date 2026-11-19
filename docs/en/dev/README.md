@@ -16,6 +16,7 @@ and tests remain authoritative; plans describe extensions still open.
 | Store text and preserve migrations | [Content in PostgreSQL](memory-text-storage.md) |
 | Handle files and attachments | [`file://` registry](file-storage.md) |
 | Add and qualify a document format | [Format facade](document-formats.md) |
+| Declare Link, Card and Embed modes | [Document references](document-references.md) |
 | Handle JSON and the typed codec | [Data documents](datasets.md) |
 | Execute an internal workflow | [Native BPMN profile](native-processes.md) |
 | Share resources | [ACL contracts and migration](sharing.md) |

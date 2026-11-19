@@ -3,9 +3,30 @@
 # Document formats and contributions
 
 A **document format** defines how content is represented. Built-in formats are
-**Text format** (`text`, editorial HTML) and **Data format** (`data`, JSON).
-A structured format, such as a future mind map, owns its codec; storing JSON does
-not make it a Data-format document.
+**Text format** (`text`, editorial HTML), **Data format** (`data`, JSON)
+and **Mind map** (`mindmap`, structured JSON). Mind maps have their own codec,
+interchange conversions and branch commands. [Decision 0301](../../../project/decisions/0301-native-mind-map-documents.md)
+describes the contract.
+
+In the native source, a node's optional `checked` field is `true` for a checked box
+or `false` for an empty box. An absent or `null` value means the node has no checkbox.
+Revisions and the `.mindmap` source retain this value. The PDF rendering shows the state.
+When the editor creates a sibling from a node with a checkbox, it initializes the new box
+to `false`. In an `edit` command, omitting `checked` keeps the state and `checked: null`
+removes the checkbox.
+
+The optional `theme` field contains a stable `id` and a positive `version`. The editor
+uses the Solaire palette when this reference is absent or unknown. The codec preserves
+unknown references during branch edits. **Apply** saves the theme in the document revision.
+Solaire tokens supply the light and dark variants for the map editor and reader.
+
+The optional `background_color` field stores the canvas RGB color as `#rrggbb`.
+The editor and reader display this value in light and dark mode. Solaire keys from
+older maps follow the application mode. An absent or unknown key uses the host background.
+The codec preserves the setting during branch edits. Fullscreen uses the Text reader's
+layout and remains view state.
+
+The [document reference contract](document-references.md) describes available modes by resource type, per-mode commands and composition across formats. Formats with a full reader declare `embed` in their contribution.
 
 ## Facade and ownership
 
@@ -67,6 +88,22 @@ repeated visits and bound depth. Sharing a host document grants no access to emb
 Process input constraints compare the actual format code even when formats share a MIME,
 while retaining resource access checks.
 
+## Chat context and revisions
+
+An editor can expose `DocumentFormatEditorHandle.captureFocus()`. It returns a
+`DocumentFocusAnchor` (`point` or `rectangle`) or `null`. Coordinates are zero-based
+integers in the document's coordinate space. Drawing reports pixels of the saved image.
+The host binds the anchor to the current revision after `flush` or reports the revision
+loaded in history. The anchor grants no access rights.
+
+A codec can provide `compare_revisions(before, after, region)`. Galaris checks current
+permissions and passes the bytes of two saved revisions compatible with the codec version.
+Return a JSON object of at most 12,000 serialized characters. Drawing reports the changed
+pixel count and its bounding rectangle. Without a compatible codec, the result tells whether
+the content hashes differ. Agents use `document_revision_list`, `file_read(revision=…)`, and
+`document_revision_compare`. An analysis task with a vision model can use
+`document_analyze(revision=…)` on a historical image revision.
+
 ## Document toolbar
 
 Use `DocumentToolbar` for the format's main toolbar. The component follows the visual
@@ -103,7 +140,9 @@ declares `readOnly: true`. The historical reader renders its own read-only view.
 ```
 
 Drawing uses this contract for canvas commands and tool state. Revision control and
-saving continue through `DocumentContentSource`.
+saving continue through `DocumentContentSource`. Text and Mind Map use the same
+toolbar container for their specialized tools. Data uses the declarative toolbar
+for copying JSON.
 [TypeScript contracts](../../../front/core/util/documentToolbar.ts)
 · Example in `plugins/sample/drawing/DrawingEditor.vue`
 
@@ -128,7 +167,26 @@ PDF uses a static snapshot and the existing isolated Chromium renderer. Renderin
 replays scripts or replaces the original. Formats may provide specialized snapshots;
 literal fallback does not promise visual fidelity. Authorized source downloads remain
 available without the plugin through `GET /api/documents/{uuid}/source`, optionally for
-a historical revision.
+a historical revision. Frontend contributions may declare `nativeExtension` for
+the editor's download filename.
+
+Mind map graphics start from the complete in-memory tree. `prepareMindMapGraphic`
+uses the portable editorial snapshot to sanitize node contents and resolve images in
+the current reading context. The diagram shares the editor's connector
+styles and uses its theme and background. Raster export bounds the PNG resolution.
+Printing fits the diagram on one A4 landscape page and uses the same script-free
+print frame as Text documents. Interactive objects use the title and text of their
+references. The existing PDF export preserves the textual projection of the tree.
+
+The ZIP archive reuses the graphic diagram and the attachment inventory. The shared
+export API retains its access checks and rewrites links to files included in the archive.
+Mobile PDF sharing uses the same dialog as Text, with the map outline as its PDF source.
+
+The editor keeps a bounded in-memory history. Every map operation publishes its source
+through the existing autosave channel. Undo and redo publish valid source through that
+same channel. Each rich-text editing session forms one group in map history and retains
+the editor's local history. Global replace validates every changed node before publishing
+and works on text ranges that preserve HTML structure and attributes.
 
 ## Format qualification
 
@@ -162,7 +220,7 @@ its revisions and frozen run graphs without changing run states or user values.
 Interrupted transfers preserve their sources and resume. `document://` and `data://` remain stable. Missing formats/versions
 are never interpreted as HTML; source, metadata, rights and revisions remain recoverable.
 
-Untrusted code isolation and certification publication remain part of the
+Untrusted-code isolation and certification publication remain part of the
 [plugin work](../../../project/plans/infrastructure-plugins-galaris.md). Format-version
 migrations and coherent multi-file snapshots require their own policy; silent conversion
 is never allowed.

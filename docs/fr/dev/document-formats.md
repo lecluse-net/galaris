@@ -3,9 +3,32 @@
 # Formats de document et contributions
 
 Le **format de document** définit la représentation d'un contenu. Les formats intégrés
-sont **Format Texte** (`text`, HTML éditorial) et **Format Data** (`data`, JSON).
-Un format structuré, comme une future carte mentale, possède son propre codec ; utiliser
-JSON pour son stockage ne le transforme pas en Format Data.
+sont **Format Texte** (`text`, HTML éditorial), **Format Data** (`data`, JSON)
+et **Carte mentale** (`mindmap`, JSON structuré). La carte possède son propre codec,
+ses conversions et ses commandes de branches. La [décision 0301](../../../project/decisions/0301-native-mind-map-documents.md)
+décrit son contrat.
+
+Dans la source native de la carte, le champ facultatif `checked` d’un nœud vaut `true`
+pour une case cochée ou `false` pour une case vide. Une valeur absente ou `null` signifie
+que le nœud est sans case. Les révisions et la source `.mindmap` conservent cette valeur.
+Le rendu PDF indique l’état de la case. La création d’une branche sœur depuis l’éditeur
+reprend la présence de la case du nœud de départ et initialise la nouvelle case à `false`.
+Dans une commande `edit`, omettre `checked` conserve l’état et `checked: null` retire la case.
+
+Le champ facultatif `theme` contient un `id` stable et une `version` positive. L’éditeur
+applique la palette Solaire si cette référence est absente ou inconnue. Le codec conserve
+une référence inconnue pendant les éditions de branches. **Appliquer** enregistre le thème
+dans la révision du document. Les jetons Solaire fournissent les deux variantes affichées
+dans l’éditeur et le lecteur de carte.
+
+Le champ facultatif `background_color` enregistre la couleur RGB du fond sous la forme
+`#rrggbb`. L’éditeur et le lecteur affichent cette valeur en clair et en sombre. Les
+clés Solaire des anciennes cartes suivent encore le mode de l’application. Une valeur
+absente ou une clé inconnue utilise le fond de l’hôte. Le codec conserve le réglage pendant
+les éditions de branches. Le plein écran utilise la mise en page du lecteur Texte et reste
+un état de vue.
+
+Le [contrat des références documentaires](document-references.md) décrit les modes proposés par type de ressource, les commandes par mode et la composition entre formats. Les formats équipés d’un lecteur complet déclarent `embed` dans leur contribution.
 
 ## Façade et responsabilités
 
@@ -71,6 +94,23 @@ Le partage du document hôte n'accorde aucun droit sur une ressource intégrée.
 Les contraintes d'entrée des Process comparent le code du format réel, même lorsque
 plusieurs formats partagent un MIME, et conservent les contrôles d'accès aux ressources.
 
+## Contexte du Chat et révisions
+
+L'éditeur peut exposer `DocumentFormatEditorHandle.captureFocus()`. Il renvoie un
+`DocumentFocusAnchor` (`point` ou `rectangle`) ou `null`. Les coordonnées sont des
+entiers dans l'espace du document, avec l'origine à zéro. Dessin rapporte des pixels de
+l'image sauvegardée. L'hôte associe le repère à la révision courante après `flush`, ou
+transmet la révision chargée dans l'historique. Le repère ne confère aucun droit.
+
+Le codec peut ajouter `compare_revisions(before, after, region)`. Galaris vérifie les
+droits actuels et fournit les octets de deux révisions sauvegardées compatibles avec
+la version du codec. Le résultat doit être un objet JSON d'au plus 12 000 caractères
+sérialisés. Dessin indique le nombre de pixels modifiés et le rectangle qui les contient.
+En l'absence de codec compatible, le résultat indique si les empreintes diffèrent.
+L'agent utilise `document_revision_list`, `file_read(revision=…)` et
+`document_revision_compare`. Une tâche d'analyse avec un modèle visuel peut utiliser
+`document_analyze(revision=…)` sur une version historique en image.
+
 ## Barre d'outils
 
 Utiliser `DocumentToolbar` pour la barre principale du format. Le composant applique la
@@ -109,7 +149,9 @@ Le lecteur historique affiche sa propre vue de lecture.
 ```
 
 Dans Dessin, les actions du canevas et l'état des outils suivent ce contrat. Les
-révisions et la sauvegarde suivent toujours `DocumentContentSource`.
+révisions et la sauvegarde suivent toujours `DocumentContentSource`. Texte et Carte
+mentale réutilisent la même enveloppe pour leurs commandes spécialisées. Données
+utilise la barre déclarative pour la copie JSON.
 [Contrats TypeScript](../../../front/core/util/documentToolbar.ts)
 · Exemple dans `plugins/sample/drawing/DrawingEditor.vue`
 
@@ -137,6 +179,29 @@ ne rejoue pas les scripts ; il ne remplace pas l'original. Les formats peuvent f
 un instantané spécialisé ; un repli littéral ne promet aucune fidélité graphique.
 Le téléchargement de source reste disponible sans plugin, sous les ACL courantes,
 avec `GET /api/documents/{uuid}/source` et une révision facultative.
+Une contribution frontend peut déclarer `nativeExtension` pour proposer un nom
+de fichier adapté au téléchargement depuis l'éditeur.
+
+La carte mentale construit son instantané graphique à partir de l'arbre complet en
+mémoire. `prepareMindMapGraphic` réutilise l'instantané éditorial portable pour assainir
+les contenus des nœuds et résoudre les images dans le contexte de lecture courant.
+Le diagramme partage les styles de connexion de l'éditeur et reprend le thème et le fond.
+L'export raster borne la définition du PNG. L'impression ajuste le diagramme sur une page
+A4 en paysage et utilise le même cadre sans scripts que le document Texte. Les objets
+interactifs utilisent le titre et le texte de leur référence. Le PDF existant conserve
+sa projection textuelle de l'arborescence.
+
+L'archive ZIP réutilise le diagramme graphique et l'inventaire des pièces jointes.
+L'API d'export commune conserve ses contrôles d'accès et réécrit les liens vers les
+fichiers inclus dans l'archive. Le partage PDF sur mobile utilise le même dialogue
+que Texte avec la projection hiérarchique de la carte comme source du PDF.
+
+L'éditeur conserve un historique borné en mémoire. Toute opération sur la carte publie
+la source via le canal d'autosauvegarde habituel. Annuler et rétablir publient à leur
+tour une source valide. La saisie d'une session de texte riche forme un groupe dans
+l'historique de la carte et conserve l'historique local de l'éditeur. Le remplacement
+global valide tous les nœuds modifiés avant publication, à partir des textes et des
+plages HTML qui conservent les attributs et la structure.
 
 ## Qualification d'un format
 

@@ -1,8 +1,10 @@
 <template>
-  <div class="editorial-toolbar" :class="{ 'editorial-toolbar-simple': mode === 'simple' }" role="toolbar" :aria-label="t('richEditor.content')" @mousedown.prevent @keydown="navigateToolbar">
+  <DocumentToolbarFrame :mode="mode" :label="t('richEditor.content')" :class="{ 'editorial-mobile-toolbar': mobile }"
+    preserve-selection :document-navigation="documentNavigation" :fullscreen-exit="fullscreenExit">
     <template v-if="!mobile">
+    <slot name="leading" />
     <div v-for="group in groups" :key="group.name" role="group" :aria-label="t('richEditor.groups.' + group.name)" class="editorial-toolbar-group">
-      <span v-if="mode === 'full'" class="editorial-toolbar-title">{{ t('richEditor.groups.' + group.name) }}</span>
+      <span v-if="mode !== 'simple'" class="editorial-toolbar-title">{{ t('richEditor.groups.' + group.name) }}</span>
       <div class="editorial-toolbar-commands">
         <div v-if="mode === 'full' && group.name === 'reading' && ($slots.voice || readingHelp)" class="editorial-toolbar-row">
           <slot name="voice" />
@@ -15,22 +17,24 @@
       </div>
     </div>
     </template>
-    <div v-else class="editorial-mobile-toolbar">
+    <template v-else>
+      <slot name="leading" />
       <EditorialCommand v-for="item in mobileItems" :key="item.key" :item="item" compact :option-active="optionActive" @action="dispatch" />
       <slot name="voice" />
-      <q-btn flat dense icon="more_horiz" :aria-label="t('richEditor.moreTools')">
+      <q-btn v-if="overflowGroups.length" flat dense icon="more_horiz" :aria-label="t('richEditor.moreTools')">
         <q-tooltip>{{ t('richEditor.moreTools') }}</q-tooltip>
         <q-menu v-model="moreOpen"><div class="editorial-toolbar-overflow" @mousedown.prevent>
-          <div v-for="group in groups" :key="group.name" role="group" :aria-label="t('richEditor.groups.' + group.name)">
+          <div v-for="group in overflowGroups" :key="group.name" role="group" :aria-label="t('richEditor.groups.' + group.name)">
             <div class="editorial-toolbar-title">{{ t('richEditor.groups.' + group.name) }}</div>
             <div v-for="(row, index) in group.rows" :key="index" class="editorial-toolbar-row">
-              <EditorialCommand v-for="item in row.filter(item => !mobileKeys.includes(item.key))" :key="item.key" :item="item" :option-active="optionActive" @action="dispatch" />
+              <EditorialCommand v-for="item in row" :key="item.key" :item="item" :option-active="optionActive" @action="dispatch" />
             </div>
           </div>
         </div></q-menu>
       </q-btn>
-    </div>
-  </div>
+    </template>
+    <slot name="trailing" />
+  </DocumentToolbarFrame>
 </template>
 <script setup lang="ts">
 import { computed, ref, useSlots } from 'vue'
@@ -38,14 +42,15 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import type { Editor } from '@tiptap/core'
 import { calloutKinds } from '../tiptapContent'
+import DocumentToolbarFrame from './DocumentToolbarFrame.vue'
 import EditorialCommand, { type EditorialCommandItem as Item } from './EditorialCommand.vue'
-import pdfIcon from '../icons/bootstrap/file-earmark-pdf-fill.svg?raw'
 import zipIcon from '../icons/bootstrap/file-zip-fill.svg?raw'
 import { solaire } from '../solaire'
 import { editorialIcon } from '../editorialIcons'
 import { imageAlignment } from '../imageAlignment'
-const { editor, revision, mode = 'full', document = false, outlineOpen = false, source = false, findOpen = false, fullWidth = false, fullscreen = false, fits = true, disabledActions = [] } = defineProps<{
-  editor: Editor; revision: number; mode?: 'full' | 'simple'; document?: boolean; outlineOpen?: boolean; source?: boolean; findOpen?: boolean; fullWidth?: boolean; fullscreen?: boolean; fits?: boolean; disabledActions?: readonly string[]
+const { editor, revision, mode = 'full', document = false, outlineOpen = false, source = false, findOpen = false, fullWidth = false, fullscreen = false, fits = true, disabledActions = [], hiddenActions = [], documentNavigation = false, fullscreenExit = false } = defineProps<{
+  editor: Editor; revision: number; mode?: 'full' | 'simple'; document?: boolean; outlineOpen?: boolean; source?: boolean; findOpen?: boolean; fullWidth?: boolean; fullscreen?: boolean; fits?: boolean; disabledActions?: readonly string[]; hiddenActions?: readonly string[]
+  documentNavigation?: boolean; fullscreenExit?: boolean
 }>()
 const emit = defineEmits<{ action: [key: string, value?: string] }>()
 const { t } = useI18n()
@@ -59,17 +64,9 @@ function dispatch(key: string, value?: string): void {
   emit('action', alignment ? 'alignment' : key, alignment ? key : value)
 }
 const mobile = computed(() => $q.screen.lt.md && mode === 'full')
-function navigateToolbar(event: KeyboardEvent): void {
-  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key) || !(event.target instanceof HTMLButtonElement)) return
-  const toolbar = event.currentTarget as HTMLElement
-  const buttons = [...toolbar.querySelectorAll<HTMLButtonElement>('button:not([disabled])')].filter(button => button.offsetParent !== null)
-  const index = buttons.indexOf(event.target)
-  const next = event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + buttons.length) % buttons.length
-  buttons[next]?.focus(); event.preventDefault()
-}
 const coloredIcon = (svg: string, color: string) => 'img:data:image/svg+xml,' + encodeURIComponent(svg.replaceAll('<path ', `<path fill="${color}" `))
 const simpleKeys = ['undo', 'redo', 'removeFormat', 'bold', 'italic', 'underline', 'shortcuts.inlineCode', 'heading', 'bulletList', 'orderedList', 'checklist', ...alignments, 'code', 'link', 'galarisLink', 'insertTable', 'separator']
-const mobileKeys = ['undo', 'redo', 'find', 'bold', 'italic', 'removeFormat', 'heading', 'callout', 'bulletList', 'orderedList', 'checklist', 'outline', ...alignments, 'galarisLink', 'insertEmoji', 'share.action', 'help']
+const mobileKeys = ['undo', 'redo', 'find', 'bold', 'italic', 'removeFormat', 'heading', 'callout', 'bulletList', 'orderedList', 'checklist', 'outline', ...alignments, 'galarisLink', 'insertEmoji', 'share.action', 'fullscreen', 'help']
 const mobileItems = computed(() => {
   const items = groups.value.flatMap(group => group.rows.flat())
   return mobileKeys.flatMap(key => items.find(item => item.key === key) ?? [])
@@ -89,8 +86,7 @@ const groups = computed(() => {
   void revision
   const image = editor.isActive('documentImage') ? new DOMParser().parseFromString(editor.getAttributes('documentImage').html, 'text/html').body.firstElementChild as HTMLElement : null
   const button = (key: string, icon: string, active?: boolean, reading = false): Item => ({ key,
-    icon: key === 'exportPdf' ? coloredIcon(pdfIcon, solaire.red.accent)
-      : key === 'resources.documentExportBundle' ? coloredIcon(zipIcon, solaire.blue.accent)
+    icon: key === 'resources.documentExportBundle' ? coloredIcon(zipIcon, solaire.blue.accent)
       : editorialIcon(key === 'fullscreen' && fullscreen ? 'restore' : key, icon),
     active, disabled: disabledActions.includes(key) || !reading && (!editor.isEditable || source) })
   const menu = (key: string, icon: string, options: Array<[string, string]>, value?: string): Item => ({ ...button(key, icon), options: options.map(([value, label]) => ({ value, label })), value })
@@ -132,8 +128,14 @@ const groups = computed(() => {
     ]] },
     { name: 'insert' as const, rows: [[button('link', 'link'), button('galarisLink', 'folder_open'), ...(document ? [button('resources.uploadFile', 'upload_file')] : [])],
       ...(document || mode === 'simple' ? [[button('insertTable', 'table_chart'), ...(document ? [button('insertEmoji', 'sentiment_satisfied_alt')] : []), button('separator', 'horizontal_rule')]] : [])] },
-  ].map(group => mode === 'simple' ? { ...group, rows: [group.rows.flat().filter(item => simpleKeys.includes(item.key))] } : group)
+  ].map(group => {
+    const rows = group.rows.map(row => row.filter(item => !hiddenActions.includes(item.key))).filter(row => row.length)
+    return { ...group, rows: mode === 'full' ? rows : [rows.flat().filter(item => simpleKeys.includes(item.key))] }
+  })
     .filter(group => group.rows.some(row => row.length) || group.name === 'reading' && Boolean(slots.voice))
 })
+const overflowGroups = computed(() => groups.value.map(group => ({ ...group,
+  rows: group.rows.map(row => row.filter(item => !mobileKeys.includes(item.key))).filter(row => row.length),
+})).filter(group => group.rows.length))
 const readingHelp = computed(() => groups.value.find(group => group.name === 'reading')?.rows.flat().find(item => item.key === 'help'))
 </script>

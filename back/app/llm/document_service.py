@@ -33,7 +33,7 @@ async def start_analysis(agent_id: int, input_data: dict[str, Any], *,
             LLMDocumentAnalysis.idempotency_key == idempotency_key,
         ))
         if existing:
-            for key in ("uri", "question", "runtime", "max_calls", "model_slot"):
+            for key in ("uri", "revision", "question", "runtime", "max_calls", "model_slot"):
                 if existing.input.get(key) != admission.model_dump()[key]:
                     raise ValueError("An analysis identity cannot be reused for another request")
             return await read_analysis(agent_id, existing.id, runtime=admission.runtime)
@@ -57,7 +57,7 @@ async def start_analysis(agent_id: int, input_data: dict[str, Any], *,
         ))
         if existing is None:
             raise RuntimeError("Analysis admission did not persist")
-        for field in ("uri", "question", "runtime", "max_calls", "model_slot"):
+        for field in ("uri", "revision", "question", "runtime", "max_calls", "model_slot"):
             if existing.input.get(field) != payload[field]:
                 await finish_action(permit, outcome="failed", deferred=True)
                 raise ValueError("An analysis identity cannot be reused for another request")
@@ -71,9 +71,10 @@ async def owned_analysis(agent_id: int, analysis_id: UUID, *, runtime: str) -> L
     if row is None or row.agent_id != agent_id:
         raise PermissionError("Document analysis not accessible")
     ctx = ResourceContext(agent_id=agent_id, runtime=runtime, task_id=row.task_id)
-    await resource_info(ctx, str(row.input["uri"]))
+    uri, revision = str(row.input["uri"]), row.input.get("revision")
+    await resource_info(ctx, uri, revision=revision)
     if row.checkpoint.get("source_sha256"):
-        async with prepared_resource(ctx, str(row.input["uri"])) as (document, _):
+        async with prepared_resource(ctx, uri, revision=revision) as (document, _):
             if document.sha256 != row.checkpoint["source_sha256"]:
                 raise ValueError("Document analysis belongs to an obsolete source version")
     return row
@@ -83,7 +84,8 @@ async def read_analysis(agent_id: int, analysis_id: UUID, *, runtime: str) -> di
     row = await owned_analysis(agent_id, analysis_id, runtime=runtime)
     # run_id is retained solely for compatibility with existing tool arguments.
     return {"analysis_id": str(row.id), "run_id": str(row.id),
-            **snapshot(row).model_dump(mode="json"), "source_uri": row.input["uri"]}
+            **snapshot(row).model_dump(mode="json"), "source_uri": row.input["uri"],
+            "source_revision": row.input.get("revision")}
 
 
 async def advance_analysis(analysis_id: UUID) -> DocumentAnalysisSnapshot:

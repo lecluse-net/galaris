@@ -4,33 +4,48 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { validRichLink, richLinkCard } from '@/core/util/richText'
-import { documentFolderId } from '@/core/util'
-import { contactResourceId } from '@/app/memory'
-import { processReferenceHtml } from '@/app/process/interface'
+import { richLinkCard, richLinkDefaultMode, richLinkHasCard, validRichLink } from '@/core/util/richText'
+import { attachmentReference, documentResourceHtml } from '@/core/util'
+import { resourceBlock, resourceLinkElement } from '@/core/util/facade'
 import { resourceTarget, type FileEntry } from '@/app/file_share/interface'
 import ResourcePicker from './resourcePicker.vue'
 
-const { documentId, agentId, editable, resourcesOnly = false } = defineProps<{ documentId?: string; agentId: number | null; editable: boolean; resourcesOnly?: boolean }>()
+const { documentId, agentId, editable, resourcesOnly = false, host = 'text' } = defineProps<{
+  documentId?: string; agentId: number | null; editable: boolean; resourcesOnly?: boolean; host?: 'text' | 'mindmap'
+}>()
 const adding = defineModel<boolean>('pickerOpen', { default: false })
 const emit = defineEmits<{ picked: [html: string]; 'resources-picked': [resources: { uri: string; name: string }[]] }>()
 const { t } = useI18n()
 const error = ref(''), busy = ref(false)
 let generation = 0
-function reference(entry: FileEntry, selectedAgent: number): string {
+async function reference(entry: FileEntry, selectedAgent: number): Promise<string> {
   const title = String(entry.metadata?.label ?? entry.name)
-  if (['process', 'process_run'].includes(resourceTarget(entry, selectedAgent)?.kind ?? '')) return processReferenceHtml(entry.uri, title, false)
-  const anchor = document.createElement('a')
-  if (validRichLink(entry.uri)) anchor.href = entry.uri
-  else {
+  const image = !entry.is_collection && /^image\/(png|jpeg|webp|gif)$/.test(entry.media_type)
+  if (attachmentReference(entry.uri)) return documentResourceHtml({ uri: entry.uri, name: title, size: entry.size ?? 0, mediaType: entry.media_type })
+  let href = entry.uri
+  if (image || !validRichLink(href)) {
     // Existing provider files stay at their source; only explicit uploads create attachments.
     const target = new URL('/files', window.location.origin)
     target.searchParams.set('agent_id', String(selectedAgent))
     target.searchParams.set('uri', entry.uri)
-    anchor.href = target.href
+    href = target.href
   }
-  anchor.textContent = title
-  return `<p>${anchor.outerHTML}</p>`
+  if (image) {
+    const block = resourceBlock(href, title, 'embed')
+    block.classList.add('image')
+    return block.outerHTML
+  }
+  if (richLinkDefaultMode(entry.uri, host) === 'card') {
+    if (['process', 'process_run'].includes(resourceTarget(entry, selectedAgent)?.kind ?? '')) return resourceBlock(href, title, 'card').outerHTML
+    if (richLinkHasCard(entry.uri)) {
+      const html = await richLinkCard(entry.uri, selectedAgent)
+      const block = new DOMParser().parseFromString(html, 'text/html').querySelector<HTMLElement>('blockquote.galaris-link-card')
+      if (block) { block.dataset.resourceMode = 'card'; return block.outerHTML }
+    }
+  }
+  const link = resourceLinkElement(href, title)
+  link.dataset.resourceMode = 'link'
+  return `<p>${link.outerHTML}</p>`
 }
 async function select(entries: FileEntry[], selectedAgent: number): Promise<void> {
   if (!editable || busy.value) return
@@ -42,7 +57,7 @@ async function select(entries: FileEntry[], selectedAgent: number): Promise<void
   busy.value = true; error.value = ''
   const current = ++generation
   try {
-    const html = await Promise.all(entries.map(entry => documentFolderId(entry.uri) || contactResourceId(entry.uri) ? richLinkCard(entry.uri, null) : reference(entry, selectedAgent)))
+    const html = await Promise.all(entries.map(entry => reference(entry, selectedAgent)))
     if (!editable || !adding.value || current !== generation) return
     emit('picked', html.join(''))
     adding.value = false

@@ -4,8 +4,10 @@ import { processResourceService } from './services/processResourceService'
 
 export default {
   schemes: ['process'],
+  linkIcon: 'account_tree',
   search: query => processResourceService.search(query),
   target: processResourceTarget,
+  embed: uri => Boolean(processResourceTarget(uri)),
   async card(uri, agentId) {
     const preview = await processResourceService.preview(uri, agentId)
     return processReferenceHtml(preview.uri, preview.title, true)

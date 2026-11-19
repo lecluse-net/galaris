@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
-from typing import Any
+from typing import Annotated, Any
 from collections.abc import Collection
 from uuid import UUID
 
+from pydantic import Field
 from sqlalchemy import String, cast, select
 
 from app.llm.models import LLMCall
@@ -24,18 +25,19 @@ _INSPECTION_LIMIT_MAX = 100
         "Analyze an authorized document URI in resumable bounded batches, including large reports. "
         "Returns an analysis identifier; use document_analysis_get for coverage and results. "
         "model_slot document uses the profile's document reader, text uses its standard text model. "
-        "Interrupted billable batches are never automatically replayed."
+        "Interrupted billable batches are never automatically replayed. "
+        "For an exact document:// URI, set revision to analyze a saved historical version."
     ))
 async def document_analyze(ctx: McpToolContext, uri: str, question: str,
                            model_slot: str = "document", max_calls: int = 256,
-                           idempotency_key: str = "") -> dict[str, Any]:
+                           idempotency_key: str = "", revision: Annotated[int, Field(ge=1)] | None = None) -> dict[str, Any]:
     from app.services.contracts import current_tool_execution
     from .document_service import start_analysis
 
     operation = current_tool_execution()
     key = idempotency_key or (str(operation.operation_id) if operation else None)
     return await start_analysis(ctx.agent_id, {"uri": uri, "question": question,
-        "runtime": ctx.runtime, "model_slot": model_slot, "max_calls": max_calls},
+        "runtime": ctx.runtime, "model_slot": model_slot, "max_calls": max_calls, "revision": revision},
         task_id=ctx.task_id, idempotency_key=key)
 
 

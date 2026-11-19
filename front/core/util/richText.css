@@ -3,7 +3,10 @@
 
 /* Editorial HTML follows the application theme. */
 .rich-content,
-.rich-editor {
+.rich-editor,
+.editorial-toolbar,
+.editorial-search-bar,
+.editorial-context-toolbar {
   --rich-background: #ffffff;
   --rich-foreground: #202124;
   --rich-surface: #f1f3f5;
@@ -17,8 +20,10 @@
   --rich-editor-active: #e8f1fc;
   color-scheme: light;
   color: var(--rich-foreground);
-  background-color: var(--rich-background);
 }
+
+.rich-content,
+.rich-editor { background-color: var(--rich-background); }
 
 /* Outside the editor, let the containing page or card provide the background. */
 .rich-content-reader > .rich-content {
@@ -26,7 +31,10 @@
 }
 
 .body--dark .rich-content,
-.body--dark .rich-editor {
+.body--dark .rich-editor,
+.body--dark .editorial-toolbar,
+.body--dark .editorial-search-bar,
+.body--dark .editorial-context-toolbar {
   --rich-background: #1d1d1d;
   --rich-foreground: #f1f3f5;
   --rich-surface: #30343b;
@@ -67,6 +75,8 @@
 .rich-content :is(mark, [style*="background-color: #fff59d"], [style*="background-color: #a5d6a7"], [style*="background-color: #90caf9"], [style*="background-color: #f48fb1"]) a { color: #123a69; }
 .rich-content ::selection { color: var(--rich-selection-foreground); background: var(--rich-selection-background); }
 .rich-content img { max-width: 100%; height: auto; }
+.rich-content blockquote.image.image_resized { max-width: 100%; }
+.rich-content blockquote.image.image_resized img { width: 100%; }
 
 .rich-content .table > table { margin: 0; }
 .rich-content figure { max-width: 100%; }

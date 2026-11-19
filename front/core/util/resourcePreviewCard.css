@@ -69,6 +69,25 @@
 .rich-content blockquote.galaris-document-card { min-height: 100px; padding-left: 124px; }
 .rich-content blockquote.galaris-document-card > .galaris-resource-embed { position: absolute; inset: 8px auto 8px 8px; width: 100px; }
 .rich-content blockquote.galaris-document-card > .galaris-resource-embed:has(.document-citation-preview) { position: static; width: auto; }
+.rich-content blockquote.galaris-link-card[data-resource-mode="card"] { border-color: var(--solaire-yellow-accent); }
+.rich-content blockquote.galaris-link-card:has(> .galaris-resource-embed > .process-citation-thumbnail) { min-height: 0; }
+.rich-content blockquote.galaris-link-card[data-resource-mode="embed"] {
+  color: inherit;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  min-height: 0;
+  padding: 0;
+  overflow: visible;
+  break-inside: auto;
+}
+.rich-content blockquote.galaris-link-card[data-resource-mode="embed"] > .galaris-resource-embed {
+  position: static;
+  width: auto;
+}
+.rich-content [data-resource-mode="embed"][data-resource-border] { outline: 1px solid var(--document-embed-border); }
+.rich-content [data-resource-mode="embed"][data-resource-shadow] { box-shadow: 0 3px 12px color-mix(in srgb, var(--solaire-gray-accent) 35%, transparent); }
+.rich-content blockquote.galaris-link-card.image[data-resource-mode="card"] > img { display: block; max-width: 112px; max-height: 86px; object-fit: contain; }
 @media (hover: none), (pointer: coarse) {
   .resource-preview-block .resource-preview-actions { opacity: 1; pointer-events: auto; }
 }

@@ -66,6 +66,9 @@ class DocumentFormatDefinition:
     validate_binary: Callable[[bytes], None] | None = None
     extract_binary: Callable[[bytes], str] | None = None
     plugin_editor: PluginDocumentEditor | None = None
+    import_media_types: tuple[str, ...] = ()
+    import_source: Callable[[str, str, bytes], str] | None = None
+    export_source: Callable[[str, str], tuple[bytes, str, str]] | None = None
     compare_revisions: Callable[[bytes, bytes, DocumentRevisionRegion | None], dict[str, JsonValue]] | None = None
 
     def validate_content(self, content: bytes) -> None:
@@ -202,6 +205,8 @@ def _ensure_native_formats() -> None:
         return
     from .text import validate as validate_text, extract as extract_text
     from .data.content import validate as validate_data, extract as extract_data
+    from . import mindmap
+    from .mindmap import exchange
 
     registry.register(DocumentFormatDefinition(
         "text", "text/html", "", "description", validate_text, extract_text,
@@ -212,5 +217,12 @@ def _ensure_native_formats() -> None:
     registry.register(DocumentFormatDefinition(
         "data", "application/json", "[]", "data_object", validate_data, extract_data,
         surfaces=frozenset({"editor", "preview", "native_export", "import"}), import_extensions=(".json",),
+    ))
+    registry.register(DocumentFormatDefinition(
+        "mindmap", exchange.MEDIA_TYPE, mindmap.INITIAL_CONTENT, "account_tree", mindmap.validate, mindmap.extract,
+        static_snapshot=mindmap.static_snapshot, references=mindmap.references, remap_references=mindmap.remap_references,
+        surfaces=frozenset({"editor", "preview", "embed", "pdf", "native_export", "import"}),
+        import_extensions=exchange.IMPORT_EXTENSIONS, import_media_types=tuple(exchange.IMPORT_TYPES),
+        import_source=exchange.import_source, export_source=exchange.export_source,
     ))
     _native_registered = True

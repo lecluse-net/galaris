@@ -2,6 +2,20 @@
 
 # Catalogue des garanties fonctionnelles
 
+`app/document/tests/test_mindmap.py` couvre les conversions structurelles, l’import
+dans la bibliothèque, l’export d’une révision sous ACL et les commandes MCP atomiques.
+`front/browser-tests/mindmap.spec.mjs` exerce la création d’une branche au clavier,
+la réouverture du document enregistré et la demande d’export.
+`e2e/specs/mindmap.spec.mjs` relie l’import réel, l’édition, la réouverture et le
+téléchargement FreeMind dans l’application assemblée.
+
+`document-resources.spec.mjs` protège les modes proposés par type, la distinction entre
+aperçu et lecteur et la réouverture d’une image avec son habillage et sa légende.
+`document-print.spec.mjs` couvre le rendu statique et la commande spécialisée BPMN.
+Le parcours assemblé `e2e/specs/mindmap.spec.mjs` exerce les références Texte ↔ Carte
+mentale et le repli en cas de cycle. Le codec éditorial vérifie les attributs enregistrés
+et conserve les pièces jointes utilisées par une présentation mise en réserve.
+
 Les scénarios de reprise `front/browser-tests/preferences.spec.mjs` et
 `request-lifecycle.spec.mjs` vérifient les erreurs propres à chaque lecture, leur retry et
 la conservation d'un formulaire Service rouvert pendant une sauvegarde. Les interactions
@@ -52,7 +66,8 @@ conservent les garanties d'aperçu, d'impression et d'export PDF. Voir le
 [contrat des formats](document-formats.md) pour distinguer capacité déclarée et qualification.
 
 `app/document/tests/test_sample_drawing.py` relit les pixels historiques, compare deux
-versions et leurs zones, et vérifie les refus d’accès.
+versions et leurs zones, et vérifie les refus d'accès. `chat-document-workspace.spec.mjs`
+vérifie que le Chat envoie la version effectivement chargée dans l'historique.
 `app/plugin/tests/test_plugins.py` couvre la reprise après redémarrage du worker Process,
 les révocations persistantes, les attestations du catalogue et la reprise des Connexions
 après retrait d'un protocole. `plugin-release-lifecycle.spec.mjs` éprouve la conservation

@@ -1,10 +1,12 @@
 <template>
   <ContactResourceCard v-if="contactId" ref="contactCard" :contact-id="contactId" />
-  <ProcessPreview v-else-if="target" ref="process" :uri="uri" :agent-id="agentId" inline />
+  <div v-else-if="target && display === 'card'" ref="processThumbnail" class="process-citation-thumbnail"><ProcessThumbnail :uri="uri" :agent-id="agentId" :title="title" compact /></div>
+  <ProcessPreview v-else-if="target" ref="process" :uri="uri" :agent-id="agentId" inline :embedded="display === 'embed'" :register-actions="registerActions" />
   <div v-else-if="agent !== null" ref="avatar" class="agent-citation-avatar"><ResourceThumbnail :uri="uri" :title="title" /></div>
   <div v-else-if="folderId" ref="folderThumbnail" class="folder-citation-thumbnail"><ResourceThumbnail :uri="uri" :agent-id="agentId" :title="title" /></div>
+  <DocumentResourceEmbed v-else-if="documentId && display === 'embed'" ref="documentEmbed" :document-id="documentId" :agent-id="agentId" :register-actions="registerActions" full />
   <div v-else-if="documentId" class="document-citation-preview">
-    <div class="document-citation-thumbnail" aria-hidden="true"><DocumentResourceEmbed ref="documentEmbed" :document-id="documentId" :agent-id="agentId" /></div>
+    <div class="document-citation-thumbnail" aria-hidden="true"><DocumentResourceEmbed ref="documentEmbed" :document-id="documentId" :agent-id="agentId" :legacy="display === 'legacy'" /></div>
     <q-btn outline color="primary" dense no-caps class="document-citation-identifier" :label="documentId" :aria-label="t('common.copy')" @click.stop.prevent="copyIdentifier"><q-tooltip>{{ t('common.copy') }}</q-tooltip></q-btn>
   </div>
 </template>
@@ -17,8 +19,13 @@ import { DocumentResourceEmbed } from '@/app/document'
 import { agentResourceId } from '@/app/agent'
 import { processResourceTarget } from '@/app/process/interface'
 import { contactResourceId } from '@/app/memory'
-const { uri, agentId = null, title = '', registerSnapshot } = defineProps<{ uri: string; agentId?: number | null; title?: string; registerSnapshot?: RegisterDocumentCapture }>()
+import type { RegisterDocumentReferenceActions } from '@/core/util/facade'
+const { uri, agentId = null, title = '', registerSnapshot, registerActions, display = 'legacy' } = defineProps<{
+  uri: string; agentId?: number | null; title?: string; registerSnapshot?: RegisterDocumentCapture
+  registerActions?: RegisterDocumentReferenceActions; display?: 'legacy' | 'card' | 'embed'
+}>()
 const ProcessPreview = defineAsyncView(async () => (await import('@/app/process')).ProcessPreview)
+const ProcessThumbnail = defineAsyncView(async () => (await import('@/app/process')).ProcessThumbnail)
 const ContactResourceCard = defineAsyncView(async () => (await import('@/app/memory')).ContactResourceCard)
 const contactId = computed(() => contactResourceId(uri))
 const contactCard = useTemplateRef<{ capture: RenderedDocumentCapture }>('contactCard')
@@ -27,6 +34,7 @@ const agent = computed(() => agentResourceId(uri))
 const documentId = computed(() => documentIdFromResourceUri(uri))
 const folderId = computed(() => documentFolderId(uri))
 const folderThumbnail = useTemplateRef<HTMLElement>('folderThumbnail')
+const processThumbnail = useTemplateRef<HTMLElement>('processThumbnail')
 const { t } = useI18n(), $q = useQuasar()
 const documentEmbed = useTemplateRef<{ capture: RenderedDocumentCapture }>('documentEmbed')
 async function copyIdentifier(): Promise<void> {
@@ -39,6 +47,7 @@ async function capture(signal: AbortSignal): Promise<string> {
   if (contactId.value && contactCard.value) return contactCard.value.capture(signal)
   if (folderId.value && folderThumbnail.value) return captureElementRendering(folderThumbnail.value, signal)
   if (target.value && process.value) return process.value.capture(signal)
+  if (target.value && processThumbnail.value) return captureElementRendering(processThumbnail.value, signal)
   if (documentId.value && documentEmbed.value) return documentEmbed.value.capture(signal)
   const element = avatar.value?.querySelector<HTMLElement>('.q-avatar')
   if (!element) throw new Error('Agent rendering unavailable')
@@ -50,6 +59,7 @@ onBeforeUnmount(() => registerSnapshot?.(undefined))
 <style scoped>
 .agent-citation-avatar { display: block; width: 100%; height: 100%; }
 .folder-citation-thumbnail { height: 84px; width: 100%; }
+.process-citation-thumbnail { width: 150px; max-width: 100%; }
 .document-citation-thumbnail { position: absolute; inset: 8px auto 8px 8px; width: 100px; }
 .document-citation-identifier { max-width: 100%; font-family: monospace; font-size: 10px; color: var(--solaire-gray-accent); opacity: .75; }
 .document-citation-identifier :deep(.q-btn__content) { overflow-wrap: anywhere; }

@@ -9,7 +9,7 @@
         <q-badge outline>{{ t('nativeProcesses.readOnly') }}</q-badge>
         <p v-if="preview.description" class="q-mt-sm">{{ preview.description }}</p>
       </div>
-      <BpmnCanvas :model-value="graph" readonly auto-fit :show-guide="!inline" :selected="selected" @select="selected = $event" @dismiss="selected = null">
+      <BpmnCanvas ref="canvas" :model-value="graph" readonly auto-fit :embedded="embedded" :show-guide="!inline" :selected="selected" @select="selected = $event" @dismiss="selected = null">
         <template #inspector>
           <div v-if="selectedNode" class="q-pa-sm">
             <div class="text-subtitle2">{{ selectedNode.title }}</div>
@@ -18,17 +18,20 @@
           </div>
         </template>
       </BpmnCanvas>
-      <q-btn color="primary" v-if="path.length" outline icon="arrow_back" :label="t('nativeProcesses.resources.parentDiagram')" @click="path.pop(); selected = null" />
+      <q-btn color="primary" v-if="path.length" outline icon="arrow_back" :label="t('nativeProcesses.resources.parentDiagram')" @click="parentDiagram" />
     </template>
   </section>
 </template>
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, shallowRef, watch, useTemplateRef } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef, watch, watchEffect, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { captureElementRendering } from '@/core/util'
+import type { RegisterDocumentReferenceActions } from '@/core/util/facade'
 import BpmnCanvas from './BpmnCanvas.vue'
 import { processResourceService, type ProcessResourcePreview } from '../services/processResourceService'
-const { uri, agentId = null, inline = false } = defineProps<{ uri: string; agentId?: number | null; inline?: boolean }>()
+const { uri, agentId = null, inline = false, embedded = false, registerActions } = defineProps<{
+  uri: string; agentId?: number | null; inline?: boolean; embedded?: boolean; registerActions?: RegisterDocumentReferenceActions
+}>()
 const emit = defineEmits<{ loaded: [preview: ProcessResourcePreview] }>()
 const { t } = useI18n()
 const preview = shallowRef<ProcessResourcePreview | null>(null), error = ref(false), loading = ref(false)
@@ -40,6 +43,12 @@ const graph = computed(() => {
 })
 const selectedNode = computed(() => preview.value ? graph.value.nodes.find(node => node.id === selected.value) : null)
 const root = useTemplateRef('root')
+const canvas = useTemplateRef('canvas')
+function parentDiagram(): void { path.value.pop(); selected.value = null }
+watchEffect(() => registerActions?.(preview.value ? [
+  { id: 'process-fit', icon: 'fit_screen', label: t('nativeProcesses.fitDiagram'), run: () => canvas.value?.fit() },
+  ...(path.value.length ? [{ id: 'process-parent', icon: 'arrow_back', label: t('nativeProcesses.resources.parentDiagram'), run: parentDiagram }] : []),
+] : []))
 async function capture(signal: AbortSignal): Promise<string> {
   const board = root.value?.querySelector<HTMLElement>('.diagram-board')
   if (!board || loading.value || error.value) throw new Error('Process rendering unavailable')
@@ -58,14 +67,18 @@ async function load(): Promise<void> {
   finally { if (!controller.signal.aborted) loading.value = false }
 }
 watch(() => [uri, agentId], load, { immediate: true })
-onBeforeUnmount(() => request?.abort())
+onBeforeUnmount(() => { request?.abort(); registerActions?.([]) })
 </script>
 <style scoped>
 .process-preview { min-width: 0; }
-.process-preview--inline :deep(.diagram-editor) { position: relative; }
+.process-preview--inline :deep(.diagram-editor:not(.fullscreen)) { position: relative; }
 .process-preview--inline :deep(.diagram-toolbar) { position: absolute; top: 4px; right: 4px; z-index: 4; padding: 4px; border: 0; background: var(--solaire-gray-light); opacity: 0; pointer-events: none; transition: opacity .15s; }
 .process-preview--inline:hover :deep(.diagram-toolbar), .process-preview--inline:focus-within :deep(.diagram-toolbar) { opacity: 1; pointer-events: auto; }
-.process-preview--inline :deep(.bpmn-scroll) { height: 320px; min-height: 0; }
+.process-preview--inline :deep(.diagram-editor:not(.fullscreen) .bpmn-scroll) {
+  /* Keep the overlay controls reachable when the diagram is zoomed far out. */
+  min-height: 48px;
+  max-height: var(--document-embed-height, min(320px, 72vh));
+}
 .body--dark .process-preview--inline :deep(.diagram-toolbar) { background: var(--solaire-gray-dark); }
 .process-preview--inline :deep(.diagram-editor.fullscreen .bpmn-scroll) { height: calc(100dvh - 70px); }
 .process-preview--inline :deep(.diagram-editor.fullscreen .diagram-toolbar) { opacity: 1; pointer-events: auto; }

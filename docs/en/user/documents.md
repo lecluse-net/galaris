@@ -92,18 +92,122 @@ unavailable. Existing documents and their rights remain intact. Formats other th
 also expose PDF export in the common envelope; fallback rendering does not promise a
 specialized viewer's layout.
 
-Each **New document** icon opens the format menu below the clicked icon before creating any record. Choose **Text format** or
-**Data format**, then the title and owner. Document and folder context menus also offer both
+Each **New document** icon opens the format menu below the clicked icon before creating any record. Choose **Text format**,
+**Data format** or **Mind map**, then the title and owner. Document and folder context menus also offer these
 creation actions in the current classification. Closing the menu or creation dialog
 creates no document.
 
-The **Document format** filter selects all formats, Text or Data. It combines with search
+The **Document format** filter selects a format. It combines with search
 and the other filters before pagination. Each format has a distinct icon, editor and
 preview. Title, owner, sharing, Topic, keywords, summary and history follow common rules.
 The Data editor preserves invalid JSON drafts without saving them or leaving the document.
 Using the browser Back action to close its window asks whether to keep or discard the draft.
 Discarding restores the last saved content.
 
+
+## Mind maps
+
+In **New document**, choose **Mind map**. Select a node, then press **Enter** or
+click its title again to edit it in place. The cursor goes to the end when editing starts.
+The toolbar lets you edit the note, insert a link, change the parent or reorder branches.
+On desktop, drag a branch or a selection. Drop near the top or bottom of a node to place the
+branches before or after it, or in the center to make them its children. Dragged branches keep
+their order and descendants. One undo reverses the whole move.
+The **+** and **−** buttons expand and collapse descendants.
+Folding changes the view. Layout and saving follow content edits automatically.
+
+When a node has focus, use the arrow keys to navigate, **Tab** or **Insert** to add
+a child and **Shift+Enter** to add a sibling. **Space** folds or unfolds a branch without a checkbox. From the
+title, use **Alt+arrow keys** to select another node. **F2** edits the title,
+**F3** edits the note. Outside editing, **Ctrl+K** or the **Link** button adds a link in a new child
+after you confirm it. While editing a field, **Enter** applies
+the edit and **Escape** cancels it. **Shift+Enter** inserts a line break in a note.
+From a focused node, press **Escape**, then **Tab** to leave the map.
+The **Keyboard help** button under **View** and **Alt+0** open the map's shortcut list.
+
+Under **Node**, choose **Add checkbox**. Click the checkbox or press **Space** on the
+node outside editing to check or uncheck it. While editing, **Space** inserts a space.
+The document saves the checkbox state. A new sibling added immediately after a node with
+a checkbox gets an empty checkbox, even if the original is checked. New children and
+branches added from a node without a checkbox start without a checkbox.
+
+Use **Shift+arrow keys** or **Shift+click** to select a range of visible nodes.
+**Ctrl+click** (**Cmd+click** on Mac) on a node adds it to or removes it from the selection.
+On a link, **Ctrl/Cmd+click** opens the reference. You can select text while editing a field.
+Use the toolbar to move, cut, copy or delete selected branches, or to add or remove their checkboxes.
+Within the same map, select a destination node and paste to add the branches below it.
+Cut branches move when you paste them. Copying creates distinct branches. Moving, copying and deleting
+a branch also applies to its descendants.
+
+Outside editing, pasting text creates one child per line under the active node, including blank
+lines. A line containing only a URL creates a child with a clickable link. While editing, pasted
+content stays in the current field or rich text editor.
+
+Drag documents from the library tree or a list to reference them under a node. On desktop, the
+detailed list stays beside the editable map. Drop a local file or a supported web image to add it
+to the map’s attachments and then insert it under the target node. Dropping a web link adds a
+clickable reference.
+
+The **Editing** group also contains **Cut**, **Copy**, and **Paste**. Toolbar groups
+are centered on each row and wrap onto additional rows when space is limited.
+Under **Editing**, **Select all** (**Ctrl/Cmd+A**) includes collapsed branches. **Undo**
+(**Ctrl/Cmd+Z**) and **Redo** (**Ctrl/Cmd+Shift+Z**) cover map operations while the
+document is open, including moves, deletions and checkbox changes. While editing
+rich text in a node, the shortcuts apply to that node's text.
+
+**Find** (**Ctrl/Cmd+F**) searches titles, notes and rich text in all branches.
+**Next** reveals the matching node. **Replace** changes one occurrence. **Replace all**
+creates one undoable change. Formatting and link destinations are preserved.
+
+Drag the map background with a mouse or one finger, or use the scrollbars or mouse
+wheel to pan. The header and attachments scroll vertically with the map, as in a
+Text document. The horizontal scrollbar stays visible at the bottom of the map.
+Use **Ctrl + wheel**, a pinch gesture or the zoom controls to zoom.
+**Fit map** adjusts the view, and the
+percentage button resets it to 100%. These gestures do not create revisions.
+Under **View**, **Enter fullscreen** expands the map with its tools and document
+navigation buttons. Other document formats follow the same pattern. Use **Exit
+fullscreen** or **Escape** to return to the normal view.
+
+**Map themes** under **Appearance** opens four node palettes. **Solaire**, **Ocean**,
+**Forest** and **Monochrome** follow the Galaris light or dark mode. Select a palette to preview
+it. **Background color** opens the Quasar color picker. Choose a color from the spectrum
+or enter its hex value. The background is independent of the node theme and keeps
+the same color in light and dark mode. **Default background** restores the application
+background. **Apply** saves the setting with the map and **Cancel** restores the saved value.
+
+Under **Export**, **Export as PNG** downloads the entire diagram with its theme and
+background. **Print** opens the browser dialog with the diagram fitted to one A4
+landscape page. Both commands include collapsed branches, their notes, checkboxes and
+accessible images. Interactive objects appear with the title and text of their
+references. The commands preserve the editor's selection, zoom and collapsed branches.
+**Export document and attachments (ZIP)** includes the standalone HTML diagram and
+the document's files. On mobile, **Share** prepares the PDF and opens system sharing,
+with a PDF download available on devices that cannot share files.
+
+Choose **Add rich content** or press **Alt+Enter** to edit a paragraph directly in
+the node. The existing title becomes the first paragraph. The node displays its
+content directly, and **Enter** opens it for editing.
+The toolbar adapts to the selection and offers formatting, lists and
+tables. **Insert file** and **Galaris** create one child node per resource
+under the selected branch. While editing rich content, these commands insert
+the resource at the text selection. Clicking an image, link or card shows its
+actions after the other toolbar groups. Insert paragraph before or after a block while
+editing rich content in a node. Choose **Open** to access the resource.
+**Insert or edit link** adds a URL to the node.
+In the rich content, paste a URL, select it and choose **Show card**.
+A node containing only a link uses the same border and spacing as a text node, including while editing.
+**Galaris** can insert an attachment from another document or another Galaris object.
+Images are loaded from their source with the reader’s permissions. **Show card**
+and **Show URL** change how supported resources are displayed.
+**Node icon** opens the same icon and emoji picker as folders.
+
+**New document from…** accepts Freeplane and FreeMind (`.mm`), OPML (`.opml`),
+modern XMind (`.xmind` with `content.json`) and the Galaris format (`.mindmap`).
+The **Download source** menu offers the same formats. Interchange preserves the
+tree, titles, plain-text notes and portable links. Styling, images, attachments
+and application-specific features stay in the original file. PDF export presents
+the text and hierarchy.
 
 ## Current description and keywords
 
@@ -121,11 +225,11 @@ Only its content keeps restorable versions; restoring content preserves the curr
 and keywords. Its documentary entry in Memory always shows the current description and no longer
 offers description history.
 
-Work is still saved immediately. After a content edit, a new version enters history after
+Work is still saved immediately. For text-backed content, a new version enters history after
 **five minutes without another content edit**. Nearby saves are grouped and the delay survives
 restarts. The initial state is retained; reverting to the latest checkpoint creates no duplicate.
 The technical version token still protects every concurrent save, so history version numbers
-may have gaps.
+may have gaps. File-backed formats such as the Drawing sample keep each changed save in history.
 
 During idle time, Dream can generate a short explanation of what the Document is and when it is
 useful, with search terms. The default threshold is **more than 1,000 useful text characters**.
@@ -134,6 +238,27 @@ without content edits** and **at least 100 characters have changed**
 since its last generation; small edits accumulate. HTML presentation changes alone do not count.
 Manual descriptions are preserved. Both thresholds are configurable in Dream settings and also
 apply to Datasets.
+
+## Choose how a reference appears
+
+In a Text document or a mind map node, select the reference to show its contextual toolbar. Choose **Link** for a clickable title, **Card** for a preview, or **Embed** for the full content. Available buttons depend on the resource. An agent offers Link and Card. A native process also offers Embed for exploring its diagram. Images are inserted as Embed, and a web address pasted into a sentence stays a link.
+
+Clicking a reference in a mind map keeps its preview on screen. A standalone embedded document or process uses the node border. When selected, the border changes color and doubles in thickness. Images stay borderless. To resize an image, click it and drag the handle.
+
+In **Embed → Appearance**, you can enable a border, choose its color and enable the shadow independently. Your settings are saved with that occurrence. A Text document can embed a mind map and a mind map can embed a Text document. Readers access each resource under their own permissions.
+
+An embedded Text document appears in a rounded frame with internal scrolling. To adjust the width and height of an embedded document or process, drag the bottom-right handle. With a keyboard, focus the handle and use the arrow keys. The host document saves the size for each occurrence and restores it on reopening. Embedded process diagrams keep their zoom and scrolling controls.
+
+## Edit rich text in a node
+
+Select a mind map node and choose **Add rich content** or **Edit node content**.
+You can also press **Alt+Enter**.
+The toolbar switches to content editing. Use its styles, lists, tables, equations
+and insertion commands inside the node. On mobile, open **More tools** for extra
+commands. Press **Escape** or choose **Return to map** to return to branch and zoom tools.
+
+With a node selected, type a letter, digit or symbol to open the editor and append
+it to the title or rich content.
 
 ## Insert a Contact card
 
@@ -148,7 +273,7 @@ Sharing the document grants no additional access to the agent's address book. Se
 The **Conversation** icon in the library header, beside the library visibility button, opens a panel to the
 right of the document on desktop. Drag the handle between the document and chat to adjust
 their widths, just as between the library and document. Focus the handle and use the
-left/right arrow keys to resize with the keyboard. Search
+arrow keys along the resize axis. **Home** and **End** move the handle to its two limits. Search
 for an existing conversation or select **New conversation with an agent**. Both pickers only
 offer agents who can read or edit the document through personal, team or global permissions.
 Creation also retains the usual dialogue permissions. Selecting an agent does not grant new
@@ -181,6 +306,11 @@ opened in Chat. Offsets refer to displayed text, not HTML. Long excerpts are tru
 switching documents or replacing content invalidates old positions. This context stays in
 message metadata: it creates no document revision and changes no access rights.
 
+When you send a message with a version loaded in history, the agent receives that revision
+number. In Drawing, the last point used with the keyboard or pointer is expressed in pixels
+of the saved drawing. With read access, the agent can list revisions, read an exact version,
+and compare an area across two drawings.
+
 In the editor, **Document outline** opens an indented list of headings on the left.
 All headings remain visible, and the panel uses the document's background and border. Select a
 heading to navigate to its section. The outline follows heading edits and can be hidden.
@@ -208,16 +338,19 @@ its state in the document, including autosave and revisions. **Enter** adds a li
 **Tab** and **Shift+Tab** nest or unnest lines. States survive reopening and remain visible
 in read-only views and exports. These lists require no Dataset.
 
-On desktop and mobile, a contextual toolbar appears below the main toolbar in editable documents.
+On desktop and mobile, **Contextual actions** appears after the other toolbar groups in editable documents.
 Its commands follow the cursor or selection: table and cell, image, link or code block.
 Icon menus provide properties specific to the selection. Text, paragraph and insertion
 commands stay in the main toolbar, with **More tools** for its additional commands.
-Swipe the icon row horizontally to reach all its commands.
-This toolbar stays below the main toolbar while scrolling and appears only when the selection offers actions, without leaving a gap
-when it disappears. Right-click, **Shift+F10** and long press remain native: spelling,
+Contextual commands wrap onto additional rows when space is limited and stay with the toolbar
+while scrolling. They appear when the selection offers actions.
+Right-click, **Shift+F10** and long press remain native: spelling,
 dictionary and clipboard commands depend on the browser's capabilities.
-While editing, a left click selects a link or card without opening it. Use **Open** in the
-contextual toolbar, or **Ctrl/Cmd+click**, to follow its target. Read-only views keep direct left-click navigation.
+A single click selects a document reference, including in read-only views.
+Use **Ctrl+click** (**Cmd+click** on Mac) to open the document, or **Open** in the
+contextual toolbar when available. In fullscreen, the destination and documents reached
+with **Previous document** or **Next document** stay fullscreen. For other links and cards,
+a click selects while editing and opens the target in read-only views.
 Common commands are not repeated. To edit a link or equation, select it
 and use the corresponding toolbar button.
 

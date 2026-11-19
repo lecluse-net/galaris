@@ -2,6 +2,8 @@
 
 - [0302 — Weekly agent retrospective](0302-weekly-agent-retrospective.md)
 
+- [0301 — Native mind map documents](0301-native-mind-map-documents.md)
+
 - [0300 — Transactional installation of declarative plugins](0300-declarative-plugin-installation.md)
 
 - [0299 — Résultat métier des tâches bloquées](0299-task-objective-blockers.md)

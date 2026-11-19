@@ -13,7 +13,7 @@ from app.agent import AgentManagementScope
 from core.util import convert_to_html
 from core.user import HumanActor
 from .data.content import validate as validate_json
-from .formats import DocumentFormat, document_format_definition, document_formats
+from .formats import DocumentFormat, DocumentFormatDefinition, document_format_definition, document_formats
 from . import resource_service as service
 from .content_limits import validate_document_size
 from .document_cloning import DocumentCloneSource, PreparedDocumentClone
@@ -130,20 +130,17 @@ def convert_document_import(source: DocumentImportSource) -> tuple[DocumentForma
     validate_document_size(source.content)
     if source.document_format is not None and source.document_format not in {"text", "html", "data"}:
         definition = document_format_definition(source.document_format)
-        content = source.content.decode("utf-8-sig")
-        definition.validate(content)
-        return definition.code, content
+        return definition.code, _import_text_format(definition, source)
     if source.document_format is None:
         suffix = PurePosixPath(source.name).suffix.lower()
         mime = source.media_type.split(";", 1)[0].strip().lower()
         matches = [definition for definition in document_formats() if definition.code not in {"text", "data"}
-                   and (suffix in definition.import_extensions or mime == definition.media_type)]
+                   and (suffix in definition.import_extensions or mime == definition.media_type
+                        or mime in definition.import_media_types)]
         if len(matches) > 1:
             raise ValueError("Ambiguous document import format")
         if matches:
-            content = source.content.decode("utf-8-sig")
-            matches[0].validate(content)
-            return matches[0].code, content
+            return matches[0].code, _import_text_format(matches[0], source)
     formats = {".json": "application/json", ".html": "text/html", ".htm": "text/html",
                ".md": "text/markdown", ".markdown": "text/markdown", ".txt": "text/plain"}
     suffix = PurePosixPath(source.name).suffix.lower()
@@ -165,6 +162,15 @@ def convert_document_import(source: DocumentImportSource) -> tuple[DocumentForma
         parser.close()
         content = "".join(parser.parts)
     return "text", convert_to_html(content, media_type, profile="document")
+
+
+def _import_text_format(definition: DocumentFormatDefinition, source: DocumentImportSource) -> str:
+    content = (definition.import_source(source.name, source.media_type, source.content)
+               if definition.import_source is not None and source.document_format is None
+               else source.content.decode("utf-8-sig"))
+    validate_document_size(content)
+    definition.validate(content)
+    return content
 
 
 @asynccontextmanager
@@ -201,7 +207,12 @@ async def prepare_document_import(source: DocumentImportSource) -> AsyncGenerato
         yield PreparedDocumentImport(matches[0].code, "", binary_content=source.content)
         return
     name = converted_import_name(source.name, source.media_type, source.content)
-    if name is None or source.document_format is not None:
+    if name is None or source.document_format is not None or any(
+        definition.import_source is not None and (
+            PurePosixPath(source.name).suffix.lower() in definition.import_extensions
+            or source.media_type.split(";", 1)[0].strip().lower() in definition.import_media_types)
+        for definition in document_formats()
+    ):
         try:
             kind, content = convert_document_import(source)
         except UnsupportedDocumentImport:
@@ -223,6 +234,7 @@ def supported_import_formats() -> dict[str, list[str]]:
     media_types = {mime for extension in extensions if (mime := mimetypes.guess_type("source" + extension)[0])}
     media_types.update({"text/markdown", "text/x-markdown", "application/rtf"})
     media_types.update(definition.media_type for definition in document_formats() if definition.import_extensions)
+    media_types.update(media_type for definition in document_formats() for media_type in definition.import_media_types)
     return {"extensions": sorted(extensions), "media_types": sorted(media_types)}
 
 

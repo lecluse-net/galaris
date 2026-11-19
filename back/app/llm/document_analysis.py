@@ -31,12 +31,13 @@ def _encode_image(path: Path) -> str:
 
 
 @asynccontextmanager
-async def _prepared_for_run(run_id: UUID, ctx: ResourceContext, uri: str) -> AsyncGenerator[tuple[PreparedDocument, Path]]:
+async def _prepared_for_run(run_id: UUID, ctx: ResourceContext, uri: str,
+                            *, revision: int | None = None) -> AsyncGenerator[tuple[PreparedDocument, Path]]:
     task = asyncio.current_task()
     if task is not None:
         _conversions.setdefault(run_id, set()).add(task)
     try:
-        async with prepared_resource(ctx, uri) as prepared:
+        async with prepared_resource(ctx, uri, revision=revision) as prepared:
             if task is not None:
                 _conversions.get(run_id, set()).discard(task)
             yield prepared
@@ -62,6 +63,7 @@ async def _cancelled_snapshot(run_id: UUID, metadata: dict[str, Any], completed:
 class DocumentAdmission(BaseModel):
     model_config = ConfigDict(extra="forbid")
     uri: str = Field(min_length=1, max_length=8192)
+    revision: int | None = Field(default=None, ge=1)
     question: str = Field(min_length=1, max_length=16000)
     runtime: str = Field(default="internal", min_length=1, max_length=64)
     max_calls: int = Field(default=256, ge=1, le=512)
@@ -122,7 +124,8 @@ def batches(document: PreparedDocument, directory: Path, vision: bool) -> list[l
 
 async def prepare_input(agent_id: int, input_data: dict[str, Any]) -> dict[str, Any]:
     admission = DocumentAdmission.model_validate(input_data)
-    descriptor = await resource_info(ResourceContext(agent_id=agent_id, runtime=admission.runtime), admission.uri)
+    descriptor = await resource_info(ResourceContext(agent_id=agent_id, runtime=admission.runtime),
+        admission.uri, revision=admission.revision)
     admission.source_version = descriptor.model_dump(include={"revision", "etag", "checksum", "modified_at", "size"}, exclude_none=True)
     llm = await llm_service.get_document_llm(agent_id=agent_id) if admission.model_slot == "document" else None
     llm = llm or await llm_service.get_profile_llm_for_agent_id(model_usages.TEXT_STANDARD, agent_id)
@@ -169,7 +172,7 @@ async def advance_step(analysis_id: UUID) -> DocumentAnalysisSnapshot:
     phase = "source_access"
     try:
         # Access is revalidated even while an inference is pending.
-        descriptor = await resource_info(ctx, admission.uri)
+        descriptor = await resource_info(ctx, admission.uri, revision=admission.revision)
         phase = "source_version"
         if admission.source_version and not same_source_content_version(admission.source_version, descriptor.model_dump(
             include={"revision", "etag", "checksum", "modified_at", "size"}, exclude_none=True,
@@ -182,7 +185,7 @@ async def advance_step(analysis_id: UUID) -> DocumentAnalysisSnapshot:
         if admission.model_fingerprint and model_fingerprint(llm) != admission.model_fingerprint:
             raise ValueError("Admitted document model changed")
         phase = "source_preparation"
-        async with _prepared_for_run(analysis_id, ctx, admission.uri) as (document, directory):
+        async with _prepared_for_run(analysis_id, ctx, admission.uri, revision=admission.revision) as (document, directory):
             phase = "source_checksum"
             if metadata.get("source_sha256") and metadata["source_sha256"] != document.sha256:
                 raise ValueError("Document changed since analysis admission")

@@ -36,6 +36,7 @@ export default {
     return match ? { kind: 'memory', id: match[1]!, title, agentId } : null
   },
   canCard: uri => contactResourceId(uri) !== null,
+  defaultMode: uri => contactResourceId(uri) ? 'card' : undefined,
   async title(uri) {
     const id = contactResourceId(uri)
     return id ? (await (await import('./services/contactService')).contactService.get(id)).display_name : uri

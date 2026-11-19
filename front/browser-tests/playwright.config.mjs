@@ -25,5 +25,7 @@ export default defineConfig({
     { name: 'webkit-composer', testMatch: 'chat.spec.mjs', grep: /composer/, use: { browserName: 'webkit' } },
     { name: 'firefox-shortcuts', testMatch: 'document-shortcuts.spec.mjs', use: { browserName: 'firefox' } },
     { name: 'webkit-shortcuts', testMatch: 'document-shortcuts.spec.mjs', use: { browserName: 'webkit' } },
+    { name: 'firefox-mindmap-export', testMatch: 'mindmap.spec.mjs', grep: /image export and print/, use: { browserName: 'firefox' } },
+    { name: 'webkit-mindmap-export', testMatch: 'mindmap.spec.mjs', grep: /image export and print/, use: { browserName: 'webkit' } },
   ],
 })

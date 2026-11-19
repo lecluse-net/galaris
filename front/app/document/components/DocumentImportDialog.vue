@@ -103,6 +103,7 @@ const columns = computed<QTableColumn<ImportItem>[]>(() => [
 ])
 function isArchive(item: { name: string; mime: string; source?: { uri: string } }): boolean {
   return !/^(document|data):\/\/[^/]+$/.test(item.source?.uri ?? '')
+    && !/\.xmind$/i.test(item.name)
     && (/\.zip$/i.test(item.name) || ['application/zip', 'application/x-zip-compressed'].includes(item.mime))
 }
 function archiveParent(item: ImportItem): DocumentTag | null { return item.destination !== undefined ? item.destination : props.tag ?? props.parent?.tags?.[0] ?? null }

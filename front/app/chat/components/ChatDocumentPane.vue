@@ -1,5 +1,5 @@
 <template>
-  <section class="chat-document-pane" :aria-label="t('chat.workingDocument')">
+  <section class="chat-document-pane" :aria-label="t('chat.workingDocument')" :inert="fullscreen">
     <q-toolbar class="chat-document-toolbar">
       <DocumentIcon :document-id="document.id" :title="title" class="q-mr-sm" />
       <q-toolbar-title class="text-body2 ellipsis">{{ title }}</q-toolbar-title>
@@ -17,9 +17,9 @@
 
 <script setup lang="ts">
 import { WorkingDocumentIcon as DocumentIcon } from '@/core/util'
-import { ref, useTemplateRef, watch } from 'vue'
+import { provide, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { DocumentNavigationButtons, WorkingDocumentEditor, type WorkingDocumentReference, type WorkingDocumentSnapshot } from '@/core/util'
+import { DocumentNavigationButtons, documentWorkspaceViewKey, WorkingDocumentEditor, type WorkingDocumentReference, type WorkingDocumentSnapshot } from '@/core/util'
 const { document, agentId, editable, initialDocument = null, canGoBack = false, canGoForward = false } = defineProps<{
   document: WorkingDocumentReference; agentId: number | null; editable: boolean
   initialDocument?: WorkingDocumentSnapshot | null; canGoBack?: boolean; canGoForward?: boolean
@@ -27,6 +27,13 @@ const { document, agentId, editable, initialDocument = null, canGoBack = false, 
 const emit = defineEmits<{ close: []; available: [documentId: string]; unavailable: []; deleted: [documentId: string]; back: []; forward: [] }>()
 const { t } = useI18n()
 const title = ref(document.title)
+const fullscreen = ref(false)
+provide(documentWorkspaceViewKey, {
+  fullscreen,
+  canGoBack: () => canGoBack,
+  canGoForward: () => canGoForward,
+  navigateHistory: async direction => direction === -1 ? emit('back') : emit('forward'),
+})
 const editor = useTemplateRef<InstanceType<typeof WorkingDocumentEditor>>('editor')
 async function flush(): Promise<boolean> { return await editor.value?.flush() ?? true }
 async function close(): Promise<void> { if (await flush()) emit('close') }

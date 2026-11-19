@@ -33,6 +33,7 @@ interface DocumentAutosaveOptions {
     refresh: () => Promise<void>
     schedule: () => void
   }
+  commitEditor: () => void
   onUpdated: (document: DocumentDetail) => void
   onReloaded: (document: DocumentDetail) => void
 }
@@ -40,7 +41,7 @@ interface DocumentAutosaveOptions {
 /** Owns the saved base, recovery draft and serialized writes for one document editor. */
 export function useDocumentAutosave({
   identity, currentDocument, editorDraft, draftFromDocument, applyEditorDraft, session,
-  permissions, isGoalDocument, sharingAgents, isBlocked, realtime, onUpdated, onReloaded,
+  permissions, isGoalDocument, sharingAgents, isBlocked, realtime, commitEditor, onUpdated, onReloaded,
 }: DocumentAutosaveOptions) {
   const autosaveState = ref<AutosaveState>('saved')
   const lastSavedDraft = ref<DocumentDraft | null>(null)
@@ -177,6 +178,7 @@ export function useDocumentAutosave({
   function mergeDocument(latest: DocumentDetail): void {
     const previousBase = lastSavedDraft.value
     if (!previousBase) return
+    commitBeforeContentRefresh(latest)
     // Include edits made while the request was pending.
     const local = editorDraft.value
     const remote = draftFromDocument(latest)
@@ -385,6 +387,13 @@ export function useDocumentAutosave({
   }
 
   function draftKey(): string | null { return session.userId === null ? null : documentDraftKey(session.userId, identity.agentId, identity.documentId) }
+  function commitBeforeContentRefresh(latest: DocumentDetail): void {
+    if (lastSavedDraft.value && draftFromDocument(latest).content !== lastSavedDraft.value.content) commitEditor()
+  }
+  function preserveClosingDraft(): void {
+    commitEditor()
+    preserveDraft()
+  }
   function scheduleDraft(): void {
     if (!identity.editable || applyingDocument || !currentDocument.value || !session.active.value) return
     // Bound the delay during continuous typing, rather than postponing recovery indefinitely.
@@ -422,8 +431,8 @@ export function useDocumentAutosave({
   return {
     autosaveState, conflictDocument, hasUnsavedChanges, acceptDocument, resolveConflict, clearConflict,
     cancelAutosave, isSaving, scheduleAutosave, waitForActiveSave, flushAutosave,
-    mergeDocument, mergeLatestDocument, discardDraft,
-    draftKey, preserveDraft, preserveHiddenDraft,
+    mergeDocument, mergeLatestDocument, commitBeforeContentRefresh, discardDraft,
+    draftKey, preserveDraft, preserveClosingDraft, preserveHiddenDraft,
   }
 }
 

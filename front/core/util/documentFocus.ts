@@ -13,7 +13,7 @@ export type DocumentFocusAnchor =
 
 export interface DocumentFocus {
   revision: number
-  surface: 'rendered' | 'source' | 'dataset' | 'format'
+  surface: 'rendered' | 'source' | 'dataset' | 'format' | 'history'
   document_format?: string
   anchor?: DocumentFocusAnchor
   selection: DocumentTextRange | null

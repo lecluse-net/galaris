@@ -6,20 +6,29 @@
       'editorial-toolbar-inline': mode === 'inline',
     }"
     role="toolbar" :aria-label="label" @keydown="navigate" @mousedown="onMouseDown">
+    <DocumentToolbarNavigation v-if="documentNavigation && registerToolbar" :fullscreen-exit="fullscreenExit" />
     <slot />
   </div>
 </template>
 
 <script setup lang="ts">
-import { useTemplateRef } from 'vue'
+import { inject, useTemplateRef, watch } from 'vue'
+import { registerDocumentFullscreenToolbarKey } from '../documentFullscreen'
+import DocumentToolbarNavigation from './DocumentToolbarNavigation.vue'
 import '../editorialTheme.css'
 
-const { label, mode = 'full', sticky = false, preserveSelection = false } = defineProps<{
+const { label, mode = 'full', sticky = false, preserveSelection = false, documentNavigation = false, fullscreenExit = false } = defineProps<{
   label: string
   mode?: 'full' | 'simple' | 'inline'
   sticky?: boolean
   preserveSelection?: boolean
+  documentNavigation?: boolean
+  fullscreenExit?: boolean
 }>()
+const registerToolbar = inject(registerDocumentFullscreenToolbarKey, null)
+watch(() => documentNavigation, (enabled, _, cleanup) => {
+  if (enabled && registerToolbar) cleanup(registerToolbar())
+}, { immediate: true })
 const element = useTemplateRef<HTMLElement>('element')
 defineExpose({ element })
 

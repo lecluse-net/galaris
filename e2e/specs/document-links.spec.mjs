@@ -82,7 +82,7 @@ test('documents dropped from the list and tree persist as titled links and rever
   await expect(editor.locator('a')).toHaveCount(2)
   for (const link of await editor.locator('a').all()) await expect(link).toHaveText(source.title)
   const persisted = await checked(await request.get(`/api/documents/${target.id}`, { headers }))
-  expect(persisted.item.payload.text.match(new RegExp(`document://${source.id}`, 'g'))).toHaveLength(2)
+  expect(persisted.item.payload.text.match(new RegExp(`href="document://${source.id}"`, 'g'))).toHaveLength(2)
   expect(persisted.item.payload.text).toContain('Preserve the report body')
   const classified = await checked(await request.post('/api/documents/library', { headers, data: { tag_id: folder.id, limit: 50 } }))
   expect(classified.entries.map(entry => entry.item.id)).toContain(source.id)

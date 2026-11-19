@@ -872,7 +872,10 @@ async def test_build_turn_exposes_hidden_task_request_and_optional_reasoning_ove
     "selection": {"start": 20, "end": 27, "text": "passage", "truncated": False},
     "cursor": {"offset": 27, "before": "Chosen passage", "after": " to revise"},
     "viewport": {"start": 0, "end": 37, "text": "Chosen passage to revise", "truncated": False},
-}, {"revision": -1, "surface": "invalid"}])
+}, {"revision": 4, "surface": "format", "document_format": "sample.drawing",
+    "anchor": {"kind": "point", "x": 14, "y": 24}},
+    {"revision": 2, "surface": "history", "document_format": "sample.drawing"},
+    {"revision": -1, "surface": "invalid"}])
 async def test_build_turn_includes_only_the_latest_chat_document_in_the_prompt(
     db: AsyncSession, latest_uri: str | None, focus: dict[str, object] | None,
 ) -> None:
@@ -901,11 +904,16 @@ async def test_build_turn_includes_only_the_latest_chat_document_in_the_prompt(
     assert old.metadata_["displayed_document_uri"] not in turn.objective
     assert "obsolete passage" not in turn.objective
     assert "Document attention snapshot" not in turn.source_request
-    assert ("Document attention snapshot" in turn.objective) is (expected and focus is not None and focus["revision"] == 7)
-    if expected and focus is not None and focus["revision"] == 7:
+    valid_focus = focus is not None and focus["surface"] != "invalid"
+    assert ("Document attention snapshot" in turn.objective) is (expected and valid_focus)
+    if expected and focus is not None and focus["surface"] == "rendered":
         assert '"offset":27' in turn.objective
         assert '"text":"passage"' in turn.objective
         assert "Chosen passage to revise" in str(turn.messages[-1]["text"])
+    if expected and focus is not None and focus["surface"] == "format":
+        assert '"anchor":{"kind":"point","x":14,"y":24}' in turn.objective
+    if expected and focus is not None and focus["surface"] == "history":
+        assert '"revision":2,"surface":"history"' in turn.objective
     assert latest.text == "Continue ici"
     assert old.text == "Premier message"
 

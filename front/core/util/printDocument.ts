@@ -9,6 +9,16 @@ export async function printDocument(
   resolveImage?: (documentId: string, attachmentId: string) => Promise<Blob>,
   resolveRenderedContent?: RenderedDocumentResolver,
 ): Promise<void> {
+  await printStaticDocument(title, signal, imageUrl =>
+    prepareDocumentSnapshot(content, title, signal, imageUrl, resolveImage, false, resolveRenderedContent))
+}
+
+/** Open the browser print dialog with a prepared, self-contained snapshot. */
+export async function printStaticDocument(
+  title: string,
+  signal: AbortSignal,
+  prepare: (imageUrl: (blob: Blob) => Promise<string>) => Promise<string>,
+): Promise<void> {
   const frame = document.createElement('iframe')
   const urls: string[] = []
   let disposed = false
@@ -21,12 +31,12 @@ export async function printDocument(
   signal.addEventListener('abort', cleanup, { once: true })
   try {
     signal.throwIfAborted()
-    const html = await prepareDocumentSnapshot(content, title, signal, async blob => {
+    const html = await prepare(async blob => {
       if (disposed) throw new Error('Print preparation cancelled')
       const url = URL.createObjectURL(blob)
       urls.push(url)
       return url
-    }, resolveImage, false, resolveRenderedContent)
+    })
     signal.throwIfAborted()
     frame.title = title
     frame.setAttribute('aria-hidden', 'true')
@@ -52,12 +62,23 @@ export async function printDocument(
     await printed.fonts.ready
     signal.throwIfAborted()
     await new Promise<void>((resolve, reject) => {
-      const aborted = () => { cleanup(); reject(signal.reason) }
-      const finished = () => { signal.removeEventListener('abort', aborted); cleanup(); resolve() }
-      signal.addEventListener('abort', aborted, { once: true })
-      target.addEventListener('afterprint', finished, { once: true })
-      target.focus()
-      target.print()
+      const lifetime = new AbortController()
+      const aborted = () => { lifetime.abort(); cleanup(); reject(signal.reason) }
+      const finished = () => { lifetime.abort(); cleanup(); resolve() }
+      signal.addEventListener('abort', aborted, { once: true, signal: lifetime.signal })
+      target.addEventListener('afterprint', finished, { once: true, signal: lifetime.signal })
+      // Some WebKit versions suppress events from a frame with scripting disabled.
+      // Interaction in the application also signals a return from its print dialog.
+      const options = { capture: true, once: true, signal: lifetime.signal }
+      window.addEventListener('pointerdown', finished, options)
+      window.addEventListener('keydown', finished, options)
+      try {
+        target.focus()
+        target.print()
+      } catch (error) {
+        lifetime.abort()
+        reject(error)
+      }
     })
   } catch (error) {
     cleanup()

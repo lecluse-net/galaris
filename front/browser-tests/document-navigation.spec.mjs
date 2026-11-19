@@ -34,6 +34,134 @@ async function library(page, kind = 'text') {
   return state
 }
 
+test('a mind map accepts document references from the library and uploads dropped files', async ({ page }, testInfo) => {
+  const { items } = await library(page)
+  const [treeSource, map, listSource] = items
+  const folder = { id: 'references', name: 'Field references', parent_id: null, position: 1 }
+  Object.assign(map, { document_format: 'mindmap', media_type: 'application/vnd.galaris.mindmap+json', payload: { text: JSON.stringify({
+    version: 1, nodes: [{ id: 'root', parent: null, title: 'Field map' }, { id: 'inbox', parent: 'root', title: 'Drop zone' }],
+  }) } })
+  await jsonRoute(page, '**/api/documents/formats', ['text', 'mindmap'].map(code => ({
+    code, version: 1, contract_version: 1, provider: 'galaris', storage_kind: 'text', icon: 'description',
+    capabilities: { editor: 'native', preview: 'native', native_export: 'native', import: 'native' },
+  })))
+  await jsonRoute(page, '**/api/documents/tags', { user_id: 1, tags: [folder] })
+  await page.route('**/api/documents/library', route => {
+    const sources = route.request().postDataJSON().tag_id ? [treeSource] : [map, listSource]
+    return route.fulfill({ json: { entries: sources.map(item => ({ item, tags: item === treeSource ? [folder] : [], agent_ids: [], writable_agent_ids: [], user_access: item.access })),
+      total: sources.length, has_more: false, keywords: [] } })
+  })
+  const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII='
+  const file = { id: '00000000-0000-4000-8000-000000000305', name: 'sample.png', media_type: 'image/png', size_bytes: Buffer.from(png, 'base64').length }
+  const imported = { ...file, id: '00000000-0000-4000-8000-000000000306', name: 'site-photo.png' }
+  const imageUrl = 'https://example.org/site-photo.png'
+  const attachments = []
+  await page.route(new RegExp(`/api/documents/${map.id}/attachments(?:\\?|$)`), route => {
+    if (route.request().method() !== 'POST') return route.fulfill({ json: attachments })
+    expect(route.request().postData()).toContain('filename="sample.png"')
+    attachments.push(file)
+    return route.fulfill({ json: file })
+  })
+  await page.route(new RegExp(`/api/documents/${map.id}/import-image(?:\\?|$)`), route => {
+    expect(route.request().postDataJSON()).toEqual({ url: imageUrl })
+    attachments.push(imported)
+    return route.fulfill({ json: imported })
+  })
+  for (const attachment of [file, imported]) {
+    await page.route(`**/api/documents/${map.id}/attachments/${attachment.id}*`, route => route.fulfill({ contentType: 'image/png', body: Buffer.from(png, 'base64') }))
+  }
+  await page.route(`**/api/documents/${map.id}`, route => {
+    if (route.request().method() !== 'PATCH') return route.fulfill({ json: { item: map, agent_id: null } })
+    Object.assign(map, route.request().postDataJSON(), { revision: map.revision + 1, lock_version: map.lock_version + 1 })
+    return route.fulfill({ json: map })
+  })
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', {
+    route: `/documents?document_id=${map.id}`, browserHistory: true, shell: true, privileges: ['DOCUMENT_EDIT'],
+  })
+  const target = page.getByRole('treeitem', { name: 'Drop zone', exact: true }).getByText('Drop zone', { exact: true })
+  const children = () => JSON.parse(map.payload.text).nodes.filter(node => node.parent === 'inbox')
+  await page.getByText(folder.name, { exact: true }).click()
+  await page.locator('.document-tree').getByText(treeSource.title, { exact: true }).dragTo(target)
+  await expect.poll(() => children().map(node => node.title)).toEqual([treeSource.title])
+  await page.getByRole('list', { name: 'Unclassified documents', exact: true }).getByText(listSource.title, { exact: true }).dragTo(target)
+  await expect.poll(() => children().map(node => node.title)).toEqual([treeSource.title, listSource.title])
+  await page.getByRole('button', { name: 'Show unclassified documents as a list', exact: true }).click()
+  const list = page.locator('.bulk-list')
+  await list.locator('.q-item[draggable="true"]').filter({ has: page.getByRole('link', { name: listSource.title, exact: true }) }).dragTo(target)
+  await expect.poll(() => children().map(node => node.title)).toEqual([treeSource.title, listSource.title, listSource.title])
+  await page.screenshot({ path: testInfo.outputPath('map-and-document-list.png') })
+  await list.getByRole('button', { name: 'Close list' }).click()
+  for (const [index, attachment] of [file, imported].entries()) {
+    const dataTransfer = await page.evaluateHandle(({ png, imageUrl, name, fromWeb }) => {
+      const transfer = new DataTransfer()
+      if (fromWeb) transfer.setData('text/html', `<img src="${imageUrl}" alt="${name}">`)
+      else transfer.items.add(new File([Uint8Array.from(atob(png), value => value.charCodeAt(0))], name, { type: 'image/png' }))
+      return transfer
+    }, { png, imageUrl, name: attachment.name, fromWeb: index === 1 })
+    await target.dispatchEvent('dragover', { dataTransfer })
+    await target.dispatchEvent('drop', { dataTransfer })
+    await expect.poll(() => children().at(-1)?.body_html).toContain(`document://${map.id}/attachments/${attachment.id}`)
+    await expect(page.getByRole('img', { name: attachment.name, exact: true }).first()).toBeVisible()
+    await dataTransfer.dispose()
+  }
+  expect(attachments.map(attachment => attachment.id)).toEqual([file.id, imported.id])
+  expect(children().slice(0, 3).map(node => node.body_html)).toEqual([treeSource, listSource, listSource].map(source =>
+    expect.stringContaining(`href="document://${source.id}"`)))
+})
+
+for (const width of [1440, 390]) test(`fullscreen follows document references across formats at ${width}px`, async ({ page }, testInfo) => {
+  const { items } = await library(page)
+  const [text, map, data] = items
+  await jsonRoute(page, '**/api/documents/formats', ['text', 'mindmap', 'data'].map(code => ({
+    code, version: 1, contract_version: 1, provider: 'galaris', storage_kind: 'text',
+    icon: code === 'mindmap' ? 'account_tree' : 'description', qualification: 'not_run', import_extensions: [],
+    capabilities: { editor: 'native', preview: 'native', native_export: 'native', import: 'native' },
+  })))
+  text.payload.text += `<p><a href="document://${map.id}">Open field map</a></p>`
+  Object.assign(map, { document_format: 'mindmap', media_type: 'application/vnd.galaris.mindmap+json', payload: { text: JSON.stringify({
+    version: 1, nodes: [{ id: 'root', parent: null, title: 'Field map' }, { id: 'data', parent: 'root', title: 'Field measurements',
+      body_html: `<p><a href="document://${data.id}">Field measurements</a></p>` }],
+  }) } })
+  Object.assign(data, { document_format: 'data', media_type: 'application/json', payload: { text: '{"observations": 14}' } })
+  await page.setViewportSize({ width, height: 900 })
+  await mount(page, 'app/document/components/DocumentLibraryPage.vue', {
+    route: `/documents?document_id=${text.id}`, browserHistory: true, shell: true, privileges: ['DOCUMENT_EDIT'],
+  })
+
+  await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
+  const fullscreen = page.locator('.document-editor--fullscreen')
+  await expect.poll(() => fullscreen.evaluate(editor => {
+    const frame = editor.getBoundingClientRect()
+    return frame.left === 0 && frame.top === 0 && frame.width === innerWidth && frame.height === innerHeight
+      && editor.contains(document.elementFromPoint(1, 120))
+  })).toBe(true)
+  const forward = fullscreen.getByRole('button', { name: 'Next document', exact: true })
+  const back = fullscreen.getByRole('button', { name: 'Previous document', exact: true })
+  const exit = fullscreen.getByRole('button', { name: 'Exit fullscreen', exact: true })
+  await expect(exit).toBeVisible()
+  await expect(back).toBeDisabled()
+  const mapLink = fullscreen.getByRole('link', { name: 'Open field map', exact: true })
+  await mapLink.click()
+  await expect(fullscreen.getByRole('toolbar', { name: 'Contextual actions' })).toBeVisible()
+  await expect(fullscreen.getByRole('tree')).toHaveCount(0)
+  await page.screenshot({ path: testInfo.outputPath('document-fullscreen.png'), animations: 'disabled' })
+  await mapLink.click({ modifiers: ['Control'] })
+  const dataLink = fullscreen.getByRole('link', { name: 'Field measurements', exact: true })
+  await dataLink.click()
+  await expect(fullscreen.getByRole('treeitem', { name: 'Field measurements', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await dataLink.click({ modifiers: ['Control'] })
+  await expect(fullscreen.getByRole('textbox', { name: 'Content', exact: true })).toHaveValue('{"observations": 14}')
+  await back.click()
+  await expect(fullscreen.getByRole('tree')).toBeVisible()
+  await forward.click()
+  await expect(fullscreen.getByRole('textbox', { name: 'Content', exact: true })).toHaveValue('{"observations": 14}')
+  await exit.hover()
+  await expect(page.getByRole('tooltip').filter({ hasText: 'Exit fullscreen' })).toHaveCount(0)
+  await exit.press('Escape')
+  await expect(fullscreen).toHaveCount(0)
+  await expect(page.getByLabel('Title', { exact: true })).toHaveValue(data.title)
+})
+
 for (const mobile of [false, true]) {
   for (const kind of ['text', 'data']) test(`document history follows visits, branches and skips deleted documents (${kind}, ${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
     const { items } = await library(page, kind)

@@ -42,9 +42,9 @@ export interface DocumentFolderPage {
 const ownerOptionsCache = createOwnerOptionsCache<DocumentOwnerOptions>()
 
 export const documentService = {
-  async source(id: string, agentId: number | null, signal: AbortSignal, revision?: number): Promise<Blob> {
+  async source(id: string, agentId: number | null, signal: AbortSignal, revision?: number, exportFormat?: string): Promise<Blob> {
     return (await api.get<Blob>(`/documents/${id}/source`, {
-      responseType: 'blob', signal, params: { agent_id: agentId, revision },
+      responseType: 'blob', signal, params: { agent_id: agentId, revision, export_format: exportFormat },
     })).data
   },
   async formats(signal?: AbortSignal): Promise<import('../formatRegistry').DocumentFormatDescriptor[]> {

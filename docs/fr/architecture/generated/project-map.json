@@ -1656,6 +1656,7 @@
           "back/app/document/file_import.py",
           "back/app/document/formats.py",
           "back/app/document/inline_content.py",
+          "back/app/document/mindmap/__init__.py",
           "back/app/document/models.py",
           "back/app/document/resource_service.py",
           "back/app/document/resource_summaries.py",
@@ -8800,7 +8801,7 @@
       {
         "file": "back/app/document/mcp.py",
         "handler": "document_revision_compare",
-        "line": 43,
+        "line": 47,
         "module": "app.document",
         "name": "document_revision_compare",
         "namespace": "document"
@@ -8808,7 +8809,7 @@
       {
         "file": "back/app/document/mcp.py",
         "handler": "document_revision_list",
-        "line": 28,
+        "line": 32,
         "module": "app.document",
         "name": "document_revision_list",
         "namespace": "document"
@@ -8816,7 +8817,7 @@
       {
         "file": "back/app/document/mcp.py",
         "handler": "document_share",
-        "line": 69,
+        "line": 164,
         "module": "app.document",
         "name": "document_share",
         "namespace": "document"
@@ -8824,9 +8825,33 @@
       {
         "file": "back/app/document/mcp.py",
         "handler": "document_sharing",
-        "line": 54,
+        "line": 149,
         "module": "app.document",
         "name": "document_sharing",
+        "namespace": "document"
+      },
+      {
+        "file": "back/app/document/mcp.py",
+        "handler": "mindmap_create",
+        "line": 59,
+        "module": "app.document",
+        "name": "mindmap_create",
+        "namespace": "document"
+      },
+      {
+        "file": "back/app/document/mcp.py",
+        "handler": "mindmap_edit",
+        "line": 124,
+        "module": "app.document",
+        "name": "mindmap_edit",
+        "namespace": "document"
+      },
+      {
+        "file": "back/app/document/mcp.py",
+        "handler": "mindmap_read",
+        "line": 79,
+        "module": "app.document",
+        "name": "mindmap_read",
         "namespace": "document"
       },
       {
@@ -8840,7 +8865,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "append_file",
-        "line": 468,
+        "line": 471,
         "module": "app.file_share",
         "name": "file_append",
         "namespace": "file_sharing"
@@ -8848,7 +8873,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "copy_file",
-        "line": 537,
+        "line": 540,
         "module": "app.file_share",
         "name": "file_copy",
         "namespace": "file_sharing"
@@ -8856,7 +8881,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "create_file",
-        "line": 382,
+        "line": 385,
         "module": "app.file_share",
         "name": "file_create",
         "namespace": "file_sharing"
@@ -8864,7 +8889,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "delete_file",
-        "line": 619,
+        "line": 622,
         "module": "app.file_share",
         "name": "file_delete",
         "namespace": "file_sharing"
@@ -8872,7 +8897,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "edit_file",
-        "line": 498,
+        "line": 501,
         "module": "app.file_share",
         "name": "file_edit",
         "namespace": "file_sharing"
@@ -8896,7 +8921,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "move_file",
-        "line": 589,
+        "line": 592,
         "module": "app.file_share",
         "name": "file_move",
         "namespace": "file_sharing"
@@ -8912,7 +8937,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "rename_file",
-        "line": 568,
+        "line": 571,
         "module": "app.file_share",
         "name": "file_rename",
         "namespace": "file_sharing"
@@ -8944,7 +8969,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "write_file",
-        "line": 433,
+        "line": 436,
         "module": "app.file_share",
         "name": "file_write",
         "namespace": "file_sharing"
@@ -9000,7 +9025,7 @@
       {
         "file": "back/app/llm/mcp.py",
         "handler": "document_analysis_cancel",
-        "line": 54,
+        "line": 56,
         "module": "app.llm",
         "name": "document_analysis_cancel",
         "namespace": "galaris"
@@ -9008,7 +9033,7 @@
       {
         "file": "back/app/llm/mcp.py",
         "handler": "document_analysis_get",
-        "line": 45,
+        "line": 47,
         "module": "app.llm",
         "name": "document_analysis_get",
         "namespace": "galaris"
@@ -9016,7 +9041,7 @@
       {
         "file": "back/app/llm/mcp.py",
         "handler": "document_analyze",
-        "line": 29,
+        "line": 31,
         "module": "app.llm",
         "name": "document_analyze",
         "namespace": "galaris"
@@ -10104,7 +10129,7 @@
       {
         "file": "back/app/llm/mcp.py",
         "handler": "mcp_llm_call",
-        "line": 70,
+        "line": 72,
         "module": "app.llm",
         "name": "llm_call",
         "namespace": "platform_admin"
@@ -10112,7 +10137,7 @@
       {
         "file": "back/app/llm/mcp.py",
         "handler": "mcp_llm_calls",
-        "line": 88,
+        "line": 90,
         "module": "app.llm",
         "name": "llm_calls",
         "namespace": "platform_admin"
@@ -17733,7 +17758,7 @@
         "declared_path": "/documents/{document_id}",
         "file": "back/app/document/router.py",
         "handler": "delete_managed_document",
-        "line": 960,
+        "line": 965,
         "method": "DELETE",
         "module": "app.document"
       },
@@ -17751,7 +17776,7 @@
         "declared_path": "/documents/{document_id}",
         "file": "back/app/document/router.py",
         "handler": "update_human_document",
-        "line": 974,
+        "line": 979,
         "method": "PATCH",
         "module": "app.document"
       },
@@ -17787,7 +17812,7 @@
         "declared_path": "/documents/{document_id}/attachments",
         "file": "back/app/document/router.py",
         "handler": "list_document_attachments",
-        "line": 1209,
+        "line": 1214,
         "method": "GET",
         "module": "app.document"
       },
@@ -17796,7 +17821,7 @@
         "declared_path": "/documents/{document_id}/attachments",
         "file": "back/app/document/router.py",
         "handler": "add_document_attachment",
-        "line": 1228,
+        "line": 1233,
         "method": "POST",
         "module": "app.document"
       },
@@ -17805,7 +17830,7 @@
         "declared_path": "/documents/{document_id}/attachments/{attachment_id}",
         "file": "back/app/document/router.py",
         "handler": "delete_document_attachment",
-        "line": 1355,
+        "line": 1360,
         "method": "DELETE",
         "module": "app.document"
       },
@@ -17814,7 +17839,7 @@
         "declared_path": "/documents/{document_id}/attachments/{attachment_id}",
         "file": "back/app/document/router.py",
         "handler": "read_document_attachment",
-        "line": 1310,
+        "line": 1315,
         "method": "GET",
         "module": "app.document"
       },
@@ -17823,7 +17848,7 @@
         "declared_path": "/documents/{document_id}/attachments/{attachment_id}",
         "file": "back/app/document/router.py",
         "handler": "rename_document_attachment",
-        "line": 1279,
+        "line": 1284,
         "method": "PATCH",
         "module": "app.document"
       },
@@ -17832,7 +17857,7 @@
         "declared_path": "/documents/{document_id}/attachments/{attachment_id}/info",
         "file": "back/app/document/router.py",
         "handler": "read_document_attachment_info",
-        "line": 1293,
+        "line": 1298,
         "method": "GET",
         "module": "app.document"
       },
@@ -17841,7 +17866,7 @@
         "declared_path": "/documents/{document_id}/attachments/{attachment_id}/thumbnail",
         "file": "back/app/document/router.py",
         "handler": "read_document_attachment_thumbnail",
-        "line": 1248,
+        "line": 1253,
         "method": "GET",
         "module": "app.document"
       },
@@ -17850,7 +17875,7 @@
         "declared_path": "/documents/{document_id}/collaborators/{agent_id}",
         "file": "back/app/document/router.py",
         "handler": "remove_managed_document_grant",
-        "line": 1178,
+        "line": 1183,
         "method": "DELETE",
         "module": "app.document"
       },
@@ -17859,7 +17884,7 @@
         "declared_path": "/documents/{document_id}/collaborators/{agent_id}",
         "file": "back/app/document/router.py",
         "handler": "set_managed_document_grant",
-        "line": 1144,
+        "line": 1149,
         "method": "PUT",
         "module": "app.document"
       },
@@ -17949,7 +17974,7 @@
         "declared_path": "/documents/{document_id}/folder",
         "file": "back/app/document/router.py",
         "handler": "move_managed_document",
-        "line": 1016,
+        "line": 1021,
         "method": "PATCH",
         "module": "app.document"
       },
@@ -17958,7 +17983,7 @@
         "declared_path": "/documents/{document_id}/global-access",
         "file": "back/app/document/router.py",
         "handler": "set_managed_document_global_access",
-        "line": 1115,
+        "line": 1120,
         "method": "PATCH",
         "module": "app.document"
       },
@@ -17967,7 +17992,7 @@
         "declared_path": "/documents/{document_id}/grants/{agent_id}",
         "file": "back/app/document/router.py",
         "handler": "remove_document_grant",
-        "line": 1412,
+        "line": 1417,
         "method": "DELETE",
         "module": "app.document"
       },
@@ -17976,7 +18001,7 @@
         "declared_path": "/documents/{document_id}/grants/{agent_id}",
         "file": "back/app/document/router.py",
         "handler": "set_document_grant",
-        "line": 1380,
+        "line": 1385,
         "method": "PUT",
         "module": "app.document"
       },
@@ -18030,7 +18055,7 @@
         "declared_path": "/documents/{document_id}/owner",
         "file": "back/app/document/router.py",
         "handler": "change_document_owner",
-        "line": 1053,
+        "line": 1058,
         "method": "PATCH",
         "module": "app.document"
       },
@@ -18066,7 +18091,7 @@
         "declared_path": "/documents/{document_id}/sharing",
         "file": "back/app/document/router.py",
         "handler": "read_document_sharing",
-        "line": 989,
+        "line": 994,
         "method": "GET",
         "module": "app.document"
       },
@@ -18075,7 +18100,7 @@
         "declared_path": "/documents/{document_id}/sharing",
         "file": "back/app/document/router.py",
         "handler": "update_document_sharing",
-        "line": 997,
+        "line": 1002,
         "method": "PUT",
         "module": "app.document"
       },
@@ -18084,7 +18109,7 @@
         "declared_path": "/documents/{document_id}/sharing-level",
         "file": "back/app/document/router.py",
         "handler": "update_document_sharing_level",
-        "line": 1005,
+        "line": 1010,
         "method": "PUT",
         "module": "app.document"
       },
@@ -22985,6 +23010,7 @@
           "front/app/document/components/DocumentFolderThumbnail.vue",
           "front/app/document/components/DocumentImportDialog.vue",
           "front/app/document/components/DocumentLibraryNavigation.vue",
+          "front/app/document/components/DocumentResourceEmbed.vue",
           "front/app/document/components/DocumentThumbnail.vue",
           "front/app/document/services/documentService.ts",
           "front/app/document/stores/documentIcons.ts",
@@ -23055,6 +23081,7 @@
           "front/app/document/components/DocumentTagIcon.vue",
           "front/app/document/components/DocumentTagIconPicker.vue",
           "front/app/document/components/DocumentTagRow.vue",
+          "front/app/document/components/DocumentTextEmbed.vue",
           "front/app/document/components/DocumentThumbnail.vue",
           "front/app/document/components/DocumentTopicNavigation.vue",
           "front/app/document/data/ContentEditor.vue",
@@ -23066,6 +23093,10 @@
           "front/app/document/documentFormats.ts",
           "front/app/document/index.ts",
           "front/app/document/libraryShortcuts.ts",
+          "front/app/document/mindmap/MindMapEditor.vue",
+          "front/app/document/mindmap/content.ts",
+          "front/app/document/mindmap/graphic.ts",
+          "front/app/document/mindmap/search.ts",
           "front/app/document/pluginHost.ts",
           "front/app/document/richContent.ts",
           "front/app/document/services/documentService.ts",
@@ -23084,6 +23115,7 @@
           "front/app/document/components/DocumentEditor.vue",
           "front/app/document/components/DocumentLibraryNavigation.vue",
           "front/app/document/components/DocumentLibraryPage.vue",
+          "front/app/document/components/DocumentResourceEmbed.vue",
           "front/app/document/components/DocumentThumbnail.vue"
         ],
         "source": "app/document",

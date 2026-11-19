@@ -5,6 +5,8 @@ const reader = () => import('./referenceReader')
 
 export default {
   schemes: ['data'],
+  linkIcon: 'data_object',
+  defaultMode: () => 'card',
   canonical(value) { const id = datasetResourceId(value); return id ? `data://${id}` : null },
   async search(query) {
     return (await reader()).search(query)

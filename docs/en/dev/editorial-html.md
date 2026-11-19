@@ -2,6 +2,8 @@
 
 # Editorial HTML contract
 
+The [Link, Card and Embed contract](document-references.md) defines display attributes, how switching modes preserves occurrence properties, and fallback rendering.
+
 Both profiles support equations as escaped LaTeX text:
 `<span data-math="inline">x^2</span>` within a paragraph and
 `<p data-math="block">\frac{a}{b}</p>` for a block. These nodes contain text only,
@@ -57,13 +59,32 @@ the resource retains its own rights and content profile. Memories, Goal descript
 Agent profiles, Task objectives and summaries use `simple`: essential text commands,
 inline and block code, checklists, tables, separators and Galaris links, with one wrapping
 row per group. Fullscreen, attachments and equation insertion remain in full mode.
-Common commands stay in the toolbar. Documents use a second toolbar below the main toolbar for actions
-specific to the selection; it disappears without reserved space when there are no actions.
+Common commands stay in the toolbar. Documents append actions specific to the selection
+as a group that wraps with the other groups and disappears when there are no actions.
 Right-click and long press remain native. Existing content
 is preserved; this UI choice changes neither storage format nor HTML sanitization.
 Full mode retains its layout below 1024 px; simple mode keeps its wrapping groups.
 Both examples are available in the Visual reference.
 Both content profiles preserve checklist checked state in their HTML.
+
+### Full editor inside a host
+
+Configure `RichTextEditor` with `profile="document"`, `toolbar-mode="full"` and
+`surface="embedded"` to edit a fragment inside a host such as a branch body.
+The profile selects the HTML and its commands. `toolbar-mode` selects the toolbar
+presentation, including **More tools** on mobile. `surface` selects the geometry and
+the availability of page commands. With `embedded`, content follows the host’s
+dimensions, and page layout, fullscreen, printing and export belong to the host.
+The toolbar, keyboard help and shortcuts share this filter.
+
+`toolbar-target` and `context-toolbar-target` point to mounted containers.
+Use the `toolbar-leading` slot for a host command such as **Return to map**.
+On the embedded surface, the editor emits `request-exit` on **Escape** when search is closed.
+File and reference operations use `uploadFile`, `uploadImage`, `resolveImage` and
+`pickResources` under the resource’s access rules. The `embedded-code` slot is the
+host’s explicit integration point for the interactive HTML runtime. In a mind map,
+the node saves its fragment in `body_html`. Reference selection keeps the reader
+mounted, and editing the body makes the full editorial toolbar available.
 
 ## Documents as the information hub
 
@@ -417,8 +438,8 @@ Replacing the editor requires no rewrite of stored documents or revisions.
 Tasks, Goals, Topics, discussions, text rounds, voice calls and voice turns can be copied
 from their context menus or detail views and pasted as titled links. The **Galaris link →
 Galaris objects** picker also searches these objects. Native URIs and URLs from this
-installation are normalized before insertion. The contextual toolbar switches
-between link and card while editing. A left click selects a link or card; **Open** and
+installation are normalized before insertion. The contextual toolbar offers the Link,
+Card and Embed modes supported by the type. A left click selects a link or card; **Open** and
 **Ctrl/Cmd+click** follow its target. In read-only or viewing mode, left-clicking a link or
 card background opens its target; right-click remains native and contextual toolbars are absent. These references
 open their detail modal with the reader's current rights, keeping the containing Document

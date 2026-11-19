@@ -47,6 +47,10 @@ ATTRIBUTES: dict[str, set[str]] = {
 ALIGNMENTS = {"left", "center", "right", "justify"}
 HIGHLIGHTS = {"#fff59d", "#a5d6a7", "#90caf9", "#f48fb1"}
 SCRIPT_HOSTS = {"cdn.jsdelivr.net", "unpkg.com", "esm.sh", "cdnjs.cloudflare.com"}
+REFERENCE_ATTRIBUTES = {
+    "data-resource-mode", "data-resource-border", "data-resource-shadow", "data-resource-size",
+    "data-resource-image", "data-resource-card",
+}
 
 
 def valid_script_source(value: str) -> bool:
@@ -328,6 +332,49 @@ class HtmlNode:
         return f"<{self.tag}{attributes}>" + ("" if self.tag in VOID else f"{content}</{self.tag}>")
 
 
+def _valid_reference_attribute(
+    tag: str, attrs: list[tuple[str, str | None]], key: str, value: str
+) -> bool:
+    source = dict(attrs)
+    classes = (source.get("class") or "").split()
+    link = tag == "a" and bool(source.get("href"))
+    image = (tag == "figure" and "image" in classes) or (tag == "span" and "image-inline" in classes) or tag == "img"
+    block = tag == "blockquote" and "galaris-link-card" in classes
+    if not (link or image or block):
+        return False
+    if key == "data-resource-mode":
+        return value in ({"link"} if link else {"embed"} if image else {"card", "embed"})
+    if key == "data-resource-border":
+        return re.fullmatch(r"#[a-fA-F0-9]{6}", value) is not None
+    if key == "data-resource-shadow":
+        return value == "true"
+    if key == "data-resource-size":
+        size = re.fullmatch(r"([1-9][0-9]{0,3})x([1-9][0-9]{0,3})", value)
+        return (link or block) and size is not None and all(int(dimension) <= 4096 for dimension in size.groups())
+    if len(value) > 32_768 or re.search(
+        r"\bdata-resource-(?:mode|border|shadow|size|image|card)\s*=", value, re.IGNORECASE
+    ):
+        return False
+    parser = _Parser(profile="document")
+    parser.feed(value)
+    parser.close()
+    children = parser.root.children
+    if len(parser.stack) != 1 or len(children) != 1 or not isinstance(child := children[0], HtmlNode):
+        return False
+
+    def inert(node: HtmlNode) -> bool:
+        return node.tag in TAGS and not any(name == "id" or name.startswith(("on", "data-dataset")) for name in node.attributes) and all(
+            inert(value) for value in node.children if isinstance(value, HtmlNode)
+        )
+
+    if not inert(child):
+        return False
+    child_classes = child.attributes.get("class", "").split()
+    if key == "data-resource-card":
+        return child.tag == "blockquote" and "galaris-link-card" in child_classes
+    return child.tag == "img" or child.tag == "figure" and "image" in child_classes or child.tag == "span" and "image-inline" in child_classes
+
+
 class _Parser(HTMLParser):
     def __init__(self, *, validate: bool = True, profile: ContentProfile = "rich-text") -> None:
         super().__init__(convert_charrefs=True)
@@ -349,6 +396,11 @@ class _Parser(HTMLParser):
         for key, raw in attrs:
             value = raw or ""
             if self.validate:
+                if key in REFERENCE_ATTRIBUTES:
+                    if self.profile != "document" or key in attributes or not _valid_reference_attribute(tag, attrs, key, value):
+                        raise RichTextError("Invalid document reference presentation.")
+                    attributes[key] = value
+                    continue
                 if key == "data-math" and (tag, value) not in {("span", "inline"), ("p", "block")}:
                     raise RichTextError("Unsupported equation format.")
                 if self.profile == "document" and tag != "img":
@@ -606,7 +658,11 @@ def normalize_html(
     clean = nh3.clean(
         serialized,
         tags=(TAGS - {"img"}) if profile == "rich-text" else TAGS | {"script"},
-        attributes={**ATTRIBUTES, "script": {"src", "type", "async", "defer"}} if profile == "document" else ATTRIBUTES,
+        attributes={
+            **ATTRIBUTES,
+            "*": ATTRIBUTES["*"] | REFERENCE_ATTRIBUTES,
+            "script": {"src", "type", "async", "defer"},
+        } if profile == "document" else ATTRIBUTES,
         clean_content_tags=set() if profile == "document" else {"script", "style"},
         url_schemes={"https", "http", "mailto", "document"},
         link_rel=None,
@@ -655,6 +711,9 @@ def image_references(content: str) -> set[str]:
     def visit(node: HtmlNode) -> None:
         if node.tag == "img":
             result.add(node.attributes["src"])
+        for key in ("data-resource-image", "data-resource-card"):
+            if source := node.attributes.get(key):
+                visit(parse_html(source, profile="document"))
         for child in node.children:
             if isinstance(child, HtmlNode):
                 visit(child)

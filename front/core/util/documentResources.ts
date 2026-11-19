@@ -16,7 +16,10 @@ export function documentResourceHtml(resource: DocumentResource, label = resourc
   const card = document.createElement('blockquote'), title = document.createElement('p'), strong = document.createElement('strong')
   card.className = 'galaris-link-card'; strong.textContent = label; anchor.append(strong); title.append(anchor); card.append(title)
   const kind = browserResourceKind(resource.mediaType ?? '', resource.name)
-  if (kind === 'video' || kind === 'audio' || kind === 'pdf') card.classList.add('galaris-media-' + kind)
+  if (kind === 'video' || kind === 'audio' || kind === 'pdf') {
+    card.classList.add('galaris-media-' + kind)
+    card.dataset.resourceMode = 'embed'
+  }
   const detail = document.createElement('p')
   const extension = resource.name.split('.').at(-1)?.toUpperCase()
   detail.textContent = [extension, formatFileSize(resource.size, document.documentElement.lang || navigator.language)].filter(Boolean).join(' · ')

@@ -401,6 +401,8 @@ async def test_native_compatibility_toolsets_keep_short_mcp_names(
         (("file_create", "document_share"), True, False),
         (("file_create", "file_search"), False, False),
         (("document_sharing", "document_share"), False, False),
+        (("mindmap_create", "mindmap_read", "mindmap_edit"), False, False),
+        (("mindmap_read",), False, False),
         ((), False, False),
     ],
 )
@@ -440,6 +442,8 @@ async def test_tool_advertisement_encourages_shared_documents_when_available(
     assert advertisement.tool_names == frozenset(names)
     assert ("file_create(path='document://'" in advertisement.text) is expects_documents
     assert ("document_share(document_id=" in advertisement.text) is expects_sharing
+    assert ("call mindmap_create to create" in advertisement.text) is ("mindmap_create" in names)
+    assert ("mindmap_edit(document_id=URI" in advertisement.text) is ({"mindmap_read", "mindmap_edit"} <= set(names))
     if expects_documents:
         assert "Prefer document:// over standalone" in advertisement.text
         assert "Markdown (.md) or HTML (.html)" in advertisement.text

@@ -1,14 +1,24 @@
 import { defineAsyncComponent, markRaw, shallowReactive } from 'vue'
 import type { Component } from 'vue'
 import type { DocumentFocusAnchor } from '@/core/util'
-import type { preparePortableDocumentSnapshot } from '@/core/util/facade'
+import type { RenderedDocumentResolver } from '@/core/util/facade'
 import type { pluginHost } from './pluginHost'
 import { registerFormat } from './formatRegistry'
 import type { DocumentFormatDescriptor } from './formatRegistry'
+import { parseMindMap } from './mindmap/model'
 
 export type { DocumentFormatDescriptor, DocumentFormatCode } from './formatRegistry'
 export type DocumentCreationMode = string
-type Snapshot = (...args: [...Parameters<typeof preparePortableDocumentSnapshot>, DocumentContentSource?]) => Promise<string>
+type Snapshot = (
+  content: string, title: string, signal: AbortSignal,
+  resolveImage?: (documentId: string, attachmentId: string) => Promise<Blob>,
+  resolveRenderedContent?: RenderedDocumentResolver, source?: DocumentContentSource,
+) => Promise<string>
+export interface DocumentExchangeExport {
+  code: string
+  extension: string
+  label: string
+}
 export interface DocumentContentSource {
   key: string
   revision: number
@@ -18,6 +28,7 @@ export interface DocumentContentSource {
 }
 export interface DocumentFormatEditorHandle {
   insertResource?: (html: string) => void
+  commitDraft?: () => void
   flush?: () => Promise<boolean>
   discardDraft?: () => Promise<void> | void
   captureFocus?: () => DocumentFocusAnchor | null
@@ -36,6 +47,7 @@ export interface DocumentFormatContribution {
   preview?: Component
   storageKind?: 'text' | 'file'
   nativeExtension?: string
+  exchangeExports?: readonly DocumentExchangeExport[]
 }
 
 const contributions = new Map<string, DocumentFormatContribution>()
@@ -113,10 +125,12 @@ function bundledFormat(descriptor: DocumentFormatDescriptor, url: string): Docum
 export function documentFormat(code?: string, version?: number): DocumentFormatContribution {
   return findDocumentFormat(code, version) ?? fallback
 }
+const documentReferenceContent = defineAsyncComponent(() => import('./components/DocumentReferenceContent.vue'))
 registerDocumentFormat({
   code: 'text', version: 1, provider: 'galaris', icon: 'description', label: 'documents.formats.text',
   editor: defineAsyncComponent(async () => (await import('./text')).TextContentEditor),
   preview: defineAsyncComponent(async () => (await import('@/core/util')).EditorialContent),
+  embed: defineAsyncComponent(() => import('./components/DocumentTextEmbed.vue')),
   snapshot: async (source, title, signal, images, rendered) => (await import('./text')).previewSnapshot(source, title, signal, images, rendered), validateDraft: () => true,
 })
 registerDocumentFormat({
@@ -125,4 +139,17 @@ registerDocumentFormat({
   preview: defineAsyncComponent(async () => (await import('./data')).DataContentEditor),
   snapshot: async (source, title, signal, images, rendered) => (await import('./data')).previewSnapshot(source, title, signal, images, rendered),
   validateDraft: source => { try { JSON.parse(source); return true } catch { return false } },
+})
+const mindMapEditor = defineAsyncComponent(() => import('./mindmap/MindMapEditor.vue'))
+registerDocumentFormat({
+  code: 'mindmap', version: 1, provider: 'galaris', icon: 'account_tree', label: 'documents.formats.mindmap',
+  editor: mindMapEditor, preview: mindMapEditor, embed: documentReferenceContent, nativeExtension: '.mindmap',
+  exchangeExports: [
+    { code: 'freeplane', extension: '.mm', label: 'Freeplane (.mm)' },
+    { code: 'freemind', extension: '.mm', label: 'FreeMind (.mm)' },
+    { code: 'opml', extension: '.opml', label: 'OPML (.opml)' },
+    { code: 'xmind', extension: '.xmind', label: 'XMind (.xmind)' },
+  ],
+  snapshot: async (source, title, signal, images) => (await import('./mindmap/content')).mindMapSnapshot(source, title, signal, images),
+  validateDraft: source => !!parseMindMap(source),
 })

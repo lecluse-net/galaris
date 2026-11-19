@@ -132,6 +132,18 @@ async def build_agent_tool_advertisement(
                 "connected external MCP services.",
             ]
         )
+    if "mindmap_create" in tool_names:
+        lines.append(
+            "For a requested mind map, call mindmap_create to create a private Document and keep its canonical document:// URI. "
+            "Pass root_title and optionally add branches in parent-first order under root."
+        )
+    if {"mindmap_read", "mindmap_edit"} <= tool_names:
+        lines.append(
+            "Read a mind map with mindmap_read to obtain stable node IDs and the current revision. "
+            "Edit it with mindmap_edit(document_id=URI, expected_revision=revision, operations=[...]). "
+            "Use add, edit, move or remove. For rich content use an editorial HTML fragment in body_html with canonical resource links. "
+            "Read a specific node with node_id before replacing its body. On conflict, reread and reconcile."
+        )
     if "memory" in grouped and "file_create" in tool_names:
         lines.extend(
             [

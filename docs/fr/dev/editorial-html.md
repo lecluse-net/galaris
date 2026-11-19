@@ -2,6 +2,8 @@
 
 # Contrat des contenus HTML éditoriaux
 
+Pour les références, le [contrat Lien, Carte et Intégré](document-references.md) précise les attributs d’affichage, la conservation des propriétés lors d’une bascule et le rendu de repli.
+
 Une citation de processus interne utilise un lien titré vers
 `galaris://processes/<code>` ou `galaris://processes/runs/<uuid>`. Pour afficher le
 diagramme dans un document, conserver ce lien dans
@@ -50,14 +52,36 @@ Les souvenirs, descriptions d'objectifs, profils d'agents, objectifs de tâches 
 utilisent `simple` : commandes textuelles essentielles, code en ligne et en bloc, listes
 à cocher, tableaux, séparateurs et liens Galaris, une rangée par groupe et retour à la ligne.
 Le plein écran, les pièces jointes et l'insertion d'équations restent réservés au mode complet.
-Les commandes communes restent dans la barre d'outils. Dans les documents, une seconde
-barre sous la barre principale propose seulement les actions propres à la sélection ; elle disparaît sans
-espace réservé lorsqu'il n'y a aucune action. Le clic droit et l'appui long restent natifs.
+Les commandes communes restent dans la barre d'outils. Dans les documents, un groupe
+à la suite des commandes communes propose les actions propres à la sélection. Il suit
+le retour à la ligne des autres groupes et disparaît lorsqu'il n'y a aucune action.
+Le clic droit et l'appui long restent natifs.
 Le contenu existant est conservé ;
 ce choix d'interface ne change ni le format stocké ni les règles d'assainissement du HTML.
 Le mode complet conserve son adaptation sous 1024 px ; le mode simple conserve ses groupes
 avec retour à la ligne. Les deux exemples vivent dans la Référence graphique.
 Les deux profils conservent l'état coché des listes à cocher dans le HTML.
+
+### Éditeur complet dans un hôte intégré
+
+Configurer `RichTextEditor` avec `profile="document"`, `toolbar-mode="full"` et
+`surface="embedded"` pour éditer un fragment dans un hôte, comme le corps d’une
+branche. Le profil choisit le HTML et ses commandes. `toolbar-mode` choisit la
+présentation de la barre, y compris **Autres outils** sur mobile. La propriété
+`surface` choisit la géométrie et la disponibilité des commandes de page. En mode
+`embedded`, le contenu suit les dimensions de l’hôte et les actions de mise en page,
+de plein écran, d’impression et d’export relèvent de l’hôte. La barre, l’aide et les
+raccourcis partagent ce filtre.
+
+`toolbar-target` et `context-toolbar-target` indiquent des conteneurs déjà montés.
+Le slot `toolbar-leading` accueille une commande de l’hôte, comme **Retour à la carte**.
+En mode intégré, l’éditeur émet `request-exit` sur **Échap** quand la recherche est fermée.
+Les opérations sur les fichiers et les références passent par `uploadFile`,
+`uploadImage`, `resolveImage` et `pickResources`, avec les droits de la ressource.
+Le slot `embedded-code` reste le point de raccordement explicite du runtime HTML
+interactif de l’hôte. Dans une carte mentale, le nœud enregistre son fragment dans
+`body_html`. Sa sélection de référence conserve le lecteur monté, puis l’édition
+du contenu rend la barre éditoriale complète disponible.
 
 Les deux profils acceptent les équations sous forme de texte LaTeX échappé :
 `<span data-math="inline">x^2</span>` dans un paragraphe et
@@ -442,7 +466,7 @@ Les tâches, objectifs, sujets, discussions, rounds texte, appels et tours vocau
 être copiés depuis leurs menus contextuels ou fiches, puis collés comme liens titrés.
 Le sélecteur **Lien Galaris → Objets Galaris** les recherche également. Les URI et les
 URL de cette installation sont normalisées avant insertion. La barre contextuelle
-bascule entre lien et carte en édition documentaire. Le clic gauche sélectionne un lien
+propose les modes Lien, Carte et Intégré que le type prend en charge en édition documentaire. Le clic gauche sélectionne un lien
 ou une carte sans l'ouvrir ; **Ouvrir** et **Ctrl/Cmd+clic** suivent la cible. En lecture seule ou visualisation,
 le clic gauche sur un lien ou le fond d’une carte ouvre sa cible ; le clic droit reste natif
 et les barres contextuelles sont absentes. Ces références ouvrent leur fiche en modale avec les droits actuels du
