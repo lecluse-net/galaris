@@ -25,6 +25,13 @@ export type VisibilityFn = () => boolean
 /** Fonction de badge dynamique */
 export type BadgeFn = () => string
 
+export interface NavigationBadge {
+  key: string
+  text: string
+  tone?: 'warning'
+  label?: { key: string; params?: Record<string, string | number> }
+}
+
 /** Navigation tree node. */
 export interface NavigationNode {
   /** Required displayed label. */
@@ -53,6 +60,8 @@ export interface NavigationNode {
 
   /** Static badge text or a dynamic badge function. */
   badge?: string | BadgeFn
+  /** Badge group displayed in definition order, before any single badge. */
+  badges?: () => NavigationBadge[]
 
   /** Tooltip or subtitle description. */
   description?: string

@@ -190,21 +190,42 @@ test('chat home can retry loading agents while conversations remain available', 
   await expect(page.getByRole('alert')).toHaveCount(0)
 })
 
-test('home includes older and empty conversations with the same list as the conversation panel', async ({ page }) => {
-  const state = await home(page, { rooms: [room,
+test('home and the conversation panel show outstanding questions even in a read room', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  const waitingRoom = { ...room, unread_count: 0, pending_question_until: '2026-10-02T12:10:00Z' }
+  const state = await home(page, { rooms: [waitingRoom,
     { ...room, id: 'old', label: 'Older exchange', last_message: { ...message, created_at: '2026-09-24T12:00:00Z' } },
     { ...room, id: 'empty', label: 'No messages yet', last_message: null },
   ] })
-  await expect(page.getByRole('button', { name: /Project outline Alice/ })).toBeVisible()
+  const homeConversation = page.getByRole('button', { name: /Project outline Alice/ })
+  await expect(homeConversation).toHaveAccessibleDescription('Reply needed')
   await expect(page.getByText('Older exchange', { exact: true })).toBeVisible()
   await expect(page.getByText('No messages yet', { exact: true })).toBeVisible()
   expect(state.requests.every(request => !('recent_days' in request))).toBe(true)
   const cards = await page.locator('.room-item--card .room-agent-name > span').allTextContents()
-  const conversation = page.getByRole('button', { name: /Project outline Alice/ })
-  await conversation.focus()
+  await page.screenshot({ path: testInfo.outputPath('pending-question-home-light.png'), animations: 'disabled' })
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.evaluate(() => window.testApp.dark(true))
+  await expect(homeConversation.getByText('Reply needed', { exact: true })).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('pending-question-home-mobile-dark.png'), animations: 'disabled' })
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await homeConversation.focus()
   await page.keyboard.press('Enter')
   await expect(page.locator('.conversation-pane')).toContainText(message.text)
   await expect(page.locator('.details-pane .room-agent-name > span')).toHaveText(cards)
+  const sidebar = page.locator('.details-pane')
+  await expect(sidebar.getByRole('button', { name: /Project outline/ })).toHaveAccessibleDescription('Reply needed')
+  await page.screenshot({ path: testInfo.outputPath('pending-question-sidebar-dark.png'), animations: 'disabled' })
+
+  waitingRoom.pending_question_until = null
+  await page.evaluate(() => window.testApp.emitSocket('chat.message', { data: { room_id: 'room-a', message_id: 'message-a', is_new: false } }))
+  await expect(sidebar.getByText('Reply needed', { exact: true })).toHaveCount(0)
+
+  waitingRoom.pending_question_until = '2026-10-02T12:10:00Z'
+  await page.evaluate(() => window.testApp.emitSocket('chat.message', { data: { room_id: 'room-a', message_id: 'message-a', is_new: false } }))
+  await expect(sidebar.getByText('Reply needed', { exact: true })).toBeVisible()
+  await page.clock.fastForward('10:00')
+  await expect(sidebar.getByText('Reply needed', { exact: true })).toHaveCount(0)
 })
 
 test('conversation pagination recovers from errors and ignores a late page after filtering', async ({ page }) => {

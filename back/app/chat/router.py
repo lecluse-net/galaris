@@ -47,6 +47,7 @@ from app.messenger import (
     chat_file_access,
     create_internal_room,
     clear_chat_identity_mapping,
+    chat_pending_question_summary,
     count_chat_unread,
     get_chat_room,
     get_agent_chat_room,
@@ -339,7 +340,13 @@ async def read_status() -> ChatStatus:
 @router.get("/inbox", response_model=ChatInboxSummary)
 @authorize(privileges=ACCESS)
 async def read_inbox() -> ChatInboxSummary:
-    return ChatInboxSummary(unread_count=await count_chat_unread(await _user_id()))
+    user_id = await _user_id()
+    pending_count, next_expiry = await chat_pending_question_summary(user_id)
+    return ChatInboxSummary(
+        unread_count=await count_chat_unread(user_id),
+        pending_question_count=pending_count,
+        pending_question_next_expiry=next_expiry,
+    )
 
 
 @router.get("/push/configuration", response_model=PushConfiguration)

@@ -530,6 +530,11 @@ In the **Conversations** header, the filter button to the left of **+** shows or
 the **Me / agents** selector, search field, and external and archived conversation checkboxes.
 This area is hidden by default; hiding it preserves the filters. **+** creates a conversation
 subject to your permissions.
+On the Chat home page and in the conversation list, the orange **Reply needed** badge
+marks rooms with a question waiting for your reply. It stays visible after reading and
+disappears when the question is handled or expires.
+In the sidebar, the orange **Chat** counter shows how many questions need your reply.
+It appears to the left of the unread-message counter.
 The **Tasks** section retains Tasks linked to the displayed messages and their subtasks.
 It also shows the Agent’s ongoing Tasks and Tasks awaiting a reply, including work created
 elsewhere or before the visible messages, even in an empty conversation. Queued Tasks and

@@ -2,23 +2,99 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import String, cast, select
+from sqlalchemy import Select, String, and_, cast, func, or_, select, tuple_
 
 from app.connection import Connection
+from app.services import ServiceModel as Service
 from core.database import get_db
 from core.i18n import current_language, is_supported, render_prompt, t
 
 from .contracts import NativeInteractionAnswer, NativeInteractionOption, NativeMessengerInteraction
 from .events import message_journaled
+from .facade import enabled_specs
 from .interactions import ChoiceOption, choice_authorized, choice_body_html, choice_is_authorization, resolve_pending_choice
-from .models import Interaction, Message, MessengerUser, Room
+from .models import Interaction, Message, MessengerUser, Room, RoomUser
 
 
 async def _can_answer(record: Interaction, user_id: int | None) -> bool:
     return await choice_authorized(record.kind, user_id)
+
+
+def _pending_questions() -> Select[tuple[UUID, UUID, str, datetime]]:
+    return (
+        select(RoomUser.room_id, RoomUser.user_id, Interaction.kind, Interaction.expires_at)
+        .select_from(RoomUser)
+        .join(Room, Room.id == RoomUser.room_id)
+        .join(Connection, Connection.id == Room.connection_id)
+        .join(MessengerUser, MessengerUser.id == RoomUser.user_id)
+        .join(Interaction, Interaction.connection_id == Connection.id)
+        .join(Message, Message.messenger_room_id == Room.id)
+        .where(
+            Connection.active.is_(True),
+            Room.deleted_at.is_(None),
+            MessengerUser.is_ai.is_(False),
+            MessengerUser.deleted_at.is_(None),
+            MessengerUser.service_id == Connection.service_id,
+            Interaction.agent_id == Connection.agent_id,
+            Interaction.service_id == Connection.service_id,
+            or_(Interaction.room_id == cast(Room.id, String), Interaction.room_id == Room.external_id),
+            or_(Interaction.user_id.is_(None), Interaction.user_id == MessengerUser.external_id),
+            Interaction.status == "PENDING",
+            Interaction.expires_at > datetime.now(timezone.utc),
+            Message.connection_id == Connection.id,
+            Message.platform.in_([spec.kind for spec in enabled_specs()]),
+            Message.direction == "outbound",
+            Message.deleted_at.is_(None),
+            cast(Message.id, String) == Interaction.prompt_message_id,
+        )
+    )
+
+
+async def pending_room_question_deadlines(
+    memberships: Sequence[tuple[UUID, UUID]],
+) -> dict[tuple[UUID, UUID], datetime]:
+    """Find published questions addressed to each human viewing the room list."""
+    if not memberships:
+        return {}
+    rows = await get_db().execute(
+        _pending_questions().with_only_columns(
+            RoomUser.room_id, RoomUser.user_id, Interaction.kind, func.max(Interaction.expires_at),
+        ).where(tuple_(RoomUser.room_id, RoomUser.user_id).in_(memberships))
+        .group_by(RoomUser.room_id, RoomUser.user_id, Interaction.kind)
+    )
+    deadlines: dict[tuple[UUID, UUID], datetime] = {}
+    for room_id, user_id, kind, deadline in rows:
+        if choice_is_authorization(kind):
+            continue
+        key = (room_id, user_id)
+        previous = deadlines.get(key)
+        if previous is None or deadline > previous:
+            deadlines[key] = deadline
+    return deadlines
+
+
+async def chat_pending_question_summary(user_id: int) -> tuple[int, datetime | None]:
+    """Count the viewer's questions across Chat rooms and find the next expiry."""
+    from .native_facade import CHAT_TOOL_CODE, MAIL_TOOL_CODE, human_external_id
+
+    rows = await get_db().execute(
+        _pending_questions().with_only_columns(
+            Interaction.kind, func.count(func.distinct(Interaction.id)), func.min(Interaction.expires_at),
+        ).join(Service, Service.id == Connection.service_id).where(
+            Room.conversation_type == "text",
+            Service.code != MAIL_TOOL_CODE,
+            or_(
+                MessengerUser.galaris_user_id == user_id,
+                and_(Service.code == CHAT_TOOL_CODE, MessengerUser.external_id == human_external_id(user_id)),
+            ),
+        ).group_by(Interaction.kind)
+    )
+    questions = [(count, expiry) for kind, count, expiry in rows if not choice_is_authorization(kind)]
+    return sum(count for count, _ in questions), min((expiry for _, expiry in questions), default=None)
 
 
 def _snapshot(record: Interaction, *, participant: str | None, authorized: bool) -> NativeMessengerInteraction:

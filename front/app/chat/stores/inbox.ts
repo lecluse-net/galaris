@@ -72,6 +72,8 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
   let summaryRequest = 0
   let lifecycleGeneration = 0
   const unreadCount = ref(0)
+  const pendingQuestionCount = ref(0)
+  let questionExpiryTimer: number | undefined
   const configuration = ref<PushConfiguration | null>(null)
   const subscribed = ref(false)
   const permission = ref<NotificationPermission>(
@@ -117,6 +119,15 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
             const summary = await chatService.inbox()
             if (request !== summaryRequest || !current()) return
             unreadCount.value = summary.unread_count
+            pendingQuestionCount.value = summary.pending_question_count ?? 0
+            window.clearTimeout(questionExpiryTimer)
+            questionExpiryTimer = undefined
+            const expiry = Date.parse(summary.pending_question_next_expiry ?? '')
+            if (pendingQuestionCount.value > 0 && Number.isFinite(expiry)) {
+              const remaining = expiry - Date.now()
+              const delay = remaining > 0 ? Math.min(86_400_000, remaining) : 30_000
+              questionExpiryTimer = window.setTimeout(() => { void refreshSummary().catch(() => undefined) }, delay)
+            }
             await setApplicationBadge(summary.unread_count)
           } catch (error) {
             if (!refresh.requested || !current()) throw error
@@ -343,6 +354,9 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
     lifecycleGeneration++
     summaryRequest++
     summaryRefresh = null
+    window.clearTimeout(questionExpiryTimer)
+    questionExpiryTimer = undefined
+    pendingQuestionCount.value = 0
     if (!started.value) return
     websocket.offEvent('chat', 'message', onMessage)
     websocket.offConnect(onConnect)
@@ -367,6 +381,7 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
 
   return {
     unreadCount,
+    pendingQuestionCount,
     configuration,
     subscribed,
     permission,

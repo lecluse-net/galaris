@@ -631,6 +631,11 @@ Dans l’en-tête **Conversations**, le bouton de filtres à gauche du **+** aff
 le sélecteur **Moi / agents**, la recherche et les cases **conversations externes** et
 **conversations archivées**. Cette zone est masquée par défaut ; la masquer conserve les filtres.
 Le **+** permet de créer une conversation selon vos droits.
+À l’accueil de Discussion et dans la liste des conversations, le badge orange
+**Réponse attendue** repère les salons où une question attend votre réponse. Il reste
+visible après lecture et disparaît quand la question est traitée ou expire.
+Dans le menu latéral, le compteur orange de **Discussion** indique le nombre de questions
+en attente de votre réponse, à gauche du compteur des messages non lus.
 La rubrique **Tâches** conserve les tâches liées aux messages affichés et leurs sous-tâches.
 Elle affiche aussi les tâches en cours ou en attente de réponse de l’agent, même créées
 ailleurs ou avant les messages visibles, y compris dans une conversation encore vide.

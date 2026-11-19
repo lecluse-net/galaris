@@ -152,6 +152,7 @@ from .link_preview import (
     preview_references,
 )
 from .native_resources import prepare_resource_attachments as prepare_resource_attachments
+from .native_interactions import chat_pending_question_summary as chat_pending_question_summary
 from .native_facade import (
     CHAT_TOOL_CODE,
     count_chat_unread,

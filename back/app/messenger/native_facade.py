@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import re
-from collections.abc import Collection
+from collections.abc import Collection, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Literal, cast
@@ -67,7 +67,7 @@ from .models import (
 )
 from .resource_reference import attachment_resource_uri
 from .user_service import enrich_messenger_users, resolve_messenger_user
-from .native_interactions import message_interaction_answers, message_interactions
+from .native_interactions import message_interaction_answers, message_interactions, pending_room_question_deadlines
 from .facade import get_messenger, get_spec, is_kind_enabled, kind_for_tool
 from .ingest import fetch_bytes
 
@@ -831,9 +831,12 @@ class _RoomListProjection:
     last_messages: dict[UUID, NativeMessengerMessage] = field(default_factory=dict[UUID, NativeMessengerMessage])
     unread: dict[tuple[UUID, UUID], int] = field(default_factory=dict[tuple[UUID, UUID], int])
     expected_agents: dict[UUID, int | None] = field(default_factory=dict[UUID, int | None])
+    pending_questions: dict[tuple[UUID, UUID], datetime] = field(default_factory=dict[tuple[UUID, UUID], datetime])
 
 
-async def _room_list_projection(room_ids: list[UUID]) -> _RoomListProjection:
+async def _room_list_projection(
+    room_ids: list[UUID], viewer_memberships: Sequence[RoomUser] = (),
+) -> _RoomListProjection:
     """Load page projections in batches, independent of the number of rooms."""
     projection = _RoomListProjection()
     if not room_ids:
@@ -878,6 +881,9 @@ async def _room_list_projection(room_ids: list[UUID]) -> _RoomListProjection:
         .group_by(RoomUser.room_id)
     )
     projection.expected_agents = {room_id: agent_id if count == 1 else None for room_id, count, agent_id in agent_rows}
+    projection.pending_questions = await pending_room_question_deadlines(
+        [(member.room_id, member.user_id) for member in viewer_memberships],
+    )
     return projection
 
 
@@ -917,7 +923,7 @@ async def _room_dto(
         await enrich_messenger_users([user for user, _relation in rows])
         members = [await _member_dto(user, relation) for user, relation in rows]
     if projection is None:
-        projection = await _room_list_projection([room.id])
+        projection = await _room_list_projection([room.id], [membership] if membership is not None else [])
     last_message_dto = projection.last_messages.get(room.id)
     writable = bool(
         is_internal
@@ -926,9 +932,7 @@ async def _room_dto(
         and connection.active
         and projection.expected_agents.get(room.id) == connection.agent_id
     )
-    unread_count = (
-        projection.unread.get((room.id, membership.user_id), 0) if membership is not None else 0
-    )
+    member_key = (room.id, membership.user_id) if membership is not None else None
     source = _tool_source(tool)
     messenger_kind = kind_for_tool(tool) or source
     messenger_spec = get_spec(messenger_kind)
@@ -962,7 +966,8 @@ async def _room_dto(
         writable=writable,
         role=membership.role if membership is not None else "viewer",
         muted=membership.muted if membership is not None else False,
-        unread_count=unread_count,
+        unread_count=projection.unread.get(member_key, 0) if member_key is not None else 0,
+        pending_question_until=projection.pending_questions.get(member_key) if member_key is not None else None,
         show_last_message=(
             membership.show_last_message if membership is not None else True
         ),
@@ -1038,7 +1043,7 @@ async def list_internal_rooms(
             .limit(page_size)
         )
     ).all()
-    projection = await _room_list_projection([row[0].id for row in rows])
+    projection = await _room_list_projection([row[0].id for row in rows], [row[1] for row in rows])
     return NativeMessengerRoomPage(
         items=[
             await _room_dto(
@@ -1159,7 +1164,9 @@ async def list_chat_rooms(
         )
     ).all()
     items: list[NativeMessengerRoom] = []
-    projection = await _room_list_projection([row[0].id for row in rows])
+    projection = await _room_list_projection(
+        [row[0].id for row in rows], [row[1] for row in rows] if agent_id is None else [],
+    )
     provider_rooms_by_connection: dict[int, list[UUID]] = {}
     for room, membership, connection, tool, agent in rows:
         items.append(

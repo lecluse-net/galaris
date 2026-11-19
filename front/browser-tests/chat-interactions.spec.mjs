@@ -15,6 +15,43 @@ const endpoint = '**/api/chat/rooms/room-1/interactions/choice-1'
 const options = { locale: 'fr', props: { roomId: 'room-1', interaction: choice } }
 const recordedAnswerStatus = page => page.getByRole('status').filter({ hasText: /^Réponse enregistrée/ })
 
+test('the Chat menu updates the question and unread totals independently', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.clock.install({ time: new Date('2026-10-02T12:00:00Z') })
+  await page.addInitScript(() => localStorage.setItem('access_token', 'component-test'))
+  await jsonRoute(page, '**/api/chat/status', { enabled: true, chat_enabled: true })
+  await jsonRoute(page, '**/api/chat/push/configuration', { available: false })
+  let summary = { unread_count: 4, pending_question_count: 2, pending_question_next_expiry: '2026-10-02T12:05:00Z' }
+  await page.route('**/api/chat/inbox', route => route.fulfill({ json: summary }))
+  await mount(page, 'core/util/components/FolderIcon.vue', {
+    route: '/', privileges: ['CHAT_ACCESS'], locale: 'fr', shell: true, dark: false,
+  })
+
+  const chat = page.locator('a[href="/chat"]')
+  const counters = chat.getByRole('status')
+  await expect(counters).toHaveText(['2', '4'])
+  await expect(counters.first()).toHaveAccessibleName('2 questions attendent votre réponse')
+  await expect(counters.last()).toHaveAccessibleName('4 messages non lus')
+  await chat.screenshot({ path: testInfo.outputPath('chat-menu-counters-light.png') })
+
+  await page.evaluate(() => window.testApp.dark(true))
+  await page.setViewportSize({ width: 390, height: 844 })
+  await expect(chat).not.toBeInViewport()
+  await page.getByRole('button', { name: 'Déployer la sidebar', exact: true }).click()
+  await expect(chat).toBeInViewport()
+  await expect(counters).toHaveText(['2', '4'])
+  await page.screenshot({ path: testInfo.outputPath('chat-menu-counters-dark-mobile.png'), animations: 'disabled' })
+
+  summary = { ...summary, unread_count: 0, pending_question_count: 1 }
+  await page.evaluate(() => window.testApp.emitSocket('chat.message', { data: { is_new: false } }))
+  await expect(counters).toHaveText(['1'])
+  await expect(counters.first()).toHaveAccessibleName('Une question attend votre réponse')
+
+  summary = { ...summary, pending_question_count: 0, pending_question_next_expiry: null }
+  await page.clock.fastForward('05:00')
+  await expect(counters).toHaveCount(0)
+})
+
 test('a rich approval body keeps its editorial structure and response controls', async ({ page }, testInfo) => {
   const room = { id: 'room-1', label: 'Conversation synthétique', agent_id: 7, agent_name: 'Agent synthétique',
     agent_active: false, writable: true, members: [], unread_count: 0, conversation_type: 'text' }

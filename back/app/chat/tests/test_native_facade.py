@@ -275,6 +275,25 @@ async def test_internal_choices_reload_and_resolve_once_in_the_exact_human_scope
     assert message.interaction is not None and message.interaction.can_answer
     assert "private_domain_payload" not in message.model_dump_json()
     assert message.interaction.options[0].id == "create"
+    assert await native_facade.mark_chat_room_read(owner.id, room.id, message.id)
+    rooms = await native_facade.list_chat_rooms(owner.id)
+    assert {item.id: item.pending_question_until for item in rooms.items} == {
+        room.id: pending.expires_at,
+        another_room.id: None,
+    }
+    from app.messenger import chat_pending_question_summary
+
+    assert await chat_pending_question_summary(owner.id) == (1, pending.expires_at)
+    assert await chat_pending_question_summary(other.id) == (0, None)
+    from core.params import runtime_settings
+
+    with monkeypatch.context() as disabled_channel:
+        disabled_channel.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", "[]")
+        assert await chat_pending_question_summary(owner.id) == (0, None)
+        assert all(item.pending_question_until is None for item in (await native_facade.list_chat_rooms(owner.id)).items)
+    viewed_as_agent = await native_facade.list_chat_rooms(owner.id, agent_id=agent.id)
+    assert all(item.pending_question_until is None for item in viewed_as_agent.items)
+    assert not (await native_facade.list_chat_rooms(other.id)).items
     assert any(
         event.args[:2] == ("chat", "message")
         and event.args[2] == {"room_id": str(room.id), "message_id": str(message.id), "is_new": False}
@@ -341,6 +360,7 @@ async def test_internal_choices_reload_and_resolve_once_in_the_exact_human_scope
     choice = next(item.interaction for item in reloaded.items if item.id == message.id)
     assert choice is not None and choice.status == "RESOLVED" and not choice.can_answer
     assert choice.selected_option_id == selected_option
+    assert all(item.pending_question_until is None for item in (await native_facade.list_chat_rooms(owner.id)).items)
     assert next(item for item in reloaded.items if item.id == message.id).interaction_answer is None
     if answer_mode == "button":
         answer = next(item for item in reloaded.items if item.direction == "inbound")
@@ -364,6 +384,8 @@ async def test_internal_choices_reload_and_resolve_once_in_the_exact_human_scope
     record.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
     await db.commit()
     assert (await read_internal_interaction(owner.id, room.id, expired.id)).status == "EXPIRED"
+    assert all(item.pending_question_until is None for item in (await native_facade.list_chat_rooms(owner.id)).items)
+    assert await chat_pending_question_summary(owner.id) == (0, None)
     with pytest.raises(ValueError):
         await answer_internal_interaction(owner.id, room.id, expired.id, option_id="yes")
     handler.assert_awaited_once()
@@ -376,7 +398,7 @@ async def test_internal_choices_reload_and_resolve_once_in_the_exact_human_scope
 async def test_pending_question_reminds_once_and_reply_targets_that_question(
     committed_database, monkeypatch: pytest.MonkeyPatch, reply_to_reminder: bool,
 ) -> None:
-    from app.messenger import ChoiceRequest, MessengerFacade, create_choice, deliver_choice_reminders
+    from app.messenger import ChoiceRequest, MessengerFacade, chat_pending_question_summary, create_choice, deliver_choice_reminders
     from app.messenger import interactions, service as messenger_service
     from app.messenger.models import Interaction
 
@@ -399,6 +421,7 @@ async def test_pending_question_reminds_once_and_reply_targets_that_question(
             messenger, agent_id=agent.id, room_id=str(room.id), user_id=f"user:{owner.id}",
             request=ChoiceRequest(kind="question-reminder-test", title="Quel format ?", free_text=True),
         )
+        assert await chat_pending_question_summary(owner.id) == (2, min(pending.expires_at, other.expires_at))
         assert pending.prompt_message_id is not None
         prompt = await db.get(Message, UUID(pending.prompt_message_id))
         assert prompt is not None
@@ -427,6 +450,7 @@ async def test_pending_question_reminds_once_and_reply_targets_that_question(
         handler.assert_awaited_once()
         assert handler.await_args is not None and handler.await_args.args[1].interaction_id == pending.id
         assert await db.scalar(select(Interaction.status).where(Interaction.id == other.id)) == "PENDING"
+        assert await chat_pending_question_summary(owner.id) == (1, other.expires_at)
         assert await db.scalar(select(ConversationRoundMessage)) is None
 
         await deliver_choice_reminders(now=pending.created_at + timedelta(hours=48))

@@ -75,13 +75,17 @@
         :active="room.id === selectedId"
         active-class="room-item--active"
         :aria-current="room.id === selectedId ? 'true' : undefined"
+        :aria-describedby="hasPendingQuestion(room) ? `${roomListId}-question-${room.id}` : undefined"
         class="room-item"
-        :class="{ 'room-item--unread': room.unread_count > 0, 'room-item--card': cards }"
+        :class="{ 'room-item--unread': room.unread_count > 0, 'room-item--card': cards, 'room-item--pending-question': hasPendingQuestion(room) }"
         @click="$emit('select', room)"
       >
         <q-item-section avatar class="room-avatar"><InternalAgentAvatar :agent-id="room.agent_id" :name="room.agent_name" :size="cards ? '42px' : '54px'" /></q-item-section>
         <q-item-section>
           <q-item-label class="room-agent-name row items-center q-gutter-xs"><span :class="cards ? 'card-title' : 'ellipsis'">{{ room.label }}</span><q-icon v-if="room.archived" name="archive" size="15px" class="archived-room-icon"><q-tooltip>{{ t('chat.archivedRoom') }}</q-tooltip></q-icon><q-badge v-if="room.source" outline class="source-badge" :label="t(sourceTranslationKey(room.source))" /></q-item-label>
+          <q-item-label v-if="hasPendingQuestion(room)" class="room-question">
+            <StatusBadge :id="`${roomListId}-question-${room.id}`" tone="warning" icon="help_outline" class="room-question-badge" :label="t('chat.pendingQuestion')" />
+          </q-item-label>
           <q-item-label v-if="cards" class="card-agent">{{ room.agent_name }}</q-item-label>
           <q-item-label v-if="room.show_last_message && (!cards || room.last_message)" class="room-message-preview" :lines="cards ? 2 : 1">{{ lastMessageText(room) || t('chat.emptyRoom') }}</q-item-label>
           <q-item-label v-if="cards" class="card-date">
@@ -104,8 +108,9 @@
   </div>
 </template>
 <script setup lang="ts">
-import { computed, ref, useTemplateRef, watch } from 'vue'
+import { computed, ref, useId, useTemplateRef, watch, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { StatusBadge } from '@/core/util'
 import { sourceTranslationKey } from '../sourcePresentation'
 import { displayMessageText } from '../messagePresentation'
 import type { ChatViewerAgent, MessengerRoom } from '../types'
@@ -117,6 +122,24 @@ const emit = defineEmits<{ changed: [room: MessengerRoom]; select: [room: Messen
 const search = ref(props.searchValue ?? '')
 watch(() => props.searchValue, value => { if (value !== undefined) search.value = value })
 const { t, locale } = useI18n()
+const roomListId = useId()
+const now = ref(Date.now())
+
+function questionDeadline(room: MessengerRoom): number {
+  return room.pending_question_until ? Date.parse(room.pending_question_until) : 0
+}
+
+function hasPendingQuestion(room: MessengerRoom): boolean {
+  return questionDeadline(room) > now.value
+}
+
+watchEffect(onCleanup => {
+  const nextExpiry = Math.min(...props.rooms.filter(hasPendingQuestion).map(questionDeadline))
+  if (!Number.isFinite(nextExpiry)) return
+  const timer = window.setTimeout(() => { now.value = Date.now() }, Math.min(86_400_000, Math.max(0, nextExpiry - Date.now())))
+  onCleanup(() => window.clearTimeout(timer))
+})
+
 const dateFormatter = computed(() => new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }))
 function formatDate(value: string): string {
   const date = new Date(value)
@@ -200,4 +223,11 @@ function onScroll(event: Event): void {
 .cards-empty { grid-column: 1 / -1; padding: 32px 16px; text-align: center; color: var(--chat-text-secondary); }
 body.body--dark .room-item--card.room-item--unread { background: var(--solaire-blue-dark); }
 :global(.q-dark) .room-item--unread:not(.room-item--active):not(.room-item--card) { background: color-mix(in srgb, var(--q-primary) 15%, var(--chat-surface, #1f232b)); }
+.room-item--pending-question:not(.room-item--active) {
+  background: var(--solaire-orange-light);
+  box-shadow: inset 3px 0 var(--solaire-orange-accent);
+}
+body.body--dark .room-item--pending-question:not(.room-item--active) { background: var(--solaire-orange-dark); }
+.room-item .room-question { margin-top: 5px; }
+.room-item .room-question-badge { color: var(--solaire-orange-dark) !important; }
 </style>

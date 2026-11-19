@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
@@ -159,6 +160,8 @@ class MutationResult(BaseModel):
 
 class ChatInboxSummary(BaseModel):
     unread_count: int = Field(ge=0)
+    pending_question_count: int = Field(ge=0)
+    pending_question_next_expiry: datetime | None = None
 
 
 class PushConfiguration(BaseModel):

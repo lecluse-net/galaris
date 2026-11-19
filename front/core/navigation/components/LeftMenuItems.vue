@@ -47,9 +47,7 @@
             <q-item-section>
               <q-item-label>{{ $te(node.label ?? node.key) ? $t(node.label ?? node.key) : node.label }}</q-item-label>
             </q-item-section>
-            <q-item-section side v-if="getBadge(node)">
-              <q-badge color="secondary">{{ getBadge(node) }}</q-badge>
-            </q-item-section>
+            <LeftMenuBadges :badges="getBadges(node)" />
           </q-item>
 
           <!-- Left side: label without a route -->
@@ -64,9 +62,7 @@
             <q-item-section>
               <q-item-label>{{ $te(node.label ?? node.key) ? $t(node.label ?? node.key) : node.label }}</q-item-label>
             </q-item-section>
-            <q-item-section side v-if="getBadge(node)">
-              <q-badge color="secondary">{{ getBadge(node) }}</q-badge>
-            </q-item-section>
+            <LeftMenuBadges :badges="getBadges(node)" />
           </q-item>
 
           <!-- Right side: expansion button. -->
@@ -113,9 +109,7 @@
         <q-item-section>
           <q-item-label>{{ $te(node.label ?? node.key) ? $t(node.label ?? node.key) : node.label }}</q-item-label>
         </q-item-section>
-        <q-item-section side v-if="getBadge(node)">
-          <q-badge color="secondary">{{ getBadge(node) }}</q-badge>
-        </q-item-section>
+        <LeftMenuBadges :badges="getBadges(node)" />
       </q-item>
     </template>
   </template>
@@ -125,10 +119,11 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import type { NavigationTree, NavigationNodeWithPath } from '../types'
+import type { NavigationBadge, NavigationTree, NavigationNodeWithPath } from '../types'
 import { useNavigation } from '../composables/useNavigation'
 import { useNavigationStore } from '../stores/navigationStore'
 import { navigationIcon } from '../icons'
+import LeftMenuBadges from './LeftMenuBadges.vue'
 
 interface Props {
   tree?: NavigationTree
@@ -183,8 +178,10 @@ function isNodeActive(node: NavigationNodeWithPath): boolean {
   return route.path === node.to
 }
 
-function getBadge(node: NavigationNodeWithPath): string | null {
-  return getBadgeValue(node)
+function getBadges(node: NavigationNodeWithPath): NavigationBadge[] {
+  const badges = node.badges?.() ?? []
+  const text = getBadgeValue(node)
+  return text ? [...badges, { key: 'badge', text }] : badges
 }
 
 function translatedDescription(description?: string): string | undefined {

@@ -129,6 +129,7 @@ class NativeMessengerRoom(BaseModel):
     role: str
     muted: bool
     unread_count: int = 0
+    pending_question_until: datetime | None = None
     show_last_message: bool = True
     archived: bool = False
     last_message: NativeMessengerMessage | None = None

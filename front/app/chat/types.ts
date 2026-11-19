@@ -15,7 +15,7 @@ export interface MessengerInteraction {
   can_answer: boolean
   is_authorization?: boolean
 }
-export interface ChatInboxSummary { unread_count: number }
+export interface ChatInboxSummary { unread_count: number; pending_question_count?: number; pending_question_next_expiry?: string | null }
 export interface PushConfiguration { available: boolean; public_key: string }
 export interface PushSubscriptionRead { id: string; enabled: boolean }
 export interface PushSubscriptionPayload { endpoint: string; expiration_time: number | null; keys: { p256dh: string; auth: string } }
@@ -52,7 +52,7 @@ export interface MessageTopicChange {
 export type MessageResourcePreviewKind = 'calendar' | 'code' | 'document' | 'memory' | 'task' | 'text' | 'voice' | 'goal' | 'goal_cycle' | 'process' | 'skill' | 'file' | 'resource' | 'web' | 'youtube'
 export type MessageResourceContentFormat = 'html' | 'markdown' | 'text' | 'json' | 'none'
 export interface MessageResourcePreview { uri: string; deleted: boolean; kind: MessageResourcePreviewKind; title: string; subtitle: string; description: string; media_type: string; content: string | null; content_format: MessageResourceContentFormat; truncated: boolean; image_available: boolean; download_available: boolean; open_mode: 'inline' | 'external'; external_url: string | null; embed_url: string | null; metadata: Record<string, unknown> }
-export interface MessengerRoom { id: string; external_id: string; label: string; kind: string; conversation_type: 'text' | 'audio'; topic_id: string | null; connection_id: number; agent_id: number; agent_name: string; agent_active: boolean; source: string | null; messenger_label: string; messenger_active: boolean; writable: boolean; role: string; muted: boolean; unread_count: number; show_last_message: boolean; archived: boolean; last_message: MessengerMessage | null; members: MessengerMember[] }
+export interface MessengerRoom { id: string; external_id: string; label: string; kind: string; conversation_type: 'text' | 'audio'; topic_id: string | null; connection_id: number; agent_id: number; agent_name: string; agent_active: boolean; source: string | null; messenger_label: string; messenger_active: boolean; writable: boolean; role: string; muted: boolean; unread_count: number; pending_question_until?: string | null; show_last_message: boolean; archived: boolean; last_message: MessengerMessage | null; members: MessengerMember[] }
 export interface ChatViewerAgent { agent_id: number; code: string; display_name: string }
 export interface ChatIdentityMapping { service_id: number; service_code: string; service_label: string; source: string; external_id: string | null; display_name: string | null }
 export interface Page<T> { items: T[]; total: number; page: number; page_size: number }

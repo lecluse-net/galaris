@@ -16,6 +16,7 @@ export type {
   MenusConfig,
   MenuType,
   VisibilityFn,
+  NavigationBadge,
   BadgeFn
 } from './types'
 
