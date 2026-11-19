@@ -172,3 +172,40 @@ async def test_native_catalog_batches_configuration_and_reloads_function_overrid
     connections[0].active = False
     await db.flush()
     assert tools[0].code not in await mcp_loader.get_enabled_integrated_service_codes(owner.id)
+
+
+@pytest.mark.asyncio
+async def test_aggregate_catalog_reads_stay_bounded_with_more_active_connections(db, agents):
+    from app.services.mcp_authorization import bind_native_action
+
+    owner, _ = agents
+    agent_id = owner.id
+    native_service_id = await db.scalar(select(Service.id).where(Service.code == "galaris"))
+    db.add(Connection(agent_id=agent_id, service_id=native_service_id, active=True))
+    await db.flush()
+    db.expunge_all()
+    context = mcp_loader.McpToolContext(agent_id=agent_id, runtime="internal")
+    definition = next(tool for tool in mcp_loader.mcp_tools_by_service_code()["galaris"]
+                      if tool.name == "process_list_runs")
+    async with measured_reads(db, "aggregate-mcp-initial") as initial_reads:
+        initial = await mcp_loader.build_agent_mcp(agent_id)
+        initial_action = await bind_native_action(context, definition, {"limit": 50})
+    native_names = [tool.name for tool in await initial.list_tools()]
+    assert "process_list_runs" in native_names
+
+    services = [Service(code=f"synthetic-aggregate-{index}", label="Synthetic non-MCP", connection_schema={})
+                for index in range(50)]
+    db.add_all(services)
+    await db.flush()
+    db.add_all([Connection(agent_id=agent_id, service_id=service.id, active=True) for service in services])
+    await db.flush()
+    db.expunge_all()
+
+    async with measured_reads(db, "aggregate-mcp-many-connections") as expanded_reads:
+        expanded = await mcp_loader.build_agent_mcp(agent_id)
+        expanded_action = await bind_native_action(context, definition, {"limit": 50})
+
+    assert [tool.name for tool in await expanded.list_tools()] == native_names
+    assert expanded_action.connection_id == initial_action.connection_id
+    assert expanded_action.configuration == initial_action.configuration
+    assert len(expanded_reads) <= len(initial_reads), "Service reads must not grow with the number of active connections"

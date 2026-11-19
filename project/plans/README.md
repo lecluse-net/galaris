@@ -18,7 +18,7 @@ Les cinq chantiers demandés sont repris dans les suivis existants :
 | Réussite des missions | Lab IA | Campagne synthétique avec modèle réel, revue des échecs et de la cohérence des références. |
 | Arrêt et reprise | Fiabilisation conversationnelle | Contrats durables puis qualification des runtimes isolés, sans arrêter de travaux utilisateurs. |
 | Précision mémoire | Amélioration globale de la mémoire | Pièces jointes, droits vivants et recherche dans des PDF synthétiques, dont les pages scannées. |
-| Performance | Optimisation généralisée | Lectures SQL Process/MCP jusqu'à 500 résultats, permissions Services ciblées et annuaires canoniques de 501/1 001 destinataires ; contenu, droits et fraîcheur préservés. |
+| Performance | [Travaux ouverts de l’audit d’optimisation](../audits/optimisation-generalisee/README.md#travaux-ouverts) | Lectures SQL Process/MCP jusqu'à 500 résultats, permissions Services ciblées et annuaires canoniques de 501/1 001 destinataires ; contenu, droits et fraîcheur préservés. |
 | Première mission | Frictions du parcours conversationnel | Accueil, édition, partage et réouverture dans l'application assemblée ; observation de nouveaux utilisateurs encore à organiser. |
 
 L'autorisation porte sur les qualifications, les corrections démontrées et les
@@ -42,7 +42,6 @@ les comptes distants réels ou la réserve indépendante encore manquants.
 
 | Plan | Statut | Reste à faire |
 |---|---|---|
-| [optimisation-generalisee.md](optimisation-generalisee.md) | `in-progress` | Process/MCP par élément, métadonnées Services, grands ensembles Contact, repos/RSS/concurrence/endurance, qualification combinée et couverture restante. |
 | [processus-metier-internes-bpmn.md](processus-metier-internes-bpmn.md) | `partial` | Python généraliste sur VM/hôte dédié, broker de capacités, worker Process distinct et qualifications de charge, reprise et multi-harnais. |
 | [amelioration-globale-memoire.md](amelioration-globale-memoire.md) | `in-progress` | Embeddings réels, analyses partielles/échouées, recherche précise dans les pièces jointes, campagnes générales de rappel/acquisition et organisation des Topics après preuve de gain. |
 | [graphe-memoire-multiechelle.md](graphe-memoire-multiechelle.md) | `partial` | Générations serveur, occurrences de fichiers, placement préparé, lecture régionale et qualification des très grands volumes. |

@@ -6,7 +6,9 @@ import asyncio
 import functools
 import importlib
 import inspect
+import weakref
 from collections.abc import Awaitable, Callable, Collection, Sequence
+from contextvars import Context
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Literal, TypeVar, cast
@@ -487,7 +489,10 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                 if "execute" not in capabilities or not definition.required_capabilities <= capabilities:
                     raise ToolCallRejectedError("The Harness policy no longer permits this tool call.")
                 language = await context_language(ctx)
-                async with asyncio.timeout(timeout_seconds):
+                async with asyncio.timeout(None) as timeout:
+                    # A cancelled timer can stay queued. Its callback only needs this task,
+                    # so the timer must not retain the request's MCP or database context.
+                    Context().run(timeout.reschedule, asyncio.get_running_loop().time() + timeout_seconds)
                     visible = await list_enabled_native_mcp_definitions(
                         ctx.agent_id, runtime=ctx.runtime, conversation_only=ctx.conversation_only,
                         allowed_tool_names={definition.name}, resources=ctx.resources,
@@ -1039,11 +1044,16 @@ async def build_agent_mcp(
     from app.services import service
 
     mcp: FastMCP = FastMCP(f"Galaris — Agent {agent_id}")
+    server_ref = weakref.ref(mcp)
 
     async def run_tool_names() -> frozenset[str]:
         # Query this run's mounted server, not a fresh agent-wide configuration.
         # This includes deferred tools and namespaced external MCP tools.
-        return frozenset(tool.name for tool in await mcp.list_tools())
+        # Registered callbacks can outlive the run. The caller owns its server.
+        server = server_ref()
+        if server is None:
+            raise ToolCallRejectedError("The MCP server for this run is no longer available")
+        return frozenset(tool.name for tool in await server.list_tools())
 
     galaris_mcp = await build_agent_galaris_fastmcp(
         agent_id,
@@ -1055,10 +1065,11 @@ async def build_agent_mcp(
     )
     mcp.mount(galaris_mcp)
 
-    for connection in await connection_service.get_connections_by_agent(agent_id):
-        if not connection.active:
-            continue
-        tool = await service.get_service_by_id(connection.service_id)
+    connections = [connection for connection in await connection_service.get_connections_by_agent(agent_id)
+                   if connection.active]
+    services = await service.get_services_by_ids({connection.service_id for connection in connections})
+    for connection in connections:
+        tool = services.get(connection.service_id)
         if not tool or not tool.mcp:
             continue
         if conversation_only and not tool.conversation_enabled:

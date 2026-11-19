@@ -31,7 +31,7 @@ def authorization_context_key(task_id: UUID | None, resources: dict[str, Any]) -
 
 async def bind_native_action(ctx: McpToolContext, definition: McpToolDefinition, arguments: dict[str, Any]) -> AuthorizationAction:
     from .mcp_loader import native_service_codes_for_service
-    from .service import get_service_by_id
+    from .service import get_services_by_ids
 
     candidates: list[tuple[Connection, Service]] = []
     # Administrative connection_id arguments describe the target being edited,
@@ -42,10 +42,11 @@ async def bind_native_action(ctx: McpToolContext, definition: McpToolDefinition,
     turn = ctx.resource("conversation_turn")
     if requested_connection is None and turn is not None and definition.service_code in {"messenger", "mail", "calendar"}:
         requested_connection = turn.messaging_context.get("connection_id")
-    for connection in await connections.get_connections_by_agent(ctx.agent_id):
-        if not connection.active:
-            continue
-        tool = await get_service_by_id(connection.service_id)
+    active_connections = [connection for connection in await connections.get_connections_by_agent(ctx.agent_id)
+                          if connection.active]
+    services = await get_services_by_ids({connection.service_id for connection in active_connections})
+    for connection in active_connections:
+        tool = services.get(connection.service_id)
         if tool is not None and definition.service_code in native_service_codes_for_service(tool):
             candidates.append((connection, tool))
     if requested_connection is not None:

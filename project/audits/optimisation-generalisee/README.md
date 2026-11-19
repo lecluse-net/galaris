@@ -1,16 +1,46 @@
 # Campagne d'optimisation globale
 
-Campagne lancée le 24 octobre 2026 conformément au
-[plan d'optimisation](../../plans/optimisation-generalisee.md). Les corrections doivent
+La campagne a démarré le 24 octobre 2026. Les corrections doivent
 conserver les résultats métier, droits, révisions, reprises, annulations et effets durables.
-L'inventaire et les premiers contrôles de référence sont établis. Quinze lots indépendants
-sont intégrés au worktree : onze optimisations ciblées des catalogues Services, du retrait
+L'inventaire et les premiers contrôles de référence sont établis. La première série
+intègre quinze lots indépendants, dont onze optimisations des catalogues Services, du retrait
 des références de fichiers, des résumés Process, des recherches Contact, des métriques
 Topics, des pointeurs natifs Document et du démarrage frontend ; quatre corrections de stabilisation préservent
 l'ouverture des pièces jointes Memory, la langue initiale, les liens directs Activité
 et la génération du contrat frontend des paramètres.
-La revue exhaustive reste ouverte ; aucun gain global
-sur l'ensemble de la plateforme n'est établi.
+La revue exhaustive et la mesure du gain global de la plateforme restent ouvertes.
+
+## Travaux ouverts
+
+Cet audit reprend le suivi de la campagne et conserve les preuves dans ses registres.
+
+- **Mémoire et charge.** Qualifier l’intégration d’un correctif `uncalled-for` et
+  la stabilisation du RSS sur des charges longues et plusieurs profils. Mesurer
+  Dream avec historique et étendre les relevés aux autres mécanismes, services
+  et configurations avec bridges.
+- **Process et MCP.** Qualifier les autres lecteurs, les états actifs et les appels
+  distants. Vérifier la révocation, la fraîcheur et les réponses publiques.
+- **Services et Contacts.** Qualifier les autres vues Services et les annuaires
+  distants réels. Mesurer la latence, le coût du transport et la capacité sous charge.
+- **Parcours combinés.** Comparer les parcours qui cumulent plusieurs lots à leur
+  référence et attribuer les coûts déplacés.
+- **Couverture.** Réconcilier les empreintes et requalifier les preuves affectées
+  pour les modules, bridges, exécuteurs et infrastructures. Justifier le
+  dénominateur et documenter l’état de chaque unité ouverte.
+  [Registre des fichiers](couverture-fichiers.csv) · [Registre des surfaces](couverture-surfaces.csv)
+
+Réutiliser les parcours, tests et outils existants. Comparer les variantes sur
+les mêmes corpus synthétiques, droits, charges et régimes de cache. Publier les
+mesures répétées, leur dispersion et leurs limites. Vérifier les garanties métier,
+les consommateurs et le parcours assemblé. Pour les usages IA, mesurer aussi
+la qualité et le coût par réussite.
+
+Présenter le problème mesuré, les options et leurs effets avant d’obtenir
+l’accord de l’utilisateur pour tout nouveau mécanisme applicatif. La clôture de
+la campagne exige l’arbitrage des pistes, la qualification des corrections
+retenues et des parcours combinés, y compris au repos et en endurance. Le bilan
+consigne les régressions résolues, les blocages et les preuves manquantes avec
+leurs conséquences. [Guide du dépôt](../../../AGENTS.md)
 
 ## Référence et périmètre
 
@@ -854,3 +884,386 @@ Ces mesures concernent le processus de test chargé, avec d'autres travaux sur l
 Elles ne qualifient ni un serveur au repos, ni une capacité distante, ni une endurance
 de production. L'échantillonnage mémoire et la durée étendue restent exclusivement
 dans le test, sans dispositif d'observation ajouté à l'application.
+
+## Reprise du 18 novembre 2026
+
+La comparaison de l’inventaire historique et des sources présentes donne 6 394 fichiers
+éligibles, contre 5 647 à la référence. Sur les chemins de référence, 3 565 empreintes
+correspondent, 1 936 ont changé et 146 chemins sont absents. La comparaison relève aussi
+893 chemins nouveaux. Les empreintes sont conservées avec les diagnostics locaux. Ces
+écarts fixent le périmètre de réconciliation des registres et de réexamen des preuves.
+
+Sur le périmètre prioritaire, trois fichiers MCP sur douze, 53 fichiers Process sur 85
+et 73 fichiers Services sur 113 ont changé d’empreinte à chemin relatif équivalent.
+Process compte aussi dix nouveaux chemins. Services en compte 32 nouveaux et six absents
+après rapprochement avec l’ancien préfixe `app.tools`. Les rapprochements portent sur
+les chemins et les empreintes. La qualification reste enregistrée opération par opération.
+
+### Parcours liste et détail via MCP HTTP
+
+Le client appelle le point d’entrée FastAPI de MCP Streamable HTTP sur PostgreSQL
+éphémère. Il utilise un jeton d’agent et passe par la construction du serveur, les
+contrôles d’autorisation et la sérialisation de la réponse. Le transport ASGI est local
+au processus. Les 500 exécutions terminées alternent définitions natives et externes.
+Le corpus comprend aussi une exécution hors périmètre et une ligne supprimée.
+
+La comparaison rejoue les quatre fonctions historiques qui portent la sélection et la
+projection des listes dans le serveur courant, sur les mêmes enregistrements. Le détail
+utilise le code courant dans les deux cas. Pour chaque taille et outil, une paire chauffe
+le parcours puis huit paires alternent l’ordre des versions. La durée comprend les deux
+appels HTTP, la liste puis l’ouverture du premier résultat. Les ordres, les identités et
+les résultats JSON publics sont identiques sur chaque paire. Le détail hors périmètre
+est refusé. La désactivation de la connexion administrative bloque immédiatement la
+liste et le détail administratifs. Les outils personnels restent utilisables.
+
+| Outil | Exécutions | Médiane liste + détail avant | Médiane liste + détail après | Lectures SQL de la liste avant → après |
+|---|---:|---:|---:|---:|
+| Personnel | 10 | 217,1 ms | 212,9 ms | 82 → 76 |
+| Personnel | 50 | 233,7 ms | 213,4 ms | 102 → 76 |
+| Personnel | 500 | 370,0 ms | 236,0 ms | 327 → 76 |
+| Administration personnelle | 10 | 212,6 ms | 210,3 ms | 87 → 76 |
+| Administration personnelle | 50 | 232,2 ms | 211,5 ms | 127 → 76 |
+| Administration personnelle | 500 | 401,3 ms | 238,3 ms | 577 → 76 |
+
+À 500 résultats, les durées du parcours personnel couvrent 341–1 123 ms avant et
+230–414 ms après. En administration, elles couvrent 387–712 ms avant et 231–500 ms
+après. La latence varie aussi à faible cardinalité, avec une pointe à 1 321 ms dans la
+série administrative à 50. À 10 résultats, seulement trois des huit paires administratives
+sont plus rapides après optimisation. Les 82 lectures du détail restent constantes.
+Les 76 lectures de liste comprennent l’ensemble de la requête HTTP, dont une lecture
+de la table des exécutions dans les cas mesurés. Les coûts des autres lectures restent
+à attribuer. Le résultat porte sur des exécutions terminées, sur cet hôte et sur ces
+périmètres. Les latences réseau, l’accès administratif élargi, la concurrence et les
+exécutions actives restent à qualifier. Le protocole et les échantillons bruts sont
+conservés dans les diagnostics locaux.
+
+### Chargement groupé des Services dans le parcours MCP HTTP
+
+L’authentification de l’agent et de son jeton prend deux lectures SQL. La construction
+du serveur et la vérification de disponibilité à l’appel exécutent chacune 24 lectures
+dans la projection du catalogue natif. Le gestionnaire Process prend deux lectures pour
+la liste et huit pour le détail dans ce scénario. Le reste couvre entre autres les
+connexions, l’autorisation et la construction des réponses.
+
+La construction du serveur et la résolution de la connexion qui autorise l’action
+chargeaient chacune un Service par connexion active. Le correctif réutilise la lecture
+groupée existante aux deux points. Chaque étape lit ses propres données dans sa transaction.
+Le choix de la connexion, la décision d’autorisation, la configuration des transports et
+les contrôles à l’appel restent exercés par les mécanismes existants.
+
+Une paire d’échauffement puis neuf paires alternent les fonctions avant et après dans le
+même serveur local et sur les mêmes données. Les réponses publiques sont identiques dans
+chaque paire. Les 50 connexions ajoutées pointent vers des Services synthétiques sans outil
+MCP. Les chiffres comptent toutes les lectures de la requête HTTP.
+
+| Connexions supplémentaires | Appel | Lectures SQL avant → après | Médiane avant → après |
+|---:|---|---:|---:|
+| 0 | Liste de 50 exécutions | 76 → 74 | 108,8 → 108,5 ms |
+| 0 | Détail | 82 → 80 | 112,3 → 111,5 ms |
+| 50 | Liste de 50 exécutions | 176 → 74 | 159,8 → 138,5 ms |
+| 50 | Détail | 182 → 80 | 153,2 → 133,4 ms |
+
+À 50 connexions supplémentaires, les durées couvrent 154–308 ms avant et 125–794 ms
+après pour la liste, puis 149–183 ms avant et 119–144 ms après pour le détail. Le nombre
+de lectures reste stable avec les connexions ajoutées. Le gain de latence est négligeable
+dans le petit cas. La construction du serveur représente encore environ 77 ms sur 109 ms
+pour la liste dans le petit cas après correction. Le budget de non-régression ajoute les
+connexions et vérifie les lectures, le catalogue visible et la connexion sélectionnée.
+Les 302 tests ciblés Services et Process passent, dont les scénarios d’autorisation,
+de transport MCP distant simulé et de révocation. Le typage backend/frontend, les
+549 tests unitaires frontend et le contrôle des catalogues de traduction passent aussi.
+
+### Coût de construction du serveur MCP
+
+Dans neuf appels locaux de liste à 50 résultats après échauffement, le serveur natif
+enregistre 98 fonctions à chaque requête. Cet enregistrement prend une médiane de
+64,2 ms CPU sur le thread de la requête (64–70 ms observées). La construction complète
+prend 77,4 ms en temps écoulé, pour une requête de 106,5 ms. Les chronomètres ne
+s’additionnent pas. La mesure localise le principal coût restant sur ce scénario dans
+l’enregistrement des outils FastMCP.
+
+### Charge du parcours MCP sur une socket locale
+
+Le serveur FastAPI est exercé via Uvicorn, une socket TCP de bouclage et un client HTTP.
+PostgreSQL reste isolé et les workers applicatifs ne sont pas démarrés. Chaque client
+demande 50 résultats et ouvre le détail d’une exécution terminée. Un contrôle séparé relit
+une exécution active ancienne, avec `fresh=false`, et vérifie le refus du détail hors périmètre.
+
+| Clients simultanés | Parcours | Médiane | p95 | Parcours/s | RSS final du processus de test |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 12 | 300 ms | 635 ms | 2,86 | 538 Mio |
+| 4 | 48 | 979 ms | 1 796 ms | 3,55 | 642 Mio |
+| 8 | 96 | 2 241 ms | 3 438 ms | 3,41 | 784 Mio |
+| 1 (retour) | 12 | 283 ms | 1 869 ms | 2,40 | 814 Mio |
+
+Les 168 parcours réussissent. Le débit plafonne autour de 3,5 parcours/s sur cet hôte.
+Le RSS observé inclut le serveur et l’infrastructure de test. Il passe de 494 Mio
+après échauffement à 814 Mio immédiatement après le dernier palier. Le dernier palier
+compte 12 observations et son p95 correspond à la plus lente. Ces observations courtes
+sont une référence locale pour le transport, la concurrence et la mémoire du processus.
+
+Deux séries supplémentaires de 48 parcours à quatre clients suivent les instances
+FastMCP par références faibles. Après chaque série, le test attend cinq secondes sans
+requête puis lance une collecte Python à des fins de diagnostic. Après la seconde
+série, les 196 instances du serveur agrégé et les 196 instances du serveur natif sont
+encore référencées avant et après la collecte. Le RSS du processus de test est passé
+de 495 à 637 puis 703 Mio. Cette observation reproduit la rétention sur un serveur
+local dans le processus de test. L’origine et les effets après des charges plus longues
+restent à établir.
+
+La construction seule du serveur agrégé reproduit la rétention des cinq instances
+agrégées et natives, comme la découverte du catalogue et l’appel d’un outil. Le même
+nombre reste référencé avec un délai d’outil ramené à une seconde dans le test et avec
+les trois durées d’expiration asyncpg testées. Cinq minuteries d’appel annulées portent
+aussi un contexte FastMCP. Le retrait de ces références dans le diagnostic laisse les
+cinq serveurs de chaque type en mémoire. La construction seule fournit le scénario de
+reproduction le plus court pour isoler les autres références.
+
+Les serveurs FastMCP vides, les montages de serveurs vides et le catalogue natif construit
+seul sont tous libérés. La construction agrégée garde les dix instances créées sur cinq
+montages. Dans le diagnostic, omettre seulement le callback de liste du catalogue monté
+suffit à libérer les dix instances. Ce callback est nécessaire pour lire les outils du
+serveur courant. Sa référence au serveur agrégé est désormais faible. Le test existant
+vérifie que le callback voit toujours un outil monté pendant l’exécution et qu’il ne garde
+pas le serveur en vie après la disparition de son propriétaire.
+
+Le rejeu sur socket TCP conserve les mêmes deux séries de 48 parcours. Après la dernière
+pause de cinq secondes, 25 serveurs agrégés et 37 serveurs natifs restent en vie, contre
+196 de chaque type avant correction. Après la collecte, il reste zéro serveur agrégé et
+14 serveurs natifs, contre 196 de chaque type avant. Le RSS final observé passe de 703 à
+647 Mio, avec un point de départ de 495 Mio dans les deux essais. Les collectes forcées
+font partie du diagnostic. La stabilisation sur une charge longue et les références
+restantes des serveurs natifs restent à qualifier.
+
+Après cette première correction, la construction seule et la liste des outils libèrent
+toutes les instances. Un appel terminé laisse encore son serveur natif dans le contexte
+d’une minuterie annulée. Dans un contrôle de cinq appels, retirer ces contextes libère
+les cinq serveurs natifs. Un délai d’une seconde permet aussi leur libération après deux
+secondes. Le code arme désormais la minuterie existante dans un contexte vide. L’opération
+elle-même conserve son contexte et le gestionnaire `asyncio.timeout` conserve l’expiration
+sur la tâche courante. [API Python du gestionnaire de délai](https://docs.python.org/3.14/library/asyncio-task.html#asyncio.Timeout.reschedule)
+
+Sur les deux mêmes séries après les deux corrections, 21 serveurs agrégés et 25 serveurs
+natifs restent en vie après les cinq secondes d’inactivité du dernier palier. La collecte
+ramène ces nombres à zéro et deux. Deux instances natives restent après chacune des deux
+séries. Le RSS final observé est de 638 Mio. Le diagnostic a pour référence 703 Mio et
+196 instances de chaque type après collecte. L’endurance reste à mesurer sur une durée
+plus longue.
+Dans un contrôle distinct de deux séries de douze parcours, trois puis cinq serveurs
+natifs restent en vie après collecte. Les instances restantes changent entre séries.
+
+Le parcours a ensuite tourné sans interruption pendant 120 secondes, avec quatre
+clients et sans collecte forcée pendant la charge. Les 432 parcours réussissent à un
+débit observé de 3,59 parcours/s, avec une médiane de 867 ms et un p95 de 2 143 ms.
+Sur les 868 serveurs créés de chaque type, 48 agrégés et 51 natifs restent en vie
+après quinze secondes d’inactivité. La collecte en laisse zéro et trois. Le RSS du
+processus de test monte de 488 à 841 Mio et reste à ce niveau après collecte. La
+libération des serveurs agrégés est vérifiée aussi sur cet essai. Les allocations
+qui contribuent au RSS résiduel restent à attribuer.
+
+Dans un autre essai de 32 parcours avec `tracemalloc`, le volume des allocations
+Python tracées augmente de 30,5 Mio après collecte. Parmi les plus fortes hausses
+figurent la construction des schémas Pydantic (2,5 Mio), les types Python (1,6 Mio),
+les wrappers d’outils Galaris (1,4 Mio) et leur enregistrement FastMCP (1,2 Mio).
+Ce profil localise une part des allocations. La part du RSS que le profil Python
+laisse ouverte reste à mesurer. Les temps de l’essai instrumenté ne servent pas
+de référence de latence.
+
+Les 99 tests ciblés de la dernière révision passent, dont la libération du contexte
+après un retour réussi, l’expiration du délai et l’annulation externe du dispatch. Le
+typage backend/frontend, les 549 tests unitaires frontend et les catalogues passent.
+
+### Périmètres d’administration
+
+Le parcours HTTP de test part d’une connexion d’administration personnelle et passe
+au périmètre d’équipe. Une exécution étrangère est plus récente que celle de l’équipe.
+La page de taille un retourne l’exécution de l’équipe, ce qui vérifie l’application du
+périmètre avant la pagination. Le détail conserve le statut actif et le signal de
+fraîcheur. Après retrait de l’agent de l’équipe, la requête suivante exclut son exécution
+de la liste et refuse son détail. Ce contrôle porte sur les droits et le contenu.
+Le même parcours élargit ensuite le périmètre à l’administration globale. L’exécution
+étrangère devient accessible et occupe la première place. La désactivation de la
+connexion bloque la liste et le détail à la requête suivante.
+
+### Construction MCP et pages libres de l’allocateur
+
+Deux processus de test frais construisent chacun 120 serveurs après échauffement. Le
+premier construit le serveur agrégé directement. Le second parcourt le point d’entrée
+HTTP ASGI avec 60 parcours enchaînant la liste et le détail. Le RSS est relevé après
+collecte Python, puis après demande de restitution des pages libres de la glibc.
+Cette restitution intervient uniquement dans le diagnostic. [Manuel de `malloc_trim`](https://man7.org/linux/man-pages/man3/malloc_trim.3.html)
+
+| Charge | RSS de référence | RSS après collecte | RSS après restitution des pages |
+|---|---:|---:|---:|
+| 120 constructions seules | 458 Mio | 623 Mio | 618 Mio |
+| 60 parcours HTTP liste et détail | 483 Mio | 658 Mio | 649 Mio |
+
+La construction seule suffit à reproduire une hausse de même ordre. Après collecte,
+les deux processus ont libéré toutes les instances de serveur observées. La restitution
+des pages libres ne retire que 5 à 9 Mio sur cet essai. Chaque processus compte encore
+environ 15 000 wrappers d’outils supplémentaires et 4 400 adaptateurs Pydantic
+supplémentaires. Trois caches FastMCP atteignent chacun 5 000 entrées. Le cache
+d’adaptateurs est importé sous le même nom dans plusieurs modules.
+Le cache des signatures sans paramètres injectés est indexé par fonction.
+[Implémentation FastMCP 4.1.3](https://github.com/PrefectHQ/fastmcp/blob/v4.1.3/fastmcp_slim/fastmcp/server/dependencies.py)
+
+Un contrôle indépendant répète deux séries de 60 parcours HTTP dans un même processus.
+Après collecte et restitution, le RSS passe de 483 Mio à 650 Mio, puis à 680 Mio. Les
+trois caches à 5 000 entrées sont déjà pleins après la première série. Les adaptateurs
+Pydantic restent au même nombre pendant la seconde série. Les métadonnées d’outils
+continuent de croître, de 12 348 à 24 108 objets. Le diagnostic vide les trois caches
+ainsi que le cache des wrappers d’erreur. Après collecte et restitution, le RSS revient
+à 660 Mio. Le nombre de wrappers Galaris tombe de 27 878 à 24 108 et les métadonnées
+restent au même niveau. Le parcours HTTP réussit à nouveau après ce contrôle. Ces
+mesures séparent la part récupérée par vidage des caches des wrappers encore référencés.
+
+Dans le processus de test, après vidage des caches FastMCP, chacun des cinq wrappers
+suivis pour `process_list_runs` est encore une clé de deux dictionnaires non bornés
+d’`uncalled-for` 0.4.1, `_signature_cache` et `_parameter_cache`. La branche amont
+consultée contient également ces deux dictionnaires. [Code d’introspection amont](https://github.com/chrisguidry/uncalled-for/blob/main/src/uncalled_for/introspection.py)
+
+Le contrôle retire uniquement les clés des cinq wrappers suivis. Ils restent tous
+en vie après retrait des clés du cache des signatures. Après retrait dans le cache
+des paramètres et collecte, les cinq références faibles sont éteintes. Les deux
+dictionnaires contribuent directement à retenir ces wrappers dans ce scénario.
+
+Un prototype remplace les deux dictionnaires par des dictionnaires à clés faibles
+uniquement dans le processus de test. Les 120 parcours réussissent. Après collecte
+et restitution des pages, le RSS est de 643 Mio puis 645 Mio aux deux paliers,
+contre 650 Mio puis 680 Mio avec les références fortes. Le nombre de métadonnées
+d’outils passe de 5 075 à 5 195 entre les paliers du prototype, contre 12 348 à
+24 108 dans le témoin. Après vidage diagnostique des caches FastMCP et collecte,
+il reste zéro wrapper Galaris compté dans le prototype, contre 24 108 dans le témoin.
+Le scénario HTTP réussit à nouveau après le vidage. Le prototype établit le gain
+local. L’intégration d’un correctif de dépendance, sa compatibilité plus large et
+la stabilisation du RSS sur une durée prolongée restent à qualifier.
+
+### Vérification de la dépendance publiée
+
+Le verrou du backend épingle `uncalled-for` 0.4.1. La roue 0.6.1 a été vérifiée
+contre l’empreinte SHA-256 publiée. Son implémentation conserve les deux dictionnaires
+à références fortes. Une mise à niveau vers cette version laisse donc la cause
+identifiée en place. [Distribution et provenance sur PyPI](https://pypi.org/project/uncalled-for/0.6.1/)
+
+### Comparaison à charge identique sur TCP
+
+Deux processus de test frais exécutent chacun 384 parcours sur une socket de
+bouclage, avec quatre clients et PostgreSQL isolé. Le témoin utilise `uncalled-for`
+0.4.1 tel qu’il est verrouillé. Le prototype utilise des clés faibles et recalcule
+l’introspection pour les objets appelables qui ne prennent pas en charge les
+références faibles. Chaque parcours vérifie l’ordre des 50 résultats, puis le
+statut et la sortie du détail terminal. L’échauffement vérifie aussi le signal de
+fraîcheur d’un run actif et le refus du détail hors périmètre. La collecte forcée
+intervient après la mesure et quinze secondes d’inactivité.
+
+| Mesure | Témoin | Prototype |
+|---|---:|---:|
+| Parcours réussis | 384 | 384 |
+| Durée | 114,2 s | 108,0 s |
+| Latence médiane par parcours | 969 ms | 925 ms |
+| Latence p95 par parcours | 2 203 ms | 1 887 ms |
+| RSS après échauffement | 488 Mio | 488 Mio |
+| RSS en fin de charge et après collecte | 814 Mio | 663 Mio |
+| Entrées dans chacun des deux caches après collecte | 76 428 | 6 687 |
+| Serveurs agrégés et natifs encore référencés après collecte | 0 et 2 | 0 et 2 |
+
+La variante termine avec 151 Mio de RSS en moins. Entre les relevés autour de 76 et
+102 secondes, le RSS augmente encore de 12 Mio avec la variante et de 43 Mio
+avec le témoin. Les 772 instances de chaque type ont été construites dans chaque
+bras. Un seul passage par variante sur cet hôte partagé fournit une comparaison
+mémoire à volume égal. Les latences restent descriptives et la croissance
+résiduelle appelle une mesure plus longue.
+
+Le remplacement direct par `WeakKeyDictionary` échoue sur un objet appelable
+hachable dont le type ne prend pas en charge les références faibles. Le repli du
+prototype introspecte cet objet sans le garder en mémoire. Un contrôle distinct
+couvre la collecte d’une fonction après disparition de son propriétaire. Le
+parcours administratif P35 réussit aussi dans les deux variantes, y compris après
+changement de périmètre et révocation de
+connexion. Les 124 tests ciblés réussissent avec les dépendances verrouillées. Ils
+couvrent notamment les limites de lectures du catalogue Services, l’annulation et
+l’expiration des outils natifs, les états d’attente et de pause, ainsi que les droits
+sur l’inspection, les enfants, les occurrences et les métriques Process.
+
+### API et worker Process au repos
+
+Le cycle de vie FastAPI démarre les services supervisés et le vrai sous-processus
+Process sur une base PostgreSQL de test initialisée. La readiness indique `ready`
+avant et après 60 secondes sans trafic utilisateur, après 20 secondes d’échauffement.
+Le worker s’arrête à la fermeture du cycle de vie.
+
+| Mesure sur la fenêtre | Résultat |
+|---|---:|
+| Instructions SQL observées dans l’API | 5 264 |
+| Temps cumulé des instructions observées | 3,89 s |
+| Temps CPU de l’API et du worker Process | 7,19 s et 0,62 s |
+| RSS de l’API | 579 → 663 Mio |
+| RSS du worker Process | 443 → 449 Mio |
+| Connexions vers la base de test | 28 à chacun des cinq relevés |
+| Transactions PostgreSQL sur la base de test | 4 603 validations et 4 592 annulations |
+
+Les statistiques PostgreSQL couvrent les deux processus. Les compteurs par
+instruction couvrent le processus de test qui héberge l’API. Le RSS de chacun
+inclut ses pages partagées. Les profils avec bridges, historique, frontal et
+exécuteurs restent à mesurer.
+
+Un second essai sur base neuve sépare les instructions par tâche asyncio. Dream
+exécute 1 386 des 1 791 instructions de l’API en vingt secondes, soit 77 %. Le
+temps cumulé des instructions Dream est de 0,65 s. Le scheduler attend par défaut
+une seconde entre les cycles et vérifie notamment l’activité Task et Voice avant de
+sélectionner les mécanismes. Augmenter l’intervalle existant peut retarder la
+détection de travail éligible. Réduire les lectures dans un cycle demande de
+mesurer leur répartition et de vérifier la priorité donnée aux activités Task
+et Voice, ainsi que la reprise après échéance d’un bail.
+
+### Projection Process déjà traitée par Dream
+
+Le lot L19 groupe la lecture des reçus par page de 100 et ne sélectionne que les
+colonnes nécessaires pour reconstruire les identités. L’ordre des définitions,
+puis des runs terminaux, reste le même, avec reprise des baux échus en premier.
+Une relecture du candidat précède sa réservation. La contrainte d’unicité protège
+l’insertion si deux workers atteignent ce point ensemble.
+
+Sur PostgreSQL éphémère, huit paires alternées par corpus comparent l’ancien code
+au nouveau après échauffement. Les deux versions terminent sans nouveau reçu sur
+ces historiques déjà traités. Les durées couvrent un appel à la sélection du
+mécanisme Process, de la reprise jusqu’à la dernière page.
+
+| Définitions et runs terminaux, par type | Lectures témoin → candidat | Médiane témoin → candidat | Plages témoin / candidat |
+|---|---:|---:|---:|
+| 0 | 3 → 3 | 1,96 → 1,97 ms | 1,65–2,43 / 1,49–2,69 ms |
+| 10 | 23 → 5 | 6,66 → 2,71 ms | 5,38–8,88 / 2,33–4,32 ms |
+| 105 | 215 → 9 | 57,95 → 5,80 ms | 56,30–200,79 / 4,87–8,22 ms |
+| 500, état synthétique de 16 000 caractères par run | 1 013 → 23 | 361,81 → 35,59 ms | 331,04–517,87 / 32,36–40,06 ms |
+
+Le test de régression échoue sur les 215 lectures de référence. Il exerce aussi
+une reprise de bail avec checkpoint, le passage entre pages, l’inclusion des
+lignes historisées et l’exclusion d’un run encore actif. Un test à deux sessions
+force une réservation concurrente entre le lot de reçus et la relecture du
+candidat. Les deux sessions obtiennent des sujets distincts.
+
+Les 40 tests ciblés passent, dont la projection privée vers Memory et les tests
+de priorité, d’interruption et de reprise Dream. Pyright passe sur le fichier de
+production. Une réservation fraîche coûte une lecture supplémentaire quand le
+premier sujet de la page est disponible.
+
+Après le changement, un relevé de vingt secondes sur le backend assemblé avec
+une base neuve attribue à Dream 1 232 des 1 637 instructions de l’API. Dream en
+exécute 336 pour vérifier l’activité Task, 160 pour vérifier la disponibilité des
+mécanismes et 736 pour chercher un sujet à réserver, dont 48 pour la projection
+Process. La readiness et l’arrêt du worker sont vérifiés. Les mesures avec
+historique restent nécessaires pour quantifier le gain sur l’API assemblée.
+
+### Écarts du registre de fichiers
+
+Le relevé du 19 novembre, avant mise à jour ciblée du registre, compte 6 438 fichiers
+éligibles contre 5 647 dans la référence. Parmi eux, 3 562 correspondent à leur
+empreinte, 1 939 ont changé, 937 sont nouveaux et 146 anciennes entrées sont absentes.
+Parmi les entrées modifiées ou absentes, 63 avaient une preuve renseignée.
+
+Le registre réintègre 38 fichiers des sous-répertoires source `data/`, notamment
+dans Document et dans le bridge Hermes. Il actualise aussi les empreintes des
+sources ciblées par P42 et les chemins MCP issus du renommage de `app.tools` en
+`app.services`. Les données locales à la racine et les six sorties de campagne
+restent hors dénominateur. La liste locale des écarts permet de requalifier les
+autres preuves liées à des empreintes modifiées.

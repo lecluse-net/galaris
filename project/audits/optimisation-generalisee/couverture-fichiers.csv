@@ -1658,6 +1658,37 @@ back/app/document/bootstrap.py,6828de202bcc92aac4ace767fa19c87d0d12770730e2ba6a9
 back/app/document/content_diff.py,2c0bed7c2a7acc7d4e1cc8e5785ca685e51a92a33f9d0bc317dc134a551763d9,backend:app.document,source active,backend:app.document,à examiner,,,
 back/app/document/contracts.py,e3537a29ebf87f23b6c302419f850665d224815b507b224561e2ea8d1090535c,backend:app.document,source active,backend:app.document,à examiner,,,
 back/app/document/conversation_document_adapter.py,517d1bc8cbd2d53427516b74995c8ef20f23e809ae945abb017e98df9ae479ca,backend:app.document,source active,backend:app.document,à examiner,,,
+back/app/document/data/__init__.py,d1d33dc2cbeded4b518c349929fc8ee9c64e85b774945c955ce0a46f3fa2425f,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/access.py,7d6257b52b2fa023f2cd47ecf131d058e99e1283c4b749fb0569eae4cae13a60,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/apps.py,e1de6220bd346a70191fc5066d71fa14f0a865d4f623e73d1ed9a3201ff237af,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/attachments.py,5f71577b1483fd9a92e805db8b64c5e5fc2e602667c846593e880d0696141931,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/bootstrap.py,0428987d7db3d8f56f504ee39606ed6983dc04ac760e91324fafdfc27b39b83e,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/compatibility.py,3046d4651c03bcc80953152a8f2fdd94c2ca2b83d8b146b83a235df43a0b886c,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/content.py,6ed369801222dd8e5fc9151a0a49a1bc591e082a37e36279dabb15ba64802039,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/contracts.py,f1f5eeb57d59a5b43c42e17bc9391a500f78c4bc7d899ddcde21c16df170321f,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/dbadmin.py,6fd68b6a301ea233e2f8b136ebaff0a18a11f468ffc54f52c5cfcfffc9e2b536,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/facade.py,ad520909b2712bc45b020c3c8745ae1cb29e162fe385dde0969a7770a6659565,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/library.py,0b783abf799d061d74aa4bb0adf4e4f4f4059abc15ee0d49fb0469eb1c9507cf,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/mcp.py,ec9ad061393896a046110ee63d259cad3fd132b1fac3c653114c5d1cff1f9c7b,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/migration.py,a9f870a0e6350bacb97772d8dd58276160116b3674cbc09e4c5d069101b0c8d8,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/models.py,8eda10ebffd2ceaebccae52dbc2f3f80b4e065534161b6c22c6a63f46344ac80,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/organization.py,543214a0fc98c181cc02c4c9b2acce70f029d8b2cf7bf864a1e2f95094c8df17,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/ownership.py,25920a84c0d8c1ff8d7169ef0bb9904ae0a9e5fe8f61fcdfcb48d77e9b93ddef,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/passages.py,71138e5b9395c3f58b5a7c565bbcccb1f006592b3bd71178ebfd66a39e7af527,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/privileges.py,0b8d5f5ecbd41909189319012f3d6ed0428652165e55f95c015f482c95bf441e,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/projection.py,5b19c969c45fb4b5d4f08c2e4f09437e6e46fc7f40eb2fa59e8155aa5406c4d1,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/provider.py,1980d932db46f0cb7e4c749046d1f62f745602fd6b25eb6f3ae9ac7a6e9be966,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/query.py,bec4cf021f449ade1c8521f9f783f9ebacab5068ae23ec390eda62c93a70a1b8,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/resource_summaries.py,3f9ee06791668ce0632f08589fdaac29468cfc8811b23c7e31dc86c59739f40d,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/router.py,3b9b915d9931ccd3bd001324cd88e7d19c424447f89d589e0dc7b4802128a0d9,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/search.py,f5b3e6f30d07e1a1aee6e23967f3e9537605a321cf355893285c22c103f8d0d5,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/search_index.py,83d01124663a0eed905569fd2300670fec2d2ec229a9a68f2e46462c4e9572da,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/search_predicates.py,c902691bf4a9b7241a500d0c38e29221d28f8f5b384e18848df4c81689a6253d,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/service.py,b97323e90ca09155cd8c503766576fb97c21593e7ef2b20b6908bde05704974e,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/sharing.py,69fc5f232dca048f0c5ae7ca5ed53b532443c9127d70ac34d407d6f7dac01932,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/topic_assignment.py,2815fc1e30212d5e3c58e5748bac0306e096a90b652be14632c6c300e5bc689a,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/usage.py,8124c1ed053e1a7bb87f4f18ac9ead685614ad680647414b205cb57aaa14041d,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/app/document/data/values.py,361b5bb95d02906a6df820faa4e80dea4ceadb0d0b13ceadf600c3d989345141,backend:app.document,source active,backend:app.document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
 back/app/document/dataset_attachments.py,966f8597266bc5edeb5d40009de74533af179214b44536ced209c066ffdc1b3d,backend:app.document,source active,backend:app.document,à examiner,,,
 back/app/document/dataset_migration.py,8fd359526b392e59e2e3d47cb2c4bf9551e685ca2f737ac6245c0cfdaed32b03,backend:app.document,source active,backend:app.document,à examiner,,,
 back/app/document/dataset_port.py,47dc16c3f195a644a4d426dfc3e8a7982bb2cc0b6f01b962e2864d2420d44109,backend:app.document,source active,backend:app.document,à examiner,,,
@@ -1778,7 +1809,7 @@ back/app/dream/mechanisms/file_thumbnails.py,b7fa9cd063f956f3cfb5b06cd37dc0c4511
 back/app/dream/mechanisms/memory_decisions.py,ccf563c5ff505cb8e5a9913019c8be17c2712d79b60194f6d5531e3512fc9c0d,backend:app.dream,source active,backend:app.dream,à examiner,,,
 back/app/dream/mechanisms/memory_extraction.py,596fb0699b1bbb12095c271a41ca6edb6fd4e50e966d0f2b3ca45ddc19b67212,backend:app.dream,source active,backend:app.dream,à examiner,,,
 back/app/dream/mechanisms/memory_maintenance.py,fd438eaa8bf9ee94b502c08e0cfe13c6bbea495e24b6a1561db1244b8d296f34,backend:app.dream,source active,backend:app.dream,à examiner,,,
-back/app/dream/mechanisms/process_memory.py,ecc514aa7b2a82a100c1f99a13ea46a06926ca129a51121775913753c4555e38,backend:app.dream,source active,backend:app.dream,à examiner,,,
+back/app/dream/mechanisms/process_memory.py,1c4248574bd614706f63d04f41f27dfdde805ee39d12de1a5f1fea6bb56440fa,backend:app.dream,source active,backend:app.dream,revue partielle,L19 et P46 / lectures et sélection concurrente démontrées,SQL14,Mesures ciblées sur la sélection du mécanisme.
 back/app/dream/mechanisms/resource_topic_classification.py,95f2fee5da185ab5a648b264f22fa25c06877266c3d3862a1992a71d4b7b61a8,backend:app.dream,source active,backend:app.dream,à examiner,,,
 back/app/dream/mechanisms/sequential_topic_classification.py,aad9ce1e6e650253cacee64b18a28ac6788b2c9c2b0acce5fab82286afc5e4d7,backend:app.dream,source active,backend:app.dream,à examiner,,,
 back/app/dream/mechanisms/skill_learning.py,0960cc27b79af727fe9fd77b0bfc9098dc25f291707e1d5bcb3387b7c452ebe4,backend:app.dream,source active,backend:app.dream,à examiner,,,
@@ -1793,7 +1824,7 @@ back/app/dream/outcome_evidence.py,e944cd6fb50797b12c12fb5e9d9ba15c62aa9cdf9b119
 back/app/dream/privileges.py,110be90165435069b2ebf9922cdd86f54cb3943dab50bc064c5a2526e7ae2c54,backend:app.dream,source active,backend:app.dream,à examiner,,,
 back/app/dream/registry.py,36b9c8e6f55cbc8a753e37a98a72c3273b226bb100f1d9eb7da74dcb57799c19,backend:app.dream,source active,backend:app.dream,à examiner,,,
 back/app/dream/router.py,f1ff549cd4375ed1da7655fd24650cf1ca2bd69a335d63aa376f870c43fa3395,backend:app.dream,source active,backend:app.dream,à examiner,,,
-back/app/dream/scheduler.py,c03981ad913cf131eb65e5d81187575a3c467ffbd6ca9c01d4cffa009972e11c,backend:app.dream,source active,backend:app.dream,à examiner,,,
+back/app/dream/scheduler.py,5800d74f32fcc362d285edb80e166e65f9ce7d7823d01c4f5068e06ad08905f3,backend:app.dream,source active,backend:app.dream,revue partielle,P45 attribution SQL par tâche et lecture des gardes du cycle,IDLE02,Coût par étape et comportement sous charge à qualifier.
 back/app/dream/schemas.py,c241a084353c0028dc3292324cf0d0175b6b1c1c276a6642d843db68d17f10f3,backend:app.dream,source active,backend:app.dream,à examiner,,,
 back/app/dream/service.py,c3fe0f5eadb895057ca41fe0b9a00f16340d6cfc6902212673ee25e89ef88790,backend:app.dream,source active,backend:app.dream,à examiner,,,
 back/app/dream/tests/__init__.py,564edfd80c42cd173c4b82027fa8522729735caf2522e8b7094f3fbb3b8c606a,backend:app.dream,test/outillage,backend:app.dream,à examiner,,,
@@ -2223,7 +2254,7 @@ back/app/mcp/i18n/en.py,41e0609e83ce5ecdba82b0ec8875e4c370ab3cfa051eea0def9d968f
 back/app/mcp/i18n/fr.py,abd6a383a9cad488371cbdc5992d571f378c54824af96a130974f9d1393ed639,backend:app.mcp,source active,backend:app.mcp,à examiner,,,
 back/app/mcp/models.py,5d22c5f954726ac48d6fe756f4e5764ab699cc578dd36433da5ffd8117f5c2c0,backend:app.mcp,source active,backend:app.mcp,à examiner,,,
 back/app/mcp/privileges.py,f55ba4aa49a44f1610af923be5748e1e351922f4ef70a49ef45525670809d541,backend:app.mcp,source active,backend:app.mcp,à examiner,,,
-back/app/mcp/router.py,bac1e0e97587abd72b2614de4087e116191abc6ffb5ff2237bd3a56c54a84248,backend:app.mcp,source active,backend:app.mcp,à examiner,,,
+back/app/mcp/router.py,a6baf0bd0320eb674216ab8ebfb73b06a20f7ee51f92203976277998a34eb1bf,backend:app.mcp,source active,backend:app.mcp,revue partielle,P42 parcours Streamable HTTP sur socket locale,MEM03,Autres endpoints et transport distant à qualifier.
 back/app/mcp/runtime_adapter.py,028bb691ab2a255e3314c15e7949bd6e455338c7011f686e89d19c634f1a3dcf,backend:app.mcp,source active,backend:app.mcp,à examiner,,,
 back/app/mcp/schemas.py,aa84bc95d1cdd130d97004e84f892395b02fc972605cdc00d053ca2b1560d14b,backend:app.mcp,source active,backend:app.mcp,à examiner,,,
 back/app/mcp/service.py,9998c58dfd1c236a9f92bda49a1eb2f60b93b92e0c5b378146068ae4cd27a28e,backend:app.mcp,source active,backend:app.mcp,à examiner,,,
@@ -2461,7 +2492,7 @@ back/app/process/i18n/fr.py,5286c88f223603e7e94a83c440d33b908ac1ffed2dd022ecc692
 back/app/process/interface.py,489bafbf866a2b1eccf46078efcb8bfc631679b3edecc2499c0ad9e4bfcc61de,backend:app.process,source active,backend:app.process,à examiner,,,
 back/app/process/isolated_code.py,8f0d4b74bc3b20a78630f8d4ec7dcc67a767552e77ffbc8d34255545ac7203af,backend:app.process,source active,backend:app.process,à examiner,,,
 back/app/process/llm_decisions.py,a9ff971d94908fd17efd325ae5bd1d66caa532d91d77a68984702ccb5aa05429,backend:app.process,source active,backend:app.process,à examiner,,,
-back/app/process/mcp.py,046d93e9cd5ab31aff2dd0deef95b1a5162f958bf3c03b029f8ea06cc904fb8c,backend:app.process,source active,backend:app.process,revue partielle,L14: 164 tests Process; 22 contrôles HTTP finaux; 4 comparaisons réelles; E2E catalogue desktop/mobile; Pyright vue-tsc 448 unités frontend et i18n,SQL01|SQL12,Qualification limitée à la surface décrite; autres opérations et revue du fichier entier ouvertes.
+back/app/process/mcp.py,af5a2000213e6e56b4811b437bfbd132e6f4165103fbc27222747d413ac9e38d,backend:app.process,source active,backend:app.process,revue partielle,P42 liste et détail sur socket locale / preuves historiques L03 et L14 dans les lots,SQL01|MEM03,Autres opérations et revue du fichier entier ouvertes.
 back/app/process/metrics.py,1bbe7f30f76c5c138d0d192a32b46595fd49c07f9c73164d56ee8cf822d25f57,backend:app.process,source active,backend:app.process,à examiner,,,
 back/app/process/models.py,5622b54f71233f88db3748a1c467dc888507032fb909c04f45f9bf7db8562e81,backend:app.process,source active,backend:app.process,revue partielle,L14: 164 tests Process; 22 contrôles HTTP finaux; 4 comparaisons réelles; E2E catalogue desktop/mobile; Pyright vue-tsc 448 unités frontend et i18n,SQL01|SQL12,Qualification limitée à la surface décrite; autres opérations et revue du fichier entier ouvertes.
 back/app/process/native_access.py,37fbd21436d933217dca5d1d616b064d60386a9378d41cdef283920329cbac62,backend:app.process,source active,backend:app.process,à examiner,,,
@@ -2512,6 +2543,8 @@ back/app/process/tests/test_typed_values.py,efc94f5be9c69a782307b9107504c945959f
 back/app/process/tests/test_worker_concurrency.py,b37e7a93832a28140ad204599d7369a2b337bab820892d7a3b0459635ffb46c9,backend:app.process,test/outillage,backend:app.process,à examiner,,,
 back/app/process/values.py,7418f3c06c47f8abc2b45066b53632cfa84b6a9fb1dc9fd48b4d2d0b1524fa06,backend:app.process,source active,backend:app.process,à examiner,,,
 back/app/process/workers.py,d83c15741121d8e052354e9cac4e463fe2a3a8834cc28279758b2d01999a924a,backend:app.process,source active,backend:app.process,à examiner,,,
+back/app/services/mcp_authorization.py,6111d85dadb5a6c1e4fcfc06c4f8405d870a6272d4967de00bc8da699890109c,backend:app.services,source active,backend:app.services,revue partielle,L16 et contrôle du refus hors périmètre P42,SQL13,Ancien chemin app.tools / autres opérations ouvertes.
+back/app/services/mcp_loader.py,ac10f57de7b691bf40390bc475782771cdae6f40e5b275c928860f6ba598cf87,backend:app.services,source active,backend:app.services,revue partielle,P42 sur les constructions agrégées et natives / preuves historiques L16 à L18,SQL13|MEM01|MEM02|MEM03,Ancien chemin app.tools / endurance prolongée et autres consommateurs ouverts.
 back/app/share/__init__.py,7a767787ce09e6d254e0b04ff417011c5abbeb7a508b38b2cc16d6570a157b99,backend:app.share,source active,backend:app.share,à examiner,,,
 back/app/share/access.py,fb54a291f346911b3a0dcc74614a97c7b3507969ab6eae81f15ba5e34f478ed6,backend:app.share,source active,backend:app.share,à examiner,,,
 back/app/share/contracts.py,ddbee579f51b10f3ddebd18e44a6135d5b6f81670617b612e235052aae2d4c8a,backend:app.share,source active,backend:app.share,à examiner,,,
@@ -2668,9 +2701,7 @@ back/app/tools/live_external.py,67cab9f4449796f993955773ca97d12a9e4373ecdf11f05b
 back/app/tools/management_scope.py,215b92f6470dab54017dcce19c186c87a97c48ebdd10b4d3b56e9da0b17d2b5a,backend:app.tools,source active,backend:app.tools,à examiner,,,
 back/app/tools/mandatory_tools.py,5dea0a08ac1ced6b47d0e7ee00c6d081a45aeca255d545dda28c19f3ef338465,backend:app.tools,source active,backend:app.tools,à examiner,,,
 back/app/tools/mcp.py,f55de0390c5679c9bc5fd37ce149dda2f1076dabb4c4d58089fd70368b747578,backend:app.tools,source active,backend:app.tools,à examiner,,,
-back/app/tools/mcp_authorization.py,f06654ae1e51da04544d93e59627d084f2984d21db8be43a2cbaf213c7b38c64,backend:app.tools,source active,backend:app.tools,à examiner,,,
 back/app/tools/mcp_diagnostics.py,618650530d64038471b11cd16063d5b0ae78dd78735a6327934f4fb3d4e3e6c9,backend:app.tools,source active,backend:app.tools,à examiner,,,
-back/app/tools/mcp_loader.py,9308512cf7ff664da824af8573de7d40216d77b35fdf2a3e78a8a1caad0da2f2,backend:app.tools,source active,backend:app.tools,en cours,Inventaire des lectures Tool dans les boucles; certaines déjà groupées; autres variantes ouvertes.,,
 back/app/tools/metrics.py,1866ca293e88b3ae9d6a88018e75a9e2bd309b913ad471c7a7c02d2670cd51fc,backend:app.tools,source active,backend:app.tools,à examiner,,,
 back/app/tools/models.py,8044bab2760af8b3a731a19b72bb1246c6e843a7dcbc9657a30b71035ce26cda,backend:app.tools,source active,backend:app.tools,à examiner,,,
 back/app/tools/parameter_definitions.py,1c906dcd397014617bc9e4376d4443fa8b66e2e5a73d1d1fc9fe9a22255622f2,backend:app.tools,source active,backend:app.tools,à examiner,,,
@@ -2908,6 +2939,9 @@ back/bridge/hermes/client.py,da3add3b95d3f895600b7ecfa13be138f1d436bcfc0557d4033
 back/bridge/hermes/config_service.py,091c231c131511b9d7f31e883b52be9fe5e6e1d2a66faf205e9bec99d7fc861a,backend:bridge.hermes,source active,backend:bridge.hermes,à examiner,,,
 back/bridge/hermes/default-agent/Dockerfile,cd076f705b44d162549f3895acd4f5b87d45790e9858352773ac076d5f45f743,backend:bridge.hermes,source active,backend:bridge.hermes,à examiner,,,
 back/bridge/hermes/default-agent/Makefile,329058844a066f82cc32a22fdc54d0ca7a69a0353b2ac491277cb29f74fc5f50,backend:bridge.hermes,source active,backend:bridge.hermes,à examiner,,,
+back/bridge/hermes/default-agent/data/plugins/memory/galaris/__init__.py,a0ce089baf0e82f55684e2f29e6b0caf5eaefad2a9a1228517cf30e9e590c2c0,backend:bridge.hermes,source active,backend:bridge.hermes,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/bridge/hermes/default-agent/data/plugins/memory/galaris/plugin.yaml,95eda43c5ff4d595a3738de7c65e432dd51f315671ade0f2114312896c5135e8,backend:bridge.hermes,source active,backend:bridge.hermes,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+back/bridge/hermes/default-agent/data/scripts/galaris_tts.py,83d00d550973e14b6147f6003beb7738a4d8ffd71f33b1df7c276838b36486ce,backend:bridge.hermes,source active,backend:bridge.hermes,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
 back/bridge/hermes/default-agent/galaris_authorization.py.txt,fef981deb2520d71ae9f677f02c4437e553ca87e86c8fa941d728b45d31eecd6,backend:bridge.hermes,source active,backend:bridge.hermes,à examiner,,,
 back/bridge/hermes/default-agent/patch_run_stop.py.txt,ccb41232b596e6533e3b1df7a9b45288811d4755aa3d8fa46e57d654df763cdb,backend:bridge.hermes,source active,backend:bridge.hermes,à examiner,,,
 back/bridge/hermes/driver.py,ab203ebb6c257be12b005922027b8292bfaaf6e251cf9a46f43d991fb3a69e57,backend:bridge.hermes,source active,backend:bridge.hermes,à examiner,,,
@@ -3374,7 +3408,7 @@ back/dbadmin_composition.py,3bf7eaf9e02f384838a764d0b01bd4b909c40ce87ad1c9a8c8ae
 back/entrypoint.sh,366e4c85611efc3a62a5cb538ed5f068194afc2633e90350eaedc9260b26143f,back,infrastructure,back,à examiner,,,
 back/file_storage_composition.py,8b2273de3d53440a55326019dbe9ab88ebdbe575586eb1b375ecd818db6f7c0d,back,infrastructure,back,à examiner,,,
 back/lab-qualification.json,8f26a7c6ea1983ba2c4896c4fbfa345d43569cfe359b7222bf466d542bdb1081,back,infrastructure,back,à examiner,,,
-back/main.py,4bdc43d262fb69a387a0e79cca36249721eb3a878a29f71ededfa915107b2c59,back,infrastructure,back,à examiner,,,
+back/main.py,6afdf301011d2bf8821310950cad79c42b12f6822a9a0b6b5386c37492282f0d,back,infrastructure,back,revue partielle,P44 cycle de vie assemblé et readiness,,Coût au repos sur base de test initialisée / autres profils ouverts.
 back/modules.py,b73477c36cbb7967fa68ca86bdbb2c3070a4f97e3c919c3e9dbccbb2c18bc3c5,back,infrastructure,back,à examiner,,,
 back/pyproject.toml,4c0094c60dbee107fe194e6f96566b0c708b3fa61960bf054c83c890fb0c561e,back,infrastructure,back,à examiner,,,
 back/pytest.ini,e9c945b4cf5b20cb8fefd10524be9cbd10258edb11fbcdf14e579b408d5348fa,back,infrastructure,back,à examiner,,,
@@ -3404,6 +3438,7 @@ back/scripts/memory_benchmark/provider_capture.py,383cb8dd772df1882d96c694eb232a
 back/scripts/memory_benchmark/score.py,135ec3a2957cb35dd87b0045473048368b899517708732f5f399990d2c51e4f6,back,test/outillage,back,à examiner,,,
 back/scripts/memory_benchmark/validate.py,9314f54659a5991b0e3fb3ebaa0f31ec66e50253d1c35571d9abbb3999f72e28,back,test/outillage,back,à examiner,,,
 back/scripts/memory_orphans.py,6dd0d11c882ab24fe4d8b697427b504ecaaec2e209c6844f3421534a50650c2c,back,test/outillage,back,à examiner,,,
+back/scripts/process_worker.py,d9ee78a0100b8fe58407ec45900fd7b8b5d556430e5544884401e5479fdbb828,back,infrastructure,back,revue partielle,P44 démarrage heartbeat et arrêt surveillés,,Mesures au repos sur base de test initialisée / cycles actifs ouverts.
 back/scripts/project_context.py,f0fc4ef2f0247e5742ad626b1eadb392982f3161cc29213060009155a5aa8cdf,back,test/outillage,back,à examiner,,,
 back/scripts/qualify_documents.py,690bd06f0e89b6e0786a70a3fce13becef4ac6ba89acc865e784fe8f8bcf7597,back,test/outillage,back,à examiner,,,
 back/scripts/qualify_harness_runtime.py,a26f0821836d6dfad4df6177077d4272826397f338209f29cef92b152fd08005,back,test/outillage,back,à examiner,,,
@@ -3538,7 +3573,7 @@ back/tests/test_tool_import_export.py,3d16471a651832eb809c7b58f573568f1df9535366
 back/tests/test_transcription_service.py,2627255917ef365895e8f54f5ea5d7c71e46c7c8acf44ecc82f46f328c5c7f9a,back,test/outillage,back,à examiner,,,
 back/tests/test_tts_service.py,b90b3553459a537e79ffc1ad4ab2529cc42ee2b2e5aad172e85f06e0018351b7,back,test/outillage,back,à examiner,,,
 back/typings/pywebpush/__init__.pyi,78676962fd548cb430041aedc6a547fcf3651cb68315448e195cb795db410db1,back,infrastructure,back,à examiner,,,
-back/uv.lock,3beb8716ec4042f62df99c80ca3919dc77b78d165fdc1775a08dc1ae2611cada,back,généré,back,à examiner,,,Examiner le générateur ou le manifeste et la reproductibilité.
+back/uv.lock,218d387430e189462457afcd83fba822fa1bfa6041d79e4d5d94d2d028dfb0f8,back,généré,back,revue partielle,Version d’uncalled-for confirmée à l’exécution de P42,MEM03,Revue du reste du verrou ouverte.
 bin/agent-team-pilot-restart.sh,44c86e34249fa3f166c324f9a8e071dbbbe0168cf03b2b9c1ee89af5cd6e2d67,bin,test/outillage,bin,à examiner,,,
 bin/agent-team-pilot.sh,2f8373dc9b76a2d02b2f94fa732fd0e73c02f4e89b09f4a53ff5cc4a3491fc0c,bin,test/outillage,bin,à examiner,,,
 bin/build-release.sh,b95c32c8f9fbc249d6acc3ec00afc8b4c3c2253d4d95cb8aec96d9956efb26a9,bin,test/outillage,bin,à examiner,,,
@@ -4072,6 +4107,8 @@ front/app/document/components/DocumentTagIcon.vue,92dd35dba0d7eed731178d2bf7757e
 front/app/document/components/DocumentTagIconPicker.vue,d2799be7085a403fd40a83ebc5c653f89626420410c09f0d12c857611d6621b9,frontend:app/document,source active,frontend:app/document,à examiner,,,
 front/app/document/components/DocumentTagRow.vue,d5955bfbdd2ee95c9fb13d03192b6b644dbc4c48d6cb50d03a83992c843edd3f,frontend:app/document,source active,frontend:app/document,à examiner,,,
 front/app/document/components/DocumentThumbnail.vue,298a68b38c6739adf6171ac00657eb06e30f5184e1ef509462fdee6475761e77,frontend:app/document,source active,frontend:app/document,à examiner,,,
+front/app/document/data/ContentEditor.vue,2a01b7b39b08215458a32abbd8f54b6d5d2c2d7bd9c9dfbc78cc7cf5b444d628,frontend:app/document,source active,frontend:app/document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+front/app/document/data/index.ts,a3ef9c6ac8210e0772820c30ddf133bbc5bac4c71afdb2f0e5d5bac6e8d28d63,frontend:app/document,source active,frontend:app/document,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
 front/app/document/documentAppResources.ts,3b59d8834a268e2109e094e9ce183e2ae867b0d03d9c23832e3fe38dce0e6eaa,frontend:app/document,source active,frontend:app/document,à examiner,,,
 front/app/document/documentAppSandbox.ts,87c904e0bf01e2dc9613add6008eb8a5d82ab83810e261d805b21e62160380bc,frontend:app/document,source active,frontend:app/document,à examiner,,,
 front/app/document/documentAppSnapshot.ts,0c4530dffc8031b414232b49606ac0f339086df831fa88864e88c75a78140f40,frontend:app/document,source active,frontend:app/document,à examiner,,,
@@ -5272,6 +5309,8 @@ harness_manager/tests/test_main.py,671f725f27de9673e85a5a231db5aed8caca030ac454e
 harness_manager/tests/test_update.py,e7677db6fe8d2ff0181ddadced971c39aee044965a8da063c44c229fdaf0e618,harness_manager,test/outillage,harness_manager,à examiner,,,
 harness_manager/update.py,aa05a048afb29281b96f4e6506b34d05036147ef865cdfc1b42710f35a44df6f,harness_manager,infrastructure,harness_manager,à examiner,,,
 harness_manager/uv.lock,48571fa82c05113ba58f543cbf19e3b496d44df4c20f524516cfe579a4f66e76,harness_manager,généré,harness_manager,à examiner,,,Examiner le générateur ou le manifeste et la reproductibilité.
+plugins/sample/data/data/sample.data.json,b46626545a3519ccb84412eec72ceba422d727a21a85d2922a953484029321f7,plugins,infrastructure,plugins,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
+plugins/sample/data/manifest.json,c8c7c28e4d669e69f461a37421567ba03a4a36c59969eb04a1b65f0e37a8b1eb,plugins,infrastructure,plugins,à examiner,,,Réintégré après correction du filtre des sous-répertoires data.
 project/README.md,4bba244c30e78593ce06e623503bc1ea3e2a88f233090ce821141acd0b480aa5,project,documentation,project,à examiner,,,
 project/audits/2026-09-05-application.md,a6866194a3fc7a66f5f7c2c7e34d36dfd87df12598b2c475ea877bc9af841e1b,project,documentation,project,à examiner,,,
 project/audits/2026-09-05-corrections.md,6bc9d99bced8c7312e328cac9973ea581493c55744c61f7a858516625eeb70db,project,documentation,project,à examiner,,,
@@ -5610,7 +5649,6 @@ project/plans/infrastructure-plugins-galaris.md,891f990818298da2957898bbe64eb62f
 project/plans/isolation-fonctionnelle-rbac.md,75e7a1848a3169b9a2e972d73e4c0a5ece6ee49b80e8935b82f01fbd3a8ca954,project,documentation,project,à examiner,,,
 project/plans/lab-evaluation-mecanismes-ia.md,18cf894e715bf15266d104a3db82650685ee96989d980b82cbbfefe304030c21,project,documentation,project,à examiner,,,
 project/plans/navigation-file-share-harnais.md,e9b2ec3f1cbfe10e281294a33cfae762df6da5bc0a91004e498ec7e2be92e525,project,documentation,project,à examiner,,,
-project/plans/optimisation-generalisee.md,711a4fcbb8d4f7a40c237c0b07293a676e373b001bb3d156671126fd5a3af2c1,project,documentation,project,à examiner,,,
 project/plans/ordonnancement-llm-par-fournisseur.md,48015651e14d5284cde7f264012e891548a29486dcf950beacc9f6dbdab92f87,project,documentation,project,à examiner,,,
 project/plans/outils-mcp-multimedia.md,2cae7fb31ef60db5a89a1b14ec2a531b948f362c102223a2b63933b4bccb8e27,project,documentation,project,à examiner,,,
 project/plans/processus-metier-internes-bpmn.md,d9b3b58b6208cfaf61f550d19eb18dd302f03591a082bce205db16d93cf3dfce,project,documentation,project,à examiner,,,

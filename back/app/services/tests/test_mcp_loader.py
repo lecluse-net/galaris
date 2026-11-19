@@ -215,6 +215,54 @@ async def test_native_tool_timeout_is_bounded_and_cancels_the_operation(
 
 
 @pytest.mark.asyncio
+async def test_completed_tool_timeout_releases_request_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    import gc
+    from contextvars import ContextVar
+    from weakref import ref
+
+    from app.services import mcp_loader
+
+    class RequestContext:
+        pass
+
+    marker = ContextVar[RequestContext]("synthetic_request_context")
+
+    async def native(_ctx: object) -> str:
+        assert isinstance(marker.get(), RequestContext)
+        return "ok"
+
+    definition = mcp_loader.McpToolDefinition(
+        service_code="file_sharing",
+        name="file_list",
+        description="List files.",
+        required_capabilities=frozenset(),
+        function=native,
+        timeout_seconds=60,
+    )
+    monkeypatch.setattr(mcp_loader, "list_enabled_native_mcp_definitions", AsyncMock(return_value=(definition,)))
+    wrapper = mcp_loader._wrap_tool(  # pyright: ignore[reportPrivateUsage]
+        definition,
+        mcp_loader.McpToolContext(agent_id=7, runtime="internal"),
+    )
+
+    # A pending earlier callback can keep the cancelled deadline in the loop's queue.
+    earlier = asyncio.get_running_loop().call_later(30, lambda: None)
+    context = RequestContext()
+    context_ref = ref(context)
+    try:
+        token = marker.set(context)
+        try:
+            assert await wrapper() == "ok"
+        finally:
+            marker.reset(token)
+        del context
+        gc.collect()
+        assert context_ref() is None
+    finally:
+        earlier.cancel()
+
+
+@pytest.mark.asyncio
 async def test_parallel_native_tools_receive_distinct_database_sessions(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -839,10 +887,14 @@ async def test_conversation_projection_maps_checked_bridge_to_messenger_family(
 async def test_conversation_aggregate_skips_unchecked_external_mcp(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    import gc
+    from weakref import ref
+
     from fastmcp import FastMCP
 
     from app.connection import facade as connection_service
     from app.services import mcp_loader, service
+    from app.services.contracts import ToolCallRejectedError
 
     connection = SimpleNamespace(id=9, service_id=3, active=True)
     unchecked_tool = SimpleNamespace(
@@ -861,8 +913,8 @@ async def test_conversation_aggregate_skips_unchecked_external_mcp(
     monkeypatch.setattr(connection_service, "get_params_as_dict", params)
     monkeypatch.setattr(
         service,
-        "get_service_by_id",
-        AsyncMock(return_value=unchecked_tool),
+        "get_services_by_ids",
+        AsyncMock(return_value={connection.service_id: unchecked_tool}),
     )
     monkeypatch.setattr(
         mcp_loader,
@@ -894,6 +946,13 @@ async def test_conversation_aggregate_skips_unchecked_external_mcp(
 
     assert await run_tool_names() == frozenset({"mounted_in_this_run"})
     params.assert_not_awaited()
+
+    server_ref = ref(server)
+    del server
+    gc.collect()
+    assert server_ref() is None, "A retained catalogue callback must not keep its server alive"
+    with pytest.raises(ToolCallRejectedError):
+        await run_tool_names()
 
 
 @pytest.mark.asyncio

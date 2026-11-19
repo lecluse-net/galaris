@@ -50,20 +50,6 @@ def _run_subject_id(
     return f"run:{run_id}:{status}:{_stamp(updated_at, deleted_at)}"
 
 
-async def _unprocessed(
-    *,
-    subject_id: str,
-) -> bool:
-    receipt_id = await get_db().scalar(
-        select(DreamReceipt.id).where(
-            DreamReceipt.mechanism_key == ProcessMemoryMechanism.key,
-            DreamReceipt.subject_kind == "process_projection",
-            DreamReceipt.subject_id == subject_id,
-        )
-    )
-    return receipt_id is None
-
-
 async def _count_unprocessed(subject_ids: list[str]) -> int:
     processed = 0
     for offset in range(0, len(subject_ids), _COUNT_CHUNK_SIZE):
@@ -87,6 +73,31 @@ class ProcessMemoryMechanism:
 
     async def is_available(self) -> bool:
         return True
+
+    async def _claim_first_unprocessed(self, subject_ids: list[str]) -> DreamClaim | None:
+        if not subject_ids:
+            return None
+        db = get_db()
+        receipts = select(DreamReceipt.subject_id).where(
+            DreamReceipt.mechanism_key == self.key,
+            DreamReceipt.subject_kind == "process_projection",
+        )
+        processed = set(await db.scalars(receipts.where(DreamReceipt.subject_id.in_(subject_ids))))
+        for subject_id in subject_ids:
+            if subject_id in processed:
+                continue
+            # Recheck the candidate before creating a receipt in case another
+            # worker claimed it after this page was read.
+            if await db.scalar(receipts.where(DreamReceipt.subject_id == subject_id)) is not None:
+                continue
+            claim = create_running_receipt(
+                mechanism_key=self.key,
+                subject_kind="process_projection",
+                subject_id=subject_id,
+            )
+            await db.flush()
+            return claim
+        return None
 
     async def count_pending(self) -> int:
         async with get_db_session():
@@ -142,71 +153,52 @@ class ProcessMemoryMechanism:
         async with get_db_session():
             offset = 0
             while True:
-                definitions = list(
-                    (
-                        await get_db().scalars(
-                            select(ProcessDefinition)
-                            .execution_options(include_historized=True)
-                            .order_by(
-                                ProcessDefinition.created_at,
-                                ProcessDefinition.id,
-                            )
-                            .offset(offset)
-                            .limit(_SCAN_PAGE_SIZE)
+                definitions = (
+                    await get_db().execute(
+                        select(
+                            ProcessDefinition.id,
+                            ProcessDefinition.updated_at,
+                            ProcessDefinition.deleted_at,
                         )
-                    ).all()
-                )
-                for definition in definitions:
-                    subject_id = _definition_subject_id(
-                        definition.id,
-                        definition.updated_at,
-                        definition.deleted_at,
+                        .execution_options(include_historized=True)
+                        .order_by(ProcessDefinition.created_at, ProcessDefinition.id)
+                        .offset(offset)
+                        .limit(_SCAN_PAGE_SIZE)
                     )
-                    if await _unprocessed(subject_id=subject_id):
-                        claim = create_running_receipt(
-                            mechanism_key=self.key,
-                            subject_kind="process_projection",
-                            subject_id=subject_id,
-                        )
-                        await get_db().flush()
-                        return claim
+                ).all()
+                claim = await self._claim_first_unprocessed([
+                    _definition_subject_id(definition_id, updated_at, deleted_at)
+                    for definition_id, updated_at, deleted_at in definitions
+                ])
+                if claim is not None:
+                    return claim
                 if len(definitions) < _SCAN_PAGE_SIZE:
                     break
                 offset += _SCAN_PAGE_SIZE
 
             offset = 0
             while True:
-                runs = list(
-                    (
-                        await get_db().scalars(
-                            select(ProcessRun)
-                            .where(
-                                ProcessRun.status.in_(
-                                    ("success", "error", "cancelled")
-                                )
-                            )
-                            .execution_options(include_historized=True)
-                            .order_by(ProcessRun.created_at, ProcessRun.id)
-                            .offset(offset)
-                            .limit(_SCAN_PAGE_SIZE)
+                runs = (
+                    await get_db().execute(
+                        select(
+                            ProcessRun.id,
+                            ProcessRun.status,
+                            ProcessRun.updated_at,
+                            ProcessRun.deleted_at,
                         )
-                    ).all()
-                )
-                for run in runs:
-                    subject_id = _run_subject_id(
-                        run.id,
-                        run.status,
-                        run.updated_at,
-                        run.deleted_at,
+                        .where(ProcessRun.status.in_(("success", "error", "cancelled")))
+                        .execution_options(include_historized=True)
+                        .order_by(ProcessRun.created_at, ProcessRun.id)
+                        .offset(offset)
+                        .limit(_SCAN_PAGE_SIZE)
                     )
-                    if await _unprocessed(subject_id=subject_id):
-                        claim = create_running_receipt(
-                            mechanism_key=self.key,
-                            subject_kind="process_projection",
-                            subject_id=subject_id,
-                        )
-                        await get_db().flush()
-                        return claim
+                ).all()
+                claim = await self._claim_first_unprocessed([
+                    _run_subject_id(run_id, status, updated_at, deleted_at)
+                    for run_id, status, updated_at, deleted_at in runs
+                ])
+                if claim is not None:
+                    return claim
                 if len(runs) < _SCAN_PAGE_SIZE:
                     break
                 offset += _SCAN_PAGE_SIZE
