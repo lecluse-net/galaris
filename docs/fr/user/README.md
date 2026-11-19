@@ -503,9 +503,11 @@ puis choisit le chat interne par défaut. L'agent peut demander explicitement un
 Dans **Services → Connexions → modifier la connexion de messagerie**, un gestionnaire global
 peut régler **Communication inter-agents** (`services.management_scope`) : **Aucune** (`none`),
 **Agents de ses équipes** (`team`) ou **Tous les agents** (`all`). Le défaut `team` conserve
-les échanges entre agents partageant au moins une équipe. Ce réglage s'applique aux envois et
-aux réceptions de la connexion ; il ne change pas les droits de contact avec les humains.
-Les demandes internes vérifient les connexions des deux agents avant de créer une tâche.
+les envois aux agents partageant au moins une équipe. Sur tous les canaux, la portée
+de l'émetteur détermine les collègues joignables. Le destinataire doit avoir une connexion
+active au même Service, réglée sur `team` ou `all`. Les messageries externes utilisent
+leurs propres connexions, même quand le Chat interne est désactivé. Les contacts humains
+suivent leur propre politique.
 
 Lorsqu'une tâche doit solliciter un autre agent par le canal interne, elle lui crée une demande
 suivie et attend son résultat, sans nécessiter de conversation avec un humain. Vous pouvez suivre

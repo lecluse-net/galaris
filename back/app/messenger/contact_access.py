@@ -4,7 +4,7 @@ from collections.abc import Awaitable, Callable
 from sqlalchemy import select
 
 from core.database import get_db
-from app.agent import require_agent_contact
+from app.agent import AgentScopeDeniedError, require_agent_contact
 from app.connection import Connection
 from .models import Message, MessengerUser, RoomUser
 
@@ -19,40 +19,84 @@ def register_inbound_contact_authorizer(platform: str, authorizer: InboundContac
 
 
 async def require_incoming_contact(agent_id: int, message: Message, *, connection_id: int | None = None) -> None:
-    if message.sender is not None and message.sender.agent_id is not None:
-        await require_contact_with_identity(agent_id, message.sender, connection_id=connection_id)
+    identity = message.sender
+    if identity is not None and identity.agent_id is not None:
+        destination = await get_db().get(Connection, connection_id, populate_existing=True) if connection_id is not None else None
+        if destination is None or destination.agent_id != agent_id:
+            raise AgentScopeDeniedError("Contact is not authorized by the dialogue policy")
+        source = await _peer_connection(destination, identity)
+        await _require_peer_exchange(
+            source.agent_id, agent_id, sender_connection_id=source.id, recipient_connection_id=destination.id,
+        )
         return
     if authorizer := _inbound_authorizers.get(message.platform or ""):
         if await authorizer(agent_id, message):
             return
         raise PermissionError("The incoming message has no valid contact authorization")
-    if message.sender is None:
+    if identity is None:
         raise PermissionError("The incoming message has no sender")
-    await require_contact_with_identity(agent_id, message.sender, connection_id=connection_id)
+    await _require_human_contact(agent_id, identity, connection_id=connection_id)
 
 
-async def require_peer_contact(agent_id: int, peer_agent_id: int, *, connection_id: int | None = None) -> None:
-    """Check the exact channel's local policy, defaulting to native Chat for peer Tasks."""
+async def _peer_connection(connection: Connection, identity: MessengerUser) -> Connection:
+    """Resolve the verified peer on the same Service as this endpoint."""
+    from app.connection.facade import get_connection_by_agent_service
+
+    if identity.agent_id is None or identity.service_id != connection.service_id:
+        raise AgentScopeDeniedError("Contact is not authorized by the dialogue policy")
+    try:
+        peer = await get_connection_by_agent_service(connection.service_id, identity.agent_id)
+    except ValueError as exc:
+        raise AgentScopeDeniedError("Contact is not authorized by the dialogue policy") from exc
+    if peer is None:
+        raise AgentScopeDeniedError("Contact is not authorized by the dialogue policy")
+    return peer
+
+
+async def _require_peer_exchange(
+    sender_id: int, recipient_id: int, *,
+    sender_connection_id: int | None, recipient_connection_id: int | None,
+) -> None:
     from app.connection.facade import get_management_scope
 
-    scope = await get_management_scope(
-        agent_id, "chat" if connection_id is None else None,
-        connection_id=connection_id, default="team",
+    sender_scope = await get_management_scope(
+        sender_id, "chat" if sender_connection_id is None else None,
+        connection_id=sender_connection_id, default="team",
     )
-    await require_agent_contact(agent_id, peer_agent_id=peer_agent_id, peer_scope=scope)
+    await require_agent_contact(sender_id, peer_agent_id=recipient_id, peer_scope=sender_scope)
+    recipient_scope = await get_management_scope(
+        recipient_id, "chat" if recipient_connection_id is None else None,
+        connection_id=recipient_connection_id, default="team",
+    )
+    if recipient_scope not in {"team", "all"}:
+        raise AgentScopeDeniedError("Contact is not authorized by the dialogue policy")
 
 
-async def require_contact_with_identity(
-    agent_id: int, identity: MessengerUser, *, connection_id: int | None = None,
+async def require_internal_peer_contact(
+    agent_id: int, peer_agent_id: int, *, connection_id: int | None = None,
 ) -> None:
+    """Apply the shared peer policy to native Chat's Task-backed delivery."""
+    await _require_peer_exchange(
+        agent_id, peer_agent_id, sender_connection_id=connection_id, recipient_connection_id=None,
+    )
+
+
+async def _require_outgoing_contact(source: Connection, identity: MessengerUser) -> None:
     if identity.agent_id is not None:
-        await require_peer_contact(agent_id, identity.agent_id, connection_id=connection_id)
+        destination = await _peer_connection(source, identity)
+        await _require_peer_exchange(
+            source.agent_id, destination.agent_id, sender_connection_id=source.id, recipient_connection_id=destination.id,
+        )
     else:
-        try:
-            await require_agent_contact(agent_id, human_user_id=identity.galaris_user_id)
-        except PermissionError:
-            if connection_id is None or not await has_external_contact_permission(agent_id, connection_id, identity):
-                raise
+        await _require_human_contact(source.agent_id, identity, connection_id=source.id)
+
+
+async def _require_human_contact(agent_id: int, identity: MessengerUser, *, connection_id: int | None) -> None:
+    try:
+        await require_agent_contact(agent_id, human_user_id=identity.galaris_user_id)
+    except PermissionError:
+        if connection_id is None or not await has_external_contact_permission(agent_id, connection_id, identity):
+            raise
 
 
 def external_contact_permission_key(connection_id: int, identity_id: UUID) -> str:
@@ -90,12 +134,12 @@ async def has_external_contact_permission(agent_id: int, connection_id: int, ide
 
 async def require_outgoing_user(connection_id: int, service_id: int, external_id: str) -> None:
     source = await get_db().scalar(select(Connection).where(Connection.id == connection_id))
-    if source is None or not source.active:
+    if source is None or not source.active or source.service_id != service_id:
         raise PermissionError("Messaging connection is unavailable")
     identity = await get_db().scalar(select(MessengerUser).where(MessengerUser.service_id == service_id, MessengerUser.external_id == external_id))
     if identity is None:
         raise PermissionError("The recipient needs a verified Galaris identity before contact")
-    await require_contact_with_identity(source.agent_id, identity, connection_id=connection_id)
+    await _require_outgoing_contact(source, identity)
 
 
 async def require_outgoing_room(connection_id: int, room_id: UUID, *, self_external_id: str = "") -> None:
@@ -109,4 +153,4 @@ async def require_outgoing_room(connection_id: int, room_id: UUID, *, self_exter
     if not others:
         raise PermissionError("The room needs verified recipients before contact")
     for member in others:
-        await require_contact_with_identity(source.agent_id, member, connection_id=connection_id)
+        await _require_outgoing_contact(source, member)

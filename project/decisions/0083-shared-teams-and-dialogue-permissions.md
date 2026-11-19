@@ -29,10 +29,13 @@ Pour deux agents, la messagerie applique depuis le 23 octobre 2026 le paramètre
 Le défaut `team` exige une équipe commune ; `none` bloque les contacts inter-agents et `all`
 permet le contact entre agents actifs sans équipe commune. Les accès d'équipe ne sont jamais
 transitifs. Le retrait de la dernière équipe commune révoque le contact en portée `team`.
-Le réglage s'applique à la connexion exacte, en émission et en réception, sans héritage global
-et avec refus des valeurs inconnues. L'admission native d'une demande entre agents vérifie
-les deux connexions avant de créer la Task. Seul un humain gestionnaire global peut déléguer
-cette portée. La délégation directe `task_run` conserve sa politique d'équipe existante.
+Le réglage s'applique à la connexion exacte sans héritage global, avec refus des valeurs
+inconnues. Sur tous les canaux, la portée de l'émetteur détermine ses destinataires. La
+connexion du destinataire au même Service doit être active et porter `team` ou `all`.
+Ainsi, un émetteur en `all` peut joindre un destinataire en `team` hors de ses équipes.
+Les bridges externes appliquent ce contrôle sur leurs connexions, indépendamment du Chat interne.
+Seul un humain gestionnaire global peut déléguer cette portée. La délégation directe
+`task_run` conserve sa politique d'équipe existante.
 Les documents conservent leur politique distincte de partage individuel/par équipe et de
 lecture/modification ; cette simplification ne modifie pas leurs ACL.
 

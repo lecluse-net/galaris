@@ -90,6 +90,26 @@ Les documents conservent leur partage plus fin : accès individuels ou par équi
 avec distinction entre lecture et modification. Partager une équipe pour le chat ne
 rend pas automatiquement tous les documents accessibles.
 
+## Joindre un collègue depuis une tâche
+
+1. Dans **Services & connexions → Connexions**, vérifiez que les deux agents ont une
+   connexion active au même Service de messagerie. Le réglage local **Communication
+   inter-agents** de l'émetteur détermine quels collègues il peut joindre. Avec `all`,
+   il peut joindre un collègue hors de ses équipes, y compris si le collègue est réglé
+   sur `team`. Une connexion réglée sur `none` empêche l'envoi et la réception.
+2. Si l'émetteur est réglé sur `team`, ajoutez les deux agents à une équipe commune
+   dans **Équipes**, puis enregistrez. Le contrôle relit les équipes et les portées
+   locales à chaque nouvelle demande, y compris depuis une tâche déjà ouverte.
+3. Appelez `messenger_send_message_to_user` avec le canal et l'identifiant exact du
+   collègue sur cette messagerie. Pour un canal externe, retrouvez cette identité
+   avec `messenger_search_users` lorsque le canal expose un annuaire. Le canal externe
+   fonctionne aussi lorsque le Chat interne est désactivé. Pour le Chat interne,
+   partez d'une tâche active et utilisez `user="agent:<ID>"` avec `channel="internal"`.
+   L'URI de tâche renvoyée permet de suivre la demande interne.
+
+Pour une délégation de travail avec `task_run`, le droit de délégation ordinaire exige
+une équipe commune, indépendamment des réglages de messagerie.
+
 ## Retrait d’un droit
 
 Le retrait bloque les nouveaux échanges, les notifications à venir et les nouveaux fragments

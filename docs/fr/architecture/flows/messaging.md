@@ -40,10 +40,13 @@ Chaque connexion de messagerie porte le paramètre local protégé `services.man
 les autres agents actifs. Il n'existe pas de portée personnelle. Sans valeur locale, `team`
 préserve le comportement historique ; une valeur inconnue ou une connexion inactive refuse
 le contact. Les paramètres globaux ne peuvent pas étendre cette portée. Les gardes canoniques
-contrôlent envois directs, salons et réception avec l'identité persistée et la connexion exacte.
-L'admission d'une demande interne vérifie aussi la connexion Chat du destinataire. Les contacts
-humains et les ACL documentaires restent indépendants ; les tâches déjà admises poursuivent
-leur cycle. Seul un gestionnaire humain global peut modifier ce paramètre.
+contrôlent envois directs, salons et réception avec l'identité persistée et les connexions
+du Service exact. La portée de l'émetteur détermine les collègues joignables. Le destinataire
+doit disposer d'une connexion active à ce Service en `team` ou `all`. Un émetteur en `all`
+peut donc solliciter un destinataire en `team` hors de ses équipes, sur un canal externe même
+si le Chat interne est désactivé. Les contacts humains et les ACL documentaires restent
+indépendants ; les tâches déjà admises poursuivent leur cycle. Seul un gestionnaire humain
+global peut modifier ce paramètre.
 
 L'assistant installé désigné par `galaris.agent_id` est une exception permanente : les autres
 agents ne peuvent ni lui envoyer ni recevoir de lui des messages, fichiers ou demandes de tâche.

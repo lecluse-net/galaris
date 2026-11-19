@@ -71,7 +71,10 @@ async def _wire_common(
         db.add(ServiceModel(id=3, code="incoming-choice-test", label="Synthetic transport",
                          description="", connection_schema={}))
         await db.flush()
-    db.add(Connection(id=7, service_id=3, agent_id=agent_id, active=True))
+    db.add_all([
+        Connection(id=7 if agent == agent_id else 70 + agent, service_id=3, agent_id=agent, active=True)
+        for agent in (1, 42, 1519)
+    ])
     await db.flush()
 
     tool = SimpleNamespace(
@@ -573,6 +576,32 @@ async def test_sender_enriched_as_ai_is_not_projected(
 
     contact_observer.assert_not_awaited()
     created.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_external_peer_admission_uses_the_sender_scope_without_native_chat(db, monkeypatch):
+    from sqlalchemy import delete, select
+    from app.agent import AgentTeamModel as AgentTeam
+    from app.connection import Connection, ConnectionParam
+    from core.params import runtime_settings
+
+    created, _ = await _wire_common(monkeypatch, agent_id=1519)
+    monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", '["nextcloud_talk"]')
+    await db.execute(delete(AgentTeam).where(AgentTeam.agent_id == 1))
+    source = await db.scalar(select(Connection).where(Connection.agent_id == 1, Connection.service_id == 3))
+    scope = ConnectionParam(connection_id=source.id, param_name="services.management_scope", param_value="all")
+    db.add(scope)
+    await db.flush()
+
+    await service._process_incoming(_incoming(sender_agent_id=1))
+    created.assert_awaited_once()
+    assert created.await_args.args[0].message_platform == "nextcloud_talk"
+    assert created.await_args.args[0].messenger_connection_id == 7
+
+    source.active = False
+    await db.flush()
+    await service._process_incoming(_incoming(sender_agent_id=1))
+    created.assert_awaited_once()
 
 
 @pytest.mark.asyncio

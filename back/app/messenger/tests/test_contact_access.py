@@ -44,14 +44,17 @@ async def test_peer_scope_protects_transport_boundaries_and_rechecks_revocation(
     if shared:
         db.add(AgentTeam(agent_id=peer.id, team_id=team.id))
     connection = Connection(service_id=tool.id, agent_id=caller.id, active=True)
+    peer_connection = Connection(service_id=tool.id, agent_id=peer.id, active=True)
     identity = MessengerUser(service_id=tool.id, external_id="synthetic-peer", agent_id=peer.id, is_ai=True)
     human = MessengerUser(service_id=tool.id, external_id="synthetic-manager", galaris_user_id=manager.id)
-    db.add_all([connection, identity, human])
+    db.add_all([connection, peer_connection, identity, human])
     await db.flush()
+    db.add(ConnectionParam(connection_id=peer_connection.id, param_name="user_id", param_value=identity.external_id))
     setting = None
     if scope is not None:
         setting = ConnectionParam(connection_id=connection.id, param_name="services.management_scope", param_value=scope)
-        db.add(setting)
+        db.add_all([setting, ConnectionParam(connection_id=peer_connection.id,
+            param_name="services.management_scope", param_value=scope)])
     room = Room(connection_id=connection.id, external_id="synthetic-room", label="Synthetic room",
                 kind="group", conversation_type="text")
     db.add(room)
@@ -123,7 +126,7 @@ async def test_peer_scope_protects_transport_boundaries_and_rechecks_revocation(
 async def test_asymmetric_peer_scopes_cover_both_directions_and_all_delivery_types(
     db, left_scope, right_scope, shared_team, galaris_side,
 ):
-    """Each external side enforces its own live scope before send or admission."""
+    """The same policy applies before transport and on receipt, in both directions."""
     class TransportReached(RuntimeError):
         pass
 
@@ -150,8 +153,11 @@ async def test_asymmetric_peer_scopes_cover_both_directions_and_all_delivery_typ
     db.add_all([*connections, *identities])
     await db.flush()
     scopes = [left_scope, right_scope]
-    db.add_all([ConnectionParam(connection_id=connection.id, param_name="services.management_scope", param_value=scope)
-                for connection, scope in zip(connections, scopes, strict=True)])
+    for connection, identity, scope in zip(connections, identities, scopes, strict=True):
+        db.add_all([
+            ConnectionParam(connection_id=connection.id, param_name="services.management_scope", param_value=scope),
+            ConnectionParam(connection_id=connection.id, param_name="user_id", param_value=identity.external_id),
+        ])
     rooms = [Room(connection_id=connection.id, external_id=f"synthetic-room-{connection.id}",
                   label="Synthetic reciprocal room", kind="group", conversation_type="text")
              for connection in connections]
@@ -161,8 +167,8 @@ async def test_asymmetric_peer_scopes_cover_both_directions_and_all_delivery_typ
     await db.flush()
 
     for source, target in ((0, 1), (1, 0)):
-        outgoing_allowed = galaris_side is None and (scopes[source] == "all" or scopes[source] == "team" and shared_team)
-        incoming_allowed = galaris_side is None and (scopes[target] == "all" or scopes[target] == "team" and shared_team)
+        sender_allowed = scopes[source] == "all" or (scopes[source] == "team" and shared_team)
+        allowed = galaris_side is None and sender_allowed and scopes[target] != "none"
         transports = {name: AsyncMock(side_effect=TransportReached) for name in (
             "send_to_user", "send_to_room", "upload_file", "upload_file_path", "send_voice_note",
             "ensure_direct_room", "create_room", "add_user",
@@ -181,7 +187,7 @@ async def test_asymmetric_peer_scopes_cover_both_directions_and_all_delivery_typ
             "add_user": lambda: messenger.add_user(room, peer),
         }
         for name, delivery in deliveries.items():
-            if outgoing_allowed:
+            if allowed:
                 with pytest.raises(TransportReached):
                     await delivery()
                 transports[name].assert_awaited_once()
@@ -191,7 +197,7 @@ async def test_asymmetric_peer_scopes_cover_both_directions_and_all_delivery_typ
                 transports[name].assert_not_awaited()
 
         message = Message(platform="matrix", sender=identities[source])
-        if incoming_allowed:
+        if allowed:
             await contact_access.require_incoming_contact(agents[target].id, message,
                                                           connection_id=connections[target].id)
         else:

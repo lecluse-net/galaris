@@ -188,7 +188,7 @@ def test_task_executor_applies_identity_and_personality_to_authored_work() -> No
 
 
 def test_conversation_action_policy_covers_the_four_decision_paths() -> None:
-    policy = prompt_default(Params.AI_CONVERSATION_ACTION_POLICY) or ""
+    policy = render_prompt_tree(build_executor_prompt_tree("conversation", _context(), suffix=""))
 
     assert "Direct response" in policy
     assert "calculate, or draft directly" in policy
@@ -199,6 +199,10 @@ def test_conversation_action_policy_covers_the_four_decision_paths() -> None:
     assert "absolute priority" in policy
     assert "Background Task" in policy
     assert "contact a third party" in policy
+    task_introduction = policy.split("- **Background Task:**", 1)[0].rstrip().splitlines()[-1]
+    assert "subset of your tools" in task_introduction
+    assert "full set of tools authorized for your Task runtime" in task_introduction
+    assert "without presenting a foreground-only restriction as a Task restriction" in policy
     assert "Any requested action other than speaking" not in policy
     assert "Never wait for the Task or Process" not in policy
 

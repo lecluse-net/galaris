@@ -550,9 +550,10 @@ exchange, then internal Chat by default. The Agent may explicitly request anothe
 In **Services → Connections → edit the messaging connection**, a global manager can set
 **Inter-agent communication** (`services.management_scope`): **None** (`none`),
 **Agents in its teams** (`team`) or **All agents** (`all`). The default `team` preserves
-communication between agents sharing at least one team. This setting applies to sending and
-receiving on that connection; human contact rights remain independent. Internal requests
-check both agents' connections before creating a Task.
+sending to agents who share at least one team. On every channel, the sender's scope determines
+which colleagues they can contact. The recipient needs an active connection to the same Service,
+set to `team` or `all`. External channels use their own connections even when internal Chat
+is disabled. Human contacts follow their own policy.
 
 When a Task asks another Agent for help over the internal channel, it creates a tracked request
 and waits for its result, without requiring a conversation with a human. Follow the request

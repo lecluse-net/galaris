@@ -86,6 +86,26 @@ human contact rights nor document permissions.
 Documents keep their finer sharing rules: individual or team grants, with separate read
 and write access. Sharing a team for chat does not automatically expose all documents.
 
+## Contact a colleague from a Task
+
+1. In **Services & connections → Connections**, check that both agents have an active
+   connection to the same messaging Service. The sender's local **Inter-agent communication**
+   setting determines which colleagues they can contact. With `all`, they can contact
+   a colleague outside their teams, including a colleague set to `team`. A connection
+   set to `none` blocks sending and receiving.
+2. If the sender is set to `team`, add both agents to a shared team in **Teams**, then
+   save. Each new request reads the current teams and local scopes, including requests
+   from a Task that is already open.
+3. Call `messenger_send_message_to_user` with the channel and the colleague's exact
+   ID on that messaging Service. For an external channel that exposes a directory,
+   look up the identity with `messenger_search_users`. External channels also work
+   when internal Chat is disabled. For internal Chat, start from an active Task and
+   use `user="agent:<ID>"` with `channel="internal"`. The returned Task URI tracks
+   the internal request.
+
+For work delegated through `task_run`, ordinary delegation requires a shared team
+regardless of the messaging settings.
+
 ## Revoke access
 
 Revocation blocks new exchanges, pending notifications and subsequent streamed response

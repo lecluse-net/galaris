@@ -55,8 +55,6 @@ async def test_internal_peer_message_creates_an_awaited_request_without_a_human_
 
     matrix = isinstance(scenario, tuple)
     left, right, shared, reverse = scenario if matrix else (None, None, True, False)
-    if matrix:
-        scenario = "matrix_allowed" if left != "none" and right != "none" and (shared or left == right == "all") else "matrix_denied"
     title = Title(label="Synthetic colleague", gender="X")
     team = TeamModel(name=f"Synthetic dialogue {uuid4().hex}")
     db.add_all([title, team])
@@ -77,6 +75,9 @@ async def test_internal_peer_message_creates_an_awaited_request_without_a_human_
     if reverse:
         sender, peer = peer, sender
         left, right = right, left
+    if matrix:
+        sender_allowed = left == "all" or (left == "team" and shared)
+        scenario = "matrix_allowed" if sender_allowed and right != "none" else "matrix_denied"
     identity = MessengerUser(service_id=tool.id, external_id=f"agent:{peer.id}",
                              display_name="Peer Test", agent_id=peer.id, is_ai=True)
     db.add(identity)
@@ -92,9 +93,9 @@ async def test_internal_peer_message_creates_an_awaited_request_without_a_human_
     scopes = {"scope_none": "none", "scope_all": "all", "scope_invalid": "personal"}
     if scenario in scopes:
         db.add(ConnectionParam(connection_id=connection.id, param_name="services.management_scope", param_value=scopes[scenario]))
-    if scenario in {"receiver_none", "scope_all"}:
+    if scenario == "receiver_none":
         db.add(ConnectionParam(connection_id=peer_connection.id, param_name="services.management_scope",
-                               param_value="none" if scenario == "receiver_none" else "all"))
+                               param_value="none"))
     if scenario == "receiver_invalid":
         db.add(ConnectionParam(connection_id=peer_connection.id, param_name="services.management_scope", param_value="personal"))
     if scenario == "paused":

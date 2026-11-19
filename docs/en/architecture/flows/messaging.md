@@ -37,9 +37,12 @@ Each messaging connection has a protected local `services.management_scope` para
 agents. There is no personal scope. Without a local value, `team` preserves existing behavior;
 unknown values or inactive connections deny contact. Global parameters cannot widen this scope.
 Canonical guards check direct sends, rooms and incoming messages using persisted identities
-and the exact connection. Internal request admission also checks the recipient's Chat connection.
-Human contacts and document ACLs remain independent; already admitted Tasks continue their
-lifecycle. Only a global human manager can change this parameter.
+and the connections for the exact Service. The sender's scope determines which colleagues
+they can contact. The recipient needs an active connection to that Service set to `team`
+or `all`. A sender set to `all` can contact a recipient set to `team` outside their teams,
+including on external channels when internal Chat is disabled. Human contacts and document
+ACLs remain independent; already admitted Tasks continue their lifecycle. Only a global
+human manager can change this parameter.
 
 The installed assistant identified by `galaris.agent_id` is a permanent exception: other agents
 cannot send or receive messages, files or delegated Tasks involving it. The explicit refusal
