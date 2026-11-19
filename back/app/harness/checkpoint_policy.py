@@ -4,7 +4,13 @@ from collections.abc import Mapping
 from dataclasses import replace
 from typing import cast
 
-from app.agent.contracts import AgentRunCheckpoint, CheckpointAssessment
+from app.agent.contracts import AIMessage, AgentRunCheckpoint, CheckpointAssessment
+
+from .tool_results import decode_tool_result
+
+
+AMENDMENT_RESUME_KEY = "amendment_resume"
+RECORDED_TOOL_STATUSES = frozenset({"completed", "error_reported", "failed"})
 
 
 class InternalCheckpointPolicy:
@@ -65,12 +71,42 @@ class InternalCheckpointPolicy:
     def rebase(self, checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoint | None:
         if not self.assess(checkpoint).resumable:
             return None
-        return replace(checkpoint, result=None, data={**checkpoint.data, "message_history": []})
+        return replace(checkpoint, result=None, data={
+            **checkpoint.data, "message_history": [], AMENDMENT_RESUME_KEY: True,
+        })
 
     def prepare_retry(self, checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoint:
         # Preserve the effect journal and history; only the failed attempt's result
         # is reset. Recovery still checks and reconciles uncertain effects.
         return replace(checkpoint, result=None, status="interrupted")
+
+    def tool_history(self, checkpoint: AgentRunCheckpoint, *, limit: int) -> list[AIMessage]:
+        effects = checkpoint.data.get("effects")
+        if not isinstance(effects, list) or limit <= 0:
+            return []
+        history: list[AIMessage] = []
+        entries = cast(list[object], effects)
+        for index in range(len(entries) - 1, -1, -1):
+            raw = entries[index]
+            if not isinstance(raw, Mapping):
+                continue
+            effect = cast(Mapping[str, object], raw)
+            status, name = effect.get("status"), effect.get("tool_name")
+            if not isinstance(status, str) or status not in RECORDED_TOOL_STATUSES or not isinstance(name, str) or not name:
+                continue
+            arguments = effect.get("arguments")
+            result = decode_tool_result(effect.get("result", effect.get("error")))
+            call_id = effect.get("tool_call_id")
+            history.append(AIMessage(
+                type="tool", tool_name=name, content="", success=status == "completed",
+                stream_id=f"{checkpoint.runtime_run_id}:{effect.get('id') or index}"[:500],
+                tool_call_external_id=call_id[:500] if isinstance(call_id, str) else None,
+                tool_arguments=cast(dict[str, object], arguments) if isinstance(arguments, dict) else None,
+                tool_result=cast(dict[str, object], result) if isinstance(result, dict) else {"result": result},
+            ))
+            if len(history) == limit:
+                break
+        return list(reversed(history))
 
 
 def create_policy() -> InternalCheckpointPolicy:

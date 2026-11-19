@@ -66,7 +66,7 @@ from .registry import (
 )
 from .reasoning_guard import ReasoningDegenerationError, ReasoningPatternGuard
 from .driver_stream import validated_driver_stream
-from .checkpoints import assess_checkpoint, rebase_checkpoint, prepare_retry_checkpoint
+from .checkpoints import assess_checkpoint, checkpoint_tool_history, rebase_checkpoint, prepare_retry_checkpoint
 from .capabilities import MANAGEMENT_CAPABILITIES, driver_capabilities, negotiate_capabilities
 from .execution_errors import HarnessCheckpointError, classify_execution_error
 
@@ -297,6 +297,15 @@ def has_resumable_run_checkpoint(task: Any) -> bool:
     if checkpoint is None:
         return False
     return assess_checkpoint(checkpoint).resumable
+
+
+def recorded_checkpoint_tools(raw_checkpoint: object, *, limit: int) -> list[AIMessage]:
+    """Read the bounded tool projection without exposing the driver's checkpoint format."""
+    try:
+        checkpoint = _read_run_checkpoint({RUN_CHECKPOINT_DATA_KEY: raw_checkpoint})
+        return checkpoint_tool_history(checkpoint, limit=limit) if checkpoint is not None else []
+    except (HarnessCheckpointError, TypeError, ValueError):
+        return []
 
 
 def prepare_run_retry(data: Mapping[str, Any]) -> dict[str, Any]:

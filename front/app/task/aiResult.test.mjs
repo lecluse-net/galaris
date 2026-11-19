@@ -9,7 +9,28 @@ import {
   finalizeAIResult,
   reconcileAIResult,
   reconcileTaskAIResult,
+  withAmendedToolHistory,
 } from './aiResult.ts'
+
+test('amendment keeps prior tool outcomes visible during handoff and after completion', () => {
+  const created = { type: 'tool', tool_name: 'file_create', content: '', success: true, tool_call_external_id: 'call-0' }
+  const history = [{ attempt_id: 'before', message: created }]
+  assert.deepEqual(withAmendedToolHistory(null, null, history).messages, [created])
+
+  const live = { ...emptyAIResult(), messages: [{ ...created, content: 'Report created' }] }
+  assert.deepEqual(withAmendedToolHistory(live, 'before', history).messages, live.messages)
+  const earlier = { ...created, stream_id: 'first-create' }
+  assert.deepEqual(withAmendedToolHistory(live, 'before', [
+    { attempt_id: 'before', message: earlier }, ...history,
+  ]).messages, [earlier, ...live.messages])
+
+  const finished = { ...emptyAIResult(), result: 'PDF ready', messages: [
+    { type: 'tool', tool_name: 'file_export', content: 'PDF exported', success: true, tool_call_external_id: 'call-0' },
+  ] }
+  const amended = withAmendedToolHistory(finished, 'after', history)
+  assert.deepEqual(amended.messages, [created, ...finished.messages])
+  assert.equal(amended.result, 'PDF ready')
+})
 
 test('text AIMessage fragments are visible immediately and append to the current block', () => {
   const first = appendAIMessage(

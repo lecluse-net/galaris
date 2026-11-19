@@ -189,11 +189,13 @@ Une suppression explicite est autoritaire dans toutes les phases. Le service app
 tentative `CLAIMED`, invalide le lease durable, puis effectue la suppression logique enfants avant
 parent. Un worker tardif ne peut donc ni réécrire ni reprendre une tâche supprimée.
 
-Une instruction conversationnelle acceptée sur une tâche non planifiée utilise `REVISE` pour
-repasser par le dispatcher. Si la tâche était en `EXEC`, elle est d'abord interrompue vers
-`DISPATCH`. Une tâche suspendue sur une coordination conserve au contraire sa phase et sa
-corrélation jusqu'au fan-in. Les états opérationnels `QUEUED`, `RUNNING`, `WAITING`, `PAUSED` et
-`TERMINAL` sont des projections de lecture, pas de nouvelles phases PostgreSQL.
+Une instruction conversationnelle acceptée avant la première exécution utilise `REVISE` pour
+repasser par le dispatcher. Avec un checkpoint compatible, la tâche reprend directement en
+`DISPATCH` après l'arrêt de l'ancienne exécution. Le harnais interne transmet à l'agent la consigne
+révisée avec un aperçu des résultats d'outils consignés. La trace de la tâche expose ces appels
+après réouverture, à partir des tentatives conservées. Une tâche suspendue sur une coordination
+conserve sa phase et sa corrélation jusqu'à la consolidation. Les états `QUEUED`, `RUNNING`,
+`WAITING`, `PAUSED` et `TERMINAL` décrivent l'état opérationnel en lecture.
 
 Pendant des délégations actives, l'amendement accepté reste en attente dans `task_amendments`
 (`applied_at` nul) sans interrompre les collègues ni modifier la révision ou le lease du parent.

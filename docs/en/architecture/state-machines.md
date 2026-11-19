@@ -183,11 +183,13 @@ An explicit deletion is authoritative in all phases. The service first applies
 `CLAIMED` attempt, invalidates the durable lease, and then performs logical child-before-parent
 deletion. A late worker therefore cannot rewrite or resume a deleted Task.
 
-An accepted conversational instruction on an unscheduled Task uses `REVISE` to
-pass back through the dispatcher. If the Task was in `EXEC`, it is first interrupted to
-`DISPATCH`. A Task suspended on coordination, by contrast, retains its phase and
-correlation until fan-in. The operational states `QUEUED`, `RUNNING`, `WAITING`, `PAUSED`, and
-`TERMINAL` are read projections, not new PostgreSQL phases.
+An accepted conversational instruction before the first execution uses `REVISE` to return to
+the dispatcher. With a compatible checkpoint, the Task resumes directly in `DISPATCH` once
+the previous execution stops. The internal harness gives the agent the revised instruction
+and a preview of recorded tool outcomes. The Task trace shows these calls after reopening by
+reading the retained attempts. A Task suspended on coordination retains its phase and correlation
+until fan-in. The states `QUEUED`, `RUNNING`, `WAITING`, `PAUSED`, and `TERMINAL` describe the
+operational state in read views.
 
 During active delegation, accepted amendments remain in `task_amendments` with a null `applied_at`,
 without interrupting colleagues or changing the parent's revision or lease. The parent lock

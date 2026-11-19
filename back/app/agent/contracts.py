@@ -1286,6 +1286,13 @@ class DriverCheckpointRetryPolicy(Protocol):
     def prepare_retry(self, checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoint | None: ...
 
 
+@runtime_checkable
+class DriverCheckpointToolHistory(Protocol):
+    """Project recorded tool outcomes for task activity readers."""
+
+    def tool_history(self, checkpoint: AgentRunCheckpoint, *, limit: int) -> list[AIMessage]: ...
+
+
 ToolEffectPolicy = Literal["read", "idempotent", "non_idempotent"]
 ToolConcurrencyPolicy = Literal["safe", "exclusive"]
 

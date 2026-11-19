@@ -93,9 +93,10 @@ async def _existing_amendment(
     )
 
 
-def _apply_instruction(task: Task, instruction: str, key: str) -> None:
+def _apply_instruction(task: Task, instruction: str, key: str, *, preserve_dispatch: bool = False) -> None:
     task.objective = _merge_instruction(task.objective, instruction)
-    task.dispatch_result = None
+    if not preserve_dispatch:
+        task.dispatch_result = None
     task.execution_result = None
     task.feedback = None
     task.last_error = None
@@ -220,8 +221,10 @@ async def amend_task(
         await db.refresh(amendment)
         return TaskAmendmentResult(task, amendment, created=True, interrupted=False, deferred=True)
 
+    from app.agent import has_resumable_run_checkpoint
     from . import scheduler, task_service
 
+    resume_execution = task.status in {TaskStatus.EXEC, TaskStatus.DISPATCH} and has_resumable_run_checkpoint(task)
     interrupted = False
     if task.lease_token is not None:
         interrupted = scheduler.cancel(task.id)
@@ -230,13 +233,12 @@ async def amend_task(
     if task.status == TaskStatus.EXEC:
         transition(task, TaskEvent.INTERRUPT_EXECUTION)
 
-    # The previous visible trace belongs to the superseded objective. The durable driver
-    # checkpoint remains available for effect-safe replay, but the revised run must publish
-    # a fresh result before the Task can become terminal again.
-    _apply_instruction(task, clean_instruction, idempotency_key)
+    # A revised objective needs a fresh result. The attempt journal and checkpoint
+    # still own the evidence of tools that already ran.
+    _apply_instruction(task, clean_instruction, idempotency_key, preserve_dispatch=resume_execution)
 
-    # An internal wait keeps its resume point and correlation. Every other non-planned task
-    # returns to CREATE so the dispatcher sees the revised objective.
+    # Existing execution and internal waits keep their resume point. Tasks awaiting
+    # their first execution return to CREATE so routing can consider the amendment.
     internal_wait = bool(snapshot["waits"]) or any(
         task_service.is_paused_for(task, pause_reason)
         for pause_reason in (
@@ -246,7 +248,7 @@ async def amend_task(
             task_service.PAUSE_PLAN,
         )
     )
-    if not internal_wait and task.status != TaskStatus.CREATE:
+    if not (internal_wait or resume_execution) and task.status != TaskStatus.CREATE:
         transition(task, TaskEvent.REVISE)
 
     amendment = TaskAmendment(

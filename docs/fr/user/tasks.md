@@ -203,6 +203,8 @@ Dans les étapes de réflexion, ouvrir un appel d’outil affiche son nom, ses a
 retour, avec son état de réussite ou d’échec. Ces détails restent disponibles pendant le suivi
 en direct et après reconnexion. Les aperçus volumineux sont tronqués explicitement et les clés
 de secrets sont masquées ; les anciens suivis qui ne contenaient pas ces détails restent incomplets.
+Quand l'agent amende une tâche en cours, sa trace conserve les appels déjà effectués. L'agent
+reprend avec la consigne révisée et les résultats consignés dans son checkpoint.
 
 Pendant une réflexion longue, les sauvegardes intermédiaires sont espacées pour laisser
 l'exécution avancer. Les résultats d'outils, erreurs et fins de blocs restent enregistrés

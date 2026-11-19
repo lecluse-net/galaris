@@ -1198,6 +1198,8 @@ class Agent(AgentRuntime):
             if active_checkpoint is not None and active_checkpoint.history
             else prompt
         )
+        if active_checkpoint is not None and (prior_tools := active_checkpoint.amendment_tool_context()):
+            agent_input = f"{prior_tools}\n\nUpdated task and conversation context:\n{prompt}"
         input_parts: list[Any] = []
         for current_message in current_messages or ():
             input_parts.extend(message_native_parts(current_message, native_inputs))

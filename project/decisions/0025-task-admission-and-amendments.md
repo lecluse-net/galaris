@@ -41,14 +41,15 @@ lecture.
 
 Chaque amendement accepté crée un `TaskAmendment` immuable avec source et clé d'idempotence, puis
 fusionne l'instruction dans l'objectif canonique. Une exécution en cours est annulée par le
-mécanisme normal de lease et de checkpoint. Hors attente interne, la Task revient en `CREATE` par
-l'événement `REVISE` afin que le dispatcher voie l'objectif révisé. Une attente corrélée conserve
-son point de reprise et reprend avec le même UUID après fan-in.
+mécanisme normal de lease et de checkpoint. Avec un checkpoint compatible, la Task reprend
+directement en `DISPATCH`. Avant la première exécution, l'événement `REVISE` repasse par le
+dispatcher. Une attente corrélée conserve son point de reprise et le même UUID après consolidation.
 
 Chaque checkpoint porte l'empreinte de l'objectif immuable de son run. Après amendement, le runtime
-interne conserve le journal des effets terminés pour rejouer leurs résultats sans les reproduire,
-mais écarte l'historique fournisseur et le résultat partiel de l'ancien objectif. Le nouveau prompt
-repart donc de l'objectif fusionné et du briefing recalculé. Les sauvegardes de progression,
+interne conserve le journal des effets pour restituer les résultats des appels déjà terminés. Le
+harnais compose le nouveau prompt à partir de l'objectif fusionné, du briefing recalculé et d'un
+aperçu borné des résultats d'outils consignés. La trace de la tâche lit les checkpoints des
+tentatives précédentes pour restituer leurs appels. Les sauvegardes de progression,
 checkpoints et résultats terminaux comparent cette empreinte après rechargement de la Task ; une
 écriture issue d'un run devenu obsolète est refusée. Le scheduler traite ce rejet comme
 l'annulation attendue de l'ancien attempt, sans retry ni erreur reportée sur l'objectif révisé.

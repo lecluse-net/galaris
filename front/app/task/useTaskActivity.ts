@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { BaseRoom, websocket } from '@/core/websocket'
 import { callExecutionResult, llmCallService, type LLMCall } from '@/app/llm'
 import { taskService } from './services/taskService'
-import { applyTaskLiveRunEvent, completedTaskAIResult, emptyAIResult, reconcileTaskAIResult, taskRunId, type TaskLiveRunEvent, type TaskLiveRunState } from './aiResult'
+import { applyTaskLiveRunEvent, completedTaskAIResult, emptyAIResult, reconcileTaskAIResult, taskRunId, withAmendedToolHistory, type TaskLiveRunEvent, type TaskLiveRunState } from './aiResult'
 import { roomReferences, type TaskActivitySnapshot } from './activity'
 import type { AIResult, Task } from './types'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
@@ -192,7 +192,8 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
     if (!native) {
       return { ...(task.execution_result ?? emptyAIResult()), messages: result?.messages ?? [] }
     }
-    return completedTaskAIResult(reconcileTaskAIResult(task, result), ['SUCCESS', 'ERROR'].includes(task.status))
+    const completed = completedTaskAIResult(reconcileTaskAIResult(task, result), ['SUCCESS', 'ERROR'].includes(task.status))
+    return withAmendedToolHistory(completed, run?.attemptId ?? null, activity?.amended_tool_history)
   }
 
   websocket.createWebsocket()

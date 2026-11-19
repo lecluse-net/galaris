@@ -7,7 +7,7 @@ from app.agent import AIMessage, AgentLiveEvent, ExecutionResult
 from app.agent.models import Agent, Title
 from app.task import live_checkpoint, task_service
 from app.task.activity_snapshot import activity_snapshots, readable_activity_tasks
-from app.task.models import Task, TaskAttempt, TaskStatus
+from app.task.models import Task, TaskAmendment, TaskAttempt, TaskStatus
 from app.task.schemas import TaskCreate
 from app.task.startup_timing import startup_timing, task_startup_timings
 
@@ -125,6 +125,48 @@ async def test_activity_batch_only_contains_managed_tasks(db):
     snapshots = await activity_snapshots(await readable_activity_tasks(ids, {agents[0].id}))
     assert [item.startup_timing.task_id for item in snapshots] == [tasks[0].id]
     assert snapshots[0].startup_timing.queue_wait_upper_bound_seconds is None
+
+
+@pytest.mark.asyncio
+async def test_reopened_amended_task_keeps_recorded_tools_from_the_previous_attempt(db):
+    now = datetime.now(timezone.utc)
+    task = Task(label="Amended report", status=TaskStatus.EXEC, data={"amendment_count": 1})
+    db.add(task)
+    await db.flush()
+    previous = TaskAttempt(task_id=task.id, attempt_number=1, phase="DISPATCH", status="CLAIMED",
+        worker_id="synthetic-worker", lease_token=uuid4(), started_at=now - timedelta(seconds=2),
+        data={"agent_checkpoint": {
+            "driver_code": "internal", "runtime_run_id": "report-runtime", "status": "running",
+            "data": {"version": 5, "resume_safe": True, "effects": [
+                {"id": "created", "status": "completed", "tool_name": "file_create",
+                 "tool_call_id": "call-create", "arguments": {"token": "synthetic-secret"},
+                 "result": '{"uri":"document://synthetic-report","access_token":"synthetic-secret"}'},
+                {"id": "pending", "status": "started", "tool_name": "file_edit"},
+            ]},
+        }})
+    current = TaskAttempt(task_id=task.id, attempt_number=2, phase="DISPATCH", status="CLAIMED",
+        worker_id="synthetic-worker", lease_token=uuid4(), started_at=now + timedelta(seconds=1))
+    db.add_all([previous, TaskAmendment(task_id=task.id,
+        source_kind="conversation_round", source_id="synthetic-round", idempotency_key="amended-report",
+        disposition="AMEND_CURRENT", instruction="Also export a PDF.", applied_at=now)])
+    await db.flush()
+    during_handoff = (await activity_snapshots([task]))[0]
+    assert [item.message.tool_name for item in during_handoff.amended_tool_history] == ["file_create"]
+    previous.status = "CANCELLED"
+    previous.finished_at = now + timedelta(milliseconds=200)
+    db.add(current)
+    await db.flush()
+    task_id, previous_id, current_id = task.id, previous.id, current.id
+    db.expunge_all()
+
+    snapshot = (await activity_snapshots([await db.get(Task, task_id)]))[0]
+
+    assert snapshot.latest_attempt["id"] == str(current_id)
+    entry, = snapshot.amended_tool_history
+    assert entry.attempt_id == previous_id
+    assert entry.message.tool_name == "file_create"
+    assert entry.message.tool_arguments == {"token": "[REDACTED]"}
+    assert entry.message.tool_result == {"uri": "document://synthetic-report", "access_token": "[REDACTED]"}
 
 
 @pytest.mark.asyncio

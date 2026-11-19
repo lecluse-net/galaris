@@ -303,6 +303,26 @@ export function completedTaskAIResult(result: AIResult | null, terminal: boolean
   return { ...result, messages, result: messages.filter(message => message.type === 'text').map(message => message.content).join('') }
 }
 
+export function withAmendedToolHistory(
+  result: AIResult | null,
+  currentAttemptId: string | null,
+  history: readonly { attempt_id: string; message: AIMessage }[] = [],
+): AIResult | null {
+  if (!history.length) return result
+  const current = result?.messages ?? []
+  const matched = new Set<number>()
+  const previous: AIMessage[] = []
+  // The live snapshot holds the latest calls. A provider can reuse a call ID
+  // across responses, so match each current entry at most once.
+  for (const { attempt_id, message } of [...history].reverse()) {
+    const index = attempt_id === currentAttemptId ? current.findIndex((item, index) =>
+      !matched.has(index) && item.success === message.success && sameSnapshotMessage(message, item)) : -1
+    if (index >= 0) matched.add(index)
+    else previous.push(message)
+  }
+  return { ...(result ?? { ...emptyAIResult(), success: false }), messages: [...previous.reverse(), ...current] }
+}
+
 /** Keep the richest cumulative projection when HTTP and WebSocket overlap. */
 export function reconcileAIResult(
   current: AIResult | null,

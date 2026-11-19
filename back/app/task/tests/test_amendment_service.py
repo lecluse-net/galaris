@@ -211,21 +211,22 @@ async def test_revision_remains_strict_without_a_known_definition(db):
 
 
 @pytest.mark.asyncio
-async def test_amendment_is_audited_and_routes_through_create(
-    db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("started", [False, True])
+async def test_amendment_respects_the_existing_execution_checkpoint(
+    db: AsyncSession, monkeypatch: pytest.MonkeyPatch, started: bool,
 ) -> None:
+    checkpoint = {
+        "driver_code": "internal", "runtime_run_id": "run-1", "status": "running",
+        "data": {"version": 1, "resume_safe": True, "effects": [{"status": "completed", "tool_name": "file_read"}]},
+    }
     task = _task(
+        status=TaskStatus.EXEC if started else TaskStatus.DISPATCH,
+        lease_token=uuid4() if started else None,
+        dispatch_result={"synthetic_route": "EXEC"},
         execution_result={"prompt": "old", "result": "partial", "success": True},
         feedback="Partial result",
         last_error="Old error",
-        data={
-            "_agent_run_checkpoint": {
-                "driver_code": "internal",
-                "runtime_run_id": "run-1",
-                "status": "running",
-                "data": {"version": 1, "resume_safe": True},
-            }
-        },
+        data={"_agent_run_checkpoint": checkpoint} if started else {},
     )
     db.add(task)
     await db.commit()
@@ -233,12 +234,15 @@ async def test_amendment_is_audited_and_routes_through_create(
     initial_revision = task.revision
     wake = MagicMock()
     monkeypatch.setattr(scheduler, "wake", wake)
+    cancel = MagicMock(return_value=True)
+    monkeypatch.setattr(scheduler, "cancel", cancel)
+    disposition = "AMEND_CURRENT" if started else "AMEND_QUEUED"
 
     result = await amendment_service.amend_task(
         task_id=task.id,
         expected_revision=initial_revision,
         instruction="Also produce a PDF version.",
-        disposition="AMEND_QUEUED",
+        disposition=disposition,
         reason="Same deliverable, new output format.",
         source_kind="conversation_round",
         source_id="round-1",
@@ -247,19 +251,25 @@ async def test_amendment_is_audited_and_routes_through_create(
 
     assert result.created is True
     assert result.task.id == task.id
-    assert result.task.status == TaskStatus.CREATE
+    assert result.task.status == (TaskStatus.DISPATCH if started else TaskStatus.CREATE)
+    assert result.task.dispatch_result == ({"synthetic_route": "EXEC"} if started else None)
+    assert result.interrupted is started
+    if started:
+        cancel.assert_called_once_with(task.id)
+    else:
+        cancel.assert_not_called()
     assert "Also produce a PDF version." in str(result.task.objective)
     assert result.task.revision == initial_revision + 1
     assert result.task.execution_result is None
     assert result.task.feedback is None
     assert result.task.last_error is None
     assert result.task.data is not None
-    assert "_agent_run_checkpoint" in result.task.data
+    assert result.task.data.get("_agent_run_checkpoint") == (checkpoint if started else None)
     amendment = await db.scalar(
         select(TaskAmendment).where(TaskAmendment.task_id == task.id)
     )
     assert amendment is not None
-    assert amendment.disposition == "AMEND_QUEUED"
+    assert amendment.disposition == disposition
     assert amendment.reason == "Same deliverable, new output format."
     wake.assert_called_once_with(task.id)
 

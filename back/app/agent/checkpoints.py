@@ -3,8 +3,8 @@
 from copy import deepcopy
 
 from .contracts import (
-    AgentDriverError, AgentRunCheckpoint, CheckpointAssessment, DriverCheckpointPolicy,
-    DriverCheckpointRetryPolicy,
+    AIMessage, AgentDriverError, AgentRunCheckpoint, CheckpointAssessment, DriverCheckpointPolicy,
+    DriverCheckpointRetryPolicy, DriverCheckpointToolHistory,
 )
 from .registry import resolve_checkpoint_factory, get_driver_spec
 from .execution_errors import HarnessCheckpointError
@@ -57,3 +57,11 @@ def prepare_retry_checkpoint(checkpoint: AgentRunCheckpoint) -> AgentRunCheckpoi
             or candidate.runtime_run_id != checkpoint.runtime_run_id):
         raise HarnessCheckpointError("Retry preparation cannot replace the checkpoint runtime identity.")
     return candidate
+
+
+def checkpoint_tool_history(checkpoint: AgentRunCheckpoint, *, limit: int) -> list[AIMessage]:
+    try:
+        policy = checkpoint_policy(checkpoint.driver_code)
+    except AgentDriverError:
+        return []
+    return policy.tool_history(checkpoint, limit=limit) if isinstance(policy, DriverCheckpointToolHistory) else []

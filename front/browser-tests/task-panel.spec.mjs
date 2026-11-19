@@ -223,6 +223,10 @@ test('task details restore activity and expose the admitted demand and recorded 
   const snapshot = { ...activityFor(item), phase: 'EXEC', pause_pending: true,
     operational: { operational_state: 'PAUSED', resume_phase: 'EXEC', waits: [] },
     original_demand: 'The original report request',
+    amended_tool_history: [{ attempt_id: 'previous-attempt', message: {
+      type: 'tool', tool_name: 'file_create', content: '', success: true,
+      tool_result: { uri: 'document://existing-report' },
+    } }],
     resources: [{ type: 'delivery_receipt', reference: 'receipt://report-1', label: 'Delivered report', state: 'active', producer_task_id: item.id }],
     live: { run_id: 'run', sequence: 2, result: { ...result, success: false, messages: [{ type: 'text', content: 'Recovered detail activity', stream_id: 'text', stream_complete: true }] } } }
   await jsonRoute(page, '**/api/tasks/task-1/full', item)
@@ -240,6 +244,10 @@ test('task details restore activity and expose the admitted demand and recorded 
   await expect(page.getByText(item.label, { exact: true })).toBeVisible()
   await page.clock.fastForward(300)
   await expect(page.getByRole('paragraph').filter({ hasText: 'Recovered detail activity' })).toBeVisible()
+  const previousTool = page.getByRole('button', { name: /^file_create\b/ })
+  await previousTool.focus()
+  await previousTool.press('Enter')
+  await expect(page.getByText('document://existing-report', { exact: false })).toBeVisible()
   expect(snapshotReads).toHaveLength(1)
   await expect(page.getByText('Failure', { exact: true })).toHaveCount(0)
   await page.getByRole('tab', { name: 'Details', exact: true }).click()

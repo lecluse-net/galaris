@@ -1,4 +1,4 @@
-import type { AIResult } from './types'
+import type { AIMessage, AIResult } from './types'
 import type { LLMExecutionTiming } from '@/app/llm'
 
 export interface TaskStartupTiming {
@@ -51,6 +51,7 @@ export interface TaskActivitySnapshot {
   call_recovery?: TaskCallRecoveryState | null
   calls_limited?: boolean
   live: { run_id: string; attempt_id?: string | null; sequence: number; result: AIResult } | null
+  amended_tool_history?: { attempt_id: string; message: AIMessage }[]
   original_demand?: string | null
   parent_task_id?: string | null
   source_task_id?: string | null

@@ -19,6 +19,51 @@ from app.harness.runtime import Agent
 
 
 @pytest.mark.asyncio
+async def test_amended_run_receives_the_recorded_tool_result_with_the_revised_objective(monkeypatch):
+    from dataclasses import replace
+    from unittest.mock import AsyncMock
+    from pydantic_ai.messages import ModelRequest
+    from pydantic_ai.toolsets import FunctionToolset
+    from app.harness.checkpoint import HarnessRunCheckpoint
+    from app.harness.checkpoint_policy import InternalCheckpointPolicy
+    from app.harness.tests.test_runtime_cancellation import _CountingFunctionModel, _request
+
+    save = AsyncMock()
+    request = _request(save)
+    original = HarnessRunCheckpoint(request)
+    old_history = [ModelRequest(parts=[UserPromptPart("Superseded instructions")])]
+    effect_id = await original.started(name="create_report", arguments={"title": "Q3"},
+        messages=old_history, tool_call_id="create")
+    await original.completed(effect_id=effect_id, name="create_report",
+        result={"uri": "document://existing-report"}, messages=old_history, tool_call_id="create")
+    await original.started(name="old_lookup", arguments={"query": "Superseded lookup"},
+        messages=old_history, tool_call_id="lookup", effect_policy="read")
+    rebased = InternalCheckpointPolicy().rebase(save.await_args.args[0])
+    assert rebased is not None
+
+    def create_report(title: str) -> str:
+        pytest.fail(f"The original report would be created again: {title}")
+
+    async def model(messages, _info):
+        prompt = "\n".join(str(part.content) for message in messages for part in message.parts
+                           if isinstance(part, UserPromptPart))
+        assert "Export the existing report as a PDF" in prompt
+        assert "create_report" in prompt and "document://existing-report" in prompt
+        assert "Superseded instructions" not in prompt and "old_lookup" not in prompt
+        yield "The existing report is ready for export."
+
+    checkpoint = HarnessRunCheckpoint(replace(request, resume_checkpoint=rebased))
+    monkeypatch.setattr(runtime, "build_model_for_llm", AsyncMock(return_value=_CountingFunctionModel(stream_function=model)))
+    monkeypatch.setattr(runtime, "estimate_cost_from_usage", lambda *_: 0.0)
+    agent = Agent(cast(Any, SimpleNamespace()), mcp_servers=[FunctionToolset([create_report])], checkpoint=checkpoint)
+    await agent.init()
+    messages = [message async for message in agent.run("Export the existing report as a PDF")]
+
+    assert agent.terminal_output == "The existing report is ready for export."
+    assert all(message.success for message in messages)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("parallelism", [1, 2])
 @pytest.mark.parametrize("request_wait", [False, True])
 async def test_peer_request_drains_the_tool_batch_without_another_model_request(monkeypatch, parallelism, request_wait):

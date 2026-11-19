@@ -10,14 +10,19 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import defer
 
-from app.agent import AIResult
+from app.agent import AIMessage, AIResult
+from app.agent.facade import recorded_checkpoint_tools
 from core.database import get_db
 from core.util import visible_text
-from .models import Task, TaskAttempt, TaskStatus
+from .models import Task, TaskAmendment, TaskAttempt, TaskStatus
 from .operational_state import TaskOperationalSnapshot, operational_snapshot
 from .working_set import parse_working_set
 from .startup_timing import TaskStartupTiming, task_startup_timings
 from .call_recovery import TaskCallRecoveryState, recovery_state, supports_call_recovery
+from .trace_projection import project_tool_payload
+
+
+_AMENDED_TOOL_LIMIT = 40
 
 
 class TaskActivityQuery(BaseModel):
@@ -30,6 +35,11 @@ class LiveActivity(BaseModel):
     sequence: int
     result: AIResult
     last_activity_at: datetime
+
+
+class HistoricalToolActivity(BaseModel):
+    attempt_id: UUID
+    message: AIMessage
 
 
 class TaskActivitySnapshot(BaseModel):
@@ -49,6 +59,7 @@ class TaskActivitySnapshot(BaseModel):
     call_recovery_supported: bool = False
     call_recovery: TaskCallRecoveryState | None = None
     live: LiveActivity | None = None
+    amended_tool_history: list[HistoricalToolActivity] = Field(default_factory=list[HistoricalToolActivity])
     original_demand: str | None = None
     parent_task_id: UUID | None = None
     source_task_id: UUID | None = None
@@ -82,12 +93,47 @@ async def readable_activity_tasks(ids: Sequence[UUID], agent_ids: Collection[int
     return list((await get_db().scalars(query)).all())
 
 
+async def _amended_tool_history(tasks: Sequence[Task]) -> dict[UUID, list[HistoricalToolActivity]]:
+    ids = [task.id for task in tasks if (task.data or {}).get("amendment_count")]
+    if not ids:
+        return {}
+    checkpoint = TaskAttempt.data["agent_checkpoint"]
+    driver_code = checkpoint["driver_code"].as_string()
+    runtime_run_id = checkpoint["runtime_run_id"].as_string()
+    amended_after_start = select(TaskAmendment.id).where(
+        TaskAmendment.task_id == TaskAttempt.task_id,
+        TaskAmendment.applied_at >= TaskAttempt.started_at,
+    ).correlate(TaskAttempt).exists()
+    # Attempts resuming the same runtime carry its cumulative checkpoint. A
+    # delegation fan-in may start a new runtime, so also retain its predecessors.
+    latest_per_run = (select(TaskAttempt.task_id, TaskAttempt.id, TaskAttempt.attempt_number)
+        .where(TaskAttempt.task_id.in_(ids), runtime_run_id.is_not(None), amended_after_start)
+        .distinct(TaskAttempt.task_id, driver_code, runtime_run_id)
+        .order_by(TaskAttempt.task_id, driver_code, runtime_run_id, TaskAttempt.attempt_number.desc()).subquery())
+    rank = func.row_number().over(partition_by=latest_per_run.c.task_id,
+        order_by=latest_per_run.c.attempt_number.desc())
+    ranked = select(latest_per_run.c.task_id, latest_per_run.c.id, rank.label("rank")).subquery()
+    query = (select(ranked.c.task_id, ranked.c.id, checkpoint).select_from(ranked)
+        .join(TaskAttempt, TaskAttempt.id == ranked.c.id)
+        .where(ranked.c.rank <= 4).order_by(ranked.c.task_id, ranked.c.rank.desc()))
+    history: dict[UUID, list[HistoricalToolActivity]] = {}
+    for task_id, attempt_id, raw_checkpoint in (await get_db().execute(query)).tuples():
+        tools = history.setdefault(task_id, [])
+        for message in recorded_checkpoint_tools(raw_checkpoint, limit=_AMENDED_TOOL_LIMIT):
+            message.tool_arguments = project_tool_payload(message.tool_arguments, limit=1_000)
+            message.tool_result = project_tool_payload(message.tool_result, limit=1_000)
+            tools.append(HistoricalToolActivity(attempt_id=attempt_id, message=message))
+        del tools[:-_AMENDED_TOOL_LIMIT]
+    return history
+
+
 async def activity_snapshots(tasks: Sequence[Task]) -> list[TaskActivitySnapshot]:
     """Project only already-authorized Tasks, in a constant number of queries."""
     if not tasks:
         return []
     ids = [task.id for task in tasks]
     timings = {item.task_id: item for item in await task_startup_timings(ids)}
+    historical_tools = await _amended_tool_history(tasks)
     db = get_db()
     # Routing (CREATE) and execution (DISPATCH) each claim a durable attempt.
     # Number the displayed attempts by phase without changing their audit identity.
@@ -161,6 +207,7 @@ async def activity_snapshots(tasks: Sequence[Task]) -> list[TaskActivitySnapshot
             call_recovery_supported=supports_call_recovery(task),
             call_recovery=recovery_state(task, attempt),
             live=live,
+            amended_tool_history=historical_tools.get(task.id, []),
             original_demand=(visible_text(str(task.data["_original_demand"]))[:8_000]
                              if task.data and "_original_demand" in task.data else None),
             parent_task_id=task.parent_id, source_task_id=task.source_task_id,

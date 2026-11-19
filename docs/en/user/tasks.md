@@ -179,6 +179,8 @@ In reasoning steps, expanding a tool call shows its name, arguments and returned
 with its success or failure state. These details remain available during live monitoring and
 after reconnection. Large previews are explicitly truncated and secret keys are redacted;
 older activity records that did not contain these details remain incomplete.
+When the agent amends a running Task, its trace retains previously executed tool calls. The agent
+resumes with the revised instruction and the outcomes recorded in its checkpoint.
 
 During long reasoning, intermediate saves are spaced out so execution can keep moving.
 Service results, errors and block completions are still saved immediately; reopening the
