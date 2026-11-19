@@ -125,8 +125,9 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import type { NavigationTree, NavigationNodeWithPath } from '../'
-import { useNavigation, useNavigationStore } from '../'
+import type { NavigationTree, NavigationNodeWithPath } from '../types'
+import { useNavigation } from '../composables/useNavigation'
+import { useNavigationStore } from '../stores/navigationStore'
 import { navigationIcon } from '../icons'
 
 interface Props {

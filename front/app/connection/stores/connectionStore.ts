@@ -13,7 +13,7 @@ import connectionService, {
     type RefreshToolCatalogsResponse
 } from '../services/connectionService'
 import type { Connection, ConnectionParam } from '../services/connectionService'
-import { CONNECTIONS_CHANGED_EVENT } from '../events'
+import { CONNECTIONS_CHANGED_EVENT } from '../contracts'
 
 export type { Connection, ConnectionParam, ConnectionParamsResponse }
 

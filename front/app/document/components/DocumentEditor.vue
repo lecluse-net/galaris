@@ -274,7 +274,8 @@ import { documentFormat, findDocumentFormat, type DocumentContentSource, type Do
 import { DatasetDocumentRedirect, documentService } from '../services/documentService'
 import { useDocumentMutations } from '@/app/document/stores/documentMutations'
 import { reconcileLibrarySnapshot } from '@/app/document/librarySnapshot'
-import { documentDraftKey, restoreDocumentDraft, sameDocumentDraft, type DocumentDraft } from '../documentDraft'
+import type { DocumentDraft } from '../documentDraft'
+import { useDocumentAutosave } from '../composables/useDocumentAutosave'
 import type {
   DocumentAttachment,
   DocumentGlobalAccess,
@@ -283,7 +284,6 @@ import type {
   DocumentOwnerOptions,
   DocumentRecord,
   DocumentDetail,
-  DocumentUpdate,
   DocumentNodeKind,
 } from '../types'
 import DocumentSharingPanel from './DocumentSharingPanel.vue'
@@ -293,7 +293,6 @@ import DocumentHistoryDialog from '@/app/document/components/DocumentHistoryDial
 import DocumentSummaryPanel from './DocumentSummaryPanel.vue'
 
 type DocumentShareAccess = 'none' | 'read' | 'edit'
-type AutosaveState = 'saved' | 'pending' | 'saving' | 'invalid' | 'error'
 
 type OwnerChoice = OwnerOption & { value: string }
 
@@ -374,7 +373,7 @@ async function changeDocumentTopic(topicId: string): Promise<number> {
   topicChangeInFlight.value = true
   const generation = loadGeneration
   try {
-    if (autosaveTimer) { clearTimeout(autosaveTimer); autosaveTimer = undefined }
+    cancelAutosave()
     await waitForActiveSave()
     const current = currentDocument.value
     if (!current || disposed || generation !== loadGeneration) throw new Error(t('topic.assignmentAudit.changeError'))
@@ -389,7 +388,6 @@ async function changeDocumentTopic(topicId: string): Promise<number> {
     if (!disposed && generation === loadGeneration) scheduleAutosave()
   }
 }
-const autosaveState = ref<AutosaveState>('saved')
 const editorTitle = ref('')
 const editorOwner = ref('')
 const editorContent = ref('')
@@ -464,17 +462,9 @@ const switchingView = ref(false)
 watch(() => [props.documentId, props.agentId], () => { summaryOpen.value = false; historyOpen.value = false })
 const editorGlobalAccess = ref<DocumentGlobalAccess>(0)
 const sharingAccessByAgentId = ref<Record<number, DocumentShareAccess>>({})
-const lastSavedDraft = ref<DocumentDraft | null>(null)
 const realtimeConnected = computed(() => websocket.isConnected.value && !loading.value && !refreshing.value)
-let applyingDocument = false
-let saveInFlight = false
-let saveQueued = false
-let saveWaiters: Array<() => void> = []
-let autosaveTimer: ReturnType<typeof setTimeout> | undefined
+const pending = { revision: 0, lockVersion: 0 }
 let realtimeTimer: ReturnType<typeof setTimeout> | undefined
-let draftTimer: ReturnType<typeof setTimeout> | undefined
-let pendingExternalRevision = 0
-let pendingExternalLockVersion = 0
 let loadGeneration = 0
 let ownerLoadGeneration = 0
 let keywordLoadGeneration = 0
@@ -655,22 +645,6 @@ function readEditorDraft(): DocumentDraft {
 }
 
 const editorDraft = computed(readEditorDraft)
-function draftFromEditor(): DocumentDraft { return editorDraft.value }
-
-function sameValue(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left) === JSON.stringify(right)
-}
-
-function sameDraft(left: DocumentDraft | null, right: DocumentDraft | null): boolean {
-  return sameDocumentDraft(left, right)
-}
-
-const hasUnsavedChanges = computed(() => currentDocument.value !== null && !sameDraft(lastSavedDraft.value, draftFromEditor()))
-
-function cloneDraft(draft: DocumentDraft): DocumentDraft {
-  return { ...draft, keywords: [...draft.keywords],
-    sharing: Object.fromEntries(Object.entries(draft.sharing).filter(([, access]) => access !== 'none')) }
-}
 
 function applyEditorDraft(draft: DocumentDraft): void {
   editorOwner.value = draft.owner
@@ -681,35 +655,34 @@ function applyEditorDraft(draft: DocumentDraft): void {
   sharingAccessByAgentId.value = { ...draft.sharing }
 }
 
+const {
+  autosaveState, conflictDocument, hasUnsavedChanges, acceptDocument, resolveConflict, clearConflict,
+  cancelAutosave, isSaving, scheduleAutosave, waitForActiveSave, flushAutosave,
+  mergeDocument, mergeLatestDocument, discardDraft: discardAutosaveDraft,
+  draftKey, preserveDraft, preserveHiddenDraft,
+} = useDocumentAutosave({
+  identity: props,
+  currentDocument,
+  editorDraft,
+  draftFromDocument,
+  applyEditorDraft,
+  session: { userId: draftUserId, active: sessionActive, isCurrent: isCurrentEditorSession },
+  permissions: { edit: canEditDocument, share: canManageSharing, manageOwner: canManageOwner, requestAgentId },
+  isGoalDocument,
+  sharingAgents: sharingAgentOptions,
+  isBlocked: () => topicChangeInFlight.value || deletingDocument.value,
+  realtime: { pending, generation: () => loadGeneration, refresh: refreshFromRealtime, schedule: scheduleRealtimeRefresh },
+  onUpdated: document => emit('updated', document),
+  onReloaded: document => applyDocument(document, 'updated'),
+})
+
 function applyDocument(document: DocumentDetail, event: 'loaded' | 'updated'): void {
-  if (currentDocument.value?.id !== document.id) conflictDocument.value = null
-  applyingDocument = true
-  currentDocument.value = document
-  const draft = draftFromDocument(document)
-  applyEditorDraft(draft)
-  lastSavedDraft.value = draft
-  autosaveState.value = 'saved'
-  if (event === 'loaded' && props.editable) restoreDraft(document)
-  if (event !== 'loaded') { pendingExternalRevision = 0; pendingExternalLockVersion = 0 }
-  applyingDocument = false
+  acceptDocument(document, event)
   keywordOptions.value = [...new Set([...keywordOptions.value, ...document.keywords])]
     .sort((left, right) => left.localeCompare(right, locale.value, { sensitivity: 'base' }))
   filteredKeywordOptions.value = keywordOptions.value
   if (event === 'updated') emit('updated', document)
   else emit('loaded', document)
-}
-
-function applyPublicDocument(document: DocumentRecord): void {
-  const current = currentDocument.value
-  if (current?.id !== document.id) return
-  const merged: DocumentDetail = {
-    ...current,
-    ...document,
-    payload: current.payload,
-    source_refs: current.source_refs,
-  }
-  currentDocument.value = merged
-  emit('updated', merged)
 }
 
 async function loadKeywords(): Promise<void> {
@@ -727,7 +700,7 @@ async function loadKeywords(): Promise<void> {
 }
 
 async function onSharingChanged(): Promise<void> {
-  pendingExternalRevision = Math.max(pendingExternalRevision, currentDocument.value?.revision ?? 0)
+  pending.revision = Math.max(pending.revision, currentDocument.value?.revision ?? 0)
   await refreshFromRealtime()
 }
 
@@ -874,284 +847,6 @@ async function loadOwnerOptions(): Promise<void> {
   }
 }
 
-function propertyUpdate(document: DocumentDetail, base: DocumentDraft, draft: DocumentDraft): DocumentUpdate | null {
-  const update: DocumentUpdate = {
-    expected_revision: document.revision,
-    expected_lock_version: document.lock_version,
-  }
-  let changed = false
-  if (!isGoalDocument(document) && draft.title !== base.title) {
-    update.title = draft.title
-    changed = true
-  }
-  if (draft.content !== base.content) { update.payload = { text: draft.content }; changed = true }
-  if (!sameValue(draft.keywords, base.keywords)) { update.keywords = [...draft.keywords]; changed = true }
-  return changed ? update : null
-}
-
-async function persistSharingChange(
-  document: DocumentDetail,
-  targetAgentId: number,
-  access: DocumentShareAccess,
-): Promise<DocumentRecord> {
-  if (access === 'none') {
-    return documentService.removeManagedDocumentGrant(
-      document.id,
-      targetAgentId,
-      currentDocument.value?.lock_version ?? document.lock_version,
-    )
-  }
-  return documentService.setManagedDocumentGrant(
-    document.id,
-    targetAgentId,
-    access === 'edit',
-    currentDocument.value?.lock_version ?? document.lock_version,
-  )
-}
-
-function scheduleAutosave(delay = 700): void {
-  if (!isCurrentEditorSession()) return
-  if (topicChangeInFlight.value) return
-  if (deletingDocument.value) return
-  if (conflictDocument.value) return
-  if (applyingDocument || !canSaveDocument.value || !currentDocument.value) return
-  if (!editorTitle.value.trim() || !editorOwner.value) {
-    autosaveState.value = 'invalid'
-    return
-  }
-  if (!hasUnsavedChanges.value) {
-    autosaveState.value = 'saved'
-    return
-  }
-  if (saveInFlight) {
-    saveQueued = true
-    return
-  }
-  autosaveState.value = 'pending'
-  if (autosaveTimer) clearTimeout(autosaveTimer)
-  autosaveTimer = setTimeout(() => {
-    autosaveTimer = undefined
-    void persistAutosave()
-  }, delay)
-}
-
-const conflictDocument = ref<DocumentDetail | null>(null)
-
-function resolveConflict(keepDraft: boolean): void {
-  const latest = conflictDocument.value
-  if (!latest) return
-  const draft = draftFromEditor()
-  applyingDocument = true
-  currentDocument.value = latest
-  lastSavedDraft.value = draftFromDocument(latest)
-  applyEditorDraft(keepDraft ? draft : lastSavedDraft.value)
-  conflictDocument.value = null
-  applyingDocument = false
-  pendingExternalRevision = 0
-  preserveDraft()
-  scheduleAutosave(150)
-}
-
-async function mergeLatestDocument(documentId: string, generation = loadGeneration): Promise<void> {
-  const latest = await documentService.getDocument(documentId, requestAgentId.value)
-  if (generation !== loadGeneration || currentDocument.value?.id !== documentId) return
-  mergeDocument(latest)
-}
-
-function mergeDocument(latest: DocumentDetail): void {
-  const previousBase = lastSavedDraft.value
-  if (!previousBase) return
-  // Include edits made while the request was pending.
-  const local = draftFromEditor()
-  const remote = draftFromDocument(latest)
-  const overlapping = (Object.keys(local) as (keyof DocumentDraft)[]).some(key => !sameValue(local[key], previousBase[key]) && !sameValue(remote[key], previousBase[key]) && !sameValue(local[key], remote[key]))
-  if (overlapping) {
-    conflictDocument.value = latest
-    autosaveState.value = "error"
-    pendingExternalRevision = 0
-    preserveDraft()
-    return
-  }
-  const choose = <T>(localValue: T, previousValue: T, remoteValue: T): T => (
-    sameValue(localValue, previousValue) ? remoteValue : localValue
-  )
-  const sharing: Record<number, DocumentShareAccess> = {}
-  for (const key of new Set([...Object.keys(local.sharing), ...Object.keys(previousBase.sharing), ...Object.keys(remote.sharing)])) {
-    const id = Number(key)
-    const access = choose(
-      local.sharing[id] ?? 'none',
-      previousBase.sharing[id] ?? 'none',
-      remote.sharing[id] ?? 'none',
-    )
-    if (access !== 'none') sharing[id] = access
-  }
-  const merged: DocumentDraft = {
-    owner: choose(local.owner, previousBase.owner, remote.owner),
-    title: choose(local.title, previousBase.title, remote.title),
-    content: choose(local.content, previousBase.content, remote.content),
-    keywords: choose(local.keywords, previousBase.keywords, remote.keywords),
-    globalAccess: choose(
-      local.globalAccess,
-      previousBase.globalAccess,
-      remote.globalAccess,
-    ),
-    sharing,
-  }
-  applyingDocument = true
-  currentDocument.value = latest
-  applyEditorDraft(merged)
-  lastSavedDraft.value = remote
-  applyingDocument = false
-  pendingExternalRevision = 0
-  autosaveState.value = sameDraft(merged, remote) ? 'saved' : 'pending'
-  emit('updated', latest)
-}
-
-async function persistAutosave(): Promise<void> {
-  // The editor may already be unmounted, with its listeners disposed, when a save completes.
-  if (!isCurrentEditorSession()) return
-  if (topicChangeInFlight.value) return
-  if (deletingDocument.value) return
-  if (conflictDocument.value) return
-  if (pendingExternalRevision > 0) { await refreshFromRealtime(); return }
-  const document = currentDocument.value
-  const base = lastSavedDraft.value
-  if (!document || !base || !canSaveDocument.value) return
-  if (!editorTitle.value.trim() || !editorOwner.value) {
-    autosaveState.value = 'invalid'
-    return
-  }
-  if (saveInFlight) {
-    saveQueued = true
-    return
-  }
-  const draft = draftFromEditor()
-  if (sameDraft(base, draft)) {
-    autosaveState.value = 'saved'
-    return
-  }
-
-  if (!documentFormat(document.document_format, document.format_version).validateDraft(draft.content)) { autosaveState.value = 'invalid'; return }
-  saveInFlight = true
-  autosaveState.value = 'saving'
-  let persisted = cloneDraft(base)
-  try {
-    const update = canEditDocument.value ? propertyUpdate(document, base, draft) : null
-    if (update) {
-      if (update.payload) update.media_type = document.media_type
-      const updated = await documentService.updateDocument(document.id, requestAgentId.value, update)
-      if (!isCurrentEditorSession()) return
-      applyPublicDocument(updated)
-      persisted = {
-        ...cloneDraft(draft),
-        globalAccess: base.globalAccess,
-        sharing: { ...base.sharing },
-      }
-      lastSavedDraft.value = cloneDraft(persisted)
-    }
-    if (canManageSharing.value && persisted.globalAccess !== draft.globalAccess) {
-      const revision = currentDocument.value?.revision ?? document.revision
-      const updated = await documentService.setDocumentGlobalAccess(
-        document.id,
-        revision,
-        currentDocument.value?.lock_version ?? document.lock_version,
-        draft.globalAccess,
-      )
-      if (!isCurrentEditorSession()) return
-      applyPublicDocument(updated)
-      persisted.globalAccess = draft.globalAccess
-      lastSavedDraft.value = cloneDraft(persisted)
-    }
-    if (canManageSharing.value) {
-      for (const agent of sharingAgentOptions.value) {
-        const initial = persisted.sharing[agent.value] ?? 'none'
-        const desired = draft.sharing[agent.value] ?? 'none'
-        if (initial === desired) continue
-        const updated = await persistSharingChange(document, agent.value, desired)
-        if (!isCurrentEditorSession()) return
-        applyPublicDocument(updated)
-        persisted.sharing[agent.value] = desired
-        lastSavedDraft.value = cloneDraft(persisted)
-      }
-    }
-    if (
-      canManageOwner.value
-      && !isGoalDocument(document)
-      && draft.owner !== base.owner
-    ) {
-      const [kind, rawId] = draft.owner.split(':')
-      const ownerId = Number(rawId)
-      if ((kind !== 'agent' && kind !== 'user') || !Number.isInteger(ownerId) || ownerId <= 0) {
-        throw new Error('Invalid document owner selection.')
-      }
-      const revision = currentDocument.value?.revision ?? document.revision
-      const updated = await documentService.changeDocumentOwner(
-        document.id,
-        revision,
-        currentDocument.value?.lock_version ?? document.lock_version,
-        kind,
-        ownerId,
-      )
-      if (!isCurrentEditorSession()) return
-      applyPublicDocument(updated)
-      const latest = await documentService.getDocument(document.id, requestAgentId.value)
-      if (currentDocument.value?.id === document.id) applyDocument(latest, 'updated')
-      return
-    }
-    autosaveState.value = sameDraft(lastSavedDraft.value, draftFromEditor()) ? 'saved' : 'pending'
-  } catch (caught) {
-    const status = (caught as { response?: { status?: unknown } }).response?.status
-    if (status === 409) {
-      try {
-        await mergeLatestDocument(document.id)
-        saveQueued = true
-      } catch {
-        autosaveState.value = 'error'
-      }
-    } else {
-      autosaveState.value = 'error'
-    }
-  } finally {
-    saveInFlight = false
-    // Lifecycle/session changes already flushed the old draft; a late reply must not rewrite it.
-    if (isCurrentEditorSession()) preserveDraft()
-    const waiters = saveWaiters
-    saveWaiters = []
-    for (const resolve of waiters) resolve()
-    const mustRefreshExternal = pendingExternalRevision > (currentDocument.value?.revision ?? 0)
-      || pendingExternalLockVersion > (currentDocument.value?.lock_version ?? 0)
-    const mustSaveAgain = saveQueued || (autosaveState.value === 'pending' && hasUnsavedChanges.value)
-    if (!mustRefreshExternal) { pendingExternalRevision = 0; pendingExternalLockVersion = 0 }
-    saveQueued = false
-    if (mustRefreshExternal) scheduleRealtimeRefresh()
-    if (mustSaveAgain) scheduleAutosave(150)
-  }
-}
-
-function waitForActiveSave(): Promise<void> {
-  if (!saveInFlight) return Promise.resolve()
-  return new Promise(resolve => saveWaiters.push(resolve))
-}
-
-async function flushAutosave(): Promise<boolean> {
-  if (autosaveTimer) {
-    clearTimeout(autosaveTimer)
-    autosaveTimer = undefined
-  }
-  for (let attempt = 0; attempt < 5; attempt += 1) {
-    await waitForActiveSave()
-    await persistAutosave()
-    await waitForActiveSave()
-    if (!hasUnsavedChanges.value) return true
-    if (autosaveState.value === 'error' || autosaveState.value === 'invalid') return false
-    if (autosaveTimer) {
-      clearTimeout(autosaveTimer)
-      autosaveTimer = undefined
-    }
-  }
-  return !hasUnsavedChanges.value
-}
-
 async function deleteDocument(): Promise<void> {
   const document = currentDocument.value
   const agentId = requestAgentId.value
@@ -1161,7 +856,7 @@ async function deleteDocument(): Promise<void> {
   if (!finishDeletion) return
   deletingDocument.value = true
   deletionError.value = ''
-  if (autosaveTimer) clearTimeout(autosaveTimer)
+  cancelAutosave()
   if (realtimeTimer) clearTimeout(realtimeTimer)
   try {
     await waitForActiveSave()
@@ -1190,10 +885,10 @@ async function deleteDocument(): Promise<void> {
 async function refreshFromRealtime(): Promise<void> {
   if (deletingDocument.value) return
   const document = currentDocument.value
-  if (!document || saveInFlight) return
-  if (pendingExternalRevision < document.revision && pendingExternalLockVersion <= document.lock_version) {
-    pendingExternalRevision = 0
-    pendingExternalLockVersion = 0
+  if (!document || isSaving()) return
+  if (pending.revision < document.revision && pending.lockVersion <= document.lock_version) {
+    pending.revision = 0
+    pending.lockVersion = 0
     return
   }
   const generation = ++loadGeneration
@@ -1250,9 +945,9 @@ function onMemoryRealtime(response: MemoryRealtimeEvent): void {
   if (currentDocument.value && event.revision < currentDocument.value.revision) return
   if (currentDocument.value && event.lock_version && event.lock_version <= currentDocument.value.lock_version
     && event.revision <= currentDocument.value.revision) return
-  pendingExternalRevision = Math.max(pendingExternalRevision, event.revision)
-  pendingExternalLockVersion = Math.max(pendingExternalLockVersion, event.lock_version ?? 0)
-  if (!saveInFlight) { ++loadGeneration; scheduleRealtimeRefresh() }
+  pending.revision = Math.max(pending.revision, event.revision)
+  pending.lockVersion = Math.max(pending.lockVersion, event.lock_version ?? 0)
+  if (!isSaving()) { ++loadGeneration; scheduleRealtimeRefresh() }
 }
 
 function onMemoryDelete(response: MemoryRealtimeEvent): void {
@@ -1269,22 +964,9 @@ function onWebsocketConnect(): void {
   refreshError.value = false
   if (!currentDocument.value) { refreshing.value = false; void loadDocument(); return }
   refreshing.value = true
-  pendingExternalRevision = Math.max(pendingExternalRevision, currentDocument.value.revision + 1)
+  pending.revision = Math.max(pending.revision, currentDocument.value.revision + 1)
   scheduleRealtimeRefresh()
 }
-
-watch(
-  [
-    editorOwner,
-    editorTitle,
-    editorContent,
-    editorKeywords,
-    editorGlobalAccess,
-    sharingAccessByAgentId,
-  ],
-  () => { scheduleDraft(); scheduleAutosave() },
-  { deep: true, flush: 'sync' },
-)
 
 onMounted(async () => {
   window.addEventListener('pagehide', preserveDraft)
@@ -1304,7 +986,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   disposed = true
   loadGeneration += 1
-  if (autosaveTimer) clearTimeout(autosaveTimer)
+  cancelAutosave()
   if (realtimeTimer) clearTimeout(realtimeTimer)
   window.removeEventListener('pagehide', preserveDraft)
   document.removeEventListener('visibilitychange', preserveHiddenDraft)
@@ -1340,20 +1022,9 @@ function captureFocus(): DocumentFocus | null {
 }
 async function discardDraft(): Promise<void> {
   await richEditor.value?.discardDraft?.()
-  if (autosaveTimer) { clearTimeout(autosaveTimer); autosaveTimer = undefined }
-  await waitForActiveSave()
-  saveQueued = false
-  const saved = conflictDocument.value ? draftFromDocument(conflictDocument.value) : lastSavedDraft.value
-  if (!saved) return
-  applyingDocument = true
-  if (conflictDocument.value) currentDocument.value = conflictDocument.value
-  lastSavedDraft.value = cloneDraft(saved)
-  applyEditorDraft(saved)
-  conflictDocument.value = null
-  autosaveState.value = 'saved'
-  applyingDocument = false
-  preserveDraft()
+  await discardAutosaveDraft()
 }
+
 defineExpose({ flush: flushEditor, discardDraft, requestRowAction, captureFocus })
 
 async function resolveInlineImage(documentId: string, attachmentId: string, signal?: AbortSignal): Promise<Blob> {
@@ -1418,47 +1089,15 @@ async function uploadInlineImage(file: File, signal: AbortSignal, progress: (val
   return 'document://' + document.id + '/attachments/' + attachment.id
 }
 
-function draftKey(): string | null { return draftUserId === null ? null : documentDraftKey(draftUserId, props.agentId, props.documentId) }
-function scheduleDraft(): void {
-  if (!props.editable || applyingDocument || !currentDocument.value || !sessionActive.value) return
-  // Bound the delay during continuous typing, rather than postponing recovery indefinitely.
-  draftTimer ??= setTimeout(preserveDraft, 200)
-}
-function preserveDraft(): void {
-  if (draftTimer) clearTimeout(draftTimer)
-  draftTimer = undefined
-  if (!props.editable || applyingDocument || !currentDocument.value || !lastSavedDraft.value) return
-  const key = draftKey()
-  if (!key) return
-  try {
-    if (hasUnsavedChanges.value) sessionStorage.setItem(key, JSON.stringify({ user_id: draftUserId, revision: currentDocument.value.revision, base: lastSavedDraft.value, draft: draftFromEditor() }))
-    else sessionStorage.removeItem(key)
-  } catch { autosaveState.value = 'error' }
-}
-function restoreDraft(document: DocumentDetail): void {
-  if (draftUserId === null || !sessionActive.value) return
-  try {
-    const saved = restoreDocumentDraft(sessionStorage, draftUserId, props.agentId, props.documentId)
-    if (!saved) return
-    applyEditorDraft(saved.draft)
-    lastSavedDraft.value = cloneDraft(saved.base)
-    if (saved.revision !== document.revision) {
-      conflictDocument.value = document
-      autosaveState.value = 'error'
-      pendingExternalRevision = document.revision
-    } else autosaveState.value = 'pending'
-  } catch { autosaveState.value = 'error' }
-}
-function preserveHiddenDraft(): void { if (document.visibilityState === 'hidden') preserveDraft() }
 function invalidateEditorSession(): void {
   if (!sessionActive.value) return
   preserveDraft()
   sessionActive.value = false
   ++loadGeneration; ++ownerLoadGeneration; ++keywordLoadGeneration
-  if (autosaveTimer) clearTimeout(autosaveTimer)
+  cancelAutosave()
   if (realtimeTimer) clearTimeout(realtimeTimer)
   currentDocument.value = null
-  conflictDocument.value = null
+  clearConflict()
   deleteDialogOpen.value = false
   loading.value = false
   emit('unavailable', props.documentId)

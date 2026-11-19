@@ -1,5 +1,6 @@
 import { defineAsyncView } from '@/core/util/facade'
 export const AgentAuxiliaryDialogs = /* @__PURE__ */ defineAsyncView(() => import('./components/AgentAuxiliaryDialogs.vue'))
+export const AgentTitlesPanel = /* @__PURE__ */ defineAsyncView(() => import('./components/AgentTitlesPanel.vue'))
 export const AvatarGenerationDialog = /* @__PURE__ */ defineAsyncView(() => import('./components/AvatarGenerationDialog.vue'))
 export { default as AgentAvatar } from './components/AgentAvatar.vue'
 export { agentResourceId } from './resourceUri'

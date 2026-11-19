@@ -52,7 +52,7 @@
                 <div
                   class="text-caption text-grey cursor-pointer conversation-detail-metadata-id"
                   :title="t('common.copy')"
-                  @click="copyRoundId"
+                  @click="copyIdentifier(roundId)"
                 >
                   ID: {{ roundId || '-' }}
                 </div>
@@ -202,32 +202,15 @@
         </ExecutionResultComponent>
       </q-card-section>
 
-      <q-dialog v-model="deleteDialog">
-        <q-card class="confirm-dialog galaris-dialog-card">
-          <DialogHeader :title="t('conversation.history.detail.deleteTitle')" :close-label="t('common.close')" />
-          <q-separator />
-          <q-card-section class="galaris-dialog-body">{{ t('conversation.history.detail.deleteConfirm') }}</q-card-section>
-          <q-card-actions align="right" class="q-px-md q-pb-md galaris-dialog-actions">
-            <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless cancellation in the text round. -->
-            <q-btn v-close-popup flat :label="t('common.cancel')" />
-            <q-btn
-              color="negative"
-              icon="delete"
-              :label="t('common.delete')"
-              :loading="deleting"
-              @click="deleteRound"
-            />
-          </q-card-actions>
-        </q-card>
-      </q-dialog>
+      <DeleteConfirmationDialog v-model="deleteDialog" :title="t('conversation.history.detail.deleteTitle')"
+        :message="t('conversation.history.detail.deleteConfirm')" :busy="deleting" @confirm="deleteRound" />
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { DialogHeader } from '@/core/util'
 import { computed, ref } from 'vue'
-import { copyToClipboard, useQuasar } from 'quasar'
+import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
@@ -240,7 +223,7 @@ import { labSectionPrivileges } from '@/app/lab'
 import { ConversationBubble } from '@/core/util'
 import { Markdown } from '@/core/util'
 import { WaitingResponseIndicator } from '@/core/util'
-import { CopyResourceReference, ResourceReferenceMenu, StatusBadge, type StatusBadgeTone } from '@/core/util'
+import { CopyResourceReference, DeleteConfirmationDialog, ResourceReferenceMenu, StatusBadge, useRecordClipboard, type StatusBadgeTone } from '@/core/util'
 import type { ConversationMessage, ConversationRoundDetail } from '../types'
 import { conversationService } from '../services/conversationService'
 import { TopicAssignmentEditor } from '@/app/topic'
@@ -269,7 +252,7 @@ const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.CONVERSATI
 const canEditLab = computed(() => privilegeStore.hasPrivilege(
   labSectionPrivileges.conversation_executor[1],
 ))
-const copyingJson = ref(false)
+const { copyingJson, copyIdentifier, copyJson: copyJsonToClipboard } = useRecordClipboard()
 const deleteDialog = ref(false)
 const deleting = ref(false)
 const topicSaving = ref(false)
@@ -382,41 +365,13 @@ function formatDate(value: string): string {
   }).format(new Date(value))
 }
 
-async function copyRoundId(): Promise<void> {
-  if (!roundId.value) return
-  try {
-    await copyToClipboard(roundId.value)
-    $q.notify({
-      message: t('common.copied'),
-      color: 'positive',
-      icon: 'check_circle',
-      timeout: 1500,
-      position: 'top',
-    })
-  } catch {
-    $q.notify({
-      message: t('common.copyError'),
-      color: 'negative',
-      icon: 'error',
-      timeout: 3000,
-      position: 'top',
-    })
-  }
-}
-
 async function copyJson(): Promise<void> {
-  if (!roundId.value || copyingJson.value) return
-  copyingJson.value = true
-  try {
-    const dataset = await conversationService.exportRound(roundId.value)
-    await copyToClipboard(JSON.stringify(dataset, null, 2))
-    $q.notify({ color: 'positive', icon: 'check_circle', message: t('conversation.history.detail.jsonCopied') })
-  } catch (reason) {
-    console.error('Failed to copy text conversation round JSON:', reason)
-    $q.notify({ color: 'negative', icon: 'error', message: t('conversation.history.detail.copyJsonError') })
-  } finally {
-    copyingJson.value = false
-  }
+  const id = roundId.value
+  if (!id) return
+  await copyJsonToClipboard(() => conversationService.exportRound(id), {
+    success: t('conversation.history.detail.jsonCopied'),
+    error: t('conversation.history.detail.copyJsonError'),
+  })
 }
 
 async function saveTopic(topicId: string | null): Promise<void> {
@@ -537,11 +492,6 @@ body.body--dark .conversation-detail-agent {
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
-}
-
-.confirm-dialog {
-  width: min(480px, 92vw);
-  max-width: 92vw;
 }
 
 @media (max-width: 1023.98px) {

@@ -1,6 +1,6 @@
 import { computed, onScopeDispose, ref, watch } from 'vue'
 import { sessionGeneration } from '@/core/api'
-import { startVisiblePolling } from '@/core/util'
+import { startVisiblePolling } from '@/core/util/facade'
 import type { Agent } from '../services/agentService'
 
 /** Own the log selection and its polling lifetime, including late responses. */

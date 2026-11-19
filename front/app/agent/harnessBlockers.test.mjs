@@ -4,9 +4,9 @@ import test from 'node:test'
 import ts from 'typescript'
 
 // Execute the real form submission handler, not a parallel implementation of its guard.
-const page = readFileSync(new URL('../index/pages/agent.vue', import.meta.url), 'utf8')
-const script = page.match(/<script setup[^>]*>([\s\S]*?)<\/script>/)[1]
-const source = ts.createSourceFile('agent.ts', script, ts.ScriptTarget.Latest, true)
+const workspace = readFileSync(new URL('../index/components/AgentWorkspace.vue', import.meta.url), 'utf8')
+const script = workspace.match(/<script setup[^>]*>([\s\S]*?)<\/script>/)[1]
+const source = ts.createSourceFile('AgentWorkspace.ts', script, ts.ScriptTarget.Latest, true)
 const declaration = source.statements
   .filter(ts.isVariableStatement)
   .flatMap(statement => [...statement.declarationList.declarations])
@@ -33,8 +33,8 @@ function setup({ active = 0, paused = 0, confirmed = false, checkFails = false }
     },
     confirmPausedHarnessTasksTermination: async () => { calls.push('dialog'); return confirmed },
     terminatePausedHarnessTasks: async () => { calls.push('terminate'); scope.pausedHarnessTasks.value = [] },
-    NO_VOICE: 'none', harnessStates: {}, showAgentDialog: ref(true),
-    harnessState: () => ({ status: 'loading' }),
+    NO_VOICE: 'none', showAgentDialog: ref(true), markHarnessSelectionPending: () => {},
+    applyPreviewAgent: () => {}, refreshVisibleAgents: async () => {}, agents: ref([]),
     agentStore: {
       agents: [],
       updateAgent: async () => calls.push('save'), fetchAgents: async () => {},

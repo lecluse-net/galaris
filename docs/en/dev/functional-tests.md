@@ -18,10 +18,17 @@ The service catalog and self-contained YAML are covered by
 presets, compatibility and atomic refresh with offline fallback.
 `app/services/tests/test_naming_migration.py` checks identities, connections, secrets and
 permissions as well as Atlas convergence, interruption and recovery.
-`front/browser-tests/service-catalog.spec.mjs` covers copying, failed saves and retries,
-parameter retention and permissions; `e2e/specs/services.spec.mjs` checks creation, reload
-and icon-inclusive export in the assembled application. Mandatory-service scenarios
-forbid Edit/Delete actions while allowing diagnostics and permission inspection.
+`front/browser-tests/service-catalog.spec.mjs` covers copying, retry after failed saves,
+parameter retention and permissions. For YAML imports it verifies the preview,
+replacement confirmation, retry with the same file and isolation from a late response
+after reopening.
+`e2e/specs/services.spec.mjs` checks creation, reload and a YAML round trip that preserves
+the icon and connection in the assembled application. Mandatory-service scenarios forbid
+Edit/Delete actions while allowing diagnostics and permission inspection.
+The same component suite checks that the MCP diagnostic uses the unsaved configuration,
+can be retried after an error, and ignores results from a closed dialog. Candidate
+preparation keeps the selected agent and discards a reference generated for obsolete
+temporary parameters.
 
 Connection diagnostics and scoped permissions are covered by
 `app/services/tests/test_connection_diagnostics.py` and the HTTP scope scenario in

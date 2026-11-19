@@ -1,5 +1,5 @@
 <template>
-  <q-splitter v-model="split" horizontal :limits="[0, 100]" class="library-navigation" :class="{ 'library-navigation--dark': $q.dark.isActive }">
+  <q-splitter v-model="split" horizontal :limits="splitLimits" class="library-navigation" :class="{ 'library-navigation--dark': $q.dark.isActive }">
     <template #before>
       <q-tabs v-model="treeMode" dense inline-label align="left" :breakpoint="0" active-color="primary" indicator-color="primary" class="document-library-tabs text-primary" :aria-label="t('documents.library.treeMode')">
         <q-tab name="folders" icon="folder" :label="t('documents.library.folderMode')" @dragenter="hoverTreeMode('folders')" @dragover.prevent @dragleave="cancelModeHover" />
@@ -65,8 +65,7 @@
       </div>
     </template>
     <template #separator>
-      <DocumentSplitterHandle horizontal role="separator" tabindex="0" aria-orientation="horizontal" :aria-label="t('documents.library.resize')"
-        :aria-valuenow="split" aria-valuemin="0" aria-valuemax="100" @keydown.up.prevent="split = Math.max(0, split - 5)" @keydown.down.prevent="split = Math.min(100, split + 5)" />
+      <LibrarySplitterHandle v-model="split" horizontal :limits="splitLimits" :label="t('documents.library.resize')" />
     </template>
     <template #after>
       <div class="document-list-panel" :class="{ 'tag-row--drop': dropTarget === 'root' }"
@@ -135,7 +134,7 @@ import { useDocumentBranches } from '@/app/document/useDocumentBranches'
 import { reconcileLibrarySnapshot, reconcileLibraryTree } from '@/app/document/librarySnapshot'
 import { useDocumentMutations } from '@/app/document/stores/documentMutations'
 import DocumentLibraryDocument from '@/app/document/components/DocumentLibraryDocument.vue'
-import DocumentSplitterHandle from '@/app/document/components/DocumentSplitterHandle.vue'
+import { LibrarySplitterHandle } from '@/core/util'
 import DocumentTopicNavigation from './DocumentTopicNavigation.vue'
 import type { DocumentRowAction } from '@/app/document/libraryShortcuts'
 import { documentSelectionModifiers, useDocumentSelection, type DocumentSelectionItem } from '@/app/document/useDocumentSelection'
@@ -201,6 +200,7 @@ function hoverTreeMode(mode: DocumentLibraryMode): void {
 }
 const userId = ref<number | null>(null)
 const split = ref(35)
+const splitLimits: [number, number] = [0, 100]
 const tags = ref<DocumentTag[]>([])
 const expanded = ref<string[]>([])
 const expandedDocuments = ref<string[]>([])

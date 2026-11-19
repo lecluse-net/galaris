@@ -9,7 +9,7 @@ export const DocumentThumbnail = defineAsyncComponent(() => import('./components
 export const DocumentResourceEmbed = defineAsyncComponent(() => import('./components/DocumentResourceEmbed.vue'))
 export const DocumentFolderCollection = defineAsyncComponent(() => import('./components/DocumentFolderCollection.vue'))
 export const DocumentFolderThumbnail = defineAsyncComponent(() => import('./components/DocumentFolderThumbnail.vue'))
-export { documentService, DatasetDocumentRedirect } from './services/documentService'
+export { documentService, DatasetDocumentRedirect } from './facade'
 export type * from './types'
 export { registerDocumentFormat, findDocumentFormat, documentFormat, documentFormats, documentFormatCatalogue } from './documentFormats'
 export type { DocumentFormatContribution, DocumentFormatDescriptor, DocumentFormatCode, DocumentContentSource, DocumentFormatEditorHandle } from './documentFormats'

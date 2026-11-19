@@ -23,6 +23,12 @@ safe_path() {
 }
 selected() {
   case "/$1/" in */node_modules/*|*/__pycache__/*|*/.git/*|*/.env/*|*/artifacts/*|*/.venv/*) return 1 ;; esac
+  case "$1" in
+    front/core/*|front/app/*|front/bridge/*)
+      case "$1" in *.ts|*.tsx|*.mts|*.js|*.jsx|*.mjs|*.vue) return 0 ;; esac ;;
+    front/*/*) ;;
+    front/*.ts|front/*.tsx|front/*.mts|front/*.js|front/*.jsx|front/*.mjs|front/*.vue) return 0 ;;
+  esac
   # Match the corpus loader's case-insensitive formats in every shipped root.
   case "$1" in
     code-executor/compose.external.yaml) return 0 ;;
@@ -36,7 +42,7 @@ selected() {
   esac
   case "$1" in
     AGENTS.md|.env.example|Makefile|back/modules.py|back/pyproject.toml|back/uv.lock|back/architecture.toml|back/architecture-baseline.json|front/architecture-baseline.json|front/package.json|front/package-lock.json|front/modules.ts|front/scripts/navigation-context.mjs) return 0 ;;
-    back/core/*.py|back/app/*.py|back/bridge/*.py|back/scripts/*.py|back/tests/*.py|back/tests/*.md|front/core/*.ts|front/app/*.ts|front/bridge/*.ts|front/core/*.vue|front/app/*.vue|front/bridge/*.vue|front/*.mjs|project/audits/*.md|.agents/skills/*/SKILL.md|.agents/skills/*/agents/openai.yaml) return 0 ;;
+    back/core/*.py|back/app/*.py|back/bridge/*.py|back/scripts/*.py|back/tests/*.py|back/tests/*.md|front/*.mjs|project/audits/*.md|.agents/skills/*/SKILL.md|.agents/skills/*/agents/openai.yaml) return 0 ;;
   esac
   return 1
 }
@@ -136,6 +142,10 @@ maps_check() {
   run python no back/scripts/project_context.py --root /repo --check
   run node no scripts/navigation-context.mjs --root /repo --check
 }
+architecture_check() {
+  run python no back/scripts/architecture_check.py --root /repo
+  run node no scripts/frontend-cycles.mjs
+}
 case "$op" in
   prepare|generate)
     run python yes back/scripts/project_context.py --root /repo --output /output
@@ -145,12 +155,12 @@ case "$op" in
     if [[ "$op" == prepare ]]; then
       maps_check
       run python no -m app.documentation check --root /repo
-      run python no back/scripts/architecture_check.py --root /repo
+      architecture_check
     fi ;;
   maps-check) maps_check ;;
-  check) maps_check; run python no -m app.documentation check --root /repo; run python no back/scripts/architecture_check.py --root /repo ;;
+  check) maps_check; run python no -m app.documentation check --root /repo; architecture_check ;;
   revision) run python no -m app.documentation revision --root /repo ;;
-  architecture-check) run python no back/scripts/architecture_check.py --root /repo ;;
+  architecture-check) architecture_check ;;
   architecture-baseline)
     outputs=(back/architecture-baseline.json front/architecture-baseline.json)
     run python yes back/scripts/architecture_check.py --root /repo --output /output --update-baseline ;;

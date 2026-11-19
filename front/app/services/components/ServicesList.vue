@@ -13,7 +13,7 @@
       >
         <template #prepend><q-icon name="search" /></template>
       </q-input>
-      <q-btn v-if="canEdit" outline color="secondary" icon="upload" :label="$t('services.import')" @click="openImport" />
+      <q-btn v-if="canEdit" outline color="secondary" icon="upload" :label="$t('services.import')" @click="importDialogOpen = true" />
       <q-btn v-if="canEdit" color="primary" icon="add" :label="$t('services.newService')" @click="catalogOpen = true" />
     </div>
 
@@ -60,71 +60,7 @@
       </q-card>
     </q-dialog>
 
-    <!-- ============================================================
-         Dialog import YAML
-    ============================================================ -->
-    <input ref="fileInput" type="file" accept=".yaml,.yml" class="hidden" @change="onFileSelected" />
-
-    <q-dialog v-model="importDialogOpen">
-      <q-card class="galaris-dialog-card" style="min-width: 480px; max-width: 600px; width: 100%">
-        <DialogHeader :title="$t('services.importService')" :close-label="$t('common.close')" @close="resetImport" />
-
-        <!-- Step 1: file selection -->
-        <template v-if="!importConflict">
-          <q-card-section class="q-gutter-y-md galaris-dialog-body">
-            <!-- Drop and selection area -->
-            <div
-              class="import-dropzone column items-center justify-center q-pa-xl cursor-pointer"
-              :class="{ 'import-dropzone--active': importPreview }"
-              @click="triggerFilePicker"
-              @dragover.prevent
-              @drop.prevent="onFileDrop"
-            >
-              <template v-if="!importPreview">
-                <q-icon name="upload_file" size="48px" color="grey-5" />
-                <div class="text-body2 text-grey-6 q-mt-sm">{{ $t('services.dropYaml') }}</div>
-              </template>
-              <template v-else>
-                <q-icon name="check_circle" size="48px" color="positive" />
-                <div class="text-body1 text-weight-bold q-mt-sm">{{ importPreview.code }}</div>
-                <div class="text-caption text-grey-7">{{ importPreview.label }}</div>
-                <div class="text-caption text-grey-5 q-mt-xs">{{ $t('services.changeFile') }}</div>
-              </template>
-            </div>
-
-            <div v-if="importError" class="text-negative text-caption">{{ importError }}</div>
-          </q-card-section>
-
-          <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-            <q-btn outline color="primary"  :label="$t('common.cancel')" v-close-popup @click="resetImport" />
-            <q-btn
-              v-if="canEdit"
-              color="primary" :label="$t('services.import')" icon="upload"
-              :loading="importLoading" :disable="!importYaml.trim()"
-              @click="doImport(false)"
-            />
-          </q-card-actions>
-        </template>
-
-        <!-- Step 2: overwrite confirmation -->
-        <template v-else>
-          <q-card-section class="galaris-dialog-body">
-            <q-banner class="bg-warning text-white q-mb-md" rounded>
-              <template v-slot:avatar><q-icon name="warning" /></template>
-              {{ $t('services.overwriteTitle', { name: importConflict }) }}
-            </q-banner>
-            <p class="text-body2 text-grey-8">
-              {{ $t('services.overwriteText') }}
-            </p>
-          </q-card-section>
-          <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-            <q-btn outline color="primary"  :label="$t('common.cancel')" @click="resetImport" v-close-popup />
-            <q-btn outline color="primary"  :label="$t('services.changeFile')" @click="importConflict = null" />
-            <q-btn v-if="canEdit" color="warning" :label="$t('services.replace')" icon="swap_horiz" :loading="importLoading" @click="doImport(true)" />
-          </q-card-actions>
-        </template>
-      </q-card>
-    </q-dialog>
+    <ServiceImportDialog v-model="importDialogOpen" :can-edit="canEdit" @imported="onServiceImported" />
 
     <ServiceGlobalParameters v-model="globalParamsDialogOpen" :tool="globalParamsTool" @saved="loadServices" />
 
@@ -283,7 +219,7 @@
                             icon="lan"
                             :label="$t('services.testMcpConnection')"
                             :disable="!form.code.trim()"
-                            @click="openMcpTest"
+                            @click="mcpTestDialogOpen = true"
                           />
                         </div>
                       </div>
@@ -475,110 +411,9 @@
       </q-card>
     </q-dialog>
 
-    <!-- Non-persistent MCP connection test dialog. -->
-    <q-dialog v-model="mcpTestDialogOpen" @hide="clearMcpTest">
-      <q-card class="mcp-test-dialog galaris-dialog-card" style="min-width: 480px; max-width: 720px; width: 100%">
-        <DialogHeader :title="$t('services.testMcpTitle')" :close-label="$t('common.close')" />
-
-        <q-card-section class="q-gutter-y-md mcp-test-dialog__body galaris-dialog-body">
-          <div class="text-body2 text-grey-7">{{ $t('services.testMcpIntro') }}</div>
-
-          <div v-if="mcpTestConnectionParams.length" class="q-gutter-y-sm">
-            <div class="text-subtitle2">{{ $t('services.testMcpParameters') }}</div>
-            <div v-for="param in mcpTestConnectionParams" :key="param.name">
-              <ConnectionParamInput :model-value="mcpTestParams[param.name]" :name="param.name" :definition="param" :tool-code="form.code" @update:model-value="mcpTestParams[param.name] = $event ?? ''" />
-              <code v-if="localizedParamLabel(param, form.code) !== param.name" class="text-caption">{{ param.name }}</code>
-              <div v-if="param.description" class="text-caption">{{ param.description }}</div>
-            </div>
-          </div>
-
-          <div v-if="form.mcp_config.type !== 'stdio'" class="q-gutter-y-sm">
-            <ManagedAgentSelect v-model="candidateAgentId" :label="$t('services.candidateAgent')" />
-            <q-btn outline color="primary" :label="$t('services.candidatePrepare')"
-              :disable="!candidateAgentId || preparingCandidate" :loading="preparingCandidate" @click="prepareCandidate" />
-            <q-input v-if="candidateReference" :model-value="candidateReference" readonly outlined
-              :label="$t('services.candidateReference')" :hint="$t('services.candidateExpiry')" />
-            <div class="text-caption">{{ $t('services.candidateHint') }}</div>
-          </div>
-
-          <q-banner
-            v-if="mcpTestResult"
-            rounded
-            :class="mcpTestResult.success ? 'bg-solaire-green-light text-positive' : 'bg-solaire-red-light text-negative'"
-          >
-            <template #avatar>
-              <q-icon :name="mcpTestResult.success ? 'check_circle' : 'error'" />
-            </template>
-            {{ mcpTestResult.message }}
-          </q-banner>
-
-          <q-banner v-else-if="mcpTestError" rounded class="bg-solaire-red-light text-negative">
-            <template #avatar><q-icon name="error" /></template>
-            {{ mcpTestError }}
-          </q-banner>
-
-          <q-list v-if="mcpTestResult?.diagnostics.length" bordered separator>
-            <q-item
-              v-for="(diagnostic, index) in mcpTestResult.diagnostics"
-              :key="`${diagnostic.stage}-${index}`"
-            >
-              <q-item-section avatar>
-                <q-icon
-                  :name="mcpDiagnosticIcon(diagnostic.status)"
-                  :color="mcpDiagnosticColor(diagnostic.status)"
-                  size="sm"
-                />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label class="row items-center q-gutter-x-sm">
-                  <span class="text-weight-medium">
-                    {{ $t(`services.testMcpStages.${diagnostic.stage}`) }}
-                  </span>
-                  <q-badge
-                    outline
-                    :color="mcpDiagnosticColor(diagnostic.status)"
-                    :label="$t(`services.testMcpStatuses.${diagnostic.status}`)"
-                  />
-                </q-item-label>
-                <q-item-label caption>{{ diagnostic.message }}</q-item-label>
-              </q-item-section>
-              <q-item-section v-if="diagnostic.duration_ms !== null" side>
-                <q-badge
-                  color="grey-7"
-                  :label="$t('services.testMcpDuration', { duration: diagnostic.duration_ms })"
-                />
-              </q-item-section>
-            </q-item>
-          </q-list>
-
-          <div v-if="mcpTestResult?.tools.length">
-            <div class="text-subtitle2 q-mb-sm">
-              {{ $t('services.testMcpFunctionsFound', { count: mcpTestResult.tools.length }) }}
-            </div>
-            <q-list bordered separator>
-              <q-item v-for="tool in mcpTestResult.tools" :key="tool.name">
-                <q-item-section>
-                  <q-item-label class="text-weight-medium">{{ tool.name }}</q-item-label>
-                  <q-item-label v-if="tool.description" caption>{{ tool.description }}</q-item-label>
-                </q-item-section>
-              </q-item>
-            </q-list>
-          </div>
-        </q-card-section>
-
-        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
-          <q-btn outline color="primary"  :label="$t('common.close')" v-close-popup />
-          <q-btn
-            v-if="canEdit"
-            color="secondary"
-            icon="lan"
-            :label="$t('services.testMcpRun')"
-            :loading="testingMcp"
-            @click="testMcpConnection"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+    <ServiceMcpDiagnosticDialog v-model="mcpTestDialogOpen" :can-edit="canEdit && dialogOpen"
+      :code="form.code" :transport="form.mcp_config.type" :service-id="editingTool?.id" :parameters="connParams"
+      :build-mcp-config="buildMcpConfig" :build-candidate-definition="buildCandidateDefinition" />
 
     <!-- Deletion dialog. -->
     <q-dialog v-model="deleteDialogOpen">
@@ -628,7 +463,6 @@ import SystemServiceIcon from './SystemServiceIcon.vue'
 import ConnectionParamInput from './ConnectionParamInput.vue'
 import RestConfigEditor from './RestConfigEditor.vue'
 import ConnectionParamSelect from './ConnectionParamSelect.vue'
-import { ManagedAgentSelect } from '@/app/agent'
 import { useQuasar } from 'quasar'
 import { useServiceStore } from '../stores/serviceStore'
 import serviceApi from '../services/serviceApi'
@@ -645,9 +479,6 @@ import type {
   ConnectionParamDef,
   ConnectionParamOption,
   TaskConfig,
-  ServiceMcpTestRequest,
-  ServiceMcpTestDiagnosticStatus,
-  ServiceMcpTestResponse,
 } from '../services/serviceApi'
 import api from '@/core/api'
 import { isAxiosError } from 'axios'
@@ -658,6 +489,8 @@ import type { CapabilityDefinition, CapabilityProtocol } from '../services/servi
 import { connectionParamLabel, sortedConnectionParamEntries, toolMessageKey, toolOrigin, type ServiceOrigin } from '../presentation'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import ServiceGlobalParameters from './ServiceGlobalParameters.vue'
+import ServiceImportDialog from './ServiceImportDialog.vue'
+import ServiceMcpDiagnosticDialog from './ServiceMcpDiagnosticDialog.vue'
 
 const $q = useQuasar()
 const { t, te } = useI18n()
@@ -674,36 +507,6 @@ const catalogInfo = ref<ServiceCatalogMetadata | null>(null)
 const iconEditorKey = ref(0)
 const visibleTools = computed(() => serviceStore.services.filter(tool => toolOrigin(tool) === origin.value))
 const conversationAccessLoading = ref<Set<number>>(new Set())
-const candidateAgentId = ref<number | null>(null)
-const candidateReference = ref('')
-const preparingCandidate = ref(false)
-let candidateGeneration = 0
-
-watch(candidateAgentId, () => {
-  candidateGeneration++
-  candidateReference.value = ''
-  preparingCandidate.value = false
-})
-
-async function prepareCandidate() {
-  if (!candidateAgentId.value || !canEdit.value) return
-  const generation = ++candidateGeneration
-  preparingCandidate.value = true
-  candidateReference.value = ''
-  try {
-    const { data } = await serviceApi.prepareMcpCandidate(candidateAgentId.value, {
-      code: form.value.code.trim(), label: form.value.label.trim(), description: form.value.description,
-      ...buildPayload(),
-    }, Object.fromEntries(Object.entries(mcpTestParams.value).map(([name, value]) => [name, value || null])))
-    if (generation === candidateGeneration && mcpTestDialogOpen.value) candidateReference.value = data.reference
-  } catch {
-    if (generation === candidateGeneration) mcpTestError.value = t('services.candidateError')
-  } finally {
-    if (generation === candidateGeneration) preparingCandidate.value = false
-  }
-}
-
-
 function localizedParamLabel(param: { name: string } & Partial<ConnectionParamDef>, toolCode?: string): string {
   return connectionParamLabel(toolCode, param.name, param, t, te)
 }
@@ -820,97 +623,14 @@ async function exportTool(tool: Service) {
   }
 }
 
-// =============================================================================
-// Import
-// =============================================================================
-
 const importDialogOpen = ref(false)
-const importYaml = ref('')
-const importLoading = ref(false)
-const importError = ref<string | null>(null)
-const importConflict = ref<string | null>(null)
-const importPreview = ref<{ code: string; label: string } | null>(null)
-const fileInput = ref<HTMLInputElement | null>(null)
 
-function openImport() {
-  if (!canEdit.value) return
-  resetImport()
-  importDialogOpen.value = true
-}
-
-function resetImport() {
-  importYaml.value = ''
-  importError.value = null
-  importConflict.value = null
-  importPreview.value = null
-  importLoading.value = false
-}
-
-function triggerFilePicker() {
-  fileInput.value?.click()
-}
-
-function readFile(file: File) {
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    const content = String(e.target?.result ?? '')
-    importYaml.value = content
-    importError.value = null
-    // Extract code and label from the preview with regular expressions.
-    const codeMatch = content.match(/^code\s*:\s*(.+)$/m)
-    const labelMatch = content.match(/^label\s*:\s*(.+)$/m)
-    importPreview.value = (codeMatch && labelMatch)
-      ? { code: codeMatch[1].trim(), label: labelMatch[1].trim() }
-      : null
-    if (!importPreview.value)
-      importError.value = t('services.detectError')
-  }
-  reader.readAsText(file)
-}
-
-function onFileSelected(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0]
-  if (file) readFile(file)
-  ;(event.target as HTMLInputElement).value = ''
-}
-
-function onFileDrop(event: DragEvent) {
-  const file = event.dataTransfer?.files?.[0]
-  if (file) readFile(file)
-}
-
-async function doImport(overwrite: boolean) {
-  if (!canEdit.value) return
-  if (!importYaml.value.trim()) return
-  importLoading.value = true
-  importError.value = null
-  try {
-    const { data } = await serviceApi.importService(importYaml.value, overwrite)
-    $q.notify({
-      type: 'positive',
-      message: data.created
-        ? t('services.savedCreated', { code: data.code })
-        : t('services.savedUpdated', { code: data.code })
-    })
-    await serviceStore.fetchServices()
-    importDialogOpen.value = false
-    const imported = serviceStore.services.find(tool => tool.code === data.code)
-    origin.value = imported ? toolOrigin(imported) : 'custom'
-    search.value = ''
-    resetImport()
-  } catch (e: unknown) {
-    const err = e as { response?: { status?: number; data?: { detail?: string } } }
-    if (err.response?.status === 409) {
-      // The tool exists; switch to the overwrite confirmation step.
-      const detail = err.response.data?.detail ?? ''
-      const match = detail.match(/'([^']+)'/)
-      importConflict.value = match ? match[1] : importPreview.value?.code ?? '?'
-    } else {
-      importError.value = err.response?.data?.detail ?? t('services.importError')
-    }
-  } finally {
-    importLoading.value = false
-  }
+async function onServiceImported(code: string, reveal: boolean): Promise<void> {
+  await loadServices()
+  if (!reveal || importDialogOpen.value) return
+  const imported = serviceStore.services.find(tool => tool.code === code)
+  origin.value = imported ? toolOrigin(imported) : 'custom'
+  search.value = ''
 }
 
 // =============================================================================
@@ -925,10 +645,6 @@ const saving = ref(false)
 const editingTool = ref<Service | null>(null)
 const deletingTool = ref<Service | null>(null)
 const mcpTestDialogOpen = ref(false)
-const testingMcp = ref(false)
-const mcpTestParams = ref<Record<string, string>>({})
-const mcpTestResult = ref<ServiceMcpTestResponse | null>(null)
-const mcpTestError = ref<string | null>(null)
 
 const hasMcp = ref(false)
 const hasApi = ref(false)
@@ -1070,9 +786,6 @@ watch(dialogOpen, open => {
     pendingParamDelete.value = null
   }
 })
-const mcpTestConnectionParams = computed(() =>
-  connParams.value.filter(param => param.name.trim() !== '')
-)
 
 watch(hasApi, enabled => {
   if (!enabled || editingTool.value?.rest_config) return
@@ -1214,14 +927,8 @@ function resetForm() {
   protocolParamMaps.value = {}
   activeTab.value = ''
   mcpArgsRaw.value = ''; mcpEnvRaw.value = ''; mcpHeadersRaw.value = ''; connParams.value = []
-  clearMcpTest()
+  mcpTestDialogOpen.value = false
 }
-
-watch([form, connParams, mcpTestParams], () => {
-  candidateGeneration++
-  candidateReference.value = ''
-  preparingCandidate.value = false
-}, { deep: true })
 
 function openCreate() { if (!canEdit.value) return; catalogOpen.value = false; editingTool.value = null; resetForm(); dialogOpen.value = true }
 
@@ -1457,75 +1164,12 @@ function buildPayload() {
   }
 }
 
-function clearMcpTest() {
-  candidateGeneration++
-  candidateAgentId.value = null
-  candidateReference.value = ''
-  preparingCandidate.value = false
-  mcpTestParams.value = {}
-  mcpTestResult.value = null
-  mcpTestError.value = null
-}
-
-function openMcpTest() {
-  if (!canEdit.value) return
-  clearMcpTest()
-  mcpTestParams.value = Object.fromEntries(
-    mcpTestConnectionParams.value.map(param => [
-      param.name,
-      param.type === 'password' ? '' : param.default,
-    ])
-  )
-  mcpTestDialogOpen.value = true
-}
-
-function mcpTestErrorMessage(error: unknown): string {
-  const detail = (error as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail
-  if (typeof detail === 'string' && detail) return detail
-  if (error instanceof Error && error.message) return error.message
-  return t('services.testMcpError')
-}
-
-function mcpDiagnosticIcon(status: ServiceMcpTestDiagnosticStatus): string {
-  if (status === 'success') return 'check_circle'
-  if (status === 'error') return 'cancel'
-  if (status === 'warning') return 'warning'
-  if (status === 'skipped') return 'remove_circle_outline'
-  return 'info'
-}
-
-function mcpDiagnosticColor(status: ServiceMcpTestDiagnosticStatus): string {
-  if (status === 'success') return 'positive'
-  if (status === 'error') return 'negative'
-  if (status === 'warning') return 'warning'
-  if (status === 'skipped') return 'grey-6'
-  return 'info'
-}
-
-async function testMcpConnection() {
-  if (!canEdit.value) return
-  testingMcp.value = true
-  mcpTestResult.value = null
-  mcpTestError.value = null
-  try {
-    const params = Object.fromEntries(
-      Object.entries(mcpTestParams.value).map(([name, value]) => [
-        name,
-        value === '' ? null : value,
-      ])
-    )
-    const payload: ServiceMcpTestRequest = {
-      code: form.value.code.trim(),
-      mcp_config: buildMcpConfig(),
-      params,
-    }
-    if (editingTool.value) payload.service_id = editingTool.value.id
-    const { data } = await serviceApi.testMcpConnection(payload)
-    mcpTestResult.value = data
-  } catch (error: unknown) {
-    mcpTestError.value = mcpTestErrorMessage(error)
-  } finally {
-    testingMcp.value = false
+function buildCandidateDefinition(): ServiceCreate {
+  return {
+    code: form.value.code.trim(),
+    label: form.value.label.trim(),
+    description: form.value.description,
+    ...buildPayload(),
   }
 }
 
@@ -1702,17 +1346,6 @@ onMounted(() => {
 }
 .service-catalog-dialog .galaris-dialog-body { min-height: 0; }
 
-.mcp-test-dialog {
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-}
-
-.mcp-test-dialog__body {
-  min-height: 0;
-  overflow-y: auto;
-}
-
 .tool-editor-dialog {
   width: min(1480px, 96vw);
   max-width: 96vw;
@@ -1789,24 +1422,6 @@ onMounted(() => {
   align-self: center;
 }
 
-.import-dropzone {
-  border: 2px dashed #bdbdbd;
-  border-radius: 8px;
-  min-height: 160px;
-  transition: border-color 0.2s, background 0.2s;
-  user-select: none;
-}
-
-.import-dropzone:hover {
-  border-color: #1976d2;
-  background: #f5f9ff;
-}
-
-.import-dropzone--active {
-  border-color: #4caf50;
-  background: #f1faf1;
-}
-
 body.body--dark .tool-section {
   background: #1d1d1d;
 }
@@ -1814,20 +1429,6 @@ body.body--dark .tool-section {
 body.body--dark .tool-section,
 body.body--dark .connection-param-editor {
   border-color: rgba(255, 255, 255, .6);
-}
-
-body.body--dark .import-dropzone {
-  border-color: #555555;
-}
-
-body.body--dark .import-dropzone:hover {
-  border-color: #1976d2;
-  background: #1c2740;
-}
-
-body.body--dark .import-dropzone--active {
-  border-color: #4caf50;
-  background: #1e3320;
 }
 
 @media (max-width: 1023px) {

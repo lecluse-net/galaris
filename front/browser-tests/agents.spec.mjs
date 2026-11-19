@@ -560,25 +560,46 @@ for (const [driver, driverMetadata] of [['hermes', true], ['hermes', false], ['o
   })
 }
 
-test('agent runtime action calls restart once and prevents duplicate submissions', async ({ page }) => {
+test('agent runtime restart is sent once and ignores a status read started before the action', async ({ page }) => {
+  await page.clock.install()
   await agentFixtures(page)
-  await jsonRoute(page, '**/api/harnesses/agents/7/status', { status: 'running', managed: true, lifecycle_status: 'ready', capabilities: ['restart', 'stop'], available_actions: ['restart', 'stop'], last_error: null })
-  let release
-  const pending = new Promise(resolve => { release = resolve })
+  const statusUrl = '**/api/harnesses/agents/7/status'
+  const running = { status: 'running', managed: true, lifecycle_status: 'ready', capabilities: ['restart', 'stop'], available_actions: ['restart', 'stop'], last_error: null }
+  let statusReads = 0
+  let releaseStatus, releaseAction
+  const oldStatus = new Promise(resolve => { releaseStatus = resolve })
+  const pendingAction = new Promise(resolve => { releaseAction = resolve })
+  await page.route(statusUrl, async route => {
+    if (++statusReads === 2) await oldStatus
+    await route.fulfill({ json: running })
+  })
   const actions = []
   await page.route('**/api/harnesses/agents/7/actions/restart', async route => {
     actions.push(route.request().method())
-    await pending
+    await pendingAction
     await route.fulfill({ json: { status: 'queued', output: '' } })
   })
   await mount(page, 'app/index/pages/agent.vue', { privileges: ['AGENT_EDIT'] })
   const restart = page.getByRole('button', { name: 'Restart', exact: true })
   try {
+    await expect(restart).toBeVisible()
+    await page.clock.fastForward(5100)
+    await expect.poll(() => statusReads).toBe(2)
     await restart.click()
     await expect.poll(() => actions).toEqual(['POST'])
     await restart.click({ force: true })
     expect(actions).toEqual(['POST'])
-  } finally { release() }
+    releaseAction()
+    await expect(restart).toHaveCount(0)
+    const obsolete = page.waitForResponse(statusUrl)
+    releaseStatus()
+    await (await obsolete).finished()
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+    await expect(restart).toHaveCount(0)
+  } finally {
+    releaseAction()
+    releaseStatus()
+  }
 })
 
 test('MCP tokens recover a read failure, reveal a new token once and clear it on agent replacement', async ({ page }) => {

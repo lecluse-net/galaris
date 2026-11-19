@@ -1,6 +1,8 @@
 import type { BridgeSettingsContribution } from '@/core/params'
-import HarnessPreferences from './components/HarnessPreferences.vue'
-import TaskExecutionSettings from './components/TaskExecutionSettings.vue'
+import { defineAsyncView } from '@/core/util/facade'
+
+const HarnessPreferences = defineAsyncView(() => import('./components/HarnessPreferences.vue'))
+const TaskExecutionSettings = defineAsyncView(() => import('./components/TaskExecutionSettings.vue'))
 
 export default {
   area: 'harness',

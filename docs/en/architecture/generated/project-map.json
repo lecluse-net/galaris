@@ -22145,6 +22145,7 @@
       {
         "files": [
           "front/app/agent/components/AgentSelect.vue",
+          "front/app/agent/components/AgentTitlesPanel.vue",
           "front/app/agent/navigation.ts"
         ],
         "source": "app/agent",
@@ -22167,9 +22168,10 @@
       },
       {
         "files": [
-          "front/app/agent/components/AgentAuxiliaryDialogs.vue",
           "front/app/agent/components/AgentAvatar.vue",
+          "front/app/agent/components/AgentCard.vue",
           "front/app/agent/components/AgentMcpPanel.vue",
+          "front/app/agent/components/AgentTitlesPanel.vue",
           "front/app/agent/components/AvatarGenerationDialog.vue",
           "front/app/agent/composables/useAgentMcp.ts",
           "front/app/agent/composables/useHarnessLogs.ts",
@@ -22822,7 +22824,6 @@
           "front/app/document/components/DocumentResourceEmbed.vue",
           "front/app/document/components/DocumentRowMenu.vue",
           "front/app/document/components/DocumentSharingPanel.vue",
-          "front/app/document/components/DocumentSplitterHandle.vue",
           "front/app/document/components/DocumentSummaryPanel.vue",
           "front/app/document/components/DocumentTagIcon.vue",
           "front/app/document/components/DocumentTagIconPicker.vue",
@@ -23063,7 +23064,8 @@
           "front/app/harnesses/components/HarnessManagedProviders.vue",
           "front/app/harnesses/components/HarnessManagerConfiguration.vue",
           "front/app/harnesses/components/HarnessManagerHelp.vue",
-          "front/app/harnesses/components/HarnessManagerRelease.vue"
+          "front/app/harnesses/components/HarnessManagerRelease.vue",
+          "front/app/harnesses/settings.ts"
         ],
         "source": "app/harnesses",
         "target": "core/util"
@@ -23103,8 +23105,10 @@
       {
         "files": [
           "front/app/index/components/AgentPreview.vue",
+          "front/app/index/components/AgentWorkspace.vue",
           "front/app/index/components/DashboardAgentTable.vue",
           "front/app/index/components/DashboardLiveActivity.vue",
+          "front/app/index/composables/useAgentHarnessRuntime.ts",
           "front/app/index/pages/agent.vue"
         ],
         "source": "app/index",
@@ -23126,15 +23130,16 @@
       },
       {
         "files": [
-          "front/app/index/pages/agent.vue"
+          "front/app/index/components/AgentWorkspace.vue",
+          "front/app/index/composables/useAgentHarnessRuntime.ts"
         ],
         "source": "app/index",
         "target": "app/harnesses"
       },
       {
         "files": [
+          "front/app/index/components/AgentWorkspace.vue",
           "front/app/index/components/DashboardLiveActivity.vue",
-          "front/app/index/pages/agent.vue",
           "front/app/index/pages/task.vue"
         ],
         "source": "app/index",
@@ -23180,6 +23185,8 @@
       },
       {
         "files": [
+          "front/app/index/components/AgentWorkspace.vue",
+          "front/app/index/composables/useAgentHarnessRuntime.ts",
           "front/app/index/pages/agent.vue",
           "front/app/index/pages/task.vue",
           "front/app/index/services/dashboardService.ts",
@@ -23191,6 +23198,7 @@
       },
       {
         "files": [
+          "front/app/index/components/AgentWorkspace.vue",
           "front/app/index/components/DashboardLiveActivity.vue",
           "front/app/index/components/HomeActionCenter.vue",
           "front/app/index/components/HomeConnected.vue",
@@ -23219,7 +23227,7 @@
       },
       {
         "files": [
-          "front/app/index/pages/agent.vue"
+          "front/app/index/components/AgentWorkspace.vue"
         ],
         "source": "app/index",
         "target": "core/params"
@@ -23241,6 +23249,7 @@
       },
       {
         "files": [
+          "front/app/index/components/AgentWorkspace.vue",
           "front/app/index/pages/agent.vue"
         ],
         "source": "app/index",
@@ -23261,9 +23270,11 @@
       {
         "files": [
           "front/app/index/components/AgentPreview.vue",
+          "front/app/index/components/AgentWorkspace.vue",
           "front/app/index/components/DashboardLiveActivity.vue",
           "front/app/index/components/HomeActionCenter.vue",
           "front/app/index/components/HomeConnected.vue",
+          "front/app/index/composables/useAgentHarnessRuntime.ts",
           "front/app/index/environmentPresentation.ts",
           "front/app/index/graphic-reference/GalleryDialogCard.vue",
           "front/app/index/graphic-reference/GalleryForms.vue",
@@ -23664,7 +23675,6 @@
         "files": [
           "front/app/process/components/BpmnCanvas.vue",
           "front/app/process/components/ExternalProcessEditor.vue",
-          "front/app/process/components/ExternalProcessRuns.vue",
           "front/app/process/components/ExternalRunDialog.vue",
           "front/app/process/components/NativeActivityDetails.vue",
           "front/app/process/components/NativeProcessEditor.vue",
@@ -23680,6 +23690,7 @@
           "front/app/process/components/ProcessSharingDraft.vue",
           "front/app/process/components/ProcessThumbnail.vue",
           "front/app/process/components/ProcessVariableDeclarations.vue",
+          "front/app/process/composables/useProcessRunHistory.ts",
           "front/app/process/contracts.ts",
           "front/app/process/index.ts",
           "front/app/process/pages/index.vue",
@@ -23700,7 +23711,7 @@
       },
       {
         "files": [
-          "front/app/services/components/ServicesList.vue"
+          "front/app/services/components/ServiceMcpDiagnosticDialog.vue"
         ],
         "source": "app/services",
         "target": "app/agent"
@@ -23708,6 +23719,8 @@
       {
         "files": [
           "front/app/services/components/ServiceGlobalParameters.vue",
+          "front/app/services/components/ServiceImportDialog.vue",
+          "front/app/services/components/ServiceMcpDiagnosticDialog.vue",
           "front/app/services/components/ServicesList.vue",
           "front/app/services/services/serviceApi.ts",
           "front/app/services/stores/serviceStore.ts"
@@ -23740,6 +23753,8 @@
         "files": [
           "front/app/services/components/ServiceCard.vue",
           "front/app/services/components/ServiceGlobalParameters.vue",
+          "front/app/services/components/ServiceImportDialog.vue",
+          "front/app/services/components/ServiceMcpDiagnosticDialog.vue",
           "front/app/services/components/ServicesList.vue",
           "front/app/services/index.ts",
           "front/app/services/stores/serviceStore.ts"

@@ -19,10 +19,17 @@ Le catalogue de services et le YAML autonome sont couverts par
 secrets distribués, compatibilité et actualisation atomique avec repli hors ligne.
 `app/services/tests/test_naming_migration.py` vérifie les identités, connexions, secrets et
 droits ainsi que convergence Atlas, interruption et reprise.
-`front/browser-tests/service-catalog.spec.mjs` couvre copie, échec/retry, conservation des
-paramètres et permissions ; `e2e/specs/services.spec.mjs` vérifie création, rechargement et
-export avec icône dans l'application assemblée. Les scénarios des services système portent
-sur l'absence d'actions Modifier/Supprimer, sans interdire diagnostic ou inspection des droits.
+`front/browser-tests/service-catalog.spec.mjs` couvre la copie, la reprise après échec de
+sauvegarde, la conservation des paramètres et les permissions. À l'import YAML, il vérifie
+l'aperçu, la confirmation de remplacement, la reprise avec le même fichier et l'isolation d'une réponse tardive après
+réouverture. `e2e/specs/services.spec.mjs` vérifie la création, le rechargement et
+l'aller-retour YAML avec conservation de l'icône et de la connexion dans l'application
+assemblée. Les scénarios des services système portent sur l'absence d'actions
+Modifier/Supprimer, sans interdire diagnostic ou inspection des droits.
+La même suite de composants vérifie que le diagnostic MCP utilise la configuration
+non enregistrée, permet une relance après erreur et ignore le résultat d'une modale
+fermée. La préparation d'un candidat conserve l'agent sélectionné et écarte une
+référence produite pour d'anciens paramètres temporaires.
 
 Les diagnostics des connexions et leurs permissions ciblées sont couverts par
 `app/services/tests/test_connection_diagnostics.py` et le scénario HTTP de portée de

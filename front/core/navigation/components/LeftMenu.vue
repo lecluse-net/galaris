@@ -14,8 +14,9 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import type { NavigationTree, NavigationNodeWithPath } from '../'
-import { useNavigation, useNavigationStore } from '../'
+import type { NavigationTree, NavigationNodeWithPath } from '../types'
+import { useNavigation } from '../composables/useNavigation'
+import { useNavigationStore } from '../stores/navigationStore'
 import LeftMenuItems from './LeftMenuItems.vue'
 
 interface Props {

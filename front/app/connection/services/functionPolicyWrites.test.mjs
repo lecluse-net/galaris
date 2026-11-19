@@ -19,7 +19,7 @@ test('queued policy choices cannot execute under a replacement user session', as
           return requests.length === 1 ? firstResponse.promise : Promise.resolve({ data: {} })
         } },
       },
-      '../events': { CONNECTIONS_CHANGED_EVENT: 'test-connections-changed' },
+      '../contracts': { CONNECTIONS_CHANGED_EVENT: 'test-connections-changed' },
     },
   )
   const connection = { id: 5, service_id: 9, agent_id: 7, active: true }

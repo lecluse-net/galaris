@@ -28,9 +28,7 @@
   </article>
 </template>
 <script setup lang="ts">
-import { computed } from 'vue'
-import DOMPurify from 'dompurify'
-import { marked } from 'marked'
+import { ref, watch } from 'vue'
 import '../resourcePreviewCard.css'
 
 const { placement = 'below-page', icon = 'insert_drive_file', description = '' } = defineProps<{
@@ -45,16 +43,15 @@ const { placement = 'below-page', icon = 'insert_drive_file', description = '' }
   openLabel: string
   disabled?: boolean
 }>()
-const plainDescription = computed(() => {
-  if (!description) return ''
-  const content = DOMPurify.sanitize(marked.parse(description, { async: false }), {
-    RETURN_DOM_FRAGMENT: true,
-    ALLOWED_TAGS: ['p', 'div', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'blockquote', 'ul', 'ol', 'li', 'table', 'tr', 'th', 'td', 'pre', 'code', 'a', 'strong', 'em', 'span'],
-    ALLOWED_ATTR: [],
-  })
-  for (const block of content.querySelectorAll('p,div,br,h1,h2,h3,h4,h5,h6,blockquote,li,tr,th,td,pre')) block.append(' ')
-  return content.textContent?.replace(/\s+/g, ' ').trim() ?? ''
-})
+const plainDescription = ref('')
+watch(() => description, async (source, _, onCleanup) => {
+  plainDescription.value = ''
+  if (!source) return
+  let current = true
+  onCleanup(() => { current = false })
+  const { resourcePreviewText } = await import('../resourcePreviewText')
+  if (current) plainDescription.value = resourcePreviewText(source)
+}, { immediate: true })
 const emit = defineEmits<{ open: [event: MouseEvent] }>()
 </script>
 <style scoped>

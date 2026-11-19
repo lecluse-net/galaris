@@ -51,6 +51,12 @@ test('reference controls remain local and support keyboard and modal dismissal',
   const before = Number(await separator.getAttribute('aria-valuenow'))
   await separator.press('ArrowRight')
   await expect(separator).toHaveAttribute('aria-valuenow', String(before + 5))
+  const stackedSeparator = page.getByRole('separator', { name: 'Redimensionner les panneaux' })
+    .and(page.locator('[aria-orientation="horizontal"]'))
+  await stackedSeparator.press('End')
+  await expect(stackedSeparator).toHaveAttribute('aria-valuenow', await stackedSeparator.getAttribute('aria-valuemax'))
+  await stackedSeparator.press('Home')
+  await expect(stackedSeparator).toHaveAttribute('aria-valuenow', await stackedSeparator.getAttribute('aria-valuemin'))
 })
 
 test('reference catalogue survives theme and viewport changes', async ({ page }, testInfo) => {

@@ -16,12 +16,12 @@
       <template #action><q-btn outline color="primary" :label="t('documents.imports.title')" @click="importDialogOpen = true" /></template>
     </q-banner>
     <q-card flat bordered class="documents-workspace">
-      <q-splitter v-model="splitterModel" :limits="[15, 55]" class="documents-splitter" :class="{ 'documents-splitter--list': listingOpen, 'documents-splitter--collapsed': !libraryOpen }">
+      <q-splitter v-model="splitterModel" :limits="splitterLimits" class="documents-splitter" :class="{ 'documents-splitter--list': listingOpen, 'documents-splitter--collapsed': !libraryOpen }">
         <template #before>
           <DocumentLibraryNavigation ref="navigation" :selected-document-id="selectedDocumentId" :creation-tag-id="createMenuOpen ? createDocumentTag?.id : null" :creation-document-id="createMenuOpen ? createDocumentParent?.item.id : null" :importing-files="Boolean(importingFileName)" @files-dropped="importDroppedFiles" @action="documentRowAction" @browse="openListing" @loaded="onLibraryLoaded" @select="selectEntry" @create="openCreateDocument" />
         </template>
         <template #separator>
-          <DocumentSplitterHandle />
+          <LibrarySplitterHandle v-model="splitterModel" :limits="splitterLimits" :label="t('documents.library.resize')" />
         </template>
         <template #after>
           <q-splitter v-model="conversationSplitterModel" :limits="conversationSplitterLimits" :disable="!chatOpen || $q.screen.lt.md"
@@ -43,9 +43,8 @@
               />
             </template>
             <template #separator>
-              <DocumentSplitterHandle role="separator" tabindex="0" aria-orientation="vertical"
-                :aria-label="t('documents.resizeConversation')" :aria-valuenow="conversationSplitterModel"
-                :aria-valuemin="conversationSplitterLimits[0]" :aria-valuemax="conversationSplitterLimits[1]" @keydown="resizeConversationWithKeyboard" />
+              <LibrarySplitterHandle v-model="conversationSplitterModel" :limits="conversationSplitterLimits" :step="2"
+                :label="t('documents.resizeConversation')" :disabled="!chatOpen || $q.screen.lt.md" />
             </template>
             <template #after>
               <aside v-if="chatStarted && canAccessChat" class="documents-chat-pane">
@@ -184,7 +183,7 @@ import type {
 import DocumentEditor from '@/app/document/components/DocumentEditor.vue'
 import DocumentIcon from '@/app/document/components/DocumentIcon.vue'
 import DocumentLibraryNavigation from '@/app/document/components/DocumentLibraryNavigation.vue'
-import DocumentSplitterHandle from '@/app/document/components/DocumentSplitterHandle.vue'
+import { LibrarySplitterHandle } from '@/core/util'
 import DocumentBulkList from '@/app/document/components/DocumentBulkList.vue'
 import DocumentImportDialog from '@/app/document/components/DocumentImportDialog.vue'
 
@@ -211,17 +210,9 @@ const mobileHeading = useTemplateRef<HTMLElement>('mobileHeading')
 const navigation = useTemplateRef<InstanceType<typeof DocumentLibraryNavigation>>('navigation')
 const entries = ref<DocumentLibraryEntry[]>([])
 const splitterModel = ref(30)
+const splitterLimits: [number, number] = [15, 55]
 const conversationSplitterModel = ref(60)
 const conversationSplitterLimits: [number, number] = [30, 80]
-function resizeConversationWithKeyboard(event: KeyboardEvent): void {
-  const [minimum, maximum] = conversationSplitterLimits
-  const value = event.key === 'Home' ? minimum : event.key === 'End' ? maximum
-    : event.key === 'ArrowLeft' ? conversationSplitterModel.value - 2
-      : event.key === 'ArrowRight' ? conversationSplitterModel.value + 2 : null
-  if (value === null) return
-  event.preventDefault()
-  conversationSplitterModel.value = Math.min(maximum, Math.max(minimum, value))
-}
 const listingOpen = ref(false)
 const listingFolder = ref<DocumentTag | null>(null)
 const selectedNodeKey = ref<string | null>(null)

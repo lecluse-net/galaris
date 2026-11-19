@@ -9,13 +9,13 @@
     </div>
     <div class="col-12 col-md-6">
       <q-card flat bordered>
-      <q-splitter v-model="vertical" :limits="[20, 80]" class="gallery-splitter">
+      <q-splitter v-model="vertical" :limits="limits" class="gallery-splitter">
         <template #before><div class="q-pa-md">{{ t('graphicReference.before') }}</div></template>
-        <template #separator><DocumentSplitterHandle role="separator" tabindex="0" aria-orientation="vertical" :aria-label="t('graphicReference.resize')" :aria-valuenow="vertical" :aria-valuemin="20" :aria-valuemax="80" @keydown="resize($event, false)" /></template>
+        <template #separator><LibrarySplitterHandle v-model="vertical" :limits="limits" :label="t('graphicReference.resize')" /></template>
         <template #after>
-          <q-splitter v-model="horizontal" horizontal :limits="[20, 80]" style="height: 240px">
+          <q-splitter v-model="horizontal" horizontal :limits="limits" style="height: 240px">
             <template #before><div class="q-pa-md">{{ t('graphicReference.after') }}</div></template>
-            <template #separator><DocumentSplitterHandle horizontal role="separator" tabindex="0" aria-orientation="horizontal" :aria-label="t('graphicReference.resize')" :aria-valuenow="horizontal" :aria-valuemin="20" :aria-valuemax="80" @keydown="resize($event, true)" /></template>
+            <template #separator><LibrarySplitterHandle v-model="horizontal" horizontal :limits="limits" :label="t('graphicReference.resize')" /></template>
             <template #after><div class="q-pa-md">{{ t('graphicReference.details') }}</div></template>
           </q-splitter>
         </template>
@@ -29,20 +29,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { FolderIcon, GraphViewControls } from '@/core/util'
-import { DocumentSplitterHandle } from '../../../graphicReferenceContributions'
+import { FolderIcon, GraphViewControls, LibrarySplitterHandle } from '@/core/util'
 const { t } = useI18n()
 const tab = ref('first'), vertical = ref(45), horizontal = ref(50)
+const limits: [number, number] = [20, 80]
 const nodes = computed(() => [{ key: 'root', label: t('graphicReference.before'), children: [{ key: 'child', label: t('graphicReference.sample') }] }])
-function resize(event: KeyboardEvent, isHorizontal: boolean): void {
-  const previous = isHorizontal ? 'ArrowUp' : 'ArrowLeft', next = isHorizontal ? 'ArrowDown' : 'ArrowRight'
-  if (![previous, next, 'Home', 'End'].includes(event.key)) return
-  event.preventDefault()
-  // The custom handle owns these keys; QSplitter also handles bubbled arrows.
-  event.stopPropagation()
-  const model = isHorizontal ? horizontal : vertical
-  model.value = event.key === 'Home' ? 20 : event.key === 'End' ? 80 : Math.min(80, Math.max(20, model.value + (event.key === previous ? -5 : 5)))
-}
 </script>
 <style scoped>
 .inline-flex { display: inline-flex; }

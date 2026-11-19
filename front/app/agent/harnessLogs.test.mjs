@@ -7,7 +7,7 @@ import { startVisiblePolling } from '../../core/util/visiblePolling.ts'
 test('log selection ignores reversed responses and closing prevents polling revival', async () => {
   const { useHarnessLogs } = loadTypescript(new URL('./composables/useHarnessLogs.ts', import.meta.url), {
     vue, '@/core/api': { sessionGeneration: () => 'one' },
-    '@/core/util': { startVisiblePolling: (refresh, interval) => startVisiblePolling(refresh, interval, Object.assign(new EventTarget(), { hidden: false })) },
+    '@/core/util/facade': { startVisiblePolling: (refresh, interval) => startVisiblePolling(refresh, interval, Object.assign(new EventTarget(), { hidden: false })) },
   })
   const requests = new Map()
   const scope = vue.effectScope()

@@ -22,7 +22,7 @@ function setup() {
     '@/core/api': { sessionGeneration: () => generation },
     '@/core/util/facade': sessionStoreScope(new EventTarget(), () => generation),
     '../services/connectionService': { __esModule: true, default: service },
-    '../events': { CONNECTIONS_CHANGED_EVENT: 'connections-changed' },
+    '../contracts': { CONNECTIONS_CHANGED_EVENT: 'connections-changed' },
   })
   return { store: useConnectionStore(pinia.createPinia()), requests, switchSession: () => { generation = 'two' } }
 }

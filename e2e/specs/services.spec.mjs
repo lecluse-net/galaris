@@ -3,7 +3,7 @@ import { notificationPrompt } from '../notification-prompt.mjs'
 import { collectPageErrors } from '../page-errors.mjs'
 import fs from 'node:fs/promises'
 
-test('A bundled service preset is saved, reopened and exported as one YAML with its icon in the assembled application', async ({ page, request }, testInfo) => {
+test('A bundled service preset is saved, reopened and round-tripped as YAML with its icon and connection', async ({ page, request }, testInfo) => {
   const errors = collectPageErrors(page)
   const fixture = await (await request.post('/api/__test/seed?mode=process-human')).json()
   await page.addLocatorHandler(notificationPrompt(page), prompt => prompt.getByRole('button', { name: 'Plus tard', exact: true }).click())
@@ -53,6 +53,25 @@ test('A bundled service preset is saved, reopened and exported as one YAML with 
   expect(exported).toContain('image/svg+xml')
   expect(exported).toContain('<svg')
   expect(exported).toContain('synthetic-catalog-provider')
+
+  await page.getByRole('button', { name: 'Importer', exact: true }).click()
+  const importer = page.getByRole('dialog', { name: 'Importer un service' })
+  await importer.locator('input[type=file]').setInputFiles({
+    name: 'synthetic-catalog-provider.yaml', mimeType: 'text/yaml', buffer: Buffer.from(exported),
+  })
+  await expect(importer.getByText('synthetic-catalog-provider', { exact: true })).toBeVisible()
+  await importer.getByRole('button', { name: 'Importer', exact: true }).click()
+  const replace = importer.getByRole('button', { name: 'Remplacer', exact: true })
+  await expect(replace).toBeVisible()
+  const imported = page.waitForResponse(response => response.url().endsWith('/api/services/import?overwrite=true'))
+  await replace.click()
+  expect((await imported).ok()).toBe(true)
+  await expect(importer).toHaveCount(0)
+  await expect(row.getByText('1 connexion', { exact: true })).toBeVisible()
+  const reimported = (await (await request.get('/api/services', { headers })).json()).find(service => service.code === saved.code)
+  expect(reimported.id).toBe(saved.id)
+  expect(reimported.icon.data).toBe(saved.icon.data)
+  expect(reimported.connection_count).toBe(1)
   await page.screenshot({ path: testInfo.outputPath('services-desktop.png'), fullPage: true, animations: 'disabled' })
   await page.evaluate(() => localStorage.setItem('theme_mode', 'dark'))
   await page.reload()

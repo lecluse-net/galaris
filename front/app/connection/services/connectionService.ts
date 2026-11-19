@@ -1,7 +1,7 @@
 import api, { sessionGeneration, SupersededSessionError } from '@/core/api'
 import type { AxiosRequestConfig, AxiosResponse } from 'axios'
 import type { Service, ServiceIcon } from '@/app/services'
-import { CONNECTIONS_CHANGED_EVENT } from '../events'
+import { CONNECTIONS_CHANGED_EVENT } from '../contracts'
 
 function connectionsChanged<T>(response: T): T {
     window.dispatchEvent(new Event(CONNECTIONS_CHANGED_EVENT))
