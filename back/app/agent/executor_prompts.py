@@ -38,6 +38,7 @@ class ExecutorPromptContext(TypedDict):
     runtime_rules: NotRequired[str]
     conversation_action_policy: NotRequired[str]
     dispatch_analysis: NotRequired[str]
+    task_admission_available: NotRequired[bool]
 
 
 def _identity_nodes(context: ExecutorPromptContext, *, short_round: bool) -> list[PromptNode]:
@@ -116,7 +117,17 @@ def _identity_nodes(context: ExecutorPromptContext, *, short_round: bool) -> lis
     ]
 
 
-def _conversation_rules(executor: ExecutorKind, action_policy: str) -> str:
+def _conversation_rules(executor: ExecutorKind, action_policy: str, *, task_admission_available: bool) -> str:
+    if executor == "conversation" and task_admission_available:
+        action_policy = (
+            f"{action_policy.strip()}\n"
+            "- **Act once admission is resolved:** when a clear user request belongs in a Task, "
+            "call `conversation_task_submit` now, including for work that uses Services available "
+            "only in Task mode. Keep the requested result and known source references. Once the "
+            "applicable Process, existing work and verified restrictions are settled, leave research "
+            "and discovery of technical means to the Task. Use foreground reads only for facts that "
+            "could change admission or a separate requested result. Acknowledge admission from the receipt."
+        )
     register = (
         "- This is an ongoing live spoken conversation, not written correspondence or a sequence "
         "of isolated messages. You are already present in the call and are replying to what the "
@@ -164,10 +175,10 @@ def _conversation_rules(executor: ExecutorKind, action_policy: str) -> str:
         "asked.\n"
         "- Confirm an action only after its tool returns a successful receipt in this turn. "
         "An earlier assistant confirmation, remembered intention, or previous run is not "
-        "evidence of a new action. A request to relaunch a Process requires a new call to "
-        "`conversation_process_start`; use its receipt before saying it was relaunched. "
+        "evidence of a new action. To relaunch a Process, use a new call to the mounted and "
+        "authorized `conversation_process_start` and confirm from its receipt. "
         "If the call fails or needs authorization, describe that actual outcome.\n"
-        "- Use Task status tools before claiming what ongoing work is doing or how close "
+        "- Use mounted Task status tools before claiming what ongoing work is doing or how close "
         "it is to completion. Do not invent progress; if only a durable phase is known, "
         "say exactly that.\n"
         "- Reply in the conversation language unless the user explicitly asks otherwise.\n"
@@ -175,8 +186,8 @@ def _conversation_rules(executor: ExecutorKind, action_policy: str) -> str:
         "following a message belong to that message.\n"
         "- Human interactions for running Processes always take place through messaging, "
         "including requests for files. Check pending interactions before treating a message "
-        "or attachment as a new request, using `conversation_process_pending` when the "
-        "relevant request is absent or truncated in context. Correlate it with the expected activity; clarify "
+        "or attachment as a new request. Use `conversation_process_pending` if mounted when "
+        "the relevant context is absent or truncated. Correlate it with the expected activity; clarify "
         "ambiguous or incomplete replies and never complete a Process from an unrelated message.\n"
         "- A newer message may make an effect stale; if a tool reports this, stop and let "
         "the next round respond.\n"
@@ -238,8 +249,8 @@ def build_executor_prompt_tree(
             "Repeat a successful read or analysis only for a specific unresolved fact that could "
             "change the answer. "
             "Use known URIs directly; discover only unknown sources or capabilities, stopping once "
-            "found. For a bounded correction: file_read(target), file_edit with its expected_revision, "
-            "then the receipt. Inspect linked Goals, Processes or catalogs only for an unresolved "
+            "found. For a bounded correction, use mounted and authorized file_read and file_edit "
+            "with the current revision, then check the receipt. Inspect linked Goals, Processes or catalogs only for an unresolved "
             "prerequisite; a failed search does not justify unrelated discovery.\n"
             "5. Inspect existing work before creating competing resources. Reuse a suitable "
             "resource and its current revision; reconcile conflicts without overwriting others "
@@ -397,6 +408,7 @@ def build_executor_prompt_tree(
                 text=_conversation_rules(
                     executor,
                     action_policy,
+                    task_admission_available=context.get("task_admission_available", True),
                 ),
             )
         )

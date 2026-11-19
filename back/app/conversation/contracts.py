@@ -152,6 +152,8 @@ class ConversationTurn:
     # Trusted successful receipts from this execution, refreshed before Task admission.
     # They identify context; the current human request still authorizes the work.
     produced_document_references: Callable[[], tuple[str, ...]] | None = None
+    # Server-rendered annotations for the newest input, kept separate from the full source.
+    display_context: str = ""
 
     @property
     def sender_is_ai(self) -> bool:

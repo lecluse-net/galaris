@@ -889,10 +889,22 @@ mandatory. Its rules require an immediate response for short work; long work fir
 matching Process with `conversation_process_start`, or otherwise creates a Task with
 `conversation_task_submit`, without ever waiting for completion.
 
+Text rounds carry live data in a `galaris_turn_context` block in the user message.
+It contains the current agent's active Goals, active Tasks and Processes, pending
+interactions, authorized agenda, Memory recall, and continuity. The admitted messages
+follow the block. History keeps its native roles and attachments. System instructions
+carry the operating rules and advertise skills mounted for the round. The snapshot is
+bounded by its sources and grants no additional rights.
+The text executor uses the admitted message in its native user role. Its turn guard
+adds a bounded reminder only when that message is missing from the model request.
+Text and turn-based voice render their native tool inventory from the mounted MCP
+server. Each tool still checks current permission and approval before acting.
+
 For a human, the reply gate returns `EXEC standard` without inference. If the effective
 profile configures Decision, the dispatcher then analyzes the message, attachments, pending
 interactions, active work and assigned Process catalog. Two independent choices identify an
-answer or follow-up to existing work and a new process to launch. The executor receives exact
+answer or follow-up to existing work and a new process to launch. When both catalogs are
+complete and empty, both choices resolve to `none` without an inference. The executor receives exact
 references and `not_evaluated`, `uncertain`, `none` or `selected` states near the end of its
 prompt. Without a model, after failure or without a sufficient conclusion, it must identify
 the pending request and select and launch a suitable Process itself when needed. A partial
@@ -922,6 +934,9 @@ references absent from the context are rejected. Its system instruction is the a
 Markdown Param `ai.task-objective-system-prompt`. The server separately injects the room,
 interlocutor, and dispatch controls. It verifies idempotency before the call and round freshness
 afterward; no intermediate object is persisted.
+When the source request already quotes the exact current messages, the prompt refers back to
+that quotation. Distinct annotations remain in the chronology, and provenance checks still
+use the full context.
 These directives never make the conversational controller plan: they use a deterministic `EXEC`
 path, then call the canonical admission operation before any
 conversational LLM runtime. On a durable Task, a message directive is a preference negotiated
@@ -1254,6 +1269,9 @@ Process declares autonomous selection from its assigned catalog when the request
 no exact workflow: `allow_and_record` retains this decision under live assignment and native
 authorization. An explicitly requested workflow cannot be replaced with another one.
 Goal cycles source their scope from the description; tracking never creates grants.
+Judgement appends its mandatory rules to the system prompt after the editable Param
+`ai.goal-tracking-system-prompt`. The judgement request carries the observations and
+tracking needed for the decision.
 
 Bounded decisions live in the active attempt, or the Task projection when no attempt exists,
 without changing the Task's business revision. `TaskActivitySnapshot` exposes a scope summary

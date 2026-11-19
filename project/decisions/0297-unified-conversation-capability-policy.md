@@ -30,6 +30,19 @@ format de sortie imposé ou jugement après réponse n'est ajouté. Les décisio
 conservent leur périmètre. Les personnalisations administratives sont préservées ; les valeurs
 effectives doivent être inspectées avant une qualification ou une mise en service.
 
+Le round texte transmet les états vivants dans un bloc de données du message utilisateur.
+Ce bloc contient les Goals actifs de l'agent courant, le travail et les interactions en cours,
+l'agenda autorisé, le rappel Memory et la continuité. Les messages admis suivent ce bloc.
+L'historique conserve ses rôles natifs. Les règles d'utilisation, la personnalité, la fiche
+de poste et les capacités montées restent dans le système. La projection ne confère aucun
+droit et le suivi Goal conserve son propre cycle. Les skills sont annoncés lorsque leur
+capacité est montée. Voix et Task conservent leur mode de projection.
+
+Decision reçoit la demande complète une fois, avec ses pièces jointes et les annotations
+d'affichage de la conversation. Le texte présente les références du travail actif et indique
+les listes d'interactions et d'attentes tronquées. Les recettes par fonction suivent les
+outils montés. Un reçu d'action confirme son résultat dans le périmètre autorisé au moment de l'appel.
+
 ## Qualification
 
 Le bench seul utilise une comparaison appariée des prompts complets avant/après. Modèle,

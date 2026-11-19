@@ -345,13 +345,21 @@ async def test_conversation_toolset_uses_complete_checked_tool_projection(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.harness import mcp_toolset
-    server = _server("conversation_task_submit")
+    from app.services import agent_registry, mcp_loader
+
+    server = mcp_loader.MountedAgentMcp("synthetic agent")
+    server.native_server = _server("conversation_task_submit")
+    server.mount(server.native_server)
+    server.mount(_server("external_lookup"), namespace="synthetic")
     built = AsyncMock(return_value=server)
 
     monkeypatch.setattr("app.services.mcp_loader.build_agent_mcp", built)
+    monkeypatch.setattr(agent_registry, "build_task_capability_context", AsyncMock(return_value=""))
+    projected_again = AsyncMock(side_effect=AssertionError("A mounted catalog must not re-read the native projection"))
+    monkeypatch.setattr(mcp_loader, "list_enabled_native_mcp_definitions", projected_again)
     resources = {"conversation_turn": object()}
 
-    toolset = await mcp_toolset.build_conversation_toolset(12, resources=resources)
+    toolset, advertisement = await mcp_toolset.build_conversation_toolset(12, resources=resources)
 
     built.assert_awaited_once_with(
         12,
@@ -361,8 +369,10 @@ async def test_conversation_toolset_uses_complete_checked_tool_projection(
         conversation_only=True,
         allowed_tool_names=None,
     )
+    projected_again.assert_not_awaited()
+    assert advertisement.tool_names == {"conversation_task_submit"}
     async with toolset:
-        assert set(await toolset.get_tools(None)) == {"conversation_task_submit"}
+        assert set(await toolset.get_tools(None)) == {"conversation_task_submit", "synthetic_external_lookup"}
 
 
 @pytest.mark.asyncio
@@ -399,7 +409,7 @@ async def test_native_compatibility_toolsets_keep_short_mcp_names(
         (("file_create", "file_search", "document_sharing", "document_share"), True, True),
         (("file_create", "memory_remember"), True, False),
         (("file_create", "document_share"), True, False),
-        (("file_create", "file_search"), False, False),
+        (("file_create", "file_search"), True, False),
         (("document_sharing", "document_share"), False, False),
         (("mindmap_create", "mindmap_read", "mindmap_edit"), False, False),
         (("mindmap_read",), False, False),
@@ -443,9 +453,12 @@ async def test_tool_advertisement_encourages_shared_documents_when_available(
     assert ("file_create(path='document://'" in advertisement.text) is expects_documents
     assert ("document_share(document_id=" in advertisement.text) is expects_sharing
     assert ("call mindmap_create to create" in advertisement.text) is ("mindmap_create" in names)
+    assert ("Choose a mind map for durable work" in advertisement.text) is ("mindmap_create" in names)
+    assert ("Read a mind map with mindmap_read" in advertisement.text) is ("mindmap_read" in names)
+    assert ("does not supply the selected node" in advertisement.text) is ("mindmap_read" in names)
     assert ("mindmap_edit(document_id=URI" in advertisement.text) is ({"mindmap_read", "mindmap_edit"} <= set(names))
     if expects_documents:
-        assert "Prefer document:// over standalone" in advertisement.text
+        assert "prefer document:// over standalone" in advertisement.text.casefold()
         assert "Markdown (.md) or HTML (.html)" in advertisement.text
         assert "editorial HTML fragment" in advertisement.text
     if expects_sharing:

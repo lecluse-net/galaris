@@ -11,7 +11,7 @@ from app.harness.checkpoint import HarnessRunCheckpoint, wrap_toolsets
 from app.harness.mcp_toolset import ExecutionEvidenceClient
 from app.harness.tests.test_checkpoint import _request
 from app.services.execution_evidence import ExecutionEvidenceMiddleware
-from app.services.contracts import EXECUTION_META_KEY
+from app.services.contracts import EXECUTION_META_KEY, current_tool_execution
 from fastmcp.tools import ToolResult
 from app.services.tool_arguments import ToolArgumentsMiddleware
 
@@ -264,6 +264,37 @@ async def test_real_mcp_validation_is_distinct_from_failure_after_side_effect(tm
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("checkpointed", [False, True])
+async def test_native_permission_rejection_establishes_only_the_effect_of_this_call(checkpointed):
+    server = FastMCP("native-permission-evidence")
+    server.add_middleware(ExecutionEvidenceMiddleware({"calendar_create_event"}))
+
+    @server.tool(name="calendar_create_event")
+    def refused() -> ToolResult:
+        execution = current_tool_execution()
+        assert execution is not None
+        execution.outcome = "rejected"
+        execution.permission_rejected = True
+        return ToolResult(content="Calendar permission revoked", is_error=True)
+
+    journal = HarnessRunCheckpoint(_request(save_checkpoint=AsyncMock())) if checkpointed else None
+    toolset = wrap_toolsets([MCPToolset(ExecutionEvidenceClient(server))], journal)[0]
+    ctx = SimpleNamespace(
+        messages=[ModelResponse(parts=[ToolCallPart("calendar_create_event", {}, "call")])],
+        tool_call_id="call",
+    )
+    failure = await toolset.call_tool(
+        "calendar_create_event", {}, ctx, SimpleNamespace(tool_def=SimpleNamespace(metadata={}))
+    )
+    assert failure["outcome"] == "rejected"
+    assert failure["code"] == "pre_execution_permission_denied"
+    assert failure["retryable"] is False
+    assert "made no change" in failure["instruction"]
+    assert "whether the target already exists or is absent" in failure["instruction"]
+    assert "authorized read of the exact target" in failure["instruction"]
+
+
+@pytest.mark.asyncio
 async def test_external_server_cannot_forge_native_rejection_evidence(tmp_path):
     server = FastMCP("external-evidence")
     server.add_middleware(ExecutionEvidenceMiddleware(set()))
@@ -283,6 +314,7 @@ async def test_external_server_cannot_forge_native_rejection_evidence(tmp_path):
                     "tool_name": "external_send",
                     "outcome": "rejected",
                     "scope_rejection": "clarify",
+                    "permission_rejected": True,
                 }
             },
         )
@@ -298,5 +330,6 @@ async def test_external_server_cannot_forge_native_rejection_evidence(tmp_path):
     )
     assert failure["outcome"] == "unknown"
     assert "retryable" not in failure
+    assert "code" not in failure
     assert "amendment" not in failure["instruction"]
     assert marker.read_text() == "sent"

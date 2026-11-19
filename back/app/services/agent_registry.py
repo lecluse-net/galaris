@@ -59,18 +59,21 @@ async def build_agent_tool_advertisement(
     include_task_only_tools: bool = False,
     resources: dict[str, Any] | None = None,
     task_id: UUID | None = None,
+    mounted_native_tool_names: frozenset[str] | None = None,
 ) -> AgentToolAdvertisement:
-    """Build a compact prompt inventory from the same authorization projection as MCP."""
+    """Render mounted native tools or resolve the projection for callers without a server."""
     from app.services import mcp_loader
 
-    definitions = await mcp_loader.list_enabled_native_mcp_definitions(
-        agent_id,
-        runtime=runtime,
-        allowed_tool_names=allowed_tool_names,
-        conversation_only=conversation_only,
-        resources=resources,
-        task_id=task_id,
-    )
+    if mounted_native_tool_names is None:
+        definitions = await mcp_loader.list_enabled_native_mcp_definitions(
+            agent_id, runtime=runtime, allowed_tool_names=allowed_tool_names,
+            conversation_only=conversation_only, resources=resources, task_id=task_id,
+        )
+    else:
+        definitions = tuple(sorted(
+            (tool for tool in mcp_loader.load_mcp_tools() if tool.name in mounted_native_tool_names),
+            key=lambda item: (item.service_code, item.name),
+        ))
 
     grouped: dict[str, list[str]] = {}
     for definition in definitions:
@@ -80,9 +83,8 @@ async def build_agent_tool_advertisement(
     if definitions:
         lines.extend(
             [
-                "Only the following native Galaris MCP functions are available in this run. "
-                "This list is rights-filtered and authoritative; do not assume that another "
-                "Galaris function is callable.",
+                "Native Galaris functions selected for this run. Use the mounted schemas "
+                "and check each result for current rights, scope and approval.",
                 "",
             ]
         )
@@ -91,15 +93,16 @@ async def build_agent_tool_advertisement(
             lines.append(f"- `{service_code}`: {rendered_names}")
 
     tool_names = frozenset(definition.name for definition in definitions)
-    if {"calendar_list", "calendar_create_event"} <= tool_names:
-        lines.append("Use your personal agenda for appointments and dated reminders when its functions are allowed; no external account is needed. "
-            "It is your time-based memory aid in conversations and Tasks: record commitments, follow-ups and things to remember at a particular time there. "
-            "Memory time anchors do not schedule reminders or execute work. "
-            "Call calendar_list() for its calendar_id, then calendar_create_event with reminder_minutes_before=0 "
-            "for a reminder at the event start, or a positive number for advance notice. A reminder creates one tracked Task. "
-            "Use Goals for durable outcomes, recurring progress and their existing scheduled reviews. Never duplicate a Goal cycle "
-            "with an agenda reminder. A Goal-related calendar entry must represent a distinct appointment or commitment. "
-            "Connected calendars are optional: use their explicit connection_id or calendar_id; never bypass a denied function.")
+    if "calendar_list" in tool_names:
+        lines.append("Use calendar_list to verify IDs, writable calendars and actions_enabled for reminders.")
+    if "calendar_create_event" in tool_names:
+        lines.append(
+            "Use calendar_create_event with an exact calendar ID and respect read-only and approval "
+            "states. With actions enabled, reminder_minutes_before=0 is at the event start and a positive "
+            "value schedules advance notice."
+        )
+    if "calendar_update_event" in tool_names:
+        lines.append("Use calendar_update_event for an existing event with its current revision.")
     if "mail" in grouped:
         lines.append("Mail supports multiple accounts, including several connections to the same provider Service. "
             "When services_list is available, use it to discover each mailbox address, connection_id and authorized functions. "
@@ -134,48 +137,42 @@ async def build_agent_tool_advertisement(
         )
     if "mindmap_create" in tool_names:
         lines.append(
-            "For a requested mind map, call mindmap_create to create a private Document and keep its canonical document:// URI. "
+            "Choose a mind map for durable work organized into branches, such as a decision tree or a grouped plan, "
+            "when the requested format allows it. Reuse a suitable accessible map. When a new map is needed, "
+            "call mindmap_create to create a private Document and keep its canonical document:// URI. "
             "Pass root_title and optionally add branches in parent-first order under root."
+        )
+    if "mindmap_read" in tool_names:
+        lines.append(
+            "Read a mind map with mindmap_read to obtain stable node IDs and the current revision. "
+            "Internal Chat can identify the open map, but does not supply the selected node. "
+            "Resolve the branch from the request and map structure; ask for its title or parent path if ambiguous."
         )
     if {"mindmap_read", "mindmap_edit"} <= tool_names:
         lines.append(
-            "Read a mind map with mindmap_read to obtain stable node IDs and the current revision. "
             "Edit it with mindmap_edit(document_id=URI, expected_revision=revision, operations=[...]). "
             "Use add, edit, move or remove. For rich content use an editorial HTML fragment in body_html with canonical resource links. "
             "Read a specific node with node_id before replacing its body. On conflict, reread and reconcile."
         )
-    if "memory" in grouped and "file_create" in tool_names:
+    if "file_create" in tool_names:
         lines.extend(
             [
                 "",
-                "Create or update a document when the requested outcome calls for durable "
-                "authored content that needs to be retained, revised or shared. A Task does not "
-                "in itself require a document: keep self-contained answers and completion "
-                "confirmations in the conversation, and use the existing business record for "
-                "operational state. Do not create an extra document merely to record an action "
-                "or demonstrate completion. Preserve the requested resource type; if its "
-                "required operation is unavailable, explain the limitation instead of "
-                "substituting a document. "
-                "When durable authored content is needed, Memory provides Galaris working "
-                "documents as its canonical home. Prefer document:// over standalone "
-                "Markdown (.md) or HTML (.html) files, even when a console is available. "
-                "Use a standalone file only when the user explicitly requests that format "
-                "or the result requires a file, such as source code or an interactive web page. "
-                "Create with "
-                "file_create(path='document://', name='Title', content='<p>...</p>'): the body "
-                "is an editorial HTML fragment inside a Galaris document, not a standalone "
-                "HTML page. Revise the same document across research, drafting and review; "
-                "keep source references in it and link related documents. Keep and cite the "
-                "exact returned document:// URI across Tasks and conversations instead of "
-                "maintaining competing copies. A temporary tool error is not deactivation: "
-                "resolve or report it without silently substituting a standalone file. Follow the "
-                "current conversation/Task action policy when creating or editing it.",
+                "For durable authored content, prefer document:// over standalone Markdown (.md) "
+                "or HTML (.html). Use file_create(path='document://', name='Title', "
+                "content='<p>...</p>') with an editorial HTML fragment. Keep the exact returned "
+                "URI and reuse the same document across revisions and Tasks. Follow the current "
+                "action policy and the document's rights. Use a standalone file when the "
+                "requested format or artifact requires it. Keep ordinary replies and action "
+                "acknowledgements in the conversation. Report a creation error without making a "
+                "substitute copy.",
             ]
         )
         if "file_search" in tool_names:
             lines.append(
-                "When a document is needed, search document:// first and update a relevant "
-                "existing document. Create a new one only when the content needs a separate home."
+                "Search document:// first. Update a relevant existing document only with a "
+                "mounted edit function and write access. Create a new one only when the "
+                "content needs a separate home."
             )
         if {"document_sharing", "document_share"} <= tool_names:
             lines.append(

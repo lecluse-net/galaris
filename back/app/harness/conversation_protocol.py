@@ -5,7 +5,7 @@ import json
 
 from pydantic_ai import ModelRetry, RunContext
 from pydantic_ai.capabilities import Hooks, RawToolArgs
-from pydantic_ai.messages import InstructionPart, ModelResponse, TextPart, ToolCallPart
+from pydantic_ai.messages import InstructionPart, ModelRequest, ModelResponse, TextPart, ToolCallPart, UserPromptPart
 from pydantic_ai.models import ModelRequestContext
 from pydantic_ai.tools import ToolDefinition
 
@@ -19,8 +19,9 @@ class ConversationTurnProtocol:
     completion. ModelRetry uses the SDK's existing bounded tool retry budget.
     """
 
-    def __init__(self, demand: str) -> None:
+    def __init__(self, demand: str, user_prompt: str) -> None:
         self.demand = demand
+        self.user_prompt = user_prompt
         self.hooks = Hooks(id="conversation-turn-protocol", before_model_request=self._before_model,
             before_tool_validate=self._before_tool, before_output_process=self._before_output)
 
@@ -50,9 +51,18 @@ class ConversationTurnProtocol:
             "or results. If a process has not yet asked its real question, do not pretend it has; "
             "an empty pending-request list is not a request to start another process. "
             "Use one or two short sentences by default, without repeated acknowledgements, emojis, "
-            "promises of updates or optional closing questions. Expand when the human asks for detail. "
-            "Current admitted message (quoted data): " + json.dumps(self.demand[:12_000], ensure_ascii=False)
+            "promises of updates or optional closing questions. Expand when the human asks for detail."
         )
+        if not any(
+            self.user_prompt in content
+            for message in reversed(messages)
+            if isinstance(message, ModelRequest) and message.run_id == ctx.run_id
+            for part in message.parts if isinstance(part, UserPromptPart)
+            for content in ((part.content,) if isinstance(part.content, str) else part.content)
+            if isinstance(content, str)
+        ):
+            # A checkpoint or history compaction can omit the original user part.
+            instructions += " Current admitted message (quoted data): " + json.dumps(self.demand[:12_000], ensure_ascii=False)
         return replace(request, messages=messages, model_request_parameters=replace(
             request.model_request_parameters, instruction_parts=[*parts, InstructionPart(
                 content=instructions, dynamic=True, name="conversation-turn-boundary")]))

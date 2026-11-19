@@ -134,6 +134,64 @@ def rescore(output: Path) -> dict[str, Any]:
     return report
 
 
+def _measurements(values: list[int | float]) -> dict[str, int | float | None]:
+    return {"measurements": len(values), "total": sum(values) if values else None,
+            "median": median(values) if values else None}
+
+
+def performance_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    rounds = [row["requests"] for row in rows if "requests" in row]
+    requests = [request for calls in rounds for request in calls]
+    per_request, per_round = {}, {}
+    for key in ("input_tokens", "output_tokens", "cache_read_tokens"):
+        per_request[key] = _measurements([call[key] for call in requests if call[key] is not None])
+        per_round[key] = _measurements([
+            sum(call[key] for call in calls) for calls in rounds
+            if calls and all(call[key] is not None for call in calls)
+        ])
+    first_text = [row.get("performance", {}).get("performance", {}).get("first_text_seconds") for row in rows]
+    return {
+        "rounds_with_gateway_records": len(rounds),
+        "requests_per_round": _measurements([len(calls) for calls in rounds]),
+        "tokens_per_request": per_request,
+        "tokens_per_round": per_round,
+        "first_text_seconds": _measurements([value for value in first_text if value is not None]),
+    }
+
+
+def reported_tokens(counter: int, *provider_values: object) -> int | None:
+    """Retain observed zeroes without treating absent provider usage as free tokens."""
+    if counter > 0 or any(type(value) is int and value >= 0 for value in provider_values):
+        return counter
+    return None
+
+
+async def request_measurements(call_ids: list[UUID]) -> list[dict[str, Any]]:
+    from sqlalchemy import select
+    from app.llm.models import LLMCall
+    from core.database import get_db_session
+    from core.util import as_dict
+
+    if not call_ids:
+        return []
+    async with get_db_session() as db:
+        rows = (await db.execute(select(
+            LLMCall.status, LLMCall.input_tokens, LLMCall.output_tokens, LLMCall.cache_read_tokens, LLMCall.usage,
+        ).where(LLMCall.id.in_(call_ids)).order_by(LLMCall.started_at, LLMCall.id))).all()
+    if len(rows) != len(call_ids):
+        raise ValueError("A benchmark request is missing from the gateway trace")
+    requests: list[dict[str, Any]] = []
+    for status, input_tokens, output_tokens, cache_read_tokens, usage in rows:
+        details = as_dict(usage.get("prompt_tokens_details") or usage.get("input_tokens_details"))
+        requests.append({
+            "status": status,
+            "input_tokens": reported_tokens(input_tokens, usage.get("prompt_tokens"), usage.get("input_tokens")),
+            "output_tokens": reported_tokens(output_tokens, usage.get("completion_tokens"), usage.get("output_tokens")),
+            "cache_read_tokens": reported_tokens(cache_read_tokens, usage.get("cache_read_tokens"), details.get("cached_tokens")),
+        })
+    return requests
+
+
 def aggregate(results: list[dict[str, Any]], *, planned: int) -> dict[str, Any]:
     """Pair repetitions, then bootstrap independent scenario clusters, not episodes."""
     variants: dict[str, Any] = {}
@@ -152,6 +210,7 @@ def aggregate(results: list[dict[str, Any]], *, planned: int) -> dict[str, Any]:
             "observations": len(rows), "passed": sum(row["passed"] for row in rows),
             "pass_rate": mean(row["passed"] for row in rows) if rows else None,
             "median_seconds": median(row["seconds"] for row in rows) if rows else None,
+            "performance": performance_summary(rows),
             "mean_tool_calls": mean(measured_calls) if measured_calls else None,
             "tool_call_measurements": len(measured_calls),
             "missing_tool_call_measurements": len(rows) - len(measured_calls),
@@ -199,6 +258,8 @@ def aggregate(results: list[dict[str, Any]], *, planned: int) -> dict[str, Any]:
                 "ties": ties, "mean_case_delta": mean(clusters) if clusters else None,
                 "case_cluster_bootstrap_95_interval": interval},
             "limitations": ["Synthetic fixtures simulate effects; no business operation executes.",
+                "First text is observed in the Lab stream, separately from tool calls. It excludes delivery by the conversation controller.",
+                "Token sums per round require a measurement for every recorded request. Missing provider counters are not zeroes.",
                 "Checks establish required calls, arguments and selected facts, not complete prose quality.",
                 "Public validation cases are not a private production holdout.",
                 "Repetitions, translations and foreground variants are clustered by scenario.",
@@ -423,6 +484,11 @@ async def benchmark(output: Path, *, repetitions: int, limits: Limits, execute: 
                         if summary.unknown_calls or summary.running_calls:
                             stop_reasons.add("unknown_or_running_cost")
                 row["seconds"] = time.monotonic() - started
+                try:
+                    row["requests"] = await request_measurements([call.call_id for call in summary.entries])
+                except Exception as error:
+                    row["measurement_error"] = type(error).__name__
+                    stop_reasons.add("request_measurement_error")
                 results.append(row)
                 with (output / "results.jsonl").open("a") as stream:
                     stream.write(json.dumps(row, ensure_ascii=False) + "\n")

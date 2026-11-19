@@ -209,6 +209,18 @@ tree, titles, plain-text notes and portable links. Styling, images, attachments
 and application-specific features stay in the original file. PDF export presents
 the text and hierarchy.
 
+### Work on a mind map with an agent
+
+In Chat, ask the agent to create a mind map, read its branches or edit them. It can
+also choose this format for a result that fits a tree, such as a plan grouped by
+workstream. Available functions and the agent's permissions determine what it can
+do. A write may require approval.
+
+If you send a message with the map open beside Chat, the context can tell the agent
+which document you are viewing. Node selection stays in the editor. Give the branch
+title and its parent if needed, for example “Under Architecture → Storage, add a
+Backups branch.”
+
 ## Current description and keywords
 
 The small **View summary** icon beside the editor title and Topic displays the current summary

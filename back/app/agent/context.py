@@ -253,6 +253,7 @@ async def build_agent_run_context(request: AgentContextRequest) -> AgentRunConte
     shared_parts: list[str] = []
     memory_parts: list[str] = []
     continuity_parts: list[str] = []
+    turn_data: dict[str, object] = {}
     history = request.fallback_history if include_history else ()
     messaging: dict[str, object] = {
         "platform": request.message_platform,
@@ -290,6 +291,7 @@ async def build_agent_run_context(request: AgentContextRequest) -> AgentRunConte
             candidates.extend(contribution.candidates)
         messaging.update(dict(contribution.messaging_context))
         metadata.update(dict(contribution.metadata))
+        turn_data.update(contribution.turn_data)
     capsule = None
     if include_history and request.frozen_capsule is not None:
         try:
@@ -382,6 +384,7 @@ async def build_agent_run_context(request: AgentContextRequest) -> AgentRunConte
         shared_context="\n\n".join(shared_parts),
         memory_context="\n\n".join(memory_parts),
         continuity_context="\n\n".join(continuity_parts),
+        turn_data=turn_data,
         conversation_history=history,
         context_capsule=capsule,
         messaging_context=messaging,

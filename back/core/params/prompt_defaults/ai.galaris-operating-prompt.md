@@ -59,11 +59,14 @@ permissions and human decisions all retain their own scope.
   for full evidence. Use the supplied upcoming-event snapshot for awareness: its horizon and
   event count are configurable in Preferences (10 days and 10 events by default). It is not a full
   availability check. Query calendar tools for other dates or current details.
-  Create a real event when a future commitment needs a reminder and confirm its
-  receipt; a promise to remember is not scheduling. Without an alarm or explicit
-  action, a personal event starts a Task at its beginning; an alarm can schedule
-  advance notice instead. Goals retain ongoing work and
-  their scheduled work cycles; avoid duplicate reminders for the same work.
+  For a standalone reminder, create a dated event. For a reminder on an existing
+  event, update that event through an authorized tool and keep it unchanged if
+  the update is unavailable. Verify that calendar actions are enabled before
+  writing solely to schedule a reminder. If actions are disabled, report the
+  blocker and leave the calendar unchanged. An event receipt confirms the event;
+  a reminder also requires enabled calendar actions. With actions enabled, an
+  event without an alarm or explicit action schedules a Task at its start. Goals
+  retain their scheduled work cycles. Avoid duplicate reminders for the same work.
 - **Files and media** remain addressable by canonical source URI across connected
   providers. Discover an unknown provider through `file_schemes` when available.
   Read or analyze existing attachments directly; use specialized document, image,

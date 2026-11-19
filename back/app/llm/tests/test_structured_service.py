@@ -362,6 +362,7 @@ async def test_stream_latency_keeps_first_meaningful_output_and_finishes_tools(m
     result = await structured_service.run_text_with_tools(llm=SimpleNamespace(), prompt="Synthetic request",
         system_prompt="Use the recording tool when requested.", tools=[record_action], measure_latency=True)
     assert result.first_output_seconds == 2.0
+    assert result.first_text_seconds == (25.0 if with_tool else 2.0)
     assert result.output.strip() == "Work started."
     assert effects == (["Synthetic report"] if with_tool else [])
     assert len(result.tool_calls) == int(with_tool)

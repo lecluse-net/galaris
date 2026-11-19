@@ -33,11 +33,13 @@ from app.agent.contracts import (
 
 _CHECKPOINT_VERSION = 5
 _COMPATIBLE_CHECKPOINT_VERSIONS = frozenset({1, 2, 3, 4, _CHECKPOINT_VERSION})
+_PRE_EXECUTION_PERMISSION_DENIED = "pre_execution_permission_denied"
 
 
 def _tool_error_result(
     error: Exception, outcome: Literal["rejected", "unknown"], *,
     scope_rejection: Literal["clarify", "deny"] | None = None,
+    permission_rejected: bool = False,
 ) -> dict[str, Any]:
     result: dict[str, Any] = {
         "schema": TOOL_ERROR_SCHEMA,
@@ -91,12 +93,20 @@ def _tool_error_result(
             "No effect occurred. Do not retry by changing arguments or tools. Inspect the current Task "
             "and replan against its current admitted scope; stop and report the blocker if it remains denied."
         )
+    elif outcome == "rejected" and permission_rejected and not isinstance(error, AuthorizationClosed):
+        result.update(code=_PRE_EXECUTION_PERMISSION_DENIED, retryable=False, instruction=(
+            "This call was refused before execution and made no change. The receipt does not establish "
+            "whether the target already exists or is absent. Explain the permission refusal. Do not retry "
+            "by changing arguments or using another action. If the user needs the current state, rely on "
+            "verified evidence or an authorized read of the exact target. Otherwise leave its state unverified."
+        ))
     return result
 
 
 def _returned_tool_error(
     result: Any, outcome: Literal["rejected", "unknown"], *,
     scope_rejection: Literal["clarify", "deny"] | None = None,
+    permission_rejected: bool = False,
 ) -> Any:
     """A returned failure is acknowledged, but cannot prove absence of remote effects."""
     failure = reported_tool_failure(result)
@@ -104,11 +114,15 @@ def _returned_tool_error(
         return result
     detail = failure.get("error") or failure.get("message") or "The tool explicitly reported failure without a diagnostic."
     message = detail if isinstance(detail, str) else json.dumps(detail, ensure_ascii=False, default=str)
-    owned = _tool_error_result(ModelRetry(message[:2_000]), outcome, scope_rejection=scope_rejection)
+    owned = _tool_error_result(ModelRetry(message[:2_000]), outcome, scope_rejection=scope_rejection,
+                               permission_rejected=permission_rejected)
     if failure.get("schema") == TOOL_ERROR_SCHEMA:
         # The instruction and outcome are Galaris-owned, even if an external
         # server copied our error schema and claimed the action had no effect.
         error: dict[str, object] = {**failure, **owned}
+        if failure.get("code") == _PRE_EXECUTION_PERMISSION_DENIED and "code" not in owned:
+            error.pop("code", None)
+            error.pop("retryable", None)
         if any(failure.get(key) != owned[key] for key in ("status", "outcome", "instruction", "error")):
             error["reported_result"] = result
         decoded = decode_tool_result(result)
@@ -1020,13 +1034,15 @@ def wrap_toolsets(
                                     "rejected" if execution.outcome == "rejected"
                                     or effect_policy == "read" else "unknown"
                                 )
-                                result = _tool_error_result(exc, tool_error_outcome, scope_rejection=execution.scope_rejection)
+                                result = _tool_error_result(exc, tool_error_outcome, scope_rejection=execution.scope_rejection,
+                                                            permission_rejected=execution.permission_rejected)
                             if tool_error_outcome is None and reported_tool_failure(result) is not None:
                                 tool_error_outcome = (
                                     "rejected" if execution.outcome == "rejected"
                                     or effect_policy == "read" else "unknown"
                                 )
-                                result = _returned_tool_error(result, tool_error_outcome, scope_rejection=execution.scope_rejection)
+                                result = _returned_tool_error(result, tool_error_outcome, scope_rejection=execution.scope_rejection,
+                                                              permission_rejected=execution.permission_rejected)
                             if execution.wait_for_children and tool_error_outcome is None:
                                 checkpoint.waiting_for_children = True
                             await checkpoint.completed(
@@ -1051,6 +1067,7 @@ def wrap_toolsets(
                                 exc, "rejected" if execution.outcome == "rejected"
                                 or effect_policy == "read" else "unknown",
                                 scope_rejection=execution.scope_rejection,
+                                permission_rejected=execution.permission_rejected,
                             )
                         else:
                             if reported_tool_failure(result) is not None:
@@ -1058,6 +1075,7 @@ def wrap_toolsets(
                                     result, "rejected" if execution.outcome == "rejected"
                                     or effect_policy == "read" else "unknown",
                                     scope_rejection=execution.scope_rejection,
+                                    permission_rejected=execution.permission_rejected,
                                 )
             except BaseException as exc:
                 error = exc

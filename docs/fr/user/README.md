@@ -530,6 +530,10 @@ publiables du round. Archiver une conversation la retire de la liste courante sa
 historique ; vous pouvez la retrouver dans les archives. La création de groupes et la gestion
 des participants ne sont pas proposées dans la messagerie interne.
 
+Dans une conversation texte, vous pouvez demander à l’agent de situer ses objectifs,
+ses tâches, ses processus et ses prochains rendez-vous. Il s’appuie sur le contexte
+disponible et sur les opérations autorisées pour vérifier les détails.
+
 Sur Android, y compris dans la PWA installée, utilisez les boutons physiques du téléphone
 pour régler le volume système pendant l’appel. Galaris conserve la lecture Web Audio et
 la réduction d’écho ; la sortie est ouverte après l’activation du microphone pour suivre

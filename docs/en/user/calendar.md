@@ -30,7 +30,8 @@ the assigned work.
 The agenda is the agent’s dated memory aid, usable from conversations and Tasks alike:
 appointments, deadlines and things to remember at a particular time. A request such as
 “remind me around 15:00 that I need to leave” should create a personal agenda event when
-the function is authorized.
+the create function is authorized and actions are enabled on that calendar. An event receipt
+confirms the appointment. Scheduled actions determine whether and when a reminder can run.
 
 The **Memory** source, selectable in the calendar list, displays the agent’s dated memories over
 the visible period. Click an occurrence to open the full Memory item in a dialog within the

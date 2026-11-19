@@ -30,6 +30,32 @@ un état de vue.
 
 Le [contrat des références documentaires](document-references.md) décrit les modes proposés par type de ressource, les commandes par mode et la composition entre formats. Les formats équipés d’un lecteur complet déclarent `embed` dans leur contribution.
 
+## Cartes mentales et agents
+
+Le Service **Document** déclare les trois outils MCP suivants. Ils peuvent être montés dans
+le Chat et dans une Task selon les fonctions autorisées, les droits sur la carte et les
+règles du contexte d’exécution. La lecture est activée par défaut. La création et l’édition
+sont déclarées **Sur demande**, avec la politique effective des connexions.
+
+| Outil | Contrat |
+|---|---|
+| `mindmap_create` | Crée un document privé pour l’agent et renvoie son URI `document://`, sa révision et l’identifiant `root`. Accepte jusqu’à 100 branches initiales, les parents avant leurs enfants. |
+| `mindmap_read` | Lit la révision enregistrée courante. La liste renvoie les identifiants stables, les parents et les résumés des nœuds. Suivre `next_offset` pour lire la suite. Avec `node_id`, l’outil renvoie le corps HTML du nœud par tranches. Suivre `next_body_offset` jusqu’à la fin. |
+| `mindmap_edit` | Applique en une seule révision un lot de 1 à 50 commandes `add`, `edit`, `move` ou `remove`. Fournir `expected_revision` et les identifiants lus. Une suppression emporte la sous-branche entière. Un conflit impose une relecture et une réconciliation. |
+
+L’agent peut choisir une carte mentale si le résultat à conserver s’organise naturellement en
+branches, par exemple un arbre de décision, une enquête ou un plan par chantier. Il respecte
+le format demandé et réutilise une carte pertinente à laquelle il a accès. Le choix du format
+se distingue de l’autorisation d’exécuter l’écriture. Une carte créée reste privée jusqu’à
+ce qu’un partage explicite accorde les droits voulus.
+
+Au moment de l’envoi dans le Chat interne, le contexte peut transmettre l’URI de la carte
+ouverte et sa révision affichée. Le contrat d’attention ne contient ni l’identifiant du
+nœud actif ni la sélection multiple. Pour une demande comme « ajoute un enfant à cette
+branche », l’agent identifie la cible à partir du message et de `mindmap_read`. Si la cible
+reste ambiguë, il demande son titre ou son chemin avant d’écrire. Le contexte d’affichage
+n’accorde aucun droit et les outils vérifient la révision et les permissions.
+
 ## Façade et responsabilités
 
 Le package public `app.document` et sa façade exportent `DocumentFormatDefinition`,

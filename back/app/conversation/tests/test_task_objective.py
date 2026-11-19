@@ -126,10 +126,17 @@ def test_task_keeps_original_request_separate_from_incomplete_context(source, or
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("source_contains_current_messages", [False, True])
 async def test_task_fields_use_standard_model_and_complete_conversation_context(
     monkeypatch: pytest.MonkeyPatch,
+    source_contains_current_messages: bool,
 ) -> None:
     turn = _turn()
+    objective_hint = "vas-y, fais-le"
+    if source_contains_current_messages:
+        source = task_objective._render_messages(turn.messages)
+        turn = replace(turn, objective=source, source_request=source)
+        objective_hint = source
     agent = SimpleNamespace(
         id=7,
         code="alice",
@@ -177,7 +184,7 @@ async def test_task_fields_use_standard_model_and_complete_conversation_context(
     prepared = await task_objective.generate_task_fields(
         turn,
         label_hint="Rapport",
-        objective_hint="vas-y, fais-le",
+        objective_hint=objective_hint,
     )
 
     assert prepared.label == "Mise à jour du rapport"
@@ -197,6 +204,9 @@ async def test_task_fields_use_standard_model_and_complete_conversation_context(
     assert kwargs["purpose"] == LLMCallPurpose.CONVERSATION_TASK_OBJECTIVE
     assert kwargs["reasoning_effort_override"] == "xhigh"
     assert "@task vas-y, fais-le" in kwargs["prompt"]
+    if source_contains_current_messages:
+        assert kwargs["prompt"].count("@task vas-y, fais-le") == 1
+        assert kwargs["prompt"].count("Prépare le rapport et conserve le HTML.") == 1
     assert "vas-y, fais-le" in kwargs["prompt"]
     assert "Prépare le rapport et conserve le HTML." in kwargs["prompt"]
     assert "Le rapport doit également être livré en PDF." in kwargs["prompt"]

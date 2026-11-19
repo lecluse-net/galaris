@@ -190,18 +190,13 @@ async def test_voice_conversation_releases_context_locks_and_keeps_audio_trace(
         "get_llm",
         AsyncMock(return_value=SimpleNamespace(id=7, llm_name="fast")),
     )
+    mounted_tools = AsyncMock(
+        return_value=(object(), SimpleNamespace(text="", tool_names=frozenset()))
+    )
     monkeypatch.setattr(
         conversation,
         "build_conversation_toolset",
-        AsyncMock(return_value=object()),
-    )
-    tool_advertisement = AsyncMock(
-        return_value=SimpleNamespace(text="", tool_names=frozenset())
-    )
-    monkeypatch.setattr(
-        conversation,
-        "build_agent_tool_advertisement",
-        tool_advertisement,
+        mounted_tools,
     )
     monkeypatch.setattr(
         conversation,
@@ -236,14 +231,11 @@ async def test_voice_conversation_releases_context_locks_and_keeps_audio_trace(
     assert [capability.id for capability in captured["capabilities"]] == ["galaris-lab"]
     assert captured["capabilities"][0].defer_loading is True
     assert "task=galaris://task/voice-task" in str(captured["system_prompt"])
-    tool_advertisement.assert_awaited_once_with(
+    mounted_tools.assert_awaited_once_with(
         request.agent_id,
-        runtime="internal",
-        conversation_only=True,
-        include_task_only_tools=True,
         resources={"conversation_turn": ANY},
     )
-    turn = tool_advertisement.await_args.kwargs["resources"]["conversation_turn"]
+    turn = mounted_tools.await_args.kwargs["resources"]["conversation_turn"]
     assert turn.origin == "voice"
     assert str(turn.round_id) == request.task_data["conversation_round_id"]
     assert turn.linked_work == request.task_data["linked_work"]

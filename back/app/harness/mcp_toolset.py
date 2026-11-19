@@ -16,7 +16,9 @@ from mcp.types import CONNECTION_CLOSED, TextContent
 from app.agent.contracts import normalize_tool_name
 from app.services.contracts import EXECUTION_META_KEY, TOOL_ARGUMENTS_META_KEY, current_tool_execution
 from app.services.agent_registry import (
+    AgentToolAdvertisement,
     build_agent_galaris_fastmcp,
+    build_agent_tool_advertisement,
     build_galaris_fastmcp,
 )
 
@@ -93,6 +95,7 @@ class ExecutionEvidenceClient(Client[Any]):
                 and evidence.get("outcome") == "rejected"
             ):
                 execution.outcome = "rejected"
+                execution.permission_rejected = evidence.get("permission_rejected") is True
                 rejection = evidence.get("scope_rejection")
                 if rejection in {"clarify", "deny"}:
                     execution.scope_rejection = rejection
@@ -143,28 +146,28 @@ async def build_conversation_toolset(
     *,
     resources: dict[str, Any],
     allowed_tool_names: Collection[str] | None = None,
-) -> Any:
-    """Build the small deny-by-default native toolset for a short conversation round."""
+) -> tuple[Any, AgentToolAdvertisement]:
+    """Build the round toolset and advertise its mounted native functions."""
 
     from pydantic_ai.mcp import MCPToolset
 
     from app.services import mcp_loader
 
-    return MCPToolset(
-        ExecutionEvidenceClient(
-            await mcp_loader.build_agent_mcp(
-                agent_id,
-                runtime="internal",
-                task_id=None,
-                resources=resources,
-                conversation_only=True,
-                allowed_tool_names=allowed_tool_names,
-            )
-        ),
+    server = await mcp_loader.build_agent_mcp(
+        agent_id, runtime="internal", task_id=None, resources=resources,
+        conversation_only=True, allowed_tool_names=allowed_tool_names,
+    )
+    toolset = MCPToolset(
+        ExecutionEvidenceClient(server),
         id=f"conversation-{agent_id}",
         max_retries=1,
         cache_tools=False,
     )
+    advertisement = await build_agent_tool_advertisement(
+        agent_id, runtime="internal", conversation_only=True, include_task_only_tools=True,
+        mounted_native_tool_names=await server.native_tool_names(),
+    )
+    return toolset, advertisement
 
 
 async def build_agent_mcp_toolset(

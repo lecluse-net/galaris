@@ -36,7 +36,10 @@ sélection de scénarios nommés. Ces contrôles et appels s'exécutent uniqueme
 jamais lors d'une conversation ordinaire. Les personnalisations des prompts restent prioritaires.
 
 Les preuves restent dans `artifacts/operating-benchmark.*` : manifeste, prompts complets,
-entrées figées, sorties, contrôles, coûts et durées. Les oracles restent hors du contexte
+entrées figées, sorties, contrôles, coûts et durées. Le rapport distingue les tokens par
+requête et par round, les lectures de cache et le nombre de requêtes. Il indique la couverture
+des compteurs fournis par le modèle. Le délai jusqu'au premier texte du flux Lab est mesuré
+séparément de la première sortie, qui peut être un appel d'outil. Les oracles restent hors du contexte
 candidat. Le rapport apparie les bras et calcule l'incertitude en rééchantillonnant les
 scénarios, en regroupant leurs répétitions, traductions et variantes conversationnelles.
 Les paires affectées par une erreur d'infrastructure sont exclues de l'estimation causale.

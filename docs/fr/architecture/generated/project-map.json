@@ -2275,6 +2275,8 @@
       },
       {
         "files": [
+          "back/app/goal/__init__.py",
+          "back/app/goal/context.py",
           "back/app/goal/events.py",
           "back/app/goal/goal_service.py",
           "back/app/goal/hierarchy.py",
@@ -2343,6 +2345,7 @@
         "files": [
           "back/app/goal/calendar.py",
           "back/app/goal/category_service.py",
+          "back/app/goal/context.py",
           "back/app/goal/events.py",
           "back/app/goal/facade.py",
           "back/app/goal/goal_service.py",
@@ -8562,7 +8565,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_action_set",
-        "line": 290,
+        "line": 291,
         "module": "app.calendar",
         "name": "calendar_action_set",
         "namespace": "calendar"
@@ -8570,7 +8573,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_actions",
-        "line": 282,
+        "line": 283,
         "module": "app.calendar",
         "name": "calendar_actions",
         "namespace": "calendar"
@@ -8578,7 +8581,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_create_event",
-        "line": 159,
+        "line": 160,
         "module": "app.calendar",
         "name": "calendar_create_event",
         "namespace": "calendar"
@@ -8586,7 +8589,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_delete_event",
-        "line": 250,
+        "line": 251,
         "module": "app.calendar",
         "name": "calendar_delete_event",
         "namespace": "calendar"
@@ -8594,7 +8597,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_event_get",
-        "line": 273,
+        "line": 274,
         "module": "app.calendar",
         "name": "calendar_event_get",
         "namespace": "calendar"
@@ -8602,7 +8605,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_events",
-        "line": 62,
+        "line": 63,
         "module": "app.calendar",
         "name": "calendar_events",
         "namespace": "calendar"
@@ -8610,7 +8613,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_find_free_slots",
-        "line": 121,
+        "line": 122,
         "module": "app.calendar",
         "name": "calendar_find_free_slots",
         "namespace": "calendar"
@@ -8618,7 +8621,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_is_available",
-        "line": 96,
+        "line": 97,
         "module": "app.calendar",
         "name": "calendar_is_available",
         "namespace": "calendar"
@@ -8634,7 +8637,7 @@
       {
         "file": "back/app/calendar/mcp.py",
         "handler": "calendar_update_event",
-        "line": 201,
+        "line": 202,
         "module": "app.calendar",
         "name": "calendar_update_event",
         "namespace": "calendar"

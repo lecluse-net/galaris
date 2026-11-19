@@ -930,10 +930,23 @@ demandent une réponse immédiate pour le travail court ; un travail long lance 
 correspondant avec `conversation_process_start`, ou crée sinon une tâche avec
 `conversation_task_submit`, sans jamais attendre leur fin.
 
+Pour le texte, les données du tour ont leur propre bloc `galaris_turn_context` côté
+utilisateur. Il reçoit les Goals actifs du seul agent, les tâches et Process en cours,
+les interactions, l'agenda, le rappel Memory et la continuité. Les messages admis
+suivent le bloc et l'historique conserve ses rôles et pièces jointes. Le système
+porte les règles et annonce les skills effectivement montés. Le snapshot est
+une donnée bornée par ses sources. Il ne confère aucun droit.
+L'exécuteur texte utilise le message admis dans son rôle utilisateur natif. Le garde
+du tour ajoute un rappel borné seulement si ce message manque dans la requête au modèle.
+Le texte et la voix par tours génèrent l'inventaire natif depuis le serveur MCP monté.
+Chaque outil vérifie encore les droits et l'approbation au moment de l'appel.
+
 Pour un humain, la porte de réponse retourne `EXEC standard` sans inférence. Si le profil
 effectif configure Décision, le dispatcher préanalyse ensuite le message, ses pièces jointes,
 les interactions en attente, les travaux actifs et le catalogue Process affecté. Deux choix
 indépendants distinguent réponse ou suivi d'un travail existant, et nouveau processus à lancer.
+Quand les deux catalogues sont complets et vides, les deux décisions valent `none`
+sans appel au modèle.
 L'exécuteur reçoit les références exactes et les états `not_evaluated`, `uncertain`, `none` ou
 `selected` vers la fin de son prompt. Sans modèle, après échec ou sans conclusion suffisante,
 il doit rechercher lui-même l'attente et choisir puis lancer le bon Process si nécessaire.
@@ -963,6 +976,9 @@ sont que des indices et les références absentes du contexte sont refusées. Sa
 le Param Markdown administrable `ai.task-objective-system-prompt`. Le serveur injecte
 séparément le salon, l'interlocuteur et les contrôles de dispatch. Il vérifie l'idempotence avant
 l'appel puis la fraîcheur du round après celui-ci ; aucun objet intermédiaire n'est persisté.
+Si la demande source cite déjà les messages courants à l'identique, le prompt renvoie à
+cette citation. Les annotations distinctes restent dans la chronologie et les contrôles de
+provenance utilisent toujours le contexte complet.
 Ces directives ne font jamais planifier le contrôleur conversationnel : elles empruntent un chemin
 déterministe `EXEC`, puis appellent l'opération canonique
 d'admission avant tout runtime LLM conversationnel. Sur une tâche durable, une directive de message
@@ -1309,6 +1325,9 @@ Process déclare la sélection autonome dans son catalogue affecté lorsque la d
 fixe aucun workflow exact : `allow_and_record` conserve cette décision sous l'affectation
 vivante et l'autorisation native. Un workflow explicitement demandé ne peut pas être remplacé
 par un autre. Les cycles Goal sourcent leur portée dans la description, sans grant issu du suivi.
+Le jugement ajoute ses règles obligatoires au prompt système, après le Param administrable
+`ai.goal-tracking-system-prompt`. La demande de jugement contient les observations et le suivi
+nécessaires à la décision.
 
 Les décisions bornées sont conservées dans la tentative active, ou la projection tâche sans
 tentative ; elles ne modifient pas la révision métier de la tâche. `TaskActivitySnapshot` expose

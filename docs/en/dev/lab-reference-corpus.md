@@ -35,7 +35,10 @@ match. `--case` selects named scenarios. These checks and calls execute only in 
 never during an ordinary conversation. Customized prompts retain their priority.
 
 Evidence stays under `artifacts/operating-benchmark.*`: manifest, complete prompts, frozen
-inputs, outputs, checks, costs and durations. Oracles never enter candidate context. Reports
+inputs, outputs, checks, costs and durations. The report tracks request counts, tokens per
+request and per round, and cache reads with measurement coverage. It measures time to first
+text in the Lab stream separately from first output, which can be a tool call.
+Oracles never enter candidate context. Reports
 pair the arms and bootstrap scenario clusters, grouping repetitions, translations and foreground
 variants. Pairs with infrastructure failures are excluded from the causal estimate.
 Missing call measurements, unknown costs and failures stay explicit. The cost threshold

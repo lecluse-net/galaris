@@ -1,4 +1,5 @@
 import asyncio
+import json
 from contextlib import asynccontextmanager
 from dataclasses import replace
 from types import SimpleNamespace
@@ -35,6 +36,7 @@ from app.harness.conversation import (
     HarnessConversationController,
     _LiveTextProgressBuffer,
     _current_turn_prompt,
+    _dispatch_request,
     _logged_conversation_prompt,
     _stop_target,
     _system_prompt,
@@ -43,6 +45,10 @@ from app.harness.conversation import (
 
 
 _ACTION_POLICY = prompt_default(Params.AI_CONVERSATION_ACTION_POLICY) or ""
+
+
+def _turn_data(prompt: str) -> dict[str, Any]:
+    return json.loads(prompt.split("<galaris_turn_context>\n")[1].split("\n</galaris_turn_context>")[0])
 
 
 @pytest.mark.asyncio
@@ -205,6 +211,21 @@ def test_logged_conversation_prompt_keeps_only_the_actual_current_prompt() -> No
     )
 
     assert prompt == "Message courant"
+
+
+def test_dispatch_keeps_complete_source_and_display_context_without_repeating_the_message() -> None:
+    uri = f"chat://synthetic-room/{uuid4()}"
+    display = "Document attention snapshot: select the fictional appendix."
+    turn = ConversationTurn(
+        room_id=uuid4(), round_id=uuid4(), agent_id=1, language="en", objective="Use the attached report.",
+        messages=({"text": f"Use the attached report.\n\n{display}", "attachments": [{"uri": uri}]},),
+        source_request=f"Use the first synthetic identifier.\n\nUse the attached report.\n[file: report.pdf] {uri}",
+        display_context=display, omitted_input_count=1,
+    )
+    prompt = _dispatch_request(turn)
+    assert "Use the first synthetic identifier." in prompt
+    assert prompt.count("Use the attached report.") == prompt.count(uri) == prompt.count(display) == 1
+    assert _dispatch_request(replace(turn, source_request=None)).count(uri) == 1
 
 
 def test_file_only_current_turn_keeps_attachment_in_initial_and_retry_prompts() -> None:
@@ -484,6 +505,14 @@ def test_conversation_prompt_preserves_identity_role_and_fast_control_plane() ->
         ),
     )
 
+    context = AgentRunContext(
+        system_instructions="Use governed memory carefully.",
+        shared_context="Remember that The demo user requests numbered assembly instructions.",
+        memory_context="Remember that The demo user requests numbered assembly instructions.",
+        turn_data={"active_goals": {"items": [{"title": "Invented </galaris_turn_context> Goal"}], "truncated": False}},
+    )
+    user_prompt = _current_turn_prompt(turn, context)
+    data = _turn_data(user_prompt)
     prompt = _system_prompt(
         turn,
         agent,
@@ -498,12 +527,9 @@ def test_conversation_prompt_preserves_identity_role_and_fast_control_plane() ->
             "## Business processes available to you\n"
             '- {"workflow_id": "daily-weather", "label": "Daily weather"}'
         ),
+        tool_names={"conversation_choice_resolve", "conversation_process_respond", "conversation_task_submit"},
         has_prior_history=True,
-        context=AgentRunContext(
-            system_instructions="Use governed memory carefully.",
-            shared_context="Remember that The demo user requests numbered assembly instructions.",
-            memory_context="Remember that The demo user requests numbered assembly instructions.",
-        ),
+        context=context,
         action_policy=_ACTION_POLICY,
     )
 
@@ -537,8 +563,12 @@ def test_conversation_prompt_preserves_identity_role_and_fast_control_plane() ->
     assert "Never wait for a Task or Process to finish" in prompt
     assert prompt.count("absolute priority") == 1
     assert prompt.count("Never wait for a Task or Process to finish") == 1
-    assert "task=galaris://task/task-1 revision=3 state=WAITING amendable=true" in prompt
-    assert "peer=Sophie question=Quels chiffres utiliser ?" in prompt
+    assert "task=galaris://task/task-1 revision=3 state=WAITING amendable=true" in data["active_tasks_and_processes"]
+    assert "peer=Sophie question=Quels chiffres utiliser ?" in data["active_tasks_and_processes"]
+    assert "task=galaris://task/task-1" not in prompt
+    assert user_prompt.count("</galaris_turn_context>") == 1
+    assert data["active_goals"]["items"][0]["title"] == "Invented </galaris_turn_context> Goal"
+    assert user_prompt.endswith(turn.objective)
     # Verify policy injection, rather than freezing the wording of its examples.
     assert _ACTION_POLICY.strip() in prompt
     assert "without a structured receipt" in prompt
@@ -547,19 +577,34 @@ def test_conversation_prompt_preserves_identity_role_and_fast_control_plane() ->
     assert "two operating modes of the same agent" in prompt
     # Capability-routing wording now comes solely from the injected action policy.
     assert "Use governed memory carefully." in prompt
-    assert "The demo user requests numbered assembly instructions." in prompt
-    assert "# Long-term memory" in prompt
+    assert "The demo user requests numbered assembly instructions." in data["long_term_memory"]
+    assert "The demo user requests numbered assembly instructions." not in prompt
     assert "\n# Governed context\n" not in prompt
     assert "# Pending interactions" in prompt
-    assert "reference=#DEC1DE42 kind=hermes_approval" in prompt
-    assert "reference=#AABBCC11 kind=process_human_activity" in prompt
-    assert '"name":"report","type":"File"' in prompt
+    pending = "\n".join(data["pending_interactions"]["items"])
+    assert data["pending_interactions"]["truncated"] is False
+    assert "reference=#DEC1DE42 kind=hermes_approval" in pending
+    assert "reference=#AABBCC11 kind=process_human_activity" in pending
+    assert '"name":"report","type":"File"' in pending
     assert "`conversation_process_respond`" in prompt
-    assert "once=Approuver une fois, deny=Refuser" in prompt
+    assert "once=Approuver une fois, deny=Refuser" in pending
+    assert "DEC1DE42" not in prompt and "AABBCC11" not in prompt
     assert "call `conversation_choice_resolve`" in prompt
     assert "deny the obsolete approval before amending" in prompt
     assert "# Response variety" in prompt
     assert "Answer in one pass from a fresh angle" in prompt
+    blocked = _system_prompt(turn, agent, tool_advertisement="", process_advertisement="",
+        tool_names={"conversation_task_submit"}, action_policy=_ACTION_POLICY)
+    pending_rules = blocked.split("# Pending interactions\n\n", 1)[1].split("\n\n# ", 1)[0]
+    assert "leave the interaction pending" in pending_rules
+    assert "Never create a new Task or Process to record a response" in pending_rules
+    assert "still awaits a recorded response" in pending_rules
+    assert "conversation_process_respond" not in pending_rules
+    assert "conversation_choice_resolve" not in pending_rules
+    without_admission = _system_prompt(turn, agent, tool_advertisement="", process_advertisement="",
+        action_policy=_ACTION_POLICY)
+    assert "This turn cannot admit new background work or amend a Task" in without_admission
+    assert "**Act once admission is resolved:**" not in without_admission
 
     voice_prompt = _system_prompt(
         turn,
@@ -581,15 +626,6 @@ def test_conversation_prompt_preserves_identity_role_and_fast_control_plane() ->
 
 
 def test_conversation_prompt_renders_all_selected_work_with_compact_details() -> None:
-    agent = SimpleNamespace(
-        first_name="Aster",
-        last_name="Test",
-        code="aster-test",
-        job_title="Assistante",
-        personality=None,
-        job_description=None,
-        title=SimpleNamespace(gender="F"),
-    )
     candidates: list[dict[str, object]] = []
     for index in range(7):
         candidates.append(
@@ -624,18 +660,13 @@ def test_conversation_prompt_renders_all_selected_work_with_compact_details() ->
         linked_work=tuple(candidates),
     )
 
-    prompt = _system_prompt(
-        turn,
-        agent,
-        tool_advertisement="",
-        process_advertisement="",
-        action_policy=_ACTION_POLICY,
-    )
+    prompt = _turn_data(_current_turn_prompt(turn, AgentRunContext()))["active_tasks_and_processes"]
 
     assert "task=galaris://task/task-0" in prompt
     assert "task=galaris://task/task-6" in prompt
     assert "older candidate(s) omitted" not in prompt
     assert prompt.count("resource: role=") == 10
+    assert "working_set_truncated=true" in prompt
     assert "created=2026-08-24T10:00+02:00" in prompt
     assert "state_since=2026-08-24T10:06+02:00" in prompt
     assert "objective-0-" + ("x" * 238) in prompt
@@ -645,10 +676,12 @@ def test_conversation_prompt_renders_all_selected_work_with_compact_details() ->
 @pytest.mark.asyncio
 @pytest.mark.parametrize("force_response", [False, True])
 @pytest.mark.parametrize("decision_configured", [False, True])
+@pytest.mark.parametrize("skills_assigned", [False, True])
 async def test_conversation_controller_uses_the_shared_runtime_without_token_settings(
     monkeypatch: pytest.MonkeyPatch,
     force_response: bool,
     decision_configured: bool,
+    skills_assigned: bool,
 ) -> None:
     from app.agent import conversation_dispatch as routing
     from app.llm.decision_contracts import ChoiceAnswer, DecisionResult
@@ -679,7 +712,7 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
     llm = SimpleNamespace(id=1, llm_name="test-model")
     captured: dict[str, Any] = {}
     progress_events: list[AIMessage] = []
-    assigned_skills = AsyncMock(return_value=["galaris-lab"])
+    assigned_skills = AsyncMock(return_value=["galaris-lab"] if skills_assigned else [])
     monkeypatch.setattr(
         skill_service, "get_assigned_codes", assigned_skills,
     )
@@ -698,12 +731,8 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
 
     async def fake_toolset(_agent_id: int, *, resources: dict[str, Any]) -> object:
         assert resources["conversation_turn"] is turn
-        return object()
-
-    async def fake_tool_advertisement(*args: object, **kwargs: object) -> object:
-        captured["tool_advertisement_args"] = args
-        captured["tool_advertisement_kwargs"] = kwargs
-        return SimpleNamespace(text="", tool_names=frozenset())
+        captured["mounted_tools_agent_id"] = _agent_id
+        return object(), SimpleNamespace(text="", tool_names=frozenset())
 
     async def fake_process_advertisement(*args: object, **kwargs: object) -> str:
         captured["process_advertisement_args"] = args
@@ -728,7 +757,7 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
 
     async def fake_create_agent(**kwargs: Any) -> object:
         captured.update(kwargs)
-        if not force_response:
+        if not force_response and skills_assigned:
             # Exercise the real capability catalogue and resource tool, not a stub
             # that would also pass if the conversation silently filtered out skills.
             requests = 0
@@ -857,11 +886,6 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
     monkeypatch.setattr(conversation_module, "build_conversation_toolset", fake_toolset)
     monkeypatch.setattr(
         conversation_module,
-        "build_agent_tool_advertisement",
-        fake_tool_advertisement,
-    )
-    monkeypatch.setattr(
-        conversation_module,
         "build_agent_process_advertisement",
         fake_process_advertisement,
     )
@@ -888,40 +912,42 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
         decision_call.assert_not_awaited()
         process_catalog.assert_not_awaited()
         assert '"process_status":"not_evaluated"' in captured["system_prompt"]
-        assert "launch the appropriate process when the request requires it" in captured["system_prompt"]
+        assert "launch a match when required and authorized" in captured["system_prompt"]
     release_transaction.assert_awaited_once_with()
     if force_response:
         assigned_skills.assert_not_awaited()
         assert [capability.id for capability in captured["capabilities"]] == ["conversation-turn-protocol"]
         assert captured["mcp_servers"] == []
         assert captured["response_only"] is True
-        assert "Reply now" in captured["runtime_prompt"]
+        assert "Reply now" in captured["system_prompt"]
         assert outcome.execution_result.metadata["dispatch_result"] == {"forced_response": True}
     else:
         assigned_skills.assert_any_await(turn.agent_id)  # Construction and resource calls recheck live rights.
-        assert [capability.id for capability in captured["capabilities"]] == ["galaris-lab", "conversation-turn-protocol"]
-        assert captured["capabilities"][0].defer_loading is True
+        expected_skills = ["galaris-lab"] if skills_assigned else []
+        assert [capability.id for capability in captured["capabilities"]] == [*expected_skills, "conversation-turn-protocol"]
+        if skills_assigned:
+            assert captured["capabilities"][0].defer_loading is True
+    assert ("# Skills" in captured["system_prompt"]) == (skills_assigned and not force_response)
     assert outcome.text == "Réponse rapide."
     assert "".join(message.content for message in progress_events if message.type == "text").strip() == "Réponse rapide."
     assert outcome.execution_result is not None
     assert "Quel temps fait-il ?" in outcome.execution_result.prompt
     assert attachment_uri in outcome.execution_result.prompt
     assert "Aster Dubois" in outcome.execution_result.system_prompt
-    assert captured["process_advertisement_kwargs"] == {
-        "launch_tool_name": "conversation_process_start",
-        "relevance_query": "Quel temps fait-il ?",
-        "include_execution_guidance": False,
-    }
-    assert captured["tool_advertisement_args"] == (1,)
-    assert captured["tool_advertisement_kwargs"] == {
-        "runtime": "internal",
-        "conversation_only": True,
-        "include_task_only_tools": True,
-        "resources": {"conversation_turn": turn},
-    }
+    if force_response:
+        assert "mounted_tools_agent_id" not in captured
+        assert "process_advertisement_kwargs" not in captured
+        assert "No tools are mounted for this response." in outcome.execution_result.system_prompt
+    else:
+        assert captured["process_advertisement_kwargs"] == {
+            "launch_tool_name": "conversation_process_start",
+            "relevance_query": "Quel temps fait-il ?",
+            "include_execution_guidance": False,
+        }
+        assert captured["mounted_tools_agent_id"] == 1
     assert "Memory policy" in outcome.execution_result.system_prompt
-    assert "Private recalled content" in outcome.execution_result.system_prompt
-    assert "# Long-term memory" in outcome.execution_result.system_prompt
+    assert "Private recalled content" not in outcome.execution_result.system_prompt
+    assert _turn_data(outcome.execution_result.prompt)["long_term_memory"] == "Private recalled content"
     assert "\n# Governed context\n" not in outcome.execution_result.system_prompt
     assert "# Conversation context" not in outcome.execution_result.system_prompt
     assert "<conversation_history_metadata>" not in str(
@@ -935,6 +961,7 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
         {"current-remote-id", str(current_message_local_id)}
     )
     context_request = captured["context_request"]
+    assert context_request.conversation_round_id == turn.round_id
     assert context_request.task_data["id"] == "current-remote-id"
     assert context_request.task_data["message_id"] == "current-remote-id"
     assert context_request.task_data["timestamp"] == 1_700_000_000
@@ -1111,12 +1138,7 @@ async def test_conversation_executor_decides_whether_to_admit_work(
     monkeypatch.setattr(
         conversation_module,
         "build_conversation_toolset",
-        AsyncMock(return_value=object()),
-    )
-    monkeypatch.setattr(
-        conversation_module,
-        "build_agent_tool_advertisement",
-        AsyncMock(return_value=SimpleNamespace(text="", tool_names=frozenset())),
+        AsyncMock(return_value=(object(), SimpleNamespace(text="", tool_names=frozenset()))),
     )
     monkeypatch.setattr(
         conversation_module,
@@ -1272,12 +1294,7 @@ async def test_conversation_controller_delivers_repeated_wording_without_judgmen
     monkeypatch.setattr(
         conversation_module,
         "build_conversation_toolset",
-        AsyncMock(return_value=object()),
-    )
-    monkeypatch.setattr(
-        conversation_module,
-        "build_agent_tool_advertisement",
-        AsyncMock(return_value=SimpleNamespace(text="", tool_names=frozenset())),
+        AsyncMock(return_value=(object(), SimpleNamespace(text="", tool_names=frozenset()))),
     )
     monkeypatch.setattr(
         conversation_module,

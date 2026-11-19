@@ -1119,7 +1119,7 @@ async def test_terminal_cycle_is_judged_once_and_stop_completes_goal(
     assert tracking_call["task_id"] == task_id
     assert tracking_call["agent_id"] == agent_id
     from app.goal.cycle_context import goal_judgement_runtime_instructions
-    assert goal_judgement_runtime_instructions() in tracking_call["prompt"]
+    assert goal_judgement_runtime_instructions() not in tracking_call["prompt"]
     assert tracking_call["system_prompt"] == (
         custom_prompt if custom_prompt is not None else await params_service.declared_default(
             Params.AI_GOAL_TRACKING_SYSTEM_PROMPT

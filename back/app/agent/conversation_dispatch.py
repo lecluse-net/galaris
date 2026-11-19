@@ -137,6 +137,10 @@ async def analyze_conversation_work(
                     process_data.append(item)
             if explicit is not None and not processes:
                 return analysis.model_copy(update={"process_status": "none" if process_complete else "uncertain"})
+            if continuity_complete and not candidates and not pending_interactions and process_complete and not processes:
+                return ConversationWorkAnalysis(
+                    continuity_status="none", process_status="none", reason="empty_catalogs",
+                )
             prompt = json.dumps({
                 "current_message": objective, "short_history": history,
                 "continuity_candidates": {key: value.model_dump(mode="json") for key, value in candidates.items()},
@@ -202,11 +206,11 @@ def conversation_work_analysis_context(analysis: ConversationWorkAnalysis | None
         + current.model_dump_json(exclude={"cost", "decision_inference"})
         + "\nFor continuity_status=not_evaluated or uncertain, identify pending questions and relevant "
         "active work yourself. An absent target never proves that the message is unrelated. "
-        "For process_status=not_evaluated or uncertain, inspect the assigned process catalog yourself "
-        "and launch the appropriate process when the request requires it. An absent recommendation "
+        "For process_status=not_evaluated or uncertain, use mounted discovery tools to inspect the assigned "
+        "catalog and launch a match when required and authorized. An absent recommendation "
         "never means no process is needed. For process_status=none, selection was evaluated over "
         "the supplied complete catalog for this message. For selected, inspect that workflow's "
-        "current contract, collect required inputs and launch it using conversation_process_start. "
+        "current contract and collect required inputs. Launch with conversation_process_start if mounted and authorized. "
         "Keep the existing Task admission policy for new work outside a suitable process. "
         "A related work item is not an answered question. A wait-position reference is a locator, "
         "not a messaging interaction reference: resolve its exact live interaction before responding. "

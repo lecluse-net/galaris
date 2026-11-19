@@ -87,6 +87,7 @@ class ToolInferenceResult:
     messages: list[Any]
     tool_calls: list[dict[str, Any]]
     first_output_seconds: float | None = None
+    first_text_seconds: float | None = None
 
 
 async def run_structured(
@@ -359,26 +360,34 @@ async def run_text_with_tools(
         retries={"tools": 1, "output": 1},
     )
     first_output_seconds: float | None = None
+    first_text_seconds: float | None = None
     started = time.monotonic()
 
     async def observe(_ctx: RunContext[None], events: AsyncIterable[AgentStreamEvent]) -> None:
-        nonlocal first_output_seconds
+        nonlocal first_output_seconds, first_text_seconds
         async for event in events:
-            if first_output_seconds is not None:
+            if first_output_seconds is not None and first_text_seconds is not None:
                 continue
             content = ""
+            text = False
             if isinstance(event, pydantic_messages.PartStartEvent):
                 if isinstance(event.part, pydantic_messages.TextPart):
                     content = event.part.content
+                    text = True
                 elif isinstance(event.part, pydantic_messages.ToolCallPart):
                     content = event.part.tool_name
             elif isinstance(event, pydantic_messages.PartDeltaEvent):
                 if isinstance(event.delta, pydantic_messages.TextPartDelta):
                     content = event.delta.content_delta
+                    text = True
                 elif isinstance(event.delta, pydantic_messages.ToolCallPartDelta):
                     content = event.delta.tool_name_delta or ""
             if content.strip():
-                first_output_seconds = time.monotonic() - started
+                elapsed = time.monotonic() - started
+                if first_output_seconds is None:
+                    first_output_seconds = elapsed
+                if text and first_text_seconds is None:
+                    first_text_seconds = elapsed
 
     with llm_call_accounting() as accounting:
         result = await agent.run(
@@ -413,6 +422,7 @@ async def run_text_with_tools(
         messages=messages,
         tool_calls=calls,
         first_output_seconds=first_output_seconds,
+        first_text_seconds=first_text_seconds,
     )
 
 

@@ -7,10 +7,11 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.agent.contracts import AgentRunContext
 from app.agent.models import Agent, Title
 from app.conversation.contracts import ConversationTurn
 from app.conversation.facade import active_work_snapshot
-from app.harness.conversation import _system_prompt
+from app.harness.conversation import _current_turn_prompt, _system_prompt
 from app.process.models import ProcessDefinition, ProcessNodeAttempt, ProcessNodeRun, ProcessRun
 from app.task.models import Task, TaskStatus
 from app.services.models import Service
@@ -96,11 +97,15 @@ async def test_live_work_prompt_keeps_old_waits_and_excludes_finished_stopped_an
         prompt = _system_prompt(turn, SimpleNamespace(code="synthetic"), executor=executor,
             tool_advertisement="", process_advertisement="",
             action_policy=prompt_default(Params.AI_CONVERSATION_ACTION_POLICY) or "")
-        assert "Which fictional planet?" in prompt
-        assert "Supply the fictional launch code." in prompt
-        assert f"galaris://task/{tasks[0].id}" in prompt
-        assert str(runs["Human question"].id) in prompt
-        assert "Excluded history" not in prompt and "Excluded hold" not in prompt
+        context = _current_turn_prompt(turn, AgentRunContext()) if executor == "conversation" else prompt
+        assert "Which fictional planet?" in context
+        assert "Supply the fictional launch code." in context
+        assert f"galaris://task/{tasks[0].id}" in context
+        assert str(runs["Human question"].id) in context
+        assert "Excluded history" not in context and "Excluded hold" not in context
+        if executor == "conversation":
+            assert "Which fictional planet?" not in prompt and "Supply the fictional launch code." not in prompt
+            assert context.endswith(turn.objective)
         assert "current message and attachments" in prompt
 
     tasks[0].status = TaskStatus.SUCCESS

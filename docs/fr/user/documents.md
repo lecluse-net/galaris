@@ -230,6 +230,18 @@ l’arborescence, les titres, les notes en texte et les liens portables. Les sty
 images, pièces jointes et fonctionnalités propres aux applications sources restent
 dans le fichier d’origine. L’export PDF présente le texte et la hiérarchie.
 
+### Travailler sur une carte avec un agent
+
+Dans le Chat, demandez à l’agent de créer une carte, de lire ses branches ou de les
+modifier. Il peut aussi choisir ce format pour un résultat qui se prête à une
+arborescence, comme un plan par chantier. Les fonctions et les droits de l’agent
+déterminent les actions possibles. Une approbation peut être nécessaire pour écrire.
+
+Si vous écrivez avec la carte ouverte à côté du Chat, le contexte peut indiquer à
+l’agent quel document vous consultez. La sélection de nœuds reste dans l’interface.
+Pour désigner une branche, donnez son titre et, si nécessaire, le nom de sa parente,
+par exemple « Sous Architecture → Stockage, ajoute une branche Sauvegardes ».
+
 ## Résumé courant et mots-clés
 
 La petite icône **Voir le résumé**, près du titre et du sujet dans l'éditeur, affiche le résumé

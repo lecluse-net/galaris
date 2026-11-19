@@ -440,6 +440,10 @@ Permissions remain configurable, and updates preserve previously saved choices.
 
 The **Messenger** entry opens Galaris’s native messaging system when it is enabled and your role has the necessary permissions. You can create separate direct conversations with an Agent, search rooms, track unread messages, reply, attach a file, record a voice note, and start a browser call. The **Activity** panel shows publishable steps and Services from the round. Archiving a conversation removes it from the current list without deleting its history; you can find it again in the archives. Internal messaging does not offer group creation or participant management.
 
+In a text conversation, you can ask the agent about its goals, tasks, processes, and
+upcoming appointments. It uses the available context and authorized operations to
+verify details.
+
 On Android, including the installed PWA, use the phone’s physical buttons to adjust system
 volume during a call. Galaris retains Web Audio playback and echo reduction; output opens
 after microphone activation to follow Android’s communication mode. Galaris no longer has

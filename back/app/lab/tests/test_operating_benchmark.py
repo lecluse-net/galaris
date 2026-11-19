@@ -12,6 +12,7 @@ from app.lab.objective_checks import check_output
 from app.services.mcp_loader import load_mcp_tools
 from core.util import validate_schema
 from scripts.benchmark_operating_knowledge import aggregate, load_cases, case_checks, model_failure, digest, prompt_baseline
+from scripts.benchmark_operating_knowledge import performance_summary, reported_tokens
 
 
 @pytest.mark.parametrize("language", ["fr", "en"])
@@ -178,3 +179,26 @@ def test_translations_share_a_statistical_cluster_and_outages_do_not_count_as_pr
     assert report["paired"]["scenario_clusters"] == 1
     assert report["paired"]["excluded_infrastructure_pairs"] == 1
     assert report["paired"]["mean_case_delta"] == 1
+
+
+def test_request_and_round_measurements_do_not_treat_unreported_cache_or_usage_as_zero():
+    def request(input_tokens, output_tokens, cache_read_tokens):
+        return dict(input_tokens=input_tokens, output_tokens=output_tokens, cache_read_tokens=cache_read_tokens)
+
+    rows = [
+        {"requests": [request(10, 2, 0), request(20, 3, 8)],
+         "performance": {"performance": {"first_output_seconds": 0.2, "first_text_seconds": 1.5}}},
+        {"requests": [request(None, None, None), request(15, 4, 0)],
+         "performance": {"performance": {"first_output_seconds": 0.3}}},
+        {"seconds": 3},  # Existing reports can be rescored without new gateway traces.
+    ]
+    result = performance_summary(rows)
+    assert result["requests_per_round"] == {"measurements": 2, "median": 2, "total": 4}
+    assert result["tokens_per_request"]["input_tokens"] == {"measurements": 3, "median": 15, "total": 45}
+    assert result["tokens_per_request"]["cache_read_tokens"] == {"measurements": 3, "median": 0, "total": 8}
+    assert result["tokens_per_round"]["input_tokens"] == {"measurements": 1, "median": 30, "total": 30}
+    assert result["tokens_per_round"]["cache_read_tokens"] == {"measurements": 1, "median": 8, "total": 8}
+    assert result["first_text_seconds"] == {"measurements": 1, "median": 1.5, "total": 1.5}
+    assert reported_tokens(0, None) is None
+    assert reported_tokens(0, 0) == 0
+    assert reported_tokens(8) == 8

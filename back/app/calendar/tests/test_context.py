@@ -146,6 +146,11 @@ async def test_agenda_context_is_bounded_chronological_and_refreshes_with_other_
     assert data["truncated"] and built.metadata["calendar_context_count"] == 10
     assert built.memory_context == "Synthetic independent memory"
     assert {item["calendar_id"] for item in data["items"]} == {feed.id, secondary.id}
+    text_round = await agent_context.build_agent_run_context(request(agent,
+        contact_memory_item_id=built.context_capsule.contact_memory_item_id, conversation_round_id=uuid4()))
+    assert text_round.turn_data["upcoming_agenda"] == data
+    assert "<upcoming_calendar_events>" not in text_round.system_instructions
+    assert "does not establish availability" in text_round.system_instructions
     # Reopening and a frozen interlocutor capsule must not freeze the agenda.
     first = events[-1]
     await service.update_calendar_event(first.calendar_id, agent.id, first.uid,
@@ -170,6 +175,77 @@ async def test_automatic_context_cannot_bypass_disabled_or_on_request_reads(db, 
     contribution = await context.calendar_context_provider(request(agent))
     assert not contribution.system_instructions and not contribution.shared_context
     assert contribution.metadata["calendar_context_enabled"] is False
+
+
+@pytest.mark.asyncio
+async def test_an_unavailable_calendar_keeps_exact_reads_incomplete(db, agent, personal):
+    _, feed = personal
+    missing = feed.id + 100_000
+    start, end = NOW, NOW + timedelta(hours=1)
+
+    for ids, complete in (([feed.id], True), ([feed.id, missing], False), ([missing], False)):
+        events = await service.event_window(agent.id, start, end, calendar_ids=ids)
+        availability = await service.availability_for_agent(agent.id, start, end, calendar_ids=ids)
+        assert not events.items
+        assert events.complete is complete
+        assert availability.complete is complete
+        assert availability.available is (True if complete else None)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("state", ["enabled", "ask", "disabled"])
+async def test_readable_calendar_does_not_claim_write_access_and_inventory_matches_tools(db, agent, personal, state):
+    from fastmcp import Client
+    from mcp.types import TextContent
+    from app.harness.mcp_toolset import build_conversation_toolset
+    from app.services import build_agent_tool_advertisement
+    from app.services.contracts import EXECUTION_META_KEY
+    from app.services.mcp_loader import build_agent_mcp
+    from core.i18n import default_language, t
+    from tests.sql_reads import measured_reads
+
+    connection, feed = personal
+    await set_connection_function_state(connection.id, "calendar_create_event", state)
+    await set_connection_function_state(connection.id, "calendar_update_event", state)
+    allowed = {"calendar_list", "calendar_events", "calendar_create_event", "calendar_update_event"}
+    async with measured_reads(db, f"conversation-inventory-before-{state}") as before_reads:
+        server = await build_agent_mcp(agent.id, conversation_only=True, resources={}, allowed_tool_names=allowed)
+        previous_inventory = await build_agent_tool_advertisement(
+            agent.id, runtime="internal", conversation_only=True, include_task_only_tools=True,
+            resources={}, allowed_tool_names=allowed,
+        )
+    async with measured_reads(db, f"conversation-inventory-after-{state}") as after_reads:
+        toolset, inventory = await build_conversation_toolset(agent.id, resources={}, allowed_tool_names=allowed)
+    assert inventory == previous_inventory
+    assert len(after_reads) < len(before_reads)
+    async with toolset:
+        assert inventory.tool_names == frozenset(await toolset.get_tools(None))
+    assert {"calendar_list", "calendar_events"} <= inventory.tool_names
+    assert ("calendar_create_event" in inventory.tool_names) == (state != "disabled")
+    assert ("Use calendar_create_event with an exact calendar ID" in inventory.text) == (state != "disabled")
+    assert ("calendar_update_event" in inventory.tool_names) == (state != "disabled")
+    assert ("Use calendar_update_event for an existing event" in inventory.text) == (state != "disabled")
+    contribution = await context.calendar_context_provider(request(agent, conversation_round_id=uuid4()))
+    assert contribution.turn_data["upcoming_agenda"]["items"] == []
+    assert "grants no calendar action" in contribution.system_instructions
+    assert "calendar_create_event" not in contribution.system_instructions
+    if state == "enabled":
+        # The assembled server can outlive the permission snapshot used for its prompt.
+        await set_connection_function_state(connection.id, "calendar_create_event", "disabled")
+        async with Client(server) as client:
+            denied = await client.call_tool("calendar_create_event", {
+                "calendar_id": feed.id, "summary": "Synthetic forbidden appointment",
+                "start": (NOW + timedelta(hours=1)).isoformat(),
+                "end": (NOW + timedelta(hours=2)).isoformat(),
+            }, raise_on_error=False)
+        assert denied.is_error
+        assert denied.meta[EXECUTION_META_KEY]["permission_rejected"] is True
+        error_text = "\n".join(part.text for part in denied.content if isinstance(part, TextContent))
+        assert t("services.call_failure_hints.permission_denied", default_language()) in error_text
+        page = await service.event_window(agent.id, NOW, NOW + timedelta(days=1))
+        assert page.total == 0
+        _, refreshed = await build_conversation_toolset(agent.id, resources={}, allowed_tool_names=allowed)
+        assert "calendar_create_event" not in refreshed.tool_names
 
 
 @pytest.mark.asyncio

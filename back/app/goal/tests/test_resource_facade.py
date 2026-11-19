@@ -1,11 +1,14 @@
 from uuid import uuid4
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.models import Agent, Title
+from app.agent.contracts import AgentContextRequest, AgentSnapshot
 from app.file_share import ResourceContext, resource_info, resource_list, resource_read, resource_search
 from app.goal.models import Goal, GoalCycle, GoalCycleStatus, GoalStatus
+from app.goal.context import conversation_goal_context
 from app.goal.tests.factories import make_goal
 from app.goal.resource_facade import (
     list_goal_cycle_resources,
@@ -32,6 +35,43 @@ async def _agents(db: AsyncSession) -> tuple[Agent, Agent]:
     db.add_all(agents)
     await db.flush()
     return agents
+
+
+@pytest.mark.asyncio
+async def test_text_round_projects_only_bounded_live_goals_of_its_agent(db: AsyncSession) -> None:
+    owner, other = await _agents(db)
+    start = datetime(2026, 11, 10, 12, tzinfo=timezone.utc)
+    goals = []
+    for index in range(13):
+        goal = await make_goal(agent_id=owner.id, title=f"Synthetic goal {index}",
+            description="Private synthetic detail.", status=GoalStatus.ACTIVE)
+        goal.next_cycle_at = start + timedelta(days=index)
+        goals.append(goal)
+    for agent, state in ((other, GoalStatus.ACTIVE), (owner, GoalStatus.PAUSED)):
+        goals.append(await make_goal(agent_id=agent.id, title="Excluded goal",
+            description="Private synthetic detail.", status=state))
+    deleted = await make_goal(agent_id=owner.id, title="Deleted goal",
+        description="Private synthetic detail.", status=GoalStatus.ACTIVE)
+    deleted.deleted_at = start
+    db.add_all([*goals, deleted])
+    await db.flush()
+
+    profile = AgentSnapshot(id=owner.id, code=owner.code, first_name="Synthetic", last_name="Agent",
+        driver_code="internal")
+    plain = await conversation_goal_context(AgentContextRequest(task_id=None, agent=profile, objective="Synthetic"))
+    assert not plain.turn_data
+    turn = AgentContextRequest(task_id=None, agent=profile, objective="Synthetic", conversation_round_id=uuid4())
+    contribution = await conversation_goal_context(turn)
+    assert contribution.turn_data["active_goals"] == {"items": [
+        {"uri": f"galaris://goal/{goal.id}", "title": goal.title, "status": "ACTIVE",
+         "next_cycle_at": (start + timedelta(days=index)).isoformat()}
+        for index, goal in enumerate(goals[:12])
+    ], "truncated": True}
+    goals[0].status = GoalStatus.COMPLETED
+    await db.flush()
+    refreshed = await conversation_goal_context(turn)
+    assert str(goals[0].id) not in str(refreshed.turn_data)
+    assert str(goals[12].id) in str(refreshed.turn_data)
 
 
 @pytest.mark.asyncio

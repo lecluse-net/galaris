@@ -731,6 +731,7 @@ async def evaluate_mechanism(
             observations["performance"] = {
                 "version": "lab-executor-stream/v1",
                 "first_output_seconds": inference.first_output_seconds,
+                "first_text_seconds": inference.first_text_seconds,
             }
         return {
             "action": _executor_action(inference.tool_calls),

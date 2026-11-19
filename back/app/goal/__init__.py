@@ -1,6 +1,7 @@
 """Long-running Goals advanced through ordinary scheduled Tasks."""
 
 from core.scheduling import PeriodicJobRegistrar
+from app.agent import register_context_provider
 
 from .document_store import (
     GoalDocumentKind,
@@ -36,6 +37,7 @@ from .schemas import (
 )
 from . import goal_service, settings_service
 from .facade import GoalOutcomeObservation, get_goal_outcome_for_task
+from .context import conversation_goal_context
 from .retrospective import (
     RetrospectiveLearning as RetrospectiveLearning,
     ensure_weekly_retrospective as ensure_weekly_retrospective,
@@ -53,6 +55,8 @@ from .resource_facade import (
     read_goal_cycle_resource,
     read_goal_resource,
 )
+
+register_context_provider("active_goals", conversation_goal_context)
 
 
 def register_scheduler_jobs(register: PeriodicJobRegistrar) -> None:

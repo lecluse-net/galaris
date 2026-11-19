@@ -1475,6 +1475,7 @@ class AgentContextRequest:
     fallback_history: tuple[Mapping[str, Any], ...] = ()
     available_history: tuple[Mapping[str, Any], ...] = ()
     frozen_capsule: Mapping[str, Any] | None = None
+    conversation_round_id: UUID | None = None
 
 
 class AgentContextCandidate(BaseModel):
@@ -1519,6 +1520,7 @@ class AgentContextContribution:
     candidates: tuple[AgentContextCandidate, ...] = ()
     messaging_context: Mapping[str, Any] = field(default_factory=dict[str, Any])
     metadata: Mapping[str, Any] = field(default_factory=dict[str, Any])
+    turn_data: Mapping[str, object] = field(default_factory=dict[str, object])
 
 
 @dataclass(frozen=True)
@@ -1533,6 +1535,7 @@ class AgentRunContext:
     context_capsule: AgentContextCapsule | None = None
     messaging_context: Mapping[str, Any] = field(default_factory=dict[str, Any])
     metadata: Mapping[str, Any] = field(default_factory=dict[str, Any])
+    turn_data: Mapping[str, object] = field(default_factory=dict[str, object])
 
 
 @dataclass(frozen=True)

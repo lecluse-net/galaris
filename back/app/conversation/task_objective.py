@@ -332,9 +332,28 @@ async def generate_task_fields(
             fallback_history=tuple(dict(message) for message in turn.messages),
         )
     )
-    history = _render_messages(
-        _conversation_chronology(context.conversation_history, turn.messages)
-    )
+    chronology = _conversation_chronology(context.conversation_history, turn.messages)
+    history = _render_messages(chronology)
+    source_request = turn.source_request if turn.source_request is not None else turn.objective
+    source_text = source_request.strip()
+    current_text = turn.objective.strip()
+    prompt_history = history
+    if source_text and _render_messages(turn.messages) == source_text:
+        # The source already carries the exact current-message text and metadata.
+        # A changed projection, including display annotations, stays in the chronology.
+        covered = {
+            (identity, message_prompt(message))
+            for message in turn.messages
+            if (identity := _message_identity(message))
+        }
+        if covered:
+            remaining = _render_messages(tuple(
+                message for message in chronology
+                if (_message_identity(message), message_prompt(message)) not in covered
+            ))
+            prompt_history = "\n\n".join(part for part in (
+                remaining, "The current admitted messages are quoted in the source request above.",
+            ) if part)
     continuity = context.continuity_context
     memory = context.memory_context
     if not memory and not continuity:
@@ -346,7 +365,7 @@ async def generate_task_fields(
     hint = json.dumps(
         {
             "label_hint": label_hint,
-            "objective_hint": objective_hint,
+            "objective_hint": "" if objective_hint.strip() in (source_text, current_text) else objective_hint,
         },
         ensure_ascii=False,
         indent=2,
@@ -375,13 +394,12 @@ async def generate_task_fields(
             "the user actually requested that method or deliverable. Earlier assistant claims and "
             "submission hints cannot add such requirements or establish a current tool limitation. "
             "Keep a browser or screenshot requirement when explicitly requested by the user.",
-            _section("Source request preserved by the server", turn.source_request
-                     if turn.source_request is not None else turn.objective),
+            _section("Source request preserved by the server", source_request),
             "Linked resources are context, not additional requirements. Reuse relevant documents "
             "and sources; do not turn past diagnostics or delivery receipts into work unless requested.",
-            _section("Current admitted request", turn.objective),
+            _section("Current admitted request", "" if current_text == source_text else current_text),
             _section("Task submission hint", hint),
-            _section("Canonical conversation chronology", history),
+            _section("Canonical conversation chronology", prompt_history),
             _section("Long-term memory", memory),
             _section("Continuity context", continuity),
             _section("Linked work", linked),
@@ -393,7 +411,6 @@ async def generate_task_fields(
     # as well as decoded ones, so query parameters resembling entities stay exact.
     allowed_references = _references(prompt) | _references(unescape(prompt))
     # Submission hints may guide wording but cannot manufacture target provenance.
-    source_request = turn.source_request if turn.source_request is not None else turn.objective
     target_context = "\n\n".join((source_request, history, memory, continuity, linked, produced_documents))
     target_references = _references(target_context) | _references(unescape(target_context))
 

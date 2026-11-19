@@ -12,7 +12,7 @@ from typing import Literal
 from pydantic import ValidationError
 
 from core.i18n import render_prompt, t
-from .contracts import ScopePreflightRejected, ToolCallRejectedError
+from .contracts import ScopePreflightRejected, ToolCallRejectedError, ToolPermissionRejectedError
 
 
 class RecoverableToolError(RuntimeError):
@@ -195,6 +195,8 @@ def classify_tool_failure(exc: Exception) -> ToolFailure:
             error_type,
             _public_error_detail(exc),
         )
+    if isinstance(exc, ToolPermissionRejectedError):
+        return ToolFailure("permission_denied", error_type, _public_error_detail(exc))
     if isinstance(exc, ToolCallRejectedError):
         # These are deliberate pre-effect rejections, including preconditions
         # checked below mcp.py (for example a missing durable-console helper).

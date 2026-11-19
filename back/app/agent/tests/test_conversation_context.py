@@ -90,6 +90,19 @@ def test_strip_leading_message_metadata_removes_echoed_json_context() -> None:
     ) == "Bonsoir !"
 
 
+def test_stream_filter_never_delivers_an_echoed_turn_snapshot() -> None:
+    filter_ = LeadingMessageMetadataFilter()
+    assert filter_.feed("\n <galaris_turn_") == ""
+    assert filter_.feed('context>\n{"private_synthetic_data":"' + "x" * 10_000) == ""
+    assert filter_.feed('"}\n</galaris_turn_') == ""
+    assert filter_.feed("context>\nRéponse au message.") == "\nRéponse au message."
+    assert filter_.metadata_removed and filter_.finish() == ""
+
+    interrupted = LeadingMessageMetadataFilter()
+    assert interrupted.feed("<galaris_turn_context>\nIncomplete synthetic snapshot.") == ""
+    assert interrupted.finish() == ""
+
+
 def test_message_prompt_keeps_context_small_and_files_beside_their_message() -> None:
     posted_at = 1_700_000_000
     expected_timestamp = (

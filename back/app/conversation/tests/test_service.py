@@ -906,6 +906,8 @@ async def test_build_turn_includes_only_the_latest_chat_document_in_the_prompt(
     assert "Document attention snapshot" not in turn.source_request
     valid_focus = focus is not None and focus["surface"] != "invalid"
     assert ("Document attention snapshot" in turn.objective) is (expected and valid_focus)
+    assert ("Chat display context" in turn.display_context) is expected
+    assert ("Document attention snapshot" in turn.display_context) is (expected and valid_focus)
     if expected and focus is not None and focus["surface"] == "rendered":
         assert '"offset":27' in turn.objective
         assert '"text":"passage"' in turn.objective

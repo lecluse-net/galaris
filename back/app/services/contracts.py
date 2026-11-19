@@ -31,6 +31,7 @@ class ToolExecutionContext:
     authorization_context: str | None = None
     scope_rejection: Literal["clarify", "deny"] | None = None
     wait_for_children: bool = False
+    permission_rejected: bool = False
 
 
 _execution: ContextVar[ToolExecutionContext | None] = ContextVar("tool_execution", default=None)
@@ -51,6 +52,10 @@ def tool_execution(context: ToolExecutionContext) -> Generator[ToolExecutionCont
 
 class ToolCallRejectedError(ValueError):
     """An explicit precondition rejected a call before any external effect."""
+
+
+class ToolPermissionRejectedError(ToolCallRejectedError):
+    """Call-time authorization rejected a mounted tool before any effect."""
 
 
 class ScopePreflightRejected(ToolCallRejectedError):

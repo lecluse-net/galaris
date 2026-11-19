@@ -28,6 +28,32 @@ layout and remains view state.
 
 The [document reference contract](document-references.md) describes available modes by resource type, per-mode commands and composition across formats. Formats with a full reader declare `embed` in their contribution.
 
+## Mind maps and agents
+
+The **Document** Service declares three MCP tools. They can be mounted in Chat and in
+a Task according to the allowed functions, the map's permissions and the runtime rules.
+Read is enabled by default. Creation and editing default to **On request**, subject to
+the effective connection policy.
+
+| Tool | Contract |
+|---|---|
+| `mindmap_create` | Creates a private document for the agent and returns its `document://` URI, revision and `root` ID. Accepts up to 100 initial branches in parent-first order. |
+| `mindmap_read` | Reads the current saved revision. The list returns stable node IDs, parents and summaries. Follow `next_offset` to read more. With `node_id`, the tool returns the node's HTML body in chunks. Follow `next_body_offset` until the end. |
+| `mindmap_edit` | Applies 1 to 50 `add`, `edit`, `move` or `remove` commands as one revision. Supply `expected_revision` and the previously read IDs. Removing a branch removes its descendants. On conflict, reread and reconcile. |
+
+An agent can choose a mind map when a durable result naturally fits into branches, such
+as a decision tree, an investigation or a plan grouped by workstream. It respects the
+requested format and reuses a suitable accessible map. Choosing a format and authorizing
+the write are separate decisions. A new map stays private until it is explicitly shared
+with the intended recipients.
+
+When a message is sent in internal Chat, its context can carry the open map's URI and
+the displayed revision. The attention contract carries neither the active node ID nor
+the multi-selection. For a request such as “add a child to this branch,” the agent resolves
+the target from the message and `mindmap_read`. If the target remains ambiguous, it asks
+for the branch title or path before writing. Display context grants no access, and tools
+check both revision and permissions.
+
 ## Facade and ownership
 
 The public `app.document` package and facade export `DocumentFormatDefinition`,

@@ -25,7 +25,7 @@ from core.database import get_db
 
 from . import goal_service, referrer_wait, retrospective, settings_service
 from .document_store import get_goal_document_store
-from .cycle_context import goal_cycle_work_instructions, goal_judgement_runtime_instructions
+from .cycle_context import goal_cycle_work_instructions
 from .facade import resolve_goal_tracking_system_prompt
 from .evaluation import evaluate_goal
 from .models import (
@@ -128,7 +128,6 @@ async def _judge_prompt(goal: Goal, cycle: GoalCycle, task: Task) -> str:
         sections.append("RECORDED WORK TOOL OBSERVATIONS (not inferred from prose):\n" +
             "\n".join(f"{item.name} success={item.success}: {item.result[:4000]}"
                       for item in observation.tools[-30:]))
-    sections.append(goal_judgement_runtime_instructions())
     return "\n\n".join(sections)
 
 

@@ -48,7 +48,7 @@ from core.i18n import render_prompt, t, tr
 from core.database import get_db
 from core.params import runtime_settings
 
-from .contracts import ScopePreflightRejected, ToolCallRejectedError, current_tool_execution
+from .contracts import ScopePreflightRejected, ToolCallRejectedError, ToolPermissionRejectedError, current_tool_execution
 from .execution_evidence import ExecutionEvidenceMiddleware
 from .tool_arguments import ToolArgumentsMiddleware
 from .schemas import McpConfig, Service as ServiceConfiguration
@@ -488,7 +488,7 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
 
                 capabilities = await effective_capabilities(ctx.agent_id, ctx.runtime)
                 if "execute" not in capabilities or not definition.required_capabilities <= capabilities:
-                    raise ToolCallRejectedError("The Harness policy no longer permits this tool call.")
+                    raise ToolPermissionRejectedError("The Harness policy no longer permits this tool call.")
                 language = await context_language(ctx)
                 async with asyncio.timeout(None) as timeout:
                     # A cancelled timer can stay queued. Its callback only needs this task,
@@ -499,7 +499,7 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                         allowed_tool_names={definition.name}, resources=ctx.resources, task_id=ctx.task_id,
                     )
                     if not visible:
-                        raise ToolCallRejectedError("This tool is no longer authorized or available in this execution.")
+                        raise ToolPermissionRejectedError("This tool is no longer authorized or available in this execution.")
                     try:
                         bound = inspect.signature(definition.function).bind(ctx, *args, **kwargs)
                     except TypeError as error:
@@ -591,6 +591,7 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
             await finish_action(authorization_id, outcome="failed" if isinstance(exc, ToolCallRejectedError) else "outcome_unknown")
             if isinstance(exc, ToolCallRejectedError) and execution is not None:
                 execution.outcome = "rejected"
+                execution.permission_rejected = isinstance(exc, ToolPermissionRejectedError)
                 if isinstance(exc, ScopePreflightRejected):
                     execution.scope_rejection = exc.decision
             failure = classify_tool_failure(exc)
@@ -1033,6 +1034,15 @@ def _external_transport(tool: Any, params: dict[str, Any]) -> Any:
     )
 
 
+class MountedAgentMcp(FastMCP):
+    """Agent server with access to its local catalog without discovering remote tools."""
+
+    native_server: FastMCP
+
+    async def native_tool_names(self) -> frozenset[str]:
+        return frozenset(tool.name for tool in await self.native_server.list_tools())
+
+
 async def build_agent_mcp(
     agent_id: int,
     *,
@@ -1043,12 +1053,12 @@ async def build_agent_mcp(
     conversation_only: bool = False,
     allowed_tool_names: Collection[str] | None = None,
     allow_stdio: bool = True,
-) -> FastMCP:
+) -> MountedAgentMcp:
     """Build an agent's aggregate native and external MCP server."""
     from app.connection import facade as connection_service
     from app.services import service
 
-    mcp: FastMCP = FastMCP(f"Galaris — Agent {agent_id}")
+    mcp = MountedAgentMcp(f"Galaris — Agent {agent_id}")
     server_ref = weakref.ref(mcp)
 
     async def run_tool_names() -> frozenset[str]:
@@ -1060,7 +1070,7 @@ async def build_agent_mcp(
             raise ToolCallRejectedError("The MCP server for this run is no longer available")
         return frozenset(tool.name for tool in await server.list_tools())
 
-    galaris_mcp = await build_agent_galaris_fastmcp(
+    mcp.native_server = await build_agent_galaris_fastmcp(
         agent_id,
         runtime=runtime,
         task_id=task_id,
@@ -1068,7 +1078,7 @@ async def build_agent_mcp(
         allowed_tool_names=allowed_tool_names,
         conversation_only=conversation_only,
     )
-    mcp.mount(galaris_mcp)
+    mcp.mount(mcp.native_server)
 
     connections = [connection for connection in await connection_service.get_connections_by_agent(agent_id)
                    if connection.active]

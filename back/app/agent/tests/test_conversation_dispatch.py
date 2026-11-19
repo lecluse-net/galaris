@@ -18,7 +18,8 @@ def inputs(monkeypatch):
         return_value=(SimpleNamespace(id=12), None, False)))
     return dict(agent=SimpleNamespace(profile_id=3), agent_id=7,
         round_id=uuid4(), run_id=uuid4(), objective="Here is the fictional code.",
-        history="Assistant: What is the fictional launch code?", active_work=(),
+        history="Assistant: What is the fictional launch code?",
+        active_work=({"kind": "task", "task_id": str(uuid4()), "operational_state": "RUNNING"},),
         pending_interactions=(), load_processes=AsyncMock(return_value=()))
 
 
@@ -26,6 +27,29 @@ def decision(continuity="none", process="none"):
     return StructuredInferenceResult(output=DecisionResult(
         answers={"continuity": ChoiceAnswer(choice=continuity), "process": ChoiceAnswer(choice=process)},
         model="synthetic-decision"), cost=0.002, messages=[])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("work_known, process_known, expected_calls", [
+    (True, True, 0),
+    (False, True, 1),
+    (True, False, 1),
+])
+async def test_empty_catalogs_avoid_inference_only_when_both_are_complete(
+    monkeypatch, inputs, work_known, process_known, expected_calls,
+):
+    inputs["active_work"] = () if work_known else None
+    if not process_known:
+        inputs["load_processes"].side_effect = PermissionError("Synthetic unavailable catalog")
+    infer = AsyncMock(return_value=decision())
+    monkeypatch.setattr(routing, "run_decision", infer)
+
+    result = await routing.analyze_conversation_work(**inputs)
+
+    assert (result.continuity_status, result.process_status) == (
+        "none" if work_known else "uncertain", "none" if process_known else "uncertain",
+    )
+    assert infer.await_count == expected_calls
 
 
 @pytest.mark.asyncio

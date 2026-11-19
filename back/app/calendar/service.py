@@ -332,9 +332,10 @@ async def event_window(agent_id: int, start: datetime, end: datetime, *, calenda
         raise ValueError("Calendar window exceeds 10000 occurrences; request a shorter date range")
     feeds_by_id = {feed.id: feed for feed in feeds}
     stale = [feed.id for feed in feeds if _stale(feed)]
+    complete = not stale and (calendar_ids is None or set(calendar_ids) <= feeds_by_id.keys())
     await get_db().commit()
     return CalendarEventWindow(items=[_event_read(feeds_by_id[occurrence.calendar_id], event, occurrence) for occurrence, event in rows],
-                             total=len(rows), complete=not stale, stale_calendar_ids=stale)
+                             total=len(rows), complete=complete, stale_calendar_ids=stale)
 
 
 async def upcoming_context_events(agent_id: int, now: datetime) -> tuple[list[CalendarEventRead], list[int], bool] | None:
@@ -386,10 +387,10 @@ async def availability_for_agent(agent_id: int, start: datetime, end: datetime, 
     unsent = await get_db().scalar(select(CalendarEvent.id).where(CalendarEvent.calendar_id.in_([
         feed.id for feed in feeds if feed.source_kind not in ("internal", "ical")]), CalendarEvent.synced_revision < CalendarEvent.revision)
         .execution_options(include_historized=True).limit(1))
-    stale = stale or unsent is not None
-    events = await events_for_agent(agent_id, start, end, limit=None, calendar_ids=calendar_ids)
-    conflicts = [event for event in events if not event.transparent and event.status.upper() != "CANCELLED"]
-    return CalendarAvailability(start=start, end=end, available=None if stale else not conflicts, complete=not stale, conflicts=conflicts)
+    window = await event_window(agent_id, start, end, calendar_ids=calendar_ids)
+    complete = not stale and unsent is None and window.complete
+    conflicts = [event for event in window.items if not event.transparent and event.status.upper() != "CANCELLED"]
+    return CalendarAvailability(start=start, end=end, available=not conflicts if complete else None, complete=complete, conflicts=conflicts)
 
 
 def _clock(value: object, fallback: str, name: str) -> time:

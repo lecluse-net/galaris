@@ -34,6 +34,8 @@ async def test_monitoring_uses_one_native_choice_without_text_or_synthesis(monke
     assert result.cost == 0.0001
     native.assert_awaited_once()
     request = native.await_args.args[0]
+    from app.goal.cycle_context import goal_judgement_runtime_instructions
+    assert request.system_prompt.count(goal_judgement_runtime_instructions()) == 1
     assert request.llm_id == 42
     assert request.request_limit == 1
     assert request.allow_text_fallback is False and request.fallback_llm_id is None

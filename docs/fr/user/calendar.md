@@ -30,7 +30,8 @@ vérifier une disponibilité ou se poser un rappel dans le cadre du travail conf
 L’agenda est le pense-bête daté de l’agent, utilisable depuis une conversation comme depuis
 une tâche : rendez-vous, échéances et choses à se rappeler à un moment donné. Une demande
 telle que « rappelle-moi vers 15 h que je dois partir » doit créer un événement dans son agenda
-personnel lorsque la fonction est autorisée.
+personnel lorsque la création est autorisée et que les actions de cet agenda sont activées.
+Le reçu confirme le rendez-vous. Les actions planifiées déterminent si et quand un rappel peut partir.
 
 La source **Mémoire**, sélectionnable dans la liste des agendas, affiche les souvenirs datés de
 l’agent sur la période consultée. Un clic ouvre la fiche Mémoire complète en modale dans
