@@ -65,6 +65,12 @@ les politiques de conversation retirent les fonctions `calendar_*` du catalogue.
 `app/calendar/tests/test_providers.py` exerce Google Calendar et Microsoft Graph sur une
 frontière HTTP synthétique : découverte et lecture seule, allers-retours en base, création
 sans doublon après perte de réponse, ETag, conservation sur réponse incomplète, journées
+`app/document/tests/test_sample_drawing.py` relit les pixels historiques, compare deux
+versions et leurs zones, et vérifie les refus d’accès.
+`app/plugin/tests/test_plugins.py` couvre les diagnostics, le catalogue signé et la reprise
+des Connexions après retrait d'un protocole. `plugin-release-lifecycle.spec.mjs` éprouve
+une archive historique figée, l'échec d'une mise à jour et le retour de l'éditeur dans la pile assemblée.
+
 entières et exceptions récurrentes au changement d’heure. `test_mcp_oauth.py` couvre aussi
 les autorisations agenda Google/Microsoft/CalDAV, la rotation des refresh tokens et
 l’indépendance des grants MCP. `mcp-oauth.spec.mjs` exerce les deux autorisations côte à

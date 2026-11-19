@@ -1,0 +1,15 @@
+{
+  "code": "sample.drawing",
+  "version": "1.0.0",
+  "label": { "fr": "Dessin (Sample)", "en": "Drawing (Sample)" },
+  "description": {
+    "fr": "Dessiner sur un canevas et retrouver ses révisions dans Documents.",
+    "en": "Draw on a canvas and reopen its revisions in Documents."
+  },
+  "contributions": [{
+    "family": "document_format",
+    "code": "sample.drawing",
+    "label": { "fr": "Document PNG éditable", "en": "Editable PNG document" },
+    "contract_version": 1
+  }]
+}

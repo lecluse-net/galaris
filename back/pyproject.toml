@@ -130,6 +130,7 @@ dev = [
 [tool.pyright]
 typeCheckingMode = "strict"
 pythonVersion = "3.14"
+extraPaths = [".."]
 include = [
     "app",
     "core",
@@ -141,6 +142,7 @@ include = [
     "file_storage_composition.py",
     "code_editor_update.py",
     "conftest.py",
+    "plugins/sample",
 ]
 
 exclude = [

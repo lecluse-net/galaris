@@ -30,6 +30,7 @@ services:
             - "${DEV_DEBUGPY_PORT:-5678}:5678"
         volumes:
             - ./back:/app
+            - ./plugins/sample:/app/plugins/sample:ro
             - ./harness_manager:/opt/galaris-harness-manager:ro
             - ./code-executor:/opt/galaris-code-deployment:ro
             - ./docs:/opt/galaris-documentation/docs:ro
@@ -55,4 +56,5 @@ services:
             target: dev-stage
         volumes:
             - ./front:/app
+            - ./plugins/sample/drawing:/app/plugins/sample/drawing:ro
             - /app/node_modules

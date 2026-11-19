@@ -3,13 +3,14 @@ import { createPinia } from 'pinia'
 import { Quasar } from 'quasar'
 import quasarUserOptions from '../quasar-user-options'
 import App from './App.vue'
-import { router } from '@/app/index/facade'
+import { prepareDevelopmentPluginSamples, router } from '@/app/index/facade'
 import i18n, { getLocale, initialLocaleReady, setLocale } from '@/core/i18n'
 import '@/app/style.scss'
 import '../pwa/register'
 
 async function initApp() {
     await initialLocaleReady
+    await prepareDevelopmentPluginSamples()
     const app = createApp(App)
 
     app.use(createPinia())

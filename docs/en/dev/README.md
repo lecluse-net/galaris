@@ -8,6 +8,8 @@ and tests remain authoritative; plans describe extensions still open.
 | Need | Reference |
 |---|---|
 | Service catalog contract | [Services](service-catalog.md) |
+| Create a declarative plugin bundle | [Plugins](plugin-bundles.md) |
+| Choose an extension point and adapt a sample | [Plugin authoring](plugin-authoring.md) |
 | Find modules, routes, models and tools | [Generated map](../architecture/generated/project-map.md) |
 | Understand boundaries and transitions | [Architecture, invariants and flows](../architecture/README.md) |
 | Understand structural choices | [Accepted decisions](../../../project/decisions/README.md) |

@@ -1,0 +1,16 @@
+{
+  "format_version": 2,
+  "code": "sample.preview",
+  "version": "1.0.0",
+  "label": { "fr": "Sample Conversion", "en": "Sample Preview Converter" },
+  "description": {
+    "fr": "Convertit une note UTF-8 de démonstration en aperçu texte temporaire.",
+    "en": "Converts a sample UTF-8 note to a temporary text preview."
+  },
+  "minimum_galaris_version": "0.1.0",
+  "maximum_galaris_version_exclusive": "1.0.0",
+  "contributions": [{
+    "family": "preview_converter", "code": "sample.preview", "contract_version": 1,
+    "label": { "fr": "Aperçu de note", "en": "Note preview" }
+  }]
+}

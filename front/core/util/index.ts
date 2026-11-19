@@ -63,7 +63,7 @@ export { default as WorkingDocumentDialog } from './components/WorkingDocumentDi
 export { documentNavigationKey } from './documentNavigation'
 export { useDocumentHistory } from './documentHistory'
 export { useDocumentFocus } from './documentFocus'
-export type { DocumentFocus, DocumentTextRange } from './documentFocus'
+export type { DocumentFocus, DocumentFocusAnchor, DocumentTextRange } from './documentFocus'
 export { default as DocumentNavigationButtons } from './components/DocumentNavigationButtons.vue'
 export { resolveWorkingDocument } from './workingDocumentEditor'
 export { default as WorkingDocumentIcon } from './components/WorkingDocumentIcon.vue'

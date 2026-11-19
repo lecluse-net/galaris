@@ -14,6 +14,7 @@ export interface DocumentFormatDescriptor {
   capability_complete: boolean
   qualification: 'not_run'
   import_extensions: string[]
+  plugin_editor?: { module_url: string; label: { fr: string; en: string } }
 }
 export function registerFormat<T extends { code: string; version: number; provider: string }>(registry: Map<string, T>, contribution: T): void {
   if (!/^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$/.test(contribution.code) || contribution.code.length > 80

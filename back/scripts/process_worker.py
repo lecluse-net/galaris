@@ -159,6 +159,7 @@ async def run_worker(fd: int) -> None:
     # providers and MCP policies. Its API lifespan is owned by the parent.
     import_module("main")
     from app.agent import register_dispatcher_output_contracts
+    from app.plugin.facade import restore_executable_plugins
     from app.process import ProcessEffectWorkers, configure_default_engine, register_scheduler_jobs
     from app.task import register_runtime_settings, scheduler
     from core.database import engine, get_db_session, wait_for_db
@@ -194,6 +195,8 @@ async def run_worker(fd: int) -> None:
     try:
         async with asyncio.timeout(25):
             await wait_for_db()
+        async with get_db_session():
+            await restore_executable_plugins()
         await load_settings()
         async with get_db_session():
             await configure_runtime_observability()

@@ -325,6 +325,13 @@ declare module 'vue-router/auto-routes' {
       { provider: ParamValue<false> },
       | never
     >,
+    '//plugin/': RouteRecordInfo<
+      '//plugin/',
+      '/plugin',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '//process/': RouteRecordInfo<
       '//process/',
       '/process',
@@ -778,6 +785,14 @@ declare module 'vue-router/auto-routes' {
         | never
       pathParamNames:
         | 'provider'
+    }
+    'app/plugin/pages/index.vue': {
+      routes:
+        | '//plugin/'
+      views:
+        | never
+      pathParamNames:
+        | never
     }
     'app/process/pages/index.vue': {
       routes:

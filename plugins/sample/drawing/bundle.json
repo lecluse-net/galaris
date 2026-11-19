@@ -1,0 +1,20 @@
+{
+  "format_version": 2,
+  "code": "sample.drawing-bundle",
+  "version": "1.1.0",
+  "label": { "fr": "Dessin (ZIP)", "en": "Drawing (ZIP)" },
+  "description": {
+    "fr": "Le codec PNG et le canevas Vue sont installés depuis le même ZIP signé.",
+    "en": "The PNG codec and Vue canvas are installed from the same signed ZIP."
+  },
+  "minimum_galaris_version": "0.3.2",
+  "maximum_galaris_version_exclusive": "1.0.0",
+  "python_requirements": ["Pillow==13.0.0"],
+  "contributions": [{
+    "family": "document_format",
+    "code": "sample.drawing-bundle",
+    "label": { "fr": "Dessin (ZIP)", "en": "Drawing (ZIP)" },
+    "version": 1,
+    "contract_version": 1
+  }]
+}

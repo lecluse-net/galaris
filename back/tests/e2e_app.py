@@ -60,6 +60,7 @@ from tests import e2e_call_recovery
 from tests import e2e_conversation_control
 from tests import e2e_process_conversations
 from tests import e2e_document_authorization
+from tests import e2e_plugin_archives
 from app.harness.executor import stream as internal_task_stream
 from app.harness.runtime import build_model_for_llm as original_model_builder
 from app.llm import LLMCallPurpose
@@ -249,8 +250,10 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+e2e_plugin_archives.configure()
 app.include_router(service_admin_fixture)
 app.include_router(e2e_document_authorization.router)
+app.include_router(e2e_plugin_archives.router)
 app.mount("/api/__test/mcp", service_admin_remote)
 
 

@@ -35,10 +35,11 @@ services:
       AUTH_SECRET_KEY: synthetic-code-auth-secret-00000001
       ENCRYPTION_MASTER_KEY: synthetic-code-encryption-key-0001
       BROWSER_EXECUTOR_TOKEN: synthetic-code-browser-token-0001
-      PYTHONPATH: /repo/back
+      PYTHONPATH: /repo/back:/repo
       LOGFIRE_SEND_TO_LOGFIRE: "false"
     volumes:
       - ${CODE_TEST_SOURCE_DIR:-.}/back:/repo/back:ro
+      - ${CODE_TEST_SOURCE_DIR:-.}/plugins/sample:/repo/plugins/sample:ro
       - ${CODE_TEST_SOURCE_DIR:-.}/code-executor/tests:/qualification:ro
     command: [python, /qualification/external_console.py]
   db:
@@ -57,7 +58,7 @@ services:
       AUTH_SECRET_KEY: synthetic-code-auth-secret-00000001
       ENCRYPTION_MASTER_KEY: synthetic-code-encryption-key-0001
       BROWSER_EXECUTOR_TOKEN: synthetic-code-browser-token-0001
-      PYTHONPATH: /repo/back
+      PYTHONPATH: /repo/back:/repo
       LOGFIRE_SEND_TO_LOGFIRE: "false"
       POSTGRES_USER: synthetic
       POSTGRES_PASSWORD: synthetic
@@ -93,6 +94,7 @@ services:
       args: { VITE_APP_ENV: dev, VITE_APP_NAME: code-qualification }
     volumes:
       - ${CODE_TEST_SOURCE_DIR:-.}/front:/app
+      - ${CODE_TEST_SOURCE_DIR:-.}/plugins/sample/drawing:/app/plugins/sample/drawing:ro
       - /app/node_modules
     depends_on:
       gateway: { condition: service_healthy }

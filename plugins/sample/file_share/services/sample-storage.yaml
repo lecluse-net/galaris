@@ -1,0 +1,23 @@
+code: sample-storage
+label: Sample Storage
+description: Read a synthetic file via the Sample Storage protocol.
+catalog:
+  format_version: 1
+  version: 1.0.0
+  minimum_galaris_version: 0.3.2
+  summary:
+    en: Read a synthetic file using an ordinary connection.
+    fr: Lit un fichier synthétique depuis une connexion ordinaire.
+capabilities:
+  - sample.storage.file_share
+file_share_config:
+  service: sample.storage
+  base_url: http://127.0.0.1:8000/api/plugin-samples/storage
+  param_map:
+    token: token
+connection_schema:
+  params:
+    token:
+      type: password
+      label: Token
+      required: true

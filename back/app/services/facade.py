@@ -26,6 +26,13 @@ from .management_scope import (
     administration_scope as administration_scope,
 )
 from .assertions import service_can_edit as service_can_edit
+from .service_catalog import (
+    ServicePreset as ServicePreset,
+    parse_catalog_definition as parse_catalog_definition,
+    preset as preset,
+    read_catalog as read_catalog,
+    register_preset_source as register_preset_source,
+)
 
 
 from .rest_contracts import RestAuth, RestConfig, RestEffectIntent, RestError, RestRequest, RestRequestRejected, RestResponse

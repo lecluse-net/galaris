@@ -94,6 +94,9 @@ COPY --from=product_docs . /opt/galaris-documentation/docs/
 COPY --from=project_docs decisions/ /opt/galaris-documentation/project/decisions/
 COPY --from=project_docs plans/ /opt/galaris-documentation/project/plans/
 
+ARG GALARIS_BUILD_REVISION=unknown
+RUN printf '%s\n' "$GALARIS_BUILD_REVISION" > /opt/galaris-revision
+
 # -----------------------------
 # Production dependencies, cached independently of application source changes.
 # -----------------------------
@@ -136,7 +139,8 @@ COPY --from=project_docs decisions/ /opt/galaris-documentation/project/decisions
 COPY --from=project_docs plans/ /opt/galaris-documentation/project/plans/
 
 # The distribution interpreter has no global pip; uv owns the application venv.
-RUN chmod +x /app/entrypoint.sh
+ARG GALARIS_BUILD_REVISION=unknown
+RUN chmod +x /app/entrypoint.sh && printf '%s\n' "$GALARIS_BUILD_REVISION" > /opt/galaris-revision
 
 USER app
 

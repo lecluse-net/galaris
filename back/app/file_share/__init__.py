@@ -34,6 +34,7 @@ from .bridges import (
     FileShareBridgeInfo,
     FileShareParamInfo,
     available_bridges,
+    prepare_plugin_file_share_bridges,
     register,
 )
 from .messenger_transport import MessengerFileTransport
@@ -125,6 +126,7 @@ __all__ = [
     "WebMetadata", "web_metadata",
     "file_share_service",
     "available_bridges",
+    "prepare_plugin_file_share_bridges",
     "register",
     "FileShareBridge",
     "FileShareBridgeInfo",

@@ -38,6 +38,7 @@ services:
             target: prod-stage
             args:
                 GALARIS_BUILD_VERSION: ${GALARIS_BUILD_VERSION:-unknown}
+                GALARIS_BUILD_REVISION: ${GALARIS_BUILD_REVISION:-unknown}
         env_file:
             - .env
         volumes:

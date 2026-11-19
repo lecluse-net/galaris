@@ -1,0 +1,4 @@
+[
+  { "sku": "DEMO-001", "quantity": 3, "available": true },
+  { "sku": "DEMO-002", "quantity": 0, "available": false }
+]

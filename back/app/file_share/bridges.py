@@ -6,6 +6,7 @@ for resolved configuration. Future plugins may call ``register`` dynamically.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any, Callable, Dict
 
@@ -65,6 +66,7 @@ class FileShareBridge:
     build: Callable[[str, Dict[str, str]], FileTransport]
     supports_share: bool = False
     indexing_modes: tuple[FileIndexingMode, ...] = ("excluded", "known_uris")
+    writable: bool = True
 
     def info(self) -> FileShareBridgeInfo:
         return FileShareBridgeInfo(
@@ -77,6 +79,7 @@ class FileShareBridge:
 
 
 BRIDGES: Dict[str, FileShareBridge] = {}
+_plugin_bridges: dict[str, FileShareBridge] = {}
 
 
 def register(bridge: FileShareBridge) -> None:
@@ -84,25 +87,45 @@ def register(bridge: FileShareBridge) -> None:
     BRIDGES[bridge.service] = bridge
 
 
+def prepare_plugin_file_share_bridges(bridges: Iterable[FileShareBridge]) -> Callable[[], None]:
+    prepared: dict[str, FileShareBridge] = {}
+    for bridge in bridges:
+        if bridge.service in BRIDGES or bridge.service in prepared:
+            raise ValueError(f"Duplicate file-sharing protocol: {bridge.service}")
+        if len({param.key for param in bridge.params}) != len(bridge.params):
+            raise ValueError(f"Duplicate connection parameter for {bridge.service}")
+        prepared[bridge.service] = bridge
+
+    def publish() -> None:
+        global _plugin_bridges
+        _plugin_bridges = prepared
+
+    return publish
+
+
+def find_bridge(service: str) -> FileShareBridge | None:
+    return BRIDGES.get(service) or _plugin_bridges.get(service)
+
+
 def _message(key: str, language: str | None = None, **values: Any) -> str:
     return render_prompt(t(f"file_share.errors.{key}", language), **values)
 
 
 def get_bridge(service: str, *, language: str | None = None) -> FileShareBridge:
-    bridge = BRIDGES.get(service)
+    bridge = find_bridge(service)
     if bridge is None:
         raise ValueError(_message(
             "unknown_bridge",
             language,
             service=service,
-            available=", ".join(BRIDGES) or "none",
+            available=", ".join((*BRIDGES, *_plugin_bridges)) or "none",
         ))
     return bridge
 
 
 def available_bridges() -> list[FileShareBridgeInfo]:
     """Return available bridges for dynamic configuration forms."""
-    return [b.info() for b in BRIDGES.values()]
+    return [b.info() for b in (*BRIDGES.values(), *_plugin_bridges.values())]
 
 
 # =============================================================================

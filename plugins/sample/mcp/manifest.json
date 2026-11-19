@@ -1,0 +1,17 @@
+{
+  "format_version": 1,
+  "code": "sample.mcp",
+  "version": "1.0.0",
+  "label": { "en": "Sample MCP", "fr": "Sample MCP" },
+  "description": { "en": "MCP HTTP preset with an endpoint supplied by the connection.", "fr": "Préréglage MCP HTTP dont le point d’entrée est renseigné dans la Connexion." },
+  "minimum_galaris_version": "0.1.0",
+  "maximum_galaris_version_exclusive": "1.0.0",
+  "contributions": [
+    {
+      "family": "service_preset",
+      "code": "sample-mcp",
+      "label": { "en": "Sample MCP Service", "fr": "Service Sample MCP" },
+      "contract_version": 1
+    }
+  ]
+}

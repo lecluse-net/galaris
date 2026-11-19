@@ -49,6 +49,7 @@ les comptes distants réels ou la réserve indépendante encore manquants.
 | [lab-evaluation-mecanismes-ia.md](lab-evaluation-mecanismes-ia.md) | `in-progress` | Campagnes annotées réelles, séparation des variances, comparabilité/tendances, gardes, portabilité, campagnes de modèles de décision et mocks d'applications Process. |
 | [ordonnancement-llm-par-fournisseur.md](ordonnancement-llm-par-fournisseur.md) | `partial` | Provenance exhaustive en amont, priorités par opération, transports non tracés, coordination multi-backend et qualification fournisseur/charge. |
 | [programmes-documentaires-json.md](programmes-documentaires-json.md) | `partial` | Parcours d'autorisation des nouvelles applications avec données et qualification création/utilisation/persistance/partage/amélioration par un agent. |
+| [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `partial` | Archives signées, formats binaires, profils IA, aperçus, modèles Données, protocoles File Share et catalogue HTTPS administré. Autres protocoles, isolation tierce, schéma propre et publication officielle restent ouverts. |
 
 ## Conceptions
 
@@ -57,7 +58,6 @@ les comptes distants réels ou la réserve indépendante encore manquants.
 | [cartes-mentales-documentaires.md](cartes-mentales-documentaires.md) | `design` | Socle des formats disponible ; éditeur natif à placement automatique, contenus complets, thèmes et qualifications restent à réaliser. Référence Planner à préciser. |
 | [migration-progressive-rust.md](migration-progressive-rust.md) | `design` | Prototypes de runtimes, protocole d'hôte et qualification sans régression ; Pydantic AI conservé comme référence. Aucun driver Rust intégré ni gain démontré. |
 | [supervision-execution-llm.md](supervision-execution-llm.md) | `design` | Pilote petit/gros exécuteur, vérification métier indépendante, attente fournisseur, parcours persistant, puis supervision et escalade expérimentales. |
-| [infrastructure-plugins-galaris.md](infrastructure-plugins-galaris.md) | `design` | Ports des formats et TCK disponibles ; bundle, installation, activation par génération, certification et store signé restent à réaliser. |
 | [controle-distant-vnc.md](controle-distant-vnc.md) | `design` | Connexion VNC, captures MCP, simulation clavier/souris, sessions isolées et reprise humaine ; client RFB et compatibilité OS/serveurs à qualifier. |
 | [consolidation-parametrique-lora.md](consolidation-parametrique-lora.md) | `design` | Gain à mesurer, corpus gouverné, trainer/serving à qualifier, invalidation et promotion dépendant des gardes du Lab. |
 | [cible.md](cible.md) | `design` | Distribution publique, gouvernance d'effets, releases d'agents, autonomie événementielle, collaboration, interopérabilité, flotte et écosystème. |

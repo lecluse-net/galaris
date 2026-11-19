@@ -1,0 +1,24 @@
+code: sample-mcp
+label: Sample MCP
+description: |
+  Set the address of a Streamable HTTP MCP server in the connection.
+  Renseigner l’adresse d’un serveur MCP Streamable HTTP dans la Connexion.
+catalog:
+  format_version: 1
+  version: 1.0.0
+  summary:
+    en: Illustrates MCP over HTTP with a connection-specific endpoint.
+    fr: Illustre MCP sur HTTP avec un point d’entrée propre à la Connexion.
+capabilities:
+  - http.mcp
+mcp_config:
+  type: http
+  auth:
+    type: none
+    url_param: url
+connection_schema:
+  params:
+    url:
+      type: string
+      label: URL
+      required: true

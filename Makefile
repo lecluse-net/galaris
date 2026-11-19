@@ -22,6 +22,8 @@ WEBRTC_TURN_MODE ?= embedded
 POSTGRES_MODE ?= embedded
 override GALARIS_BUILD_VERSION := $(shell git describe --tags --exact-match 2>/dev/null || git symbolic-ref --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null || printf unknown)
 export GALARIS_BUILD_VERSION
+override GALARIS_BUILD_REVISION := $(shell git rev-parse HEAD 2>/dev/null || printf unknown)
+export GALARIS_BUILD_REVISION
 
 # Base compose command configuration
 COMPOSE_FILES := -f compose.yaml

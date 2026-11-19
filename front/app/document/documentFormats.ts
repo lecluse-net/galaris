@@ -1,6 +1,8 @@
 import { defineAsyncComponent, markRaw, shallowReactive } from 'vue'
 import type { Component } from 'vue'
+import type { DocumentFocusAnchor } from '@/core/util'
 import type { preparePortableDocumentSnapshot } from '@/core/util/facade'
+import type { pluginHost } from './pluginHost'
 import { registerFormat } from './formatRegistry'
 import type { DocumentFormatDescriptor } from './formatRegistry'
 
@@ -18,6 +20,7 @@ export interface DocumentFormatEditorHandle {
   insertResource?: (html: string) => void
   flush?: () => Promise<boolean>
   discardDraft?: () => Promise<void> | void
+  captureFocus?: () => DocumentFocusAnchor | null
 }
 export interface DocumentFormatContribution {
   code: string
@@ -25,21 +28,24 @@ export interface DocumentFormatContribution {
   provider: string
   icon: string
   label: string
+  localizedLabel?: { fr: string; en: string }
   editor: Component
   snapshot: Snapshot
   validateDraft: (source: string) => boolean
   embed?: Component
   preview?: Component
   storageKind?: 'text' | 'file'
+  nativeExtension?: string
 }
 
 const contributions = new Map<string, DocumentFormatContribution>()
+const bundled = new Map<string, { url: string; contribution: DocumentFormatContribution }>()
 export const documentFormats = shallowReactive<DocumentFormatContribution[]>([])
 export const documentFormatCatalogue = shallowReactive<DocumentFormatDescriptor[]>([])
 let catalogueLoaded = false
 
 function refresh(): void {
-  documentFormats.splice(0, documentFormats.length, ...[...contributions.values()].filter(value =>
+  documentFormats.splice(0, documentFormats.length, ...[...contributions.values(), ...Array.from(bundled.values(), value => value.contribution)].filter(value =>
     !catalogueLoaded || documentFormatCatalogue.some(server => server.code === value.code && server.version === value.version && server.provider === value.provider)))
 }
 /** Native modules and the future effective plugin loader use the same port. */
@@ -52,10 +58,21 @@ export function registerDocumentFormat(contribution: DocumentFormatContribution)
 export function setDocumentFormatCatalogue(catalogue: DocumentFormatDescriptor[]): void {
   documentFormatCatalogue.splice(0, documentFormatCatalogue.length, ...catalogue)
   catalogueLoaded = true
+  const current = new Set<string>()
+  for (const descriptor of catalogue) {
+    const url = descriptor.plugin_editor?.module_url
+    if (!url || descriptor.storage_kind !== 'file' || contributions.has(descriptor.code)
+      || !/^\/api\/plugins\/assets\/[a-f0-9]{64}\/[a-z0-9.-]+\.mjs$/.test(url)) continue
+    current.add(descriptor.code)
+    if (bundled.get(descriptor.code)?.url !== url) {
+      bundled.set(descriptor.code, { url, contribution: bundledFormat(descriptor, url) })
+    }
+  }
+  for (const code of bundled.keys()) if (!current.has(code)) bundled.delete(code)
   refresh()
 }
 export function findDocumentFormat(code = 'text', version?: number): DocumentFormatContribution | undefined {
-  const contribution = contributions.get(code)
+  const contribution = contributions.get(code) ?? bundled.get(code)?.contribution
   if (!contribution || (version !== undefined && version !== contribution.version)) return undefined
   if (catalogueLoaded && !documentFormatCatalogue.some(server => server.code === contribution.code
     && server.version === contribution.version && server.provider === contribution.provider)) return undefined
@@ -66,6 +83,32 @@ const fallback: DocumentFormatContribution = {
   editor: defineAsyncComponent(() => import('./components/UnavailableDocumentFormat.vue')),
   snapshot: async source => `<pre>${source.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</pre>`,
   validateDraft: () => false,
+}
+
+export function formatDisplayLabel(format: DocumentFormatContribution, translate: (key: string) => string, locale: string): string {
+  return format.localizedLabel?.[locale === 'fr' ? 'fr' : 'en'] ?? translate(format.label)
+}
+
+type PluginPresentation = Pick<DocumentFormatContribution, 'editor' | 'preview' | 'embed' | 'snapshot'>
+
+function bundledFormat(descriptor: DocumentFormatDescriptor, url: string): DocumentFormatContribution {
+  let loading: Promise<PluginPresentation> | undefined
+  function load(): Promise<PluginPresentation> {
+    loading ??= Promise.all([
+      import('./pluginHost'),
+      import(/* @vite-ignore */ url) as Promise<{ createFormat: (host: typeof pluginHost) => PluginPresentation }>,
+    ]).then(([host, module]) => module.createFormat(host.pluginHost)).catch(error => { loading = undefined; throw error })
+    return loading
+  }
+  return {
+    code: descriptor.code, provider: descriptor.provider, version: descriptor.version,
+    icon: descriptor.icon, label: 'documents.formatUnavailable', localizedLabel: descriptor.plugin_editor?.label,
+    storageKind: 'file', nativeExtension: descriptor.import_extensions[0], validateDraft: () => true,
+    editor: markRaw(defineAsyncComponent({ loader: async () => (await load()).editor, errorComponent: fallback.editor })),
+    preview: markRaw(defineAsyncComponent({ loader: async () => (await load()).preview ?? fallback.editor, errorComponent: fallback.editor })),
+    embed: descriptor.capabilities.embed === 'native' ? markRaw(defineAsyncComponent({ loader: async () => (await load()).embed ?? fallback.editor, errorComponent: fallback.editor })) : undefined,
+    snapshot: async (...args) => (await load()).snapshot(...args),
+  }
 }
 export function documentFormat(code?: string, version?: number): DocumentFormatContribution {
   return findDocumentFormat(code, version) ?? fallback

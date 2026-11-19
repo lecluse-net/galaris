@@ -416,6 +416,14 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 - Additional conditions : —
 - Sources : `front/core/authorize/navigation.ts`
 
+## Administer → Plugins
+
+- Route : `/plugin`
+- Purpose : Install and manage extensions for this instance.
+- Menu visibility (privileges) : (PLUGIN_ACCESS OR PLUGIN_EDIT)
+- Additional conditions : —
+- Sources : `front/app/plugin/navigation.ts`
+
 ## Developers → Visual reference
 
 - Route : `/graphic-reference`

@@ -7,9 +7,15 @@ export interface DocumentTextRange {
   truncated: boolean
 }
 
+export type DocumentFocusAnchor =
+  | { kind: 'point'; x: number; y: number }
+  | { kind: 'rectangle'; x: number; y: number; width: number; height: number }
+
 export interface DocumentFocus {
   revision: number
-  surface: 'rendered' | 'source' | 'dataset'
+  surface: 'rendered' | 'source' | 'dataset' | 'format'
+  document_format?: string
+  anchor?: DocumentFocusAnchor
   selection: DocumentTextRange | null
   cursor: { offset: number; before: string; after: string } | null
   viewport: DocumentTextRange | null

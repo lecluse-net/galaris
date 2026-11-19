@@ -12,10 +12,10 @@ not make it a Data-format document.
 The public `app.document` package and facade export `DocumentFormatDefinition`,
 `register_document_format`, `document_formats`, `document_format_definition`,
 `document_format_catalogue`, `document_source`, `extract_document_content` and
-`remap_document_references`. Native modules and future plugins use the same contract.
+`remap_document_references`. Native modules and signed plugins use the same contract.
 Registration rejects collisions, reserved historical codes and incompatible versions.
-It happens during generation composition; no plugin installer or arbitrary hot code
-loading is introduced.
+Archive-loaded formats require signatures from publishers authorized by the
+[bundle contract](plugin-bundles.md).
 
 Documents owns identity, owners, ACLs, classification, revisions, conflicts and content
 publication. Process retains BPMN definitions and Memory retains private memories.
@@ -66,6 +66,46 @@ block and open actions; fallback rendering is a card/thumbnail. Nested integrati
 repeated visits and bound depth. Sharing a host document grants no access to embedded resources.
 Process input constraints compare the actual format code even when formats share a MIME,
 while retaining resource access checks.
+
+## Document toolbar
+
+Use `DocumentToolbar` for the format's main toolbar. The component follows the visual
+reference and provides groups, tooltips and keyboard navigation. The declarative
+toolbar stays at the top of the editing area while scrolling. A native editor imports
+it from `@/app/document`. A browser module compiled for a ZIP uses the same component
+from `host.DocumentToolbar` in `createFormat(host)`.
+
+The format supplies reactive `DocumentToolbarGroup[]` groups with an `id` and a
+`label`. Each command has an `id` unique within the toolbar and a translated
+`label`. The component emits `command(id, value?)`. The format runs the action and
+publishes the updated state through its groups.
+
+| Command kind | Properties |
+|---|---|
+| `button` | `icon` from the visual reference catalogue and optional `showLabel`, `primary` or `busy` |
+| `toggle` | Button properties and the controlled `pressed` state |
+| `color` | `value`, a CSS hex color supported by a native color input |
+| `range` | `value`, `min`, `max` and optional `step` |
+
+A button or toggle marked `secondary` moves into **More tools** below 1024 px.
+Secondary commands also have an icon and a label. Color and range inputs remain
+in their groups. Use `disabled` when an action is currently unavailable. Pass
+`readonly` for read-only content. A command that still applies, such as Copy,
+declares `readOnly: true`. The historical reader renders its own read-only view.
+
+```vue
+<DocumentToolbar
+  :label="t('editor.tools')"
+  :groups="toolbarGroups"
+  :readonly="source.readonly"
+  @command="runCommand"
+/>
+```
+
+Drawing uses this contract for canvas commands and tool state. Revision control and
+saving continue through `DocumentContentSource`.
+[TypeScript contracts](../../../front/core/util/documentToolbar.ts)
+· Example in `plugins/sample/drawing/DrawingEditor.vue`
 
 ## Attachments, conversion and export
 
@@ -122,8 +162,7 @@ its revisions and frozen run graphs without changing run states or user values.
 Interrupted transfers preserve their sources and resume. `document://` and `data://` remain stable. Missing formats/versions
 are never interpreted as HTML; source, metadata, rights and revisions remain recoverable.
 
-This contract prepares plugin contributions. Installation, signatures, effective
-generations, untrusted-code isolation and certification publication remain part of the
+Untrusted code isolation and certification publication remain part of the
 [plugin work](../../../project/plans/infrastructure-plugins-galaris.md). Format-version
 migrations and coherent multi-file snapshots require their own policy; silent conversion
 is never allowed.

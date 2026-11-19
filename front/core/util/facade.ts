@@ -1,4 +1,9 @@
 // Bootstrap consumers share the public primitives without importing the component catalogue.
+import { defineAsyncView } from './asyncView'
+
+export const DocumentToolbar = /* @__PURE__ */ defineAsyncView(() => import('./components/DocumentToolbar.vue'))
+export const DocumentToolbarFrame = /* @__PURE__ */ defineAsyncView(() => import('./components/DocumentToolbarFrame.vue'))
+export type { DocumentToolbarCommand, DocumentToolbarGroup } from './documentToolbar'
 export { groupMemberOptions } from './groupMemberOptions'
 export type { MemberChoice, MemberTeam, MemberTeams } from './groupMemberOptions'
 export { usePersonMemberships } from './personMemberships'
@@ -22,7 +27,7 @@ export { documentFolderId, documentFolderHref, canonicalFolderLink } from './doc
 export { browserResourceKind } from './resourceViewer'
 export { registerResourceViewer, findResourceViewer } from './resourceViewers'
 export type { ResourceViewerContribution, ResourceViewerSource } from './resourceViewers'
-export { defineAsyncView } from './asyncView'
+export { defineAsyncView }
 export { startVisiblePolling } from './visiblePolling'
 export { withSessionScope, storeRequests, storeRequestFailure } from './sessionStore'
 

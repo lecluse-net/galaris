@@ -3,11 +3,13 @@
 Registration describes capabilities; qualification executes independent tests.
 The host owns identities, policy, immutable revisions and resource transport.
 """
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from html import escape
 import re
 from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field, JsonValue
 
 DocumentFormat = str
 StorageKind = Literal["text", "file"]
@@ -32,6 +34,17 @@ def literal_snapshot(content: str) -> str:
     return "<pre>" + escape(content) + "</pre>"
 
 
+class DocumentRevisionRegion(BaseModel):
+    """Zero-based rectangle in the format's intrinsic coordinate space."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    x: int = Field(ge=0, le=1_000_000, strict=True)
+    y: int = Field(ge=0, le=1_000_000, strict=True)
+    width: int = Field(ge=1, le=1_000_000, strict=True)
+    height: int = Field(ge=1, le=1_000_000, strict=True)
+
+
 @dataclass(frozen=True, slots=True)
 class DocumentFormatDefinition:
     code: str
@@ -52,6 +65,8 @@ class DocumentFormatDefinition:
     initial_binary: bytes | None = None
     validate_binary: Callable[[bytes], None] | None = None
     extract_binary: Callable[[bytes], str] | None = None
+    plugin_editor: PluginDocumentEditor | None = None
+    compare_revisions: Callable[[bytes, bytes, DocumentRevisionRegion | None], dict[str, JsonValue]] | None = None
 
     def validate_content(self, content: bytes) -> None:
         if self.storage_kind == "file":
@@ -70,6 +85,12 @@ class DocumentFormatDefinition:
         return {capability: "native" if capability in self.surfaces else
                 "fallback" if capability in {"preview", "embed", "thumbnail", "pdf", "native_export"}
                 else "unavailable" for capability in FORMAT_CAPABILITIES}
+
+
+@dataclass(frozen=True, slots=True)
+class PluginDocumentEditor:
+    module_url: str
+    label: Mapping[str, str]
 
 
 class DocumentFormatRegistry:
@@ -110,22 +131,54 @@ class DocumentFormatRegistry:
 
 
 registry = DocumentFormatRegistry()
+_plugin_registry = DocumentFormatRegistry()
+_format_availability: dict[str, Callable[[], bool]] = {}
 _native_registered = False
 
 
-def register_document_format(definition: DocumentFormatDefinition) -> None:
+def register_document_format(definition: DocumentFormatDefinition, *, available: Callable[[], bool] | None = None) -> None:
     _ensure_native_formats()
+    if definition.code in {item.code for item in _plugin_registry.definitions()}:
+        raise ValueError(f"Duplicate document format: {definition.code}")
     registry.register(definition)
+    if available is not None:
+        _format_availability[definition.code] = available
+
+
+def _format_is_available(code: str) -> bool:
+    available = _format_availability.get(code)
+    return available is None or available()
 
 
 def document_formats() -> tuple[DocumentFormatDefinition, ...]:
     _ensure_native_formats()
-    return registry.definitions()
+    return (*(item for item in registry.definitions() if _format_is_available(item.code)), *_plugin_registry.definitions())
 
 
 def document_format_definition(code: str) -> DocumentFormatDefinition:
     _ensure_native_formats()
-    return registry.get(code)
+    if not _format_is_available(code):
+        raise ValueError(f"Document format unavailable: {code}")
+    try:
+        return registry.get(code)
+    except ValueError:
+        return _plugin_registry.get(code)
+
+
+def prepare_plugin_document_formats(definitions: Iterable[DocumentFormatDefinition]) -> Callable[[], None]:
+    _ensure_native_formats()
+    occupied = {item.code for item in registry.definitions()}
+    candidate = DocumentFormatRegistry()
+    for definition in definitions:
+        if definition.code in occupied:
+            raise ValueError(f"Duplicate document format: {definition.code}")
+        candidate.register(definition)
+
+    def promote() -> None:
+        global _plugin_registry
+        _plugin_registry = candidate
+
+    return promote
 
 
 def document_format_codes() -> tuple[str, ...]:

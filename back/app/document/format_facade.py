@@ -18,7 +18,9 @@ def document_format_catalogue() -> list[dict[str, object]]:
              "version": definition.version, "contract_version": definition.contract_version,
              "provider": definition.provider, "capabilities": definition.capabilities(),
              "capability_complete": all(value != "unavailable" for value in definition.capabilities().values()),
-             "qualification": "not_run", "import_extensions": definition.import_extensions}
+             "qualification": "not_run", "import_extensions": definition.import_extensions,
+             **({"plugin_editor": {"module_url": definition.plugin_editor.module_url,
+                                   "label": dict(definition.plugin_editor.label)}} if definition.plugin_editor else {})}
             for definition in document_formats()]
 
 

@@ -1,13 +1,13 @@
 <template>
   <span v-if="readonly || !canReadIcons" class="document-icon document-icon--readonly" role="img" :aria-label="t('documents.library.documentIcon', { name: title })">
     <DocumentTagIcon :icon="customIcon" :size="size" :default-icon="getDocumentFormat(type).icon" />
-    <q-icon v-if="customIcon" :name="getDocumentFormat(type).icon" class="document-format-marker" :aria-label="t(getDocumentFormat(type).label)" />
+    <q-icon v-if="customIcon" :name="getDocumentFormat(type).icon" class="document-format-marker" :aria-label="formatDisplayLabel(getDocumentFormat(type), t, locale)" />
   </span>
   <q-btn v-else flat :round="!plain" :square="plain" :ripple="!plain" :padding="plain ? 'none' : undefined" dense size="sm"
     class="document-icon" :class="{ 'document-icon--plain': plain }" :aria-label="t('documents.library.documentIcon', { name: title })"
     :disable="store.saving[documentId]" @click.stop="showPicker" @dblclick.stop @keydown.enter.stop @keydown.space.stop>
     <DocumentTagIcon :icon="customIcon" :size="size" :default-icon="getDocumentFormat(type).icon" />
-    <q-icon v-if="customIcon" :name="getDocumentFormat(type).icon" class="document-format-marker" :aria-label="t(getDocumentFormat(type).label)" />
+    <q-icon v-if="customIcon" :name="getDocumentFormat(type).icon" class="document-format-marker" :aria-label="formatDisplayLabel(getDocumentFormat(type), t, locale)" />
     <q-tooltip>{{ t(store.errors[documentId] ? 'documents.library.iconLoadError' : 'documents.library.iconHint') }}</q-tooltip>
     <DocumentTagIconPicker v-model="open" :busy="Boolean(store.saving[documentId])" :save="save" :default-icon="getDocumentFormat(type).icon" document />
   </q-btn>
@@ -16,7 +16,7 @@
 import { computed, ref, watch } from 'vue'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import type { DocumentFormat } from '../types'
-import { documentFormat as getDocumentFormat } from '../documentFormats'
+import { documentFormat as getDocumentFormat, formatDisplayLabel } from '../documentFormats'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import { useDocumentIcons } from '@/app/document/stores/documentIcons'
@@ -26,7 +26,7 @@ import DocumentTagIconPicker from '@/app/document/components/DocumentTagIconPick
 const { documentId, title, size = '22px', readonly = false, plain = false, documentFormat: type = 'text' } = defineProps<{
   documentId: string; title: string; documentFormat?: DocumentFormat; size?: string; readonly?: boolean; plain?: boolean
 }>()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const $q = useQuasar()
 const store = useDocumentIcons()
 const privilegeStore = usePrivilegeStore()

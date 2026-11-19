@@ -7,6 +7,7 @@ from .content_validation import DocumentFormat
 from .schemas import DocumentUpdate,DocumentPayload
 from core.util import read_html_page, visible_text
 import base64
+from hashlib import sha256
 from core.database import get_db
 from sqlalchemy import select, func, or_
 from .models import Document
@@ -15,21 +16,24 @@ from .access import readable_item_clause
 
 async def read_file_resource_text(
     item_id: UUID, *, agent_id: int, task_id: UUID | None,
-    expected_kind: str, offset: int, max_chars: int,
+    expected_kind: str, offset: int, max_chars: int, revision: int | None = None,
 ) -> dict[str, object]:
-    item, body, _, _, _ = await service.get_item(item_id, agent_id=agent_id,
+    item, body, _, content_type, media_type = await service.get_item(item_id, agent_id=agent_id, revision=revision,
         record_llm_access=True, task_id=task_id, include_revisions=False)
-    if item.media_type == "text/html":
+    if revision is not None and item.node_kind != "document":
+        raise service.DocumentConflictError("The selected resource is not a document.")
+    actual_revision = revision if revision is not None else item.revision
+    if media_type == "text/html":
         return {**read_html_page(body.decode(), offset=offset, max_chars=max_chars),
-            "revision": item.revision, "content_profile": item.content_profile}
-    source = body if item.content_type == "binary" else body.decode("utf-8")
+            "revision": actual_revision, "content_profile": item.content_profile}
+    source = body if content_type == "binary" else body.decode("utf-8")
     start = min(max(0, offset), len(source))
     end = min(len(source), start + max_chars)
     fragment = source[start:end]
     content = base64.b64encode(fragment).decode("ascii") if isinstance(fragment, bytes) else fragment
     return dict(content=content, encoding="base64" if isinstance(fragment, bytes) else "utf-8",
-        media_type=item.media_type, start=start, end=end, total=len(source),
-        next_offset=end if end < len(source) else None, revision=item.revision)
+        media_type=media_type, start=start, end=end, total=len(source),
+        next_offset=end if end < len(source) else None, revision=actual_revision)
 
 
 async def search_file_resources(
@@ -194,15 +198,21 @@ async def describe_file_resource(
     *,
     agent_id: int,
     expected_kind: Literal["document"],
+    revision: int | None = None,
 ) -> dict[str, object]:
     """Describe an authorized item without leaking its storage locator."""
 
     item, _content, access, _content_type, media_type = await service.get_item(
         item_id,
         agent_id=agent_id,
+        revision=revision,
+        include_revisions=False,
     )
     if expected_kind == "document" and item.node_kind != "document":
         raise service.DocumentConflictError("The selected memory is not a document.")
+    if revision is not None:
+        return {"title": item.title, "filename": item.filename, "media_type": media_type,
+            "revision": revision, "checksum": sha256(_content).hexdigest(), "size": len(_content)}
     return {
         "id": str(item.id),
         "title": item.title,

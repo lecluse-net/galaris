@@ -1,0 +1,28 @@
+code: sample-rest
+label: Sample REST
+description: |
+  Choose an API endpoint and a token when configuring the connection.
+  Choisir une adresse API et un jeton lors de la configuration de la Connexion.
+catalog:
+  format_version: 1
+  version: 1.0.0
+  summary:
+    en: Illustrates the REST protocol and named connection parameter bindings.
+    fr: Illustre le protocole REST et les références aux paramètres de connexion.
+capabilities:
+  - rest.api
+rest_config:
+  base_url: ${connection:url}
+  auth:
+    type: bearer
+    param: token
+connection_schema:
+  params:
+    url:
+      type: string
+      label: URL
+      required: true
+    token:
+      type: password
+      label: Token
+      required: true

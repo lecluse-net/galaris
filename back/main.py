@@ -9,7 +9,11 @@ from typing import AsyncGenerator
 from fastapi import FastAPI
 from core.api import create_app, setup_public_docs, setup_api_routers
 from core import websocket
-from modules import configure_dream_media, load_llm_provider_modules
+from modules import (
+    configure_development_plugin_samples, configure_dream_media, configure_plugin_presets,
+    load_llm_provider_modules,
+)
+from plugin_composition import configure_plugin_runtime
 from scripts.process_worker import ProcessWorker
 
 process_worker = ProcessWorker()
@@ -18,6 +22,9 @@ process_worker = ProcessWorker()
 # Provider bridges register immutable profiles and optional service adapters.
 # Loading them is a composition concern; application domains never import bridge code.
 load_llm_provider_modules()
+configure_plugin_presets()
+configure_development_plugin_samples()
+configure_plugin_runtime()
 
 # Cross-cutting execution domains emit through a core port; the composition root
 # binds its PostgreSQL implementation without creating reverse domain imports.
@@ -43,6 +50,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # services start reading their typed in-memory view.
     from core.params import params_service
     async with get_db_session():
+        from app.plugin.facade import restore_executable_plugins
+
+        await restore_executable_plugins()
         # DbAdmin has already reconciled persistent datasets in the entrypoint.
         # Runtime startup only hydrates the process-local parameter cache.
         await params_service.load_params()
@@ -276,6 +286,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 # Create the FastAPI application and middleware stack.
 app = create_app(lifespan)
+
+from core import settings
+if settings.is_dev:
+    from plugins.sample.fixtures import mount as mount_sample_fixtures
+
+    mount_sample_fixtures(app)
 
 # Configure public documentation.
 setup_public_docs(app)

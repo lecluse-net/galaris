@@ -9,7 +9,7 @@
   </ActionContextMenu>
 </template>
 <script setup lang="ts">
-import { documentFormats, type DocumentCreationMode } from '../documentFormats'
+import { documentFormats, formatDisplayLabel, type DocumentCreationMode } from '../documentFormats'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
@@ -18,7 +18,7 @@ import type { DocumentLibraryEntry } from '../types'
 import { documentRowShortcuts, type DocumentRowAction } from '@/app/document/libraryShortcuts'
 const { entry, busy, target, allowCreate = false, extraActions = [] } = defineProps<{ entry: DocumentLibraryEntry; busy: boolean; target: string; allowCreate?: boolean; extraActions?: ContextAction[] }>()
 const emit = defineEmits<{ select: []; create: [type?: DocumentCreationMode]; action: [value: DocumentRowAction] }>()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { action: copyAction } = useResourceCopy()
 const privilegeStore = usePrivilegeStore()
 const actions = computed<ContextAction[]>(() => {
@@ -33,7 +33,7 @@ const actions = computed<ContextAction[]>(() => {
   })
   const creations = allowCreate && shortcuts.F3 && privilegeStore.hasAnyPrivilege([privileges.DOCUMENT_EDIT, privileges.DOCUMENT_ADMIN]) ? [
     ...documentFormats.map(type => ({ key: 'new-' + type.code, icon: type.icon,
-      label: t('documents.createFormattedDocument', { format: t(type.label) }), run: () => emit('create', type.code) })),
+      label: t('documents.createFormattedDocument', { format: formatDisplayLabel(type, t, locale.value) }), run: () => emit('create', type.code) })),
     { key: 'import', icon: 'file_open', label: t('documents.importFrom'), run: () => emit('create', 'import') },
   ] : []
   return [...standard, ...extraActions, { ...copyAction(`document://${entry.item.id}`), label: t('documents.copyUrl') }, ...creations]

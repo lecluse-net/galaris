@@ -18,6 +18,8 @@ class ServiceCatalogMetadata(BaseModel):
     summary: dict[str, str] = Field(default_factory=dict)
     documentation: str = Field(default="", max_length=2048)
     icon_credit: str = Field(default="", max_length=1024)
+    plugin_code: str | None = Field(default=None, max_length=100)
+    plugin_version: str | None = Field(default=None, max_length=32)
 
 
 # =============================================================================

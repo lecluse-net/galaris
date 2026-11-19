@@ -1,0 +1,16 @@
+{
+  "format_version": 2,
+  "code": "sample.data",
+  "version": "1.0.0",
+  "label": { "fr": "Sample Données", "en": "Sample Data" },
+  "description": {
+    "fr": "Modèle synthétique à télécharger et à importer dans Documents.",
+    "en": "Synthetic template to download and import into Documents."
+  },
+  "minimum_galaris_version": "0.1.0",
+  "maximum_galaris_version_exclusive": "1.0.0",
+  "contributions": [{
+    "family": "data_template", "code": "sample.data", "contract_version": 1,
+    "label": { "fr": "Catalogue synthétique", "en": "Synthetic catalogue" }
+  }]
+}

@@ -68,6 +68,7 @@ jobs:
           --env AUTH_SECRET_KEY=ci-auth-secret-ci-auth-secret-0001
           --env BROWSER_EXECUTOR_TOKEN=ci-browser-token-ci-browser-00001
           --env ENCRYPTION_MASTER_KEY=ci-encryption-secret-ci-encryption-01
+          --volume "$PWD/plugins/sample:/app/plugins/sample:ro"
           galaris-back-quality
           python -m pyright
 

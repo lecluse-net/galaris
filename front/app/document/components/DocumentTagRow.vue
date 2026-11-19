@@ -47,7 +47,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { documentFormats, type DocumentCreationMode } from '../documentFormats'
+import { documentFormats, formatDisplayLabel, type DocumentCreationMode } from '../documentFormats'
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
@@ -66,7 +66,7 @@ const props = defineProps<{
   create: (name: string, parentId: string | null, afterTagId?: string) => Promise<boolean>
 }>()
 const emit = defineEmits<{ browse: []; createDocument: [type?: DocumentCreationMode, event?: Event]; delete: []; confirmDelete: []; renamed: []; sort: [descending: boolean]; expand: []; collapse: [] }>()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const { copy } = useResourceCopy()
 const privilegeStore = usePrivilegeStore()
 const canCreateDocument = computed(() => privilegeStore.hasAnyPrivilege([privileges.DOCUMENT_EDIT, privileges.DOCUMENT_ADMIN]))
@@ -112,7 +112,7 @@ const shortcuts = computed<LibraryShortcuts>(() => props.busy || renaming.value 
 const contextActions = computed<(Omit<import('@/core/util').ContextAction, 'run'> & { run: () => void | Promise<void> })[]>(() => [
   { key: 'browse', icon: 'view_list', label: t('documents.library.openFolderAction'), shortcut: 'F4', run: () => emit('browse') },
   { key: 'copy-url', icon: 'link', label: t('documents.library.copyFolderUrl'), run: () => copy(`document://folders/${props.tag.id}/`) },
-  ...documentFormats.filter(() => canCreateDocument.value).map(type => ({ key: 'document-' + type.code, icon: type.icon, label: t('documents.createFormattedDocument', { format: t(type.label) }), disabled: props.busy, run: () => emit('createDocument', type.code) })),
+  ...documentFormats.filter(() => canCreateDocument.value).map(type => ({ key: 'document-' + type.code, icon: type.icon, label: t('documents.createFormattedDocument', { format: formatDisplayLabel(type, t, locale.value) }), disabled: props.busy, run: () => emit('createDocument', type.code) })),
   ...(canCreateDocument.value ? [{ key: 'import', icon: 'file_open', label: t('documents.importFrom'), disabled: props.busy, run: () => emit('createDocument', 'import') }] : []),
   { key: 'child', icon: 'create_new_folder', label: t('documents.library.newSubtagAction'), shortcut: 'F7', disabled: props.busy, run: createChild },
   { key: 'sibling', icon: 'playlist_add', label: t('documents.library.newSiblingAction'), disabled: props.busy, run: createSibling },

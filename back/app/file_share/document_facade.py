@@ -51,23 +51,23 @@ def _revision(info: ResourceDescriptor) -> str:
 
 
 @asynccontextmanager
-async def prepared_resource(ctx: ResourceContext, uri: str) -> AsyncGenerator[tuple[PreparedDocument, Path]]:
+async def prepared_resource(ctx: ResourceContext, uri: str, *, revision: int | None = None) -> AsyncGenerator[tuple[PreparedDocument, Path]]:
     # Canonical authorization always precedes cache lookup, even for immutable files.
     try:
-        before = await resource_info(ctx, uri)
-        binding = await document_rag_cache(ctx, uri)
+        before = await resource_info(ctx, uri, revision=revision)
+        binding = None if revision is not None else await document_rag_cache(ctx, uri)
     except (FileNotFoundError, PermissionError):
         await purge_prepared_uri(ctx.agent_id, uri)
         raise
     # Without a managed immutable identity, always download and hash current bytes.
     if binding is None:
-        async with _download(ctx, uri, before) as (source, name, mime, digest):
+        async with _download(ctx, uri, before, revision=revision) as (source, name, mime, digest):
             key = _key(ctx, uri, before, digest)
             entry = _entry(key, ctx, before.uri, None, digest)
             async def build_remote() -> PreparedDocument:
                 return await prepare_document(source, name, mime, entry.directory)
             async with _prepared(entry, build_remote) as document:
-                await _recheck(ctx, uri, before)
+                await _recheck(ctx, uri, before, revision=revision)
                 yield document, entry.directory
         return
     stamp = await complete_io(_stamp, file_path(binding.file_id))
@@ -114,17 +114,18 @@ def _stamp(path: Path) -> tuple[int, int, int, int, int]:
 
 
 @asynccontextmanager
-async def _download(ctx: ResourceContext, uri: str, before: ResourceDescriptor) -> AsyncGenerator[tuple[Path, str, str, str]]:
+async def _download(ctx: ResourceContext, uri: str, before: ResourceDescriptor,
+                    *, revision: int | None = None) -> AsyncGenerator[tuple[Path, str, str, str]]:
     with TemporaryDirectory(prefix='document-source-') as temporary:
         source = Path(temporary) / 'input'
-        materialized = await materialize_resource(ctx, uri, source, max_bytes=512 * 1024 * 1024)
-        await _recheck(ctx, uri, before)
+        materialized = await materialize_resource(ctx, uri, source, max_bytes=512 * 1024 * 1024, revision=revision)
+        await _recheck(ctx, uri, before, revision=revision)
         digest = await complete_io(_digest, source)
         yield source, materialized.name, materialized.media_type, digest
 
 
-async def _recheck(ctx: ResourceContext, uri: str, before: ResourceDescriptor) -> None:
-    if _revision(before) != _revision(await resource_info(ctx, uri)):
+async def _recheck(ctx: ResourceContext, uri: str, before: ResourceDescriptor, *, revision: int | None = None) -> None:
+    if _revision(before) != _revision(await resource_info(ctx, uri, revision=revision)):
         raise ValueError('Document access or version changed while preparing')
 
 

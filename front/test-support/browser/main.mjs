@@ -75,7 +75,7 @@ window.testApp = {
       pinia, router, auth, privileges, events,
       notify(options) { app.config.globalProperties.$q.notify(options) },
       async setProps(values) { currentProps.value = { ...currentProps.value, ...values }; await nextTick() },
-      async invoke(name, ...args) { await targetRef.value[name](...args); await nextTick() },
+      async invoke(name, ...args) { const result = await targetRef.value[name](...args); await nextTick(); return result },
       async navigate(value) { await router.push(value); await nextTick() },
       async dark(value) { app.config.globalProperties.$q.dark.set(value); await nextTick() },
       async patchStore(modulePath, exportName, state) {

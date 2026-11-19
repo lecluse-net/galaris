@@ -160,9 +160,9 @@ from .format_facade import (
     document_format_definition, document_formats, register_document_format,
     document_source, extract_document_content, remap_document_references,
 )
-from .formats import DocumentFormat, FormatCapability, CapabilitySupport
+from .formats import DocumentFormat, DocumentRevisionRegion, FormatCapability, CapabilitySupport
 from .format_qualification import FormatExample, FormatCheck, FormatSuiteEvidence, qualify_document_format, document_format_conformance
-__all__ += ["DocumentFormat", "DocumentFormatDefinition", "DocumentFormatRegistry", "FormatCapability",
+__all__ += ["DocumentFormat", "DocumentFormatDefinition", "DocumentFormatRegistry", "DocumentRevisionRegion", "FormatCapability",
     "CapabilitySupport", "document_format_catalogue", "document_format_definition", "document_formats",
     "register_document_format", "document_source", "extract_document_content", "remap_document_references",
     "FormatExample", "FormatCheck", "FormatSuiteEvidence", "qualify_document_format", "document_format_conformance"]

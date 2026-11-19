@@ -12,10 +12,10 @@ JSON pour son stockage ne le transforme pas en Format Data.
 Le package public `app.document` et sa façade exportent `DocumentFormatDefinition`,
 `register_document_format`, `document_formats`, `document_format_definition`,
 `document_format_catalogue`, `document_source`, `extract_document_content` et
-`remap_document_references`. Un module natif ou un futur plugin utilise ce même contrat.
+`remap_document_references`. Les modules natifs et les plugins signés utilisent ce contrat.
 L'enregistrement refuse collisions, codes historiques réservés et versions incompatibles.
-Il s'effectue lors de la composition d'une génération ; aucun installateur de plugins
-ni chargement arbitraire de code à chaud n'est ajouté.
+Le chargement des formats d'archives est réservé aux signatures d'éditeurs autorisés
+selon le [contrat des bundles](plugin-bundles.md).
 
 Documents conserve identité, propriétaires, ACL, classement, révisions, conflits et
 publication des contenus. Les Process restent propriétaires de leurs définitions BPMN
@@ -70,6 +70,48 @@ Les intégrations imbriquées détectent les visites répétées et bornent la p
 Le partage du document hôte n'accorde aucun droit sur une ressource intégrée.
 Les contraintes d'entrée des Process comparent le code du format réel, même lorsque
 plusieurs formats partagent un MIME, et conservent les contrôles d'accès aux ressources.
+
+## Barre d'outils
+
+Utiliser `DocumentToolbar` pour la barre principale du format. Le composant applique la
+présentation de la référence graphique, les groupes, les infobulles et la navigation
+au clavier. La barre déclarative reste en haut de la zone d'édition pendant le
+défilement. Un éditeur natif l'importe depuis `@/app/document`. Un module compilé pour
+un ZIP utilise le même composant fourni par `host.DocumentToolbar` dans
+`createFormat(host)`.
+
+Le format passe des groupes réactifs de type `DocumentToolbarGroup[]`. Chaque groupe
+possède un `id` et un `label`. Chaque commande possède un `id` unique dans la barre et
+un `label` déjà traduit. Le composant émet `command(id, value?)`. Le format exécute
+l'action puis publie son nouvel état dans les groupes.
+
+| Type de commande | Propriétés |
+|---|---|
+| `button` | `icon` du catalogue de la référence graphique et facultativement `showLabel`, `primary` ou `busy` |
+| `toggle` | Les propriétés du bouton et la valeur contrôlée `pressed` |
+| `color` | `value`, une couleur CSS hexadécimale compatible avec une entrée couleur |
+| `range` | `value`, `min`, `max` et éventuellement `step` |
+
+Un bouton ou une bascule marqué `secondary` passe dans **Autres outils** en dessous
+de 1024 px. Les commandes secondaires ont aussi une icône et un libellé. Les
+champs couleur et curseur restent dans leurs groupes. Utiliser `disabled` pour une
+commande momentanément indisponible. Passer `readonly` quand le contenu est en lecture
+seule. Une commande qui reste utilisable, comme Copier, déclare `readOnly: true`.
+Le lecteur historique affiche sa propre vue de lecture.
+
+```vue
+<DocumentToolbar
+  :label="t('editor.tools')"
+  :groups="toolbarGroups"
+  :readonly="source.readonly"
+  @command="runCommand"
+/>
+```
+
+Dans Dessin, les actions du canevas et l'état des outils suivent ce contrat. Les
+révisions et la sauvegarde suivent toujours `DocumentContentSource`.
+[Contrats TypeScript](../../../front/core/util/documentToolbar.ts)
+· Exemple dans `plugins/sample/drawing/DrawingEditor.vue`
 
 ## Pièces jointes, conversion et export
 
@@ -130,8 +172,7 @@ les valeurs utilisateur. Une interruption conserve les sources et permet la repr
 Les URI `document://` et `data://` restent stables. Un format/version absent n'est jamais
 réinterprété comme du HTML ; source, métadonnées, droits et révisions restent récupérables.
 
-Ce contrat prépare les contributions de plugins. Installation, signature, génération
-effective, isolation de code non fiable et publication de certifications restent dans
-le [chantier plugins](../../../project/plans/infrastructure-plugins-galaris.md).
+L'isolation de code non fiable et la publication de certifications restent dans le
+[chantier plugins](../../../project/plans/infrastructure-plugins-galaris.md).
 Les migrations entre versions de formats et les snapshots multifichiers cohérents
 nécessitent une politique spécifique ; aucune conversion silencieuse n'est autorisée.

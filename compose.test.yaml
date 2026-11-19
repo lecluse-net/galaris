@@ -52,7 +52,7 @@ services:
     env_file:
       - .env
     environment:
-      - PYTHONPATH=/repo/back
+      - PYTHONPATH=/repo/back:/repo
       - TZ=${TZ:-UTC}
       # Settings builds DATABASE_URL from these fields, so overriding only a
       # DATABASE_URL variable would leave tests connected to the development DB.

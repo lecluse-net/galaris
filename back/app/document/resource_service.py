@@ -5,6 +5,7 @@ from .document_cloning import DocumentCloneSource, PreparedDocumentClone, prepar
 import base64
 import binascii
 import hashlib
+import json
 from collections.abc import Collection, Sequence
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
@@ -13,6 +14,7 @@ from sqlalchemy.orm import defer, selectinload, raiseload
 from sqlalchemy.orm.exc import StaleDataError
 from sqlalchemy.orm.attributes import set_committed_value
 from loguru import logger
+from pydantic import JsonValue
 from app.share import ShareGrant
 from app.agent import get_agent_record
 from core.database import get_db
@@ -20,13 +22,14 @@ from core.i18n import tr
 from core.storage import get_storage, prepare_content, resource_is_referenced
 from core.user import HumanActor, get_user_record, UserModel
 from .schemas import DocumentLibraryRequest, DocumentLibraryPage, DocumentOwnerOptions, DocumentSourceCreate
-from core.util import archived_document_html, convert_to_html, visible_text, image_references, attachment_reference, complete_await
+from core.util import archived_document_html, convert_to_html, visible_text, image_references, attachment_reference, complete_await, complete_io
 from .models import DocumentRevision, DocumentSource
 from .schemas import DocumentItemCreate, DocumentUpdate, DocumentPayload, DocumentGrantUpdate, DocumentDeletionResult, DocumentDetail, DocumentContentRevisionPage, DocumentContentRevisionPublic, DocumentContentRevisionDetail, DocumentContentDiff, DocumentOwnerUpdate, DocumentFolderOption, DocumentGlobalAccessUpdate
 from .contracts import DocumentAccess
 from .access import effective_access, managed_item_agent_ids, readable_item_clause
 from .content_diff import content_diff_hunks as _content_diff_hunks
 from .document_apps import document_apps
+from .formats import DocumentRevisionRegion, document_format_definition
 from .content_validation import validate_document_content
 from .lifecycle import notify_document
 from .item_projection import item_to_public
@@ -263,6 +266,31 @@ async def diff_document_content_revision(
         previous_html=previous_content.decode("utf-8") if entry.media_type == "text/html" else None,
         current_html=current_content.decode("utf-8") if item.media_type == "text/html" else None,
     )
+
+
+async def compare_document_content_revisions(
+    item_id: UUID, before_revision: int, after_revision: int, *, actor_agent_id: int,
+    region: DocumentRevisionRegion | None = None,
+) -> dict[str, JsonValue]:
+    """Compare explicit revisions using a compatible format hook where available."""
+    _, before, left = await _document_content_revision(item_id, before_revision, actor_agent_id=actor_agent_id)
+    item, after, right = await _document_content_revision(item_id, after_revision, actor_agent_id=actor_agent_id)
+    result: dict[str, JsonValue] = {"uri": f"document://{item_id}", "document_format": item.document_format,
+        "before_revision": before_revision, "after_revision": after_revision,
+        "content_changed": before.content_hash != after.content_hash, "comparison": "content_hash"}
+    try:
+        definition = document_format_definition(item.document_format)
+    except ValueError:
+        return result
+    compare = definition.compare_revisions
+    if (compare is not None and before.format_version == after.format_version == definition.version
+            and before.media_type == after.media_type == definition.media_type):
+        details = await complete_io(compare, left, right, region)
+        if len(json.dumps(details, ensure_ascii=True, allow_nan=False)) > 12_000:
+            raise ValueError("The format returned a comparison larger than the tool limit")
+        result.update(comparison="format", details=details)
+    return result
+
 
 async def restore_document_content_revision(
     item_id: UUID,

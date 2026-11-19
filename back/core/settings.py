@@ -6,13 +6,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
 
 
-def _read_app_version() -> str:
+def _read_app_build_metadata(filename: str, fallback: str) -> str:
     """Read the Git reference baked into the backend image."""
     try:
-        version = Path("/opt/galaris-version").read_text(encoding="utf-8").strip()
+        value = Path(filename).read_text(encoding="utf-8").strip()
     except OSError:
-        return "development"
-    return version or "unknown"
+        return fallback
+    return value or fallback
 
 
 class Settings(BaseSettings):
@@ -52,10 +52,17 @@ class Settings(BaseSettings):
 
     # Common apps settings
     APP_NAME: str = Field(default="galaris")
-    APP_VERSION: ClassVar[str] = _read_app_version()
+    APP_VERSION: ClassVar[str] = _read_app_build_metadata("/opt/galaris-version", "development")
+    APP_BUILD_REVISION: ClassVar[str] = _read_app_build_metadata("/opt/galaris-revision", "unknown")
     APP_HOST: str = Field(default="http://localhost:8484")
     # Preserve the deployment label; only the exact value "dev" relaxes behavior.
     APP_ENV: str = Field(default="prod")
+    PLUGIN_TRUSTED_PUBLISHERS: dict[str, str] = Field(default_factory=dict)
+    PLUGIN_EXECUTABLE_PUBLISHERS: list[str] = Field(default_factory=list)
+    PLUGIN_CATALOG_DIRECTORY: Path = Path("/data/plugins/catalog")
+    PLUGIN_CATALOG_REMOTE_URL: str = ""
+    PLUGIN_CATALOG_REMOTE_PUBLIC_KEY: str = ""
+    PLUGIN_RUNTIME_BINDINGS: dict[str, dict[str, str]] = Field(default_factory=dict)
 
     LOG_LEVEL: Literal[
         "TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"

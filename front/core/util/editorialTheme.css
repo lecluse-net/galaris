@@ -75,4 +75,7 @@
 .galaris-source-highlight :is(.hljs-number, .hljs-symbol, .hljs-deletion) { color: var(--solaire-salmon-accent); }
 .galaris-source-highlight :is(.hljs-attr, .hljs-attribute, .hljs-selector-class, .hljs-variable) { color: var(--solaire-orange-accent); }
 .editorial-toolbar-simple { justify-content: flex-start; }
+.editorial-toolbar-inline { flex-wrap: nowrap; padding: 0; border: 0; background: transparent; }
+.editorial-toolbar-inline .editorial-toolbar-group { flex-shrink: 0; }
+.editorial-toolbar-inline .editorial-toolbar-row { flex-wrap: nowrap; }
 .document-link-icon .document-icon--readonly:has(> *) { margin-inline-end: .25em; }

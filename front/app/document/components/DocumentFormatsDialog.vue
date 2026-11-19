@@ -29,15 +29,15 @@
 import { DialogHeader } from '@/core/util'
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { documentFormatCatalogue, findDocumentFormat } from '../documentFormats'
+import { documentFormatCatalogue, findDocumentFormat, formatDisplayLabel } from '../documentFormats'
 import type { DocumentFormatDescriptor, FormatCapability } from '../formatRegistry'
 import { documentService } from '../services/documentService'
 const open = defineModel<boolean>({ required: true })
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const loading = ref(false), error = ref(false)
 const capabilities: FormatCapability[] = ['editor', 'preview', 'embed', 'thumbnail', 'pdf', 'native_export', 'import']
 let controller: AbortController | undefined
-function formatLabel(code: string): string { const contribution = findDocumentFormat(code); return contribution ? t(contribution.label) : code }
+function formatLabel(code: string): string { const contribution = findDocumentFormat(code); return contribution ? formatDisplayLabel(contribution, t, locale.value) : code }
 function support(format: DocumentFormatDescriptor, capability: FormatCapability): string {
   const contribution = findDocumentFormat(format.code, format.version)
   if (capability === 'editor' && !contribution) return 'unavailable'

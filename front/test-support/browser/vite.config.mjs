@@ -1,10 +1,38 @@
 import { fileURLToPath } from 'node:url'
+import { execFile } from 'node:child_process'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { join } from 'node:path'
+import { promisify } from 'node:util'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { quasar, transformAssetUrls } from '@quasar/vite-plugin'
 import { developmentWorkerRecovery } from '../../pwa/developmentWorkerRecovery.ts'
 import { documentRuntimeLibraries } from '../../documentRuntimeLibraries.ts'
 import { localeCatalogs } from '../../localeCatalogs.ts'
+
+const runFile = promisify(execFile)
+const drawingFixture = {
+  name: 'installed-drawing-fixture',
+  configureServer(server) {
+    let compiled
+    server.middlewares.use('/test-support/drawing-module.mjs', (_request, response, next) => {
+      compiled ??= (async () => {
+        const directory = await mkdtemp('/tmp/drawing-fixture-')
+        try {
+          const compiler = fileURLToPath(new URL('../../plugins/sample/drawing/build.mjs', import.meta.url))
+          await runFile(process.execPath, [compiler, directory])
+          return await readFile(join(directory, 'frontend/sample.drawing-bundle.mjs'))
+        } finally {
+          await rm(directory, { recursive: true, force: true })
+        }
+      })()
+      void compiled.then(content => {
+        response.setHeader('Content-Type', 'text/javascript')
+        response.end(content)
+      }, next)
+    })
+  },
+}
 
 // Install an obsolete cached shell once; subsequent update requests reach Vite.
 const legacyWorkerRequests = new Set()
@@ -47,6 +75,7 @@ export default defineConfig({
     localeCatalogs(),
     documentRuntimeLibraries(),
     legacyWorkerFixture,
+    drawingFixture,
     developmentWorkerRecovery(),
     vue({ template: { transformAssetUrls } }),
     quasar({ sassVariables: fileURLToPath(new URL('../../quasar-variables.sass', import.meta.url)) }),

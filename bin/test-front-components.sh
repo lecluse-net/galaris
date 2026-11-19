@@ -20,6 +20,8 @@ trap 'exit 143' TERM
 # Freeze the code under test: concurrent edits must not reload an active browser.
 tar -C front --exclude=node_modules --exclude=dist --exclude=dev-dist -cf - . |
   tar -C "$GALARIS_FRONT_TEST_SOURCE_DIR" -xf -
+mkdir -p "$GALARIS_FRONT_TEST_SOURCE_DIR/plugins/sample"
+cp -R plugins/sample/drawing "$GALARIS_FRONT_TEST_SOURCE_DIR/plugins/sample/"
 # Nested volume mountpoint, including on a fresh checkout.
 mkdir -p "$GALARIS_FRONT_TEST_SOURCE_DIR/node_modules"
 "${compose[@]}" build

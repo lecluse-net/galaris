@@ -231,11 +231,16 @@ const selectedRevision = ref<number | null>(null)
 const detail = ref<DocumentContentRevisionDetail | null>(null)
 const historyContribution = computed(() => detail.value?.document_format
   ? findDocumentFormat(detail.value.document_format, detail.value.format_version) : undefined)
-const historySource = computed<DocumentContentSource | null>(() => detail.value ? {
-  key: `${props.documentId}:${detail.value.revision}`, revision: detail.value.revision, readonly: true,
-  load: signal => documentService.source(props.documentId, props.agentId ?? null, signal, detail.value!.revision),
-  save: async () => { throw new Error('Historical document content is read-only') },
-} : null)
+const historySource = computed<DocumentContentSource | null>(() => {
+  const revision = detail.value?.revision
+  if (revision === undefined) return null
+  const { documentId, agentId = null } = props
+  return {
+    key: `${documentId}:${revision}:${agentId}`, revision, readonly: true,
+    load: signal => documentService.source(documentId, agentId, signal, revision),
+    save: async () => { throw new Error('Historical document content is read-only') },
+  }
+})
 const diff = ref<DocumentContentDiff | null>(null)
 const loadingList = ref(false)
 const loadingDetail = ref(false)

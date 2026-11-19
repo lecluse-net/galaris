@@ -108,7 +108,7 @@
       <q-list dense role="menu" :aria-label="t('documents.documentFormat')">
         <q-item v-for="type in documentFormats" :key="type.code" v-close-popup clickable role="menuitem" @click="chooseDocumentFormat(type.code)">
           <q-item-section avatar><q-icon :name="type.icon" /></q-item-section>
-          <q-item-section>{{ t(type.label) }}</q-item-section>
+          <q-item-section>{{ formatDisplayLabel(type, t, locale) }}</q-item-section>
         </q-item>
         <q-separator />
         <q-item v-close-popup clickable role="menuitem" @click="openDocumentImport">
@@ -162,7 +162,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRe
 import { useI18n } from 'vue-i18n'
 import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router'
 import { useQuasar, type QMenu } from 'quasar'
-import { documentFormats, type DocumentCreationMode, type DocumentFormatCode } from '../documentFormats'
+import { documentFormats, formatDisplayLabel, type DocumentCreationMode, type DocumentFormatCode } from '../documentFormats'
 import { useAgentChoices } from '@/app/agent'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { AgentConversationPanel as DocumentConversationPanel, conversationPanel, type DocumentFocus } from '@/core/util'
@@ -189,7 +189,7 @@ import DocumentImportDialog from '@/app/document/components/DocumentImportDialog
 
 interface MemoryRealtimeEvent { data: { id: string; node_kind: DocumentNodeKind } }
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const fullDocumentIcon = 'M6.5 5h11a2.5 2.5 0 0 1 2.5 2.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9A2.5 2.5 0 0 1 6.5 5z@@fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round'
 const libraryDocumentIcon = 'M6.5 5h11a2.5 2.5 0 0 1 2.5 2.5v9a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5v-9A2.5 2.5 0 0 1 6.5 5zM10 5v14M4 12h6@@fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round'
 const $q = useQuasar()

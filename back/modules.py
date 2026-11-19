@@ -49,6 +49,7 @@ MODULES = [
     "core.storage",
     "app.incident",
     "app.services",
+    "app.plugin",
     "app.documentation",
     "app.agent",
     "app.share",
@@ -110,6 +111,27 @@ def load_llm_provider_modules() -> None:
 
     for module_name in LLM_PROVIDER_MODULES:
         importlib.import_module(module_name)
+
+
+def configure_plugin_presets() -> None:
+    """Publish active plugin presets through the Services catalogue port."""
+    from app.plugin.facade import active_presets
+    from app.services.facade import register_preset_source
+
+    register_preset_source(active_presets)
+
+
+def configure_development_plugin_samples() -> None:
+    """Compose reference source plugins in the development application."""
+    from core import settings
+
+    if settings.is_dev:
+        from app.plugin.facade import development_sample_is_active
+        from plugins.sample.drawing import CODE, register
+        from plugins.sample.inventory import register as register_inventory
+
+        register_inventory()
+        register(available=lambda: development_sample_is_active(CODE))
 
 
 def configure_dream_media() -> None:

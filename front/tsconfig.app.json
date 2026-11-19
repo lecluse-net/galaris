@@ -41,6 +41,8 @@
         "app/**/*.vue",
         "bridge/**/*.ts",
         "bridge/**/*.vue",
+        "plugins/sample/**/*.ts",
+        "plugins/sample/**/*.vue",
         "modules.ts",
         "serviceParameterChoices.ts",
         "taskDiagnostics.ts",

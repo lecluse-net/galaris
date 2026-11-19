@@ -1,0 +1,18 @@
+{
+  "format_version": 2,
+  "code": "sample.provider",
+  "version": "1.0.0",
+  "label": { "fr": "Sample Fournisseur IA", "en": "Sample AI Provider" },
+  "description": {
+    "fr": "Profil OpenAI-compatible relié à une réponse synthétique en développement.",
+    "en": "OpenAI-compatible profile connected to a synthetic development response."
+  },
+  "minimum_galaris_version": "0.1.0",
+  "maximum_galaris_version_exclusive": "1.0.0",
+  "contributions": [{
+    "family": "llm_provider",
+    "code": "sample.provider",
+    "label": { "fr": "Sample Fournisseur IA", "en": "Sample AI Provider" },
+    "contract_version": 1
+  }]
+}

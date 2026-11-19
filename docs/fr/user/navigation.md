@@ -123,7 +123,7 @@ La route est exclue des constructions des autres environnements.
 | **Agir** | Discussion, Objectifs, Processus |
 | **Connaissances** | Documents, Fichiers, Mémoire, Agenda, Contacts, Sujets |
 | **Superviser** | Tableau de bord, Activité, Dream, Permissions, Journal des mails, Journal des échecs |
-| **Administrer** | Préférences, Laboratoire, Console, Utilisateurs, Équipes, Rôles & autorisations |
+| **Administrer** | Préférences, Laboratoire, Console, Utilisateurs, Équipes, Rôles & autorisations, Plugins |
 | **Développeurs** (mode dev uniquement) | Référence graphique |
 
 Dans la documentation technique, « Chat » correspond au menu **Discussion**,
@@ -660,10 +660,13 @@ La [bibliothèque documentaire](documents.md) explique création, dossiers, sous
 listes, traitements groupés et raccourcis clavier.
 
 **Connaissances → Documents** (`/documents`) sert à retrouver et créer les documents Texte (HTML) et Données (JSON).
+En développement, le format **Dessin (Sample)** permet de tracer, gommer, annuler et
+enregistrer une image PNG. L'Historique permet de revoir ses révisions. Le format
+est présenté dans le [guide des Samples](../dev/plugin-authoring.md).
 L'icône **Conversation** de la barre d'outils de l'éditeur permet d'échanger avec un agent dans cette page, en ouvrant un
 fil existant ou en créant une conversation. Le document reste le centre du travail ;
 **Discussion** conserve sa fonction de suivi des conversations et des activités.
-Le bouton **Créer un document** et les menus contextuels proposent les deux types.
+Le bouton **Créer un document** et les menus contextuels proposent les formats disponibles.
 Les anciens liens `/dataset` redirigent vers cette bibliothèque filtrée sur Données.
 **Connaissances → Mémoire** (`/memory`) propose **Liste**
 et **Graphe** : ouvrez la page puis choisissez l’onglet, sans supposer un paramètre d’URL.
@@ -825,6 +828,26 @@ et les sous-groupes sont les étapes restantes du
 [plan de graphe mémoire à plusieurs niveaux de détail](../../../project/plans/graphe-memoire-multiechelle.md), au statut `partial`.
 
 ## Préférences, supervision et compte
+
+**Administrer → Plugins** (`/plugin`) affiche une carte par plugin avec son icône,
+sa version, son état, sa description et ses capacités. Avec le droit de gestion,
+importez une archive signée puis utilisez l'interrupteur **Activation** sur sa carte.
+L'en-tête est atténué lorsque le plugin est inactif.
+Ouvrez **Versions et historique** dans la carte pour consulter les opérations récentes
+et choisir une autre version. Les préréglages apparaissent après activation dans
+**Configurer → Services & connexions → Nouveau service**. Enregistrer une fiche crée un Service local.
+Dans **Plugins**, la désactivation retire le préréglage du catalogue et la
+désinstallation conserve les Services et Connexions déjà créés.
+
+**Catalogue** affiche les archives signées mises à disposition par l'opérateur.
+Sélectionnez une version pour passer par l'aperçu et l'installation. Un éditeur signé
+autorisé ajoute son type dans Documents après activation. Pour un modèle Données,
+utilisez **Télécharger le modèle** sur la carte et importez le JSON dans Documents.
+
+En développement, l'interrupteur **Activation** apparaît aussi sur les Samples déjà
+présents, et leur état est conservé au redémarrage. Désactiver **Dessin (Sample)** retire
+le format des choix de création et conserve l'accès aux PNG enregistrés. Les exemples
+s'utilisent dans Documents et Services. [Guide des Samples](../dev/plugin-authoring.md)
 
 **Administrer → Préférences** (`/params`) présente une grille de rubriques et des sous-menus :
 Système, Langue, Messagerie, Mémoire, Dream, Voix, Processus, Tâches et exécution,

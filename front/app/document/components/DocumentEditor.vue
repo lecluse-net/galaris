@@ -1018,7 +1018,11 @@ watch([requestedRowAction, loading, ownerOptionsReady], () => {
 }, { flush: 'post' })
 function captureFocus(): DocumentFocus | null {
   if (loading.value || historyOpen.value || summaryOpen.value || currentDocument.value?.id !== props.documentId) return null
-  return documentFocus.capture(currentDocument.value.revision)
+  const revision = currentDocument.value.revision
+  const anchor = richEditor.value?.captureFocus?.()
+  if (anchor) return { surface: 'format', revision, document_format: currentDocument.value.document_format,
+    anchor, selection: null, cursor: null, viewport: null }
+  return documentFocus.capture(revision)
 }
 async function discardDraft(): Promise<void> {
   await richEditor.value?.discardDraft?.()
@@ -1050,7 +1054,9 @@ const formatContentSource = computed<DocumentContentSource | null>(() => {
       const bytes = new Uint8Array(await content.arrayBuffer())
       let binary = ''
       for (let offset = 0; offset < bytes.length; offset += 8192) binary += String.fromCharCode(...bytes.subarray(offset, offset + 8192))
-      const updated = await documentService.updateBinaryDocument(document.id, agent, btoa(binary), expectedRevision, signal)
+      const updated = await documentService.updateDocument(document.id, agent, {
+        payload: { base64: btoa(binary) }, expected_revision: expectedRevision,
+      }, signal)
       if (currentDocument.value?.id === document.id && requestAgentId.value === agent && isCurrentEditorSession()) await mergeLatestDocument(document.id)
       return updated.revision
     },
@@ -1070,7 +1076,8 @@ async function runFormatExport(pdf: boolean): Promise<void> {
           save: async () => { throw new Error('Document snapshots are read-only') } }), request.signal)
       : await documentService.source(document.id, agent, request.signal)
     if (!request.signal.aborted && currentDocument.value?.id === document.id && requestAgentId.value === agent) {
-      saveBlobAsResource(blob, document.title.replace(/[\\/:*?"<>|]/g, '-') + (pdf ? '.pdf' : document.document_format === 'data' ? '.json' : document.document_format === 'text' ? '.html' : ''))
+      saveBlobAsResource(blob, document.title.replace(/[\\/:*?"<>|]/g, '-') + (pdf ? '.pdf' : document.document_format === 'data' ? '.json' : document.document_format === 'text' ? '.html'
+        : documentFormat(document.document_format, document.format_version).nativeExtension ?? ''))
     }
   } catch { if (!request.signal.aborted) $q.notify({ type: 'negative', message: t('documents.formatExportFailed') }) }
   finally { if (formatExportRequest === request) { formatExportBusy.value = false; formatExportRequest = undefined } }

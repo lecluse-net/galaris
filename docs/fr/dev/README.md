@@ -8,6 +8,8 @@ font foi ; les plans décrivent les extensions encore ouvertes.
 | Besoin | Référence |
 |---|---|
 | Contrat du catalogue de services | [Services](service-catalog.md) |
+| Créer un bundle de plugin déclaratif | [Plugins](plugin-bundles.md) |
+| Choisir une façade et reproduire un Sample | [Guide auteur de plugins](plugin-authoring.md) |
 | Trouver modules, routes, modèles et outils | [Cartographie générée](../architecture/generated/project-map.md) |
 | Comprendre les frontières et transitions | [Architecture, invariants et flux](../architecture/README.md) |
 | Comprendre les choix structurels | [Décisions acceptées](../../../project/decisions/README.md) |

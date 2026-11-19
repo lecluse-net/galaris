@@ -2702,6 +2702,39 @@
       ]
     },
     {
+      "id": "admin.plugins",
+      "labels": {
+        "fr": "Plugins",
+        "en": "Plugins"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Administrer",
+          "Plugins"
+        ],
+        "en": [
+          "Administer",
+          "Plugins"
+        ]
+      },
+      "route": "/plugin",
+      "href": null,
+      "description": {
+        "fr": "Installez et gérez les extensions de cette instance.",
+        "en": "Install and manage extensions for this instance."
+      },
+      "privilege_groups": [
+        [
+          "PLUGIN_ACCESS",
+          "PLUGIN_EDIT"
+        ]
+      ],
+      "conditions": [],
+      "sources": [
+        "front/app/plugin/navigation.ts"
+      ]
+    },
+    {
       "id": "developers.graphicReference",
       "labels": {
         "fr": "Référence graphique",

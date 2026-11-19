@@ -15,7 +15,7 @@ from core.util import EncryptionService, get_encryption_service
 from .handlers import LLMModelInfo
 from .model_metadata_service import enrich_models, get_model_metadata
 from .provider_catalog import (
-    PROVIDER_CATALOG,
+    provider_profiles,
     ProviderProfile,
     get_provider_profile,
     match_provider_profile,
@@ -208,7 +208,7 @@ async def create_provider(data: LLMProviderCreate) -> LLMProvider:
     registered = next(
         (
             profile
-            for profile in PROVIDER_CATALOG
+            for profile in provider_profiles()
             if profile.provider_type == data.provider_type
             and profile.provider_type != "openai_compatible"
         ),
@@ -380,7 +380,7 @@ async def update_provider(
     next_profile = profile or next(
         (
             candidate
-            for candidate in PROVIDER_CATALOG
+            for candidate in provider_profiles()
             if candidate.provider_type == update_data.get("provider_type")
         ),
         None,
@@ -546,7 +546,7 @@ async def get_provider_catalog() -> ProviderCatalogResponse:
     }
     items = [
         _fixed_catalog_item(profile, fixed_connections.get(profile.code))
-        for profile in PROVIDER_CATALOG
+        for profile in provider_profiles()
     ]
     items.extend(
         _custom_catalog_item(provider)

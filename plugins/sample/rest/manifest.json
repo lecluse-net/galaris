@@ -1,0 +1,17 @@
+{
+  "format_version": 1,
+  "code": "sample.rest",
+  "version": "1.0.0",
+  "label": { "en": "Sample REST", "fr": "Sample REST" },
+  "description": { "en": "REST connector template with connection-owned endpoint and credentials.", "fr": "Modèle de connecteur REST dont l’adresse et le jeton appartiennent à la Connexion." },
+  "minimum_galaris_version": "0.1.0",
+  "maximum_galaris_version_exclusive": "1.0.0",
+  "contributions": [
+    {
+      "family": "service_preset",
+      "code": "sample-rest",
+      "label": { "en": "Sample REST Service", "fr": "Service Sample REST" },
+      "contract_version": 1
+    }
+  ]
+}

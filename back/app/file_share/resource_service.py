@@ -166,7 +166,10 @@ _MAIL_CAPABILITIES: list[ResourceCapability] = ["copy", "info", "list", "read"]
 
 
 def _transport_capabilities(service: str, entry: FileEntry) -> list[ResourceCapability]:
-    if service == "mail":
+    from .bridges import find_bridge
+
+    bridge = find_bridge(service)
+    if service == "mail" or (bridge is not None and not bridge.writable):
         return ["info", "list"] if entry.is_dir else ["copy", "info", "read"]
     if service in {"nextcloud", "samba"}:
         if entry.is_dir:
@@ -594,7 +597,7 @@ async def list_schemes(ctx: ResourceContext) -> list[ResourceSchemeDescription]:
         if bool(target["has_file_share"]):
             capabilities.extend(
                 _MAIL_CAPABILITIES
-                if target["service"] == "mail"
+                if target["service"] == "mail" or not target.get("file_share_writable", True)
                 else (
                     _NEXTCLOUD_CAPABILITIES
                     if target["service"] in {"nextcloud", "samba"}
@@ -649,8 +652,18 @@ async def resource_info(
     uri: object,
     *,
     include_checksum: bool = False,
+    revision: int | None = None,
 ) -> ResourceDescriptor:
-    reference = await resolve_native_alias(ctx, parse_resource_uri(uri, allow_empty=True))
+    reference = parse_resource_uri(uri, allow_empty=revision is None)
+    if revision is not None:
+        identity = _revision_identity(reference, revision)
+        from app.document.facade import describe_file_resource
+
+        historical = await describe_file_resource(identity, agent_id=ctx.agent_id, expected_kind="document", revision=revision)
+        return ResourceDescriptor(uri=str(reference), name=str(historical["filename"] or historical["title"]),
+            media_type=str(historical["media_type"]), size=_as_int(historical["size"]), revision=revision,
+            checksum=str(historical["checksum"]), capabilities=["info", "read"])
+    reference = await resolve_native_alias(ctx, reference)
     from .document_folders import is_document_folder, folder_info
     if is_document_folder(reference):
         return await folder_info(ctx, reference)
@@ -788,7 +801,7 @@ async def resource_info(
         name=_resource_name(reference),
         media_type=mimetypes.guess_type(_resource_name(reference))[0]
         or "application/octet-stream",
-        capabilities=list(_TRANSPORT_CAPABILITIES),
+        capabilities=_transport_capabilities(service, FileEntry(path=reference.decoded_locator, is_dir=False)),
     )
 
 
@@ -1056,9 +1069,41 @@ async def materialize_resource(
     *,
     max_bytes: int,
     timeout_seconds: float = 120,
+    revision: int | None = None,
 ) -> MaterializedResource:
+    if max_bytes <= 0:
+        raise ValueError("max_bytes must be positive")
     async with asyncio.timeout(timeout_seconds):
+        if revision is not None:
+            return await _materialize_revision(ctx, uri, revision, destination, max_bytes=max_bytes)
         return await _materialize_resource(ctx, uri, destination, max_bytes=max_bytes)
+
+
+def _revision_identity(reference: ResourceUri, revision: int) -> UUID:
+    if reference.scheme != "document" or "/" in reference.locator or revision < 1:
+        raise ResourceValidationError("A revision requires an exact document:// URI and a positive revision")
+    return UUID(reference.locator)
+
+
+async def _materialize_revision(ctx: ResourceContext, uri: object, revision: int, destination: Path,
+                                *, max_bytes: int) -> MaterializedResource:
+    from app.document import document_source
+
+    reference = parse_resource_uri(uri)
+    identity = _revision_identity(reference, revision)
+    descriptor = await resource_info(ctx, reference, revision=revision)
+    if descriptor.size is None or descriptor.size > max_bytes:
+        raise ResourceValidationError(f"Resource exceeds the {max_bytes}-byte materialization limit")
+    content, media_type = await document_source(identity, ctx.agent_id, revision=revision)
+    if hashlib.sha256(content).hexdigest() != descriptor.checksum:
+        raise ResourceValidationError("The requested document revision changed while materializing")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        await complete_io(destination.write_bytes, content)
+    except BaseException:
+        destination.unlink(missing_ok=True)
+        raise
+    return MaterializedResource(uri=str(reference), name=descriptor.name, media_type=media_type, size=len(content))
 
 
 async def _materialize_resource(
@@ -1066,8 +1111,6 @@ async def _materialize_resource(
 ) -> MaterializedResource:
     """Copy an authorized resource to a server-owned path with an explicit byte limit."""
 
-    if max_bytes <= 0:
-        raise ValueError("max_bytes must be positive")
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
     if provider := _resource_provider(reference):
         return await provider.materialize(ctx, reference, destination, max_bytes=max_bytes)
@@ -1178,10 +1221,15 @@ async def resource_read(
     *,
     offset: int = 0,
     max_chars: int = 20_000,
+    revision: int | None = None,
 ) -> ResourceRead:
     """Read UTF-8 text by page, or return a small binary resource as base64."""
 
-    reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
+    reference = parse_resource_uri(uri)
+    if revision is None:
+        reference = await resolve_native_alias(ctx, reference)
+    else:
+        _revision_identity(reference, revision)
     from .document_folders import is_document_folder, folder_read
     if is_document_folder(reference):
         return await folder_read(ctx, reference, offset=offset)
@@ -1233,17 +1281,12 @@ async def resource_read(
     if reference.scheme in {"memory", "document"}:
         if reference.scheme == "document":
             from app.document.facade import read_file_resource_text
+            data = await read_file_resource_text(UUID(reference.locator), agent_id=ctx.agent_id,
+                task_id=ctx.task_id, expected_kind="document", offset=start, max_chars=limit, revision=revision)
         else:
             from app.memory import read_file_resource_text
-
-        data = await read_file_resource_text(
-            UUID(reference.locator),
-            agent_id=ctx.agent_id,
-            task_id=ctx.task_id,
-            expected_kind=cast(Literal["memory", "document"], reference.scheme),
-            offset=start,
-            max_chars=limit,
-        )
+            data = await read_file_resource_text(UUID(reference.locator), agent_id=ctx.agent_id,
+                task_id=ctx.task_id, expected_kind="memory", offset=start, max_chars=limit)
         values = dict(
             uri=str(reference), content=str(data.get("content") or ""),
             encoding=str(data.get("encoding") or "utf-8"),

@@ -7,6 +7,7 @@ connections to those profiles.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from typing import Literal, Optional
 
@@ -58,6 +59,25 @@ class ProviderProfile:
 
 PROVIDER_CATALOG: list[ProviderProfile] = []
 _PROVIDERS_BY_CODE: dict[str, ProviderProfile] = {}
+_plugin_providers: dict[str, ProviderProfile] = {}
+
+
+def provider_profiles() -> tuple[ProviderProfile, ...]:
+    return (*PROVIDER_CATALOG, *_plugin_providers.values())
+
+
+def prepare_plugin_providers(profiles: Iterable[ProviderProfile]) -> Callable[[], None]:
+    candidate: dict[str, ProviderProfile] = {}
+    for profile in profiles:
+        if profile.code in _PROVIDERS_BY_CODE or profile.code in candidate:
+            raise ValueError("Duplicate provider profile")
+        candidate[profile.code] = profile
+
+    def promote() -> None:
+        global _plugin_providers
+        _plugin_providers = candidate
+
+    return promote
 
 
 def register_provider_profile(profile: ProviderProfile) -> None:
@@ -76,7 +96,7 @@ def get_provider_profile(code: Optional[str]) -> Optional[ProviderProfile]:
     """Return a built-in profile by its stable code."""
     if not code:
         return None
-    return _PROVIDERS_BY_CODE.get(code)
+    return _PROVIDERS_BY_CODE.get(code) or _plugin_providers.get(code)
 
 
 def _normalize_url(value: str) -> str:
@@ -88,7 +108,7 @@ def match_provider_profile(base_url: str) -> Optional[ProviderProfile]:
     normalized = _normalize_url(base_url)
     if not normalized:
         return None
-    for profile in PROVIDER_CATALOG:
+    for profile in provider_profiles():
         candidates = (profile.base_url, *profile.aliases)
         if normalized in {_normalize_url(candidate) for candidate in candidates}:
             return profile

@@ -1,6 +1,7 @@
 """Bundled service presets and an atomic, opt-in GitHub catalogue snapshot."""
 
 import asyncio
+from collections.abc import Awaitable, Callable
 import json
 from importlib.metadata import version
 from pathlib import Path
@@ -42,10 +43,11 @@ def _version_tuple(value: str) -> tuple[int, ...]:
     return tuple(int(part) for part in value.split("."))
 
 
-def preset(definition: ServiceCreate) -> ServicePreset:
+def preset(definition: ServiceCreate, *, declared_protocols: frozenset[str] = frozenset()) -> ServicePreset:
     metadata = definition.catalog
     reason: Literal["supported", "format", "version", "protocol"] = "supported"
     available = {item.value for capability in supported_capabilities() for item in capability.protocols}
+    available.update(declared_protocols)
     if metadata is None or metadata.format_version != 1:
         reason = "format"
     elif _version_tuple(metadata.minimum_galaris_version) > _version_tuple(
@@ -56,7 +58,7 @@ def preset(definition: ServiceCreate) -> ServicePreset:
     return ServicePreset(definition=definition, compatible=reason == "supported", compatibility=reason)
 
 
-def _parse_definition(content: str) -> ServiceCreate:
+def parse_catalog_definition(content: str) -> ServiceCreate:
     if len(content.encode("utf-8")) > MAX_FILE_BYTES:
         raise ValueError("Service preset is too large")
     raw: Any = yaml.safe_load(content)  # type: ignore[call-overload]
@@ -95,7 +97,7 @@ def _filenames(content: str) -> list[str]:
 
 
 def _catalog(contents: list[str], *, source: Literal["bundled", "github"], revision: str) -> ServiceCatalog:
-    entries = [preset(_parse_definition(content)) for content in contents]
+    entries = [preset(parse_catalog_definition(content)) for content in contents]
     codes = [entry.definition.code for entry in entries]
     if len(set(codes)) != len(codes):
         raise ValueError("Duplicate service code")
@@ -131,6 +133,26 @@ def read_catalog() -> ServiceCatalog:
     except (OSError, ValueError, ValidationError):
         logger.warning("Service catalogue cache unavailable; using bundled presets")
         return bundled
+
+
+_preset_source: Callable[[], Awaitable[list[ServicePreset]]] | None = None
+
+
+def register_preset_source(source: Callable[[], Awaitable[list[ServicePreset]]]) -> None:
+    """Bind installed declarative contributions at the composition boundary."""
+    global _preset_source
+    _preset_source = source
+
+
+async def compose_catalog(catalog: ServiceCatalog) -> ServiceCatalog:
+    if _preset_source is None:
+        return catalog
+    entries = {entry.definition.code: entry for entry in catalog.entries}
+    for entry in await _preset_source():
+        entries.setdefault(entry.definition.code, entry)
+    return catalog.model_copy(update={
+        "entries": sorted(entries.values(), key=lambda entry: entry.definition.label.casefold()),
+    })
 
 
 async def _download(client: httpx.AsyncClient, url: str) -> str:

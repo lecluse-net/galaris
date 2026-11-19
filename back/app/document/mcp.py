@@ -1,16 +1,50 @@
-"""Document sharing tools, independent of the personal-memory provider."""
+"""Domain operations for shared Documents and their revisions."""
 
 import json
-from typing import Literal
+from typing import Annotated, Literal
 from uuid import UUID
 
+from pydantic import Field
+
+from app.agent import EffectDescriptorV1
 from app.services import McpToolContext, mcp_tool
 
-from . import item_sharing
+from . import item_sharing, resource_service
+from .formats import DocumentRevisionRegion
+
+DocumentUri = Annotated[str, Field(pattern=r"^document://[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$")]
+RevisionNumber = Annotated[int, Field(ge=1)]
 
 
 def _identity(value: str) -> UUID:
     return UUID(value.strip().removeprefix("document://"))
+
+
+@mcp_tool("document", name="document_revision_list", approval="enabled", conversation_policy="short",
+    approval_reason="Read saved content revision history for an accessible document",
+    description="List saved document content versions, newest first. Use their exact revision numbers with file_read or document_revision_compare.",
+    effect_descriptor=EffectDescriptorV1(capability="file.read", kind="read", target_arguments=("document_id",),
+        idempotence="read_only", receipt="resource"), effect_policy="read", concurrency_policy="safe")
+async def document_revision_list(ctx: McpToolContext, document_id: DocumentUri,
+    offset: Annotated[int, Field(ge=0)] = 0, limit: Annotated[int, Field(ge=1, le=50)] = 20) -> str:
+    identity = _identity(document_id)
+    page = await resource_service.list_document_content_revisions(identity, actor_agent_id=ctx.agent_id,
+        offset=offset, limit=limit)
+    return json.dumps({"uri": f"document://{identity}", **page.model_dump(mode="json", exclude={
+        "items": {"__all__": {"author_user_id", "author_agent_id", "task_id"}},
+    })}, ensure_ascii=False)
+
+
+@mcp_tool("document", name="document_revision_compare", approval="enabled", conversation_policy="short",
+    approval_reason="Read and compare two saved content revisions of an accessible document",
+    description="Compare two saved document revisions. Supported drawing formats report pixel changes, optionally restricted to a rectangle in source pixels. A content_hash comparison only reports that bytes differ.",
+    effect_descriptor=EffectDescriptorV1(capability="file.read", kind="read", target_arguments=("document_id",),
+        idempotence="read_only", receipt="resource"), effect_policy="read", concurrency_policy="safe")
+async def document_revision_compare(ctx: McpToolContext, document_id: DocumentUri,
+    before_revision: RevisionNumber, after_revision: RevisionNumber, region: DocumentRevisionRegion | None = None) -> str:
+    result = await resource_service.compare_document_content_revisions(_identity(document_id), before_revision,
+        after_revision, actor_agent_id=ctx.agent_id, region=region)
+    return json.dumps(result, ensure_ascii=False)
 
 
 @mcp_tool("document", name="document_sharing", approval="enabled",
@@ -31,7 +65,7 @@ async def document_sharing(ctx: McpToolContext, document_id: str, search: str = 
 
 @mcp_tool("document", name="document_share", approval="ask",
     approval_reason="Change access to a shared Document",
-    description="Share an owned HTML Document with exactly one agent_id, user_id or team_id. Access read/edit grants access; none revokes only that direct grant. First call document_sharing for recipient IDs and expected_lock_version. Linking a Document never grants access.")
+    description="Share an owned Document with exactly one agent_id, user_id or team_id. Access read/edit grants access; none revokes only that direct grant. First call document_sharing for recipient IDs and expected_lock_version. Linking a Document never grants access.")
 async def document_share(ctx: McpToolContext, document_id: str, agent_id: int | None = None,
     access: Literal["read", "edit", "none"] = "edit", team_id: int | None = None,
     user_id: int | None = None, expected_lock_version: int | None = None) -> str:

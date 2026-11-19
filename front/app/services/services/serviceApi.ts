@@ -13,6 +13,8 @@ export interface ServiceCatalogMetadata {
     summary: Record<string, string>
     documentation: string
     icon_credit: string
+    plugin_code?: string | null
+    plugin_version?: string | null
 }
 export interface ServicePreset {
     definition: ServiceCreate

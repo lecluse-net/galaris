@@ -9,18 +9,18 @@ tests restent l’autorité sur le comportement.
 
 ## Résumé
 
-- 79 modules backend déclarés ;
-- 40 modules frontend déclarés ;
-- 645 arêtes de dépendance backend ;
-- 227 arêtes de dépendance frontend ;
-- 307 arêtes entre domaines `app`/`bridge` ;
+- 80 modules backend déclarés ;
+- 41 modules frontend déclarés ;
+- 650 arêtes de dépendance backend ;
+- 231 arêtes de dépendance frontend ;
+- 308 arêtes entre domaines `app`/`bridge` ;
 - 30 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 0 paires frontend directement bidirectionnelles ;
-- 817 handlers HTTP/WebSocket détectés ;
-- 196 tables SQLAlchemy détectées ;
-- 297 outils MCP natifs détectés ;
-- 57 pages Vue détectées.
+- 826 handlers HTTP/WebSocket détectés ;
+- 199 tables SQLAlchemy détectées ;
+- 299 outils MCP natifs détectés ;
+- 58 pages Vue détectées.
 
 ## Modules backend
 
@@ -34,6 +34,7 @@ tests restent l’autorité sur le comportement.
 | `core.storage` | core | non | oui | `models.py`, `tests/` |
 | `app.incident` | app | non | oui | `contracts.py`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.services` | app | non | oui | `contracts.py`, `facade.py`, `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
+| `app.plugin` | app | non | oui | `contracts.py`, `facade.py`, `models.py`, `privileges.py`, `router.py`, `tests/` |
 | `app.documentation` | app | non | oui | `contracts.py`, `facade.py`, `models.py`, `tests/` |
 | `app.agent` | app | non | oui | `contracts.py`, `facade.py`, `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.share` | app | non | oui | `contracts.py`, `models.py`, `tests/` |
@@ -118,6 +119,7 @@ tests restent l’autorité sur le comportement.
 | `app/agent` | oui | `components`, `i18n.ts`, `navigation.ts`, `services`, `stores` | 0 |
 | `app/harnesses` | oui | `components`, `i18n.ts`, `pages`, `services` | 1 |
 | `app/services` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 1 |
+| `app/plugin` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services` | 1 |
 | `app/browser` | oui | `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 1 |
 | `app/connection` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services`, `stores` | 5 |
 | `app/calendar` | oui | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services` | 1 |
@@ -276,7 +278,7 @@ tests restent l’autorité sur le comportement.
 | `app.dashboard` | `core.database` | `back/app/dashboard/dashboard_service.py` |
 | `app.dashboard` | `core.util` | `back/app/dashboard/dashboard_service.py` |
 | `app.dataset` | `app.document` | `back/app/dataset/__init__.py`, `back/app/dataset/access.py`, `back/app/dataset/apps.py`, `back/app/dataset/attachments.py`, `back/app/dataset/bootstrap.py`, `back/app/dataset/compatibility.py`, `back/app/dataset/contracts.py`, `back/app/dataset/dbadmin.py`, `back/app/dataset/facade.py`, `back/app/dataset/library.py`, `back/app/dataset/mcp.py`, `back/app/dataset/migration.py`, `back/app/dataset/models.py`, `back/app/dataset/organization.py`, `back/app/dataset/ownership.py`, `back/app/dataset/passages.py`, `back/app/dataset/privileges.py`, `back/app/dataset/projection.py`, `back/app/dataset/provider.py`, `back/app/dataset/query.py`, `back/app/dataset/resource_summaries.py`, `back/app/dataset/router.py`, `back/app/dataset/search.py`, `back/app/dataset/search_index.py`, `back/app/dataset/search_predicates.py`, `back/app/dataset/service.py`, `back/app/dataset/sharing.py`, `back/app/dataset/topic_assignment.py`, `back/app/dataset/usage.py`, `back/app/dataset/values.py` |
-| `app.document` | `app.agent` | `back/app/document/access.py`, `back/app/document/agent_library.py`, `back/app/document/assertions.py`, `back/app/document/bootstrap.py`, `back/app/document/bulk_moves.py`, `back/app/document/data/access.py`, `back/app/document/data/apps.py`, `back/app/document/data/attachments.py`, `back/app/document/data/compatibility.py`, `back/app/document/data/contracts.py`, `back/app/document/data/ownership.py`, `back/app/document/data/router.py`, `back/app/document/data/service.py`, `back/app/document/data/topic_assignment.py`, `back/app/document/data/usage.py`, `back/app/document/dataset_attachments.py`, `back/app/document/dataset_port.py`, `back/app/document/dataset_references.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_app_service.py`, `back/app/document/document_icons.py`, `back/app/document/document_nesting.py`, `back/app/document/document_order.py`, `back/app/document/document_policy.py`, `back/app/document/document_service.py`, `back/app/document/document_sharing.py`, `back/app/document/document_tags.py`, `back/app/document/events.py`, `back/app/document/file_import.py`, `back/app/document/folder_resources.py`, `back/app/document/folder_sharing.py`, `back/app/document/internal_attachments.py`, `back/app/document/item_sharing.py`, `back/app/document/keyword_actions.py`, `back/app/document/library_queries.py`, `back/app/document/process_references.py`, `back/app/document/resource_service.py`, `back/app/document/router.py`, `back/app/document/sharing_inheritance.py`, `back/app/document/topic_assignment.py`, `back/app/document/topic_library.py`, `back/app/document/workflow_documents.py` |
+| `app.document` | `app.agent` | `back/app/document/access.py`, `back/app/document/agent_library.py`, `back/app/document/assertions.py`, `back/app/document/bootstrap.py`, `back/app/document/bulk_moves.py`, `back/app/document/data/access.py`, `back/app/document/data/apps.py`, `back/app/document/data/attachments.py`, `back/app/document/data/compatibility.py`, `back/app/document/data/contracts.py`, `back/app/document/data/ownership.py`, `back/app/document/data/router.py`, `back/app/document/data/service.py`, `back/app/document/data/topic_assignment.py`, `back/app/document/data/usage.py`, `back/app/document/dataset_attachments.py`, `back/app/document/dataset_port.py`, `back/app/document/dataset_references.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_app_service.py`, `back/app/document/document_icons.py`, `back/app/document/document_nesting.py`, `back/app/document/document_order.py`, `back/app/document/document_policy.py`, `back/app/document/document_service.py`, `back/app/document/document_sharing.py`, `back/app/document/document_tags.py`, `back/app/document/events.py`, `back/app/document/file_import.py`, `back/app/document/folder_resources.py`, `back/app/document/folder_sharing.py`, `back/app/document/internal_attachments.py`, `back/app/document/item_sharing.py`, `back/app/document/keyword_actions.py`, `back/app/document/library_queries.py`, `back/app/document/mcp.py`, `back/app/document/process_references.py`, `back/app/document/resource_service.py`, `back/app/document/router.py`, `back/app/document/sharing_inheritance.py`, `back/app/document/topic_assignment.py`, `back/app/document/topic_library.py`, `back/app/document/workflow_documents.py` |
 | `app.document` | `app.conversation` | `back/app/document/bootstrap.py`, `back/app/document/conversation_document_adapter.py`, `back/app/document/resource_service.py` |
 | `app.document` | `app.file_share` | `back/app/document/data/apps.py`, `back/app/document/data/attachments.py`, `back/app/document/data/bootstrap.py`, `back/app/document/data/provider.py`, `back/app/document/data/search.py`, `back/app/document/data/values.py` |
 | `app.document` | `app.goal` | `back/app/document/bootstrap.py`, `back/app/document/goal_document_adapter.py` |
@@ -501,6 +503,11 @@ tests restent l’autorité sur le comportement.
 | `app.onboarding` | `core.database` | `back/app/onboarding/router.py`, `back/app/onboarding/services.py` |
 | `app.onboarding` | `core.params` | `back/app/onboarding/router.py` |
 | `app.onboarding` | `core.user` | `back/app/onboarding/router.py` |
+| `app.plugin` | `app.services` | `back/app/plugin/bundles.py`, `back/app/plugin/service.py` |
+| `app.plugin` | `core.authorize` | `back/app/plugin/router.py` |
+| `app.plugin` | `core.database` | `back/app/plugin/models.py`, `back/app/plugin/service.py` |
+| `app.plugin` | `core.update_diagnostics` | `back/app/plugin/service.py` |
+| `app.plugin` | `core.user` | `back/app/plugin/service.py` |
 | `app.process` | `app.agent` | `back/app/process/catalogue.py`, `back/app/process/dataset_usage.py`, `back/app/process/events.py`, `back/app/process/facade.py`, `back/app/process/input_editing.py`, `back/app/process/input_provenance.py`, `back/app/process/mcp.py`, `back/app/process/native_access.py`, `back/app/process/native_actors.py`, `back/app/process/native_definitions.py`, `back/app/process/native_router.py`, `back/app/process/native_runs.py`, `back/app/process/native_sharing.py`, `back/app/process/process_service.py`, `back/app/process/resource_facade.py`, `back/app/process/resource_previews.py`, `back/app/process/router.py`, `back/app/process/run_resources.py` |
 | `app.process` | `app.console` | `back/app/process/native_engine.py`, `back/app/process/process_service.py`, `back/app/process/router.py` |
 | `app.process` | `app.dataset` | `back/app/process/values.py` |
@@ -868,7 +875,7 @@ tests restent l’autorité sur le comportement.
 | `app/document` | `core/authorize` | `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentClassificationActions.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentIcon.vue`, `front/app/document/components/DocumentImportDialog.vue`, `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentRowMenu.vue`, `front/app/document/components/DocumentTagRow.vue`, `front/app/document/components/DocumentThumbnail.vue`, `front/app/document/components/DocumentTopicNavigation.vue`, `front/app/document/navigation.ts` |
 | `app/document` | `core/navigation` | `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentTopicNavigation.vue`, `front/app/document/navigation.ts` |
 | `app/document` | `core/user` | `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentLibraryNavigation.vue` |
-| `app/document` | `core/util` | `front/app/document/components/DocumentApplication.vue`, `front/app/document/components/DocumentApplicationBlock.vue`, `front/app/document/components/DocumentAttachments.vue`, `front/app/document/components/DocumentBulkDialog.vue`, `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentClassificationActions.vue`, `front/app/document/components/DocumentDialog.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentFolderCollection.vue`, `front/app/document/components/DocumentFolderSelect.vue`, `front/app/document/components/DocumentFolderThumbnail.vue`, `front/app/document/components/DocumentFormatsDialog.vue`, `front/app/document/components/DocumentHistoryDialog.vue`, `front/app/document/components/DocumentImportDialog.vue`, `front/app/document/components/DocumentLibraryDocument.vue`, `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentResourceEmbed.vue`, `front/app/document/components/DocumentRowMenu.vue`, `front/app/document/components/DocumentSharingPanel.vue`, `front/app/document/components/DocumentSummaryPanel.vue`, `front/app/document/components/DocumentTagIcon.vue`, `front/app/document/components/DocumentTagIconPicker.vue`, `front/app/document/components/DocumentTagRow.vue`, `front/app/document/components/DocumentThumbnail.vue`, `front/app/document/components/DocumentTopicNavigation.vue`, `front/app/document/data/ContentEditor.vue`, `front/app/document/data/index.ts`, `front/app/document/documentAppResources.ts`, `front/app/document/documentAppSandbox.ts`, `front/app/document/documentEditor.ts`, `front/app/document/documentFolders.ts`, `front/app/document/documentFormats.ts`, `front/app/document/libraryShortcuts.ts`, `front/app/document/richContent.ts`, `front/app/document/services/documentService.ts`, `front/app/document/tagEmojiCatalog.ts`, `front/app/document/tagIcon.ts`, `front/app/document/text/index.ts`, `front/app/document/useDocumentBranches.ts` |
+| `app/document` | `core/util` | `front/app/document/components/DocumentApplication.vue`, `front/app/document/components/DocumentApplicationBlock.vue`, `front/app/document/components/DocumentAttachments.vue`, `front/app/document/components/DocumentBulkDialog.vue`, `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentClassificationActions.vue`, `front/app/document/components/DocumentDialog.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentFolderCollection.vue`, `front/app/document/components/DocumentFolderSelect.vue`, `front/app/document/components/DocumentFolderThumbnail.vue`, `front/app/document/components/DocumentFormatsDialog.vue`, `front/app/document/components/DocumentHistoryDialog.vue`, `front/app/document/components/DocumentImportDialog.vue`, `front/app/document/components/DocumentLibraryDocument.vue`, `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentResourceEmbed.vue`, `front/app/document/components/DocumentRowMenu.vue`, `front/app/document/components/DocumentSharingPanel.vue`, `front/app/document/components/DocumentSummaryPanel.vue`, `front/app/document/components/DocumentTagIcon.vue`, `front/app/document/components/DocumentTagIconPicker.vue`, `front/app/document/components/DocumentTagRow.vue`, `front/app/document/components/DocumentThumbnail.vue`, `front/app/document/components/DocumentTopicNavigation.vue`, `front/app/document/data/ContentEditor.vue`, `front/app/document/data/index.ts`, `front/app/document/documentAppResources.ts`, `front/app/document/documentAppSandbox.ts`, `front/app/document/documentEditor.ts`, `front/app/document/documentFolders.ts`, `front/app/document/documentFormats.ts`, `front/app/document/index.ts`, `front/app/document/libraryShortcuts.ts`, `front/app/document/pluginHost.ts`, `front/app/document/richContent.ts`, `front/app/document/services/documentService.ts`, `front/app/document/tagEmojiCatalog.ts`, `front/app/document/tagIcon.ts`, `front/app/document/text/index.ts`, `front/app/document/useDocumentBranches.ts` |
 | `app/document` | `core/websocket` | `front/app/document/components/DocumentApplication.vue`, `front/app/document/components/DocumentBulkList.vue`, `front/app/document/components/DocumentEditor.vue`, `front/app/document/components/DocumentLibraryNavigation.vue`, `front/app/document/components/DocumentLibraryPage.vue`, `front/app/document/components/DocumentThumbnail.vue` |
 | `app/dream` | `app/llm` | `front/app/dream/pages/index.vue`, `front/app/dream/types.ts` |
 | `app/dream` | `core/api` | `front/app/dream/services/dreamService.ts` |
@@ -940,6 +947,10 @@ tests restent l’autorité sur le comportement.
 | `app/onboarding` | `core/params` | `front/app/onboarding/components/WelcomePage.vue` |
 | `app/onboarding` | `core/user` | `front/app/onboarding/components/FirstMission.vue`, `front/app/onboarding/components/WelcomePage.vue` |
 | `app/onboarding` | `core/util` | `front/app/onboarding/stores/onboardingStore.ts` |
+| `app/plugin` | `core/api` | `front/app/plugin/services/pluginApi.ts` |
+| `app/plugin` | `core/authorize` | `front/app/plugin/navigation.ts`, `front/app/plugin/pages/index.vue` |
+| `app/plugin` | `core/navigation` | `front/app/plugin/navigation.ts`, `front/app/plugin/pages/index.vue` |
+| `app/plugin` | `core/util` | `front/app/plugin/components/PluginCard.vue`, `front/app/plugin/components/PluginImportDialog.vue`, `front/app/plugin/pages/index.vue` |
 | `app/process` | `app/agent` | `front/app/process/components/ExternalProcessEditor.vue`, `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/components/ProcessAgentSelect.vue`, `front/app/process/components/ProcessLaneHeader.vue`, `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/components/ProcessSharingDraft.vue`, `front/app/process/pages/index.vue`, `front/app/process/services/processService.ts` |
 | `app/process` | `app/dataset` | `front/app/process/services/nativeProcessService.ts` |
 | `app/process` | `app/share` | `front/app/process/components/NativeProcessEditor.vue`, `front/app/process/components/ProcessSharingDraft.vue`, `front/app/process/services/nativeProcessService.ts` |
@@ -1086,6 +1097,7 @@ tests restent l’autorité sur le comportement.
 | `bridge.one_bot` | 2 | `app.connection`, `app.messenger` |
 | `app.dataset` | 1 | `app.document` |
 | `app.incident` | 1 | `app.services` |
+| `app.plugin` | 1 | `app.services` |
 | `bridge.anthropic` | 1 | `app.llm` |
 | `bridge.azure_speech` | 1 | `app.llm` |
 | `bridge.byteplus` | 1 | `app.llm` |
@@ -1118,7 +1130,7 @@ tests restent l’autorité sur le comportement.
 |---|---:|---|
 | `app.llm` | 45 | `app.agent`, `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.goal`, `app.harness`, `app.image`, `app.lab`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.services`, `app.task`, `app.topic`, `app.voice`, `bridge.anthropic`, `bridge.azure_speech`, `bridge.byteplus`, `bridge.cerebras`, `bridge.codex`, `bridge.cohere`, `bridge.deepseek`, `bridge.deepseek_harness`, `bridge.elevenlabs`, `bridge.fireworks`, `bridge.google`, `bridge.groq`, `bridge.hermes`, `bridge.huggingface`, `bridge.mammouth`, `bridge.mistral`, `bridge.models_dev`, `bridge.nvidia`, `bridge.ollama`, `bridge.openai`, `bridge.openrouter`, `bridge.perplexity`, `bridge.sunoapi`, `bridge.together`, `bridge.xai` |
 | `app.agent` | 35 | `app.calendar`, `app.chat`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.services`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.claude_agent`, `bridge.code_server`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud` |
-| `app.services` | 33 | `app.agent`, `app.audio`, `app.browser`, `app.calendar`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.document`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.image`, `app.incident`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
+| `app.services` | 34 | `app.agent`, `app.audio`, `app.browser`, `app.calendar`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.document`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.image`, `app.incident`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.plugin`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
 | `app.messenger` | 24 | `app.agent`, `app.audio`, `app.browser`, `app.chat`, `app.contact`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.lab`, `app.llm`, `app.onboarding`, `app.services`, `app.task`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.telegram`, `bridge.whatsapp` |
 | `app.connection` | 22 | `app.browser`, `app.calendar`, `app.console`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.messenger`, `app.onboarding`, `app.services`, `app.skill`, `app.topic`, `app.voice`, `app.webhook`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.whatsapp` |
 | `app.file_share` | 20 | `app.agent`, `app.audio`, `app.browser`, `app.calendar`, `app.console`, `app.conversation`, `app.document`, `app.harness`, `app.image`, `app.llm`, `app.messenger`, `app.multimedia`, `app.process`, `app.services`, `bridge.calendar`, `bridge.code_server`, `bridge.hermes`, `bridge.mail`, `bridge.nextcloud`, `bridge.samba` |
@@ -1922,6 +1934,15 @@ Aucune composante cyclique détectée.
 | DELETE | `/permissions/{permission_id}` | `app.messenger` | `delete_permission` | oui | `back/app/messenger/permission_router.py:67` |
 | PUT | `/permissions/{permission_id}` | `app.messenger` | `change_permission` | oui | `back/app/messenger/permission_router.py:41` |
 | POST | `/permissions/{permission_id}/answer` | `app.messenger` | `answer_request` | oui | `back/app/messenger/permission_router.py:54` |
+| GET | `/plugins` | `app.plugin` | `list_plugins` | oui | `back/app/plugin/router.py:28` |
+| GET | `/plugins/assets/{digest}/{code}.mjs` | `app.plugin` | `executable_asset` | non | `back/app/plugin/router.py:87` |
+| GET | `/plugins/catalog` | `app.plugin` | `list_plugin_catalogue` | oui | `back/app/plugin/router.py:56` |
+| GET | `/plugins/catalog/{digest}` | `app.plugin` | `download_plugin_catalogue_archive` | oui | `back/app/plugin/router.py:66` |
+| POST | `/plugins/install` | `app.plugin` | `install_plugin` | oui | `back/app/plugin/router.py:41` |
+| POST | `/plugins/preview` | `app.plugin` | `inspect_plugin` | oui | `back/app/plugin/router.py:34` |
+| GET | `/plugins/{code}` | `app.plugin` | `get_plugin` | oui | `back/app/plugin/router.py:78` |
+| GET | `/plugins/{code}/templates/{template_code}` | `app.plugin` | `download_plugin_data_template` | oui | `back/app/plugin/router.py:96` |
+| POST | `/plugins/{code}/{version}/{operation}` | `app.plugin` | `change_plugin_state` | oui | `back/app/plugin/router.py:110` |
 | POST | `/process-campaigns` | `app.lab` | `lab_process_campaign_start` | oui | `back/app/lab/process_evaluation_router.py:85` |
 | POST | `/process-campaigns/datasets` | `app.lab` | `lab_process_dataset_create` | oui | `back/app/lab/process_evaluation_router.py:65` |
 | POST | `/process-campaigns/datasets/generate` | `app.lab` | `lab_process_dataset_generate` | oui | `back/app/lab/process_evaluation_router.py:74` |
@@ -2233,6 +2254,9 @@ Aucune composante cyclique détectée.
 | `multimedia_output_receipts` | `MediaOutputReceipt` | `app.multimedia` | non | `multimedia_generations.id` | `back/app/multimedia/models.py:40` |
 | `params` | `Param` | `core.params` | non | — | `back/core/params/models.py:7` |
 | `permission_decisions` | `PermissionDecision` | `app.messenger` | oui | `agents.id`, `messenger_interactions.id`, `users.id` | `back/app/messenger/models.py:234` |
+| `plugin_development_samples` | `DevelopmentSampleState` | `app.plugin` | non | — | `back/app/plugin/models.py:47` |
+| `plugin_events` | `PluginEvent` | `app.plugin` | non | `plugin_releases.id`, `users.id` | `back/app/plugin/models.py:33` |
+| `plugin_releases` | `PluginRelease` | `app.plugin` | non | — | `back/app/plugin/models.py:13` |
 | `privilege_list_defaults` | `PrivilegeListDefault` | `core.authorize` | non | — | `back/core/authorize/models.py:55` |
 | `privilege_lists` | `PrivilegeList` | `core.authorize` | non | — | `back/core/authorize/models.py:42` |
 | `privileges` | `Privilege` | `core.authorize` | non | `privilege_lists.id` | `back/core/authorize/models.py:23` |
@@ -2361,23 +2385,25 @@ Aucune composante cyclique détectée.
 | `conversation_task_submit` | `conversation` | `app.conversation` | `conversation_task_submit` | `back/app/conversation/mcp.py:571` |
 | `document_show` | `conversation` | `app.conversation` | `document_show` | `back/app/conversation/mcp.py:111` |
 | `repository_show` | `conversation` | `app.conversation` | `repository_show` | `back/app/conversation/mcp.py:123` |
-| `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:35` |
-| `document_sharing` | `document` | `app.document` | `document_sharing` | `back/app/document/mcp.py:20` |
+| `document_revision_compare` | `document` | `app.document` | `document_revision_compare` | `back/app/document/mcp.py:43` |
+| `document_revision_list` | `document` | `app.document` | `document_revision_list` | `back/app/document/mcp.py:28` |
+| `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:69` |
+| `document_sharing` | `document` | `app.document` | `document_sharing` | `back/app/document/mcp.py:54` |
 | `dataset_query` | `file_sharing` | `app.document` | `dataset_query` | `back/app/document/data/mcp.py:23` |
-| `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:464` |
-| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:533` |
-| `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:378` |
-| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:615` |
-| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:494` |
-| `file_info` | `file_sharing` | `app.file_share` | `file_info` | `back/app/file_share/mcp.py:176` |
-| `file_list` | `file_sharing` | `app.file_share` | `list_files` | `back/app/file_share/mcp.py:148` |
-| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:585` |
-| `file_read` | `file_sharing` | `app.file_share` | `read_file` | `back/app/file_share/mcp.py:274` |
-| `file_rename` | `file_sharing` | `app.file_share` | `rename_file` | `back/app/file_share/mcp.py:564` |
-| `file_schemes` | `file_sharing` | `app.file_share` | `file_schemes` | `back/app/file_share/mcp.py:124` |
-| `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:219` |
-| `file_to_pdf` | `file_sharing` | `app.file_share` | `file_to_pdf` | `back/app/file_share/mcp.py:306` |
-| `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:429` |
+| `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:468` |
+| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:537` |
+| `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:382` |
+| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:619` |
+| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:498` |
+| `file_info` | `file_sharing` | `app.file_share` | `file_info` | `back/app/file_share/mcp.py:178` |
+| `file_list` | `file_sharing` | `app.file_share` | `list_files` | `back/app/file_share/mcp.py:150` |
+| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:589` |
+| `file_read` | `file_sharing` | `app.file_share` | `read_file` | `back/app/file_share/mcp.py:277` |
+| `file_rename` | `file_sharing` | `app.file_share` | `rename_file` | `back/app/file_share/mcp.py:568` |
+| `file_schemes` | `file_sharing` | `app.file_share` | `file_schemes` | `back/app/file_share/mcp.py:126` |
+| `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:221` |
+| `file_to_pdf` | `file_sharing` | `app.file_share` | `file_to_pdf` | `back/app/file_share/mcp.py:310` |
+| `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:433` |
 | `agent_get` | `galaris` | `app.agent` | `get_agent` | `back/app/agent/mcp.py:52` |
 | `agent_list` | `galaris` | `app.agent` | `list_agents` | `back/app/agent/mcp.py:26` |
 | `contact_create` | `galaris` | `app.contact` | `mcp_contact_create` | `back/app/contact/mcp.py:48` |
@@ -2670,6 +2696,8 @@ Aucune composante cyclique détectée.
 | `MEMORY_EDIT` | `app.memory` | privilege.MEMORY_EDIT | `back/app/memory/privileges.py:4` |
 | `MESSAGING_CONFIG_ACCESS` | `app.messenger` | privilege.MESSAGING_CONFIG_ACCESS | `back/app/messenger/privileges.py:2` |
 | `MESSAGING_CONFIG_EDIT` | `app.messenger` | privilege.MESSAGING_CONFIG_EDIT | `back/app/messenger/privileges.py:4` |
+| `PLUGIN_ACCESS` | `app.plugin` | privilege.PLUGIN_ACCESS | `back/app/plugin/privileges.py:3` |
+| `PLUGIN_EDIT` | `app.plugin` | privilege.PLUGIN_EDIT | `back/app/plugin/privileges.py:4` |
 | `PROCESS_ADMIN` | `app.process` | privilege.PROCESS_ADMIN | `back/app/process/privileges.py:6` |
 | `PROCESS_CONFIG_ACCESS` | `app.process` | privilege.PROCESS_CONFIG_ACCESS | `back/app/process/privileges.py:8` |
 | `PROCESS_CONFIG_EDIT` | `app.process` | privilege.PROCESS_CONFIG_EDIT | `back/app/process/privileges.py:10` |
@@ -2765,6 +2793,7 @@ Aucune composante cyclique détectée.
 | `/params/files` | `app/file_share` | `front/app/file_share/pages/settings.vue` |
 | `/params/harnesses/:provider` | `core/params` | `front/core/params/pages/harnesses/[provider].vue` |
 | `/permissions` | `app/connection` | `front/app/connection/pages/permissions.vue` |
+| `/plugin` | `app/plugin` | `front/app/plugin/pages/index.vue` |
 | `/process` | `app/process` | `front/app/process/pages/index.vue` |
 | `/process/external/:id` | `app/process` | `front/app/process/pages/external/[id].vue` |
 | `/process/internal/:code` | `app/process` | `front/app/process/pages/internal/[code].vue` |
@@ -2785,7 +2814,7 @@ Aucune composante cyclique détectée.
 
 ## Configuration
 
-- Settings déclarés : 29.
-- Variables dans `.env.example` : 42.
+- Settings déclarés : 35.
+- Variables dans `.env.example` : 48.
 - Settings sans entrée `.env.example` : —.
 - Entrées `.env.example` sans champ direct dans `Settings` : `BROWSER_EXECUTOR_CPUS`, `BROWSER_EXECUTOR_MEMORY_LIMIT`, `DEV_DEBUGPY_PORT`, `DEV_HOST_USER_ID`, `POSTGRES_MODE`, `SSH_EXECUTOR_CPUS`, `SSH_EXECUTOR_MEMORY_LIMIT`, `TZ`, `WEBRTC_TURN_CPUS`, `WEBRTC_TURN_IMAGE`, `WEBRTC_TURN_MAX_PORT`, `WEBRTC_TURN_MEMORY_LIMIT`, `WEBRTC_TURN_MIN_PORT`.

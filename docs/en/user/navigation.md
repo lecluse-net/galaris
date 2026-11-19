@@ -111,7 +111,7 @@ The route is excluded from builds for other environments.
 | **Act** | Chat, Goals, Processes |
 | **Knowledge** | Documents, Files, Memory, Agenda, Contacts, Thematic dossiers |
 | **Monitor** | Dashboard, Activity, Dream, Permissions, Mail journal, Failure journal |
-| **Administer** | Preferences, Laboratory, Console, Users, Teams, Roles & permissions |
+| **Administer** | Preferences, Laboratory, Console, Users, Teams, Roles & permissions, Plugins |
 | **Developers** (dev mode only) | Visual reference |
 
 Technical documentation may refer to “Tasks”, “Conversations” or “AI Lab”. Tasks and
@@ -607,10 +607,12 @@ The [document library guide](documents.md) covers creation, folders, sub-documen
 lists, bulk actions and keyboard shortcuts.
 
 **Knowledge → Documents** (`/documents`) holds and creates Text (HTML) and Data (JSON) documents.
+In development, **Drawing (Sample)** provides brush, eraser, undo and PNG saving.
+Use History to review revisions. See the [sample guide](../dev/plugin-authoring.md).
 The editor toolbar's **Conversation** icon opens an existing conversation or starts one with an agent
 on the same page. The document remains the focus of the work; **Chat** continues to
 focus on conversations and activity monitoring.
-The **Create document** button and context menus offer both types.
+The **Create document** button and context menus offer the available formats.
 Legacy `/dataset` links redirect to this library filtered to Data.
 **Knowledge → Memory** (`/memory`) offers **List** and **Graph**: open the
 page and select the tab without assuming a URL parameter. Contacts are at
@@ -758,6 +760,26 @@ Spatial loading and subgroups remain the next steps
 in the [multi-level memory graph plan](../../../project/plans/graphe-memoire-multiechelle.md) (in French), with `partial` status.
 
 ## Preferences, monitoring and account
+
+**Administer → Plugins** (`/plugin`) shows a card for each plugin with its icon,
+release, status, description and capabilities. With management rights, import
+a signed archive, then use the **Activation** switch on its card. The header is
+muted while the plugin is inactive.
+Open **Releases and history** on the card to review recent operations and select
+another release. Presets appear after activation in **Configure → Services &
+connections → New service**. Saving a preset creates a local Service.
+Deactivation withdraws the preset from the catalogue. Uninstallation keeps the
+Services and connections already created.
+
+**Catalogue** lists signed archives supplied by the operator. Select a release to
+open preview and installation. An approved signed editor adds its format to Documents
+after activation. For a data template, use **Download template** on the card and
+import the JSON in Documents.
+
+In development, the **Activation** switch is also available on the bundled samples.
+Their state survives a restart. Deactivating **Drawing (Sample)** withdraws the format
+from the creation menu and preserves access to saved PNG files. Use the samples
+in Documents and Services. [Sample guide](../dev/plugin-authoring.md)
 
 **Administer → Preferences** (`/params`) presents a section grid and submenus for System,
 Language, Messaging, Memory, Dream, Voice, Processes, Tasks and execution,

@@ -5,7 +5,7 @@
     <q-menu @before-show="draft = { ...model }">
       <q-form class="library-filters q-pa-md q-gutter-sm" @submit="apply">
         <div class="text-subtitle2">{{ t('documents.library.filters') }}</div>
-        <q-select v-model="draft.document_format" dense outlined clearable emit-value map-options :label="t('documents.documentFormat')" :options="documentFormats.map(type => ({ value: type.code, label: t(type.label) }))" />
+        <q-select v-model="draft.document_format" dense outlined clearable emit-value map-options :label="t('documents.documentFormat')" :options="documentFormats.map(type => ({ value: type.code, label: formatDisplayLabel(type, t, locale) }))" />
         <q-toggle v-model="onlyUnclassified" dense :label="t('documents.library.unclassified')" />
         <q-select v-model="draft.keyword" dense outlined clearable :label="t('documents.keywordFilter')" :options="keywords" />
         <OwnerSelect v-model="ownerSelection" :options="ownerOptions" :current-user-id="currentUserId" clearable />
@@ -28,7 +28,7 @@
   </q-btn>
 </template>
 <script setup lang="ts">
-import { documentFormats } from '../documentFormats'
+import { documentFormats, formatDisplayLabel } from '../documentFormats'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DocumentOwnerOption } from '../types'
@@ -37,7 +37,7 @@ import { defaultLibraryFilters as defaults, type LibraryFilterState } from '@/ap
 const model = defineModel<LibraryFilterState>({ required: true })
 const onlyUnclassified = defineModel<boolean>('onlyUnclassified', { required: true })
 const { owners, currentUserId } = defineProps<{ owners: DocumentOwnerOption[]; keywords: string[]; currentUserId?: number }>()
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const ownerOptions = computed(() => currentUserId && !owners.some(owner => owner.kind === 'user' && owner.id === currentUserId)
   ? [{ kind: 'user' as const, id: currentUserId, label: t('resourceOwner.me'), is_current_user: true }, ...owners]
   : owners)

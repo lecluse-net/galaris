@@ -42,12 +42,10 @@ export interface DocumentFolderPage {
 const ownerOptionsCache = createOwnerOptionsCache<DocumentOwnerOptions>()
 
 export const documentService = {
-  async updateBinaryDocument(id: string, agentId: number | null, base64: string, expectedRevision: number, signal: AbortSignal): Promise<DocumentRecord> {
-    return (await api.patch<DocumentRecord>(`/documents/${id}`, { payload: { base64 }, expected_revision: expectedRevision },
-      { params: { actor_agent_id: agentId }, signal })).data
-  },
   async source(id: string, agentId: number | null, signal: AbortSignal, revision?: number): Promise<Blob> {
-    return (await api.get<Blob>(`/documents/${id}/source`, { responseType: 'blob', signal, params: { agent_id: agentId, revision } })).data
+    return (await api.get<Blob>(`/documents/${id}/source`, {
+      responseType: 'blob', signal, params: { agent_id: agentId, revision },
+    })).data
   },
   async formats(signal?: AbortSignal): Promise<import('../formatRegistry').DocumentFormatDescriptor[]> {
     const catalogue = (await api.get<import('../formatRegistry').DocumentFormatDescriptor[]>('/documents/formats', { signal })).data
@@ -486,9 +484,9 @@ async getDocument(id: string, agentId?: number | null, signal?: AbortSignal): Pr
     })).data).item
   },
 
-async updateDocument(id: string, agentId: number | null, data: DocumentUpdate): Promise<DocumentRecord> {
+async updateDocument(id: string, agentId: number | null, data: DocumentUpdate, signal?: AbortSignal): Promise<DocumentRecord> {
     return (await api.patch<DocumentRecord>(`/documents/${id}`, data, {
-      headers: { 'X-Editorial-Profile-Version': '1' }, params: { actor_agent_id: agentId ?? undefined },
+      headers: { 'X-Editorial-Profile-Version': '1' }, params: { actor_agent_id: agentId ?? undefined }, signal,
     })).data
   },
 

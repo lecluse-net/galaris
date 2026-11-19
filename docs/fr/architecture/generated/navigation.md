@@ -416,6 +416,14 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 - Conditions supplémentaires : —
 - Sources : `front/core/authorize/navigation.ts`
 
+## Administrer → Plugins
+
+- Route : `/plugin`
+- Usage : Installez et gérez les extensions de cette instance.
+- Visibilité du menu (privilèges) : (PLUGIN_ACCESS OR PLUGIN_EDIT)
+- Conditions supplémentaires : —
+- Sources : `front/app/plugin/navigation.ts`
+
 ## Développeurs → Référence graphique
 
 - Route : `/graphic-reference`

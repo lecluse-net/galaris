@@ -37,6 +37,10 @@ max_domain_fan_out = 1
 allowed_dependencies = ["app.agent", "app.connection", "app.console", "app.documentation", "app.file_share", "app.llm", "app.messenger", "app.task", "app.util"]
 max_domain_fan_out = 9
 
+[module."app.plugin"]
+allowed_dependencies = ["app.services"]
+max_domain_fan_out = 1
+
 [module."app.documentation"]
 allowed_dependencies = []
 max_domain_fan_out = 0

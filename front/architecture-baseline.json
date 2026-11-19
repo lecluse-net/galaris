@@ -541,6 +541,22 @@
       "target": "core/util"
     },
     {
+      "source": "app/plugin",
+      "target": "core/api"
+    },
+    {
+      "source": "app/plugin",
+      "target": "core/authorize"
+    },
+    {
+      "source": "app/plugin",
+      "target": "core/navigation"
+    },
+    {
+      "source": "app/plugin",
+      "target": "core/util"
+    },
+    {
       "source": "app/process",
       "target": "app/agent"
     },

@@ -27,7 +27,7 @@ from .deletion import DeletionConflict, ServiceDeletionImpact
 from .permission_catalog import AgentPermissionCatalog
 from .capabilities import CapabilityDefinition
 
-from .service_catalog import ServiceCatalog, read_catalog, refresh_catalog
+from .service_catalog import ServiceCatalog, compose_catalog, read_catalog, refresh_catalog
 
 router = APIRouter(prefix="/services", tags=["services"])
 from .authorization_router import router as authorization_router
@@ -39,13 +39,13 @@ router.include_router(runtime_authorization_router)
 @router.get("/catalog")
 @authorize(privileges=[Privileges.SERVICE_ACCESS, Privileges.SERVICE_EDIT])
 async def service_catalogue() -> ServiceCatalog:
-    return await asyncio.to_thread(read_catalog)
+    return await compose_catalog(await asyncio.to_thread(read_catalog))
 
 
 @router.post("/catalog/refresh")
 @authorize(privileges=Privileges.SERVICE_EDIT)
 async def refresh_service_catalogue() -> ServiceCatalog:
-    return await refresh_catalog()
+    return await compose_catalog(await refresh_catalog())
 
 
 @router.get("/capabilities")

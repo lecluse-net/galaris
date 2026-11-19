@@ -7,7 +7,9 @@ import base64
 import binascii
 from pathlib import Path, PurePosixPath
 from tempfile import TemporaryDirectory
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
+
+from pydantic import Field
 
 from app.services import RecoverableToolError
 from app.services.contracts import ToolCallRejectedError
@@ -267,6 +269,7 @@ async def search_files(
         "replaces max_chars: offset and next_offset count items (offset_unit=item). Follow all pages; "
         "continuations attach to parent_key from earlier pages, and keys distinguish repeated placements. "
         "HTML Memory/document pages contain complete numbered blocks, format, profile and revision. Their offsets count blocks, not characters. A large indivisible block reports its required max_chars (up to 2 MB); the default budget stays 20,000."
+        " For a document:// URI, pass revision to read that exact saved revision."
     ),
     effect_policy="read",
     concurrency_policy="safe",
@@ -276,12 +279,13 @@ async def read_file(
     uri: str,
     offset: int = 0,
     max_chars: int = 20_000,
+    revision: Annotated[int, Field(ge=1)] | None = None,
 ) -> str:
     """Read automatically detected text or binary content."""
 
     return _json_model(
         await resource_read(
-            await _resource_context(ctx), uri, offset=offset, max_chars=max_chars
+            await _resource_context(ctx), uri, offset=offset, max_chars=max_chars, revision=revision
         )
     )
 
