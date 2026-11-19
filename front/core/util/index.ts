@@ -20,7 +20,7 @@ export type { ContextAction } from './contextActions'
 import { defineAsyncComponent } from 'vue'
 import { defineAsyncView } from './asyncView'
 export { defineAsyncView } from './asyncView'
-export { ResourceDetailDialog, preloadResourceDetail } from './resourceDetail'
+export { ResourceDetailDialog, preloadResourceDetail, useResourceDetail } from './resourceDetail'
 export { ResourceTopicBadge, reassignResourceTopic } from './resourceTopics'
 export type { ResourceSummaryView } from './resourceSummary'
 export const ResourceSummaryButton = /* @__PURE__ */ defineAsyncView(() => import('./components/ResourceSummaryButton.vue'))

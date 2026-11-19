@@ -1,4 +1,4 @@
-import type { Component } from 'vue'
+import { computed, ref, type Component } from 'vue'
 import { defineAsyncView } from './asyncView'
 
 export interface ResourceDetailTarget {
@@ -21,6 +21,13 @@ async function loadProvider(): Promise<ResourceDetailProvider> {
   return await provider()
 }
 export const ResourceDetailDialog = defineAsyncView(async () => (await loadProvider()).default)
+
+/** Keep a detail selection local to the surface that opened it. */
+export function useResourceDetail(kind: string) {
+  const id = ref<string | null>(null)
+  const target = computed<ResourceDetailTarget | null>(() => id.value ? { kind, id: id.value, title: '' } : null)
+  return { id, target }
+}
 
 /** Prepare view code only; resource data and authorization stay with the opened view. */
 export async function preloadResourceDetail(kind: string): Promise<void> {

@@ -48,7 +48,8 @@
               :key="task.id"
               clickable
               v-ripple
-              :to="{ path: '/task', query: { task_id: task.id } }"
+              role="button"
+              @click="selectedTaskId = task.id"
               class="activity-item"
             >
               <q-item-section avatar class="activity-avatar-section">
@@ -165,11 +166,13 @@
         </q-card-section>
       </q-card>
     </div>
+    <ResourceDetailDialog v-if="selectedTaskTarget && canReadTasks" :target="selectedTaskTarget"
+      @close="selectedTaskId = null" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { richTextExcerpt } from '@/core/util'
+import { ResourceDetailDialog, richTextExcerpt, useResourceDetail } from '@/core/util'
 import { startVisiblePolling } from '@/core/util/facade'
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -192,6 +195,7 @@ const privilegeStore = usePrivilegeStore()
 const canReadTasks = computed(() => privilegeStore.hasAnyPrivilege([privileges.TASK_ACCESS, privileges.TASK_EDIT]))
 const canReadCalls = computed(() => privilegeStore.hasAnyPrivilege([privileges.LLM_CALL_ACCESS, privileges.LLM_CALL_CONTROL]))
 const tasks = ref<Task[]>([])
+const { id: selectedTaskId, target: selectedTaskTarget } = useResourceDetail('task')
 const calls = ref<LLMCall[]>([])
 const agentAvatarUrls = reactive<Record<number, string>>({})
 const tasksLoading = ref(true)

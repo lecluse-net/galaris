@@ -12,8 +12,8 @@
   <WorkingDocumentDialog v-else-if="target.kind === 'document' || target.kind === 'dataset'" ref="resourceEditor" :model-value="true"
     :document-id="target.id" :agent-id="target.agentId ?? null" :title="target.title" :editable="target.kind === 'dataset'"
     @update:model-value="!$event && emit('close')" @deleted="changedAndClose" />
-  <ConversationTurnDialog v-else :model-value="true" :title="resolvedTitle || target.title || t(titleKeys[target.kind] || 'common.open')" :icon="icons[target.kind] || 'info'"
-    :width="target.kind === 'agent' ? '700px' : undefined" :close-label="t('common.close')" @update:model-value="!$event && emit('close')">
+  <ConversationTurnDialog v-else v-model="detailOpen" :title="resolvedTitle || target.title || t(titleKeys[target.kind] || 'common.open')" :icon="icons[target.kind] || 'info'"
+    :width="target.kind === 'agent' ? '700px' : undefined" :close-label="t('common.close')" @hide="emit('close')">
     <div v-if="loading" class="flex flex-center q-pa-xl"><q-spinner color="primary" size="42px" /></div>
     <q-banner v-else-if="error" class="q-ma-md">
       {{ error }}
@@ -113,6 +113,7 @@ async function canLeave(): Promise<boolean> {
 }
 defineExpose({ canLeave })
 const { t } = useI18n()
+const detailOpen = ref(true)
 const titleKeys: Record<string, string> = { topic: 'topic.detail.title', task: 'task.detailTitle', round: 'conversation.history.detail.title', voice: 'voice.history.detail.title', voice_session: 'voice.history.tab', room: 'chat.conversations' }
 const icons: Record<string, string> = { topic: 'folder', voice_session: 'phone_in_talk', agent: 'person', task: 'task_alt', process_run: 'account_tree', dataset: 'data_object', round: 'forum', voice: 'record_voice_over', room: 'hub', document: 'description', memory: 'memory' }
 const retry = ref(0)

@@ -1,5 +1,5 @@
 <template>
-  <q-dialog v-model="open">
+  <q-dialog v-model="open" @hide="emit('hide')">
     <q-card class="conversation-turn-dialog galaris-detail-dialog galaris-dialog-card" :style="{ width }">
       <DialogHeader :title="title" :icon="icon" :close-label="closeLabel" />
       <q-separator />
@@ -13,6 +13,7 @@
 <script setup lang="ts">
 import DialogHeader from './DialogHeader.vue'
 const open = defineModel<boolean>({ required: true })
+const emit = defineEmits<{ hide: [] }>()
 defineProps<{
   title: string
   closeLabel: string

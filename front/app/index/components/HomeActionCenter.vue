@@ -211,6 +211,8 @@
               :key="activity.key"
               clickable
               :to="activity.to"
+              :role="activity.taskId ? 'button' : undefined"
+              @click="activity.taskId && (selectedTaskId = activity.taskId)"
               class="activity-item"
             >
               <q-item-section avatar>
@@ -298,6 +300,8 @@
       </div>
 
     </div>
+    <ResourceDetailDialog v-if="selectedTaskTarget && canReadTasks" :target="selectedTaskTarget"
+      @close="selectedTaskId = null" />
   </q-page>
 </template>
 
@@ -307,7 +311,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { useAuthStore } from '@/core/user'
-import { PageHeader } from '@/core/util'
+import { PageHeader, ResourceDetailDialog, useResourceDetail } from '@/core/util'
 import { useOnboardingStore } from '@/app/onboarding'
 import { useDashboardStore } from '../stores/dashboardStore'
 import DashboardMetricCard from './DashboardMetricCard.vue'
@@ -325,13 +329,15 @@ interface HomeActivity {
   title: string
   detail: string
   timestamp: string
-  to: string
+  to?: string
+  taskId?: string
   badge?: string
 }
 
 const { t, locale } = useI18n()
 const authStore = useAuthStore()
 const privilegeStore = usePrivilegeStore()
+const { id: selectedTaskId, target: selectedTaskTarget } = useResourceDetail('task')
 const onboardingStore = useOnboardingStore()
 const dashboardStore = useDashboardStore()
 const unreadConversations = ref<HomeConversation[]>([])
@@ -504,7 +510,7 @@ async function loadDomainActivities(): Promise<void> {
       title: task.label,
       detail: t('index.actionCenter.recent.events.task'),
       timestamp: task.created_at,
-      to: `/task?tab=tasks&task_id=${encodeURIComponent(task.id)}`,
+      taskId: task.id,
     }))))
   }
   if (canReadProcesses.value) {

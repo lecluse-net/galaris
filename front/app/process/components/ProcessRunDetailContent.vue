@@ -35,7 +35,8 @@
       <q-separator />
       <div class="text-subtitle2">{{ t('processes.linkedTasks') }}</div>
       <div class="linked-task-actions">
-        <q-btn outline color="primary" v-for="taskId in canReadTasks ? run.task_ids : []" :key="taskId"  icon="task_alt" :label="taskResourceUri(taskId)" :to="{ path: '/task', query: { task_id: taskId } }" />
+        <q-btn v-for="taskId in canReadTasks ? run.task_ids : []" :key="taskId" outline color="primary"
+          icon="task_alt" :label="taskResourceUri(taskId)" @click="selectedTaskId = taskId" />
       </div>
     </template>
     <template v-if="run.llm_calls?.length">
@@ -80,15 +81,18 @@
       </q-timeline>
     </q-expansion-item>
   </q-card-section>
+  <ResourceDetailDialog v-if="selectedTaskTarget && canReadTasks" :target="selectedTaskTarget"
+    @close="selectedTaskId = null" />
 </template>
 
 <script setup lang="ts">
+import { watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { taskResourceUri } from '@/app/task'
-import { CodeEditor } from '@/core/util'
+import { CodeEditor, ResourceDetailDialog, useResourceDetail } from '@/core/util'
 import type { ProcessAnalysis, ProcessLLMCall, ProcessRun } from '../services/processService'
 
-defineProps<{
+const props = defineProps<{
   run: ProcessRun
   analysis: ProcessAnalysis | null
   canOperateRuns: boolean
@@ -107,6 +111,8 @@ const emit = defineEmits<{
 }>()
 
 const { t, te, locale } = useI18n()
+const { id: selectedTaskId, target: selectedTaskTarget } = useResourceDetail('task')
+watch(() => props.run.id, () => { selectedTaskId.value = null })
 function refreshRun(): void { emit('refresh') }
 
 function pretty(value: unknown): string { return JSON.stringify(value ?? null, null, 2) }

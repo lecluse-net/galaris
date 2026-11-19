@@ -302,6 +302,8 @@ immutable. Consult the `galaris-process-services` skill.
   authorization.
 - Every modal must close when its backdrop is clicked. Never use `persistent`,
   `no-backdrop-dismiss`, or an equivalent option on a Quasar dialog.
+- Open a modal over the page or dialog that triggered it. Keep the underlying view and its
+  state mounted so dismissing the modal returns the user to the same context.
 - Every paginated list defaults to 50 items and offers exactly `[10, 20, 50, 100, 500]`.
   For server-side pagination, the API contract must accept 500 items.
 

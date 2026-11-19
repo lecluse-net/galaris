@@ -76,6 +76,23 @@ test('a direct Task dialog survives query normalization and follows navigation a
   await expect(dialog).toHaveCount(0)
 })
 
+test('a recent task opens over the home page and returns focus to its row', async ({ page }) => {
+  await fixtures(page)
+  await jsonRoute(page, '**/api/tasks/recent?*', { items: [task], total: 1 })
+  await mount(page, 'app/index/components/HomeActionCenter.vue', {
+    privileges: ['TASK_ACCESS'], shell: true, browserHistory: true,
+  })
+  const origin = page.url()
+  const entry = page.getByRole('button', { name: new RegExp(task.label) })
+  await entry.press('Enter')
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toContainText('FULL TASK OBJECTIVE')
+  await expect(page).toHaveURL(origin)
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await expect(entry).toBeFocused()
+})
+
 async function paste(page, text) {
   await page.locator('[data-editor-surface]').evaluate((root, value) => {
     const data = new DataTransfer(); data.setData('text/plain', value)
@@ -91,6 +108,27 @@ const cases = [
   ['voice_session', `/task?voice_session_id=${id}`, '1 conversation round', 'Synthetic agent'],
   ['room', `/chat?room=${id}`, room.label, 'No messages in this conversation yet.'],
 ]
+
+for (const [kind, url, , detail] of cases.filter(([kind]) => ['task', 'text', 'voice'].includes(kind))) {
+  test(`Markdown opens the ${kind} dialog over the current page`, async ({ page }) => {
+    await fixtures(page)
+    await mount(page, 'core/util/components/Markdown.vue', {
+      props: { content: `[Reference](galaris://${kind}/${id}) · [Existing link](${url})` },
+      privileges: ['TASK_ACCESS', 'CONVERSATION_ACCESS', 'VOICE_HISTORY_ACCESS'],
+      route: '/source?filter=keep', browserHistory: true,
+    })
+    const origin = page.url()
+    const dialog = page.getByRole('dialog')
+    for (const name of ['Reference', 'Existing link']) {
+      await page.getByRole('link', { name, exact: true }).press('Enter')
+      await expect(dialog).toContainText(detail)
+      await expect(page).toHaveURL(origin)
+      expect(page.context().pages()).toHaveLength(1)
+      await page.keyboard.press('Escape')
+      await expect(dialog).toHaveCount(0)
+    }
+  })
+}
 
 for (const [kind, , title, detail] of cases) test(`message resource cards open the ${kind} modal`, async ({ page }, testInfo) => {
   await fixtures(page)

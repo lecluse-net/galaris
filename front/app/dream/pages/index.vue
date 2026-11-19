@@ -409,9 +409,9 @@
                 class="q-mt-md"
                 outline
                 color="primary"
-                icon="open_in_new"
+                icon="task_alt"
                 :label="t('dream.detail.task')"
-                :to="{ path: '/task', query: { task_id: selectedTaskId } }"
+                @click="detailTaskId = selectedTaskId"
               />
             </q-card-section>
 
@@ -539,6 +539,8 @@
         </div>
       </q-card>
     </q-dialog>
+    <ResourceDetailDialog v-if="detailTaskTarget && detailOpen && canViewTasks"
+      :target="detailTaskTarget" @close="detailTaskId = null" />
   </q-page>
 </template>
 
@@ -551,7 +553,7 @@ import { useQuasar } from 'quasar'
 import type { QTableColumn, QTableProps } from 'quasar'
 import { LlmCalls } from '@/app/llm'
 import { BaseRoom, websocket } from '@/core/websocket'
-import { ExecutionDateFilters, PageHeader } from '@/core/util'
+import { ExecutionDateFilters, PageHeader, ResourceDetailDialog, useResourceDetail } from '@/core/util'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { dreamService } from '../services/dreamService'
 import type {
@@ -583,6 +585,8 @@ const activeTab = ref<'tracking' | 'history'>('tracking')
 const overview = ref<DreamOverview | null>(null)
 const receipts = ref<DreamReceiptSummary[]>([])
 const selectedReceipt = ref<DreamReceiptDetail | null>(null)
+const { id: detailTaskId, target: detailTaskTarget } = useResourceDetail('task')
+watch(() => selectedReceipt.value?.id, () => { detailTaskId.value = null })
 const loading = ref(false)
 const detailLoading = ref(false)
 const detailOpen = ref(false)

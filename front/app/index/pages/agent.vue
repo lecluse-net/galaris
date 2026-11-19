@@ -685,16 +685,19 @@
             <q-item
               v-for="task in activeHarnessTasks"
               :key="task.id"
-              :to="privilegeStore.hasPrivilege(privileges.TASK_ACCESS) ? { path: '/task', query: { task_id: task.id } } : undefined"
-              target="_blank"
+              :clickable="canViewBlockingTasks"
+              :role="canViewBlockingTasks ? 'button' : undefined"
+              @click="canViewBlockingTasks && (blockingTaskId = task.id)"
             >
               <q-item-section>
                 <q-item-label>{{ task.label }}</q-item-label>
                 <q-item-label caption>{{ `galaris://task/${task.id}` }}</q-item-label>
               </q-item-section>
-              <q-item-section side><q-icon name="open_in_new" /></q-item-section>
+              <q-item-section v-if="canViewBlockingTasks" side><q-icon name="visibility" /></q-item-section>
             </q-item>
           </q-list>
+          <ResourceDetailDialog v-if="blockingTaskTarget && canViewBlockingTasks" :target="blockingTaskTarget"
+            @close="blockingTaskId = null" />
         </q-card-section>
         <q-separator />
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
@@ -782,7 +785,7 @@
 </template>
 
 <script setup lang="ts">
-import { DialogHeader } from '@/core/util'
+import { DialogHeader, ResourceDetailDialog, useResourceDetail } from '@/core/util'
 import { showConfirmationDialog } from '@/core/util'
 import { useRoute } from 'vue-router'
 import { navigationIcon } from '@/core/navigation'
@@ -971,6 +974,8 @@ const showHarnessChangeConfirm = ref(false)
 let harnessChangeConfirmation: ((confirmed: boolean) => void) | null = null
 const harnessChangePending = ref(false)
 const showPausedHarnessTasksConfirm = ref(false)
+const { id: blockingTaskId, target: blockingTaskTarget } = useResourceDetail('task')
+const canViewBlockingTasks = computed(() => privilegeStore.hasPrivilege(privileges.TASK_ACCESS))
 const pausedHarnessTasks = ref<HarnessTaskBlocker[]>([])
 const activeHarnessTasks = ref<HarnessTaskBlocker[]>([])
 const activeHarnessTaskCount = ref(0)
@@ -1205,6 +1210,7 @@ function confirmPausedHarnessTasksTermination(): Promise<boolean> {
 }
 
 function settlePausedHarnessTasksConfirmation(confirmed: boolean): void {
+  blockingTaskId.value = null
   const resolve = pausedHarnessTasksConfirmation
   pausedHarnessTasksConfirmation = null
   showPausedHarnessTasksConfirm.value = false

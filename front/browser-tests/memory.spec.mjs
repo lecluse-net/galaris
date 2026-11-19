@@ -921,6 +921,13 @@ for (const width of [1440, 390]) {
     await page.setViewportSize({ width, height: 900 })
     const { item } = await memoryItemFixtures(page)
     const writes = [], reads = []
+    const taskId = item.source_refs[0].slice('task:'.length)
+    const task = { id: taskId, label: 'Synthetic source task', objective: '<p>Original task objective</p>',
+      status: 'SUCCESS', paused: false, created_at: item.created_at, data: {}, assignments: [] }
+    await jsonRoute(page, `**/api/tasks/${taskId}`, task)
+    await jsonRoute(page, `**/api/tasks/${taskId}/full`, task)
+    await jsonRoute(page, `**/api/tasks/${taskId}/children`, [])
+    await jsonRoute(page, `**/api/tasks/${taskId}/budget`, { enabled: false })
     await page.route('**/api/memory/items/doc-a?*', route => {
       if (route.request().method() === 'PUT') {
         const body = route.request().postDataJSON()
@@ -936,7 +943,9 @@ for (const width of [1440, 390]) {
         : item
       return route.fulfill({ json: historical })
     })
-    await mount(page, 'app/memory/pages/index.vue', { privileges: ['MEMORY_EDIT', 'TASK_ACCESS'], route: '/memory?agent=7' })
+    await mount(page, 'app/memory/pages/index.vue', {
+      privileges: ['MEMORY_EDIT', 'TASK_ACCESS'], route: '/memory?agent=7', browserHistory: true,
+    })
     await page.getByText('Current memory', { exact: true }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByText('Current body', { exact: true })).toBeVisible()
@@ -971,8 +980,16 @@ for (const width of [1440, 390]) {
     await linksTab.focus()
     await page.keyboard.press('Enter')
     await expect(linksTab).toHaveAttribute('aria-selected', 'true')
-    await expect(dialog.getByRole('link', { name: item.source_refs[0], exact: true }))
-      .toHaveAttribute('href', '/task?task_id=11111111-1111-1111-1111-111111111111')
+    const origin = page.url()
+    const source = dialog.getByRole('button', { name: item.source_refs[0], exact: true })
+    await source.press('Enter')
+    const taskDialog = page.getByRole('dialog').filter({ hasText: 'Original task objective' })
+    await expect(taskDialog).toContainText('Original task objective')
+    await expect(page).toHaveURL(origin)
+    await page.keyboard.press('Escape')
+    await expect(taskDialog).toHaveCount(0)
+    await expect(source).toBeFocused()
+    await expect(linksTab).toHaveAttribute('aria-selected', 'true')
     await expect(dialog.getByText('No explicit relation.', { exact: true })).toBeVisible()
     await expect(dialog.getByRole('button', { name: 'Add relation', exact: true })).toBeEnabled()
     await dialog.screenshot({ path: testInfo.outputPath('memory-links.png'), animations: 'disabled' })

@@ -1,9 +1,10 @@
 <template>
-    <div class="markdown-content" v-html="renderedMarkdown" @click="onMarkdownClick" />
+    <div v-bind="$attrs" class="markdown-content" v-html="renderedMarkdown" @click="onMarkdownClick" />
+    <ResourceDetailDialog v-if="detail" :target="detail" @close="detail = null" />
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, shallowRef } from 'vue'
 import { useRouter } from 'vue-router'
 import { marked, Renderer, type Tokens } from 'marked'
 import {
@@ -12,13 +13,16 @@ import {
 } from '../documentResource'
 import { sanitizeHtml } from '../sanitizeHtml'
 import { canonicalResourceLink } from '../resourceUri'
-import { richLinkHref } from '../richText'
+import { canonicalRichLink, richLinkHref, richLinkTarget } from '../richText'
+import { ResourceDetailDialog, type ResourceDetailTarget } from '../resourceDetail'
 
+defineOptions({ inheritAttrs: false })
 const props = defineProps<{
     content: string | undefined | null
     compactFrontmatter?: boolean
 }>()
 const router = useRouter()
+const detail = shallowRef<ResourceDetailTarget | null>(null)
 
 const escapeHtml = (value: string): string => value
     .replaceAll('&', '&amp;')
@@ -89,10 +93,15 @@ const renderMarkdown = (content: string): string => {
     const parsed = new DOMParser().parseFromString(html, 'text/html')
     for (const link of parsed.body.querySelectorAll('a[href]')) {
         const uri = link.getAttribute('href') ?? ''
+        const canonical = canonicalRichLink(uri)
+        if (canonical && !link.hasAttribute('data-document-resource-id') && richLinkTarget(canonical)) {
+            link.setAttribute('data-rich-reference', canonical)
+            link.removeAttribute('target')
+        }
         if (canonicalResourceLink(uri)) {
             const href = richLinkHref(uri)
             if (href) link.setAttribute('href', href)
-            else link.removeAttribute('href')
+            else if (!link.hasAttribute('data-rich-reference')) link.removeAttribute('href')
         }
     }
     return parsed.body.innerHTML
@@ -226,14 +235,23 @@ const renderedMarkdown = computed(() => {
 })
 
 function onMarkdownClick(event: MouseEvent): void {
+    if (event.defaultPrevented || event.button !== 0 || !(event.target instanceof Element)) return
+    const reference = event.target.closest<HTMLAnchorElement>('a[data-rich-reference]')
+    if (reference) {
+        const target = richLinkTarget(reference.dataset.richReference ?? '', reference.textContent ?? '')
+        if (target) {
+            event.preventDefault()
+            event.stopPropagation()
+            detail.value = target
+            return
+        }
+    }
+
     if (
-        event.defaultPrevented
-        || event.button !== 0
-        || event.ctrlKey
+        event.ctrlKey
         || event.metaKey
         || event.shiftKey
         || event.altKey
-        || !(event.target instanceof Element)
     ) return
 
     const link = event.target.closest<HTMLAnchorElement>('a[data-document-resource-id]')

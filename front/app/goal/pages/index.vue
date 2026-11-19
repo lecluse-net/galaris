@@ -1013,15 +1013,17 @@
       </q-card>
     </q-dialog>
     <GoalCategoryManager v-if="categoryManagerOpen" v-model="categoryManagerOpen" @changed="categoriesChanged" />
+    <ResourceDetailDialog v-if="goalDialogOpen && selectedCycleTaskTarget && canViewTasks"
+      :target="selectedCycleTaskTarget" @close="selectedCycleTaskId = null" />
   </component>
 </template>
 
 <script setup lang="ts">
-import { CopyResourceReference, ResourceReferenceMenu, ActionContextMenu, useResourceCopy, type ContextAction } from '@/core/util'
+import { CopyResourceReference, ResourceDetailDialog, ResourceReferenceMenu, ActionContextMenu, useResourceCopy, useResourceDetail, type ContextAction } from '@/core/util'
 import { showConfirmationDialog } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { QPage, useInterval, useQuasar, type QTableColumn, type QTableProps } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import {
@@ -1101,8 +1103,8 @@ function goalActions(goal: Goal): ContextAction[] {
 const { t, locale } = useI18n()
 const $q = useQuasar()
 const { action: copyReferenceAction } = useResourceCopy()
-const router = useRouter()
 const route = useRoute()
+const { id: selectedCycleTaskId, target: selectedCycleTaskTarget } = useResourceDetail('task')
 
 const { previewGoalId } = defineProps<{ previewGoalId?: string }>()
 const emit = defineEmits<{ close: [] }>()
@@ -1210,7 +1212,16 @@ let formGeneration = 0
 
 const goalDialogOpen = ref(false)
 const openingGoalId = ref<string | null>(null)
-watch(goalDialogOpen, open => { if (!open) { formGeneration++; formSaving.value = false; resetCategoryDraft(); openingGoalId.value = null; store.clearSelection(); if (previewGoalId) emit('close') } })
+watch(goalDialogOpen, open => {
+  if (open) return
+  selectedCycleTaskId.value = null
+  formGeneration++
+  formSaving.value = false
+  resetCategoryDraft()
+  openingGoalId.value = null
+  store.clearSelection()
+  if (previewGoalId) emit('close')
+})
 const goalDialogTab = ref<GoalDialogTab>('overview')
 watch(goalDialogTab, tab => { void store.setCyclesActive(tab === 'cycles').catch(() => undefined) })
 const goalDialogTitle = ref('')
@@ -1992,7 +2003,7 @@ function setCyclePageSize(value: number | null): void {
 }
 
 function openTask(taskId: string): void {
-  void router.push({ path: '/task', query: { task_id: taskId } })
+  selectedCycleTaskId.value = taskId
 }
 
 onMounted(() => {

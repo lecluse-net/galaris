@@ -68,8 +68,8 @@
               <q-list v-if="displayedSources.length" dense separator>
                 <q-item v-for="source in displayedSources" :key="source.ref">
                   <q-item-section>
-                    <RouterLink v-if="source.taskId !== null && canViewTasks" class="text-primary"
-                      :to="{ path: '/task', query: { task_id: source.taskId } }">{{ source.ref }}</RouterLink>
+                    <q-btn v-if="source.taskId !== null && canViewTasks" outline color="primary" no-caps
+                      :label="source.ref" @click="sourceTaskId = source.taskId" />
                     <span v-else>{{ source.ref }}</span>
                   </q-item-section>
                 </q-item>
@@ -142,6 +142,8 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <ResourceDetailDialog v-if="sourceTaskTarget && detailDialog && canViewTasks"
+      :target="sourceTaskTarget" @close="sourceTaskId = null" />
 
     <MemoryLinkDialog
       v-if="linkDialog && store.currentItem && store.selectedAgentId !== null"
@@ -165,12 +167,11 @@
 import { useFindingPresentation } from '../findingPresentation'
 import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { RouterLink } from 'vue-router'
 import { useQuasar } from 'quasar'
 import { isAxiosError } from 'axios'
 import { apiErrorDetail, isCancelledRequest } from '@/core/api'
 import { websocket } from '@/core/websocket'
-import { showConfirmationDialog } from '@/core/util'
+import { ResourceDetailDialog, showConfirmationDialog, useResourceDetail } from '@/core/util'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { useMemoryState, type useMemoryStore } from '../stores/memoryStore'
 import { memoryService } from '../services/memoryService'
@@ -199,6 +200,7 @@ const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.MEMORY_EDI
 const canAdminister = computed(() => privilegeStore.hasPrivilege(privileges.MEMORY_ADMIN))
 const canViewTasks = computed(() => privilegeStore.hasAnyPrivilege([privileges.TASK_ACCESS, privileges.TASK_EDIT]))
 const detailDialog = ref(true)
+const { id: sourceTaskId, target: sourceTaskTarget } = useResourceDetail('task')
 let detailOpenRequest = 0
 const currentMetadata = computed(() => {
   const item = store.currentItem
@@ -488,6 +490,7 @@ async function onSharingChanged(): Promise<void> {
   catch (error) { notifyError(error) }
 }
 watch(() => [props.itemId, props.agentId] as const, ([id, agentId]) => {
+  sourceTaskId.value = null
   store.selectedAgentId = agentId
   void openDetail(id)
   if (!props.state) void store.search().catch(notifyError)

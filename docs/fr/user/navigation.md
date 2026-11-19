@@ -625,6 +625,10 @@ Ne cherchez pas un menu latéral « Conversations » ou « Tâches » séparé :
 d’**Activité**. **Discussion** sert à échanger ; **Activité** sert à suivre les exécutions.
 L’accès à cet écran ne donne pas accès à toutes les conversations ni à tous les agents.
 
+Les références à une tâche, à un round de conversation ou à un tour vocal ouvrent leur
+fiche en modale sur la page où vous les sélectionnez. Si une autre fiche est déjà ouverte,
+elle reste en place et retrouve son onglet et son brouillon à la fermeture de la modale.
+
 Pour un plan qui doit produire et livrer un fichier, le résultat annoncé par l'agent est
 rapproché de la production et de l'envoi enregistrés. Un autre fichier déjà livré ne suffit
 pas à valider le plan ; un fichier périmé ou un envoi non confirmé peut laisser le travail

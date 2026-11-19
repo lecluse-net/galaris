@@ -39,7 +39,7 @@
                       v-if="cycle.task_id && canViewTasks"
                       outline
                       color="primary"
-                      icon="open_in_new"
+                      icon="task_alt"
                       :label="t('goal.cycleTask', { number: cycle.sequence })"
                       @click="emit('openTask', cycle.task_id)"
                     />

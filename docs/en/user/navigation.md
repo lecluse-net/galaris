@@ -574,6 +574,10 @@ There is no separate sidebar menu for Tasks or conversation histories: these are
 inside **Activity**. **Chat** is for interaction; **Activity** is for monitoring executions.
 Access to the screen does not grant access to every conversation or agent.
 
+Task, conversation round and voice turn references open their details in a dialog on the
+current page. If you opened the reference from another dialog, closing the details returns
+you to the same tab and draft.
+
 For a plan that must produce and deliver a file, the agent's reported result is checked
 against recorded production and delivery. A different file already delivered cannot
 validate the plan; a stale file or unconfirmed send may leave the work in error. Check

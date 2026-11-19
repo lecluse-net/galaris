@@ -31,7 +31,8 @@
           :default-opened="index === detail.attempts.length - 1">
           <div class="q-pa-sm q-gutter-y-md">
             <q-banner v-if="attempt.error" role="alert">{{ attempt.error }}</q-banner>
-            <q-btn color="primary" v-if="attempt.task_uri && canReadTasks" outline icon="task_alt" :label="t('nativeProcesses.execution.task')" :to="richLinkHref(attempt.task_uri) ?? ''" />
+            <q-btn v-if="attempt.task_uri && canReadTasks" color="primary" outline icon="task_alt"
+              :label="t('nativeProcesses.execution.task')" @click="taskTarget = richLinkTarget(attempt.task_uri)" />
             <q-btn color="primary" v-if="attempt.child_run_id" outline icon="account_tree" :label="t('nativeProcesses.execution.childRun')" :to="`/process/internal/run/${attempt.child_run_id}`" />
             <q-expansion-item v-if="attempt.prompt" icon="description" :label="t('nativeProcesses.execution.prompt')">
               <CodeEditor :model-value="attempt.prompt" language="plaintext" readonly :label="t('nativeProcesses.execution.prompt')" :min-lines="3" :visible-lines="8" />
@@ -42,14 +43,15 @@
       <div v-else class="text-body2">{{ t('nativeProcesses.execution.notStarted') }}</div>
     </template>
     <slot />
+    <ResourceDetailDialog v-if="taskTarget && canReadTasks" :target="taskTarget" @close="taskTarget = null" />
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePrivilegeStore } from '@/core/authorize'
-import { CodeEditor, richLinkHref } from '@/core/util'
+import { CodeEditor, ResourceDetailDialog, richLinkTarget, type ResourceDetailTarget } from '@/core/util'
 import type { NodeExecutionDetail, NodeOccurrencePage } from '../services/nativeProcessService'
 const props = defineProps<{
   title: string; detail: NodeExecutionDetail | null; occurrences: NodeOccurrencePage | null
@@ -58,6 +60,8 @@ const props = defineProps<{
 const emit = defineEmits<{ select: [id: string]; page: [page: number, pageSize: number]; retry: []; close: [] }>()
 const { t, te, locale } = useI18n(), privileges = usePrivilegeStore()
 const canReadTasks = computed(() => privileges.hasPrivilege('TASK_ACCESS') || privileges.hasPrivilege('TASK_EDIT'))
+const taskTarget = shallowRef<ResourceDetailTarget | null>(null)
+watch(() => props.detail?.id, () => { taskTarget.value = null })
 function status(value: string): string {
   const mapped = ({ completed: 'success', failed: 'error', accepted: 'running', executing: 'running', human_waiting: 'waiting', waiting_for_input: 'waiting', waiting_approval: 'waiting', pending: 'queued', intent: 'queued', ready: 'queued' } as Record<string, string>)[value] ?? value
   const key = `processes.statuses.${mapped}`
