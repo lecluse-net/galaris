@@ -8,6 +8,140 @@ The historical tags `0.1` and `0.2` remain aliases of `0.1.0` and `0.2.0`.
 
 ## [Unreleased]
 
+### Added
+
+- A **Windows and Linux desktop client** connects to your Galaris server over
+  HTTPS. It adds tabs and French and English spellchecking. Windows and AppImage
+  can download client updates and install them after you approve a restart.
+  [Desktop guide](docs/en/user/desktop.md)
+- Create **mind maps** in Documents, edit and reorder branches, embed resources,
+  and restore saved revisions. Import and export Freeplane/FreeMind, OPML, modern
+  XMind and native mind maps. Agents can read and edit branches with revision
+  checks. [Document guide](docs/en/user/documents.md#mind-maps)
+- Import **PDFs, Office and OpenDocument files, RTF, EPUB and supported images**
+  from your computer or a connected file space. Converted documents retain the
+  original attachment and have editable content with their own images. Scanned
+  PDFs can use OCR. ZIP imports can recreate folder trees, and retrying skips
+  files that were already imported. [Import guide](docs/en/user/documents.md#import-a-file)
+- Every agent has a **personal agenda**. View appointments, dated memories and
+  Goal cycles together, and schedule Tasks from event starts or reminders.
+  Connect CalDAV, Google Calendar, Microsoft 365 or iCloud for background
+  synchronization, or subscribe to read-only iCalendar feeds. Authorized upcoming
+  events can inform the agent's work. [Agenda guide](docs/en/user/calendar.md)
+- Browse bundled **Service presets**, configure a local copy and exchange custom
+  Services as standalone YAML with their icons. GitHub refresh keeps the last
+  usable catalogue on failure. Each Connection holds its own credentials and
+  permissions. [Service guide](docs/en/user/services.md)
+- Install and activate **signed plugins** from ZIP files or an operator-managed
+  catalogue. Plugins can contribute Service presets, Data templates, document
+  formats, model providers, preview converters and file-sharing protocols.
+  Executable contributions require separate publisher trust. Removing a plugin
+  preserves existing documents and local Services. [Plugin guide](docs/en/dev/plugin-bundles.md)
+- Configure **multiple IMAP/SMTP mailboxes per agent**, including accounts with
+  the same provider. Each Connection keeps its own credentials, allowed folders
+  and permissions. Test saved protocol credentials and inspect effective function
+  permissions from the Connection editor. [Service administration](docs/en/admin/service-administration.md)
+- Agents can convert supported files to **PDF** or render a PDF page as PNG.
+  Both operations respect file permissions and preserve the original.
+- **Goals** support weekly, monthly and yearly intervals and private categories.
+  Subgoals follow their root Goal's category for filtering without changing access.
+- **Chat** saves private drafts across navigation and reloads, including uploaded
+  attachments. Reply-needed badges remain visible after messages are read. Planner
+  clarification questions can send reminders in their original conversation.
+  [Task guide](docs/en/user/tasks.md)
+- Search the **agent directory** by team, manage the current team's membership
+  from Agents, and browse team rosters through read-only agent tools. Give avatar
+  generation appearance and style instructions. Administrators can customize
+  shared operating guidance for Tasks and text and voice conversations.
+- The **Administration Service** can list incidents and inspect individual traces
+  within the agent's delegated administrative scope.
+- Limit **transcription** to the start of a source and include supplied subtitles,
+  embedded captions or speech transcription in video analysis. Add Hugging Face
+  embeddings, transcription, speech and image inference on supported routes.
+- Plan compositions with **Eleven Music**, supply authorized reference frames to
+  Seedance, and configure Suno through its official MCP Service preset.
+- Use **`make save` and `make restore`** for verified offline backup and recovery
+  of PostgreSQL, configuration, keys and application data. Back up `/data/files`
+  separately at the same logical point. Restore retains a recovery copy and
+  leaves services stopped. [Backup and restore](docs/en/admin/installation.md#backup-and-restore)
+
+### Changed
+
+- The **Tools configuration domain becomes Services**. Update integrations from
+  `/api/tools` to `/api/services`, from `tool_id` and `tool_code` to `service_id`
+  and `service_code`, and from `tools_list` and `tool_admin_*` to `services_list`
+  and `service_admin_*`. Replace `TOOL_ACCESS` and `TOOL_EDIT` with
+  `SERVICE_ACCESS` and `SERVICE_EDIT`. MCP tool calls retain their protocol. The
+  upgrade migrates Service identities and privileges in place and converts legacy
+  Mail and Calendar connections to provider Services with their settings and history.
+  The built-in administration Service changes from `galaris_admin` to `platform_admin`.
+  [Service migration contract](docs/en/dev/service-catalog.md)
+- **`document_format` replaces `document_type`** in document contracts.
+  Use `/api/documents/formats` for format discovery. The upgrade maps
+  legacy `html` and `form` to `text`, preserving content, URIs, revisions and
+  access. Update integrations that use the old field, codes or discovery route.
+  [Document format migration](docs/en/dev/document-formats.md#migration-and-limits)
+- Browse the **document library** by folder, topic or agent, and move selections
+  atomically. Text documents and mind maps share link, card and embed controls.
+  Chat can send the current selection and saved document revision to an authorized
+  agent. Text and Data saves remain immediate, while content history groups rapid
+  edits into a checkpoint after five quiet minutes. Dream waits for substantial
+  edits before refreshing summaries. [Document guide](docs/en/user/documents.md)
+- New personal and synchronized **agendas** enable background Task launches at
+  event start by default. Existing reminder timing and explicitly disabled
+  launches are preserved. [Agenda settings](docs/en/user/calendar.md#replace-a-notification-with-a-task)
+- **Goal monitoring** carries each Task result into the next cycle and uses the
+  configured Decision model to choose whether to continue or stop. If that model
+  is unavailable or unconfigured, cycles continue on schedule. Human pauses and
+  pending replies remain in force. Goal tracking documents can hold attachments.
+- A **weekly retrospective Goal** lets each agent apply verified lessons to its
+  personal skills. Users can reschedule or pause it. Existing learned packages,
+  evidence and activation thresholds are retained. [Skills guide](docs/en/user/skills.md)
+- **`make update`** builds the selected checkout on any branch or tag, independently
+  of `APP_ENV`. It builds before replacing services, requires complete database
+  convergence before startup and waits for readiness. Use `VERSION` to select a
+  Git reference explicitly, or `RELEASE_DIR` to deploy qualified immutable images.
+  Before upgrading, check that `flock` from `util-linux` is installed and back up
+  the database, files and keys together.
+  [Update guide](docs/en/admin/README.md#10-update)
+
+### Removed
+
+- Dream's per-Task skill learner and its settings. Skill learning now runs through
+  the weekly retrospective.
+- Automatic Goal review Tasks and generated monitoring summaries. Historical
+  reviews and their costs remain available.
+
+### Fixed
+
+- Preserve recorded Tool results when amending a Task and preserve pending
+  authorizations while child Tasks finish. Report required blocked objectives
+  separately from runtime errors. Blocked optional milestones can leave the main
+  result successful.
+- Keep clarification follow-ups on the original Task, recover referrer answers
+  after failed Goal cycles and show the next cycle within the allowed schedule.
+- Count unread internal Chat messages separately from external messages and
+  preserve clickable resource links in agent replies. Keep private drafts scoped
+  to the active account and browser session.
+- Preserve table formatting when pasting across documents, support formatting
+  shortcuts on AZERTY and the numeric keypad, and preserve in-progress document
+  drafts during navigation and delayed refreshes.
+- Show approval actions and their scope in the approver's language. Preserve
+  the chosen decision after replying and show it in the conversation.
+- Preserve provider subscription confirmation during pricing refreshes. Improve
+  multimedia recovery after temporary provider or download failures while
+  retaining receipts for deliveries with uncertain outcomes.
+
+### Security
+
+- Isolate the built-in Galaris assistant from peer messages, Tasks and files.
+  Apply consistent sender scopes across native and external peer messaging,
+  including recipient opt-outs and Connection availability.
+- Add repository-wide `make dependencies-audit` reports for locked dependencies
+  and optional built-image scans. Update OpenTelemetry API, minimatch and glob
+  to address CVE-2026-126360, CVE-2026-118764 and CVE-2026-118773.
+  [Security validation guide](docs/en/dev/security-validation.md)
+
 ## [0.3.1] - 2026-11-03
 
 ### Changed
