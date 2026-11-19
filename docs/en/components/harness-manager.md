@@ -10,10 +10,9 @@ installed. Each new version is qualified before changing these references.
 Updates occur during explicit builds/rebuilds, never in the middle of a Task.
 Changing the code alone does not update existing containers.
 
-As of October 21, 2026, Hermes targets `v0.22.4` (0.22.4), and DeepSeek Harness targets
-`dsh-v0.2.1-rc.2`, commit `687f282e8625c6b8d11ff58211a90524be2e4317`.
-DeepSeek remains a prerelease; both references stay pinned.
-Codex uses `openai-codex==0.154.0` and Claude Agent uses `claude-agent-sdk==0.2.154`.
+Hermes targets the `v0.23.2` image pinned by digest. DeepSeek Harness targets the
+`dsh-v0.2.2-rc.5` prerelease at commit `9c2670d3bce5275e0d1610272958121af87787bb`.
+Codex uses `openai-codex==0.170.0` and Claude Agent uses `claude-agent-sdk==0.2.185`.
 
 ## Responsibilities
 

@@ -66,14 +66,13 @@ async def qualify() -> None:
         capability = json.loads((await capability_route(SimpleNamespace())).body)
         assert capability == {"authorization_protocol": "galaris.runtime-authorization/v1", "resumable_runs": True}
         run_id = f"synthetic-{mode}"
-        queue: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
-        host._run_streams[run_id] = queue
+        stream = runs._RunStream()
+        host._run_streams[run_id] = stream
         launch = runs._RunLaunch(
-            owner=host, run_id=run_id, queue=queue, session_id=run_id,
+            owner=host, run_id=run_id, queue=stream, session_id=run_id,
             gateway_session_key=None, declared_selected=False, user_message="synthetic work",
             conversation_history=[], session_history_delivery=False,
             agent_kwargs={"room_dispatch": None}, request_profile=None,
-            browser_control_principal=None, browser_control_transport_family=None,
         )
         worker: asyncio.Task[None] = asyncio.create_task(runs._execute_run(host, launch, _api_server=api_server))
         host._active_run_tasks[run_id] = worker
@@ -101,12 +100,10 @@ async def qualify() -> None:
             status = json.loads(response.body)
             assert status["execution_stopped"] is True
             assert status["status"] == ("completed" if mode == "natural" else "cancelled")
-            events: list[dict[str, Any]] = []
-            while not queue.empty():
-                event = queue.get_nowait()
-                if event and event.get("event") in {"run.completed", "run.cancelled"}:
-                    events.append(event)
+            events = [event for _, event in stream.backlog
+                      if event and event.get("event") in {"run.completed", "run.cancelled"}]
             assert len(events) == 1
+            assert stream.terminal
             # An early asyncio terminal must retain its uncertainty in the SSE history.
             assert events[0]["execution_stopped"] is (mode != "task_cancelled")
         finally:

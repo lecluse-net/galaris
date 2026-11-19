@@ -122,7 +122,10 @@ executor_path.write_text(executor_source)
 
 approval_path = Path("/opt/hermes/tools/approval.py")
 approval_source = approval_path.read_text()
-gate = '    if _yolo_active() or approval_context._get_approval_mode() == "off":'
+gate = '''    if _yolo_active() or approval_context._get_approval_mode() == "off":
+        return _approved()
+    session_key = get_current_session_key()
+'''
 assert approval_source.count(gate) == 1, "Review the redundant Hermes recoverable approval layer."
 approval_source = approval_source.replace(gate, '''    from galaris_authorization import current_action_authorized
     if current_action_authorized():

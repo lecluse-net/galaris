@@ -234,6 +234,10 @@ Profiles and voices refresh when **Models** opens. Administer harnesses under
 **Administer → Preferences → Harnesses** (`/params/harnesses`). Harness entries depend
 on the server catalog: use the displayed link without inventing an identifier.
 
+To apply the Harness version shipped with Galaris, open its supervision view and select
+**Update** after the agent's Tasks have finished. This action recreates the Harness instance
+and clears its local data.
+
 If a managed Harness rejects its technical identity (`Invalid runtime principal`), use
 **Restart** in its supervision view to recreate the runtime with its credentials, wait
 until it is ready, then retry the Task. **Refresh** only requests Skill projection.

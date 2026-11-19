@@ -89,8 +89,8 @@ def test_runtime_name_is_stable_across_harness_assignments() -> None:
 
 
 def test_runtime_targets_the_current_deepseek_harness_preview() -> None:
-    assert harness_provider._DSH_VERSION == "0.2.1-rc.2"
-    assert harness_provider._DSH_REF == "687f282e8625c6b8d11ff58211a90524be2e4317"
+    assert harness_provider._DSH_VERSION == "0.2.2-rc.5"
+    assert harness_provider._DSH_REF == "9c2670d3bce5275e0d1610272958121af87787bb"
 
 
 def test_environment_serializer_rejects_multiline_secrets() -> None:
@@ -160,7 +160,7 @@ async def test_provider_provisions_before_starting_and_returns_generated_coordin
     assert result.model == "executor-model"
     assert result.token == "api-token"
     assert result.metadata["model_gateway"] == "galaris"
-    assert result.metadata["deepseek_harness_version"] == "0.2.1-rc.2"
+    assert result.metadata["deepseek_harness_version"] == harness_provider._DSH_VERSION
     assert result.metadata["deepseek_harness_ref"] == harness_provider._DSH_REF
     assert result.metadata["galaris_extensions"] is True
     assert result.metadata["model_passthrough"] is True

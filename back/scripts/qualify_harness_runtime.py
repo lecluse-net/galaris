@@ -208,6 +208,7 @@ class ModelService(BaseHTTPRequestHandler):
                     "usage": {"prompt_tokens": 10, "completion_tokens": 2, "total_tokens": 12}}
             if gate and not gate.get("model_dispatched"):
                 tools = body.get("tools", [])
+                gate["offered_tools"] = {tool["function"]["name"] for tool in tools}
                 if gate.get("deepseek_mcp"):
                     tools = [tool for tool in tools if "mcp__galaris__" in str(tool.get("function", {}).get("name", ""))]
                 selected = next((tool["function"] for tool in tools if (tool.get("function", {}).get("name") == "read"
@@ -683,6 +684,10 @@ console.log('PASS DeepSeek shell confinement: workspace write allowed, sessions 
                 assert len(reads) == 1 and reads[0]["success"] is not revoked, reads
                 assert ("synthetic-read-only" in reads[0]["content"]) is not revoked, reads
                 assert gate["requests"] == [] and gate["receipts"] == [], gate
+                offered = gate["offered_tools"]
+                assert {"read", "mcp__galaris__qualification_echo"} <= offered, offered
+                assert not offered & {"ask_user_question", "plugin_manager", "present", "run_code", "web_fetch", "web_search"}, offered
+                assert not any(name.startswith(("office_", "schedule_", "team_task_")) for name in offered), offered
                 print(f"PASS DeepSeek native read without mutation consent: revoked={revoked}")
                 gate.clear()
             for managed_mcp, allowed in ((False, False), (False, True), (True, False), (True, True)):

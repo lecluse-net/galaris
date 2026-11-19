@@ -16,7 +16,7 @@ Le conteneur construit la révision DSH épinglée par `harness_provider.py`, pu
 - `POST /v1/chat/completions`, streamé ou non ;
 - `GET /healthz` pour Compose.
 
-DSH 0.2.1-rc.2 utilise Node 24.22.1 et pnpm 11.28.5 pour cette construction.
+DSH 0.2.2-rc.5 utilise Node 24.22.1 et pnpm 11.28.5 pour cette construction.
 La version et le digest de Node sont épinglés pour rendre le runtime reproductible.
 
 La construction compile aussi le lanceur Landlock natif avant de préparer le runtime.

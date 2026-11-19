@@ -27,7 +27,7 @@ L'exécution passe par les API structurées Hermès (`/api/sessions`, `/v1/runs`
 Le harness manager ne reçoit jamais une commande Hermès, un payload Kanban ou une décision
 d'exécution agentique.
 
-Avec Hermès 0.22.4, les runs portant le contexte Galaris conservent le worker API direct :
+Avec Hermès 0.23.2, les runs portant le contexte Galaris conservent le worker API direct.
 Galaris possède leur admission, leur sérialisation et leur réconciliation. Ils ne sont pas
 transférés à la file native des sessions ou à un autre propriétaire de conversation Hermès,
 qui ne transporte pas ce contexte. Leurs commandes d'arrêt et d'autorisation suivent le même

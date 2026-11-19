@@ -51,14 +51,14 @@ def _executor_llm() -> SimpleNamespace:
 
 
 def test_default_compose_pins_the_supported_hermes_release() -> None:
-    assert manager_module._HERMES_VERSION == "0.22.4"
-    assert manager_module._HERMES_RELEASE == "v0.22.4"
+    assert manager_module._HERMES_VERSION == "0.23.2"
+    assert manager_module._HERMES_RELEASE == "v0.23.2"
     assert (
         manager_module._DEFAULT_COMPOSE["services"]["agent"]["image"]
-        == "galaris/hermes-harness:v0.22.4"
+        == "galaris/hermes-harness:v0.23.2"
     )
     upstream = manager_module._DEFAULT_COMPOSE["services"]["agent"]["build"]["args"]["HERMES_IMAGE"]
-    assert upstream.startswith("nousresearch/hermes-agent:v0.22.4@sha256:")
+    assert upstream.startswith("nousresearch/hermes-agent:v0.23.2@sha256:")
     dockerfile = (manager_module._DEFAULT_AGENT_DIR / "Dockerfile").read_text(
         encoding="utf-8"
     )

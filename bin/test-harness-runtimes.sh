@@ -44,7 +44,12 @@ for runtime in "${runtimes[@]}"; do
     cp back/bridge/hermes/default-agent/galaris_authorization.py.txt "$context/"
     cp back/app/harnesses/runtime_support.py "$context/"
   fi
-  context_hash=$(tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf - -C "$context" . | sha256sum | cut -d ' ' -f1)
+  context_hash=$(
+    {
+      printf '%s\0' "${build_args[@]}"
+      tar --sort=name --mtime='UTC 1970-01-01' --owner=0 --group=0 --numeric-owner -cf - -C "$context" .
+    } | sha256sum | cut -d ' ' -f1
+  )
   image="galaris-qualification/$runtime:${context_hash:0:16}"
   printf 'Building %s\n' "$runtime"
   if ! docker build "${build_args[@]}" -t "$image" "$context" > "$report_dir/$runtime-build.log" 2>&1; then

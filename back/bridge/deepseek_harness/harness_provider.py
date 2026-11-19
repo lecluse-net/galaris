@@ -27,8 +27,8 @@ from core.params import runtime_settings as settings
 
 _DEFAULT_AGENT_DIR = Path(__file__).parent / "default-agent"
 _MANAGED_SKILLS_ROOT = "data/skills"
-_DSH_VERSION = "0.2.1-rc.2"
-_DSH_REF = "687f282e8625c6b8d11ff58211a90524be2e4317"
+_DSH_VERSION = "0.2.2-rc.5"
+_DSH_REF = "9c2670d3bce5275e0d1610272958121af87787bb"
 
 
 def _runtime_name(agent_code: str, harness_id: object) -> str:

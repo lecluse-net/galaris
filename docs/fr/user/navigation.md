@@ -256,6 +256,10 @@ Les profils et les voix sont actualisés à l’ouverture de **Modèles**. L’a
 **Administrer → Préférences → Harnais** (`/params/harnesses`). Les entrées de harnais
 dépendent du catalogue serveur : utilisez le lien affiché, sans inventer leur identifiant.
 
+Pour appliquer la version de harnais livrée par Galaris, ouvrez sa supervision et choisissez
+**Mettre à jour** une fois les tâches de l’agent terminées. Cette action recrée l’instance
+du harnais et efface ses données locales.
+
 Si un harnais géré refuse son identité technique (`Invalid runtime principal`), utiliser
 **Redémarrer** dans sa supervision pour recréer le runtime avec ses credentials, attendre
 sa disponibilité, puis réessayer la tâche. **Actualiser** ne demande que la projection des

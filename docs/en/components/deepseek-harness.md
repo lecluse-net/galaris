@@ -16,7 +16,7 @@ The container builds the DSH revision pinned by `harness_provider.py`, then expo
 - `POST /v1/chat/completions`, streamed or non-streamed;
 - `GET /healthz` for Compose.
 
-DSH 0.2.1-rc.2 uses Node 24.22.1 and pnpm 11.28.5 for this build.
+DSH 0.2.2-rc.5 uses Node 24.22.1 and pnpm 11.28.5 for this build.
 The Node version and digest are pinned to keep the runtime reproducible.
 
 The build also compiles the native Landlock launcher before staging the runtime.

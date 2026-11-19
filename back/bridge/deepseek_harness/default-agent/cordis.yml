@@ -59,12 +59,10 @@
     customSkillDirs: [/skills]
     watch: false
 
-- id: tools
-  config:
-    maxParallelSubCalls: 1
-
-# These independent workflows were absent from Galaris's former composition.
-# Durable work, goals, subagents and external calls belong to Galaris's MCP API.
+# Keep independent workflows and SDK desktop integrations out of the managed profile.
+# Galaris's MCP tools own durable work, user questions and delivery.
+- id: tool-plugin-manager
+  disabled: true
 - id: tool-jobs
   disabled: true
 - id: tool-subagent
@@ -73,7 +71,9 @@
   disabled: true
 - id: tool-subagent-control
   disabled: true
-- id: tool-subagent-list-agents
+- id: agent-team
+  disabled: true
+- id: tool-agent-team
   disabled: true
 - id: tool-workflow
   disabled: true
@@ -82,6 +82,22 @@
 - id: tool-ralph
   disabled: true
 - id: tool-web
+  disabled: true
+- id: schedule
+  disabled: true
+- id: tool-schedule
+  disabled: true
+- id: tool-ask-user
+  disabled: true
+- id: tool-office
+  disabled: true
+- id: skill-office
+  disabled: true
+- id: present
+  disabled: true
+- id: file-reference-local
+  disabled: true
+- id: deliverable-file-references
   disabled: true
 - id: session-telemetry-otel
   disabled: true

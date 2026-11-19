@@ -61,9 +61,9 @@ _DEFAULT_AGENT_DIR = Path(__file__).parent / "default-agent"
 
 # Defaults
 
-_HERMES_VERSION = "0.22.4"
-_HERMES_RELEASE = "v0.22.4"
-_HERMES_UPSTREAM_IMAGE = f"nousresearch/hermes-agent:{_HERMES_RELEASE}@sha256:7a69201726bc64db2072a1371557137c23312d29705cda2b8ea2a0214a50a4cf"
+_HERMES_VERSION = "0.23.2"
+_HERMES_RELEASE = f"v{_HERMES_VERSION}"
+_HERMES_UPSTREAM_IMAGE = f"nousresearch/hermes-agent:{_HERMES_RELEASE}@sha256:d6746a084e9341baada483e3d6210444d3c1aeb7c130f0915150065fb2851459"
 _HERMES_HARNESS_IMAGE = f"galaris/hermes-harness:{_HERMES_RELEASE}"
 
 _DEFAULT_COMPOSE: dict[str, Any] = {
