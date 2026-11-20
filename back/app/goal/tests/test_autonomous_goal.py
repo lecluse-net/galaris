@@ -9,11 +9,13 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select
 
+from app.agent import parse_scope, preflight
 from app.agent.models import Agent, Title
+from app.file_share.mcp import edit_file
 from app.goal import get_goal_document_store
 from app.goal import goal_service, runner
-from app.goal.models import Goal, GoalCycle, GoalCycleStatus, GoalStatus, GoalVerdict
-from app.goal.schemas import GoalDecision
+from app.goal.models import Goal, GoalCycle, GoalCycleStatus, GoalReferrerType, GoalStatus, GoalVerdict
+from app.goal.schemas import GoalCommand, GoalDecision, GoalUpdate
 from app.goal.tests.factories import make_goal
 from app.llm.structured_service import StructuredInferenceResult
 from app.task import Task, TaskCreate, TaskStatus, initialize_scope, task_service
@@ -109,6 +111,47 @@ async def test_monitoring_preserves_tracking_and_passes_task_result_to_next_cycl
     assert cycle.continuation_context == source.feedback
     assert source.feedback in await runner._cycle_task_objective(goal, 2)
     assert cycle.progress_changed is None and cycle.progress_summary is None
+
+
+async def test_new_cycle_uses_updated_write_target_without_inheriting_other_targets(db, monkeypatch):
+    goal, cycle, source = await setup_cycle(db)
+    assignee = await db.get(Agent, goal.agent_id)
+    assert assignee is not None
+    referrer = Agent(user_id=assignee.user_id, title_id=assignee.title_id,
+        code=f"autonomy-{uuid4().hex[:8]}", first_name="Synthetic", last_name="Supervisor")
+    db.add(referrer)
+    await db.flush()
+    goal.referrer_type = GoalReferrerType.AGENT
+    goal.referrer_agent_id = referrer.id
+    target = f"data://{uuid4()}"
+    unrelated = f"document://{uuid4()}"
+    descriptor = edit_file.__galaris_mcp_tool__.effect_descriptor
+    original_scope = parse_scope(source.data or {})
+    assert preflight(original_scope, descriptor, "file_edit", {"uri": target}).decision == "clarify"
+    source.feedback = f"Earlier write attempts on {target} and {unrelated} were refused."
+    await db.commit()
+    model(monkeypatch, decision())
+    await runner.process_terminal_cycle()
+    assert cycle.verdict == GoalVerdict.CONTINUE
+
+    updated = await goal_service.update(goal.id, GoalUpdate(
+        expected_revision=goal.revision,
+        description=f"<p>Record the completed inspection in <code>{target}</code>.</p>",
+    ))
+    assert updated is not None
+    queued = await goal_service.run_now(goal.id, GoalCommand(expected_revision=updated.revision))
+    assert queued is not None
+    assert await runner.start_due_cycle(manual_only=True)
+
+    next_cycle = await db.scalar(select(GoalCycle).where(GoalCycle.goal_id == goal.id, GoalCycle.sequence == 2))
+    assert next_cycle is not None and next_cycle.task_id is not None
+    task = await db.get(Task, next_cycle.task_id)
+    assert task is not None and task.data is not None
+    assert source.feedback in (task.objective or "")
+    scope = parse_scope(task.data)
+    assert scope is not None
+    assert preflight(scope, descriptor, "file_edit", {"uri": target}).decision == "allow"
+    assert preflight(scope, descriptor, "file_edit", {"uri": unrelated}).decision == "clarify"
 
 
 @pytest.mark.parametrize("change", ["goal", "tracking", "work"])
