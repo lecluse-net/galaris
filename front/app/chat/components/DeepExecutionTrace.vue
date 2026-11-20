@@ -1,6 +1,7 @@
 <template>
   <ChatExecutionDetails
     :label="t('chat.executionDetail')" :icon="summaryIcon" :tools="tools" :recent-tools="activity.tools"
+    :badge-label="t('chat.deep.mode')"
     :running="active" :error="failed" :expandable="hasDetails" @open="emit('inspect')"
   >
     <template #status>

@@ -22832,6 +22832,7 @@
           "front/app/chat/components/AgentTasksPanel.vue",
           "front/app/chat/components/ChatDocumentPane.vue",
           "front/app/chat/components/ChatDocumentSearchDialog.vue",
+          "front/app/chat/components/ChatExecutionDetails.vue",
           "front/app/chat/components/Composer.vue",
           "front/app/chat/components/ConversationDocumentDialog.vue",
           "front/app/chat/components/ConversationDocumentsPanel.vue",

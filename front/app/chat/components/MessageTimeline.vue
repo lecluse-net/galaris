@@ -49,7 +49,7 @@
       />
       <div
         class="message-stack"
-        :class="{ 'message-stack--trace': entry.activity || entry.liveRound || entry.deep || entry.pendingTranscription }"
+        :class="{ 'message-stack--trace': entry.activity || entry.liveRound || entry.deep || entry.message?.deep_submission_id || entry.pendingTranscription }"
       >
         <div class="message-meta">
           <button
@@ -119,6 +119,11 @@
               :submission="entry.deep" :events="deepEvents[entry.deep.id] ?? []"
               :show-response="!entry.message" :controllable="allowReply && viewerAgentId === null"
               @stop="emit('deepStop', entry.deep.id)" @inspect="emit('deepInspect', entry.deep.id)"
+            />
+            <ChatExecutionDetails
+              v-else-if="entry.message?.deep_submission_id"
+              :label="t('chat.executionDetail')" :badge-label="t('chat.deep.mode')"
+              icon="settings_suggest" :tools="[]" :expandable="false"
             />
             <AgentExecutionTrace
               v-else-if="entry.activity || entry.liveRound"
@@ -359,6 +364,7 @@ import InternalParticipantAvatar from './InternalParticipantAvatar.vue'
 import { defineAsyncView } from '@/core/util/facade'
 const AgentExecutionTrace = defineAsyncView(() => import('./AgentExecutionTrace.vue'))
 import DeepExecutionTrace from './DeepExecutionTrace.vue'
+import ChatExecutionDetails from './ChatExecutionDetails.vue'
 const MarkdownAttachmentPreview = defineAsyncView(() => import('./MarkdownAttachmentPreview.vue'))
 import TimelineWindow from './TimelineWindow.vue'
 import MessageResourcePreviews from './MessageResourcePreviews.vue'

@@ -936,10 +936,9 @@ require reconciliation before a new model decision.
 
 Send `@deep` on its own in a private Chat conversation to switch modes. Start a
 message with `@deep` followed by a space and your request to enable Deep and send
-the request directly to the harness. The header shows **Deep off** for standard
-conversation and **Deep** when new messages go
-directly to the agent's harness. The room remembers the setting across tabs and
-visits. Each room keeps a separate Deep session. The harness resumes its native
+the request directly to the harness. The header shows **Deep** only while new
+messages go directly to the agent's harness. The room remembers the setting
+across tabs and visits. Each room keeps a separate Deep session. The harness resumes its native
 history when available. Harnesses that receive fallback history get only prior
 Deep exchanges.
 The Deep prompt sends the user's message and attachment links directly to the
@@ -948,7 +947,8 @@ instructions Galaris adds. If a repository is linked, the message identifies its
 working directory for Console tools.
 
 Text appears as it arrives in the usual agent bubble, with the agent's avatar.
-The **Details** bar contains the status, stop control and harness activity.
+Each reply carries a **Deep** badge right after **Details**, even after the mode
+is turned off. The bar contains the status, stop control and harness activity.
 When collapsed, it shows recent actions on one line. **…** indicates earlier
 actions. You can expand it when activity or approvals are available. Quoted
 messages and available failure reasons appear in the bubble below the bar.

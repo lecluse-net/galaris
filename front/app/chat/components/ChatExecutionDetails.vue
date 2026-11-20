@@ -4,11 +4,12 @@
       <component
         :is="expandable ? 'button' : 'div'" :type="expandable ? 'button' : undefined" class="trace-summary"
         :aria-label="expandable ? label || t('chat.thinking') : undefined"
-        :aria-description="compact && hasHiddenTools ? t('chat.deep.previousActions') : undefined"
+        :aria-description="expandable ? summaryDescription : undefined"
         :aria-expanded="expandable ? expanded : undefined" @click="toggle"
       >
         <q-icon :name="icon" class="summary-icon" :class="{ 'gt-sm': !label }" />
         <span class="summary-label" :class="{ 'gt-sm': !label }">{{ label || t('chat.thinking') }}</span>
+        <StatusBadge v-if="badgeLabel" tone="active" :label="badgeLabel" />
         <q-spinner-dots v-if="running" color="primary" size="22px" />
         <slot name="status" />
         <span v-if="toolSummaries.length" class="summary-tools">
@@ -48,11 +49,13 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { StatusBadge } from '@/core/util'
 
 const props = withDefaults(defineProps<{
   label: string
   icon: string
   tools: readonly string[]
+  badgeLabel?: string
   running?: boolean
   error?: boolean
   warning?: boolean
@@ -85,6 +88,10 @@ const toolSummaries = computed(() => {
 })
 const toolList = useTemplateRef<HTMLSpanElement>('toolList')
 const hasHiddenTools = ref(false)
+const summaryDescription = computed(() => [
+  props.badgeLabel,
+  compact.value && hasHiddenTools.value ? t('chat.deep.previousActions') : undefined,
+].filter(Boolean).join('. ') || undefined)
 
 watch([compact, toolList], ([isCompact, list], _previous, onCleanup) => {
   hasHiddenTools.value = false

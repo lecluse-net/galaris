@@ -310,7 +310,6 @@ export default {
       },
       deep: {
         mode: "Deep",
-        modeOff: "Deep désactivé",
         toggleHint: "Envoyez {command} seul pour basculer le mode, ou suivi d’une demande pour l’envoyer directement au harnais.",
         activity: "Activité Deep",
         approval: "Autorisation en attente",
@@ -742,7 +741,6 @@ export default {
       },
       deep: {
         mode: "Deep",
-        modeOff: "Deep off",
         toggleHint: "Send {command} alone to switch modes, or follow it with a request to send directly to the harness.",
         activity: "Deep activity",
         approval: "Approval requested",
@@ -997,7 +995,6 @@ export default {
       },
       deep: {
         mode: "Deep",
-        modeOff: "Deep 已关闭",
         toggleHint: "单独发送 {command} 可切换模式，也可以在命令后输入请求，直接发送给执行环境。",
         activity: "Deep 活动",
         approval: "等待授权",

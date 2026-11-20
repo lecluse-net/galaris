@@ -1156,8 +1156,8 @@ Sources : [contrats](../../../back/app/harnesses/contracts.py), [API](../../../b
 Dans une conversation privée du Chat, envoyez `@deep` seul pour basculer le mode.
 Commencez un message par `@deep` suivi d’un espace et de votre demande pour activer
 Deep et transmettre cette demande directement au harnais.
-L’en-tête affiche **Deep désactivé** pour la conversation habituelle et **Deep**
-lorsque les prochains messages partent directement vers le harnais de l’agent.
+L’en-tête affiche **Deep** uniquement lorsque les prochains messages partent
+directement vers le harnais de l’agent.
 Le salon conserve ce choix entre les onglets et les réouvertures.
 Chaque salon conserve sa propre session Deep. Le harnais reprend son historique
 natif lorsqu’il est disponible. Les harnais qui reçoivent un historique de secours
@@ -1168,7 +1168,8 @@ instructions système ajoutées par Galaris. Si un dépôt est lié, le message 
 le répertoire à utiliser avec les outils Console.
 
 Le texte apparaît au fil de sa réception dans la bulle habituelle de l’agent, avec
-son avatar. La barre **Détails** réunit l’état, l’arrêt et l’activité du harnais.
+son avatar. Chaque réponse porte un badge **Deep** juste après **Détails**, même
+après la désactivation du mode. La barre réunit l’état, l’arrêt et l’activité du harnais.
 Repliée, elle affiche les actions récentes sur une ligne. Le symbole **…** indique
 des actions plus anciennes. La barre s’ouvre quand une activité ou une autorisation
 est à consulter. Le message cité et le motif d’échec disponible apparaissent dans

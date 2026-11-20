@@ -21,6 +21,7 @@ test(`Deep follows and restores the direct stream at ${width}px`, async ({ page 
   ]
   let enabled = false
   let submission = null
+  let includeSubmission = true
   for (const [url, value] of [
     ['**/api/chat/status', { enabled: true, chat_enabled: true, max_attachment_bytes: 1000000 }],
     ['**/api/chat/inbox', { unread_count: 0 }],
@@ -38,7 +39,7 @@ test(`Deep follows and restores the direct stream at ${width}px`, async ({ page 
     body: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32"><rect width="32" height="32" fill="#16425b"/><text x="16" y="22" text-anchor="middle" fill="white" font-size="16">A</text></svg>',
   }))
   await page.route('**/api/chat/rooms/room-deep/deep', route =>
-    route.fulfill({ json: { enabled, submissions: submission ? [submission] : [] } }))
+    route.fulfill({ json: { enabled, submissions: includeSubmission && submission ? [submission] : [] } }))
   await page.route('**/api/chat/rooms/room-deep/deep/*/events?*', route => {
     const after = Number(new URL(route.request().url()).searchParams.get('after'))
     streamReads.push(after)
@@ -76,7 +77,8 @@ test(`Deep follows and restores the direct stream at ${width}px`, async ({ page 
   const socket = (name, data) => page.evaluate(({ name, data }) => window.testApp.emitSocket(name, { data }), { name, data })
   await open()
   const header = page.locator('.conversation-toolbar')
-  await expect(header.getByText('Deep off', { exact: true })).toBeVisible()
+  const deepIndicator = header.getByText(/^Deep(?: off)?$/)
+  await expect(deepIndicator).toHaveCount(0)
   const composer = page.getByPlaceholder('Write a message…')
   const send = () => width >= 1024 ? composer.press('Enter') : page.getByRole('button', { name: 'Post', exact: true }).click()
   await page.getByRole('button', { name: 'Show @ commands' }).click()
@@ -97,6 +99,7 @@ test(`Deep follows and restores the direct stream at ${width}px`, async ({ page 
   const reply = page.locator('.message-row').filter({ has: page.getByText('Details', { exact: true }) })
   const details = reply.getByRole('button', { name: 'Details', exact: true })
   await expect(reply.getByRole('button', { name: 'Stop this execution' })).toBeVisible()
+  await expect(reply.getByText('Deep', { exact: true })).toBeVisible()
   await expect(details).toHaveCount(0)
   submission.sequence = 1
   await socket('chat.deep', { room_id: room.id })
@@ -145,9 +148,16 @@ test(`Deep follows and restores the direct stream at ${width}px`, async ({ page 
 
   await composer.fill('@deep')
   await send()
-  await expect(header.getByText('Deep off', { exact: true })).toBeVisible()
+  await expect(deepIndicator).toHaveCount(0)
+  await expect(reply.getByText('Deep', { exact: true })).toBeVisible()
+
+  includeSubmission = false
   await open()
-  await expect(header.getByText('Deep off', { exact: true })).toBeVisible()
+  const historicalReply = page.locator('[data-message-id="final-deep"]')
+  await expect(historicalReply.getByText('Synthetic response.', { exact: true })).toBeVisible()
+  await expect(historicalReply.getByText('Deep', { exact: true })).toBeVisible()
+  await expect(deepIndicator).toHaveCount(0)
+  await historicalReply.screenshot({ path: testInfo.outputPath(`deep-history-${width}.png`), animations: 'disabled' })
 })
 }
 
@@ -172,6 +182,7 @@ test('Deep failures explain the cause without offering empty Details', async ({ 
   const reason = page.getByText('Le harnais a reçu une erreur HTTP 422.', { exact: true })
   await expect(reason).toBeVisible()
   await expect(page.getByText('Détails', { exact: true })).toBeVisible()
+  await expect(page.getByText('Deep', { exact: true })).toBeVisible()
   await expect(details).toHaveCount(0)
   await open()
   await expect(reason).toBeVisible()

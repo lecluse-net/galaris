@@ -39,9 +39,8 @@
             <InternalAgentAvatar :agent-id="store.selectedRoom.agent_id" :name="store.selectedRoom.agent_name" size="36px" class="q-ml-xs" />
             <q-toolbar-title class="conversation-title">{{ store.selectedRoom.label }}</q-toolbar-title>
             <StatusBadge
-              v-if="deepRoom" role="status" class="q-mr-sm"
-              :tone="deepRoom.enabled ? 'active' : 'neutral'"
-              :label="t(deepRoom.enabled ? 'chat.deep.mode' : 'chat.deep.modeOff')"
+              v-if="deepRoom?.enabled" role="status" class="q-mr-sm"
+              tone="active" :label="t('chat.deep.mode')"
               :title="canWriteSelectedRoom ? t('chat.deep.toggleHint', { command: '@deep' }) : undefined"
             />
             <q-btn flat round dense size="xs" icon="content_copy" class="room-id-copy" :aria-label="t('chat.copyRoomId')" :title="store.selectedRoom.id" @click="copyRoomId"><q-tooltip>{{ store.selectedRoom.id }}</q-tooltip></q-btn><q-badge v-if="store.selectedRoom.source" outline color="grey-7" :label="t(sourceTranslationKey(store.selectedRoom.source))" /><q-chip v-if="!canWriteSelectedRoom" dense outline color="grey-7" icon="lock" class="read-only-chip">{{ t('chat.readOnly') }}</q-chip><q-btn v-if="(inboxStore.pushSupported && inboxStore.pushAvailable) || canWriteSelectedRoom" flat round :icon="store.selectedRoom.muted ? 'notifications_off' : 'notifications'" :aria-label="t('chat.notifications.settings')">

@@ -594,8 +594,10 @@ Dans un fil privé, envoyez `@deep` seul pour activer ou désactiver le mode. Vo
 pouvez aussi écrire `@deep` suivi de votre demande pour activer Deep et envoyer
 la demande directement au harnais. Il utilise sa session Deep, la personnalité
 et la fiche de poste de l’agent. La commande figure dans le menu de la saisie.
-L’en-tête affiche **Deep** après activation et **Deep désactivé** en mode habituel.
-Le texte arrive dans la bulle de l’agent. **Détails** affiche les actions récentes.
+L’en-tête affiche **Deep** uniquement quand le mode est actif. Le texte arrive
+dans la bulle de l’agent. Le badge **Deep** reste affiché juste après **Détails**
+sur les réponses Deep, même après la désactivation du mode. La barre affiche les
+actions récentes.
 Déroulez la barre pour voir les autres actions et les autorisations disponibles.
 En cas d’échec, le motif disponible apparaît sous cette barre. Le Chat reprend
 l’affichage après reconnexion. Consultez [les conversations Deep dans le catalogue](../reference/functional-catalogue.md#deep-conversations)

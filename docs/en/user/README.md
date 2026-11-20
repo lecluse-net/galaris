@@ -496,9 +496,10 @@ In a private conversation, send `@deep` on its own to turn the mode on or off.
 You can also start a message with `@deep` to enable the mode and send your request
 directly to the harness. It uses its Deep session and the agent's personality
 and job description. The command is available in the composer menu. The header
-shows **Deep** when enabled and **Deep off** in standard mode. Text arrives in the
-agent's bubble. **Details** shows recent actions. Expand the bar to see earlier
-actions and any available approvals. If an execution fails, the available reason
+shows **Deep** only while the mode is enabled. Text arrives in the agent's bubble.
+Deep replies keep their **Deep** badge right after **Details** when the mode is
+turned off. The bar shows recent actions. Expand it to see earlier actions and
+any available approvals. If an execution fails, the available reason
 appears below the bar. Chat resumes displaying activity after reconnecting. See
 [Deep conversations in the catalogue](../reference/functional-catalogue.md#deep-conversations) for
 tool activity and links from LLM calls.
