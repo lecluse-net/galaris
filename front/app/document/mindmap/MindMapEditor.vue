@@ -50,6 +50,14 @@
               <q-tooltip>{{ t('richEditor.clipboard.paste') }}</q-tooltip>
             </q-btn>
           </template>
+          <q-btn flat dense color="primary" icon="copy_all" :disable="!selectedValues.length"
+            :aria-label="t('documents.mindmapValue.copySelected')" @click="copySelectedValues(false)">
+            <q-tooltip>{{ t('documents.mindmapValue.copySelected') }}</q-tooltip>
+          </q-btn>
+          <q-btn flat dense color="primary" icon="table_view" :disable="!selectedValues.length"
+            :aria-label="t('documents.mindmapValue.copyTable')" @click="copySelectedValues(true)">
+            <q-tooltip>{{ t('documents.mindmapValue.copyTable') }}</q-tooltip>
+          </q-btn>
         </div>
       </div>
       <div v-if="!readonly" class="editorial-toolbar-group" role="group" :aria-label="t('documents.mindmapThemes.appearance')">
@@ -677,6 +685,9 @@ const selection = computed(() => {
   return anchor < 0 || current < 0 ? [active.value] : nodes.slice(Math.min(anchor, current), Math.max(anchor, current) + 1)
 })
 const selectionIds = computed(() => new Set(selection.value.map(node => node.id)))
+const selectedValues = computed(() => selection.value.flatMap(node => node.value
+  ? [{ title: nodeLabel(node), value: node.value }]
+  : []))
 const selectedIds = computed(() => leavingTree.value ? new Set<string>() : selectionIds.value)
 const visibleSelection = computed(() => mapFocused.value ? selectedIds.value : new Set<string>())
 const selectionRoots = computed(() => branchRoots(selection.value))
@@ -711,6 +722,8 @@ const keyboardShortcuts = computed(() => {
       [t('documents.mindmapHelp.navigateFromTitle'), 'Alt+← ↑ ↓ →'],
       [t('documents.mindmap.addChild'), `Tab / ${t('documents.mindmapHelp.insert')}`],
       [t('documents.mindmap.addSibling'), shiftEnter],
+      [t('documents.mindmapHelp.reorder'), `${modifier}+↑ ↓`],
+      [t('documents.mindmapHelp.reparent'), `${modifier}+← →`],
       [t('documents.mindmapHelp.toggleCheckbox'), space],
       [t('documents.mindmap.richContent'), `Alt+${enter}`],
       [t('documents.mindmap.editNote'), 'F6'],
@@ -834,20 +847,27 @@ function closeSearch(): void {
   focusNode(active.value.id)
 }
 
-function revealMatch({ target }: MindMapMatch): void {
+function revealMatch({ target, range }: MindMapMatch, focusValue = false): void {
   const node = byId.value.get(target.id)
   if (!node) return
   for (let parent = node.parent; parent; parent = byId.value.get(parent)?.parent ?? null) folded.value.delete(parent)
   if (target.field === 'note') details.value.add(node.id)
   selectNode(node.id)
-  // Keep keyboard focus in the search field while scrolling to the branch.
-  void nextTick(() => reveal(branchElement(node.id)?.firstElementChild))
+  void nextTick(() => {
+    if (active.value.id !== node.id) return
+    const input = focusValue && target.field === 'value' ? valueInput(node.id) : undefined
+    if (input) {
+      input.focus({ preventScroll: true })
+      input.setSelectionRange(range.from, range.to)
+    }
+    reveal(input ?? branchElement(node.id)?.firstElementChild)
+  })
 }
 
 function findNext(): void {
   if (!matches.value.length) return
   searchIndex.value = (searchIndex.value + 1) % matches.value.length
-  revealMatch(matches.value[searchIndex.value]!)
+  revealMatch(matches.value[searchIndex.value]!, true)
 }
 
 function replaceResults(all: boolean): void {
@@ -1007,6 +1027,7 @@ function onTitleKeydown(event: KeyboardEvent, id: string): void {
     return
   }
   if (onNodeShortcut(event, node)) return
+  if (onMoveShortcut(event)) return
   if (altKey && !ctrlKey && !metaKey && (key === 'Delete' || key === '0' || event.code === 'Digit0')) {
     if (key === 'Delete' && canMoveSelection.value) {
       event.preventDefault()
@@ -1472,18 +1493,32 @@ function setNodeValue(id: string, value: string): void {
   commit(map.value.nodes.map(candidate => candidate.id === id ? { ...candidate, value } : candidate), `value:${id}`)
 }
 
-async function copyNodeValue(value: string): Promise<void> {
+async function copyNodeValue(value: string, message = 'documents.mindmapValue.copied'): Promise<void> {
+  const previous = branchClipboard.value
   try {
     await copyToClipboard(value)
-    $q.notify({ type: 'positive', message: t('documents.mindmapValue.copied') })
+    if (branchClipboard.value === previous) branchClipboard.value = undefined
+    $q.notify({ type: 'positive', message: t(message) })
   } catch {
     $q.notify({ type: 'negative', message: t('richEditor.clipboard.failed') })
   }
 }
 
+function copySelectedValues(asTable: boolean): void {
+  function tableCell(text: string): string {
+    const value = /^[\s\u0000-\u001f]*[=+@-]/u.test(text) ? "'" + text : text
+    return /["\t\r\n]/u.test(value) ? `"${value.replaceAll('"', '""')}"` : value
+  }
+  const rows = selectedValues.value
+  if (!rows.length) return
+  const lines = rows.map(({ title, value }) => asTable ? [title, value].map(tableCell).join('\t') : value)
+  void copyNodeValue(lines.join('\n'), 'documents.mindmapValue.selectionCopied')
+}
+
 function onValueKeydown(event: KeyboardEvent, node: MindMapNode): void {
   if (event.isComposing || event.defaultPrevented) return
   if (onNodeShortcut(event, node)) return
+  if (onMoveShortcut(event)) return
   const { key, altKey, ctrlKey, metaKey, shiftKey, target } = event
   const vertical = key === 'ArrowUp' || key === 'ArrowDown'
   const atTextEdge = !shiftKey && target instanceof HTMLInputElement
@@ -1494,10 +1529,14 @@ function onValueKeydown(event: KeyboardEvent, node: MindMapNode): void {
     navigateBranches(event, node)
     return
   }
+  if ((ctrlKey || metaKey) && !altKey && !shiftKey && key.toLowerCase() === 'f') {
+    onTreeKeydown(event, node)
+    return
+  }
   if (props.readonly) return
   if (key === 'Enter' || key === 'Escape' || key === 'Insert' || key === 'F3'
     || (altKey && (key === 'Delete' || key === '0' || event.code === 'Digit0'))
-    || ((ctrlKey || metaKey) && ['f', 'k', 'y', 'z'].includes(key.toLowerCase()))) {
+    || ((ctrlKey || metaKey) && ['k', 'y', 'z'].includes(key.toLowerCase()))) {
     onTreeKeydown(event, node)
   }
 }
@@ -1670,6 +1709,26 @@ function reorder(direction: -1 | 1): void {
   nodes.splice(nodes.findIndex(node => node.id === neighbor.id) + (direction > 0 ? 1 : 0), 0, ...roots)
   commit(nodes)
   focusNode(active.value.id, branchSelection.value)
+}
+
+function onMoveShortcut(event: KeyboardEvent): boolean {
+  const { key, ctrlKey, metaKey, altKey, shiftKey } = event
+  if (props.readonly || event.defaultPrevented || event.isComposing || !(ctrlKey || metaKey) || altKey || shiftKey
+    || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) return false
+  event.preventDefault()
+  event.stopPropagation()
+  const roots = selectionRoots.value
+  const parent = byId.value.get(roots[0]?.parent ?? '')
+  if (!parent || roots.some(node => node.parent !== parent.id)) return true
+  const direction = key === 'ArrowDown' ? 1 : -1
+  const target = key === 'ArrowLeft' ? parent : reorderNeighbor(direction)
+  if (!target || (key === 'ArrowLeft' && parent.parent === null)) return true
+  const placement = key === 'ArrowLeft' ? 'after' : 'inside'
+  if ((key === 'ArrowLeft' || key === 'ArrowRight') && !branchDestination(roots, selectedSubtree.value, target, placement)) return true
+  finishTitle(active.value.id)
+  if (key === 'ArrowLeft' || key === 'ArrowRight') moveBranches(selectionRoots.value, target.id, placement)
+  else reorder(direction)
+  return true
 }
 
 function removeBranches(): void {
@@ -1880,6 +1939,7 @@ function onTreeKeydown(event: KeyboardEvent, inputNode?: MindMapNode): void {
   const node = inputNode ?? (id ? byId.value.get(id) : undefined)
   if (!node || event.isComposing || event.defaultPrevented) return
   if (onNodeShortcut(event, node)) return
+  if (onMoveShortcut(event)) return
   if ((event.ctrlKey || event.metaKey) && !event.altKey) {
     const key = event.key.toLowerCase()
     if (key === 'f' && !event.shiftKey) openSearch()

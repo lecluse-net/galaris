@@ -1,7 +1,7 @@
 import { createEditorialMatcher } from '@/core/util/facade'
 import type { MindMapNode } from './model'
 
-type SearchField = 'title' | 'note' | 'body_html'
+type SearchField = 'title' | 'value' | 'note' | 'body_html'
 type Match = { from: number; to: number }
 type SearchTarget = { id: string; field: SearchField; matches: Match[]; text?: Text[] }
 export type MindMapMatch = { target: SearchTarget; range: Match }
@@ -32,8 +32,9 @@ export function searchMindMap(nodes: MindMapNode[], query: string, matchCase: bo
   const find = createEditorialMatcher(query, matchCase, wholeWords)
   const targets: SearchTarget[] = []
   for (const node of nodes) {
-    for (const field of ['title', 'note'] as const) {
-      if (node[field]) targets.push({ id: node.id, field, matches: find(node[field]) })
+    for (const field of ['title', 'value', 'note'] as const) {
+      const text = node[field]
+      if (text) targets.push({ id: node.id, field, matches: find(text) })
     }
     if (node.body_html) for (const text of bodyText(node.body_html)) {
       targets.push({ id: node.id, field: 'body_html', text, matches: find(text.map(run => run.data).join('')) })

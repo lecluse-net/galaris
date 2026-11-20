@@ -127,6 +127,9 @@ field or title, use **Alt+Delete**. In the confirmation, **Enter** confirms the 
 the edit and **Escape** cancels it. **Shift+Enter** inserts a line break in a note.
 From a focused node, press **Escape**, then **Tab** to leave the map.
 The **Keyboard help** button under **View** and **Alt+0** open the map's shortcut list.
+**Ctrl/Cmd+↑/↓** moves nodes among their siblings. In the map layout, **Ctrl/Cmd+←**
+moves them up one level just after their parent, and **Ctrl/Cmd+→** makes them children
+of the previous sibling. These shortcuts also work from a focused value field.
 
 Under **Node**, choose **Add checkbox**. Click the checkbox or press **Space** on the
 node outside editing to check or uncheck it. While editing, **Space** inserts a space.
@@ -142,6 +145,8 @@ Within the same map, select a destination node and paste to add the nodes below 
 Cut nodes and their children appear translucent until you paste them. **Escape**, **Cancel cut**,
 or **Ctrl/Cmd+Z** cancels the pending cut and leaves the nodes in place. Copying creates distinct
 nodes. Moving, copying and deleting a node also applies to its descendants.
+Under **Editing**, **Copy selected values** copies filled values one per line.
+**Copy titles and values in two columns** prepares them for pasting into a spreadsheet.
 
 Outside editing, pasting text creates one child per line under the active node, including blank
 lines. A line containing only a URL creates a child with a clickable link. While editing, pasted
@@ -159,7 +164,8 @@ Under **Editing**, **Select all** (**Ctrl/Cmd+A**) includes collapsed nodes. **U
 document is open, including moves, deletions and checkbox changes. While editing
 rich text in a node, the shortcuts apply to that node's text.
 
-**Find** (**Ctrl/Cmd+F**) searches titles, notes and rich text in all nodes.
+**Find** (**Ctrl/Cmd+F**) searches titles, values, notes and rich text in all nodes.
+**Next** opens collapsed ancestors and selects the matching text in a value field.
 **Next** reveals the matching node. **Replace** changes one occurrence. **Replace all**
 creates one undoable change. Formatting and link destinations are preserved.
 

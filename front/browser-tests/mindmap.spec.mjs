@@ -99,6 +99,72 @@ test('node values receive typing, copy independently and survive reopening', asy
   }
 })
 
+test('find and replace reach folded node values and selection copies values in both formats', async ({ page }, testInfo) => {
+  const nodes = [
+    { id: 'root', parent: null, title: 'Inventory' },
+    { id: 'archive', parent: 'root', title: 'Archive' },
+    { id: 'sample', parent: 'archive', title: 'Sample', value: 'Code A01' },
+    { id: 'reserve', parent: 'root', title: 'Reserve', value: 'Code B02' },
+  ]
+  await mount(page, mapEditor, { props: { modelValue: JSON.stringify({ version: 1, nodes }) } })
+  const tree = page.getByRole('tree')
+  const sample = tree.getByRole('textbox', { name: 'Value for Sample' })
+  await tree.getByRole('button', { name: 'Collapse Archive' }).click()
+  await expect(sample).toHaveCount(0)
+  await page.getByRole('button', { name: 'Find', exact: true }).click()
+  const search = page.getByRole('search')
+  const query = search.getByRole('textbox', { name: 'Find', exact: true })
+  await query.fill('Code')
+  await expect(search.getByRole('status')).toHaveText('2')
+  await query.press('Enter')
+  await expect(sample).toBeFocused()
+  expect(await sample.evaluate(input => input.value.slice(input.selectionStart, input.selectionEnd))).toBe('Code')
+  await search.getByRole('textbox', { name: 'Replace', exact: true }).fill('Ref')
+  await search.getByRole('button', { name: 'Replace all', exact: true }).click()
+  await expect(sample).toHaveValue('Ref A01')
+  await search.getByRole('button', { name: 'Close', exact: true }).click()
+  await tree.getByRole('treeitem', { name: 'Inventory', exact: true }).press('Control+a')
+  const values = page.getByRole('button', { name: 'Copy selected values', exact: true })
+  const table = page.getByRole('button', { name: 'Copy titles and values in two columns', exact: true })
+  await expect(values).toBeEnabled()
+  await expect(table).toBeEnabled()
+  if (testInfo.project.name === 'chromium') {
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+    await values.click()
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('Ref A01\nRef B02')
+    await table.click()
+    await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe('Sample\tRef A01\nReserve\tRef B02')
+  }
+})
+
+test('control arrows move a node and its children from a focused value field', async ({ page }) => {
+  const nodes = [
+    { id: 'root', parent: null, title: 'Inventory' },
+    { id: 'sample', parent: 'root', title: 'Sample', value: 'A01' },
+    { id: 'detail', parent: 'sample', title: 'Detail' },
+    { id: 'archive', parent: 'root', title: 'Archive' },
+  ]
+  await mount(page, mapEditor, { props: { modelValue: JSON.stringify({ version: 1, nodes }) } })
+  await page.getByText('Sample', { exact: true }).click()
+  const input = page.getByRole('textbox', { name: 'Value for Sample' })
+  await expect(input).toBeFocused()
+  const roots = async () => (await savedMap(page)).nodes.filter(node => node.parent === 'root').map(node => node.id)
+  await page.keyboard.press('Control+ArrowDown')
+  expect(await roots()).toEqual(['archive', 'sample'])
+  await expect(input).toBeFocused()
+  await page.keyboard.press('Control+ArrowRight')
+  const archive = page.getByRole('treeitem', { name: 'Archive', exact: true })
+  await expect(archive.getByRole('treeitem', { name: 'Sample', exact: true })).toBeVisible()
+  await expect(input).toBeFocused()
+  await page.keyboard.press('Control+ArrowLeft')
+  await expect(archive.getByRole('treeitem', { name: 'Sample', exact: true })).toHaveCount(0)
+  await page.keyboard.press('Control+ArrowUp')
+  expect(await roots()).toEqual(['sample', 'archive'])
+  expect((await savedMap(page)).nodes.find(node => node.id === 'detail')?.parent).toBe('sample')
+  await expect(input).toHaveValue('A01')
+  await expect(input).toBeFocused()
+})
+
 test('global replace preserves rich markup and undo restores the complete operation across folded branches', async ({ page }) => {
   const nodes = [
     { id: 'root', parent: null, title: 'Field survey' },

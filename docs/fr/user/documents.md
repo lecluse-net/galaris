@@ -133,6 +133,9 @@ agit sur l’affichage. La disposition et l’enregistrement suivent les modific
 Quand un nœud a le focus, utilisez les flèches pour naviguer, **Tab** ou **Inser**
 pour ajouter un enfant et **Maj+Entrée** pour ajouter un nœud frère. **Espace**
 replie ou déplie un nœud sans case à cocher. Depuis le titre, **Alt+flèches** sélectionne un autre nœud.
+**Ctrl/Cmd+↑/↓** déplace les nœuds parmi ceux qui ont le même parent. Dans la disposition
+de la carte, **Ctrl/Cmd+←** remonte d’un niveau juste après le parent et **Ctrl/Cmd+→**
+place la sélection sous le nœud frère précédent. Ces raccourcis fonctionnent aussi dans le champ de valeur.
 **F2** ouvre le sélecteur d’icône, **F3** ajoute ou retire la case à cocher, **F4** ajoute ou
 retire le champ de valeur et **F6** édite la note. Hors édition, **Ctrl+K** ou le bouton **Lien**
 ajoute un lien dans un nouvel enfant après validation.
@@ -159,6 +162,8 @@ enfants apparaissent en transparence jusqu’au collage. **Échap**, **Annuler l
 **Ctrl/Cmd+Z** annule la coupe en attente et laisse les nœuds en place. Une copie crée des
 nœuds distincts. Le déplacement, la copie et la suppression
 s’appliquent aussi à tous les descendants des nœuds sélectionnés.
+Dans **Édition**, **Copier les valeurs sélectionnées** copie les valeurs renseignées, une par ligne.
+**Copier les titres et les valeurs en deux colonnes** les prépare pour un collage dans un tableur.
 
 Hors édition, coller du texte crée un enfant par ligne sous le nœud actif, y compris pour
 les lignes vides. Une ligne qui contient une URL seule devient un enfant avec un lien cliquable.
@@ -177,8 +182,9 @@ les opérations sur la carte pendant l’ouverture du document, y compris les d�
 les suppressions et les changements de cases. Pendant la saisie dans un nœud riche,
 les raccourcis agissent sur le texte du nœud.
 
-**Rechercher** (**Ctrl/Cmd+F**) parcourt les titres, les notes et le texte riche, y
-compris dans les nœuds repliés. **Suivant** révèle le nœud trouvé. **Remplacer**
+**Rechercher** (**Ctrl/Cmd+F**) parcourt les titres, les valeurs, les notes et le texte riche, y
+compris dans les nœuds repliés. **Suivant** révèle le nœud trouvé et sélectionne le texte
+correspondant dans le champ si le résultat est une valeur. **Remplacer**
 modifie une occurrence et **Tout remplacer** forme une modification annulable.
 La mise en forme et les adresses des liens sont conservées.
 
