@@ -63,6 +63,104 @@ def sse(delta, finish=None):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("entrypoint", ["inference", "durable", "sdk", "gateway", "no_fallback", "inactive_fallback"])
+async def test_automatic_mail_routes_around_chatgpt_before_transport(failover, monkeypatch, entrypoint):
+    from unittest.mock import AsyncMock
+
+    from app.connection import Connection
+    from app.llm.facade import proxy_chat_completion
+    from app.llm.subscription_policy import MailSubscriptionAccessError
+    from app.messenger import Message
+    from app.task import Task
+    from app.task.activity_snapshot import activity_snapshots
+    from app.task.models import TaskAttempt, TaskStatus
+    from bridge.openai import codex_oauth
+    from tests.protocol_tools import protocol_tool
+
+    db, agent, models, _profiles = failover
+    primary = models[0].provider
+    primary.catalog_code = "openai-codex"
+    primary.user_id = agent.user_id
+    primary.subscription_acknowledged = True
+    models[0].is_subscription = True
+    if entrypoint == "no_fallback":
+        agent.fallback_profile_id = None
+    elif entrypoint == "inactive_fallback":
+        models[1].provider.is_active = False
+    service = await protocol_tool(db, "mail")
+    connection = Connection(agent_id=agent.id, service_id=service.id, active=True)
+    db.add(connection)
+    await db.flush()
+    message = Message(connection_id=connection.id, service_id=service.id, platform="mail",
+                      remote_message_id="1:2", direction="inbound", status="admitted",
+                      requester_user_id=agent.user_id, text="Synthetic incoming mail")
+    db.add(message)
+    await db.flush()
+    parent = Task(agent_id=agent.id, label="Synthetic inbox", messenger_message_id=message.id)
+    db.add(parent)
+    await db.flush()
+    lease_token = uuid4()
+    task = Task(agent_id=agent.id, label="Synthetic child", parent_id=parent.id, lease_token=lease_token,
+                requester_user_id=agent.user_id)
+    db.add(task)
+    await db.flush()
+    db.add(TaskAttempt(task_id=task.id, attempt_number=1, phase="DISPATCH", worker_id="test", lease_token=lease_token))
+    if entrypoint == "durable":
+        parent.soft_delete()
+        message.soft_delete()
+    await db.commit()
+
+    access_token = AsyncMock(side_effect=AssertionError("Mail must not request a ChatGPT token"))
+    monkeypatch.setattr(codex_oauth, "get_access_token", access_token)
+    upstream = []
+
+    async def handler(request):
+        upstream.append(request.url.host)
+        return httpx.Response(200, content=sse({"content": "Processed"}) + sse({}, "stop") + b'data: [DONE]\n\n',
+                              headers={"content-type": "text/event-stream"})
+
+    class ProviderClient(httpx.AsyncClient):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs, transport=httpx.MockTransport(handler))
+
+    monkeypatch.setattr(proxy_service.httpx, "AsyncClient", ProviderClient)
+    blocked_fallback = entrypoint in {"no_fallback", "inactive_fallback"}
+    if blocked_fallback:
+        with pytest.raises(MailSubscriptionAccessError, match="fallback profile") as blocked:
+            await proxy_chat_completion({"messages": []}, llm_override=models[0], task_id=task.id, agent_id=agent.id)
+        with pytest.raises(MailSubscriptionAccessError, match="fallback profile"):
+            await build_model_for_llm(models[0], task_id=task.id, agent_id=agent.id)
+        task.status = TaskStatus.ERROR
+        task.last_error = f"{type(blocked.value).__name__}: {blocked.value}"
+        await db.commit()
+        assert (await activity_snapshots([task]))[0].mail_subscription_routing == "blocked"
+        assert upstream == []
+    elif entrypoint in {"inference", "durable"}:
+        request = TextInferenceRequest(
+            llm_id=models[0].id, task_id=task.id, agent_id=agent.id, prompt="Synthetic request",
+            purpose="agent.dispatch", model_field=model_usages.DISPATCHER,
+        )
+        if entrypoint == "durable":
+            assert (await inference_execution.run_text(request)).output == "Processed"
+        else:
+            assert (await run_text_inference(request)).result == "Processed"
+    elif entrypoint == "sdk":
+        model = await build_model_for_llm(models[0], task_id=task.id, agent_id=agent.id,
+                                          purpose="agent.exec", model_field=model_usages.EXECUTOR)
+        assert (await PydanticAgent(model).run("Synthetic request")).output == "Processed"
+    else:
+        response = await proxy_chat_completion(
+            {"messages": [{"role": "user", "content": "Synthetic request"}], "stream": True},
+            llm_override=models[0], task_id=task.id, agent_id=agent.id, purpose="agent.exec",
+        )
+        assert b"Processed" in b"".join([chunk async for chunk in response.body_iterator])
+    if not blocked_fallback:
+        assert upstream == ["secondary.test"]
+        assert (await activity_snapshots([task]))[0].mail_subscription_routing == "fallback"
+    access_token.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("failure", ["http503", "overload", "partial", "partial_tool", "disconnect"])
 @pytest.mark.parametrize("secondary_native", [False, True])
 async def test_provider_failover_keeps_tool_receipt_and_only_successful_response_in_history(

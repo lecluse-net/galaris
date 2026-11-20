@@ -125,6 +125,12 @@
         </q-card-section>
 
         <q-card-section>
+            <q-banner v-if="mailSubscriptionRouting" rounded role="alert" class="task-mail-subscription q-mb-md">
+                <template #avatar><q-icon name="warning_amber" /></template>
+                <div class="text-h6">{{ t(`task.detail.mailSubscription.${mailSubscriptionRouting}.title`) }}</div>
+                <div>{{ t(`task.detail.mailSubscription.${mailSubscriptionRouting}.description`) }}</div>
+            </q-banner>
+
             <!-- Parent task link for subtasks. -->
             <q-banner
                 v-if="parentTask"
@@ -863,6 +869,7 @@ function onDelete() {
 // Task loading state
 const task = ref<TaskFull | null>(null)
 const { snapshots: activitySnapshots, unavailable: activityUnavailable, resultFor } = useTaskActivity(() => task.value ? [task.value] : [])
+const mailSubscriptionRouting = computed(() => task.value ? activitySnapshots.value[task.value.id]?.mail_subscription_routing : null)
 const executionResultForDisplay = computed<AIResult | null>(() => task.value ? resultFor(task.value) : null)
 const working = computed(() => Boolean(task.value && shouldAnimateTaskStatus({ ...task.value,
     operationalState: activitySnapshots.value[task.value.id]?.operational.operational_state })))
@@ -1247,6 +1254,13 @@ function getHeaderBgClass(status?: string | null): string {
 </script>
 
 <style scoped>
+.task-mail-subscription {
+    background: var(--solaire-orange-light);
+    color: inherit;
+}
+.task-mail-subscription :deep(.q-banner__avatar) { color: var(--solaire-orange-accent); }
+:global(.body--dark) .task-mail-subscription { background: var(--solaire-orange-dark); }
+
 .task-objective-blocker {
     white-space: pre-line;
     overflow-wrap: anywhere;

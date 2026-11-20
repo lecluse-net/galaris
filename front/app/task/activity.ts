@@ -56,6 +56,7 @@ export interface TaskActivitySnapshot {
   parent_task_id?: string | null
   source_task_id?: string | null
   messenger_message_id?: string | null
+  mail_subscription_routing?: 'fallback' | 'blocked' | null
   delivery_policy?: string | null
   resources?: { type: string; reference: string; label: string; state: string; producer_task_id: string | null }[]
 }

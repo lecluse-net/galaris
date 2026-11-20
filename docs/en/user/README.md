@@ -635,6 +635,10 @@ previously saved choices.
 If a Task waits for your consent to read an email, answer its authorization request.
 The Harness continues reading the same message once the Task resumes; denial keeps
 its content private. Reading consent does not authorize sending an email.
+For Tasks created by inbound Mail polling, if the selected model uses a personal ChatGPT subscription,
+Galaris uses the model for the same usage in the agent’s **Secondary profile (fallback)**. A banner on
+the Task shows that fallback was used or what to configure if no model is suitable. The email sender
+remains visible as a contact in the journal.
 To browse an agent’s mailbox yourself, open **Knowledge → Files**, select the provider Service
 with the Mail protocol, then an IMAP folder
 and a message. Your reading does not authorize the agent to process the email.

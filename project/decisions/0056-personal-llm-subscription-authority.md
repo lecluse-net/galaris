@@ -17,9 +17,14 @@ tout transport d’inférence, `app.llm` résout l’autorité depuis les preuve
 requester figé du Message, round, Task et sa lignée, ProcessRun, exécution Lab, ou contexte
 Galaris authentifié. Le requester effectivement retenu est conservé dans la trace `LLMCall`.
 
-L’identité Galaris d’un message entrant est figée à son ingestion. Modifier ensuite l’association
-Messenger dans « Mon profil » n’autorise pas rétroactivement l’historique. Une origine Messenger
-sans association explicite est toujours refusée, même si l’instance ne compte qu’un utilisateur.
+L’identité Galaris d’un message conversationnel est figée à son ingestion. Modifier ensuite
+l’association Messenger dans « Mon profil » n’autorise pas rétroactivement l’historique. Une
+origine Messenger sans attribution explicite est toujours refusée, même si l’instance ne compte
+qu’un utilisateur. La relève Mail et les tâches de sa lignée excluent l’abonnement personnel, à
+partir du message canonique. L’adresse de l’en-tête identifie le contact observé. Pour une inférence
+prévue sur l’abonnement, Galaris emploie le modèle correspondant dans le profil secondaire configuré
+et expose la décision dans le suivi de la tâche. L’usage d’un abonnement dans une application tierce
+relève des [conditions Sign in with ChatGPT](https://openai.com/policies/sign-in-with-chatgpt-terms/).
 Un Goal fige de la même manière l’utilisateur lié à son référent Messenger lorsqu’il est créé ou
 lorsque ce référent est remplacé, puis transmet cette autorité à chacun de ses cycles. Pour un
 Goal antérieur à cette colonne, la première exécution suivant la mise à niveau fige une seule fois

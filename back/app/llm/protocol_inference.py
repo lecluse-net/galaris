@@ -32,12 +32,14 @@ from .contracts import InferenceEvent, ProtocolInferenceRequest
 from .correlation import current_deep_session
 from .models import LLMCall, LLMCallEvent
 from .provider_models import LLM
+from .subscription_policy import MailSubscriptionAccessError, allows_automatic_mail_fallback
 from .provider_facade import ProviderAuthenticationError, ProviderUnavailableError, ReasoningEffort
 from .profile_gateway import profile_error, resolve_profile_model
 from .text_inference import RecordedTextModel, persist_events, message_for_part
 from .trace import extract_prompts
 from .profile_fallback import (
     ProfileFallbackRoute, fallback_route_scope, profile_fallback_route,
+    profile_fallback_reason,
     provider_failure_allows_fallback,
 )
 
@@ -495,11 +497,13 @@ async def _request(
             failure = exc
         assert fallback is not None and failure is not None
         profile_id, secondary, secondary_effort = fallback
+        if isinstance(failure, MailSubscriptionAccessError) and not allows_automatic_mail_fallback(secondary):
+            raise failure
         request = request.model_copy(update={
             "llm_id": secondary.id, "reasoning_effort": secondary_effort,
             "profile_fallback": ProfileFallbackRoute(
                 profile_id=profile_id, from_llm_id=llm.id,
-                reason=f"{type(failure).__name__}: {failure}"[:2000],
+                reason=profile_fallback_reason(failure),
             ),
         }, deep=True)
         with fallback_route_scope(request.profile_fallback):

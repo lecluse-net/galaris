@@ -222,6 +222,7 @@ test('task details restore activity and expose the admitted demand and recorded 
     execution_result: undefined, effort: 'standard', ai: true, cost: 0, messages: [] }
   const snapshot = { ...activityFor(item), phase: 'EXEC', pause_pending: true,
     operational: { operational_state: 'PAUSED', resume_phase: 'EXEC', waits: [] },
+    mail_subscription_routing: 'fallback',
     original_demand: 'The original report request',
     amended_tool_history: [{ attempt_id: 'previous-attempt', message: {
       type: 'tool', tool_name: 'file_create', content: '', success: true,
@@ -243,6 +244,7 @@ test('task details restore activity and expose the admitted demand and recorded 
   await mount(page, 'app/task/components/TaskDetail.vue', { props: { taskId: item.id } })
   await expect(page.getByText(item.label, { exact: true })).toBeVisible()
   await page.clock.fastForward(300)
+  await expect(page.getByRole('alert').filter({ hasText: 'Fallback profile used for incoming mail' })).toBeVisible()
   await expect(page.getByRole('paragraph').filter({ hasText: 'Recovered detail activity' })).toBeVisible()
   const previousTool = page.getByRole('button', { name: /^file_create\b/ })
   await previousTool.focus()
@@ -257,6 +259,9 @@ test('task details restore activity and expose the admitted demand and recorded 
   await page.locator('summary').filter({ hasText: 'Request and deliveries' }).click()
   await expect(page.getByText('Original request : The original report request', { exact: true })).toBeVisible()
   await expect(page.getByText('receipt://report-1', { exact: true })).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.evaluate(() => window.testApp.dark(true))
+  await expect(page.getByRole('alert').filter({ hasText: 'Fallback profile used for incoming mail' })).toBeVisible()
 })
 
 test('task panel starts at the latest work and preserves the reading position on updates', async ({ page }) => {

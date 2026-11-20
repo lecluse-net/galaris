@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from collections.abc import Collection, Sequence
 from datetime import datetime
-from typing import Any, cast
+from typing import Any, Literal, cast
 from uuid import UUID
 
 from pydantic import BaseModel, Field
@@ -12,6 +12,7 @@ from sqlalchemy.orm import defer
 
 from app.agent import AIMessage, AIResult
 from app.agent.facade import recorded_checkpoint_tools
+from app.llm.facade import MailSubscriptionAccessError
 from core.database import get_db
 from core.util import visible_text
 from .models import Task, TaskAmendment, TaskAttempt, TaskStatus
@@ -64,6 +65,7 @@ class TaskActivitySnapshot(BaseModel):
     parent_task_id: UUID | None = None
     source_task_id: UUID | None = None
     messenger_message_id: UUID | None = None
+    mail_subscription_routing: Literal["fallback", "blocked"] | None = None
     delivery_policy: str | None = None
     resources: list[dict[str, str | None]] = Field(default_factory=list[dict[str, str | None]])
     execution_scope: dict[str, Any] | None = None
@@ -162,6 +164,15 @@ async def activity_snapshots(tasks: Sequence[Task]) -> list[TaskActivitySnapshot
     result: list[TaskActivitySnapshot] = []
     for task in tasks:
         attempt = attempts.get(task.id)
+        timing = timings.get(task.id)
+        mail_routing: Literal["fallback", "blocked"] | None = None
+        if task.status == TaskStatus.ERROR and any(
+            MailSubscriptionAccessError.__name__ in (reason or "")
+            for reason in (task.last_error, task.feedback, attempt.error if attempt else None)
+        ):
+            mail_routing = "blocked"
+        elif timing and any(call.mail_subscription_fallback for call in timing.processing_intervals):
+            mail_routing = "fallback"
         data = dict(attempt.data or {}) if attempt else {}
         identity: dict[str, Any] = (task.data or {}).get("_agent_run_identity") or {}
         run_id = identity.get("request_run_id")
@@ -190,7 +201,7 @@ async def activity_snapshots(tasks: Sequence[Task]) -> list[TaskActivitySnapshot
         operational = operational_snapshot(task, children_by_parent.get(task.id, ()))
         result.append(TaskActivitySnapshot(
             task_id=task.id, revision=task.revision, phase=task.status.value,
-            startup_timing=timings.get(task.id),
+            startup_timing=timing,
             operational=operational,
             pause_pending=operational["operational_state"] == "PAUSED" and task.lease_token is not None,
             attempt_number=attempt_numbers.get(task.id, 0),
@@ -212,6 +223,7 @@ async def activity_snapshots(tasks: Sequence[Task]) -> list[TaskActivitySnapshot
                              if task.data and "_original_demand" in task.data else None),
             parent_task_id=task.parent_id, source_task_id=task.source_task_id,
             messenger_message_id=task.messenger_message_id,
+            mail_subscription_routing=mail_routing,
             delivery_policy=(task.data or {}).get("delivery_policy"),
             execution_scope=_scope_summary((task.data or {}).get("execution_scope")),
             scope_preflights=data.get("scope_preflights", (task.data or {}).get("scope_preflights", []))[-20:],

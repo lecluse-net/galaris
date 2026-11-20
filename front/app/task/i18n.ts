@@ -222,6 +222,16 @@ export default {
       detail: {
         detailedState: 'État détaillé',
         objectiveNextAction: 'Prochaine action — {action}',
+        mailSubscription: {
+          fallback: {
+            title: 'Profil de secours utilisé pour le courrier entrant',
+            description: 'Galaris a écarté l’abonnement personnel ChatGPT pour cette relève automatique et a utilisé le modèle du profil de secours de l’agent.',
+          },
+          blocked: {
+            title: 'Traitement du courrier bloqué',
+            description: 'Pour traiter automatiquement ce courrier, configurez un modèle chez un fournisseur API actif dans le profil de secours de l’agent, pour le même usage.',
+          },
+        },
         copyIdTitle: 'Cliquer pour copier l\'identifiant de la tâche',
         jsonExport: 'JSON Export',
         copyJsonTooltip: 'Copier les données JSON de la tâche',
@@ -593,6 +603,16 @@ export default {
       detail: {
         detailedState: 'Detailed state',
         objectiveNextAction: 'Next action — {action}',
+        mailSubscription: {
+          fallback: {
+            title: 'Fallback profile used for incoming mail',
+            description: 'Galaris excluded the personal ChatGPT subscription from this automatic mail processing and used the model from the agent’s fallback profile.',
+          },
+          blocked: {
+            title: 'Mail processing blocked',
+            description: 'To process this mail automatically, configure a model for the same usage in the agent’s fallback profile with an active API provider.',
+          },
+        },
         copyIdTitle: 'Click to copy the Task identifier',
         jsonExport: 'JSON Export',
         copyJsonTooltip: 'Copy the task JSON data',
@@ -877,6 +897,16 @@ export default {
       detail: {
         detailedState: '详细状态',
         objectiveNextAction: '下一步 — {action}',
+        mailSubscription: {
+          fallback: {
+            title: '收件邮件已使用备用配置',
+            description: 'Galaris 在此次自动邮件处理中停用了个人 ChatGPT 订阅，并使用了代理备用配置中的模型。',
+          },
+          blocked: {
+            title: '邮件处理受阻',
+            description: '要自动处理此邮件，请在代理的备用配置中为相同用途配置来自已启用 API 提供商的模型。',
+          },
+        },
         copyIdTitle: '点击复制任务标识符', jsonExport: '导出 JSON', copyJsonTooltip: '复制任务 JSON 数据', pausedBadge: '已暂停', waitingColleague: '等待同事',
         waitingClarification: '等待说明', waitingHumanInput: '等待您的回复', waitingPlan: '等待某一步骤', waitingSubtask: '等待子任务', run: '运行', runTooltip: '恢复或继续任务', retry: '重试',
         retryTooltip: '从安全恢复点重新启动此任务', retryDelivery: '重试投递', retryDeliveryTooltip: '发送现有最终文件，不重新生成工作成果',

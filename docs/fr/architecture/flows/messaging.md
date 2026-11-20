@@ -104,7 +104,7 @@ l'`AIResult` live jusqu'à ce que cette projection durable complète soit rendue
 remplacement atomique : les deux représentations ne sont jamais affichées ensemble et aucune trame
 vide ne les sépare.
 
-À l’ingestion d’un message humain, Messenger fige aussi le `requester_user_id` issu de
+À l’ingestion d’un message conversationnel humain, Messenger fige aussi le `requester_user_id` issu de
 `MessengerUser.galaris_user_id`. Les rounds et tâches admis propagent cet instantané. Un abonnement
 ChatGPT personnel n’est utilisable que lorsque cet identifiant correspond à son titulaire ; une
 identité non associée dans « Mon profil » reste refusée, y compris en mode mono-utilisateur. Une
@@ -423,7 +423,9 @@ les expéditeurs inconnus demandent le consentement commun. Les règles explicit
 Sur demande et Bloqué restent prioritaires ; l'accord d'envoi est indépendant.
 Mail déclare une politique d’admission `task` propre au transport. Chaque nouveau courriel
 autorisé pour réception crée une tâche qui reçoit sa référence `mail_get` et sa connexion exactes,
-y compris si la prélecture IMAP a échoué. Messenger confirme l'admission après création de la tâche.
+y compris si la prélecture IMAP a échoué. L’expéditeur reste l’auteur du message et le contact
+observé. La façade LLM reconnaît la provenance Mail depuis le journal et la lignée des tâches.
+Messenger confirme l'admission après création de la tâche.
 La reprise répare un reçu autorisé sans tâche durable et reconnaît une tâche déjà créée, y compris
 après sa suppression logique. Le journal projette le lien depuis le message canonique pour les
 utilisateurs habilités à lire les tâches de cet agent. Une réponse SMTP passe par un effet explicite

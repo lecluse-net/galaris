@@ -23,7 +23,10 @@ from .provider_facade import (
 )
 from .resource_discovery import provider_connection, openai_compatible_resources
 from .provider_quota import amount_window, quota_number, quota_reset, read_quota_payload
-from .subscription_policy import ensure_subscription_confirmation
+from .subscription_policy import (
+    MailSubscriptionAccessError as MailSubscriptionAccessError,
+    ensure_subscription_confirmation,
+)
 from .media_transport import GenerationProvider, media_http, media_json
 from .media_facade import SelectedMediaResource, start_media_call, finish_media_call, analyze_input_video as analyze_input_video
 from .media_contracts import MediaProviderUnavailable, MediaRequestRejected, VideoFrame, VideoFrameProvider, VideoFrameRole
@@ -222,7 +225,7 @@ async def task_processing_timings(task_ids: tuple[UUID, ...]) -> dict[UUID, list
 
     result: dict[UUID, list[LLMProcessingTiming]] = {task_id: [] for task_id in task_ids}
     columns = (LLMCall.id, LLMCall.purpose, LLMCall.started_at, LLMCall.completed_at, LLMCall.duration,
-               first_output_timestamp())
+               first_output_timestamp(), LLMCall.fallback_reason.startswith(f"{MailSubscriptionAccessError.__name__}:"))
     calls = (await get_db().execute(select(LLMCall.task_id, *columns)
              .where(LLMCall.task_id.in_(task_ids)).order_by(LLMCall.started_at))).all()
     candidate_rounds = select(ConversationTaskLink.round_id).where(ConversationTaskLink.task_id.in_(task_ids))
@@ -239,10 +242,10 @@ async def task_processing_timings(task_ids: tuple[UUID, ...]) -> dict[UUID, list
                LLMCall.purpose == LLMCallPurpose.CONVERSATION_TASK_OBJECTIVE.value)
         .distinct()
     )).all()
-    for task_id, call_id, purpose, started, completed, duration, first_output in (*calls, *preparations):
+    for task_id, call_id, purpose, started, completed, duration, first_output, mail_fallback in (*calls, *preparations):
         result[task_id].append(LLMProcessingTiming(call_id=call_id, purpose=purpose,
             started_at=started, completed_at=completed, seconds=max(0.0, float(duration)),
-            first_output_at=first_output))
+            first_output_at=first_output, mail_subscription_fallback=bool(mail_fallback)))
     for intervals in result.values():
         intervals.sort(key=lambda interval: interval.started_at)
     return result

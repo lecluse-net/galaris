@@ -57,6 +57,7 @@ default: dict[str, object] = {
             "subscription_owner_unsupported": "A subscription owner can only be set for the ChatGPT provider",
             "subscription_user_mismatch": "This ChatGPT subscription is reserved for its Galaris owner. Use an OpenAI API provider for other users",
             "subscription_messenger_unlinked": "This Messenger identity is not linked to the ChatGPT subscription owner in My profile",
+            "subscription_mail_background": "Automatic mail processing requires a model outside the ChatGPT subscription. Configure the same usage in the agent’s fallback profile with an active API provider.",
             "subscription_requester_unknown": "This call cannot be attributed to the ChatGPT subscription owner. Use an OpenAI API provider or work linked to an authorized user",
             "provider_install_unsupported": "Provider ${provider_name} does not support model installation",
             "provider_delete_unsupported": "Provider ${provider_name} does not support model deletion",

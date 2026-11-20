@@ -248,13 +248,15 @@ async def record(
     sender_messenger_user_id = (
         identity_ids.get(sender.id) if sender is not None else None
     )
+    # An email From header is a contact observation. Mail proves the processing requester
+    # separately when admitting the authorized receipt as a Task.
     requester_user_id = (
         await get_db().scalar(
             select(MessengerUser.galaris_user_id).where(
                 MessengerUser.id == messenger_user_id
             )
         )
-        if direction == "inbound" and messenger_user_id is not None
+        if direction == "inbound" and platform != "mail" and messenger_user_id is not None
         else None
     )
     if messenger_room_id is not None and identity_ids:

@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.sql.selectable import ScalarSelect
 
@@ -17,6 +17,7 @@ class LLMProcessingTiming(BaseModel):
     completed_at: datetime | None
     seconds: float
     first_output_at: datetime | None = None
+    mail_subscription_fallback: bool = Field(default=False, exclude=True)
 
 
 class LLMExecutionTiming(BaseModel):

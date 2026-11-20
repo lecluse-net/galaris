@@ -4606,6 +4606,7 @@
       },
       {
         "files": [
+          "back/app/task/activity_snapshot.py",
           "back/app/task/budget.py",
           "back/app/task/cost_report.py",
           "back/app/task/mcp.py",

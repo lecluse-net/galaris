@@ -97,7 +97,7 @@ exposing this message. The frontend retains the live `AIResult` until this compl
 projection has been rendered, then performs an atomic replacement: the two representations are
 never displayed together, and no empty frame separates them.
 
-When ingesting a human message, Messenger also freezes the `requester_user_id` derived from
+When ingesting a human conversation message, Messenger also freezes the `requester_user_id` derived from
 `MessengerUser.galaris_user_id`. Admitted rounds and Tasks propagate this snapshot. A personal
 ChatGPT subscription can be used only when this identifier matches its owner; an identity not
 associated in “My Profile” remains refused, including in single-user mode. A later directory
@@ -412,6 +412,8 @@ exact addresses in the agent's Contacts are accepted and unknown senders require
 Explicit Enabled, Ask and Blocked policies take precedence; sending approval remains independent.
 Mail declares a transport-specific `task` admission policy. Each newly authorized incoming email
 creates a Task with its exact `mail_get` reference and connection, even if IMAP prefetch fails.
+The sender remains the message author and observed contact. The LLM facade verifies the Mail origin
+using the journal and Task lineage.
 Messenger confirms admission once the Task exists. Resumption repairs authorized receipts that
 lack a durable Task and recognizes previously created Tasks, including soft-deleted ones. The
 journal resolves the link from the canonical message for users with Task read access to that

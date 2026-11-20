@@ -19,6 +19,7 @@ from pydantic_ai.models.wrapper import WrapperModel
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RequestUsage
 from .provider_facade import ProviderAuthenticationError, ProviderUnavailableError
+from .subscription_policy import MailSubscriptionAccessError
 
 
 class ProfileFallbackRoute(BaseModel):
@@ -42,13 +43,13 @@ def fallback_route_scope(route: ProfileFallbackRoute | None) -> Generator[None]:
 
 
 def provider_failure_allows_fallback(exc: Exception) -> bool:
-    """Only provider availability/access failures, never local authorization or budgets."""
+    """Route provider failures and automatic Mail subscription exclusions."""
     if isinstance(exc, ExceptionGroup):
         group = cast(ExceptionGroup[Exception], exc)
         return all(provider_failure_allows_fallback(item) for item in group.exceptions)
     if isinstance(exc, (httpx.TransportError, httpx2.TransportError)):
         return True
-    if isinstance(exc, (ProviderAuthenticationError, ProviderUnavailableError)):
+    if isinstance(exc, (ProviderAuthenticationError, ProviderUnavailableError, MailSubscriptionAccessError)):
         return True
     if isinstance(exc, (PermissionError, ValueError)):
         return False
@@ -65,6 +66,16 @@ def provider_failure_allows_fallback(exc: Exception) -> bool:
     return any(marker in message for marker in (
         "servers are currently overloaded", "overloaded_error", "provider_overloaded",
     ))
+
+
+def profile_fallback_reason(exc: Exception) -> str:
+    """Keep the Mail policy reason when an SDK wraps the local refusal."""
+    current: BaseException | None = exc
+    while current is not None:
+        if isinstance(current, MailSubscriptionAccessError):
+            return f"{type(current).__name__}: {current}"[:2000]
+        current = current.__cause__
+    return f"{type(exc).__name__}: {exc}"[:2000]
 
 
 class _FallbackStream(StreamedResponse):
@@ -168,7 +179,7 @@ class ProfileFallbackModel(WrapperModel):
         self.using_secondary = True
         self.route = self.route.model_copy(update={
             "from_llm_id": self.primary_llm_id,
-            "reason": f"{type(exc).__name__}: {exc}"[:2000],
+            "reason": profile_fallback_reason(exc),
         })
 
     async def _record_failed_call(self, exc: Exception, response: ModelResponse | None = None) -> None:

@@ -15,7 +15,7 @@ from core.database import get_db
 from core.i18n import tr
 from core.user import UserModel, get_current_user_id
 
-from .provider_models import LLMProvider
+from .provider_models import LLM, LLMProvider
 
 
 CHATGPT_CATALOG_CODE = "openai-codex"
@@ -24,6 +24,15 @@ _chatgpt_acknowledged: bool | None = None
 
 class SubscriptionAccessError(ValueError):
     """Raised before transport when a personal subscription is not attributable."""
+
+
+class MailSubscriptionAccessError(SubscriptionAccessError):
+    """Automatic Mail work requires a provider outside the personal ChatGPT plan."""
+
+
+def allows_automatic_mail_fallback(model: LLM) -> bool:
+    return (model.provider.is_active and model.provider.catalog_code != CHATGPT_CATALOG_CODE
+            and not model.is_subscription)
 
 
 def update_subscription_confirmation(catalog_code: str | None, acknowledged: bool) -> None:
@@ -62,6 +71,7 @@ class LLMExecutionAuthority:
 class _Evidence:
     user_ids: set[int]
     messenger_origin: bool = False
+    mail_origin: bool = False
     messenger_user_ids: set[int] = field(default_factory=lambda: set[int]())
 
     def add(self, user_id: int | None) -> None:
@@ -112,11 +122,15 @@ def llm_execution_scope(
         _execution_authority.reset(token)
 
 
-async def _message_evidence(message_id: UUID, evidence: _Evidence) -> None:
+async def _message_evidence(message_id: UUID, evidence: _Evidence, *, include_requester: bool = True) -> None:
     from app.messenger import Message
 
-    message = await get_db().get(Message, message_id)
-    if message is not None and message.direction == "inbound":
+    message = await get_db().get(Message, message_id, execution_options={"include_historized": True})
+    if message is not None and message.direction == "inbound" and message.platform == "mail":
+        evidence.mail_origin = True
+    if not include_requester:
+        return
+    if message is not None and message.deleted_at is None and message.direction == "inbound":
         evidence.add_messenger(message.requester_user_id)
     else:
         evidence.messenger_origin = True
@@ -136,36 +150,36 @@ async def _task_evidence(task_id: UUID, evidence: _Evidence) -> None:
     from app.conversation import ConversationTaskLink
     from app.task import Task
 
-    pending = [task_id]
-    visited: set[UUID] = set()
+    pending = [(task_id, True)]
+    visited: set[tuple[UUID, bool]] = set()
     while pending and len(visited) < 100:
-        current_id = pending.pop()
-        if current_id in visited:
+        upstream = pending.pop()
+        if upstream in visited:
             continue
-        visited.add(current_id)
-        task = await get_db().get(Task, current_id)
+        visited.add(upstream)
+        current_id, include_requester = upstream
+        task = await get_db().get(Task, current_id, execution_options={"include_historized": True})
         if task is None:
             continue
-        evidence.add(task.requester_user_id)
-        if task.requester_user_id is None:
-            evidence.add(task.created_by)
-        if task.messenger_connection_id is not None or task.messenger_message_id is not None:
-            evidence.messenger_origin = True
-            if task.requester_user_id is not None:
-                evidence.add_messenger(task.requester_user_id)
+        # An archived ancestor can still prove Mail origin, but cannot grant access.
+        include_requester = include_requester and task.deleted_at is None
         if task.messenger_message_id is not None:
-            await _message_evidence(task.messenger_message_id, evidence)
-        round_id = await get_db().scalar(
-            select(ConversationTaskLink.round_id).where(
-                ConversationTaskLink.task_id == task.id
+            await _message_evidence(task.messenger_message_id, evidence, include_requester=include_requester)
+        if include_requester:
+            evidence.add(task.requester_user_id)
+            if task.requester_user_id is None:
+                evidence.add(task.created_by)
+            if task.messenger_connection_id is not None or task.messenger_message_id is not None:
+                evidence.add_messenger(task.requester_user_id)
+            round_id = await get_db().scalar(
+                select(ConversationTaskLink.round_id).where(ConversationTaskLink.task_id == task.id)
             )
-        )
-        if round_id is not None:
-            await _round_evidence(round_id, evidence)
+            if round_id is not None:
+                await _round_evidence(round_id, evidence)
         if task.parent_id is not None:
-            pending.append(task.parent_id)
+            pending.append((task.parent_id, include_requester))
         if task.source_task_id is not None:
-            pending.append(task.source_task_id)
+            pending.append((task.source_task_id, include_requester))
 
 
 async def _process_evidence(process_run_id: UUID, evidence: _Evidence) -> None:
@@ -213,16 +227,6 @@ async def enforce_subscription_access(
 
     if provider.catalog_code != CHATGPT_CATALOG_CODE:
         return None
-    await ensure_subscription_confirmation(provider)
-    owner_id = provider.user_id
-    if owner_id is None:
-        raise SubscriptionAccessError(await tr("llm_api.errors.subscription_owner_required"))
-    owner_is_active = await get_db().scalar(
-        select(UserModel.is_active).where(UserModel.id == owner_id)
-    )
-    if owner_is_active is not True:
-        raise SubscriptionAccessError(await tr("llm_api.errors.subscription_owner_invalid"))
-
     evidence = _Evidence(user_ids=set())
     authority = _execution_authority.get()
     if authority is not None:
@@ -233,6 +237,18 @@ async def enforce_subscription_access(
         await _round_evidence(conversation_round_id, evidence)
     if process_run_id is not None:
         await _process_evidence(process_run_id, evidence)
+    if evidence.mail_origin:
+        raise MailSubscriptionAccessError(await tr("llm_api.errors.subscription_mail_background"))
+
+    await ensure_subscription_confirmation(provider)
+    owner_id = provider.user_id
+    if owner_id is None:
+        raise SubscriptionAccessError(await tr("llm_api.errors.subscription_owner_required"))
+    owner_is_active = await get_db().scalar(
+        select(UserModel.is_active).where(UserModel.id == owner_id)
+    )
+    if owner_is_active is not True:
+        raise SubscriptionAccessError(await tr("llm_api.errors.subscription_owner_invalid"))
 
     # An authenticated direct request is also evidence. Managed runtime requests have no user
     # context and are resolved only from their durable Task/round/process provenance.

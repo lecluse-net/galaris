@@ -360,7 +360,12 @@ Tâche et de sa lignée. Un Goal fige le requester de son référent lors de sa 
 transmet à chaque cycle. Les enfants, délégations, Processes et harnais conservent ainsi la
 même autorité sans accepter un identifiant déclaré par le runtime. Sur une instance
 mono-utilisateur, les travaux internes sans auteur explicite peuvent revenir au seul titulaire ;
-ce repli ne s’applique jamais aux origines Messenger.
+ce repli ne s’applique jamais aux origines Messenger. Pour la relève Mail, une entrée du journal
+Mail dans la lignée bloque l’abonnement ChatGPT avant le transport, y compris pour une tâche
+enfant. Si le modèle principal visé utilise l’abonnement, la façade d’inférence sélectionne le
+modèle du même usage dans le profil de secours de l’agent. La trace du routage alimente le
+bandeau de la tâche. Sans modèle compatible, la tâche reçoit une erreur de configuration du
+profil de secours.
 
 Ce flux explique le chemin commun d’une tâche, indépendamment du runtime concret. Le control plane
 texte de `app.conversation` possède un contrôleur interne distinct ; les conversations vocales

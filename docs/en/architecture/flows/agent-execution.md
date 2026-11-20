@@ -341,7 +341,11 @@ requester of the Task and its lineage. A Goal freezes the requester of its refer
 configuration and passes it to each cycle. Children, delegations, Processes, and harnesses thus
 retain the same authority without accepting an identifier declared by the runtime. On a
 single-user instance, internal work without an explicit author may fall back to the sole holder;
-this fallback never applies to Messenger origins.
+this fallback never applies to Messenger origins. An inbound Mail journal entry in the Task lineage
+blocks the ChatGPT subscription before transport, including for child Tasks. When the selected primary
+model uses the subscription, the inference facade selects the model for the same usage in the agent’s
+fallback profile. The routing trace drives the Task banner. Without a compatible model, the Task
+receives a fallback profile configuration error.
 
 This flow explains the common path of a task, independently of the concrete runtime. The text
 control plane of `app.conversation` has a separate internal controller; real-time voice

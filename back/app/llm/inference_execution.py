@@ -65,12 +65,15 @@ async def read(inference_id: UUID) -> InferenceRead:
 
 async def submit(request: InferenceRequest, *, inference_id: UUID | None = None, prepared: bool = False) -> UUID:
     # Resolve before admission; subsequent attempts use the frozen explicit effort.
-    from .llm_service import get_llm
+    from .llm_service import get_agent_fallback_model, get_llm
+    from .profile_fallback import ProfileFallbackRoute
     from .structured_service import resolve_reasoning_effort
     from .subscription_policy import (
         current_execution_authority,
+        allows_automatic_mail_fallback,
         enforce_subscription_access,
         LLMExecutionAuthority,
+        MailSubscriptionAccessError,
     )
 
     async def admit() -> UUID:
@@ -81,11 +84,39 @@ async def submit(request: InferenceRequest, *, inference_id: UUID | None = None,
         llm = await get_llm(request.llm_id)
         if llm is None:
             raise LookupError("LLM not found.")
-        requester = await enforce_subscription_access(
-            llm.provider, task_id=request.task_id,
-            conversation_round_id=request.conversation_round_id,
-            process_run_id=request.process_run_id,
-        )
+        resolved = request.model_copy(deep=True)
+        fallback = None
+        if isinstance(resolved, (TextInferenceRequest, StructuredInferenceRequest)):
+            # Callers cannot supply their own fallback route.
+            resolved.profile_fallback = None
+            resolved.profile_fallback_llm_id = None
+            resolved.profile_fallback_reasoning_effort = None
+            if resolved.allow_profile_fallback:
+                fallback = await get_agent_fallback_model(
+                    resolved.agent_id, llm.id, model_field=resolved.model_field, purpose=resolved.purpose,
+                )
+            resolved.profile_fallback_resolved = True
+        try:
+            requester = await enforce_subscription_access(
+                llm.provider, task_id=request.task_id,
+                conversation_round_id=request.conversation_round_id, process_run_id=request.process_run_id,
+            )
+        except MailSubscriptionAccessError as exc:
+            if fallback is None or not allows_automatic_mail_fallback(fallback[1]):
+                raise
+            profile_id, secondary, effort = fallback
+            requester = await enforce_subscription_access(secondary.provider, task_id=request.task_id)
+            resolved.llm_id = secondary.id
+            resolved.reasoning_effort = effort
+            resolved.profile_fallback = ProfileFallbackRoute(
+                profile_id=profile_id, from_llm_id=llm.id, reason=f"{type(exc).__name__}: {exc}",
+            )
+        else:
+            if fallback is not None:
+                profile_id, secondary, effort = fallback
+                resolved.profile_fallback = ProfileFallbackRoute(profile_id=profile_id)
+                resolved.profile_fallback_llm_id = secondary.id
+                resolved.profile_fallback_reasoning_effort = effort
         authority = current_execution_authority()
         requester = (
             requester
@@ -99,26 +130,6 @@ async def submit(request: InferenceRequest, *, inference_id: UUID | None = None,
         api_token_label = await get_current_token_label()
         if api_token_label is not None and authority is not None:
             authority = replace(authority, api_token_label=api_token_label)
-        resolved = request.model_copy(deep=True)
-        if isinstance(resolved, (TextInferenceRequest, StructuredInferenceRequest)):
-            from .llm_service import get_agent_fallback_model
-            from .profile_fallback import ProfileFallbackRoute
-
-            # Routing metadata is server-owned; callers cannot enable a
-            # secondary profile that this agent has not configured.
-            resolved.profile_fallback = None
-            resolved.profile_fallback_llm_id = None
-            resolved.profile_fallback_reasoning_effort = None
-            fallback = await get_agent_fallback_model(
-                resolved.agent_id, resolved.llm_id,
-                model_field=resolved.model_field, purpose=resolved.purpose,
-            ) if resolved.allow_profile_fallback else None
-            if fallback is not None:
-                profile_id, secondary, effort = fallback
-                resolved.profile_fallback = ProfileFallbackRoute(profile_id=profile_id)
-                resolved.profile_fallback_llm_id = secondary.id
-                resolved.profile_fallback_reasoning_effort = effort
-            resolved.profile_fallback_resolved = True
         if isinstance(resolved, DecisionInferenceRequest):
             from .decision_binding import model_binding
 
@@ -129,7 +140,8 @@ async def submit(request: InferenceRequest, *, inference_id: UUID | None = None,
                     raise LookupError("Decision fallback model not found.")
                 resolved.model_bindings[str(fallback.id)] = model_binding(fallback)
         resolved.correlation_ref = request.correlation_ref or current_llm_correlation_ref()
-        if request.model_field is not None and request.reasoning_effort is None:
+        if (request.model_field is not None and request.reasoning_effort is None
+                and resolved.llm_id == request.llm_id):
             resolved.reasoning_effort = await resolve_reasoning_effort(
                 request.model_field, request.agent_id
             )

@@ -578,6 +578,22 @@ async def build_model_for_llm(
             agent_id, llm.id, model_field=model_field,
             purpose=str(purpose) if purpose is not None else None,
         )
+    if task_id is not None:
+        from .subscription_policy import (
+            CHATGPT_CATALOG_CODE, MailSubscriptionAccessError, SubscriptionAccessError,
+            allows_automatic_mail_fallback, enforce_subscription_access,
+        )
+
+        if (llm.provider.catalog_code == CHATGPT_CATALOG_CODE and
+                (fallback is None or not allows_automatic_mail_fallback(fallback[1]))):
+            try:
+                await enforce_subscription_access(llm.provider, task_id=task_id)
+            except MailSubscriptionAccessError:
+                # Preserve the actionable refusal before the SDK can wrap it as a connection error.
+                raise
+            except SubscriptionAccessError:
+                # Other callers retain their existing per-request authorization path.
+                pass
     if fallback is None:
         return primary
     profile_id, secondary_llm, effort = fallback

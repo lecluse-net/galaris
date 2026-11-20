@@ -729,6 +729,10 @@ dans les tâches ; les mises à jour conservent les choix déjà enregistrés.
 Si une tâche attend votre accord pour lire un mail, répondez à la demande d’autorisation.
 Le harnais reprend la lecture du même message après la reprise de la tâche ; un refus
 laisse son contenu privé. Cet accord de lecture n’autorise pas l’envoi d’un mail.
+Pour les tâches issues de la relève Mail, si le modèle prévu utilise un abonnement personnel ChatGPT,
+Galaris utilise le modèle du même usage dans le **Profil secondaire (secours)** de l’agent. Un bandeau
+dans la tâche indique l’utilisation du secours ou la configuration requise si aucun modèle ne convient.
+L’expéditeur du mail reste visible comme contact dans le journal.
 Pour consulter vous-même la boîte d’un agent, ouvrez **Connaissances → Fichiers** et le Service
 du fournisseur portant le protocole Mail,
 puis un dossier IMAP et un message. Cette lecture ne donne aucun accord de traitement à l’agent.
