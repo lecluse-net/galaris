@@ -514,6 +514,7 @@
       },
       {
         "files": [
+          "back/app/chat/events.py",
           "back/app/chat/router.py"
         ],
         "source": "app.chat",
@@ -971,6 +972,8 @@
           "back/app/conversation/contact_authorization.py",
           "back/app/conversation/context.py",
           "back/app/conversation/contracts.py",
+          "back/app/conversation/deep.py",
+          "back/app/conversation/deep_failures.py",
           "back/app/conversation/directives.py",
           "back/app/conversation/facade.py",
           "back/app/conversation/inspection_service.py",
@@ -1043,6 +1046,7 @@
         "files": [
           "back/app/conversation/contact_authorization.py",
           "back/app/conversation/context.py",
+          "back/app/conversation/deep.py",
           "back/app/conversation/document_display.py",
           "back/app/conversation/facade.py",
           "back/app/conversation/inspection_service.py",
@@ -1081,6 +1085,7 @@
       {
         "files": [
           "back/app/conversation/contracts.py",
+          "back/app/conversation/deep.py",
           "back/app/conversation/facade.py",
           "back/app/conversation/mcp.py",
           "back/app/conversation/process_admission.py",
@@ -1123,6 +1128,8 @@
           "back/app/conversation/activity_facade.py",
           "back/app/conversation/contact_authorization.py",
           "back/app/conversation/context.py",
+          "back/app/conversation/deep.py",
+          "back/app/conversation/deep_failures.py",
           "back/app/conversation/facade.py",
           "back/app/conversation/inspection_service.py",
           "back/app/conversation/management_service.py",
@@ -1146,6 +1153,7 @@
       },
       {
         "files": [
+          "back/app/conversation/deep_failures.py",
           "back/app/conversation/scheduler.py"
         ],
         "source": "app.conversation",
@@ -1154,6 +1162,7 @@
       {
         "files": [
           "back/app/conversation/contact_authorization.py",
+          "back/app/conversation/deep.py",
           "back/app/conversation/process_inputs.py",
           "back/app/conversation/process_interactions.py",
           "back/app/conversation/process_outputs.py",
@@ -1188,6 +1197,7 @@
       },
       {
         "files": [
+          "back/app/conversation/deep.py",
           "back/app/conversation/service.py",
           "back/app/conversation/task_objective.py"
         ],
@@ -2699,7 +2709,8 @@
       {
         "files": [
           "back/app/incident/__init__.py",
-          "back/app/incident/contracts.py"
+          "back/app/incident/contracts.py",
+          "back/app/incident/service.py"
         ],
         "source": "app.incident",
         "target": "core.failure_journal"
@@ -3007,6 +3018,7 @@
           "back/app/llm/facade.py",
           "back/app/llm/inference_store.py",
           "back/app/llm/llm_call_service.py",
+          "back/app/llm/runtime_correlation.py",
           "back/app/llm/subscription_policy.py"
         ],
         "source": "app.llm",
@@ -3162,7 +3174,6 @@
           "back/app/llm/profile_inference_router.py",
           "back/app/llm/profile_router.py",
           "back/app/llm/profile_service.py",
-          "back/app/llm/protocol_inference.py",
           "back/app/llm/provider_quota.py",
           "back/app/llm/provider_router.py",
           "back/app/llm/proxy_service.py",
@@ -3229,6 +3240,7 @@
           "back/app/llm/proxy_service.py",
           "back/app/llm/responses_stream.py",
           "back/app/llm/responses_trace.py",
+          "back/app/llm/runtime_correlation.py",
           "back/app/llm/trace.py",
           "back/app/llm/transcription_service.py",
           "back/app/llm/tts_service.py"
@@ -5627,6 +5639,7 @@
           "back/bridge/hermes/client.py",
           "back/bridge/hermes/config_service.py",
           "back/bridge/hermes/dbadmin.py",
+          "back/bridge/hermes/driver.py",
           "back/bridge/hermes/executor.py",
           "back/bridge/hermes/harness_provider.py",
           "back/bridge/hermes/kanban.py",
@@ -10985,7 +10998,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 27,
+        "line": 90,
         "module": "app.conversation",
         "table": "conversation_delivery_resolutions"
       },
@@ -10998,7 +11011,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 39,
+        "line": 102,
         "module": "app.conversation",
         "table": "conversation_notification_resolutions"
       },
@@ -11011,7 +11024,7 @@
           "process_runs.id"
         ],
         "history_mixin": false,
-        "line": 323,
+        "line": 386,
         "module": "app.conversation",
         "table": "conversation_process_links"
       },
@@ -11022,7 +11035,7 @@
           "conversation_rounds.id"
         ],
         "history_mixin": false,
-        "line": 245,
+        "line": 308,
         "module": "app.conversation",
         "table": "conversation_round_attempts"
       },
@@ -11034,7 +11047,7 @@
           "messenger_messages.id"
         ],
         "history_mixin": false,
-        "line": 185,
+        "line": 248,
         "module": "app.conversation",
         "table": "conversation_round_messages"
       },
@@ -11050,7 +11063,7 @@
           "voice_sessions.id"
         ],
         "history_mixin": false,
-        "line": 58,
+        "line": 121,
         "module": "app.conversation",
         "table": "conversation_rounds"
       },
@@ -11063,7 +11076,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 275,
+        "line": 338,
         "module": "app.conversation",
         "table": "conversation_task_links"
       },
@@ -11253,6 +11266,54 @@
         "line": 16,
         "module": "core.dbadmin",
         "table": "dbadmin_runs"
+      },
+      {
+        "class_name": "DeepEvent",
+        "file": "back/app/conversation/models.py",
+        "foreign_keys": [
+          "deep_submissions.id"
+        ],
+        "history_mixin": false,
+        "line": 78,
+        "module": "app.conversation",
+        "table": "deep_events"
+      },
+      {
+        "class_name": "DeepRoomMode",
+        "file": "back/app/conversation/models.py",
+        "foreign_keys": [
+          "messenger_rooms.id"
+        ],
+        "history_mixin": false,
+        "line": 27,
+        "module": "app.conversation",
+        "table": "deep_room_modes"
+      },
+      {
+        "class_name": "DeepSession",
+        "file": "back/app/conversation/models.py",
+        "foreign_keys": [
+          "agents.id",
+          "code_workspaces.id",
+          "messenger_rooms.id",
+          "users.id"
+        ],
+        "history_mixin": false,
+        "line": 34,
+        "module": "app.conversation",
+        "table": "deep_sessions"
+      },
+      {
+        "class_name": "DeepSubmission",
+        "file": "back/app/conversation/models.py",
+        "foreign_keys": [
+          "deep_sessions.id",
+          "messenger_messages.id"
+        ],
+        "history_mixin": false,
+        "line": 58,
+        "module": "app.conversation",
+        "table": "deep_submissions"
       },
       {
         "class_name": "DocumentAppGrant",
@@ -11900,7 +11961,7 @@
           "tasks.id"
         ],
         "history_mixin": false,
-        "line": 261,
+        "line": 262,
         "module": "app.llm",
         "table": "llm_call_costs"
       },
@@ -11922,6 +11983,7 @@
         "foreign_keys": [
           "agents.id",
           "conversation_rounds.id",
+          "deep_sessions.id",
           "llm_inference_attempts.id",
           "llm_profiles.id",
           "llms.id",
@@ -16145,7 +16207,7 @@
         "declared_path": "/chat/agents/{agent_id}/avatar",
         "file": "back/app/chat/router.py",
         "handler": "read_agent_avatar",
-        "line": 469,
+        "line": 470,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16154,7 +16216,7 @@
         "declared_path": "/chat/documents/{document_id}/conversation",
         "file": "back/app/chat/router.py",
         "handler": "read_document_conversation_preference",
-        "line": 203,
+        "line": 204,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16163,7 +16225,7 @@
         "declared_path": "/chat/documents/{document_id}/conversation",
         "file": "back/app/chat/router.py",
         "handler": "update_document_conversation_preference",
-        "line": 216,
+        "line": 217,
         "method": "PUT",
         "module": "app.chat"
       },
@@ -16172,7 +16234,7 @@
         "declared_path": "/chat/emojis/frequent",
         "file": "back/app/chat/router.py",
         "handler": "read_frequent_emojis",
-        "line": 388,
+        "line": 389,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16181,7 +16243,7 @@
         "declared_path": "/chat/emojis/usage",
         "file": "back/app/chat/router.py",
         "handler": "create_emoji_usage",
-        "line": 397,
+        "line": 398,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16190,7 +16252,7 @@
         "declared_path": "/chat/identities",
         "file": "back/app/chat/router.py",
         "handler": "read_identity_mappings",
-        "line": 407,
+        "line": 408,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16199,7 +16261,7 @@
         "declared_path": "/chat/identities/{service_id}",
         "file": "back/app/chat/router.py",
         "handler": "delete_identity_mapping",
-        "line": 437,
+        "line": 438,
         "method": "DELETE",
         "module": "app.chat"
       },
@@ -16208,7 +16270,7 @@
         "declared_path": "/chat/identities/{service_id}",
         "file": "back/app/chat/router.py",
         "handler": "update_identity_mapping",
-        "line": 416,
+        "line": 417,
         "method": "PUT",
         "module": "app.chat"
       },
@@ -16217,7 +16279,7 @@
         "declared_path": "/chat/inbox",
         "file": "back/app/chat/router.py",
         "handler": "read_inbox",
-        "line": 343,
+        "line": 344,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16226,7 +16288,7 @@
         "declared_path": "/chat/push/configuration",
         "file": "back/app/chat/router.py",
         "handler": "read_push_configuration",
-        "line": 355,
+        "line": 356,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16235,7 +16297,7 @@
         "declared_path": "/chat/push/subscriptions",
         "file": "back/app/chat/router.py",
         "handler": "remove_push_subscription",
-        "line": 378,
+        "line": 379,
         "method": "DELETE",
         "module": "app.chat"
       },
@@ -16244,7 +16306,7 @@
         "declared_path": "/chat/push/subscriptions",
         "file": "back/app/chat/router.py",
         "handler": "create_push_subscription",
-        "line": 365,
+        "line": 366,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16253,7 +16315,7 @@
         "declared_path": "/chat/recipients",
         "file": "back/app/chat/router.py",
         "handler": "read_recipients",
-        "line": 444,
+        "line": 445,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16262,7 +16324,7 @@
         "declared_path": "/chat/rooms",
         "file": "back/app/chat/router.py",
         "handler": "read_rooms",
-        "line": 489,
+        "line": 490,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16271,7 +16333,7 @@
         "declared_path": "/chat/rooms",
         "file": "back/app/chat/router.py",
         "handler": "create_room",
-        "line": 521,
+        "line": 522,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16280,7 +16342,7 @@
         "declared_path": "/chat/rooms/{room_id}",
         "file": "back/app/chat/router.py",
         "handler": "read_room",
-        "line": 551,
+        "line": 552,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16289,7 +16351,7 @@
         "declared_path": "/chat/rooms/{room_id}",
         "file": "back/app/chat/router.py",
         "handler": "update_room_preferences",
-        "line": 571,
+        "line": 572,
         "method": "PATCH",
         "module": "app.chat"
       },
@@ -16298,7 +16360,7 @@
         "declared_path": "/chat/rooms/{room_id}/activity",
         "file": "back/app/chat/router.py",
         "handler": "read_activity",
-        "line": 1037,
+        "line": 1063,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16307,7 +16369,7 @@
         "declared_path": "/chat/rooms/{room_id}/activity/{round_id}",
         "file": "back/app/chat/router.py",
         "handler": "read_activity_detail",
-        "line": 1052,
+        "line": 1078,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16316,7 +16378,7 @@
         "declared_path": "/chat/rooms/{room_id}/activity/{round_id}/control",
         "file": "back/app/chat/router.py",
         "handler": "control_response",
-        "line": 1066,
+        "line": 1092,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16325,7 +16387,7 @@
         "declared_path": "/chat/rooms/{room_id}/archive",
         "file": "back/app/chat/router.py",
         "handler": "update_room_archive",
-        "line": 589,
+        "line": 590,
         "method": "PATCH",
         "module": "app.chat"
       },
@@ -16334,7 +16396,7 @@
         "declared_path": "/chat/rooms/{room_id}/attachments",
         "file": "back/app/chat/router.py",
         "handler": "create_attachment_message",
-        "line": 1312,
+        "line": 1338,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16343,7 +16405,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls",
         "file": "back/app/chat/router.py",
         "handler": "start_call",
-        "line": 1513,
+        "line": 1539,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16352,7 +16414,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/active",
         "file": "back/app/chat/router.py",
         "handler": "read_active_call",
-        "line": 1572,
+        "line": 1598,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16361,7 +16423,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/status",
         "file": "back/app/chat/router.py",
         "handler": "read_voice_call_status",
-        "line": 1486,
+        "line": 1512,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16370,7 +16432,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/{call_id}",
         "file": "back/app/chat/router.py",
         "handler": "stop_call",
-        "line": 1631,
+        "line": 1657,
         "method": "DELETE",
         "module": "app.chat"
       },
@@ -16379,7 +16441,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/{call_id}/candidates",
         "file": "back/app/chat/router.py",
         "handler": "add_call_candidate",
-        "line": 1596,
+        "line": 1622,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16388,8 +16450,35 @@
         "declared_path": "/chat/rooms/{room_id}/commands",
         "file": "back/app/chat/router.py",
         "handler": "read_room_commands",
-        "line": 630,
+        "line": 631,
         "method": "GET",
+        "module": "app.chat"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/chat/rooms/{room_id}/deep",
+        "file": "back/app/chat/router.py",
+        "handler": "read_deep_room",
+        "line": 645,
+        "method": "GET",
+        "module": "app.chat"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/chat/rooms/{room_id}/deep/{submission_id}/events",
+        "file": "back/app/chat/router.py",
+        "handler": "read_deep_events",
+        "line": 651,
+        "method": "GET",
+        "module": "app.chat"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/chat/rooms/{room_id}/deep/{submission_id}/stop",
+        "file": "back/app/chat/router.py",
+        "handler": "stop_deep_room_submission",
+        "line": 662,
+        "method": "POST",
         "module": "app.chat"
       },
       {
@@ -16397,7 +16486,7 @@
         "declared_path": "/chat/rooms/{room_id}/dictation",
         "file": "back/app/chat/router.py",
         "handler": "transcribe_dictation",
-        "line": 1261,
+        "line": 1287,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16406,7 +16495,7 @@
         "declared_path": "/chat/rooms/{room_id}/documents",
         "file": "back/app/chat/router.py",
         "handler": "read_room_documents",
-        "line": 1104,
+        "line": 1130,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16415,7 +16504,7 @@
         "declared_path": "/chat/rooms/{room_id}/documents",
         "file": "back/app/chat/router.py",
         "handler": "create_room_document",
-        "line": 1134,
+        "line": 1160,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16424,7 +16513,7 @@
         "declared_path": "/chat/rooms/{room_id}/draft",
         "file": "back/app/chat/router.py",
         "handler": "get_private_draft",
-        "line": 1663,
+        "line": 1689,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16433,7 +16522,7 @@
         "declared_path": "/chat/rooms/{room_id}/draft",
         "file": "back/app/chat/router.py",
         "handler": "save_private_draft",
-        "line": 1670,
+        "line": 1696,
         "method": "PUT",
         "module": "app.chat"
       },
@@ -16442,7 +16531,7 @@
         "declared_path": "/chat/rooms/{room_id}/draft/files/{key}",
         "file": "back/app/chat/router.py",
         "handler": "discard_private_draft_file",
-        "line": 1692,
+        "line": 1718,
         "method": "DELETE",
         "module": "app.chat"
       },
@@ -16451,7 +16540,7 @@
         "declared_path": "/chat/rooms/{room_id}/draft/files/{key}",
         "file": "back/app/chat/router.py",
         "handler": "upload_private_draft_file",
-        "line": 1680,
+        "line": 1706,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16460,7 +16549,7 @@
         "declared_path": "/chat/rooms/{room_id}/files/{file_id}",
         "file": "back/app/chat/router.py",
         "handler": "download_file",
-        "line": 1441,
+        "line": 1467,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16469,7 +16558,7 @@
         "declared_path": "/chat/rooms/{room_id}/files/{file_id}",
         "file": "back/app/chat/router.py",
         "handler": "rename_chat_attachment",
-        "line": 1431,
+        "line": 1457,
         "method": "PATCH",
         "module": "app.chat"
       },
@@ -16478,7 +16567,7 @@
         "declared_path": "/chat/rooms/{room_id}/interactions/{interaction_id}",
         "file": "back/app/chat/router.py",
         "handler": "read_interaction",
-        "line": 1180,
+        "line": 1206,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16487,7 +16576,7 @@
         "declared_path": "/chat/rooms/{room_id}/interactions/{interaction_id}/answer",
         "file": "back/app/chat/router.py",
         "handler": "answer_interaction",
-        "line": 1189,
+        "line": 1215,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16496,7 +16585,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages",
         "file": "back/app/chat/router.py",
         "handler": "read_messages",
-        "line": 644,
+        "line": 670,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16505,7 +16594,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages",
         "file": "back/app/chat/router.py",
         "handler": "create_message",
-        "line": 1205,
+        "line": 1231,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16514,7 +16603,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/mcp-apps/{presentation_id}",
         "file": "back/app/chat/router.py",
         "handler": "open_message_mcp_app",
-        "line": 666,
+        "line": 692,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16523,7 +16612,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/mcp-apps/{presentation_id}",
         "file": "back/app/chat/router.py",
         "handler": "filter_message_mcp_app",
-        "line": 674,
+        "line": 700,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16532,7 +16621,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/previews",
         "file": "back/app/chat/router.py",
         "handler": "read_message_previews",
-        "line": 812,
+        "line": 838,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16541,7 +16630,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/previews/content",
         "file": "back/app/chat/router.py",
         "handler": "read_message_preview_content",
-        "line": 991,
+        "line": 1017,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16550,7 +16639,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/previews/image",
         "file": "back/app/chat/router.py",
         "handler": "read_message_preview_image",
-        "line": 938,
+        "line": 964,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16559,7 +16648,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/previews/repository",
         "file": "back/app/chat/router.py",
         "handler": "open_message_directory_repository",
-        "line": 907,
+        "line": 933,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16568,7 +16657,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/speech",
         "file": "back/app/chat/router.py",
         "handler": "read_message_speech",
-        "line": 713,
+        "line": 739,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16577,7 +16666,7 @@
         "declared_path": "/chat/rooms/{room_id}/messages/{message_id}/topic",
         "file": "back/app/chat/router.py",
         "handler": "update_message_topic",
-        "line": 781,
+        "line": 807,
         "method": "PATCH",
         "module": "app.chat"
       },
@@ -16586,7 +16675,7 @@
         "declared_path": "/chat/rooms/{room_id}/mute",
         "file": "back/app/chat/router.py",
         "handler": "set_muted",
-        "line": 1423,
+        "line": 1449,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16595,7 +16684,7 @@
         "declared_path": "/chat/rooms/{room_id}/processes",
         "file": "back/app/chat/router.py",
         "handler": "read_room_processes",
-        "line": 1162,
+        "line": 1188,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16604,7 +16693,7 @@
         "declared_path": "/chat/rooms/{room_id}/read",
         "file": "back/app/chat/router.py",
         "handler": "mark_read",
-        "line": 1415,
+        "line": 1441,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16613,7 +16702,7 @@
         "declared_path": "/chat/rooms/{room_id}/repositories",
         "file": "back/app/chat/router.py",
         "handler": "discover_room_repositories",
-        "line": 868,
+        "line": 894,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16622,7 +16711,7 @@
         "declared_path": "/chat/rooms/{room_id}/repositories",
         "file": "back/app/chat/router.py",
         "handler": "open_room_repository",
-        "line": 884,
+        "line": 910,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16631,7 +16720,7 @@
         "declared_path": "/chat/rooms/{room_id}/speech/status",
         "file": "back/app/chat/router.py",
         "handler": "read_message_speech_status",
-        "line": 687,
+        "line": 713,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16640,7 +16729,7 @@
         "declared_path": "/chat/rooms/{room_id}/tasks",
         "file": "back/app/chat/router.py",
         "handler": "read_room_tasks",
-        "line": 1083,
+        "line": 1109,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16649,7 +16738,7 @@
         "declared_path": "/chat/rooms/{room_id}/topic",
         "file": "back/app/chat/router.py",
         "handler": "update_room_topic",
-        "line": 606,
+        "line": 607,
         "method": "PATCH",
         "module": "app.chat"
       },
@@ -16658,7 +16747,7 @@
         "declared_path": "/chat/status",
         "file": "back/app/chat/router.py",
         "handler": "read_status",
-        "line": 333,
+        "line": 334,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16667,7 +16756,7 @@
         "declared_path": "/chat/viewer-agents",
         "file": "back/app/chat/router.py",
         "handler": "read_viewer_agents",
-        "line": 462,
+        "line": 463,
         "method": "GET",
         "module": "app.chat"
       },
@@ -19475,7 +19564,7 @@
         "declared_path": "/healthz",
         "file": "back/bridge/codex/default-agent/server.py",
         "handler": "health",
-        "line": 189,
+        "line": 200,
         "method": "GET",
         "module": "bridge.codex"
       },
@@ -19916,7 +20005,7 @@
         "declared_path": "/llm-calls",
         "file": "back/app/llm/call_router.py",
         "handler": "read_calls",
-        "line": 461,
+        "line": 477,
         "method": "GET",
         "module": "app.llm"
       },
@@ -19925,7 +20014,7 @@
         "declared_path": "/llm-calls/cleanup",
         "file": "back/app/llm/call_router.py",
         "handler": "cleanup_calls",
-        "line": 531,
+        "line": 553,
         "method": "DELETE",
         "module": "app.llm"
       },
@@ -19934,7 +20023,7 @@
         "declared_path": "/llm-calls/history",
         "file": "back/app/llm/call_router.py",
         "handler": "read_call_history",
-        "line": 504,
+        "line": 524,
         "method": "GET",
         "module": "app.llm"
       },
@@ -19943,7 +20032,7 @@
         "declared_path": "/llm-calls/retention/preview",
         "file": "back/app/llm/call_router.py",
         "handler": "preview_call_retention",
-        "line": 540,
+        "line": 562,
         "method": "GET",
         "module": "app.llm"
       },
@@ -19952,7 +20041,7 @@
         "declared_path": "/llm-calls/running",
         "file": "back/app/llm/call_router.py",
         "handler": "read_running_calls",
-        "line": 486,
+        "line": 504,
         "method": "GET",
         "module": "app.llm"
       },
@@ -19961,7 +20050,7 @@
         "declared_path": "/llm-calls/{call_id}",
         "file": "back/app/llm/call_router.py",
         "handler": "delete_call",
-        "line": 564,
+        "line": 586,
         "method": "DELETE",
         "module": "app.llm"
       },
@@ -19970,7 +20059,7 @@
         "declared_path": "/llm-calls/{call_id}",
         "file": "back/app/llm/call_router.py",
         "handler": "read_call",
-        "line": 583,
+        "line": 605,
         "method": "GET",
         "module": "app.llm"
       },
@@ -19979,7 +20068,7 @@
         "declared_path": "/llm-calls/{call_id}/stop",
         "file": "back/app/llm/call_router.py",
         "handler": "stop_llm_call",
-        "line": 549,
+        "line": 571,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20258,7 +20347,7 @@
         "declared_path": "/llm/anthropic/v1/messages",
         "file": "back/app/llm/anthropic_router.py",
         "handler": "anthropic_messages",
-        "line": 256,
+        "line": 257,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20267,7 +20356,7 @@
         "declared_path": "/llm/anthropic/v1/messages/count_tokens",
         "file": "back/app/llm/anthropic_router.py",
         "handler": "anthropic_count_tokens",
-        "line": 222,
+        "line": 223,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20276,7 +20365,7 @@
         "declared_path": "/llm/anthropic/v1/models",
         "file": "back/app/llm/anthropic_router.py",
         "handler": "anthropic_models",
-        "line": 188,
+        "line": 189,
         "method": "GET",
         "module": "app.llm"
       },
@@ -20330,7 +20419,7 @@
         "declared_path": "/llm/openai/chat/completions",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_completion",
-        "line": 207,
+        "line": 208,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20339,7 +20428,7 @@
         "declared_path": "/llm/openai/inferences",
         "file": "back/app/llm/call_router.py",
         "handler": "create_inference",
-        "line": 120,
+        "line": 121,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20348,7 +20437,7 @@
         "declared_path": "/llm/openai/inferences/{inference_id}",
         "file": "back/app/llm/call_router.py",
         "handler": "get_inference",
-        "line": 144,
+        "line": 145,
         "method": "GET",
         "module": "app.llm"
       },
@@ -20357,7 +20446,7 @@
         "declared_path": "/llm/openai/inferences/{inference_id}/commands",
         "file": "back/app/llm/call_router.py",
         "handler": "command_inference",
-        "line": 150,
+        "line": 151,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20366,7 +20455,7 @@
         "declared_path": "/llm/openai/inferences/{inference_id}/events",
         "file": "back/app/llm/call_router.py",
         "handler": "inference_events",
-        "line": 164,
+        "line": 165,
         "method": "GET",
         "module": "app.llm"
       },
@@ -20375,7 +20464,7 @@
         "declared_path": "/llm/openai/models",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_models",
-        "line": 187,
+        "line": 188,
         "method": "GET",
         "module": "app.llm"
       },
@@ -20384,7 +20473,7 @@
         "declared_path": "/llm/openai/responses",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_responses",
-        "line": 345,
+        "line": 353,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20393,7 +20482,7 @@
         "declared_path": "/llm/openai/responses/compact",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_responses",
-        "line": 345,
+        "line": 353,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20402,7 +20491,7 @@
         "declared_path": "/llm/openai/runs/{agent_run_id}/usage",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_run_usage",
-        "line": 443,
+        "line": 459,
         "method": "GET",
         "module": "app.llm"
       },
@@ -20537,7 +20626,7 @@
         "declared_path": "/mcp/{identifier}",
         "file": "back/app/harnesses/runtime_web.py",
         "handler": "mcp",
-        "line": 60,
+        "line": 85,
         "method": "POST",
         "module": "app.harnesses"
       },
@@ -21104,7 +21193,7 @@
         "declared_path": "/profile/anthropic/v1/messages",
         "file": "back/app/llm/anthropic_router.py",
         "handler": "anthropic_messages",
-        "line": 256,
+        "line": 257,
         "method": "POST",
         "module": "app.llm"
       },
@@ -21113,7 +21202,7 @@
         "declared_path": "/profile/anthropic/v1/messages/count_tokens",
         "file": "back/app/llm/anthropic_router.py",
         "handler": "anthropic_count_tokens",
-        "line": 222,
+        "line": 223,
         "method": "POST",
         "module": "app.llm"
       },
@@ -21122,7 +21211,7 @@
         "declared_path": "/profile/anthropic/v1/models",
         "file": "back/app/llm/anthropic_router.py",
         "handler": "anthropic_models",
-        "line": 188,
+        "line": 189,
         "method": "GET",
         "module": "app.llm"
       },
@@ -21149,7 +21238,7 @@
         "declared_path": "/profile/openai/chat/completions",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_completion",
-        "line": 207,
+        "line": 208,
         "method": "POST",
         "module": "app.llm"
       },
@@ -21167,7 +21256,7 @@
         "declared_path": "/profile/openai/models",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_models",
-        "line": 187,
+        "line": 188,
         "method": "GET",
         "module": "app.llm"
       },
@@ -21176,7 +21265,7 @@
         "declared_path": "/profile/openai/responses",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_responses",
-        "line": 345,
+        "line": 353,
         "method": "POST",
         "module": "app.llm"
       },
@@ -21185,7 +21274,7 @@
         "declared_path": "/profile/openai/responses/compact",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_responses",
-        "line": 345,
+        "line": 353,
         "method": "POST",
         "module": "app.llm"
       },
@@ -22229,7 +22318,7 @@
         "declared_path": "/v1/chat/completions",
         "file": "back/bridge/codex/default-agent/server.py",
         "handler": "chat_completions",
-        "line": 267,
+        "line": 300,
         "method": "POST",
         "module": "bridge.codex"
       },
@@ -22238,16 +22327,25 @@
         "declared_path": "/v1/galaris/capabilities",
         "file": "back/app/harnesses/runtime_web.py",
         "handler": "capabilities",
-        "line": 22,
+        "line": 47,
         "method": "GET",
         "module": "app.harnesses"
+      },
+      {
+        "authorized": false,
+        "declared_path": "/v1/galaris/deep/{session}/steer",
+        "file": "back/bridge/codex/default-agent/server.py",
+        "handler": "steer",
+        "line": 333,
+        "method": "POST",
+        "module": "bridge.codex"
       },
       {
         "authorized": false,
         "declared_path": "/v1/galaris/runs",
         "file": "back/app/harnesses/runtime_web.py",
         "handler": "start",
-        "line": 27,
+        "line": 52,
         "method": "POST",
         "module": "app.harnesses"
       },
@@ -22256,7 +22354,7 @@
         "declared_path": "/v1/galaris/runs/{identifier}",
         "file": "back/app/harnesses/runtime_web.py",
         "handler": "status",
-        "line": 43,
+        "line": 68,
         "method": "GET",
         "module": "app.harnesses"
       },
@@ -22265,7 +22363,7 @@
         "declared_path": "/v1/galaris/runs/{identifier}/cancel",
         "file": "back/app/harnesses/runtime_web.py",
         "handler": "cancel",
-        "line": 51,
+        "line": 76,
         "method": "POST",
         "module": "app.harnesses"
       },
@@ -22274,7 +22372,7 @@
         "declared_path": "/v1/models",
         "file": "back/bridge/codex/default-agent/server.py",
         "handler": "models",
-        "line": 194,
+        "line": 205,
         "method": "GET",
         "module": "bridge.codex"
       },
@@ -22750,6 +22848,7 @@
           "front/app/chat/pages/index.vue",
           "front/app/chat/stores/chat.ts",
           "front/app/chat/stores/inbox.ts",
+          "front/app/chat/useDeepConversation.ts",
           "front/app/chat/useMessagePreviewFreshness.ts"
         ],
         "source": "app/chat",

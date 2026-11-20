@@ -6,6 +6,7 @@ import type { MessengerInteraction } from '../types'
 import type { McpTable } from '../mcpApps'
 import { isAxiosError } from 'axios'
 import type { CodeWorkspace } from '../code/types'
+import type { DeepEvent, DeepRoom } from '../types'
 import type { ActiveCall, ChatCommandCatalog, ChatIdentityMapping, ChatInboxSummary, ChatViewerAgent, ConversationActivityPage, ConversationActivityDetail, ConversationDocumentDetail, ConversationDocumentList, ConversationDocumentReference, ConversationDocumentUpdate, ConversationProcessList, ConversationTaskTree, DictationResult, FrequentEmojiList, MessagePage, MessageResourcePreview, MessageSpeechStatus, MessageTopicChangeScope, MessageTopicUpdateResult, MessengerMessage, MessengerRoom, MessengerStatus, Page, PushConfiguration, PushSubscriptionPayload, PushSubscriptionRead, ReasoningEffort, RecipientCatalog, VoiceCallStatus, WebRtcIceCandidate } from '../types'
 
 const base = '/chat'
@@ -37,6 +38,15 @@ function draftFileUnavailable(error: unknown): boolean {
 }
 
 export const chatService = {
+  async deepRoom(roomId: string, signal: AbortSignal): Promise<DeepRoom> {
+    return (await api.get<DeepRoom>(`${base}/rooms/${roomId}/deep`, { signal })).data
+  },
+  async deepEvents(roomId: string, submissionId: string, after: number, signal: AbortSignal): Promise<DeepEvent[]> {
+    return (await api.get<DeepEvent[]>(`${base}/rooms/${roomId}/deep/${submissionId}/events`, { params: { after }, signal })).data
+  },
+  async stopDeep(roomId: string, submissionId: string): Promise<void> {
+    await api.post(`${base}/rooms/${roomId}/deep/${submissionId}/stop`)
+  },
   async openMcpApp(roomId: string, messageId: string, id: string, signal: AbortSignal): Promise<string> {
     return (await api.get<{ html: string }>(
       base + '/rooms/' + roomId + '/messages/' + messageId + '/mcp-apps/' + id, { signal },

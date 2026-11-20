@@ -1,4 +1,4 @@
-"""Reconcile skill revisions at the admitted Task's execution boundary.
+"""Reconcile skill revisions at the execution boundary of admitted Tasks and Deep turns.
 
 The persisted skill library is the desired state; provider_metadata.skill_revision
 is the last successfully projected state. Comparing them at every execution covers
@@ -16,6 +16,7 @@ from typing import Literal
 from sqlalchemy import select, update
 
 from app.agent import AgentRunRequest, agent_skill_revision, get_agent_record
+from app.agent.facade import has_prepared_runtime_run
 from core.database import get_db
 
 from .models import AgentHarness
@@ -85,7 +86,6 @@ async def request_skill_sync(agent_id: int) -> None:
 async def prepare_skill_execution(request: AgentRunRequest) -> None:
     """Fail closed before dispatch if the frozen runtime cannot receive current skills.
 
-    Managed providers admit one Task at a time through the durable scheduler lease.
     A checkpoint may still refer to a running remote operation: reconciling that
     operation must retain its original skills and credentials. Pending changes
     apply at the next fresh execution, never underneath a remote continuation.
@@ -113,8 +113,8 @@ async def prepare_skill_execution(request: AgentRunRequest) -> None:
             return
         if request.resume_checkpoint is not None:
             return
-        if request.task_id is None:
-            raise HarnessConflictError("Skill synchronization requires an admitted Task.")
+        if request.task_id is None and request.deep_session_id is None:
+            raise HarnessConflictError("Skill synchronization requires an admitted Task or Deep session.")
         agent = await get_agent_record(request.agent.id)
         if agent is None:
             raise HarnessConflictError("The Harness agent no longer exists.")
@@ -130,6 +130,8 @@ async def prepare_skill_execution(request: AgentRunRequest) -> None:
                 and not metadata.get("skill_sync_error")
             ):
                 return
+            if has_prepared_runtime_run(request.agent_id, target.target_ref):
+                raise HarnessConflictError("Skill synchronization is pending until the current Harness runs finish.")
             # Invalidate the receipt before remote effects, including cancellation
             # or process death halfway through a destructive tree replacement.
             await db.execute(
@@ -158,7 +160,9 @@ async def prepare_skill_execution(request: AgentRunRequest) -> None:
                     await db.commit()
                     return
                 revision = current
-            raise RuntimeError("Skills changed during synchronization; retry the Task.")
+            raise RuntimeError("Skills changed during synchronization; retry the execution.")
+        except HarnessConflictError:
+            raise
         except Exception as exc:
             # Do not expose transport exceptions, which may contain credentials.
             # Keep the invalid receipt and any newer invalidation atomically.
@@ -166,9 +170,9 @@ async def prepare_skill_execution(request: AgentRunRequest) -> None:
             await db.execute(
                 update(AgentHarness).where(AgentHarness.id == assignment_id)
                 .values(provider_metadata=AgentHarness.provider_metadata.op("||")({
-                    "skill_sync_error": "Skill synchronization failed; retry the Task.",
+                    "skill_sync_error": "Skill synchronization failed; retry the execution.",
                 }))
                 .execution_options(synchronize_session=False)
             )
             await db.commit()
-            raise RuntimeError("Skill synchronization failed; retry the Task.") from exc
+            raise RuntimeError("Skill synchronization failed; retry the execution.") from exc

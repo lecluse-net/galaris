@@ -77,7 +77,7 @@ from .admin_contracts import AdministrationContext, AdministrationError, HUMAN_O
 
 from . import admin_service as administration
 from .runtime_authorization import (
-    issue_runtime_run_grant,
+    issue_runtime_run_grant, issue_deep_runtime_grant,
     resolve_runtime_run_grant,
     close_runtime_run_grant,
     renew_runtime_run_grant,
@@ -111,6 +111,7 @@ from .authorization import (
     authorization_status,
     AUTHORIZATION_META_KEY,
     register_authorization_waker,
+    pending_context_approvals as pending_context_approvals,
     wake_authorization_context,
     current_prepared_authorization,
     claim_prepared_action,
@@ -163,6 +164,7 @@ __all__ = [
     "register_authorization_context_guard",
     "authorization_context_snapshot",
     "issue_runtime_run_grant",
+    "issue_deep_runtime_grant",
     "resolve_runtime_run_grant",
     "close_runtime_run_grant",
     "renew_runtime_run_grant",

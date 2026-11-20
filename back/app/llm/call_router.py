@@ -29,6 +29,7 @@ from .profile_gateway import is_profile_api, mark_profile_api, profile_models
 from .reasoning import normalize_reasoning_effort, parse_force_reasoning_effort
 from .schemas import LLMCallPage, LLMCallRead, ProxyModel, ProxyModelList
 from .runtime_correlation import (
+    runtime_deep_scope,
     resolve_runtime_llm_task,
     resolve_runtime_process_run_id as _resolve_llm_process_run_id,
     resolve_runtime_task_id as _resolve_llm_task_id,
@@ -218,6 +219,13 @@ async def llm_completion(
         body: dict[str, Any] = await request.json()
         if agent_id is not None and request.headers.get("X-Galaris-Output-Budget") == "provider":
             _drop_sdk_output_budget(body)
+        async with runtime_deep_scope(request, agent_id) as deep:
+            if deep:
+                return await proxy_chat_completion(
+                    body, profile_model=is_profile_api(request), task_id=None, agent_id=agent_id,
+                    managed_runtime_request=True, unwrap_deferred_tools=True,
+                    reasoning_effort=normalize_reasoning_effort(x_galaris_reasoning_effort, strict=True),
+                )
         runtime_task = await resolve_runtime_llm_task(
             request,
             task_ids=(x_galaris_task_id, body.get("galaris_task_id")),
@@ -356,6 +364,14 @@ async def llm_responses(
     try:
         agent_id = await _llm_api_auth(request)
         body: dict[str, Any] = await request.json()
+        async with runtime_deep_scope(request, agent_id) as deep:
+            if deep:
+                return await proxy_responses(
+                    body, profile_model=is_profile_api(request), task_id=None, agent_id=agent_id,
+                    model_code=x_galaris_model_code, managed_runtime_request=True,
+                    operation="compact" if request.url.path.endswith("/responses/compact") else "create",
+                    reasoning_effort=normalize_reasoning_effort(x_galaris_reasoning_effort, strict=True),
+                )
         runtime_task = await resolve_runtime_llm_task(
             request,
             task_ids=(x_galaris_task_id, body.get("galaris_task_id")),
@@ -464,6 +480,7 @@ async def read_calls(
     agent_run_ids: list[UUID] | None = Query(default=None, max_length=50),
     task_attempt_id: Optional[UUID] = None,
     conversation_round_id: Optional[UUID] = None,
+    deep_room_id: UUID | None = None,
     process_run_id: Optional[UUID] = None,
     limit: int = Query(default=50, ge=1, le=500),
 ) -> list[LLMCallRead]:
@@ -474,6 +491,7 @@ async def read_calls(
         agent_run_ids=agent_run_ids,
         task_attempt_id=task_attempt_id,
         conversation_round_id=conversation_round_id,
+        deep_room_id=deep_room_id,
         process_run_id=process_run_id,
         limit=limit,
         agent_ids=scope.agent_ids,
@@ -487,6 +505,7 @@ async def read_running_calls(
     limit: int = Query(default=10, ge=1, le=50),
     date_from: date | None = None,
     date_to: date | None = None,
+    deep_room_id: UUID | None = None,
 ) -> list[LLMCallRead]:
     """List calls that are currently executing, newest first."""
     scope = await current_management_scope()
@@ -494,6 +513,7 @@ async def read_running_calls(
         limit=limit,
         date_from=date_from,
         date_to=date_to,
+        deep_room_id=deep_room_id,
         agent_ids=scope.agent_ids,
     )
     return await llm_call_service.serialize_calls(calls)
@@ -507,6 +527,7 @@ async def read_call_history(
     errors_only: bool = False,
     date_from: date | None = None,
     date_to: date | None = None,
+    deep_room_id: UUID | None = None,
 ) -> LLMCallPage:
     scope = await current_management_scope()
     calls, total, summary = await llm_call_service.paginate_history(
@@ -515,6 +536,7 @@ async def read_call_history(
         errors_only=errors_only,
         date_from=date_from,
         date_to=date_to,
+        deep_room_id=deep_room_id,
         agent_ids=scope.agent_ids,
     )
     return LLMCallPage(

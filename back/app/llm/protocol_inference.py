@@ -29,6 +29,7 @@ from . import inference_execution as execution, inference_store, llm_service, pr
 from .accounting_scope import record_persisted_call_cost
 from .call_capture import TextCallCapture, text_call_capture
 from .contracts import InferenceEvent, ProtocolInferenceRequest
+from .correlation import current_deep_session
 from .models import LLMCall, LLMCallEvent
 from .provider_models import LLM
 from .provider_facade import ProviderAuthenticationError, ProviderUnavailableError, ReasoningEffort
@@ -424,10 +425,8 @@ async def _request(
     request_timeout: dict[str, float | None] | None = None,
     profile_model: bool = False,
 ) -> JSONResponse | StreamingResponse:
-    if managed_runtime_request and task_id is None:
-        from core.i18n import tr
-
-        raise ValueError(await tr("llm_api.errors.managed_runtime_task_required"))
+    deep_session_id = current_deep_session()
+    await proxy_service.require_managed_runtime_context(managed_runtime_request, task_id)
     async def resolve() -> tuple[LLM, ReasoningEffort | None]:
         if profile_model:
             selection = await resolve_profile_model(body.get("model"), "chat")
@@ -461,6 +460,7 @@ async def _request(
         request = ProtocolInferenceRequest(
             llm_id=llm.id, task_id=task_id, agent_id=agent_id, agent_run_id=agent_run_id,
             task_attempt_id=task_attempt_id,
+            deep_session_id=deep_session_id,
             conversation_round_id=conversation_round_id, process_run_id=process_run_id,
             prompt=prompt, system_prompt=system_prompt, purpose=purpose or "",
             reasoning_effort=effort, body=payload, protocol=protocol,

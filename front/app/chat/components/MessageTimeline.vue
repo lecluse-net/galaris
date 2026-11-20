@@ -19,18 +19,18 @@
     >
       {{ t('chat.emptyRoom') }}
     </div>
-    <TimelineWindow :items="timelineEntries" :scope="`${roomId}:${viewerAgentId ?? 'user'}`"
-      :retain="entry => Boolean(entry.isLive || entry.pendingTranscription || entry.message?.id === speechPlayingMessageId)"
+    <TimelineWindow ref="timelineWindow" :items="timelineEntries" :scope="`${roomId}:${viewerAgentId ?? 'user'}`"
+      :retain="entry => Boolean(entry.isLive || entry.deepActive || entry.pendingTranscription || entry.message?.id === speechPlayingMessageId)"
       :aria-label="t('chat.messageHistory')" @rendered="onWindowRendered" @navigate="emit('historyNavigation')">
       <template #default="{ entry }">
     <div
       class="message-row"
       :class="{
         'message-row--sent': entry.isMine,
-        'message-row--live': entry.liveRound,
+        'message-row--live': entry.liveRound || entry.deepActive,
         'message-row--transcribing': entry.pendingTranscription,
       }"
-      :aria-live="entry.liveRound || entry.pendingTranscription ? 'polite' : undefined"
+      :aria-live="entry.liveRound || entry.deepActive || entry.pendingTranscription ? 'polite' : undefined"
       :data-message-id="entry.message?.id"
     >
       <InternalAgentAvatar
@@ -49,7 +49,7 @@
       />
       <div
         class="message-stack"
-        :class="{ 'message-stack--trace': entry.activity || entry.liveRound || entry.pendingTranscription }"
+        :class="{ 'message-stack--trace': entry.activity || entry.liveRound || entry.deep || entry.pendingTranscription }"
       >
         <div class="message-meta">
           <button
@@ -111,20 +111,26 @@
             />
           </div>
         </div>
-        <div class="message-bubble" :class="{ 'message-bubble--live': entry.liveRound }">
+        <div class="message-bubble" :class="{ 'message-bubble--live': entry.liveRound || entry.deepActive }">
           <div class="message-body">
             <VoiceTranscriptionStatus v-if="entry.pendingTranscription" />
-            <div v-if="entry.message?.reply_to" class="reply-preview text-caption text-grey-7 q-mb-xs">
-              ↪ {{ repliedMessage(entry.message.reply_to)?.sender?.display_name || t('chat.reply') }} · {{ repliedMessage(entry.message.reply_to)?.text || entry.message.reply_to }}
-            </div>
+            <DeepExecutionTrace
+              v-if="entry.deep"
+              :submission="entry.deep" :events="deepEvents[entry.deep.id] ?? []"
+              :show-response="!entry.message" :controllable="allowReply && viewerAgentId === null"
+              @stop="emit('deepStop', entry.deep.id)" @inspect="emit('deepInspect', entry.deep.id)"
+            />
             <AgentExecutionTrace
-              v-if="entry.activity || entry.liveRound"
+              v-else-if="entry.activity || entry.liveRound"
               :room-id="roomId"
               :activity="entry.activity"
               :live-round="entry.liveRound"
               :allow-control="allowReply && viewerAgentId === null"
               @controlled="emit('controlled')"
             />
+            <div v-if="entry.message?.reply_to" class="reply-preview text-caption text-grey-7 q-mb-xs">
+              ↪ {{ repliedMessage(entry.message.reply_to)?.sender?.display_name || t('chat.reply') }} · {{ repliedMessage(entry.message.reply_to)?.text || entry.message.reply_to }}
+            </div>
             <InteractionChoice
               v-if="entry.message?.interaction?.options.length"
               :key="entry.message.interaction.id"
@@ -352,19 +358,22 @@ import InternalAgentAvatar from './InternalAgentAvatar.vue'
 import InternalParticipantAvatar from './InternalParticipantAvatar.vue'
 import { defineAsyncView } from '@/core/util/facade'
 const AgentExecutionTrace = defineAsyncView(() => import('./AgentExecutionTrace.vue'))
+import DeepExecutionTrace from './DeepExecutionTrace.vue'
 const MarkdownAttachmentPreview = defineAsyncView(() => import('./MarkdownAttachmentPreview.vue'))
 import TimelineWindow from './TimelineWindow.vue'
 import MessageResourcePreviews from './MessageResourcePreviews.vue'
 import VoiceTranscriptionStatus from './VoiceTranscriptionStatus.vue'
-import type { ConversationActivity, ConversationDocumentReference, LiveAgentRound, MessageTopicChange, MessengerFile, MessengerMessage, PendingVoiceTranscription } from '../types'
+import type { ConversationActivity, ConversationDocumentReference, DeepEvent, DeepSubmission, LiveAgentRound, MessageTopicChange, MessengerFile, MessengerMessage, PendingVoiceTranscription } from '../types'
 import { chatService } from '../services/chatService'
 import { useMessagePreviewFreshness } from '../useMessagePreviewFreshness'
 import { visibleMessageText } from '../messageDirectives'
 import { displayMessageText } from '../messagePresentation'
-import { conversationTimelineEntries, conversationTimelineEntryText, conversationTimelineRenderKey, shouldShowLiveConversationRound } from '../liveState'
+import { conversationTimelineEntries, conversationTimelineEntryText, conversationTimelineRenderKey, shouldShowLiveConversationRound, withDeepTimelineReplies } from '../liveState'
 
-const props = withDefaults(defineProps<{ roomId: string; messages: MessengerMessage[]; activity: ConversationActivity[]; liveRound: LiveAgentRound | null; pendingTranscriptions?: PendingVoiceTranscription[]; agentId: number; agentName: string; loading?: boolean; viewerAgentId?: number | null; showAgentAvatars?: boolean; allowReply?: boolean; canReadDocuments?: boolean; canEditDocuments?: boolean; canInsertMcpTable?: boolean }>(), {
+const props = withDefaults(defineProps<{ roomId: string; messages: MessengerMessage[]; activity: ConversationActivity[]; liveRound: LiveAgentRound | null; pendingTranscriptions?: PendingVoiceTranscription[]; deepSubmissions?: readonly DeepSubmission[]; deepEvents?: Record<string, DeepEvent[]>; agentId: number; agentName: string; loading?: boolean; viewerAgentId?: number | null; showAgentAvatars?: boolean; allowReply?: boolean; canReadDocuments?: boolean; canEditDocuments?: boolean; canInsertMcpTable?: boolean }>(), {
   pendingTranscriptions: () => [],
+  deepSubmissions: () => [],
+  deepEvents: () => ({}),
   loading: false,
   viewerAgentId: null,
   showAgentAvatars: true,
@@ -385,6 +394,8 @@ const emit = defineEmits<{
   messageVisible: [messageId: string]
   controlled: []
   historyNavigation: []
+  deepInspect: [submissionId: string]
+  deepStop: [submissionId: string]
 }>()
 const { t, locale } = useI18n()
 const timestampFormatter = computed(() => new Intl.DateTimeFormat(locale.value, {
@@ -402,6 +413,15 @@ async function renameFile(file: MessengerFile, name: string): Promise<void> {
 useMessagePreviewFreshness()
 const { resolveTopicRefs, topicTitle } = useTopicRefs()
 const timelineElement = useTemplateRef<HTMLElement>('timelineElement')
+const timelineWindow = useTemplateRef<{ goTo(key: string): Promise<boolean> }>('timelineWindow')
+function goToMessage(messageId: string): Promise<boolean> {
+  const entry = timelineEntries.value.find(item => item.message?.id === messageId)
+  return timelineWindow.value?.goTo(entry?.key ?? `message:${messageId}`) ?? Promise.resolve(false)
+}
+function goToDeepSubmission(submissionId: string): Promise<boolean> {
+  return timelineWindow.value?.goTo(`deep:${submissionId}`) ?? Promise.resolve(false)
+}
+defineExpose({ goToMessage, goToDeepSubmission })
 const mediaUrls = reactive<Record<string, string>>({})
 const mediaTexts = reactive<Record<string, string>>({})
 const mediaLoading = reactive<Record<string, boolean>>({})
@@ -458,13 +478,13 @@ const showEphemeralBubble = computed(() => showLiveBubble.value || props.pending
 // Parsing historic message content must not be repeated for every live fragment.
 const messageTexts = computed(() => new Map(props.messages.map(message => [message.id, displayMessageText(message, t)])))
 const liveRoundIdentity = computed(() => props.liveRound?.room_id === props.roomId ? props.liveRound.round_id : null)
-const historicEntries = computed(() => conversationTimelineEntries(
+const historicEntries = computed(() => withDeepTimelineReplies(conversationTimelineEntries(
   props.roomId,
   props.messages,
   props.activity,
   null,
   props.pendingTranscriptions,
-))
+), props.deepSubmissions))
 const timelineEntries = computed(() => {
   const liveKey = liveRoundIdentity.value ? `response:${liveRoundIdentity.value}` : null
   const showLive = showLiveBubble.value
@@ -482,9 +502,11 @@ const timelineEntries = computed(() => {
         ? activityByMessageId.value.get(message.id)
         : entry.activity
     const pendingTranscription = entry.pendingTranscription
+    const showAgent = Boolean(isLive || activity || entry.deep)
     return {
       ...entry,
       isLive,
+      deepActive: !message && Boolean(entry.deep && ['queued', 'running', 'steering'].includes(entry.deep.state)),
       // The history stays stable across fragments. Only a rendered live bubble
       // reads the changing snapshot, including its terminal durable handoff.
       get liveRound() {
@@ -492,14 +514,14 @@ const timelineEntries = computed(() => {
         return round && message ? { ...round, active: false } : round
       },
       isMine: message?.is_mine ?? pendingTranscription?.is_mine ?? false,
-      senderName: message?.sender?.display_name || pendingTranscription?.sender?.display_name || (isLive || activity ? props.agentName : t('chat.message')),
+      senderName: message?.sender?.display_name || pendingTranscription?.sender?.display_name || (showAgent ? props.agentName : t('chat.message')),
       senderAgentId: props.showAgentAvatars
-        ? message?.sender?.agent_id ?? pendingTranscription?.sender?.agent_id ?? (isLive || activity ? props.agentId : null)
+        ? message?.sender?.agent_id ?? pendingTranscription?.sender?.agent_id ?? (showAgent ? props.agentId : null)
         : null,
       avatarUrl: message?.sender?.avatar_url ?? pendingTranscription?.sender?.avatar_url,
       activity,
       copyRoundId: message ? roundIdByMessageId.value.get(message.id) : undefined,
-      createdAt: message?.created_at ?? pendingTranscription?.started_at ?? null,
+      createdAt: message?.created_at ?? pendingTranscription?.started_at ?? entry.deepInputCreatedAt ?? null,
       get text() {
         return message ? messageTexts.value.get(message.id) ?? ''
           : visibleMessageText(conversationTimelineEntryText({ ...entry, liveRound: isLive ? props.liveRound : null }))
@@ -1096,10 +1118,10 @@ function onSessionEvent(): void { void onMediaSessionChanged().catch(error => co
 .message-bubble { box-sizing: border-box; width: 100%; min-width: 42px; max-width: 100%; padding: 8px 11px; overflow: hidden; color: var(--chat-text, #20242c); background: var(--chat-surface-raised, #fff); border: 1px solid var(--chat-received-border, rgba(86, 105, 137, .2)); border-radius: 0 13px 13px 13px; box-shadow: 0 2px 9px var(--chat-shadow, rgba(31, 45, 61, .07)); }
 .message-bubble--live { min-width: 66px; }
 .message-row--sent .message-bubble { background: var(--chat-surface-sent, #e6efff); border-radius: 13px 0 13px 13px; border-color: color-mix(in srgb, var(--q-primary) 42%, var(--chat-border, transparent)); }
-.message-row:not(.message-row--sent) .execution-trace { border-radius: 0 10px 0 0; }
-.message-row--sent .execution-trace { border-radius: 10px 0 0 0; }
+.message-row:not(.message-row--sent) :deep(.execution-trace) { border-radius: 0 10px 0 0; }
+.message-row--sent :deep(.execution-trace) { border-radius: 10px 0 0 0; }
 .message-body { position: relative; min-width: 0; max-width: 100%; }
-.message-text { overflow-wrap: anywhere; font-size: calc(1em + 1pt); }
+.message-text,.message-body :deep(.deep-response) { overflow-wrap: anywhere; font-size: calc(1em + 1pt); }
 .reply-preview { max-width: 420px; border-left: 2px solid currentColor; padding-left: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .message-actions { display: inline-flex; align-items: center; gap: 2px; margin: -2px 0 -2px auto; }
 .message-action { min-height: 15px; padding: 0 2px; color: var(--chat-text-secondary, #596274); font-size: .67rem; font-weight: 600; line-height: 1; opacity: 1; }

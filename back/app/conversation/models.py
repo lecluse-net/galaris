@@ -24,6 +24,69 @@ from sqlalchemy.sql import func
 from core.database import Base
 
 
+class DeepRoomMode(Base):
+    __tablename__ = "deep_room_modes"
+
+    room_id: Mapped[UUID] = mapped_column(ForeignKey("messenger_rooms.id", ondelete="CASCADE"), primary_key=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False)
+
+
+class DeepSession(Base):
+    __tablename__ = "deep_sessions"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    room_id: Mapped[UUID] = mapped_column(ForeignKey("messenger_rooms.id", ondelete="CASCADE"), index=True)
+    agent_id: Mapped[int] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"), index=True)
+    requester_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    workspace_id: Mapped[UUID | None] = mapped_column(ForeignKey("code_workspaces.id", ondelete="SET NULL"), index=True)
+    workspace_bound: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    driver_code: Mapped[str] = mapped_column(String(100))
+    target: Mapped[dict[str, object]] = mapped_column(JSONB)
+    native_session: Mapped[str | None] = mapped_column(String(512))
+    native_history: Mapped[str | None] = mapped_column(Text)
+    inference_credential: Mapped[str | None] = mapped_column(Text)
+    control_credential: Mapped[str | None] = mapped_column(Text)
+    control_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("uq_deep_current_room_session", "room_id", unique=True, postgresql_where=text("closed_at IS NULL")),
+    )
+
+
+class DeepSubmission(Base):
+    """Receipt for an input handed to a harness. A toggle has no session."""
+
+    __tablename__ = "deep_submissions"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    session_id: Mapped[UUID | None] = mapped_column(ForeignKey("deep_sessions.id", ondelete="CASCADE"), index=True)
+    message_id: Mapped[UUID] = mapped_column(ForeignKey("messenger_messages.id", ondelete="CASCADE"), unique=True)
+    response_message_id: Mapped[UUID | None] = mapped_column(ForeignKey("messenger_messages.id", ondelete="SET NULL"))
+    state: Mapped[str] = mapped_column(String(20), index=True)
+    last_sequence: Mapped[int] = mapped_column(Integer, default=0)
+    stop_requested: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+    lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (
+        Index("uq_deep_active_submission", "session_id", unique=True, postgresql_where=text("(state)::text = 'running'::text")),
+    )
+
+
+class DeepEvent(Base):
+    __tablename__ = "deep_events"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    submission_id: Mapped[UUID] = mapped_column(ForeignKey("deep_submissions.id", ondelete="CASCADE"))
+    sequence: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(24))
+    payload: Mapped[dict[str, object]] = mapped_column(JSONB)
+
+    __table_args__ = (UniqueConstraint("submission_id", "sequence", name="uq_deep_event_sequence"),)
+
+
 class ConversationDeliveryResolution(Base):
     """An operator's evidence-based resolution; never an instruction to resend."""
 

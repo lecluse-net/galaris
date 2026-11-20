@@ -49,7 +49,7 @@ from .llm_service import (
     get_video_llm,
     get_vision_llm,
 )
-from .correlation import llm_correlation_scope
+from .correlation import deep_inference_scope, llm_correlation_scope
 from .native_media import normalized_media_type, supports_native_input
 from .runtime_correlation import resolve_runtime_process_run_id
 from .subscription_policy import LLMExecutionAuthority, current_execution_authority, llm_execution_scope
@@ -167,6 +167,7 @@ __all__ = [
     "get_vision_llm",
     "llm_call_service",
     "llm_correlation_scope",
+    "deep_inference_scope",
     "llm_execution_scope",
     "llm_provider_service",
     "llm_service",

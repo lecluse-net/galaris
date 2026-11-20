@@ -3,25 +3,50 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Callable
+from contextlib import asynccontextmanager
 import hmac
 import os
 from pathlib import Path
 from typing import Any
+from types import SimpleNamespace
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response
 from runtime_support import ActionApprovals, PROTOCOL, RuntimeActor, RuntimeRuns  # pyright: ignore[reportMissingImports]
 
 
+@asynccontextmanager
+async def deep_approvals(request: Request) -> AsyncGenerator[Any, None]:
+    """Adapt an already authorized session to the current runtime HTTP stream."""
+    credential = request.headers.get("X-Galaris-Deep-Control", "")
+    if not credential:
+        raise HTTPException(403, "Deep session control is required")
+    identity = uuid4().hex
+    approvals = ActionApprovals(mcp_url=os.environ.get("GALARIS_MCP_URL", ""),
+        token=os.environ.get("GALARIS_MCP_TOKEN", ""), run_context=credential, session=identity,
+        on_pending=lambda _: None)
+    await asyncio.to_thread(approvals.validate)
+    actor = SimpleNamespace(identifier=identity, approvals=approvals)
+    actors = request.app.state.deep_actors
+    actors[identity] = actor
+    try:
+        yield actor
+    finally:
+        approvals.cancelled.set()
+        actors.pop(identity, None)
+
+
 def install_control(app: FastAPI, *, root: Path, authenticate: Callable[[Request], None],
                     events: Callable[[dict[str, Any], Request, Any], AsyncIterator[tuple[str, dict[str, Any]]]]) -> Any:
     runs = RuntimeRuns(root)
+    app.state.deep_actors = {}
 
     @app.get("/v1/galaris/capabilities")
     async def capabilities(request: Request) -> dict[str, Any]:
         authenticate(request)
-        return {"authorization_protocol": PROTOCOL, "resumable_runs": True, "run_scoped_llm": True}
+        return {"authorization_protocol": PROTOCOL, "resumable_runs": True, "run_scoped_llm": True, "deep_sessions": True}
 
     @app.post("/v1/galaris/runs")
     async def start(request: Request, body: dict[str, Any]) -> dict[str, str]:
@@ -64,6 +89,8 @@ def install_control(app: FastAPI, *, root: Path, authenticate: Callable[[Request
             raise HTTPException(401, "Invalid MCP principal")
         with runs.lock:
             actor = runs.actors.get(identifier)
+        if actor is None:
+            actor = app.state.deep_actors.get(identifier)
         if actor is None or actor.approvals is None:
             raise HTTPException(404, "Runtime continuation not available")
         raw = await request.body()

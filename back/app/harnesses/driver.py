@@ -72,10 +72,32 @@ class OpenAIMessagesDriver:
             token=credentials.token,
         )
 
+    async def steer_deep(self, target: ResolvedExecutionTarget, session_id: UUID, control: str, text: str) -> bool:
+        if target.provider_code != "codex":
+            return False
+        credentials = await execution_credentials(UUID(target.target_ref.removeprefix("harness:")))
+        client = OpenAIHarnessClient(base_url=credentials.base_url, token=credentials.token)
+        return await client.steer_deep(session_id, control, text)
+
     async def run(self, request: AgentRunRequest) -> ExecutionResult:
         return await self._managed_run(request)
 
     async def stream(self, request: AgentRunRequest) -> AsyncIterator[AgentEvent]:
+        if request.deep_session_id is not None:
+            from contextlib import aclosing
+            from collections.abc import AsyncGenerator
+
+            client = await self._client(request)
+            if request.deep_credential is not None:
+                await client.verify_authorization_control(require_deep_sessions=True)
+            async with aclosing(cast(AsyncGenerator[AgentEvent, None], client.stream(
+                request.to_envelope(), deep_session_id=request.deep_session_id,
+                native_session=request.deep_native_session, deep_credential=request.deep_credential,
+                deep_control_credential=request.deep_control_credential,
+            ))) as events:
+                async for event in events:
+                    yield event
+            return
         queue: asyncio.Queue[AgentEvent | BaseException | None] = asyncio.Queue(maxsize=100)
         async def progress(message: AIMessage) -> None:
             await queue.put(AgentEvent.from_message(message))

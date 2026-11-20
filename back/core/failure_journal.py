@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Collection
 from datetime import datetime, timezone
 from typing import Any, Literal
 from uuid import UUID
@@ -47,13 +47,22 @@ class FailureEvent(BaseModel):
     trace: dict[str, Any] = Field(default_factory=dict[str, Any])
 
 
+class RunFailureSummary(BaseModel):
+    """Internal evidence for a terminal run, without payloads or traces."""
+
+    error_type: str
+    message: str
+
+
 RecordInSession = Callable[[AsyncSession, FailureEvent], Awaitable[object | None]]
 RecordIsolated = Callable[[FailureEvent], Awaitable[object | None]]
 MarkRecovered = Callable[[UUID], Awaitable[int]]
+ReadRunFailures = Callable[[Collection[UUID]], Awaitable[dict[UUID, RunFailureSummary]]]
 
 _record_in_session: RecordInSession | None = None
 _record_isolated: RecordIsolated | None = None
 _mark_recovered: MarkRecovered | None = None
+_read_run_failures: ReadRunFailures | None = None
 
 
 def register_failure_journal(
@@ -61,13 +70,15 @@ def register_failure_journal(
     record_in_session: RecordInSession,
     record_isolated: RecordIsolated,
     mark_recovered: MarkRecovered,
+    read_run_failures: ReadRunFailures | None = None,
 ) -> None:
     """Bind the application-owned implementation at the composition root."""
 
-    global _record_in_session, _record_isolated, _mark_recovered
+    global _record_in_session, _record_isolated, _mark_recovered, _read_run_failures
     _record_in_session = record_in_session
     _record_isolated = record_isolated
     _mark_recovered = mark_recovered
+    _read_run_failures = read_run_failures
 
 
 async def record_failure_in_session(
@@ -99,10 +110,18 @@ async def mark_failure_run_recovered(run_uuid: UUID) -> int:
     return await _mark_recovered(run_uuid)
 
 
+async def read_taskless_run_failures(run_ids: Collection[UUID]) -> dict[UUID, RunFailureSummary]:
+    if not run_ids or _read_run_failures is None:
+        return {}
+    return await _read_run_failures(run_ids)
+
+
 __all__ = [
     "FailureEvent",
     "FailureKind",
     "mark_failure_run_recovered",
+    "RunFailureSummary",
+    "read_taskless_run_failures",
     "record_failure_event",
     "record_failure_in_session",
     "register_failure_journal",

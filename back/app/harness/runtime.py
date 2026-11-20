@@ -51,7 +51,7 @@ from core.params import runtime_settings
 from app.llm import pydantic_ai_utils as _llm_pydantic_ai_utils
 from app.agent.contracts import TaskMessage as Message
 from app.agent.contracts import AIMessage, AgentUsage, normalize_tool_name
-from app.agent import ReasoningPatternGuard, message_author_kind, message_history_role
+from app.agent import ReasoningPatternGuard, message_author_kind, message_history_role, message_history_text
 from app.agent.contracts import ReasoningDegenerationError
 from app.agent.conversation_context import (
     LeadingMessageMetadataFilter,
@@ -801,6 +801,8 @@ class AgentRuntime(ABC):
         checkpoint: HarnessRunCheckpoint | None = None,
         current_messages: Sequence[Message] | None = None,
         on_model_activity: Callable[[], Awaitable[None]] | None = None,
+        native_history: str | None = None,
+        save_native_history: Callable[[str], None] | None = None,
     ) -> AsyncIterator[AIMessage]:
         """Run the agent and stream messages.
 
@@ -1130,6 +1132,8 @@ class Agent(AgentRuntime):
         checkpoint: HarnessRunCheckpoint | None = None,
         current_messages: Sequence[Message] | None = None,
         on_model_activity: Callable[[], Awaitable[None]] | None = None,
+        native_history: str | None = None,
+        save_native_history: Callable[[str], None] | None = None,
     ) -> AsyncIterator[AIMessage]:  # type: ignore
         """Run in streaming mode and yield each partial or tool message in real time."""
 
@@ -1178,9 +1182,12 @@ class Agent(AgentRuntime):
                 pydantic_history = _reasoning_recovery_history(pydantic_history)
             if self._response_only:
                 pydantic_history = _response_only_history(pydantic_history)
+        elif native_history:
+            pydantic_history = _pydantic_messages.ModelMessagesTypeAdapter.validate_json(native_history)
         elif message_history:
             pydantic_history = _convert_message_history_to_pydantic(
                 message_history, self_id, native_inputs, self_agent_id=self._agent_id,
+                include_author_context=active_checkpoint is None or active_checkpoint.request.deep_session_id is None,
             )
 
         self.prompt = prompt
@@ -1243,6 +1250,9 @@ class Agent(AgentRuntime):
                                     event_stream, state, output_transport, on_model_activity=on_model_activity,
                                 ):
                                     yield message
+                    if save_native_history is not None and self.terminal_output is not None:
+                        compacted = compact_agent_history(captured_messages, max_chars=240_000)
+                        save_native_history(_pydantic_messages.ModelMessagesTypeAdapter.dump_json(compacted).decode())
                     break
                 except (ReasoningDegenerationError, RepeatedTextNoProgressError, RunCancelled) as interruption:
                     manual = isinstance(interruption, RunCancelled)
@@ -2076,13 +2086,17 @@ def _convert_message_history_to_pydantic(
     native_inputs: dict[str, NativeInput] | None = None,
     *,
     self_agent_id: int | None = None,
+    include_author_context: bool = True,
 ) -> List[_pydantic_messages.ModelMessage]:
     """Convert canonical messages with compact metadata local to each message."""
     result: List[_pydantic_messages.ModelMessage] = []
 
     for msg in messages:
         is_self = message_history_role(msg, self_agent_id=self_agent_id, self_external_id=self_id) == "assistant"
-        content = message_prompt(msg, self_agent_id=self_agent_id, self_external_id=self_id).strip()
+        content = (
+            message_prompt(msg, self_agent_id=self_agent_id, self_external_id=self_id)
+            if include_author_context else message_history_text(msg)
+        ).strip()
         if not content:
             continue
 

@@ -80,6 +80,7 @@ from app.messenger import (
 from app.messenger.interface import ObservedMessengerFile
 from app.messenger.contracts import DocumentFocus
 from app.conversation import (
+    DeepActivityEvent, DeepRoomInfo, deep_events, deep_room_info, stop_deep_submission,
     control_round, ConversationControlConflict, ConversationControlResult,
     ConversationActivityDetail,
     ConversationActivityPage,
@@ -636,7 +637,32 @@ async def read_room_commands(room_id: UUID) -> ChatCommandCatalog:
     commands = await get_agent_chat_directives(room.agent_id)
     if commands is None:
         raise _not_found()
-    return ChatCommandCatalog(commands=list(commands))
+    return ChatCommandCatalog(commands=[*commands, "deep"] if room.kind == "direct" else list(commands))
+
+
+@router.get("/rooms/{room_id}/deep", response_model=DeepRoomInfo)
+@authorize(privileges=ACCESS, assertion=InternalRoomAccessAssertion)
+async def read_deep_room(room_id: UUID) -> DeepRoomInfo:
+    return await deep_room_info(room_id, await _user_id())
+
+
+@router.get("/rooms/{room_id}/deep/{submission_id}/events", response_model=list[DeepActivityEvent])
+@authorize(privileges=ACCESS, assertion=InternalRoomAccessAssertion)
+async def read_deep_events(
+    room_id: UUID, submission_id: UUID, after: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500),
+) -> list[DeepActivityEvent]:
+    events = await deep_events(room_id, submission_id, after, limit)
+    if events is None:
+        raise _not_found()
+    return events
+
+
+@router.post("/rooms/{room_id}/deep/{submission_id}/stop", status_code=204)
+@authorize(privileges=SEND, assertion=InternalRoomAccessAssertion)
+async def stop_deep_room_submission(room_id: UUID, submission_id: UUID) -> None:
+    _require_enabled()
+    if not await stop_deep_submission(room_id, submission_id):
+        raise _not_found()
 
 
 @router.get("/rooms/{room_id}/messages", response_model=NativeMessengerMessagePage)

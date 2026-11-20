@@ -21,6 +21,7 @@ export const test = base.extend({
     await page.route('**/api/auth/me/help-dismissals', route => route.fulfill({ json: [] }))
     // Private chat drafts start empty. Dedicated recovery scenarios override failures/concurrency.
     const drafts = new Map()
+    await page.route('**/api/chat/rooms/*/deep', route => route.fulfill({ json: { enabled: false, submissions: [] } }))
     await page.route('**/api/chat/rooms/*/draft', route => {
       const room = new URL(route.request().url()).pathname
       if (route.request().method() === 'PUT') {

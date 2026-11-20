@@ -358,6 +358,7 @@ async def list_calls(
     agent_run_id: Optional[UUID] = None,
     agent_run_ids: Sequence[UUID] | None = None,
     conversation_round_id: Optional[UUID] = None,
+    deep_room_id: UUID | None = None,
     process_run_id: Optional[UUID] = None,
     limit: int = 200,
     agent_ids: Collection[int] | None = None,
@@ -388,6 +389,7 @@ async def list_calls(
     if process_run_id is not None:
         query = query.where(LLMCall.process_run_id == process_run_id)
     query = apply_agent_scope(query, agent_ids)
+    query = _apply_deep_room(query, deep_room_id)
     return list(reversed((await db.execute(query)).scalars().all()))
 
 
@@ -396,6 +398,7 @@ async def list_running_calls(
     limit: int = 10,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
+    deep_room_id: UUID | None = None,
     agent_ids: Collection[int] | None = None,
 ) -> list[LLMCall]:
     """Return the currently running calls, newest first."""
@@ -403,8 +406,17 @@ async def list_running_calls(
     query = select(LLMCall).where(LLMCall.status == "running")
     query = _apply_call_date_range(query, date_from, date_to)
     query = apply_agent_scope(query, agent_ids)
+    query = _apply_deep_room(query, deep_room_id)
     query = query.order_by(LLMCall.started_at.desc(), LLMCall.id.desc()).limit(limit)
     return list((await db.execute(query)).scalars().all())
+
+
+def _apply_deep_room(query: Select[Any], room_id: UUID | None) -> Select[Any]:
+    if room_id is None:
+        return query
+    from app.conversation import DeepSession
+
+    return query.where(LLMCall.deep_session_id.in_(select(DeepSession.id).where(DeepSession.room_id == room_id)))
 
 
 def _apply_call_date_range(
@@ -429,6 +441,7 @@ async def paginate_history(
     errors_only: bool = False,
     date_from: Optional[date] = None,
     date_to: Optional[date] = None,
+    deep_room_id: UUID | None = None,
     agent_ids: Collection[int] | None = None,
 ) -> tuple[list[LLMCall], int, LLMCallSummary]:
     """Return one newest-first page of calls that are no longer running."""
@@ -446,6 +459,7 @@ async def paginate_history(
     )
     totals_query = _apply_call_date_range(totals_query, date_from, date_to)
     totals_query = apply_agent_scope(totals_query, agent_ids)
+    totals_query = _apply_deep_room(totals_query, deep_room_id)
     total, running, completed, errors, total_cost, total_inference_cost = (
         await db.execute(totals_query)
     ).one()
@@ -459,6 +473,7 @@ async def paginate_history(
     query = select(LLMCall).where(page_filter)
     query = _apply_call_date_range(query, date_from, date_to)
     query = apply_agent_scope(query, agent_ids)
+    query = _apply_deep_room(query, deep_room_id)
     query = (
         query.order_by(LLMCall.started_at.desc(), LLMCall.id.desc())
         .offset((page - 1) * page_size)
@@ -478,6 +493,16 @@ async def serialize_calls(calls: Sequence[LLMCall]) -> list[LLMCallRead]:
 
     db = get_db()
     payloads = {call.id: _public(call) for call in calls}
+    deep_sessions = {call.deep_session_id for call in calls if call.deep_session_id is not None}
+    if deep_sessions:
+        from app.conversation import DeepSession
+
+        rooms = {session_id: room_id for session_id, room_id in (await db.execute(
+            select(DeepSession.id, DeepSession.room_id).where(DeepSession.id.in_(deep_sessions)),
+        )).all()}
+        for call in calls:
+            if call.deep_session_id is not None:
+                payloads[call.id]["deep_room_id"] = rooms.get(call.deep_session_id)
     by_round: dict[UUID, list[dict[str, Any]]] = {}
     by_task: dict[UUID, list[dict[str, Any]]] = {}
     by_agent: dict[int, list[dict[str, Any]]] = {}
@@ -1136,10 +1161,23 @@ async def create_running_call(
     if requester_user_id is None:
         requester_user_id = get_current_user_id() or (authority.requester_user_id if authority else None)
     from .profile_fallback import profile_fallback_route
+    from .correlation import current_deep_session
+
+    deep_session_id = None
+    if task_id is None and conversation_round_id is None and process_run_id is None and media_generation_id is None:
+        deep_session_id = current_deep_session()
+        if deep_session_id is not None:
+            from app.conversation import deep_session_agent
+
+            session_agent = await deep_session_agent(deep_session_id)
+            if session_agent is None or (agent_id is not None and session_agent != agent_id):
+                raise ValueError("The Deep session does not belong to the inference agent.")
+            agent_id = session_agent
 
     fallback_route = profile_fallback_route.get()
     call = LLMCall(
         purpose=purpose,
+        deep_session_id=deep_session_id,
         task_id=task_id,
         task_attempt_id=task_attempt_id,
         agent_run_id=agent_run_id,

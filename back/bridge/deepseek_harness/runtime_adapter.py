@@ -7,7 +7,7 @@ standard library so the image needs no web framework in addition to the DSH SDK.
 from __future__ import annotations
 
 from collections.abc import Generator, Mapping, Sequence
-from contextlib import contextmanager
+from contextlib import ExitStack, contextmanager
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -20,28 +20,42 @@ import os
 from pathlib import Path
 import queue
 import secrets
+from tempfile import NamedTemporaryFile
 import threading
 import time
-from typing import Any, Callable, Protocol, TYPE_CHECKING, cast
-from uuid import uuid4
+from typing import Any, Callable, Protocol, TYPE_CHECKING, TypedDict, cast
+from uuid import UUID, uuid4
 from urllib.error import HTTPError
 
 if TYPE_CHECKING or __package__:
-    from app.harnesses import ActionApprovals, RuntimeActor, RuntimeRuns, file_precondition
+    from app.harnesses import ActionApprovals, RuntimeActor, RuntimeRuns, deep_turn_text, file_precondition
 else:
-    from runtime_support import ActionApprovals, RuntimeActor, RuntimeRuns, file_precondition  # pyright: ignore[reportMissingImports]
+    from runtime_support import ActionApprovals, RuntimeActor, RuntimeRuns, deep_turn_text, file_precondition  # pyright: ignore[reportMissingImports]
 
 
 _MAX_REQUEST_BYTES = 2_000_000
 _CONTROL_HEARTBEAT_SECONDS = 10.0
 _RUN_SLOT = threading.BoundedSemaphore(1)
+_DEEP_SLOTS = threading.BoundedSemaphore(8)
 _LOG = logging.getLogger("galaris.deepseek_harness")
+
+
+class _DeepOptions(TypedDict, total=False):
+    deep_session: str
+    deep_context: str
+    run_context: str
+    actor_id: str
+    resume_deep: bool
 
 
 class _RunResult(Protocol):
     final_response: str
     finish_reason: str | None
     events: list[dict[str, Any]]
+
+
+class _Session(Protocol):
+    def run(self, input: str, *, on_notification: Callable[[object], None] | None = None) -> _RunResult: ...
 
 
 class _Harness(Protocol):
@@ -58,6 +72,7 @@ class _Harness(Protocol):
     ) -> _RunResult: ...
 
     def close(self) -> None: ...
+    def resume_session(self, session_id: str) -> _Session: ...
 
 
 @dataclass(frozen=True)
@@ -397,6 +412,9 @@ def run_completion(
     active: "ActiveRun | None" = None,
     on_notification: Callable[[object], None] | None = None,
     run_context: str = "",
+    deep_session: str = "",
+    deep_context: str = "",
+    resume_deep: bool = False,
     actor_id: str = "",
     can_continue: Callable[[], bool] | None = None,
     mcp_ready: Callable[[], bool] | None = None,
@@ -416,10 +434,20 @@ def run_completion(
         }.items()
         if isinstance(value, str) and value
     }
+    if deep_session:
+        system_instructions = "\n\n".join(message["content"] for message in messages if message["role"] == "system")
+        rendered_prompt = deep_turn_text([
+            (message["role"], message["content"]) for message in messages if message["role"] != "system"
+        ])
+    else:
+        system_instructions = ""
+        rendered_prompt = render_prompt(messages, runtime_context)
     completion_id = f"chatcmpl-dsh-{uuid4().hex}"
-    run_root = config.session_root / completion_id
-    run_root.mkdir(parents=True, exist_ok=False)
-    config.workspace.mkdir(parents=True, exist_ok=True)
+    session = str(UUID(deep_session)) if deep_session else completion_id
+    run_root = config.session_root / session
+    run_root.mkdir(parents=True, exist_ok=bool(deep_session))
+    workspace = config.workspace / "deep" / session if deep_session else config.workspace
+    workspace.mkdir(parents=True, exist_ok=True)
     factory = _harness_factory()
     requested_effort = str(
         body.get("galaris_reasoning_effort") or ""
@@ -433,12 +461,14 @@ def run_completion(
         "xhigh": "max",
         "max": "max",
     }.get(requested_effort)
+    deep_profile_path = ""
+
     def create_harness() -> _Harness:
         return cast(_Harness, factory(
             provider="deepseek-official",
             model=model,
-            cwd=str(config.workspace),
-            runtime_cwd=str(config.workspace),
+            cwd=str(workspace),
+            runtime_cwd=str(workspace),
             dsh_home=str(run_root),
             profile="sdk",
             patches=(str(config.cordis),),
@@ -448,6 +478,9 @@ def run_completion(
             request_timeout_seconds=None if actor_id else config.request_timeout_seconds,
             shutdown_timeout_seconds=2.0,
             env={"DSH_SESSION_ROOT": str(run_root / "sessions"), "GALARIS_MODEL": model, **({
+                "GALARIS_DEEP_CONTEXT": deep_context,
+                "GALARIS_DEEP_PROFILE_PATH": deep_profile_path,
+            } if deep_session else {}), **({
                 "GALARIS_RUN_CONTEXT": run_context,
                 "GALARIS_TASK_ID": str(body.get("galaris_task_id") or ""),
                 "GALARIS_AUTHORIZATION_PROXY": f"http://127.0.0.1:8080/local/{actor_id}",
@@ -457,21 +490,27 @@ def run_completion(
             )},
         ))
     result: _RunResult | None = None
-    with _ready_harness(create_harness, mcp_ready, active) as harness:
-        rendered_prompt = render_prompt(messages, runtime_context)
+    with ExitStack() as run_scope:
+        if deep_session:
+            profile = run_scope.enter_context(NamedTemporaryFile(mode="w", encoding="utf-8"))
+            profile.write(system_instructions)
+            profile.flush()
+            deep_profile_path = profile.name
+        harness = run_scope.enter_context(_ready_harness(create_harness, mcp_ready, active))
         policy = _mapping(body.get("galaris_network_retry"))
-        attempts = max(1, int(_retry_number(policy, "max_attempts", 8, 30)))
+        attempts = 1 if deep_session else max(1, int(_retry_number(policy, "max_attempts", 8, 30)))
         base_delay = _retry_number(policy, "base_seconds", 30, 600)
         max_delay = _retry_number(policy, "max_seconds", 300, 3600)
         pending_tools: set[str] = set()
         for attempt in range(attempts):
             if active is not None and not active.wait_for_retry(0):
                 raise RuntimeError("DeepSeek Harness was cancelled before automatic continuation")
-            result = (
-                harness.run(rendered_prompt, session_id=completion_id, on_notification=on_notification)
-                if on_notification is not None
-                else harness.run(rendered_prompt, session_id=completion_id)
-            )
+            if resume_deep:
+                result = harness.resume_session(session).run(rendered_prompt, on_notification=on_notification)
+            elif on_notification is not None:
+                result = harness.run(rendered_prompt, session_id=session, on_notification=on_notification)
+            else:
+                result = harness.run(rendered_prompt, session_id=session)
             failure = _turn_failure(result, pending_tools)
             if result.finish_reason in (None, "completed", "stop"):
                 if pending_tools:
@@ -619,7 +658,7 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
             return
         if self.path == "/v1/galaris/capabilities" and self._authorized():
             self._json(HTTPStatus.OK, {"authorization_protocol": "galaris.runtime-authorization/v1",
-                "resumable_runs": True, "run_scoped_llm": True})
+                "resumable_runs": True, "run_scoped_llm": True, "deep_sessions": True})
             return
         if self.path.startswith("/v1/galaris/runs/") and self._authorized():
             try:
@@ -686,12 +725,40 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
         except (json.JSONDecodeError, ValueError) as exc:
             self._json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
             return
-        if not _RUN_SLOT.acquire(blocking=False):
+        deep_session = self.headers.get("X-Galaris-Deep-Session", "")
+        deep_context = self.headers.get("X-Galaris-Deep-Context", "")
+        native_session = self.headers.get("X-Galaris-Deep-Native-Session", "")
+        control = self.headers.get("X-Galaris-Deep-Control", "")
+        if deep_session and (not deep_context or not control or body.get("stream") is not True):
+            self._json(HTTPStatus.FORBIDDEN, {"error": "deep_session_context_required"})
+            return
+        if deep_session:
+            try:
+                deep_session = str(UUID(deep_session))
+                if native_session and native_session != deep_session:
+                    raise ValueError("The native session does not match the Deep session")
+            except ValueError:
+                self._json(HTTPStatus.BAD_REQUEST, {"error": "invalid_deep_session"})
+                return
+        slot = _DEEP_SLOTS if deep_session else _RUN_SLOT
+        if not slot.acquire(blocking=False):
             self._json(HTTPStatus.CONFLICT, {"error": "harness_busy"})
             return
+        deep_actor_id = ""
+        approvals: ActionApprovals | None = None
+        server = cast("HarnessHTTPServer", self.server)
         try:
+            if deep_session:
+                deep_actor_id = uuid4().hex
+                approvals = ActionApprovals(mcp_url=os.environ.get("GALARIS_MCP_URL", ""),
+                    token=os.environ.get("GALARIS_MCP_TOKEN", ""), run_context=control,
+                    session=deep_actor_id, on_pending=lambda _: None)
+                approvals.validate()
+                with server.runs.lock:
+                    server.deep_actors[deep_actor_id] = (approvals, self.config.workspace / "deep" / deep_session)
             if body.get("stream") is True:
-                self._stream_completion(body)
+                self._stream_completion(body, deep_session=deep_session, deep_context=deep_context,
+                                        approvals=approvals, actor_id=deep_actor_id, resume_deep=bool(native_session))
             else:
                 completion = run_completion(body, self.config)
                 self._json(HTTPStatus.OK, _completion_payload(completion))
@@ -707,7 +774,11 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
                 },
             )
         finally:
-            _RUN_SLOT.release()
+            if approvals is not None:
+                approvals.cancelled.set()
+                with server.runs.lock:
+                    server.deep_actors.pop(deep_actor_id, None)
+            slot.release()
 
     def _control(self) -> None:
         server = cast(HarnessHTTPServer, self.server)
@@ -780,33 +851,37 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
             identifier = parts[1]
             with server.runs.lock:
                 actor = server.runs.actors.get(identifier)
-            if actor is None or actor.approvals is None:
+                deep_actor = server.deep_actors.get(identifier)
+            if deep_actor is not None:
+                approvals, workspace = deep_actor
+            elif actor is not None and actor.approvals is not None:
+                approvals, workspace = actor.approvals, self.config.workspace
+            else:
                 raise LookupError("Runtime continuation not found")
-            approvals = actor.approvals
             if parts[0] == "mcp":
                 if body.get("method") == "tools/call":
                     self._waiting_control_response(lambda: approvals.mcp(body), approvals,
                                                    request_id=body.get("id"), mcp=True)
                     return
-                status, raw = actor.approvals.mcp(body)
+                status, raw = approvals.mcp(body)
                 self.send_response(status)
                 self.send_header("Content-Type", "application/json")
                 self.send_header("Content-Length", str(len(raw)))
                 self.end_headers()
                 self.wfile.write(raw)
-            elif not secrets.compare_digest(self.headers.get("X-Galaris-Run-Context", ""), actor.approvals.run_context):
+            elif not secrets.compare_digest(self.headers.get("X-Galaris-Run-Context", ""), approvals.run_context):
                 raise PermissionError("Invalid runtime continuation")
             elif len(parts) == 3 and parts[2] == "context":
-                actor.approvals.validate()
+                approvals.validate()
                 self._json(HTTPStatus.OK, {"active": True})
             elif len(parts) == 3 and parts[2] == "receipt":
-                actor.approvals.finish(str(body["callback"]), outcome=str(body["outcome"]), receipt=body.get("receipt") or {})
+                approvals.finish(str(body["callback"]), outcome=str(body["outcome"]), receipt=body.get("receipt") or {})
                 self._json(HTTPStatus.OK, {"recorded": True})
             else:
                 arguments = body["arguments"]
                 def authorize() -> tuple[int, bytes]:
                     allowed = approvals.authorize(str(body["callback"]), str(body["name"]), arguments,
-                        precondition=lambda: file_precondition(arguments, self.config.workspace))
+                        precondition=lambda: file_precondition(arguments, workspace))
                     return HTTPStatus.OK, json.dumps({"allowed": allowed}).encode()
                 self._waiting_control_response(authorize, approvals)
         except (ValueError, KeyError, LookupError, PermissionError, OSError):
@@ -859,11 +934,15 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
             # or resubmitting an action on behalf of a disconnected client.
             approvals.cancelled.set()
 
-    def _stream_completion(self, body: Mapping[str, object]) -> None:
+    def _stream_completion(self, body: Mapping[str, object], *, deep_session: str = "", deep_context: str = "",
+                           approvals: ActionApprovals | None = None, actor_id: str = "", resume_deep: bool = False) -> None:
         active = ActiveRun()
         outcome: queue.Queue[Completion | BaseException] = queue.Queue(maxsize=1)
         notifications: queue.Queue[object] = queue.Queue()
         adapter = DeepSeekStreamAdapter()
+        deep_options: _DeepOptions = {"deep_session": deep_session, "deep_context": deep_context,
+                        "run_context": approvals.run_context, "actor_id": actor_id,
+                        "resume_deep": resume_deep} if approvals is not None else {}
 
         def worker() -> None:
             try:
@@ -873,6 +952,7 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
                         self.config,
                         active=active,
                         on_notification=notifications.put,
+                        **deep_options,
                     )
                 )
             except BaseException as exc:
@@ -916,6 +996,8 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
             )
 
         try:
+            if deep_session:
+                write_sse("galaris.deep-session/v1", {"session": deep_session})
             while thread.is_alive():
                 try:
                     notification = notifications.get(timeout=1.0)
@@ -941,7 +1023,7 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
                     "success": True,
                     "result": result.content,
                     "usage": adapter.usage,
-                    "metadata": {"runtime_run_id": result.id},
+                    "metadata": {"runtime_run_id": result.id, **({"deep_native_session": deep_session} if deep_session else {})},
                 },
             )
             final: dict[str, object] = {
@@ -979,6 +1061,7 @@ class HarnessHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
 
     def __init__(self, address: tuple[str, int], config: AdapterConfig) -> None:
+        self.deep_actors: dict[str, tuple[ActionApprovals, Path]] = {}
         self.config = config
         self.runs = RuntimeRuns(config.session_root / "authorizations")
         super().__init__(address, HarnessRequestHandler)

@@ -68,6 +68,14 @@ class ModelService(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
         calls.append(self.path)
+        if ((deep_calls := gate.get("deep_model_calls")) is not None
+                and self.path.partition("?")[0].endswith(("/messages", "/responses", "/chat/completions"))):
+            deep_calls.append((self.headers.get("X-Galaris-Deep-Context"), body))
+        if gate.get("hold_deep") and self.headers.get("X-Galaris-Deep-Context") == gate["hold_deep"]:
+            gate["deep_arrived"].set()
+            if not gate["deep_release"].wait(15):
+                self.send_error(504)
+                return
         if "/services/runtime-authorizations" in self.path:
             if self.path.endswith("/receipt"):
                 gate.setdefault("receipts", []).append(body)
@@ -361,6 +369,113 @@ async def qualify_parallel_runs(origin: str, runtime: str) -> None:
     gate.clear()
 
 
+async def qualify_deep_sessions(origin: str, runtime: str) -> None:
+    import urllib.request
+
+    contexts = {str(uuid4()): f"synthetic-deep-{index}" for index in range(5)}
+    model_calls: list[tuple[str | None, dict[str, Any]]] = []
+    gate.update(deep_model_calls=model_calls, model_dispatched=True)
+    text = "Reply qualification-ok"
+    follow_up = "Continue with qualification-ok"
+
+    def profile(context: str) -> str:
+        return f"<p>Synthetic Deep profile {context} with {{{{literal}}}} braces.</p>"
+
+    def talk(session: str, context: str, native: str | None = None) -> str:
+        headers = {"Content-Type": "application/json", "Authorization": "Bearer qualification-token",
+            "X-Galaris-Deep-Session": session, "X-Galaris-Deep-Context": context,
+            "X-Galaris-Deep-Control": f"{context}-control"}
+        if native is not None:
+            headers["X-Galaris-Deep-Native-Session"] = native
+        body = json.dumps({"model": "qualification", "stream": True, "messages": [
+            {"role": "system", "content": profile(context)},
+            {"role": "user", "content": follow_up if native else text}]}).encode()
+        request = urllib.request.Request(origin + "/v1/chat/completions", data=body, headers=headers)
+        with urllib.request.urlopen(request, timeout=45) as response:
+            response_text = response.read().decode()
+        assert ANSWER in response_text, response_text[:1200]
+        reference = next((line for line in response_text.splitlines() if line.startswith('data: {"session"')), "")
+        assert reference, "Deep runtime did not expose its native session reference"
+        return str(json.loads(reference[6:])["session"])
+
+    references = await asyncio.gather(*(asyncio.to_thread(talk, session, context)
+        for session, context in contexts.items()))
+    assert len(set(references)) == len(contexts)
+    session, context = next(iter(contexts.items()))
+    assert await asyncio.to_thread(talk, session, context, references[0]) == references[0]
+    assert {context for context, _ in model_calls} == set(contexts.values())
+    verified_prompts: set[tuple[str, str]] = set()
+    for context, payload in model_calls:
+        assert context is not None
+        messages = payload.get("messages", payload.get("input", []))
+        user_messages = [message["content"] for message in messages if message.get("role") == "user"]
+        user_texts = [part for content in user_messages for part in (
+            [content] if isinstance(content, str) else [block.get("text", "") for block in content]
+        )]
+        received = {text, follow_up}.intersection(user_texts)
+        if not received:
+            continue  # A native SDK may make its own ancillary call, for example to name a session.
+        system = [payload.get("system"), payload.get("instructions"),
+            *[message.get("content") for message in messages if message.get("role") in {"system", "developer"}]]
+        assert profile(context) in json.dumps(system), (runtime, context)
+        assert not any("the Galaris task" in item or "<galaris_message_context>" in item for item in user_texts)
+        verified_prompts.update((context, message) for message in received)
+    expected_prompts = {(context, text) for context in contexts.values()} | {(contexts[session], follow_up)}
+    assert verified_prompts == expected_prompts, (runtime, verified_prompts)
+    print(f"PASS {runtime}: five independent Deep sessions and native continuation")
+    if runtime == "codex":
+        hold, arrived, release = "synthetic-deep-live", threading.Event(), threading.Event()
+        gate.update(hold_deep=hold, deep_arrived=arrived, deep_release=release)
+        session = str(uuid4())
+        active = asyncio.create_task(asyncio.to_thread(talk, session, hold))
+
+        def steer() -> int:
+            request = urllib.request.Request(origin + f"/v1/galaris/deep/{session}/steer",
+                data=json.dumps({"text": "Continue with the synthetic check"}).encode(),
+                headers={"Content-Type": "application/json", "Authorization": "Bearer qualification-token",
+                    "X-Galaris-Deep-Control": f"{hold}-control"})
+            with urllib.request.urlopen(request, timeout=10) as response:
+                return int(response.status)
+
+        try:
+            assert await asyncio.to_thread(arrived.wait, 10)
+            assert await asyncio.to_thread(steer) == 204
+        finally:
+            release.set()
+            await active
+        print("PASS Codex: the pinned SDK accepted a new instruction on an active Deep turn")
+    gate.clear()
+
+
+async def qualify_hermes_deep_scope(origin: str) -> None:
+    from types import SimpleNamespace
+
+    authorization = importlib.import_module("galaris_authorization")
+    agent_class = importlib.import_module("run_agent").AIAgent
+    model_calls: list[str | None] = []
+    gate.update(deep_model_calls=model_calls, model_dispatched=True)
+    loop = asyncio.get_running_loop()
+
+    def talk(context: str) -> Any:
+        host = SimpleNamespace(_galaris_authorization_loops={context: loop})
+        run = SimpleNamespace(galaris_run_context="synthetic-deep-control", galaris_deep_context=context, run_id=context)
+        token = authorization.bind_run(host, run)
+        try:
+            agent = agent_class(base_url=origin + "/llm/openai", api_key="qualification-token", provider="custom",
+                api_mode="chat_completions", model="qualification", max_iterations=2, enabled_toolsets=[],
+                quiet_mode=True, skip_context_files=True, skip_memory=True, skip_background_review=True)
+            return agent.run_conversation("Reply qualification-ok")
+        finally:
+            authorization.reset_run(token)
+
+    contexts = {"synthetic-hermes-one", "synthetic-hermes-two"}
+    results = await asyncio.gather(*(asyncio.to_thread(talk, context) for context in contexts))
+    assert all(ANSWER in json.dumps(result) for result in results)
+    assert set(model_calls) == contexts, model_calls
+    print("PASS Hermes: concurrent native calls retain the Deep session scope")
+    gate.clear()
+
+
 async def http_adapter(runtime: str) -> None:
     import socket
     import urllib.error
@@ -413,6 +528,7 @@ async def http_adapter(runtime: str) -> None:
                 except urllib.error.HTTPError as exc:
                     assert not authorized and exc.code == 401, exc.read().decode()[:2000]
             await qualify_parallel_runs(origin, runtime)
+            await qualify_deep_sessions(origin, runtime)
             for allowed in (False, True):
                 gate.clear()
                 target = Path("/workspace" if runtime == "codex" else "/data/workspace") / f"approval-{allowed}.txt"
@@ -664,6 +780,7 @@ def main() -> None:
             assert native_results[0]["content"], native_results
             print(f"PASS Hermes real SDK local write: {'approved' if allowed else 'denied'}")
         asyncio.run(qualify_hermes_managed(origin))
+        asyncio.run(qualify_hermes_deep_scope(origin))
     elif runtime == "deepseek_harness":
         import subprocess
 
@@ -712,6 +829,7 @@ console.log('PASS DeepSeek shell confinement: workspace write allowed, sessions 
         import urllib.request
         try:
             asyncio.run(qualify_parallel_runs("http://127.0.0.1:8080", runtime))
+            asyncio.run(qualify_deep_sessions("http://127.0.0.1:8080", runtime))
             # Projected skills live outside the workspace. A native text read
             # validates the run context but must not request a mutation permit.
             for revoked in (False, True):

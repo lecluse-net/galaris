@@ -6,8 +6,8 @@ import asyncio
 import re
 import time
 from datetime import datetime, timezone
-from collections.abc import Sequence
-from typing import Any, AsyncIterator, List, Optional, cast
+from collections.abc import Callable, Sequence
+from typing import Any, AsyncIterator, List, Optional, TypedDict, cast
 from uuid import UUID
 from core.i18n import is_supported, render_prompt, t
 from core.params import runtime_settings
@@ -39,6 +39,11 @@ from app.messenger import (
 from app.messenger.models import File
 from app.agent.contracts import TaskMessage as Message
 from app.agent.conversation_context import message_history_text
+
+
+class _NativeHistoryOptions(TypedDict, total=False):
+    native_history: str | None
+    save_native_history: Callable[[str], None] | None
 
 # Pydantic AI resends history on every model request. Bound it to preserve enough provider
 # context for useful work; the current message and attachments have dedicated input.
@@ -205,36 +210,33 @@ class AgentExecutor:
             )
         ]
         self.capabilities = await build_internal_skill_capabilities(self.agent_id)
-        tool_advertisement = await build_agent_tool_advertisement(
-            self.agent_id,
-            runtime="internal",
-            allowed_tool_names=allowed_tool_names,
-            task_id=task_id,
-        )
-        process_advertisement = await build_agent_process_advertisement(
-            self.agent_id,
-            tool_advertisement.tool_names,
-            relevance_query=task.objective if task is not None else "",
-        )
-        galaris_tools = "\n\n".join(
-            section
-            for section in (tool_advertisement.text, process_advertisement)
-            if section
-        )
+        deep = task is not None and task.deep_session_id is not None
+        galaris_tools = ""
+        if not deep:
+            tool_advertisement = await build_agent_tool_advertisement(
+                self.agent_id,
+                runtime="internal",
+                allowed_tool_names=allowed_tool_names,
+                task_id=task_id,
+            )
+            process_advertisement = await build_agent_process_advertisement(
+                self.agent_id,
+                tool_advertisement.tool_names,
+                relevance_query=task.objective if task is not None else "",
+            )
+            galaris_tools = "\n\n".join(filter(None, (tool_advertisement.text, process_advertisement)))
 
         if task is not None:
             self.llm = await llm_service.get_llm(task.model.id)
         else:
             self.llm = await llm_service.get_llm_for_agent(agent)
 
-        # This harness runtime is always Pydantic AI; driver selection happens above it.
-        self.system_prompt = await build_harness_system_prompt(
+        run_instructions = task.system_instructions if task is not None else ""
+        self.system_prompt = run_instructions if deep else await build_harness_system_prompt(
             agent,
             has_skills=bool(self.capabilities),
             galaris_tools=galaris_tools,
-            run_context_instructions=(
-                task.system_instructions if task is not None else ""
-            ),
+            run_context_instructions=run_instructions,
         )
 
         if self.llm is None:
@@ -409,10 +411,12 @@ async def _stream(
     start_time = time.time()
     from app.agent import executor_service
 
-    human_prompt = await executor_service.build_task_prompt(task)
-    tool_context = await build_tool_context_instructions(task)
-    if tool_context:
-        human_prompt += "\n\n" + _prompt_section("tool_instructions", tool_context)
+    human_prompt = task.objective
+    if task.deep_session_id is None:
+        human_prompt = await executor_service.build_task_prompt(task)
+        tool_context = await build_tool_context_instructions(task)
+        if tool_context:
+            human_prompt += "\n\n" + _prompt_section("tool_instructions", tool_context)
 
     # Resolve room messaging and the identity used to mark assistant history.
     from app.messenger import resolve_task_messaging
@@ -568,6 +572,9 @@ async def _stream(
     runtime_agent = agent_executor.agent
     if runtime_agent is None:
         raise RuntimeError("The internal harness runtime was not initialized.")
+    native_history: _NativeHistoryOptions = {}
+    if task.deep_session_id is not None:
+        native_history = {"native_history": task.deep_native_history, "save_native_history": task.control.save_native_history}
     message_stream: AsyncIterator[AIMessage] = runtime_agent.run(
         prompt=human_prompt,
         message_history=message_history or None,
@@ -577,6 +584,7 @@ async def _stream(
         output_transport=None,
         checkpoint=checkpoint,
         on_model_activity=persist_progress,
+        **native_history,
     )
     from . import run_control
 

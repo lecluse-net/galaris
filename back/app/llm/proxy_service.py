@@ -20,6 +20,7 @@ from core.i18n import render_prompt, t, tr
 from . import llm_call_service, llm_provider_service, llm_service, model_usages
 from core.util import as_dict, as_list
 from .provider_models import LLM
+from .correlation import current_deep_session
 from .provider_facade import (
     ChatStreamAdapter,
     ProviderAuthenticationError,
@@ -51,6 +52,11 @@ from .stream_updates import StreamUpdates
 
 
 PROXY_TIMEOUT = httpx.Timeout(connect=10.0, read=600.0, write=60.0, pool=10.0)
+
+
+async def require_managed_runtime_context(managed_runtime_request: bool, task_id: UUID | None) -> None:
+    if managed_runtime_request and task_id is None and current_deep_session() is None:
+        raise ValueError(await tr("llm_api.errors.managed_runtime_task_required"))
 
 
 async def _send_best_effort(
@@ -438,8 +444,7 @@ async def proxy_chat_completion(
     # message cleanup remains limited to Galaris-owned conversations.
     from .message_cleanup import clean_request_messages
 
-    if managed_runtime_request and task_id is None:
-        raise ValueError(await tr("llm_api.errors.managed_runtime_task_required"))
+    await require_managed_runtime_context(managed_runtime_request, task_id)
 
     body["messages"] = clean_request_messages(body.get("messages"))
     forwarded = dict(body)
@@ -915,8 +920,7 @@ async def proxy_responses(
 ) -> JSONResponse | StreamingResponse:
     """Forward a native Responses call and persist one correlated ``LLMCall``."""
 
-    if managed_runtime_request and task_id is None:
-        raise ValueError(await tr("llm_api.errors.managed_runtime_task_required"))
+    await require_managed_runtime_context(managed_runtime_request, task_id)
     if operation == "compact" and body.get("stream"):
         raise ValueError("Responses compaction does not support streaming.")
 

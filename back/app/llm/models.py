@@ -127,6 +127,7 @@ class LLMCall(Base):
         PGUUID(as_uuid=True), primary_key=True, default=uuid4, index=True
     )
     inference_attempt_id: Mapped[UUID | None] = mapped_column(ForeignKey("llm_inference_attempts.id"), index=True)
+    deep_session_id: Mapped[UUID | None] = mapped_column(ForeignKey("deep_sessions.id", ondelete="SET NULL"), index=True)
     task_id: Mapped[Optional[UUID]] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("tasks.id", ondelete="SET NULL"),

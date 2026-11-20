@@ -87,6 +87,46 @@ def test_task_correlation_preserves_both_task_and_run() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("deep", [False, True], ids=["standard", "deep"])
+async def test_internal_turn_uses_the_prompt_for_its_mode(monkeypatch, deep):
+    from app import console, messenger
+
+    request = replace(_request(taskless=deep), deep_session_id=uuid4() if deep else None,
+                      system_instructions="Synthetic profile")
+    captured = {}
+
+    class ModelBoundary:
+        async def run(self, **options):
+            captured.update(options)
+            yield AIMessage(type="text", content="Synthetic answer")
+
+    mcp_tools, skills = object(), [object()]
+    monkeypatch.setattr(executor, "build_agent_mcp_toolset", AsyncMock(return_value=mcp_tools))
+    monkeypatch.setattr(executor, "build_internal_skill_capabilities", AsyncMock(return_value=skills))
+    monkeypatch.setattr(executor.llm_service, "get_llm", AsyncMock(return_value=object()))
+    monkeypatch.setattr(console, "resolve_ssh_connection", AsyncMock(return_value=None))
+    monkeypatch.setattr(messenger, "resolve_task_messaging", AsyncMock(return_value=(None, "alice")))
+    monkeypatch.setattr(executor_service, "build_task_prompt", AsyncMock(return_value="Task request"))
+    monkeypatch.setattr(executor, "build_tool_context_instructions", AsyncMock(return_value="Task tool guide"))
+    monkeypatch.setattr(executor, "build_agent_tool_advertisement", AsyncMock(return_value=SimpleNamespace(
+        text="Tool catalog", tool_names=[])))
+    monkeypatch.setattr(executor, "build_agent_process_advertisement", AsyncMock(return_value="Process catalog"))
+    monkeypatch.setattr(executor, "build_harness_system_prompt", AsyncMock(return_value="Task instructions"))
+    boundary = AsyncMock(return_value=ModelBoundary())
+    monkeypatch.setattr(executor, "create_agent", boundary)
+
+    result = await executor.run(request)
+
+    assert result.success
+    assert captured["prompt"] == (request.objective if deep else
+        "Task request\n\n<tool_instructions>\nTask tool guide\n</tool_instructions>")
+    assert boundary.await_args.kwargs["system_prompt"] == ("Synthetic profile" if deep else "Task instructions")
+    assert boundary.await_args.kwargs["mcp_servers"] == [mcp_tools]
+    assert boundary.await_args.kwargs["capabilities"] == skills
+    assert executor.build_agent_tool_advertisement.await_count == int(not deep)
+
+
+@pytest.mark.asyncio
 async def test_conversation_only_request_uses_dedicated_voice_conversation_runtime(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

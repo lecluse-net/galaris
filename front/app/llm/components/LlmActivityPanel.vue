@@ -32,6 +32,9 @@
     </div>
 
     <q-banner v-if="error" rounded class="bg-solaire-red-light text-negative q-mb-md">{{ error }}</q-banner>
+    <q-chip v-if="deepRoom" removable outline color="primary" @remove="filterDeep(null)">
+      {{ $t('llmCalls.deepFilter') }}
+    </q-chip>
 
     <section class="q-mb-lg">
       <q-card v-if="!runningCalls.length" flat bordered>
@@ -49,6 +52,7 @@
           :agent-avatar-url="agentAvatarUrl(call.agent_id)"
           :task-color="taskColor(call)"
           :deletable="canPurge"
+          filterable @filter-deep="filterDeep"
           @delete="requestDelete"
         />
       </div>
@@ -99,6 +103,7 @@
                 :agent-avatar-url="agentAvatarUrl(props.row.agent_id)"
                 :task-color="taskColor(props.row)"
                 :deletable="canPurge"
+                filterable @filter-deep="filterDeep"
                 @delete="requestDelete"
               />
             </div>
@@ -130,6 +135,7 @@ const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
 const agents = ref<AgentSelectionOption[]>([])
 const liveCalls = ref<LLMCall[]>([])
+const deepRoom = ref<string | null>(null)
 const recentCalls = ref<LLMCall[]>([])
 const agentAvatarUrls = reactive<Record<number, string>>({})
 const loading = ref(false)
@@ -166,13 +172,15 @@ const metrics = computed(() => [
 ])
 
 async function load(): Promise<void> {
+  const filter = deepRoom.value
   loading.value = true
   error.value = ''
   try {
     const [runningCalls] = await Promise.all([
-      llmCallService.getRunning(50),
+      llmCallService.getRunning(50, undefined, undefined, undefined, filter),
       loadHistoryPage(),
     ])
+    if (filter !== deepRoom.value) return
     liveCalls.value = runningCalls
       .sort(sortCalls)
   } catch (reason) {
@@ -186,12 +194,14 @@ async function loadHistoryPage(
   page: number = historyPagination.value.page,
   rowsPerPage: number = historyPagination.value.rowsPerPage,
 ): Promise<void> {
+  const filter = deepRoom.value
   let response = await llmCallService.getHistory(
     page,
     rowsPerPage,
     errorsOnly.value,
     dateFrom.value,
     dateTo.value,
+    filter,
   )
   const lastPage = Math.max(1, Math.ceil(response.total / response.page_size))
   if (response.page > lastPage) {
@@ -201,9 +211,19 @@ async function loadHistoryPage(
       errorsOnly.value,
       dateFrom.value,
       dateTo.value,
+      filter,
     )
   }
-  applyHistoryPage(response)
+  if (filter === deepRoom.value) applyHistoryPage(response)
+}
+
+function filterDeep(room: string | null): void {
+  if (deepRoom.value === room) return
+  deepRoom.value = room
+  historyPagination.value.page = 1
+  liveCalls.value = []
+  recentCalls.value = []
+  void load()
 }
 
 function applyHistoryPage(response: LLMCallPage): void {
@@ -268,6 +288,7 @@ function dateRangeChanged(): void {
 }
 
 function upsert(call: LLMCall): void {
+  if (deepRoom.value && call.deep_room_id !== deepRoom.value) return
   const index = liveCalls.value.findIndex(item => item.id === call.id)
   if (call.status !== 'running') {
     if (index >= 0) liveCalls.value.splice(index, 1)

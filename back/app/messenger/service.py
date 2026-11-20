@@ -389,6 +389,11 @@ async def _process_incoming(message: Message) -> UUID | None:
         return
     message.platform = actual_kind
     bridge_spec = facade.get_spec(actual_kind)
+    if actual_kind == "internal" and not message.is_ai:
+        from app.conversation import admit_deep_input
+
+        if await admit_deep_input(message, agent_id=connection.agent_id, connection_id=connection.id):
+            return
     # Human contact projection is private to the receiving agent and fail-open.
     contact_memory_item_id = await contact_memory.observe_incoming_contact(
         message,

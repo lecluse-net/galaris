@@ -40,6 +40,7 @@ from .contracts import (
     DriverPipelinePolicy,
     DriverStatus,
     DriverConfigurationProvider,
+    DeepSteeringControl,
     AgentEvent,
     ExecutionResult,
     ReasoningEffort,
@@ -66,6 +67,7 @@ from .registry import (
 )
 from .reasoning_guard import ReasoningDegenerationError, ReasoningPatternGuard
 from .driver_stream import validated_driver_stream
+from .run_control import has_prepared_runtime_run as has_prepared_runtime_run, mark_run_prepared
 from .checkpoints import assess_checkpoint, checkpoint_tool_history, rebase_checkpoint, prepare_retry_checkpoint
 from .capabilities import MANAGEMENT_CAPABILITIES, driver_capabilities, negotiate_capabilities
 from .execution_errors import HarnessCheckpointError, classify_execution_error
@@ -961,7 +963,7 @@ def _validate_run_request(request: AgentRunRequest, spec: AgentDriverSpec) -> No
     effective = descriptor.effective if descriptor is not None else driver_capabilities(spec)
     if "execute" not in effective:
         raise ValueError("Execution is disabled for this Harness.")
-    if request.task_id is None and "taskless_runs" not in effective:
+    if request.task_id is None and request.deep_session_id is None and "taskless_runs" not in effective:
         raise ValueError(f"Driver {spec.code!r} requires a durable Task.")
     if request.target is not None and not request.target.ready:
         raise ValueError("The frozen Harness target is not ready.")
@@ -1193,6 +1195,98 @@ async def stream(request: AgentRunRequest) -> AsyncIterator[AgentEvent]:
                 yield event
 
 
+def deep_execution_target(target: ResolvedExecutionTarget) -> ResolvedExecutionTarget:
+    """Keep skill synchronization receipts out of the identity of a Deep session."""
+    return target.model_copy(update={"metadata": {
+        key: value for key, value in target.metadata.items() if not key.startswith("skill_")
+    }})
+
+
+async def deep_harness_target(agent_id: int) -> tuple[str, ResolvedExecutionTarget]:
+    """Resolve the agent's assigned harness without dispatching any work."""
+    from .agent_service import get
+    from .harness_port import harness_selection_port
+
+    agent = await get(agent_id)
+    if agent is None:
+        raise PermissionError("The conversation agent is unavailable.")
+    spec = resolve_driver(agent.agent_driver)
+    if spec.code not in {"internal", "openai_messages", "hermes"}:
+        raise PermissionError("The selected harness does not expose direct Deep sessions.")
+    selected = await harness_selection_port.resolve(agent)
+    if selected is not None and spec.code != "internal":
+        if selected.status != "ready" or selected.driver_code != spec.code:
+            raise PermissionError("The configured harness is unavailable.")
+        return spec.code, deep_execution_target(ResolvedExecutionTarget(
+            provider_code=selected.provider_code, target_ref=f"harness:{selected.id}",
+            transport=spec.transport, revision=str(selected.revision),
+            metadata={**selected.metadata, "model": selected.model,
+                      **({"galaris_extensions": True} if spec.code == "hermes" else {})},
+        ))
+    if spec.code == "hermes":
+        raise PermissionError("Deep requires a managed Hermes assignment.")
+    configuration = await _execution_driver_configuration(agent, spec.code)
+    return spec.code, resolve_execution_target(spec, agent_id=agent_id, driver_config=configuration)
+
+
+async def stream_deep_submission(
+    *, session_id: UUID, submission_id: UUID, agent_id: int, driver_code: str,
+    target: ResolvedExecutionTarget, objective: str, native_session: str | None, credential: str | None,
+    requester_user_id: int,
+    room_id: UUID, connection_id: int, language: str, message_data: dict[str, Any],
+    history: tuple[Mapping[str, Any], ...], attachments: tuple[Mapping[str, Any], ...],
+    native_history: str | None = None, save_native_history: Callable[[str], None] | None = None,
+    control_credential: str | None = None,
+) -> AsyncGenerator[AgentEvent, None]:
+    """Send an input directly to the session's harness with its normal tools and skills."""
+    from .agent_service import get
+    from app.llm import deep_inference_scope, llm_execution_scope
+
+    agent = await get(agent_id)
+    if agent is None:
+        raise PermissionError("The conversation agent is unavailable.")
+    if (driver_code, target) != await deep_harness_target(agent_id):
+        raise PermissionError("The Deep session's harness assignment has changed.")
+    external_model = target.metadata.get("model")
+    model = (ResolvedModel(0, external_model, external_model, external_model, "standard")
+             if credential is None and driver_code == "openai_messages" and isinstance(external_model, str) and external_model
+             else await resolve_execution_model(agent, "standard", language))
+    snapshot = AgentSnapshot(
+        id=agent.id, code=agent.code, first_name=agent.first_name, last_name=agent.last_name,
+        driver_code=driver_code, llm_id=model.id, gender="F" if getattr(agent.title, "gender", None) == "F" else "M",
+        personality=agent.personality, job_description=agent.job_description, job_title=agent.job_title,
+        driver_config=await _execution_driver_configuration(agent, driver_code) if driver_code == "hermes" else {},
+    )
+    if message_data.get("console_cwd"):
+        objective += (
+            f"\n\nLinked checkout: {message_data['displayed_repository_uri']} "
+            f"(Galaris Console cwd={message_data['console_cwd']!r})."
+        )
+    request = AgentRunRequest(
+        run_id=submission_id, task_id=None, deep_session_id=session_id, deep_native_session=native_session,
+        deep_credential=credential,
+        deep_control_credential=control_credential,
+        deep_native_history=native_history, control=AgentRunControl(save_native_history=save_native_history),
+        agent=snapshot, model=model, effort="standard", objective=objective, driver_code=driver_code,
+        target=target, message_group_id=str(room_id), message_platform="internal",
+        messenger_connection_id=connection_id, conversation_history=history, attachments=attachments,
+        task_data={**message_data, "language": language, "conversation_id": str(room_id)},
+        system_instructions="\n\n".join(filter(None, (snapshot.personality, snapshot.job_description))),
+    )
+    with deep_inference_scope(session_id), llm_execution_scope(requester_user_id=requester_user_id):
+        async with aclosing(cast(AsyncGenerator[AgentEvent, None], stream(request))) as events:
+            async for event in events:
+                yield event
+
+
+async def steer_deep_input(driver_code: str, target: ResolvedExecutionTarget, session_id: UUID,
+                          control: str, text: str) -> bool:
+    driver = create_driver(resolve_driver(driver_code))
+    if isinstance(driver, DeepSteeringControl):
+        return await driver.steer_deep(target, session_id, control, text)
+    return False
+
+
 async def _stream_driver(
     request: AgentRunRequest,
     *,
@@ -1223,8 +1317,12 @@ async def _stream_driver(
         from .harness_port import harness_selection_port
 
         await harness_selection_port.prepare_execution(request)
+        mark_run_prepared(request.run_id)
         async for raw_event in driver_stream:
             event = AgentEvent.model_validate(raw_event)
+            if request.deep_session_id is not None and event.message is not None and event.message.native_session_ref is not None:
+                yield event
+                continue
             if event.message is not None:
                 try:
                     reasoning_guard.observe(event.message)

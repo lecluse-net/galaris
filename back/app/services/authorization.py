@@ -134,6 +134,19 @@ async def authorization_context_pending(agent_id: int, context_key: str) -> bool
         ).limit(1)))
 
 
+async def pending_context_approvals(contexts: set[str], *, approver_user_id: int) -> dict[str, list[UUID]]:
+    if not contexts:
+        return {}
+    rows = (await get_db().execute(select(ActionAuthorization.context_key, ActionAuthorization.id).where(
+        ActionAuthorization.context_key.in_(contexts), ActionAuthorization.approver_user_id == approver_user_id,
+        ActionAuthorization.status == "pending", ActionAuthorization.expires_at > datetime.now(timezone.utc),
+    ).order_by(ActionAuthorization.created_at).limit(50))).all()
+    approvals: dict[str, list[UUID]] = {}
+    for context, identifier in rows:
+        approvals.setdefault(context, []).append(identifier)
+    return approvals
+
+
 async def invalidate_authorization_context(agent_id: int, context_key: str) -> None:
     from sqlalchemy import update
     async with get_db_session() as db:

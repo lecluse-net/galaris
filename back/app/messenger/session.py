@@ -22,6 +22,19 @@ from .resource_reference import attachment_resource_uri
 from .agent_identity import project_agent_messages
 
 
+async def deep_message_file_context(message_id: UUID) -> tuple[list[str], list[str]]:
+    db = get_db()
+    message = await db.get(Message, message_id)
+    if message is None or message.platform != "internal" or not message.room_id:
+        return [], []
+    file_ids = list((await db.scalars(select(Attachment.file_id).where(
+        Attachment.message_id == message_id,
+    ).order_by(Attachment.position))).all())
+    return [str(file_id) for file_id in file_ids], [
+        attachment_resource_uri("chat", message.room_id, file_id) for file_id in file_ids
+    ]
+
+
 @dataclass(frozen=True)
 class ConversationSessionSnapshot:
     """Stable driver-neutral view of one room's recent conversation."""

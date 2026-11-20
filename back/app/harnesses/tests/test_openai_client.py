@@ -109,6 +109,26 @@ def test_network_harness_receives_server_owned_messaging_context() -> None:
     assert '"user_name":"Nicolas"' in final_user
 
 
+def test_deep_network_harness_receives_the_profile_history_and_input_once() -> None:
+    uri = "document://synthetic-resource"
+    base = _envelope()
+    envelope = base.model_copy(update={
+        "system_instructions": "Synthetic profile", "shared_context": "Task context",
+        "resource_uris": (uri,), "messaging_context": {"room_id": "synthetic"},
+        "conversation_history": (
+            {"text": "Previous request", "sender_is_ai": False},
+            {"text": "Previous answer", "sender_agent_id": base.agent_id},
+        ),
+        "objective": f" Read the file.\n\n{uri}",
+    })
+    assert _messages(envelope, deep=True) == [
+        {"role": "system", "content": "Synthetic profile"},
+        {"role": "user", "content": "Previous request"},
+        {"role": "assistant", "content": "Previous answer"},
+        {"role": "user", "content": f" Read the file.\n\n{uri}"},
+    ]
+
+
 @pytest.mark.asyncio
 async def test_child_wait_requires_a_drained_actor_and_is_not_a_terminal_failure():
     polls = []

@@ -114,7 +114,7 @@ from .interactions import (
     deliver_choice_reminders,
     apply_interpreted_response,
 )
-from .session import ConversationSessionSnapshot, build_conversation_session
+from .session import ConversationSessionSnapshot, build_conversation_session, deep_message_file_context
 from .voice_journal import (
     AudioRoomSpeakers,
     AudioSpeakerIdentity,
@@ -331,6 +331,7 @@ __all__ = [
     "hydrate_messages",
     "conversation_audio_transcripts",
     "attachment_resource_uri",
+    "deep_message_file_context",
     "observe_contact",
     "kind_from_mime",
     "CHAT_TOOL_CODE",

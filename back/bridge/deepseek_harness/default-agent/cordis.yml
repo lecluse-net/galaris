@@ -25,7 +25,9 @@
         headers: !!js >-
           ({
             "X-Galaris-Output-Budget": "provider",
-            ...(process.env.GALARIS_RUN_CONTEXT ? {
+            ...(process.env.GALARIS_DEEP_CONTEXT ? {
+              "X-Galaris-Deep-Context": process.env.GALARIS_DEEP_CONTEXT
+            } : process.env.GALARIS_RUN_CONTEXT ? {
               "X-Galaris-Run-Context": process.env.GALARIS_RUN_CONTEXT,
               "X-Galaris-Task-Id": process.env.GALARIS_TASK_ID
             } : {})
@@ -57,10 +59,9 @@
 
 - id: system-prompt
   config:
-    persona: >-
-      You execute bounded Galaris tasks. Galaris remains authoritative for memory,
-      files, messages, permissions, and external effects. Use the galaris MCP tools
-      for durable work and never treat your final prose as proof that an effect happened.
+    persona: !!js >-
+      process.env.GALARIS_DEEP_PROFILE_PATH !== undefined ? '' :
+      'You execute bounded Galaris tasks. Galaris remains authoritative for memory, files, messages, permissions, and external effects. Use the galaris MCP tools for durable work and never treat your final prose as proof that an effect happened.'
 
 - id: skill-filesystem
   config:
@@ -128,6 +129,9 @@
     compactionRetries: 1
 
 - insert:
+    - id: galaris-deep-prompt
+      name: /opt/galaris/deep_prompt.mjs
+      disabled: !!js 'process.env.GALARIS_DEEP_PROFILE_PATH === undefined'
     - id: galaris-authorizations
       name: /opt/galaris/authorization.mjs
     - id: mcp-galaris

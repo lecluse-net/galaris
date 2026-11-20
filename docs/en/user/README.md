@@ -486,6 +486,17 @@ After your message is admitted, “Thinking” appears as soon as the interface
 receives the queued round, before its first fragments. A response already in
 progress remains visible if you send another request.
 
+In a private conversation, send `@deep` on its own to turn the mode on or off.
+You can also start a message with `@deep` to enable the mode and send your request
+directly to the harness. It uses its Deep session and the agent's personality
+and job description. The command is available in the composer menu. The header
+shows **Deep** when enabled and **Deep off** in standard mode. Text arrives in the
+agent's bubble. **Details** shows recent actions. Expand the bar to see earlier
+actions and any available approvals. If an execution fails, the available reason
+appears below the bar. Chat resumes displaying activity after reconnecting. See
+[Deep conversations in the catalogue](../reference/functional-catalogue.md#deep-conversations) for
+tool activity and links from LLM calls.
+
 Before you select a conversation, the Chat home screen first shows **Conversations**,
 with the same list as the chat window's **Conversations** section, including older and empty
 ones, with the usual pagination. Agents appear below, under **Who would you like to talk to?**.

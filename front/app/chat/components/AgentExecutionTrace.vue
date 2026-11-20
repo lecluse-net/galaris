@@ -1,40 +1,20 @@
 <template>
-  <section v-if="visible" class="execution-trace" :class="{ 'execution-trace--error': hasError, 'execution-trace--warning': rewriting }">
-    <div class="trace-header">
-    <button type="button" class="trace-summary" :aria-label="summaryLabel || t('chat.thinking')" :aria-expanded="expanded" @click="toggleTrace">
-      <q-icon :name="summaryIcon" class="summary-icon" :class="{ 'gt-sm': !summaryLabel }" />
-      <span class="summary-label" :class="{ 'gt-sm': !summaryLabel }">{{ summaryLabel || t('chat.thinking') }}</span>
-      <q-spinner-dots v-if="liveRound?.active" color="primary" size="22px" />
-      <span
-        v-for="(tool, index) in toolSummaries"
-        :key="`${tool.name}:${index}`"
-        class="tool-summary"
-        :class="`tool-summary--${tool.tone}`"
-      >
-        <q-icon :name="tool.icon" />
-        <span>{{ tool.name }}</span>
-      </span>
-      <span class="summary-tail">
-        <span class="summary-metrics">
-          <span>{{ formatDuration(summaryExecutionTime) }}</span>
-          <span v-if="summaryCost > 0">{{ formatCost(summaryCost) }}</span>
-        </span>
-        <q-icon :name="expanded ? 'expand_less' : 'expand_more'" />
-      </span>
-    </button>
-    <div v-if="canControl && actions.length" class="trace-controls">
+  <ChatExecutionDetails v-if="visible" :key="roundId ?? roomId" v-model:expanded="expanded"
+    :label="summaryLabel" :icon="summaryIcon" :tools="toolNames" :running="Boolean(liveRound?.active)"
+    :error="hasError" :warning="rewriting" :execution-time="summaryExecutionTime" :cost="summaryCost"
+    @open="loadDetail"
+  >
+    <template v-if="canControl && actions.length" #controls>
       <q-btn v-for="action in actions" :key="action" flat round dense size="sm"
         :icon="controlIcons[action]" :aria-label="t(`chat.responseControl.${action}`)"
         :disable="pendingAction !== null" :loading="pendingAction === action"
         @click="control(action)">
         <q-tooltip>{{ t(`chat.responseControl.${action}Hint`) }}</q-tooltip>
       </q-btn>
-    </div>
-    </div>
-    <div v-if="controlError" class="trace-error" role="alert">{{ controlError }}</div>
-
-    <q-slide-transition>
-      <div v-if="detailsOpened" v-show="expanded" class="trace-detail">
+    </template>
+    <template #notice>
+      <div v-if="controlError" class="trace-error" role="alert">{{ controlError }}</div>
+    </template>
         <div v-if="loading && !displayedExecutionResult" class="trace-loading"><q-spinner color="primary" size="22px" /></div>
         <div v-else>
           <div v-if="loadError" class="trace-error">{{ loadError }}</div>
@@ -60,9 +40,7 @@
             </template>
           </ExecutionResultComponent>
         </div>
-      </div>
-    </q-slide-transition>
-  </section>
+  </ChatExecutionDetails>
 </template>
 
 <script setup lang="ts">
@@ -76,6 +54,7 @@ import { ExecutionResultComponent, reconcileAIResult, type ExecutionResult } fro
 import type { ConversationActivity, ConversationControlAction, LiveAgentRound } from '../types'
 import { chatService } from '../services/chatService'
 import { conversationRoundId } from '../liveState'
+import ChatExecutionDetails from './ChatExecutionDetails.vue'
 
 const props = defineProps<{
   roomId: string
@@ -112,7 +91,6 @@ async function control(action: ConversationControlAction): Promise<void> {
   }
 }
 const expanded = ref(false)
-const detailsOpened = ref(false)
 const loading = ref(false)
 const loadError = ref('')
 const roundDetail = ref<ConversationRoundDetail | null>(null)
@@ -137,9 +115,6 @@ const detailStatus = computed(() => {
 })
 let detailRequest = 0
 type ConversationLlmCall = Awaited<ReturnType<typeof conversationService.llmCalls>>[number]
-
-type ToolTone = 'web' | 'file' | 'task' | 'message' | 'media' | 'code' | 'calendar' | 'data' | 'default'
-interface ToolSummary { name: string; icon: string; tone: ToolTone }
 
 const visible = computed(() => Boolean(props.liveRound || props.activity))
 const rewriting = computed(() => !props.activity?.control_action && !props.activity?.response_only
@@ -185,7 +160,7 @@ const displayedExecutionResult = computed(() => {
   )
   return hasDetail ? result : null
 })
-const toolSummaries = computed<ToolSummary[]>(() => {
+const toolNames = computed(() => {
   let names: string[]
   if (props.liveRound) {
     names = liveMessages.value
@@ -194,7 +169,7 @@ const toolSummaries = computed<ToolSummary[]>(() => {
   } else {
     names = props.activity?.tools_used ?? []
   }
-  return names.filter(name => name.toLowerCase() !== 'thinking').map(name => ({ name, ...toolPresentation(name) }))
+  return names
 })
 const summaryExecutionTime = computed(() => (
   props.liveRound ? props.liveRound.ai_result.execution_time || 0 : props.activity?.execution_time || 0
@@ -266,29 +241,6 @@ async function loadDetail(): Promise<void> {
   llmCallsLoading.value = false
 }
 
-async function toggleTrace(): Promise<void> {
-  expanded.value = !expanded.value
-  if (expanded.value) {
-    detailsOpened.value = true
-    await loadDetail()
-  }
-}
-
-function toolPresentation(name: string): Pick<ToolSummary, 'icon' | 'tone'> {
-  const normalized = name.toLowerCase()
-  if (/(search|web|browser|url|http)/.test(normalized)) return { icon: 'travel_explore', tone: 'web' }
-  if (/(file|document|memory|workspace)/.test(normalized)) return { icon: 'description', tone: 'file' }
-  if (/(task|process|workflow|goal)/.test(normalized)) return { icon: 'account_tree', tone: 'task' }
-  if (/(message|messenger|chat|mail|telegram|whatsapp|matrix)/.test(normalized)) return { icon: 'forum', tone: 'message' }
-  if (/(image|photo|video|audio|voice|speech)/.test(normalized)) return { icon: 'perm_media', tone: 'media' }
-  if (/(code|shell|exec|command|terminal)/.test(normalized)) return { icon: 'terminal', tone: 'code' }
-  if (/(calendar|(^|[_:. -])(event|date|time)([_:. -]|$))/.test(normalized)) return { icon: 'event', tone: 'calendar' }
-  if (/(database|query|sql|(^|[_:. -])data([_:. -]|$))/.test(normalized)) return { icon: 'storage', tone: 'data' }
-  return { icon: 'build_circle', tone: 'default' }
-}
-function formatDuration(seconds: number): string { return seconds < 1 ? `${Math.round(seconds * 1_000)} ms` : `${seconds.toFixed(1)} s` }
-function formatCost(cost: number): string { return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'USD', currencyDisplay: 'narrowSymbol', maximumFractionDigits: 4 }).format(cost) }
-
 watch(roundId, () => {
   pendingAction.value = null
   controlError.value = ''
@@ -298,7 +250,6 @@ watch(roundId, () => {
   roundDetail.value = null
   llmCalls.value = []
   expanded.value = false
-  detailsOpened.value = false
   loadError.value = ''
   llmCallsError.value = ''
 })
@@ -355,38 +306,6 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-.execution-trace { margin: 2px -9px 8px; overflow: hidden; color: var(--chat-text-secondary, #536071); background: var(--chat-surface-soft, #f5f7fa); border: 1px solid var(--chat-border, rgba(53, 69, 94, .1)); border-radius: 10px; }
-.execution-trace:first-child { margin-top: -6px; }
-.execution-trace--error { color: var(--q-negative); background: var(--chat-danger-soft, #fff1f1); border-color: color-mix(in srgb, var(--q-negative) 34%, transparent); }
-.execution-trace--warning { background: var(--solaire-orange-light); border-color: var(--solaire-orange-accent); }
-.execution-trace--warning .summary-icon { color: var(--solaire-orange-accent); }
-body.body--dark .execution-trace--warning { color: var(--chat-text-secondary, #EEEEF0); background: var(--solaire-orange-dark); }
-.trace-summary { display: flex; width: 100%; min-height: 34px; align-items: center; flex-wrap: wrap; gap: 5px 7px; padding: 6px 9px; color: inherit; background: transparent; border: 0; font: inherit; text-align: left; cursor: pointer; }
-.trace-header { display: flex; align-items: center; flex-wrap: wrap; }
-.trace-header .trace-summary { flex: 1; width: auto; min-width: 0; }
-.trace-controls { display: flex; gap: 2px; padding: 2px 6px; color: var(--solaire-blue-accent); }
-.summary-icon { font-size: 18px; }
-.summary-label { font-size: .75rem; font-weight: 650; }
-.summary-tail { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 7px; margin-left: auto; }
-.summary-metrics { display: flex; gap: 7px; color: var(--chat-text-subtle, #8a93a2); font-size: .66rem; }
-.tool-summary { display: inline-flex; min-width: 0; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 999px; font-size: .67rem; }
-.tool-summary--web { color: #0d5f9f; background: #e3f2fd; }
-.tool-summary--file { color: #6741a5; background: #eee7fb; }
-.tool-summary--task { color: #00796b; background: #dff3ef; }
-.tool-summary--message { color: #3f51a5; background: #e7eafb; }
-.tool-summary--media { color: #a64b00; background: #fff0df; }
-.tool-summary--code { color: #37474f; background: #e4ecef; }
-.tool-summary--calendar { color: #2e7d32; background: #e5f4e7; }
-.tool-summary--data { color: #8a3568; background: #f7e5f0; }
-.tool-summary--default { color: var(--chat-text-secondary, #4e6177); background: var(--chat-surface-raised, #e8edf4); }
-.trace-detail { max-height: min(720px, 72vh); padding: 4px 8px 8px; overflow: auto; background: var(--chat-surface-raised, #fff); border-top: 1px solid var(--chat-border, rgba(53, 69, 94, .09)); }
-.trace-detail :deep(.exec-expansion) { margin-top: 0; }
-.trace-detail :deep(.execution-result-shell) { margin-top: 0; background: transparent; border: 0; border-radius: 0; box-shadow: none; }
-.trace-detail :deep(.execution-result-shell > .q-card__section) { padding: 2px 0 0; }
-.trace-detail :deep(.execution-result-shell > .q-card__section > .q-tabs) { min-height: 26px; }
-.trace-detail :deep(.execution-result-shell > .q-card__section > .q-tabs .q-tab) { min-height: 26px; padding: 0 6px; }
-.trace-detail :deep(.execution-result-shell > .q-card__section > .q-tabs .q-tab__label) { font-size: .62rem; line-height: 1; }
-.trace-detail :deep(.execution-result-shell > .q-card__section > .q-tabs .q-icon) { font-size: 13px; }
 .trace-loading { display: flex; min-height: 44px; align-items: center; justify-content: center; color: var(--chat-text-muted, #7b8493); }
 .trace-error { padding: 8px; color: #a52f36; font-size: .72rem; }
 </style>

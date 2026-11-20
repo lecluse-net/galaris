@@ -35,7 +35,7 @@ for runtime in "${runtimes[@]}"; do
   elif [[ $runtime == deepseek_harness ]]; then
     cp back/bridge/deepseek_harness/default-agent/cordis.yml "$context/"
     cp back/bridge/deepseek_harness/runtime_adapter.py "$context/"
-    cp back/bridge/deepseek_harness/default-agent/authorization.mjs back/app/harnesses/runtime_support.py "$context/"
+    cp back/bridge/deepseek_harness/default-agent/{authorization,deep_prompt}.mjs back/app/harnesses/runtime_support.py "$context/"
     revision=$(sed -n 's/^_DSH_REF = "\([a-f0-9]*\)"$/\1/p' back/bridge/deepseek_harness/harness_provider.py)
     [[ $revision =~ ^[a-f0-9]{40}$ ]]
     build_args+=(--build-arg "DSH_REF=$revision")

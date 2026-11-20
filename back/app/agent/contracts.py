@@ -479,6 +479,10 @@ class AIMessage(BaseModel):
         description="Trace message type"
     )
     content: str = Field(description="Message text content")
+    activity_ref: str | None = Field(default=None, max_length=500)
+    parent_activity_ref: str | None = Field(default=None, max_length=500)
+    activity_state: Literal["queued", "running", "completed", "failed", "cancelled"] | None = None
+    native_session_ref: str | None = Field(default=None, max_length=512, exclude=True)
     tool_name: str | None = Field(
         default=None, description="Tool name (only when type='tool')"
     )
@@ -1017,6 +1021,13 @@ class DriverCancellationControl(Protocol):
 
 
 @runtime_checkable
+class DeepSteeringControl(Protocol):
+    async def steer_deep(
+        self, target: ResolvedExecutionTarget, session_id: UUID, control: str, text: str,
+    ) -> bool: ...
+
+
+@runtime_checkable
 class DriverCheckpointCancellationControl(Protocol):
     """Recover control of the exact remote run without starting an execution."""
 
@@ -1454,6 +1465,7 @@ class AgentRunControl:
     save_progress: Callable[[ExecutionResult], Awaitable[None]] | None = None
     save_checkpoint: Callable[[AgentRunCheckpoint], Awaitable[None]] | None = None
     publish_event: Callable[[AgentRunEventV1], Awaitable[None]] | None = None
+    save_native_history: Callable[[str], None] | None = None
 
 
 @dataclass(frozen=True)
@@ -1587,6 +1599,11 @@ class AgentRunRequest:
     resume_checkpoint: AgentRunCheckpoint | None = None
     limits: AgentRunLimitsV1 = field(default_factory=AgentRunLimitsV1)
     control: AgentRunControl = field(default_factory=AgentRunControl)
+    deep_session_id: UUID | None = None
+    deep_native_session: str | None = None
+    deep_native_history: str | None = field(default=None, repr=False)
+    deep_credential: str | None = field(default=None, repr=False)
+    deep_control_credential: str | None = field(default=None, repr=False)
 
     @property
     def id(self) -> UUID:

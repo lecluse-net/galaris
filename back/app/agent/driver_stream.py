@@ -15,9 +15,17 @@ from .contracts import AgentDriver, AgentDriverSpec, AgentEvent, AgentRunCheckpo
 from .execution_errors import HarnessExecutionError, HarnessProtocolError, classify_execution_error
 
 
-def driver_payload(value: object) -> object:
+def driver_payload(value: object, *, preserve_native_session: bool = False) -> object:
     """Treat runtime-returned models as untrusted payloads, including nested fields."""
-    return value.model_dump() if isinstance(value, BaseModel) else value
+    if not isinstance(value, BaseModel):
+        return value
+    payload = value.model_dump()
+    if preserve_native_session and isinstance(value, AgentEvent) and value.message is not None:
+        reference = value.message.native_session_ref
+        if reference is not None:
+            # Private control receipts are excluded from public and durable trace serialization.
+            payload["message"] = {**value.message.model_dump(), "native_session_ref": reference}
+    return payload
 
 
 async def validated_driver_stream(
@@ -125,7 +133,7 @@ async def validated_driver_stream(
             if terminal is not None:
                 raise HarnessProtocolError(f"Driver {spec.code!r} emitted an event after its terminal result.")
             # Revalidate nested payloads even when a runtime mutated an existing model.
-            event = AgentEvent.model_validate(driver_payload(raw))
+            event = AgentEvent.model_validate(driver_payload(raw, preserve_native_session=request.deep_session_id is not None))
             # An authorization wait suspends execution; it is not a terminal failure.
             if (
                 event.result is not None

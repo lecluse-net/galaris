@@ -73,6 +73,7 @@ from .activity_facade import get_room_activity_detail, list_room_activity
 from .task_projection import list_room_tasks
 from .work_projection import list_room_documents, list_room_processes
 from .models import (
+    DeepSession,
     ConversationProcessLink,
     ConversationRound,
     ConversationRoundAttempt,
@@ -81,8 +82,17 @@ from .models import (
 )
 from .service import linked_work_snapshot, control_round
 from .contact_authorization import pause_for_contact_authorization as pause_for_contact_authorization
+from .deep import (
+    DeepActivityEvent, DeepRoomInfo, admit_deep_input, authorize_deep_runtime, deep_events, deep_room_info, deep_session_agent,
+    deep_running, register_deep_listener, register_deep_workspace_access, start_deep, stop_deep,
+    stop_deep_submission,
+)
 
 __all__ = [
+    "DeepSession",
+    "DeepActivityEvent", "DeepRoomInfo", "admit_deep_input", "authorize_deep_runtime", "deep_events", "deep_room_info",
+    "deep_session_agent", "deep_running", "register_deep_listener", "register_deep_workspace_access",
+    "start_deep", "stop_deep", "stop_deep_submission",
     "delete_round",
     "control_round", "ConversationControlAction", "ConversationControlConflict", "ConversationControlResult",
     "register_repository_display_publisher",

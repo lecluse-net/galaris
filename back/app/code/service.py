@@ -333,3 +333,15 @@ async def workspace_context(identifier: UUID, user_id: int, room_id: UUID) -> di
 async def human_repository_info(identifier: UUID, user_id: int) -> WorkspaceInfo:
     workspace = await get_workspace_record(identifier)
     return info(workspace, await human_mode(workspace, user_id))
+
+
+async def deep_workspace_context(identifier: UUID, user_id: int, room_id: UUID, agent_id: int) -> dict[str, str | None]:
+    workspace = await workspace_for_agent(identifier, agent_id)
+    context = await workspace_context(identifier, user_id, room_id)
+    human_access = await human_mode(workspace, user_id)
+    agent_access = await get_db().scalar(select(CodeGrant.mode).where(
+        CodeGrant.workspace_id == identifier, CodeGrant.agent_id == agent_id,
+    ))
+    if human_access != "edit" or agent_access != "edit":
+        raise PermissionError("A Deep development checkout requires edit access for the user and agent.")
+    return {**context, "console_cwd": PurePosixPath(workspace.root).relative_to(workspace.home).as_posix()}

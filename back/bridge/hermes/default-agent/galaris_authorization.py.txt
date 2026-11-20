@@ -12,10 +12,46 @@ import json
 import os
 from pathlib import Path
 
+import httpx
+
 _authorized = ContextVar("galaris_local_action_authorized", default=False)
 _run_approvals = ContextVar("galaris_run_approvals", default=None)
+_deep_llm_context = ContextVar("galaris_deep_llm_context", default="")
 _call_permit = ContextVar("galaris_call_permit", default=None)
 _READS = frozenset({"read_file", "file_read", "file_search", "file_list", "search_files", "list_directory", "skill_view"})
+
+
+def _deep_model_headers(request):
+    context = _deep_llm_context.get()
+    if not context:
+        return
+    mcp_url = os.environ.get("GALARIS_MCP_URL", "")
+    if "/mcp/" not in mcp_url:
+        return
+    gateway = httpx.URL(mcp_url.split("/mcp/", 1)[0] + "/llm/openai/")
+    same_origin = (request.url.scheme, request.url.host, request.url.port) == (gateway.scheme, gateway.host, gateway.port)
+    if same_origin and request.url.path.startswith(gateway.path):
+        request.headers["X-Galaris-Deep-Context"] = context
+    elif request.headers.get("X-Galaris-Deep-Context") == context:
+        request.headers.pop("X-Galaris-Deep-Context", None)
+
+
+_send_sync = httpx.Client._send_single_request
+_send_async = httpx.AsyncClient._send_single_request
+
+
+def _send_with_deep_context(self, request):
+    _deep_model_headers(request)
+    return _send_sync(self, request)
+
+
+async def _send_async_with_deep_context(self, request):
+    _deep_model_headers(request)
+    return await _send_async(self, request)
+
+
+httpx.Client._send_single_request = _send_with_deep_context
+httpx.AsyncClient._send_single_request = _send_async_with_deep_context
 
 
 def redacted(value):
@@ -129,7 +165,7 @@ def current_action_authorized():
 def bind_run(host, run):
     from runtime_support import ActionApprovals
     if not run.galaris_run_context:
-        return _run_approvals.set(None)
+        return _run_approvals.set(None), _deep_llm_context.set("")
     loop = host._galaris_authorization_loops[run.run_id]
     def publish_wait(identifier):
         def publish():
@@ -149,11 +185,13 @@ def bind_run(host, run):
         session=run.run_id, on_pending=publish_wait, on_running=publish_running)
     signature = os.environ.get("GALARIS_TERMINAL_SIGNATURE")
     collector.validate(configuration={"terminal_signature": signature} if signature else None)
-    return _run_approvals.set(collector)
+    return _run_approvals.set(collector), _deep_llm_context.set(getattr(run, "galaris_deep_context", ""))
 
 
-def reset_run(token):
-    _run_approvals.reset(token)
+def reset_run(tokens):
+    approvals, deep = tokens
+    _deep_llm_context.reset(deep)
+    _run_approvals.reset(approvals)
 
 
 async def call_galaris_tool(session, server_name, tool_name, arguments, **kwargs):

@@ -7,9 +7,10 @@ the runtime actor, outside its HTTP response and outside the Galaris Task lease.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Callable, Generator
+from collections.abc import AsyncIterator, Callable, Generator, Sequence
 from contextlib import contextmanager
 import hashlib
+from html import escape
 import json
 import os
 from pathlib import Path
@@ -21,6 +22,19 @@ from urllib.request import Request, urlopen
 
 
 PROTOCOL = "galaris.runtime-authorization/v1"
+
+
+def deep_turn_text(dialogue: Sequence[tuple[str, str]]) -> str:
+    """Render a Deep turn for runtimes whose input is a single text value."""
+    if not dialogue or dialogue[-1][0] != "user" or not dialogue[-1][1].strip():
+        raise ValueError("A Deep turn requires a final user message.")
+    text = dialogue[-1][1]
+    if len(dialogue) == 1:
+        return text
+    history = "\n\n".join(
+        f"<{role}>\n{escape(content, quote=False)}\n</{role}>" for role, content in dialogue[:-1]
+    )
+    return f"<history>\n{history}\n</history>\n\n{text}"
 
 
 def _object(value: Any) -> dict[str, Any]:

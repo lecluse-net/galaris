@@ -37,6 +37,11 @@
         </div>
 
         <div class="call-identifiers q-mt-xs">
+          <q-btn v-if="call.deep_room_id" outline dense no-caps color="primary" icon="forum"
+            :label="t('llmCalls.deep')" :title="t('llmCalls.deepOpen')"
+            :to="{ path: '/chat', query: { room: call.deep_room_id } }" />
+          <q-btn v-if="filterable && call.deep_room_id" flat round dense icon="filter_alt"
+            :aria-label="t('llmCalls.deepFilter')" @click="emit('filterDeep', call.deep_room_id)" />
           <template v-if="call.task_id">
             <span class="task-uuid-link" :title="$t('llmCalls.task')" @click="taskDialog = true">
               {{ `galaris://task/${call.task_id}` }}
@@ -131,6 +136,7 @@ const props = withDefaults(defineProps<{
   agentAvatarUrl?: string
   taskColor: LlmTaskColor
   deletable?: boolean
+  filterable?: boolean
 }>(), {
   agentName: undefined,
   agentAvatarUrl: undefined,
@@ -139,6 +145,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   delete: [call: LLMCall]
+  filterDeep: [room: string]
 }>()
 
 const { t, locale } = useI18n()

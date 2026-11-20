@@ -18,14 +18,15 @@ from typing import Any
 
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from openai_codex import AsyncCodex, Sandbox
 from openai_codex.types import ThreadTokenUsageUpdatedNotification, TurnCompletedNotification
 from openai_codex.api import AsyncThread
 from pydantic import BaseModel, ConfigDict, Field
 from stream_trace import CodexStreamTrace
 from authorization import install_permissions
-from runtime_web import install_control
+from runtime_support import deep_turn_text
+from runtime_web import deep_approvals, install_control
 
 
 logging.basicConfig(level=logging.INFO)
@@ -58,6 +59,10 @@ class ChatCompletionRequest(BaseModel):
     stream_options: dict[str, object] | None = None
 
 
+class DeepSteeringInput(BaseModel):
+    text: str = Field(min_length=1, max_length=200_000)
+
+
 def _authenticate(authorization: str | None = Header(default=None)) -> None:
     scheme, _, supplied = (authorization or "").partition(" ")
     if scheme.lower() != "bearer" or not hmac.compare_digest(supplied, HARNESS_TOKEN):
@@ -70,8 +75,13 @@ def _developer_instructions(messages: list[ChatMessage]) -> str | None:
     return value or None
 
 
-def _turn_prompt(messages: list[ChatMessage]) -> str:
+def _turn_prompt(messages: list[ChatMessage], *, deep: bool = False) -> str:
     dialogue = [message for message in messages if message.role in {"user", "assistant"}]
+    if deep:
+        try:
+            return deep_turn_text([(message.role, message.content) for message in dialogue])
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
     if not dialogue:
         raise HTTPException(status_code=422, detail="At least one user message is required.")
     rendered = "\n\n".join(
@@ -177,6 +187,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     await codex.__aenter__()
     try:
         app.state.codex = codex
+        app.state.deep_turns = {}
         yield
     finally:
         await codex.__aexit__(None, None, None)
@@ -220,9 +231,21 @@ async def _thread(request: Request, body: ChatCompletionRequest):
         "X-Galaris-Model-Code": body.model,
         "X-Galaris-Effort": "high" if effort == "high" else "standard",
     }
+    deep_context = request.headers.get("X-Galaris-Deep-Context", "")
+    deep_room = request.headers.get("X-Galaris-Deep-Session", "")
+    native_session = request.headers.get("X-Galaris-Deep-Native-Session", "")
+    if deep_room:
+        if not deep_context:
+            raise HTTPException(status_code=403, detail="A session-scoped Deep request is required.")
+        try:
+            deep_room = str(uuid.UUID(deep_room))
+            native_session = str(uuid.UUID(native_session)) if native_session else ""
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail="Invalid Deep session reference.") from exc
+        provider_headers["X-Galaris-Deep-Context"] = deep_context
     if reasoning_effort:
         provider_headers["X-Galaris-Reasoning-Effort"] = reasoning_effort
-    if actor:
+    if actor and not deep_room:
         provider_headers["X-Galaris-Run-Context"] = actor.approvals.run_context
     if task_id := request.headers.get("X-Galaris-Task-Id", "").strip():
         provider_headers["X-Galaris-Task-Id"] = task_id
@@ -256,18 +279,72 @@ async def _thread(request: Request, body: ChatCompletionRequest):
     if mapped_reasoning_effort is not None:
         config["model_reasoning_effort"] = mapped_reasoning_effort
     await codex._ensure_initialized()
-    started = await codex._client.thread_start({"cwd": WORKSPACE, "config": config,
-        "developerInstructions": _developer_instructions(body.messages), "ephemeral": True,
+    cwd = Path(WORKSPACE)
+    if deep_room:
+        cwd = cwd / "deep" / deep_room
+        cwd.mkdir(parents=True, exist_ok=True)
+    params = {"cwd": str(cwd), "config": config,
+        "developerInstructions": _developer_instructions(body.messages),
         "model": model_name, "modelProvider": "galaris", "serviceName": "galaris-codex-harness",
-        "sandbox": "read-only", "approvalPolicy": "on-request", "approvalsReviewer": "user"})
-    return AsyncThread(codex, started.thread.id)
+        "sandbox": "read-only", "approvalPolicy": "on-request", "approvalsReviewer": "user"}
+    if native_session:
+        resumed = await codex._client.thread_resume(native_session, params)
+        identifier = resumed.thread.id
+    else:
+        started = await codex._client.thread_start({**params, "ephemeral": not bool(deep_room)})
+        identifier = started.thread.id
+    return AsyncThread(codex, identifier), identifier
 
 
 @app.post("/v1/chat/completions", dependencies=[Depends(_authenticate)])
 async def chat_completions(request: Request, body: ChatCompletionRequest):
-    thread = await _thread(request, body)
+    if request.headers.get("X-Galaris-Deep-Session"):
+        if not body.stream:
+            raise HTTPException(422, "Deep sessions require a streaming request.")
+        try:
+            session = str(uuid.UUID(request.headers["X-Galaris-Deep-Session"]))
+        except ValueError as exc:
+            raise HTTPException(422, "Invalid Deep session.") from exc
+
+        async def controlled_stream():
+            async with deep_approvals(request) as actor:
+                actor.codex = AsyncCodex()
+                workspace = Path(WORKSPACE) / "deep" / session
+                workspace.mkdir(parents=True, exist_ok=True)
+                pool = install_permissions(actor.codex._client._sync, actor, workspace)
+                try:
+                    async with actor.codex:
+                        request.state.runtime_actor = actor
+                        response = await _completion(request, body)
+                        if not isinstance(response, StreamingResponse):
+                            raise RuntimeError("The Deep Codex actor requires an event stream")
+                        async for chunk in response.body_iterator:
+                            yield chunk
+                finally:
+                    actor.approvals.cancelled.set()
+                    pool.shutdown(wait=False, cancel_futures=True)
+
+        return StreamingResponse(controlled_stream(), media_type="text/event-stream")
+    return await _completion(request, body)
+
+
+@app.post("/v1/galaris/deep/{session}/steer", status_code=204, response_class=Response,
+          dependencies=[Depends(_authenticate)])
+async def steer(request: Request, session: uuid.UUID, body: DeepSteeringInput) -> Response:
+    active = request.app.state.deep_turns.get(str(session))
+    if active is None:
+        raise HTTPException(409, "There is no active Deep turn")
+    turn, credential = active
+    if not hmac.compare_digest(credential, request.headers.get("X-Galaris-Deep-Control", "")):
+        raise HTTPException(403, "Invalid Deep session control")
+    await turn.steer(body.text)
+    return Response(status_code=204)
+
+
+async def _completion(request: Request, body: ChatCompletionRequest):
+    thread, thread_id = await _thread(request, body)
     run_id = request.headers.get("X-Galaris-Agent-Run-Id", "").strip()
-    prompt = _turn_prompt(body.messages)
+    prompt = _turn_prompt(body.messages, deep=bool(request.headers.get("X-Galaris-Deep-Session")))
     completion_id = f"chatcmpl-codex-{uuid.uuid4().hex}"
     created = int(time.time())
 
@@ -312,6 +389,9 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
         completed = False
         trace = CodexStreamTrace()
         usage: object | None = None
+        deep_key = request.headers.get("X-Galaris-Deep-Session", "")
+        deep = bool(deep_key)
+        branches: set[str] = set()
 
         def event(payload: dict[str, object] | str) -> str:
             raw = payload if isinstance(payload, str) else json.dumps(payload, separators=(",", ":"))
@@ -323,6 +403,9 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
         def semantic_result(payload: dict[str, object]) -> str:
             return f"event: galaris.agent-result/v1\n{event(payload)}"
 
+        if deep:
+            yield f"event: galaris.deep-session/v1\n{event({'session': thread_id})}"
+
         yield event({
             "id": completion_id,
             "object": "chat.completion.chunk",
@@ -332,10 +415,45 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
         })
         try:
             turn = await thread.turn(prompt, sandbox=Sandbox.read_only)
+            if deep:
+                request.app.state.deep_turns[deep_key] = (turn, request.headers["X-Galaris-Deep-Control"])
             async for notification in turn.stream():
                 payload = notification.payload
+                if deep and notification.method in {"item/started", "item/completed", "item/commandExecution/outputDelta"}:
+                    raw = payload.model_dump(mode="json", by_alias=True)
+                    item = raw.get("item") or {}
+                    event_thread = str(raw.get("threadId") or thread_id)
+                    parent = f"agent:{event_thread}" if event_thread in branches else None
+                    if notification.method == "item/commandExecution/outputDelta":
+                        yield semantic_event({"type": "tool", "content": str(raw.get("delta") or ""),
+                            "tool_name": "Terminal", "activity_ref": str(raw.get("itemId") or ""),
+                            "parent_activity_ref": parent, "activity_state": "running"})
+                        continue
+                    item_type = item.get("type")
+                    pending = notification.method == "item/started"
+                    if item_type in {"collabAgentToolCall", "collabToolCall"}:
+                        receivers = [*(item.get("receiverThreadIds") or []), item.get("receiverThreadId"), item.get("newThreadId")]
+                        for child in dict.fromkeys(str(value) for value in receivers if value):
+                            branches.add(child)
+                            yield semantic_event({"type": "tool", "content": str(item.get("prompt") or ""),
+                                "tool_name": str(item.get("tool") or "Subagent"), "activity_ref": f"agent:{child}",
+                                "parent_activity_ref": parent, "activity_state": "running" if pending else "completed"})
+                        continue
+                    if item_type == "commandExecution":
+                        status = item.get("status")
+                        yield semantic_event({"type": "tool", "content": str(item.get("aggregatedOutput") or ""),
+                            "tool_name": str(item.get("command") or "Terminal")[:200], "activity_ref": str(item.get("id") or ""),
+                            "parent_activity_ref": parent, "activity_state": "running" if pending else ("completed" if status == "completed" else "failed"),
+                            "tool_result": {"cwd": item.get("cwd"), "exit_code": item.get("exitCode")}})
+                        continue
                 if notification.method == "item/agentMessage/delta":
                     delta = _string_field(payload, "delta")
+                    event_thread = _string_field(payload, "thread_id")
+                    if deep and event_thread and event_thread != thread_id:
+                        if event_thread in branches:
+                            yield semantic_event({"type": "tool", "content": delta, "activity_ref": f"agent:{event_thread}",
+                                "tool_name": "Subagent", "activity_state": "running"})
+                        continue
                     item_id = _item_id(payload)
                     final_delta, thinking_message = trace.record_agent_delta(
                         item_id,
@@ -422,7 +540,8 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
                 "result": final_text,
                 "success": True,
                 "usage": gateway_usage,
-                "metadata": {"inference_cost": gateway_usage.get("inference_cost", 0.0)} if gateway_usage else {},
+                "metadata": {**({"inference_cost": gateway_usage.get("inference_cost", 0.0)} if gateway_usage else {}),
+                    **({"deep_native_session": thread_id} if deep else {})},
             })
             yield event("[DONE]")
         except Exception as exc:
@@ -430,6 +549,8 @@ async def chat_completions(request: Request, body: ChatCompletionRequest):
             yield event({"error": {"message": _safe_error(exc), "type": "codex_runtime_error"}})
             yield event("[DONE]")
         finally:
+            if deep:
+                request.app.state.deep_turns.pop(deep_key, None)
             if turn is not None and not completed:
                 try:
                     if getattr(request.state, "runtime_actor", None) is not None:
@@ -452,7 +573,7 @@ async def _managed_events(body: dict[str, Any], request: Request, actor: Any):
     request.state.runtime_actor = actor
     try:
         async with codex:
-            response = await chat_completions(request, ChatCompletionRequest.model_validate({**body, "stream": True}))
+            response = await _completion(request, ChatCompletionRequest.model_validate({**body, "stream": True}))
             if not isinstance(response, StreamingResponse):
                 raise RuntimeError("The managed Codex actor requires an event stream")
             async for chunk in response.body_iterator:

@@ -7,12 +7,15 @@ from collections.abc import Mapping
 from typing import Any
 
 from app.conversation import (
+    register_deep_listener,
+    register_deep_workspace_access,
     ConversationRuntimeEvent,
     register_activity_listener,
     register_runtime_listener,
     register_document_display_publisher,
     register_repository_display_publisher,
 )
+from app.code import deep_workspace_context
 from app.messenger import (
     Interaction,
     interaction_changed,
@@ -145,7 +148,13 @@ async def _publish_voice_transcription(event: VoiceTranscriptionEvent) -> None:
     )
 
 
+async def _publish_deep(room_id: UUID) -> None:
+    await websocket.emit("chat", "deep", {"room_id": str(room_id)}, room=ChatRoom(room_id))
+
+
 def register_events() -> None:
+    register_deep_listener(_publish_deep)
+    register_deep_workspace_access(deep_workspace_context)
     register_repository_display_publisher(_publish_repository_display)
     register_document_display_publisher(_publish_document_display)
     message_journaled.connect(_publish)

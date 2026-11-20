@@ -27,6 +27,7 @@ export interface VoiceCallStatus { available: boolean; ice_servers: WebRtcIceSer
 export interface WebRtcIceCandidate { candidate: string | null; sdp_mid: string | null; sdp_m_line_index: number | null }
 export type ReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 export type ChatCommandCode =
+  | 'deep'
   | 'task'
   | 'exec'
   | 'plan'
@@ -35,12 +36,31 @@ export type ChatCommandCode =
   | 'effort'
   | 'approve'
 export interface ChatCommandCatalog { commands: ChatCommandCode[] }
+export interface DeepFailureInfo {
+  code: 'skills' | 'skills_task_required' | 'access' | 'http' | 'configuration' | 'unavailable' | 'protocol' | 'quota'
+    | 'timeout' | 'cancelled' | 'effect_unknown' | 'runtime' | 'unrecorded'
+  http_status: number | null
+}
+export interface DeepSubmission {
+  id: string
+  session_id: string
+  message_id: string
+  response_message_id: string | null
+  state: 'queued' | 'running' | 'completed' | 'failed' | 'interrupted' | 'cancelled' | 'steering' | 'steered'
+  sequence: number
+  stop_requested: boolean
+  has_activity: boolean
+  approvals: string[]
+  failure?: DeepFailureInfo | null
+}
+export interface DeepRoom { enabled: boolean; submissions: DeepSubmission[] }
+export interface DeepEvent { sequence: number; kind: 'text' | 'activity' | 'failure'; payload: Record<string, unknown> }
 export interface MessengerAgent { agent_id: number; connection_id: number; code: string; display_name: string; active: boolean; suggested_room_label?: string }
 export interface RecipientCatalog { agents: MessengerAgent[] }
 export interface MessengerMember { id: string; external_id: string; display_name: string; avatar_url: string | null; is_ai: boolean; agent_id: number | null; role: 'owner' | 'manager' | 'member'; joined_at: string | null; muted: boolean }
 export interface MessengerFile { id: string; uri: string; name: string; mime_type: string; size_bytes: number | null; kind: string }
 export interface MessengerInteractionAnswer { title: string; reference: string; answer: string }
-export interface MessengerMessage { resource_uris?: string[]; mcp_presentations?: import('./mcpApps').McpPresentation[]; interaction?: MessengerInteraction | null; interaction_answer?: MessengerInteractionAnswer | null; id: string; external_id: string; room_id: string; direction: string; text: string; topic_id: string | null; topic_overridden: boolean; sender: MessengerMember | null; reply_to: string | null; files: MessengerFile[]; status: string; created_at: string; is_mine: boolean; optimistic_after_id?: string | null }
+export interface MessengerMessage { resource_uris?: string[]; mcp_presentations?: import('./mcpApps').McpPresentation[]; deep_submission_id?: string | null; interaction?: MessengerInteraction | null; interaction_answer?: MessengerInteractionAnswer | null; id: string; external_id: string; room_id: string; direction: string; text: string; topic_id: string | null; topic_overridden: boolean; sender: MessengerMember | null; reply_to: string | null; files: MessengerFile[]; status: string; created_at: string; is_mine: boolean; optimistic_after_id?: string | null }
 export type MessageTopicChangeScope = 'message' | 'following_same_topic'
 export interface MessageTopicUpdateResult { updated_messages: number }
 export interface MessageTopicChange {

@@ -12,7 +12,9 @@ from sqlalchemy import select
 from app.harness import router as compatibility_router
 from app.agent import AgentRunCheckpoint, AgentRunRequest, AgentSnapshot, ResolvedModel
 from app.agent.contracts import ResolvedExecutionTarget
+from app.agent.facade import deep_harness_target
 from app.agent.models import Agent, Title
+from app.agent.run_control import mark_run_prepared, own_run
 from app.harnesses import skill_sync
 from app.harnesses.models import AgentHarness
 from app.harnesses.registry import get_provider
@@ -95,6 +97,40 @@ async def test_next_execution_receives_changes_without_any_frontend_refresh(runt
     await skill_service.delete_skill(runtime.skill.id)
     await skill_sync.prepare_skill_execution(replace(runtime.run, run_id=uuid4()))
     assert ("synthetic", "SKILL.md") not in runtime.projected[-1]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("runtime", ["codex", "claude_agent", "deepseek_harness", "hermes"], indirect=True)
+async def test_deep_execution_projects_skills_without_changing_the_session_target(runtime, db):
+    _, target = await deep_harness_target(runtime.agent.id)
+    run = replace(runtime.run, task_id=None, deep_session_id=uuid4(), target=target)
+
+    await skill_sync.prepare_skill_execution(run)
+
+    assert b"Version one" in runtime.projected[-1][("synthetic", "SKILL.md")]
+    assert (await skill_sync.skill_sync_status(runtime.agent.id))[0] == "current"
+    assert await deep_harness_target(runtime.agent.id) == (run.driver_code, target)
+
+    await skill_sync.prepare_skill_execution(replace(run, run_id=uuid4()))
+    runtime.transport.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_pending_skills_do_not_restart_a_runtime_that_is_streaming(runtime, db):
+    await skill_sync.prepare_skill_execution(runtime.run)
+    follow_up = replace(runtime.run, run_id=uuid4(), task_id=None, deep_session_id=uuid4())
+    with own_run(object(), runtime.run):
+        mark_run_prepared(runtime.run.run_id)
+        # Current skills allow concurrent work on this runtime.
+        await skill_sync.prepare_skill_execution(follow_up)
+        await skill_sync.request_skill_sync(runtime.agent.id)
+        with pytest.raises(RuntimeError, match="pending until the current Harness runs finish"):
+            await skill_sync.prepare_skill_execution(follow_up)
+        assert (await skill_sync.skill_sync_status(runtime.agent.id))[0] == "pending"
+        runtime.transport.assert_awaited_once()
+
+    await skill_sync.prepare_skill_execution(follow_up)
+    assert runtime.transport.await_count == 2
 
 
 @pytest.mark.asyncio

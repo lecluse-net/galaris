@@ -32,7 +32,7 @@ from .contracts import (
     ProtocolInferenceRequest,
     DecisionInferenceRequest,
 )
-from .correlation import current_llm_correlation_ref, llm_correlation_scope
+from .correlation import current_llm_correlation_ref, deep_inference_scope, llm_correlation_scope
 from .decision_contracts import DecisionResult
 
 if TYPE_CHECKING:
@@ -278,6 +278,9 @@ async def _execute_admitted(inference_id: UUID) -> None:
                     ),
                     llm_correlation_scope(snapshot.request.correlation_ref)
                     if snapshot.request.correlation_ref
+                    else nullcontext(),
+                    deep_inference_scope(snapshot.request.deep_session_id)
+                    if isinstance(snapshot.request, ProtocolInferenceRequest) and snapshot.request.deep_session_id is not None
                     else nullcontext(),
                     llm_execution_scope(
                         requester_user_id=authority.requester_user_id,

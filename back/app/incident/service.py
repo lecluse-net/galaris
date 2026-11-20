@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only
 
 from core.database import get_db, get_db_session
+from core.failure_journal import RunFailureSummary
 
 from .contracts import FailureEvent
 from .models import FailureIncident, FailureIncidentTrace, FailurePattern
@@ -24,6 +25,17 @@ from .schemas import FailurePatternUpdate
 _REVIEW_STATUSES = frozenset(
     {"new", "triaged", "fix_planned", "resolved", "ignored", "regression"}
 )
+
+
+async def read_taskless_run_failures(run_ids: Collection[UUID]) -> dict[UUID, RunFailureSummary]:
+    rows = await get_db().execute(select(FailureIncident.run_uuid, FailureIncident.error_type, FailureIncident.error_message)
+        .where(FailureIncident.run_uuid.in_(run_ids), FailureIncident.phase == "agent_run", FailureIncident.task_id.is_(None))
+        .order_by(FailureIncident.occurred_at.desc(), FailureIncident.id.desc()))
+    summaries: dict[UUID, RunFailureSummary] = {}
+    for run_id, error_type, message in rows:
+        if run_id is not None:
+            summaries.setdefault(run_id, RunFailureSummary(error_type=error_type, message=message))
+    return summaries
 
 
 def _pattern_title(event: FailureEvent) -> str:

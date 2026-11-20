@@ -47,6 +47,7 @@ class RecipientCatalog(BaseModel):
 
 
 ChatCommandCode = Literal[
+    "deep",
     "task",
     "exec",
     "plan",

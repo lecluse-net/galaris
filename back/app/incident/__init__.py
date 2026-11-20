@@ -6,6 +6,7 @@ from .models import FailureIncident, FailureIncidentTrace, FailurePattern
 from .service import (
     mark_run_recovered,
     mark_run_recovered_isolated,
+    read_taskless_run_failures,
     record_failure,
     record_failure_isolated,
 )
@@ -20,6 +21,7 @@ def register_runtime() -> None:
         record_in_session=record_failure,
         record_isolated=record_failure_isolated,
         mark_recovered=mark_run_recovered_isolated,
+        read_run_failures=read_taskless_run_failures,
     )
 
 

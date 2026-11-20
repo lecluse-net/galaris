@@ -19,6 +19,8 @@ export interface LLMCall {
   agent_run_id?: string
   voice_turn_id?: string
   conversation_round_id?: string
+  deep_session_id?: string | null
+  deep_room_id?: string | null
   process_run_id?: string
   correlation_ref?: string
   purpose?: string | null

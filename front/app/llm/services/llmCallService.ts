@@ -24,9 +24,10 @@ class LLMCallService {
     dateFrom?: string | null,
     dateTo?: string | null,
     signal?: AbortSignal,
+    deepRoom?: string | null,
   ): Promise<LLMCall[]> {
     const response = await api.get('/llm-calls/running', {
-      params: { limit, date_from: dateFrom || undefined, date_to: dateTo || undefined },
+      params: { limit, date_from: dateFrom || undefined, date_to: dateTo || undefined, deep_room_id: deepRoom || undefined },
       signal,
     })
     return response.data
@@ -38,6 +39,7 @@ class LLMCallService {
     errorsOnly: boolean = false,
     dateFrom?: string | null,
     dateTo?: string | null,
+    deepRoom?: string | null,
   ): Promise<LLMCallPage> {
     const response = await api.get<LLMCallPage>('/llm-calls/history', {
       params: {
@@ -46,6 +48,7 @@ class LLMCallService {
         errors_only: errorsOnly,
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
+        deep_room_id: deepRoom || undefined,
       },
     })
     return response.data

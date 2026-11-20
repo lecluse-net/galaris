@@ -807,6 +807,14 @@ async def _message_dto(
         topic_overridden=message.topic_overridden,
         room_topic_id=message.room.topic_id if message.room is not None else None,
     )
+    deep_submission_id = None
+    if message.platform == INTERNAL_PLATFORM and message.direction == "outbound":
+        raw_deep_submission = (message.metadata_ or {}).get("deep_submission")
+        if isinstance(raw_deep_submission, str):
+            try:
+                deep_submission_id = UUID(raw_deep_submission)
+            except ValueError:
+                pass
     return NativeMessengerMessage(
         id=message.id,
         external_id=message.remote_message_id,
@@ -814,6 +822,7 @@ async def _message_dto(
         direction=message.direction,
         text=_visible_message_text(message.text),
         resource_uris=message.resource_uris,
+        deep_submission_id=deep_submission_id,
         mcp_presentations=read_presentations((message.metadata_ or {}).get(MCP_PRESENTATIONS_KEY))
         if message.platform == INTERNAL_PLATFORM and message.direction == "outbound" else [],
         topic_id=effective_topic_id,

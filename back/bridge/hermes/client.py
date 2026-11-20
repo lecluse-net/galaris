@@ -173,6 +173,8 @@ async def start_run(
     conversation_history: Optional[list[dict[str, Any]]] = None,
     session_key: Optional[str] = None,
     run_context: str | None = None,
+    deep_context: str | None = None,
+    submission: str | None = None,
 ) -> str:
     """Start a controllable Hermes run through /v1/runs."""
     endpoint = f"{_v1_url(target)}/runs"
@@ -192,12 +194,15 @@ async def start_run(
         payload["conversation_history"] = conversation_history
     if run_context:
         payload["galaris_run_context"] = run_context
+    if deep_context:
+        payload["galaris_deep_context"] = deep_context
 
     async with httpx.AsyncClient(timeout=HERMES_TIMEOUT) as http:
         headers = _run_headers(target, session_key or session_id)
         if run_context:
             import hashlib
-            headers["Idempotency-Key"] = hashlib.sha256(run_context.encode()).hexdigest()
+            identity = f"{run_context}:{submission}" if submission else run_context
+            headers["Idempotency-Key"] = hashlib.sha256(identity.encode()).hexdigest()
         res = await http.post(
             endpoint,
             headers=headers,
@@ -211,13 +216,15 @@ async def start_run(
     return str(run_id)
 
 
-async def verify_authorization_control(target: HermesTarget) -> None:
+async def verify_authorization_control(target: HermesTarget, *, require_deep: bool = False) -> None:
     async with httpx.AsyncClient(timeout=HERMES_TIMEOUT, follow_redirects=False, trust_env=False) as http:
         response = await http.get(f"{_v1_url(target)}/galaris/capabilities", headers=_auth_headers(target))
         response.raise_for_status()
     capability = as_dict(response.json())
     if capability.get("authorization_protocol") != "galaris.runtime-authorization/v1" or capability.get("resumable_runs") is not True:
         raise PermissionError("Hermes requires a qualified one-action authorization adapter")
+    if require_deep and capability.get("deep_sessions") is not True:
+        raise PermissionError("Update Hermes to a runtime that supports Deep sessions")
 
 
 async def run_events(

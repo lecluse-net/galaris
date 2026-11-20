@@ -28,6 +28,8 @@ class LLMCallRead(BaseModel):
     task_attempt_id: Optional[UUID] = None
     agent_run_id: Optional[UUID] = None
     conversation_round_id: Optional[UUID] = None
+    deep_session_id: UUID | None = None
+    deep_room_id: UUID | None = None
     process_run_id: Optional[UUID] = None
     correlation_ref: Optional[str] = None
     purpose: Optional[str] = None

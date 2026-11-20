@@ -13,6 +13,7 @@ from .contracts import (
 from .execution_errors import HarnessProtocolError
 
 _active: dict[UUID, tuple[AgentDriver, AgentRunRequest]] = {}
+_prepared: set[UUID] = set()
 _receipts: OrderedDict[tuple[str, UUID], HarnessCancellationReceipt] = OrderedDict()
 _pending: dict[tuple[str, UUID], asyncio.Task[HarnessCancellationReceipt]] = {}
 
@@ -24,6 +25,18 @@ def active_driver(driver_code: str, run_id: UUID) -> AgentDriver | None:
     if active[1].driver_code != driver_code:
         raise HarnessProtocolError("The active run belongs to a different driver.")
     return active[0]
+
+
+def mark_run_prepared(run_id: UUID) -> None:
+    if run_id in _active:
+        _prepared.add(run_id)
+
+
+def has_prepared_runtime_run(agent_id: int, target_ref: str) -> bool:
+    return any(
+        request.agent_id == agent_id and request.target is not None and request.target.target_ref == target_ref
+        for run_id, (_, request) in _active.items() if run_id in _prepared
+    )
 
 
 async def request_call_recovery(driver_code: str, run_id: UUID) -> bool:
@@ -46,6 +59,7 @@ def own_run(driver: AgentDriver, request: AgentRunRequest) -> Generator[None]:
     try:
         yield
     finally:
+        _prepared.discard(request.run_id)
         _active.pop(request.run_id, None)
 
 

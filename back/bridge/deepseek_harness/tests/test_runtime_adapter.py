@@ -191,6 +191,40 @@ def test_gateway_can_recover_the_agent_run_from_the_rendered_prompt() -> None:
     assert agent_run_id_from_messages([{"role": "user", "content": prompt}]) == run_id
 
 
+@pytest.mark.parametrize("resume", [False, True])
+def test_deep_sdk_receives_the_raw_turn_and_separate_profile(tmp_path, monkeypatch, resume):
+    from unittest.mock import MagicMock
+
+    sdk = MagicMock()
+    sdk.__enter__.return_value = sdk
+    selected = sdk.resume_session.return_value if resume else sdk
+    selected.run.return_value = SimpleNamespace(final_response="Done", finish_reason="completed")
+    profile = "<p>Keep {{literal}} markers.</p>"
+    profiles = []
+
+    def factory(**options):
+        path = Path(options["env"]["GALARIS_DEEP_PROFILE_PATH"])
+        profiles.append(path)
+        assert path.read_text(encoding="utf-8") == profile
+        return sdk
+
+    monkeypatch.setattr(runtime_adapter, "_harness_factory", lambda: factory)
+    request = " Inspect the sample.\n\ndocument://synthetic "
+    session = str(uuid4())
+
+    runtime_adapter.run_completion({
+        "model": "synthetic", "galaris_approval_action": "ask",
+        "messages": [{"role": "system", "content": profile}, {"role": "user", "content": request}],
+    }, _config(tmp_path), deep_session=session, resume_deep=resume)
+
+    assert len(profiles) == 1 and not profiles[0].exists()
+    if resume:
+        sdk.resume_session.assert_called_once_with(session)
+        selected.run.assert_called_once_with(request, on_notification=None)
+    else:
+        selected.run.assert_called_once_with(request, session_id=session)
+
+
 @pytest.mark.parametrize("managed", [False, True])
 def test_completion_uses_one_isolated_session_and_final_response(
     monkeypatch: pytest.MonkeyPatch,
@@ -209,6 +243,7 @@ def test_completion_uses_one_isolated_session_and_final_response(
             assert options["patches"] == (str(tmp_path / "cordis.yml"),)
             assert Path(options["dsh_home"]).parent == tmp_path / "sessions"
             assert options["env"]["GALARIS_MODEL"] == options["model"]
+            assert "GALARIS_DEEP_PROFILE_PATH" not in options["env"]
             assert options["request_timeout_seconds"] == (None if managed else 30.0)
 
         def __enter__(self):
@@ -239,6 +274,7 @@ def test_completion_uses_one_isolated_session_and_final_response(
     assert completion.finish_reason == "stop"
     assert completion.id.startswith("chatcmpl-dsh-")
     assert len(calls) == 1
+    assert calls[0][0].startswith("Execute the Galaris task")
     assert calls[0][1] == completion.id
     assert (tmp_path / "sessions" / completion.id).is_dir()
 

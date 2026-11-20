@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Deep conversations** send messages directly to the agent's harness with
+  `@deep`. Each private Chat conversation remembers the mode and has its own
+  resumable session. Deep sends the message and its attachment links, with the
+  agent's personality and job description as system instructions. Chat streams
+  replies and shows harness activity, approvals and failure reasons. LLM Activity
+  can filter the calls recorded by Galaris by conversation. Existing managed
+  harness instances need a rebuilt image to use the Deep adapter.
+  [Deep conversations](docs/en/reference/functional-catalogue.md#deep-conversations)
 - **Managed harness multitasking** lets one agent run several Tasks at once
   with Codex, Claude Agent or DeepSeek Harness. The scheduler supplies available
   slots, and administrators can set a per-agent limit in the harness policy.

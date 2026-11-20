@@ -25,11 +25,26 @@ state = lifecycle.state
 
 
 @pytest.mark.asyncio
-async def test_live_protocol_delivers_text_and_supervision_before_provider_finishes(runtime, monkeypatch):
+@pytest.mark.parametrize("managed_deep", [False, True], ids=["standard", "managed-deep"])
+async def test_live_protocol_delivers_text_and_supervision_before_provider_finishes(runtime, monkeypatch, managed_deep):
     from app.llm import llm_call_service
     from app.llm.contracts import ProtocolInferenceRequest
 
-    _, llm, _, mode = runtime
+    db, llm, _, mode = runtime
+    session_id = None
+    agent_id = None
+    if managed_deep:
+        from app.chat.tests.test_native_facade import _scope
+        from app.conversation.models import DeepSession
+        from app.messenger import create_internal_room
+
+        agent, owner, _ = await _scope(db)
+        room = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
+        session = DeepSession(room_id=room.id, agent_id=agent.id, requester_user_id=owner.id,
+                              driver_code="openai_messages", target={})
+        db.add(session)
+        await db.commit()
+        session_id, agent_id = session.id, agent.id
     finish = asyncio.Event()
     mode.update(concurrent=True, partial_gate=finish)
     progress = asyncio.Event()
@@ -44,6 +59,7 @@ async def test_live_protocol_delivers_text_and_supervision_before_provider_finis
     monkeypatch.setattr(llm_call_service.websocket, "emit", receive)
     request = ProtocolInferenceRequest(
         llm_id=llm.id, prompt="Synthetic greeting", purpose="lab.mechanism_run",
+        agent_id=agent_id, deep_session_id=session_id, managed_runtime_request=managed_deep,
         protocol="chat", body={"model": llm.code, "stream": True,
             "messages": [{"role": "user", "content": "Synthetic greeting"}]},
     )
@@ -66,6 +82,10 @@ async def test_live_protocol_delivers_text_and_supervision_before_provider_finis
                     pytest.fail("The message stream ended before delivering partial text.")
         await asyncio.wait_for(progress.wait(), 2)
         assert emitted and not finish.is_set()
+        if managed_deep:
+            async with lifecycle.get_db_session() as observer:
+                call = await observer.scalar(select(LLMCall).where(LLMCall.deep_session_id == session_id))
+                assert call is not None and call.task_id is None and call.conversation_round_id is None
     finally:
         finish.set()
         async for _ in iterator:

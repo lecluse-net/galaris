@@ -1,5 +1,6 @@
 import type {
   ConversationActivity,
+  DeepSubmission,
   LiveAgentRound,
   MessengerMessage,
   PendingVoiceTranscription,
@@ -9,10 +10,41 @@ import { currentAIResponse } from '../task/facade.ts'
 
 export interface ConversationTimelineEntry {
   activity?: ConversationActivity
+  deep?: DeepSubmission
+  deepInputCreatedAt?: string
   key: string
   message: MessengerMessage | null
   liveRound: LiveAgentRound | null
   pendingTranscription: PendingVoiceTranscription | null
+}
+
+/** Keep the same reply entry when the journal replaces a streamed Deep answer. */
+export function withDeepTimelineReplies(
+  entries: readonly ConversationTimelineEntry[],
+  submissions: readonly DeepSubmission[],
+): ConversationTimelineEntry[] {
+  if (!submissions.length) return [...entries]
+  const byInput = new Map(submissions.map(submission => [submission.message_id, submission]))
+  const byId = new Map(submissions.map(submission => [submission.id, submission]))
+  const byResponse = new Map(submissions.map(submission => [submission.response_message_id, submission]))
+  const responseFor = (message: MessengerMessage | null): DeepSubmission | undefined => message
+    ? byId.get(message.deep_submission_id ?? '') ?? byResponse.get(message.id)
+    : undefined
+  const received = new Set(entries.map(entry => responseFor(entry.message)?.id))
+  const replies: ConversationTimelineEntry[] = []
+  for (const entry of entries) {
+    const response = responseFor(entry.message)
+    replies.push(response ? { ...entry, key: `deep:${response.id}`, deep: response } : entry)
+    if (!entry.message) continue
+    const pending = byInput.get(entry.message.id)
+    if (pending && !received.has(pending.id)) {
+      replies.push({
+        key: `deep:${pending.id}`, deep: pending, deepInputCreatedAt: entry.message.created_at,
+        message: null, liveRound: null, pendingTranscription: null,
+      })
+    }
+  }
+  return replies
 }
 
 /** Read lineage after messages so it cannot predate a newly visible response. */

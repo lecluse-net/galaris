@@ -80,7 +80,12 @@ def test_every_route_has_the_expected_privilege_and_resource_assertion() -> None
         "update_room_archive": (ACCESS, ChatRoomAccessAssertion),
         "update_room_topic": ("TOPIC_EDIT", ChatRoomAccessAssertion),
         "read_room_commands": (ACCESS, InternalRoomAccessAssertion),
+        "read_deep_room": (ACCESS, InternalRoomAccessAssertion),
+        "read_deep_events": (ACCESS, InternalRoomAccessAssertion),
+        "stop_deep_room_submission": (SEND, InternalRoomAccessAssertion),
         "read_messages": (ACCESS, ChatRoomAccessAssertion),
+        "open_message_mcp_app": (SEND, InternalRoomAccessAssertion),
+        "filter_message_mcp_app": (SEND, InternalRoomAccessAssertion),
         "read_interaction": (ACCESS, InternalRoomAccessAssertion),
         "answer_interaction": (SEND, InternalRoomAccessAssertion),
         "read_message_speech_status": (ACCESS, ChatRoomAccessAssertion),
@@ -550,6 +555,7 @@ def test_message_create_normalizes_supported_reasoning_effort(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("kind", ["direct", "group"])
 @pytest.mark.parametrize(
     ("driver", "expected"),
     [
@@ -564,13 +570,14 @@ async def test_room_commands_follow_the_selected_agent_driver(
     monkeypatch: pytest.MonkeyPatch,
     driver: str,
     expected: list[str],
+    kind: str,
 ) -> None:
     room_id = uuid4()
     monkeypatch.setattr(router_module, "_user_id", AsyncMock(return_value=17))
     monkeypatch.setattr(
         router_module,
         "get_internal_room",
-        AsyncMock(return_value=Mock(agent_id=7)),
+        AsyncMock(return_value=Mock(agent_id=7, kind=kind)),
     )
     monkeypatch.setattr(
         router_module,
@@ -594,7 +601,7 @@ async def test_room_commands_follow_the_selected_agent_driver(
 
     result = await read_room_commands(room_id)
 
-    assert result.commands == expected
+    assert result.commands == (expected + ["deep"] if kind == "direct" else expected)
 
 
 @pytest.mark.asyncio

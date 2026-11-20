@@ -20,6 +20,7 @@ from app.agent import (
     ExecutionResult,
     UsageQuality,
     message_history_role,
+    message_history_text,
     message_prompt,
 )
 from app.agent.contracts import HarnessFailure
@@ -214,9 +215,11 @@ async def _sse_records(response: httpx.Response) -> AsyncIterator[tuple[str, str
         yield event_name, "\n".join(data_lines)
 
 
-def _messages(envelope: AgentRunEnvelopeV1) -> list[dict[str, str]]:
-    system_parts = [envelope.system_instructions.strip(), envelope.shared_context.strip()]
-    if envelope.resource_uris:
+def _messages(envelope: AgentRunEnvelopeV1, *, deep: bool = False) -> list[dict[str, str]]:
+    system_parts = [envelope.system_instructions.strip()]
+    if not deep:
+        system_parts.append(envelope.shared_context.strip())
+    if not deep and envelope.resource_uris:
         system_parts.append(
             "Canonical resources:\n" + "\n".join(f"- {uri}" for uri in envelope.resource_uris)
         )
@@ -226,17 +229,18 @@ def _messages(envelope: AgentRunEnvelopeV1) -> list[dict[str, str]]:
         messages.append({"role": "system", "content": system})
     for raw in envelope.conversation_history:
         role = message_history_role(raw, self_agent_id=envelope.agent_id)
-        if role is None:
+        if role is None or (deep and role == "system"):
             continue
         legacy_content = raw.get("content")
-        content = message_prompt(
-            raw, fallback_text=legacy_content if isinstance(legacy_content, str) else "",
-            self_agent_id=envelope.agent_id,
-        )
+        fallback = legacy_content if isinstance(legacy_content, str) else ""
+        if deep:
+            content = message_history_text(raw) or fallback
+        else:
+            content = message_prompt(raw, fallback_text=fallback, self_agent_id=envelope.agent_id)
         if content:
             messages.append({"role": role, "content": content})
     objective = envelope.objective
-    if envelope.messaging_context:
+    if not deep and envelope.messaging_context:
         context = json.dumps(
             envelope.messaging_context,
             ensure_ascii=False,
@@ -296,7 +300,9 @@ class OpenAIHarnessClient:
                 )
         return headers
 
-    async def verify_authorization_control(self, *, require_run_scoped_llm: bool = False) -> None:
+    async def verify_authorization_control(
+        self, *, require_run_scoped_llm: bool = False, require_deep_sessions: bool = False,
+    ) -> None:
         async with httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=False, trust_env=False, transport=self.transport) as client:
             response = await client.get(f"{self.base_url}/galaris/capabilities", headers=self._headers())
             response.raise_for_status()
@@ -305,6 +311,8 @@ class OpenAIHarnessClient:
             raise RuntimeError("The managed Harness has no qualified one-action authorization control")
         if require_run_scoped_llm and capability.get("run_scoped_llm") is not True:
             raise RuntimeError("The managed Harness does not support run-scoped LLM requests")
+        if require_deep_sessions and capability.get("deep_sessions") is not True:
+            raise RuntimeError("Update the managed Harness to a version that supports Deep sessions")
 
     async def cancel_control_run(self, runtime_run_id: str) -> bool:
         async with httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=False, trust_env=False, transport=self.transport) as client:
@@ -313,6 +321,15 @@ class OpenAIHarnessClient:
             response = await client.get(f"{self.base_url}/galaris/runs/{runtime_run_id}", headers=self._headers())
             response.raise_for_status()
         return _mapping(response.json()).get("stopped") is True
+
+    async def steer_deep(self, session_id: UUID, control: str, text: str) -> bool:
+        async with httpx.AsyncClient(timeout=8, follow_redirects=False, trust_env=False, transport=self.transport) as client:
+            response = await client.post(f"{self.base_url}/galaris/deep/{session_id}/steer",
+                headers={**self._headers(), "X-Galaris-Deep-Control": control}, json={"text": text})
+            if response.status_code in {404, 409}:
+                return False
+            response.raise_for_status()
+            return True
 
     async def stop_control_run_for_retry(self, runtime_run_id: str, *, timeout_seconds: float = 10) -> None:
         """Retire an existing actor before explicitly starting another inference."""
@@ -502,10 +519,14 @@ class OpenAIHarnessClient:
             },
         )
 
-    async def stream(self, envelope: AgentRunEnvelopeV1) -> AsyncIterator[AgentEvent]:
+    async def stream(
+        self, envelope: AgentRunEnvelopeV1, *, deep_session_id: UUID | None = None,
+        native_session: str | None = None, deep_credential: str | None = None,
+        deep_control_credential: str | None = None,
+    ) -> AsyncIterator[AgentEvent]:
         payload = {
             "model": _model(envelope),
-            "messages": _messages(envelope),
+            "messages": _messages(envelope, deep=deep_session_id is not None),
             "stream": True,
             "stream_options": {"include_usage": True},
         }
@@ -513,6 +534,16 @@ class OpenAIHarnessClient:
         trace_messages: list[AIMessage] = []
         usage = AgentUsage(token_quality="unknown", cost_quality="unknown")
         runtime_result: Mapping[str, object] = {}
+        headers = self._headers(envelope)
+        if deep_session_id is not None:
+            headers.pop("X-Galaris-Agent-Run-Id", None)
+            headers["X-Galaris-Deep-Session"] = str(deep_session_id)
+            if native_session is not None:
+                headers["X-Galaris-Deep-Native-Session"] = native_session
+            if deep_credential is not None:
+                headers["X-Galaris-Deep-Context"] = deep_credential
+            if deep_control_credential is not None:
+                headers["X-Galaris-Deep-Control"] = deep_control_credential
         async with httpx.AsyncClient(
             timeout=_TIMEOUT,
             follow_redirects=False,
@@ -522,7 +553,7 @@ class OpenAIHarnessClient:
             async with client.stream(
                 "POST",
                 f"{self.base_url}/chat/completions",
-                headers=self._headers(envelope),
+                headers=headers,
                 json=payload,
             ) as response:
                 response.raise_for_status()
@@ -530,6 +561,11 @@ class OpenAIHarnessClient:
                     if not raw or raw == "[DONE]":
                         continue
                     body_object = cast(object, json.loads(raw))
+                    if deep_session_id is not None and event_name == "galaris.deep-session/v1":
+                        reference = _mapping(body_object).get("session")
+                        if isinstance(reference, str):
+                            yield AgentEvent.from_message(AIMessage(type="tool", content="", native_session_ref=reference))
+                        continue
                     if event_name == "galaris.agent-message/v1":
                         message = AIMessage.model_validate(body_object)
                         _append_trace_message(trace_messages, message)

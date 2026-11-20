@@ -34,7 +34,17 @@
         <div ref="documentWorkspace" class="chat-workspace-content" :class="{ 'chat-workspace-content--document': integratedWorkspace, 'chat-workspace-content--rows': effectiveDocumentLayout === 'rows', 'chat-workspace-content--resizing': resizingDocument }" :style="documentWorkspaceStyle">
       <main class="conversation-pane">
         <template v-if="store.selectedRoom">
-          <q-toolbar class="conversation-toolbar"><template v-if="!integratedWorkspace"><q-btn v-if="$q.screen.lt.md" flat round dense icon="arrow_back" :aria-label="t('chat.details')" @click="mobileView = 'details'" /></template><InternalAgentAvatar :agent-id="store.selectedRoom.agent_id" :name="store.selectedRoom.agent_name" size="36px" class="q-ml-xs" /><q-toolbar-title class="conversation-title">{{ store.selectedRoom.label }}</q-toolbar-title><q-btn flat round dense size="xs" icon="content_copy" class="room-id-copy" :aria-label="t('chat.copyRoomId')" :title="store.selectedRoom.id" @click="copyRoomId"><q-tooltip>{{ store.selectedRoom.id }}</q-tooltip></q-btn><q-badge v-if="store.selectedRoom.source" outline color="grey-7" :label="t(sourceTranslationKey(store.selectedRoom.source))" /><q-chip v-if="!canWriteSelectedRoom" dense outline color="grey-7" icon="lock" class="read-only-chip">{{ t('chat.readOnly') }}</q-chip><q-btn v-if="(inboxStore.pushSupported && inboxStore.pushAvailable) || canWriteSelectedRoom" flat round :icon="store.selectedRoom.muted ? 'notifications_off' : 'notifications'" :aria-label="t('chat.notifications.settings')">
+          <q-toolbar class="conversation-toolbar">
+            <q-btn v-if="!integratedWorkspace && $q.screen.lt.md" flat round dense icon="arrow_back" :aria-label="t('chat.details')" @click="mobileView = 'details'" />
+            <InternalAgentAvatar :agent-id="store.selectedRoom.agent_id" :name="store.selectedRoom.agent_name" size="36px" class="q-ml-xs" />
+            <q-toolbar-title class="conversation-title">{{ store.selectedRoom.label }}</q-toolbar-title>
+            <StatusBadge
+              v-if="deepRoom" role="status" class="q-mr-sm"
+              :tone="deepRoom.enabled ? 'active' : 'neutral'"
+              :label="t(deepRoom.enabled ? 'chat.deep.mode' : 'chat.deep.modeOff')"
+              :title="canWriteSelectedRoom ? t('chat.deep.toggleHint', { command: '@deep' }) : undefined"
+            />
+            <q-btn flat round dense size="xs" icon="content_copy" class="room-id-copy" :aria-label="t('chat.copyRoomId')" :title="store.selectedRoom.id" @click="copyRoomId"><q-tooltip>{{ store.selectedRoom.id }}</q-tooltip></q-btn><q-badge v-if="store.selectedRoom.source" outline color="grey-7" :label="t(sourceTranslationKey(store.selectedRoom.source))" /><q-chip v-if="!canWriteSelectedRoom" dense outline color="grey-7" icon="lock" class="read-only-chip">{{ t('chat.readOnly') }}</q-chip><q-btn v-if="(inboxStore.pushSupported && inboxStore.pushAvailable) || canWriteSelectedRoom" flat round :icon="store.selectedRoom.muted ? 'notifications_off' : 'notifications'" :aria-label="t('chat.notifications.settings')">
               <q-tooltip>{{ t('chat.notifications.settings') }}</q-tooltip>
               <q-menu>
                 <q-list style="min-width: 260px">
@@ -50,7 +60,7 @@
               </q-menu>
             </q-btn><q-btn v-if="canCustomizeSelectedRoom" flat round icon="settings" :aria-label="t('chat.roomPreferences.open')" @click="preferencesDialog=true" /><VoiceCallPanel v-if="store.viewerAgentId === null && store.selectedRoom.agent_active && canCall && store.callAvailable" :room-id="store.selectedRoom.id" :language="locale" :active-call-id="store.activeCall?.call_id" :stopping-call-id="store.stoppingCallId" :ended-call-id="store.endedCallId" :mobile="$q.screen.lt.md" @error="reportError" @starting="store.prepareCallStart" @stopping="store.markCallStopping" @ended="refreshAfterCallEnded" /></q-toolbar>
           <div class="message-scroll-zone">
-            <q-scroll-area ref="messageScrollArea" class="message-scroll" @scroll="onMessageScroll" @wheel.passive="beginConversationHistoryNavigation" @touchstart.passive="beginConversationHistoryNavigation"><div v-if="store.loadingOlderMessages" class="history-loader"><q-spinner color="primary" size="20px" /></div><MessageTimeline :room-id="store.selectedRoom.id" :messages="store.messages" :activity="store.activity" :live-round="store.liveRound" :pending-transcriptions="store.pendingVoiceTranscriptions" :agent-id="store.selectedRoom.agent_id" :agent-name="store.selectedRoom.agent_name" :loading="store.loadingSelectedRoom" :viewer-agent-id="store.viewerAgentId" :show-agent-avatars="!store.selectedRoom.source" :allow-reply="canWriteSelectedRoom" @controlled="store.refreshSelected" :can-insert-mcp-table="canInsertMcpTable" @insert-mcp-table="insertMcpTable" :can-read-documents="canReadDocuments" :can-edit-documents="canEditDocuments" @open-document="openConversationDocument" @open-repository="openRepository" @open-directory="openDirectory" @reply="message => replyingTo = message" @topic-changed="refreshMessageTopics" @history-navigation="beginConversationHistoryNavigation" @block-rendered="scrollRenderedConversationToBottom" @layout-changed="keepConversationAtBottom" @message-visible="markVisibleMessageRead" /></q-scroll-area>
+            <q-scroll-area ref="messageScrollArea" class="message-scroll" @scroll="onMessageScroll" @wheel.passive="beginConversationHistoryNavigation" @touchstart.passive="beginConversationHistoryNavigation"><div v-if="store.loadingOlderMessages" class="history-loader"><q-spinner color="primary" size="20px" /></div><MessageTimeline ref="messageTimeline" :room-id="store.selectedRoom.id" :messages="store.messages" :activity="store.activity" :live-round="store.liveRound" :pending-transcriptions="store.pendingVoiceTranscriptions" :deep-submissions="deepRoom?.submissions" :deep-events="deepEvents" @deep-stop="stopDeep" @deep-inspect="deep.openActivity" :agent-id="store.selectedRoom.agent_id" :agent-name="store.selectedRoom.agent_name" :loading="store.loadingSelectedRoom" :viewer-agent-id="store.viewerAgentId" :show-agent-avatars="!store.selectedRoom.source" :allow-reply="canWriteSelectedRoom" @controlled="store.refreshSelected" :can-insert-mcp-table="canInsertMcpTable" @insert-mcp-table="insertMcpTable" :can-read-documents="canReadDocuments" :can-edit-documents="canEditDocuments" @open-document="openConversationDocument" @open-repository="openRepository" @open-directory="openDirectory" @reply="message => replyingTo = message" @topic-changed="refreshMessageTopics" @history-navigation="beginConversationHistoryNavigation" @block-rendered="scrollRenderedConversationToBottom" @layout-changed="keepConversationAtBottom" @message-visible="markVisibleMessageRead" /></q-scroll-area>
             <ScrollToBottomButton :visible="showScrollToBottom" @click="scrollConversationToBottom" />
           </div>
           <template v-if="canWriteSelectedRoom"><q-separator /><Composer :before-send="prepareMessage" :room-id="store.selectedRoom.id" :agent-id="store.selectedRoom.agent_id" :sending="store.sending" :commands="store.commands" :reply-to="replyingTo" :topic-id="selectedTopicId" :can-select-topic="canSelectTopic" :max-attachment-bytes="store.status?.max_attachment_bytes ?? 0" @send="sendMessage" @cancel-reply="replyingTo=null" @update:topic-id="selectedTopicId=$event" @error="reportError" /></template>
@@ -111,6 +121,23 @@
             </template>
             <div class="sidebar-section-content"><RoomList :search-value="roomSearch" :show-filters="roomFiltersVisible" :rooms="store.rooms" :selected-id="store.selectedRoom?.id" :can-create="canCreateRoom" :can-impersonate="canImpersonate" :viewer-agent-id="store.viewerAgentId" :viewer-agents="viewerAgents" :include-external="store.includeExternalRooms" :include-archived="store.includeArchivedRooms" :has-more="store.hasMoreRooms" :loading-more="store.loadingMoreRooms" @select="selectRoom" @changed="roomUpdated" @search="searchRooms" @toggle-external="toggleExternalRooms" @toggle-archived="toggleArchivedRooms" @load-more="loadMoreRooms" @view-agent="changeViewerAgent" @create="openCreate" /></div>
           </q-expansion-item>
+          <q-expansion-item v-if="deepRoom?.submissions.length || deepError" dense-toggle expand-separator icon="timeline" :label="t('chat.deep.activity')" class="sidebar-accordion-item" header-class="sidebar-accordion-header">
+            <div v-if="deepError" role="alert" class="q-pa-sm">{{ t('chat.deep.unavailable') }}</div>
+            <q-tabs v-else v-model="deepFilter" dense align="left">
+              <q-tab name="all" :label="t('chat.deep.all')" />
+              <q-tab name="running" :label="t('chat.deep.running')" />
+              <q-tab name="errors" :label="t('chat.deep.errors')" />
+              <q-tab name="approvals" :label="t('chat.deep.approval')" />
+            </q-tabs>
+            <q-list dense>
+              <q-item v-for="item in deepActivityItems" :key="item.id" clickable @click="goToDeep(item.message_id, item.id)">
+                <q-item-section>
+                  <q-item-label lines="1">{{ deepInputLabels[item.message_id] || t('chat.deep.activity') }}</q-item-label>
+                  <q-item-label caption>{{ t(`chat.deep.${item.state}`) }}</q-item-label>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-expansion-item>
           <q-expansion-item v-if="store.selectedRoom" v-model="documentsExpanded" dense-toggle expand-separator icon="description" :label="t('chat.workingDocuments')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': documentsExpanded }" header-class="sidebar-accordion-header">
             <template #header>
               <q-item-section avatar><q-icon name="description" /></q-item-section>
@@ -164,7 +191,7 @@
 </template>
 
 <script setup lang="ts">
-import { ContextHelp, PageHeader } from '@/core/util'
+import { ContextHelp, PageHeader, StatusBadge } from '@/core/util'
 import { navigationIcon } from '@/core/navigation'
 import { computed, nextTick, onBeforeUnmount, onMounted, provide, ref, shallowRef, watch } from 'vue'
 import { copyToClipboard, useQuasar } from 'quasar'
@@ -178,6 +205,7 @@ import RoomList from '../components/RoomList.vue'; import MessageTimeline from '
 import { defineAsyncView } from '@/core/util/facade'
 const RoomPreferencesDialog = defineAsyncView(() => import('../components/RoomPreferencesDialog.vue'))
 import ScrollToBottomButton from '../components/ScrollToBottomButton.vue'
+import { useDeepConversation } from '../useDeepConversation'
 const RoomCreateDialog = defineAsyncView(() => import('../components/RoomCreateDialog.vue'))
 import ChatWelcome from '../components/ChatWelcome.vue'
 import ChatHomePagination from '../components/ChatHomePagination.vue'
@@ -196,6 +224,48 @@ import { useConversationVisibility } from '../useConversationVisibility'
 
 const $q=useQuasar(); const {t,locale}=useI18n(); const route=useRoute(); const store=useChatStore(); const inboxStore=useChatInboxStore(); const privilegeStore=usePrivilegeStore(); const mobileView=ref<'conversation'|'details'>('details'); const createDialog=ref(false); const creatingRoom=ref(false); const preferencesDialog=ref(false); const savingRoomPreferences=ref(false); const archivingRoom=ref(false); const conversationsExpanded=ref(false); const tasksExpanded=ref(false); const documentsExpanded=ref(false); const processesExpanded=ref(false); const recipients=ref<RecipientCatalog>({agents:[]}); const viewerAgents=ref<ChatViewerAgent[]>([]); const roomSearch=ref(''); const replyingTo=ref<MessengerMessage|null>(null); const selectedTopicId=ref<string|null>(null)
 const roomFiltersVisible = ref(false)
+const deep = useDeepConversation(() => {
+  const room = store.selectedRoom
+  return room && room.source === null && room.kind === 'direct' && store.viewerAgentId === null ? room.id : null
+})
+const { room: deepRoom, events: deepEvents, error: deepError } = deep
+const deepFilter = ref('all')
+const messageTimeline = ref<InstanceType<typeof MessageTimeline> | null>(null)
+const deepInputLabels = computed(() => Object.fromEntries(store.messages.map(item => [item.id, item.text])))
+const deepActivityItems = computed(() => [...(deepRoom.value?.submissions ?? [])].reverse().filter(item => {
+  if (deepFilter.value === 'running') return ['running', 'queued', 'steering'].includes(item.state)
+  if (deepFilter.value === 'approvals') return item.approvals.length > 0
+  return deepFilter.value !== 'errors' || item.state === 'failed' || item.state === 'interrupted'
+}))
+
+async function goToDeep(messageId: string, submissionId: string): Promise<void> {
+  const roomId = store.selectedRoom?.id
+  deep.openActivity(submissionId)
+  mobileView.value = 'conversation'
+  beginConversationHistoryNavigation()
+  while (store.hasOlderMessages) {
+    await nextTick()
+    if (store.selectedRoom?.id !== roomId) return
+    if (await messageTimeline.value?.goToDeepSubmission(submissionId)) return
+    if (store.messages.some(message => message.id === messageId)) break
+    const size = store.messages.length
+    await store.loadOlderMessages()
+    if (store.selectedRoom?.id !== roomId || store.messages.length === size) return
+  }
+  await nextTick()
+  if (!await messageTimeline.value?.goToDeepSubmission(submissionId)) {
+    await messageTimeline.value?.goToMessage(messageId)
+  }
+}
+
+async function stopDeep(submissionId: string): Promise<void> {
+  const roomId = store.selectedRoom?.id
+  if (!roomId) return
+  await report(async () => {
+    await service.stopDeep(roomId, submissionId)
+    if (store.selectedRoom?.id === roomId) deep.scheduleRefresh()
+  })
+}
 const router = useRouter()
 let chatReady = false
 const initializingChat = ref(true)
@@ -677,7 +747,7 @@ async function sendMessage(text:string,files:File[]|undefined,reasoningEffortOve
     const documentId = integratedDocument.value?.id === displayedDocumentId.value
       ? displayedDocumentId.value : null
     accepted = await store.send(text,files,replyingTo.value?.id ?? null,selectedTopicId.value,reasoningEffortOverride ?? null,taskRequested,documentId,locale.value,documentId ? documentPane.value?.captureFocus() ?? null : null, codeStore.active?.loaded && !codeStore.active.error ? selectedCodeId.value : null,resourceUris,draft)
-    if (accepted && store.selectedRoom?.id === roomId) { replyingTo.value=null;selectedTopicId.value=null }
+    if (accepted && store.selectedRoom?.id === roomId) { replyingTo.value=null;selectedTopicId.value=null;deep.scheduleRefresh() }
   } catch(error) { reportError(error) }
   finally { acknowledge(accepted) }
 }

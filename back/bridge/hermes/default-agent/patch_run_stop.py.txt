@@ -62,15 +62,16 @@ managed_boundaries = {
         '        error = self._check_auth(request)\n'
         '        if error is not None:\n'
         '            return error\n'
-        '        return web.json_response({"authorization_protocol": "galaris.runtime-authorization/v1", "resumable_runs": True})\n'
+        '        return web.json_response({"authorization_protocol": "galaris.runtime-authorization/v1", "resumable_runs": True, "deep_sessions": True})\n'
         '    return [("GET", "/v1/galaris/capabilities", managed_capabilities),',
     '    self._run_idempotency_ids: set[str] = set()':
         '    self._galaris_authorization_loops = {}\n    self._run_idempotency_ids: set[str] = set()',
     '    admission: Any = None':
-        '    galaris_run_context: str = ""\n    admission: Any = None',
+        '    galaris_run_context: str = ""\n    galaris_deep_context: str = ""\n    admission: Any = None',
     '        turn_author=turn_author, walked_from=walked_from if session_id == stored_session_id else None)':
         '        turn_author=turn_author, walked_from=walked_from if session_id == stored_session_id else None,\n'
-        '        galaris_run_context=str(body.get("galaris_run_context") or ""))',
+        '        galaris_run_context=str(body.get("galaris_run_context") or ""),\n'
+        '        galaris_deep_context=str(body.get("galaris_deep_context") or ""))',
     '            register_gateway_notify(run.approval_session_key, approval_notify)':
         '            from galaris_authorization import bind_run, reset_run\n'
         '            resets.append((bind_run(self, run), reset_run))\n'

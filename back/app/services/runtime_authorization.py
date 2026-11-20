@@ -12,7 +12,7 @@ from typing import Any
 
 from sqlalchemy import select, update
 
-from app.agent import AgentRunRequest, get_agent_record, configured_harness_selection
+from app.agent import AgentRunRequest, ResolvedExecutionTarget, get_agent_record, configured_harness_selection
 from core.database import get_db_session
 from core.util import get_encryption_service
 
@@ -114,30 +114,45 @@ def _run_context(request: AgentRunRequest) -> str:
 
 
 async def issue_runtime_run_grant(request: AgentRunRequest) -> str:
-    if request.target is None or not request.target.target_ref.startswith("harness:"):
+    if request.target is None:
         raise PermissionError("A frozen managed Harness target is required")
-    context = _run_context(request)
+    return await _issue_runtime_grant(
+        request.agent_id, request.target, _run_context(request), request.run_id, request.attempt_id, timedelta(hours=24),
+    )
+
+
+async def issue_deep_runtime_grant(agent_id: int, target: ResolvedExecutionTarget, session_id: UUID) -> str:
+    """Authorize the assigned runtime for this conversation session."""
+    return await _issue_runtime_grant(agent_id, target, f"deep:{session_id}", session_id, None, timedelta(days=7))
+
+
+async def _issue_runtime_grant(
+    agent_id: int, target: ResolvedExecutionTarget, context: str, run_id: UUID,
+    attempt_id: UUID | None, lifetime: timedelta,
+) -> str:
+    if not target.target_ref.startswith("harness:"):
+        raise PermissionError("A frozen managed Harness target is required")
     async with get_db_session() as db:
         from app.agent import authorization_policy
-        await authorization_policy(request.agent_id, lock=True)
-        agent = await get_agent_record(request.agent_id)
+        await authorization_policy(agent_id, lock=True)
+        agent = await get_agent_record(agent_id)
         selected = await configured_harness_selection(agent) if agent else None
-        if selected is None or selected.status != "ready" or selected.metadata.get("authorization_enabled") is not True or request.target.target_ref != f"harness:{selected.id}" or request.target.revision != str(selected.revision):
+        if selected is None or selected.status != "ready" or selected.metadata.get("authorization_enabled") is not True or target.target_ref != f"harness:{selected.id}" or target.revision != str(selected.revision):
             raise PermissionError("The frozen runtime assignment changed")
-        token = await runtime_principal_port().for_agent(request.agent_id)
+        token = await runtime_principal_port().for_agent(agent_id)
         if token is None or not token.enabled:
             raise PermissionError("A managed runtime principal is required")
-        await db.execute(update(RuntimeRunGrant).where(RuntimeRunGrant.agent_id == request.agent_id,
+        await db.execute(update(RuntimeRunGrant).where(RuntimeRunGrant.agent_id == agent_id,
             RuntimeRunGrant.context_key == context, RuntimeRunGrant.active.is_(True)).values(active=False))
         from uuid import uuid4
         identifier = uuid4()
-        expires = datetime.now(timezone.utc) + timedelta(hours=24)
+        expires = datetime.now(timezone.utc) + lifetime
         credential = get_encryption_service().encrypt(f"runtime-run:{identifier}:{uuid4()}")
-        db.add(RuntimeRunGrant(id=identifier, agent_id=request.agent_id, token_id=token.id,
+        db.add(RuntimeRunGrant(id=identifier, agent_id=agent_id, token_id=token.id,
             credential_hash=fingerprint(credential), actor_key=hashlib.sha256(credential.encode()).hexdigest(),
-            context_fingerprint=fingerprint(await runtime_grant_snapshot(request.agent_id, request.target.provider_code, context)), runtime=request.target.provider_code,
-            context_key=context, run_key=request.run_id, attempt_key=request.attempt_id,
-            target_ref=request.target.target_ref, target_revision=request.target.revision,
+            context_fingerprint=fingerprint(await runtime_grant_snapshot(agent_id, target.provider_code, context)), runtime=target.provider_code,
+            context_key=context, run_key=run_id, attempt_key=attempt_id,
+            target_ref=target.target_ref, target_revision=target.revision,
             expires_at=expires))
         await db.commit()
     return credential

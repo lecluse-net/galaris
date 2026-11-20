@@ -64,7 +64,8 @@ async def qualify() -> None:
         capability_route = next(handler for method, path, handler in runs._http_routes(host)
             if method == "GET" and path == "/v1/galaris/capabilities")
         capability = json.loads((await capability_route(SimpleNamespace())).body)
-        assert capability == {"authorization_protocol": "galaris.runtime-authorization/v1", "resumable_runs": True}
+        assert capability == {"authorization_protocol": "galaris.runtime-authorization/v1", "resumable_runs": True,
+                              "deep_sessions": True}
         run_id = f"synthetic-{mode}"
         stream = runs._RunStream()
         host._run_streams[run_id] = stream

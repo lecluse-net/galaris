@@ -52,6 +52,7 @@ from .profile_gateway import (
 )
 from .reasoning import normalize_reasoning_effort, parse_force_reasoning_effort
 from .runtime_correlation import (
+    runtime_deep_scope,
     resolve_runtime_llm_task,
     resolve_runtime_process_run_id,
     resolve_runtime_task_id,
@@ -287,13 +288,14 @@ async def _anthropic_messages_body(
 ):
     agent_id = await _anthropic_api_auth(request)
     body: dict[str, Any] = await request.json()
-    runtime_task = await resolve_runtime_llm_task(
+    scoped_deep = request.headers.get("X-Galaris-Deep-Context") is not None
+    runtime_task = None if scoped_deep else await resolve_runtime_llm_task(
         request,
         task_ids=(x_galaris_task_id, body.get("galaris_task_id")),
         run_ids=(x_galaris_agent_run_id, body.get("galaris_agent_run_id")),
     )
     # External profile clients may discuss unrelated Galaris records in tools.
-    use_prompt_context = runtime_task is None and (not is_profile_api(request) or agent_id is not None)
+    use_prompt_context = not scoped_deep and runtime_task is None and (not is_profile_api(request) or agent_id is not None)
     if use_prompt_context:
         extract_process_context(body)
     try:
@@ -324,26 +326,26 @@ async def _anthropic_messages_body(
     )
     conversation_round_id = (
         UUID(str(raw_conversation_round_id))
-        if raw_conversation_round_id and runtime_task is None
+        if raw_conversation_round_id and runtime_task is None and not scoped_deep
         else None
     )
     # Explicit Task metadata beats prompt correlation, then the runtime agent's
     # local or durable unique Task (a known round skips the fallback).
     raw_task_id = x_galaris_task_id or body.get("galaris_task_id")
-    task_id = runtime_task.task_id if runtime_task is not None else await resolve_runtime_task_id(
+    task_id = None if scoped_deep else runtime_task.task_id if runtime_task is not None else await resolve_runtime_task_id(
         raw_task_id=raw_task_id,
         messages=correlation_messages,
         agent_id=(None if conversation_round_id is not None else agent_id),
     )
 
     raw_agent_run_id = x_galaris_agent_run_id or body.get("galaris_agent_run_id")
-    agent_run_id = runtime_task.run_id if runtime_task is not None else (
+    agent_run_id = None if scoped_deep else runtime_task.run_id if runtime_task is not None else (
         UUID(str(raw_agent_run_id))
         if raw_agent_run_id
         else agent_run_id_from_messages(correlation_messages)
     )
 
-    explicit_llm_id = body.get("galaris_llm_id") or llm_id_from_messages(
+    explicit_llm_id = None if scoped_deep else body.get("galaris_llm_id") or llm_id_from_messages(
         correlation_messages
     )
     llm_override = None
@@ -358,9 +360,9 @@ async def _anthropic_messages_body(
                 ),
             )
 
-    raw_process_run_id = (x_galaris_process_run_id or body.get("galaris_process_run_id")) if runtime_task is None else None
-    workflow_id = body.get("galaris_workflow_id") if runtime_task is None else None
-    engine_run_id = body.get("galaris_engine_run_id") if runtime_task is None else None
+    raw_process_run_id = (x_galaris_process_run_id or body.get("galaris_process_run_id")) if runtime_task is None and not scoped_deep else None
+    workflow_id = body.get("galaris_workflow_id") if runtime_task is None and not scoped_deep else None
+    engine_run_id = body.get("galaris_engine_run_id") if runtime_task is None and not scoped_deep else None
     agent_ids = (
         await _anthropic_api_agent_ids(agent_id)
         if raw_process_run_id or (workflow_id and engine_run_id)
@@ -387,24 +389,25 @@ async def _anthropic_messages_body(
         )
 
     try:
-        proxy_response = await call_proxy(
-            openai_body,
-            profile_model=is_profile_api(request),
-            task_id=task_id,
-            task_attempt_id=runtime_task.attempt_id if runtime_task is not None else None,
-            agent_run_id=agent_run_id,
-            conversation_round_id=conversation_round_id,
-            process_run_id=process_run_id,
-            agent_id=agent_id,
-            reasoning_effort=normalize_reasoning_effort(
-                x_galaris_reasoning_effort or body.get("galaris_reasoning_effort"),
-                strict=True,
-            ),
-            force_reasoning_effort=parse_force_reasoning_effort(
-                x_galaris_force_reasoning_effort
-                or body.get("galaris_force_reasoning_effort")
-            ),
-        )
+        async with runtime_deep_scope(request, agent_id):
+            proxy_response = await call_proxy(
+                openai_body,
+                profile_model=is_profile_api(request),
+                task_id=task_id,
+                task_attempt_id=runtime_task.attempt_id if runtime_task is not None else None,
+                agent_run_id=agent_run_id,
+                conversation_round_id=conversation_round_id,
+                process_run_id=process_run_id,
+                agent_id=agent_id,
+                reasoning_effort=normalize_reasoning_effort(
+                    x_galaris_reasoning_effort or body.get("galaris_reasoning_effort"),
+                    strict=True,
+                ),
+                force_reasoning_effort=parse_force_reasoning_effort(
+                    x_galaris_force_reasoning_effort
+                    or body.get("galaris_force_reasoning_effort")
+                ),
+            )
     except ProviderAuthenticationError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     except (TypeError, ValueError) as exc:

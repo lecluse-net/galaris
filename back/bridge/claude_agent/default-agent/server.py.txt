@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 import time
 from typing import Any, AsyncIterator
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from claude_agent_sdk import (
     ClaudeAgentOptions,
@@ -23,13 +23,14 @@ from claude_agent_sdk import (
     PermissionResultAllow,
     PermissionResultDeny,
 )
-from claude_agent_sdk.types import AssistantMessage, UserMessage, ToolUseBlock, ToolResultBlock, ResultMessage, StreamEvent
+from claude_agent_sdk.types import AssistantMessage, UserMessage, ToolUseBlock, ToolResultBlock, ResultMessage, StreamEvent, SystemMessage
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from stream_trace import ClaudeStreamTrace
 from runtime_support import file_precondition
-from runtime_web import install_control
+from runtime_support import deep_turn_text
+from runtime_web import deep_approvals, install_control
 
 
 class ChatMessage(BaseModel):
@@ -79,19 +80,26 @@ def _content_text(value: Any) -> str:
     return "".join(parts)
 
 
-def _prompt(messages: list[ChatMessage]) -> tuple[str, str]:
+def _prompt(messages: list[ChatMessage], *, deep: bool = False) -> tuple[str, str]:
     system_parts: list[str] = []
-    turns: list[str] = []
+    dialogue: list[tuple[str, str]] = []
     for message in messages:
-        content = _content_text(message.content).strip()
-        if not content:
+        content = _content_text(message.content)
+        if not content.strip():
             continue
         role = message.role.strip().lower()
         if role == "system":
-            system_parts.append(content)
+            system_parts.append(content.strip())
         elif role in {"user", "assistant"}:
-            turns.append(f"<{role}>\n{content}\n</{role}>")
-    return "\n\n".join(system_parts), "\n\n".join(turns)
+            dialogue.append((role, content))
+    if deep:
+        try:
+            turns = deep_turn_text(dialogue)
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+    else:
+        turns = "\n\n".join(f"<{role}>\n{content.strip()}\n</{role}>" for role, content in dialogue)
+    return "\n\n".join(system_parts), turns
 
 
 def _bounded_json(value: Any, limit: int = 8_000) -> dict[str, Any]:
@@ -162,15 +170,25 @@ async def _run_events(
     request: Request,
     actor: Any = None,
 ) -> AsyncIterator[tuple[str, dict[str, Any]]]:
-    system_prompt, prompt = _prompt(body.messages)
+    deep_session = request.headers.get("X-Galaris-Deep-Session", "")
+    system_prompt, prompt = _prompt(body.messages, deep=bool(deep_session))
     if not prompt:
         raise HTTPException(status_code=422, detail="No user message was provided")
 
     workspace = Path(os.environ.get("CLAUDE_AGENT_WORKSPACE", "/data/workspace"))
+    deep_context = request.headers.get("X-Galaris-Deep-Context", "")
+    external_inference = os.environ.get("CLAUDE_AGENT_EXTERNAL_INFERENCE") == "1"
+    native_session = request.headers.get("X-Galaris-Deep-Native-Session", "")
+    if deep_session:
+        if not external_inference and (actor is None or not deep_context):
+            raise HTTPException(status_code=403, detail="A session-scoped Deep request is required.")
+        deep_session = str(UUID(deep_session))
+        native_session = str(UUID(native_session)) if native_session else ""
+        workspace = workspace / "deep" / deep_session
     workspace.mkdir(parents=True, exist_ok=True)
     task_id = request.headers.get("X-Galaris-Task-Id", "").strip()
     run_id = request.headers.get("X-Galaris-Agent-Run-Id", "").strip()
-    model = request.headers.get("X-Galaris-Model-Code", "").strip() or body.model
+    model = body.model if external_inference else request.headers.get("X-Galaris-Model-Code", "").strip() or body.model
     reasoning_effort = request.headers.get(
         "X-Galaris-Reasoning-Effort", ""
     ).strip().lower()
@@ -183,6 +201,22 @@ async def _run_events(
     tool_started: dict[str, float] = {}
     tool_count = 0
     permitted: dict[str, tuple[str, dict[str, Any]]] = {}
+    parents: dict[str, str] = {}
+    background: set[str] = set()
+
+    def activity(message: dict[str, Any], call_id: str) -> dict[str, Any]:
+        if not deep_session:
+            return message
+        return {**message, "activity_ref": call_id, "parent_activity_ref": parents.get(call_id)}
+
+    def deep_read_allowed(tool: str, arguments: dict[str, Any]) -> bool:
+        if not deep_session or tool not in {"Read", "Glob", "Grep", "ToolSearch", "Agent", "Task"}:
+            return False
+        for key in ("path", "file_path"):
+            if value := arguments.get(key):
+                if not (workspace / str(value)).resolve().is_relative_to(workspace.resolve()):
+                    return False
+        return True
 
     async def authorize_local(name: str, arguments: dict[str, Any], call_id: str) -> bool:
         if not actor or not actor.approvals or not call_id:
@@ -214,6 +248,8 @@ async def _run_events(
         if name.startswith("mcp__galaris__"):
             return {}
         if name in {"Read", "Glob", "Grep", "ToolSearch"}:
+            if deep_read_allowed(name, input_data.get("tool_input") or {}):
+                return {}
             try:
                 if not actor or not actor.approvals:
                     raise PermissionError("No current runtime context")
@@ -222,7 +258,8 @@ async def _run_events(
             except Exception:
                 return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
                     "permissionDecision": "deny", "permissionDecisionReason": "Galaris runtime authority changed"}}
-        allowed = await authorize_local(name, input_data.get("tool_input") or {}, call_id)
+        arguments = input_data.get("tool_input") or {}
+        allowed = deep_read_allowed(name, arguments) or await authorize_local(name, arguments, call_id)
         return {"hookSpecificOutput": {"hookEventName": "PreToolUse",
             "permissionDecision": "allow" if allowed else "deny",
             "permissionDecisionReason": "Galaris one-action decision"}}
@@ -237,7 +274,7 @@ async def _run_events(
         message = trace.complete_tool_result(call_id, str(response) if response is not None else "Tool completed",
             result=_bounded_json(response), elapsed=elapsed)
         if message is not None:
-            await semantic_events.put(message)
+            await semantic_events.put(activity(message, call_id))
         return {}
 
     async def failed_tool(input_data: dict[str, Any], tool_use_id: str | None, _context: Any):
@@ -281,7 +318,9 @@ async def _run_events(
     custom_headers = []
     if task_id:
         custom_headers.append(f"X-Galaris-Task-Id: {task_id}")
-    if actor:
+    if deep_context:
+        custom_headers.append(f"X-Galaris-Deep-Context: {deep_context}")
+    elif actor and not external_inference:
         custom_headers.append(f"X-Galaris-Run-Context: {actor.approvals.run_context}")
     elif run_id:
         custom_headers.append(f"X-Galaris-Agent-Run-Id: {run_id}")
@@ -299,6 +338,8 @@ async def _run_events(
         "API_TIMEOUT_MS": "600000",
         "CLAUDE_CODE_MAX_RETRIES": "2",
     }
+    if external_inference:
+        sdk_env = {key: value for key, value in sdk_env.items() if not key.startswith("ANTHROPIC_")}
     mcp_url = os.environ.get("GALARIS_MCP_URL", "").strip()
     mcp_token = os.environ.get("GALARIS_MCP_TOKEN", "").strip()
     mcp_servers = {}
@@ -325,6 +366,7 @@ async def _run_events(
             "PostToolUseFailure": [HookMatcher(hooks=[failed_tool])],
         },
         include_partial_messages=True,
+        resume=native_session or None,
         model=model,
         cwd=workspace,
         add_dirs=[Path("/data/skills")],
@@ -350,33 +392,64 @@ async def _run_events(
         # not guarantee its nested subprocess is closed before we report stopped.
         async with ClaudeSDKClient(options=options) as client:
             await client.query(prompt=_prompt_messages(prompt))
-            async for message in client.receive_response():
+            messages = client.receive_messages() if deep_session else client.receive_response()
+            async for message in messages:
                 while not semantic_events.empty():
                     yield "tool", semantic_events.get_nowait()
                 if isinstance(message, AssistantMessage):
+                    parent = getattr(message, "parent_tool_use_id", None) if deep_session else None
                     for block in message.content:
                         if isinstance(block, ToolUseBlock):
                             trace.record_tool_call(block.id, block.name, _bounded_json(block.input))
+                            if deep_session:
+                                if parent:
+                                    parents[block.id] = parent
+                                yield "tool", activity({"type": "tool", "tool_name": block.name,
+                                    "content": str(block.input.get("description") or block.input.get("command") or ""),
+                                    "activity_state": "running"}, block.id)
                 elif isinstance(message, UserMessage) and isinstance(message.content, list):
                     for block in message.content:
                         if isinstance(block, ToolResultBlock):
                             tool = trace.complete_tool_result(block.tool_use_id, block.content, failed=block.is_error is True)
                             if tool is not None:
-                                yield "tool", tool
+                                yield "tool", activity(tool, block.tool_use_id)
                 elif isinstance(message, StreamEvent):
                     event = message.event
-                    for thinking in trace.consume(event):
-                        yield "tool", thinking
+                    if not deep_session:
+                        for thinking in trace.consume(event):
+                            yield "tool", thinking
                     if event.get("type") != "content_block_delta":
                         continue
                     delta = event.get("delta") or {}
                     if delta.get("type") == "text_delta":
                         content = str(delta.get("text") or "")
                         if content:
+                            parent = getattr(message, "parent_tool_use_id", None) if deep_session else None
+                            if parent:
+                                yield "tool", activity({"type": "tool", "content": content,
+                                    "activity_state": "running"}, parent)
+                                continue
                             emitted_text += content
                             yield "text", {"content": content}
+                elif deep_session and isinstance(message, SystemMessage):
+                    if message.subtype == "init" and message.data.get("session_id"):
+                        yield "session", {"session": str(message.data["session_id"])}
+                    if message.subtype in {"task_started", "task_progress", "task_notification"}:
+                        ident = str(message.data.get("task_id") or "")
+                        tool_id = str(message.data.get("tool_use_id") or ident)
+                        state = str(message.data.get("status") or "running")
+                        if message.subtype == "task_started":
+                            background.add(ident)
+                        elif message.subtype == "task_notification":
+                            background.discard(ident)
+                        yield "tool", activity({"type": "tool", "activity_state": "cancelled" if state == "stopped" else state,
+                            "content": str(message.data.get("summary") or message.data.get("description") or "")}, tool_id)
+                        if terminal is not None and not background:
+                            break
                 elif isinstance(message, ResultMessage):
                     terminal = message
+                    if deep_session and not background:
+                        break
         while not semantic_events.empty():
             yield "tool", semantic_events.get_nowait()
         for thinking in trace.finish():
@@ -431,6 +504,7 @@ async def _run_events(
             "runtime": "claude-agent-sdk",
             "runtime_run_id": terminal.session_id,
             "session_id": terminal.session_id,
+            **({"deep_native_session": terminal.session_id} if deep_session else {}),
             "runtime_status": terminal.subtype,
             "stop_reason": terminal.stop_reason,
             "terminal_reason": terminal.terminal_reason,
@@ -475,8 +549,17 @@ async def completions(body: ChatRequest, request: Request):
     _authenticate(request)
     completion_id = f"chatcmpl_{uuid4().hex}"
     if body.stream:
+        async def events() -> AsyncIterator[tuple[str, dict[str, Any]]]:
+            if request.headers.get("X-Galaris-Deep-Session") and os.environ.get("CLAUDE_AGENT_EXTERNAL_INFERENCE") != "1":
+                async with deep_approvals(request) as actor:
+                    async for event in _run_events(body, request, actor):
+                        yield event
+            else:
+                async for event in _run_events(body, request):
+                    yield event
+
         async def stream() -> AsyncIterator[str]:
-            async for kind, payload in _run_events(body, request):
+            async for kind, payload in events():
                 if kind == "text":
                     yield _sse(
                         None,
@@ -495,6 +578,8 @@ async def completions(body: ChatRequest, request: Request):
                     )
                 elif kind == "tool":
                     yield _sse("galaris.agent-message/v1", payload)
+                elif kind == "session":
+                    yield _sse("galaris.deep-session/v1", payload)
                 else:
                     yield _sse("galaris.agent-result/v1", payload)
                     usage = payload.get("usage") or {}

@@ -2,16 +2,44 @@
 
 from __future__ import annotations
 
-from collections.abc import Collection
+from collections.abc import AsyncGenerator, Collection
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
+from cryptography.fernet import InvalidToken
 from fastapi import HTTPException, Request
 
 from core.i18n import tr
 
 from .trace import task_id_from_messages
+
+
+@asynccontextmanager
+async def runtime_deep_scope(request: Request, agent_id: int | None) -> AsyncGenerator[bool, None]:
+    """Authenticate session attribution independently from a task attempt."""
+    credential = request.headers.get("X-Galaris-Deep-Context")
+    if credential is None:
+        yield False
+        return
+    from app.conversation import authorize_deep_runtime
+    from core.util import get_encryption_service
+    from .correlation import deep_inference_scope
+    from .subscription_policy import llm_execution_scope
+
+    try:
+        if agent_id is None or request.headers.get("X-Galaris-Run-Context"):
+            raise PermissionError("A Deep session requires its managed runtime principal.")
+        identity = get_encryption_service().decrypt(credential)
+        if not identity.startswith("galaris:deep:v1:"):
+            raise PermissionError("Invalid Deep session credential.")
+        session_id = UUID(identity.removeprefix("galaris:deep:v1:"))
+        requester = await authorize_deep_runtime(session_id, agent_id)
+    except (InvalidToken, PermissionError, ValueError, RuntimeError) as exc:
+        raise HTTPException(403, await tr("llm_api.errors.runtime_run_context_invalid")) from exc
+    with deep_inference_scope(session_id), llm_execution_scope(requester_user_id=requester):
+        yield True
 
 
 @dataclass(frozen=True, slots=True)

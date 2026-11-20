@@ -186,7 +186,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     from app.file_share import FileCatalogueEnrichmentPort
     register_file_catalogue(FileCatalogueEnrichmentPort())
     from app.task import scheduler as task_scheduler
-    from app.conversation import register_controller, register_runtime
+    from app.conversation import deep_running, register_controller, register_runtime, start_deep, stop_deep
     from app.conversation import scheduler as conversation_scheduler
     from app.harness.conversation import HarnessConversationController
     from app.voice import (
@@ -246,6 +246,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
                 is_running=conversation_scheduler.is_running,
                 stop_timeout=30.0,
             ),
+            RuntimeComponent(name="deep_scheduler", start=start_deep, stop=stop_deep, is_running=deep_running),
             RuntimeComponent(
                 name="messenger_listeners",
                 start=start_listeners,

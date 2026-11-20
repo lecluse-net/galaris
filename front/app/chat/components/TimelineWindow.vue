@@ -87,6 +87,23 @@ function setScrollPosition(top: number): void {
   else window.scrollTo({ top, behavior: 'instant' })
 }
 
+async function goTo(key: string): Promise<boolean> {
+  const index = items.findIndex(item => item.key === key)
+  const root = surface.value
+  if (index < 0 || !root || !target) return false
+  cancelRestore()
+  readingAnchor = null
+  if (virtualized.value) {
+    setScrollPosition(scrollPosition() + root.getBoundingClientRect().top - viewport().top + offsets.value[index]!)
+    update()
+    await nextTick()
+  }
+  rows.get(key)?.scrollIntoView({ block: 'nearest' })
+  return true
+}
+
+defineExpose({ goTo })
+
 function captureAnchor(): Anchor | null {
   if (!surface.value || !target) return null
   const view = viewport()
