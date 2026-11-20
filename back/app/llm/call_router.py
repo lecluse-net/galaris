@@ -216,6 +216,8 @@ async def llm_completion(
     try:
         agent_id = await _llm_api_auth(request)
         body: dict[str, Any] = await request.json()
+        if agent_id is not None and request.headers.get("X-Galaris-Output-Budget") == "provider":
+            _drop_sdk_output_budget(body)
         runtime_task = await resolve_runtime_llm_task(
             request,
             task_ids=(x_galaris_task_id, body.get("galaris_task_id")),
@@ -325,6 +327,12 @@ async def llm_completion(
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except HTTPException:
         raise
+
+
+def _drop_sdk_output_budget(body: dict[str, Any]) -> None:
+    """Use the gateway's model capacity for an authenticated runtime's generated cap."""
+    for key in ("max_tokens", "max_completion_tokens", "max_output_tokens"):
+        body.pop(key, None)
 
 
 @llm_api_router.post("/responses")

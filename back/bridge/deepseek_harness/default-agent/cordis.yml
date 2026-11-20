@@ -20,7 +20,16 @@
         api: openai-completions
         baseURL: !!js process.env.DEEPSEEK_BASE_URL
         apiKeyEnv: DEEPSEEK_API_KEY
-        headers: !!js 'process.env.GALARIS_RUN_CONTEXT ? { "X-Galaris-Run-Context": process.env.GALARIS_RUN_CONTEXT, "X-Galaris-Task-Id": process.env.GALARIS_TASK_ID } : {}'
+        # pi-ai derives a request limit even without an explicit model maxTokens.
+        # Let the gateway use the selected provider's published output capacity.
+        headers: !!js >-
+          ({
+            "X-Galaris-Output-Budget": "provider",
+            ...(process.env.GALARIS_RUN_CONTEXT ? {
+              "X-Galaris-Run-Context": process.env.GALARIS_RUN_CONTEXT,
+              "X-Galaris-Task-Id": process.env.GALARIS_TASK_ID
+            } : {})
+          })
         reasoning: !!js process.env.DSH_REASONING_EFFORT ?? 'high'
         retryPolicy:
           mode: normal
@@ -32,7 +41,6 @@
         models:
           - id: !!js process.env.GALARIS_MODEL
             contextWindow: 262144
-            maxTokens: 32768
             reasoningEfforts:
               low: low
               high: high

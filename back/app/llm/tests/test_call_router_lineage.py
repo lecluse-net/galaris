@@ -4,8 +4,41 @@ from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
 
-from app.llm.runtime_correlation import resolve_runtime_task_id
+from app.llm import call_router
+from app.llm.runtime_correlation import RuntimeLLMTask, resolve_runtime_task_id
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("runtime_agent", "opt_in", "use_provider_budget"), [
+    (True, True, True),
+    (True, False, False),
+    (False, True, False),
+])
+async def test_chat_budget_opt_in_requires_an_authenticated_runtime(
+    db, monkeypatch: pytest.MonkeyPatch, runtime_agent: bool, opt_in: bool, use_provider_budget: bool,
+) -> None:
+    monkeypatch.setattr(call_router, "_llm_api_auth", AsyncMock(return_value=42 if runtime_agent else None))
+    monkeypatch.setattr(call_router, "resolve_runtime_llm_task", AsyncMock(
+        return_value=RuntimeLLMTask(uuid4(), uuid4(), uuid4()) if runtime_agent else None,
+    ))
+
+    async def echo(body, **_options):
+        return body
+
+    monkeypatch.setattr(call_router, "proxy_chat_completion", echo)
+    api = FastAPI()
+    api.include_router(call_router.llm_api_router)
+    headers = {"X-Galaris-Output-Budget": "provider"} if opt_in else {}
+    budget = {"max_tokens": 123, "max_completion_tokens": 456, "max_output_tokens": 789}
+    async with AsyncClient(transport=ASGITransport(app=api), base_url="http://test") as client:
+        response = await client.post("/llm/openai/chat/completions", headers=headers, json={
+            "model": "synthetic", **budget,
+        })
+    assert response.status_code == 200, response.text
+    assert response.json() == ({"model": "synthetic"} if use_provider_budget else {"model": "synthetic", **budget})
 
 
 @pytest.mark.asyncio
