@@ -248,8 +248,9 @@ un encadré avec une icône et un fond adapté au thème. Choisissez un autre st
 changer, ou cliquez de nouveau sur le style actif pour retirer l’encadré.
 
 Le corps du document accepte du texte enrichi et du HTML interactif isolé avec CSS et JavaScript.
-Three.js est disponible localement dans ce rendu via `THREE`. Les fichiers HTML, 3D,
-vidéos et autres fichiers téléversés sont joints au document et ouverts dans leur visionneuse.
+Three.js est chargé localement à la demande. Les imports CDN reconnus de Three.js,
+OrbitControls et GLTFLoader utilisent la version fournie par Galaris à l’affichage.
+Les fichiers HTML, 3D, vidéos et autres fichiers téléversés sont joints au document et ouverts dans leur visionneuse.
 Les fichiers HTML utilisent les mêmes mécanismes de pièces jointes et de miniatures que
 les autres fichiers. Ils s'ouvrent aussi depuis Discussion, sans créer de copie supplémentaire.
 L'import conserve le fichier fourni ; les images, styles et autres ressources désignés par
@@ -274,7 +275,7 @@ affiche sa progression et peut être annulé. Une page HTML complète collée da
 est importée comme contenu enrichi éditable, avec ses images jointes et sans exécuter ses scripts.
 Le HTML personnalisé avec CSS et JavaScript reste conservé dans les documents existants
 ou fournis par les outils et les agents ; son rendu interactif reste isolé. L’éditeur de
-documents n’affiche pas leur code source. Three.js reste disponible localement via `THREE`.
+documents n’affiche pas leur code source.
 
 Collez une URL seule dans le document : elle devient un lien cliquable, sans modale.
 Cliquez sur ce lien avec le bouton droit puis **Afficher une carte** dans le menu contextuel de l’éditeur pour insérer

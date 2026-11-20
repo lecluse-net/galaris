@@ -67,9 +67,11 @@ Reader, print and snapshot styling belongs to Galaris and supports the existing 
 figures, table captions, image styles, callouts and highlighting without CKEditor CSS.
 
 Bundle the project's pinned Three.js, OrbitControls and GLTFLoader locally at build time
-and expose them as `THREE` in the opaque document runtime. Preserve the existing CSP,
-network restrictions, Dataset ACLs and personal consent. CDN imports and worker-based
-loaders remain outside the offline runtime contract. Native passive media materialization
+and import the bundle on demand for documents that reference `THREE`, declare the dependency,
+or import a supported module. Resolve supported package names and CDN references in the temporary
+runtime source, including import map aliases, and expose `THREE` before the document scripts run.
+Preserve the existing CSP, network restrictions, Dataset ACLs and personal consent. External requests
+and worker-based loaders remain outside the offline runtime contract. Native passive media materialization
 continues to use the existing authorized attachment resolver. Preserve WebGL drawing
 buffers for static snapshots rather than re-executing authored code on export.
 

@@ -10,7 +10,20 @@ export function documentRuntimeLibraries(): Plugin {
     resolveId: source => source === 'virtual:galaris-document-three' ? id : undefined,
     async load(source) {
       if (source !== id) return
-      bundled ??= build({ stdin: { contents: "export * from 'three'; export { OrbitControls } from 'three/addons/controls/OrbitControls.js'; export { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';", resolveDir: process.cwd(), loader: 'js' }, bundle: true, write: false, format: 'iife', globalName: 'THREE', minify: true }).then(result => result.outputFiles[0]!.text)
+      bundled ??= build({
+        stdin: {
+          contents: `export * from 'three';
+            export { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+            export { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';`,
+          resolveDir: process.cwd(), loader: 'js',
+        },
+        bundle: true, write: false, format: 'iife', globalName: 'THREE', minify: true,
+        footer: { js: `Object.defineProperty(globalThis, '__galarisDocumentThree', { value: Object.freeze({
+          three: THREE,
+          OrbitControls: Object.freeze({ OrbitControls: THREE.OrbitControls }),
+          GLTFLoader: Object.freeze({ GLTFLoader: THREE.GLTFLoader }),
+        }) });` },
+      }).then(result => result.outputFiles[0]!.text)
       return 'export default ' + JSON.stringify(await bundled)
     },
   }

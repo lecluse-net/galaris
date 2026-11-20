@@ -1,6 +1,5 @@
 import type { DocumentApp } from '@/app/document/documentApps'
 import { applicationSnapshotScript } from '@/app/document/documentAppSnapshot'
-import threeSource from 'virtual:galaris-document-three'
 import { applyDocumentContrast, solaire } from '@/core/util'
 
 // The outer frame owns frame-src: blob:. It also blocks self-navigation of the
@@ -8,19 +7,8 @@ import { applyDocumentContrast, solaire } from '@/core/util'
 const policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:; connect-src 'none'; frame-src blob:; worker-src 'none'; form-action 'none'; base-uri 'none'"
 const quoted = (value: unknown): string => JSON.stringify(value).replaceAll('<', '\\u003c').replaceAll('>', '\\u003e').replaceAll('&', '\\u0026')
 
-function hasAuthoredJavaScript(app: DocumentApp): boolean {
-  if (app.javascript?.trim()) return true
-  const doc = new DOMParser().parseFromString('<body>' + (app.html ?? ''), 'text/html')
-  return Boolean(doc.querySelector('script')) || [...doc.querySelectorAll('*')].some(element =>
-    [...element.attributes].some(attribute => attribute.name.startsWith('on')
-      || /^\s*javascript:/i.test(attribute.value.replace(/[\t\r\n]/g, ''))),
-  )
-}
-
-export function appSandboxDocument(app: DocumentApp, dark = false, notifyFocus = false): string {
-  // CSS, SVG and native disclosures need isolation, but no 3D engine. Keep the
-  // existing library available to all authored scripts, including inline handlers.
-  const libraries = hasAuthoredJavaScript(app) ? '<script>' + threeSource.replace(/<\/script/gi, '<\\/script') + '</script>' : ''
+export function appSandboxDocument(app: DocumentApp, threeSource: string, dark = false, notifyFocus = false): string {
+  const libraries = threeSource ? '<script>' + threeSource.replace(/<\/script/gi, '<\\/script') + '</script>' : ''
   const sdk = `
     (() => {
       // CSP connect-src does not cover WebRTC in every engine. No alternate realm

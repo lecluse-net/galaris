@@ -106,9 +106,19 @@ la région du premier au dernier objet reste dans le même contexte isolé. Le r
 reste volontairement conservateur : analyser arbitrairement le code pour en déduire ses
 dépendances pourrait casser les sélecteurs, identifiants et états partagés.
 
-Le runtime fournit localement `THREE`, avec `THREE.OrbitControls` et
-`THREE.GLTFLoader`, depuis la dépendance Three.js verrouillée du projet. Aucun import
-CDN n'est nécessaire ni autorisé. Une scène peut créer son `THREE.WebGLRenderer`,
+Le runtime charge Three.js à l’ouverture si le code du document référence `THREE` ou
+importe une des bibliothèques prises en charge. Il expose `THREE`, `THREE.OrbitControls`
+et `THREE.GLTFLoader` avant l’exécution du code. Un `<script data-galaris-library="three">`
+peut déclarer la dépendance lorsque le nom du global est calculé.
+
+Les imports ES statiques, `import()` avec un spécificateur littéral et les balises
+`<script src>` reconnus utilisent la version locale verrouillée par Galaris. Les noms
+`three`, `three/addons/controls/OrbitControls.js` et `three/addons/loaders/GLTFLoader.js`
+sont pris en charge, ainsi que leurs URL HTTPS reconnues sur jsDelivr, unpkg, cdnjs et
+esm.sh. Les alias et préfixes du champ `imports` d’une `importmap` peuvent pointer vers ces
+bibliothèques. Le remplacement s’applique au rendu temporaire. Le navigateur continue
+d’appliquer la CSP aux autres URL et aux imports calculés. Le précache de la PWA rend la
+bibliothèque locale disponible hors ligne. Une scène peut créer son `THREE.WebGLRenderer`,
 insérer son canvas dans le document et utiliser `requestAnimationFrame`. Le contexte
 WebGL conserve son tampon pour les captures statiques ; les exports capturent le rendu
 courant et ne rejouent pas les scripts. Les modèles et textures restent soumis aux

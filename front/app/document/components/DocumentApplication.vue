@@ -12,6 +12,7 @@ import { useQuasar } from 'quasar'
 import type { RegisterDocumentCapture } from '@/core/util'
 import { documentService } from '../services/documentService'
 import { appSandboxDocument } from '@/app/document/documentAppSandbox'
+import { prepareDocumentAppLibraries } from '@/app/document/documentAppLibraries'
 import type { AppDatasetRequest, DocumentApp } from '@/app/document/documentApps'
 import { materializeAppResources, type AppMediaResolver } from '@/app/document/documentAppResources'
 
@@ -64,9 +65,11 @@ async function start(): Promise<void> {
   error.value = ''; requests = 0; started = Date.now()
   const current = generation
   try {
-    const materialized = await materializeAppResources(app, resolveMedia ?? ((id, attachment, signal) => documentService.documentAttachmentBlob(id, attachment, null, signal)), controller.signal)
+    const { app: prepared, threeSource } = await prepareDocumentAppLibraries(app)
     if (current !== generation) return
-    source.value = appSandboxDocument(materialized, $q.dark.isActive, Boolean(host.value?.closest('[data-editor-surface][contenteditable="true"]')))
+    const materialized = await materializeAppResources(prepared, resolveMedia ?? ((id, attachment, signal) => documentService.documentAttachmentBlob(id, attachment, null, signal)), controller.signal)
+    if (current !== generation) return
+    source.value = appSandboxDocument(materialized, threeSource, $q.dark.isActive, Boolean(host.value?.closest('[data-editor-surface][contenteditable="true"]')))
     running.value = true
   } catch {
     if (current === generation) error.value = t('documents.apps.failed')

@@ -66,12 +66,25 @@ test('shared style and script regions retain their common document and source or
   expect(await lastValue(page)).toContain(source)
 })
 
-test('Three.js runs offline inside the real isolated document runtime with custom CSS and controls', async ({ page }) => {
-  const external = []; page.on('request', req => { if (/^https?:/.test(req.url()) && !req.url().startsWith('http://localhost:8000')) external.push(req.url()) })
+test('Three.js loads only when needed and renders in the isolated document runtime', async ({ page }) => {
+  const external = [], threeRequests = []
+  page.on('request', req => {
+    const url = req.url()
+    if (/^https?:/.test(url) && !url.startsWith('http://localhost:8000')) external.push(url)
+    if (url.includes('galaris:document-three')) threeRequests.push(url)
+  })
   await mount(page, 'core/util/components/RichText.vue', { props: { content: '' } })
-  await page.evaluate(source => window.testApp.mount({ component: 'app/document/components/DocumentApplicationBlock.vue', props: { source, language: 'galaris-raw-html', documentId: 'synthetic-document', revision: 1, ready: true, registerSnapshot: capture => { window.threeCapture = capture } } }), interactive)
+  const calculator = '<p>Calculate a value</p><button>Calculate</button><output></output><script type="application/json">{"label":"THREE"}</script><script>document.querySelector("button").onclick = () => { document.querySelector("output").textContent = 2 + 2; };</script>'
+  await page.evaluate(source => window.testApp.mount({ component: 'app/document/components/DocumentApplicationBlock.vue', props: { source, language: 'galaris-raw-html', documentId: 'synthetic-document', revision: 1, ready: true, registerSnapshot: capture => { window.threeCapture = capture } } }), calculator)
   const inner = page.frameLocator('iframe').frameLocator('iframe')
+  await inner.getByRole('button', { name: 'Calculate' }).click()
+  await expect(inner.locator('output')).toHaveText('4')
+  expect(threeRequests).toEqual([])
+  expect(await inner.locator('body').evaluate(() => typeof window.THREE)).toBe('undefined')
+
+  await page.evaluate(source => window.testApp.setProps({ source }), interactive)
   await expect(inner.getByText('Ready', { exact: true })).toBeVisible()
+  expect(threeRequests).toHaveLength(1)
   await expect(inner.locator('canvas')).toBeVisible()
   await inner.getByRole('button', { name: 'Rotate' }).click()
   await expect(inner.getByText('Rotated', { exact: true })).toBeVisible()
@@ -80,6 +93,16 @@ test('Three.js runs offline inside the real isolated document runtime with custo
   await expect.poll(() => page.evaluate(() => typeof window.threeCapture)).toBe('function')
   const snapshot = await page.evaluate(() => window.threeCapture(new AbortController().signal))
   expect(snapshot).toContain(canvas.image); expect(snapshot).toContain('Rotated'); expect(snapshot).not.toContain('<script')
+
+  const declared = '<output></output><script data-galaris-library="three">const library = window["TH" + "REE"]; document.querySelector("output").textContent = [typeof library.OrbitControls, typeof library.GLTFLoader].join(", ");</script>'
+  await page.evaluate(source => window.testApp.setProps({ source }), declared)
+  await expect(inner.locator('output')).toHaveText('function, function')
+
+  await page.evaluate(source => window.testApp.setProps({ source }), calculator)
+  await inner.getByRole('button', { name: 'Calculate' }).click()
+  await expect(inner.locator('output')).toHaveText('4')
+  expect(await inner.locator('body').evaluate(() => typeof window.THREE)).toBe('undefined')
+  expect(threeRequests).toHaveLength(1)
 })
 
 test('canonical internal links retain identity through formatting and reopening', async ({ page }) => {

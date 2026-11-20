@@ -888,8 +888,11 @@ preview reuse on desktop and mobile. URI, HTML and File Sharing API tests verify
 source-domain privileges and private-file isolation.
 The same scenario covers the Markdown reader and legacy editor; document import tests
 verify opaque Chat locators survive conversion.
-A real Three.js scene exercises the offline isolated runtime, controls and a nonempty
-static capture, without executing code in the editor's origin. Document Source and its Chat focus scenario are retired;
+The browser verifies that a JavaScript calculator skips Three.js. A real scene exercises
+its local loading in the isolated runtime, controls and a nonempty static capture, without
+executing code in the editor's origin. `document-apps.spec.mjs` checks local substitution of
+recognized CDN imports, import map aliases, and network blocking for other modules.
+Document Source and its Chat focus scenario are retired;
 rendered selection scenarios remain in `chat-document-workspace.spec.mjs`. Source for
 `rich-text` fields remains covered by `source-editing.spec.mjs`, and `rich-text.spec.mjs`
 checks its absence in documents and profile transitions on mobile and desktop. Prose between independent

@@ -62,6 +62,46 @@ for (const entry of ['javascript', 'script', 'handler']) test(`the local 3D libr
   await expect(inner(page).getByRole('status')).toHaveText('Scene, function, function')
 })
 
+test('the isolated runtime substitutes local Three.js for CDN module imports', async ({ page }) => {
+  const html = `<output role="status">Waiting</output>
+    <script type="importmap">{"imports":{
+      "three":"https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+      "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/",
+      "scene-engine":"https://unpkg.com/three@0.160.1/build/three.module.js"
+    }}</script>
+    <script type="module">
+      import { Scene as LocalScene } from 'scene-engine';
+      import { GLTFLoader } from 'https://unpkg.com/three@0.160.1/examples/jsm/loaders/GLTFLoader.js';
+      const engine = await import('three');
+      const controls = await import('three/addons/controls/OrbitControls.js');
+      const unknown = await import('https://example.invalid/unlisted.js').then(() => 'loaded', () => 'blocked');
+      document.querySelector('output').textContent = [new LocalScene().type, engine.Scene === LocalScene,
+        typeof controls.OrbitControls, typeof GLTFLoader, unknown].join(', ');
+    </script>`
+  const cdnRequests = []
+  let blockedByCsp = false
+  page.on('request', req => {
+    if (['cdn.jsdelivr.net', 'unpkg.com'].includes(new URL(req.url()).hostname)) cdnRequests.push(req.url())
+  })
+  page.on('console', message => {
+    const text = message.text()
+    if (text.includes('https://example.invalid/unlisted.js') && text.includes('Content Security Policy')) blockedByCsp = true
+  })
+  const app = { id: 'library-import', title: 'Synthetic library imports', html }
+  await mount(page, 'app/document/components/DocumentApplication.vue', { props: { ...runtimeProps, app } })
+  await expect(inner(page).getByRole('status')).toHaveText('Scene, true, function, function, blocked')
+  expect(cdnRequests).toEqual([])
+  await expect.poll(() => blockedByCsp).toBe(true)
+})
+
+test('a supported classic CDN script enables the local Three.js global', async ({ page }) => {
+  const app = { id: 'library-script', title: 'Synthetic CDN script', html: `<output role="status">Waiting</output>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.160.1/three.min.js"></script>
+    <script>document.querySelector('output').textContent = typeof window['TH' + 'REE'].Scene;</script>` }
+  await mount(page, 'app/document/components/DocumentApplication.vue', { props: { ...runtimeProps, app } })
+  await expect(inner(page).getByRole('status')).toHaveText('function')
+})
+
 for (const width of [1440, 390]) test(`isolated HTML follows the host theme without restarting scripts or losing input at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
   const app = { id: 'theme-example', title: 'Synthetic theme example',

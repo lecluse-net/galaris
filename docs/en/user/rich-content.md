@@ -234,7 +234,8 @@ uploading. Upload progress
 includes cancellation; images also retain the editor’s upload controls.
 
 The document body supports rich text and isolated interactive HTML with custom CSS and JavaScript.
-Three.js is available locally in that rendering as `THREE`. Uploaded HTML pages, 3D files, videos and other
+Three.js loads locally on demand. Recognized CDN imports for Three.js, OrbitControls and
+GLTFLoader use the version supplied by Galaris at render time. Uploaded HTML pages, 3D files, videos and other
 files are attachments opened with their resource viewer. HTML files use the same attachment
 and thumbnail mechanisms as other files and also open from Chat without creating another copy.
 Import keeps the supplied file; images, styles and other resources referenced by URLs inside

@@ -919,8 +919,11 @@ lors d’un changement de contenu et export statique avec polices intégrées sa
 
 `front/browser-tests/tiptap-preservation.spec.mjs` couvre la conservation du corpus HTML
 dans Tiptap, la sérialisation, la réouverture et la lecture : références canoniques, tableaux et
-HTML/CSS/JavaScript opaque. Une vraie scène Three.js exerce le runtime isolé hors ligne,
+HTML/CSS/JavaScript opaque. Le navigateur vérifie que le JavaScript d’un calculateur ne
+charge pas Three.js. Une vraie scène exerce son chargement local dans le runtime isolé,
 ses contrôles et une capture statique non vide, sans exécution dans l’origine de l’éditeur.
+`document-apps.spec.mjs` vérifie aussi la substitution locale des imports CDN reconnus,
+les alias d’importmap et le blocage réseau des autres modules.
 `front/browser-tests/resource-links.spec.mjs` couvre les URI de Services et natives dans les
 deux profils HTML : édition, réouverture, choix de l'agent, refus, retry et révocation avant
 réutilisation d'un aperçu en cache sur ordinateur et mobile. Les tests du parseur d'URI,

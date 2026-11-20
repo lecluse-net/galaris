@@ -99,9 +99,19 @@ boundaries. Scripts, global styles, event handlers or shared SVG references keep
 from the first to the last object in one isolated context. Grouping is deliberately conservative:
 guessing dependencies from arbitrary code could break selectors, IDs and shared state.
 
-The runtime provides local `THREE`, including `THREE.OrbitControls` and
-`THREE.GLTFLoader`, from the project's locked Three.js dependency. No CDN import is
-needed or allowed. A scene can create its `THREE.WebGLRenderer`, insert its canvas
+The runtime loads Three.js on opening when the document code references `THREE` or
+imports a supported library. It exposes `THREE`, `THREE.OrbitControls` and
+`THREE.GLTFLoader` before the document code runs. A `<script data-galaris-library="three">`
+can declare the dependency when looking up the global under a computed name.
+
+Recognized static ES imports, `import()` with a literal specifier, and `<script src>` tags
+use the version pinned by Galaris. Supported names include `three`,
+`three/addons/controls/OrbitControls.js`, and `three/addons/loaders/GLTFLoader.js`, along
+with their recognized HTTPS URLs on jsDelivr, unpkg, cdnjs, and esm.sh. Aliases and prefixes
+in an import map's `imports` field can point to these libraries. The substitution applies
+to the temporary rendering. The browser continues to enforce the CSP for other URLs and
+computed imports. The PWA precaches the local library for offline use. A scene can create
+its `THREE.WebGLRenderer`, insert its canvas
 and use `requestAnimationFrame`. WebGL drawing buffers are preserved for static
 captures; exports capture the current rendering without replaying scripts. Models
 and textures remain subject to allowed resources and MIME types; loaders requiring
