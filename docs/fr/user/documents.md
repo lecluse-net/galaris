@@ -123,36 +123,42 @@ de conserver le brouillon ou de l'abandonner. L'abandon restaure le dernier cont
 Dans **Nouveau document**, choisissez **Carte mentale**. Sélectionnez un nœud, puis
 appuyez sur **Entrée** ou cliquez de nouveau sur son titre pour le modifier sur place.
 À l’ouverture de l’édition, le curseur se place à la fin du texte. La barre d’outils
-donne accès à la note, au lien, au changement de branche parente et à l’ordre des branches.
-Sur ordinateur, faites glisser une branche ou une sélection. Visez le haut ou le bas du nœud
-cible pour placer les branches avant ou après lui, ou son centre pour les placer parmi ses enfants.
-Les branches gardent leur ordre et leurs descendants. Un déplacement se défait en une seule fois.
+donne accès à la note, au lien, au changement de parent et à l’ordre des nœuds.
+Sur ordinateur, faites glisser un nœud ou une sélection. Visez le haut ou le bas du nœud
+cible pour placer les nœuds avant ou après lui, ou son centre pour les placer parmi ses enfants.
+Les nœuds gardent leur ordre et leurs descendants. Un déplacement se défait en une seule fois.
 Les boutons **+** et **−** des nœuds déplient et replient leurs descendants. Le repli
 agit sur l’affichage. La disposition et l’enregistrement suivent les modifications de contenu.
 
 Quand un nœud a le focus, utilisez les flèches pour naviguer, **Tab** ou **Inser**
-pour ajouter un enfant et **Maj+Entrée** pour ajouter une branche sœur. **Espace**
-replie ou déplie une branche sans case à cocher. Depuis le titre, **Alt+flèches** sélectionne un autre nœud.
-**F2** édite le titre et **F3** édite la note. Hors édition, **Ctrl+K** ou le bouton **Lien**
+pour ajouter un enfant et **Maj+Entrée** pour ajouter un nœud frère. **Espace**
+replie ou déplie un nœud sans case à cocher. Depuis le titre, **Alt+flèches** sélectionne un autre nœud.
+**F2** ouvre le sélecteur d’icône, **F3** ajoute ou retire la case à cocher, **F4** ajoute ou
+retire le champ de valeur et **F6** édite la note. Hors édition, **Ctrl+K** ou le bouton **Lien**
 ajoute un lien dans un nouvel enfant après validation.
+**Suppr** ouvre la confirmation de suppression du nœud. Depuis un champ de valeur ou un titre
+en cours de saisie, utilisez **Alt+Suppr**. Dans la confirmation, **Entrée** valide l’action
+et **Échap** ferme la modale.
 Pendant l’édition du titre, de la note ou du lien, **Entrée** valide et **Échap** annule. **Maj+Entrée** insère un
 saut de ligne dans une note. Depuis un nœud, **Échap**, puis **Tab**, quitte la carte.
 Le bouton **Aide clavier** dans **Affichage** et **Alt+0** ouvrent la liste des raccourcis de la carte.
 
 Dans **Nœud**, choisissez **Ajouter une case à cocher**. Cliquez sur la case ou appuyez
 sur **Espace** sur le nœud hors édition pour la cocher ou la décocher. En édition,
-**Espace** insère un espace. Le document enregistre l’état de la case. Une nouvelle branche sœur
-créée juste sous un nœud avec une case reçoit une case vide, même si la première est cochée.
-Les nouveaux enfants et les branches créées depuis un nœud sans case commencent sans case.
+**Espace** insère un espace. Le document enregistre l’état de la case. Un nouveau nœud frère
+créé juste après un nœud avec une case reçoit une case vide, même si la première est cochée.
+Les nouveaux enfants et les nœuds frères d’un nœud sans case commencent sans case.
 
 Utilisez **Maj+flèches** ou **Maj+clic** pour sélectionner une plage de nœuds visibles.
 **Ctrl+clic** (**Cmd+clic** sur Mac) sur le nœud l’ajoute à la sélection ou l’en retire.
 Sur un lien, **Ctrl/Cmd+clic** ouvre la référence. La sélection de texte est réservée aux champs en cours d’édition.
-La barre d’outils permet de déplacer, couper, copier ou supprimer les branches sélectionnées,
+La barre d’outils permet de déplacer, couper, copier ou supprimer les nœuds sélectionnés,
 ou d’ajouter et de retirer leurs cases à cocher. Dans la même carte, sélectionnez le nœud
-de destination puis collez pour ajouter les branches sous ce nœud. Une coupe déplace les branches
-au collage. Une copie crée des branches distinctes. Le déplacement, la copie et la suppression
-prennent les descendants des branches sélectionnées avec elles.
+de destination puis collez pour ajouter les nœuds sous ce nœud. Les nœuds coupés et leurs
+enfants apparaissent en transparence jusqu’au collage. **Échap**, **Annuler la coupe** ou
+**Ctrl/Cmd+Z** annule la coupe en attente et laisse les nœuds en place. Une copie crée des
+nœuds distincts. Le déplacement, la copie et la suppression
+s’appliquent aussi à tous les descendants des nœuds sélectionnés.
 
 Hors édition, coller du texte crée un enfant par ligne sous le nœud actif, y compris pour
 les lignes vides. Une ligne qui contient une URL seule devient un enfant avec un lien cliquable.
@@ -165,14 +171,14 @@ puis l’insérer sous le nœud cible. Déposer un lien web ajoute une référen
 
 Le groupe **Édition** réunit aussi **Couper**, **Copier** et **Coller**. Les groupes
 de la barre d’outils sont centrés sur chaque ligne et passent à la suivante quand la place manque.
-Dans **Édition**, **Tout sélectionner** (**Ctrl/Cmd+A**) inclut les branches repliées.
+Dans **Édition**, **Tout sélectionner** (**Ctrl/Cmd+A**) inclut les nœuds repliés.
 **Annuler la modification** (**Ctrl/Cmd+Z**) et **Rétablir** (**Ctrl/Cmd+Maj+Z**) couvrent
 les opérations sur la carte pendant l’ouverture du document, y compris les déplacements,
 les suppressions et les changements de cases. Pendant la saisie dans un nœud riche,
 les raccourcis agissent sur le texte du nœud.
 
 **Rechercher** (**Ctrl/Cmd+F**) parcourt les titres, les notes et le texte riche, y
-compris dans les branches repliées. **Suivant** révèle le nœud trouvé. **Remplacer**
+compris dans les nœuds repliés. **Suivant** révèle le nœud trouvé. **Remplacer**
 modifie une occurrence et **Tout remplacer** forme une modification annulable.
 La mise en forme et les adresses des liens sont conservées.
 
@@ -197,8 +203,8 @@ réglage avec la carte et **Annuler** rétablit la dernière valeur enregistrée
 
 Dans **Export**, **Exporter en image PNG** télécharge le diagramme entier avec son
 thème et son fond. **Imprimer** ouvre la boîte de dialogue du navigateur avec le
-diagramme ajusté sur une page A4 en paysage. Les deux commandes incluent les branches
-repliées, leurs notes, leurs cases et les images accessibles. Les références à des
+diagramme ajusté sur une page A4 en paysage. Les deux commandes incluent les nœuds
+repliés, leurs notes, leurs cases et les images accessibles. Les références à des
 objets interactifs reprennent le titre et le texte de la référence. Les commandes
 préservent la sélection, le zoom et le repli dans l’éditeur.
 **Exporter le document et ses pièces jointes (ZIP)** inclut le diagramme HTML autonome
@@ -210,7 +216,7 @@ paragraphe directement dans le nœud. Le titre existant devient le premier parag
 Le nœud affiche son contenu directement et **Entrée** y ouvre l’éditeur.
 La barre d’outils s’adapte à la sélection et
 propose alors la mise en forme, les listes et les tableaux. **Insérer un fichier**
-et **Galaris** créent un sous-nœud par ressource dans une branche sélectionnée.
+et **Galaris** créent un enfant par ressource sous le nœud sélectionné.
 Pendant l’édition du contenu riche, ces commandes insèrent la ressource à la sélection du texte.
 Un clic sur une image, un lien ou une carte affiche ses actions à la suite des groupes de la barre d’outils.
 Les commandes d’insertion d’un paragraphe avant ou après un bloc sont disponibles pendant l’édition d’un nœud enrichi.
@@ -232,15 +238,15 @@ dans le fichier d’origine. L’export PDF présente le texte et la hiérarchie
 
 ### Travailler sur une carte avec un agent
 
-Dans le Chat, demandez à l’agent de créer une carte, de lire ses branches ou de les
+Dans le Chat, demandez à l’agent de créer une carte, de lire ses nœuds ou de les
 modifier. Il peut aussi choisir ce format pour un résultat qui se prête à une
 arborescence, comme un plan par chantier. Les fonctions et les droits de l’agent
 déterminent les actions possibles. Une approbation peut être nécessaire pour écrire.
 
 Si vous écrivez avec la carte ouverte à côté du Chat, le contexte peut indiquer à
 l’agent quel document vous consultez. La sélection de nœuds reste dans l’interface.
-Pour désigner une branche, donnez son titre et, si nécessaire, le nom de sa parente,
-par exemple « Sous Architecture → Stockage, ajoute une branche Sauvegardes ».
+Pour désigner un nœud, donnez son titre et, si nécessaire, le nom de son parent,
+par exemple « Sous Architecture → Stockage, ajoute un nœud Sauvegardes ».
 
 ## Résumé courant et mots-clés
 

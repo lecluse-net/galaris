@@ -16,6 +16,7 @@ NodeKey = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_-]{1,80}$")]
 NodeTitle = Annotated[str, StringConstraints(max_length=500)]
 NodeNote = Annotated[str, StringConstraints(max_length=16000)]
 NodeLink = Annotated[str, StringConstraints(max_length=2048)]
+NodeValue = Annotated[str, StringConstraints(max_length=2048)]
 NodeBody = Annotated[str, StringConstraints(max_length=128_000)]
 NodeIcon = Annotated[str, StringConstraints(max_length=1_000_000)]
 PaletteKey = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9-]{0,63}$")]
@@ -33,6 +34,7 @@ class MindMapNode(BaseModel):
     body_html: NodeBody = ""
     icon: NodeIcon = ""
     checked: bool | None = None
+    value: NodeValue | None = None
 
     @field_validator("icon")
     @classmethod
@@ -136,7 +138,7 @@ def remap_references(content: str, mapping: Mapping[str, str]) -> str:
 
 def extract(content: str) -> str:
     return "\n".join(part for node in MindMap.model_validate_json(content).ordered()
-                     for part in (node.title, node.note, visible_text(node.body_html) if node.body_html else "") if part)
+                     for part in (node.title, node.value, node.note, visible_text(node.body_html) if node.body_html else "") if part)
 
 
 def static_snapshot(content: str) -> str:
@@ -149,6 +151,7 @@ def static_snapshot(content: str) -> str:
         body = f"<p>{escape(visible_text(node.body_html))}</p>" if node.body_html else ""
         link = f"<p>{escape(node.link)}</p>" if node.link else ""
         checkbox = ("☑ " if node.checked else "☐ ") if node.checked is not None else ""
-        return f"<li><strong>{checkbox}{escape(node.title)}</strong>{note}{body}{link}" + (f"<ul>{nested}</ul>" if nested else "") + "</li>"
+        value = f" {escape(node.value)}" if node.value else ""
+        return f"<li><strong>{checkbox}{escape(node.title)}</strong>{value}{note}{body}{link}" + (f"<ul>{nested}</ul>" if nested else "") + "</li>"
 
     return f"<ul>{branch(mindmap.root)}</ul>"

@@ -2,7 +2,8 @@
   <Teleport to="body" :disabled="!standaloneFullscreen">
   <q-banner v-if="!map || !root" dense class="text-negative" role="alert">{{ t('documents.mindmap.invalid') }}</q-banner>
   <section v-else class="mindmap" :class="{ 'mindmap--dark': $q.dark.isActive, 'editorial-fullscreen': standaloneFullscreen }"
-    :style="mapThemeStyle" :aria-label="t('documents.formats.mindmap')" @keydown.esc="onFullscreenEscape">
+    :style="mapThemeStyle" :aria-label="t('documents.formats.mindmap')"
+    @focusin="onMapFocus" @focusout="onMapFocus" @keydown.esc.capture="onCutEscape" @keydown.esc="onFullscreenEscape">
     <div ref="toolbar" class="editorial-toolbars" @keydown.esc="onBodyEscape">
       <DocumentToolbarFrame v-show="!activeBody" ref="mapToolbar" mode="simple" class="mindmap-tools" :label="t('documents.formats.mindmap')" :document-navigation="!embedded">
       <div class="editorial-toolbar-group" role="group" :aria-label="t('documents.mindmap.view')">
@@ -27,7 +28,7 @@
         <span class="editorial-toolbar-title">{{ t('richEditor.groups.editing') }}</span>
         <div class="editorial-toolbar-row">
           <q-btn v-if="!readonly" flat dense :icon="editorialIcon('undo', 'undo')" :aria-label="t('richEditor.undo')"
-            :disable="!undo.length" @click="restoreHistory('undo')"><q-tooltip>{{ t('richEditor.undo') }}</q-tooltip></q-btn>
+            :disable="!undo.length && !cutPending" @click="restoreHistory('undo')"><q-tooltip>{{ t('richEditor.undo') }}</q-tooltip></q-btn>
           <q-btn v-if="!readonly" flat dense :icon="editorialIcon('redo', 'redo')" :aria-label="t('richEditor.redo')"
             :disable="!redo.length" @click="restoreHistory('redo')"><q-tooltip>{{ t('richEditor.redo') }}</q-tooltip></q-btn>
           <q-btn flat dense :icon="editorialIcon('find', 'search')" :aria-label="t('richEditor.find')" :aria-expanded="searchOpen"
@@ -37,6 +38,10 @@
           <template v-if="!readonly">
             <q-btn flat dense icon="content_cut" :disable="!canMoveSelection" :aria-label="t('richEditor.clipboard.cut')" @click="storeBranches('cut')">
               <q-tooltip>{{ t('richEditor.clipboard.cut') }}</q-tooltip>
+            </q-btn>
+            <q-btn v-if="cutPending" flat dense color="primary" icon="cancel" :aria-label="t('documents.mindmapClipboard.cancelCut')"
+              @click="cancelCutFromToolbar">
+              <q-tooltip>{{ t('documents.mindmapClipboard.cancelCut') }} ({{ t('documents.mindmapHelp.escape') }})</q-tooltip>
             </q-btn>
             <q-btn flat dense :icon="editorialIcon('copy', 'content_copy')" :disable="!selection.length" :aria-label="t('richEditor.clipboard.copy')" @click="storeBranches('copy')">
               <q-tooltip>{{ t('richEditor.clipboard.copy') }}</q-tooltip>
@@ -98,14 +103,14 @@
       <div v-if="!readonly" class="editorial-toolbar-group" role="group" :aria-label="t('documents.mindmap.node')">
         <span class="editorial-toolbar-title">{{ t('documents.mindmap.node') }}</span>
         <div class="editorial-toolbar-row">
-        <q-btn v-if="!active.body_html" flat dense :icon="editorialIcon('edit', 'edit')" :aria-label="t('documents.mindmap.rename')" @click="focusTitle(active.id)">
-          <q-tooltip>{{ t('documents.mindmap.rename') }} (F2)</q-tooltip>
+        <q-btn v-if="!active.body_html && active.value == null" flat dense :icon="editorialIcon('edit', 'edit')" :aria-label="t('documents.mindmap.rename')" @click="focusTitle(active.id)">
+          <q-tooltip>{{ t('documents.mindmap.rename') }} ({{ t('documents.mindmapHelp.enter') }})</q-tooltip>
         </q-btn>
         <q-btn flat dense icon="notes" :aria-label="t('documents.mindmap.editNote')" @click="beginEdit(active.id, 'note')">
-          <q-tooltip>{{ t('documents.mindmap.editNote') }} (F3)</q-tooltip>
+          <q-tooltip>{{ t('documents.mindmap.editNote') }} (F6)</q-tooltip>
         </q-btn>
-        <q-btn v-if="!active.body_html" flat dense icon="emoji_emotions" :aria-label="t('documents.mindmap.icon')" @click="openIconPicker">
-          <q-tooltip>{{ t('documents.mindmap.icon') }}</q-tooltip>
+        <q-btn v-if="!active.body_html || active.value != null" flat dense icon="emoji_emotions" :aria-label="t('documents.mindmap.icon')" @click="openIconPicker">
+          <q-tooltip>{{ t('documents.mindmap.icon') }} (F2)</q-tooltip>
           <DocumentTagIconPicker v-model="iconOpen" :busy="false" :current-icon="iconNode?.icon" :save="saveIcon" document />
         </q-btn>
         <q-btn flat dense icon="edit_note" :aria-label="bodyLabel" @click="openBody(active.id)">
@@ -113,11 +118,19 @@
         </q-btn>
         <q-btn v-if="selection.some(node => node.checked == null)" flat dense icon="check_box_outline_blank"
           :aria-label="t('documents.mindmap.addCheckbox')" @click="setSelectionCheckboxes(true)">
-          <q-tooltip>{{ t('documents.mindmap.addCheckbox') }}</q-tooltip>
+          <q-tooltip>{{ t('documents.mindmap.addCheckbox') }} (F3)</q-tooltip>
         </q-btn>
         <q-btn v-if="selection.some(node => node.checked != null)" flat dense icon="indeterminate_check_box"
           :aria-label="t('documents.mindmap.removeCheckbox')" @click="setSelectionCheckboxes(false)">
-          <q-tooltip>{{ t('documents.mindmap.removeCheckbox') }}</q-tooltip>
+          <q-tooltip>{{ t('documents.mindmap.removeCheckbox') }} (F3)</q-tooltip>
+        </q-btn>
+        <q-btn v-if="selection.some(node => node.value == null)" flat dense color="primary" icon="input"
+          :aria-label="t('documents.mindmapValue.add')" @click="setSelectionValues(true)">
+          <q-tooltip>{{ t('documents.mindmapValue.add') }} (F4)</q-tooltip>
+        </q-btn>
+        <q-btn v-if="selection.some(node => node.value != null)" flat dense color="negative" icon="remove_circle_outline"
+          :aria-label="t('documents.mindmapValue.remove')" @click="setSelectionValues(false)">
+          <q-tooltip>{{ t('documents.mindmapValue.remove') }} (F4)</q-tooltip>
         </q-btn>
         </div>
       </div>
@@ -176,7 +189,7 @@
         </template>
         <q-btn flat round dense icon="close" :aria-label="t('common.close')" @click="closeSearch" />
       </div>
-      <div v-if="!leavingTree && selection.length > 1" class="mindmap-selection-count" role="status">
+      <div v-if="visibleSelection.size > 1" class="mindmap-selection-count" role="status">
         {{ t('documents.mindmapSelection.count', { count: selection.length }) }}
       </div>
       <div v-show="activeBody" ref="nodeToolbar" />
@@ -190,10 +203,10 @@
       @lostpointercapture="pointerEnd" @pointerleave="pointerLeave" @wheel="wheel">
       <div class="mindmap-plane" :style="planeStyle">
       <ul ref="stage" class="mindmap-root" :style="stageStyle" role="tree" aria-multiselectable="true" :aria-label="t('documents.formats.mindmap')">
-        <MindMapBranch :node="root" :children="children" :selected="selectedIds" :focused="leavingTree ? '' : active.id" :folded="folded"
+        <MindMapBranch :node="root" :children="children" :selected="visibleSelection" :focused="leavingTree ? '' : active.id" :folded="folded"
           :level="0" :document-title="documentTitle">
           <template #default="{ node, label, hasChildren, closed }">
-            <div class="mindmap-node" :class="{ 'mindmap-rich-parent': (node.body_html || inspectedBody === node.id) && hasChildren,
+            <div class="mindmap-node" :class="{ 'mindmap-node--cut': cutSubtree.ids.has(node.id), 'mindmap-rich-parent': (node.body_html || inspectedBody === node.id) && hasChildren,
               'mindmap-resource-only': resourceBodies.get(node.id)?.resourceOnly, 'mindmap-card-node': resourceBodies.get(node.id)?.standaloneCard,
               'mindmap-image-node': resourceBodies.get(node.id)?.imageOnly,
               'mindmap-link-node': resourceBodies.get(node.id)?.linkOnly && !node.note && !node.link && editing?.id !== node.id,
@@ -205,7 +218,7 @@
               <q-checkbox v-if="node.checked != null" dense size="sm" color="primary" class="mindmap-node-checkbox"
                 :model-value="node.checked" :disable="readonly" :aria-label="t('documents.mindmap.checkbox', { node: label })"
                 @update:model-value="setCheckbox(node.id, $event)" />
-              <div v-if="!node.body_html && inspectedBody !== node.id" class="mindmap-node-line" @click.self="selectTitle($event, node.id)">
+              <div v-if="node.value != null || (!node.body_html && inspectedBody !== node.id)" class="mindmap-node-line" @click.self="selectTitle($event, node.id)">
                 <LibraryIcon v-if="node.icon" :icon="node.icon" size="18px" />
                 <span v-if="!readonly && node.id === editingTitle?.id" key="editable" v-text="editingTitle.initial"
                   class="mindmap-label mindmap-title" contenteditable="plaintext-only" role="textbox" aria-multiline="false" tabindex="-1"
@@ -214,7 +227,22 @@
                 <span v-else key="label" class="mindmap-label"
                   :draggable="!readonly && node.parent !== null"
                   @click="selectTitle($event, node.id)"
+                  @dblclick="editValueNodeTitle($event, node)"
                   @dragstart="startDrag($event, node)" @dragend="stopDrag">{{ node.title }}</span>
+                <template v-if="node.value != null">
+                  <input class="mindmap-value-input" type="text"
+                    :value="node.value" :readonly="readonly" :maxlength="maxValueLength"
+                    :tabindex="!readonly && selectedIds.has(node.id) ? 0 : -1"
+                    :aria-label="t('documents.mindmapValue.field', { node: label })"
+                    @focus="selectValue(node.id)" @blur="history.endGroup()"
+                    @input="updateNodeValue($event, node.id)" @compositionend="updateNodeValue($event, node.id)"
+                    @keydown="onValueKeydown($event, node)" />
+                  <q-btn flat round dense color="primary" icon="content_copy" size="sm" :disable="!node.value"
+                    :tabindex="selectedIds.has(node.id) ? 0 : -1"
+                    :aria-label="t('documents.mindmapValue.copy')" @click="copyNodeValue(node.value)">
+                    <q-tooltip>{{ t('documents.mindmapValue.copy') }}</q-tooltip>
+                  </q-btn>
+                </template>
                 <q-btn v-if="node.note || node.link" flat round dense icon="notes" size="sm" tabindex="-1"
                   :aria-label="t('documents.mindmap.details')" :aria-expanded="detailsOpen(node)"
                   @click="toggleDetails(node.id)" />
@@ -261,21 +289,13 @@
                   :model-value="editing.value" :label="t(`documents.mindmap.${editing.field}`)" :maxlength="fieldLengths[editing.field]"
                   @update:model-value="updateDraft" @blur="commitDraft" @keydown="onEditKeydown" />
               </div>
-              <q-btn v-if="(node.body_html || inspectedBody === node.id) && hasChildren" class="mindmap-rich-fold" flat round dense :icon="closed ? 'add' : 'remove'" size="sm" tabindex="-1"
+              <q-btn v-if="node.value == null && (node.body_html || inspectedBody === node.id) && hasChildren" class="mindmap-rich-fold" flat round dense :icon="closed ? 'add' : 'remove'" size="sm" tabindex="-1"
                 :aria-label="t(closed ? 'documents.mindmap.expand' : 'documents.mindmap.collapse', { node: label })"
                 :aria-expanded="!closed" @click="toggleFold(node.id)" />
               <q-select v-if="!readonly && changingParent === node.id" class="mindmap-details"
                 dense outlined emit-value map-options autofocus
                 :model-value="node.parent" :options="parents" :label="t('documents.mindmap.parent')"
                 @update:model-value="chooseParent" @keydown.esc.stop.prevent="changingParent = null; focusNode(node.id)" />
-              <div v-if="!readonly && pendingRemove === node.id" class="mindmap-confirm" role="alert">
-                {{ selectionRoots.length > 1 ? t('documents.mindmapSelection.confirmRemove', { count: selectionRoots.length }) : t('documents.mindmap.confirmRemove') }}
-                <div class="row q-gutter-xs">
-                  <q-btn outline dense color="primary" class="mindmap-cancel-remove"
-                    :label="t('documents.mindmap.cancel')" @click="pendingRemove = null; focusNode(node.id)" />
-                  <q-btn color="negative" dense :label="removeLabel" @click="removeBranches" />
-                </div>
-              </div>
             </div>
           </template>
         </MindMapBranch>
@@ -339,6 +359,30 @@
         </q-form>
       </q-card>
     </q-dialog>
+    <q-dialog data-confirmation :model-value="pendingRemove !== null" :aria-label="removeLabel"
+      @update:model-value="pendingRemove = null">
+      <q-card class="galaris-dialog-card" style="width: 480px; max-width: 95vw">
+        <DialogHeader :title="removeLabel" :close-label="t('common.close')" />
+        <q-card-section class="galaris-dialog-body">
+          {{ selectionRoots.length > 1 ? t('documents.mindmapSelection.confirmRemove', { count: selectionRoots.length }) : t('documents.mindmap.confirmRemove') }}
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" />
+          <q-btn data-autofocus color="negative" :label="removeLabel" @click="removeBranches" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+    <q-dialog data-confirmation :model-value="Boolean(pendingValueRemoval)" :aria-label="t('documents.mindmapValue.remove')"
+      @update:model-value="pendingValueRemoval = undefined">
+      <q-card class="galaris-dialog-card" style="width: 480px; max-width: 95vw">
+        <DialogHeader :title="t('documents.mindmapValue.remove')" :close-label="t('common.close')" />
+        <q-card-section class="galaris-dialog-body">{{ t('documents.mindmapValue.confirmRemove') }}</q-card-section>
+        <q-card-actions align="right">
+          <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" />
+          <q-btn data-autofocus color="negative" :label="t('documents.mindmapValue.remove')" @click="confirmValueRemoval" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
     <q-dialog v-model="helpOpen" :aria-label="t('documents.mindmapHelp.title')">
       <q-card class="galaris-dialog-card" style="width: 480px; max-width: 95vw">
         <DialogHeader :title="t('documents.mindmapHelp.title')" :close-label="t('common.close')" />
@@ -364,7 +408,7 @@ import { createDocumentPdf, documentReferenceCards, DocumentPdfShareDialog, Docu
 import DocumentTagIconPicker from '../components/DocumentTagIconPicker.vue'
 import MindMapBranch from './MindMapBranch.vue'
 import { mindMapDroppedResources, mindMapLinkHtml, mindMapOutline, mindMapParagraphHtml, mindMapReferenceUri, mindMapResourceBody } from './content'
-import { isHexColor, maxDepth, maxNodes, mindMapNodeLabel, nodesByParent, parseMindMap, type MindMapNode } from './model'
+import { isHexColor, maxDepth, maxNodes, maxValueLength, mindMapNodeLabel, nodesByParent, parseMindMap, type MindMapNode } from './model'
 import { replaceMindMapMatches, searchMindMap, type MindMapMatch } from './search'
 import { useMindMapHistory } from './useMindMapHistory'
 import { useMindMapViewport } from './useMindMapViewport'
@@ -434,6 +478,7 @@ const pendingBody = shallowRef<{ id: string; text: string }>()
 const oversizedBodies = ref(new Map<string, string>())
 const editingBody = ref<string>()
 const iconOpen = ref(false)
+const pendingValueRemoval = shallowRef<ReadonlySet<string>>()
 const helpOpen = ref(false)
 const linkDialogOpen = ref(false)
 const linkDraft = ref({ parent: '', url: '', title: '' })
@@ -467,10 +512,13 @@ const details = ref(new Set<string>())
 const pendingRemove = ref<string | null>(null)
 const changingParent = ref<string | null>(null)
 const leavingTree = ref(false)
+const mapFocused = ref(false)
 const dragged = shallowRef<string[]>()
 type BranchPlacement = 'before' | 'inside' | 'after'
 const dropTarget = shallowRef<{ id: string; placement: BranchPlacement }>()
-type BranchClipboard = { token: string; text: string } & ({ mode: 'copy'; nodes: MindMapNode[]; height: number } | { mode: 'cut'; ids: string[] })
+type BranchClipboard = { token: string; text: string } & (
+  { mode: 'copy'; nodes: MindMapNode[]; height: number } | { mode: 'cut'; ids: string[] } | { mode: 'inactiveCut' }
+)
 const branchClipboardMime = 'application/x-galaris-mindmap-clipboard'
 const branchClipboard = shallowRef<BranchClipboard>()
 const titleLength = 500
@@ -630,6 +678,7 @@ const selection = computed(() => {
 })
 const selectionIds = computed(() => new Set(selection.value.map(node => node.id)))
 const selectedIds = computed(() => leavingTree.value ? new Set<string>() : selectionIds.value)
+const visibleSelection = computed(() => mapFocused.value ? selectedIds.value : new Set<string>())
 const selectionRoots = computed(() => branchRoots(selection.value))
 const canMoveSelection = computed(() => selectionRoots.value.length > 0 && selectionRoots.value.every(node => node.parent !== null))
 const removeLabel = computed(() => t(selectionRoots.value.length > 1 ? 'documents.mindmapSelection.remove' : 'documents.mindmap.remove'))
@@ -655,19 +704,23 @@ const keyboardShortcuts = computed(() => {
     ...(!props.readonly ? [
       [t('richEditor.undo'), `${modifier}+Z`],
       [t('richEditor.redo'), `${modifier}+${shift}+Z / ${modifier}+Y`],
-      [t('documents.mindmapHelp.edit'), `${enter} / F2`],
+      [t('documents.mindmapHelp.edit'), enter],
+      [t('documents.mindmap.icon'), 'F2'],
+      [t('documents.mindmapHelp.checkboxField'), 'F3'],
+      [t('documents.mindmapHelp.valueField'), 'F4'],
       [t('documents.mindmapHelp.navigateFromTitle'), 'Alt+← ↑ ↓ →'],
       [t('documents.mindmap.addChild'), `Tab / ${t('documents.mindmapHelp.insert')}`],
       [t('documents.mindmap.addSibling'), shiftEnter],
       [t('documents.mindmapHelp.toggleCheckbox'), space],
       [t('documents.mindmap.richContent'), `Alt+${enter}`],
-      [t('documents.mindmap.editNote'), 'F3'],
+      [t('documents.mindmap.editNote'), 'F6'],
       [t('documents.mindmap.link'), `${modifier}+K`],
       [t('richEditor.clipboard.cut'), `${modifier}+X`],
+      [t('documents.mindmapClipboard.cancelCut'), escape],
       [t('richEditor.clipboard.copy'), `${modifier}+C`],
       [t('richEditor.clipboard.paste'), `${modifier}+V`],
       [t('documents.mindmapHelp.noteLineBreak'), shiftEnter],
-      [t('documents.mindmap.remove'), t('documents.mindmapHelp.delete')],
+      [t('documents.mindmap.remove'), `${t('documents.mindmapHelp.delete')} / Alt+${t('documents.mindmapHelp.delete')}`],
     ] : []),
     [t(props.readonly ? 'documents.mindmapHelp.fold' : 'documents.mindmapHelp.foldWithoutCheckbox'), space],
     [t('documents.mindmapHelp.leave'), `${escape}, Tab`],
@@ -727,6 +780,10 @@ watch([dragBranches, () => props.readonly], ([branches, readonly]) => {
 })
 const cutBranches = computed(() => branchesByIds(branchClipboard.value?.mode === 'cut' ? branchClipboard.value.ids : []))
 const cutSubtree = computed(() => subtree(cutBranches.value))
+const cutPending = computed(() => branchClipboard.value?.mode === 'cut')
+watch([cutBranches, () => props.readonly], ([branches, readonly]) => {
+  if (!branches.length || readonly) endCut()
+})
 
 function canMoveTo(roots: readonly MindMapNode[], tree: ReturnType<typeof subtree>, parent: MindMapNode): boolean {
   return roots.length > 0 && !tree.ids.has(parent.id) && depth(parent) + 1 + tree.height <= maxDepth
@@ -737,7 +794,7 @@ const parents = computed(() => canMoveSelection.value ? (map.value?.nodes ?? [])
   .map(node => ({ value: node.id, label: nodeLabel(node) })) : [])
 function canPasteBranches(parent: MindMapNode): boolean {
   const clip = branchClipboard.value
-  if (!clip || !map.value || props.readonly) return false
+  if (!clip || clip.mode === 'inactiveCut' || !map.value || props.readonly) return false
   if (clip.mode === 'cut') return canMoveTo(cutBranches.value, cutSubtree.value, parent)
   return map.value.nodes.length + clip.nodes.length <= maxNodes && depth(parent) + 1 + clip.height <= maxDepth
 }
@@ -748,6 +805,7 @@ function commit(nodes: MindMapNode[], group?: string): void {
 
 function restoreHistory(direction: 'undo' | 'redo'): void {
   if (props.readonly) return
+  if (direction === 'undo' && cancelCut()) return
   commitDraft()
   const node = active.value
   if (!history.restore(direction)) return
@@ -825,6 +883,10 @@ function titleElement(id: string): HTMLElement | null | undefined {
   return branchElement(id)?.querySelector<HTMLElement>(':scope > .mindmap-node > .mindmap-node-line > .mindmap-title')
 }
 
+function valueInput(id: string): HTMLInputElement | null | undefined {
+  return branchElement(id)?.querySelector<HTMLInputElement>(':scope > .mindmap-node > .mindmap-node-line > .mindmap-value-input')
+}
+
 function selectNode(id: string, selection?: BranchSelection): void {
   if (active.value.id !== id) {
     commitDraft()
@@ -840,16 +902,18 @@ function selectNode(id: string, selection?: BranchSelection): void {
 function focusNode(id: string, selection?: BranchSelection): void {
   selectNode(id, selection)
   void nextTick(() => {
+    if (active.value.id !== id || leavingTree.value) return
     const node = branchElement(id)
-    node?.focus({ preventScroll: true })
-    reveal(node?.firstElementChild?.firstElementChild)
+    const target = (!props.readonly && !selection ? valueInput(id) : undefined) ?? node
+    target?.focus({ preventScroll: true })
+    reveal(target === node ? node?.firstElementChild?.firstElementChild : target)
   })
 }
 
 function revealTitle(id: string): void { reveal(titleElement(id)?.parentElement) }
 
 function onCanvasPointerDown(event: PointerEvent): void {
-  selectedOnPointerDown = selectedIds.value.size === 1 && selectedIds.value.has(selected.value) ? selected.value : ''
+  selectedOnPointerDown = visibleSelection.value.size === 1 && visibleSelection.value.has(selected.value) ? selected.value : ''
   pointerDown(event)
 }
 
@@ -888,8 +952,14 @@ function selectWithModifiers(event: MouseEvent): void {
 }
 
 function selectTitle(event: MouseEvent, id: string): void {
-  if (wasSelected(event, id) && !props.readonly) focusTitle(id)
+  if (byId.value.get(id)?.value == null && wasSelected(event, id) && !props.readonly) focusTitle(id)
   else focusNode(id)
+}
+
+function editValueNodeTitle(event: MouseEvent, node: MindMapNode): void {
+  if (node.value == null || props.readonly || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return
+  event.preventDefault()
+  focusTitle(node.id)
 }
 
 function selectBody(event: MouseEvent, id: string): void {
@@ -902,7 +972,7 @@ function selectBody(event: MouseEvent, id: string): void {
 function focusTitle(id: string, text = ''): void {
   if (props.readonly) return
   const node = byId.value.get(id)
-  if (node?.body_html) { openBody(id, text); return }
+  if (node?.body_html && node.value == null) { openBody(id, text); return }
   selectNode(id)
   if (editingTitle.value?.id !== id) editingTitle.value = { id, initial: node?.title ?? '' }
   void nextTick(() => {
@@ -936,8 +1006,20 @@ function onTitleKeydown(event: KeyboardEvent, id: string): void {
     navigateBranches(event, node)
     return
   }
-  if (key === 'F2') { event.preventDefault(); focusTitle(id); return }
-  const field = key === 'F3' ? 'note' : (ctrlKey || metaKey) && key.toLowerCase() === 'k' ? 'link' : undefined
+  if (onNodeShortcut(event, node)) return
+  if (altKey && !ctrlKey && !metaKey && (key === 'Delete' || key === '0' || event.code === 'Digit0')) {
+    if (key === 'Delete' && canMoveSelection.value) {
+      event.preventDefault()
+      event.stopPropagation()
+      finishTitle(id)
+      focusNode(id)
+      void nextTick(confirmRemove)
+      return
+    }
+    onTreeKeydown(event, node)
+    return
+  }
+  const field = (ctrlKey || metaKey) && key.toLowerCase() === 'k' ? 'link' : undefined
   if (field) { event.preventDefault(); beginEdit(id, field); return }
   const addChild = !altKey && !ctrlKey && !metaKey && !shiftKey && (key === 'Tab' || key === 'Insert') && canAdd(node)
   if (!addChild && key !== 'Enter' && key !== 'Escape') return
@@ -953,6 +1035,28 @@ function onTitleKeydown(event: KeyboardEvent, id: string): void {
 function openIconPicker(): void {
   iconId.value = active.value.id
   iconOpen.value = true
+}
+
+function onNodeShortcut(event: KeyboardEvent, node: MindMapNode): boolean {
+  const { key, altKey, ctrlKey, metaKey, shiftKey } = event
+  if (props.readonly || event.defaultPrevented || event.isComposing || altKey || ctrlKey || metaKey || shiftKey
+    || !['F2', 'F3', 'F4', 'F6'].includes(key) || (key === 'F2' && node.body_html && node.value == null)) return false
+  event.preventDefault()
+  event.stopPropagation()
+  if (event.repeat) return true
+  const editingLabel = editingTitle.value?.id === node.id
+  if (editingLabel) finishTitle(node.id)
+  if (key === 'F2') {
+    if (editingLabel) {
+      focusNode(node.id)
+      void nextTick(openIconPicker)
+    } else openIconPicker()
+  } else if (key === 'F3') {
+    setSelectionCheckboxes(node.checked == null)
+    if (editingLabel) focusNode(node.id)
+  } else if (key === 'F4') setSelectionValues(node.value == null)
+  else beginEdit(node.id, 'note')
+  return true
 }
 
 async function saveIcon(icon: string | null): Promise<boolean> {
@@ -1314,6 +1418,88 @@ function onTreeFocus(event: FocusEvent): void {
   if (event.target === pressedBranch) return
   const id = event.target instanceof HTMLElement ? event.target.dataset.mindmapNode : undefined
   if (id && (selected.value !== id || leavingTree.value)) selectNode(id)
+  if (id && !props.readonly && !branchSelection.value) valueInput(id)?.focus({ preventScroll: true })
+}
+
+function onMapFocus(event: FocusEvent): void {
+  const target = event.type === 'focusin' ? event.target : event.relatedTarget
+  mapFocused.value = target instanceof Element && target.closest('.mindmap') === event.currentTarget
+}
+
+function selectValue(id: string): void {
+  if (active.value.id !== id || leavingTree.value || branchSelection.value) selectNode(id)
+}
+
+function setSelectionValues(add: boolean): void {
+  if (!map.value || props.readonly || pendingValueRemoval.value) return
+  const nodes = selection.value
+  const ids = new Set(nodes.map(node => node.id))
+  if (!add && nodes.some(node => node.value)) {
+    pendingValueRemoval.value = ids
+    return
+  }
+  applyValueFields(ids, add)
+}
+
+function confirmValueRemoval(): void {
+  const ids = pendingValueRemoval.value
+  pendingValueRemoval.value = undefined
+  if (ids) applyValueFields(ids, false)
+}
+
+function applyValueFields(ids: ReadonlySet<string>, add: boolean): void {
+  if (!map.value || props.readonly) return
+  const id = active.value.id
+  const currentSelection = branchSelection.value
+  commit(map.value.nodes.map(node => {
+    if (!ids.has(node.id) || add === (node.value != null)) return node
+    const updated = { ...node }
+    if (add) updated.value = ''
+    else delete updated.value
+    return updated
+  }))
+  focusNode(id, currentSelection)
+}
+
+function updateNodeValue(event: Event, id: string): void {
+  if (event instanceof InputEvent && event.isComposing) return
+  if (event.target instanceof HTMLInputElement) setNodeValue(id, event.target.value)
+}
+
+function setNodeValue(id: string, value: string): void {
+  const node = byId.value.get(id)
+  if (!map.value || props.readonly || node?.value == null || node.value === value) return
+  commit(map.value.nodes.map(candidate => candidate.id === id ? { ...candidate, value } : candidate), `value:${id}`)
+}
+
+async function copyNodeValue(value: string): Promise<void> {
+  try {
+    await copyToClipboard(value)
+    $q.notify({ type: 'positive', message: t('documents.mindmapValue.copied') })
+  } catch {
+    $q.notify({ type: 'negative', message: t('richEditor.clipboard.failed') })
+  }
+}
+
+function onValueKeydown(event: KeyboardEvent, node: MindMapNode): void {
+  if (event.isComposing || event.defaultPrevented) return
+  if (onNodeShortcut(event, node)) return
+  const { key, altKey, ctrlKey, metaKey, shiftKey, target } = event
+  const vertical = key === 'ArrowUp' || key === 'ArrowDown'
+  const atTextEdge = !shiftKey && target instanceof HTMLInputElement
+    && target.selectionStart === target.selectionEnd
+    && ((key === 'ArrowLeft' && target.selectionStart === 0)
+      || (key === 'ArrowRight' && target.selectionEnd === target.value.length))
+  if (!ctrlKey && !metaKey && (vertical || atTextEdge || (altKey && key.startsWith('Arrow')))) {
+    navigateBranches(event, node)
+    return
+  }
+  if (props.readonly) return
+  if (key === 'Enter' || key === 'Escape' || key === 'Insert' || key === 'F3'
+    || (altKey && (key === 'Delete' || key === '0' || event.code === 'Digit0'))
+    || ((ctrlKey || metaKey) && ['f', 'k', 'y', 'z'].includes(key.toLowerCase()))) {
+    onTreeKeydown(event, node)
+  }
 }
 
 function canAdd(parent?: MindMapNode): parent is MindMapNode {
@@ -1490,6 +1676,7 @@ function removeBranches(): void {
   const parent = selectionRoots.value[0]?.parent
   if (!map.value || !parent || !canMoveSelection.value || pendingRemove.value !== active.value.id) return
   const { ids } = selectedSubtree.value
+  pendingRemove.value = null
   for (const id of ids) oversizedBodies.value.delete(id)
   commit(map.value.nodes.filter(node => !ids.has(node.id)))
   focusNode(parent)
@@ -1498,7 +1685,6 @@ function removeBranches(): void {
 function confirmRemove(): void {
   if (!canMoveSelection.value) return
   pendingRemove.value = active.value.id
-  void nextTick(() => canvas.value?.querySelector<HTMLElement>('.mindmap-cancel-remove')?.focus())
 }
 
 function storeBranches(mode: 'copy' | 'cut', transfer?: DataTransfer): void {
@@ -1515,11 +1701,36 @@ function storeBranches(mode: 'copy' | 'cut', transfer?: DataTransfer): void {
   $q.notify({ type: 'info', message: t(mode === 'cut' ? 'documents.mindmapClipboard.cutReady' : 'documents.mindmapClipboard.copied') })
 }
 
+function endCut(): boolean {
+  const clip = branchClipboard.value
+  if (clip?.mode !== 'cut') return false
+  // Keep recognizing clipboard data from a cut that can no longer be pasted.
+  branchClipboard.value = { mode: 'inactiveCut', token: clip.token, text: clip.text }
+  return true
+}
+
+function cancelCut(): boolean {
+  if (!endCut()) return false
+  $q.notify({ type: 'info', message: t('documents.mindmapClipboard.cutCancelled') })
+  return true
+}
+
+function cancelCutFromToolbar(): void {
+  if (cancelCut()) focusNode(active.value.id, branchSelection.value)
+}
+
+function onCutEscape(event: KeyboardEvent): void {
+  if (event.isComposing || !(event.target instanceof Element) || event.target.closest('.mindmap') !== event.currentTarget
+    || !cancelCut()) return
+  event.preventDefault()
+  event.stopPropagation()
+}
+
 function pasteBranches(target: MindMapNode): void {
   const clip = branchClipboard.value, parent = target.id
-  if (!clip || !map.value || !canPasteBranches(target)) return
+  if (!clip || clip.mode === 'inactiveCut' || !map.value || !canPasteBranches(target)) return
   if (clip.mode === 'cut') {
-    if (moveBranches(cutBranches.value, parent)) branchClipboard.value = undefined
+    if (moveBranches(cutBranches.value, parent)) endCut()
     return
   }
   const ids = new Map(clip.nodes.map(node => [node.id, crypto.randomUUID()]))
@@ -1565,21 +1776,30 @@ function pasteIntoTree(event: ClipboardEvent): void {
   const files = Array.from(data.files)
   const internal = clip && (token === clip.token || !token && !files.length && text === clip.text)
   if (internal) pasteBranches(parent)
-  else if (files.length && (props.uploadFile ?? props.uploadImage)) void uploadResourceBranches(parent.id, files)
-  else if (text) pasteTextChildren(parent.id, text)
+  else if (files.length && (props.uploadFile ?? props.uploadImage)) {
+    endCut()
+    void uploadResourceBranches(parent.id, files)
+  } else if (text) {
+    endCut()
+    pasteTextChildren(parent.id, text)
+  }
   else return
   event.preventDefault()
   event.stopPropagation()
 }
 
 async function pasteFromToolbar(): Promise<void> {
-  const parent = active.value, current = map.value
-  const unchanged = () => !disposed && !props.readonly && map.value === current && active.value.id === parent.id && !activeBody.value
+  const parent = active.value, current = map.value, clip = branchClipboard.value
+  const unchanged = () => !disposed && !props.readonly && map.value === current && branchClipboard.value === clip
+    && active.value.id === parent.id && !activeBody.value
   try {
     const text = await navigator.clipboard.readText()
     if (!unchanged()) return
-    if (branchClipboard.value?.text === text) pasteBranches(parent)
-    else pasteTextChildren(parent.id, text)
+    if (clip?.text === text) pasteBranches(parent)
+    else if (text) {
+      endCut()
+      pasteTextChildren(parent.id, text)
+    }
   } catch {
     if (!unchanged()) return
     if (canPasteBranches(parent)) pasteBranches(parent)
@@ -1655,10 +1875,11 @@ function navigateBranches(event: KeyboardEvent, node: MindMapNode): void {
   event.stopPropagation()
 }
 
-function onTreeKeydown(event: KeyboardEvent): void {
+function onTreeKeydown(event: KeyboardEvent, inputNode?: MindMapNode): void {
   const id = event.target instanceof HTMLElement ? event.target.dataset.mindmapNode : undefined
-  const node = id ? byId.value.get(id) : undefined
+  const node = inputNode ?? (id ? byId.value.get(id) : undefined)
   if (!node || event.isComposing || event.defaultPrevented) return
+  if (onNodeShortcut(event, node)) return
   if ((event.ctrlKey || event.metaKey) && !event.altKey) {
     const key = event.key.toLowerCase()
     if (key === 'f' && !event.shiftKey) openSearch()
@@ -1668,15 +1889,26 @@ function onTreeKeydown(event: KeyboardEvent): void {
     else if (key !== 'k') return
     if (key !== 'k') { event.preventDefault(); event.stopPropagation(); return }
   }
-  const text = props.readonly || event.key === ' ' ? undefined : typedCharacter(event)
+  const text = props.readonly || (event.key === ' ' && node.value == null) ? undefined : typedCharacter(event)
   if (text) {
     event.preventDefault()
     event.stopPropagation()
-    focusTitle(node.id, text)
+    if (node.value == null) focusTitle(node.id, text)
+    else {
+      const input = valueInput(node.id)
+      if (!input) return
+      focusNode(node.id)
+      const position = input.value.length
+      if (position + text.length <= maxValueLength) {
+        setNodeValue(node.id, input.value + text)
+        void nextTick(() => input.setSelectionRange(position + text.length, position + text.length))
+      }
+    }
     return
   }
   if (event.altKey) {
     if (!event.ctrlKey && !event.metaKey && (event.key === '0' || event.code === 'Digit0')) helpOpen.value = true
+    else if (!event.ctrlKey && !event.metaKey && event.key === 'Delete' && canMoveSelection.value) confirmRemove()
     else if (event.key === 'Enter' && !props.readonly) openBody(node.id)
     else return
     event.preventDefault()
@@ -1698,8 +1930,6 @@ function onTreeKeydown(event: KeyboardEvent): void {
   } else if (!props.readonly && !event.shiftKey) {
     if ((event.key === 'Tab' || event.key === 'Insert') && canAdd(node)) addBranch(node)
     else if (event.key === 'Enter') focusTitle(node.id)
-    else if (event.key === 'F2') focusTitle(node.id)
-    else if (event.key === 'F3') beginEdit(node.id, 'note')
     else if (event.key === 'Delete' && canMoveSelection.value) confirmRemove()
     else return
   } else if (!props.readonly && event.shiftKey && event.key === 'Enter') {
@@ -1713,6 +1943,7 @@ function onTreeKeydown(event: KeyboardEvent): void {
 
 function discardDraft(): void {
   history.clear()
+  endCut()
   editing.value = null
   editingTitle.value = undefined
   editingBody.value = undefined
@@ -1838,10 +2069,11 @@ defineExpose({ commitDraft, discardDraft, insertResource })
 .mindmap-root :deep([data-level="1"]) > .mindmap-node { --map-accent: var(--map-level-1-accent); --map-tint: var(--map-level-1-tint); font-weight: 590; }
 .mindmap-root :deep([data-level="2"]) > .mindmap-node { --map-accent: var(--map-level-2-accent); --map-tint: var(--map-level-2-tint); }
 .mindmap-root :deep([data-level="3"]) > .mindmap-node { --map-accent: var(--map-level-3-accent); --map-tint: var(--map-level-3-tint); }
-.mindmap-root :deep([aria-selected="true"]) > .mindmap-node {
+.mindmap-node--cut { opacity: .5; }
+.mindmap:focus-within .mindmap-root :deep([aria-selected="true"]) > .mindmap-node {
   background: color-mix(in srgb, var(--map-accent) 16%, var(--map-tint));
   border-color: var(--map-resource-border, var(--map-accent));
-  border-width: 2px;
+  outline: 1px solid var(--map-resource-border, var(--map-accent));
 }
 .mindmap-node.mindmap-resource-only:not(.mindmap-card-node, .mindmap-embedded-node) {
   border: 0;
@@ -1860,16 +2092,29 @@ defineExpose({ commitDraft, discardDraft, insertResource })
 .mindmap-node-checkbox { min-width: 1.65rem; min-height: 1.65rem; justify-content: center; }
 .mindmap-node-line, .mindmap-link-node > .mindmap-details { min-height: 1.65rem; }
 .mindmap-node-line { display: flex; gap: .1rem; align-items: center; padding-inline: .5rem .2rem; }
+.mindmap-value-input {
+  flex: 0 0 auto;
+  width: clamp(4rem, 18vw, 9rem);
+  margin-inline-start: .25rem;
+  padding: .1rem .35rem;
+  border: 0;
+  border-radius: 0;
+  background: white;
+  color: #292c30;
+  font: inherit;
+  font-weight: 400;
+}
+.mindmap--dark .mindmap-value-input { background: #101010; color: #eeeef0; }
+.mindmap-value-input:focus { outline: none; }
 .mindmap-rich-parent { position: relative; }
 .mindmap-rich-parent > .mindmap-details { padding-inline-end: 1.95rem; }
 .mindmap-rich-fold { position: absolute; inset-block-start: .2rem; inset-inline-end: .2rem; }
 .mindmap-label { display: block; min-width: 0; padding-block: .15rem; overflow-wrap: anywhere; white-space: pre-wrap; cursor: pointer; }
 .mindmap-title { outline: none; cursor: text; }
 .mindmap-label:empty { min-inline-size: 1ch; min-block-size: calc(1lh + .3rem); }
-.mindmap-details, .mindmap-confirm { padding: .4rem .55rem; overflow-wrap: anywhere; }
+.mindmap-details { padding: .4rem .55rem; overflow-wrap: anywhere; }
 .mindmap-details p { margin: 0; white-space: pre-wrap; }
 .mindmap-details p + p { margin-top: .35rem; }
-.mindmap-confirm .row { margin-top: .3rem; }
 .mindmap-rich-body { --document-embed-width: min(20rem, 62vw); --document-text-embed-width: min(17rem, 55vw); width: min(20rem, 62vw); max-width: 100%; font-weight: 400; }
 .mindmap-node:has(> .mindmap-details > .mindmap-rich-body .document-reference-reader) { max-width: min(210mm, 94vw); }
 .mindmap-rich-body:has(.document-reference-reader) { width: fit-content; max-width: 100%; }

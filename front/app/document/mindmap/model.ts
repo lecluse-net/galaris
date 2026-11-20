@@ -7,6 +7,7 @@ export interface MindMapNode {
   icon?: string
   body_html?: string
   checked?: boolean | null
+  value?: string | null
 }
 
 export interface MindMap {
@@ -20,6 +21,7 @@ export function mindMapNodeLabel(node: MindMapNode, documentTitle: string | unde
   return node.title || (node.parent === null ? documentTitle : undefined) || untitled
 }
 
+export const maxValueLength = 2048
 export const maxNodes = 2000
 export const maxDepth = 48
 const nodeKey = /^[A-Za-z0-9_-]{1,80}$/
@@ -35,6 +37,7 @@ function isNode(value: unknown): value is MindMapNode {
   return typeof node.id === 'string' && nodeKey.test(node.id)
     && (node.parent === null || (typeof node.parent === 'string' && nodeKey.test(node.parent)))
     && typeof node.title === 'string' && Array.from(node.title).length <= 500
+    && (node.value == null || (typeof node.value === 'string' && Array.from(node.value).length <= maxValueLength))
     && (node.checked == null || typeof node.checked === 'boolean')
     && (node.note === undefined || (typeof node.note === 'string' && Array.from(node.note).length <= 16000))
     && (node.link === undefined || (typeof node.link === 'string' && Array.from(node.link).length <= 2048))

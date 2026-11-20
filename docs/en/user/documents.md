@@ -109,18 +109,21 @@ Discarding restores the last saved content.
 
 In **New document**, choose **Mind map**. Select a node, then press **Enter** or
 click its title again to edit it in place. The cursor goes to the end when editing starts.
-The toolbar lets you edit the note, insert a link, change the parent or reorder branches.
-On desktop, drag a branch or a selection. Drop near the top or bottom of a node to place the
-branches before or after it, or in the center to make them its children. Dragged branches keep
+The toolbar lets you edit the note, insert a link, change the parent or reorder nodes.
+On desktop, drag a node or a selection. Drop near the top or bottom of a node to place the
+nodes before or after it, or in the center to make them its children. Dragged nodes keep
 their order and descendants. One undo reverses the whole move.
 The **+** and **−** buttons expand and collapse descendants.
 Folding changes the view. Layout and saving follow content edits automatically.
 
 When a node has focus, use the arrow keys to navigate, **Tab** or **Insert** to add
-a child and **Shift+Enter** to add a sibling. **Space** folds or unfolds a branch without a checkbox. From the
-title, use **Alt+arrow keys** to select another node. **F2** edits the title,
-**F3** edits the note. Outside editing, **Ctrl+K** or the **Link** button adds a link in a new child
-after you confirm it. While editing a field, **Enter** applies
+a child and **Shift+Enter** to add a sibling. **Space** folds or unfolds a node without a checkbox. From the
+title, use **Alt+arrow keys** to select another node. **F2** opens the icon picker,
+**F3** adds or removes the checkbox, **F4** adds or removes the value field, and **F6** edits the note.
+Outside editing, **Ctrl+K** or the **Link** button adds a link in a new child
+after you confirm it. **Delete** opens the node deletion confirmation. While typing in a value
+field or title, use **Alt+Delete**. In the confirmation, **Enter** confirms the action and
+**Escape** closes the dialog. While editing a field, **Enter** applies
 the edit and **Escape** cancels it. **Shift+Enter** inserts a line break in a note.
 From a focused node, press **Escape**, then **Tab** to leave the map.
 The **Keyboard help** button under **View** and **Alt+0** open the map's shortcut list.
@@ -129,15 +132,16 @@ Under **Node**, choose **Add checkbox**. Click the checkbox or press **Space** o
 node outside editing to check or uncheck it. While editing, **Space** inserts a space.
 The document saves the checkbox state. A new sibling added immediately after a node with
 a checkbox gets an empty checkbox, even if the original is checked. New children and
-branches added from a node without a checkbox start without a checkbox.
+nodes added from a node without a checkbox start without a checkbox.
 
 Use **Shift+arrow keys** or **Shift+click** to select a range of visible nodes.
 **Ctrl+click** (**Cmd+click** on Mac) on a node adds it to or removes it from the selection.
 On a link, **Ctrl/Cmd+click** opens the reference. You can select text while editing a field.
-Use the toolbar to move, cut, copy or delete selected branches, or to add or remove their checkboxes.
-Within the same map, select a destination node and paste to add the branches below it.
-Cut branches move when you paste them. Copying creates distinct branches. Moving, copying and deleting
-a branch also applies to its descendants.
+Use the toolbar to move, cut, copy or delete selected nodes, or to add or remove their checkboxes.
+Within the same map, select a destination node and paste to add the nodes below it.
+Cut nodes and their children appear translucent until you paste them. **Escape**, **Cancel cut**,
+or **Ctrl/Cmd+Z** cancels the pending cut and leaves the nodes in place. Copying creates distinct
+nodes. Moving, copying and deleting a node also applies to its descendants.
 
 Outside editing, pasting text creates one child per line under the active node, including blank
 lines. A line containing only a URL creates a child with a clickable link. While editing, pasted
@@ -150,12 +154,12 @@ clickable reference.
 
 The **Editing** group also contains **Cut**, **Copy**, and **Paste**. Toolbar groups
 are centered on each row and wrap onto additional rows when space is limited.
-Under **Editing**, **Select all** (**Ctrl/Cmd+A**) includes collapsed branches. **Undo**
+Under **Editing**, **Select all** (**Ctrl/Cmd+A**) includes collapsed nodes. **Undo**
 (**Ctrl/Cmd+Z**) and **Redo** (**Ctrl/Cmd+Shift+Z**) cover map operations while the
 document is open, including moves, deletions and checkbox changes. While editing
 rich text in a node, the shortcuts apply to that node's text.
 
-**Find** (**Ctrl/Cmd+F**) searches titles, notes and rich text in all branches.
+**Find** (**Ctrl/Cmd+F**) searches titles, notes and rich text in all nodes.
 **Next** reveals the matching node. **Replace** changes one occurrence. **Replace all**
 creates one undoable change. Formatting and link destinations are preserved.
 
@@ -178,9 +182,9 @@ background. **Apply** saves the setting with the map and **Cancel** restores the
 
 Under **Export**, **Export as PNG** downloads the entire diagram with its theme and
 background. **Print** opens the browser dialog with the diagram fitted to one A4
-landscape page. Both commands include collapsed branches, their notes, checkboxes and
+landscape page. Both commands include collapsed nodes, their notes, checkboxes and
 accessible images. Interactive objects appear with the title and text of their
-references. The commands preserve the editor's selection, zoom and collapsed branches.
+references. The commands preserve the editor's selection, zoom and collapsed nodes.
 **Export document and attachments (ZIP)** includes the standalone HTML diagram and
 the document's files. On mobile, **Share** prepares the PDF and opens system sharing,
 with a PDF download available on devices that cannot share files.
@@ -190,7 +194,7 @@ the node. The existing title becomes the first paragraph. The node displays its
 content directly, and **Enter** opens it for editing.
 The toolbar adapts to the selection and offers formatting, lists and
 tables. **Insert file** and **Galaris** create one child node per resource
-under the selected branch. While editing rich content, these commands insert
+under the selected node. While editing rich content, these commands insert
 the resource at the text selection. Clicking an image, link or card shows its
 actions after the other toolbar groups. Insert paragraph before or after a block while
 editing rich content in a node. Choose **Open** to access the resource.
@@ -211,15 +215,15 @@ the text and hierarchy.
 
 ### Work on a mind map with an agent
 
-In Chat, ask the agent to create a mind map, read its branches or edit them. It can
+In Chat, ask the agent to create a mind map, read its nodes or edit them. It can
 also choose this format for a result that fits a tree, such as a plan grouped by
 workstream. Available functions and the agent's permissions determine what it can
 do. A write may require approval.
 
 If you send a message with the map open beside Chat, the context can tell the agent
-which document you are viewing. Node selection stays in the editor. Give the branch
+which document you are viewing. Node selection stays in the editor. Give the node
 title and its parent if needed, for example “Under Architecture → Storage, add a
-Backups branch.”
+Backups node.”
 
 ## Current description and keywords
 

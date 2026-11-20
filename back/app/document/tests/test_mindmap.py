@@ -111,6 +111,8 @@ async def test_uploaded_map_uses_normal_revisions_and_authorized_export(client):
     updated["nodes"][0]["title"] = "Revised root"
     updated["nodes"][0]["checked"] = True
     updated["nodes"][1]["checked"] = False
+    updated["nodes"][0]["value"] = "001 A"
+    updated["nodes"][1]["value"] = ""
     updated["nodes"][1]["body_html"] = (
         '<blockquote class="galaris-link-card" data-resource-mode="embed" data-resource-size="640x360">'
         f'<p><a href="document://{empty.json()["id"]}">Source mind map</a></p></blockquote>'
@@ -126,12 +128,14 @@ async def test_uploaded_map_uses_normal_revisions_and_authorized_export(client):
     assert reopened_source["background_color"] == "#264851"
     nodes = reopened_source["nodes"]
     assert [node.get("checked") for node in nodes] == [True, False, None, None]
+    assert [node.get("value") for node in nodes] == ["001 A", "", None, None]
     assert 'data-resource-size="640x360"' in nodes[1]["body_html"]
     previous = await client.get(f"{path}/source", headers=headers, params={"revision": 1})
     previous_source = json.loads(previous.text)
     assert "theme" not in previous_source
     assert "background_color" not in previous_source
     assert all("checked" not in node for node in previous_source["nodes"])
+    assert all("value" not in node for node in previous_source["nodes"])
     assert "data-resource-size" not in previous_source["nodes"][1].get("body_html", "")
 
     for revision, title in ((1, "Project & notes"), (2, "Revised root")):

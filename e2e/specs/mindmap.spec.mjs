@@ -35,7 +35,7 @@ test('edit and export an imported mind map in the assembled library', async ({ p
   await page.goto(`/documents?document_id=${document.id}`)
   const site = page.getByRole('treeitem', { name: 'Site', exact: true })
   await site.press('Insert')
-  const branchTitle = page.getByRole('textbox', { name: /^(Titre de la branche|Branch title)$/ })
+  const branchTitle = page.getByRole('textbox', { name: /^(Titre du nœud|Node title)$/ })
   await expect(branchTitle).toBeFocused()
   const saved = page.waitForResponse(response => response.ok() && response.url().includes(`/documents/${document.id}`)
     && response.request().method() === 'PATCH' && response.request().postData()?.includes('Measurement'))
@@ -43,7 +43,7 @@ test('edit and export an imported mind map in the assembled library', async ({ p
   await branchTitle.press('Enter')
   await saved
   await page.reload()
-  await page.getByRole('treeitem', { name: 'Measurement', exact: true }).press('F2')
+  await page.getByRole('treeitem', { name: 'Measurement', exact: true }).press('Enter')
   await expect(branchTitle).toBeFocused()
   await page.keyboard.insertText('s')
   await expect(branchTitle).toHaveText('Measurements')

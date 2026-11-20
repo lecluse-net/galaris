@@ -100,7 +100,8 @@ export function mindMapOutline(map: MindMap): string {
     const link = node.link ? mindMapLinkHtml(node.link) : ''
     const branches = children.get(node.id) ?? []
     const checkbox = node.checked == null ? '' : node.checked ? '☑ ' : '☐ '
-    return `<li><p><strong>${checkbox}${escapeHtml(node.title)}</strong></p>${note}${link}${node.body_html ?? ''}${branches.length ? list(branches) : ''}</li>`
+    const value = node.value ? ` ${escapeHtml(node.value)}` : ''
+    return `<li><p><strong>${checkbox}${escapeHtml(node.title)}</strong>${value}</p>${note}${link}${node.body_html ?? ''}${branches.length ? list(branches) : ''}</li>`
   }
   function list(nodes: MindMapNode[]): string { return `<ul>${nodes.map(branch).join('')}</ul>` }
   return list(children.get(null) ?? [])

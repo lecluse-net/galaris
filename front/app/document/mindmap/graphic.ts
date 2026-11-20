@@ -53,16 +53,16 @@ export async function prepareMindMapGraphic(
     const content = contents[index]!
     content.firstElementChild?.remove()
     if (node.note) content.firstElementChild?.classList.add('mindmap-note')
-    if (body.resourceOnly && !node.note && !node.link && node.checked == null) {
+    if (body.resourceOnly && !node.note && !node.link && node.checked == null && node.value == null) {
       box.classList.add(body.standaloneCard || body.embeddedFrame ? 'mindmap-card-node' : 'mindmap-resource-only')
       if (body.imageOnly) box.classList.add('mindmap-image-node')
       if (body.embeddedFrame?.borderColor) box.style.setProperty('--map-resource-border', body.embeddedFrame.borderColor)
     }
-    if (!node.body_html || node.checked != null) {
+    if (!node.body_html || node.checked != null || node.value != null) {
       const label = doc.createElement('p')
       label.className = 'mindmap-label'
       if (node.checked != null) label.append(node.checked ? '☑ ' : '☐ ')
-      if (!node.body_html) {
+      if (!node.body_html || node.value != null) {
         const icon = normalizedTagIcon(node.icon)
         if (/^data:image\/(?:png|jpeg|gif|webp);base64,/i.test(icon)) {
           const image = doc.createElement('img')
@@ -75,6 +75,7 @@ export async function prepareMindMapGraphic(
         }
         label.append(node.title)
       }
+      if (node.value) label.append(' ' + node.value)
       box.append(label)
     }
     if (content.hasChildNodes()) {
