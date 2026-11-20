@@ -2542,10 +2542,10 @@ Aucune composante cyclique détectée.
 | `mail_send` | `mail` | `bridge.mail` | `mail_send` | `back/bridge/mail/mcp.py:141` |
 | `mail_set_flags` | `mail` | `bridge.mail` | `mail_set_flags` | `back/bridge/mail/mcp.py:260` |
 | `mail_trash` | `mail` | `bridge.mail` | `mail_trash` | `back/bridge/mail/mcp.py:293` |
-| `memory_forget` | `memory` | `app.memory` | `memory_forget` | `back/app/memory/mcp.py:322` |
-| `memory_remember` | `memory` | `app.memory` | `memory_remember` | `back/app/memory/mcp.py:205` |
-| `memory_summarize` | `memory` | `app.memory` | `memory_summarize` | `back/app/memory/mcp.py:343` |
-| `memory_upcoming` | `memory` | `app.memory` | `memory_upcoming` | `back/app/memory/mcp.py:299` |
+| `memory_forget` | `memory` | `app.memory` | `memory_forget` | `back/app/memory/mcp.py:325` |
+| `memory_remember` | `memory` | `app.memory` | `memory_remember` | `back/app/memory/mcp.py:207` |
+| `memory_summarize` | `memory` | `app.memory` | `memory_summarize` | `back/app/memory/mcp.py:346` |
+| `memory_upcoming` | `memory` | `app.memory` | `memory_upcoming` | `back/app/memory/mcp.py:302` |
 | `messenger_list_rooms` | `messenger` | `app.messenger` | `mcp_list_rooms` | `back/app/messenger/mcp.py:768` |
 | `messenger_room_history` | `messenger` | `app.messenger` | `mcp_room_history` | `back/app/messenger/mcp.py:806` |
 | `messenger_room_send_file` | `messenger` | `app.messenger` | `mcp_room_send_file` | `back/app/messenger/mcp.py:1025` |

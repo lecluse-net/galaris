@@ -1622,9 +1622,11 @@ the durable identity.
   temporal: object | None = None,
   contradicts_memory_id: str | None = None, expected_revision: int | None = None) -> str`
   accepts exactly one atomic assertion, then immediately applies a governed
-  acquisition. Use a stable snake_case predicate and one short raw value. Split independent
-  values/properties into separate facts. Omit subject_ref only for the current conversation
-  contact or, outside a conversation, the current agent. For another subject, use its existing
+  acquisition. Use a stable snake_case predicate and one short raw value. If one assertion could
+  change while another stays true, use separate calls so each memory can be recalled or corrected
+  independently. Keep paragraphs and combined summaries out of `fact.value` and `content`.
+  Omit subject_ref only for the current conversation contact or, outside a conversation, the
+  current agent. For another subject, use its existing
   memory:// Contact/File or document:// URI. Never invent an identifier. Author, evidence and
   timestamps are linked separately; do not narrate them in the value. Prose/HTML in legacy
   content is rejected. Inspect the returned `status` (`stored`, `merged`,
@@ -1906,7 +1908,7 @@ Saving an email makes it a known contact under the default inbound Mail admissio
 A distinct preference or decision may be remembered using the person's name,
 without repeating their coordinates; a mixed write is rejected atomically, not silently trimmed.
 Good memories are concise, self-contained, and explicit about their subject. A historical date
-can belong in the prose without becoming a temporal anchor.
+can be the fact's value without a temporal anchor.
 
 `memory_remember` accepts an optional `temporal` object with `year`, `month`, `day`,
 `weekday` (Monday=1 through Sunday=7), `hour` and `minute`, in the global Galaris timezone.

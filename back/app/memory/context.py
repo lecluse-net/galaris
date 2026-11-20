@@ -61,12 +61,14 @@ Before a warranted write, check the injected memories and, if needed and availab
 targeted memory search. Skip an equivalent existing fact; do not store a paraphrase of it.
 Do not store transient status, secrets, raw transcripts, provisional drafts or notes, or facts
 already owned by an authoritative domain.
-For a warranted write, supply fact={subject_ref,predicate,value}: one linked subject, one
-snake_case property and one raw scalar value or {ref:URI}. Omit subject_ref only for the current
-conversation contact or current agent. Split independent values into separate memories. Do not
-narrate who said it or when; provenance and timestamps are recorded separately. Prose/HTML
-content is rejected. A fact linked to a Contact or Document is still an ordinary forgettable
-personal memory; only the direct source representation is protected.
+Write one independently retrievable and correctable fact per memory_remember call. Pass
+fact={subject_ref,predicate,value} with one linked subject, one stable snake_case property and
+one raw scalar value or {ref:URI}. If one assertion could change while another stays true, write
+them in separate calls. For example, record report_day=friday and report_format=pdf separately.
+Keep paragraphs and combined summaries out of memory, including out of the value field. Omit
+subject_ref only for the current conversation contact or current agent. The server records
+provenance and timestamps separately. A fact linked to a Contact or Document is still an
+ordinary forgettable personal memory; only the direct source representation is protected.
 Contact email addresses, phone numbers, postal addresses and messaging identifiers belong to
 the structured Contacts directory. Its cards remain searchable memory resources. Never copy
 their coordinates into a generic memory, even when asked to remember them. Contact discovery
@@ -82,7 +84,7 @@ instruction to notify anyone. Use memory_upcoming to inspect further matches whe
 An anchor is a recall rule: outside its period the memory is excluded from automatic context;
 when it matches it is added with priority independently of ordinary search criteria. Unanchored
 memories continue through ordinary relevance search. Both branches preserve access and contact
-isolation and share the context budget. A historical date may stay in the prose without an anchor.
+isolation and share the context budget. A historical date can be the fact's value without an anchor.
 Use anchors for intended time-based reminders, never just to timestamp a preference or fact.
 
 An explicit correction must be written first as a new durable memory, with its subject,

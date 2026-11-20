@@ -38,7 +38,10 @@ class AtomicMemoryFact(BaseModel):
         description="Existing memory:// contact, document:// resource or own galaris://agent/ URI. Omit for the current contact or agent.")
     predicate: str = Field(min_length=1, max_length=80, pattern=r"^[a-z][a-z0-9_]*$",
         description="One stable snake_case property, such as preferred_language or wants.")
-    value: StrictStr | StrictBool | StrictInt | FiniteFloat | MemoryFactReference
+    value: StrictStr | StrictBool | StrictInt | FiniteFloat | MemoryFactReference = Field(
+        description="One raw value for this property: a short phrase, number, boolean or {ref: URI}. "
+        "Keep paragraphs, summaries and other properties out of this value.",
+    )
     negated: bool = False
     unit: str | None = Field(default=None, max_length=32)
 
@@ -63,7 +66,7 @@ class AtomicMemoryFact(BaseModel):
         if isinstance(value, str):
             value = value.strip()
             if not value or len(value) > 500 or "\n" in value or re.search(r"<[^>]+>", value):
-                raise ValueError("Use one short raw value; split compound facts and keep narration out of memory.")
+                raise ValueError("Use one short raw value. Split independent assertions into separate facts.")
         return value
 
 

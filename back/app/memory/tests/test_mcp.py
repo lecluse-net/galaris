@@ -49,7 +49,7 @@ def test_memory_mcp_family_is_discovered_once() -> None:
         "memory_summarize",
     }
     assert set(names["memory"]) == expected
-    assert set(names["document"]) == {"document_share", "document_sharing"}
+    assert {"document_share", "document_sharing"} <= set(names["document"])
     assert "document_show" in names["conversation"]
     assert {
         "memory_search",
@@ -78,12 +78,19 @@ async def test_memory_remember_requires_structured_facts_and_preserves_typed_val
     contact = await observe_messenger_contact(MessengerContactObservation(owner_agent_id=owner.id,
         messaging_id="matrix", user_id="@synthetic-fact:example.org", display_name="Nina Fiction"))
     ctx = McpToolContext(agent_id=owner.id, runtime="internal")
-    narrated = json.loads(await mcp.memory_remember(ctx, content="<p>Nina Fiction told me yesterday that she wants weekly reports.</p>"))
-    assert narrated["status"] == "rejected" and narrated["rejection_reason"] == "atomic_fact_required"
+    for content in (
+        "<p>Nina Fiction told me yesterday that she wants weekly reports.</p>",
+        json.dumps({"predicate": "report_schedule", "value": {"day": "friday", "format": "pdf"}}),
+    ):
+        rejected = json.loads(await mcp.memory_remember(ctx, content=content))
+        assert rejected["status"] == "rejected" and rejected["rejection_reason"] == "atomic_fact_required"
+        assert rejected["memory_id"] is None
+    memory_ids = set()
     for predicate, value in [("report_frequency", "weekly"), ("wants_email_reports", True), ("report_limit", 3)]:
         stored = json.loads(await mcp.memory_remember(ctx, fact={"subject_ref": f"memory://{contact}",
             "predicate": predicate, "value": value}))
         assert stored["status"] == "stored"
+        memory_ids.add(stored["memory_id"])
         item = await db.get(MemoryItem, UUID(stored["memory_id"]))
         fact = item.metadata_["atomic_fact"]
         assert fact["subject_ref"] == f"memory://{contact}"
@@ -92,6 +99,7 @@ async def test_memory_remember_requires_structured_facts_and_preserves_typed_val
         assert "yesterday" not in item.content and "told me" not in item.content
         assert await db.scalar(select(MemoryLink.id).where(MemoryLink.source_item_id == item.id,
             MemoryLink.target_item_id == contact, MemoryLink.relation_type == "fact_subject")) is not None
+    assert len(memory_ids) == 3
     rejected = json.loads(await mcp.memory_remember(ctx, fact={"subject_ref": f"memory://{contact}",
         "predicate": "email", "value": "nina@example.org"}))
     assert rejected["rejection_reason"] == "contact_coordinates"

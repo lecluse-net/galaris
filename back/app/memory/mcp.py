@@ -184,8 +184,10 @@ def _task_association_payload(
     description=(
         "Store one durable governed memory as one atomic structured fact. Supply fact with "
         "subject_ref (an existing Contact or Document URI; omit for the current contact or agent), "
-        "one snake_case predicate and one raw scalar value or {ref: URI}. Split independent values into separate facts. "
-        "Do not narrate who said it or when: attribution and timestamps are linked by the server. "
+        "one snake_case predicate and one raw scalar value or {ref: URI}. Keep paragraphs and summaries out of value. "
+        "If one assertion could change while another stays true, use separate calls. "
+        "For example, save report_day=friday and report_format=pdf separately. Skip any combined recap. "
+        "The server records attribution and timestamps separately. "
         "Legacy content accepts a structured fact encoded as JSON, never prose or HTML. "
         "Use sparingly for an explicit memory request, a correction, or an especially important "
         "confirmed fact worth retaining immediately. Leave routine extraction and duplicate checking "
@@ -233,8 +235,9 @@ async def memory_remember(
                 fact = AtomicMemoryFact.model_validate_json(content)
             except ValueError:
                 return _json({"status": "rejected", "memory_id": None, "rejection_reason": "atomic_fact_required",
-                    "message": "Supply fact={subject_ref, predicate, value}; one raw property per memory. "
-                               "Omit subject_ref for the current contact. No narrated author, date, paragraph or HTML."})
+                    "message": "Supply fact={subject_ref, predicate, value} with one raw value per call. "
+                               "Split independent assertions into separate calls. Omit subject_ref for the current contact. "
+                               "Keep narration and HTML out of the fact."})
         acquisition = await acquisition_service.acquire_memory(
             MemoryAcquisitionCreate(
                 agent_id=ctx.agent_id,
