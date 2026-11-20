@@ -106,6 +106,17 @@
       ><span class="column-resizer-handle"><q-icon name="drag_indicator" size="16px" /></span></div>
       <aside v-if="store.selectedRoom" id="chat-details" v-show="!$q.screen.lt.md || sidebarVisible" class="details-pane">
         <q-toolbar v-if="$q.screen.lt.md && store.selectedRoom" class="sidebar-mobile-toolbar"><q-btn flat round dense icon="arrow_back" :aria-label="t('chat.backToConversation')" @click="mobileView='conversation'" /><q-toolbar-title>{{ t('chat.details') }}</q-toolbar-title></q-toolbar>
+        <q-toolbar class="sidebar-home-toolbar">
+          <q-btn
+            outline rounded color="primary"
+            :to="{ path: route.path, query: { ...route.query, room: undefined }, hash: route.hash }"
+            :aria-label="t('chat.home.back')"
+          >
+            <q-icon name="arrow_back" aria-hidden="true" />
+            <q-icon name="grid_view" class="q-ml-xs" aria-hidden="true" />
+            <q-tooltip>{{ t('chat.home.back') }}</q-tooltip>
+          </q-btn>
+        </q-toolbar>
         <ContextHelp help-key="chat" :text="t('contextHelpPages.chat')" />
         <q-list id="chat-sidebar-content" v-show="sidebarVisible || !store.selectedRoom" class="sidebar-accordion" :class="{ 'sidebar-accordion--empty': !store.selectedRoom }">
           <q-expansion-item v-if="store.selectedRoom" v-model="conversationsExpanded" dense-toggle expand-separator icon="forum" :label="t('chat.conversations')" class="sidebar-accordion-item" :class="{ 'sidebar-accordion-item--open': conversationsExpanded }" header-class="sidebar-accordion-header">
@@ -910,8 +921,9 @@ function onObservedEvent(event: { data?: { room_id?: string; document_id?: strin
 .history-loader { display: flex; justify-content: center; padding: 7px; background: var(--chat-page-bg); }
 .sidebar-mobile-toolbar { flex: 0 0 auto; min-height: 48px; background: var(--chat-surface); border-bottom: 1px solid var(--chat-border); }
 .sidebar-mobile-toolbar .q-toolbar__title { font-size: .9rem; font-weight: 600; }
-.sidebar-accordion { display: flex; flex: 1 1 auto; min-height: 0; margin-top: 80px; flex-direction: column; overflow: hidden; background: var(--chat-surface); }
-.sidebar-accordion--empty { width: 100%; margin-top: 0; }
+.sidebar-home-toolbar { flex: 0 0 auto; }
+.sidebar-accordion { display: flex; flex: 1 1 auto; min-height: 0; flex-direction: column; overflow: hidden; background: var(--chat-surface); }
+.sidebar-accordion--empty { width: 100%; }
 .sidebar-accordion-item { flex: 0 0 auto; min-height: 0; color: var(--chat-text); background: var(--chat-surface); }
 .sidebar-accordion-item--open { flex: 1 1 0; overflow: hidden; }
 .conversations-section { display: flex; flex-direction: column; }
@@ -924,6 +936,10 @@ function onObservedEvent(event: { data?: { room_id?: string; document_id?: strin
 .read-only-chip { flex: 0 0 auto; font-size: .67rem; }
 .mobile-hidden { display: none; }
 
+@media (min-width: 1024px) {
+  .sidebar-home-toolbar { min-height: 80px; }
+}
+
 @media (max-width: 1023.98px) {
   .conversation-toolbar { min-height: 48px; }
   .messenger-grid { display: block; }
@@ -932,6 +948,5 @@ function onObservedEvent(event: { data?: { room_id?: string; document_id?: strin
   .column-resizer { display: none; }
   .conversation-pane,
   .details-pane { width: 100%; border: 0; }
-  .sidebar-accordion { margin-top: 0; }
 }
 </style>

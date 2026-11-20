@@ -45,6 +45,7 @@ export default {
     chat: {
       documentPanel: { title: 'Conversation', hide: 'Masquer la conversation', choose: 'Ouvrir une conversation', empty: 'Aucune conversation trouvée.', more: 'Charger la suite', context: 'Le document ouvert accompagne votre prochain message. Ses droits restent indépendants.', start: 'Choisissez une conversation ou démarrez-en une avec un agent.' },
       home: {
+        back: "Accueil des discussions",
         title: "Avec qui souhaitez-vous échanger ?",
         subtitle: "Choisissez un agent pour démarrer une conversation, ou reprenez un échange récent.",
         resume: "Retrouvez et reprenez vos conversations récentes.",
@@ -487,6 +488,7 @@ export default {
         other: "External",
       },
       home: {
+        back: "Chat home",
         title: "Who would you like to talk to?",
         subtitle: "Choose an agent to start a conversation, or pick up a recent exchange.",
         resume: "Find and resume your recent conversations.",
@@ -912,6 +914,7 @@ export default {
         error: '无法应用此命令，请重试。',
       },
       home: {
+        back: "聊天首页",
         title: "您想与谁交流？",
         subtitle: "选择一个智能体开始新对话，或继续最近的交流。",
         resume: "查找并继续最近的对话。",

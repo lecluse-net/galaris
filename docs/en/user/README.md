@@ -499,7 +499,9 @@ tool activity and links from LLM calls.
 
 Before you select a conversation, the Chat home screen first shows **Conversations**,
 with the same list as the chat window's **Conversations** section, including older and empty
-ones, with the usual pagination. Agents appear below, under **Who would you like to talk to?**.
+ones, with the usual pagination. From a conversation, use the **Chat home** button (arrow and grid)
+at the top left of the panel above the list. On mobile, open **Details** first.
+Agents appear below, under **Who would you like to talk to?**.
 Click an agent to open a new conversation with that agent preselected, then confirm its name
 and preferences. The suggested name accounts for your existing conversations with that agent,
 including archived ones: if the name is already taken, Galaris adds **(2)**, **(3)**, and so on.

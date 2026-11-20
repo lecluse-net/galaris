@@ -597,6 +597,8 @@ pour suivre les outils et retrouver les appels LLM.
 Avant de sélectionner une conversation, l’accueil de **Discussion** affiche d’abord les
 **Conversations**, avec la même liste que la rubrique **Conversations** de la fenêtre de chat,
 y compris les anciennes et celles sans message, avec la pagination habituelle.
+Depuis une conversation, utilisez le bouton **Accueil des discussions** (flèche et grille)
+en haut à gauche du panneau, au-dessus de la liste. Sur mobile, ouvrez d’abord **Détails**.
 Les agents apparaissent en dessous,
 sous **Avec qui souhaitez-vous échanger ?**. Cliquez sur un agent pour ouvrir une nouvelle conversation avec cet agent
 présélectionné, puis confirmez son nom et ses préférences. Le nom proposé tient compte de vos

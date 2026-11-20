@@ -52,7 +52,13 @@ async function home(page, options = {}) {
   await jsonRoute(page, '**/api/chat/rooms/room-a/speech/status*', { available_agent_ids: [] })
   await jsonRoute(page, '**/api/chat/inbox', { unread_count: 0 })
   await jsonRoute(page, '**/api/chat/emojis/frequent', { items: [] })
-  await mount(page, 'app/chat/pages/index.vue', { route: '/chat', privileges: options.privileges ?? ['CHAT_MANAGE', 'CHAT_SEND'], dark: options.dark ?? false })
+  await mount(page, 'app/chat/pages/index.vue', { route: '/chat', privileges: options.privileges ?? ['CHAT_MANAGE', 'CHAT_SEND'], dark: options.dark ?? false, shell: options.shell ?? false, browserHistory: options.shell ?? false })
+  if (options.shell && page.viewportSize().width < 1024) {
+    const backdrop = page.locator('.q-drawer__backdrop')
+    await expect(backdrop).toBeVisible()
+    await backdrop.click({ position: { x: page.viewportSize().width - 15, y: 120 } })
+    await expect(backdrop).toBeHidden()
+  }
   await expect(page.getByRole('textbox', { name: 'Search conversations…' })).toBeVisible()
   return { requests, created, recipientRequests }
 }
@@ -60,7 +66,7 @@ async function home(page, options = {}) {
 for (const width of [390, 1440]) {
   test(`chat home resumes private and dated conversations and creates with the chosen agent at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 900 })
-    await home(page)
+    const state = await home(page, { shell: true })
     await expect(page.getByRole('heading', { name: 'Who would you like to talk to?' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'New conversation', exact: true })).toHaveCount(0)
     await expect(page.getByText('Hidden preview')).toHaveCount(0)
@@ -71,12 +77,20 @@ for (const width of [390, 1440]) {
     await page.screenshot({ path: testInfo.outputPath('chat-home-light.png'), fullPage: true, animations: 'disabled' })
     await page.evaluate(() => window.testApp.dark(true))
     await page.screenshot({ path: testInfo.outputPath('chat-home-dark.png'), fullPage: true, animations: 'disabled' })
+    if (width >= 1024) await page.evaluate(() => window.testApp.dark(false))
     await recent.click()
     await expect(page.locator('.conversation-pane')).toContainText(message.text)
     await expect(page.getByRole('heading', { name: 'Who would you like to talk to?' })).toHaveCount(0)
 
-    // Remount through the real page entry to return to the welcome screen.
-    const state = await home(page)
+    await expect(page).toHaveURL('/chat?room=room-a')
+    if (width < 1024) await page.getByRole('button', { name: 'Details', exact: true }).click()
+    const chatHome = page.getByRole('link', { name: 'Chat home' })
+    await expect(chatHome).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('chat-return.png'), animations: 'disabled' })
+    if (width < 1024) await chatHome.press('Enter')
+    else await chatHome.click()
+    await expect(page).toHaveURL('/chat')
+    await expect(recent).toBeVisible()
     await page.getByRole('button', { name: 'New conversation with Alice', exact: true }).click()
     await expect(page.getByRole('textbox', { name: 'Conversation name', exact: true })).toHaveValue('Alice (3)')
     await page.getByRole('button', { name: 'Cancel', exact: true }).click()
