@@ -1,6 +1,7 @@
 from tests.protocol_tools import protocol_tool
 """Synthetic receive → common consent → read → canonical Task workflows."""
 
+import asyncio
 from unittest.mock import AsyncMock, Mock
 
 import pytest
@@ -11,12 +12,12 @@ from app.connection import facade as connections
 from app.contact.facade import is_known_mail_contact
 from app.memory import create_mail_contact, forget_messenger_contact
 from app.task import Task
-from app.services.authorization import answer_action, can_remember_action
+from app.services.authorization import AuthorizationRequired, answer_action, can_remember_action
 from app.services.authorization_models import ActionAuthorization
 from app.services.models import Service
 from core.database import get_db_session
 from bridge.mail import inbound, service
-from bridge.mail.contracts import MailMessageDetail, MailMessageRef, MailSearchPage, MailSearchQuery
+from bridge.mail.contracts import MailMessageDetail, MailMessageRef, MailSearchPage, MailSearchQuery, StaleMailMessageReference
 from bridge.mail.models import MailInboundReceipt
 from .test_chat_approvals import _setup_mail_chat
 from .test_messenger import _summary
@@ -205,6 +206,63 @@ async def test_unknown_sender_is_logged_but_not_read_until_common_consent(inbox,
 
 
 @pytest.mark.asyncio
+async def test_admitted_mail_can_be_read_after_fresh_consent_for_changed_configuration(inbox, monkeypatch):
+    config, manager, outsider, read = inbox
+    summary = _summary(43)
+    async with get_db_session() as db:
+        await connections.set_connection_function_state(config.connection_id, "mail_process", "ask")
+        await inbound.receive(config, summary)
+        receipt = (await db.scalars(select(MailInboundReceipt))).one()
+        original_request = receipt.authorization_id
+        assert original_request is not None
+        assert await answer_action(original_request, user_id=manager, approved=True)
+        await inbound._wake(config.agent_id, f"mail-inbound:{receipt.id}")
+        await db.refresh(receipt)
+        assert receipt.status == "admitted"
+        original_admission = receipt.admitted_at
+        task = (await db.scalars(select(Task))).one()
+        read.reset_mock()
+
+        original_params = connections.get_params_as_dict
+        changed = True
+
+        async def effective_params(*args, **kwargs):
+            connection, params = await original_params(*args, **kwargs)
+            if changed:
+                params = {**params, "operation_timeout_s": "45"}
+            return connection, params
+
+        monkeypatch.setattr(connections, "get_params_as_dict", effective_params)
+
+        async def request_read_approval():
+            async with get_db_session():
+                with pytest.raises(AuthorizationRequired) as required:
+                    await service.get_message(config.agent_id, summary.ref, parent_context=f"task:{task.id}")
+                return required.value.request_id
+
+        for use_changed_config in (True, False):
+            changed = use_changed_config
+            request_id, repeated_id = await asyncio.gather(request_read_approval(), request_read_approval())
+            assert request_id != original_request
+            assert repeated_id == request_id
+            assert not await answer_action(request_id, user_id=outsider, approved=True)
+            assert await answer_action(request_id, user_id=manager, approved=True)
+            read.assert_not_called()
+            detail = await service.get_message(config.agent_id, summary.ref, parent_context=f"task:{task.id}")
+            assert detail.body == "Synthetic private body"
+            read.assert_called_once()
+            read.reset_mock()
+            await db.refresh(receipt)
+            assert receipt.status == "admitted" and receipt.admitted_at == original_admission
+            assert await db.scalar(select(func.count()).select_from(Task)) == 1
+
+        await connections.set_connection_function_state(config.connection_id, "mail_process", "disabled")
+        with pytest.raises(PermissionError, match="blocked"):
+            await service.get_message(config.agent_id, summary.ref)
+        read.assert_not_called()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("mode", ["default", "ask", "enabled", "disabled"])
 async def test_contact_default_and_explicit_processing_modes(inbox, mode):
     config, manager, _outsider, read = inbox
@@ -265,14 +323,13 @@ async def test_alternate_read_paths_cannot_download_unknown_mail_before_consent(
 
 
 @pytest.mark.asyncio
-async def test_repeated_admission_survives_concurrent_delivery_and_revocation(inbox):
-    import asyncio
+async def test_repeated_admission_survives_concurrent_delivery_and_revocation(inbox, monkeypatch):
     from bridge.mail.messenger import MailMessenger
     from app.messenger import dispatch_incoming
     from app.messenger.service import MissingInboundTaskError
     from app.connection.models import ConnectionParam
 
-    config, _manager, _outsider, _read = inbox
+    config, _manager, _outsider, read = inbox
     async with get_db_session():
         await connections.set_connection_function_state(config.connection_id, "mail_process", "enabled")
     async def deliver():
@@ -295,8 +352,16 @@ async def test_repeated_admission_survives_concurrent_delivery_and_revocation(in
         await connections.set_connection_function_state(config.connection_id, "mail_process", "enabled")
         db.add(ConnectionParam(connection_id=config.connection_id, param_name="imap_host", param_value="changed.example.org"))
         await db.commit()
-        with pytest.raises(PermissionError, match="configuration changed"):
-            await service.get_message(config.agent_id, row.message_ref)
+        read.reset_mock()
+        with monkeypatch.context() as patches:
+            different_mail = _summary(71).model_copy(update={"from_address": "other@example.org"})
+            patches.setattr(inbound.ImapClient, "get_summary", Mock(return_value=different_mail))
+            with pytest.raises(StaleMailMessageReference, match="original receipt"):
+                await service.get_message(config.agent_id, row.message_ref)
+        read.assert_not_called()
+        detail = await service.get_message(config.agent_id, row.message_ref)
+        assert detail.body == "Synthetic private body"
+        assert await db.scalar(select(func.count()).select_from(Task)) == 1
 
 
 @pytest.mark.asyncio
@@ -368,10 +433,18 @@ async def test_receipt_recovers_an_admission_without_a_task(inbox, monkeypatch):
 async def test_inbound_task_defaults_to_its_mail_account_with_multiple_connections(inbox, monkeypatch):
     from app.connection import Connection
     from app.services import build_agent_galaris_fastmcp, current_protocol_connection
+    from app.services import mcp_loader
     from fastmcp import Client
 
     config, _manager, _outsider, _read = inbox
     summary = _summary(74)
+    enabled_codes = mcp_loader.get_enabled_integrated_service_codes
+
+    async def enabled_with_messenger(agent_id):
+        return (await enabled_codes(agent_id)) | {"messenger"}
+
+    monkeypatch.setattr(mcp_loader, "get_enabled_integrated_service_codes", enabled_with_messenger)
+    allowed_names = {"mail_get", "messenger_room_send_message"}
     async with get_db_session() as db:
         connection = await connections.get_connection(config.connection_id)
         db.add(Connection(agent_id=config.agent_id, service_id=connection.service_id, active=True,
@@ -380,7 +453,10 @@ async def test_inbound_task_defaults_to_its_mail_account_with_multiple_connectio
         await connections.set_connection_function_state(config.connection_id, "mail_process", "enabled")
         await inbound.receive(config, summary)
         task = (await db.scalars(select(Task))).one()
-        server = await build_agent_galaris_fastmcp(config.agent_id, task_id=task.id, allowed_tool_names={"mail_get"})
+        server = await build_agent_galaris_fastmcp(config.agent_id, task_id=task.id, allowed_tool_names=allowed_names)
+        generic_tools = await mcp_loader.list_enabled_native_mcp_definitions(config.agent_id,
+            runtime="internal", allowed_tool_names=allowed_names)
+        assert {tool.name for tool in generic_tools} == allowed_names
 
     async def resolve(agent_id):
         assert current_protocol_connection("mail", agent_id) == config.connection_id
@@ -388,6 +464,16 @@ async def test_inbound_task_defaults_to_its_mail_account_with_multiple_connectio
 
     monkeypatch.setattr(service, "resolve_mail_connection", resolve)
     async with Client(server) as client:
+        assert {tool.name for tool in await client.list_tools()} == {"mail_get"}
+        unavailable = await client.call_tool("mail_get", {"message_ref": summary.ref, "connection_id": 9999999},
+            raise_on_error=False)
+        assert unavailable.is_error
+        assert "omit connection_id" in str(unavailable.content)
+        with monkeypatch.context() as patches:
+            patches.setattr(inbound.ImapClient, "get_summary", Mock(side_effect=StaleMailMessageReference("UIDVALIDITY changed")))
+            stale = await client.call_tool("mail_get", {"message_ref": _summary(75).ref}, raise_on_error=False)
+        assert stale.is_error
+        assert "UIDVALIDITY" in str(stale.content) and "mail_search" in str(stale.content)
         result = await client.call_tool("mail_get", {"message_ref": summary.ref}, raise_on_error=False)
         assert not result.is_error, result
         assert "Synthetic private body" in str(result.content)

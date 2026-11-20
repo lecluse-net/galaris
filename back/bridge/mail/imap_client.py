@@ -25,6 +25,7 @@ from .contracts import (
     MailSearchQuery,
     MailboxInfo,
     OutgoingAttachment,
+    StaleMailMessageReference,
 )
 from .mime import extract_attachment, parse_message, parse_summary
 
@@ -258,7 +259,7 @@ class ImapClient:
         ImapClient._validate_mailbox(client, ref.mailbox)
         current = ImapClient._select(client, ref.mailbox, readonly=readonly)
         if current != ref.uid_validity:
-            raise ValueError("Mail message reference is stale because UIDVALIDITY changed")
+            raise StaleMailMessageReference("Mail message reference is stale because UIDVALIDITY changed")
 
     def status(self) -> tuple[list[MailboxInfo], int]:
         with self._session() as client:

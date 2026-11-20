@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from uuid import uuid4
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
@@ -89,6 +90,21 @@ async def test_messenger_prompt_keeps_explicit_tool_delivery_contract() -> None:
     assert "# Reply Contract" in prompt
     assert f'"task_uri": "galaris://task/{request.task_id}"' in prompt
     assert '"task_id":' not in prompt
+
+
+@pytest.mark.asyncio
+async def test_existing_mail_task_uses_its_original_message_and_records_its_result_internally() -> None:
+    from app.services import build_tool_context_instructions
+
+    request = replace(_request(voice_call=False), message_platform="mail", message_group_id="m1_synthetic",
+        messenger_connection_id=42, messaging_context={"platform": "mail", "room_id": "m1_synthetic"})
+    prompt = await executor_service.build_task_prompt(request)
+
+    assert 'mail_get(message_ref="m1_synthetic", connection_id=42)' in prompt
+    assert "final Task result" in prompt
+    assert "messenger_room_send_message" not in prompt
+    assert "messenger_send_message_to_user" not in prompt
+    assert await build_tool_context_instructions(request) == ""
 
 
 @pytest.mark.asyncio

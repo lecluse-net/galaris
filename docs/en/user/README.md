@@ -646,6 +646,8 @@ previously saved choices.
 If a Task waits for your consent to read an email, answer its authorization request.
 The Harness continues reading the same message once the Task resumes; denial keeps
 its content private. Reading consent does not authorize sending an email.
+If a Mail settings change blocked a Task, select **Retry** on that Task. If Galaris requests a
+new approval, answer it to continue processing the original email. The result appears on the Task.
 For Tasks created by inbound Mail polling and their child Tasks, Galaris routes calls that
 would use a personal ChatGPT subscription to an eligible API model for the same usage.
 It uses the agent’s secondary profile if set, or the default fallback profile otherwise.

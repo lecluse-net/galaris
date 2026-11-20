@@ -107,7 +107,8 @@ async def build_agent_tool_advertisement(
         lines.append("Mail supports multiple accounts, including several connections to the same provider Service. "
             "When services_list is available, use it to discover each mailbox address, connection_id and authorized functions. "
             "Pass the selected connection_id to every mail_* call and keep message references and cursors "
-            "with their original account. An incoming Mail task may already bind its source connection. "
+            "with their original account. For the source message of an incoming Mail task, use its "
+            "provided connection_id or omit it to keep the bound account. "
             "Never guess a connection ID or switch accounts to bypass a denial; ask when the intended mailbox is unclear.")
     if "file_list" in tool_names:
         lines.extend([
@@ -424,7 +425,7 @@ def build_tool_context_values(task: Any, runtime: RuntimeName) -> dict[str, str]
     capabilities = resolve_tool_profile(runtime)
     room_id = getattr(task, "message_group_id", None) or ""
     platform = getattr(task, "message_platform", None) or ""
-    if not (platform or room_id):
+    if platform == "mail" or not (platform or room_id):
         return None
 
     connection_id = ""

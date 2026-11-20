@@ -421,6 +421,9 @@ au watermark courant rétablit cette référence. Le corps n'est lu qu'après au
 `mail_process` : par défaut les adresses exactes des Contacts de l'agent sont acceptées et
 les expéditeurs inconnus demandent le consentement commun. Les règles explicites Actif,
 Sur demande et Bloqué restent prioritaires ; l'accord d'envoi est indépendant.
+Après un changement de configuration Mail, Galaris vérifie les en-têtes du message d’origine
+et obtient une nouvelle autorisation selon la politique courante avant de relire le corps.
+Le reçu et le lien vers la tâche sont conservés.
 Mail déclare une politique d’admission `task` propre au transport. Chaque nouveau courriel
 autorisé pour réception crée une tâche qui reçoit sa référence `mail_get` et sa connexion exactes,
 y compris si la prélecture IMAP a échoué. L’expéditeur reste l’auteur du message et le contact
@@ -430,6 +433,7 @@ La reprise répare un reçu autorisé sans tâche durable et reconnaît une tâc
 après sa suppression logique. Le journal projette le lien depuis le message canonique pour les
 utilisateurs habilités à lire les tâches de cet agent. Une réponse SMTP passe par un effet explicite
 et idempotent d’un outil `mail_*`.
+L’exécuteur consigne le résultat dans la tâche. Les tâches Mail entrantes ne proposent pas les outils Messenger.
 Les rooms techniques créées pour ces courriels restent dans le journal canonique mais sont exclues
 de la projection Chat, y compris dans la vue d’un agent, afin qu’un flux IMAP ne crée pas une
 discussion visible par message.

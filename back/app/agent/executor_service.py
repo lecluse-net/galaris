@@ -495,9 +495,23 @@ async def build_task_prompt(task: Any, extra_context: Optional[dict[str, str]] =
             "that wording as a request for your direct answer. Never call `task_run` with your "
             "own agent ID."
         )
+    if getattr(task, "message_platform", None) == "mail":
+        read_instruction = ""
+        reference = getattr(task, "message_group_id", None)
+        if reference and getattr(task, "parent_task_id", None) is None:
+            connection_id = getattr(task, "messenger_connection_id", None)
+            connection_arg = f", connection_id={connection_id}" if isinstance(connection_id, int) else ""
+            read_instruction = f"Read the original email with mail_get(message_ref={json.dumps(reference)}{connection_arg}). "
+        sections["reply_contract"] = (
+            read_instruction
+            + "Keep the original Mail connection and use provider-issued message references verbatim. "
+            "If access requires consent, wait for the recorded decision. If the message cannot be "
+            "read, record the specific blocker in your final Task result. This result is internal. "
+            "Use explicit mail_* tools for any email action required by the task."
+        )
     # Conversation-owned Tasks are projected back by the conversation controller. Other
     # Messenger Tasks still require explicit tool delivery because they have no such owner.
-    if (
+    elif (
         messaging_context
         and not data.get("voice_call")
         and getattr(task, "parent_task_id", None) is None

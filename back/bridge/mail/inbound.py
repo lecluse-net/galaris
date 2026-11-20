@@ -19,7 +19,7 @@ from app.contact.facade import is_known_mail_contact
 from app.messenger import Message, dispatch_incoming, inbound_task_links, register_inbound_contact_authorizer
 from app.services.facade import (
     AuthorizationAction, AuthorizationClosed, AuthorizationRequired, AuthorizationReview,
-    authorization_reviews, claim_action, finish_action, get_service_by_id,
+    authorization_reviews, claim_action, finish_action, get_service_by_id, invalidate_authorization_context,
     register_authorization_context_guard, register_authorization_waker,
     register_runtime_authorization_waiter,
     tool_authorization_configuration, authorization_fingerprint, wake_authorization_context,
@@ -28,7 +28,9 @@ from app.services.contracts import ToolCallRejectedError, current_tool_execution
 from core.database import get_db
 
 from .connection_service import resolve_connection
-from .contracts import MailConnectionConfig, MailMessageDetail, MailMessageRef, MailMessageSummary
+from .contracts import (
+    MailConnectionConfig, MailMessageDetail, MailMessageRef, MailMessageSummary, StaleMailMessageReference,
+)
 from .imap_client import ImapClient
 from .models import MailInboundReceipt
 from .schemas import MailInboundDetail, MailInboundItem, MailInboundPage
@@ -72,21 +74,29 @@ async def record_receipt(
     return row
 
 
-async def _context(agent_id: int, key: str) -> dict[str, object] | None:
+def _authorization_key(row: MailInboundReceipt) -> str:
+    key = f"{_CONTEXT_PREFIX}:{row.id}"
+    return f"{key}:{row.authorization_generation}" if row.authorization_generation else key
+
+
+def _receipt_id(key: str) -> UUID | None:
     try:
-        identifier = UUID(key.split(":", 1)[1])
+        return UUID(key.split(":", 2)[1])
     except (ValueError, IndexError):
         return None
-    row = await get_db().get(MailInboundReceipt, identifier, populate_existing=True)
-    if row is None or row.agent_id != agent_id or row.connection_id is None:
+
+
+async def _context(agent_id: int, key: str) -> dict[str, object] | None:
+    identifier = _receipt_id(key)
+    row = await get_db().get(MailInboundReceipt, identifier, populate_existing=True) if identifier is not None else None
+    if row is None or row.agent_id != agent_id or row.connection_id is None or _authorization_key(row) != key:
         return None
     return {"receipt_id": str(row.id), "connection_id": row.connection_id, "summary": row.summary}
 
 
 async def _runtime_waiter(agent_id: int, key: str, authorization_id: UUID, parent_context: str) -> bool:
-    try:
-        identifier = UUID(key.split(":", 1)[1])
-    except (ValueError, IndexError):
+    identifier = _receipt_id(key)
+    if identifier is None:
         return False
     return bool(await get_db().scalar(select(MailInboundReceipt.id).where(
         MailInboundReceipt.id == identifier, MailInboundReceipt.agent_id == agent_id,
@@ -95,17 +105,45 @@ async def _runtime_waiter(agent_id: int, key: str, authorization_id: UUID, paren
     )))
 
 
-async def authorize_receipt(row: MailInboundReceipt) -> None:
+async def _renew_authorization(row: MailInboundReceipt, config: MailConnectionConfig, fingerprint: str) -> None:
+    # A repointed account could return another message for the same UID pair.
+    previous = MailMessageSummary.model_validate(row.summary)
+    observed = await asyncio.to_thread(ImapClient(config).get_summary, MailMessageRef.decode(row.message_ref))
+    identity_fields = {"ref", "message_id", "from_address", "to_addresses", "subject", "date"}
+    if previous.model_dump(include=identity_fields) != observed.model_dump(include=identity_fields):
+        raise StaleMailMessageReference("Mail headers no longer match the original receipt")
+    await invalidate_authorization_context(config.agent_id, _authorization_key(row))
+    row.authorization_generation += 1
+    row.authorization_id = None
+    row.configuration_fingerprint = fingerprint
+    row.authorized_at = None
+    row.status, row.error = "received", None
+    # The common authorization layer reads the context in a separate transaction.
+    await get_db().commit()
+
+
+async def authorize_receipt(
+    row: MailInboundReceipt,
+    *,
+    parent_context: str | None = None,
+    expected_config: MailConnectionConfig | None = None,
+    renewed: bool = False,
+) -> MailConnectionConfig:
     """Grant this message only; explicit Ask/Blocked policies take precedence over contacts."""
-    _require_inbox(row.message_ref)
     db = get_db()
-    if row.connection_id is None or row.agent_id is None:
+    locked = await db.get(MailInboundReceipt, row.id, populate_existing=True, with_for_update=True)
+    if locked is None or locked.connection_id is None or locked.agent_id is None:
         raise PermissionError("Mail connection is no longer available")
-    connection = await connections.get_connection(row.connection_id)
-    if connection is None or not connection.active or connection.agent_id != row.agent_id:
+    row = locked
+    _require_inbox(row.message_ref)
+    agent_id = locked.agent_id
+    connection = await connections.get_connection(locked.connection_id)
+    if connection is None or not connection.active or connection.agent_id != agent_id:
         raise PermissionError("Mail connection is no longer available")
     config = await resolve_connection(connection.id, require_active=True)
     config.require_mailbox(MailMessageRef.decode(row.message_ref).mailbox)
+    if expected_config is not None and expected_config != config:
+        raise ToolCallRejectedError("Mail configuration changed during the call. Retry with the exact message reference.")
     policy = await connections.resolve_function(connection, PROCESS_NAME)
     tool = await get_service_by_id(connection.service_id)
     if tool is None:
@@ -121,22 +159,26 @@ async def authorize_receipt(row: MailInboundReceipt) -> None:
         raise PermissionError("Mail processing is blocked")
     if row.status == "rejected":
         raise PermissionError("Mail processing was rejected")
+    snapshot_exists = row.authorized_at is not None or row.configuration_fingerprint is not None
+    if snapshot_exists and row.configuration_fingerprint != config_fingerprint:
+        if renewed:
+            raise ToolCallRejectedError("Mail configuration changed during authorization. Retry with the exact message reference.")
+        await _renew_authorization(row, config, config_fingerprint)
+        return await authorize_receipt(row, parent_context=parent_context, expected_config=expected_config, renewed=True)
     if row.authorized_at is not None:
-        if row.configuration_fingerprint != config_fingerprint:
-            raise PermissionError("Mail connection configuration changed after authorization")
         # Repair a crash after storing the local grant but before completing its receipt.
+        await db.commit()
         await finish_action(row.authorization_id, receipt={"receipt_id": str(row.id), "message_ref": row.message_ref})
-        return
-    known = await is_known_mail_contact(agent_id=row.agent_id, address=row.sender_address)
+        return config
+    known = await is_known_mail_contact(agent_id=agent_id, address=row.sender_address)
     # An explicit per-agent or global Ask means every sender, including contacts.
     trusted_default = known and policy["policy_source"] == "software"
     row.known_contact = known
-    await db.commit()  # claim_action uses independent short transactions.
     identifier: UUID | None = None
     if not trusted_default:
         action = AuthorizationAction(
-            agent_id=row.agent_id, runtime="internal", source="mcp",
-            context_key=f"{_CONTEXT_PREFIX}:{row.id}", callback_key=str(row.id),
+            agent_id=agent_id, runtime="internal", source="mcp",
+            context_key=_authorization_key(row), callback_key=str(row.id),
             name=PROCESS_NAME, service_id=connection.service_id, connection_id=connection.id,
             arguments={"sender": row.sender_address, "subject": row.subject,
                        "message_ref": row.message_ref},
@@ -144,22 +186,36 @@ async def authorize_receipt(row: MailInboundReceipt) -> None:
         )
         try:
             identifier = await claim_action(action)
-        except (AuthorizationRequired, AuthorizationClosed) as decision:
-            if isinstance(decision, AuthorizationClosed) and decision.status == "executing":
+        except AuthorizationRequired as pending:
+            if (parent_context and parent_context.startswith(("task:", "round:"))
+                    and parent_context not in row.waiting_contexts):
+                if len(row.waiting_contexts) >= 50:
+                    raise ToolCallRejectedError("Too many contexts are waiting for this email") from pending
+                row.waiting_contexts = [*row.waiting_contexts, parent_context]
+            row.authorization_id = pending.request_id
+            row.configuration_fingerprint = config_fingerprint
+            row.status, row.error = "pending_approval", None
+            await db.commit()
+            raise
+        except AuthorizationClosed as decision:
+            if decision.status == "executing":
                 # Recover a crash after the common claim but before the local grant commit.
                 identifier = decision.request_id
+            elif decision.status == "invalidated" and not renewed:
+                await _renew_authorization(row, config, config_fingerprint)
+                return await authorize_receipt(row, parent_context=parent_context, expected_config=expected_config, renewed=True)
             else:
                 row.authorization_id = decision.request_id
-                row.status = "pending_approval" if isinstance(decision, AuthorizationRequired) else "rejected"
-                row.error = None if isinstance(decision, AuthorizationRequired) else decision.status
+                row.status, row.error = "rejected", decision.status
                 await db.commit()
                 raise
     row.authorization_id = identifier
     row.configuration_fingerprint = config_fingerprint
     row.authorized_at = datetime.now(timezone.utc)
-    row.status, row.error = "authorized", None
+    row.status, row.error = ("admitted" if row.admitted_at is not None else "authorized"), None
     await db.commit()
     await finish_action(identifier, receipt={"receipt_id": str(row.id), "message_ref": row.message_ref})
+    return config
 
 
 async def ensure_readable(
@@ -177,20 +233,8 @@ async def ensure_readable(
     if row is None:
         summary = await asyncio.to_thread(ImapClient(config).get_summary, MailMessageRef.decode(message_ref))
         row = await record_receipt(config, summary)
-    if row.authorized_at is None and parent_context and parent_context.startswith(("task:", "round:")):
-        # SQL concatenation preserves concurrent waiters; the wake deduplicates contexts.
-        if parent_context not in row.waiting_contexts:
-            registered = await get_db().scalar(update(MailInboundReceipt).where(
-                MailInboundReceipt.id == row.id,
-                func.jsonb_array_length(MailInboundReceipt.waiting_contexts) < 50,
-            ).values(
-                waiting_contexts=MailInboundReceipt.waiting_contexts + [parent_context]
-            ).returning(MailInboundReceipt.id))
-            await get_db().commit()
-            if registered is None:
-                raise ToolCallRejectedError("Too many contexts are waiting for this email")
     try:
-        await authorize_receipt(row)
+        await authorize_receipt(row, parent_context=parent_context, expected_config=config)
     except AuthorizationRequired as pending:
         # The enclosing Tool may be mail_get or file_read, whose continuation has a
         # different binding. Its retry reads this durable receipt after the wake.
@@ -237,14 +281,13 @@ async def process_receipt(identifier: UUID) -> None:
         row.status = "authorized"
         await db.commit()
     try:
-        await authorize_receipt(row)
+        config = await authorize_receipt(row)
         if not row.dispatch_requested:
             return
         assert row.connection_id is not None
         connection = await connections.get_connection(row.connection_id)
         if connection is None:
             raise PermissionError("Mail connection was deleted")
-        config = await resolve_connection(connection.id, require_active=True)
         ref = MailMessageRef.decode(row.message_ref)
         config.require_mailbox(ref.mailbox)
         if row.content is None:
@@ -312,14 +355,15 @@ async def resume_receipts(connection_id: int, *, repair_admissions: bool = False
 async def _wake(agent_id: int, key: str) -> bool:
     if not key.startswith(f"{_CONTEXT_PREFIX}:"):
         return False
-    context = await _context(agent_id, key)
-    if context is not None:
-        await process_receipt(UUID(str(context["receipt_id"])))
-        row = await get_db().get(MailInboundReceipt, UUID(str(context["receipt_id"])), populate_existing=True)
-        if row is not None:
-            for parent in set(row.waiting_contexts):
-                if not await wake_authorization_context(agent_id, parent):
-                    return False
+    identifier = _receipt_id(key)
+    row = await get_db().get(MailInboundReceipt, identifier, populate_existing=True) if identifier is not None else None
+    if row is not None and row.agent_id == agent_id and row.connection_id is not None:
+        if _authorization_key(row) == key:
+            await process_receipt(row.id)
+        # An invalidated older request can also release a Task waiting for its decision.
+        for parent in set(row.waiting_contexts):
+            if not await wake_authorization_context(agent_id, parent):
+                return False
     return True
 
 

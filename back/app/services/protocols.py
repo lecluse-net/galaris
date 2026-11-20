@@ -54,16 +54,18 @@ async def resolve_protocol_connection(agent_id: int, protocol: Literal["mail", "
             candidates.append(connection.id)
             if tool.code == "agenda" and protocol == "calendar":
                 native.append(connection.id)
-            label = tool.code
-            if protocol == "mail" and tool.mail is not None:
-                _, params = await connection_service.get_params_as_dict(connection, decrypt_passwords=False)
-                address = params.get(tool.mail.param_map.get("email_address", "email_address"))
-                if address:
-                    label += f" · {address}"
-            providers.append(f"connection_id={connection.id} ({label})")
+            if protocol == "calendar":
+                providers.append(f"connection_id={connection.id} ({tool.code})")
     if requested is None and len(native) == 1:
         return native[0]
     if len(candidates) != 1:
+        if protocol == "mail":
+            from .contracts import ToolCallRejectedError
+
+            raise ToolCallRejectedError(
+                "Select one exact active mail connection using connection_id from services_list. "
+                "For the original email of an incoming Mail task, omit connection_id to use its bound account."
+            )
         choices = "; ".join(providers[:50])
         raise ValueError(f"Select one exact active {protocol} connection using connection_id" +
                          (f". Available providers: {choices}" if choices else ""))

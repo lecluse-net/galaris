@@ -158,6 +158,7 @@ class MailInboundReceipt(Base):
     authorization_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("service_action_authorizations.id", ondelete="RESTRICT"), index=True
     )
+    authorization_generation: Mapped[int] = mapped_column(default=0, server_default=text("0"))
     configuration_fingerprint: Mapped[str | None] = mapped_column(String(64))
     waiting_contexts: Mapped[list[str]] = mapped_column(JSONB, default=list)
     authorized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -685,7 +685,7 @@ tests remain authoritative for behavior.
 | `bridge.mail` | `app.contact` | `back/bridge/mail/inbound.py` |
 | `bridge.mail` | `app.file_share` | `back/bridge/mail/__init__.py`, `back/bridge/mail/file_transport.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `app.messenger` | `back/bridge/mail/__init__.py`, `back/bridge/mail/approvals.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/messenger.py`, `back/bridge/mail/service.py` |
-| `bridge.mail` | `app.services` | `back/bridge/mail/__init__.py`, `back/bridge/mail/browser_service.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/file_transport.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/mcp.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
+| `bridge.mail` | `app.services` | `back/bridge/mail/__init__.py`, `back/bridge/mail/browser_service.py`, `back/bridge/mail/connection_service.py`, `back/bridge/mail/contracts.py`, `back/bridge/mail/dbadmin.py`, `back/bridge/mail/file_transport.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/mcp.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `core.authorize` | `back/bridge/mail/approvals.py`, `back/bridge/mail/assertions.py`, `back/bridge/mail/browser_service.py`, `back/bridge/mail/router.py` |
 | `bridge.mail` | `core.database` | `back/bridge/mail/approvals.py`, `back/bridge/mail/browser_service.py`, `back/bridge/mail/inbound.py`, `back/bridge/mail/messenger.py`, `back/bridge/mail/models.py`, `back/bridge/mail/router.py`, `back/bridge/mail/service.py` |
 | `bridge.mail` | `core.dbadmin` | `back/bridge/mail/dbadmin.py` |

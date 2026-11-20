@@ -839,7 +839,7 @@ async def list_enabled_native_mcp_definitions(
     disabled_names = await get_disabled_internal_function_names(agent_id)
     allowed_names = frozenset(allowed_tool_names) if allowed_tool_names is not None else None
     profile = await effective_tool_profile(agent_id, runtime)
-    definitions = (
+    definitions = [
         definition
         for definition in load_mcp_tools()
         if definition.service_code in enabled_service_codes
@@ -848,7 +848,12 @@ async def list_enabled_native_mcp_definitions(
         and (not conversation_only or definition.conversation_policy != "forbidden")
         and (conversation_only or definition.task_enabled)
         and (allowed_names is None or definition.name in allowed_names)
-    )
+    ]
+    if task_id is not None and any(definition.service_code == "messenger" for definition in definitions):
+        from app.messenger import inbound_task_connection
+
+        if await inbound_task_connection(task_id, agent_id=agent_id, platform="mail") is not None:
+            definitions = [definition for definition in definitions if definition.service_code != "messenger"]
     ctx = McpToolContext(
         agent_id=agent_id, runtime=runtime, resources=dict(resources or {}), task_id=task_id,
         conversation_only=conversation_only,

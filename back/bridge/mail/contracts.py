@@ -11,6 +11,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, SecretStr
 
+from app.services.contracts import ToolCallRejectedError
+
 
 MailSecurity = Literal["tls", "starttls"]
 MailDeliveryStatus = Literal[
@@ -67,6 +69,16 @@ class MailConnectionConfig(BaseModel):
     def require_mailbox(self, mailbox: str) -> None:
         if not self.allows_mailbox(mailbox):
             raise PermissionError("IMAP mailbox is not allowed by the Mail connection")
+
+
+class StaleMailMessageReference(ToolCallRejectedError):
+    """The current IMAP account could not confirm the original message."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(
+            f"{reason}. Use the exact original reference on its account. If it is stale, "
+            "search that account with mail_search and use a returned reference only if it identifies the same email."
+        )
 
 
 class MailMessageRef(BaseModel):

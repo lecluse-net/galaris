@@ -743,6 +743,9 @@ dans les tâches ; les mises à jour conservent les choix déjà enregistrés.
 Si une tâche attend votre accord pour lire un mail, répondez à la demande d’autorisation.
 Le harnais reprend la lecture du même message après la reprise de la tâche ; un refus
 laisse son contenu privé. Cet accord de lecture n’autorise pas l’envoi d’un mail.
+Si une modification de la configuration Mail a bloqué une tâche, sélectionnez **Réessayer**
+dans la tâche. Si Galaris demande un nouvel accord, répondez pour poursuivre le traitement
+du courriel d’origine. Le résultat apparaît dans la tâche.
 Pour les tâches issues de la relève Mail et leurs sous-tâches, Galaris redirige les appels prévus
 sur un abonnement personnel ChatGPT vers un modèle API admissible pour le même usage.
 Il utilise le profil secondaire de l’agent s’il est renseigné, ou le profil de secours par défaut
