@@ -227,6 +227,7 @@
               :data-embedded-kind="resourceBodies.get(node.id)?.embeddedFrame?.kind"
               :data-drop-placement="dropTarget?.id === node.id ? dropTarget.placement : undefined"
               :style="{ '--map-resource-border': resourceBodies.get(node.id)?.embeddedFrame?.borderColor }"
+              @click.capture="selectClickedNode($event, node.id)"
               @dragover="hoverBranch($event, node)" @dragleave="leaveBranch($event, node.id)" @drop="dropBranch($event, node)">
               <q-checkbox v-if="node.checked != null" dense size="sm" color="primary" class="mindmap-node-checkbox"
                 :model-value="node.checked" :disable="readonly" :aria-label="t('documents.mindmap.checkbox', { node: label })"
@@ -1519,11 +1520,27 @@ function dropResources(event: DragEvent): void {
   insertResourceBranches(parent.id, markup)
 }
 
+function selectClickedNode(event: MouseEvent, id: string): void {
+  const node = event.currentTarget
+  if (!(node instanceof HTMLElement)) return
+  // The parent picker applies to the current selection, including a group of nodes.
+  if (changingParent.value === id && event.target instanceof Element
+    && event.target.closest('.mindmap-details.q-select')) return
+  selectNode(id)
+  const branch = node.parentElement
+  const focused = document.activeElement
+  if (focused !== branch && !node.contains(focused)) {
+    branch?.focus({ preventScroll: true })
+  }
+}
+
 function selectReference(event: MouseEvent, id: string): void {
   const target = event.target
-  if (event.ctrlKey || event.metaKey || !(target instanceof Element) || !target.closest('.rich-content-reader')
+  const details = event.currentTarget
+  if (!(target instanceof Element) || !(details instanceof HTMLElement)) return
+  const reader = target.closest('.rich-content-reader')
+  if (event.ctrlKey || event.metaKey || !reader || !details.contains(reader)
     || target.closest('button, input, select, textarea, .galaris-image-resize, [data-document-player], [data-resource-mode="embed"] > .galaris-resource-embed')) return
-  const reader = target.closest('.rich-content-reader')!
   const card = target.closest<HTMLElement>('blockquote.galaris-link-card')
   const image = target.closest('img') ?? target.closest('figure.image, .image-inline')?.querySelector('img')
   const link = target.closest('a[data-rich-reference]')
@@ -1641,15 +1658,18 @@ function resizeNodeEmbed(id: string, index: number, uri: string, size: DocumentE
 }
 
 function onTreeFocus(event: FocusEvent): void {
-  if (event.target === pressedBranch) return
-  const id = event.target instanceof HTMLElement ? event.target.dataset.mindmapNode : undefined
+  const target = event.target
+  if (!(target instanceof HTMLElement) || target === pressedBranch || target.closest('.mindmap-canvas') !== canvas.value) return
+  const id = target.dataset.mindmapNode
   if (id && (selected.value !== id || leavingTree.value)) selectNode(id)
   if (id && !props.readonly && !branchSelection.value) valueInput(id)?.focus({ preventScroll: true })
 }
 
 function onMapFocus(event: FocusEvent): void {
   const target = event.type === 'focusin' ? event.target : event.relatedTarget
-  mapFocused.value = target instanceof Element && target.closest('.mindmap') === event.currentTarget
+  const mapElement = event.currentTarget
+  mapFocused.value = target instanceof Element && mapElement instanceof Element
+    && (target.closest('.mindmap') === mapElement || mapElement.contains(target.closest('.document-resource-embed')))
 }
 
 function selectValue(id: string): void {
@@ -2303,7 +2323,9 @@ defineExpose({ commitDraft, discardDraft, insertResource })
   --map-neutral: var(--solaire-gray-dark);
   --map-shadow-color: rgb(0 0 0 / 26%);
 }
-.mindmap-rich-body:not(.mindmap-inspecting-resource) :deep(.rich-content-reader :is(.galaris-resource-embed, [data-document-player], iframe)) { pointer-events: none; }
+.mindmap-rich-body:not(.mindmap-inspecting-resource) :deep(.rich-content-reader :is(
+  .galaris-resource-embed:not([data-resource-mode="embed"] > *), [data-document-player], iframe
+)) { pointer-events: none; }
 .mindmap-inspecting-resource { position: relative; }
 .mindmap-inspecting-resource > :deep(.rich-editor) { position: absolute; inset: 0; clip-path: inset(50%); pointer-events: none; }
 .mindmap-inspecting-resource :deep([data-editor-surface] > *) { visibility: hidden; }
@@ -2421,6 +2443,9 @@ defineExpose({ commitDraft, discardDraft, insertResource })
 .mindmap-node.mindmap-resource-only:not(.mindmap-card-node, .mindmap-embedded-node) {
   border: 0;
   background: transparent;
+}
+.mindmap:focus-within .mindmap-root :deep([aria-selected="true"]) > .mindmap-image-node {
+  outline-width: 2px;
 }
 .mindmap-node.mindmap-resource-only:not(.mindmap-card-node, .mindmap-embedded-node, [data-drop-placement]) {
   box-shadow: none;
@@ -2541,6 +2566,10 @@ defineExpose({ commitDraft, discardDraft, insertResource })
 .mindmap-rich-body :deep(.rich-content :is(.galaris-image-object, figure.image, span.image-inline, blockquote.galaris-link-card.image, img)) {
   border: 0;
   outline: none;
+}
+.mindmap:focus-within .mindmap-root :deep([aria-selected="true"]) > .mindmap-node:not(.mindmap-image-node)
+  > .mindmap-details > .mindmap-rich-body :deep(.mindmap-selected-image) {
+  outline: 2px solid var(--map-accent);
 }
 .mindmap-rich-body :deep([data-editor-surface]) {
   touch-action: pan-y;
