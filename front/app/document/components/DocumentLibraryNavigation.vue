@@ -1,7 +1,7 @@
 <template>
   <q-splitter v-model="split" horizontal :limits="splitLimits" class="library-navigation" :class="{ 'library-navigation--dark': $q.dark.isActive }">
     <template #before>
-      <q-tabs v-model="treeMode" dense inline-label align="left" :breakpoint="0" active-color="primary" indicator-color="primary" class="document-library-tabs text-primary" :aria-label="t('documents.library.treeMode')">
+      <q-tabs v-model="treeMode" dense inline-label outside-arrows align="left" :breakpoint="0" active-color="primary" indicator-color="primary" class="document-library-tabs text-primary" :aria-label="t('documents.library.treeMode')">
         <q-tab name="folders" icon="folder" :label="t('documents.library.folderMode')" @dragenter="hoverTreeMode('folders')" @dragover.prevent @dragleave="cancelModeHover" />
         <q-tab name="topics" :icon="navigationIcon('folder_copy')" :label="t('documents.library.topicsTags')" @dragenter="hoverTreeMode('topics')" @dragover.prevent @dragleave="cancelModeHover" />
         <q-tab name="agents" :icon="navigationIcon('people')" :label="t('documents.library.agents')" @dragenter="hoverTreeMode('agents')" @dragover.prevent @dragleave="cancelModeHover" />
@@ -1127,7 +1127,7 @@ function onSessionEvent(event: Event): void { void changeSession(event).catch(er
 /* Outrank shell tab sizing, including its mobile min-height !important. */
 .library-navigation .document-library-tabs.q-tabs :deep(.q-tab) { min-height: 0 !important; padding: 0 12px; }
 .library-navigation .document-library-tabs.q-tabs :deep(.q-tab__content) { padding: 7px 0; gap: 8px; }
-.library-navigation .document-library-tabs.q-tabs :deep(.q-tab__icon) { width: 18px; height: 18px; font-size: 18px; margin: 0; color: var(--solaire-blue-accent); }
+.library-navigation .document-library-tabs.q-tabs :deep(.q-tab .q-tab__icon) { width: 18px; height: 18px; font-size: 18px; margin: 0; color: var(--solaire-blue-accent); }
 .document-library-tabs :deep(.q-tab__icon:has(img[src="/menu-icons/folder_copy.svg"])) { background: currentColor; mask: url('/menu-icons/folder_copy.svg') center / contain no-repeat; }
 .document-library-tabs :deep(.q-tab__icon:has(img[src="/menu-icons/people.svg"])) { background: currentColor; mask: url('/menu-icons/people.svg') center / contain no-repeat; }
 .document-library-tabs :deep(.q-tab__icon img[src^="/menu-icons/"]) { opacity: 0; }
