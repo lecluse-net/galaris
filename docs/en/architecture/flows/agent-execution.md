@@ -410,15 +410,18 @@ The LLM proxy applies the same invariant to authenticated requests from a manage
 handshake remains authorized before a Task, because the Hermes client initializes when the
 container starts; the active Task is injected into the tool request context. MCP tokens explicitly
 created by a user retain their generic contract.
-Implicit correlation by `agent_id` alone is accepted only when a single Task is active.
-The gateway first consults the local run registry, then that agent's single durable lease so that
-correlation remains valid across multiple HTTP workers. Multiple matches cause this closed path to
-fail. Each external Harness provider therefore currently declares
-`max_parallel_tasks=1`; the scheduler checks this limit under the agent's transaction lock by
-counting unexpired leases. The internal harness exposes `max_parallel_tasks=null` and can execute
-multiple Tasks for the same agent because each explicitly carries `task_id` and `agent_run_id`.
-The LLM service additionally resolves the active attempt and derives the round again from the
-Task. A Harness never executes a conversational round and therefore never carries a
+Codex, Claude Agent and DeepSeek Harness assignments provisioned with the `run_scoped_llm`
+capability can run concurrent Tasks for one agent, subject to scheduler capacity and the
+optional operator limit for the harness. The runtime attaches its Galaris
+execution grant to each LLM request. The gateway validates the agent, assignment and active
+attempt, then freezes the Task, run and attempt before inference admission. Missing,
+stale or conflicting execution identity causes rejection.
+Other external assignments have one slot. For those runtimes, fallback by `agent_id`
+requires a single active Task from the local registry or its durable lease.
+The scheduler counts unexpired leases under the agent's transaction lock. The internal
+harness carries explicit `task_id` and `agent_run_id`. The LLM service derives the room's
+round and Process from the Task. See [0304](../../../../project/decisions/0304-runtime-llm-call-attribution.md).
+A Harness never executes a conversational round and therefore never carries a
 `conversation_round_id`: text and voice conversations use only their dedicated internal
 controller.
 The low-level calls of the internal conversational controller, on the other hand, retain their

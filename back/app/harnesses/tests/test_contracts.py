@@ -48,9 +48,15 @@ def test_internal_harness_is_not_a_persisted_provider() -> None:
     assert "execute" in provider.capabilities()
 
 
-def test_every_external_harness_provider_is_strongly_capped_at_one() -> None:
-    assert all_providers()
-    assert {provider.max_parallel_tasks for provider in all_providers()} == {1}
+def test_parallel_limits_require_a_qualified_assignment() -> None:
+    from app.harnesses.models import AgentHarness
+
+    for provider in all_providers():
+        assignment = AgentHarness()
+        assert service._assignment_parallel_limit(assignment, provider) == 1
+        assignment.provider_metadata = {"run_scoped_llm": True}
+        expected = None if provider.code in {"codex", "claude_agent", "deepseek_harness"} else 1
+        assert service._assignment_parallel_limit(assignment, provider) == expected
 
 
 @pytest.mark.parametrize("provider_code, high", [
@@ -69,12 +75,13 @@ def test_internal_harness_has_no_parallel_task_limit() -> None:
     assert service.internal_read(7).max_parallel_tasks is None
 
 
-def test_provider_registry_rejects_an_unbounded_external_harness() -> None:
+@pytest.mark.parametrize("limit", [0, -1, True])
+def test_provider_registry_rejects_invalid_external_task_limits(limit: int) -> None:
     invalid = cast(
         Any,
-        SimpleNamespace(code="unbounded-test", max_parallel_tasks=None),
+        SimpleNamespace(code="invalid-limit", max_parallel_tasks=limit),
     )
-    with pytest.raises(ValueError, match="max_parallel_tasks=1"):
+    with pytest.raises(ValueError, match="positive task limit"):
         register_provider(invalid)
 
 

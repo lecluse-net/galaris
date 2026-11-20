@@ -81,6 +81,8 @@ default: dict[str, object] = {
                 "The model must be a Galaris identifier in the form 'llm-<id>'"
             ),
             "task_not_found": "Task ${task_id} not found",
+            "runtime_run_context_required": "This harness must provide its run context for LLM requests.",
+            "runtime_run_context_invalid": "The harness run context is invalid, expired, or inconsistent.",
             "managed_runtime_task_required": (
                 "A managed runtime LLM call must be attached to a Galaris Task"
             ),

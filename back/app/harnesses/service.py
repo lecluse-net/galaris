@@ -248,6 +248,12 @@ def _catalogue_read(harness: Harness, *, assigned_agents: int) -> HarnessCatalog
     )
 
 
+def _assignment_parallel_limit(assignment: AgentHarness, provider: HarnessProvider) -> int | None:
+    if (assignment.provider_metadata or {}).get("run_scoped_llm") is True:
+        return provider.max_parallel_tasks
+    return 1
+
+
 def _selection_read(
     assignment: AgentHarness,
     harness: Harness,
@@ -270,7 +276,7 @@ def _selection_read(
         revision=assignment.revision,
         capabilities=sorted(_capabilities(assignment, harness)),
         containerized=provider.containerized,
-        max_parallel_tasks=provider.max_parallel_tasks,
+        max_parallel_tasks=_assignment_parallel_limit(assignment, provider),
         last_error=assignment.last_error,
     )
 
@@ -544,7 +550,7 @@ async def resolve_target(agent: Agent) -> HarnessTarget | None:
         model=assignment.runtime_model or harness.model,
         revision=assignment.revision,
         status=cast(HarnessLifecycleStatus, assignment.lifecycle_status),
-        max_parallel_tasks=get_provider(harness.provider_code).max_parallel_tasks,
+        max_parallel_tasks=_assignment_parallel_limit(assignment, get_provider(harness.provider_code)),
         last_error=assignment.last_error,
         capabilities=_capabilities(assignment, harness),
         metadata={

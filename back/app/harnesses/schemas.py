@@ -140,7 +140,7 @@ class HarnessProviderRead(BaseModel):
     label: str
     driver_code: str
     containerized: bool
-    max_parallel_tasks: int
+    max_parallel_tasks: int | None
     capabilities: list[HarnessCapability]
 
 

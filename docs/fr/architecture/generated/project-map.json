@@ -3053,8 +3053,11 @@
       },
       {
         "files": [
+          "back/app/llm/anthropic_router.py",
+          "back/app/llm/call_router.py",
           "back/app/llm/document_service.py",
-          "back/app/llm/mcp.py"
+          "back/app/llm/mcp.py",
+          "back/app/llm/runtime_correlation.py"
         ],
         "source": "app.llm",
         "target": "app.services"
@@ -3163,6 +3166,7 @@
           "back/app/llm/provider_quota.py",
           "back/app/llm/provider_router.py",
           "back/app/llm/proxy_service.py",
+          "back/app/llm/runtime_correlation.py",
           "back/app/llm/subscription_policy.py"
         ],
         "source": "app.llm",
@@ -19910,7 +19914,7 @@
         "declared_path": "/llm-calls",
         "file": "back/app/llm/call_router.py",
         "handler": "read_calls",
-        "line": 437,
+        "line": 453,
         "method": "GET",
         "module": "app.llm"
       },
@@ -19919,7 +19923,7 @@
         "declared_path": "/llm-calls/cleanup",
         "file": "back/app/llm/call_router.py",
         "handler": "cleanup_calls",
-        "line": 507,
+        "line": 523,
         "method": "DELETE",
         "module": "app.llm"
       },
@@ -19928,7 +19932,7 @@
         "declared_path": "/llm-calls/history",
         "file": "back/app/llm/call_router.py",
         "handler": "read_call_history",
-        "line": 480,
+        "line": 496,
         "method": "GET",
         "module": "app.llm"
       },
@@ -19937,7 +19941,7 @@
         "declared_path": "/llm-calls/retention/preview",
         "file": "back/app/llm/call_router.py",
         "handler": "preview_call_retention",
-        "line": 516,
+        "line": 532,
         "method": "GET",
         "module": "app.llm"
       },
@@ -19946,7 +19950,7 @@
         "declared_path": "/llm-calls/running",
         "file": "back/app/llm/call_router.py",
         "handler": "read_running_calls",
-        "line": 462,
+        "line": 478,
         "method": "GET",
         "module": "app.llm"
       },
@@ -19955,7 +19959,7 @@
         "declared_path": "/llm-calls/{call_id}",
         "file": "back/app/llm/call_router.py",
         "handler": "delete_call",
-        "line": 540,
+        "line": 556,
         "method": "DELETE",
         "module": "app.llm"
       },
@@ -19964,7 +19968,7 @@
         "declared_path": "/llm-calls/{call_id}",
         "file": "back/app/llm/call_router.py",
         "handler": "read_call",
-        "line": 559,
+        "line": 575,
         "method": "GET",
         "module": "app.llm"
       },
@@ -19973,7 +19977,7 @@
         "declared_path": "/llm-calls/{call_id}/stop",
         "file": "back/app/llm/call_router.py",
         "handler": "stop_llm_call",
-        "line": 525,
+        "line": 541,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20252,7 +20256,7 @@
         "declared_path": "/llm/anthropic/v1/messages",
         "file": "back/app/llm/anthropic_router.py",
         "handler": "anthropic_messages",
-        "line": 252,
+        "line": 256,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20261,7 +20265,7 @@
         "declared_path": "/llm/anthropic/v1/messages/count_tokens",
         "file": "back/app/llm/anthropic_router.py",
         "handler": "anthropic_count_tokens",
-        "line": 218,
+        "line": 222,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20270,7 +20274,7 @@
         "declared_path": "/llm/anthropic/v1/models",
         "file": "back/app/llm/anthropic_router.py",
         "handler": "anthropic_models",
-        "line": 184,
+        "line": 188,
         "method": "GET",
         "module": "app.llm"
       },
@@ -20324,7 +20328,7 @@
         "declared_path": "/llm/openai/chat/completions",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_completion",
-        "line": 203,
+        "line": 207,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20333,7 +20337,7 @@
         "declared_path": "/llm/openai/inferences",
         "file": "back/app/llm/call_router.py",
         "handler": "create_inference",
-        "line": 116,
+        "line": 120,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20342,7 +20346,7 @@
         "declared_path": "/llm/openai/inferences/{inference_id}",
         "file": "back/app/llm/call_router.py",
         "handler": "get_inference",
-        "line": 140,
+        "line": 144,
         "method": "GET",
         "module": "app.llm"
       },
@@ -20351,7 +20355,7 @@
         "declared_path": "/llm/openai/inferences/{inference_id}/commands",
         "file": "back/app/llm/call_router.py",
         "handler": "command_inference",
-        "line": 146,
+        "line": 150,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20360,7 +20364,7 @@
         "declared_path": "/llm/openai/inferences/{inference_id}/events",
         "file": "back/app/llm/call_router.py",
         "handler": "inference_events",
-        "line": 160,
+        "line": 164,
         "method": "GET",
         "module": "app.llm"
       },
@@ -20369,7 +20373,7 @@
         "declared_path": "/llm/openai/models",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_models",
-        "line": 183,
+        "line": 187,
         "method": "GET",
         "module": "app.llm"
       },
@@ -20378,7 +20382,7 @@
         "declared_path": "/llm/openai/responses",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_responses",
-        "line": 327,
+        "line": 337,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20387,7 +20391,7 @@
         "declared_path": "/llm/openai/responses/compact",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_responses",
-        "line": 327,
+        "line": 337,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20396,7 +20400,7 @@
         "declared_path": "/llm/openai/runs/{agent_run_id}/usage",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_run_usage",
-        "line": 419,
+        "line": 435,
         "method": "GET",
         "module": "app.llm"
       },
@@ -21098,7 +21102,7 @@
         "declared_path": "/profile/anthropic/v1/messages",
         "file": "back/app/llm/anthropic_router.py",
         "handler": "anthropic_messages",
-        "line": 252,
+        "line": 256,
         "method": "POST",
         "module": "app.llm"
       },
@@ -21107,7 +21111,7 @@
         "declared_path": "/profile/anthropic/v1/messages/count_tokens",
         "file": "back/app/llm/anthropic_router.py",
         "handler": "anthropic_count_tokens",
-        "line": 218,
+        "line": 222,
         "method": "POST",
         "module": "app.llm"
       },
@@ -21116,7 +21120,7 @@
         "declared_path": "/profile/anthropic/v1/models",
         "file": "back/app/llm/anthropic_router.py",
         "handler": "anthropic_models",
-        "line": 184,
+        "line": 188,
         "method": "GET",
         "module": "app.llm"
       },
@@ -21143,7 +21147,7 @@
         "declared_path": "/profile/openai/chat/completions",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_completion",
-        "line": 203,
+        "line": 207,
         "method": "POST",
         "module": "app.llm"
       },
@@ -21161,7 +21165,7 @@
         "declared_path": "/profile/openai/models",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_models",
-        "line": 183,
+        "line": 187,
         "method": "GET",
         "module": "app.llm"
       },
@@ -21170,7 +21174,7 @@
         "declared_path": "/profile/openai/responses",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_responses",
-        "line": 327,
+        "line": 337,
         "method": "POST",
         "module": "app.llm"
       },
@@ -21179,7 +21183,7 @@
         "declared_path": "/profile/openai/responses/compact",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_responses",
-        "line": 327,
+        "line": 337,
         "method": "POST",
         "module": "app.llm"
       },
@@ -22223,7 +22227,7 @@
         "declared_path": "/v1/chat/completions",
         "file": "back/bridge/codex/default-agent/server.py",
         "handler": "chat_completions",
-        "line": 264,
+        "line": 267,
         "method": "POST",
         "module": "bridge.codex"
       },

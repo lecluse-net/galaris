@@ -52,6 +52,7 @@ from .profile_gateway import (
 )
 from .reasoning import normalize_reasoning_effort, parse_force_reasoning_effort
 from .runtime_correlation import (
+    resolve_runtime_llm_task,
     resolve_runtime_process_run_id,
     resolve_runtime_task_id,
 )
@@ -115,6 +116,9 @@ async def _anthropic_api_auth(request: Request) -> int | None:
 
         record = await mcp_token_service.get_enabled_system_token_by_value(token)
         if record is not None:
+            from app.services.facade import RuntimePrincipal
+
+            request.state.runtime_llm_principal = RuntimePrincipal(record.id, record.agent_id, record.enabled)
             return record.agent_id
 
     current_user = await user_service.get_current_user()
@@ -283,8 +287,13 @@ async def _anthropic_messages_body(
 ):
     agent_id = await _anthropic_api_auth(request)
     body: dict[str, Any] = await request.json()
+    runtime_task = await resolve_runtime_llm_task(
+        request,
+        task_ids=(x_galaris_task_id, body.get("galaris_task_id")),
+        run_ids=(x_galaris_agent_run_id, body.get("galaris_agent_run_id")),
+    )
     # External profile clients may discuss unrelated Galaris records in tools.
-    use_prompt_context = not is_profile_api(request) or agent_id is not None
+    use_prompt_context = runtime_task is None and (not is_profile_api(request) or agent_id is not None)
     if use_prompt_context:
         extract_process_context(body)
     try:
@@ -315,20 +324,20 @@ async def _anthropic_messages_body(
     )
     conversation_round_id = (
         UUID(str(raw_conversation_round_id))
-        if raw_conversation_round_id
+        if raw_conversation_round_id and runtime_task is None
         else None
     )
     # Explicit Task metadata beats prompt correlation, then the runtime agent's
     # local or durable unique Task (a known round skips the fallback).
     raw_task_id = x_galaris_task_id or body.get("galaris_task_id")
-    task_id = await resolve_runtime_task_id(
+    task_id = runtime_task.task_id if runtime_task is not None else await resolve_runtime_task_id(
         raw_task_id=raw_task_id,
         messages=correlation_messages,
         agent_id=(None if conversation_round_id is not None else agent_id),
     )
 
     raw_agent_run_id = x_galaris_agent_run_id or body.get("galaris_agent_run_id")
-    agent_run_id = (
+    agent_run_id = runtime_task.run_id if runtime_task is not None else (
         UUID(str(raw_agent_run_id))
         if raw_agent_run_id
         else agent_run_id_from_messages(correlation_messages)
@@ -349,11 +358,9 @@ async def _anthropic_messages_body(
                 ),
             )
 
-    raw_process_run_id = x_galaris_process_run_id or body.get(
-        "galaris_process_run_id"
-    )
-    workflow_id = body.get("galaris_workflow_id")
-    engine_run_id = body.get("galaris_engine_run_id")
+    raw_process_run_id = (x_galaris_process_run_id or body.get("galaris_process_run_id")) if runtime_task is None else None
+    workflow_id = body.get("galaris_workflow_id") if runtime_task is None else None
+    engine_run_id = body.get("galaris_engine_run_id") if runtime_task is None else None
     agent_ids = (
         await _anthropic_api_agent_ids(agent_id)
         if raw_process_run_id or (workflow_id and engine_run_id)
@@ -384,6 +391,7 @@ async def _anthropic_messages_body(
             openai_body,
             profile_model=is_profile_api(request),
             task_id=task_id,
+            task_attempt_id=runtime_task.attempt_id if runtime_task is not None else None,
             agent_run_id=agent_run_id,
             conversation_round_id=conversation_round_id,
             process_run_id=process_run_id,

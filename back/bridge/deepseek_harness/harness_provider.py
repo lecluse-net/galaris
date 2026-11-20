@@ -181,7 +181,7 @@ class DeepSeekHarnessProvider:
     label = "DeepSeek Harness"
     containerized = True
     enabled_param: str | None = Params.HARNESS_DEEPSEEK_ENABLED
-    max_parallel_tasks = 1
+    max_parallel_tasks = None
 
     def capabilities(self) -> frozenset[HarnessCapability]:
         return frozenset(
@@ -220,12 +220,14 @@ class DeepSeekHarnessProvider:
                 api_token=api_token,
             )
             await harness_manager.run_action(agent.code, "start")
-            models = await OpenAIHarnessClient(
+            client = OpenAIHarnessClient(
                 base_url=base_url,
                 token=api_token,
-            ).list_models()
+            )
+            models = await client.list_models()
             if model not in models:
                 raise RuntimeError("DeepSeek Harness did not expose its configured model.")
+            await client.verify_authorization_control(require_run_scoped_llm=True)
         except Exception:
             try:
                 await harness_manager.delete_instance(agent.code)
@@ -252,6 +254,7 @@ class DeepSeekHarnessProvider:
                 "model_gateway": "galaris",
                 "galaris_extensions": True,
                 "model_passthrough": True,
+                "run_scoped_llm": True,
             },
         )
 

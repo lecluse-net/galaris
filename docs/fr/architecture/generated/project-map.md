@@ -428,14 +428,14 @@ tests restent l’autorité sur le comportement.
 | `app.llm` | `app.mcp` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py` |
 | `app.llm` | `app.messenger` | `back/app/llm/events.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `app.process` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/events.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/mcp.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
-| `app.llm` | `app.services` | `back/app/llm/document_service.py`, `back/app/llm/mcp.py` |
+| `app.llm` | `app.services` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/document_service.py`, `back/app/llm/mcp.py`, `back/app/llm/runtime_correlation.py` |
 | `app.llm` | `app.task` | `back/app/llm/events.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/mcp.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `core.authorize` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/provider_router.py` |
 | `app.llm` | `core.database` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/cost_report.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/document_evidence.py`, `back/app/llm/document_service.py`, `back/app/llm/document_store.py`, `back/app/llm/events.py`, `back/app/llm/facade.py`, `back/app/llm/inference_execution.py`, `back/app/llm/inference_journal.py`, `back/app/llm/inference_notifications.py`, `back/app/llm/inference_store.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/mcp.py`, `back/app/llm/models.py`, `back/app/llm/personal_service.py`, `back/app/llm/pricing_sync.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_models.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_models.py`, `back/app/llm/proxy_service.py`, `back/app/llm/retention.py`, `back/app/llm/structured_service.py`, `back/app/llm/subscription_policy.py`, `back/app/llm/text_inference.py` |
 | `app.llm` | `core.dbadmin` | `back/app/llm/dbadmin.py`, `back/app/llm/initial_configuration.py` |
 | `app.llm` | `core.document` | `back/app/llm/document_analysis.py`, `back/app/llm/document_budget.py`, `back/app/llm/document_input.py`, `back/app/llm/document_rag.py` |
 | `app.llm` | `core.failure_journal` | `back/app/llm/llm_call_service.py` |
-| `app.llm` | `core.i18n` | `back/app/llm/anthropic_router.py`, `back/app/llm/anthropic_service.py`, `back/app/llm/call_router.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_quota.py`, `back/app/llm/provider_router.py`, `back/app/llm/proxy_service.py`, `back/app/llm/subscription_policy.py` |
+| `app.llm` | `core.i18n` | `back/app/llm/anthropic_router.py`, `back/app/llm/anthropic_service.py`, `back/app/llm/call_router.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/llm_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_gateway.py`, `back/app/llm/profile_inference_router.py`, `back/app/llm/profile_router.py`, `back/app/llm/profile_service.py`, `back/app/llm/protocol_inference.py`, `back/app/llm/provider_quota.py`, `back/app/llm/provider_router.py`, `back/app/llm/proxy_service.py`, `back/app/llm/runtime_correlation.py`, `back/app/llm/subscription_policy.py` |
 | `app.llm` | `core.params` | `back/app/llm/call_deadline.py`, `back/app/llm/dbadmin.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/profile_service.py`, `back/app/llm/retention.py` |
 | `app.llm` | `core.scheduling` | `back/app/llm/__init__.py` |
 | `app.llm` | `core.user` | `back/app/llm/anthropic_router.py`, `back/app/llm/call_router.py`, `back/app/llm/dataset_usage.py`, `back/app/llm/document_service.py`, `back/app/llm/events.py`, `back/app/llm/inference_execution.py`, `back/app/llm/llm_call_service.py`, `back/app/llm/llm_provider_service.py`, `back/app/llm/personal_router.py`, `back/app/llm/profile_inference.py`, `back/app/llm/subscription_policy.py` |
@@ -1820,14 +1820,14 @@ Aucune composante cyclique détectée.
 | POST | `/internal/validate` | `app.process` | `native_validate_definition` | oui | `back/app/process/native_router.py:145` |
 | POST | `/janus/openai/chat/completions` | `app.agent` | `janus_chat_completions` | oui | `back/app/agent/openai_router.py:179` |
 | GET | `/janus/openai/models` | `app.agent` | `get_janus_models` | oui | `back/app/agent/openai_router.py:163` |
-| GET | `/llm-calls` | `app.llm` | `read_calls` | oui | `back/app/llm/call_router.py:437` |
-| DELETE | `/llm-calls/cleanup` | `app.llm` | `cleanup_calls` | oui | `back/app/llm/call_router.py:507` |
-| GET | `/llm-calls/history` | `app.llm` | `read_call_history` | oui | `back/app/llm/call_router.py:480` |
-| GET | `/llm-calls/retention/preview` | `app.llm` | `preview_call_retention` | oui | `back/app/llm/call_router.py:516` |
-| GET | `/llm-calls/running` | `app.llm` | `read_running_calls` | oui | `back/app/llm/call_router.py:462` |
-| DELETE | `/llm-calls/{call_id}` | `app.llm` | `delete_call` | oui | `back/app/llm/call_router.py:540` |
-| GET | `/llm-calls/{call_id}` | `app.llm` | `read_call` | oui | `back/app/llm/call_router.py:559` |
-| POST | `/llm-calls/{call_id}/stop` | `app.llm` | `stop_llm_call` | oui | `back/app/llm/call_router.py:525` |
+| GET | `/llm-calls` | `app.llm` | `read_calls` | oui | `back/app/llm/call_router.py:453` |
+| DELETE | `/llm-calls/cleanup` | `app.llm` | `cleanup_calls` | oui | `back/app/llm/call_router.py:523` |
+| GET | `/llm-calls/history` | `app.llm` | `read_call_history` | oui | `back/app/llm/call_router.py:496` |
+| GET | `/llm-calls/retention/preview` | `app.llm` | `preview_call_retention` | oui | `back/app/llm/call_router.py:532` |
+| GET | `/llm-calls/running` | `app.llm` | `read_running_calls` | oui | `back/app/llm/call_router.py:478` |
+| DELETE | `/llm-calls/{call_id}` | `app.llm` | `delete_call` | oui | `back/app/llm/call_router.py:556` |
+| GET | `/llm-calls/{call_id}` | `app.llm` | `read_call` | oui | `back/app/llm/call_router.py:575` |
+| POST | `/llm-calls/{call_id}/stop` | `app.llm` | `stop_llm_call` | oui | `back/app/llm/call_router.py:541` |
 | GET | `/llm-profiles` | `app.llm` | `list_profiles` | oui | `back/app/llm/profile_router.py:67` |
 | POST | `/llm-profiles` | `app.llm` | `create_profile` | oui | `back/app/llm/profile_router.py:88` |
 | DELETE | `/llm-profiles/{profile_id}` | `app.llm` | `delete_profile` | oui | `back/app/llm/profile_router.py:119` |
@@ -1858,23 +1858,23 @@ Aucune composante cyclique détectée.
 | GET | `/llm-providers/{provider_id}/quota` | `app.llm` | `get_provider_quota` | oui | `back/app/llm/provider_router.py:473` |
 | GET | `/llm-providers/{provider_id}/resources` | `app.llm` | `list_provider_resources` | oui | `back/app/llm/provider_router.py:598` |
 | GET | `/llm-providers/{provider_id}/transcription-models` | `app.llm` | `list_provider_transcription_models` | oui | `back/app/llm/provider_router.py:644` |
-| POST | `/llm/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | non | `back/app/llm/anthropic_router.py:252` |
-| POST | `/llm/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | non | `back/app/llm/anthropic_router.py:218` |
-| GET | `/llm/anthropic/v1/models` | `app.llm` | `anthropic_models` | non | `back/app/llm/anthropic_router.py:184` |
+| POST | `/llm/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | non | `back/app/llm/anthropic_router.py:256` |
+| POST | `/llm/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | non | `back/app/llm/anthropic_router.py:222` |
+| GET | `/llm/anthropic/v1/models` | `app.llm` | `anthropic_models` | non | `back/app/llm/anthropic_router.py:188` |
 | GET | `/llm/me/options` | `app.llm` | `get_options` | oui | `back/app/llm/personal_router.py:56` |
 | GET | `/llm/me/preferences` | `app.llm` | `get_preferences` | oui | `back/app/llm/personal_router.py:41` |
 | PUT | `/llm/me/preferences` | `app.llm` | `put_preferences` | oui | `back/app/llm/personal_router.py:47` |
 | POST | `/llm/me/speech` | `app.llm` | `speech` | oui | `back/app/llm/personal_router.py:122` |
 | POST | `/llm/me/transcription` | `app.llm` | `transcribe` | oui | `back/app/llm/personal_router.py:85` |
-| POST | `/llm/openai/chat/completions` | `app.llm` | `llm_completion` | non | `back/app/llm/call_router.py:203` |
-| POST | `/llm/openai/inferences` | `app.llm` | `create_inference` | non | `back/app/llm/call_router.py:116` |
-| GET | `/llm/openai/inferences/{inference_id}` | `app.llm` | `get_inference` | non | `back/app/llm/call_router.py:140` |
-| POST | `/llm/openai/inferences/{inference_id}/commands` | `app.llm` | `command_inference` | non | `back/app/llm/call_router.py:146` |
-| GET | `/llm/openai/inferences/{inference_id}/events` | `app.llm` | `inference_events` | non | `back/app/llm/call_router.py:160` |
-| GET | `/llm/openai/models` | `app.llm` | `llm_models` | non | `back/app/llm/call_router.py:183` |
-| POST | `/llm/openai/responses` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:327` |
-| POST | `/llm/openai/responses/compact` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:327` |
-| GET | `/llm/openai/runs/{agent_run_id}/usage` | `app.llm` | `llm_run_usage` | non | `back/app/llm/call_router.py:419` |
+| POST | `/llm/openai/chat/completions` | `app.llm` | `llm_completion` | non | `back/app/llm/call_router.py:207` |
+| POST | `/llm/openai/inferences` | `app.llm` | `create_inference` | non | `back/app/llm/call_router.py:120` |
+| GET | `/llm/openai/inferences/{inference_id}` | `app.llm` | `get_inference` | non | `back/app/llm/call_router.py:144` |
+| POST | `/llm/openai/inferences/{inference_id}/commands` | `app.llm` | `command_inference` | non | `back/app/llm/call_router.py:150` |
+| GET | `/llm/openai/inferences/{inference_id}/events` | `app.llm` | `inference_events` | non | `back/app/llm/call_router.py:164` |
+| GET | `/llm/openai/models` | `app.llm` | `llm_models` | non | `back/app/llm/call_router.py:187` |
+| POST | `/llm/openai/responses` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:337` |
+| POST | `/llm/openai/responses/compact` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:337` |
+| GET | `/llm/openai/runs/{agent_run_id}/usage` | `app.llm` | `llm_run_usage` | non | `back/app/llm/call_router.py:435` |
 | GET | `/llm/users/{user_id}/preferences` | `app.llm` | `get_user_preferences` | oui | `back/app/llm/personal_router.py:68` |
 | PUT | `/llm/users/{user_id}/preferences` | `app.llm` | `put_user_preferences` | oui | `back/app/llm/personal_router.py:75` |
 | GET | `/mail/approvers` | `bridge.mail` | `list_mail_approvers` | oui | `back/bridge/mail/router.py:166` |
@@ -1952,16 +1952,16 @@ Aucune composante cyclique détectée.
 | POST | `/process-campaigns/datasets/generate` | `app.lab` | `lab_process_dataset_generate` | oui | `back/app/lab/process_evaluation_router.py:74` |
 | GET | `/process-campaigns/{identity}` | `app.lab` | `lab_process_campaign_get` | oui | `back/app/lab/process_evaluation_router.py:95` |
 | POST | `/process-campaigns/{identity}/cancel` | `app.lab` | `lab_process_campaign_cancel` | oui | `back/app/lab/process_evaluation_router.py:104` |
-| POST | `/profile/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | non | `back/app/llm/anthropic_router.py:252` |
-| POST | `/profile/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | non | `back/app/llm/anthropic_router.py:218` |
-| GET | `/profile/anthropic/v1/models` | `app.llm` | `anthropic_models` | non | `back/app/llm/anthropic_router.py:184` |
+| POST | `/profile/anthropic/v1/messages` | `app.llm` | `anthropic_messages` | non | `back/app/llm/anthropic_router.py:256` |
+| POST | `/profile/anthropic/v1/messages/count_tokens` | `app.llm` | `anthropic_count_tokens` | non | `back/app/llm/anthropic_router.py:222` |
+| GET | `/profile/anthropic/v1/models` | `app.llm` | `anthropic_models` | non | `back/app/llm/anthropic_router.py:188` |
 | POST | `/profile/decisions` | `app.llm` | `decisions` | non | `back/app/llm/profile_inference_router.py:52` |
 | GET | `/profile/models` | `app.llm` | `models` | non | `back/app/llm/profile_inference_router.py:28` |
-| POST | `/profile/openai/chat/completions` | `app.llm` | `llm_completion` | non | `back/app/llm/call_router.py:203` |
+| POST | `/profile/openai/chat/completions` | `app.llm` | `llm_completion` | non | `back/app/llm/call_router.py:207` |
 | POST | `/profile/openai/embeddings` | `app.llm` | `embeddings` | non | `back/app/llm/profile_inference_router.py:35` |
-| GET | `/profile/openai/models` | `app.llm` | `llm_models` | non | `back/app/llm/call_router.py:183` |
-| POST | `/profile/openai/responses` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:327` |
-| POST | `/profile/openai/responses/compact` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:327` |
+| GET | `/profile/openai/models` | `app.llm` | `llm_models` | non | `back/app/llm/call_router.py:187` |
+| POST | `/profile/openai/responses` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:337` |
+| POST | `/profile/openai/responses/compact` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:337` |
 | GET | `/retention/preview` | `app.process` | `preview_retention` | oui | `back/app/process/router.py:110` |
 | GET | `/runs` | `app.process` | `read_runs` | oui | `back/app/process/router.py:275` |
 | POST | `/runs` | `app.process` | `create_run` | oui | `back/app/process/router.py:229` |
@@ -2077,7 +2077,7 @@ Aucune composante cyclique détectée.
 | GET | `/topics/{topic_id}/memories` | `app.topic` | `read_topic_memories` | oui | `back/app/topic/router.py:185` |
 | POST | `/topics/{topic_id}/merge` | `app.topic` | `merge_topic` | oui | `back/app/topic/router.py:242` |
 | POST | `/topics/{topic_id}/split` | `app.topic` | `split_topic` | oui | `back/app/topic/router.py:260` |
-| POST | `/v1/chat/completions` | `bridge.codex` | `chat_completions` | non | `back/bridge/codex/default-agent/server.py:264` |
+| POST | `/v1/chat/completions` | `bridge.codex` | `chat_completions` | non | `back/bridge/codex/default-agent/server.py:267` |
 | GET | `/v1/galaris/capabilities` | `app.harnesses` | `capabilities` | non | `back/app/harnesses/runtime_web.py:22` |
 | POST | `/v1/galaris/runs` | `app.harnesses` | `start` | non | `back/app/harnesses/runtime_web.py:27` |
 | GET | `/v1/galaris/runs/{identifier}` | `app.harnesses` | `status` | non | `back/app/harnesses/runtime_web.py:43` |

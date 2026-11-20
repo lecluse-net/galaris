@@ -103,7 +103,10 @@ class OpenAIMessagesDriver:
         from app.services.facade import issue_runtime_run_grant, renew_runtime_run_grant, close_runtime_run_grant, revoke_runtime_run_grant
         from core.util import get_encryption_service
         client = await self._client(request)
-        await client.verify_authorization_control()
+        await client.verify_authorization_control(
+            require_run_scoped_llm=request.target is not None
+            and request.target.metadata.get("run_scoped_llm") is True,
+        )
         checkpoint = request.resume_checkpoint
         resumed = checkpoint is not None and checkpoint.driver_code == self.spec.code
         if resumed and checkpoint is not None:

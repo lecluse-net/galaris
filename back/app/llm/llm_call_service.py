@@ -211,6 +211,7 @@ async def _task_call_lineage(
     agent_id: int | None,
     conversation_round_id: UUID | None,
     process_run_id: UUID | None = None,
+    admitted_attempt_id: UUID | None = None,
 ) -> tuple[str, UUID | None, UUID | None, UUID | None]:
     """Resolve authoritative Task attempt, conversation, and Process lineage."""
 
@@ -280,7 +281,12 @@ async def _task_call_lineage(
     resolved_process_run_id = process_run_id or stored_process_run_id
 
     task_attempt_id: UUID | None = None
-    if task.lease_token is not None:
+    if admitted_attempt_id is not None:
+        attempt = await db.get(TaskAttempt, admitted_attempt_id)
+        if attempt is None or attempt.task_id != task_id:
+            raise ValueError("The admitted attempt does not belong to the task.")
+        task_attempt_id = attempt.id
+    elif task.lease_token is not None:
         task_attempt_id = await db.scalar(
             select(TaskAttempt.id).where(
                 TaskAttempt.task_id == task_id,
@@ -1013,6 +1019,7 @@ async def create_running_call(
     *,
     purpose: str | None,
     task_id: Optional[UUID],
+    task_attempt_id: UUID | None = None,
     agent_run_id: Optional[UUID],
     conversation_round_id: Optional[UUID] = None,
     agent_id: Optional[int],
@@ -1040,7 +1047,6 @@ async def create_running_call(
     messages = as_list(request_body.get("messages"))
     typed_messages = [as_dict(m) for m in messages if isinstance(m, dict)]
     task_objective = ""
-    task_attempt_id: UUID | None = None
     if task_id is not None:
         (
             task_objective,
@@ -1053,8 +1059,11 @@ async def create_running_call(
                 agent_id=agent_id,
                 conversation_round_id=conversation_round_id,
                 process_run_id=process_run_id,
+                admitted_attempt_id=task_attempt_id,
             )
         )
+    elif task_attempt_id is not None:
+        raise ValueError("A task attempt requires its task.")
     round_ = None
     if conversation_round_id is not None:
         from app.connection import Connection

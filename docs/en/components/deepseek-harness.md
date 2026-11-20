@@ -84,6 +84,6 @@ The first image build downloads and compiles the pinned DSH revision and may the
 time. In Galaris supervision, **Restart** or **Update** recreates the selected runtime with
 its credentials; **Refresh** only requests Skill projection. To repair an older container
 with a stale token, use **Restart**, wait until it is ready, then retry the Task. This
-management operation does not retry any delivery. Only one run is admitted at a time per
-instance, in accordance with the
-current per-Agent Task serialization.
+management operation does not retry any delivery. An instance provisioned with run-scoped
+LLM attribution accepts concurrent Tasks for the same agent, subject to scheduler capacity
+and the optional harness limit. Earlier instances accept one Task at a time.

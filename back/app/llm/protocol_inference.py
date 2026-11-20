@@ -167,6 +167,7 @@ class _ProtocolTransport(httpx2.AsyncBaseTransport):
         source = self.request
         options: dict[str, Any] = dict(
             llm_override=self.llm, task_id=source.task_id, agent_id=source.agent_id,
+            task_attempt_id=source.task_attempt_id,
             agent_run_id=source.agent_run_id, conversation_round_id=source.conversation_round_id,
             process_run_id=source.process_run_id, purpose=source.purpose or None,
             reasoning_effort=source.reasoning_effort,
@@ -414,6 +415,7 @@ async def protocol_response(request: ProtocolInferenceRequest) -> JSONResponse |
 async def _request(
     body: dict[str, Any], *, protocol: Literal["chat", "responses", "compact"],
     task_id: UUID | None, agent_id: int | None = None, agent_run_id: UUID | None = None,
+    task_attempt_id: UUID | None = None,
     conversation_round_id: UUID | None = None, process_run_id: UUID | None = None,
     purpose: str | None = None, llm_override: LLM | None = None, model_code: str | None = None,
     route_executor_model: bool = True, managed_runtime_request: bool = False,
@@ -458,6 +460,7 @@ async def _request(
         prompt, system_prompt = extract_prompts(messages)
         request = ProtocolInferenceRequest(
             llm_id=llm.id, task_id=task_id, agent_id=agent_id, agent_run_id=agent_run_id,
+            task_attempt_id=task_attempt_id,
             conversation_round_id=conversation_round_id, process_run_id=process_run_id,
             prompt=prompt, system_prompt=system_prompt, purpose=purpose or "",
             reasoning_effort=effort, body=payload, protocol=protocol,

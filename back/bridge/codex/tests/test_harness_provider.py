@@ -101,6 +101,7 @@ async def test_provider_provisions_private_codex_runtime(
     assert "bearer_token_env_var = \"GALARIS_MCP_TOKEN\"" in written["codex-home/config.toml"]
     assert result.metadata["model_passthrough"] is True
     assert result.metadata["galaris_extensions"] is True
+    assert result.metadata["run_scoped_llm"] is True
     assert result.metadata["sdk_version_policy"] == "pinned"
 
 

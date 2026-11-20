@@ -252,9 +252,11 @@ async def _write_runtime_files(
 async def _probe_runtime(base_url: str, token: str) -> None:
     from app.harnesses import OpenAIHarnessClient
 
-    models = await OpenAIHarnessClient(base_url=base_url, token=token).list_models()
+    client = OpenAIHarnessClient(base_url=base_url, token=token)
+    models = await client.list_models()
     if not models:
         raise RuntimeError("The Codex runtime did not expose any configured Galaris model.")
+    await client.verify_authorization_control(require_run_scoped_llm=True)
 
 
 class CodexHarnessProvider:
@@ -268,7 +270,7 @@ class CodexHarnessProvider:
     label = "OpenAI Codex"
     containerized = True
     enabled_param: str | None = Params.HARNESS_CODEX_ENABLED
-    max_parallel_tasks = 1
+    max_parallel_tasks = None
 
     def capabilities(self) -> frozenset[HarnessCapability]:
         return frozenset(
@@ -339,6 +341,7 @@ class CodexHarnessProvider:
                 "model_passthrough": True,
                 "galaris_extensions": True,
                 "model_gateway": "galaris-responses",
+                "run_scoped_llm": True,
             },
         )
 

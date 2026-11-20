@@ -421,9 +421,11 @@ async def test_discussion_work_precedes_scheduled_background_even_after_aging(
 
 
 @pytest.mark.asyncio
-async def test_external_harness_keeps_second_task_queued_for_the_same_agent(
+@pytest.mark.parametrize("limit", [1, 2, None])
+async def test_external_harness_admits_work_up_to_its_per_agent_limit(
     db,
     monkeypatch: pytest.MonkeyPatch,
+    limit: int | None,
 ) -> None:
     """The external Harness limit is enforced from durable active leases."""
 
@@ -432,7 +434,7 @@ async def test_external_harness_keeps_second_task_queued_for_the_same_agent(
     monkeypatch.setattr(
         agent_domain,
         "max_parallel_tasks_for_agent",
-        AsyncMock(return_value=1),
+        AsyncMock(return_value=limit),
     )
     suffix = uuid4().hex[:10]
     title = Title(label=f"External queue test {suffix}", gender="X")
@@ -449,7 +451,7 @@ async def test_external_harness_keeps_second_task_queued_for_the_same_agent(
     agent_id = agent.id
     title_id = title.id
     active_id = uuid4()
-    queued_id = uuid4()
+    queued_ids = [uuid4(), uuid4()]
     db.add_all(
         [
             Task(
@@ -462,13 +464,13 @@ async def test_external_harness_keeps_second_task_queued_for_the_same_agent(
                 lease_owner="other-worker",
                 lease_expires_at=None,
             ),
-            Task(
+            *(Task(
                 id=queued_id,
-                label="queued-external-work",
+                label=f"queued-external-work-{index}",
                 status=TaskStatus.CREATE,
                 ai=True,
                 agent_id=agent_id,
-            ),
+            ) for index, queued_id in enumerate(queued_ids)),
         ]
     )
     await db.commit()
@@ -477,13 +479,25 @@ async def test_external_harness_keeps_second_task_queued_for_the_same_agent(
 
     claimed = await scheduler._next_task(set(), set())  # pyright: ignore[reportPrivateUsage]
 
-    assert claimed is None
+    claimed_ids: set[UUID] = set()
+    if limit != 1:
+        assert claimed is not None and claimed[0] in queued_ids
+        claimed_ids.add(claimed[0])
+        following = await scheduler._next_task(claimed_ids, {agent_id})  # pyright: ignore[reportPrivateUsage]
+        if limit is None:
+            assert following is not None and following[0] in queued_ids and following[0] not in claimed_ids
+            claimed_ids.add(following[0])
+        else:
+            assert following is None
+    else:
+        assert claimed is None
     db.expire_all()
-    queued = await db.get(Task, queued_id)
-    assert queued is not None
-    assert queued.lease_token is None
+    for queued_id in queued_ids:
+        queued = await db.get(Task, queued_id)
+        assert queued is not None
+        assert (queued.lease_token is not None) == (queued_id in claimed_ids)
 
-    await db.execute(delete(Task).where(Task.id.in_([active_id, queued_id])))
+    await db.execute(delete(Task).where(Task.id.in_([active_id, *queued_ids])))
     await db.execute(delete(Agent).where(Agent.id == agent_id))
     await db.execute(delete(Title).where(Title.id == title_id))
     await db.commit()

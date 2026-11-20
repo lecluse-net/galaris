@@ -15,6 +15,18 @@ Hermès cible l'image `v0.23.2` épinglée par son empreinte. DeepSeek Harness c
 préversion `dsh-v0.2.2-rc.5`, au commit `9c2670d3bce5275e0d1610272958121af87787bb`.
 Codex utilise `openai-codex==0.170.0` et Claude Agent `claude-agent-sdk==0.2.185`.
 
+<a id="enable-multitasking"></a>
+## Activer le multitâche
+
+Les instances récentes de Codex, Claude Agent et DeepSeek Harness annoncent la corrélation
+des appels LLM par exécution lors du provisionnement. Galaris peut alors attribuer plusieurs
+créneaux au même agent, selon le scheduler et le plafond facultatif du harnais.
+
+Pour une instance antérieure, terminez les tâches de l’agent et sauvegardez les fichiers
+locaux à conserver avant l’action **Mettre à jour**. La mise à jour recrée l’instance et efface
+ses données locales. Pour une instance déjà qualifiée, la mise à jour du backend suffit pour
+appliquer une nouvelle politique de capacité. [Catalogue fonctionnel](../reference/functional-catalogue.md#harness-multitasking)
+
 ## Responsabilités
 
 La réponse de supervision fournit `available_actions`, calculé depuis le cycle de vie durable,

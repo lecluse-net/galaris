@@ -22,10 +22,10 @@ def register_provider(provider: HarnessProvider) -> None:
     code = provider.code.strip().lower()
     if not code or code != provider.code:
         raise ValueError(f"Harness provider codes must be normalized: {provider.code!r}.")
-    if provider.max_parallel_tasks != 1:
+    limit = provider.max_parallel_tasks
+    if limit is not None and (type(limit) is not int or limit < 1):
         raise ValueError(
-            "External Harness providers must currently declare "
-            f"max_parallel_tasks=1: {provider.code!r}."
+            f"External Harness providers must declare a positive task limit or None: {provider.code!r}."
         )
     existing = _PROVIDERS.get(code)
     if existing is not None and existing is not provider:

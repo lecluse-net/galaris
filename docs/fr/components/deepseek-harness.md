@@ -87,5 +87,7 @@ donc être longue. Depuis la supervision Galaris, **Redémarrer** ou **Mettre à
 le runtime sélectionné avec ses credentials ; **Actualiser** ne demande que la projection
 des compétences. Pour réparer un ancien conteneur dont le token est périmé, utiliser
 **Redémarrer**, attendre sa disponibilité, puis réessayer la tâche. Aucun envoi n'est relancé
-par cette opération de gestion. Un seul run est admis simultanément par instance, conformément à la
-sérialisation actuelle des tâches par agent.
+par cette opération de gestion. Une instance provisionnée avec la capacité de corrélation
+par exécution peut exécuter des tâches du même agent en parallèle, selon la capacité du
+scheduler et le plafond facultatif du harnais. Les instances antérieures acceptent une tâche
+à la fois.

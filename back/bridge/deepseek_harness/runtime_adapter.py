@@ -449,6 +449,7 @@ def run_completion(
             shutdown_timeout_seconds=2.0,
             env={"DSH_SESSION_ROOT": str(run_root / "sessions"), "GALARIS_MODEL": model, **({
                 "GALARIS_RUN_CONTEXT": run_context,
+                "GALARIS_TASK_ID": str(body.get("galaris_task_id") or ""),
                 "GALARIS_AUTHORIZATION_PROXY": f"http://127.0.0.1:8080/local/{actor_id}",
                 "GALARIS_MCP_URL": f"http://127.0.0.1:8080/mcp/{actor_id}",
             } if actor_id else {}), **(
@@ -617,7 +618,8 @@ class HarnessRequestHandler(BaseHTTPRequestHandler):
             self._json(HTTPStatus.OK, {"status": "ok"})
             return
         if self.path == "/v1/galaris/capabilities" and self._authorized():
-            self._json(HTTPStatus.OK, {"authorization_protocol": "galaris.runtime-authorization/v1", "resumable_runs": True})
+            self._json(HTTPStatus.OK, {"authorization_protocol": "galaris.runtime-authorization/v1",
+                "resumable_runs": True, "run_scoped_llm": True})
             return
         if self.path.startswith("/v1/galaris/runs/") and self._authorized():
             try:

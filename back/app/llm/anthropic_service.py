@@ -29,7 +29,7 @@ import asyncio
 import json
 import math
 from typing import Any, AsyncIterator, cast
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from fastapi.responses import JSONResponse, StreamingResponse
 
@@ -730,6 +730,7 @@ async def call_proxy(
     body: dict[str, Any],
     *,
     task_id: Any = None,
+    task_attempt_id: UUID | None = None,
     agent_run_id: Any = None,
     conversation_round_id: Any = None,
     process_run_id: Any = None,
@@ -743,6 +744,7 @@ async def call_proxy(
         body,
         profile_model=profile_model,
         task_id=task_id,
+        task_attempt_id=task_attempt_id,
         agent_run_id=agent_run_id,
         conversation_round_id=conversation_round_id,
         process_run_id=process_run_id,

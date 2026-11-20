@@ -429,15 +429,19 @@ Le proxy LLM applique le même invariant aux requêtes authentifiées d'un runti
 MCP reste autorisé avant une tâche, car le client Hermès s'initialise au démarrage du conteneur ; la
 Tâche active est injectée dans le contexte des requêtes d'outils. Les jetons MCP créés explicitement
 par un utilisateur conservent leur contrat générique.
-Une corrélation implicite par seul `agent_id` n'est acceptée que lorsqu'une unique tâche est active.
-Le gateway consulte d'abord le registre local du run, puis l'unique lease durable de cet agent afin
-que la corrélation reste valable derrière plusieurs workers HTTP. Plusieurs correspondances font
-échouer cette voie fermée. Chaque provider de Harness externe déclare donc actuellement
-`max_parallel_tasks=1`; le scheduler vérifie cette limite sous le verrou transactionnel de l'agent
-en comptant les leases non expirés. Le harnais interne expose `max_parallel_tasks=null` et peut
-exécuter plusieurs tâches du même agent, car chacune transporte explicitement `task_id` et
-`agent_run_id`. Le service LLM résout en plus la tentative active et redérive le round depuis la
-Tâche. Un Harness n'exécute jamais un round conversationnel et ne transporte donc jamais de
+Les affectations Codex, Claude Agent et DeepSeek Harness provisionnées avec la capacité
+`run_scoped_llm` peuvent exécuter plusieurs tâches du même agent selon la capacité du
+scheduler et le plafond facultatif de l'opérateur pour le harnais. Le runtime attache
+le justificatif Galaris de l'exécution à chaque appel LLM. La passerelle valide l'agent,
+l'affectation et la tentative active, puis fige tâche, run et tentative avant l'admission
+de l'inférence. Une identité contradictoire, absente ou périmée provoque un refus.
+Les autres affectations externes disposent d'un seul créneau. Pour ces runtimes, le repli
+sur `agent_id` exige une unique tâche active, issue du registre local ou de son lease durable.
+Le scheduler applique la limite sous le verrou transactionnel de l'agent en comptant les
+leases non expirés. Le harnais interne transporte explicitement `task_id` et `agent_run_id`.
+Le service LLM redérive le round et le Process depuis la Tâche.
+Voir [0304](../../../../project/decisions/0304-runtime-llm-call-attribution.md).
+Un Harness n'exécute jamais un round conversationnel et ne transporte donc jamais de
 `conversation_round_id` : les conversations texte et voix utilisent exclusivement leur contrôleur
 interne dédié.
 Les appels bas niveau du contrôleur conversationnel interne conservent en revanche leur corrélation

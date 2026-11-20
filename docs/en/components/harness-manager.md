@@ -14,6 +14,18 @@ Hermes targets the `v0.23.2` image pinned by digest. DeepSeek Harness targets th
 `dsh-v0.2.2-rc.5` prerelease at commit `9c2670d3bce5275e0d1610272958121af87787bb`.
 Codex uses `openai-codex==0.170.0` and Claude Agent uses `claude-agent-sdk==0.2.185`.
 
+<a id="enable-multitasking"></a>
+## Enable multitasking
+
+Current Codex, Claude Agent and DeepSeek Harness instances advertise run-scoped LLM
+attribution when provisioned. Galaris can allocate several slots to the same agent
+within scheduler capacity and an optional harness cap.
+
+For an older instance, finish the agent's Tasks and back up local files you want to
+preserve before selecting **Update**. The update recreates the instance and clears its
+local data. A backend update is enough to apply a new capacity policy to an instance
+that is already qualified. [Functional catalogue](../reference/functional-catalogue.md#harness-multitasking)
+
 ## Responsibilities
 
 Supervision responses provide `available_actions`, derived from the durable lifecycle, observed

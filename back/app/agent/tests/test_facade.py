@@ -93,7 +93,7 @@ async def test_selected_external_harness_exposes_its_task_limit(
 
 
 @pytest.mark.asyncio
-async def test_external_harness_cannot_be_resolved_as_unbounded(
+async def test_unqualified_external_harness_cannot_be_resolved_as_unbounded(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.agent import agent_service
@@ -103,11 +103,35 @@ async def test_external_harness_cannot_be_resolved_as_unbounded(
     monkeypatch.setattr(
         harness_selection_port,
         "resolve",
-        AsyncMock(return_value=SimpleNamespace(max_parallel_tasks=None)),
+        AsyncMock(return_value=SimpleNamespace(max_parallel_tasks=None, metadata={})),
     )
 
-    with pytest.raises(RuntimeError, match="positive task parallelism"):
+    with pytest.raises(RuntimeError, match="run-scoped LLM attribution"):
         await facade.max_parallel_tasks_for_agent(7)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("configured_limit", [None, 5])
+async def test_run_scoped_harness_uses_the_operator_limit(
+    monkeypatch: pytest.MonkeyPatch,
+    configured_limit: int | None,
+) -> None:
+    from app.agent import HarnessExecutionPolicy, agent_service
+
+    agent = SimpleNamespace(agent_driver="openai_messages")
+    monkeypatch.setattr(agent_service, "get", AsyncMock(return_value=agent))
+    monkeypatch.setattr(
+        harness_selection_port,
+        "resolve",
+        AsyncMock(return_value=SimpleNamespace(
+            max_parallel_tasks=None, provider_code="codex", metadata={"run_scoped_llm": True},
+        )),
+    )
+    configuration = AsyncMock(return_value=(HarnessExecutionPolicy(max_parallel_tasks=configured_limit), 1))
+    monkeypatch.setattr(harness_selection_port, "configuration", configuration)
+
+    assert await facade.max_parallel_tasks_for_agent(7) == configured_limit
+    configuration.assert_awaited_once_with("codex")
 
 
 def _model() -> ResolvedModel:

@@ -100,6 +100,7 @@ class HarnessProvider(Protocol):
     Providers advertising ``mcp`` must inject the per-agent Galaris Streamable HTTP
     endpoint and rotate its hidden system token while provisioning. Providers advertising
     ``memory`` must keep ``app.memory`` authoritative, normally through that MCP endpoint.
+    A ``None`` task limit applies only to assignments with verified run-scoped LLM attribution.
     """
 
     code: str
@@ -107,8 +108,10 @@ class HarnessProvider(Protocol):
     label: str
     containerized: bool
     enabled_param: str | None
-    max_parallel_tasks: int
     pipeline_policy: DriverPipelinePolicy
+
+    @property
+    def max_parallel_tasks(self) -> int | None: ...
 
     def capabilities(self) -> frozenset[HarnessCapability]: ...
 

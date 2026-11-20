@@ -289,6 +289,27 @@ async def test_task_call_lineage_binds_current_attempt_and_conversation_round(
     assert resolved_round_id == round_id
     assert resolved_process_run_id == process_run_id
 
+    # The request has been admitted. A newer lease must not relabel its call
+    # when the inference worker records it later.
+    replacement_lease = uuid4()
+    task.lease_token = replacement_lease
+    replacement = TaskAttempt(
+        task_id=task_id, attempt_number=2, phase="EXEC", status="CLAIMED",
+        worker_id="retry-worker", lease_token=replacement_lease,
+    )
+    db.add(replacement)
+    await db.commit()
+    admitted = await llm_call_service._task_call_lineage(  # pyright: ignore[reportPrivateUsage]
+        task_id=task_id, agent_id=None, conversation_round_id=None,
+        admitted_attempt_id=attempt.id,
+    )
+    assert admitted == (objective, attempt.id, round_id, process_run_id)
+    with pytest.raises(ValueError, match="does not belong to the task"):
+        await llm_call_service._task_call_lineage(  # pyright: ignore[reportPrivateUsage]
+            task_id=task_id, agent_id=None, conversation_round_id=None,
+            admitted_attempt_id=uuid4(),
+        )
+
 
 @pytest.mark.asyncio
 async def test_task_call_lineage_rejects_an_explicit_foreign_round(

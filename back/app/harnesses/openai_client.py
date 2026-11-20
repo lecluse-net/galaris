@@ -296,13 +296,15 @@ class OpenAIHarnessClient:
                 )
         return headers
 
-    async def verify_authorization_control(self) -> None:
+    async def verify_authorization_control(self, *, require_run_scoped_llm: bool = False) -> None:
         async with httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=False, trust_env=False, transport=self.transport) as client:
             response = await client.get(f"{self.base_url}/galaris/capabilities", headers=self._headers())
             response.raise_for_status()
         capability = _mapping(response.json())
         if capability.get("authorization_protocol") != "galaris.runtime-authorization/v1" or capability.get("resumable_runs") is not True:
             raise RuntimeError("The managed Harness has no qualified one-action authorization control")
+        if require_run_scoped_llm and capability.get("run_scoped_llm") is not True:
+            raise RuntimeError("The managed Harness does not support run-scoped LLM requests")
 
     async def cancel_control_run(self, runtime_run_id: str) -> bool:
         async with httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=False, trust_env=False, transport=self.transport) as client:

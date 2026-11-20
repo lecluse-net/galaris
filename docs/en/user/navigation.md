@@ -238,6 +238,13 @@ To apply the Harness version shipped with Galaris, open its supervision view and
 **Update** after the agent's Tasks have finished. This action recreates the Harness instance
 and clears its local data.
 
+An instance of Codex, Claude Agent or DeepSeek Harness provisioned with the new
+version can run multiple Tasks for the same agent concurrently. Set **Maximum
+concurrent tasks** on the harness to limit the number per agent. When left blank,
+available scheduler capacity applies. In **Monitor → Activity →
+LLM Activity**, open a call to see its Task and attempt. Other external harnesses
+accept one Task at a time.
+
 If a managed Harness rejects its technical identity (`Invalid runtime principal`), use
 **Restart** in its supervision view to recreate the runtime with its credentials, wait
 until it is ready, then retry the Task. **Refresh** only requests Skill projection.

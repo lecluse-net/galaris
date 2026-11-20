@@ -29,6 +29,7 @@ from .profile_gateway import is_profile_api, mark_profile_api, profile_models
 from .reasoning import normalize_reasoning_effort, parse_force_reasoning_effort
 from .schemas import LLMCallPage, LLMCallRead, ProxyModel, ProxyModelList
 from .runtime_correlation import (
+    resolve_runtime_llm_task,
     resolve_runtime_process_run_id as _resolve_llm_process_run_id,
     resolve_runtime_task_id as _resolve_llm_task_id,
 )
@@ -61,6 +62,9 @@ async def _llm_api_auth(request: Request) -> int | None:
 
         record = await mcp_token_service.get_enabled_system_token_by_value(token)
         if record is not None:
+            from app.services.facade import RuntimePrincipal
+
+            request.state.runtime_llm_principal = RuntimePrincipal(record.id, record.agent_id, record.enabled)
             return record.agent_id
 
     current_user = await user_service.get_current_user()
@@ -212,8 +216,13 @@ async def llm_completion(
     try:
         agent_id = await _llm_api_auth(request)
         body: dict[str, Any] = await request.json()
+        runtime_task = await resolve_runtime_llm_task(
+            request,
+            task_ids=(x_galaris_task_id, body.get("galaris_task_id")),
+            run_ids=(x_galaris_agent_run_id, body.get("galaris_agent_run_id")),
+        )
         # External profile clients may discuss unrelated Galaris records in tools.
-        use_prompt_context = not is_profile_api(request) or agent_id is not None
+        use_prompt_context = runtime_task is None and (not is_profile_api(request) or agent_id is not None)
         if use_prompt_context:
             extract_process_context(body)
         correlation_messages = body.get("messages") if use_prompt_context else None
@@ -224,12 +233,12 @@ async def llm_completion(
         )
         conversation_round_id = (
             UUID(str(raw_conversation_round_id))
-            if raw_conversation_round_id
+            if raw_conversation_round_id and runtime_task is None
             else None
         )
         # Explicit task ID beats prompt correlation, then the active runtime Task.
         # The final fallback captures subagent calls without Galaris message context.
-        task_id = await _resolve_llm_task_id(
+        task_id = runtime_task.task_id if runtime_task is not None else await _resolve_llm_task_id(
             raw_task_id=raw_task_id,
             messages=correlation_messages,
             agent_id=(
@@ -239,7 +248,7 @@ async def llm_completion(
         raw_agent_run_id = (
             x_galaris_agent_run_id or body.get("galaris_agent_run_id")
         )
-        agent_run_id = (
+        agent_run_id = runtime_task.run_id if runtime_task is not None else (
             UUID(str(raw_agent_run_id))
             if raw_agent_run_id
             else agent_run_id_from_messages(correlation_messages)
@@ -257,9 +266,9 @@ async def llm_completion(
                         llm_id=explicit_llm_id,
                     )
                 )
-        raw_process_run_id = x_galaris_process_run_id or body.get("galaris_process_run_id")
-        workflow_id = body.get("galaris_workflow_id")
-        engine_run_id = body.get("galaris_engine_run_id")
+        raw_process_run_id = (x_galaris_process_run_id or body.get("galaris_process_run_id")) if runtime_task is None else None
+        workflow_id = body.get("galaris_workflow_id") if runtime_task is None else None
+        engine_run_id = body.get("galaris_engine_run_id") if runtime_task is None else None
         agent_ids = (
             await _llm_api_agent_ids(agent_id)
             if raw_process_run_id or (workflow_id and engine_run_id)
@@ -289,6 +298,7 @@ async def llm_completion(
             body,
             profile_model=is_profile_api(request),
             task_id=task_id,
+            task_attempt_id=runtime_task.attempt_id if runtime_task is not None else None,
             agent_run_id=agent_run_id,
             conversation_round_id=conversation_round_id,
             process_run_id=process_run_id,
@@ -338,19 +348,24 @@ async def llm_responses(
     try:
         agent_id = await _llm_api_auth(request)
         body: dict[str, Any] = await request.json()
+        runtime_task = await resolve_runtime_llm_task(
+            request,
+            task_ids=(x_galaris_task_id, body.get("galaris_task_id")),
+            run_ids=(x_galaris_agent_run_id, body.get("galaris_agent_run_id")),
+        )
         raw_task_id = x_galaris_task_id or body.get("galaris_task_id")
-        task_id = await _resolve_llm_task_id(
+        task_id = runtime_task.task_id if runtime_task is not None else await _resolve_llm_task_id(
             raw_task_id=raw_task_id,
             messages=None,
             agent_id=agent_id,
         )
         raw_agent_run_id = x_galaris_agent_run_id or body.get("galaris_agent_run_id")
-        agent_run_id = UUID(str(raw_agent_run_id)) if raw_agent_run_id else None
-        raw_process_run_id = (
-            x_galaris_process_run_id or body.get("galaris_process_run_id")
+        agent_run_id = runtime_task.run_id if runtime_task is not None else (
+            UUID(str(raw_agent_run_id)) if raw_agent_run_id else None
         )
-        workflow_id = body.get("galaris_workflow_id")
-        engine_run_id = body.get("galaris_engine_run_id")
+        raw_process_run_id = (x_galaris_process_run_id or body.get("galaris_process_run_id")) if runtime_task is None else None
+        workflow_id = body.get("galaris_workflow_id") if runtime_task is None else None
+        engine_run_id = body.get("galaris_engine_run_id") if runtime_task is None else None
         has_explicit_process = bool(
             raw_process_run_id or (workflow_id and engine_run_id)
         )
@@ -386,6 +401,7 @@ async def llm_responses(
                 "compact" if request.url.path.endswith("/responses/compact") else "create"
             ),
             task_id=task_id,
+            task_attempt_id=runtime_task.attempt_id if runtime_task is not None else None,
             agent_run_id=agent_run_id,
             process_run_id=process_run_id,
             agent_id=agent_id,

@@ -21,7 +21,7 @@ def install_control(app: FastAPI, *, root: Path, authenticate: Callable[[Request
     @app.get("/v1/galaris/capabilities")
     async def capabilities(request: Request) -> dict[str, Any]:
         authenticate(request)
-        return {"authorization_protocol": PROTOCOL, "resumable_runs": True}
+        return {"authorization_protocol": PROTOCOL, "resumable_runs": True, "run_scoped_llm": True}
 
     @app.post("/v1/galaris/runs")
     async def start(request: Request, body: dict[str, Any]) -> dict[str, str]:

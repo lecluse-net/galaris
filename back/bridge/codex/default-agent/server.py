@@ -222,9 +222,12 @@ async def _thread(request: Request, body: ChatCompletionRequest):
     }
     if reasoning_effort:
         provider_headers["X-Galaris-Reasoning-Effort"] = reasoning_effort
-    for header in ("X-Galaris-Task-Id", "X-Galaris-Agent-Run-Id"):
-        if value := request.headers.get(header, "").strip():
-            provider_headers[header] = value
+    if actor:
+        provider_headers["X-Galaris-Run-Context"] = actor.approvals.run_context
+    if task_id := request.headers.get("X-Galaris-Task-Id", "").strip():
+        provider_headers["X-Galaris-Task-Id"] = task_id
+    if not actor and (run_id := request.headers.get("X-Galaris-Agent-Run-Id", "").strip()):
+        provider_headers["X-Galaris-Agent-Run-Id"] = run_id
     config: dict[str, object] = {
         "model_providers": {
             "galaris": {

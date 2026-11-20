@@ -2008,6 +2008,13 @@ du runtime pour l'accord, le refus, la révocation et l'annulation, sans relance
 `make tests-harness-runtimes` exerce les SDK embarqués Codex, Claude, Hermes et DeepSeek,
 avec modèle et transports externes synthétiques : aucun effet avant accord, refus, reprise
 de l’appel exact et continuation MCP. Cette qualification ne prouve pas un déploiement.
+Pour Codex, Claude Agent et DeepSeek Harness, le modèle synthétique attend cinq appels
+simultanés et vérifie l’identité d’exécution reçue pour chacun. Le scénario de passerelle
+dans `app/services/tests/test_action_authorizations.py` vérifie la tâche, le run et la
+tentative de cinq appels concurrents, le refus d’un contexte absent ou contradictoire et
+la révocation d’un seul run. `app/llm/tests/test_call_lineage.py` couvre la conservation
+de la tentative admise lors d’une relance. Le scheduler et la façade Agent vérifient
+le plafond configuré et le champ vide.
 Pour Codex et Claude, l'annulation est exercée pendant une autorisation en attente :
 le sous-processus doit avoir disparu avant `stopped`, un accord tardif reste sans effet
 et le même contexte ne redémarre pas. `test_runtime_control.py` vérifie aussi que les

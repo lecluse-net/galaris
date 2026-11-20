@@ -19,6 +19,7 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
+from uuid import uuid4
 
 ANSWER = "qualification-ok"
 calls: list[str] = []
@@ -114,6 +115,19 @@ class ModelService(BaseHTTPRequestHandler):
         if "count_tokens" in self.path:
             self.send({"input_tokens": 10})
             return
+        if parallel := gate.get("parallel_contexts"):
+            context = self.headers.get("X-Galaris-Run-Context")
+            task = self.headers.get("X-Galaris-Task-Id")
+            if task is None or context not in parallel or parallel[context] != task or task not in json.dumps(body):
+                self.send_error(403, "Model request did not preserve its runtime identity")
+                return
+            with gate["parallel_lock"]:
+                gate["parallel_seen"].add(context)
+                if gate["parallel_seen"] == parallel.keys():
+                    gate["parallel_arrived"].set()
+            if not gate["parallel_arrived"].wait(25):
+                self.send_error(504, "All model calls must be in flight together")
+                return
         if "/chat/completions" in self.path and gate.get("network_recovery") and gate.get("model_dispatched"):
             if "Continue the current task from this session" not in json.dumps(body):
                 gate["provider_failures"] = gate.get("provider_failures", 0) + 1
@@ -310,6 +324,43 @@ async def qualify_hermes_managed(origin: str) -> None:
             print(f"PASS Hermes managed {'MCP continuation' if mcp_call else 'SDK local write'}: {'approved' if allowed else 'denied'}")
 
 
+async def qualify_parallel_runs(origin: str, runtime: str) -> None:
+    import urllib.request
+
+    parallel_contexts = {f"synthetic-parallel-{index}": str(uuid4()) for index in range(5)}
+    gate.update(parallel_contexts=parallel_contexts, parallel_lock=threading.Lock(),
+        parallel_seen=set(), parallel_arrived=threading.Event(), model_dispatched=True)
+
+    async def run_parallel(context: str, task: str) -> dict[str, Any]:
+        headers = {"Content-Type": "application/json", "Authorization": "Bearer qualification-token",
+            "X-Galaris-Run-Context": context, "X-Galaris-Task-Id": task}
+        body = json.dumps({"model": "qualification", "messages": [
+            {"role": "user", "content": f"For task {task}, reply qualification-ok"}]}).encode()
+
+        def request_json(url: str, data: bytes | None = None) -> dict[str, Any]:
+            request = urllib.request.Request(url, data=data, headers=headers)
+            with urllib.request.urlopen(request, timeout=10) as response:
+                return json.load(response)
+
+        url = origin + "/v1/galaris/runs"
+        started = await asyncio.to_thread(request_json, url, body)
+        status_url = url + "/" + started["runtime_run_id"]
+        async with asyncio.timeout(45):
+            while True:
+                status = await asyncio.to_thread(request_json, status_url)
+                if status.get("stopped") is True:
+                    return status
+                await asyncio.sleep(0.05)
+
+    parallel_runs = await asyncio.gather(*(run_parallel(context, task)
+        for context, task in parallel_contexts.items()))
+    assert gate["parallel_seen"] == parallel_contexts.keys()
+    assert all(run["status"] == "completed" and run["success"] is True for run in parallel_runs), parallel_runs
+    print(f"PASS {runtime}: {len(parallel_contexts)} concurrent model calls retained their own run context")
+
+    gate.clear()
+
+
 async def http_adapter(runtime: str) -> None:
     import socket
     import urllib.error
@@ -361,6 +412,7 @@ async def http_adapter(runtime: str) -> None:
                             assert text.count("data: [DONE]") == 1, text[:2000]
                 except urllib.error.HTTPError as exc:
                     assert not authorized and exc.code == 401, exc.read().decode()[:2000]
+            await qualify_parallel_runs(origin, runtime)
             for allowed in (False, True):
                 gate.clear()
                 target = Path("/workspace" if runtime == "codex" else "/data/workspace") / f"approval-{allowed}.txt"
@@ -659,6 +711,7 @@ console.log('PASS DeepSeek shell confinement: workspace write allowed, sessions 
         adapter_thread.start()
         import urllib.request
         try:
+            asyncio.run(qualify_parallel_runs("http://127.0.0.1:8080", runtime))
             # Projected skills live outside the workspace. A native text read
             # validates the run context but must not request a mutation permit.
             for revoked in (False, True):

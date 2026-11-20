@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Managed harness multitasking** lets one agent run several Tasks at once
+  with Codex, Claude Agent or DeepSeek Harness. The scheduler supplies available
+  slots, and administrators can set a per-agent limit in the harness policy.
+  LLM Activity attributes each call and its usage to the exact Task and attempt.
+  Update older harness instances to enable the capability. This recreates the
+  instance and clears its local data.
+  [Harness multitasking](docs/en/reference/functional-catalogue.md#harness-multitasking)
 - A **Windows and Linux desktop client** connects to your Galaris server over
   HTTPS. It adds tabs and French and English spellchecking. Windows and AppImage
   can download client updates and install them after you approve a restart.

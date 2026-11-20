@@ -96,6 +96,9 @@ async def test_provider_provisions_runtime_with_model_passthrough(
         async def list_models(self) -> list[str]:
             return ["claude-agent"]
 
+        async def verify_authorization_control(self, *, require_run_scoped_llm: bool = False) -> None:
+            assert require_run_scoped_llm
+
     monkeypatch.setattr(harnesses_module, "OpenAIHarnessClient", Client)
 
     result = await harness_provider.provider.provision(
@@ -113,6 +116,7 @@ async def test_provider_provisions_runtime_with_model_passthrough(
     assert result.metadata["model_gateway"] == "galaris-anthropic"
     assert result.metadata["runtime"] == "claude-agent-sdk"
     assert result.metadata["sdk_version_policy"] == "pinned"
+    assert result.metadata["run_scoped_llm"] is True
     assert result.token == "retained-token"
 
 

@@ -260,6 +260,13 @@ Pour appliquer la version de harnais livrée par Galaris, ouvrez sa supervision 
 **Mettre à jour** une fois les tâches de l’agent terminées. Cette action recrée l’instance
 du harnais et efface ses données locales.
 
+Une instance Codex, Claude Agent ou DeepSeek Harness provisionnée avec la nouvelle
+version peut exécuter plusieurs tâches du même agent en parallèle. Le réglage **Nombre
+maximal de tâches simultanées** du harnais permet de limiter le nombre par agent. Quand
+il est vide, la capacité disponible du scheduler s’applique. Dans **Superviser →
+Activité → Activité LLM**, ouvrez un appel pour retrouver sa tâche et sa tentative.
+Les autres harnais externes acceptent une tâche à la fois.
+
 Si un harnais géré refuse son identité technique (`Invalid runtime principal`), utiliser
 **Redémarrer** dans sa supervision pour recréer le runtime avec ses credentials, attendre
 sa disponibilité, puis réessayer la tâche. **Actualiser** ne demande que la projection des

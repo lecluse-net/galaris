@@ -55,6 +55,7 @@ les comptes distants réels ou la réserve indépendante encore manquants.
 
 | Plan | Statut | Portée |
 |---|---|---|
+| [conversations-deep.md](conversations-deep.md) | `design` | Dialogue direct avec le harnais dans un fil du Chat, sessions persistantes et parallèles, worktree lié, reprise et qualification par provider. |
 | [cartes-mentales-documentaires.md](cartes-mentales-documentaires.md) | `partial` | Type Document, édition de branches, MCP et échanges disponibles. Contenus riches, thèmes, intégration Texte et qualifications externes restent ouverts. |
 | [affichage-des-references-documentaires.md](affichage-des-references-documentaires.md) | `partial` | Socle Lien, Carte et Intégré dans Texte et Carte mentale. Lecteurs des autres formats et couverture des exports par format à étendre. |
 | [migration-progressive-rust.md](migration-progressive-rust.md) | `design` | Prototypes de runtimes, protocole d'hôte et qualification sans régression ; Pydantic AI conservé comme référence. Aucun driver Rust intégré ni gain démontré. |

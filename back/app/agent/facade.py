@@ -404,18 +404,18 @@ async def max_parallel_tasks_for_agent(agent_id: int) -> int | None:
     selection = await harness_selection_port.resolve(agent)
     if selection is not None:
         limit = selection.max_parallel_tasks
-        if limit is None or limit < 1:
-            raise RuntimeError(
-                "A configured external Harness must have a positive task parallelism limit."
-            )
-        policy, _ = await harness_selection_port.configuration(selection.provider_code)
-        return min(limit, policy.max_parallel_tasks) if policy.max_parallel_tasks else limit
-    driver_code = validate_agent_driver(
-        getattr(agent, "agent_driver", None),
-        require_available=False,
-    )
-    limit = get_driver_spec(driver_code).max_parallel_tasks
-    policy, _ = await harness_selection_port.configuration(driver_code)
+        if limit is None and selection.metadata.get("run_scoped_llm") is not True:
+            raise RuntimeError("Removing the task limit requires run-scoped LLM attribution.")
+        if limit is not None and limit < 1:
+            raise RuntimeError("A configured external Harness must have a positive task parallelism limit.")
+        configuration_code = selection.provider_code
+    else:
+        configuration_code = validate_agent_driver(
+            getattr(agent, "agent_driver", None),
+            require_available=False,
+        )
+        limit = get_driver_spec(configuration_code).max_parallel_tasks
+    policy, _ = await harness_selection_port.configuration(configuration_code)
     if policy.max_parallel_tasks is None:
         return limit
     return policy.max_parallel_tasks if limit is None else min(limit, policy.max_parallel_tasks)

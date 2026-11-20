@@ -281,7 +281,9 @@ async def _run_events(
     custom_headers = []
     if task_id:
         custom_headers.append(f"X-Galaris-Task-Id: {task_id}")
-    if run_id:
+    if actor:
+        custom_headers.append(f"X-Galaris-Run-Context: {actor.approvals.run_context}")
+    elif run_id:
         custom_headers.append(f"X-Galaris-Agent-Run-Id: {run_id}")
     if reasoning_effort:
         custom_headers.append(

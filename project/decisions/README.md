@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0304 — Runtime LLM calls are attributed to one task execution](0304-runtime-llm-call-attribution.md)
+
 - [0303 — MCP tables in Chat and Text Documents](0303-mcp-tables-in-chat-and-documents.md)
 
 - [0302 — Weekly agent retrospective](0302-weekly-agent-retrospective.md)

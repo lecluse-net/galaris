@@ -1905,6 +1905,12 @@ for agreement, denial, revocation and cancellation, without restarting the SDK.
 `make tests-harness-runtimes` exercises the embedded Codex, Claude, Hermes and DeepSeek SDKs
 with synthetic model and external transports: no effect before agreement, denial, resumption
 of the exact call, and MCP continuation. This qualification does not prove a deployment.
+For Codex, Claude Agent and DeepSeek Harness, the synthetic model waits for five concurrent
+calls and checks each execution identity. The gateway scenario in
+`app/services/tests/test_action_authorizations.py` covers Task, run and attempt attribution,
+missing or conflicting contexts, and revocation of a single run. The lineage test in
+`app/llm/tests/test_call_lineage.py` preserves the admitted attempt when a Task is retried.
+Scheduler and Agent façade tests cover both configured and blank limits.
 For Codex and Claude, cancellation is exercised while authorization is pending:
 the subprocess must have exited before `stopped`, late approval has no effect and
 the same context does not restart. `test_runtime_control.py` also verifies that repeated

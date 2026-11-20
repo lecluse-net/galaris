@@ -419,6 +419,7 @@ async def proxy_chat_completion(
     *,
     purpose: str | None = None,
     task_id: Optional[UUID],
+    task_attempt_id: UUID | None = None,
     agent_run_id: Optional[UUID] = None,
     conversation_round_id: Optional[UUID] = None,
     process_run_id: Optional[UUID] = None,
@@ -525,6 +526,7 @@ async def proxy_chat_completion(
         call = await llm_call_service.create_running_call(
             purpose=purpose,
             task_id=task_id,
+            task_attempt_id=task_attempt_id,
             agent_run_id=agent_run_id,
             conversation_round_id=conversation_round_id,
             process_run_id=process_run_id,
@@ -897,6 +899,7 @@ async def proxy_responses(
     operation: ResponsesOperation = "create",
     purpose: str | None = None,
     task_id: UUID | None,
+    task_attempt_id: UUID | None = None,
     agent_run_id: UUID | None = None,
     conversation_round_id: UUID | None = None,
     process_run_id: UUID | None = None,
@@ -1013,6 +1016,7 @@ async def proxy_responses(
         call = await llm_call_service.create_running_call(
             purpose=purpose,
             task_id=task_id,
+            task_attempt_id=task_attempt_id,
             agent_run_id=agent_run_id,
             conversation_round_id=conversation_round_id,
             process_run_id=process_run_id,

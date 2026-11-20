@@ -762,10 +762,9 @@ Harnesses are replaceable while Galaris retains identity, admission, rights, tas
 - Project parameters, skills, MCP endpoint and system tokens, separating provider defaults from agent settings.
 - Manage configuration/runtime files where exposed.
 
-Selection alone does not install an environment. Recreation/replacement may delete old containers/
-data; the interface explains this and unfinished Tasks block concurrent transitions. External
-instances currently admit one concurrent run; internal follows scheduler limits. Selection cannot
-create undeclared capabilities. **Harness Manager** applies Compose definitions, bounded actions,
+Selection alone does not install an environment. Recreation or replacement may delete existing
+containers and data. The interface explains this, and unfinished Tasks block concurrent
+transitions. **Harness Manager** applies Compose definitions and provides bounded actions,
 diagnostics and files. Rotating system tokens avoid distributing business credentials.
 
 Preferences separate internal/managed/external harnesses. Manager configuration uses service URL,
@@ -774,6 +773,27 @@ config or installation archives prepare host installation without remote command
 Authenticated manager updates check version/integrity, preserve config/instances, back up code,
 attempt restoration on failure, never rebuild agent containers and reject downgrades. Runtimes
 are image-pinned; DSH explicitly uses **Chat Completions**. See [DSH](../components/deepseek-harness.md).
+
+<a id="harness-multitasking"></a>
+### Managed harness multitasking
+
+One agent can run several Tasks at once with a qualified **Codex**, **Claude Agent** or
+**DeepSeek Harness** instance. The scheduler allocates available slots. In **Administer →
+Preferences → Harnesses**, set **Maximum concurrent tasks** to cap the number per agent for
+that harness. Leave it blank to use available scheduler capacity. Hermes, generic remote
+servers and older instances without verified attribution admit one Task at a time.
+
+In **Monitor → Activity → LLM Activity**, each call from these instances links to its Task and attempt.
+Galaris validates the execution grant before admitting inference. It rejects missing,
+expired or conflicting contexts. Later retries preserve the original attempt for already
+admitted calls. Stopping a Task revokes that Task's context. Tasks working on a shared
+checkout still use the same files.
+
+To enable multitasking on an older instance, wait for the agent's Tasks to finish, preserve
+any local files you need, and select **Update** in its supervision view. This recreates the
+instance and clears its local data. Galaris verifies runtime support during provisioning.
+[Maintenance guide](../components/harness-manager.md#enable-multitasking)
+· [Architecture decision](../../../project/decisions/0304-runtime-llm-call-attribution.md)
 
 ### Effective capabilities and execution choices
 
@@ -4396,7 +4416,7 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Profile API | Stable codes, all profiles' available usages and authorised user tokens; missing usage never borrows another profile. |
 | Specialised decisions | Optional OpenRouter adapter, governed same-profile fallback; no invented probabilities or promised universal gains. |
 | ChatGPT quotas | Account-wide provider windows observed at one instant, not agent quotas or API billing budgets. |
-| Managed harnesses | Standard/high through Galaris; one simultaneous run per external instance; generic transport remains standard. |
+| Managed harnesses | Standard/high through Galaris. Qualified Codex, Claude Agent and DeepSeek Harness support multitasking within scheduler capacity and the harness cap. Hermes admits one Task per agent. Generic transport has one slot and standard execution. |
 | Skill synchronisation | Before new execution without interrupting active work; remote continuations retain context and projection failure blocks startup. |
 | Routing | Only the declared EXEC/PLAN and effort pairs. |
 | Durable inference | Prepare without a provider call, start, revision-checked commands and optional global deadline; stream reconnection avoids generation, explicit retry may incur another charge. |

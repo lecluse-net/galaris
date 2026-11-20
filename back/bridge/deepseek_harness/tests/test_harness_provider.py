@@ -145,6 +145,9 @@ async def test_provider_provisions_before_starting_and_returns_generated_coordin
         async def list_models(self):
             return ["executor-model"]
 
+        async def verify_authorization_control(self, *, require_run_scoped_llm=False):
+            assert require_run_scoped_llm
+
     monkeypatch.setattr(harness_provider, "OpenAIHarnessClient", FakeClient)
 
     result = await harness_provider.provider.provision(
@@ -164,6 +167,7 @@ async def test_provider_provisions_before_starting_and_returns_generated_coordin
     assert result.metadata["deepseek_harness_ref"] == harness_provider._DSH_REF
     assert result.metadata["galaris_extensions"] is True
     assert result.metadata["model_passthrough"] is True
+    assert result.metadata["run_scoped_llm"] is True
     assert {"execute", "mcp", "memory", "skills"} <= result.capabilities
 
 

@@ -63,6 +63,7 @@ class ProtocolInferenceRequest(InferenceInput):
     )
     protocol: Literal["chat", "responses", "compact"]
     body: dict[str, JsonValue]
+    task_attempt_id: UUID | None = None
     sdk_request: bool = False
     managed_runtime_request: bool = False
     unwrap_deferred_tools: bool = False

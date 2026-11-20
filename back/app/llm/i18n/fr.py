@@ -86,6 +86,8 @@ default: dict[str, object] = {
                 "Le modèle doit être un identifiant Galaris au format « llm-<id> »"
             ),
             "task_not_found": "Tâche ${task_id} introuvable",
+            "runtime_run_context_required": "Ce harnais doit fournir le contexte de son exécution pour appeler un LLM.",
+            "runtime_run_context_invalid": "Le contexte d’exécution du harnais est invalide, périmé ou incohérent.",
             "managed_runtime_task_required": (
                 "Un appel LLM de runtime géré doit être rattaché à une tâche Galaris"
             ),

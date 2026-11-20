@@ -1065,6 +1065,97 @@ async def runtime_action(action, request, monkeypatch):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize(("runtime_action", "paths"), [
+    ("codex", ("/api/llm/openai/responses", "/api/llm/openai/responses/compact")),
+    ("claude_agent", ("/api/llm/anthropic/v1/messages", "/api/llm/openai/chat/completions")),
+    ("deepseek_harness", ("/api/llm/openai/chat/completions", "/api/llm/openai/chat/completions")),
+], indirect=["runtime_action"])
+async def test_parallel_runtime_llm_calls_keep_their_task_and_attempt(
+    runtime_action, paths, committed_database, monkeypatch,
+):
+    from datetime import datetime, timedelta, timezone
+
+    from fastapi.responses import JSONResponse
+    from httpx import ASGITransport, AsyncClient
+
+    from app.agent import AgentSnapshot, ResolvedExecutionTarget, max_parallel_tasks_for_agent
+    from app.agent.tests.test_driver_testkit import _request
+    from app.harnesses.models import AgentHarness
+    from app.llm import anthropic_router, call_router
+    from app.mcp.service import rotate_system_token
+    from app.services.facade import issue_runtime_run_grant, revoke_runtime_run_grant
+    from app.task.models import Task, TaskAttempt, TaskStatus
+    from core.database import middleware as database_middleware
+    from main import app
+
+    monkeypatch.setattr(database_middleware, "AsyncSessionLocal", committed_database)
+    agent_id = runtime_action.agent_id
+    async with get_db_session() as db:
+        assignment = await db.scalar(select(AgentHarness).where(AgentHarness.agent_id == agent_id))
+        assert assignment is not None
+        assert await max_parallel_tasks_for_agent(agent_id) == 1
+        assignment.provider_metadata = {"run_scoped_llm": True}
+        target = ResolvedExecutionTarget(provider_code=runtime_action.runtime,
+            target_ref=f"harness:{assignment.id}", revision=str(assignment.revision))
+        bearer = await rotate_system_token(agent_id)
+        snapshot = AgentSnapshot(id=agent_id, code="synthetic", first_name="Synthetic",
+            last_name="Agent", driver_code="openai_messages")
+        requests = []
+        for index in range(5):
+            label = f"Concurrent task {index}"
+            task = Task(agent_id=agent_id, label=label, objective=f"<p>{label}</p>",
+                status=TaskStatus.EXEC, lease_token=uuid4(),
+                lease_expires_at=datetime.now(timezone.utc) + timedelta(minutes=5))
+            db.add(task)
+            await db.flush()
+            attempt = TaskAttempt(task_id=task.id, attempt_number=1, phase="EXEC",
+                worker_id="synthetic", lease_token=task.lease_token)
+            db.add(attempt)
+            await db.flush()
+            requests.append(replace(_request(), task_id=task.id, attempt_id=attempt.id, run_id=uuid4(),
+                agent=snapshot, target=target, driver_code="openai_messages"))
+        assert await max_parallel_tasks_for_agent(agent_id) is None
+
+    credentials = [await issue_runtime_run_grant(item) for item in requests]
+    arrived = asyncio.Event()
+    observed = []
+
+    async def provider(_payload, **options):
+        observed.append((options["task_id"], options["agent_run_id"], options["task_attempt_id"]))
+        if len(observed) >= len(requests):
+            arrived.set()
+        await asyncio.wait_for(arrived.wait(), timeout=5)
+        return JSONResponse({"choices": [{"message": {"role": "assistant", "content": "ok"},
+            "finish_reason": "stop"}], "usage": {"prompt_tokens": 1, "completion_tokens": 1}})
+
+    monkeypatch.setattr(call_router, "proxy_chat_completion", provider)
+    monkeypatch.setattr(call_router, "proxy_responses", provider)
+    monkeypatch.setattr(anthropic_router, "call_proxy", provider)
+    body = {"model": "synthetic", "max_tokens": 10, "messages": [{"role": "user", "content": "Synthetic"}]}
+    headers = {"Authorization": f"Bearer {bearer}"}
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://localhost") as client:
+        async def run(index, **extra_headers):
+            return await client.post(paths[index % len(paths)], json=body, headers={
+                **headers, "X-Galaris-Run-Context": credentials[index], **extra_headers,
+            })
+
+        missing = await client.post(paths[0], json=body, headers=headers)
+        assert missing.status_code == 401, missing.text
+        conflict = await run(0, **{"X-Galaris-Task-Id": str(requests[1].task_id)})
+        assert conflict.status_code == 403, conflict.text
+        assert not observed
+        responses = await asyncio.gather(*(run(index) for index in range(len(requests))))
+        assert all(response.status_code == 200 for response in responses)
+        assert set(observed) == {(item.task_id, item.run_id, item.attempt_id) for item in requests}
+
+        await revoke_runtime_run_grant(requests[0].run_id)
+        assert (await run(0)).status_code == 403
+        assert (await run(1)).status_code == 200
+        assert len(observed) == len(requests) + 1
+
+
+@pytest.mark.asyncio
 async def test_internal_runtime_is_excluded_from_external_action_type_consent(runtime_action):
     from app.services.authorization import can_remember_action
     from app.services.runtime_permissions import configuration_fingerprint

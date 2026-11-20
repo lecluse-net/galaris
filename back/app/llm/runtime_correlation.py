@@ -3,10 +3,60 @@
 from __future__ import annotations
 
 from collections.abc import Collection
+from dataclasses import dataclass
 from typing import Any
 from uuid import UUID
 
+from fastapi import HTTPException, Request
+
+from core.i18n import tr
+
 from .trace import task_id_from_messages
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeLLMTask:
+    task_id: UUID
+    run_id: UUID
+    attempt_id: UUID
+
+
+async def resolve_runtime_llm_task(
+    request: Request,
+    *,
+    task_ids: tuple[object, ...],
+    run_ids: tuple[object, ...],
+) -> RuntimeLLMTask | None:
+    """Resolve authenticated attribution before admitting a durable inference."""
+    from app.services.facade import RuntimePrincipal, resolve_runtime_run_grant, runtime_dispatch_ready
+
+    principal = getattr(request.state, "runtime_llm_principal", None)
+    credential = request.headers.get("X-Galaris-Run-Context")
+    if credential is None:
+        if isinstance(principal, RuntimePrincipal):
+            from app.agent import configured_harness_selection, get_agent_record
+
+            agent = await get_agent_record(principal.agent_id)
+            selection = await configured_harness_selection(agent) if agent is not None else None
+            if selection is not None and selection.metadata.get("run_scoped_llm") is True:
+                raise HTTPException(401, await tr("llm_api.errors.runtime_run_context_required"))
+        return None
+
+    try:
+        if not isinstance(principal, RuntimePrincipal) or not credential:
+            raise PermissionError("A managed runtime principal is required")
+        grant = await resolve_runtime_run_grant(credential, principal=principal)
+        if not grant.context_key.startswith("task:") or grant.attempt_key is None or not await runtime_dispatch_ready(grant):
+            raise PermissionError("An active task attempt context is required")
+        task_id = UUID(grant.context_key.removeprefix("task:"))
+        if any(value is not None and UUID(str(value)) != task_id for value in task_ids):
+            raise PermissionError("Conflicting runtime task")
+        if any(value is not None and UUID(str(value)) != grant.run_key for value in run_ids):
+            raise PermissionError("Conflicting runtime run")
+    except (PermissionError, ValueError) as exc:
+        raise HTTPException(403, await tr("llm_api.errors.runtime_run_context_invalid")) from exc
+
+    return RuntimeLLMTask(task_id, grant.run_key, grant.attempt_key)
 
 
 async def resolve_runtime_task_id(
@@ -96,4 +146,4 @@ async def resolve_runtime_process_run_id(
     return resolved_run_id
 
 
-__all__ = ["resolve_runtime_process_run_id", "resolve_runtime_task_id"]
+__all__ = ["resolve_runtime_llm_task", "resolve_runtime_process_run_id", "resolve_runtime_task_id"]

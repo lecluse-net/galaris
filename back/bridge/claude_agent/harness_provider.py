@@ -205,7 +205,7 @@ class ClaudeAgentHarnessProvider:
     label = "Claude Agent"
     containerized = True
     enabled_param: str | None = Params.HARNESS_CLAUDE_AGENT_ENABLED
-    max_parallel_tasks = 1
+    max_parallel_tasks = None
 
     def capabilities(self) -> frozenset[HarnessCapability]:
         return frozenset(
@@ -251,6 +251,7 @@ class ClaudeAgentHarnessProvider:
             models = await client.list_models()
             if _MODEL_ID not in models:
                 raise RuntimeError("The Claude Agent runtime did not expose its model.")
+            await client.verify_authorization_control(require_run_scoped_llm=True)
         except Exception:
             try:
                 await manager.delete_instance(agent.code)
@@ -269,6 +270,7 @@ class ClaudeAgentHarnessProvider:
                 "model_passthrough": True,
                 "galaris_extensions": True,
                 "model_gateway": "galaris-anthropic",
+                "run_scoped_llm": True,
                 "runtime": "claude-agent-sdk",
                 "sdk_version_policy": "pinned",
                 "skill_revision": skill_revision,

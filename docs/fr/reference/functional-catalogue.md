@@ -950,10 +950,8 @@ droits, tâches, mémoire et résultat durable restent sous le contrôle de la p
 - Administrer les fichiers de configuration et de runtime lorsque le provider les expose.
 
 La sélection d’un harnais conteneurisé n’installe pas automatiquement son environnement. Une
-recréation ou un remplacement peut supprimer l’ancien conteneur et ses données : le parcours
-l’indique et les tâches non terminées empêchent une transition concurrente. Les providers externes
-admettent actuellement un run simultané par instance ; le harnais interne suit les limites du
-scheduler. Une capacité non déclarée ne devient pas disponible par simple sélection du harnais.
+recréation ou un remplacement peut supprimer l’ancien conteneur et ses données. Le parcours
+l’indique et les tâches non terminées empêchent une transition concurrente.
 
 Les conteneurs gérés passent par le **Harness Manager**, qui applique les définitions Compose,
 contrôle les actions autorisées et fournit diagnostics et fichiers. Les tokens système tournants
@@ -979,6 +977,28 @@ une sortie partielle n’est pas déclarée réussie et un outil d’issue incon
 Une fermeture du transport MCP du harnais interne conserve aussi le lot engagé : les lectures
 et effets idempotents reprennent avec leur identité, tandis qu’un effet non idempotent non
 acquitté attend réconciliation avant une nouvelle décision du modèle.
+
+<a id="harness-multitasking"></a>
+### Multitâche avec un harnais managé
+
+Un même agent peut exécuter plusieurs tâches simultanément avec une instance qualifiée de
+**Codex**, **Claude Agent** ou **DeepSeek Harness**. Le scheduler attribue ses créneaux disponibles.
+Dans **Administrer → Préférences → Harnais**, le réglage **Nombre maximal de tâches simultanées**
+permet de plafonner le nombre par agent pour ce harnais. Un champ vide utilise la capacité
+disponible du scheduler. Hermès, les serveurs distants génériques et les anciennes instances
+sans corrélation vérifiée admettent une tâche à la fois.
+
+Dans **Superviser → Activité → Activité LLM**, chaque appel de ces instances est rattaché à sa tâche
+et à sa tentative. Galaris vérifie le justificatif présenté par le harnais avant d’admettre l’inférence.
+Il refuse un contexte manquant, expiré ou contradictoire. Une relance ultérieure laisse les
+appels déjà admis rattachés à leur tentative initiale. L’arrêt d’une tâche révoque son propre
+contexte. Les fichiers d’un checkout partagé restent communs aux tâches qui y travaillent.
+
+Pour activer le multitâche sur une ancienne instance, attendez la fin des tâches de l’agent,
+préservez les fichiers locaux à conserver et choisissez **Mettre à jour** dans sa supervision.
+Cette action recrée l’instance et efface ses données locales. Galaris vérifie la capacité du
+runtime au provisionnement. [Guide de maintenance](../components/harness-manager.md#enable-multitasking)
+· [Décision d’architecture](../../../project/decisions/0304-runtime-llm-call-attribution.md)
 
 ### Capacités effectives et choix d’exécution
 
@@ -5586,7 +5606,7 @@ nom du jeton utilisé et conserve le fournisseur et le modèle réellement solli
 | API de profils | Code stable, usages disponibles de tous les profils, jeton utilisateur autorisé ; un usage manquant n’emprunte pas un autre profil. |
 | Décisions spécialisées | Facultatives, via l’adaptateur OpenRouter disponible ; repli gouverné dans le même profil, sans probabilités inventées ni gain systématique promis. |
 | Quotas ChatGPT | Fenêtres fournies pour l’ensemble du compte, consultées à un instant donné ; ni quota par agent ni budget de facture API. |
-| Harnais gérés | Standard/high via la passerelle Galaris ; un run simultané par instance externe ; le transport générique reste standard. |
+| Harnais gérés | Standard/high via la passerelle Galaris. Multitâche pour Codex, Claude Agent et DeepSeek Harness qualifiés, selon la capacité du scheduler et le plafond du harnais. Hermès a un créneau par agent. Le transport générique dispose d’un créneau et de l’exécution standard. |
 | Synchronisation des compétences | Appliquée avant une nouvelle exécution, sans interrompre une tâche ; une continuation distante conserve son contexte antérieur et un échec de projection bloque le démarrage. |
 | Routage | Seuls les couples EXEC/PLAN et effort déclarés par le harnais sont disponibles. |
 | Inférence durable | Préparation sans appel fournisseur, démarrage, commandes avec révision et échéance globale optionnelle ; reconnexion au flux sans génération, reprise explicite potentiellement facturée. |

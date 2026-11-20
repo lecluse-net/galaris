@@ -83,6 +83,7 @@ from .runtime_authorization import (
     renew_runtime_run_grant,
     revoke_runtime_run_grant,
     runtime_authorizations_ready,
+    runtime_dispatch_ready as runtime_dispatch_ready,
 )
 from .runtime_authorization import (
     register_runtime_authorization_configuration as register_runtime_authorization_configuration,
