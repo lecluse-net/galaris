@@ -59,7 +59,8 @@ def _place(nodes: list[MindMapNode], node: MindMapNode, index: int | None) -> No
 
 
 def apply_commands(mindmap: MindMap, commands: list[BranchCommand]) -> MindMap:
-    nodes = mindmap.nodes.copy()
+    nodes: list[MindMapNode] = mindmap.nodes.copy()
+    connectors = mindmap.connectors
     for command in commands:
         by_id = {node.id: node for node in nodes}
         node = by_id.get(command.node_id)
@@ -93,9 +94,11 @@ def apply_commands(mindmap: MindMap, commands: list[BranchCommand]) -> MindMap:
             pending.extend(children.get(key, []))
         if isinstance(command, RemoveBranch):
             nodes = [child for child in nodes if child.id not in subtree]
+            connectors = [link for link in connectors if link.source not in subtree and link.target not in subtree]
         else:
             if command.parent_id in subtree or command.parent_id not in by_id:
                 raise ValueError("Choose an existing parent outside the moved branch")
             nodes.remove(node)
             _place(nodes, node.model_copy(update={"parent": command.parent_id}), command.index)
-    return MindMap(version=mindmap.version, nodes=nodes, theme=mindmap.theme, background_color=mindmap.background_color)
+    return MindMap(version=mindmap.version, nodes=nodes, connectors=connectors,
+                   theme=mindmap.theme, background_color=mindmap.background_color)

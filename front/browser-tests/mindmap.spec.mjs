@@ -165,6 +165,136 @@ test('control arrows move a node and its children from a focused value field', a
   await expect(input).toBeFocused()
 })
 
+test('named node connections reveal a folded endpoint and are removed when a node is deleted', async ({ page }, testInfo) => {
+  const nodes = [
+    { id: 'root', parent: null, title: 'Survey' },
+    { id: 'plan', parent: 'root', title: 'Plan' },
+    { id: 'checklist', parent: 'plan', title: 'Checklist' },
+    { id: 'results', parent: 'root', title: 'Results' },
+    { id: 'sample', parent: 'results', title: 'Sample', value: 'S01' },
+    { id: 'readout', parent: 'sample', title: 'Readout' },
+  ]
+  await mount(page, mapEditor, { props: { modelValue: JSON.stringify({ version: 1, nodes }) } })
+  const tree = page.getByRole('tree')
+  const plan = tree.getByRole('treeitem', { name: 'Plan', exact: true })
+  await plan.getByText('Plan', { exact: true }).click()
+  await tree.getByRole('treeitem', { name: 'Sample', exact: true }).getByText('Sample', { exact: true }).click({ modifiers: ['Control'] })
+  await page.getByRole('button', { name: 'Node connections', exact: true }).click()
+  const links = page.getByRole('dialog', { name: 'Node connections', exact: true })
+  const label = links.getByRole('textbox', { name: 'Connection label' })
+  await expect(label).toBeFocused()
+  await expect(links.getByText('Plan → Sample', { exact: true })).toBeVisible()
+  await expect(links.getByRole('combobox')).toHaveCount(0)
+  await label.fill('Depends on')
+  await links.getByRole('button', { name: 'Add connection' }).click()
+  await expect(links.getByText('Depends on', { exact: true })).toBeVisible()
+  const created = await savedMap(page)
+  expect(created.nodes).toEqual(nodes)
+  expect(created.connectors).toEqual([{ source: 'plan', target: 'sample', label: 'Depends on' }])
+  await page.keyboard.press('Escape')
+  await expect(links).toBeHidden()
+  await tree.getByRole('button', { name: 'Collapse Results' }).click()
+  await plan.press('Alt+ArrowRight')
+  await expect(tree.getByRole('treeitem', { name: 'Checklist', exact: true })).toBeFocused()
+  await plan.press('ArrowRight')
+  const value = tree.getByRole('textbox', { name: 'Value for Sample' })
+  await expect(value).toBeFocused()
+  await page.keyboard.press('End')
+  await page.keyboard.press('ArrowRight')
+  await expect(tree.getByRole('treeitem', { name: 'Readout', exact: true })).toBeFocused()
+  await page.keyboard.press('ArrowLeft')
+  await expect(value).toBeFocused()
+  const drawnLabel = page.locator('.mindmap-connectors text')
+  await expect(drawnLabel).toHaveText('Depends on')
+  await page.screenshot({ path: testInfo.outputPath('mindmap-connection.png') })
+  await page.keyboard.press('Alt+j')
+  await expect(plan).toBeFocused()
+  await drawnLabel.click()
+  await expect(label).toHaveValue('Depends on')
+  await label.fill('Verify with')
+  await links.getByRole('button', { name: 'Rename connection', exact: true }).click()
+  await expect(links.getByText('Verify with', { exact: true })).toBeVisible()
+  const persisted = await savedMap(page)
+  expect(persisted.connectors).toEqual([{ source: 'plan', target: 'sample', label: 'Verify with' }])
+  await page.keyboard.press('Escape')
+  await expect(links).toBeHidden()
+  const path = page.locator('.mindmap-connector-hit')
+  const point = await path.evaluate(element => {
+    for (const fraction of [.5, .35, .65, .2, .8]) {
+      const point = element.getPointAtLength(element.getTotalLength() * fraction).matrixTransform(element.getScreenCTM())
+      if (document.elementFromPoint(point.x, point.y) === element) return { x: point.x, y: point.y }
+    }
+    throw new Error('No visible part of the connection receives pointer input')
+  })
+  await page.mouse.click(point.x, point.y)
+  await expect(label).toHaveValue('Verify with')
+  const deleteConnection = links.getByRole('button', { name: 'Delete connection', exact: true })
+  const confirmation = page.getByRole('dialog', { name: 'Delete connection', exact: true })
+  await deleteConnection.click()
+  await expect(confirmation.getByRole('button', { name: 'Delete connection', exact: true })).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(confirmation).toBeHidden()
+  await expect(deleteConnection).toBeVisible()
+  await deleteConnection.click()
+  await confirmation.getByRole('button', { name: 'Delete connection', exact: true }).click()
+  await expect(links.getByText('Verify with', { exact: true })).toHaveCount(0)
+  expect((await savedMap(page)).connectors).toBeUndefined()
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await mount(page, mapEditor, { props: { modelValue: JSON.stringify(persisted), readonly: true }, dark: true })
+  await plan.press('ArrowRight')
+  await expect(tree.getByRole('treeitem', { name: 'Sample', exact: true })).toBeFocused()
+  await page.screenshot({ path: testInfo.outputPath('mindmap-connection-mobile-dark.png') })
+  await page.keyboard.press('ArrowRight')
+  await expect(plan).toBeFocused()
+  await page.setViewportSize({ width: 1440, height: 1000 })
+  await mount(page, mapEditor, { props: { modelValue: JSON.stringify(persisted) } })
+  await value.press('Alt+Delete')
+  const remove = page.getByRole('dialog', { name: 'Delete node and all its children', exact: true })
+  await remove.getByRole('button', { name: 'Delete node and all its children', exact: true }).click()
+  await expect(value).toHaveCount(0)
+  expect((await savedMap(page)).connectors).toBeUndefined()
+  await expect(plan).toBeVisible()
+})
+
+test('choosing among several connections keeps keyboard navigation on the map', async ({ page }) => {
+  const nodes = [
+    { id: 'root', parent: null, title: 'Survey' },
+    { id: 'plan', parent: 'root', title: 'Plan' },
+    { id: 'results', parent: 'root', title: 'Results' },
+    { id: 'sample', parent: 'results', title: 'Sample' },
+    { id: 'archive', parent: 'root', title: 'Archive' },
+  ]
+  const connectors = [
+    { source: 'plan', target: 'sample', label: 'Verify with' },
+    { source: 'archive', target: 'plan', label: 'Reference' },
+  ]
+  await mount(page, mapEditor, { props: { modelValue: JSON.stringify({ version: 1, nodes, connectors }) } })
+  const tree = page.getByRole('tree')
+  const plan = tree.getByRole('treeitem', { name: 'Plan', exact: true })
+  const archive = tree.getByRole('treeitem', { name: 'Archive', exact: true })
+  const first = page.getByRole('button', { name: /^Verify with to Sample\./ })
+  const second = page.getByRole('button', { name: /^Reference to Archive\./ })
+  await tree.getByRole('button', { name: 'Collapse Results' }).click()
+  await plan.press('ArrowRight')
+  await expect(first).toBeFocused()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.keyboard.press('ArrowDown')
+  await expect(second).toBeFocused()
+  await page.keyboard.press('ArrowUp')
+  await expect(first).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(plan).toBeFocused()
+  await expect(first).toHaveCount(0)
+  await page.keyboard.press('ArrowRight')
+  await expect(first).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('ArrowRight')
+  await expect(archive).toBeFocused()
+  await page.keyboard.press('ArrowRight')
+  await expect(plan).toBeFocused()
+})
+
 test('global replace preserves rich markup and undo restores the complete operation across folded branches', async ({ page }) => {
   const nodes = [
     { id: 'root', parent: null, title: 'Field survey' },

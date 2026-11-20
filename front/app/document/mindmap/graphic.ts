@@ -3,7 +3,7 @@ import { normalizedTagIcon, preparePortableDocumentSnapshot, printStaticDocument
 import branchCss from './branch.css?inline'
 import graphicCss from './graphic.css?inline'
 import { mindMapLinkHtml, mindMapParagraphHtml, mindMapResourceBody } from './content'
-import { nodesByParent, type MindMap, type MindMapNode } from './model'
+import { connectorDescriptions, nodesByParent, type MindMap, type MindMapNode } from './model'
 
 type Graphic = { document: Document; chart: HTMLElement }
 
@@ -18,12 +18,14 @@ export async function prepareMindMapGraphic(
   archive?: { attachments: DocumentResource[]; heading: string },
 ): Promise<Graphic> {
   const bodies = map.nodes.map(node => mindMapResourceBody(node.body_html ?? ''))
+  const descriptions = connectorDescriptions(map)
   // Isolate raw HTML within its node before preparing the combined snapshot.
   // A marker preserves empty nodes through the editorial empty-content check.
   const markup = map.nodes.map((node, index) => {
     const note = node.note ? mindMapParagraphHtml(node.note) : ''
     const link = node.link ? mindMapLinkHtml(node.link) : ''
-    return `<blockquote><span>&#8203;</span>${note}${link}${sanitizeRichHtml(bodies[index]!.html, 'document')}</blockquote>`
+    const connectors = (descriptions.get(node.id) ?? []).map(mindMapParagraphHtml).join('')
+    return `<blockquote><span>&#8203;</span>${note}${link}${sanitizeRichHtml(bodies[index]!.html, 'document')}${connectors}</blockquote>`
   }).join('')
   const content = archive ? withAttachmentInventory(markup, archive.attachments, archive.heading) : markup
   const html = await preparePortableDocumentSnapshot(content, title, signal, resolveImage, undefined,

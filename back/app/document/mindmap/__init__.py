@@ -49,19 +49,35 @@ class MindMapTheme(BaseModel):
     version: int = Field(ge=1, le=2**53 - 1)
 
 
+class MindMapConnector(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    source: NodeKey
+    target: NodeKey
+    label: Annotated[str, StringConstraints(min_length=1, max_length=120, pattern=r"\S")]
+
+
 class MindMap(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     version: Literal[1]
     nodes: list[MindMapNode] = Field(min_length=1, max_length=MAX_NODES)
+    connectors: list[MindMapConnector] = Field(default_factory=list[MindMapConnector], max_length=1000)
     theme: MindMapTheme | None = None
     background_color: BackgroundColor | None = None
 
     @model_validator(mode="after")
     def validate_tree(self) -> "MindMap":
         children = self.children()
-        if len({node.id for node in self.nodes}) != len(self.nodes) or len(children.get(None, [])) != 1:
+        ids = {node.id for node in self.nodes}
+        if len(ids) != len(self.nodes) or len(children.get(None, [])) != 1:
             raise ValueError("A mind map needs unique node IDs and exactly one root")
+        pairs: set[frozenset[str]] = set()
+        for connector in self.connectors:
+            pair = frozenset((connector.source, connector.target))
+            if len(pair) != 2 or not pair <= ids or pair in pairs:
+                raise ValueError("A mind map connector must link two existing nodes with no duplicate pair")
+            pairs.add(pair)
         pending = [(self.root, 0)]
         visited = 0
         while pending:
@@ -137,13 +153,19 @@ def remap_references(content: str, mapping: Mapping[str, str]) -> str:
 
 
 def extract(content: str) -> str:
-    return "\n".join(part for node in MindMap.model_validate_json(content).ordered()
-                     for part in (node.title, node.value, node.note, visible_text(node.body_html) if node.body_html else "") if part)
+    mindmap = MindMap.model_validate_json(content)
+    return "\n".join([part for node in mindmap.ordered()
+                      for part in (node.title, node.value, node.note, visible_text(node.body_html) if node.body_html else "") if part]
+                     + [connector.label for connector in mindmap.connectors])
 
 
 def static_snapshot(content: str) -> str:
     mindmap = MindMap.model_validate_json(content)
     children = mindmap.children()
+    labels = {node.id: node.title or node.id for node in mindmap.nodes}
+    descriptions: dict[str, list[str]] = defaultdict(list)
+    for connector in mindmap.connectors:
+        descriptions[connector.source].append(f"<p>{escape(connector.label)} → {escape(labels[connector.target])}</p>")
 
     def branch(node: MindMapNode) -> str:
         nested = "".join(branch(child) for child in children.get(node.id, []))
@@ -152,6 +174,7 @@ def static_snapshot(content: str) -> str:
         link = f"<p>{escape(node.link)}</p>" if node.link else ""
         checkbox = ("☑ " if node.checked else "☐ ") if node.checked is not None else ""
         value = f" {escape(node.value)}" if node.value else ""
-        return f"<li><strong>{checkbox}{escape(node.title)}</strong>{value}{note}{body}{link}" + (f"<ul>{nested}</ul>" if nested else "") + "</li>"
+        connectors = "".join(descriptions[node.id])
+        return f"<li><strong>{checkbox}{escape(node.title)}</strong>{value}{note}{body}{link}{connectors}" + (f"<ul>{nested}</ul>" if nested else "") + "</li>"
 
     return f"<ul>{branch(mindmap.root)}</ul>"

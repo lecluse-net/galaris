@@ -131,6 +131,17 @@ The **Keyboard help** button under **View** and **Alt+0** open the map's shortcu
 moves them up one level just after their parent, and **Ctrl/Cmd+→** makes them children
 of the previous sibling. These shortcuts also work from a focused value field.
 
+To connect two nodes in the map, select both with **Ctrl/Cmd+click** or the selection
+shortcuts, then open **Node connections** and enter a label, such as “depends on.”
+The arrow points to the last node selected. A dashed line appears when
+both nodes are visible. Click the line or its label to rename or delete the connection.
+Outside text editing, **→** follows a connection in either direction and **Alt+→**
+goes to the first child. **Alt+J** also jumps to the other endpoint while editing.
+These shortcuts expand the destination’s ancestors if needed. A single connection is followed
+immediately. With several connections, the first is highlighted. Use **↑/↓** to choose another
+connection, **→** to follow it, or **Escape** to return to the node.
+The Galaris format preserves connections. Static exports list them as text.
+
 Under **Node**, choose **Add checkbox**. Click the checkbox or press **Space** on the
 node outside editing to check or uncheck it. While editing, **Space** inserts a space.
 The document saves the checkbox state. A new sibling added immediately after a node with

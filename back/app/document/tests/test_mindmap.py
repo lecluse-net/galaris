@@ -11,7 +11,7 @@ from pydantic import TypeAdapter
 from app.document import mcp, resource_service
 from app.document.file_import import DocumentImportSource, convert_document_import
 from app.document.mindmap import INITIAL_CONTENT, MindMap
-from app.document.mindmap.commands import AddBranch, BranchCommand, MoveBranch, apply_commands
+from app.document.mindmap.commands import AddBranch, BranchCommand, MoveBranch, RemoveBranch, apply_commands
 from app.document.mindmap.exchange import MEDIA_TYPE, export_source, import_source
 from app.services import McpToolContext
 
@@ -73,6 +73,26 @@ def test_existing_mind_map_import_uses_its_native_format_even_with_an_interchang
     )) == ("mindmap", INITIAL_CONTENT)
 
 
+def test_node_connections_survive_moves_and_are_removed_with_an_endpoint():
+    source = json.loads(import_source("example.mm", "", FREEPLANE))
+    nodes = source["nodes"]
+    first, second = nodes[1]["id"], nodes[-1]["id"]
+    link = {"source": first, "target": second, "label": "Depends on"}
+    source["connectors"] = [link]
+    mindmap = MindMap.model_validate(source)
+    moved = apply_commands(mindmap, [MoveBranch(operation="move", node_id=first, parent_id=second)])
+    assert json.loads(moved.source())["connectors"] == [link]
+    removed = apply_commands(moved, [RemoveBranch(operation="remove", node_id=second)])
+    assert not removed.connectors
+    for invalid in (
+        [{**link, "target": first}],
+        [{**link, "target": "missing"}],
+        [link, {**link, "source": second, "target": first}],
+    ):
+        with pytest.raises(ValueError, match="must link two existing nodes"):
+            MindMap.model_validate({**source, "connectors": invalid})
+
+
 def test_native_import_and_branch_commands_preserve_a_theme_from_a_newer_viewer():
     source = json.loads(INITIAL_CONTENT)
     source["theme"] = {"id": "future-palette", "version": 2}
@@ -113,6 +133,7 @@ async def test_uploaded_map_uses_normal_revisions_and_authorized_export(client):
     updated["nodes"][1]["checked"] = False
     updated["nodes"][0]["value"] = "001 A"
     updated["nodes"][1]["value"] = ""
+    updated["connectors"] = [{"source": updated["nodes"][1]["id"], "target": updated["nodes"][-1]["id"], "label": "Depends on"}]
     updated["nodes"][1]["body_html"] = (
         '<blockquote class="galaris-link-card" data-resource-mode="embed" data-resource-size="640x360">'
         f'<p><a href="document://{empty.json()["id"]}">Source mind map</a></p></blockquote>'
@@ -126,6 +147,7 @@ async def test_uploaded_map_uses_normal_revisions_and_authorized_export(client):
     reopened_source = json.loads(reopened.text)
     assert reopened_source["theme"] == updated["theme"]
     assert reopened_source["background_color"] == "#264851"
+    assert reopened_source["connectors"] == updated["connectors"]
     nodes = reopened_source["nodes"]
     assert [node.get("checked") for node in nodes] == [True, False, None, None]
     assert [node.get("value") for node in nodes] == ["001 A", "", None, None]
@@ -134,6 +156,7 @@ async def test_uploaded_map_uses_normal_revisions_and_authorized_export(client):
     previous_source = json.loads(previous.text)
     assert "theme" not in previous_source
     assert "background_color" not in previous_source
+    assert "connectors" not in previous_source
     assert all("checked" not in node for node in previous_source["nodes"])
     assert all("value" not in node for node in previous_source["nodes"])
     assert "data-resource-size" not in previous_source["nodes"][1].get("body_html", "")

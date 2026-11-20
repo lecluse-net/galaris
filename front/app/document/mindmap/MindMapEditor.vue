@@ -58,6 +58,10 @@
             :aria-label="t('documents.mindmapValue.copyTable')" @click="copySelectedValues(true)">
             <q-tooltip>{{ t('documents.mindmapValue.copyTable') }}</q-tooltip>
           </q-btn>
+          <q-btn v-if="!readonly || connectorsByNode.has(active.id)" flat dense color="primary" icon="hub"
+            :aria-label="t('documents.mindmapConnectors.title')" @click="openSelectedConnectors">
+            <q-tooltip>{{ t('documents.mindmapConnectors.title') }}</q-tooltip>
+          </q-btn>
         </div>
       </div>
       <div v-if="!readonly" class="editorial-toolbar-group" role="group" :aria-label="t('documents.mindmapThemes.appearance')">
@@ -210,7 +214,8 @@
       @pointerdown="onCanvasPointerDown" @pointermove="pointerMove" @pointerup="pointerEnd" @pointercancel="pointerEnd"
       @lostpointercapture="pointerEnd" @pointerleave="pointerLeave" @wheel="wheel">
       <div class="mindmap-plane" :style="planeStyle">
-      <ul ref="stage" class="mindmap-root" :style="stageStyle" role="tree" aria-multiselectable="true" :aria-label="t('documents.formats.mindmap')">
+      <ul ref="stage" class="mindmap-root" :class="{ 'mindmap-root--connected': connectorPaths.length }"
+        :style="stageStyle" role="tree" aria-multiselectable="true" :aria-label="t('documents.formats.mindmap')">
         <MindMapBranch :node="root" :children="children" :selected="visibleSelection" :focused="leavingTree ? '' : active.id" :folded="folded"
           :level="0" :document-title="documentTitle">
           <template #default="{ node, label, hasChildren, closed }">
@@ -251,6 +256,9 @@
                     <q-tooltip>{{ t('documents.mindmapValue.copy') }}</q-tooltip>
                   </q-btn>
                 </template>
+                <q-btn v-if="connectorsByNode.has(node.id)" flat round dense color="primary" icon="hub" size="sm"
+                  :tabindex="selectedIds.has(node.id) ? 0 : -1"
+                  :aria-label="t('documents.mindmapConnectors.forNode', { node: label })" @click="openConnectors(node.id)" />
                 <q-btn v-if="node.note || node.link" flat round dense icon="notes" size="sm" tabindex="-1"
                   :aria-label="t('documents.mindmap.details')" :aria-expanded="detailsOpen(node)"
                   @click="toggleDetails(node.id)" />
@@ -308,6 +316,25 @@
           </template>
         </MindMapBranch>
       </ul>
+      <svg v-if="connectorPaths.length" class="mindmap-connectors" :style="stageStyle" width="1" height="1">
+        <defs>
+          <marker :id="connectorMarker" viewBox="0 0 8 8" markerWidth="6" markerHeight="6" refX="8" refY="4" orient="auto">
+            <path class="mindmap-connector-arrow" d="M 0 0 L 8 4 L 0 8 Z" />
+          </marker>
+        </defs>
+        <g v-for="connector in connectorPaths" :key="connector.key" role="button" tabindex="-1"
+          :data-connector-key="connector.key"
+          :class="{ 'mindmap-connector--active': connectorNavigation?.key === connector.key }"
+          :aria-label="connectorNavigation?.key === connector.key ? connectorNavigationLabel : t('documents.mindmapConnectors.openNamed', { label: connector.label })"
+          @pointerdown.stop @click="openConnectorByKey(connector.key)"
+          @keydown="onConnectorNavigationKeydown($event, connector.key)"
+          @focusout="leaveConnectorNavigation(connector.key)"
+          @keydown.enter.space.stop.prevent="openConnectorByKey(connector.key)">
+          <path class="mindmap-connector-line" :d="connector.path" :marker-end="`url(#${connectorMarker})`" />
+          <path class="mindmap-connector-hit" :d="connector.path" />
+          <text :x="connector.x" :y="connector.y" :text-anchor="connector.anchor" class="mindmap-connector-label">{{ connector.label }}</text>
+        </g>
+      </svg>
       </div>
     </div>
     <input ref="horizontalBar" class="mindmap-scrollbar" type="range" min="0" :max="horizontalLimit" :value="horizontalPosition"
@@ -367,6 +394,63 @@
         </q-form>
       </q-card>
     </q-dialog>
+    <q-dialog :model-value="Boolean(connectorNode)" :aria-label="t('documents.mindmapConnectors.title')"
+      @update:model-value="connectorNodeId = undefined">
+      <q-card class="galaris-dialog-card" style="width: 520px; max-width: 95vw">
+        <DialogHeader :title="t('documents.mindmapConnectors.title')" :close-label="t('common.close')" />
+        <q-card-section v-if="connectorNode" class="galaris-dialog-body q-gutter-sm">
+          <q-form v-if="connectorTargetNode && !readonly" class="q-gutter-sm" @submit="saveConnector">
+            <div class="text-subtitle1">{{ nodeLabel(connectorNode) }} → {{ nodeLabel(connectorTargetNode) }}</div>
+            <q-input v-model="connectorLabel" dense outlined autofocus :maxlength="maxConnectorLabelLength"
+              :label="t('documents.mindmapConnectors.label')" />
+            <div class="row justify-end q-gutter-sm">
+              <q-btn v-if="connectorEdit" color="negative" :label="t('documents.mindmapConnectors.remove')"
+                @click="connectorRemoval = connectorEdit" />
+              <q-btn type="submit" color="primary" :disable="!canSaveConnector"
+                :label="t(connectorEdit ? 'documents.mindmapConnectors.rename' : 'documents.mindmapConnectors.add')" />
+            </div>
+          </q-form>
+          <template v-else>
+            <div class="text-subtitle1">{{ nodeLabel(connectorNode) }}</div>
+            <q-list v-if="currentConnectors.length" separator>
+              <q-item v-for="({ connector, other }, index) in currentConnectors" :key="connectorKey(connector)">
+                <q-item-section>
+                  <q-item-label>{{ connector.label }}</q-item-label>
+                  <q-item-label caption>
+                    {{ t(connector.source === connectorNode.id ? 'documents.mindmapConnectors.toNode' : 'documents.mindmapConnectors.fromNode', { node: nodeLabel(other) }) }}
+                  </q-item-label>
+                </q-item-section>
+                <q-item-section side>
+                  <div class="row no-wrap">
+                    <q-btn flat round dense color="primary" icon="arrow_forward"
+                      :data-autofocus="index === 0 || undefined"
+                      :aria-label="t('documents.mindmapConnectors.jumpTo', { node: nodeLabel(other) })" @click="jumpToConnector(other.id)" />
+                    <q-btn v-if="!readonly" flat round dense color="primary" icon="edit"
+                      :aria-label="t('documents.mindmapConnectors.renameNamed', { label: connector.label })" @click="editConnector(connector)" />
+                    <q-btn v-if="!readonly" flat round dense color="negative" icon="delete"
+                      :aria-label="t('documents.mindmapConnectors.removeNamed', { label: connector.label })" @click="connectorRemoval = connector" />
+                  </div>
+                </q-item-section>
+              </q-item>
+            </q-list>
+            <div v-else>{{ t(readonly ? 'documents.mindmapConnectors.empty' : 'documents.mindmapConnectors.selectTwo') }}</div>
+          </template>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
+    <q-dialog data-confirmation :model-value="Boolean(connectorRemoval)" :aria-label="t('documents.mindmapConnectors.remove')"
+      @update:model-value="connectorRemoval = undefined">
+      <q-card class="galaris-dialog-card" style="width: 480px; max-width: 95vw">
+        <DialogHeader :title="t('documents.mindmapConnectors.remove')" :close-label="t('common.close')" />
+        <q-card-section class="galaris-dialog-body">
+          {{ t('documents.mindmapConnectors.confirmRemove', { label: connectorRemoval?.label ?? '' }) }}
+        </q-card-section>
+        <q-card-actions align="right">
+          <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" />
+          <q-btn data-autofocus color="negative" :label="t('documents.mindmapConnectors.remove')" @click="removeConnector" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
     <q-dialog data-confirmation :model-value="pendingRemove !== null" :aria-label="removeLabel"
       @update:model-value="pendingRemove = null">
       <q-card class="galaris-dialog-card" style="width: 480px; max-width: 95vw">
@@ -416,9 +500,10 @@ import { createDocumentPdf, documentReferenceCards, DocumentPdfShareDialog, Docu
 import DocumentTagIconPicker from '../components/DocumentTagIconPicker.vue'
 import MindMapBranch from './MindMapBranch.vue'
 import { mindMapDroppedResources, mindMapLinkHtml, mindMapOutline, mindMapParagraphHtml, mindMapReferenceUri, mindMapResourceBody } from './content'
-import { isHexColor, maxDepth, maxNodes, maxValueLength, mindMapNodeLabel, nodesByParent, parseMindMap, type MindMapNode } from './model'
+import { connectorKey, isHexColor, maxConnectorLabelLength, maxConnectors, maxDepth, maxNodes, maxValueLength, mindMapNodeLabel, nodesByParent, parseMindMap, type MindMapConnector, type MindMapNode } from './model'
 import { replaceMindMapMatches, searchMindMap, type MindMapMatch } from './search'
 import { useMindMapHistory } from './useMindMapHistory'
+import { useMindMapConnectors } from './useMindMapConnectors'
 import { useMindMapViewport } from './useMindMapViewport'
 
 defineOptions({ inheritAttrs: false })
@@ -446,6 +531,7 @@ const { undo, redo } = history
 const { t } = useI18n()
 const $q = useQuasar()
 const canvasId = useId()
+const connectorMarker = useId()
 const canvas = useTemplateRef<HTMLElement>('canvas')
 const stage = useTemplateRef<HTMLElement>('stage')
 const toolbar = useTemplateRef<HTMLElement>('toolbar')
@@ -504,6 +590,12 @@ const themeDraft = ref<ThemeId>('solaire')
 const backgroundDraft = ref<string>()
 const themeVersion = 1
 const iconId = ref<string>()
+const connectorNodeId = ref<string>()
+const connectorRemoval = shallowRef<MindMapConnector>()
+const connectorEdit = shallowRef<MindMapConnector>()
+const connectorNavigation = shallowRef<{ origin: string; key: string; destination: string; label: string }>()
+const connectorTarget = ref<string>()
+const connectorLabel = ref('')
 const selected = ref('')
 type BranchSelection = { kind: 'all' } | { kind: 'range'; anchor: string } | { kind: 'nodes'; anchor: string; ids: ReadonlySet<string> }
 const branchSelection = shallowRef<BranchSelection>()
@@ -525,7 +617,8 @@ const dragged = shallowRef<string[]>()
 type BranchPlacement = 'before' | 'inside' | 'after'
 const dropTarget = shallowRef<{ id: string; placement: BranchPlacement }>()
 type BranchClipboard = { token: string; text: string } & (
-  { mode: 'copy'; nodes: MindMapNode[]; height: number } | { mode: 'cut'; ids: string[] } | { mode: 'inactiveCut' }
+  { mode: 'copy'; nodes: MindMapNode[]; connectors: MindMapConnector[]; height: number }
+  | { mode: 'cut'; ids: string[] } | { mode: 'inactiveCut' }
 )
 const branchClipboardMime = 'application/x-galaris-mindmap-clipboard'
 const branchClipboard = shallowRef<BranchClipboard>()
@@ -675,6 +768,40 @@ function nodesInBranchOrder(collapsed?: ReadonlySet<string>): MindMapNode[] {
 }
 const visibleNodes = computed(() => nodesInBranchOrder(folded.value))
 const orderedNodes = computed(() => nodesInBranchOrder())
+const connectors = computed(() => map.value?.connectors ?? [])
+const connectorPaths = useMindMapConnectors(stage, visibleNodes, connectors)
+type ConnectedNode = { connector: MindMapConnector; other: MindMapNode }
+const connectorsByNode = computed(() => {
+  const index = new Map<string, ConnectedNode[]>()
+  function add(node: string, connector: MindMapConnector, other: MindMapNode): void {
+    const links = index.get(node)
+    if (links) links.push({ connector, other })
+    else index.set(node, [{ connector, other }])
+  }
+  for (const connector of connectors.value) {
+    const source = byId.value.get(connector.source), target = byId.value.get(connector.target)
+    if (source && target) {
+      add(source.id, connector, target)
+      add(target.id, connector, source)
+    }
+  }
+  return index
+})
+const connectorNavigationLabel = computed(() => {
+  const choice = connectorNavigation.value
+  const node = choice ? byId.value.get(choice.destination) : undefined
+  return choice && node ? t('documents.mindmapConnectors.navigateNamed', { label: choice.label, node: nodeLabel(node) }) : undefined
+})
+const connectorNode = computed(() => byId.value.get(connectorNodeId.value ?? ''))
+const connectorTargetNode = computed(() => byId.value.get(connectorTarget.value ?? ''))
+const currentConnectors = computed(() => connectorsByNode.value.get(connectorNode.value?.id ?? '') ?? [])
+const formConnector = computed(() => currentConnectors.value.find(link => link.other.id === connectorTargetNode.value?.id)?.connector)
+const canSaveConnector = computed(() => {
+  const label = connectorLabel.value.trim()
+  if (props.readonly || !connectorTargetNode.value || !label || Array.from(label).length > maxConnectorLabelLength) return false
+  if (!connectorEdit.value) return connectors.value.length < maxConnectors && !formConnector.value
+  return formConnector.value?.label === connectorEdit.value.label && label !== connectorEdit.value.label
+})
 const selection = computed(() => {
   const currentSelection = branchSelection.value
   if (currentSelection?.kind === 'all') return orderedNodes.value
@@ -737,6 +864,10 @@ const keyboardShortcuts = computed(() => {
     ] : []),
     [t(props.readonly ? 'documents.mindmapHelp.fold' : 'documents.mindmapHelp.foldWithoutCheckbox'), space],
     [t('documents.mindmapHelp.leave'), `${escape}, Tab`],
+    [t('documents.mindmapConnectors.shortcut'), 'Alt+J'],
+    [t('documents.mindmapConnectors.follow'), '→'],
+    [t('documents.mindmapConnectors.navigateLinks'), '↑ ↓'],
+    [t('documents.mindmapConnectors.firstChild'), 'Alt+→'],
     [t('richEditor.help'), 'Alt+0'],
   ]
 })
@@ -810,10 +941,11 @@ function canPasteBranches(parent: MindMapNode): boolean {
   if (!clip || clip.mode === 'inactiveCut' || !map.value || props.readonly) return false
   if (clip.mode === 'cut') return canMoveTo(cutBranches.value, cutSubtree.value, parent)
   return map.value.nodes.length + clip.nodes.length <= maxNodes && depth(parent) + 1 + clip.height <= maxDepth
+    && connectors.value.length + clip.connectors.length <= maxConnectors
 }
 
-function commit(nodes: MindMapNode[], group?: string): void {
-  if (!props.readonly && map.value) history.record({ ...map.value, nodes }, group)
+function commit(nodes: MindMapNode[], group?: string, links = map.value?.connectors): void {
+  if (!props.readonly && map.value) history.record({ ...map.value, nodes, connectors: links?.length ? links : undefined }, group)
 }
 
 function restoreHistory(direction: 'undo' | 'redo'): void {
@@ -850,7 +982,7 @@ function closeSearch(): void {
 function revealMatch({ target, range }: MindMapMatch, focusValue = false): void {
   const node = byId.value.get(target.id)
   if (!node) return
-  for (let parent = node.parent; parent; parent = byId.value.get(parent)?.parent ?? null) folded.value.delete(parent)
+  unfoldAncestors(node)
   if (target.field === 'note') details.value.add(node.id)
   selectNode(node.id)
   void nextTick(() => {
@@ -862,6 +994,69 @@ function revealMatch({ target, range }: MindMapMatch, focusValue = false): void 
     }
     reveal(input ?? branchElement(node.id)?.firstElementChild)
   })
+}
+
+function unfoldAncestors(node: MindMapNode): void {
+  for (let parent = node.parent; parent; parent = byId.value.get(parent)?.parent ?? null) folded.value.delete(parent)
+}
+
+function openConnectors(id: string, target?: string): void {
+  if (!byId.value.has(id)) return
+  connectorTarget.value = target
+  connectorLabel.value = ''
+  connectorEdit.value = undefined
+  connectorNodeId.value = id
+}
+
+function editConnector(connector: MindMapConnector): void {
+  openConnectors(connector.source, connector.target)
+  connectorEdit.value = connector
+  connectorLabel.value = connector.label
+}
+
+function openConnectorByKey(key: string): void {
+  const connector = connectors.value.find(link => connectorKey(link) === key)
+  if (!connector) return
+  if (props.readonly) openConnectors(connector.source)
+  else editConnector(connector)
+}
+
+function openSelectedConnectors(): void {
+  const [first, second] = selection.value
+  if (!props.readonly && !leavingTree.value && selection.value.length === 2 && first && second
+    && connectors.value.length < maxConnectors && !connectorsByNode.value.get(first.id)?.some(link => link.other.id === second.id)) {
+    const [source, target] = active.value.id === first.id ? [second, first] : [first, second]
+    openConnectors(source.id, target.id)
+  } else openConnectors(active.value.id)
+}
+
+function saveConnector(): void {
+  const source = connectorNode.value?.id, target = connectorTarget.value
+  if (!source || !target || !map.value || !canSaveConnector.value) return
+  const connector = { source, target, label: connectorLabel.value.trim() }
+  const links = connectorEdit.value
+    ? connectors.value.map(link => link === formConnector.value ? connector : link)
+    : [...connectors.value, connector]
+  commit(map.value.nodes, undefined, links)
+  openConnectors(source)
+}
+
+function jumpToConnector(id: string): void {
+  const node = byId.value.get(id)
+  if (!node) return
+  connectorNavigation.value = undefined
+  connectorNodeId.value = undefined
+  unfoldAncestors(node)
+  focusNode(id)
+}
+
+function removeConnector(): void {
+  const connector = connectorRemoval.value
+  connectorRemoval.value = undefined
+  if (!connector || !map.value) return
+  commit(map.value.nodes, undefined, connectors.value.filter(link =>
+    link.source !== connector.source || link.target !== connector.target || link.label !== connector.label))
+  if (connectorEdit.value === connector) openConnectors(connector.source)
 }
 
 function findNext(): void {
@@ -1060,6 +1255,16 @@ function openIconPicker(): void {
 
 function onNodeShortcut(event: KeyboardEvent, node: MindMapNode): boolean {
   const { key, altKey, ctrlKey, metaKey, shiftKey } = event
+  if (!event.defaultPrevented && !event.isComposing && altKey && !ctrlKey && !metaKey && !shiftKey && key.toLowerCase() === 'j') {
+    if (props.readonly && !connectorsByNode.value.has(node.id)) return false
+    event.preventDefault()
+    event.stopPropagation()
+    if (!event.repeat) {
+      if (!props.readonly && selection.value.length === 2) openSelectedConnectors()
+      else if (!followConnector(node.id)) openConnectors(node.id)
+    }
+    return true
+  }
   if (props.readonly || event.defaultPrevented || event.isComposing || altKey || ctrlKey || metaKey || shiftKey
     || !['F2', 'F3', 'F4', 'F6'].includes(key) || (key === 'F2' && node.body_html && node.value == null)) return false
   event.preventDefault()
@@ -1737,7 +1942,8 @@ function removeBranches(): void {
   const { ids } = selectedSubtree.value
   pendingRemove.value = null
   for (const id of ids) oversizedBodies.value.delete(id)
-  commit(map.value.nodes.filter(node => !ids.has(node.id)))
+  commit(map.value.nodes.filter(node => !ids.has(node.id)), undefined,
+    connectors.value.filter(link => !ids.has(link.source) && !ids.has(link.target)))
   focusNode(parent)
 }
 
@@ -1752,7 +1958,8 @@ function storeBranches(mode: 'copy' | 'cut', transfer?: DataTransfer): void {
   const token = crypto.randomUUID(), text = selectionRoots.value.map(node => node.title).join('\n')
   branchClipboard.value = mode === 'cut'
     ? { mode, token, text, ids: selectionRoots.value.map(node => node.id) }
-    : { mode, token, text, nodes: map.value.nodes.filter(node => ids.has(node.id)), height }
+    : { mode, token, text, nodes: map.value.nodes.filter(node => ids.has(node.id)),
+      connectors: connectors.value.filter(link => ids.has(link.source) && ids.has(link.target)), height }
   if (transfer) {
     transfer.setData(branchClipboardMime, token)
     transfer.setData('text/plain', text)
@@ -1779,7 +1986,7 @@ function cancelCutFromToolbar(): void {
 }
 
 function onCutEscape(event: KeyboardEvent): void {
-  if (event.isComposing || !(event.target instanceof Element) || event.target.closest('.mindmap') !== event.currentTarget
+  if (connectorNavigation.value || event.isComposing || !(event.target instanceof Element) || event.target.closest('.mindmap') !== event.currentTarget
     || !cancelCut()) return
   event.preventDefault()
   event.stopPropagation()
@@ -1794,7 +2001,8 @@ function pasteBranches(target: MindMapNode): void {
   }
   const ids = new Map(clip.nodes.map(node => [node.id, crypto.randomUUID()]))
   const nodes = clip.nodes.map(node => ({ ...node, id: ids.get(node.id)!, parent: ids.get(node.parent ?? '') ?? parent }))
-  commit([...map.value.nodes, ...nodes])
+  const links = clip.connectors.map(link => ({ ...link, source: ids.get(link.source)!, target: ids.get(link.target)! }))
+  commit([...map.value.nodes, ...nodes], undefined, [...connectors.value, ...links])
   folded.value.delete(parent)
   focusBranches(nodes.filter(node => node.parent === parent))
 }
@@ -1967,6 +2175,10 @@ function onTreeKeydown(event: KeyboardEvent, inputNode?: MindMapNode): void {
     return
   }
   if (event.altKey) {
+    if (!event.ctrlKey && !event.metaKey && !event.shiftKey && event.key === 'ArrowRight') {
+      navigateBranches(event, node)
+      return
+    }
     if (!event.ctrlKey && !event.metaKey && (event.key === '0' || event.code === 'Digit0')) helpOpen.value = true
     else if (!event.ctrlKey && !event.metaKey && event.key === 'Delete' && canMoveSelection.value) confirmRemove()
     else if (event.key === 'Enter' && !props.readonly) openBody(node.id)
@@ -1978,7 +2190,12 @@ function onTreeKeydown(event: KeyboardEvent, inputNode?: MindMapNode): void {
   const branch = children.value.get(node.id)?.[0]
   if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && !props.readonly) openLinkDialog(node)
   else if (event.ctrlKey || event.metaKey) return
-  else if (event.key.startsWith('Arrow')) { navigateBranches(event, node); return }
+  else if (event.key.startsWith('Arrow')) {
+    if (event.key !== 'ArrowRight' || event.shiftKey || !followConnector(node.id, event.repeat)) {
+      navigateBranches(event, node)
+      return
+    }
+  }
   else if (event.key === ' ' && node.checked != null && !props.readonly) toggleCheckboxes(node)
   else if (event.key === ' ' && branch) toggleFold(node.id)
   else if (event.key === 'Escape') {
@@ -2001,8 +2218,56 @@ function onTreeKeydown(event: KeyboardEvent, inputNode?: MindMapNode): void {
   event.stopPropagation()
 }
 
+function followConnector(id: string, repeat = false): boolean {
+  const links = connectorsByNode.value.get(id)
+  if (!links?.length) return false
+  if (repeat) return true
+  if (links.length === 1) jumpToConnector(links[0]!.other.id)
+  else selectConnectorForNavigation(id, links[0]!)
+  return true
+}
+
+function selectConnectorForNavigation(origin: string, { connector, other }: ConnectedNode): void {
+  const key = connectorKey(connector)
+  connectorNavigation.value = { origin, key, destination: other.id, label: connector.label }
+  unfoldAncestors(other)
+  void nextTick(() => {
+    if (connectorNavigation.value?.key !== key) return
+    const path = stage.value?.parentElement?.querySelector<SVGElement>(`.mindmap-connectors > [data-connector-key="${key}"]`)
+    if (path) path.focus({ preventScroll: true })
+    else connectorNavigation.value = undefined
+  })
+}
+
+function leaveConnectorNavigation(key: string): void {
+  if (connectorNavigation.value?.key === key) connectorNavigation.value = undefined
+}
+
+function onConnectorNavigationKeydown(event: KeyboardEvent, key: string): void {
+  const choice = connectorNavigation.value
+  if (choice?.key !== key || event.isComposing || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey
+    || !['ArrowUp', 'ArrowDown', 'ArrowRight', 'Escape'].includes(event.key)) return
+  event.stopPropagation()
+  event.preventDefault()
+  const links = connectorsByNode.value.get(choice.origin) ?? []
+  const index = links.findIndex(link => connectorKey(link.connector) === key)
+  if (event.key === 'Escape' || index < 0) {
+    connectorNavigation.value = undefined
+    focusNode(choice.origin)
+  } else if (event.key === 'ArrowRight') {
+    if (!event.repeat) jumpToConnector(links[index]!.other.id)
+  } else {
+    const next = (index + links.length + (event.key === 'ArrowDown' ? 1 : -1)) % links.length
+    selectConnectorForNavigation(choice.origin, links[next]!)
+  }
+}
+
 function discardDraft(): void {
   history.clear()
+  connectorNodeId.value = undefined
+  connectorRemoval.value = undefined
+  connectorEdit.value = undefined
+  connectorNavigation.value = undefined
   endCut()
   editing.value = null
   editingTitle.value = undefined
@@ -2099,6 +2364,24 @@ defineExpose({ commitDraft, discardDraft, insertResource })
   user-select: text;
 }
 .mindmap-plane { position: relative; overflow: clip; }
+.mindmap-connectors { position: absolute; top: 0; transform-origin: top left; overflow: visible; pointer-events: none; }
+.mindmap-root--connected { z-index: 1; pointer-events: none; }
+.mindmap-root--connected .mindmap-node { pointer-events: auto; }
+.mindmap-connector-line { fill: none; stroke: var(--solaire-iris-accent); stroke-width: 1.6; stroke-dasharray: 5 3; }
+.mindmap-connector--active:focus { outline: none; }
+.mindmap-connector--active .mindmap-connector-line { stroke: var(--solaire-blue-accent); stroke-width: 3.2; }
+.mindmap-connector--active .mindmap-connector-label { font-weight: 700; }
+.mindmap-connector-hit { fill: none; stroke: transparent; stroke-width: 14px; pointer-events: stroke; cursor: pointer; }
+.mindmap-connector-arrow { fill: var(--solaire-iris-accent); }
+.mindmap-connector-label {
+  fill: var(--rich-foreground, currentColor);
+  stroke: var(--map-neutral);
+  stroke-width: 3px;
+  paint-order: stroke;
+  font-size: .75rem;
+  pointer-events: all;
+  cursor: pointer;
+}
 .mindmap-panning { cursor: grabbing; }
 .mindmap-root {
   position: absolute;

@@ -1,7 +1,7 @@
 import { attachmentReference, canonicalRichLink, documentResourceHtml, richLinkTarget, validRichLink } from '@/core/util'
 import { documentUriFromLink, providerImageReference, referenceMode, referenceUri, validReferenceAttribute } from '@/core/util/facade'
 
-import { nodesByParent, parseMindMap, type MindMap, type MindMapNode } from './model'
+import { connectorDescriptions, nodesByParent, parseMindMap, type MindMap, type MindMapNode } from './model'
 
 function escapeHtml(value: string): string {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
@@ -95,13 +95,15 @@ export function mindMapDroppedResources(data: DataTransfer): { links: DroppedRef
 
 export function mindMapOutline(map: MindMap): string {
   const children = nodesByParent(map.nodes)
+  const descriptions = connectorDescriptions(map)
   function branch(node: MindMapNode): string {
     const note = node.note ? mindMapParagraphHtml(node.note) : ''
     const link = node.link ? mindMapLinkHtml(node.link) : ''
     const branches = children.get(node.id) ?? []
     const checkbox = node.checked == null ? '' : node.checked ? '☑ ' : '☐ '
     const value = node.value ? ` ${escapeHtml(node.value)}` : ''
-    return `<li><p><strong>${checkbox}${escapeHtml(node.title)}</strong>${value}</p>${note}${link}${node.body_html ?? ''}${branches.length ? list(branches) : ''}</li>`
+    const connectors = (descriptions.get(node.id) ?? []).map(mindMapParagraphHtml).join('')
+    return `<li><p><strong>${checkbox}${escapeHtml(node.title)}</strong>${value}</p>${note}${link}${node.body_html ?? ''}${connectors}${branches.length ? list(branches) : ''}</li>`
   }
   function list(nodes: MindMapNode[]): string { return `<ul>${nodes.map(branch).join('')}</ul>` }
   return list(children.get(null) ?? [])

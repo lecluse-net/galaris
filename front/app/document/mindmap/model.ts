@@ -13,8 +13,48 @@ export interface MindMapNode {
 export interface MindMap {
   version: 1
   nodes: MindMapNode[]
+  connectors?: MindMapConnector[]
   theme?: { id: string; version: number } | null
   background_color?: string | null
+}
+
+export interface MindMapConnector {
+  source: string
+  target: string
+  label: string
+}
+
+export function connectorKey({ source, target }: MindMapConnector): string {
+  return source < target ? `${source}:${target}` : `${target}:${source}`
+}
+
+export const maxConnectors = 1000
+export const maxConnectorLabelLength = 120
+
+export function connectorDescriptions(map: MindMap): ReadonlyMap<string, string[]> {
+  const labels = new Map(map.nodes.map(node => [node.id, node.title || node.id]))
+  const descriptions = new Map<string, string[]>()
+  for (const { source, target, label } of map.connectors ?? []) {
+    const description = `${label} → ${labels.get(target)}`
+    const sourceDescriptions = descriptions.get(source)
+    if (sourceDescriptions) sourceDescriptions.push(description)
+    else descriptions.set(source, [description])
+  }
+  return descriptions
+}
+
+function validConnectors(connectors: unknown, ids: ReadonlySet<string>): connectors is MindMapConnector[] {
+  if (!Array.isArray(connectors) || connectors.length > maxConnectors) return false
+  const pairs = new Set<string>()
+  for (const entry of connectors) {
+    if (typeof entry !== 'object' || entry === null) return false
+    const connector = entry as Partial<MindMapConnector>
+    const { source, target, label } = connector
+    if (typeof source !== 'string' || typeof target !== 'string' || source === target || !ids.has(source) || !ids.has(target)
+      || typeof label !== 'string' || !label.trim() || Array.from(label).length > maxConnectorLabelLength) return false
+    pairs.add(connectorKey({ source, target, label }))
+  }
+  return pairs.size === connectors.length
 }
 
 export function mindMapNodeLabel(node: MindMapNode, documentTitle: string | undefined, untitled: string): string {
@@ -65,14 +105,17 @@ export function parseMindMap(source: string): MindMap | null {
     if (backgroundColor != null && !isHexColor(backgroundColor) && (typeof backgroundColor !== 'string' || !paletteKey.test(backgroundColor))) return null
     const children = nodesByParent(value.nodes)
     const roots = children.get(null)
-    if (roots?.length !== 1 || new Set(value.nodes.map(node => node.id)).size !== value.nodes.length) return null
+    const ids = new Set(value.nodes.map(node => node.id))
+    if (roots?.length !== 1 || ids.size !== value.nodes.length) return null
+    if (value.connectors !== undefined && !validConnectors(value.connectors, ids)) return null
     let count = 0
     function visit(nodes: MindMapNode[], depth: number): boolean {
       if (depth > maxDepth) return nodes.length === 0
       count += nodes.length
       return nodes.every(node => visit(children.get(node.id) ?? [], depth + 1))
     }
-    return visit(roots, 0) && count === value.nodes.length ? { version: 1, nodes: value.nodes, theme, background_color: backgroundColor } : null
+    return visit(roots, 0) && count === value.nodes.length
+      ? { version: 1, nodes: value.nodes, connectors: value.connectors, theme, background_color: backgroundColor } : null
   } catch {
     return null
   }

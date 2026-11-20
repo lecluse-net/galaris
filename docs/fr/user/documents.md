@@ -146,6 +146,17 @@ Pendant l’édition du titre, de la note ou du lien, **Entrée** valide et **É
 saut de ligne dans une note. Depuis un nœud, **Échap**, puis **Tab**, quitte la carte.
 Le bouton **Aide clavier** dans **Affichage** et **Alt+0** ouvrent la liste des raccourcis de la carte.
 
+Pour relier deux nœuds de la carte, sélectionnez-les tous les deux avec **Ctrl/Cmd+clic** ou
+avec les raccourcis de sélection, puis ouvrez **Liens entre nœuds** et saisissez un libellé,
+par exemple « dépend de ». La flèche pointe vers le dernier nœud sélectionné. Le lien apparaît
+en pointillés lorsque les deux nœuds sont visibles. Cliquez sur le trait ou son libellé
+pour renommer ou supprimer le lien. Hors saisie, **→** suit le lien dans les deux sens et
+**Alt+→** va au premier enfant. **Alt+J** permet aussi de naviguer vers l’autre extrémité,
+même pendant la saisie. Ces raccourcis déplient les parents du nœud au besoin. Avec un
+seul lien, le saut est immédiat. Avec plusieurs liens, le premier est mis en surbrillance.
+Utilisez **↑/↓** pour en choisir un autre, **→** pour le suivre ou **Échap** pour revenir au nœud.
+Le format Galaris conserve les liens. Les exports statiques les indiquent en texte.
+
 Dans **Nœud**, choisissez **Ajouter une case à cocher**. Cliquez sur la case ou appuyez
 sur **Espace** sur le nœud hors édition pour la cocher ou la décocher. En édition,
 **Espace** insère un espace. Le document enregistre l’état de la case. Un nouveau nœud frère
