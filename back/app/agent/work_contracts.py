@@ -44,11 +44,19 @@ class WorkMilestone(BaseModel):
         return not self.required and self.state in {"blocked", "skipped"}
 
 
-class WorkPlan(BaseModel):
+class WorkPlanInput(BaseModel):
+    """Work plan fields accepted before checking the complete tool call."""
+
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     schema_version: Literal["galaris.work-plan/v1"] = "galaris.work-plan/v1"
     milestones: list[WorkMilestone] = Field(min_length=1, max_length=20)
-    next_action: str = Field(default="", max_length=1000)
+    next_action: str = Field(default="", max_length=1000, description=(
+        "The next concrete action when required work is unfinished, including what must happen to unblock it."
+    ))
+
+
+class WorkPlan(WorkPlanInput):
+    """Validated plan stored as the durable progress record."""
 
     @model_validator(mode="after")
     def validate_progress(self) -> WorkPlan:
@@ -57,7 +65,7 @@ class WorkPlan(BaseModel):
         if sum(item.state == "doing" for item in self.milestones) > 1:
             raise ValueError("An executor has at most one current milestone")
         if any(item.state != "done" and not item.is_omitted for item in self.milestones) and not self.next_action.strip():
-            raise ValueError("Unfinished work must retain its next action")
+            raise ValueError("Unfinished work must retain its next action in next_action")
         if len(json.dumps(self.model_dump(mode="json"), ensure_ascii=False)) > 20_000:
             raise ValueError("Work tracking exceeds its bounded context budget")
         return self

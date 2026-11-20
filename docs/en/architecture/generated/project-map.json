@@ -8904,7 +8904,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "append_file",
-        "line": 471,
+        "line": 475,
         "module": "app.file_share",
         "name": "file_append",
         "namespace": "file_sharing"
@@ -8912,7 +8912,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "copy_file",
-        "line": 540,
+        "line": 555,
         "module": "app.file_share",
         "name": "file_copy",
         "namespace": "file_sharing"
@@ -8920,7 +8920,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "create_file",
-        "line": 385,
+        "line": 389,
         "module": "app.file_share",
         "name": "file_create",
         "namespace": "file_sharing"
@@ -8928,7 +8928,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "delete_file",
-        "line": 622,
+        "line": 637,
         "module": "app.file_share",
         "name": "file_delete",
         "namespace": "file_sharing"
@@ -8936,7 +8936,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "edit_file",
-        "line": 501,
+        "line": 508,
         "module": "app.file_share",
         "name": "file_edit",
         "namespace": "file_sharing"
@@ -8944,7 +8944,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "file_info",
-        "line": 178,
+        "line": 182,
         "module": "app.file_share",
         "name": "file_info",
         "namespace": "file_sharing"
@@ -8952,7 +8952,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "list_files",
-        "line": 150,
+        "line": 154,
         "module": "app.file_share",
         "name": "file_list",
         "namespace": "file_sharing"
@@ -8960,7 +8960,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "move_file",
-        "line": 592,
+        "line": 607,
         "module": "app.file_share",
         "name": "file_move",
         "namespace": "file_sharing"
@@ -8968,7 +8968,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "read_file",
-        "line": 277,
+        "line": 281,
         "module": "app.file_share",
         "name": "file_read",
         "namespace": "file_sharing"
@@ -8976,7 +8976,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "rename_file",
-        "line": 571,
+        "line": 586,
         "module": "app.file_share",
         "name": "file_rename",
         "namespace": "file_sharing"
@@ -8984,7 +8984,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "file_schemes",
-        "line": 126,
+        "line": 130,
         "module": "app.file_share",
         "name": "file_schemes",
         "namespace": "file_sharing"
@@ -8992,7 +8992,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "search_files",
-        "line": 221,
+        "line": 225,
         "module": "app.file_share",
         "name": "file_search",
         "namespace": "file_sharing"
@@ -9000,7 +9000,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "file_to_pdf",
-        "line": 310,
+        "line": 314,
         "module": "app.file_share",
         "name": "file_to_pdf",
         "namespace": "file_sharing"
@@ -9008,7 +9008,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "write_file",
-        "line": 436,
+        "line": 440,
         "module": "app.file_share",
         "name": "file_write",
         "namespace": "file_sharing"
@@ -9336,7 +9336,7 @@
       {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_get_task",
-        "line": 91,
+        "line": 92,
         "module": "app.task",
         "name": "task_get",
         "namespace": "galaris"
@@ -9344,7 +9344,7 @@
       {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_run_task",
-        "line": 203,
+        "line": 220,
         "module": "app.task",
         "name": "task_run",
         "namespace": "galaris"
@@ -9352,7 +9352,7 @@
       {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_stop_task",
-        "line": 179,
+        "line": 196,
         "module": "app.task",
         "name": "task_stop",
         "namespace": "galaris"
@@ -9360,7 +9360,7 @@
       {
         "file": "back/app/task/mcp.py",
         "handler": "mcp_work_update",
-        "line": 119,
+        "line": 122,
         "module": "app.task",
         "name": "task_work_update",
         "namespace": "galaris"

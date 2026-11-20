@@ -40,8 +40,9 @@ async def update_work_plan(
                 "work_plan_revision": work_plan_revision, "work_plan": payload}
     if work_plan_revision != expected_revision:
         raise WorkTrackingRejected(
-            "Work plan revision changed; read task_get and pass its work_plan_revision "
-            "as expected_revision before updating work tracking"
+            f"Work plan revision changed: sent {expected_revision}, current work_plan_revision={work_plan_revision}. "
+            "Call task_get, reconcile your changes with its current work_plan, and use the returned "
+            "work_plan_revision as expected_revision."
         )
     if isinstance(data.get("work_plan"), dict):
         previous = WorkPlan.model_validate(data["work_plan"])

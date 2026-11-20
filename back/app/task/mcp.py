@@ -6,10 +6,11 @@ import json
 import re
 import time
 from datetime import datetime
-from typing import Any, Literal, Optional
+from typing import Annotated, Any, Literal, Optional
 from uuid import UUID, uuid4
 
 from loguru import logger
+from pydantic import Field, ValidationError
 from sqlalchemy import String, cast, func, select, true
 
 from app.agent.contracts import ExecutionEffort, ExecutionResult, ForcedRoute
@@ -21,7 +22,7 @@ from core.database import get_db
 from core.i18n import default_language, is_supported, render_prompt, t
 from core.util import as_dict, visible_text
 from .access import agent_task_filter, require_agent_task_access
-from app.agent import WorkPlan, objective_blocker
+from app.agent import WorkPlan, WorkPlanInput, objective_blocker
 
 _OBJECTIVES_LIMIT = 4_000
 _FEEDBACK_LIMIT = 8_000
@@ -106,8 +107,10 @@ async def mcp_get_task(
     approval_reason="Record bounded progress on the executing agent's own Task",
     description=(
         "Persist milestones and next action for your current long or complex Task. Read "
-        "task_get first and pass its work_plan_revision (initially 0) as expected_revision. "
-        "Task revision is separate. Keep preparation, acceptance checks, verified "
+        "task_get first. Set expected_revision to the latest work_plan_revision (initially 0) "
+        "from task_get or a successful task_work_update, never the Task revision. "
+        "Set plan.next_action for unfinished required work, including blocked work. "
+        "Keep preparation, acceptance checks, verified "
         "observations and canonical resource references. Preserve completed milestones; "
         "changing them requires revision_reason. Separate required milestones (default true) "
         "from optional additions (required=false). Mark an unavailable optional addition "
@@ -117,11 +120,25 @@ async def mcp_get_task(
         "the Task or executing any business action. Simple tasks need no work plan."
     ), effect_policy="idempotent", concurrency_policy="exclusive")
 async def mcp_work_update(
-    ctx: McpToolContext, plan: WorkPlan, expected_revision: int,
+    ctx: McpToolContext, plan: WorkPlanInput, expected_revision: int,
     revision_reason: str = "",
+    next_action: Annotated[str | None, Field(max_length=1000, description="Alias for plan.next_action.")] = None,
 ) -> dict[str, object]:
-    from .work_tracking import update_work_plan
-    return await update_work_plan(ctx, plan, expected_revision=expected_revision,
+    from .work_tracking import WorkTrackingRejected, update_work_plan
+
+    payload = plan.model_dump()
+    if next_action is not None:
+        next_action = next_action.strip()
+        if "next_action" in plan.model_fields_set and next_action != plan.next_action:
+            raise WorkTrackingRejected("next_action and plan.next_action must agree; provide plan.next_action only")
+        payload["next_action"] = next_action
+    try:
+        validated = WorkPlan.model_validate(payload)
+    except ValidationError as exc:
+        # The input fields have been validated; only complete-plan constraints remain.
+        detail = exc.errors(include_input=False, include_context=False, include_url=False)[0]["msg"]
+        raise WorkTrackingRejected(f"Invalid plan: {detail}") from exc
+    return await update_work_plan(ctx, validated, expected_revision=expected_revision,
                                   revision_reason=revision_reason)
 
 

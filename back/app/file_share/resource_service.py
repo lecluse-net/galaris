@@ -2088,6 +2088,11 @@ async def resource_edit(
         observed_revision = None
     else:
         text, observed_revision = await _read_complete_text_and_revision(ctx, reference)
+    if reference.scheme == "document" and observed_revision != expected_revision:
+        raise ResourceRevisionConflict(
+            f"Document revision conflict: expected {expected_revision}, "
+            f"current revision is {observed_revision}; call file_read before retrying."
+        )
     descriptor = await resource_info(ctx, reference) if reference.scheme == "document" else None
     if descriptor is not None and descriptor.media_type == "text/html":
         from core.util import html_blocks, normalize_html
@@ -2099,15 +2104,6 @@ async def resource_edit(
         raise ResourceValidationError(
             f"Line range {start_line}-{end_line} exceeds the resource's {len(lines)} lines/blocks; "
             "use the complete blocks returned by file_read for HTML documents."
-        )
-    if (
-        reference.scheme == "document"
-        and expected_revision is not None
-        and observed_revision != expected_revision
-    ):
-        raise ResourceRevisionConflict(
-            f"Document revision conflict: expected {expected_revision}, "
-            f"current revision is {observed_revision}; call file_read before retrying."
         )
     replacement = content
     replaced_block = "".join(lines[start_line - 1 : end_line])

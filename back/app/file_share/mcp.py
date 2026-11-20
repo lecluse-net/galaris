@@ -15,10 +15,10 @@ from app.services import RecoverableToolError
 from app.services.contracts import ToolCallRejectedError
 from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
 from core.document import MAX_PDF_EXPORT_BYTES, convert_to_pdf
-from core.util import complete_io
+from core.util import RichTextError, complete_io
 
 from .resource_contracts import ResourceContext
-from .resource_uri import parse_resource_uri
+from .resource_uri import ResourceRevisionConflict, ResourceUriError, ResourceValidationError, parse_resource_uri
 from .resource_service import (
     _json_model,
     require_complete_content,
@@ -98,6 +98,10 @@ async def _file_preflight(ctx: McpToolContext, arguments: dict[str, Any]) -> dic
                     snapshot["sha256"] = hashlib.file_digest(stream, "sha256").hexdigest()
         snapshots[key] = snapshot
     return snapshots
+
+
+class FileEditRejected(RecoverableToolError, ToolCallRejectedError):
+    """The edit was refused before any replacement took effect."""
 
 
 def _decode_content(
@@ -482,7 +486,9 @@ async def append_file(ctx: McpToolContext, uri: str, content: str, expected_revi
     effect_descriptor=EffectDescriptorV1(capability="file.write", kind="mutate", target_arguments=("uri",), reversible=True, receipt="resource"),
     authorization_preflight=_file_preflight,
     description=(
-        "Replace a 1-based inclusive range in an existing UTF-8 resource. For HTML documents, "
+        "Replace a 1-based inclusive range in an existing UTF-8 resource. Use the exact URI "
+        "returned by file_read. Task edits require write authorization for that target. "
+        "For HTML documents, "
         "start_line/end_line identify complete blocks returned by file_read, content is valid HTML, "
         "and expected_revision is mandatory. Use this for focused prose corrections or consolidation. "
         "Match the first and last replacement blocks to that numbered range. A heading outside "
@@ -492,8 +498,9 @@ async def append_file(ctx: McpToolContext, uri: str, content: str, expected_revi
         "data:// Datasets use actual lines and require "
         "expected_revision; the complete result must remain valid JSON. For "
         "example start_line=10 and end_line=14 rewrites lines 10 through 14. Binary resources "
-        "are rejected. Pass expected_revision for document:// or galaris://skill/ when one is "
-        "already known. For Nextcloud, pass expected_etag from file_read when known; concurrent edits are rejected."
+        "are rejected. Pass expected_revision for galaris://skill/ when known. For Nextcloud, "
+        "pass expected_etag from file_read when known. On a revision or ETag conflict, read again "
+        "and locate the range in the current content before resubmitting the edit."
         " Contact JSON at galaris://contact/<uuid> requires expected_etag from file_read/file_info; "
         "only display_name and coordinates are editable, and the result must remain valid JSON."
     ),
@@ -509,8 +516,10 @@ async def edit_file(
 ) -> str:
     """Edit one explicit inclusive line range."""
 
-    return _json_model(
-        await resource_edit(
+    from app.document import DocumentConflictError
+
+    try:
+        edited = await resource_edit(
             await _resource_context(ctx),
             uri,
             start_line=start_line,
@@ -519,7 +528,13 @@ async def edit_file(
             expected_revision=expected_revision,
             expected_etag=expected_etag,
         )
-    )
+    except (ResourceValidationError, ResourceUriError, RichTextError) as exc:
+        raise FileEditRejected(str(exc)) from exc
+    except (ResourceRevisionConflict, DocumentConflictError) as exc:
+        raise FileEditRejected(
+            f"{exc} Use file_read to locate the range in the current content before retrying."
+        ) from exc
+    return _json_model(edited)
 
 
 @mcp_tool("file_sharing", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",

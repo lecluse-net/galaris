@@ -150,6 +150,7 @@ async def test_created_document_remains_editable_after_sharing_and_delegation(
     import json
     from fastmcp import Client
     from app.agent.task_port import task_port
+    from app.services.contracts import EXECUTION_META_KEY
     from app.task.working_set import get_working_set
 
     task_id, agent_id = scoped_task
@@ -193,12 +194,22 @@ async def test_created_document_remains_editable_after_sharing_and_delegation(
         async with Client(child_server) as colleague:
             read = await colleague.call_tool("file_read", {"uri": uri})
             revision = json.loads(read.content[0].text)["revision"]
+            invalid = await colleague.call_tool("file_edit", {"uri": uri, "start_line": 99, "end_line": 99,
+                "content": "<p>Outside the document.</p>", "expected_revision": revision}, raise_on_error=False)
+            assert invalid.is_error
+            assert invalid.meta[EXECUTION_META_KEY]["outcome"] == "rejected"
             edited = await colleague.call_tool("file_edit", {"uri": uri, "start_line": 1, "end_line": 1,
                 "content": "<p>Reviewed paragraph.</p>", "expected_revision": revision}, raise_on_error=False)
             assert not edited.is_error, edited
             read = await client.call_tool("file_read", {"uri": uri})
             payload = json.loads(read.content[0].text)
             assert payload["content"] == "<p>Reviewed paragraph.</p><p>Retained paragraph.</p>"
+            stale = await colleague.call_tool("file_edit", {"uri": uri, "start_line": 99, "end_line": 99,
+                "content": "<p>A stale edit.</p>", "expected_revision": revision}, raise_on_error=False)
+            assert stale.is_error
+            assert stale.meta[EXECUTION_META_KEY]["outcome"] == "rejected"
+            assert "file_read" in stale.content[0].text
+            assert str(payload["revision"]) in stale.content[0].text
             sharing = await client.call_tool("document_sharing", {"document_id": reference})
             await client.call_tool("document_share", {"document_id": reference, "agent_id": reviewer_id,
                 "access": "none", "expected_lock_version": json.loads(sharing.content[0].text)["lock_version"]})
@@ -207,6 +218,89 @@ async def test_created_document_remains_editable_after_sharing_and_delegation(
             assert denied.is_error
             read = await client.call_tool("file_read", {"uri": uri})
             assert json.loads(read.content[0].text)["content"] == payload["content"]
+
+
+@pytest.mark.asyncio
+async def test_existing_document_edit_requires_a_sourced_target(scoped_task, monkeypatch):
+    import json
+    from fastmcp import Client
+    from app.document import create_document_file_resource
+    from app.services.contracts import EXECUTION_META_KEY
+
+    task_id, agent_id = scoped_task
+    async with get_db_session():
+        document = await create_document_file_resource(agent_id=agent_id, task_id=None,
+            title="Synthetic report", content="<p>Original paragraph.</p><p>Retained paragraph.</p>")
+    uri = f"document://{document['id']}"
+    server = await _native_creation_server(task_id, agent_id, {"file_sharing": ["file_read", "file_edit"]})
+    async with Client(server) as client:
+        before = json.loads((await client.call_tool("file_read", {"uri": uri})).content[0].text)
+        args = {"uri": uri, "start_line": 1, "end_line": 1, "content": "<p>Corrected paragraph.</p>",
+                "expected_revision": before["revision"]}
+        rejected = await client.call_tool("file_edit", args, raise_on_error=False)
+        assert rejected.is_error
+        assert rejected.meta[EXECUTION_META_KEY]["scope_rejection"] == "clarify"
+        assert json.loads((await client.call_tool("file_read", {"uri": uri})).content[0].text) == before
+
+        monkeypatch.setattr("app.task.scheduler.wake", lambda *_: None)
+        async with get_db_session() as db:
+            task = await db.get(Task, task_id)
+            await SqlAlchemyAgentTaskAdapter().amend(
+                task_id=task_id, expected_revision=task.revision,
+                instruction=f"<p>Correct <code>{uri}</code>.</p>", disposition="AMEND_QUEUED",
+                reason=None, source_kind="conversation_round", source_id="synthetic-round",
+                idempotency_key="synthetic-authorized-edit",
+            )
+
+        edited = await client.call_tool("file_edit", args)
+        assert edited.meta[EXECUTION_META_KEY]["outcome"] == "returned"
+        after = json.loads((await client.call_tool("file_read", {"uri": uri})).content[0].text)
+        assert after["revision"] == before["revision"] + 1
+        assert after["content"] == "<p>Corrected paragraph.</p><p>Retained paragraph.</p>"
+
+
+@pytest.mark.asyncio
+async def test_work_update_recovers_misplaced_next_action_and_stale_revision(scoped_task):
+    import json
+    from fastmcp import Client
+    from app.services.contracts import EXECUTION_META_KEY
+
+    task_id, agent_id = scoped_task
+    async with get_db_session() as db:
+        (await db.get(Task, task_id)).status = TaskStatus.EXEC
+    server = await _native_creation_server(task_id, agent_id, {"galaris": ["task_get", "task_work_update"]})
+    plan = {"milestones": [{"key": "write", "label": "Update the synthetic report",
+        "acceptance": "The report contains the verified result", "state": "blocked",
+        "observation": "The destination has not been authorized"}]}
+    action = "Ask the requester for the exact destination"
+    async with Client(server) as client:
+        saved = await client.call_tool("task_work_update", {
+            "plan": plan, "next_action": action, "expected_revision": 0,
+        }, raise_on_error=False)
+        assert not saved.is_error, saved
+        receipt = json.loads(saved.content[0].text)
+        assert receipt["work_plan_revision"] == 1
+        assert receipt["work_plan"]["next_action"] == action
+        replay = await client.call_tool("task_work_update", {
+            "plan": {**plan, "next_action": action}, "expected_revision": 0,
+        })
+        assert json.loads(replay.content[0].text) == receipt
+        contradictory = await client.call_tool("task_work_update", {
+            "plan": {**plan, "next_action": action}, "next_action": "Use another destination",
+            "expected_revision": 1,
+        }, raise_on_error=False)
+        assert contradictory.is_error
+        assert contradictory.meta[EXECUTION_META_KEY]["outcome"] == "rejected"
+        assert "plan.next_action" in contradictory.content[0].text
+        conflict = await client.call_tool("task_work_update", {
+            "plan": {**plan, "next_action": "Inspect the requested destination"}, "expected_revision": 0,
+        }, raise_on_error=False)
+        assert conflict.is_error
+        assert conflict.meta[EXECUTION_META_KEY]["outcome"] == "rejected"
+        assert "work_plan_revision=1" in conflict.content[0].text
+        assert "task_get" in conflict.content[0].text
+        inspected = await client.call_tool("task_get", {"task_id": str(task_id)})
+        assert json.loads(inspected.content[0].text)["work_plan"] == receipt["work_plan"]
 
 
 @pytest.mark.asyncio
