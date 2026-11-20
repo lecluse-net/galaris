@@ -60,10 +60,9 @@ Pause and stop commands remove admissions that must no longer depart. Resume sti
 rights, provider activation and the durable inference policy. For an effect already
 engaged, a missing response does not prove remote cancellation or authorize automatic replay.
 
-An agent's **secondary profile** handles a different situation: it provides failover
-when the primary provider fails under the supported conditions. It does not bypass an
-ordinary capacity wait. Configure matching usages in both profiles; see the
-[user guide](../user/README.md).
+An eligible primary provider failure can trigger failover to the matching usage in the
+agent's secondary profile or the inherited default. Requests in an ordinary capacity
+wait remain in the provider's queue. [Configure the default fallback profile](../user/README.md#fallback-profile-setup)
 
 ## Scope and verification
 

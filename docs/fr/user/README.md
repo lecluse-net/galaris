@@ -172,20 +172,25 @@ Conservez les codes de secours affichés lors de l’activation dans un emplacem
 ils ne seront pas réaffichés et chacun ne fonctionne qu’une fois. Après plusieurs mots de passe ou
 codes erronés, Galaris ralentit temporairement les nouvelles tentatives de connexion.
 
+<a id="fallback-profile-setup"></a>
+
 ## Choisir un profil de secours
 
-Dans **Configurer → Fournisseurs & modèles → Modèles utilisés**, choisissez un **Profil de
-secours par défaut**. Les agents qui n’ont pas de profil secondaire hériteront de ce choix.
-Configurez dans ce profil les mêmes usages avec des modèles de fournisseurs API actifs,
-hors abonnement, pour prendre le relais lorsque l’abonnement ChatGPT est indisponible ou
-que le demandeur ne peut pas l’utiliser. Effacez la sélection pour désactiver le secours
-global.
+1. Ouvrez **Configurer → Fournisseurs & modèles → Modèles utilisés** avec le droit de modifier
+   les profils.
+2. Dans **Profil affiché**, ouvrez le profil destiné au secours. Affectez un modèle différent
+   pour chaque usage à couvrir. Pour les refus d’accès à l’abonnement ChatGPT, utilisez des
+   modèles hors abonnement chez des fournisseurs API actifs.
+3. Sélectionnez ce profil dans **Profil de secours par défaut**. Galaris enregistre le choix
+   immédiatement. Les agents sans profil secondaire en héritent. Effacez la sélection pour
+   retirer le secours global.
 
 Les gestionnaires d'agents peuvent choisir un **Profil principal** et un **Profil secondaire
 (secours)** dans **Agents → Modifier → Modèles**. Ce profil secondaire prend la priorité
 sur le réglage global. La bascule reprend le modèle du même usage dans le profil de secours,
 si cet usage est renseigné. La conversation ou la tâche conserve le travail déjà effectué.
 Les détails de la bascule apparaissent dans les journaux d'appels LLM.
+[Règles de bascule](../reference/functional-catalogue.md#fallback-profiles)
 
 ## Installer Galaris sur Windows ou Linux
 
@@ -738,10 +743,11 @@ dans les tâches ; les mises à jour conservent les choix déjà enregistrés.
 Si une tâche attend votre accord pour lire un mail, répondez à la demande d’autorisation.
 Le harnais reprend la lecture du même message après la reprise de la tâche ; un refus
 laisse son contenu privé. Cet accord de lecture n’autorise pas l’envoi d’un mail.
-Pour les tâches issues de la relève Mail, si le modèle prévu utilise un abonnement personnel ChatGPT,
-Galaris utilise le modèle du même usage dans le profil de secours de l’agent ou, à défaut, le profil global. Un bandeau
-dans la tâche indique l’utilisation du secours ou la configuration requise si aucun modèle ne convient.
-L’expéditeur du mail reste visible comme contact dans le journal.
+Pour les tâches issues de la relève Mail et leurs sous-tâches, Galaris redirige les appels prévus
+sur un abonnement personnel ChatGPT vers un modèle API admissible pour le même usage.
+Il utilise le profil secondaire de l’agent s’il est renseigné, ou le profil de secours par défaut
+dans le cas contraire. Un bandeau dans la tâche indique si la bascule a eu lieu ou quoi configurer
+si aucun modèle ne convient. L’expéditeur du mail reste visible comme contact dans le journal.
 Pour consulter vous-même la boîte d’un agent, ouvrez **Connaissances → Fichiers** et le Service
 du fournisseur portant le protocole Mail,
 puis un dossier IMAP et un message. Cette lecture ne donne aucun accord de traitement à l’agent.

@@ -625,13 +625,26 @@ restent des erreurs explicites. L’activité conserve l’effort demandé même
 traduite. La [matrice des paramètres](../dev/provider-parameters.md) décrit les contrats vérifiés
 par des transports simulés, sans appel facturable aux services externes.
 
+<a id="fallback-profiles"></a>
+
 ### Profil secondaire et capacité des fournisseurs
 
-Un agent peut choisir un **Profil principal** et un **Profil secondaire (secours)** facultatif.
-Une surcharge ou une indisponibilité admissible du fournisseur principal permet un essai du même
-usage dans le secondaire pour les inférences texte et structurées. Un usage secondaire vide ne
-remplace pas un modèle manquant. Le harnais interne peut basculer pendant un flux et conserve
-ce choix jusqu’à la fin du run, avec les résultats d’outils déjà acquis. Les journaux enregistrent
+Avec `LLM_PROFILE_EDIT`, choisissez ou effacez le **Profil de secours par défaut** dans
+**Configurer → Fournisseurs & modèles → Modèles utilisés**. Le **Profil principal** définit
+le profil courant de l’instance. Le **Profil affiché** sélectionne les affectations de modèles
+à consulter ou à modifier. Les trois sélections sont indépendantes.
+
+Le **Profil secondaire (secours)** d’un agent est prioritaire pour tous ses usages. Les agents
+sans secondaire héritent du profil de secours de l’instance. Après une défaillance admissible
+du fournisseur, une inférence texte ou structurée peut essayer une fois le modèle du même usage
+dans le profil de secours retenu. Un usage vide ou un modèle identique laisse l’appel sans
+secours. En cas de refus d’accès à l’abonnement ChatGPT, la bascule exige un modèle hors
+abonnement chez un fournisseur API actif. Les tâches Mail automatiques et leurs sous-tâches
+suivent cette règle lorsqu’elles devraient utiliser un abonnement personnel ChatGPT.
+Le détail de la tâche indique si un modèle de secours admissible était disponible.
+
+Le harnais interne peut basculer pendant un flux et conserve ce choix jusqu’à la fin du run,
+avec les résultats d’outils déjà acquis. Les journaux enregistrent
 les appels, les coûts et le motif de bascule. Les candidats explicites du Lab restent fixes ;
 un flux brut de passerelle déjà publié ne change pas de fournisseur. Les refus de contenu,
 annulations, autorisations et budgets ne sont pas contournés par ce secours.
@@ -650,7 +663,9 @@ possède son propre contexte de rotation. Les autres demandes conservent leur to
 source, agent ou demandeur selon le cas : des utilisateurs partageant un profil ne deviennent pas
 un propriétaire unique. Cette attribution ne change ni la priorité ni les droits.
 
-Sources : [résolution du secours](../../../back/app/llm/profile_fallback.py),
+Sources : [API de configuration des profils](../../../back/app/llm/profile_router.py),
+[sélection du modèle de secours](../../../back/app/llm/llm_service.py),
+[tests du secours](../../../back/tests/test_profile_fallback.py),
 [profils d’agent](../../../back/app/agent/schemas.py),
 [ordonnanceur fournisseur](../../../back/app/llm/provider_scheduler.py),
 [garanties d’admission](../../../back/app/llm/tests/test_provider_scheduler.py).

@@ -406,7 +406,7 @@ selects file-input/text-output resources, so incomplete metadata can hide compat
 Multimodal discovery retains all capabilities; explicit refresh updates metadata.
 
 **Providers & Models** opens on **Providers** by default unless a link requests another permitted
-tab. **Used models** retains profile settings and external-client configuration. The expandable
+tab. **Models in use** retains profile settings and external-client configuration. The expandable
 profile-API explanation has been removed; the API and client configuration remain available.
 
 All provider key fields stay masked without a reveal action. Stored keys use the fixed
@@ -496,11 +496,24 @@ Timeouts, quota errors and partial streams do not trigger this negotiation. Func
 remains an error; requested effort remains in activity even if translated. The
 [parameter matrix](../dev/provider-parameters.md) covers simulated-transport contracts without paid calls.
 
+<a id="fallback-profiles"></a>
+
 ### Secondary profile and provider capacity
 
-Agents can select a **Primary profile** and an optional **Secondary profile (fallback)**.
-An eligible provider overload or availability failure allows one attempt of the same text or
-structured usage in the secondary profile. An empty secondary usage does not fill a missing model.
+With `LLM_PROFILE_EDIT`, select or clear the **Default fallback profile** under
+**Configure → Providers & models → Models in use**. **Primary profile** sets the current
+profile for the instance. **Displayed profile** selects the model assignments to view or edit.
+The three selections are independent.
+
+An agent's explicit **Secondary profile (fallback)** takes precedence for all usages.
+Agents with no secondary profile inherit the instance default. After an eligible provider
+failure, a text or structured inference can try the model assigned to the same usage in
+the selected fallback profile once. A missing usage or identical model leaves that call
+without failover. When access to the ChatGPT subscription is refused, failover requires a
+non-subscription model from an active API provider. Automatic Mail Tasks and their child
+Tasks that would use a personal ChatGPT subscription follow this route. The Task details
+show whether an eligible fallback was available.
+
 The internal harness can switch during a stream and retains that choice for the run, preserving
 completed tool results. Call logs record both calls, costs and the reason. Explicit Lab candidates
 stay fixed; an already published raw gateway stream cannot switch provider. Content refusals,
@@ -517,7 +530,9 @@ from conversations remain background work. Each Task has its own rotation contex
 retain their round, run, Process, source, agent or requester as applicable, so users sharing a model
 profile do not become one owner. Attribution changes neither priority nor permissions.
 
-Sources: [fallback resolution](../../../back/app/llm/profile_fallback.py),
+Sources: [profile settings API](../../../back/app/llm/profile_router.py),
+[fallback model selection](../../../back/app/llm/llm_service.py),
+[fallback tests](../../../back/tests/test_profile_fallback.py),
 [agent profile contract](../../../back/app/agent/schemas.py),
 [provider scheduler](../../../back/app/llm/provider_scheduler.py),
 [admission guarantees](../../../back/app/llm/tests/test_provider_scheduler.py).

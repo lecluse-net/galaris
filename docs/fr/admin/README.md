@@ -593,14 +593,21 @@ Les affectations vivent exclusivement dans des profils de modèles. Le paramètr
 peut choisir un profil personnel ou conserver « Profil courant » ; ce second choix est persisté
 par un `profile_id` nul et suit immédiatement tout changement de profil courant.
 
-Dans **Agents → Modifier → Modèles**, **Profil principal** conserve ce choix et
-**Profil secondaire (secours)** configure un repli facultatif. En cas de surcharge ou
-d'accès impossible au fournisseur, les inférences texte et structurées essaient le même
-usage du secondaire une fois. Le harnais interne peut basculer pendant un flux et conserve
+Dans **Configurer → Fournisseurs & modèles → Modèles utilisés**, le droit `LLM_PROFILE_EDIT`
+permet de choisir ou d’effacer le **Profil de secours par défaut** de l’instance. Le choix est
+enregistré immédiatement. Utilisez **Profil affiché** pour modifier les affectations de ce profil.
+Le sélecteur **Profil principal** définit le profil courant de l’instance.
+[Configurer le profil de secours par défaut](../user/README.md#fallback-profile-setup)
+
+Dans **Agents → Modifier → Modèles**, le **Profil secondaire (secours)** de l’agent est prioritaire
+sur le profil global. Laissez le secondaire vide pour hériter du réglage global. Une inférence
+texte ou structurée admissible peut essayer une fois un modèle différent affecté au même usage.
+Si l’abonnement ChatGPT est inutilisable, le modèle de secours doit être hors abonnement et
+provenir d’un fournisseur actif. Le harnais interne peut basculer pendant un flux et conserve
 le secondaire jusqu'à la fin du run, sans rejouer les outils terminés. Les journaux LLM
 conservent les deux appels, leurs coûts et le motif. Les autorisations Galaris, budgets,
-annulations et refus de contenu restent applicables. Un usage secondaire vide désactive
-ce secours pour cet usage ; les candidats du Lab restent fixes. Un flux brut de gateway
+annulations et refus de contenu restent applicables. Un usage vide dans le profil de secours
+laisse l’appel sans bascule. Les candidats du Lab restent fixes. Un flux brut de gateway
 déjà publié ne peut pas changer de fournisseur. Voir la [décision 0180](../../../project/decisions/0180-agent-secondary-llm-profile.md).
 
 | Usage du profil | Fonction |

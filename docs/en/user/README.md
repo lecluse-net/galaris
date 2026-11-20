@@ -152,18 +152,22 @@ profile preference takes precedence.
 
 The profile also lets you enable two-factor authentication with a TOTP application. Keep the recovery codes displayed during activation in a separate, secure location: they will not be displayed again, and each one works only once. After several incorrect passwords or codes, Galaris temporarily slows down new login attempts.
 
+<a id="fallback-profile-setup"></a>
+
 ## Choosing a fallback profile
 
-In **Configure → Providers & models → Models in use**, select a **Default fallback profile**.
-Agents without a secondary profile inherit this choice. Assign models from active API providers
-outside the subscription for the same uses so they can take over when the ChatGPT subscription
-is unavailable or the requester cannot use it. Clear the selection to turn off the shared
-fallback.
+1. Open **Configure → Providers & models → Models in use** with permission to edit profiles.
+2. Use **Displayed profile** to open the profile you want to use for failover. Assign a different
+   model for each usage you want to cover. For ChatGPT subscription refusals, use models from
+   active API providers outside the subscription.
+3. Select that profile in **Default fallback profile**. Galaris saves the choice immediately.
+   Agents without a secondary profile inherit it. Clear the selection to remove the shared fallback.
 
 Agent managers can choose a **Primary profile** and an optional **Secondary profile (fallback)**
 in **Agents → Edit → Models**. This secondary profile takes precedence over the shared setting.
 Failover uses the model assigned to the same use in the fallback profile, when configured.
 The conversation or Task retains completed work. LLM call logs show the failover details.
+[Fallback rules](../reference/functional-catalogue.md#fallback-profiles)
 
 ## Installing Galaris on Windows or Linux
 
@@ -642,10 +646,11 @@ previously saved choices.
 If a Task waits for your consent to read an email, answer its authorization request.
 The Harness continues reading the same message once the Task resumes; denial keeps
 its content private. Reading consent does not authorize sending an email.
-For Tasks created by inbound Mail polling, if the selected model uses a personal ChatGPT subscription,
-Galaris uses the model for the same usage in the agent’s fallback profile or the shared default. A banner on
-the Task shows that fallback was used or what to configure if no model is suitable. The email sender
-remains visible as a contact in the journal.
+For Tasks created by inbound Mail polling and their child Tasks, Galaris routes calls that
+would use a personal ChatGPT subscription to an eligible API model for the same usage.
+It uses the agent’s secondary profile if set, or the default fallback profile otherwise.
+A banner on the Task shows whether failover occurred or what to configure if no model is
+suitable. The email sender remains visible as a contact in the journal.
 To browse an agent’s mailbox yourself, open **Knowledge → Files**, select the provider Service
 with the Mail protocol, then an IMAP folder
 and a message. Your reading does not authorize the agent to process the email.

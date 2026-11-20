@@ -65,10 +65,10 @@ Une reprise reste soumise aux droits, à l'activation du fournisseur et à la po
 de l'inférence durable. Pour un effet déjà engagé, l'absence de réponse ne prouve pas
 son annulation distante et n'autorise pas un rejeu automatique.
 
-Le **profil secondaire** d'un agent répond à une autre situation : il fournit un secours
-lorsque le fournisseur principal échoue selon les conditions prévues. Il ne sert pas à
-contourner une simple attente de capacité. Configurez les mêmes usages dans les deux
-profils ; voir le [guide utilisateur](../user/README.md).
+Une défaillance admissible du fournisseur principal peut déclencher une bascule vers le
+même usage dans le profil secondaire de l’agent ou dans le profil de secours global dont
+il hérite. Les demandes en attente de capacité restent dans la file du fournisseur.
+[Configurer le profil de secours par défaut](../user/README.md#fallback-profile-setup)
 
 ## Périmètre et vérifications
 

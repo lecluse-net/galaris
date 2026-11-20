@@ -574,13 +574,19 @@ Assignments exist exclusively in model profiles. The global
 can choose a personal profile or retain “Current profile”; the latter choice is persisted
 with a null `profile_id` and immediately follows any change to the current profile.
 
-In **Agents → Edit → Models**, **Primary profile** retains this selection and
-**Secondary profile (fallback)** configures optional failover. When a provider is overloaded
-or inaccessible, text and structured inferences try the same usage from the secondary once.
+In **Configure → Providers & models → Models in use**, `LLM_PROFILE_EDIT` allows you to set or
+clear the instance-wide **Default fallback profile**. The setting is saved immediately. Use
+**Displayed profile** to edit that profile's model assignments. The **Primary profile** selector
+sets the instance's current profile. [Configure the default fallback profile](../user/README.md#fallback-profile-setup)
+
+In **Agents → Edit → Models**, an agent's **Secondary profile (fallback)** overrides the instance
+default. Leave the secondary unset to inherit the default. Eligible text and structured inferences
+can try a different model assigned to the same usage once. If the ChatGPT subscription cannot be
+used, the fallback model must be outside the subscription and belong to an active provider.
 The internal harness can switch during a stream and retains the secondary until the run
 ends, without replaying completed tools. LLM logs retain both calls, their costs and the
 reason. Galaris authorization, budgets, cancellation and content refusals still apply.
-An empty secondary usage disables failover for that usage; Lab candidates stay fixed.
+An empty fallback usage leaves that call without failover. Lab candidates stay fixed.
 A raw gateway stream that has already been published cannot change providers.
 See [decision 0180](../../../project/decisions/0180-agent-secondary-llm-profile.md).
 

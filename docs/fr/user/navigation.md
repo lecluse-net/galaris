@@ -151,7 +151,7 @@ demande aussi `PERMISSION_DECIDE` et le statut de valideur désigné.
 |---|---|---|
 | Fournisseurs | Configurer les services de modèles et consulter leur catalogue | `/llm?tab=providers` |
 | Modèles disponibles | Gérer les modèles exposés à Galaris | `/llm?tab=models` |
-| Modèles utilisés | Choisir les modèles employés par les usages et profils | `/llm?tab=usage` |
+| Modèles utilisés | Affecter les modèles par profil et définir les profils principal et de secours par défaut | `/llm?tab=usage` |
 
 Les tarifs d’entrée, de sortie et de lecture du cache des modèles configurés sont
 actualisés chaque nuit vers 3 h, dans le fuseau horaire de l’installation. Dans la
@@ -274,10 +274,13 @@ compétences. La recréation du runtime ne relance aucune action métier.
 
 Dans **Modèles**, choisissez le **Profil principal** et, si nécessaire, un
 **Profil secondaire (secours)**, puis enregistrez la fiche. Un principal vide suit le
-profil courant ; **Aucun profil de secours** désactive la bascule. Configurez les mêmes
-usages dans les deux profils : un usage absent du secondaire n'offre pas de secours.
-Le harnais interne utilise le secondaire en cas de surcharge, d'indisponibilité ou
-d'erreur d'accès du fournisseur, en conservant les résultats des outils déjà exécutés.
+profil courant. Le sélecteur secondaire propose **Profil de secours par défaut (nom)**
+si l’instance en a un, ou **Aucun profil de secours** sinon. Un profil secondaire explicite
+est prioritaire. Affectez un modèle différent au même usage dans le profil de secours.
+[Configurer le profil de secours par défaut](README.md#fallback-profile-setup)
+
+En cas de défaillance admissible du fournisseur, le harnais interne peut basculer vers
+le profil de secours en conservant les résultats des outils déjà exécutés.
 La fiche de l'appel dans **Superviser → Activité → Activité LLM** indique le motif de la bascule.
 Un harnais externe passant par la gateway Galaris bénéficie du secours avant la publication
 de sa réponse ; un flux déjà transmis conserve son fournisseur. Les modèles choisis

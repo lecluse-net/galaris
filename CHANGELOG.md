@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Set a **Default fallback profile** in **Configure → Providers & models → Models in use**.
+  Agents without a secondary profile inherit it. Eligible calls can switch to the model
+  for the same usage if the primary provider fails or access to the ChatGPT subscription
+  is refused. Automatic Mail Tasks and their child Tasks that would use a personal
+  ChatGPT subscription switch to an eligible API fallback when available. Task details
+  show whether the switch was possible.
+  [Fallback profiles](docs/en/reference/functional-catalogue.md#fallback-profiles)
 - **Deep conversations** send messages directly to the agent's harness with
   `@deep`. Each private Chat conversation remembers the mode and has its own
   resumable session. Deep sends the message and its attachment links, with the

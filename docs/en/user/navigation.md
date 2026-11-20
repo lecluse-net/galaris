@@ -137,7 +137,7 @@ designated approver identity.
 |---|---|---|
 | Providers | Configure model services and browse their catalogs | `/llm?tab=providers` |
 | Available models | Manage models exposed to Galaris | `/llm?tab=models` |
-| Models in use | Choose models for usages and profiles | `/llm?tab=usage` |
+| Models in use | Assign models by profile and set the primary and default fallback profiles | `/llm?tab=usage` |
 
 Configured model input, output and cache-read prices refresh nightly around 3 a.m.
 in the installation timezone. In a model's edit dialog, disable **Update prices
@@ -252,10 +252,13 @@ Recreating the runtime does not retry any business action.
 
 Under **Models**, choose the **Primary profile** and, if needed, a
 **Secondary profile (fallback)**, then save the record. An empty primary selection follows
-the current profile; **No fallback profile** disables failover. Configure the same usages
-in both profiles: an empty secondary usage provides no fallback.
-The internal Harness uses the secondary when the provider is overloaded, unavailable or
-fails access, preserving the results of tools already executed. The call details under
+the current profile. The secondary selector offers **Default fallback profile (name)** when
+the instance has one, and **No fallback profile** otherwise. An explicit secondary profile
+takes precedence. Assign a different model for the same usage in the fallback profile.
+[Configure the default fallback profile](README.md#fallback-profile-setup)
+
+When an eligible provider failure occurs, the internal Harness can switch to the fallback
+while preserving the results of tools already executed. The call details under
 **Monitor → Activity → LLM activity** show the reason for failover. An external Harness using the
 Galaris gateway benefits before its response is published; an already published stream
 keeps its provider. Models explicitly selected through the profile API and native voice
