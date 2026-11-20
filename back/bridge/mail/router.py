@@ -79,7 +79,7 @@ async def list_inbound_mail(
     if agent_id is not None and not scope.allows(agent_id):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return await list_receipts(current_user_id=_current_user_id(), agent_ids=scope.agent_ids,
-        agent_id=agent_id, search=search, offset=offset, limit=limit)
+        agent_id=agent_id, search=search, offset=offset, limit=limit, include_task=await _can_read_tasks())
 
 
 @router.get("/inbound/{receipt_id}", response_model=MailInboundDetail)
@@ -88,10 +88,16 @@ async def read_inbound_mail(receipt_id: UUID) -> MailInboundDetail:
     from .inbound import get_receipt
 
     scope = await current_management_scope()
-    result = await get_receipt(receipt_id, current_user_id=_current_user_id(), agent_ids=scope.agent_ids)
+    result = await get_receipt(receipt_id, current_user_id=_current_user_id(), agent_ids=scope.agent_ids,
+        include_task=await _can_read_tasks())
     if result is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return result
+
+
+async def _can_read_tasks() -> bool:
+    user = await user_service.get_current_user()
+    return await check_privilege(user, [Privileges.TASK_ACCESS, Privileges.TASK_EDIT], get_db())
 
 
 def _current_user_id() -> int:

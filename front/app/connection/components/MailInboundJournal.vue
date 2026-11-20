@@ -24,6 +24,8 @@
         <q-td :props="props">{{ statusLabel(props.row) }}</q-td>
       </template>
       <template #body-cell-actions="props"><q-td :props="props">
+        <q-btn v-if="props.row.task_uri && canReadTasks" outline color="primary" size="sm"
+          :label="t('mailJournal.openProcessingTask')" @click.stop="openTask(props.row.task_uri)" />
         <q-btn flat round icon="visibility" :aria-label="t('mailJournal.view')" @click.stop="open(props.row.id)" />
       </q-td></template>
       <template #item="props">
@@ -33,7 +35,11 @@
             <div>{{ props.row.sender_address }} · {{ props.row.agent_label }}</div>
             <div>{{ date(props.row.created_at) }} · {{ statusLabel(props.row) }}</div>
           </q-card-section>
-          <q-card-actions><q-btn color="primary" outline :label="t('mailJournal.view')" @click="open(props.row.id)" /></q-card-actions>
+          <q-card-actions>
+            <q-btn color="primary" outline :label="t('mailJournal.view')" @click="open(props.row.id)" />
+            <q-btn v-if="props.row.task_uri && canReadTasks" outline color="primary"
+              :label="t('mailJournal.openProcessingTask')" @click="openTask(props.row.task_uri)" />
+          </q-card-actions>
         </q-card></div>
       </template>
     </q-table>
@@ -71,6 +77,8 @@
         <q-card-section v-if="detailError" role="alert">{{ t('mailJournal.loadError') }}</q-card-section>
         <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn color="primary" v-close-popup outline :label="t('common.close')" />
+          <q-btn v-if="detail?.task_uri && canReadTasks" outline color="primary"
+            :label="t('mailJournal.openProcessingTask')" @click="openTask(detail.task_uri)" />
           <template v-if="authorization?.can_answer && canEdit">
             <q-btn color="negative" :label="t('permissions.denyAction')" :disable="answering" @click="answer(false)" />
             <q-btn color="primary" :label="t('mailJournal.allowProcessing')" :disable="answering" @click="answer(true)" />
@@ -80,11 +88,13 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <ResourceDetailDialog v-if="selectedTask && canReadTasks" :target="selectedTask"
+      @close="selectedTask = null" @changed="load" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { DialogHeader } from '@/core/util'
+import { DialogHeader, ResourceDetailDialog, type ResourceDetailTarget } from '@/core/util'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useQuasar, type QTableColumn } from 'quasar'
 import { useI18n } from 'vue-i18n'
@@ -98,6 +108,7 @@ const { t, locale } = useI18n()
 const $q = useQuasar()
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.CONNECTION_EDIT))
+const canReadTasks = computed(() => privilegeStore.hasAnyPrivilege([privileges.TASK_ACCESS, privileges.TASK_EDIT]))
 const search = ref('')
 const agentId = ref<number | null>(null)
 const agentOptions = computed(() => agents.map(agent => ({ label: agent.label, value: agent.id })))
@@ -107,6 +118,7 @@ const error = ref(false)
 const pagination = ref({ page: 1, rowsPerPage: 50, rowsNumber: 0 })
 const detailOpen = ref(false)
 const detail = ref<MailInboundDetail | null>(null)
+const selectedTask = ref<ResourceDetailTarget | null>(null)
 const authorization = ref<ActionAuthorization | null>(null)
 const detailLoading = ref(false)
 const detailError = ref(false)
@@ -130,6 +142,9 @@ function date(value: string | null): string {
 function statusLabel(row: MailInboundItem): string {
   if (row.status === 'pending_approval' && row.authorization_status === 'approved') return t('mailJournal.inboundStatuses.authorized')
   return t(`mailJournal.inboundStatuses.${row.status}`)
+}
+function openTask(uri: string): void {
+  selectedTask.value = { kind: 'task', id: uri.slice('galaris://task/'.length), title: '' }
 }
 async function load(): Promise<void> {
   listController?.abort()

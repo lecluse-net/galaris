@@ -8,13 +8,17 @@ emitting the shared event. Bridges remain responsible for ignoring their own ech
 from __future__ import annotations
 
 from collections import deque
+from datetime import datetime
 from typing import Any, Awaitable, Callable, Deque, Optional, Set, Tuple
+from uuid import UUID
 
 from loguru import logger
+from sqlalchemy import Select, select
 
 from app.messenger.events import message_received
 from app.messenger._observations import ObservedMessengerMessage
 from app.messenger.models import Message
+from core.database import get_db, get_db_session
 
 InboundHandler = Callable[[Message], Awaitable[None]]
 
@@ -24,6 +28,30 @@ InboundHandler = Callable[[Message], Awaitable[None]]
 _DEDUP_MAXLEN = 2048
 _seen_order: Deque[Tuple[Optional[int], Optional[int], str]] = deque(maxlen=_DEDUP_MAXLEN)
 _seen: Set[Tuple[Optional[int], Optional[int], str]] = set()
+
+
+def inbound_task_links(
+    platform: str,
+) -> Select[tuple[UUID, int, str | None, UUID, int | None, datetime | None]]:
+    """Project durable Task links from the canonical inbound journal."""
+    from app.task import Task
+
+    return select(
+        Message.id.label("message_id"), Message.connection_id, Message.room_id,
+        Task.id.label("task_id"), Task.agent_id, Task.deleted_at.label("task_deleted_at"),
+    ).join(Task, Task.messenger_message_id == Message.id).where(
+        Message.direction == "inbound", Message.platform == platform,
+    )
+
+
+async def inbound_task_connection(task_id: UUID, *, agent_id: int, platform: str) -> int | None:
+    """Get the original connection of a live inbound Task owned by this agent."""
+    links = inbound_task_links(platform).subquery()
+    return await get_db().scalar(select(links.c.connection_id).where(
+        links.c.task_id == task_id,
+        links.c.agent_id == agent_id,
+        links.c.task_deleted_at.is_(None),
+    ))
 
 
 def on_message(handler: InboundHandler) -> InboundHandler:
@@ -93,8 +121,17 @@ async def dispatch_incoming(
     from app.messenger import facade
 
     spec = facade.get_spec(stored.platform)
+    task_only = spec is not None and spec.inbound_admission == "task"
     if not inserted and stored.status == "admitted":
-        return False
+        if not task_only:
+            return False
+        # Older runtimes could acknowledge admission before a Task existed.
+        async with get_db_session() as db:
+            link = await db.execute(inbound_task_links(stored.platform).where(
+                Message.id == stored.id,
+            ).execution_options(include_historized=True))
+            if link.first() is not None:
+                return False
     # Enforce the instant-message age contract before the shared signal. This keeps every current
     # and future subscriber from creating a Conversation, Task, interaction, or other business
     # effect for imported history. The service repeats the guard for direct recovery callers.
@@ -102,7 +139,7 @@ async def dispatch_incoming(
 
     if await archive_stale_instant_message(stored):
         return inserted
-    if spec is not None and spec.inbound_admission == "task":
+    if task_only:
         try:
             from app.messenger.service import admit_incoming
 

@@ -410,11 +410,12 @@ without replaying history; a generation change or a cursor beyond the current ma
 reestablishes that baseline. The body is read only after `mail_process` authorization: by default,
 exact addresses in the agent's Contacts are accepted and unknown senders require common consent.
 Explicit Enabled, Ask and Blocked policies take precedence; sending approval remains independent.
-Mail declares a transport-specific `task` admission policy: each newly authorized incoming email
-creates a Task that receives its `mail_get` reference, without passing through the short
-conversational controller. This exception remains owned by `app.messenger`; the IMAP bridge never
-creates a Task itself. The terminal result is not implicitly returned over SMTP, because every
-response must remain an explicit and idempotent effect of a `mail_*` tool.
+Mail declares a transport-specific `task` admission policy. Each newly authorized incoming email
+creates a Task with its exact `mail_get` reference and connection, even if IMAP prefetch fails.
+Messenger confirms admission once the Task exists. Resumption repairs authorized receipts that
+lack a durable Task and recognizes previously created Tasks, including soft-deleted ones. The
+journal resolves the link from the canonical message for users with Task read access to that
+agent. An SMTP reply requires an explicit and idempotent `mail_*` tool effect.
 
 Technical rooms created for these emails remain in the canonical journal but are excluded from the
 Chat projection, including in an agent’s view, so that an IMAP stream does not create a message

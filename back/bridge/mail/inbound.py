@@ -3,17 +3,20 @@
 from __future__ import annotations
 
 import asyncio
+import imaplib
 from collections.abc import Collection
 from datetime import datetime, timezone
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, or_, select, update
+from sqlalchemy import func, null, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import defer
+from sqlalchemy.sql.elements import ColumnElement
+from loguru import logger
 
 from app.connection import facade as connections
 from app.contact.facade import is_known_mail_contact
-from app.messenger import Message, dispatch_incoming, register_inbound_contact_authorizer
+from app.messenger import Message, dispatch_incoming, inbound_task_links, register_inbound_contact_authorizer
 from app.services.facade import (
     AuthorizationAction, AuthorizationClosed, AuthorizationRequired, AuthorizationReview,
     authorization_reviews, claim_action, finish_action, get_service_by_id,
@@ -204,11 +207,35 @@ async def record_read(row: MailInboundReceipt, detail: MailMessageDetail) -> Non
     await get_db().commit()
 
 
+def _processing_task(*, include_deleted: bool = False) -> ColumnElement[UUID]:
+    links = inbound_task_links("mail").subquery()
+    query = select(links.c.task_id).where(
+        links.c.connection_id == MailInboundReceipt.connection_id,
+        links.c.room_id == MailInboundReceipt.message_ref,
+    )
+    if not include_deleted:
+        query = query.where(
+            links.c.task_deleted_at.is_(None),
+            links.c.agent_id == MailInboundReceipt.agent_id,
+        )
+    return query.limit(1).correlate(MailInboundReceipt).scalar_subquery()
+
+
 async def process_receipt(identifier: UUID) -> None:
     db = get_db()
     row = await db.get(MailInboundReceipt, identifier, populate_existing=True)
-    if row is None or row.admitted_at is not None or row.status == "rejected":
+    if row is None or row.status == "rejected":
         return
+    if row.admitted_at is not None:
+        task_id = await db.scalar(select(_processing_task(include_deleted=True)).where(
+            MailInboundReceipt.id == identifier,
+        ).execution_options(include_historized=True))
+        if task_id is not None:
+            return
+        # Repair an older acknowledgement that had no durable Task behind it.
+        row.admitted_at = None
+        row.status = "authorized"
+        await db.commit()
     try:
         await authorize_receipt(row)
         if not row.dispatch_requested:
@@ -218,11 +245,17 @@ async def process_receipt(identifier: UUID) -> None:
         if connection is None:
             raise PermissionError("Mail connection was deleted")
         config = await resolve_connection(connection.id, require_active=True)
-        config.require_mailbox(MailMessageRef.decode(row.message_ref).mailbox)
+        ref = MailMessageRef.decode(row.message_ref)
+        config.require_mailbox(ref.mailbox)
         if row.content is None:
-            detail = await asyncio.to_thread(ImapClient(config).get_message,
-                MailMessageRef.decode(row.message_ref), body_offset=0, body_limit=50_000)
-            await record_read(row, detail)
+            try:
+                detail = await asyncio.to_thread(ImapClient(config).get_message,
+                    ref, body_offset=0, body_limit=50_000)
+            except (OSError, imaplib.IMAP4.error, ValueError, RuntimeError) as exc:
+                # The processing Task owns the read and its outcome even if prefetch failed.
+                logger.warning("Mail prefetch failed receipt={} type={}", identifier, type(exc).__name__)
+            else:
+                await record_read(row, detail)
         from .messenger import MailMessenger
 
         summary = MailMessageSummary.model_validate(row.summary)
@@ -243,7 +276,7 @@ async def process_receipt(identifier: UUID) -> None:
     except Exception as exc:
         await db.rollback()
         row = await db.get(MailInboundReceipt, identifier, populate_existing=True)
-        if row is not None:
+        if row is not None and row.admitted_at is None:
             row.status, row.error = "error", type(exc).__name__
             row.updated_at = datetime.now(timezone.utc)
             await db.commit()
@@ -254,13 +287,24 @@ async def receive(config: MailConnectionConfig, summary: MailMessageSummary) -> 
     await process_receipt(row.id)
 
 
-async def resume_receipts(connection_id: int) -> None:
+async def resume_receipts(connection_id: int, *, repair_admissions: bool = False) -> None:
+    db = get_db()
+    if repair_admissions:
+        # Run the historical reconciliation once per listener, outside the poll's hot path.
+        await db.execute(update(MailInboundReceipt).where(
+            MailInboundReceipt.connection_id == connection_id,
+            MailInboundReceipt.dispatch_requested.is_(True),
+            MailInboundReceipt.status == "admitted",
+            MailInboundReceipt.authorized_at.is_not(None),
+            _processing_task(include_deleted=True).is_(None),
+        ).values(status="authorized", admitted_at=None).execution_options(include_historized=True))
+        await db.commit()
     identifiers = list(await get_db().scalars(select(MailInboundReceipt.id).where(
         MailInboundReceipt.connection_id == connection_id,
         MailInboundReceipt.admitted_at.is_(None),
         MailInboundReceipt.dispatch_requested.is_(True),
         MailInboundReceipt.status.in_(("received", "authorized", "error", "blocked")),
-    ).order_by(MailInboundReceipt.updated_at).limit(50)))
+    ).order_by(MailInboundReceipt.updated_at, MailInboundReceipt.id).limit(50)))
     for identifier in identifiers:
         await process_receipt(identifier)
 
@@ -281,7 +325,7 @@ async def _wake(agent_id: int, key: str) -> bool:
 
 async def list_receipts(
     *, current_user_id: int, agent_ids: Collection[int] | None,
-    agent_id: int | None, search: str, offset: int, limit: int,
+    agent_id: int | None, search: str, offset: int, limit: int, include_task: bool = False,
 ) -> MailInboundPage:
     query = select(MailInboundReceipt).options(defer(MailInboundReceipt.content))
     if agent_ids is not None:
@@ -293,16 +337,19 @@ async def list_receipts(
         query = query.where(or_(MailInboundReceipt.sender_address.ilike(pattern),
             MailInboundReceipt.subject.ilike(pattern), MailInboundReceipt.agent_label.ilike(pattern)))
     total = int(await get_db().scalar(select(func.count()).select_from(query.subquery())) or 0)
-    rows = list(await get_db().scalars(query.order_by(
+    page = query.add_columns(_processing_task() if include_task else null()).order_by(
         MailInboundReceipt.created_at.desc(), MailInboundReceipt.id.desc()
-    ).offset(offset).limit(limit)))
-    reviews = await authorization_reviews({row.authorization_id for row in rows if row.authorization_id})
-    items = [_item(row, current_user_id, reviews.get(row.authorization_id) if row.authorization_id else None)
-             for row in rows]
+    ).offset(offset).limit(limit)
+    rows = (await get_db().execute(page)).all()
+    reviews = await authorization_reviews({row.authorization_id for row, _ in rows if row.authorization_id})
+    items = [_item(row, current_user_id, reviews.get(row.authorization_id) if row.authorization_id else None, task_id)
+             for row, task_id in rows]
     return MailInboundPage(items=items, total=total, offset=offset, limit=limit)
 
 
-def _item(row: MailInboundReceipt, current_user_id: int, review: AuthorizationReview | None) -> MailInboundItem:
+def _item(
+    row: MailInboundReceipt, current_user_id: int, review: AuthorizationReview | None, task_id: UUID | None,
+) -> MailInboundItem:
     status = row.status
     if status == "pending_approval" and review:
         status = "rejected" if review.status in ("denied", "expired", "invalidated", "failed") else status
@@ -316,6 +363,7 @@ def _item(row: MailInboundReceipt, current_user_id: int, review: AuthorizationRe
             can_review=bool(review and review.status == "pending" and review.approver_user_id == current_user_id),
             created_at=row.created_at, authorized_at=row.authorized_at,
             admitted_at=row.admitted_at, read_at=row.read_at, error=row.error,
+            task_uri=f"galaris://task/{task_id}" if task_id is not None else None,
         )
 
 
@@ -350,11 +398,17 @@ register_inbound_contact_authorizer("mail", _authorized_contact)
 
 
 async def get_receipt(
-    identifier: UUID, *, current_user_id: int, agent_ids: frozenset[int] | None,
+    identifier: UUID, *, current_user_id: int, agent_ids: frozenset[int] | None, include_task: bool = False,
 ) -> MailInboundDetail | None:
-    row = await get_db().get(MailInboundReceipt, identifier, populate_existing=True)
-    if row is None or (agent_ids is not None and row.agent_id not in agent_ids):
+    query = select(MailInboundReceipt, _processing_task() if include_task else null()).where(
+        MailInboundReceipt.id == identifier,
+    ).execution_options(populate_existing=True)
+    if agent_ids is not None:
+        query = query.where(MailInboundReceipt.agent_id.in_(agent_ids))
+    record = (await get_db().execute(query)).one_or_none()
+    if record is None:
         return None
+    row, task_id = record
     reviews = await authorization_reviews([row.authorization_id]) if row.authorization_id else {}
-    item = _item(row, current_user_id, reviews.get(row.authorization_id) if row.authorization_id else None)
+    item = _item(row, current_user_id, reviews.get(row.authorization_id) if row.authorization_id else None, task_id)
     return MailInboundDetail(**item.model_dump(), content=row.content)

@@ -330,6 +330,13 @@ jointes ne sont pas téléchargés. Après lecture, le journal conserve une page
 de 50 000 caractères maximum et les métadonnées des pièces jointes ; un éventuel abrègement
 est indiqué. Le mail complet reste disponible par pages dans la boîte source.
 
+Chaque nouveau mail autorisé déclenche sa propre tâche de traitement. Avec le droit de
+consulter les tâches, utilisez **Suivre la tâche** dans la liste ou le détail du mail
+pour voir son avancement, son résultat ou son erreur. La tâche reçoit le compte et la
+référence exacts du mail. Dream peut retenir les faits durables issus d'un traitement
+réussi. Si vous demandez un état récent, comme la livraison d'un colis, l'agent peut
+lancer une tâche de vérification dans la boîte source depuis le Chat.
+
 Par défaut, une adresse mail présente dans les **Contacts** de cet agent autorise directement
 le traitement. Un nom affiché, une autre adresse ou le carnet d’un autre agent ne suffit pas.
 Un expéditeur inconnu déclenche une autorisation commune auprès du responsable de l’agent,
@@ -349,8 +356,9 @@ Pour un agent, seuls les mails de la boîte de réception (`INBOX`) peuvent êtr
 y compris leurs pièces jointes. Une recherche dans Envoyés, Corbeille, Archives ou un sous-dossier
 peut retourner des en-têtes, mais ne crée aucune réception ni demande de traitement.
 Les anciennes entrées hors INBOX ne peuvent plus reprendre leur traitement. Le journal couvre
-les nouveaux mails observés par l’écoute et les mails INBOX retrouvés par les outils ; le démarrage
-conserve le curseur existant et ne relance pas les anciens mails de la boîte.
+les nouveaux mails observés par l’écoute et les mails INBOX retrouvés par les outils. L'écoute
+reprend les réceptions autorisées enregistrées sans tâche. Le premier démarrage établit un
+curseur pour les nouvelles arrivées.
 La consultation humaine des dossiers IMAP depuis [Fichiers](files.md) reste indépendante :
 elle permet de lire les autres dossiers sans donner d’autorisation à l’agent.
 

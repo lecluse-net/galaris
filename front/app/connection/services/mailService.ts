@@ -169,6 +169,7 @@ export interface MailInboundItem {
   admitted_at: string | null
   read_at: string | null
   error: string | null
+  task_uri: string | null
 }
 
 export interface MailInboundDetail extends MailInboundItem {

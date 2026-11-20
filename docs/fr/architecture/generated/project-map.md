@@ -473,9 +473,9 @@ tests restent l’autorité sur le comportement.
 | `app.messenger` | `app.llm` | `back/app/messenger/ingest.py`, `back/app/messenger/mcp.py` |
 | `app.messenger` | `app.memory` | `back/app/messenger/agent_identity.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/service.py` |
 | `app.messenger` | `app.services` | `back/app/messenger/__init__.py`, `back/app/messenger/configuration.py`, `back/app/messenger/connection_diagnostics.py`, `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/contracts.py`, `back/app/messenger/directory.py`, `back/app/messenger/journal.py`, `back/app/messenger/mcp.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py`, `back/app/messenger/user_service.py` |
-| `app.messenger` | `app.task` | `back/app/messenger/contact_memory.py`, `back/app/messenger/mcp.py`, `back/app/messenger/service.py` |
+| `app.messenger` | `app.task` | `back/app/messenger/contact_memory.py`, `back/app/messenger/inbound.py`, `back/app/messenger/mcp.py`, `back/app/messenger/service.py` |
 | `app.messenger` | `core.authorize` | `back/app/messenger/interactions.py`, `back/app/messenger/native_resources.py`, `back/app/messenger/permission_router.py`, `back/app/messenger/permissions.py`, `back/app/messenger/router.py` |
-| `app.messenger` | `core.database` | `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/facade.py`, `back/app/messenger/ingest.py`, `back/app/messenger/interactions.py`, `back/app/messenger/journal.py`, `back/app/messenger/mcp.py`, `back/app/messenger/models.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/native_resources.py`, `back/app/messenger/permissions.py`, `back/app/messenger/room_service.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py`, `back/app/messenger/user_service.py`, `back/app/messenger/voice_journal.py` |
+| `app.messenger` | `core.database` | `back/app/messenger/contact_access.py`, `back/app/messenger/contact_memory.py`, `back/app/messenger/facade.py`, `back/app/messenger/inbound.py`, `back/app/messenger/ingest.py`, `back/app/messenger/interactions.py`, `back/app/messenger/journal.py`, `back/app/messenger/mcp.py`, `back/app/messenger/models.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/native_resources.py`, `back/app/messenger/permissions.py`, `back/app/messenger/room_service.py`, `back/app/messenger/service.py`, `back/app/messenger/session.py`, `back/app/messenger/user_service.py`, `back/app/messenger/voice_journal.py` |
 | `app.messenger` | `core.dbadmin` | `back/app/messenger/dbadmin.py` |
 | `app.messenger` | `core.document` | `back/app/messenger/ingest.py` |
 | `app.messenger` | `core.i18n` | `back/app/messenger/ingest.py`, `back/app/messenger/interactions.py`, `back/app/messenger/mcp.py`, `back/app/messenger/native_facade.py`, `back/app/messenger/native_interactions.py`, `back/app/messenger/permissions.py`, `back/app/messenger/service.py` |
@@ -1820,14 +1820,14 @@ Aucune composante cyclique détectée.
 | POST | `/internal/validate` | `app.process` | `native_validate_definition` | oui | `back/app/process/native_router.py:145` |
 | POST | `/janus/openai/chat/completions` | `app.agent` | `janus_chat_completions` | oui | `back/app/agent/openai_router.py:179` |
 | GET | `/janus/openai/models` | `app.agent` | `get_janus_models` | oui | `back/app/agent/openai_router.py:163` |
-| GET | `/llm-calls` | `app.llm` | `read_calls` | oui | `back/app/llm/call_router.py:453` |
-| DELETE | `/llm-calls/cleanup` | `app.llm` | `cleanup_calls` | oui | `back/app/llm/call_router.py:523` |
-| GET | `/llm-calls/history` | `app.llm` | `read_call_history` | oui | `back/app/llm/call_router.py:496` |
-| GET | `/llm-calls/retention/preview` | `app.llm` | `preview_call_retention` | oui | `back/app/llm/call_router.py:532` |
-| GET | `/llm-calls/running` | `app.llm` | `read_running_calls` | oui | `back/app/llm/call_router.py:478` |
-| DELETE | `/llm-calls/{call_id}` | `app.llm` | `delete_call` | oui | `back/app/llm/call_router.py:556` |
-| GET | `/llm-calls/{call_id}` | `app.llm` | `read_call` | oui | `back/app/llm/call_router.py:575` |
-| POST | `/llm-calls/{call_id}/stop` | `app.llm` | `stop_llm_call` | oui | `back/app/llm/call_router.py:541` |
+| GET | `/llm-calls` | `app.llm` | `read_calls` | oui | `back/app/llm/call_router.py:461` |
+| DELETE | `/llm-calls/cleanup` | `app.llm` | `cleanup_calls` | oui | `back/app/llm/call_router.py:531` |
+| GET | `/llm-calls/history` | `app.llm` | `read_call_history` | oui | `back/app/llm/call_router.py:504` |
+| GET | `/llm-calls/retention/preview` | `app.llm` | `preview_call_retention` | oui | `back/app/llm/call_router.py:540` |
+| GET | `/llm-calls/running` | `app.llm` | `read_running_calls` | oui | `back/app/llm/call_router.py:486` |
+| DELETE | `/llm-calls/{call_id}` | `app.llm` | `delete_call` | oui | `back/app/llm/call_router.py:564` |
+| GET | `/llm-calls/{call_id}` | `app.llm` | `read_call` | oui | `back/app/llm/call_router.py:583` |
+| POST | `/llm-calls/{call_id}/stop` | `app.llm` | `stop_llm_call` | oui | `back/app/llm/call_router.py:549` |
 | GET | `/llm-profiles` | `app.llm` | `list_profiles` | oui | `back/app/llm/profile_router.py:67` |
 | POST | `/llm-profiles` | `app.llm` | `create_profile` | oui | `back/app/llm/profile_router.py:88` |
 | DELETE | `/llm-profiles/{profile_id}` | `app.llm` | `delete_profile` | oui | `back/app/llm/profile_router.py:119` |
@@ -1872,23 +1872,23 @@ Aucune composante cyclique détectée.
 | POST | `/llm/openai/inferences/{inference_id}/commands` | `app.llm` | `command_inference` | non | `back/app/llm/call_router.py:150` |
 | GET | `/llm/openai/inferences/{inference_id}/events` | `app.llm` | `inference_events` | non | `back/app/llm/call_router.py:164` |
 | GET | `/llm/openai/models` | `app.llm` | `llm_models` | non | `back/app/llm/call_router.py:187` |
-| POST | `/llm/openai/responses` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:337` |
-| POST | `/llm/openai/responses/compact` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:337` |
-| GET | `/llm/openai/runs/{agent_run_id}/usage` | `app.llm` | `llm_run_usage` | non | `back/app/llm/call_router.py:435` |
+| POST | `/llm/openai/responses` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:345` |
+| POST | `/llm/openai/responses/compact` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:345` |
+| GET | `/llm/openai/runs/{agent_run_id}/usage` | `app.llm` | `llm_run_usage` | non | `back/app/llm/call_router.py:443` |
 | GET | `/llm/users/{user_id}/preferences` | `app.llm` | `get_user_preferences` | oui | `back/app/llm/personal_router.py:68` |
 | PUT | `/llm/users/{user_id}/preferences` | `app.llm` | `put_user_preferences` | oui | `back/app/llm/personal_router.py:75` |
-| GET | `/mail/approvers` | `bridge.mail` | `list_mail_approvers` | oui | `back/bridge/mail/router.py:166` |
+| GET | `/mail/approvers` | `bridge.mail` | `list_mail_approvers` | oui | `back/bridge/mail/router.py:172` |
 | GET | `/mail/browser/message` | `bridge.mail` | `read_browser_message` | oui | `back/bridge/mail/router.py:39` |
-| GET | `/mail/connections/{connection_id}/mailboxes` | `bridge.mail` | `list_connection_mailboxes` | oui | `back/bridge/mail/router.py:265` |
-| POST | `/mail/connections/{connection_id}/test` | `bridge.mail` | `test_connection` | oui | `back/bridge/mail/router.py:239` |
+| GET | `/mail/connections/{connection_id}/mailboxes` | `bridge.mail` | `list_connection_mailboxes` | oui | `back/bridge/mail/router.py:271` |
+| POST | `/mail/connections/{connection_id}/test` | `bridge.mail` | `test_connection` | oui | `back/bridge/mail/router.py:245` |
 | GET | `/mail/inbound` | `bridge.mail` | `list_inbound_mail` | oui | `back/bridge/mail/router.py:70` |
 | GET | `/mail/inbound/{receipt_id}` | `bridge.mail` | `read_inbound_mail` | oui | `back/bridge/mail/router.py:87` |
-| GET | `/mail/outbound` | `bridge.mail` | `list_outbound_mail` | oui | `back/bridge/mail/router.py:130` |
-| GET | `/mail/outbound/agents` | `bridge.mail` | `list_outbound_mail_agents` | oui | `back/bridge/mail/router.py:153` |
-| GET | `/mail/outbound/{delivery_id}` | `bridge.mail` | `read_outbound_mail` | oui | `back/bridge/mail/router.py:172` |
-| POST | `/mail/outbound/{delivery_id}/approve` | `bridge.mail` | `approve_outbound_mail` | oui | `back/bridge/mail/router.py:189` |
-| POST | `/mail/outbound/{delivery_id}/reject` | `bridge.mail` | `reject_outbound_mail` | oui | `back/bridge/mail/router.py:214` |
-| GET | `/mail/status` | `bridge.mail` | `read_mail_status` | oui | `back/bridge/mail/router.py:119` |
+| GET | `/mail/outbound` | `bridge.mail` | `list_outbound_mail` | oui | `back/bridge/mail/router.py:136` |
+| GET | `/mail/outbound/agents` | `bridge.mail` | `list_outbound_mail_agents` | oui | `back/bridge/mail/router.py:159` |
+| GET | `/mail/outbound/{delivery_id}` | `bridge.mail` | `read_outbound_mail` | oui | `back/bridge/mail/router.py:178` |
+| POST | `/mail/outbound/{delivery_id}/approve` | `bridge.mail` | `approve_outbound_mail` | oui | `back/bridge/mail/router.py:195` |
+| POST | `/mail/outbound/{delivery_id}/reject` | `bridge.mail` | `reject_outbound_mail` | oui | `back/bridge/mail/router.py:220` |
+| GET | `/mail/status` | `bridge.mail` | `read_mail_status` | oui | `back/bridge/mail/router.py:125` |
 | POST | `/mcp/{identifier}` | `app.harnesses` | `mcp` | non | `back/app/harnesses/runtime_web.py:60` |
 | POST | `/media` | `app.file_share` | `prepare_media` | oui | `back/app/file_share/media_router.py:39` |
 | DELETE | `/media/{identifier}` | `app.file_share` | `release_media` | oui | `back/app/file_share/media_router.py:117` |
@@ -1960,8 +1960,8 @@ Aucune composante cyclique détectée.
 | POST | `/profile/openai/chat/completions` | `app.llm` | `llm_completion` | non | `back/app/llm/call_router.py:207` |
 | POST | `/profile/openai/embeddings` | `app.llm` | `embeddings` | non | `back/app/llm/profile_inference_router.py:35` |
 | GET | `/profile/openai/models` | `app.llm` | `llm_models` | non | `back/app/llm/call_router.py:187` |
-| POST | `/profile/openai/responses` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:337` |
-| POST | `/profile/openai/responses/compact` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:337` |
+| POST | `/profile/openai/responses` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:345` |
+| POST | `/profile/openai/responses/compact` | `app.llm` | `llm_responses` | non | `back/app/llm/call_router.py:345` |
 | GET | `/retention/preview` | `app.process` | `preview_retention` | oui | `back/app/process/router.py:110` |
 | GET | `/runs` | `app.process` | `read_runs` | oui | `back/app/process/router.py:275` |
 | POST | `/runs` | `app.process` | `create_run` | oui | `back/app/process/router.py:229` |

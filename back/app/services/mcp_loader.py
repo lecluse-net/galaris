@@ -517,6 +517,12 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                     if definition.service_code in {"mail", "calendar"}:
                         protocol = cast(Literal["mail", "calendar"], definition.service_code)
                         requested = arguments.get("connection_id") or ctx.resource("source_connection_id")
+                        if requested is None and protocol == "mail" and ctx.task_id is not None:
+                            from app.messenger import inbound_task_connection
+
+                            requested = await inbound_task_connection(
+                                ctx.task_id, agent_id=ctx.agent_id, platform=protocol,
+                            )
                         selected = await resolve_protocol_connection(ctx.agent_id, protocol, requested,
                             resource_id=arguments.get("calendar_id") if protocol == "calendar" else None)
                         protocol_token = bind_protocol_connection(protocol, ctx.agent_id, selected)

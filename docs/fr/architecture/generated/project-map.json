@@ -3640,6 +3640,7 @@
       {
         "files": [
           "back/app/messenger/contact_memory.py",
+          "back/app/messenger/inbound.py",
           "back/app/messenger/mcp.py",
           "back/app/messenger/service.py"
         ],
@@ -3662,6 +3663,7 @@
           "back/app/messenger/contact_access.py",
           "back/app/messenger/contact_memory.py",
           "back/app/messenger/facade.py",
+          "back/app/messenger/inbound.py",
           "back/app/messenger/ingest.py",
           "back/app/messenger/interactions.py",
           "back/app/messenger/journal.py",
@@ -19914,7 +19916,7 @@
         "declared_path": "/llm-calls",
         "file": "back/app/llm/call_router.py",
         "handler": "read_calls",
-        "line": 453,
+        "line": 461,
         "method": "GET",
         "module": "app.llm"
       },
@@ -19923,7 +19925,7 @@
         "declared_path": "/llm-calls/cleanup",
         "file": "back/app/llm/call_router.py",
         "handler": "cleanup_calls",
-        "line": 523,
+        "line": 531,
         "method": "DELETE",
         "module": "app.llm"
       },
@@ -19932,7 +19934,7 @@
         "declared_path": "/llm-calls/history",
         "file": "back/app/llm/call_router.py",
         "handler": "read_call_history",
-        "line": 496,
+        "line": 504,
         "method": "GET",
         "module": "app.llm"
       },
@@ -19941,7 +19943,7 @@
         "declared_path": "/llm-calls/retention/preview",
         "file": "back/app/llm/call_router.py",
         "handler": "preview_call_retention",
-        "line": 532,
+        "line": 540,
         "method": "GET",
         "module": "app.llm"
       },
@@ -19950,7 +19952,7 @@
         "declared_path": "/llm-calls/running",
         "file": "back/app/llm/call_router.py",
         "handler": "read_running_calls",
-        "line": 478,
+        "line": 486,
         "method": "GET",
         "module": "app.llm"
       },
@@ -19959,7 +19961,7 @@
         "declared_path": "/llm-calls/{call_id}",
         "file": "back/app/llm/call_router.py",
         "handler": "delete_call",
-        "line": 556,
+        "line": 564,
         "method": "DELETE",
         "module": "app.llm"
       },
@@ -19968,7 +19970,7 @@
         "declared_path": "/llm-calls/{call_id}",
         "file": "back/app/llm/call_router.py",
         "handler": "read_call",
-        "line": 575,
+        "line": 583,
         "method": "GET",
         "module": "app.llm"
       },
@@ -19977,7 +19979,7 @@
         "declared_path": "/llm-calls/{call_id}/stop",
         "file": "back/app/llm/call_router.py",
         "handler": "stop_llm_call",
-        "line": 541,
+        "line": 549,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20382,7 +20384,7 @@
         "declared_path": "/llm/openai/responses",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_responses",
-        "line": 337,
+        "line": 345,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20391,7 +20393,7 @@
         "declared_path": "/llm/openai/responses/compact",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_responses",
-        "line": 337,
+        "line": 345,
         "method": "POST",
         "module": "app.llm"
       },
@@ -20400,7 +20402,7 @@
         "declared_path": "/llm/openai/runs/{agent_run_id}/usage",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_run_usage",
-        "line": 435,
+        "line": 443,
         "method": "GET",
         "module": "app.llm"
       },
@@ -20427,7 +20429,7 @@
         "declared_path": "/mail/approvers",
         "file": "back/bridge/mail/router.py",
         "handler": "list_mail_approvers",
-        "line": 166,
+        "line": 172,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -20445,7 +20447,7 @@
         "declared_path": "/mail/connections/{connection_id}/mailboxes",
         "file": "back/bridge/mail/router.py",
         "handler": "list_connection_mailboxes",
-        "line": 265,
+        "line": 271,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -20454,7 +20456,7 @@
         "declared_path": "/mail/connections/{connection_id}/test",
         "file": "back/bridge/mail/router.py",
         "handler": "test_connection",
-        "line": 239,
+        "line": 245,
         "method": "POST",
         "module": "bridge.mail"
       },
@@ -20481,7 +20483,7 @@
         "declared_path": "/mail/outbound",
         "file": "back/bridge/mail/router.py",
         "handler": "list_outbound_mail",
-        "line": 130,
+        "line": 136,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -20490,7 +20492,7 @@
         "declared_path": "/mail/outbound/agents",
         "file": "back/bridge/mail/router.py",
         "handler": "list_outbound_mail_agents",
-        "line": 153,
+        "line": 159,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -20499,7 +20501,7 @@
         "declared_path": "/mail/outbound/{delivery_id}",
         "file": "back/bridge/mail/router.py",
         "handler": "read_outbound_mail",
-        "line": 172,
+        "line": 178,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -20508,7 +20510,7 @@
         "declared_path": "/mail/outbound/{delivery_id}/approve",
         "file": "back/bridge/mail/router.py",
         "handler": "approve_outbound_mail",
-        "line": 189,
+        "line": 195,
         "method": "POST",
         "module": "bridge.mail"
       },
@@ -20517,7 +20519,7 @@
         "declared_path": "/mail/outbound/{delivery_id}/reject",
         "file": "back/bridge/mail/router.py",
         "handler": "reject_outbound_mail",
-        "line": 214,
+        "line": 220,
         "method": "POST",
         "module": "bridge.mail"
       },
@@ -20526,7 +20528,7 @@
         "declared_path": "/mail/status",
         "file": "back/bridge/mail/router.py",
         "handler": "read_mail_status",
-        "line": 119,
+        "line": 125,
         "method": "GET",
         "module": "bridge.mail"
       },
@@ -21174,7 +21176,7 @@
         "declared_path": "/profile/openai/responses",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_responses",
-        "line": 337,
+        "line": 345,
         "method": "POST",
         "module": "app.llm"
       },
@@ -21183,7 +21185,7 @@
         "declared_path": "/profile/openai/responses/compact",
         "file": "back/app/llm/call_router.py",
         "handler": "llm_responses",
-        "line": 337,
+        "line": 345,
         "method": "POST",
         "module": "app.llm"
       },

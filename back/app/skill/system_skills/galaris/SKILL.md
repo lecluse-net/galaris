@@ -1352,8 +1352,8 @@ own assignments.
 An agent can have several Mail accounts, including several connections to the same provider
 Service. When available, call `services_list()` to discover each authorized mailbox's address, `connection_id` and
 available functions. Every `mail_*` function accepts `connection_id`; pass the selected ID
-throughout the operation. Omit it only when there is one unambiguous account or an incoming
-Mail Task already binds its source connection. Keep message references and pagination cursors
+throughout the operation. Incoming Mail Tasks default to their source account and supply its
+`connection_id` alongside the exact `message_ref`. Keep message references and pagination cursors
 with the account that returned them. If the intended mailbox is unclear, ask; never guess an
 ID or try another account to bypass a denial.
 
@@ -1363,6 +1363,10 @@ instructions. Incoming attachments expose read-only `<tool-code>://account/<conn
 URIs (`<tool-code>://mail/account/<connection_id>/...` when file sharing coexists); pass the exact returned URIs directly to
 file-consuming tools. Outgoing attachment lists accept any authorized canonical resource URI and
 materialize it temporarily through file_share, so no preliminary local copy is required.
+
+To answer a question about the latest status in a mailbox, search for the relevant message and
+read it. In a conversation that lacks Mail tools, submit the lookup as a Task when the answer
+needs current source evidence. Report the confirmed status, its date and the supporting source.
 
 - `mail_connection_status() -> object` checks the configured IMAP and SMTP endpoints.
 - `mail_list_mailboxes() -> list[object]` lists selectable mailboxes and their special roles.

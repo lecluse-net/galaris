@@ -426,7 +426,7 @@
         "multilingual"
       ],
       "input_data": {
-        "variable_value": "Réalise maintenant le modèle demandé à partir de archive://samples/00000000-0000-0000-0000-000000000081.",
+        "variable_value": "Est-ce que le colis Orbe est arrivé ? Tu as vérifié le mail ?",
         "context": {
           "available_tools": [
             "conversation_task_submit"
@@ -444,11 +444,11 @@
           "history": [
             {
               "role": "user",
-              "text": "À partir de archive://samples/00000000-0000-0000-0000-000000000081, génère une scène 3D et livre le fichier final. Tu peux commencer."
+              "text": "J’attends un colis Orbe. Le suivi de livraison devrait être dans ma boîte mail."
             },
             {
               "role": "assistant",
-              "text": "Je n’ai pas d’outil de modélisation dans cette conversation, donc je ne peux pas réaliser le modèle."
+              "text": "Je n’ai pas accès aux mails depuis cette conversation. Copie-moi le message de suivi."
             }
           ]
         }
@@ -460,7 +460,7 @@
           {
             "name": "conversation_task_submit",
             "arguments": {
-              "objective": "<p>Réalise maintenant le modèle demandé à partir de archive://samples/00000000-0000-0000-0000-000000000081.</p>"
+              "objective": "<p>Vérifie dans la boîte mail autorisée le statut du colis Orbe et indique ce que confirme le courriel correspondant.</p>"
             }
           }
         ],
@@ -468,7 +468,7 @@
           {
             "name": "conversation_task_submit",
             "arguments": {
-              "objective": "<p>Réalise maintenant le modèle demandé à partir de archive://samples/00000000-0000-0000-0000-000000000081.</p>"
+              "objective": "<p>Vérifie dans la boîte mail autorisée le statut du colis Orbe et indique ce que confirme le courriel correspondant.</p>"
             },
             "result": {
               "created": true,
@@ -484,7 +484,8 @@
               "tool": "conversation_task_submit",
               "argument_values": {
                 "objective": [
-                  "archive://samples/00000000-0000-0000-0000-000000000081"
+                  "Orbe",
+                  "mail"
                 ]
               }
             }
@@ -495,7 +496,7 @@
           "Confirm admission only after the Task receipt; do not claim that the requested work is complete."
         ],
         "objective_requirements": [
-          "Preserve the source URI and the requested result. Technical methods may be investigated by the Task. Do not assert that a foreground-only limitation also applies to the Task."
+          "Preserve the requested parcel and deliver a status grounded in the authorized mailbox. Let the Task discover the account and read the relevant message."
         ]
       }
     },

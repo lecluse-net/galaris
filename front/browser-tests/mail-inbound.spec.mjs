@@ -1,4 +1,5 @@
-import { test, expect, mount, jsonRoute } from './fixtures.mjs'
+import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
+import { result } from './data.mjs'
 
 const receipt = {
   id: 'synthetic-receipt', connection_id: 5, agent_id: 7, agent_label: 'Synthetic agent',
@@ -12,7 +13,7 @@ async function setup(page, options = {}) {
   await jsonRoute(page, '**/api/mail/outbound?*', { items: [], total: 0, limit: 50, offset: 0 })
   await jsonRoute(page, '**/api/mail/outbound/agents', [{ id: 7, label: 'Synthetic agent' }])
   await mount(page, 'app/connection/pages/mail.vue', {
-    privileges: options.readonly ? ['CONNECTION_ACCESS'] : ['CONNECTION_ACCESS', 'CONNECTION_EDIT'],
+    privileges: options.privileges ?? (options.readonly ? ['CONNECTION_ACCESS'] : ['CONNECTION_ACCESS', 'CONNECTION_EDIT']),
   })
   await page.getByRole('tab', { name: 'Reception', exact: true }).click()
 }
@@ -70,6 +71,42 @@ test('received email content stays inert and read-only viewers cannot grant cons
   await page.locator('.q-dialog__backdrop').click({ position: { x: 3, y: 3 } })
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
+
+for (const width of [390, 1440]) {
+  test(`the mail journal opens the exact processing task and preserves the email at ${width}px`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 1000 })
+    const id = '00000000-0000-0000-0000-000000000073'
+    const admitted = { ...receipt, status: 'admitted', can_review: false, task_uri: `galaris://task/${id}` }
+    const task = { id, label: 'Synthetic delivery check', objective: '<p>Read the delivery notice.</p>',
+      status: 'SUCCESS', paused: false, agent_id: null, data: {}, execution_result: result,
+      revision: 1, created_at: receipt.created_at, updated_at: null, effort: 'standard', cost: 0, messages: [] }
+    await jsonRoute(page, '**/api/mail/inbound?*', { items: [admitted], total: 1 })
+    await jsonRoute(page, '**/api/mail/inbound/synthetic-receipt', { ...admitted, content: { body: 'Synthetic parcel delivered.' } })
+    await jsonRoute(page, `**/api/tasks/${id}`, task)
+    await jsonRoute(page, `**/api/tasks/${id}/full`, task)
+    await jsonRoute(page, `**/api/tasks/${id}/children`, [])
+    await jsonRoute(page, `**/api/tasks/${id}/budget`, { enabled: false })
+    await jsonRoute(page, '**/api/tasks/activity', [])
+    await jsonRoute(page, '**/api/topics?*', [])
+    await setup(page, { privileges: ['CONNECTION_ACCESS', 'TASK_ACCESS'] })
+    await expect(page.getByRole('button', { name: 'Follow task', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'View email', exact: true }).click()
+    const email = page.getByRole('dialog').filter({ hasText: receipt.subject })
+    const follow = email.getByRole('button', { name: 'Follow task', exact: true })
+    await follow.focus()
+    await page.keyboard.press('Enter')
+    const details = page.getByRole('dialog').filter({ hasText: task.label })
+    await expect(details.getByText(task.label, { exact: true })).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('mail-task-light.png'), animations: 'disabled' })
+    await page.evaluate(() => window.testApp.dark(true))
+    await page.screenshot({ path: testInfo.outputPath('mail-task-dark.png'), animations: 'disabled' })
+    await page.keyboard.press('Escape')
+    await expect(details).toHaveCount(0)
+    await expect(email).toContainText('Synthetic parcel delivered.')
+    await setPrivileges(page, ['CONNECTION_ACCESS'])
+    await expect(page.getByRole('button', { name: 'Follow task', exact: true })).toHaveCount(0)
+  })
+}
 
 test('inbound journal recovers from a failed load and keeps sender filtering', async ({ page }) => {
   let failed = true

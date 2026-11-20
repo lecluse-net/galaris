@@ -421,11 +421,13 @@ au watermark courant rétablit cette référence. Le corps n'est lu qu'après au
 `mail_process` : par défaut les adresses exactes des Contacts de l'agent sont acceptées et
 les expéditeurs inconnus demandent le consentement commun. Les règles explicites Actif,
 Sur demande et Bloqué restent prioritaires ; l'accord d'envoi est indépendant.
-Mail déclare une politique d’admission `task` propre au transport : chaque nouveau courriel
-autorisé pour réception crée une tâche qui reçoit sa référence `mail_get`, sans passer par le
-contrôleur conversationnel court. Cette exception reste possédée par `app.messenger`; le bridge
-IMAP ne crée jamais lui-même une tâche. Le résultat terminal n’est pas renvoyé implicitement par
-SMTP, car toute réponse doit rester un effet explicite et idempotent d’un outil `mail_*`.
+Mail déclare une politique d’admission `task` propre au transport. Chaque nouveau courriel
+autorisé pour réception crée une tâche qui reçoit sa référence `mail_get` et sa connexion exactes,
+y compris si la prélecture IMAP a échoué. Messenger confirme l'admission après création de la tâche.
+La reprise répare un reçu autorisé sans tâche durable et reconnaît une tâche déjà créée, y compris
+après sa suppression logique. Le journal projette le lien depuis le message canonique pour les
+utilisateurs habilités à lire les tâches de cet agent. Une réponse SMTP passe par un effet explicite
+et idempotent d’un outil `mail_*`.
 Les rooms techniques créées pour ces courriels restent dans le journal canonique mais sont exclues
 de la projection Chat, y compris dans la vue d’un agent, afin qu’un flux IMAP ne crée pas une
 discussion visible par message.

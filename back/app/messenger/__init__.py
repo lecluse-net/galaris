@@ -27,7 +27,11 @@ from .models import (
 from .interface import HistoryPage, BridgeSpec, ParamDef, NotSupported
 from .events import Signal, message_journaled, message_received, message_sent, interaction_changed, message_admitting
 from .native_interactions import read_internal_interaction, answer_internal_interaction
-from .inbound import on_message, dispatch_incoming
+from .inbound import (
+    on_message, dispatch_incoming,
+    inbound_task_connection as inbound_task_connection,
+    inbound_task_links as inbound_task_links,
+)
 from .contact_access import register_inbound_contact_authorizer as register_inbound_contact_authorizer
 from .contact_access import (
     can_request_external_contact as can_request_external_contact,

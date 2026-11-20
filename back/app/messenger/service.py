@@ -305,12 +305,19 @@ async def admit_incoming(message: Message) -> bool:
 
     if await archive_stale_instant_message(message):
         return False
+    spec = facade.get_spec(message.platform)
     async with get_db_session():
-        await _process_incoming(message)
+        task_id = await _process_incoming(message)
+        if spec is not None and spec.inbound_admission == "task" and task_id is None:
+            raise MissingInboundTaskError("The inbound message did not create a processing task")
         return True
 
 
-async def _process_incoming(message: Message) -> None:
+class MissingInboundTaskError(RuntimeError):
+    """A task-only inbound message failed to acquire its durable Task."""
+
+
+async def _process_incoming(message: Message) -> UUID | None:
     from app.services import service
     from app.connection import connection_service
     from app.agent import agent_service
@@ -420,17 +427,18 @@ async def _process_incoming(message: Message) -> None:
     # Its receiver schedules independent work; admission never awaits a model.
     await message_admitting.send_async(message)
 
-    resolved_choice = await interactions.resolve_from_message(
-        message,
-        agent_id=connection.agent_id,
-    )
-    if resolved_choice is not None:
-        logger.info(
-            "Incoming message consumed by messaging interaction {} ({})",
-            resolved_choice.interaction_id,
-            resolved_choice.kind,
+    if bridge_spec is None or bridge_spec.inbound_admission == "conversation":
+        resolved_choice = await interactions.resolve_from_message(
+            message,
+            agent_id=connection.agent_id,
         )
-        return
+        if resolved_choice is not None:
+            logger.info(
+                "Incoming message consumed by messaging interaction {} ({})",
+                resolved_choice.interaction_id,
+                resolved_choice.kind,
+            )
+            return None
 
     # Human dialogue belongs to the independent low-latency control plane. AI-to-AI
     # collaboration deliberately keeps the durable Task workflow below.
@@ -664,8 +672,9 @@ async def _process_incoming(message: Message) -> None:
             message.id,
             new_task.id,
         )
-        return
-    runner.go_next(new_task.id, fast=True)
+    else:
+        runner.go_next(new_task.id, fast=True)
+    return new_task.id
 
 
 # =============================================================================

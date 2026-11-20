@@ -296,6 +296,12 @@ attachments are not downloaded before consent. After reading, the journal retain
 page of up to 50,000 characters and attachment metadata, with an explicit truncation notice.
 The complete email remains available in pages from its source mailbox.
 
+Each new authorized email starts its own processing Task. With Task read access, select
+**Follow task** in the list or email detail to see its progress, result, or error. The Task
+receives the exact account and message reference. Dream can retain durable facts from successful
+processing. If you ask for a current status, such as parcel delivery, the agent can start a Task
+from Chat to check the source mailbox.
+
 By default, an exact email identity in this agent’s **Contacts** allows processing directly.
 A display name, another address or another agent’s directory cannot grant this permission.
 Unknown senders require the agent manager’s common authorization, available in private Chat,
@@ -314,7 +320,8 @@ processing permission. For an agent, only inbox (`INBOX`) messages and their att
 read or admitted as Tasks. Searches in Sent, Trash, Archive or subfolders may return headers,
 but create no reception entry or processing request. Historical entries outside INBOX cannot
 resume processing. The journal covers newly observed incoming mail and INBOX mail discovered by
-tools; startup preserves the existing cursor and does not replay old mailbox contents.
+tools. The listener resumes authorized logged receipts that lack a Task. Its first start
+sets a cursor for new arrivals.
 Human IMAP browsing in [Files](files.md) is separate: users can read other folders without
 authorizing the agent to process their messages.
 

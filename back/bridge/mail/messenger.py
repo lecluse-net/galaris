@@ -54,12 +54,13 @@ def _decode_cursor(value: str | None) -> tuple[int, int] | None:
     return uid_validity, uid
 
 
-def _objective(summary: MailMessageSummary) -> str:
+def _objective(summary: MailMessageSummary, connection_id: int) -> str:
     return render_prompt(
         t("messenger_incoming.mail_objective", default_language()),
-        sender=summary.from_address or "—",
-        subject=summary.subject or "—",
-        message_ref=summary.ref,
+        sender=json.dumps(summary.from_address or "—", ensure_ascii=False),
+        subject=json.dumps(summary.subject or "—", ensure_ascii=False),
+        message_ref=json.dumps(summary.ref),
+        connection_id=connection_id,
     )
 
 
@@ -147,7 +148,7 @@ class MailMessenger(Messenger):
                 connection_id=self.connection_id,
                 service_id=self.service_id,
             ),
-            text=_objective(summary),
+            text=_objective(summary, self.connection_id),
             time=timestamp,
         )
 
@@ -157,6 +158,7 @@ class MailMessenger(Messenger):
         raw_cursor = await journal.listener_cursor(self.connection_id, platform="mail")
         cursor = _decode_cursor(raw_cursor)
         backoff = 5.0
+        repair_admissions = True
         logger.info(
             "Mail polling started connection={} interval_s={}",
             self.connection_id,
@@ -168,7 +170,8 @@ class MailMessenger(Messenger):
                     await asyncio.sleep(self.config.poll_interval_s)
                     continue
                 async with get_db_session():
-                    await resume_receipts(self.connection_id)
+                    await resume_receipts(self.connection_id, repair_admissions=repair_admissions)
+                repair_admissions = False
                 after_uid = cursor[1] if cursor is not None else None
                 batch = await asyncio.to_thread(
                     ImapClient(self.config).poll_inbox,

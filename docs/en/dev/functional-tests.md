@@ -1831,6 +1831,9 @@ including all-sites denial, appear alongside approvals and can be withdrawn. All
 takes priority over public-access mode.
 `mail-inbound.spec.mjs` and `bridge/mail/tests/test_inbound.py` also verify permanent denial
 of email processing: no body read, Task or new approval request for the next email.
+They cover following the exact Task from Reception on mobile and desktop with Task read access,
+recovering a receipt admitted without a Task, failed prefetch and selecting the source account
+when multiple mailboxes are connected.
 The assembled `tool-authorizations.spec.mjs` journey verifies actual blocking and withdrawal
 on mobile and desktop. Review dismissal uses its accessible button; component scenarios
 retain Escape and backdrop-dismissal coverage.

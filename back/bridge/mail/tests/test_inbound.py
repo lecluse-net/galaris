@@ -269,6 +269,7 @@ async def test_repeated_admission_survives_concurrent_delivery_and_revocation(in
     import asyncio
     from bridge.mail.messenger import MailMessenger
     from app.messenger import dispatch_incoming
+    from app.messenger.service import MissingInboundTaskError
     from app.connection.models import ConnectionParam
 
     config, _manager, _outsider, _read = inbox
@@ -285,7 +286,8 @@ async def test_repeated_admission_survives_concurrent_delivery_and_revocation(in
         message = MailMessenger(config, service_id=connection.service_id).message(_summary(71))
         # A different provider identifier cannot reuse the approved mail's room.
         message.id = 'forged-provider-message'
-        await dispatch_incoming(message)
+        with pytest.raises(MissingInboundTaskError):
+            await dispatch_incoming(message)
         assert await db.scalar(select(func.count()).select_from(Task)) == 1
         await connections.set_connection_function_state(config.connection_id, "mail_process", "disabled")
         with pytest.raises(PermissionError):
@@ -295,6 +297,100 @@ async def test_repeated_admission_survives_concurrent_delivery_and_revocation(in
         await db.commit()
         with pytest.raises(PermissionError, match="configuration changed"):
             await service.get_message(config.agent_id, row.message_ref)
+
+
+@pytest.mark.asyncio
+async def test_authorized_mail_admits_one_task_even_if_prefetch_fails(inbox):
+    config, _manager, _outsider, read = inbox
+    read.side_effect = TimeoutError("Synthetic IMAP timeout")
+    summary = _summary(73)
+    async with get_db_session() as db:
+        await connections.set_connection_function_state(config.connection_id, "mail_process", "enabled")
+        await inbound.receive(config, summary)
+        await inbound.receive(config, summary)
+        task = (await db.scalars(select(Task))).one()
+        receipt = await db.scalar(select(MailInboundReceipt))
+        assert receipt.status == "admitted" and receipt.read_at is None
+        assert summary.ref in task.objective
+    read.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_receipt_recovers_an_admission_without_a_task(inbox, monkeypatch):
+    from app.messenger import Message, facade
+
+    config, manager, _outsider, read = inbox
+    summary = _summary(72)
+    original_enabled = facade.is_kind_enabled
+    async with get_db_session() as db:
+        await connections.set_connection_function_state(config.connection_id, "mail_process", "enabled")
+        monkeypatch.setattr(facade, "is_kind_enabled", lambda kind: kind != "mail" and original_enabled(kind))
+        await inbound.receive(config, summary)
+        receipt = await db.scalar(select(MailInboundReceipt))
+        assert receipt.status == "error"
+        assert receipt.admitted_at is None
+        assert await db.scalar(select(func.count()).select_from(Task)) == 0
+        receipt_id = receipt.id
+        # Simulate a receipt incorrectly marked admitted by an earlier version.
+        receipt.status, receipt.admitted_at = "admitted", receipt.read_at
+        message = (await db.scalars(select(Message).where(
+            Message.connection_id == config.connection_id, Message.room_id == summary.ref,
+        ))).one()
+        assert message.status == "failed"
+        message.status = "admitted"
+        await db.commit()
+    monkeypatch.setattr(facade, "is_kind_enabled", original_enabled)
+    async with get_db_session() as db:
+        await inbound.resume_receipts(config.connection_id, repair_admissions=True)
+        await inbound.resume_receipts(config.connection_id)
+        task = (await db.scalars(select(Task))).one()
+        receipt = await inbound.get_receipt(receipt_id, current_user_id=manager,
+            agent_ids=frozenset({config.agent_id}), include_task=True)
+        assert receipt is not None and receipt.status == "admitted"
+        assert receipt.task_uri == f"galaris://task/{task.id}"
+        assert task.contact_memory_item_id is not None
+        assert f"connection_id={config.connection_id}" in task.objective
+        assert summary.ref in task.objective
+        page = await inbound.list_receipts(current_user_id=manager, agent_ids=frozenset({config.agent_id}),
+            agent_id=None, search="", offset=0, limit=50, include_task=True)
+        assert [item.task_uri for item in page.items] == [receipt.task_uri]
+        task.soft_delete()
+        await db.commit()
+        await inbound.resume_receipts(config.connection_id, repair_admissions=True)
+        assert await db.scalar(select(func.count()).select_from(Task)) == 0
+        page = await inbound.list_receipts(current_user_id=manager, agent_ids=frozenset({config.agent_id}),
+            agent_id=None, search="", offset=0, limit=50, include_task=True)
+        assert [item.task_uri for item in page.items] == [None]
+    read.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_inbound_task_defaults_to_its_mail_account_with_multiple_connections(inbox, monkeypatch):
+    from app.connection import Connection
+    from app.services import build_agent_galaris_fastmcp, current_protocol_connection
+    from fastmcp import Client
+
+    config, _manager, _outsider, _read = inbox
+    summary = _summary(74)
+    async with get_db_session() as db:
+        connection = await connections.get_connection(config.connection_id)
+        db.add(Connection(agent_id=config.agent_id, service_id=connection.service_id, active=True,
+            singleton_key=None))
+        await db.commit()
+        await connections.set_connection_function_state(config.connection_id, "mail_process", "enabled")
+        await inbound.receive(config, summary)
+        task = (await db.scalars(select(Task))).one()
+        server = await build_agent_galaris_fastmcp(config.agent_id, task_id=task.id, allowed_tool_names={"mail_get"})
+
+    async def resolve(agent_id):
+        assert current_protocol_connection("mail", agent_id) == config.connection_id
+        return config
+
+    monkeypatch.setattr(service, "resolve_mail_connection", resolve)
+    async with Client(server) as client:
+        result = await client.call_tool("mail_get", {"message_ref": summary.ref}, raise_on_error=False)
+        assert not result.is_error, result
+        assert "Synthetic private body" in str(result.content)
 
 
 @pytest.mark.asyncio
@@ -499,7 +595,7 @@ async def test_managed_mail_read_resumes_only_its_registered_waiter(inbox, monke
 
 @pytest.mark.asyncio
 async def test_reception_http_requires_privilege_and_hides_other_agents(inbox, client):
-    from core.authorize import Assignment, Role
+    from core.authorize import Assignment, Privilege, Role, RolePrivilege
     from core.user import UserModel
     from core.user.auth_service import create_access_token
 
@@ -538,3 +634,21 @@ async def test_reception_http_requires_privilege_and_hides_other_agents(inbox, c
     assert (await client.get(detail_url, headers=headers[outsider])).status_code == 404
     assert (await client.get(f"/api/mail/inbound?agent_id={config.agent_id}", headers=headers[outsider])).status_code == 404
     read.assert_not_called()
+    async with get_db_session() as db:
+        await connections.set_connection_function_state(config.connection_id, "mail_process", "enabled")
+        await inbound.receive(config, _summary(102))
+        new_receipt = await db.scalar(select(MailInboundReceipt).where(
+            MailInboundReceipt.message_ref == _summary(102).ref))
+        task = (await db.scalars(select(Task))).one()
+        task_uri = f"galaris://task/{task.id}"
+        new_detail_url = f"/api/mail/inbound/{new_receipt.id}"
+    response = await client.get(new_detail_url, headers=headers[manager])
+    assert response.status_code == 200 and response.json()["task_uri"] is None
+    async with get_db_session() as db:
+        privilege = await db.scalar(select(Privilege).where(Privilege.code == "TASK_ACCESS"))
+        db.add(RolePrivilege(role_id=role_id, privilege_id=privilege.id))
+    response = await client.get(new_detail_url, headers=headers[manager])
+    assert response.status_code == 200 and response.json()["task_uri"] == task_uri
+    response = await client.get("/api/mail/inbound", headers=headers[manager])
+    assert {item["task_uri"] for item in response.json()["items"]} == {task_uri, None}
+    assert (await client.get(new_detail_url, headers=headers[outsider])).status_code == 404

@@ -40,6 +40,7 @@ class MailInboundItem(BaseModel):
     admitted_at: datetime | None
     read_at: datetime | None
     error: str | None
+    task_uri: str | None = None
 
 
 class MailInboundPage(BaseModel):

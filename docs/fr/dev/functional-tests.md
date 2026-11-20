@@ -1929,6 +1929,9 @@ action déjà approuvée mais non commencée. La projection dans Chat accepte un
 avec les accords dans les décisions permanentes ; le refus global reste prioritaire au mode public.
 `mail-inbound.spec.mjs` et `bridge/mail/tests/test_inbound.py` vérifient aussi le choix permanent
 de refus du traitement : aucun contenu lu, aucune tâche et aucune nouvelle demande pour le mail suivant.
+Ils couvrent le suivi de la tâche exacte depuis la réception sur mobile et ordinateur, avec les
+droits de lecture Task, la reprise d'une admission sans tâche, l'échec de prélecture et la sélection
+du compte source quand plusieurs boîtes sont connectées.
 Le parcours assemblé `tool-authorizations.spec.mjs` vérifie le blocage réel puis le retrait de
 la décision sur mobile et desktop. Sa fermeture de revue utilise le bouton accessible ; les
 scénarios de composants conservent la fermeture par Échap et par fond de modale.
