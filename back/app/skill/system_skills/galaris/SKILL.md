@@ -396,17 +396,22 @@ context can identify the open map. It does not transmit the active node or the m
 Resolve references such as “this branch” from the message and the map structure. If several
 branches match, ask for the title and parent path before editing.
 
-Use the resulting node IDs and revision for `mindmap_edit`. For example,
-`mindmap_edit(document_id=URI, expected_revision=REVISION, operations=[{"operation":"add","node_id":"findings","parent_id":"root","title":"Findings"}])`.
-Batch related add, edit, move and remove operations against one revision. A remove includes descendants.
-In an edit, omitted fields keep their values and an empty string clears a text field.
+To add branches, use
+`mindmap_add(document_id=URI, expected_revision=REVISION, branches=[{"node_id":"findings","parent_id":"root","title":"Findings"}])`
+when mounted. Use a new ID for each branch and put parents before their children.
+With `mindmap_edit`, supply `operations` containing add, edit, move or remove commands
+against one revision. An `add` command includes `operation: "add"`, `node_id`, `parent_id`
+and `title`.
+An edit needs an existing node ID and at least one field to change. An omitted field keeps its
+value and an empty string clears a text field. A remove includes descendants.
 Use `note` for plain text, `icon` for a library code such as `emoji:1F4CC`, and
 `body_html` for a complete editorial HTML fragment. Read the node with `node_id`
 and use `next_body_offset` to retrieve its complete existing body before replacement.
 Reference Galaris objects and other Documents' attachments with canonical links.
 For an inline image, copy it first with `file_copy` into `document://<map-uuid>/attachments/`,
 then use the returned URI as the `img` source. Links preserve the target's independent ACL.
-On conflict, reread and reconcile. Report the map URI and the branches changed after a successful
+On a rejected edit, correct the indicated operation before retrying. On conflict, reread and
+reconcile. Report the map URI and the branches changed after a successful
 tool result. In internal Chat, use `document_show` when available and useful for review.
 Use `document_sharing` and `document_share` to grant the intended access before handing the map
 to a collaborator.

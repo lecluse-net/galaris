@@ -8,11 +8,12 @@ from pydantic import Field
 
 from app.agent import EffectDescriptorV1
 from app.services import McpToolContext, mcp_tool
+from app.services.contracts import ToolCallRejectedError
 
 from . import document_service, item_sharing, resource_service
 from .formats import DocumentRevisionRegion
 from .mindmap import MindMap, MindMapNode, NodeKey, NodeTitle
-from .mindmap.commands import AddBranch, BranchCommand, apply_commands
+from .mindmap.commands import AddBranch, BranchCommand, BranchCommandError, NewBranch, apply_commands
 from .schemas import DocumentPayload, DocumentUpdate
 
 DocumentUri = Annotated[str, Field(pattern=r"^document://[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$")]
@@ -22,6 +23,13 @@ RevisionNumber = Annotated[int, Field(ge=1)]
 
 def _identity(value: str) -> UUID:
     return UUID(value.strip().removeprefix("document://"))
+
+
+def _apply_mindmap_commands(mindmap: MindMap, commands: list[BranchCommand]) -> MindMap:
+    try:
+        return apply_commands(mindmap, commands)
+    except BranchCommandError as exc:
+        raise ToolCallRejectedError(str(exc)) from exc
 
 
 @mcp_tool("document", name="document_revision_list", approval="enabled", conversation_policy="short",
@@ -63,7 +71,7 @@ async def mindmap_create(ctx: McpToolContext, title: Annotated[str, Field(min_le
         raise ValueError("Mind maps use the document:// collection")
     mindmap = MindMap(version=1, nodes=[MindMapNode(id="root", parent=None, title=root_title if root_title is not None else title)])
     if branches:
-        mindmap = apply_commands(mindmap, [*branches])
+        mindmap = _apply_mindmap_commands(mindmap, [*branches])
     item = await document_service.create_document(owner_agent_id=ctx.agent_id, title=title, content=mindmap.source(),
         task_id=ctx.task_id, document_format="mindmap")
     return json.dumps({"uri": f"document://{item.id}", "name": item.title, "root_id": "root",
@@ -72,7 +80,7 @@ async def mindmap_create(ctx: McpToolContext, title: Annotated[str, Field(min_le
 
 @mcp_tool("document", name="mindmap_read", approval="enabled",
     approval_reason="Read branches of a mind map",
-    description="Read a mind map by document:// URI. Lists stable node IDs, parents, notes, links and whether branches have rich content. Pass node_id to read one branch and a page of its body_html. Use next_body_offset to continue and the returned revision with mindmap_edit.",
+    description="Read a mind map by document:// URI. Lists stable node IDs, parents, notes, links and whether branches have rich content. Pass node_id to read one branch and a page of its body_html. Use next_body_offset to continue and the returned revision with mindmap_add or mindmap_edit.",
     effect_descriptor=EffectDescriptorV1(capability="file.read", kind="read", target_arguments=("document_id",),
         idempotence="read_only", receipt="resource"),
     effect_policy="read", concurrency_policy="safe")
@@ -116,13 +124,28 @@ def _mindmap_branch_summary(node: MindMapNode) -> dict[str, object]:
         "icon": "" if node.icon.startswith("data:") else node.icon}
 
 
+@mcp_tool("document", name="mindmap_add", approval="ask",
+    approval_reason="Add branches to a mind map",
+    effect_descriptor=EffectDescriptorV1(capability="file.write", kind="mutate", target_arguments=("document_id",),
+        reversible=True, receipt="resource"),
+    description="Add 1 to 50 new branches to an existing mind map in one revision. Call mindmap_read for expected_revision and parent IDs. Example branches: [{\"node_id\":\"findings\",\"parent_id\":\"root\",\"title\":\"Findings\"}]. Each node_id must be new. Put new parents before their children. Use link for a canonical resource URI and body_html for an editorial HTML fragment.")
+async def mindmap_add(ctx: McpToolContext, document_id: MindMapUri, expected_revision: RevisionNumber,
+    branches: Annotated[list[NewBranch], Field(min_length=1, max_length=50)]) -> str:
+    return await _edit_mindmap(ctx, document_id, expected_revision, [branch.as_command() for branch in branches])
+
+
 @mcp_tool("document", name="mindmap_edit", approval="ask",
     approval_reason="Modify branches in a mind map",
     effect_descriptor=EffectDescriptorV1(capability="file.write", kind="mutate", target_arguments=("document_id",),
         reversible=True, receipt="resource"),
-    description="Apply a batch of add, edit, move or remove operations to one mind map revision. Read first and supply expected_revision and node IDs. Add uses a new node_id and existing parent_id. Set body_html to a complete editorial HTML fragment; link authorized Galaris resources with canonical URIs. Inline images require a map-owned attachment URI. Set icon to an allowed library icon code or an empty string. Optional index is zero-based among siblings. Remove deletes the subtree.")
+    description="Apply a batch of add, edit, move or remove operations to one mind map revision. Read first and supply expected_revision and node IDs. To add, use operation='add' with a new node_id, parent_id and title. An edit requires an existing node_id and a field to change. Use an editorial HTML fragment in body_html and canonical URIs for links. Inline images require a map-owned attachment URI. Use a library icon code or an empty string for icon. Optional index is zero-based among siblings. Remove deletes the subtree.")
 async def mindmap_edit(ctx: McpToolContext, document_id: MindMapUri, expected_revision: Annotated[int, Field(ge=1)],
     operations: Annotated[list[BranchCommand], Field(min_length=1, max_length=50)]) -> str:
+    return await _edit_mindmap(ctx, document_id, expected_revision, operations)
+
+
+async def _edit_mindmap(ctx: McpToolContext, document_id: MindMapUri, expected_revision: int,
+    operations: list[BranchCommand]) -> str:
     if expected_revision < 1 or not 1 <= len(operations) <= 50:
         raise ValueError("Provide a revision and between 1 and 50 operations")
     identity = _identity(document_id)
@@ -134,7 +157,7 @@ async def mindmap_edit(ctx: McpToolContext, document_id: MindMapUri, expected_re
         raise ValueError("This Document is not a mind map")
     if item.revision != expected_revision:
         raise resource_service.DocumentConflictError("Mind map revision conflict; call mindmap_read again")
-    updated = apply_commands(MindMap.model_validate_json(content), operations)
+    updated = _apply_mindmap_commands(MindMap.model_validate_json(content), operations)
     saved = await resource_service.update_item(identity,
         DocumentUpdate(expected_revision=expected_revision, payload=DocumentPayload(text=updated.source())),
         actor_agent_id=ctx.agent_id, actor_task_id=ctx.task_id,

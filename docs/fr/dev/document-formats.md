@@ -32,7 +32,7 @@ Le [contrat des références documentaires](document-references.md) décrit les 
 
 ## Cartes mentales et agents
 
-Le Service **Document** déclare les trois outils MCP suivants. Ils peuvent être montés dans
+Le Service **Document** déclare les outils MCP suivants. Ils peuvent être montés dans
 le Chat et dans une Task selon les fonctions autorisées, les droits sur la carte et les
 règles du contexte d’exécution. La lecture est activée par défaut. La création et l’édition
 sont déclarées **Sur demande**, avec la politique effective des connexions.
@@ -41,7 +41,14 @@ sont déclarées **Sur demande**, avec la politique effective des connexions.
 |---|---|
 | `mindmap_create` | Crée un document privé pour l’agent et renvoie son URI `document://`, sa révision et l’identifiant `root`. Accepte jusqu’à 100 branches initiales, les parents avant leurs enfants. |
 | `mindmap_read` | Lit la révision enregistrée courante. La liste renvoie les identifiants stables, les parents et les résumés des nœuds. Suivre `next_offset` pour lire la suite. Avec `node_id`, l’outil renvoie le corps HTML du nœud par tranches. Suivre `next_body_offset` jusqu’à la fin. |
-| `mindmap_edit` | Applique en une seule révision un lot de 1 à 50 commandes `add`, `edit`, `move` ou `remove`. Fournir `expected_revision` et les identifiants lus. Une suppression emporte la sous-branche entière. Un conflit impose une relecture et une réconciliation. |
+| `mindmap_add` | Ajoute 1 à 50 branches en une seule révision. Fournir `expected_revision` et la liste `branches`. |
+| `mindmap_edit` | Applique un lot de 1 à 50 commandes `add`, `edit`, `move` ou `remove` en une seule révision. Fournir `expected_revision` et la liste `operations`. |
+
+Un ajout fournit un nouvel identifiant, l’identifiant du parent et le titre. Placer les
+parents avant leurs enfants dans le lot. Une commande `edit` cible un nœud présent et indique
+au moins un champ à modifier. Une suppression emporte toute la sous-branche. Si une
+commande est refusée avant l’écriture, le lot entier est rejeté. En cas de conflit de
+révision, relire la carte et réconcilier les modifications.
 
 L’agent peut choisir une carte mentale si le résultat à conserver s’organise naturellement en
 branches, par exemple un arbre de décision, une enquête ou un plan par chantier. Il respecte

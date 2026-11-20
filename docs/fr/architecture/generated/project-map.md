@@ -19,7 +19,7 @@ tests restent l’autorité sur le comportement.
 - 0 paires frontend directement bidirectionnelles ;
 - 832 handlers HTTP/WebSocket détectés ;
 - 203 tables SQLAlchemy détectées ;
-- 302 outils MCP natifs détectés ;
+- 303 outils MCP natifs détectés ;
 - 58 pages Vue détectées.
 
 ## Modules backend
@@ -2397,13 +2397,14 @@ Aucune composante cyclique détectée.
 | `conversation_task_submit` | `conversation` | `app.conversation` | `conversation_task_submit` | `back/app/conversation/mcp.py:571` |
 | `document_show` | `conversation` | `app.conversation` | `document_show` | `back/app/conversation/mcp.py:111` |
 | `repository_show` | `conversation` | `app.conversation` | `repository_show` | `back/app/conversation/mcp.py:123` |
-| `document_revision_compare` | `document` | `app.document` | `document_revision_compare` | `back/app/document/mcp.py:47` |
-| `document_revision_list` | `document` | `app.document` | `document_revision_list` | `back/app/document/mcp.py:32` |
-| `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:164` |
-| `document_sharing` | `document` | `app.document` | `document_sharing` | `back/app/document/mcp.py:149` |
-| `mindmap_create` | `document` | `app.document` | `mindmap_create` | `back/app/document/mcp.py:59` |
-| `mindmap_edit` | `document` | `app.document` | `mindmap_edit` | `back/app/document/mcp.py:124` |
-| `mindmap_read` | `document` | `app.document` | `mindmap_read` | `back/app/document/mcp.py:79` |
+| `document_revision_compare` | `document` | `app.document` | `document_revision_compare` | `back/app/document/mcp.py:55` |
+| `document_revision_list` | `document` | `app.document` | `document_revision_list` | `back/app/document/mcp.py:40` |
+| `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:187` |
+| `document_sharing` | `document` | `app.document` | `document_sharing` | `back/app/document/mcp.py:172` |
+| `mindmap_add` | `document` | `app.document` | `mindmap_add` | `back/app/document/mcp.py:132` |
+| `mindmap_create` | `document` | `app.document` | `mindmap_create` | `back/app/document/mcp.py:67` |
+| `mindmap_edit` | `document` | `app.document` | `mindmap_edit` | `back/app/document/mcp.py:142` |
+| `mindmap_read` | `document` | `app.document` | `mindmap_read` | `back/app/document/mcp.py:87` |
 | `dataset_query` | `file_sharing` | `app.document` | `dataset_query` | `back/app/document/data/mcp.py:23` |
 | `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:471` |
 | `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:540` |

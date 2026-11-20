@@ -148,10 +148,17 @@ async def build_agent_tool_advertisement(
             "Internal Chat can identify the open map, but does not supply the selected node. "
             "Resolve the branch from the request and map structure; ask for its title or parent path if ambiguous."
         )
+    if {"mindmap_read", "mindmap_add"} <= tool_names:
+        lines.append(
+            'Add branches with mindmap_add(document_id=URI, expected_revision=revision, '
+            'branches=[{"node_id":"findings","parent_id":"root","title":"Findings"}]). '
+            "Use a new ID and the actual parent ID from mindmap_read. Put new parents before their children."
+        )
     if {"mindmap_read", "mindmap_edit"} <= tool_names:
         lines.append(
             "Edit it with mindmap_edit(document_id=URI, expected_revision=revision, operations=[...]). "
-            "Use add, edit, move or remove. For rich content use an editorial HTML fragment in body_html with canonical resource links. "
+            "Use add for a new node. An edit targets an existing node and includes a field to change. "
+            "For rich content use an editorial HTML fragment in body_html with canonical resource links. "
             "Read a specific node with node_id before replacing its body. On conflict, reread and reconcile."
         )
     if "file_create" in tool_names:

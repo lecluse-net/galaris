@@ -264,6 +264,8 @@ Si vous écrivez avec la carte ouverte à côté du Chat, le contexte peut indiq
 l’agent quel document vous consultez. La sélection de nœuds reste dans l’interface.
 Pour désigner un nœud, donnez son titre et, si nécessaire, le nom de son parent,
 par exemple « Sous Architecture → Stockage, ajoute un nœud Sauvegardes ».
+Vous pouvez demander plusieurs branches à la fois en indiquant leur parent. L’agent
+peut les ajouter dans une seule révision.
 
 ## Résumé courant et mots-clés
 

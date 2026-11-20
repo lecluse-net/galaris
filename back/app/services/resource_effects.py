@@ -161,6 +161,7 @@ async def record_tool_resources(
         "file_rename",
         "mindmap_create",
         "mindmap_read",
+        "mindmap_add",
         "mindmap_edit",
     }:
         resource_reference = str(payload.get("uri") or "").strip() or _resource_uri(

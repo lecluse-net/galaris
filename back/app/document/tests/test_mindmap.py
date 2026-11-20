@@ -6,14 +6,20 @@ from zipfile import ZipFile
 
 from PIL import Image
 import pytest
+from fastmcp import Client
 from pydantic import TypeAdapter
+from sqlalchemy import select
 
+from app.connection import facade as connections
+from app.connection.models import Connection
 from app.document import mcp, resource_service
 from app.document.file_import import DocumentImportSource, convert_document_import
 from app.document.mindmap import INITIAL_CONTENT, MindMap
-from app.document.mindmap.commands import AddBranch, BranchCommand, MoveBranch, RemoveBranch, apply_commands
+from app.document.mindmap.commands import AddBranch, BranchCommand, MoveBranch, NewBranch, RemoveBranch, apply_commands
 from app.document.mindmap.exchange import MEDIA_TYPE, export_source, import_source
-from app.services import McpToolContext
+from app.services import McpToolContext, build_galaris_fastmcp, sync_integrated_service_connections
+from app.services.contracts import EXECUTION_META_KEY
+from app.services.models import Service
 
 
 FREEPLANE = b"""<?xml version="1.0"?>
@@ -188,6 +194,10 @@ async def test_mcp_batch_rejects_stale_revisions_unauthorized_writes_and_partial
     ])
     with pytest.raises(resource_service.DocumentPermissionError):
         await mcp.mindmap_edit(peer_ctx, uri, revision, commands)
+    with pytest.raises(resource_service.DocumentPermissionError):
+        await mcp.mindmap_add(peer_ctx, uri, revision, [
+            NewBranch(node_id="unauthorized", parent_id=root, title="Unauthorized"),
+        ])
     edited = json.loads(await mcp.mindmap_edit(owner_ctx, uri, revision, commands))
     assert edited["revision"] == revision + 1 and edited["total"] == 3
     node = json.loads(await mcp.mindmap_read(owner_ctx, uri, node_id="child"))["node"]
@@ -208,6 +218,56 @@ async def test_mcp_batch_rejects_stale_revisions_unauthorized_writes_and_partial
         ("branch", "Main branch"), ("child", "Edited child"),
     ]
     assert unchanged["nodes"][0]["checked"] is None
+
+
+@pytest.mark.asyncio
+async def test_mcp_missing_branch_explains_how_to_add_it(db, agents):
+    owner, _ = agents
+    await sync_integrated_service_connections(owner.id)
+    connection_id = await db.scalar(select(Connection.id).join(Service).where(
+        Connection.agent_id == owner.id, Service.code == "document",
+    ))
+    assert connection_id is not None
+    for name in ("mindmap_add", "mindmap_edit"):
+        await connections.set_connection_function_state(connection_id, name, "enabled")
+    owner_ctx = McpToolContext(agent_id=owner.id, runtime="internal")
+    created = json.loads(await mcp.mindmap_create(owner_ctx, title="Synthetic map"))
+    await db.commit()
+    server = build_galaris_fastmcp(owner.id, enabled_service_codes={"document"})
+    arguments = {"document_id": created["uri"], "expected_revision": created["revision"]}
+
+    async with Client(server) as client:
+        result = await client.call_tool("mindmap_edit", {**arguments, "operations": [
+            {"operation": "edit", "node_id": "appendix"},
+        ]}, raise_on_error=False)
+        assert result.is_error
+        assert result.meta[EXECUTION_META_KEY]["outcome"] == "rejected"
+        assert "appendix" in result.content[0].text
+        assert "mindmap_add" in result.content[0].text
+
+        empty_edit = await client.call_tool("mindmap_edit", {**arguments, "operations": [
+            {"operation": "edit", "node_id": created["root_id"]},
+        ]}, raise_on_error=False)
+        assert empty_edit.is_error
+        assert empty_edit.meta[EXECUTION_META_KEY]["outcome"] == "rejected"
+        assert "field to change" in empty_edit.content[0].text
+
+        added = await client.call_tool("mindmap_add", {**arguments, "branches": [
+            {"node_id": "appendix", "parent_id": created["root_id"], "title": "Appendix"},
+            {"node_id": "sources", "parent_id": "appendix", "title": "Sources"},
+        ]})
+        assert json.loads(added.content[0].text)["revision"] == created["revision"] + 1
+        stale = await client.call_tool("mindmap_add", {**arguments, "branches": [
+            {"node_id": "stale", "parent_id": created["root_id"], "title": "Stale"},
+        ]}, raise_on_error=False)
+        assert stale.is_error
+        assert "revision conflict" in stale.content[0].text
+
+    saved = json.loads(await mcp.mindmap_read(owner_ctx, created["uri"]))
+    assert saved["revision"] == created["revision"] + 1
+    assert [(node["id"], node["parent"]) for node in saved["nodes"]] == [
+        (created["root_id"], None), ("appendix", created["root_id"]), ("sources", "appendix"),
+    ]
 
 
 @pytest.mark.asyncio

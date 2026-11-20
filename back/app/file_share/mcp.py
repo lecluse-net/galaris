@@ -358,7 +358,7 @@ async def file_to_pdf(ctx: McpToolContext, source: str, destination: str) -> str
         "Document formats include text (HTML), data (JSON), and mindmap (structured JSON); document_format remains immutable. "
         "For document_format='mindmap', use a version 1 source with a nodes array; for example "
         "'{\"version\":1,\"nodes\":[{\"id\":\"root\",\"parent\":null,\"title\":\"Project\"}]}'. "
-        "Use mindmap_read and mindmap_edit for structured branch operations. "
+        "Use mindmap_read, mindmap_add and mindmap_edit for structured branch operations. "
         "The data format at document:// returns data://. file_schemes lists the available formats. "
         "For an HTML document, content must be an editorial HTML fragment "
         "with encoding='utf-8', for example '<h1>Report</h1><p>Findings.</p>', not Markdown "

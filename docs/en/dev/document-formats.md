@@ -30,7 +30,7 @@ The [document reference contract](document-references.md) describes available mo
 
 ## Mind maps and agents
 
-The **Document** Service declares three MCP tools. They can be mounted in Chat and in
+The **Document** Service declares the following MCP tools. They can be mounted in Chat and in
 a Task according to the allowed functions, the map's permissions and the runtime rules.
 Read is enabled by default. Creation and editing default to **On request**, subject to
 the effective connection policy.
@@ -39,7 +39,14 @@ the effective connection policy.
 |---|---|
 | `mindmap_create` | Creates a private document for the agent and returns its `document://` URI, revision and `root` ID. Accepts up to 100 initial branches in parent-first order. |
 | `mindmap_read` | Reads the current saved revision. The list returns stable node IDs, parents and summaries. Follow `next_offset` to read more. With `node_id`, the tool returns the node's HTML body in chunks. Follow `next_body_offset` until the end. |
-| `mindmap_edit` | Applies 1 to 50 `add`, `edit`, `move` or `remove` commands as one revision. Supply `expected_revision` and the previously read IDs. Removing a branch removes its descendants. On conflict, reread and reconcile. |
+| `mindmap_add` | Adds 1 to 50 branches in one revision. Supply `expected_revision` and the `branches` list. |
+| `mindmap_edit` | Applies 1 to 50 `add`, `edit`, `move` or `remove` commands in one revision. Supply `expected_revision` and the `operations` list. |
+
+Supply a new ID, the parent ID and a title for each addition. Put parents before their
+children in the batch. An `edit` command targets an existing node and supplies at least
+one field to change. Removing a branch removes its descendants. If a command is rejected
+before saving, the whole batch is rejected. On a revision conflict, reread the map and
+reconcile the changes.
 
 An agent can choose a mind map when a durable result naturally fits into branches, such
 as a decision tree, an investigation or a plan grouped by workstream. It respects the

@@ -205,7 +205,7 @@ _CONVERSATION_TOOL_POLICIES: dict[str, Literal["short", "deferred"]] = {
             "file_list", "file_info", "file_search", "file_read", "file_create",
             "file_write", "file_append", "file_edit", "file_rename", "memory_remember", "memory_forget",
             "memory_summarize", "memory_upcoming", "document_share", "document_sharing",
-            "mindmap_create", "mindmap_read", "mindmap_edit",
+            "mindmap_create", "mindmap_read", "mindmap_add", "mindmap_edit",
         )
     },
     # Personal processes are inspected or started asynchronously.

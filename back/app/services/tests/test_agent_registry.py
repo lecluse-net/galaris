@@ -411,7 +411,8 @@ async def test_native_compatibility_toolsets_keep_short_mcp_names(
         (("file_create", "document_share"), True, False),
         (("file_create", "file_search"), True, False),
         (("document_sharing", "document_share"), False, False),
-        (("mindmap_create", "mindmap_read", "mindmap_edit"), False, False),
+        (("mindmap_create", "mindmap_read", "mindmap_add", "mindmap_edit"), False, False),
+        (("mindmap_read", "mindmap_edit"), False, False),
         (("mindmap_read",), False, False),
         ((), False, False),
     ],
@@ -456,6 +457,7 @@ async def test_tool_advertisement_encourages_shared_documents_when_available(
     assert ("Choose a mind map for durable work" in advertisement.text) is ("mindmap_create" in names)
     assert ("Read a mind map with mindmap_read" in advertisement.text) is ("mindmap_read" in names)
     assert ("does not supply the selected node" in advertisement.text) is ("mindmap_read" in names)
+    assert ("mindmap_add(document_id=URI" in advertisement.text) is ({"mindmap_read", "mindmap_add"} <= set(names))
     assert ("mindmap_edit(document_id=URI" in advertisement.text) is ({"mindmap_read", "mindmap_edit"} <= set(names))
     if expects_documents:
         assert "prefer document:// over standalone" in advertisement.text.casefold()

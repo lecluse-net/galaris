@@ -241,6 +241,8 @@ If you send a message with the map open beside Chat, the context can tell the ag
 which document you are viewing. Node selection stays in the editor. Give the node
 title and its parent if needed, for example “Under Architecture → Storage, add a
 Backups node.”
+You can request several branches at once by naming their parent. The agent can add
+them in a single revision.
 
 ## Current description and keywords
 
