@@ -56,14 +56,14 @@ de leur fenêtre d’origine, conformément aux consommateurs `noopener` existan
 Les aperçus n’ont aucun preload.
 La barre locale est une vue native placée au-dessus des vues distantes. Dans le shell
 Galaris (`.page-container`), un adaptateur isolé réserve sa hauteur dans le contenu et
-observe le retrait gauche, le thème, la surface de la page et la présence d’une couche
-plein écran. Il transmet uniquement
+observe le retrait gauche, le thème, la surface de la page et les modales ou aperçus
+plein écran visibles. Il transmet uniquement
 ces valeurs de présentation via des messages console bornés du frame principal de
 l’origine sélectionnée, sans exposer d’API distante. Le processus principal borne le
 retrait et recalcule les vues au changement d’onglet, au zoom et au redimensionnement.
-Un aperçu plein écran ou une modale maximisée masque la barre de l’onglet actif et
-utilise toute la zone de contenu. La barre revient à la fermeture de la dernière couche
-plein écran.
+Tant qu’une modale ou un aperçu plein écran est ouvert dans l’onglet actif, Electron
+masque la barre et donne à la vue toute la zone de contenu. La barre revient à la
+fermeture de la dernière modale ou du dernier aperçu.
 Le menu latéral garde toute sa hauteur. En dessous de 1024 pixels CSS, ou sans ce shell
 (connexion externe, ancienne interface), la barre reprend toute la largeur au-dessus
 de la vue. L’adaptateur et ses observateurs disparaissent avec le document ; le serveur

@@ -1,7 +1,7 @@
 import { tabBarHeight } from './layout.ts'
 
 export const shellMessage = 'galaris-desktop-layout:'
-export interface ShellLayout { integrated: boolean; fullscreen: boolean; left: number; dark: boolean; surface: string; ratio: number }
+export interface ShellLayout { integrated: boolean; coversTabBar: boolean; left: number; dark: boolean; surface: string; ratio: number }
 
 /** Presentation only. Remote pages cannot invoke desktop commands through this channel. */
 export function readShellLayout(message: string): ShellLayout | undefined {
@@ -10,18 +10,19 @@ export function readShellLayout(message: string): ShellLayout | undefined {
     const value: unknown = JSON.parse(message.slice(shellMessage.length))
     if (!value || typeof value !== 'object') return
     const entry = value as Record<string, unknown>
-    if (typeof entry.integrated !== 'boolean' || typeof entry.fullscreen !== 'boolean' || typeof entry.dark !== 'boolean'
+    if (typeof entry.integrated !== 'boolean' || typeof entry.coversTabBar !== 'boolean' || typeof entry.dark !== 'boolean'
       || typeof entry.left !== 'number' || !Number.isFinite(entry.left) || entry.left < 0
       || typeof entry.ratio !== 'number' || !Number.isFinite(entry.ratio) || entry.ratio <= 0
       || typeof entry.surface !== 'string' || !/^rgb\(\d{1,3}, \d{1,3}, \d{1,3}\)$/.test(entry.surface)) return
-    return { integrated: entry.integrated, fullscreen: entry.fullscreen, left: entry.left, dark: entry.dark, surface: entry.surface, ratio: entry.ratio }
+    return { integrated: entry.integrated, coversTabBar: entry.coversTabBar, left: entry.left, dark: entry.dark, surface: entry.surface, ratio: entry.ratio }
   } catch { return }
 }
 
 /** Runs in an isolated world, without Node, a preload, or a privileged remote API. */
 function observeShell(height: number, prefix: string): void {
-  const fullscreenSelector = '.fullscreen-preview, .q-dialog__inner--maximized'
-  const layoutSelector = `.page-container, ${fullscreenSelector}`
+  // Quasar clears aria-modal before the backdrop finishes its closing transition.
+  const overlaySelector = '[aria-modal="true"], dialog:modal, .q-dialog__backdrop, .q-dialog__inner--maximized, .fullscreen-preview'
+  const layoutSelector = `.page-container, ${overlaySelector}`
   let container: HTMLElement | null = null
   let overlays: Element[] = []
   let previous = ''
@@ -46,15 +47,15 @@ function observeShell(height: number, prefix: string): void {
     }
     const integrated = Boolean(container && innerWidth >= 1024)
     document.documentElement.toggleAttribute('data-galaris-desktop-shell', integrated)
-    overlays = Array.from(document.querySelectorAll(fullscreenSelector))
-    const fullscreen = document.fullscreenElement !== null
+    overlays = Array.from(document.querySelectorAll(overlaySelector))
+    const coversTabBar = document.fullscreenElement !== null
       || overlays.some(element => element.checkVisibility({ visibilityProperty: true }))
     const left = integrated && container ? parseFloat(getComputedStyle(container).paddingLeft) || 0 : 0
     const dark = document.body.classList.contains('body--dark')
     const candidates = [container?.querySelector('.q-page'), container, document.body]
     const surface = candidates.map(element => element && getComputedStyle(element).backgroundColor)
       .find(color => color && /^rgb\(/.test(color)) || (dark ? 'rgb(16, 16, 16)' : 'rgb(255, 255, 255)')
-    const message = JSON.stringify({ integrated, fullscreen, left, dark, surface, ratio: devicePixelRatio })
+    const message = JSON.stringify({ integrated, coversTabBar, left, dark, surface, ratio: devicePixelRatio })
     if (message !== previous) { previous = message; console.debug(prefix + message) }
   }
   function schedule(): void { if (!frame) frame = requestAnimationFrame(update) }
@@ -67,7 +68,10 @@ function observeShell(height: number, prefix: string): void {
   }
   new MutationObserver(records => {
     if (container?.isConnected === false || overlays.some(element => !element.isConnected) || records.some(affectsLayout)) schedule()
-  }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] })
+  }).observe(document.body, {
+    childList: true, subtree: true, attributes: true,
+    attributeFilter: ['class', 'style', 'hidden', 'aria-modal', 'open']
+  })
   document.addEventListener('fullscreenchange', schedule)
   addEventListener('resize', schedule)
   addEventListener('pageshow', () => { if (container) resize.observe(container); previous = ''; schedule() })

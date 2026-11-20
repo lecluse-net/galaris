@@ -19,15 +19,23 @@ test.beforeAll(async () => {
         *{box-sizing:border-box}body{margin:0;font:16px Arial;background:white;color:#292c30}
         aside{position:fixed;top:0;bottom:0;left:0;width:260px;background:#f5f5f5;padding:16px}
         .page-container{padding-left:260px}.q-page{padding:20px;min-height:100vh}h1{margin:0 0 20px}
+        .q-dialog:not([hidden]){position:fixed;inset:0;display:grid;place-items:center;z-index:6000}
+        .q-dialog__backdrop{position:absolute;inset:0;background:rgba(0,0,0,.4)}
+        .q-dialog section{position:relative;padding:20px;background:white;color:#292c30}
         .q-dialog__inner--maximized,.fullscreen-preview{position:fixed;inset:0;background:white;z-index:6000}
+        .q-dialog__inner--maximized{z-index:6001}
         .fullscreen-preview{background:#202020;color:white;z-index:7000}
         .body--dark{background:#101010;color:#eee}.body--dark aside{background:#272727}
       </style><aside><strong>Synthetic navigation</strong><p><button onclick="document.querySelector('.page-container').style.paddingLeft='80px';document.querySelector('aside').style.width='80px'">Collapse menu</button></p></aside>
       <main class="page-container"><section class="q-page"><h1>Synthetic workspace</h1><label>Workspace draft<input></label>
       <button onclick="document.body.classList.toggle('body--dark')">Toggle theme</button>
-      <button onclick="document.querySelector('.q-dialog__inner--maximized').hidden=false">Open full screen dialog</button>
+      <button onclick="document.querySelector('.q-dialog').hidden=false">Open centered dialog</button>
       <button onclick="document.querySelector('.fullscreen-preview').hidden=false">Open full screen preview</button>
       <a href="/second">Leave shell</a></section></main>
+      <div hidden class="q-dialog" role="dialog" aria-modal="true" aria-label="Synthetic centered dialog">
+        <div class="q-dialog__backdrop" onclick="this.parentElement.hidden=true"></div>
+        <section><button onclick="document.querySelector('.q-dialog__inner--maximized').hidden=false">Open nested dialog</button></section>
+      </div>
       <div hidden class="q-dialog__inner--maximized" role="dialog" aria-label="Synthetic full screen dialog">
         <button onclick="this.parentElement.hidden=true">Close full screen dialog</button>
         <button onclick="document.querySelector('.fullscreen-preview').hidden=false">Preview from dialog</button>
@@ -464,7 +472,17 @@ test('integrated tabs keep navigation and content reachable through menu, theme,
   expect((await bounds()).page.y).toBe(0)
   expect(await first.locator('h1').evaluate(element => element.getBoundingClientRect().top)).toBeGreaterThanOrEqual((await bounds()).chrome.height)
   await first.getByRole('textbox', { name: 'Workspace draft' }).fill('Preserved synthetic content')
-  await first.getByRole('button', { name: 'Open full screen dialog' }).click()
+  const openCentered = first.getByRole('button', { name: 'Open centered dialog' })
+  const centered = first.getByRole('dialog', { name: 'Synthetic centered dialog' })
+  async function dismissOverTabs(): Promise<void> {
+    const { chrome: bar } = await bounds()
+    await centered.locator('.q-dialog__backdrop').click({ position: { x: bar.x + 5, y: bar.height / 2 } })
+    await expect(centered).toBeHidden()
+    await expect.poll(async () => (await bounds()).chrome.visible).toBe(true)
+  }
+  await openCentered.click()
+  await expect.poll(async () => (await bounds()).chrome.visible).toBe(false)
+  await centered.getByRole('button', { name: 'Open nested dialog' }).click()
   await expect.poll(async () => (await bounds()).chrome.visible).toBe(false)
   const closeDialog = first.getByRole('button', { name: 'Close full screen dialog' })
   expect(await closeDialog.evaluate(element => element.getBoundingClientRect().top)).toBeLessThan((await bounds()).chrome.height)
@@ -472,7 +490,9 @@ test('integrated tabs keep navigation and content reachable through menu, theme,
   await first.getByRole('button', { name: 'Close full screen preview' }).click()
   await expect.poll(async () => (await bounds()).chrome.visible).toBe(false)
   await closeDialog.click()
-  await expect.poll(async () => (await bounds()).chrome.visible).toBe(true)
+  await expect(centered).toBeVisible()
+  await expect.poll(async () => (await bounds()).chrome.visible).toBe(false)
+  await dismissOverTabs()
   await chrome.screenshot({ path: '../artifacts/desktop/integrated-tabs-light.png' })
   await first.getByRole('button', { name: 'Toggle theme' }).click()
   await expect(chrome.locator('body')).toHaveClass(/body--dark/)
@@ -491,6 +511,10 @@ test('integrated tabs keep navigation and content reachable through menu, theme,
   await expect(first.locator('html')).not.toHaveAttribute('data-galaris-desktop-shell')
   await expect.poll(async () => (await bounds()).page.y).toBeGreaterThan(0)
   await expect.poll(async () => (await bounds()).chrome.x).toBe(0)
+  await openCentered.click()
+  await expect.poll(bounds).toMatchObject({ chrome: { visible: false }, page: { y: 0 } })
+  await dismissOverTabs()
+  await expect.poll(async () => (await bounds()).page.y).toBeGreaterThan(0)
   await first.getByRole('button', { name: 'Open full screen preview' }).click()
   await expect.poll(bounds).toMatchObject({ chrome: { visible: false }, page: { y: 0 } })
   await shortcut('Tab')
