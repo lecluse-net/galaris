@@ -337,6 +337,12 @@ référence exacts du mail. Dream peut retenir les faits durables issus d'un tra
 réussi. Si vous demandez un état récent, comme la livraison d'un colis, l'agent peut
 lancer une tâche de vérification dans la boîte source depuis le Chat.
 
+L’agent relève la boîte toutes les 10 minutes par défaut. Modifiez **Intervalle de relève
+(minutes)** dans les paramètres de la connexion pour régler chaque compte. Si le champ
+est absent, associez d’abord ce rôle à un paramètre entier dans l’onglet **IMAP & SMTP**
+du Service. Le bouton **+** permet de créer le paramètre standard `poll_interval_minutes`.
+Une valeur vide hérite du réglage global de la connexion ou de la valeur de repli du Service.
+
 Par défaut, une adresse mail présente dans les **Contacts** de cet agent autorise directement
 le traitement. Un nom affiché, une autre adresse ou le carnet d’un autre agent ne suffit pas.
 Un expéditeur inconnu déclenche une autorisation commune auprès du responsable de l’agent,

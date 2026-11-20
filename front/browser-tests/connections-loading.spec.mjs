@@ -28,8 +28,11 @@ for (const width of [390, 1440]) test(`Calendar connection owns its interval wit
 for (const width of [390, 1440]) test(`One Mail provider retains multiple accounts for the same agent (${width})`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
   const tool = { id: 8, code: 'synthetic_mail', label: 'Synthetic Mail', can_disable: true, has_mail: true,
-    mail_config: { param_map: { email_address: 'email' }, settings: {} }, global_params: {},
-    connection_schema: { params: { email: { type: 'string', label: 'Mailbox address', required: true } } } }
+    mail_config: { param_map: { email_address: 'email', poll_interval_minutes: 'poll_interval_minutes' }, settings: {} }, global_params: {},
+    connection_schema: { params: {
+      email: { type: 'string', label: 'Mailbox address', required: true },
+      poll_interval_minutes: { type: 'integer', label: 'Inbox polling interval (minutes)', required: false },
+    } } }
   const accounts = [{ id: 42, service_id: 8, agent_id: 7, active: true, params: { email: 'first@example.org' }, configured_params: [] }]
   await jsonRoute(page, '**/api/connections/service-options', [tool])
   await jsonRoute(page, '**/api/mail/approvers', [])
@@ -52,10 +55,11 @@ for (const width of [390, 1440]) test(`One Mail provider retains multiple accoun
   await dialog.getByRole('combobox', { name: 'Service', exact: true }).click()
   await page.getByRole('option', { name: 'Synthetic Mail', exact: true }).click()
   await dialog.getByLabel('Mailbox address *', { exact: true }).fill('second@example.org')
+  await dialog.getByRole('spinbutton', { name: 'Inbox polling interval (minutes)', exact: true }).fill('3')
   await dialog.getByRole('button', { name: 'Create', exact: true }).click()
   await expect(dialog).toHaveCount(0)
   expect(writes).toHaveLength(1)
-  expect(writes[0]).toMatchObject({ service_id: 8, agent_id: 7, params: { email: 'second@example.org' } })
+  expect(writes[0]).toMatchObject({ service_id: 8, agent_id: 7, params: { email: 'second@example.org', poll_interval_minutes: '3' } })
   await expect(page.getByText('first@example.org', { exact: true })).toBeVisible()
   await expect(page.getByText('second@example.org', { exact: true })).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('same-provider-mail-accounts.png'), fullPage: true })

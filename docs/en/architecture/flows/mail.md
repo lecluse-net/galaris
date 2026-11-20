@@ -59,9 +59,10 @@ Receipt creation, authorization, body reads and attachment downloads enforce thi
 before accessing content. It also applies to historical receipts and consent recovery: a receipt
 outside INBOX cannot trigger a Task, even if previously authorized.
 
-`poll_interval_s` is a parameter of the Mail Service, configurable globally and overridable per
-connection unless a global value is imposed. It defaults to 60 seconds and is bounded between
-5 seconds and 24 hours. The first activation establishes a baseline on `UIDNEXT` without turning
+`poll_interval_minutes` references an integer connection parameter from 1 to 1,440 minutes.
+Polling defaults to 10 minutes. An existing seconds setting remains the fallback for connections
+without an effective value in minutes. The parameter follows the usual global and
+local inheritance. The first activation establishes a baseline on `UIDNEXT` without turning
 the history already present into Tasks. Subsequent UIDs are processed in ascending order, in
 batches capped at 50.
 

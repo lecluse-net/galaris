@@ -19,6 +19,18 @@ from core.util import get_encryption_service
 from app.services.rest_contracts import RestAuth, RestConfig
 
 
+def test_mail_advertises_an_optional_integer_connection_polling_interval():
+    from app.services.capabilities import supported_capabilities
+
+    mail = next(item for item in supported_capabilities() if item.code == "mail").protocols[0]
+    interval = mail.connection_parameters["poll_interval_minutes"]
+    assert interval["parameter"] == "poll_interval_minutes"
+    assert interval["definition"]["type"] == "integer"
+    assert not interval["definition"]["required"]
+    assert "poll_interval_s" not in mail.parameters
+    assert "poll_interval_s" not in mail.connection_parameters
+
+
 def test_ical_advertises_standard_connection_parameter_bindings():
     from app.services.capabilities import supported_capabilities
 
@@ -101,24 +113,48 @@ async def test_provider_composes_mail_calendar_and_keeps_connections_isolated(db
     assert (await resolve_connection(connections[0].id)).smtp.password.get_secret_value() == "synthetic-relay-secret"
 
     other = await service.create_service(ServiceCreate.model_validate({"code": "second-provider", "label": "Second provider",
-        "connection_schema": {"params": {"login": {"type": "string"}, "password": {"type": "password"}}},
+        "connection_schema": {"params": {"login": {"type": "string"}, "password": {"type": "password"},
+            "poll_interval_minutes": {"type": "integer", "required": False}}},
         "mail_config": {"settings": {"imap_host": "imap.other.example.test", "smtp_host": "smtp.other.example.test"},
             "param_map": {"email_address": "login", "imap_username": "login", "imap_password": "password",
-                "smtp_username": "login", "smtp_password": "password", "allowed_mailboxes": "", "approver_user_id": ""}},
+                "smtp_username": "login", "smtp_password": "password", "allowed_mailboxes": "", "approver_user_id": "",
+                "poll_interval_minutes": "poll_interval_minutes"}},
         "file_share_config": {"service": "nextcloud", "base_url": "https://files.example.test", "param_map": {"login": "login", "password": "password"}},
         "messenger_config": {"service": "nextcloud_talk", "settings": {"base_url": "https://talk.example.test"}, "param_map": {"login": "login", "password": "password"}},
         "mcp_config": {"type": "http", "url": "https://mcp.example.test", "auth": {"type": "basic", "login_param": "login", "password_param": "password"}},
         "rest_config": {"base_url": "https://api.example.test", "auth": {"type": "basic", "login_param": "login", "password_param": "password"}}}))
     assert len(other.capabilities) == 5
-    assert {name for name in to_public(other).connection_schema.params if not name.startswith("services.")} == {"login", "password"}
-    shared = Connection(service_id=other.id, agent_id=agents[0].id, active=True)
-    db.add(shared)
+    assert {name for name in to_public(other).connection_schema.params if not name.startswith("services.")} == {
+        "login", "password", "poll_interval_minutes",
+    }
+    shared = Connection(service_id=other.id, agent_id=agents[0].id, active=True, singleton_key=None)
+    second_mailbox = Connection(service_id=other.id, agent_id=agents[0].id, active=True, singleton_key=None)
+    db.add_all([shared, second_mailbox])
     await db.flush()
     await connection_service.set_params_bulk(shared.id, {"login": "shared@example.org", "password": "synthetic-shared-secret"})
+    await connection_service.set_params_bulk(second_mailbox.id,
+        {"login": "second@example.org", "password": "synthetic-second-secret"})
     mutualized = await resolve_connection(shared.id, require_active=True)
     assert mutualized.imap.host == "imap.other.example.test" and mutualized.smtp.host == "smtp.other.example.test"
     assert str(mutualized.email_address) == mutualized.imap.username == mutualized.smtp.username == "shared@example.org"
     assert mutualized.imap.password.get_secret_value() == mutualized.smtp.password.get_secret_value() == "synthetic-shared-secret"
+    assert mutualized.poll_interval_s == 600
+    await connection_service.set_params_bulk(shared.id, {"poll_interval_minutes": "3"})
+    assert (await resolve_connection(shared.id)).poll_interval_s == 180
+    assert (await resolve_connection(second_mailbox.id)).poll_interval_s == 600
+    for invalid in ("0", "1441"):
+        with pytest.raises(ValueError, match="minutes between 1 and 1440"):
+            await connection_service.set_params_bulk(shared.id, {"poll_interval_minutes": invalid})
+    assert (await resolve_connection(shared.id)).poll_interval_s == 180
+    await connection_service.set_params_bulk(shared.id, {"poll_interval_minutes": ""})
+    assert (await resolve_connection(shared.id)).poll_interval_s == 600
+    await service.update_service(other.id, ServiceUpdate(mail_config=ProtocolConfig(
+        settings={**other.mail_config["settings"], "poll_interval_s": "240"},
+        param_map=other.mail_config["param_map"],
+    )))
+    assert (await resolve_connection(shared.id)).poll_interval_s == 240
+    await connection_service.set_params_bulk(shared.id, {"poll_interval_minutes": "3"})
+    assert (await resolve_connection(shared.id)).poll_interval_s == 180
     await db.commit()
     with pytest.raises(ValueError, match="exact active mail connection"):
         await resolve_mail_connection(agents[0].id)

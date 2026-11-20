@@ -134,6 +134,8 @@ def supported_capabilities() -> list[CapabilityDefinition]:
             parameters = {name: value for name, value in parameter_sets.get(f"{protocol}.{capability}", {}).items()
                 if name not in connection_names}
             if capability == "mail":
+                # Seconds remain readable in existing Service settings.
+                parameters.pop("poll_interval_s", None)
                 parameters = {name: {**value, "section": f"services.protocolSections.{'smtp' if name.startswith(('smtp_', 'max_')) else 'imap'}"}
                     for name, value in parameters.items()}
             definition.protocols.append(CapabilityProtocol(value=f"{protocol}.{capability}", capability=capability,

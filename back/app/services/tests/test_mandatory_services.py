@@ -262,6 +262,7 @@ def test_mail_connection_parameters_keep_transport_and_reviewer_configuration() 
         "connect_timeout_s",
         "operation_timeout_s",
         "poll_interval_s",
+        "poll_interval_minutes",
         "max_attachment_mb",
         "max_total_attachment_mb",
         "approver_user_id",

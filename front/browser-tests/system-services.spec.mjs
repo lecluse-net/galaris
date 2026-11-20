@@ -40,11 +40,12 @@ const protocolParameters = {
 }
 const mailConnectionDefinitions = Object.fromEntries([
   ['email_address', 'string', true], ['password', 'password', true],
-  ['allowed_mailboxes', 'string', false], ['approver_user_id', 'user', false],
+  ['allowed_mailboxes', 'string', false], ['approver_user_id', 'user', false], ['poll_interval_minutes', 'integer', false],
 ].map(([name, type, required]) => [name, { type, required, builtin: true, default: '', label: 'services.connectionParamLabels.' + name,
   widget: name === 'allowed_mailboxes' ? 'mail_folder_tree' : '' }]))
 const mailBindings = Object.fromEntries(Object.entries({ email_address: ['email_address', 'email'], imap_username: ['email_address', 'login'], imap_password: ['password', 'password'],
   smtp_username: ['email_address', 'login'], smtp_password: ['password', 'password'], allowed_mailboxes: ['allowed_mailboxes', 'folders'], approver_user_id: ['approver_user_id', 'user_id'],
+  poll_interval_minutes: ['poll_interval_minutes', 'poll_interval_minutes'],
 }).map(([role, [legacy_parameter, parameter]]) => [role, { parameter, legacy_parameter, label: 'services.connectionParamLabels.' + role,
   section: 'services.protocolSections.' + (role.startsWith('smtp_') || ['email_address', 'approver_user_id'].includes(role) ? 'smtp' : 'imap'),
   definition: { ...mailConnectionDefinitions[legacy_parameter], ...(parameter === 'login' ? { label: 'services.connectionParamLabels.login' } : {}) } }]))
@@ -126,6 +127,7 @@ for (const width of [390, 1400]) {
     await mapParameter('SMTP password', 'password')
     await expect(binding('SMTP password')).toHaveValue('password')
     await mapParameter('Allowed mail folders', 'New parameter…')
+    await mapParameter('Inbox polling interval (minutes)', 'New parameter…')
     await expect(dialog.getByLabel('IMAP server *', { exact: true })).toBeVisible()
     await dialog.getByLabel('IMAP server *', { exact: true }).fill('imap.example.test')
     await dialog.getByLabel('SMTP server *', { exact: true }).fill('smtp.example.test')
@@ -150,10 +152,11 @@ for (const width of [390, 1400]) {
     await expect(dialog).toHaveCount(0)
     expect(writes[1]).toMatchObject({ code: 'synthetic-provider', capabilities: ['imap_smtp.mail', 'caldav.calendar'],
       mail_config: { settings: { imap_host: 'imap.example.test', smtp_host: 'smtp.example.test', smtp_port: '587' },
-        param_map: { email_address: 'login', imap_username: 'login', imap_password: 'password', smtp_username: 'login', smtp_password: 'password_2', allowed_mailboxes: 'folders' } },
+        param_map: { email_address: 'login', imap_username: 'login', imap_password: 'password', smtp_username: 'login', smtp_password: 'password_2', allowed_mailboxes: 'folders',
+          poll_interval_minutes: 'poll_interval_minutes' } },
       calendar_config: { settings: { source_kind: 'caldav', timezone: 'Europe/London', workday_start: '08:30' }, param_map: { url: 'url', username: 'login', password: 'password' } } })
     expect(writes[1]).not.toHaveProperty('global_params')
-    expect(Object.keys(writes[1].connection_schema.params)).toEqual(['login', 'password', 'folders', 'password_2', 'url'])
+    expect(Object.keys(writes[1].connection_schema.params)).toEqual(['login', 'password', 'folders', 'poll_interval_minutes', 'password_2', 'url'])
     const row = page.getByRole('article').filter({ hasText: 'Synthetic provider' })
     await expect(row).toContainText('Mail')
     await expect(row).toContainText('Calendar')
@@ -166,6 +169,7 @@ for (const width of [390, 1400]) {
     await expect(dialog.getByLabel('IMAP server *', { exact: true })).toHaveValue('imap.example.test')
     await expect(dialog.getByLabel('SMTP port *', { exact: true })).toHaveValue('587')
     await expect(binding('SMTP password')).toHaveValue('password_2')
+    await expect(binding('Inbox polling interval (minutes)')).toHaveValue('poll_interval_minutes')
     await dialog.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(dialog).toHaveCount(0)
     expect(writes[2]).not.toHaveProperty('global_params')

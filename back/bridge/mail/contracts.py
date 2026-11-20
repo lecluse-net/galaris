@@ -52,7 +52,7 @@ class MailConnectionConfig(BaseModel):
     allowed_mailboxes: tuple[str, ...] = ()
     connect_timeout_s: float = Field(ge=1, le=60)
     operation_timeout_s: float = Field(ge=1, le=120)
-    poll_interval_s: float = Field(default=60, ge=5, le=86_400)
+    poll_interval_s: float = Field(default=600, ge=5, le=86_400)
     max_attachment_bytes: int = Field(ge=1, le=25 * 1024 * 1024)
     max_total_attachment_bytes: int = Field(ge=1, le=50 * 1024 * 1024)
     approval_required: bool = False

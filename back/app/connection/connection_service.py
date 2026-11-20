@@ -711,6 +711,7 @@ async def _validated_tool_params(service_id: int, params: Dict[str, Optional[str
     if tool is None:
         raise ValueError("Service not found")
     definitions = tool.connection.params
+    mail_poll_parameter = tool.mail.param_map.get("poll_interval_minutes") if tool.mail is not None else None
     _, forced = await get_runtime_global_params(service_id, decrypt_passwords=False)
     for name, value in params.items():
         definition = definitions.get(name)
@@ -723,6 +724,8 @@ async def _validated_tool_params(service_id: int, params: Dict[str, Optional[str
         validate_param_value(definition.type, value)
         if tool.calendar and tool.calendar.param_map.get("sync_interval_hours") == name and not 1 <= int(value) <= 8760:
             raise ValueError("Calendar synchronization interval must be a whole number of hours between 1 and 8760")
+        if name == mail_poll_parameter and not 1 <= int(value) <= 1440:
+            raise ValueError("Mail polling interval must be a whole number of minutes between 1 and 1440")
         if definition.options and value not in {option.value for option in definition.options}:
             raise ValueError("Connection parameter must be one of the fixed options")
     return tool

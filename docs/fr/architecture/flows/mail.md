@@ -64,9 +64,10 @@ et des pièces jointes vérifient cette limite avant tout accès au contenu. Ell
 aux reçus historiques et à leur reprise après accord ; un ancien reçu hors INBOX ne peut pas
 déclencher de tâche, même s'il avait déjà été autorisé.
 
-`poll_interval_s` est un paramètre du protocole Mail, configurable globalement et surchargeable par
-connexion sauf lorsqu’une valeur globale est imposée. Il vaut 60 secondes par défaut et est borné
-entre 5 secondes et 24 heures. La première activation établit une baseline sur `UIDNEXT` sans
+`poll_interval_minutes` référence un paramètre entier de connexion de 1 à 1 440 minutes.
+La relève utilise 10 minutes par défaut. Une configuration existante en secondes sert de
+repli pour les connexions sans valeur effective en minutes.
+Le paramètre suit l'héritage global et local habituel. La première activation établit une baseline sur `UIDNEXT` sans
 transformer l’historique déjà présent en tâches. Les UID ultérieurs sont traités dans l’ordre
 croissant, par lots bornés à 50.
 

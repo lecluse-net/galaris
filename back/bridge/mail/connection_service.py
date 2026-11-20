@@ -106,6 +106,11 @@ async def _config_from_connection(
     )
     bindings = tool.mail.param_map
     settings = tool.mail.settings or params
+    poll_parameter = bindings.get("poll_interval_minutes")
+    if poll_parameter and params.get(poll_parameter) not in (None, ""):
+        poll_interval_s = _number(params, poll_parameter, 10, 1, 1440) * 60
+    else:
+        poll_interval_s = _number(settings, "poll_interval_s", 600, 5, 86_400)
     email_address = _required(params, bindings.get("email_address", "email_address"))
     # The common function policy owns new approvals. Historical deliveries retain
     # their approval_required snapshot and their original approval workflow.
@@ -149,9 +154,7 @@ async def _config_from_connection(
             allowed_mailboxes=_allowed_mailboxes({"allowed_mailboxes": params.get(bindings.get("allowed_mailboxes", "allowed_mailboxes"))}),
             connect_timeout_s=float(_number(settings, "connect_timeout_s", 10, 1, 60)),
             operation_timeout_s=float(_number(settings, "operation_timeout_s", 30, 1, 120)),
-            poll_interval_s=float(
-                _number(settings, "poll_interval_s", 60, 5, 86_400)
-            ),
+            poll_interval_s=float(poll_interval_s),
             max_attachment_bytes=_megabytes(
                 settings, "max_attachment_mb", 10, 25
             ),

@@ -302,6 +302,12 @@ receives the exact account and message reference. Dream can retain durable facts
 processing. If you ask for a current status, such as parcel delivery, the agent can start a Task
 from Chat to check the source mailbox.
 
+The agent polls the inbox every 10 minutes by default. Edit **Inbox polling interval
+(minutes)** in the connection settings to tune each account. If the field is absent, first
+bind that role to an integer parameter on the Service’s **IMAP & SMTP** tab. Use **+** to
+create the standard `poll_interval_minutes` parameter. A blank value inherits the global connection
+setting or the Service fallback.
+
 By default, an exact email identity in this agent’s **Contacts** allows processing directly.
 A display name, another address or another agent’s directory cannot grant this permission.
 Unknown senders require the agent manager’s common authorization, available in private Chat,

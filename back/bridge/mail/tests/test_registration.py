@@ -46,7 +46,7 @@ def test_mail_connection_schema_uses_one_account_password_and_safe_defaults() ->
     assert params["allowed_mailboxes"]["required"] is False
     assert params["allowed_mailboxes"]["default"] == ""
     assert params["smtp_security"]["default"] == "tls"
-    assert params["poll_interval_s"]["default"] == "60"
+    assert params["poll_interval_s"]["default"] == "600"
     assert params["max_attachment_mb"]["default"] == "10"
     assert params["max_total_attachment_mb"]["default"] == "20"
     assert "approval_required" not in params

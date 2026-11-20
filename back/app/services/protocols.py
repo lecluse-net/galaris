@@ -121,8 +121,13 @@ def _mail_connection_params() -> dict[str, dict[str, Any]]:
         "poll_interval_s": _param(
             "integer",
             required=False,
-            default="60",
+            default="600",
             description="Delay between inbox polls in seconds",
+        ),
+        "poll_interval_minutes": _param(
+            "integer",
+            required=False,
+            description="Delay between inbox polls in minutes",
         ),
         "max_attachment_mb": _param(
             "integer",
@@ -214,6 +219,7 @@ def protocol_parameter_bindings(protocol: str) -> dict[str, dict[str, Any]]:
     roles = {"email_address": ("email_address", "email"), "imap_username": ("email_address", "login"),
         "imap_password": ("password", "password"), "smtp_username": ("email_address", "login"),
         "smtp_password": ("password", "password"), "allowed_mailboxes": ("allowed_mailboxes", "folders"),
+        "poll_interval_minutes": ("poll_interval_minutes", "poll_interval_minutes"),
         "approver_user_id": ("approver_user_id", "user_id")}
     return {role: {"parameter": suggested, "legacy_parameter": name,
         "label": f"services.connectionParamLabels.{role}",
@@ -271,6 +277,10 @@ def with_protocol_params(schema: dict[str, Any], *, mail: ProtocolConfig | None,
                 if name in bound_names or config.settings:
                     continue
                 # Empty legacy configurations retain their original connection contract.
+                if protocol == "mail" and name == "poll_interval_s":
+                    previous = original.get(name, {})
+                    if previous.get("builtin") and previous.get("description") == definition["description"]:
+                        definition = {**definition, "default": previous.get("default", definition["default"])}
                 params[name] = definition
             mapping = config.param_map
             if protocol == "calendar":
@@ -284,6 +294,9 @@ def with_protocol_params(schema: dict[str, Any], *, mail: ProtocolConfig | None,
             for role, binding in bindings.items():
                 if protocol == "calendar" and not mapping:
                     # Older providers own CalendarFeed records, not source parameters.
+                    continue
+                if role == "poll_interval_minutes" and not mapping.get(role):
+                    # Mail Services may continue using their previously saved seconds interval.
                     continue
                 target = mapping.get(role, str(binding["legacy_parameter"]) if not config.settings and not mapping else "")
                 if not target and not binding["definition"]["required"]:
