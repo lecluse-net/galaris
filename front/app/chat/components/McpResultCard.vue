@@ -169,9 +169,13 @@ async function onMessage(event: MessageEvent<RpcMessage>): Promise<void> {
   }
 }
 
-onMounted(() => window.addEventListener('message', onMessage))
+function onWindowMessage(event: MessageEvent<RpcMessage>): void {
+  void onMessage(event)
+}
+
+onMounted(() => window.addEventListener('message', onWindowMessage))
 onBeforeUnmount(() => {
-  window.removeEventListener('message', onMessage)
+  window.removeEventListener('message', onWindowMessage)
   closeFilters()
 })
 </script>

@@ -11,7 +11,7 @@
         <div class="editorial-toolbar-row">
         <q-btn flat dense icon="zoom_out" :aria-label="t('documents.mindmap.zoomOut')" @click="zoomStep(-1)" />
         <q-btn flat dense icon="zoom_in" :aria-label="t('documents.mindmap.zoomIn')" @click="zoomStep(1)" />
-        <q-btn dense outline :label="`${percentage}%`" :aria-label="t('documents.mindmap.resetZoom')" @click="reset" />
+        <q-btn dense outline color="primary" :label="`${percentage}%`" :aria-label="t('documents.mindmap.resetZoom')" @click="reset" />
         <q-btn flat dense :icon="editorialIcon('layout.full', 'fit_screen')" :aria-label="t('documents.mindmap.fit')" @click="fit">
           <q-tooltip>{{ t('documents.mindmap.fit') }}</q-tooltip>
         </q-btn>
@@ -1731,6 +1731,7 @@ async function copyNodeValue(value: string, message = 'documents.mindmapValue.co
 
 function copySelectedValues(asTable: boolean): void {
   function tableCell(text: string): string {
+    // eslint-disable-next-line no-control-regex -- ASCII controls are intentionally recognized before formula prefixes.
     const value = /^[\s\u0000-\u001f]*[=+@-]/u.test(text) ? "'" + text : text
     return /["\t\r\n]/u.test(value) ? `"${value.replaceAll('"', '""')}"` : value
   }
