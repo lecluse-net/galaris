@@ -39,6 +39,11 @@ export interface LlmProfile {
 export interface LlmProfileListResponse {
     profiles: LlmProfile[]
     current_profile_id: number | null
+    default_fallback_profile_id: number | null
+}
+
+interface LlmDefaultFallbackProfile {
+    default_fallback_profile_id: number | null
 }
 
 export interface LlmProfileCreate {
@@ -98,5 +103,11 @@ export default {
 
     useProfile(id: number) {
         return api.post<LlmProfileUseResponse>(`/llm-profiles/${id}/use`)
+    },
+
+    setDefaultFallbackProfile(id: number | null) {
+        return api.put<LlmDefaultFallbackProfile>('/llm-profiles/default-fallback', {
+            default_fallback_profile_id: id,
+        })
     },
 }

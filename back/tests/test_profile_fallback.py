@@ -18,7 +18,7 @@ from app.llm.pydantic_ai_utils import build_model_for_llm
 from app.llm import inference_execution
 from app.llm.contracts import TextInferenceRequest
 from app.llm.facade import run_text_inference, prepare_inference, control_inference, stream_inference, read_inference_result
-from app.llm import model_usages
+from app.llm import llm_service, model_usages, profile_service
 from app.llm.profile_fallback import ProfileFallbackRoute, provider_failure_allows_fallback
 from app.llm.facade import read_inference
 from pydantic_ai.exceptions import ModelHTTPError
@@ -158,6 +158,114 @@ async def test_automatic_mail_routes_around_chatgpt_before_transport(failover, m
         assert upstream == ["secondary.test"]
         assert (await activity_snapshots([task]))[0].mail_subscription_routing == "fallback"
     access_token.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("entrypoint", ["inference", "sdk", "gateway", "ineligible_secondary"])
+async def test_default_fallback_routes_around_subscription_refusal(failover, monkeypatch, entrypoint):
+    from unittest.mock import AsyncMock
+
+    from app.connection import Connection
+    from app.conversation import ConversationRound
+    from app.llm import subscription_policy
+    from app.llm.facade import proxy_chat_completion
+    from app.messenger import Room
+    from app.services import ServiceModel
+    from bridge.openai import codex_oauth
+
+    db, agent, models, profiles = failover
+    primary = models[0].provider
+    primary.catalog_code = subscription_policy.CHATGPT_CATALOG_CODE
+    primary.user_id = agent.user_id
+    primary.subscription_acknowledged = True
+    models[0].is_subscription = True
+    models[1].is_subscription = entrypoint == "ineligible_secondary"
+    agent.fallback_profile_id = None
+    requester = UserModel(email=f"requester-{uuid4().hex}@example.test", hashed_password="unused", is_active=True)
+    service = ServiceModel(
+        code="synthetic-fallback-chat", label="Synthetic fallback chat", description="", connection_schema={},
+    )
+    db.add_all([requester, service])
+    await db.flush()
+    connection = Connection(agent_id=agent.id, service_id=service.id, active=True)
+    db.add(connection)
+    await db.flush()
+    room = Room(connection_id=connection.id, external_id="test-chat", label="Synthetic chat", kind="direct",
+                conversation_type="text")
+    db.add(room)
+    await db.flush()
+    round_ = ConversationRound(room_id=room.id, requester_user_id=requester.id)
+    db.add(round_)
+    assert await profile_service.set_default_fallback_profile(profiles[1].id)
+
+    monkeypatch.setattr(subscription_policy, "_chatgpt_acknowledged", True)
+    access_token = AsyncMock(side_effect=AssertionError("The requester cannot use the subscription"))
+    monkeypatch.setattr(codex_oauth, "get_access_token", access_token)
+    upstream = []
+
+    async def handler(request):
+        upstream.append(request.url.host)
+        return httpx.Response(200, content=sse({"content": "Recovered"}) + sse({}, "stop") + b"data: [DONE]\n\n",
+                              headers={"content-type": "text/event-stream"})
+
+    class ProviderClient(httpx.AsyncClient):
+        def __init__(self, **kwargs):
+            super().__init__(**kwargs, transport=httpx.MockTransport(handler))
+
+    monkeypatch.setattr(proxy_service.httpx, "AsyncClient", ProviderClient)
+    if entrypoint in {"inference", "ineligible_secondary"}:
+        request = TextInferenceRequest(
+            llm_id=models[0].id, agent_id=agent.id, prompt="Synthetic request",
+            conversation_round_id=round_.id, purpose="conversation.text", model_field=model_usages.CONVERSATION,
+        )
+        if entrypoint == "ineligible_secondary":
+            with pytest.raises(subscription_policy.SubscriptionAccessError):
+                await run_text_inference(request)
+        else:
+            assert (await run_text_inference(request)).result == "Recovered"
+    elif entrypoint == "sdk":
+        model = await build_model_for_llm(
+            models[0], agent_id=agent.id, conversation_round_id=round_.id, purpose="conversation.text",
+        )
+        assert (await PydanticAgent(model).run("Synthetic request")).output == "Recovered"
+    else:
+        response = await proxy_chat_completion(
+            {"messages": [{"role": "user", "content": "Synthetic request"}], "stream": True},
+            llm_override=models[0], agent_id=agent.id, task_id=None,
+            conversation_round_id=round_.id, purpose="conversation.text",
+        )
+        assert b"Recovered" in b"".join([chunk async for chunk in response.body_iterator])
+    assert upstream == ([] if entrypoint == "ineligible_secondary" else ["secondary.test"])
+    access_token.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_default_fallback_is_inherited_and_explicit_agent_profile_takes_precedence(failover):
+    db, agent, models, profiles = failover
+    primary, shared = profiles
+    forced = await profile_service.create_profile("Explicit fallback")
+    await profile_service.use_profile(primary.id)
+    agent.fallback_profile_id = forced.id
+    inherited = Agent(
+        user_id=agent.user_id, title_id=agent.title_id, code=f"fallback-{uuid4().hex}",
+        first_name="Synthetic inherited", last_name="",
+    )
+    db.add(inherited)
+    await db.commit()
+    assert await profile_service.set_default_fallback_profile(shared.id)
+
+    async def resolve(agent_id: int, *, model_id: int = models[0].id) -> tuple[int, object, str | None] | None:
+        return await llm_service.get_agent_fallback_model(
+            agent_id, model_id, model_field=model_usages.EXECUTOR, purpose="agent.exec",
+        )
+
+    assert await resolve(inherited.id) == (shared.id, models[1], None)
+    assert await resolve(agent.id) is None
+    await profile_service.update_profile(forced.id, values={model_usages.EXECUTOR: str(models[1].id)})
+    assert await resolve(agent.id) == (forced.id, models[1], None)
+    assert await resolve(inherited.id, model_id=models[1].id) is None
+    assert await profile_service.set_default_fallback_profile(primary.id)
+    assert await resolve(inherited.id) is None
 
 
 @pytest.mark.asyncio
@@ -304,8 +412,10 @@ async def test_text_inference_records_both_calls_and_does_not_loop(failover, mon
     request = TextInferenceRequest(llm_id=models[0].id, agent_id=agent.id, prompt="Recover once",
                                    purpose="synthetic.text", model_field=model_usages.CONVERSATION)
     if prepared:
-        key = await prepare_inference(request)
         agent.fallback_profile_id = None
+        assert await profile_service.set_default_fallback_profile(profiles[1].id)
+        key = await prepare_inference(request)
+        assert await profile_service.set_default_fallback_profile(None)
         profiles[1].text_low_llm_id = None
         await db.commit()
         await control_inference(key, "start", command_id=uuid4())

@@ -13,6 +13,8 @@ interface LLMProfileState {
     profiles: LlmProfile[]
     // Id of the profile currently active for the agents (global parameter).
     currentProfileId: number | null
+    defaultFallbackProfileId: number | null
+    savingDefaultFallback: boolean
     loading: boolean
     applying: boolean
     error: unknown
@@ -22,6 +24,8 @@ export const useLLMProfileStore = withSessionScope(defineStore('llmProfile', {
     state: (): LLMProfileState => ({
         profiles: [],
         currentProfileId: null,
+        defaultFallbackProfileId: null,
+        savingDefaultFallback: false,
         loading: false,
         applying: false,
         error: null
@@ -56,6 +60,7 @@ export const useLLMProfileStore = withSessionScope(defineStore('llmProfile', {
                 const response = await llmProfileService.getProfiles()
                 this.profiles = response.data.profiles
                 this.currentProfileId = response.data.current_profile_id
+                this.defaultFallbackProfileId = response.data.default_fallback_profile_id
             } catch (error) {
                 this.error = error
                 console.error('Error fetching LLM profiles:', error)
@@ -128,6 +133,7 @@ export const useLLMProfileStore = withSessionScope(defineStore('llmProfile', {
             try {
                 await llmProfileService.deleteProfile(id)
                 this.profiles = this.profiles.filter(p => p.id !== id)
+                if (this.defaultFallbackProfileId === id) this.defaultFallbackProfileId = null
             } catch (error) {
                 this.error = error
                 console.error('Error deleting LLM profile:', error)
@@ -157,8 +163,21 @@ export const useLLMProfileStore = withSessionScope(defineStore('llmProfile', {
             }
         },
 
+        async setDefaultFallbackProfile(id: number | null): Promise<void> {
+            this.savingDefaultFallback = true
+            try {
+                const response = await llmProfileService.setDefaultFallbackProfile(id)
+                this.defaultFallbackProfileId = response.data.default_fallback_profile_id
+            } finally {
+                this.savingDefaultFallback = false
+            }
+        },
+
         clearError(): void {
             this.error = null
         },
     }
-}), { flags: {"fetchProfiles":"loading","createProfile":"loading","updateProfile":"loading","deleteProfile":"loading","useProfile":"applying"} })
+}), { flags: {
+    fetchProfiles: 'loading', createProfile: 'loading', updateProfile: 'loading',
+    deleteProfile: 'loading', useProfile: 'applying', setDefaultFallbackProfile: 'savingDefaultFallback',
+} })

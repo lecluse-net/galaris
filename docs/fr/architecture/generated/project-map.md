@@ -17,7 +17,7 @@ tests restent l’autorité sur le comportement.
 - 30 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 0 paires frontend directement bidirectionnelles ;
-- 832 handlers HTTP/WebSocket détectés ;
+- 833 handlers HTTP/WebSocket détectés ;
 - 203 tables SQLAlchemy détectées ;
 - 303 outils MCP natifs détectés ;
 - 58 pages Vue détectées.
@@ -1831,12 +1831,13 @@ Aucune composante cyclique détectée.
 | DELETE | `/llm-calls/{call_id}` | `app.llm` | `delete_call` | oui | `back/app/llm/call_router.py:586` |
 | GET | `/llm-calls/{call_id}` | `app.llm` | `read_call` | oui | `back/app/llm/call_router.py:605` |
 | POST | `/llm-calls/{call_id}/stop` | `app.llm` | `stop_llm_call` | oui | `back/app/llm/call_router.py:571` |
-| GET | `/llm-profiles` | `app.llm` | `list_profiles` | oui | `back/app/llm/profile_router.py:67` |
-| POST | `/llm-profiles` | `app.llm` | `create_profile` | oui | `back/app/llm/profile_router.py:88` |
-| DELETE | `/llm-profiles/{profile_id}` | `app.llm` | `delete_profile` | oui | `back/app/llm/profile_router.py:119` |
-| GET | `/llm-profiles/{profile_id}` | `app.llm` | `get_profile` | oui | `back/app/llm/profile_router.py:78` |
-| PUT | `/llm-profiles/{profile_id}` | `app.llm` | `update_profile` | oui | `back/app/llm/profile_router.py:100` |
-| POST | `/llm-profiles/{profile_id}/use` | `app.llm` | `use_profile` | oui | `back/app/llm/profile_router.py:134` |
+| GET | `/llm-profiles` | `app.llm` | `list_profiles` | oui | `back/app/llm/profile_router.py:68` |
+| POST | `/llm-profiles` | `app.llm` | `create_profile` | oui | `back/app/llm/profile_router.py:101` |
+| PUT | `/llm-profiles/default-fallback` | `app.llm` | `set_default_fallback_profile` | oui | `back/app/llm/profile_router.py:80` |
+| DELETE | `/llm-profiles/{profile_id}` | `app.llm` | `delete_profile` | oui | `back/app/llm/profile_router.py:132` |
+| GET | `/llm-profiles/{profile_id}` | `app.llm` | `get_profile` | oui | `back/app/llm/profile_router.py:91` |
+| PUT | `/llm-profiles/{profile_id}` | `app.llm` | `update_profile` | oui | `back/app/llm/profile_router.py:113` |
+| POST | `/llm-profiles/{profile_id}/use` | `app.llm` | `use_profile` | oui | `back/app/llm/profile_router.py:147` |
 | GET | `/llm-providers` | `app.llm` | `list_providers` | oui | `back/app/llm/provider_router.py:257` |
 | POST | `/llm-providers` | `app.llm` | `create_provider` | oui | `back/app/llm/provider_router.py:265` |
 | GET | `/llm-providers/catalog` | `app.llm` | `get_provider_catalog` | oui | `back/app/llm/provider_router.py:279` |
@@ -2303,7 +2304,7 @@ Aucune composante cyclique détectée.
 | `tool_search_documents` | `ToolSearchDocument` | `app.services` | non | — | `back/app/services/models.py:82` |
 | `topics` | `Topic` | `app.topic` | oui | `memory_items.id` | `back/app/topic/models.py:15` |
 | `user_help_dismissals` | `UserHelpDismissal` | `core.user` | non | `users.id` | `back/core/user/models.py:83` |
-| `user_llm_preferences` | `UserLlmPreferences` | `app.llm` | non | `llm_profiles.id`, `llms.id`, `users.id` | `back/app/llm/profile_models.py:111` |
+| `user_llm_preferences` | `UserLlmPreferences` | `app.llm` | non | `llm_profiles.id`, `llms.id`, `users.id` | `back/app/llm/profile_models.py:120` |
 | `user_refresh_sessions` | `UserRefreshSession` | `core.user` | non | `users.id` | `back/core/user/models.py:122` |
 | `user_tokens` | `UserToken` | `core.user` | non | `users.id` | `back/core/user/models.py:95` |
 | `users` | `User` | `core.user` | non | — | `back/core/user/models.py:13` |

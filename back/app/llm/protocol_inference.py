@@ -32,7 +32,9 @@ from .contracts import InferenceEvent, ProtocolInferenceRequest
 from .correlation import current_deep_session
 from .models import LLMCall, LLMCallEvent
 from .provider_models import LLM
-from .subscription_policy import MailSubscriptionAccessError, allows_automatic_mail_fallback
+from .subscription_policy import (
+    MailSubscriptionAccessError, SubscriptionAccessError, allows_automatic_subscription_fallback,
+)
 from .provider_facade import ProviderAuthenticationError, ProviderUnavailableError, ReasoningEffort
 from .profile_gateway import profile_error, resolve_profile_model
 from .text_inference import RecordedTextModel, persist_events, message_for_part
@@ -298,6 +300,10 @@ def _raise_failure(result: AIResult | None) -> None:
     metadata = result.metadata if result is not None else {}
     message = str(metadata.get("error", "The inference was interrupted."))
     kind = metadata.get("error_type")
+    if kind == "MailSubscriptionAccessError":
+        raise MailSubscriptionAccessError(message)
+    if kind == "SubscriptionAccessError":
+        raise SubscriptionAccessError(message)
     if kind == "ProviderAuthenticationError":
         raise ProviderAuthenticationError(message, status_code=int(metadata.get("error_status", 401)))
     if kind == "ModelHTTPError" or metadata.get("model_http_error") is True:
@@ -483,6 +489,7 @@ async def _request(
             if fallback is not None:
                 request.profile_fallback = ProfileFallbackRoute(profile_id=fallback[0])
         failure: Exception | None = None
+        allow_subscription_fallback = fallback is not None and allows_automatic_subscription_fallback(fallback[1])
         try:
             response = await protocol_response(request)
             if isinstance(response, JSONResponse) and response.status_code >= 400:
@@ -492,13 +499,13 @@ async def _request(
             else:
                 return response
         except Exception as exc:
-            if fallback is None or not provider_failure_allows_fallback(exc):
+            if fallback is None or not provider_failure_allows_fallback(
+                exc, allow_subscription_fallback=allow_subscription_fallback,
+            ):
                 raise
             failure = exc
         assert fallback is not None and failure is not None
         profile_id, secondary, secondary_effort = fallback
-        if isinstance(failure, MailSubscriptionAccessError) and not allows_automatic_mail_fallback(secondary):
-            raise failure
         request = request.model_copy(update={
             "llm_id": secondary.id, "reasoning_effort": secondary_effort,
             "profile_fallback": ProfileFallbackRoute(

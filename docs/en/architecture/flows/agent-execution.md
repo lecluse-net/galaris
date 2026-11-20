@@ -342,10 +342,11 @@ configuration and passes it to each cycle. Children, delegations, Processes, and
 retain the same authority without accepting an identifier declared by the runtime. On a
 single-user instance, internal work without an explicit author may fall back to the sole holder;
 this fallback never applies to Messenger origins. An inbound Mail journal entry in the Task lineage
-blocks the ChatGPT subscription before transport, including for child Tasks. When the selected primary
-model uses the subscription, the inference facade selects the model for the same usage in the agent’s
-fallback profile. The routing trace drives the Task banner. Without a compatible model, the Task
-receives a fallback profile configuration error.
+blocks the ChatGPT subscription before transport, including for child Tasks. When access to the
+ChatGPT subscription is refused, agent LLM calls that support failover can use a non-subscription
+model from an active provider. The inference facade selects the same usage in the agent’s secondary
+profile, or the shared default if the agent has no secondary profile. For Mail, the routing trace
+drives the Task banner. With no compatible model, the subscription refusal is preserved.
 
 This flow explains the common path of a task, independently of the concrete runtime. The text
 control plane of `app.conversation` has a separate internal controller; real-time voice

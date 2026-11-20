@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from .provider_facade import ReasoningEffort
 
@@ -103,6 +103,11 @@ class LlmProfileListResponse(BaseModel):
 
     profiles: list[LlmProfileOut]
     current_profile_id: Optional[int] = None
+    default_fallback_profile_id: int | None = None
+
+
+class LlmDefaultFallbackProfile(BaseModel):
+    default_fallback_profile_id: int | None = Field(ge=1, le=2**31 - 1)
 
 
 class LlmProfileUseResponse(BaseModel):

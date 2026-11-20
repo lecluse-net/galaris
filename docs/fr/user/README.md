@@ -172,13 +172,20 @@ Conservez les codes de secours affichés lors de l’activation dans un emplacem
 ils ne seront pas réaffichés et chacun ne fonctionne qu’une fois. Après plusieurs mots de passe ou
 codes erronés, Galaris ralentit temporairement les nouvelles tentatives de connexion.
 
-## Choisir un profil de secours pour un agent
+## Choisir un profil de secours
+
+Dans **Configurer → Fournisseurs & modèles → Modèles utilisés**, choisissez un **Profil de
+secours par défaut**. Les agents qui n’ont pas de profil secondaire hériteront de ce choix.
+Configurez dans ce profil les mêmes usages avec des modèles de fournisseurs API actifs,
+hors abonnement, pour prendre le relais lorsque l’abonnement ChatGPT est indisponible ou
+que le demandeur ne peut pas l’utiliser. Effacez la sélection pour désactiver le secours
+global.
 
 Les gestionnaires d'agents peuvent choisir un **Profil principal** et un **Profil secondaire
-(secours)** dans **Agents → Modifier → Modèles**. Le secondaire est facultatif et sert lors
-d'une surcharge ou d'une indisponibilité du fournisseur principal. La conversation ou la
-Tâche conserve le travail déjà effectué ; les détails de la bascule apparaissent dans les
-journaux d'appels LLM. Une sélection vide dans le secondaire ne remplace pas un usage absent.
+(secours)** dans **Agents → Modifier → Modèles**. Ce profil secondaire prend la priorité
+sur le réglage global. La bascule reprend le modèle du même usage dans le profil de secours,
+si cet usage est renseigné. La conversation ou la tâche conserve le travail déjà effectué.
+Les détails de la bascule apparaissent dans les journaux d'appels LLM.
 
 ## Installer Galaris sur Windows ou Linux
 
@@ -730,7 +737,7 @@ Si une tâche attend votre accord pour lire un mail, répondez à la demande d�
 Le harnais reprend la lecture du même message après la reprise de la tâche ; un refus
 laisse son contenu privé. Cet accord de lecture n’autorise pas l’envoi d’un mail.
 Pour les tâches issues de la relève Mail, si le modèle prévu utilise un abonnement personnel ChatGPT,
-Galaris utilise le modèle du même usage dans le **Profil secondaire (secours)** de l’agent. Un bandeau
+Galaris utilise le modèle du même usage dans le profil de secours de l’agent ou, à défaut, le profil global. Un bandeau
 dans la tâche indique l’utilisation du secours ou la configuration requise si aucun modèle ne convient.
 L’expéditeur du mail reste visible comme contact dans le journal.
 Pour consulter vous-même la boîte d’un agent, ouvrez **Connaissances → Fichiers** et le Service

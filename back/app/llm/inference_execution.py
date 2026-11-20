@@ -70,10 +70,10 @@ async def submit(request: InferenceRequest, *, inference_id: UUID | None = None,
     from .structured_service import resolve_reasoning_effort
     from .subscription_policy import (
         current_execution_authority,
-        allows_automatic_mail_fallback,
+        allows_automatic_subscription_fallback,
         enforce_subscription_access,
         LLMExecutionAuthority,
-        MailSubscriptionAccessError,
+        SubscriptionAccessError,
     )
 
     async def admit() -> UUID:
@@ -101,8 +101,8 @@ async def submit(request: InferenceRequest, *, inference_id: UUID | None = None,
                 llm.provider, task_id=request.task_id,
                 conversation_round_id=request.conversation_round_id, process_run_id=request.process_run_id,
             )
-        except MailSubscriptionAccessError as exc:
-            if fallback is None or not allows_automatic_mail_fallback(fallback[1]):
+        except SubscriptionAccessError as exc:
+            if fallback is None or not allows_automatic_subscription_fallback(fallback[1]):
                 raise
             profile_id, secondary, effort = fallback
             requester = await enforce_subscription_access(secondary.provider, task_id=request.task_id)

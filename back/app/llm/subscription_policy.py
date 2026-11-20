@@ -30,7 +30,7 @@ class MailSubscriptionAccessError(SubscriptionAccessError):
     """Automatic Mail work requires a provider outside the personal ChatGPT plan."""
 
 
-def allows_automatic_mail_fallback(model: LLM) -> bool:
+def allows_automatic_subscription_fallback(model: LLM) -> bool:
     return (model.provider.is_active and model.provider.catalog_code != CHATGPT_CATALOG_CODE
             and not model.is_subscription)
 

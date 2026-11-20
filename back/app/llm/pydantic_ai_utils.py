@@ -556,6 +556,7 @@ async def build_model_for_llm(
     from . import llm_service
     from .profile_fallback import ProfileFallbackModel
     from .call_capture import text_call_capture
+    from .subscription_policy import allows_automatic_subscription_fallback
 
     primary = await _build_primary_model_for_llm(
         llm, task_id=task_id, agent_run_id=agent_run_id,
@@ -578,14 +579,14 @@ async def build_model_for_llm(
             agent_id, llm.id, model_field=model_field,
             purpose=str(purpose) if purpose is not None else None,
         )
+    allow_subscription_fallback = fallback is not None and allows_automatic_subscription_fallback(fallback[1])
     if task_id is not None:
         from .subscription_policy import (
             CHATGPT_CATALOG_CODE, MailSubscriptionAccessError, SubscriptionAccessError,
-            allows_automatic_mail_fallback, enforce_subscription_access,
+            enforce_subscription_access,
         )
 
-        if (llm.provider.catalog_code == CHATGPT_CATALOG_CODE and
-                (fallback is None or not allows_automatic_mail_fallback(fallback[1]))):
+        if llm.provider.catalog_code == CHATGPT_CATALOG_CODE and not allow_subscription_fallback:
             try:
                 await enforce_subscription_access(llm.provider, task_id=task_id)
             except MailSubscriptionAccessError:
@@ -602,7 +603,10 @@ async def build_model_for_llm(
         conversation_round_id=conversation_round_id, agent_id=agent_id,
         purpose=purpose, enable_native_media=enable_native_media, reasoning_effort=effort,
     )
-    return ProfileFallbackModel(primary, secondary, profile_id=profile_id, primary_llm_id=llm.id)
+    return ProfileFallbackModel(
+        primary, secondary, profile_id=profile_id, primary_llm_id=llm.id,
+        allow_subscription_fallback=allow_subscription_fallback,
+    )
 
 
 def model_used_profile_fallback(model: object) -> bool:

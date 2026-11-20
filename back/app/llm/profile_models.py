@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Optional
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, Index, String, false, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
@@ -30,6 +30,14 @@ class LlmProfile(Base):
     """
 
     __tablename__ = "llm_profiles"
+    __table_args__ = (
+        Index(
+            "uq_llm_profiles_default_fallback",
+            "is_default_fallback",
+            unique=True,
+            postgresql_where=text("is_default_fallback"),
+        ),
+    )
     decision_fallback_policy: Mapped[str] = mapped_column(
         String(24), default="text_on_failure", server_default="text_on_failure",
     )
@@ -37,6 +45,7 @@ class LlmProfile(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     code: Mapped[str] = mapped_column(String(100), unique=True, default=default_profile_code)
     label: Mapped[str] = mapped_column(String(100), nullable=False)
+    is_default_fallback: Mapped[bool] = mapped_column(server_default=false())
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

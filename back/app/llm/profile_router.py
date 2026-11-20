@@ -14,6 +14,7 @@ from .profile_models import (
     LlmProfile,
 )
 from .profile_schemas import (
+    LlmDefaultFallbackProfile,
     LlmProfileCreate,
     LlmProfileListResponse,
     LlmProfileOut,
@@ -70,7 +71,19 @@ async def list_profiles() -> LlmProfileListResponse:
     return LlmProfileListResponse(
         profiles=[_profile_out(profile) for profile in profiles],
         current_profile_id=await profile_service.get_current_profile_id(),
+        default_fallback_profile_id=next((profile.id for profile in profiles if profile.is_default_fallback), None),
     )
+
+
+@router.put("/default-fallback", response_model=LlmDefaultFallbackProfile)
+@authorize(privileges=Privileges.LLM_PROFILE_EDIT)
+async def set_default_fallback_profile(selection: LlmDefaultFallbackProfile) -> LlmDefaultFallbackProfile:
+    """Set or clear the inherited fallback profile."""
+    profile_id = selection.default_fallback_profile_id
+    if not await profile_service.set_default_fallback_profile(profile_id):
+        assert profile_id is not None
+        raise await _not_found(profile_id)
+    return selection
 
 
 @router.get("/{profile_id}", response_model=LlmProfileOut)

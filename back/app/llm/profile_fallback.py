@@ -19,7 +19,7 @@ from pydantic_ai.models.wrapper import WrapperModel
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.usage import RequestUsage
 from .provider_facade import ProviderAuthenticationError, ProviderUnavailableError
-from .subscription_policy import MailSubscriptionAccessError
+from .subscription_policy import SubscriptionAccessError
 
 
 class ProfileFallbackRoute(BaseModel):
@@ -42,14 +42,21 @@ def fallback_route_scope(route: ProfileFallbackRoute | None) -> Generator[None]:
         profile_fallback_route.reset(token)
 
 
-def provider_failure_allows_fallback(exc: Exception) -> bool:
-    """Route provider failures and automatic Mail subscription exclusions."""
+def provider_failure_allows_fallback(exc: Exception, *, allow_subscription_fallback: bool = False) -> bool:
+    """Route provider failures and subscription refusals with an eligible secondary."""
     if isinstance(exc, ExceptionGroup):
         group = cast(ExceptionGroup[Exception], exc)
-        return all(provider_failure_allows_fallback(item) for item in group.exceptions)
+        return all(
+            provider_failure_allows_fallback(item, allow_subscription_fallback=allow_subscription_fallback)
+            for item in group.exceptions
+        )
+    if isinstance(exc, SubscriptionAccessError):
+        return allow_subscription_fallback
+    if isinstance(exc.__cause__, SubscriptionAccessError):
+        return allow_subscription_fallback
     if isinstance(exc, (httpx.TransportError, httpx2.TransportError)):
         return True
-    if isinstance(exc, (ProviderAuthenticationError, ProviderUnavailableError, MailSubscriptionAccessError)):
+    if isinstance(exc, (ProviderAuthenticationError, ProviderUnavailableError)):
         return True
     if isinstance(exc, (PermissionError, ValueError)):
         return False
@@ -59,7 +66,9 @@ def provider_failure_allows_fallback(exc: Exception) -> bool:
         status = getattr(exc, "status_code", None)
         if status is not None:
             return status in {401, 403, 404, 408, 429, 500, 502, 503, 504, 529}
-    if isinstance(exc.__cause__, Exception) and provider_failure_allows_fallback(exc.__cause__):
+    if isinstance(exc.__cause__, Exception) and provider_failure_allows_fallback(
+        exc.__cause__, allow_subscription_fallback=allow_subscription_fallback,
+    ):
         return True
     # Some SSE adapters/SDKs discard the HTTP code. Keep this boundary narrow.
     message = str(exc).lower()
@@ -69,10 +78,10 @@ def provider_failure_allows_fallback(exc: Exception) -> bool:
 
 
 def profile_fallback_reason(exc: Exception) -> str:
-    """Keep the Mail policy reason when an SDK wraps the local refusal."""
+    """Keep the subscription policy reason when an SDK wraps the local refusal."""
     current: BaseException | None = exc
     while current is not None:
-        if isinstance(current, MailSubscriptionAccessError):
+        if isinstance(current, SubscriptionAccessError):
             return f"{type(current).__name__}: {current}"[:2000]
         current = current.__cause__
     return f"{type(exc).__name__}: {exc}"[:2000]
@@ -100,8 +109,6 @@ class _FallbackStream(StreamedResponse):
                 self.final_result_event = self.current.final_result_event
                 yield event
         except Exception as exc:
-            if not provider_failure_allows_fallback(exc):
-                raise
             self.current = await self.open_secondary(exc)
             self.final_result_event = None
             async for event in self.current:
@@ -138,11 +145,15 @@ class _FallbackStream(StreamedResponse):
 class ProfileFallbackModel(WrapperModel):
     """Freeze two models, then keep the secondary for the rest of this run."""
 
-    def __init__(self, primary: Model, secondary: Model, *, profile_id: int, primary_llm_id: int) -> None:
+    def __init__(
+        self, primary: Model, secondary: Model, *, profile_id: int, primary_llm_id: int,
+        allow_subscription_fallback: bool,
+    ) -> None:
         super().__init__(primary)
         self.secondary = secondary
         self.route = ProfileFallbackRoute(profile_id=profile_id)
         self.primary_llm_id = primary_llm_id
+        self.allow_subscription_fallback = allow_subscription_fallback
         self.using_secondary = False
 
     async def __aenter__(self) -> "ProfileFallbackModel":
@@ -226,7 +237,9 @@ class ProfileFallbackModel(WrapperModel):
                 return await selected.request(selected.prepare_messages(messages, model_request_parameters),
                     self._selected_settings(model_settings), model_request_parameters)
             except Exception as exc:
-                if self.using_secondary or not provider_failure_allows_fallback(exc):
+                if self.using_secondary or not provider_failure_allows_fallback(
+                    exc, allow_subscription_fallback=self.allow_subscription_fallback,
+                ):
                     raise
                 failure = exc
         assert failure is not None
@@ -250,6 +263,8 @@ class ProfileFallbackModel(WrapperModel):
                 ))
 
             async def open_secondary(exc: Exception) -> StreamedResponse:
+                if not provider_failure_allows_fallback(exc, allow_subscription_fallback=self.allow_subscription_fallback):
+                    raise exc
                 await primary_stack.aclose()
                 await self._record_failed_call(exc, stream.get() if stream is not None else None)
                 self._switch(exc)
@@ -262,8 +277,6 @@ class ProfileFallbackModel(WrapperModel):
             try:
                 stream = await open_model(self.wrapped, primary_stack)
             except Exception as exc:
-                if not provider_failure_allows_fallback(exc):
-                    raise
                 yield await open_secondary(exc)
                 return
             yield _FallbackStream(stream, open_secondary)

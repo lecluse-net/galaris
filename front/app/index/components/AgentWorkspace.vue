@@ -950,7 +950,14 @@ const profileOptions = computed(() =>
   }, ...llmProfileStore.profiles.map(profile => ({ label: profile.label, value: profile.id }))]
 )
 const fallbackProfileOptions = computed(() => [
-  { label: t('agent.models.noFallbackProfile'), value: null },
+  {
+    label: llmProfileStore.defaultFallbackProfileId == null
+      ? t('agent.models.noFallbackProfile')
+      : t('agent.models.useDefaultFallbackProfile', {
+          profile: llmProfileStore.getProfileById(llmProfileStore.defaultFallbackProfileId)?.label,
+        }),
+    value: null,
+  },
   ...llmProfileStore.profiles.map(profile => ({ label: profile.label, value: profile.id })),
 ])
 

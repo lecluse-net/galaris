@@ -62,7 +62,7 @@ default: dict[str, object] = {
             "subscription_owner_unsupported": "Un titulaire d’abonnement ne peut être défini que pour le fournisseur ChatGPT",
             "subscription_user_mismatch": "Cet abonnement ChatGPT est réservé à son titulaire Galaris. Utilisez un fournisseur OpenAI API pour les autres utilisateurs",
             "subscription_messenger_unlinked": "Cette identité Messenger n’est pas associée au titulaire de l’abonnement ChatGPT dans « Mon profil »",
-            "subscription_mail_background": "La relève automatique des mails exige un modèle hors abonnement ChatGPT. Configurez le même usage dans le profil de secours de l’agent avec un fournisseur API actif.",
+            "subscription_mail_background": "La relève automatique des mails exige un modèle hors abonnement ChatGPT. Configurez le même usage dans le profil de secours applicable avec un fournisseur API actif.",
             "subscription_requester_unknown": "Impossible d’attribuer cet appel au titulaire de l’abonnement ChatGPT. Utilisez un fournisseur OpenAI API ou une exécution liée à un utilisateur autorisé",
             "provider_install_unsupported": "Le fournisseur ${provider_name} ne prend pas en charge l’installation de modèles",
             "provider_delete_unsupported": "Le fournisseur ${provider_name} ne prend pas en charge la suppression de modèles",

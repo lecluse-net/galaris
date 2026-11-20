@@ -51,6 +51,39 @@ async def test_messaging_reception_check_keeps_provider_scope_and_edit_privilege
 
 
 @pytest.mark.asyncio
+async def test_default_fallback_profile_is_editable_and_clears_on_deletion(client):
+    path = "/api/llm-profiles"
+    read_headers, _ = await actor(["LLM_PROFILE_ACCESS"])
+    edit_headers, _ = await actor(["LLM_PROFILE_EDIT"])
+    original = (await client.get(path, headers=read_headers)).json()
+    assert original["default_fallback_profile_id"] is None
+    new = await client.post(path, headers=edit_headers, json={"label": "Synthetic shared fallback"})
+    assert new.status_code == 201
+    fallback_id = new.json()["id"]
+
+    selection = {"default_fallback_profile_id": fallback_id}
+    endpoint = f"{path}/default-fallback"
+    assert (await client.put(endpoint, headers=read_headers, json=selection)).status_code == 403
+    set_response = await client.put(endpoint, headers=edit_headers, json=selection)
+    assert set_response.status_code == 200
+    assert set_response.json() == selection
+    after = (await client.get(path, headers=read_headers)).json()
+    assert after["default_fallback_profile_id"] == fallback_id
+    assert after["current_profile_id"] == original["current_profile_id"]
+
+    invalid = await client.put(endpoint, headers=edit_headers, json={"default_fallback_profile_id": 2**31 - 1})
+    assert invalid.status_code == 404
+    assert (await client.get(path, headers=read_headers)).json()["default_fallback_profile_id"] == fallback_id
+
+    cleared = await client.put(endpoint, headers=edit_headers, json={"default_fallback_profile_id": None})
+    assert cleared.status_code == 200
+    assert (await client.get(path, headers=read_headers)).json()["default_fallback_profile_id"] is None
+    assert (await client.put(endpoint, headers=edit_headers, json=selection)).status_code == 200
+    assert (await client.delete(f"{path}/{fallback_id}", headers=edit_headers)).status_code == 204
+    assert (await client.get(path, headers=read_headers)).json()["default_fallback_profile_id"] is None
+
+
+@pytest.mark.asyncio
 async def test_memory_source_previews_keep_memory_rights_without_files_access(client):
     for code in ["MEMORY_ACCESS", "MEMORY_EDIT", "MEMORY_ADMIN", "FILE_ACCESS", "CONTACT_EDIT"]:
         headers, user_id = await actor([code])

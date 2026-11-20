@@ -35,7 +35,7 @@ async def get_agent_fallback_model(
     agent_id: int | None, primary_llm_id: int, *, model_field: str | None,
     purpose: str | None,
 ) -> tuple[int, LLM, ReasoningEffort | None] | None:
-    """Resolve the same usage in the optional secondary profile, once per run.
+    """Resolve the same usage in the explicit or inherited secondary profile.
 
     Explicit Lab candidates and models outside the agent's primary profile retain
     their selection. Empty secondary usages never borrow from another profile.
@@ -48,14 +48,13 @@ async def get_agent_fallback_model(
         select(Agent.profile_id, Agent.fallback_profile_id)
         .where(Agent.id == agent_id, Agent.deleted_at.is_(None))
     )).one_or_none()
-    if agent is None or agent.fallback_profile_id is None:
+    if agent is None:
         return None
     primary_id = agent.profile_id or await profile_service.get_current_profile_id()
-    if primary_id is None or primary_id == agent.fallback_profile_id:
+    if primary_id is None:
         return None
     primary = await profile_service.get_profile(primary_id)
-    secondary = await profile_service.get_profile(agent.fallback_profile_id)
-    if primary is None or secondary is None:
+    if primary is None:
         return None
     if model_field is None:
         preferred = {
@@ -76,6 +75,13 @@ async def get_agent_fallback_model(
         model_field = next((field for field in candidates
                             if getattr(primary, field) == primary_llm_id), None)
     if model_field not in model_usages.ALL or getattr(primary, model_field) != primary_llm_id:
+        return None
+    secondary = (
+        await profile_service.get_profile(agent.fallback_profile_id)
+        if agent.fallback_profile_id is not None
+        else await profile_service.get_default_fallback_profile()
+    )
+    if secondary is None or secondary.id == primary_id:
         return None
     fallback_id = getattr(secondary, model_field)
     if fallback_id is None or fallback_id == primary_llm_id:

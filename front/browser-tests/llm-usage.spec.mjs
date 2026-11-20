@@ -20,7 +20,9 @@ for (const width of [1440, 390]) {
       { id: 2, label: 'Modèle standard', provider_name: 'Fournisseur A', primary_capability: 'chat', service_capabilities: ['chat'], output_text: true },
       { id: 7, label: 'Modèle alternatif', provider_name: 'Fournisseur B', primary_capability: 'vision', service_capabilities: ['vision', 'chat'], input_text: true, input_image: true, output_text: true },
     ])
-    await page.route('**/api/llm-profiles', route => route.fulfill({ json: { profiles: [profile], current_profile_id: 1 } }))
+    await page.route('**/api/llm-profiles', route => route.fulfill({
+      json: { profiles: [profile], current_profile_id: 1, default_fallback_profile_id: null },
+    }))
     await page.route('**/api/llm-profiles/1', route => {
       expect(route.request().method()).toBe('PUT')
       const update = route.request().postDataJSON()
@@ -72,3 +74,87 @@ for (const width of [1440, 390]) {
     expect(updates).toHaveLength(4)
   })
 }
+
+test('browsing models and changing either default are independent', async ({ page }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 950 })
+  const profiles = [
+    { id: 1, label: 'Default', code: 'primary', text_standard_llm_id: 11 },
+    { id: 2, label: 'API fallback', code: 'api-fallback', text_standard_llm_id: 22 },
+    { id: 3, label: 'Other', code: 'other', text_standard_llm_id: 33 },
+    { id: 4, label: 'New primary', code: 'new-primary', text_standard_llm_id: 44 },
+  ]
+  let current = 1
+  let selected = null
+  let failNext = true
+  await jsonRoute(page, '**/api/llm-providers/llms', [
+    { id: 11, label: 'Default model' },
+    { id: 22, label: 'Fallback model' },
+    { id: 33, label: 'Other model' },
+    { id: 44, label: 'New primary model' },
+  ].map(model => ({ ...model, provider_name: 'Synthetic API', primary_capability: 'chat', service_capabilities: ['chat'] })))
+  await page.route('**/api/llm-profiles', route => route.fulfill({
+    json: { profiles, current_profile_id: current, default_fallback_profile_id: selected },
+  }))
+  await page.route('**/api/llm-profiles/*/use', route => {
+    expect(route.request().method()).toBe('POST')
+    current = Number(new URL(route.request().url()).pathname.split('/').at(-2))
+    return route.fulfill({ json: { profile_id: current, current_profile_id: current } })
+  })
+  await page.route('**/api/llm-profiles/default-fallback', route => {
+    expect(route.request().method()).toBe('PUT')
+    if (failNext) {
+      failNext = false
+      return route.fulfill({ status: 503, json: {} })
+    }
+    selected = route.request().postDataJSON().default_fallback_profile_id
+    return route.fulfill({ json: { default_fallback_profile_id: selected } })
+  })
+  const options = { route: '/llm?tab=usage', shell: true, privileges: ['LLM_PROFILE_EDIT'] }
+  const open = () => mount(page, 'app/llm/pages/index.vue', options)
+  await open()
+
+  const primary = page.getByRole('combobox', { name: 'Primary profile', exact: true })
+  const fallback = page.getByRole('combobox', { name: 'Default fallback profile', exact: true })
+  const displayed = page.getByRole('combobox', { name: 'Displayed profile', exact: true })
+  const standardRow = page.getByRole('row').filter({ has: page.getByText('Standard text', { exact: true }) })
+  const pick = async (field, label) => {
+    await field.click()
+    await expect(field).toHaveAttribute('aria-controls', /.+/)
+    const popupId = await field.getAttribute('aria-controls')
+    await page.locator(`[id="${popupId}"]`).getByRole('option', { name: label, exact: true }).click()
+  }
+  await pick(fallback, 'API fallback')
+  await expect(page.getByText('Could not save the default fallback profile', { exact: true })).toBeVisible()
+  expect(selected).toBeNull()
+  await pick(fallback, 'API fallback')
+  await expect.poll(() => selected).toBe(2)
+  await expect(standardRow).toContainText('Default model')
+  expect(current).toBe(1)
+  await pick(displayed, 'Other')
+  await expect(standardRow).toContainText('Other model')
+  expect(current).toBe(1)
+  expect(selected).toBe(2)
+  await pick(primary, 'New primary')
+  await expect.poll(() => current).toBe(4)
+  expect(selected).toBe(2)
+  await expect(standardRow).toContainText('Other model')
+  await page.screenshot({ path: testInfo.outputPath('independent-profiles-desktop.png'), animations: 'disabled' })
+
+  await open()
+  await expect(standardRow).toContainText('New primary model')
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.evaluate(() => window.testApp.dark(true))
+  await fallback.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: testInfo.outputPath('fallback-mobile-dark.png'), animations: 'disabled' })
+  await page.locator('label').filter({ has: fallback }).getByRole('button', { name: 'Clear', exact: true }).click()
+  await expect.poll(() => selected).toBeNull()
+  await expect(standardRow).toContainText('New primary model')
+  expect(current).toBe(4)
+  await setPrivileges(page, ['LLM_PROFILE_ACCESS'])
+  await expect(primary).toHaveAttribute('readonly', '')
+  await expect(fallback).toHaveAttribute('readonly', '')
+  await pick(displayed, 'Default')
+  await expect(standardRow).toContainText('Default model')
+  expect(current).toBe(4)
+})

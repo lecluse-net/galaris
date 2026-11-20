@@ -2,36 +2,66 @@
     <section class="llm-usage-manager">
         <q-card flat bordered class="profile-panel">
             <q-card-section class="profile-banner">
-                <q-avatar color="primary" text-color="white" icon="tune" size="36px" />
-                <div class="profile-banner__select">
+                <q-avatar color="primary" text-color="white" icon="tune" size="36px" class="self-start q-mt-xs" />
+                <div class="profile-banner__profiles">
                     <q-select
-                        v-model="selectedProfileId"
+                        :model-value="profileStore.currentProfileId"
                         :options="profileOptions"
-                        :label="t('llm.profileBannerLabel')"
+                        :label="t('llm.primaryProfile')"
+                        :readonly="!canEdit"
+                        :disable="initialLoading || profileStore.loading || profileStore.applying || !profileOptions.length"
+                        :loading="profileStore.applying"
                         option-value="id"
                         option-label="label"
                         emit-value
                         map-options
                         outlined
                         dense
-                        :loading="profileStore.loading"
-                        :disable="renamingProfile"
-                        class="profile-select"
+                        @update:model-value="onPrimaryProfileChange"
+                    />
+                    <q-select
+                        :model-value="profileStore.defaultFallbackProfileId"
+                        :options="profileOptions"
+                        :label="t('llm.defaultFallbackProfile')"
+                        :hint="t('llm.defaultFallbackProfileHint')"
+                        :readonly="!canEdit"
+                        :disable="initialLoading || profileStore.loading || profileStore.savingDefaultFallback || !profileOptions.length"
+                        :loading="profileStore.savingDefaultFallback"
+                        option-value="id"
+                        option-label="label"
+                        emit-value
+                        map-options
+                        outlined
+                        dense
+                        clearable
+                        @update:model-value="onDefaultFallbackProfileChange"
+                    />
+                </div>
+            </q-card-section>
+        </q-card>
+
+        <header class="q-mb-md">
+            <div class="usage-profile-controls">
+                <h2 class="text-h6 q-ma-none usage-profile-title">{{ t('llm.profileModelsHeading') }}</h2>
+                <div class="usage-profile-select">
+                    <q-select
+                        v-model="selectedProfileId"
+                        :options="profileOptions"
+                        :label="t('llm.displayedProfile')"
+                        option-value="id"
+                        option-label="label"
+                        emit-value
+                        map-options
+                        outlined
+                        dense
+                        :loading="initialLoading || profileStore.loading"
+                        :disable="initialLoading || renamingProfile || !profileOptions.length"
                     />
                     <div v-if="selectedProfile" class="text-caption q-mt-xs">
                         {{ t('llm.profileApiCode') }}: <code>{{ selectedProfile.code }}</code>
                     </div>
                 </div>
-                <q-chip
-                    v-if="currentProfileLabel !== null"
-                    dense
-                    outline
-                    color="primary"
-                    class="profile-current-chip"
-                >
-                    {{ t('llm.profileCurrentBadge', { label: currentProfileLabel }) }}
-                </q-chip>
-                <div class="profile-banner__actions">
+                <div class="usage-profile-actions">
                     <template v-if="renamingProfile">
                         <q-input
                             v-model="draftRenameLabel"
@@ -92,32 +122,21 @@
                             dense
                             color="negative"
                             icon="delete"
-                            :disable="!canEdit || selectedProfileId === null || profileStore.loading"
+                            :disable="!canEdit || selectedProfileId === null || profileStore.loading || profileStore.applying || profileStore.savingDefaultFallback"
                             @click="onDeleteProfile"
                         >
                             <q-tooltip>{{ t('llm.profileDelete') }}</q-tooltip>
                         </q-btn>
                     </template>
-                    <q-btn
-                        v-if="showUseButton"
-                        unelevated
-                        dense
-                        color="primary"
-                        icon="play_arrow"
-                        :label="t('llm.profileUse')"
-                        :disable="!canEdit || profileStore.loading"
-                        :loading="profileStore.applying"
-                        @click="onUseProfile"
-                    />
                 </div>
-                <div v-if="!initialLoading" class="usage-summary">
-                    <span class="text-caption text-weight-bold">
-                        {{ t('llm.usageConfiguredCount', { configured: configuredCount, total: modelRows.length }) }}
-                    </span>
-                    <span class="text-caption text-grey-7">{{ usageHintText }}</span>
-                </div>
-            </q-card-section>
-        </q-card>
+            </div>
+            <div v-if="selectedProfile" class="usage-summary q-mt-xs">
+                <span class="text-caption text-weight-bold">
+                    {{ t('llm.usageConfiguredCount', { configured: configuredCount, total: modelRows.length }) }}
+                </span>
+                <span class="text-caption text-grey-7">{{ usageHintText }}</span>
+            </div>
+        </header>
 
         <q-dialog v-model="profileDialog">
             <q-card class="profile-dialog galaris-dialog-card">
@@ -428,8 +447,7 @@ const reasoningDrafts = ref<Record<ReasoningField, number>>({
     text_high_reasoning_effort: REASONING_LEVEL_MIN,
 })
 
-// Model-profile banner state. The grid always edits the selected profile's
-// own columns; "Use this profile" only makes a profile the current one.
+// Browse and edit a profile independently of the default routing choices.
 const selectedProfileId = ref<number | null>(null)
 const profileDialog = ref(false)
 const draftLabel = ref('')
@@ -596,16 +614,6 @@ function selectedModelLabel(modelField: ModelField): string | undefined {
 // Model profiles.
 // =============================================================================
 
-// Banner badge; null while no profile is current.
-const currentProfileLabel = computed(() => profileStore.currentProfile?.label ?? null)
-
-// "Use this profile" only sets the current-profile pointer, so it makes sense
-// only when the selected profile is not already the current one.
-const showUseButton = computed(() => (
-    selectedProfileId.value !== null
-    && selectedProfileId.value !== profileStore.currentProfileId
-))
-
 // The grid never locks, whatever the selected profile: the hint stays generic.
 const usageHintText = computed(() => t('llm.usageHint'))
 
@@ -710,22 +718,34 @@ async function onDeleteProfile(): Promise<void> {
     })
 }
 
-async function onUseProfile(): Promise<void> {
-    if (!canEdit.value || selectedProfileId.value === null) return
-    const label = selectedProfile.value?.label ?? ''
+async function onPrimaryProfileChange(id: number | null): Promise<void> {
+    if (!canEdit.value || profileStore.applying || id === null || id === profileStore.currentProfileId) return
+    const profile = profileStore.getProfileById(id)
+    if (!profile) return
     try {
-        await profileStore.useProfile(selectedProfileId.value)
-        // Pointer only: the badge follows from the store and the grid already
-        // displays this profile's columns.
+        await profileStore.useProfile(id)
         $q.notify({
             type: 'positive',
-            message: t('llm.profileUsed', { label }),
+            message: t('llm.profileUsed', { label: profile.label }),
             timeout: 2500,
         })
     } catch (error) {
         $q.notify({
             type: 'negative',
             message: apiErrorDetail(error, t('llm.profileUseError')),
+            timeout: 3000,
+        })
+    }
+}
+
+async function onDefaultFallbackProfileChange(id: number | null): Promise<void> {
+    if (!canEdit.value || profileStore.savingDefaultFallback || id === profileStore.defaultFallbackProfileId) return
+    try {
+        await profileStore.setDefaultFallbackProfile(id)
+    } catch (error) {
+        $q.notify({
+            type: 'negative',
+            message: apiErrorDetail(error, t('llm.defaultFallbackProfileError')),
             timeout: 3000,
         })
     }
@@ -832,10 +852,8 @@ onMounted(async () => {
 
 .usage-summary {
     display: flex;
-    flex: 0 0 100%;
     flex-wrap: wrap;
     gap: 4px 12px;
-    padding-left: 44px;
 }
 
 .profile-panel {
@@ -852,22 +870,40 @@ onMounted(async () => {
     padding: 8px;
 }
 
-.profile-banner__select {
-    flex: 1;
-    min-width: min(220px, 100%);
+.profile-banner__profiles {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: 8px;
+    flex: 1 1 min(440px, calc(100% - 44px));
+    min-width: 0;
+    max-width: 728px;
+}
+
+.usage-profile-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px 12px;
+}
+
+.usage-profile-title {
+    line-height: 40px;
+}
+
+.usage-profile-select {
+    flex: 1 1 220px;
+    min-width: 0;
     max-width: 360px;
+    overflow-wrap: anywhere;
 }
 
-.profile-select {
-    width: 100%;
-}
-
-.profile-banner__actions {
+.usage-profile-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 4px;
-    margin-left: auto;
+    padding-top: 4px;
 }
 
 .profile-rename-input {
@@ -1004,6 +1040,17 @@ body.body--dark .usage-category__header {
 }
 
 @media (max-width: 1023px) {
+    .profile-banner__profiles {
+        grid-template-columns: minmax(0, 1fr);
+        flex-basis: calc(100% - 44px);
+        max-width: 360px;
+    }
+
+    .usage-profile-title {
+        flex-basis: 100%;
+        line-height: 2rem;
+    }
+
     .usage-table,
     .usage-table tbody {
         display: block;
@@ -1047,10 +1094,6 @@ body.body--dark .usage-category__header {
 
     .reasoning-control__header {
         justify-content: space-between;
-    }
-
-    .usage-summary {
-        padding-left: 0;
     }
 }
 </style>

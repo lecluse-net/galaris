@@ -13,7 +13,7 @@ from __future__ import annotations
 from typing import Any, Optional
 
 from loguru import logger
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select, text, update
 
 from core.database import get_db
 from core.i18n import render_prompt, tr
@@ -71,6 +71,30 @@ async def get_profile(profile_id: int) -> Optional[LlmProfile]:
             select(LlmProfile).where(LlmProfile.id == profile_id)
         )
     ).scalar_one_or_none()
+
+
+async def get_default_fallback_profile() -> LlmProfile | None:
+    return await get_db().scalar(select(LlmProfile).where(LlmProfile.is_default_fallback))
+
+
+async def set_default_fallback_profile(profile_id: int | None) -> bool:
+    """Select the shared fallback in one transaction. False means the profile is missing."""
+    db = get_db()
+    await db.execute(text("SELECT pg_advisory_xact_lock(hashtext('app.llm.default-fallback-profile'))"))
+    target = None
+    if profile_id is not None:
+        target = await db.scalar(
+            select(LlmProfile).where(LlmProfile.id == profile_id).with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if target is None:
+            return False
+    if target is None or not target.is_default_fallback:
+        await db.execute(update(LlmProfile).where(LlmProfile.is_default_fallback).values(is_default_fallback=False))
+        if target is not None:
+            target.is_default_fallback = True
+    await db.commit()
+    return True
 
 
 async def get_profile_value(profile_id: int, model_field: str) -> Optional[str]:

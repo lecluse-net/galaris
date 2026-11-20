@@ -12940,7 +12940,7 @@
           "users.id"
         ],
         "history_mixin": false,
-        "line": 111,
+        "line": 120,
         "module": "app.llm",
         "table": "user_llm_preferences"
       },
@@ -20086,7 +20086,7 @@
         "declared_path": "/llm-profiles",
         "file": "back/app/llm/profile_router.py",
         "handler": "list_profiles",
-        "line": 67,
+        "line": 68,
         "method": "GET",
         "module": "app.llm"
       },
@@ -20095,8 +20095,17 @@
         "declared_path": "/llm-profiles",
         "file": "back/app/llm/profile_router.py",
         "handler": "create_profile",
-        "line": 88,
+        "line": 101,
         "method": "POST",
+        "module": "app.llm"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/llm-profiles/default-fallback",
+        "file": "back/app/llm/profile_router.py",
+        "handler": "set_default_fallback_profile",
+        "line": 80,
+        "method": "PUT",
         "module": "app.llm"
       },
       {
@@ -20104,7 +20113,7 @@
         "declared_path": "/llm-profiles/{profile_id}",
         "file": "back/app/llm/profile_router.py",
         "handler": "delete_profile",
-        "line": 119,
+        "line": 132,
         "method": "DELETE",
         "module": "app.llm"
       },
@@ -20113,7 +20122,7 @@
         "declared_path": "/llm-profiles/{profile_id}",
         "file": "back/app/llm/profile_router.py",
         "handler": "get_profile",
-        "line": 78,
+        "line": 91,
         "method": "GET",
         "module": "app.llm"
       },
@@ -20122,7 +20131,7 @@
         "declared_path": "/llm-profiles/{profile_id}",
         "file": "back/app/llm/profile_router.py",
         "handler": "update_profile",
-        "line": 100,
+        "line": 113,
         "method": "PUT",
         "module": "app.llm"
       },
@@ -20131,7 +20140,7 @@
         "declared_path": "/llm-profiles/{profile_id}/use",
         "file": "back/app/llm/profile_router.py",
         "handler": "use_profile",
-        "line": 134,
+        "line": 147,
         "method": "POST",
         "module": "app.llm"
       },
