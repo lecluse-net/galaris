@@ -418,11 +418,19 @@ async def build_memory_brief(
                 f"\n\n- [{'document' if node_kind == 'document' else 'memory'}://{hit.item.id}] {hit.item.title} "
                 f"(source={source_text}{kind_text}{experience_text})\n  "
             )
+            section_text = ""
             if node_kind == "document":
                 revision = getattr(hit.item, "revision", None)
-                passage = next(iter(getattr(hit, "passages", [])), None)
+                # A stronger lexical window can replace the ranked passage. Use
+                # the location and headings only for the excerpt they describe.
+                passage = next((entry for entry in hit.passages if entry.excerpt == hit.excerpt), None)
                 location = f"; block_offset={passage.block_start}" if passage is not None and passage.block_start is not None else ""
                 prefix = prefix.rstrip() + f" (revision={revision}{location})\n  "
+                if passage is not None and passage.section_path:
+                    section_path = " > ".join(passage.section_path)
+                    if len(section_path) > 300:
+                        section_path = f"{section_path[:148]} … {section_path[-149:]}"
+                    section_text = f"Section: {section_path}\n"
             remaining = budget - consumed - len(prefix)
             if remaining <= 0:
                 local_truncated = True
@@ -439,7 +447,7 @@ async def build_memory_brief(
             recorded_text = f"recorded_at={recorded.isoformat()}\n" if isinstance(recorded, datetime) else ""
             validity = ", ".join(f"{key}={value.isoformat()}" for key in ("valid_from", "valid_until")
                 if isinstance(value := getattr(hit.item, key, None), datetime))
-            full_excerpt = conflict_text + recorded_text + (validity + "\n" if validity else "") + hit.excerpt
+            full_excerpt = conflict_text + recorded_text + (validity + "\n" if validity else "") + section_text + hit.excerpt
             excerpt = full_excerpt[:remaining]
             if len(excerpt) < len(full_excerpt):
                 excerpt = f"{excerpt[:-1].rstrip()}…" if excerpt else ""

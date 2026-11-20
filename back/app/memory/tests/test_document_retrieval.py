@@ -199,7 +199,7 @@ async def test_document_name_search_excludes_body_matches_and_paginates(agents, 
 async def test_document_search_returns_readable_passages_and_rejects_partial_index(db, agents, memory_storage, vectors):
     owner, peer = agents
     filler = "<p>" + "Historique sans rapport. " * 100 + "</p>"
-    html = "<h1>Compte rendu</h1>" + filler * 5 + "<h2>Restauration</h2><p>QUARTZ exige une sauvegarde vérifiée.</p>"
+    html = "<h1>Compte rendu 2021</h1>" + filler * 5 + "<h2>Restauration</h2><p>QUARTZ exige une sauvegarde vérifiée.</p>"
     document, _ = await create_document_reference(DocumentItemCreate(
         owner_agent_id=owner.id, node_kind="document",  title="Procédure technique",
         media_type="text/html", payload=DocumentPayload(text=html),
@@ -215,9 +215,19 @@ async def test_document_search_returns_readable_passages_and_rejects_partial_ind
         hit = result.hits[0]
         assert hit.resource.uri == f"document://{document.id}"
         assert "sauvegarde vérifiée" in hit.excerpt
-        assert hit.passages[0]["section_path"] == ["Compte rendu", "Restauration"]
+        assert hit.passages[0]["section_path"] == ["Compte rendu 2021", "Restauration"]
         page = await resource_read(ctx, hit.resource.uri, offset=hit.passages[0]["block_start"])
         assert "QUARTZ" in page.content
+    contribution = await bootstrap.memory_context_provider(AgentContextRequest(
+        task_id=None, agent=AgentSnapshot(owner.id, owner.code, "Synthetic", "Agent", "internal"),
+        label="Conversation", objective="QUARTZ",
+    ))
+    assert f"document://{document.id}" in contribution.memory_context
+    assert "QUARTZ exige une sauvegarde vérifiée" in contribution.memory_context
+    assert "Compte rendu 2021" in contribution.memory_context
+    candidate = next(item for item in contribution.candidates if item.reference == str(document.id))
+    assert "Compte rendu 2021" in candidate.excerpt
+    assert "QUARTZ exige une sauvegarde vérifiée" in candidate.excerpt
     await edit_document_summary(document.id, MemoryItemUpdate(
         payload=MemoryPayload(text="<p>ORCHID synthesis independent.</p>"), expected_revision=1,
     ), actor_agent_id=owner.id)
