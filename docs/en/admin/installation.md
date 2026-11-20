@@ -78,9 +78,10 @@ make start
 
 The first start builds the current checkout on any branch or tag, independently of `APP_ENV`.
 Startup prepares the data volume, initializes the database and waits for complete schema
-convergence and readiness. Local configuration is preserved. The
-[image qualification workflow](../dev/reliability-operations.md) also supports immutable
-bundles deployed with `make update RELEASE_DIR=<directory>`.
+convergence and readiness. Local configuration is preserved. To install from qualified server
+images, download the GHCR bundle by its OCI digest, then run
+`make update RELEASE_DIR=<directory>`. See the
+[publishing and download workflow](../dev/reliability-operations.md).
 
 Afterwards, `make start` starts existing containers without building. If a service is missing,
 has failed or does not become ready, it attempts one full update. Docker access errors or

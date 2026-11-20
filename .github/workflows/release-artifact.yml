@@ -7,6 +7,10 @@ on:
         description: Previously deployed backend image digest (registry/name@sha256:...)
         required: true
         type: string
+      publish_to_ghcr:
+        description: Publish the successfully qualified bundle to GitHub Container Registry
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -43,3 +47,46 @@ jobs:
           name: release-${{ github.sha }}
           path: artifacts/release/
           retention-days: 14
+
+  publish:
+    name: Publish qualified server bundle
+    if: ${{ inputs.publish_to_ghcr }}
+    needs: bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-${{ github.sha }}
+          path: artifacts/release
+      - uses: oras-project/setup-oras@5e2f2482b30b0cb3e14e67f89a80c88c659a7c63 # v2.0.3
+        with:
+          version: '1.3.6'
+      - name: Verify and publish the exact bundle
+        working-directory: artifacts/release
+        shell: bash
+        env:
+          GHCR_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(cat SOURCE_COMMIT)" = "$GITHUB_SHA"
+          cmp IMAGE_IDS TESTED_IMAGE_IDS
+          sha256sum --check --strict SHA256SUMS
+
+          repository="ghcr.io/${GITHUB_REPOSITORY,,}-server"
+          reference="$repository:run-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          printf '%s\n' "$GHCR_TOKEN" | oras login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          digest=$(oras push "$reference" \
+            --artifact-type application/vnd.galaris.server-bundle.v1 \
+            --annotation "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --annotation "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --format 'go-template={{.digest}}' \
+            SOURCE_COMMIT:text/plain IMAGE_IDS:text/plain TESTED_IMAGE_IDS:text/plain \
+            compose.release.yaml:application/yaml images.tar.gz:application/gzip \
+            MANAGED_HARNESSES:text/plain UPGRADE_QUALIFICATION.json:application/json \
+            QUALIFICATION.json:application/json SHA256SUMS:text/plain)
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          printf 'Server bundle for commit %s\n\n%s@%s\n' \
+            "$GITHUB_SHA" "$repository" "$digest" >> "$GITHUB_STEP_SUMMARY"

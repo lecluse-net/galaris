@@ -79,8 +79,9 @@ make start
 Le premier démarrage construit les sources du checkout courant, sur n'importe quelle branche
 ou tag et quel que soit `APP_ENV`. La commande prépare le volume partagé, initialise la base
 et attend la convergence complète du schéma et la disponibilité. Les réglages locaux sont conservés.
-Le [parcours de qualification](../dev/reliability-operations.md) permet aussi de préparer
-un bundle immuable, déployable avec `make update RELEASE_DIR=<dossier>`.
+Pour installer à partir d’images serveur déjà qualifiées, téléchargez le bundle GHCR par
+son empreinte OCI, puis utilisez `make update RELEASE_DIR=<dossier>`. Suivez le
+[parcours de publication et de téléchargement](../dev/reliability-operations.md).
 
 Ensuite, `make start` relance les conteneurs existants sans construire. Si un service manque,
 est en échec ou ne devient pas disponible, il tente une seule mise à jour complète. Une erreur

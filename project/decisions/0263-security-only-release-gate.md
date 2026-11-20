@@ -48,3 +48,15 @@ Workflow tests retain mandatory publication dependencies and all three full-run 
 Security-only eligibility is not a guarantee of functional correctness or absence of
 undetected vulnerabilities. Security evidence applies to one commit and one scan time;
 deployment and data recovery remain separate authorized operations.
+
+## Binary distribution
+
+The guarded source release attaches the complete Windows and Linux desktop packages and
+their updater files to GitHub Releases. The server qualification workflow can optionally
+publish the exact qualified bundle as a single OCI artifact in GitHub Container Registry.
+The archive, image identities, checksums and qualification evidence travel together.
+Deployment uses the recorded OCI digest and the existing `RELEASE_DIR` contract.
+
+Registry access is scoped to a separate job that runs after bundle qualification.
+Server distribution has its own opt-in and remains independent of source release
+eligibility. Generated packages stay outside Git.

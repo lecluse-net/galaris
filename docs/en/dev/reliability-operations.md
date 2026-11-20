@@ -193,6 +193,31 @@ requires an explicit previous-image reference. `UPGRADE_FROM=<commit> make tests
 remains a source-regression mode using candidate dependencies, not previous-image qualification.
 The rehearsal uses no installation volume.
 
+### Publish and download a server bundle
+
+On GitHub, open **Actions → Release artifact → Run workflow**, select the source reference,
+enter the previously deployed backend image digest, and select `publish_to_ghcr`. After
+qualification, the workflow publishes the complete bundle to the
+`ghcr.io/lecluse-net/galaris-server` OCI package. The job summary records the source commit
+and exact `@sha256:…` reference. Desktop installers are published through
+[GitHub Releases](https://github.com/lecluse-net/galaris/releases).
+
+GitHub creates the GHCR package with private visibility. To allow anonymous downloads,
+make the package public in GitHub Packages settings. For a private package, authenticate
+ORAS before downloading.
+
+From the checkout at the source commit shown in the summary, download the bundle into an
+empty directory with [ORAS](https://oras.land/docs/installation/) and use the existing
+deployment command. Replace `<DIGEST>` with the hexadecimal digest shown after `sha256:`.
+
+```bash
+oras pull 'ghcr.io/lecluse-net/galaris-server@sha256:<DIGEST>' --output artifacts/server-bundle
+make update RELEASE_DIR=artifacts/server-bundle
+```
+
+The download preserves the bundle's integrity checks and qualification evidence. Allow disk
+space for both the archive and the extracted Docker images.
+
 ## Progress and pressure
 
 Independent measurement jobs run every ten seconds. Labels contain only engine or notification

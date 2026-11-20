@@ -208,6 +208,33 @@ La release précédente est une entrée obligatoire de la CI. Le mode explicite
 il utilise les dépendances candidates et ne qualifie pas une ancienne image. Aucun volume de
 l'installation n'est utilisé.
 
+### Publier et télécharger un bundle serveur
+
+Sur GitHub, ouvrez **Actions → Release artifact → Run workflow**, choisissez la référence
+source, renseignez le digest de l’image backend précédemment déployée et cochez
+`publish_to_ghcr`. Après la qualification, le workflow publie le bundle complet dans le
+paquet OCI `ghcr.io/lecluse-net/galaris-server`. Le résumé du job donne le commit source
+et la référence exacte `@sha256:…`. La publication des installateurs desktop passe par
+[GitHub Releases](https://github.com/lecluse-net/galaris/releases).
+
+GitHub crée le paquet GHCR en visibilité privée. Pour autoriser les téléchargements
+anonymes, rendez le paquet public dans les paramètres de GitHub Packages. Pour un paquet
+privé, authentifiez ORAS avant de le télécharger.
+
+Depuis le checkout correspondant au commit source indiqué dans le résumé, téléchargez le
+bundle dans un répertoire vide avec [ORAS](https://oras.land/docs/installation/) et utilisez
+le chemin de déploiement existant. Remplacez `<DIGEST>` par l’empreinte hexadécimale indiquée
+après `sha256:`.
+
+```bash
+oras pull 'ghcr.io/lecluse-net/galaris-server@sha256:<DIGEST>' --output artifacts/server-bundle
+make update RELEASE_DIR=artifacts/server-bundle
+```
+
+Le téléchargement conserve les contrôles d’intégrité et les preuves de qualification
+du bundle. Prévoyez l’espace disque nécessaire pour l’archive et les images Docker
+décompressées.
+
 ## Progression et pression
 
 Les jobs de mesure indépendants s'exécutent toutes les dix secondes. Les labels sont

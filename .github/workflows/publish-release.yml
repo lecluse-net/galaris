@@ -139,6 +139,21 @@ jobs:
             echo '::error::Release tag changed after qualification; publication blocked.'
             exit 1
           fi
+          cd artifacts/desktop-release
+          assets=(
+            "Galaris-$RELEASE_TAG-x64.exe"
+            "Galaris-$RELEASE_TAG-x64.exe.blockmap"
+            "Galaris-$RELEASE_TAG-x86_64.AppImage"
+            "Galaris-$RELEASE_TAG-amd64.deb"
+            latest.yml
+            latest-linux.yml
+          )
+          for asset in "${assets[@]}"; do
+            if [[ ! -s "$asset" ]]; then
+              echo "::error::Missing or empty desktop release asset: $asset"
+              exit 1
+            fi
+          done
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             if [[ "$(gh release view "$RELEASE_TAG" --json isDraft --jq .isDraft)" != true ]]; then
               echo "Release $RELEASE_TAG already exists; leaving it unchanged."
@@ -149,5 +164,5 @@ jobs:
               --title "Galaris $RELEASE_TAG" \
               --notes-file "$RUNNER_TEMP/release-notes.md"
           fi
-          gh release upload "$RELEASE_TAG" artifacts/desktop-release/* --clobber
+          gh release upload "$RELEASE_TAG" "${assets[@]}" --clobber
           gh release edit "$RELEASE_TAG" --draft=false --latest
