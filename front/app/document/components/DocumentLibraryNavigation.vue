@@ -104,11 +104,11 @@
       </div>
     </template>
   </q-splitter>
-  <q-dialog v-model="deleteDialog">
+  <q-dialog data-confirmation v-model="deleteDialog">
     <q-card class="tag-dialog galaris-dialog-card">
       <DialogHeader :title="t('documents.library.deleteTag')" :close-label="t('common.close')" />
       <q-card-section class="galaris-dialog-body">{{ t('documents.library.deleteExplanation', { name: editingTag?.name }) }}</q-card-section>
-      <q-card-actions class="galaris-dialog-actions" align="right"><q-btn color="primary" v-close-popup outline :label="t('documents.library.cancel')" /><q-btn color="negative" :loading="busy" :label="t('documents.library.deleteTag')" @click="editingTag && requestDelete(editingTag, true)" /></q-card-actions>
+      <q-card-actions class="galaris-dialog-actions" align="right"><q-btn color="primary" v-close-popup outline :label="t('documents.library.cancel')" /><q-btn data-autofocus color="negative" :loading="busy" :label="t('documents.library.deleteTag')" @click="editingTag && requestDelete(editingTag, true)" /></q-card-actions>
     </q-card>
   </q-dialog>
 </template>

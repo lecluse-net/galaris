@@ -84,7 +84,7 @@ function requestLeave(): Promise<boolean> {
       leaveDialog = showConfirmationDialog({
         title: t('documents.unsaved'), message: t('documents.discardConfirm'),
         cancel: { label: t('common.cancel'), flat: false, outline: true },
-        ok: { label: t('documents.discard'), flat: false, color: 'negative' }, focus: 'cancel',
+        ok: { label: t('documents.discard'), flat: false, color: 'negative' },
       }).onOk(() => resolve(true)).onDismiss(() => resolve(false))
     })
     if (!discard || disposed || !open.value || editor.value !== selected) return false

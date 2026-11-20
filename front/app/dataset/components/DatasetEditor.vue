@@ -84,14 +84,14 @@
       </q-tab-panels>
     </template>
     <q-dialog v-model="showRevision"><q-card style="width: 800px; max-width: 95vw"><q-card-section class="galaris-dialog-title row items-center"><div class="text-h6">{{ t('datasets.revision') }} {{ revision }}</div><q-space /><q-btn v-close-popup flat round dense icon="close" :aria-label="t('datasets.close')" /></q-card-section><q-card-section><CodeEditor :model-value="historical" language="json" readonly :label="t('datasets.content')" /></q-card-section><q-card-actions align="right"><q-btn color="primary" v-if="editable && dataset?.can_write" :label="t('datasets.restore')" @click="restore" /></q-card-actions></q-card></q-dialog>
-    <q-dialog v-model="confirmDelete"><q-card style="width: 480px; max-width: 95vw"><DialogHeader :title="t('datasets.delete')" :close-label="t('datasets.close')" /><q-card-section><q-banner v-if="error" role="alert">{{ error }}</q-banner>{{ t('datasets.deleteConfirm') }}<p class="q-mt-md">{{ t('datasets.deleteImpact') }}</p></q-card-section><q-card-actions align="right"><q-btn outline color="primary" v-close-popup  :label="t('datasets.cancel')" /><q-btn outline color="primary"  :label="t('datasets.delete')" :loading="busy" @click="remove" /></q-card-actions></q-card></q-dialog>
-    <q-dialog :model-value="confirmDiscard" @update:model-value="!$event && resolveDiscard(false)">
+    <q-dialog data-confirmation v-model="confirmDelete"><q-card style="width: 480px; max-width: 95vw"><DialogHeader :title="t('datasets.delete')" :close-label="t('datasets.close')" /><q-card-section><q-banner v-if="error" role="alert">{{ error }}</q-banner>{{ t('datasets.deleteConfirm') }}<p class="q-mt-md">{{ t('datasets.deleteImpact') }}</p></q-card-section><q-card-actions align="right"><q-btn outline color="primary" v-close-popup  :label="t('datasets.cancel')" /><q-btn data-autofocus outline color="primary"  :label="t('datasets.delete')" :loading="busy" @click="remove" /></q-card-actions></q-card></q-dialog>
+    <q-dialog data-confirmation :model-value="confirmDiscard" @update:model-value="!$event && resolveDiscard(false)">
       <q-card style="width: 480px; max-width: 95vw">
         <DialogHeader :title="t('datasets.unsaved')" :close-label="t('datasets.close')" />
         <q-card-section>{{ t('datasets.discardConfirm') }}</q-card-section>
         <q-card-actions align="right">
           <q-btn outline color="primary" v-close-popup  :label="t('datasets.cancel')" />
-          <q-btn outline color="primary"  :label="t('datasets.discard')" @click="resolveDiscard(true)" />
+          <q-btn data-autofocus outline color="primary"  :label="t('datasets.discard')" @click="resolveDiscard(true)" />
         </q-card-actions>
       </q-card>
     </q-dialog>

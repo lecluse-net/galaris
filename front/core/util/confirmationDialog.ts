@@ -6,7 +6,6 @@ export interface ConfirmationDialogOptions {
   message: string
   ok?: boolean | string | QBtnProps
   cancel?: boolean | string | QBtnProps
-  focus?: 'ok' | 'cancel' | 'none'
   color?: string
   flatActions?: boolean
 }

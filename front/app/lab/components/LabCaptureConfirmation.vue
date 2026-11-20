@@ -1,5 +1,5 @@
 <template>
-  <q-dialog :model-value="mismatch !== null" @update:model-value="!$event && emit('cancel')">
+  <q-dialog data-confirmation :model-value="mismatch !== null" @update:model-value="!$event && emit('cancel')">
     <q-card v-if="mismatch" class="capture-confirmation galaris-dialog-card">
       <DialogHeader :title="t('evaluation.capture.parametersMismatch')" :close-label="t('common.close')" :close-popup="false" @close="emit('cancel')" />
       <q-card-section class="galaris-dialog-body">
@@ -14,7 +14,7 @@
       </q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">
         <q-btn outline color="primary"  :label="t('common.cancel')" @click="emit('cancel')" />
-        <q-btn color="primary" :label="t('evaluation.capture.confirmDatasetParameters')" @click="emit('confirm')" />
+        <q-btn data-autofocus color="primary" :label="t('evaluation.capture.confirmDatasetParameters')" @click="emit('confirm')" />
       </q-card-actions>
     </q-card>
   </q-dialog>

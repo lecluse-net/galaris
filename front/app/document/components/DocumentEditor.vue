@@ -260,7 +260,7 @@
         @restored="onHistoryRestored"
       />
     </template>
-    <q-dialog v-model="deleteDialogOpen">
+    <q-dialog data-confirmation v-model="deleteDialogOpen">
       <q-card class="galaris-dialog-card" style="width: 440px; max-width: 90vw">
         <DialogHeader :title="t('documents.deleteDocument')" :close-label="t('common.close')" />
         <q-card-section class="galaris-dialog-body">{{ t('documents.deleteConfirm', { title: editorTitle || currentDocument?.title }) }}</q-card-section>
@@ -269,7 +269,7 @@
         </q-card-section>
         <q-card-actions align="right">
           <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
-          <q-btn color="negative" :label="t('documents.deleteDocument')" :loading="deletingDocument" :disable="!canDeleteDocument" @click="deleteDocument" />
+          <q-btn data-autofocus color="negative" :label="t('documents.deleteDocument')" :loading="deletingDocument" :disable="!canDeleteDocument" @click="deleteDocument" />
         </q-card-actions>
       </q-card>
     </q-dialog>

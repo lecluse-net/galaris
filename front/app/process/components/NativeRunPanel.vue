@@ -249,7 +249,7 @@ async function sendCommand(id: string, action: 'pause' | 'resume' | 'step' | 'br
 }
 function requestCancel(): void {
   const token = generation
-  showConfirmationDialog({ title: t('nativeProcesses.cancel'), message: t('nativeProcesses.confirmStop'), focus: 'cancel',
+  showConfirmationDialog({ title: t('nativeProcesses.cancel'), message: t('nativeProcesses.confirmStop'),
     ok: { label: t('nativeProcesses.cancel'), color: 'negative', flat: false },
     cancel: { label: t('common.cancel'), color: 'primary', flat: false, outline: true },
   }).onOk(() => { if (token === generation && canControl.value && !terminal.value) void cancel() })

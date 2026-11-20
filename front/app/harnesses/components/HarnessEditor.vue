@@ -195,7 +195,7 @@
       />
     </q-card>
 
-    <q-dialog v-model="disableDialog">
+    <q-dialog data-confirmation v-model="disableDialog">
       <q-card class="harness-detail__confirm galaris-dialog-card">
         <DialogHeader :title="t('harnesses.catalog.disableTitle')" :close-label="t('common.close')" />
         <q-card-section class="galaris-dialog-body">
@@ -206,7 +206,7 @@
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
           <q-btn outline v-close-popup  color="grey-7" :label="t('common.cancel')" />
-          <q-btn
+          <q-btn data-autofocus
             color="warning"
             :label="t('harnesses.catalog.disable')"
             :loading="activationBusy"
@@ -216,7 +216,7 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="deleteDialog">
+    <q-dialog data-confirmation v-model="deleteDialog">
       <q-card class="harness-detail__confirm galaris-dialog-card">
         <DialogHeader :title="t('harnesses.catalog.deleteTitle')" :close-label="t('common.close')" />
         <q-card-section class="galaris-dialog-body">
@@ -227,7 +227,7 @@
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
           <q-btn outline v-close-popup  color="grey-7" :label="t('common.cancel')" />
-          <q-btn
+          <q-btn data-autofocus
             color="negative"
             :label="t('common.delete')"
             :loading="deleting"

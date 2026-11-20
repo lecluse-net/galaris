@@ -736,7 +736,6 @@ function confirmForceTerminate() {
             label: t('task.detail.forceTerminateConfirmAction'),
             color: 'negative'
         },
-        focus: 'cancel'
     }).onOk(() => {
         void onForceTerminate()
     })

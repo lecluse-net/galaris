@@ -503,7 +503,6 @@ function requestRevisionAction(action: 'restore' | 'delete', entry: ProcessHisto
   const dialog = showConfirmationDialog({
     title: label,
     message: t(action === 'restore' ? 'nativeProcesses.confirmRestore' : 'nativeProcesses.confirmDeleteRevision', { date: formatRevisionDate(entry.created_at) }),
-    focus: 'cancel',
     ok: { label, color: action === 'restore' ? 'primary' : 'negative', flat: false },
     cancel: { label: t('common.cancel'), color: 'primary', flat: false, outline: true },
   }).onOk(() => {
@@ -546,7 +545,7 @@ function requestArchive(): void {
   if (definition.value.archived) { void archive(false); return }
   const token = generation
   const dialog = showConfirmationDialog({
-    title: t('nativeProcesses.archive'), message: t('nativeProcesses.confirmArchive'), focus: 'cancel',
+    title: t('nativeProcesses.archive'), message: t('nativeProcesses.confirmArchive'),
     ok: { label: t('nativeProcesses.archive'), color: 'negative', flat: false },
     cancel: { label: t('common.cancel'), color: 'primary', flat: false, outline: true },
   }).onOk(() => { if (token === generation) void archive(true) })

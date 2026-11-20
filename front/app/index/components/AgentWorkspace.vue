@@ -447,7 +447,7 @@
       @generate="generateAvatar"
     />
 
-    <q-dialog
+    <q-dialog data-confirmation
       v-model="showHarnessChangeConfirm"
       @hide="settleHarnessChangeConfirmation(false)"
     >
@@ -468,7 +468,7 @@
             :label="$t('common.cancel')"
             @click="settleHarnessChangeConfirmation(false)"
           />
-          <q-btn
+          <q-btn data-autofocus
             color="negative"
             icon="delete_forever"
             :label="$t('agent.harness.changeConfirmAction')"
@@ -478,7 +478,7 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog
+    <q-dialog data-confirmation
       v-model="showPausedHarnessTasksConfirm"
       @hide="settlePausedHarnessTasksConfirmation(false)"
     >
@@ -539,7 +539,7 @@
             :label="$t('common.cancel')"
             @click="settlePausedHarnessTasksConfirmation(false)"
           />
-          <q-btn
+          <q-btn data-autofocus
             v-if="pausedHarnessTasks.length > 0 && activeHarnessTaskCount === 0"
             color="negative"
             icon="cancel_schedule_send"

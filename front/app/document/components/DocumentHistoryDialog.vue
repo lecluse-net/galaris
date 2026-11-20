@@ -170,7 +170,7 @@
     </div>
   </section>
 
-  <q-dialog v-model="restoreOpen">
+  <q-dialog data-confirmation v-model="restoreOpen">
     <q-card class="document-history-confirm galaris-dialog-card">
       <DialogHeader :title="t('documents.historyRestoreTitle')" :close-label="t('documents.historyClose')" />
       <q-card-section class="galaris-dialog-body">
@@ -178,7 +178,7 @@
       </q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">
         <q-btn outline color="primary" v-close-popup  no-caps :label="t('documents.historyCancel')" />
-        <q-btn
+        <q-btn data-autofocus
           color="primary"
           unelevated
           no-caps

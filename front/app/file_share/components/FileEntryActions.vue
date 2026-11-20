@@ -15,7 +15,7 @@
       </q-menu>
     </q-btn>
     <ActionContextMenu :target="target" :actions="actions" @update:open="checkRepository" />
-    <q-dialog v-model="confirmDelete">
+    <q-dialog data-confirmation v-model="confirmDelete">
       <q-card class="galaris-dialog-card" style="width: 480px; max-width: 95vw">
         <DialogHeader :title="t('files.deleteTitle')" :close-label="t('common.close')" />
         <q-card-section>
@@ -24,7 +24,7 @@
         </q-card-section>
         <q-card-actions align="right">
           <q-btn color="primary" v-close-popup outline :label="t('common.cancel')" />
-          <q-btn color="negative" :label="t('common.delete')" :loading="busy" :disable="!canDelete" @click="remove" />
+          <q-btn data-autofocus color="negative" :label="t('common.delete')" :loading="busy" :disable="!canDelete" @click="remove" />
         </q-card-actions>
       </q-card>
     </q-dialog>

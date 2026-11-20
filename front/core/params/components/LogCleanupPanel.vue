@@ -103,7 +103,7 @@
       </div>
     </div>
 
-    <q-dialog :model-value="cleanupTarget !== null" @update:model-value="closeDialog">
+    <q-dialog data-confirmation :model-value="cleanupTarget !== null" @update:model-value="closeDialog">
       <q-card class="cleanup-dialog galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <q-icon name="warning" size="28px" />
@@ -117,7 +117,7 @@
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
           <q-btn outline  no-caps :label="t('common.cancel')" color="grey-7" v-close-popup />
-          <q-btn
+          <q-btn data-autofocus
             v-if="cleanupAllowed"
 
             no-caps

@@ -184,14 +184,14 @@
     </q-card>
   </q-dialog>
 
-  <q-dialog v-model="removeOpen">
+  <q-dialog data-confirmation v-model="removeOpen">
     <q-card class="document-attachments__confirm galaris-dialog-card">
       <DialogHeader :title="t('documents.removeAttachmentTitle')" :close-label="t('common.close')" />
       <q-card-section class="galaris-dialog-body">{{ t('documents.removeAttachmentConfirm', { name: removalAttachment?.name }) }}<p v-if="removalInUse" class="text-warning q-mt-sm">{{ t('documents.attachmentInUse') }}</p></q-card-section>
       <q-separator />
       <q-card-actions class="galaris-dialog-actions" align="right">
         <q-btn outline color="primary" v-close-popup  :label="t('memory.cancel')" />
-        <q-btn color="negative" :label="t('documents.remove')" :loading="removing" @click="confirmRemoval" />
+        <q-btn data-autofocus color="negative" :label="t('documents.remove')" :loading="removing" @click="confirmRemoval" />
       </q-card-actions>
     </q-card>
   </q-dialog>

@@ -29,7 +29,7 @@ function terminate(): void {
   const revision = task.revision
   showConfirmationDialog({ title: t('task.detail.forceTerminateConfirmTitle'),
     message: t('task.detail.forceTerminateConfirmMessage', { label: task.label }), cancel: true,
-    ok: { label: t('task.detail.forceTerminateConfirmAction'), color: 'negative' }, focus: 'cancel',
+    ok: { label: t('task.detail.forceTerminateConfirmAction'), color: 'negative' },
   }).onOk(() => {
     if (task.revision !== revision) return
     void command('terminate').catch(() => $q.notify({ type: 'negative', message: t('common.anError') }))

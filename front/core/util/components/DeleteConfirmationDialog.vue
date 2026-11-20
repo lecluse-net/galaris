@@ -1,5 +1,5 @@
 <template>
-  <q-dialog v-model="open" :aria-labelledby="titleId">
+  <q-dialog data-confirmation v-model="open" :aria-labelledby="titleId">
     <q-card class="confirm-dialog galaris-dialog-card">
       <DialogHeader :title="title" :title-id="titleId" :close-label="t('common.close')" />
       <q-separator />
@@ -7,7 +7,7 @@
       <q-card-actions align="right" class="q-px-md q-pb-md galaris-dialog-actions">
         <!-- eslint-disable-next-line galaris/ui-conventions -- Preserve the borderless cancellation in conversation details. -->
         <q-btn v-close-popup flat :label="t('common.cancel')" />
-        <q-btn color="negative" icon="delete" :label="t('common.delete')" :loading="busy" @click="emit('confirm')" />
+        <q-btn data-autofocus color="negative" icon="delete" :label="t('common.delete')" :loading="busy" @click="emit('confirm')" />
       </q-card-actions>
     </q-card>
   </q-dialog>

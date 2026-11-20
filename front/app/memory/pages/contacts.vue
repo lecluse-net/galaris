@@ -227,7 +227,7 @@
       @saved="onContactSaved"
     />
 
-    <q-dialog v-model="mergeDialog">
+    <q-dialog data-confirmation v-model="mergeDialog">
       <q-card class="contact-merge-dialog galaris-dialog-card">
         <DialogHeader :title="t('contacts.mergeTitle')" :close-label="t('contacts.close')" />
         <q-card-section class="galaris-dialog-body">
@@ -259,7 +259,7 @@
         <q-separator />
         <q-card-actions class="galaris-dialog-actions" align="right">
           <q-btn outline color="primary"  :label="t('contacts.cancel')" v-close-popup />
-          <q-btn
+          <q-btn data-autofocus
             color="primary"
             icon="merge"
             :label="t('contacts.mergeConfirm')"
@@ -271,7 +271,7 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="forgetDialog">
+    <q-dialog data-confirmation v-model="forgetDialog">
       <q-card class="contact-forget-dialog galaris-dialog-card">
         <DialogHeader :title="t('contacts.forgetTitle')" :close-label="t('contacts.close')" />
         <q-card-section class="galaris-dialog-body" v-if="contactToForget">
@@ -289,7 +289,7 @@
         <q-separator />
         <q-card-actions class="galaris-dialog-actions" align="right">
           <q-btn outline color="primary"  :label="t('contacts.cancel')" v-close-popup />
-          <q-btn
+          <q-btn data-autofocus
             color="negative"
             icon="person_remove"
             :label="t('contacts.forgetConfirm')"

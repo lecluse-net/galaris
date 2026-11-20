@@ -17,7 +17,7 @@
     </q-card-section>
   </q-card>
 
-  <q-dialog v-model="confirmationOpen">
+  <q-dialog data-confirmation v-model="confirmationOpen">
     <q-card class="account-deletion-dialog galaris-dialog-card">
       <DialogHeader :title="t('userEdit.deleteAccountTitle')" :close-label="t('common.close')" />
 
@@ -27,7 +27,7 @@
 
       <q-card-actions class="galaris-dialog-actions" align="right">
         <q-btn outline  color="primary" :label="t('common.cancel')" v-close-popup />
-        <q-btn
+        <q-btn data-autofocus
 
           color="negative"
           icon="delete"

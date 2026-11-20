@@ -150,7 +150,7 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
-    <q-dialog v-model="confirmationOpen">
+    <q-dialog data-confirmation v-model="confirmationOpen">
       <q-card class="galaris-dialog-card">
         <q-toolbar class="galaris-dialog-title bg-primary text-white">
           <q-toolbar-title>{{ t(confirmationTitle) }}</q-toolbar-title>
@@ -163,7 +163,7 @@
         </q-card-section>
         <q-card-actions align="right">
           <q-btn v-close-popup outline color="primary" :label="t('skills.cancel')" :disable="saving" />
-          <q-btn :color="action === 'delete' ? 'negative' : 'primary'" :label="t(confirmationTitle)" :loading="saving" :disable="action !== 'delete' && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(newCode)" @click="confirmMutation" />
+          <q-btn data-autofocus :color="action === 'delete' ? 'negative' : 'primary'" :label="t(confirmationTitle)" :loading="saving" :disable="action !== 'delete' && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(newCode)" @click="confirmMutation" />
         </q-card-actions>
       </q-card>
     </q-dialog>

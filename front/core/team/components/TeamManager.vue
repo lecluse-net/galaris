@@ -61,13 +61,13 @@
       <TeamEditor v-if="editing" :team="selected" :contributions="contributions"
         @close="editing = false" @saved="editing = false" @changed="changed = true" />
     </q-dialog>
-    <q-dialog :model-value="!!pendingDelete" @update:model-value="value => { if (!value) pendingDelete = null }">
+    <q-dialog data-confirmation :model-value="!!pendingDelete" @update:model-value="value => { if (!value) pendingDelete = null }">
       <q-card class="galaris-dialog-card" style="width: 500px; max-width: 95vw">
         <DialogHeader :title="t('team.deleteTitle')" :close-label="t('common.close')" />
         <q-card-section class="galaris-dialog-body">{{ t('team.deleteImpact', { name: pendingDelete?.name }) }}</q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
           <q-btn outline color="primary"  v-close-popup :label="t('common.cancel')" />
-          <q-btn color="primary" :loading="deleting" :label="t('common.delete')" @click="remove" />
+          <q-btn data-autofocus color="primary" :loading="deleting" :label="t('common.delete')" @click="remove" />
         </q-card-actions>
       </q-card>
     </q-dialog>

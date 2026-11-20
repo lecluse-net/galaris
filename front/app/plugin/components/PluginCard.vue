@@ -52,9 +52,8 @@
     <q-banner v-if="actionError" role="alert" rounded class="bg-solaire-red-light text-negative q-mx-md q-mt-sm">
       {{ actionError }}
     </q-banner>
-    <q-checkbox v-if="confirmRemove" v-model="removeConfirmed" class="q-mx-md q-mt-sm" :label="t('plugins.confirmRemove')" />
     <q-card-actions v-if="canRemove || canRetryActivation" align="right" class="q-pa-sm plugin-card-actions">
-      <q-btn v-if="canRemove" color="negative" :disable="busy || (confirmRemove && !removeConfirmed)"
+      <q-btn v-if="canRemove" color="negative" :disable="busy"
         :label="t('plugins.remove')" @click="requestRemove" />
       <q-btn v-if="canRetryActivation" color="primary" outline :disable="busy"
         :label="t('plugins.retryActivation')" @click="change('activate')" />
@@ -65,7 +64,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { StatusBadge } from '@/core/util'
+import { showConfirmationDialog, StatusBadge } from '@/core/util'
 import { saveBlobAsResource } from '@/core/util/facade'
 import PluginManifest from './PluginManifest.vue'
 import { pluginApi, pluginErrorCode, type PluginAction, type PluginDetail, type PluginInventoryEntry } from '../services/pluginApi'
@@ -84,8 +83,7 @@ const loadingDetails = ref(false)
 const busy = ref(false)
 const detailsError = ref('')
 const actionError = ref('')
-const confirmRemove = ref(false)
-const removeConfirmed = ref(false)
+let removalDialog: ReturnType<typeof showConfirmationDialog> | undefined
 const release = computed(() => version.value && version.value !== entry.manifest.version
   ? detail.value?.releases.find(item => item.manifest.version === version.value) ?? entry
   : entry)
@@ -133,8 +131,6 @@ async function change(action: PluginAction) {
   try {
     const updated = await changeRelease(release.value, action)
     if (open && updated) {
-      confirmRemove.value = false
-      removeConfirmed.value = false
       if (detail.value) {
         detail.value.releases = detail.value.releases.map(item => item.manifest.version === updated.manifest.version ? updated : item)
       }
@@ -162,16 +158,19 @@ async function downloadTemplate(code: string) {
 }
 
 function requestRemove() {
-  if (confirmRemove.value && removeConfirmed.value) void change('remove')
-  else confirmRemove.value = true
+  if (removalDialog || busy.value || !canRemove.value) return
+  removalDialog = showConfirmationDialog({
+    title: t('plugins.remove'), message: t('plugins.confirmRemove'), cancel: true,
+    ok: { label: t('plugins.remove'), color: 'negative' },
+  }).onOk(() => change('remove')).onDismiss(() => { removalDialog = undefined })
 }
 
 watch(version, () => {
-  confirmRemove.value = false
-  removeConfirmed.value = false
+  removalDialog?.hide()
   actionError.value = ''
 })
 onBeforeUnmount(() => {
+  removalDialog?.hide()
   open = false
   detailRequest++
 })

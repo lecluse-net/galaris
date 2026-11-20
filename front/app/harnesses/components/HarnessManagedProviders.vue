@@ -35,13 +35,13 @@
       <HarnessExecutionSettings v-if="canEdit" :provider-code="entry.provider_code" class="q-mt-lg" />
     </section>
 
-    <q-dialog :model-value="pending !== null" @update:model-value="!$event && (pending = null)">
+    <q-dialog data-confirmation :model-value="pending !== null" @update:model-value="!$event && (pending = null)">
       <q-card class="managed-providers__confirm galaris-dialog-card">
         <DialogHeader :title="t('harnesses.catalog.disableTitle')" :close-label="t('common.close')" />
         <q-card-section class="galaris-dialog-body">{{ t('harnesses.catalog.disableConfirm', { name: pending?.name ?? '', count: pending?.assigned_agents ?? 0 }) }}</q-card-section>
         <q-card-actions align="right" class="galaris-dialog-actions">
           <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
-          <q-btn color="warning" :label="t('harnesses.catalog.disable')" :loading="busy !== null" :disable="!canEdit" @click="confirmDisable" />
+          <q-btn data-autofocus color="warning" :label="t('harnesses.catalog.disable')" :loading="busy !== null" :disable="!canEdit" @click="confirmDisable" />
         </q-card-actions>
       </q-card>
     </q-dialog>

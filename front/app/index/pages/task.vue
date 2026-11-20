@@ -87,7 +87,7 @@
           </q-dialog>
 
           <!-- Deletion confirmation dialog. -->
-          <q-dialog v-model="deleteDialogOpen">
+          <q-dialog data-confirmation v-model="deleteDialogOpen">
             <q-card class="galaris-dialog-card">
               <q-card-section class="galaris-dialog-title row items-center">
                 <q-icon name="warning" size="28px" />
@@ -103,7 +103,7 @@
                 <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless task confirmation actions. -->
                 <q-btn flat :label="$t('common.cancel')" color="grey" v-close-popup />
                 <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless task confirmation actions. -->
-                <q-btn v-if="canEdit" flat :label="$t('common.delete')" color="negative" @click="confirmDelete" :loading="deleteLoading" />
+                <q-btn data-autofocus v-if="canEdit" flat :label="$t('common.delete')" color="negative" @click="confirmDelete" :loading="deleteLoading" />
               </q-card-actions>
             </q-card>
           </q-dialog>

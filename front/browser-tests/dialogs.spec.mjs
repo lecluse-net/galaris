@@ -7,7 +7,7 @@ for (const locale of ['en', 'fr']) test(`confirmations cancel safely, reopen and
     window.dialogOutcomes ??= []
     showConfirmationDialog({
       title: 'A confirmation with an existing resource', message: 'Keep this content\nSecond line',
-      cancel: true, ok: { label: 'Proceed', color: 'negative' }, focus: 'cancel', ...options,
+      cancel: true, ok: { label: 'Proceed', color: 'negative' }, ...options,
     }).onOk(() => window.dialogOutcomes.push('ok'))
       .onCancel(() => window.dialogOutcomes.push('cancel'))
       .onDismiss(() => window.dialogOutcomes.push('dismiss'))
@@ -18,7 +18,7 @@ for (const locale of ['en', 'fr']) test(`confirmations cancel safely, reopen and
   await open()
   await expect(dialog).toHaveAccessibleName('A confirmation with an existing resource')
   await expect(dialog).toContainText('Keep this content')
-  await expect(cancel()).toBeFocused()
+  await expect(dialog.getByRole('button', { name: 'Proceed', exact: true })).toBeFocused()
   await close().click()
   await expect(dialog).toHaveCount(0)
   await open()
@@ -46,7 +46,7 @@ for (const locale of ['en', 'fr']) test(`confirmations cancel safely, reopen and
   await expect(close()).toBeInViewport()
   await expect(dialog.getByRole('button', { name: 'Proceed', exact: true })).toBeInViewport()
   await page.screenshot({ animations: 'disabled', path: testInfo.outputPath('confirmation-mobile-dark.png') })
-  await dialog.getByRole('button', { name: 'Proceed', exact: true }).click()
+  await page.keyboard.press('Enter')
   await expect(dialog).toHaveCount(0)
   expect(await page.evaluate(() => window.dialogOutcomes.slice(-2))).toEqual(['ok', 'dismiss'])
 })

@@ -338,14 +338,14 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="deleteDialog">
+    <q-dialog data-confirmation v-model="deleteDialog">
       <q-card class="topic-dialog-card galaris-dialog-card">
         <DialogHeader :title="t('topic.deleteTitle', { title: activeTopic?.title || '' })" :close-label="t('topic.cancel')" />
         <q-card-section class="galaris-dialog-body">{{ t('topic.deleteHelp') }}</q-card-section>
         <q-separator />
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
           <q-btn outline color="primary" v-close-popup  :label="t('topic.cancel')" />
-          <q-btn color="negative" icon="delete" :label="t('topic.delete')" :loading="saving" @click="confirmDelete" />
+          <q-btn data-autofocus color="negative" icon="delete" :label="t('topic.delete')" :loading="saving" @click="confirmDelete" />
         </q-card-actions>
       </q-card>
     </q-dialog>

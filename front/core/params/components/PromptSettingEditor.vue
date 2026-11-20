@@ -103,14 +103,14 @@
         </q-card-section>
     </q-card>
 
-    <q-dialog v-model="useDefaultDialog">
+    <q-dialog data-confirmation v-model="useDefaultDialog">
         <q-card class="prompt-editor__dialog galaris-dialog-card">
             <DialogHeader :title="t('promptEditor.restoreTitle')" :close-label="t('common.close')" />
             <q-card-section class="galaris-dialog-body">{{ t('promptEditor.restoreMessage') }}</q-card-section>
             <q-separator />
             <q-card-actions class="galaris-dialog-actions" align="right">
                 <q-btn outline color="primary" v-close-popup  no-caps :label="t('common.cancel')" />
-                <q-btn
+                <q-btn data-autofocus
                     unelevated
                     no-caps
                     color="primary"

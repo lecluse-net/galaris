@@ -270,7 +270,7 @@ for (const width of [1440, 390]) test(`browser Back protects an unsaved Dataset 
   await page.evaluate(() => window.history.back())
   const discard = page.getByRole('dialog').filter({ hasText: 'Discard unsaved changes before continuing?' })
   await expect(discard).toBeVisible()
-  await expect(discard.getByRole('button', { name: 'Cancel', exact: true })).toBeFocused()
+  await expect(discard.getByRole('button', { name: 'Discard changes', exact: true })).toBeFocused()
   await page.screenshot({ path: testInfo.outputPath('discard-data-draft.png'), animations: 'disabled' })
   await discard.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(input).toHaveValue('{')

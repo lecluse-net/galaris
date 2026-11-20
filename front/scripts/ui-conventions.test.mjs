@@ -10,4 +10,13 @@ test('shared UI contracts reject inaccessible icons, blocking dialogs and unboun
     ['deletion', 'dialogDismissal', 'labeledFlat', 'missingName', 'palette'])
   const valid = await lint('<q-dialog><q-btn color="negative" label="Delete" /><q-btn flat icon="edit" aria-label="Edit" /><q-icon color="solaire-iris" /></q-dialog>')
   assert.deepEqual(valid.filter(message => message.ruleId === 'galaris/ui-conventions'), [])
+  for (const template of [
+    '<q-dialog data-confirmation><q-btn label="Delete" color="negative" /></q-dialog>',
+    '<q-dialog data-confirmation><q-input autofocus /><q-btn data-autofocus label="Delete" color="negative" /></q-dialog>',
+    '<q-dialog data-confirmation no-focus><q-btn data-autofocus label="Delete" color="negative" /></q-dialog>',
+  ]) {
+    assert.deepEqual((await lint(template)).filter(message => message.ruleId === 'galaris/ui-conventions').map(message => message.messageId), ['confirmationFocus'])
+  }
+  const confirmation = await lint('<q-dialog data-confirmation><q-card><q-btn label="Cancel" /><q-btn data-autofocus label="Delete" color="negative" /></q-card></q-dialog>')
+  assert.deepEqual(confirmation.filter(message => message.ruleId === 'galaris/ui-conventions'), [])
 })

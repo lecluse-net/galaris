@@ -294,7 +294,7 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="deleteDialog">
+    <q-dialog data-confirmation v-model="deleteDialog">
       <q-card class="galaris-dialog-card" style="width: 480px; max-width: 92vw">
         <DialogHeader :title="t('common.confirm')" :close-label="$t('common.close')" />
         <q-card-section class="galaris-dialog-body">
@@ -303,7 +303,7 @@
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
           <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
-          <q-btn
+          <q-btn data-autofocus
             v-if="canEdit"
             color="negative"
             :label="t('llm.deleteFromServer')"

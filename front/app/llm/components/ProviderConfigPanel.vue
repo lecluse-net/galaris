@@ -313,7 +313,7 @@
       <q-icon name="touch_app" size="54px" class="q-mb-md" />
       <div class="text-subtitle1">{{ t('llm.selectProvider') }}</div>
     </div>
-    <q-dialog v-model="removeKeyDialog">
+    <q-dialog data-confirmation v-model="removeKeyDialog">
       <q-card class="galaris-dialog-card">
         <DialogHeader :title="t('common.confirm')" :close-label="t('common.close')" />
         <q-card-section class="galaris-dialog-body">
@@ -324,7 +324,7 @@
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
           <q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" />
-          <q-btn color="negative" :label="t('common.delete')" :disable="!canEdit || saving" @click="removeKey" />
+          <q-btn data-autofocus color="negative" :label="t('common.delete')" :disable="!canEdit || saving" @click="removeKey" />
         </q-card-actions>
       </q-card>
     </q-dialog>

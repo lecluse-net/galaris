@@ -52,13 +52,13 @@
       </template>
     </div>
   </section>
-  <q-dialog v-model="regenerationOpen" :aria-label="t('documents.summaryRegenerate')">
+  <q-dialog data-confirmation v-model="regenerationOpen" :aria-label="t('documents.summaryRegenerate')">
     <q-card class="galaris-dialog-card" style="width: 440px; max-width: 95vw">
       <DialogHeader :title="t('documents.summaryRegenerate')" :close-label="t('common.close')" />
       <q-card-section class="galaris-dialog-body">{{ t('documents.summaryHint') }}</q-card-section>
       <q-card-actions align="right">
         <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" />
-        <q-btn color="primary" :label="t('documents.summaryRegenerate')" :disable="busy || !writable" @click="regenerate" />
+        <q-btn data-autofocus color="primary" :label="t('documents.summaryRegenerate')" :disable="busy || !writable" @click="regenerate" />
       </q-card-actions>
     </q-card>
   </q-dialog>

@@ -32,7 +32,7 @@
     </q-card>
   </q-dialog>
 
-  <q-dialog v-model="showDelete">
+  <q-dialog data-confirmation v-model="showDelete">
     <q-card class="galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center">
         <q-icon name="warning" size="28px" />
@@ -43,7 +43,7 @@
       <q-card-section class="galaris-dialog-body">{{ deleteMessage }}</q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">
         <q-btn outline  :label="$t('common.cancel')" color="primary" v-close-popup />
-        <q-btn
+        <q-btn data-autofocus
           v-if="canEdit"
 
           :label="$t('common.delete')"

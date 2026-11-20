@@ -90,7 +90,7 @@
     </q-card>
   </q-dialog>
 
-  <q-dialog :model-value="categoryToDelete !== null" @hide="categoryToDelete = null">
+  <q-dialog data-confirmation :model-value="categoryToDelete !== null" @hide="categoryToDelete = null">
     <q-card class="galaris-dialog-card" style="width: 520px; max-width: 95vw">
       <q-toolbar class="galaris-dialog-title bg-primary text-white">
         <q-toolbar-title>{{ t('skills.categories.deleteTitle') }}</q-toolbar-title>
@@ -108,7 +108,7 @@
       </q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right">
         <q-btn outline color="primary"  :label="t('skills.cancel')" v-close-popup />
-        <q-btn
+        <q-btn data-autofocus
           color="negative"
           :label="t('skills.delete')"
           @click="deleteCategory"

@@ -381,7 +381,7 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="protocolDeleteOpen" @hide="pendingProtocolDelete = ''">
+    <q-dialog data-confirmation v-model="protocolDeleteOpen" @hide="pendingProtocolDelete = ''">
       <q-card class="galaris-dialog-card" style="width: min(560px, 95vw); max-width: 95vw">
         <DialogHeader :title="$t('services.deleteProtocol')" :close-label="$t('common.close')" />
         <q-card-section class="galaris-dialog-body">
@@ -389,12 +389,12 @@
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
           <q-btn color="primary" outline :label="$t('common.cancel')" v-close-popup />
-          <q-btn color="negative" :label="$t('common.delete')" @click="confirmProtocolRemoval" />
+          <q-btn data-autofocus color="negative" :label="$t('common.delete')" @click="confirmProtocolRemoval" />
         </q-card-actions>
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="paramDeleteOpen" @hide="pendingParamDelete = null">
+    <q-dialog data-confirmation v-model="paramDeleteOpen" @hide="pendingParamDelete = null">
       <q-card class="galaris-dialog-card" style="width: min(560px, 95vw); max-width: 95vw">
         <DialogHeader :title="$t('services.deleteParamTitle')" :close-label="$t('common.close')" />
         <q-card-section class="galaris-dialog-body">
@@ -406,7 +406,7 @@
         </q-card-section>
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
           <q-btn color="primary" outline :label="$t('common.cancel')" v-close-popup />
-          <q-btn color="negative" :label="$t('common.delete')" @click="confirmRemoveConnParam" />
+          <q-btn data-autofocus color="negative" :label="$t('common.delete')" @click="confirmRemoveConnParam" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -416,7 +416,7 @@
       :build-mcp-config="buildMcpConfig" :build-candidate-definition="buildCandidateDefinition" />
 
     <!-- Deletion dialog. -->
-    <q-dialog v-model="deleteDialogOpen">
+    <q-dialog data-confirmation v-model="deleteDialogOpen">
       <q-card class="galaris-dialog-card" style="width: min(600px, 95vw); max-width: 95vw">
         <DialogHeader :title="$t('services.deleteService')" :close-label="$t('common.close')" />
         <q-card-section class="galaris-dialog-body">
@@ -442,7 +442,7 @@
         </q-card-section>
         <q-card-actions class="galaris-dialog-actions" align="right">
           <q-btn color="primary" outline :label="$t('common.cancel')" v-close-popup />
-          <q-btn v-if="canEdit" color="negative" :label="$t('common.delete')" :loading="deleting" :disable="deleteImpactLoading || !deleteImpact" @click="doDelete" />
+          <q-btn data-autofocus v-if="canEdit" color="negative" :label="$t('common.delete')" :loading="deleting" :disable="deleteImpactLoading || !deleteImpact" @click="doDelete" />
         </q-card-actions>
       </q-card>
     </q-dialog>

@@ -304,6 +304,11 @@ immutable. Consult the `galaris-process-services` skill.
   `no-backdrop-dismiss`, or an equivalent option on a Quasar dialog.
 - Open a modal over the page or dialog that triggered it. Keep the underlying view and its
   state mounted so dismissing the modal returns the user to the same context.
+- Use a real dialog for every confirmation. Use the shared confirmation dialog or mark a
+  custom `q-dialog` with `data-confirmation` and its single primary `q-btn` with
+  `data-autofocus`. Focus that action when the dialog opens, including for destructive
+  actions. Preserve required input and validation when an action is initially unavailable.
+  Enter activates the focused action and Escape dismisses the dialog.
 - Every paginated list defaults to 50 items and offers exactly `[10, 20, 50, 100, 500]`.
   For server-side pagination, the API contract must accept 500 items.
 

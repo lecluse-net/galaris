@@ -191,7 +191,7 @@
       />
     </q-card-section>
 
-    <q-dialog v-model="hangupDialog">
+    <q-dialog data-confirmation v-model="hangupDialog">
       <q-card class="galaris-dialog-card">
         <q-card-section class="galaris-dialog-title row items-center no-wrap">
           <div class="col">{{ t('voice.history.detail.forceHangup') }}</div>
@@ -201,7 +201,7 @@
         <q-card-actions align="right">
           <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless cancellation in the voice round. -->
           <q-btn flat v-close-popup :disable="hangingUp" :label="t('common.cancel')" />
-          <q-btn color="negative" icon="call_end" :label="t('voice.history.detail.forceHangup')" :loading="hangingUp" @click="forceHangup" />
+          <q-btn data-autofocus color="negative" icon="call_end" :label="t('voice.history.detail.forceHangup')" :loading="hangingUp" @click="forceHangup" />
         </q-card-actions>
       </q-card>
     </q-dialog>

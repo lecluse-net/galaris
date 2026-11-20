@@ -22,7 +22,7 @@
         <q-card-actions><q-btn v-if="canEdit && props.row.can_revoke" color="negative" :label="t('permissions.revokeRuntimePermission')" @click="selected = props.row" /></q-card-actions>
       </q-card></div></template>
     </q-table>
-    <q-dialog v-model="confirmOpen">
+    <q-dialog data-confirmation v-model="confirmOpen">
       <q-card style="width: 520px; max-width: 95vw">
         <DialogHeader :title="t('permissions.revokeRuntimePermission')" :close-label="t('permissions.cancel')" />
         <q-card-section>{{ selected && scopeLabel(selected) }} · {{ selected?.capability_name }}</q-card-section>
@@ -30,7 +30,7 @@
         <q-card-section v-if="revokeError" role="alert">{{ t('permissions.error') }}</q-card-section>
         <q-card-actions align="right">
           <q-btn color="primary" v-close-popup outline :label="t('permissions.cancel')" />
-          <q-btn color="negative" :label="t('permissions.revokeRuntimePermission')" :loading="revoking" @click="revoke" />
+          <q-btn data-autofocus color="negative" :label="t('permissions.revokeRuntimePermission')" :loading="revoking" @click="revoke" />
         </q-card-actions>
       </q-card>
     </q-dialog>

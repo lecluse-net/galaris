@@ -185,10 +185,10 @@
       <q-card-section class="galaris-dialog-body"><q-input v-model="newName" outlined autofocus :label="t('evaluation.contract.name')" /></q-card-section>
       <q-card-actions class="galaris-dialog-actions" align="right"><q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" /><q-btn color="primary" :label="t('evaluation.contract.create')" :loading="busy" :disable="!newName.trim()" @click="createNamed" /></q-card-actions>
     </q-card></q-dialog>
-    <q-dialog v-model="deleteDialog"><q-card class="small-dialog galaris-dialog-card">
+    <q-dialog data-confirmation v-model="deleteDialog"><q-card class="small-dialog galaris-dialog-card">
         <DialogHeader :title="t('evaluation.contract.delete')" :close-label="t('common.close')" />
       <q-card-section class="galaris-dialog-body">{{ t('evaluation.contract.deleteConfirm') }}</q-card-section>
-      <q-card-actions class="galaris-dialog-actions" align="right"><q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" /><q-btn color="negative" :label="t('evaluation.contract.delete')" :loading="busy" @click="deleteConfirmed" /></q-card-actions>
+      <q-card-actions class="galaris-dialog-actions" align="right"><q-btn outline color="primary" v-close-popup  :label="t('common.cancel')" /><q-btn data-autofocus color="negative" :label="t('evaluation.contract.delete')" :loading="busy" @click="deleteConfirmed" /></q-card-actions>
     </q-card></q-dialog>
     <q-dialog v-model="captureDialog"><q-card class="small-dialog galaris-dialog-card">
         <DialogHeader :title="t('evaluation.contract.capture')" :close-label="t('common.close')" />

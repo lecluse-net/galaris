@@ -19,7 +19,7 @@
         </q-card-section>
         <q-card-actions align="right">
           <q-btn v-close-popup outline color="primary" :label="t('common.cancel')" :disable="saving" />
-          <q-btn type="submit" :color="operation.startsWith('delete') ? 'negative' : 'primary'" :label="t('common.confirm')" :disable="!valid" :loading="saving" />
+          <q-btn type="submit" :data-autofocus="operation.startsWith('delete') || undefined" :color="operation.startsWith('delete') ? 'negative' : 'primary'" :label="t('common.confirm')" :disable="!valid" :loading="saving" />
         </q-card-actions>
       </q-form>
     </q-card>

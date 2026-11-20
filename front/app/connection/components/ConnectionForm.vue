@@ -261,7 +261,7 @@
     </div>
   </q-form>
 
-  <q-dialog v-model="showHostKeyConfirmation" @hide="clearPendingHostKey">
+  <q-dialog data-confirmation v-model="showHostKeyConfirmation" @hide="clearPendingHostKey">
     <q-card class="host-key-confirmation-dialog galaris-dialog-card">
       <q-card-section class="galaris-dialog-title row items-center no-wrap">
         <q-icon name="fingerprint" size="sm" class="q-mr-sm" />
@@ -311,7 +311,7 @@
       <q-separator />
       <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
         <q-btn outline v-close-popup  color="grey-7" :label="t('common.cancel')" />
-        <q-btn
+        <q-btn data-autofocus
           color="primary"
           icon="verified"
           :label="t('connection.console.acceptHostKey')"
