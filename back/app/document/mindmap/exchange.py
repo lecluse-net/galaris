@@ -28,6 +28,10 @@ OPML_NOTE = "{https://galaris.org/ns/mindmap}_note"
 JSON_VALUES = TypeAdapter(JsonValue)
 MAX_XMIND_CONTENT = 16 * 1024 * 1024
 INVALID_XML_CHARACTERS = re.compile(r"[^\x09\x0A\x0D\x20-\uD7FF\uE000-\uFFFD\U00010000-\U0010FFFF]")
+XML_LITERAL_OR_NBSP = re.compile(
+    rb"<!--.*?(?:-->|\Z)|<!\[CDATA\[.*?(?:\]\]>|\Z)|<\?.*?(?:\?>|\Z)|&nbsp;",
+    re.DOTALL,
+)
 
 
 def _xml(content: bytes) -> Element:
@@ -158,6 +162,9 @@ def import_source(name: str, media_type: str, content: bytes) -> str:
             assert isinstance(sheet, dict)
             tree.xmind(sheet["rootTopic"], parent, int(parent is not None))
     else:
+        if extension == ".mm" and b"&nbsp;" in content and b"\x00" not in content:
+            # Older Freeplane exports use the HTML spelling of a non-breaking space in XML.
+            content = XML_LITERAL_OR_NBSP.sub(lambda match: b"&#160;" if match[0] == b"&nbsp;" else match[0], content)
         root = _xml(content)
         if extension == ".mm":
             nodes = root.findall("node")

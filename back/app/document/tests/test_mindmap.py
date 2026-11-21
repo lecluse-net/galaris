@@ -62,6 +62,16 @@ def test_interchange_preserves_order_notes_links_and_unicode(target):
         assert (b'version="freeplane ' if target == "freeplane" else b'version="1.0.1"') in output
 
 
+def test_legacy_freeplane_import_preserves_non_breaking_spaces_and_literal_text():
+    legacy = FREEPLANE.replace(b"Project &amp; notes", b"Project&nbsp;&amp; notes")
+    legacy = legacy.replace(b"<p>Nested</p>", b"<p>Sample&nbsp;branch <![CDATA[&nbsp;]]> &amp;nbsp;</p>")
+    document_format, source = convert_document_import(DocumentImportSource("legacy.mm", "", legacy))
+    mindmap = MindMap.model_validate_json(source)
+    assert document_format == "mindmap"
+    assert mindmap.root.title == "Project\u00a0& notes"
+    assert mindmap.children()["one"][0].title == "Sample\u00a0branch &nbsp; &nbsp;"
+
+
 def test_invalid_inputs_cannot_execute_markup_or_be_saved_as_trees():
     with pytest.raises(ValueError, match="Invalid mind map XML"):
         import_source("unsafe.mm", "", b'<!DOCTYPE map [<!ENTITY x "unsafe">]><map><node TEXT="&x;"/></map>')
