@@ -555,8 +555,9 @@ Chaque arbre de tâche possède en parallèle un Working Set versionné dans les
 Il centralise les références actives — document principal, documents auxiliaires, ressources
 provider, artefact final, destination et reçu de livraison — sans recopier leur contenu. Une
 nouvelle ressource de même rôle conserve l'ancienne en état `superseded`. Le provider
-`task_working_set` injecte ce registre borné dans chaque étape et dans les reprises
-conversationnelles liées. En conversation directe et en audio temps réel, où aucun Working Set
+`task_working_set` projette ce registre borné dans chaque étape et dans les reprises
+conversationnelles liées, selon les droits documentaires courants de l'agent exécutant.
+En conversation directe et en audio temps réel, où aucun Working Set
 courant n'existe, les providers injectent les documents récemment manipulés par les tâches et les
 traces d'outils des rounds terminés du même agent et du même contact sous leur URI `document://`,
 sans élargir la sélection à la room ni extraire une URI depuis du texte libre. Le premier document

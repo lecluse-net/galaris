@@ -1,14 +1,14 @@
 """Domain operations for shared Documents and structured mind maps."""
 
 import json
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import Field
 
 from app.agent import EffectDescriptorV1
 from app.services import McpToolContext, mcp_tool
-from app.services.contracts import ToolCallRejectedError
+from app.services.contracts import ToolArgumentsRejectedError, ToolCallRejectedError
 
 from . import document_service, item_sharing, resource_service
 from .formats import DocumentRevisionRegion
@@ -181,12 +181,11 @@ async def document_sharing(ctx: McpToolContext, document_id: str, search: str = 
         "total": len(options), "has_more": offset+limit < len(options)}, ensure_ascii=False)
 
 
-@mcp_tool("document", name="document_share", approval="ask",
-    approval_reason="Change access to a shared Document",
-    description="Share an owned Document with exactly one agent_id, user_id or team_id. Access read/edit grants access; none revokes only that direct grant. First call document_sharing for recipient IDs and expected_lock_version. Linking a Document never grants access.")
-async def document_share(ctx: McpToolContext, document_id: str, agent_id: int | None = None,
-    access: Literal["read", "edit", "none"] = "edit", team_id: int | None = None,
-    user_id: int | None = None, expected_lock_version: int | None = None) -> str:
+async def _share_target(
+    ctx: McpToolContext, *,
+    recipient: Literal["requester"] | None,
+    agent_id: int | None, user_id: int | None, team_id: int | None,
+) -> tuple[Literal["agent", "user", "team"], int]:
     targets: list[tuple[Literal["agent", "user", "team"], int]] = []
     if agent_id is not None:
         targets.append(("agent", agent_id))
@@ -194,12 +193,61 @@ async def document_share(ctx: McpToolContext, document_id: str, agent_id: int | 
         targets.append(("user", user_id))
     if team_id is not None:
         targets.append(("team", team_id))
-    if len(targets) != 1 or targets[0][1] <= 0:
-        raise ValueError("Supply exactly one positive agent_id, user_id or team_id")
-    kind, target = targets[0]
+    if recipient == "requester" and not targets:
+        from app.task.facade import root_task_requester_user
+
+        requester = (await root_task_requester_user(ctx.task_id, agent_id=ctx.agent_id)
+                     if ctx.task_id is not None else None)
+        if requester is None:
+            raise ToolCallRejectedError(
+                'recipient="requester" requires your current root Task with a verified human requester. '
+                "For another recipient, use one explicit ID from document_sharing."
+            )
+        return "user", requester
+    if recipient is not None or len(targets) != 1 or targets[0][1] <= 0:
+        raise ToolArgumentsRejectedError(
+            "Choose exactly one recipient. To share with the human who requested your current root Task, "
+            'pass recipient="requester". Otherwise pass one positive user_id, agent_id or team_id '
+            "from document_sharing. The document ID and lock version do not identify a recipient."
+        )
+    return targets[0]
+
+
+async def _document_share_preflight(ctx: McpToolContext, arguments: dict[str, Any]) -> dict[str, Any]:
+    kind, target = await _share_target(ctx, recipient=arguments.get("recipient"),
+        agent_id=arguments.get("agent_id"), user_id=arguments.get("user_id"), team_id=arguments.get("team_id"))
+    if arguments.get("recipient") is not None:
+        return {"recipient_kind": kind, "recipient_id": target}
+    # Keep the authorization fingerprint of explicit-ID calls made before the shortcut existed.
+    arguments.pop("recipient", None)
+    if arguments.get("access") is None:
+        arguments["access"] = "edit"
+    return {}
+
+
+@mcp_tool("document", name="document_share", approval="ask",
+    approval_reason="Change access to a shared Document",
+    authorization_preflight=_document_share_preflight,
+    description=(
+        'Share an owned Document. For delivery to the human requester of your current root Task, '
+        'pass recipient="requester" and access="read". For other recipients, pass exactly one '
+        'agent_id, user_id or team_id returned by document_sharing. Get expected_lock_version '
+        'from document_sharing. Access defaults to read for the requester shortcut and edit '
+        'for explicit IDs. Access "none" removes only the selected direct grant. Confirm the grant '
+        'in the result before transmitting the URI.'
+    ))
+async def document_share(ctx: McpToolContext, document_id: str, agent_id: int | None = None,
+    access: Literal["read", "edit", "none"] | None = None, team_id: int | None = None,
+    user_id: int | None = None, expected_lock_version: int | None = None,
+    recipient: Annotated[Literal["requester"] | None, Field(
+        description="Explicitly select the human requester of your current root Task. Combine with no recipient ID.",
+    )] = None) -> str:
+    kind, target = await _share_target(ctx, recipient=recipient, agent_id=agent_id,
+                                       user_id=user_id, team_id=team_id)
     identity = _identity(document_id)
     state = await item_sharing.update_agent_sharing(identity, agent_id=ctx.agent_id,
-        kind=kind, target_id=target, access=access, expected_lock_version=expected_lock_version,
+        kind=kind, target_id=target, access=access or ("read" if recipient == "requester" else "edit"),
+        expected_lock_version=expected_lock_version,
         document_only=True)
     return json.dumps({"document_id": str(identity), "uri": f"document://{identity}",
         **state.model_dump(mode="json", exclude={"options"})}, ensure_ascii=False)

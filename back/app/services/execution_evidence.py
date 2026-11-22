@@ -68,6 +68,7 @@ class ExecutionEvidenceMiddleware(Middleware):
                 if execution.entered:
                     raise
                 execution.outcome = "rejected"
+                execution.arguments_rejected = True
                 advice: dict[str, Any] = {}
                 if context.fastmcp_context is not None:
                     tool = await context.fastmcp_context.fastmcp.get_tool(context.message.name)
@@ -90,6 +91,7 @@ class ExecutionEvidenceMiddleware(Middleware):
                     "outcome": execution.outcome,
                     **({"scope_rejection": execution.scope_rejection} if execution.scope_rejection else {}),
                     **({"permission_rejected": True} if execution.permission_rejected and execution.outcome == "rejected" else {}),
+                    **({"arguments_rejected": True} if execution.arguments_rejected and execution.outcome == "rejected" else {}),
                     **({"wait_for_children": True} if execution.wait_for_children and not result.is_error else {}),
                 },
             }

@@ -560,8 +560,10 @@ automatically; they remain flagged as blockers until completion.
    directly injects the already merged bounded top-k from lexical, vector,
    and graph ranks, without a second absolute threshold.
    A local failure is recorded but does not block the Task. The Working Set provider additionally
-   reads the root Task registry and injects the exact references of active documents, files,
-   recipients, and receipts; all leaves of the same plan therefore see the same working state.
+   reads the root Task registry and injects exact references to active resources. For documents,
+   it checks the executing agent's current permissions before passing references and indicates
+   read or edit access. The registry is shared across the tree, and the resources shown inform
+   the assigned objective without adding a document deliverable.
 
    Outside admission with a standalone objective, providers also publish structured
    nonconversational candidates for a human Messenger origin. The composer deduplicates, ranks,
@@ -835,6 +837,10 @@ approach, reread relevant skills, or check arguments. It distinguishes repeated 
 successful calls without progress. All results in the current batch are preserved before this
 guidance; tools remain available within the same run and budget. If no alternative can proceed,
 the agent explains the three errors and what remains blocked.
+When native execution evidence confirms an argument validation rejection, the internal
+harness reuses that rejection for identical arguments in the same run. Corrected arguments
+are dispatched normally. Permissions, revision conflicts and uncertain effects still follow
+their respective recovery paths.
 See [0103](../../../../project/decisions/0103-tool-errors-return-to-agent.md).
 
 ## Conversational Rounds and Real-Time Audio Sessions

@@ -513,8 +513,11 @@ for authored HTML and Datasets for editable JSON when those are the requested re
 - `file_list(uri: str = "", recursive: bool = False, max_entries: int = 100,
   cursor: str = "") -> str`
 - `file_info(uri: str, include_checksum: bool = False) -> str`
-- `file_search(uri: str, query: str, mode: str = "name", recursive: bool = True,
+- `file_search(uri: str, query: str, mode: str | None = None, recursive: bool = True,
   max_results: int = 50, cursor: str = "") -> str`
+  On an exact public HTTPS document or PDF URL, use `mode="text"` for lexical passages
+  (the default for HTTPS) or `mode="semantic"` for a question about its content.
+  Collection and title discovery default to `name`.
 - `file_read(uri: str, offset: int = 0, max_chars: int = 20000) -> str`
 - `file_create(path: str, content: str = "", encoding: "utf-8" | "base64" = "utf-8",
   name: str = "", document_format: str | None = None) -> str`
@@ -524,6 +527,8 @@ for authored HTML and Datasets for editable JSON when those are the requested re
   expected_etag: str | None = None) -> str`
 - `file_edit(uri: str, start_line: int, end_line: int, content: str,
   expected_revision: int | None = None, expected_etag: str | None = None) -> str`
+  If tool history shows `[content omitted after execution: ...]`, reread the actual
+  resource and supply the complete replacement for the selected range.
 - `file_copy(source: str, destination: str, overwrite: bool = False) -> str`
 - `file_to_pdf(source: str, destination: str) -> str` exports a readable canonical resource to
   a new PDF at a writable collection (`file://` for a private managed result) or unused `.pdf` URI.
@@ -802,8 +807,10 @@ mean the colleague is unknown or unreachable. Contact permissions still apply.
 - `task_get(task_id: str) -> dict` returns a compact operational view with actors, status,
   objective, feedback, progress, revision, work tracking, amendment eligibility, and explicit waits. Prefer the exact
   `galaris://task/<uuid>` URI; full UUIDs and unique prefixes remain accepted for compatibility.
-  Use `file_read` when the complete persisted snapshot is needed.
-- `task_work_update(plan: dict, expected_revision: int, revision_reason: str = "") -> dict`
+  Inspect your own Tasks and the delegations you requested. For a colleague's Task delegated by
+  someone else, ask the coordinator for the relevant contribution. Use `file_read` for a complete
+  authorized snapshot.
+- `task_work_update(plan: dict, expected_revision: int, revision_reason: str = "", merge: bool = False) -> dict`
   retains bounded milestones for your current active Task. Use it when substantial preparation,
   a long run or recovery needs continuity; complete simple actions directly with their check.
   The plan has `milestones` (unique `key`, `label`, `acceptance`, `state`, `observation`,
@@ -811,8 +818,11 @@ mean the colleague is unknown or unreachable. Contact permissions still apply.
   or `blocked`; at most one is doing. Done and blocked require an observed result. Read the
   `work_plan_revision` with `task_get` (initially 0) and pass it as `expected_revision`;
   this is separate from the Task's `revision`, which changes during execution checkpoints.
-  A stale work plan requires rereading. Changing completed work
-  requires `revision_reason`. Updates preserve other Task data and reject paused or terminal Tasks.
+  Read the live plan again after an amendment, resume or revision conflict.
+  Pass `merge=true` and include only the milestones you are adding or changing. Omitted
+  milestones and an omitted `next_action` are retained. Reopening or intentionally changing a
+  completed milestone still requires `revision_reason`. Use the returned `work_plan_revision`
+  for the next update.
   Inspect sources before settling the method, update after meaningful progress and verify
   actual resources before resuming an uncertain effect. Checked milestones do not prove delivery.
   Keep one coherent deliverable together; use collection coordination for independent outputs.
@@ -1687,11 +1697,14 @@ the durable identity.
   Read `grants`, `can_manage` and the current `lock_version` before changing access.
   Narrow `options` with `kind="team"` and `search` to find a group; use `offset`, `limit`
   (up to 500), `total` and `has_more` for pagination. Current grants are not filtered.
-- `document_share(document_id: str, agent_id: int | None = None, access: str = "edit",
+- `document_share(document_id: str, agent_id: int | None = None, access: str | None = None,
   team_id: int | None = None, user_id: int | None = None,
-  expected_lock_version: int | None = None) -> str` shares an owned working document.
-  Supply **exactly one** of `agent_id`, `user_id`, `team_id` from
-  `document_sharing`, and pass its `lock_version` as `expected_lock_version`. `read` allows
+  expected_lock_version: int | None = None, recipient: "requester" | None = None) -> str`
+  shares an owned working document. To deliver to the human who requested your current root
+  Task, use `document_share(document_id=URI, recipient="requester", access="read",
+  expected_lock_version=VERSION)`. Galaris resolves that recipient from the Task.
+  For other recipients, supply **exactly one** of `agent_id`, `user_id`, `team_id` from
+  `document_sharing`. Pass its `lock_version` as `expected_lock_version`. `read` allows
   reading, `edit` allows reading and editing, and `none` removes that recipient's direct grant.
   Other recipients, public access and grants through another team remain unchanged. Sharing
   increments the ACL `lock_version`, not the content `revision`; on a conflict, inspect again.

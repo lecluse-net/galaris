@@ -10,6 +10,7 @@ from app.agent.contracts import (
     AgentContextRequest,
     AgentContextCandidate,
     AgentContextCapsule,
+    AgentRunContext,
     AgentSnapshot,
     WorkingResource,
     WorkingSet,
@@ -345,10 +346,73 @@ def test_rendered_working_set_hides_retired_workspace_references() -> None:
 
 
 @pytest.mark.asyncio
+async def test_delegated_working_set_respects_current_document_shares(db: AsyncSession) -> None:
+    from app.agent.context import build_agent_run_context
+    from app.agent.models import Agent, Title
+    from app.document import create_workflow_document, share_workflow_document
+
+    title = Title(label="Working set collaborator", gender="X")
+    db.add(title)
+    await db.flush()
+    owner = Agent(title_id=title.id, first_name="Test", last_name="Owner",
+                  code="working-set-owner", agent_driver="internal")
+    delegate = Agent(title_id=title.id, first_name="Test", last_name="Delegate",
+                     code="working-set-delegate", agent_driver="internal")
+    db.add_all([owner, delegate])
+    await db.flush()
+    root = _task(agent_id=owner.id)
+    child = _task(parent_id=root.id, agent_id=delegate.id, objective="Return a text contribution")
+    db.add_all([root, child])
+    await db.flush()
+
+    private, readable, editable = [
+        await create_workflow_document(owner_agent_id=owner.id, title=name,
+                                       content="<p>Synthetic content</p>", kind="text",
+                                       command=f"{root.id}:{role}")
+        for role, name in [("primary", "Private report"), ("read", "Read-only source"),
+                           ("edit", "Editable notes")]
+    ]
+    for document, role in [(private, "primary_working_document"), (readable, "source"),
+                           (editable, "notes")]:
+        await upsert_working_resource(root.id, WorkingResource(
+            resource_type="memory_document", role=role, label=document.title,
+            reference=str(document.id) if document is readable else f"document://{document.id}",
+        ))
+    for document, grant in [(readable, "read"), (editable, "edit")]:
+        await share_workflow_document(document.id, owner_agent_id=owner.id,
+                                      target_agent_id=delegate.id, access=grant, task_id=root.id)
+
+    async def context_for(task: Task, agent: Agent) -> AgentRunContext:
+        return await build_agent_run_context(AgentContextRequest(
+            task_id=task.id, objective=task.objective or "", include_historical_context=False,
+            agent=AgentSnapshot(id=agent.id, code=agent.code, first_name=agent.first_name,
+                                last_name=agent.last_name, driver_code="internal"),
+        ))
+
+    original = await get_working_set(root.id)
+    delegated = (await context_for(child, delegate)).shared_context
+    assert str(private.id) not in delegated and private.title not in delegated
+    entries = delegated.split("\n- role: ")
+    assert any(f"reference: document://{readable.id}" in entry and "document_access: read" in entry
+               for entry in entries)
+    assert any(f"reference: document://{editable.id}" in entry and "document_access: edit" in entry
+               for entry in entries)
+    assert f"document://{private.id}" in (await context_for(root, owner)).shared_context
+
+    await share_workflow_document(readable.id, owner_agent_id=owner.id,
+                                  target_agent_id=delegate.id, access="none", task_id=root.id)
+    resumed = (await context_for(child, delegate)).shared_context
+    assert str(readable.id) not in resumed and readable.title not in resumed
+    assert f"document://{editable.id}" in resumed
+    assert await get_working_set(root.id) == original
+
+
+@pytest.mark.asyncio
 async def test_recent_contact_documents_reach_conversation_and_voice_context(
     db: AsyncSession,
 ) -> None:
     from app.agent.models import Agent, Title
+    from app.document.access import working_set_document_access
     from app.memory import MessengerContactObservation, observe_messenger_contact
 
     title = Title(label=f"Recent documents {uuid4()}", gender="X")
@@ -421,7 +485,8 @@ async def test_recent_contact_documents_reach_conversation_and_voice_context(
             ),
             objective="Live realtime voice conversation",
             contact_memory_item_id=contact_id,
-        )
+        ),
+        resolve_document_access=working_set_document_access,
     )
 
     assert [item.reference for item in contribution.candidates] == [

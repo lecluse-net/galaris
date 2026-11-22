@@ -78,13 +78,18 @@ _BINARY_READ_LIMIT = 1_048_576
 _SEARCH_SCAN_LIMIT = 500
 
 
+class IncompleteResourceContent(ResourceValidationError):
+    """A compacted history reference was supplied in place of content."""
+
+
 def require_complete_content(content: str | bytes) -> None:
     """Reject runtime history references before a provider can mutate anything."""
     payload = content.encode("utf-8") if isinstance(content, str) else content
     if re.search(rb"\[content omitted after execution: \d+ characters, sha256=[0-9a-f]{16,64}\]", payload):
-        raise ResourceValidationError(
-            "Content contains a history omission marker. Read the original resource and "
-            "supply the complete intended content; no mutation was performed."
+        raise IncompleteResourceContent(
+            "Content contains a history omission marker. Use file_read on the original URI "
+            "and reread the target range with its current revision. Send the complete intended "
+            "replacement for that range. No mutation was performed."
         )
 
 

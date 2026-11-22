@@ -590,6 +590,9 @@ preserves useful information and can add distinct material; prior versions remai
 revisions. Specify when you need a chronological journal or meeting minutes: that chronology
 then remains relevant in the document.
 
+To receive a private document created by the agent in your Task, ask the agent to share it
+with you for reading or editing. Once sharing is confirmed, you can open the link.
+
 The [rich content guide](rich-content.md) covers editing, links and cards, attachments,
 sharing, revisions and exports. To work alongside an agent, open a document from the
 discussion's Documents section.

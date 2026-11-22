@@ -48,7 +48,8 @@ from core.i18n import render_prompt, t, tr
 from core.database import get_db
 from core.params import runtime_settings
 
-from .contracts import ScopePreflightRejected, ToolCallRejectedError, ToolPermissionRejectedError, current_tool_execution
+from .contracts import (ScopePreflightRejected, ToolArgumentsRejectedError, ToolCallRejectedError,
+                        ToolPermissionRejectedError, current_tool_execution)
 from .execution_evidence import ExecutionEvidenceMiddleware
 from .mcp_presentation import MCP_APP_EXTENSION, McpPresentation, McpPresentationSink, McpTable, app_tool_visible_to
 from .tool_arguments import ToolArgumentsMiddleware
@@ -570,7 +571,7 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                     try:
                         bound = inspect.signature(definition.function).bind(ctx, *args, **kwargs)
                     except TypeError as error:
-                        raise ToolCallRejectedError("Arguments do not match this Tool's declared signature") from error
+                        raise ToolArgumentsRejectedError("Arguments do not match this Tool's declared signature") from error
                     bound.apply_defaults()
                     arguments = {
                         key: value for key, value in bound.arguments.items() if key not in {"ctx", "context"}
@@ -665,6 +666,7 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
             if isinstance(exc, ToolCallRejectedError) and execution is not None:
                 execution.outcome = "rejected"
                 execution.permission_rejected = isinstance(exc, ToolPermissionRejectedError)
+                execution.arguments_rejected = isinstance(exc, ToolArgumentsRejectedError)
                 if isinstance(exc, ScopePreflightRejected):
                     execution.scope_rejection = exc.decision
             failure = classify_tool_failure(exc)

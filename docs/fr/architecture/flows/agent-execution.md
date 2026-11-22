@@ -588,8 +588,10 @@ leur fin.
    lexicaux, vectoriels et graphiques, sans second seuil absolu.
    Une défaillance locale
    est consignée mais ne bloque pas la tâche. Le provider Working Set lit en plus le registre de la
-   Tâche racine et injecte les références exactes des documents, fichiers, destinataires et reçus
-   actifs ; toutes les feuilles d'un même plan voient donc le même état de travail.
+   Tâche racine et injecte les références exactes des ressources actives. Pour les documents,
+   il vérifie les droits courants de l'agent exécutant avant de transmettre les références et
+   indique le droit de lecture ou d'édition. Le registre reste commun à l'arbre et les
+   ressources présentées éclairent la mission assignée sans créer d'obligation documentaire.
 
    Hors admission à objectif autonome, les providers publient aussi des candidats structurés non
    conversationnels pour une origine
@@ -879,7 +881,10 @@ changer d’approche, de relire les compétences pertinentes ou de vérifier les
 les erreurs répétées des appels réussis sans progrès. Tous les résultats du lot courant sont
 conservés avant cette consigne ; les outils restent disponibles dans le même run et le même
 budget. Si aucune alternative ne permet de continuer, l’agent explique les trois erreurs et
-ce qui reste bloqué. Voir [0103](../../../../project/decisions/0103-tool-errors-return-to-agent.md).
+ce qui reste bloqué. Quand une preuve d'exécution native confirme un rejet de validation des
+arguments, le harnais interne réutilise ce rejet si les mêmes arguments reviennent dans le run.
+Un appel corrigé est exécuté normalement. Les permissions, conflits de révision et effets
+incertains gardent leurs parcours de récupération. Voir [0103](../../../../project/decisions/0103-tool-errors-return-to-agent.md).
 
 ## Tours conversationnels et sessions audio temps réel
 

@@ -123,6 +123,42 @@ async def grant(item, scope, kind, identity, can_write):
 
 
 @pytest.mark.asyncio
+async def test_mcp_share_to_current_human_requester_is_explicit_and_read_only(db, agents):
+    from app.document import mcp
+    from app.services.contracts import ToolCallRejectedError
+    from app.services import McpToolContext
+    from app.task import Task, TaskStatus
+
+    owner, peer = agents
+    human = await user(db)
+    task = Task(label="Return a synthetic report", status=TaskStatus.EXEC, agent_id=owner.id,
+                requester_user_id=human.id)
+    db.add(task)
+    await db.flush()
+    item, _ = await service.create_item(DocumentItemCreate(owner_agent_id=owner.id,
+        title="Synthetic report", payload=DocumentPayload(text="<p>Report</p>")))
+    ctx = McpToolContext(agent_id=owner.id, runtime="internal", task_id=task.id)
+    uri = f"document://{item.id}"
+    version = item.lock_version
+
+    with pytest.raises(ToolCallRejectedError, match="recipient"):
+        await mcp.document_share(ctx, uri, expected_lock_version=version)
+    with pytest.raises(ToolCallRejectedError, match="exactly one"):
+        await mcp.document_share(ctx, uri, recipient="requester", agent_id=peer.id)
+    with pytest.raises(ToolCallRejectedError, match="current root Task"):
+        await mcp.document_share(McpToolContext(agent_id=peer.id, runtime="internal",
+            task_id=task.id), uri, recipient="requester")
+    assert not (await effective_access(item, HumanActor(human.id))).can_read
+
+    granted = json.loads(await mcp.document_share(
+        ctx, uri, recipient="requester", expected_lock_version=version,
+    ))
+    assert [(x["kind"], x["id"]) for x in granted["grants"]] == [("user", human.id)]
+    access = await effective_access(item, HumanActor(human.id))
+    assert access.can_read and not access.can_write
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize(("node_kind", "document_format"), [("document", "text"), ("document", "dataset")])
 async def test_mcp_sharing_uses_live_team_membership_and_preserves_other_grants(db, agents, memory_storage, node_kind, document_format):
     from app.document import mcp

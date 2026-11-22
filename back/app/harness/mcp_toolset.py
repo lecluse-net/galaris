@@ -96,6 +96,7 @@ class ExecutionEvidenceClient(Client[Any]):
             ):
                 execution.outcome = "rejected"
                 execution.permission_rejected = evidence.get("permission_rejected") is True
+                execution.arguments_rejected = evidence.get("arguments_rejected") is True
                 rejection = evidence.get("scope_rejection")
                 if rejection in {"clarify", "deny"}:
                     execution.scope_rejection = rejection

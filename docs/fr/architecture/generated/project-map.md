@@ -287,7 +287,7 @@ tests restent l’autorité sur le comportement.
 | `app.document` | `app.process` | `back/app/document/internal_attachments.py`, `back/app/document/process_references.py` |
 | `app.document` | `app.services` | `back/app/document/data/mcp.py`, `back/app/document/item_sharing.py`, `back/app/document/mcp.py` |
 | `app.document` | `app.share` | `back/app/document/access.py`, `back/app/document/data/access.py`, `back/app/document/data/compatibility.py`, `back/app/document/data/dbadmin.py`, `back/app/document/data/library.py`, `back/app/document/data/models.py`, `back/app/document/data/ownership.py`, `back/app/document/data/router.py`, `back/app/document/data/service.py`, `back/app/document/data/sharing.py`, `back/app/document/dataset_migration.py`, `back/app/document/dataset_port.py`, `back/app/document/folder_resources.py`, `back/app/document/folder_sharing.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/item_sharing.py`, `back/app/document/models.py`, `back/app/document/process_migration.py`, `back/app/document/resource_service.py`, `back/app/document/schemas.py`, `back/app/document/sharing_inheritance.py` |
-| `app.document` | `app.task` | `back/app/document/resource_service.py` |
+| `app.document` | `app.task` | `back/app/document/mcp.py`, `back/app/document/resource_service.py` |
 | `app.document` | `core.authorize` | `back/app/document/access.py`, `back/app/document/assertions.py`, `back/app/document/bulk_moves.py`, `back/app/document/data/access.py`, `back/app/document/data/bootstrap.py`, `back/app/document/data/router.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_policy.py`, `back/app/document/item_sharing.py`, `back/app/document/router.py` |
 | `app.document` | `core.database` | `back/app/document/access.py`, `back/app/document/agent_library.py`, `back/app/document/automation.py`, `back/app/document/bulk_moves.py`, `back/app/document/content.py`, `back/app/document/conversation_document_adapter.py`, `back/app/document/data/access.py`, `back/app/document/data/apps.py`, `back/app/document/data/attachments.py`, `back/app/document/data/bootstrap.py`, `back/app/document/data/compatibility.py`, `back/app/document/data/library.py`, `back/app/document/data/migration.py`, `back/app/document/data/models.py`, `back/app/document/data/organization.py`, `back/app/document/data/ownership.py`, `back/app/document/data/projection.py`, `back/app/document/data/provider.py`, `back/app/document/data/resource_summaries.py`, `back/app/document/data/router.py`, `back/app/document/data/search.py`, `back/app/document/data/search_index.py`, `back/app/document/data/service.py`, `back/app/document/data/sharing.py`, `back/app/document/data/topic_assignment.py`, `back/app/document/data/usage.py`, `back/app/document/dataset_attachments.py`, `back/app/document/dataset_migration.py`, `back/app/document/dataset_port.py`, `back/app/document/dataset_references.py`, `back/app/document/dataset_usage.py`, `back/app/document/document_app_security.py`, `back/app/document/document_app_service.py`, `back/app/document/document_attachment_service.py`, `back/app/document/document_icons.py`, `back/app/document/document_library_filters.py`, `back/app/document/document_nesting.py`, `back/app/document/document_order.py`, `back/app/document/document_service.py`, `back/app/document/document_structure.py`, `back/app/document/document_tags.py`, `back/app/document/document_thumbnail_service.py`, `back/app/document/events.py`, `back/app/document/file_facade.py`, `back/app/document/folder_resources.py`, `back/app/document/folder_sharing.py`, `back/app/document/folder_tree.py`, `back/app/document/goal_document_adapter.py`, `back/app/document/inline_content.py`, `back/app/document/interface.py`, `back/app/document/item_sharing.py`, `back/app/document/keyword_actions.py`, `back/app/document/library_queries.py`, `back/app/document/lifecycle.py`, `back/app/document/models.py`, `back/app/document/process_migration.py`, `back/app/document/query_policy.py`, `back/app/document/resource_service.py`, `back/app/document/resource_summaries.py`, `back/app/document/revision_batching.py`, `back/app/document/revision_queries.py`, `back/app/document/router.py`, `back/app/document/sharing_inheritance.py`, `back/app/document/topic_assignment.py`, `back/app/document/topic_library.py`, `back/app/document/workflow_documents.py` |
 | `app.document` | `core.dbadmin` | `back/app/document/data/dbadmin.py`, `back/app/document/dbadmin.py`, `back/app/document/document_backup.py`, `back/app/document/format_migration.py`, `back/app/document/independence.py`, `back/app/document/privilege_migration.py`, `back/app/document/summary_retirement.py`, `back/app/document/tool_migration.py`, `back/app/document/unification.py` |
@@ -2402,27 +2402,27 @@ Aucune composante cyclique détectée.
 | `repository_show` | `conversation` | `app.conversation` | `repository_show` | `back/app/conversation/mcp.py:123` |
 | `document_revision_compare` | `document` | `app.document` | `document_revision_compare` | `back/app/document/mcp.py:55` |
 | `document_revision_list` | `document` | `app.document` | `document_revision_list` | `back/app/document/mcp.py:40` |
-| `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:187` |
+| `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:239` |
 | `document_sharing` | `document` | `app.document` | `document_sharing` | `back/app/document/mcp.py:172` |
 | `mindmap_add` | `document` | `app.document` | `mindmap_add` | `back/app/document/mcp.py:132` |
 | `mindmap_create` | `document` | `app.document` | `mindmap_create` | `back/app/document/mcp.py:67` |
 | `mindmap_edit` | `document` | `app.document` | `mindmap_edit` | `back/app/document/mcp.py:142` |
 | `mindmap_read` | `document` | `app.document` | `mindmap_read` | `back/app/document/mcp.py:87` |
 | `dataset_query` | `file_sharing` | `app.document` | `dataset_query` | `back/app/document/data/mcp.py:23` |
-| `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:475` |
-| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:555` |
-| `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:389` |
-| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:637` |
-| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:508` |
-| `file_info` | `file_sharing` | `app.file_share` | `file_info` | `back/app/file_share/mcp.py:182` |
-| `file_list` | `file_sharing` | `app.file_share` | `list_files` | `back/app/file_share/mcp.py:154` |
-| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:607` |
-| `file_read` | `file_sharing` | `app.file_share` | `read_file` | `back/app/file_share/mcp.py:281` |
-| `file_rename` | `file_sharing` | `app.file_share` | `rename_file` | `back/app/file_share/mcp.py:586` |
-| `file_schemes` | `file_sharing` | `app.file_share` | `file_schemes` | `back/app/file_share/mcp.py:130` |
-| `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:225` |
-| `file_to_pdf` | `file_sharing` | `app.file_share` | `file_to_pdf` | `back/app/file_share/mcp.py:314` |
-| `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:440` |
+| `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:489` |
+| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:573` |
+| `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:403` |
+| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:655` |
+| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:524` |
+| `file_info` | `file_sharing` | `app.file_share` | `file_info` | `back/app/file_share/mcp.py:187` |
+| `file_list` | `file_sharing` | `app.file_share` | `list_files` | `back/app/file_share/mcp.py:159` |
+| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:625` |
+| `file_read` | `file_sharing` | `app.file_share` | `read_file` | `back/app/file_share/mcp.py:295` |
+| `file_rename` | `file_sharing` | `app.file_share` | `rename_file` | `back/app/file_share/mcp.py:604` |
+| `file_schemes` | `file_sharing` | `app.file_share` | `file_schemes` | `back/app/file_share/mcp.py:135` |
+| `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:231` |
+| `file_to_pdf` | `file_sharing` | `app.file_share` | `file_to_pdf` | `back/app/file_share/mcp.py:328` |
+| `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:454` |
 | `agent_get` | `galaris` | `app.agent` | `get_agent` | `back/app/agent/mcp.py:52` |
 | `agent_list` | `galaris` | `app.agent` | `list_agents` | `back/app/agent/mcp.py:26` |
 | `contact_create` | `galaris` | `app.contact` | `mcp_contact_create` | `back/app/contact/mcp.py:48` |
@@ -2463,10 +2463,10 @@ Aucune composante cyclique détectée.
 | `process_validate` | `galaris` | `app.process` | `process_validate` | `back/app/process/mcp.py:205` |
 | `processus_get` | `galaris` | `app.process` | `processus_get` | `back/app/process/mcp.py:30` |
 | `services_list` | `galaris` | `app.services` | `list_mcp_tools` | `back/app/services/mcp.py:90` |
-| `task_get` | `galaris` | `app.task` | `mcp_get_task` | `back/app/task/mcp.py:92` |
-| `task_run` | `galaris` | `app.task` | `mcp_run_task` | `back/app/task/mcp.py:220` |
-| `task_stop` | `galaris` | `app.task` | `mcp_stop_task` | `back/app/task/mcp.py:196` |
-| `task_work_update` | `galaris` | `app.task` | `mcp_work_update` | `back/app/task/mcp.py:122` |
+| `task_get` | `galaris` | `app.task` | `mcp_get_task` | `back/app/task/mcp.py:94` |
+| `task_run` | `galaris` | `app.task` | `mcp_run_task` | `back/app/task/mcp.py:225` |
+| `task_stop` | `galaris` | `app.task` | `mcp_stop_task` | `back/app/task/mcp.py:201` |
+| `task_work_update` | `galaris` | `app.task` | `mcp_work_update` | `back/app/task/mcp.py:133` |
 | `team_list` | `galaris` | `app.agent` | `team_list` | `back/app/agent/mcp.py:68` |
 | `team_members` | `galaris` | `app.agent` | `team_members` | `back/app/agent/mcp.py:86` |
 | `goal_complete` | `goal_management` | `app.goal` | `mcp_goal_complete` | `back/app/goal/mcp.py:463` |

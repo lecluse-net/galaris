@@ -183,6 +183,8 @@ expose le suivi par jalons enregistré. L’exécuteur peut le mettre à jour
 avec `task_work_update`, sur sa tâche active, avec contrôle de révision. Jusqu’à vingt jalons
 sont conservés ; un jalon déclaré terminé ne remplace pas la preuve du résultat ou de sa livraison.
 Le suivi possède sa propre révision : les sauvegardes d’exécution ne bloquent pas ses mises à jour.
+Après une reprise ou un amendement, l'agent relit cette révision. Il peut mettre à jour
+les seuls jalons concernés, en conservant le reste du suivi.
 Si l'exécution se termine normalement avec un jalon obligatoire bloqué, la tâche affiche
 **Terminée · objectif non atteint**. Le motif, la prochaine action et le bilan partiel restent
 consultables. Une attente déjà ouverte conserve la tâche en attente. Les étapes d'un plan

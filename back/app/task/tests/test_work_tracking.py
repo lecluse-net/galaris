@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from app.agent import WorkPlan, work_plan_progress
 from app.task import Task, TaskStatus
 from app.task.mcp import mcp_work_update
+from app.agent.work_contracts import WorkPlanInput
 from app.services.mcp_loader import McpToolContext
 from core.database import get_db_session
 
@@ -126,6 +127,28 @@ async def test_work_tracking_survives_reload_and_preserves_completed_work(commit
         await db.commit()
         with pytest.raises(ValueError, match="terminal"):
             await mcp_work_update(ctx, plan(), current.revision)
+
+
+@pytest.mark.asyncio
+async def test_progress_patch_preserves_completed_milestones_and_rejects_stale_writes(db):
+    current = await seed(db)
+    ctx = McpToolContext(agent_id=current.agent_id, runtime="internal", task_id=current.id)
+    prepared = await mcp_work_update(ctx, plan("done", "Source verified", ""), 0)
+    update = WorkPlanInput.model_validate({"milestones": [{
+        "key": "deliver", "label": "Deliver report", "acceptance": "Report delivered",
+        "state": "doing",
+    }], "next_action": "Review the report"})
+    with pytest.raises(ValueError, match="revision changed"):
+        await mcp_work_update(ctx, update, 0, merge=True)
+    committed = await mcp_work_update(ctx, update, prepared["work_plan_revision"], merge=True)
+    assert committed["work_plan"]["milestones"] == [
+        *prepared["work_plan"]["milestones"], update.milestones[0].model_dump(mode="json"),
+    ]
+    assert committed["work_plan"]["next_action"] == "Review the report"
+    assert await mcp_work_update(ctx, update, prepared["work_plan_revision"], merge=True) == committed
+    with pytest.raises(ValueError, match="revision reason.*prepare"):
+        await mcp_work_update(ctx, plan("pending", "", "Verify the source"),
+                              committed["work_plan_revision"], merge=True)
 
 
 @pytest.mark.asyncio

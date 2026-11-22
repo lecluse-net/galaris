@@ -258,6 +258,20 @@ async def test_real_mcp_validation_is_distinct_from_failure_after_side_effect(tm
     if invalid:
         assert not marker.exists()
         assert resumed.effects[0]["outcome"] == "rejected"
+        repeated = await toolset.call_tool(
+            "console_exec", args, ctx, SimpleNamespace(tool_def=SimpleNamespace(metadata={}))
+        )
+        assert repeated["outcome"] == "rejected"
+        assert "exact arguments were already rejected" in repeated["instruction"]
+        assert len(journal.effects) == 1
+        corrected_args = {"command": "Corrected"}
+        corrected = SimpleNamespace(
+            messages=[ModelResponse(parts=[ToolCallPart("console_exec", corrected_args, "corrected")])],
+            tool_call_id="corrected",
+        )
+        await toolset.call_tool("console_exec", corrected_args, corrected,
+                                SimpleNamespace(tool_def=SimpleNamespace(metadata={})))
+        assert marker.read_text() == "Corrected"
     else:
         assert marker.read_text() == "once"
         assert resumed.take_replay("console_exec", args) == (True, failure)

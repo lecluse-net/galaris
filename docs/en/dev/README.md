@@ -541,8 +541,9 @@ Each Task tree also has a versioned Working Set in its root's data.
 It centralizes active references—primary document, auxiliary documents, provider resources,
 final artifact, destination, and delivery receipt—without copying their content. A new resource
 with the same role leaves the old one in `superseded` state. The
-`task_working_set` provider injects this bounded registry into every step and related
-conversational retries. In direct conversation and real-time audio, where no current Working Set
+`task_working_set` provider projects this bounded registry into every step and related
+conversational retries according to the executing agent's current document permissions.
+In direct conversation and real-time audio, where no current Working Set
 exists, providers inject documents recently handled by Tasks and tool traces from completed
 rounds for the same agent and contact under their `document://` URI, without broadening selection
 to the room or extracting a URI from free text. The first document created in a Task takes the

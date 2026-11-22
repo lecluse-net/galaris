@@ -277,6 +277,9 @@ sending `displayed_document_id`, never forwards an unloaded document and does no
 
 MCP sharing uses `document_sharing` to discover recipients and the current `lock_version`,
 then `document_share` with exactly one `agent_id`, `user_id` or `team_id`.
+To deliver a document to the human who requested the current root Task, the agent can
+pass `recipient="requester"`. Galaris resolves the recipient from the Task and defaults to
+`read` access.
 Access is `read`, `edit`, or `none` to remove that specific grant. Teams include their current
 human and AI members. Sharing changes neither the HTML nor its content revision:
 `expected_lock_version` protects ACL changes, while `expected_revision` protects content

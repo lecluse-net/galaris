@@ -38,6 +38,18 @@ async def memory_scope_for_task(
     return (row.topic_id, row.contact_memory_item_id) if row is not None else None
 
 
+async def root_task_requester_user(task_id: UUID, *, agent_id: int) -> int | None:
+    """Resolve a human recipient only for the agent's own root Task."""
+    from .models import Task
+
+    return await get_db().scalar(select(Task.requester_user_id).where(
+        Task.id == task_id,
+        Task.agent_id == agent_id,
+        Task.parent_id.is_(None),
+        Task.deleted_at.is_(None),
+    ))
+
+
 def memory_capture_blocked_tasks() -> Select[tuple[UUID]]:
     """A refusal survives archiving and propagates through either lineage edge."""
     from .models import Task

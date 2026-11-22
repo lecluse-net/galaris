@@ -1,9 +1,10 @@
 """Serialize executor-owned progress with other durable Task updates."""
 from __future__ import annotations
 
+from pydantic import ValidationError
 from sqlalchemy import select
 
-from app.agent import WorkPlan
+from app.agent import WorkPlan, WorkPlanInput
 from app.services import McpToolContext, RecoverableToolError
 from app.services.contracts import ToolCallRejectedError
 from core.database import get_db
@@ -16,8 +17,8 @@ class WorkTrackingRejected(RecoverableToolError, ToolCallRejectedError):
 
 
 async def update_work_plan(
-    ctx: McpToolContext, plan: WorkPlan, *, expected_revision: int,
-    revision_reason: str = "",
+    ctx: McpToolContext, draft: WorkPlanInput, *, expected_revision: int,
+    revision_reason: str = "", merge: bool = False,
 ) -> dict[str, object]:
     if ctx.task_id is None:
         raise PermissionError("Work tracking requires the current Task context")
@@ -34,6 +35,22 @@ async def update_work_plan(
     # Runtime checkpoints and activity updates advance Task.revision independently.
     # Serialize writers on the Task row, but compare only the progress they inspected.
     work_plan_revision = int(data.get("work_plan_revision", 0))
+    previous = WorkPlan.model_validate(data["work_plan"]) if isinstance(data.get("work_plan"), dict) else None
+    payload = draft.model_dump(mode="json")
+    if merge and previous is not None:
+        changes = {milestone.key: milestone for milestone in draft.milestones}
+        if len(changes) != len(draft.milestones):
+            raise WorkTrackingRejected("Invalid plan: Milestone keys must be unique")
+        milestones = {milestone.key: milestone for milestone in previous.milestones}
+        milestones.update(changes)
+        payload["milestones"] = list(milestones.values())
+        if "next_action" not in draft.model_fields_set:
+            payload["next_action"] = previous.next_action
+    try:
+        plan = WorkPlan.model_validate(payload)
+    except ValidationError as exc:
+        detail = exc.errors(include_input=False, include_context=False, include_url=False)[0]["msg"]
+        raise WorkTrackingRejected(f"Invalid plan: {detail}") from exc
     payload = plan.model_dump(mode="json")
     if data.get("work_plan") == payload:
         return {"task_uri": f"galaris://task/{task.id}", "revision": task.revision,
@@ -44,12 +61,18 @@ async def update_work_plan(
             "Call task_get, reconcile your changes with its current work_plan, and use the returned "
             "work_plan_revision as expected_revision."
         )
-    if isinstance(data.get("work_plan"), dict):
-        previous = WorkPlan.model_validate(data["work_plan"])
+    if previous is not None:
         updated = {item.key: item for item in plan.milestones}
-        if any(item.state in {"done", "skipped"} and updated.get(item.key) != item for item in previous.milestones):
-            if not revision_reason.strip():
-                raise WorkTrackingRejected("Changing completed work requires an explicit revision reason")
+        changed_completed = [
+            item.key for item in previous.milestones
+            if item.state in {"done", "skipped"} and updated.get(item.key) != item
+        ]
+        if changed_completed and not revision_reason.strip():
+            raise WorkTrackingRejected(
+                "Changing completed work requires an explicit revision reason. "
+                f"Affected keys: {', '.join(changed_completed)}. "
+                "For unrelated changes, use merge=true and omit those keys."
+            )
         if any(item.key in updated and item.required != updated[item.key].required
                for item in previous.milestones) and not revision_reason.strip():
             raise WorkTrackingRejected("Changing required status requires an explicit revision reason")

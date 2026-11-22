@@ -40,6 +40,7 @@ class ToolExecutionContext:
     scope_rejection: Literal["clarify", "deny"] | None = None
     wait_for_children: bool = False
     permission_rejected: bool = False
+    arguments_rejected: bool = False
 
 
 _execution: ContextVar[ToolExecutionContext | None] = ContextVar("tool_execution", default=None)
@@ -60,6 +61,10 @@ def tool_execution(context: ToolExecutionContext) -> Generator[ToolExecutionCont
 
 class ToolCallRejectedError(ValueError):
     """An explicit precondition rejected a call before any external effect."""
+
+
+class ToolArgumentsRejectedError(ToolCallRejectedError):
+    """The same arguments cannot pass validation in this run."""
 
 
 class ToolPermissionRejectedError(ToolCallRejectedError):

@@ -34,6 +34,7 @@ from app.agent.contracts import (
 _CHECKPOINT_VERSION = 5
 _COMPATIBLE_CHECKPOINT_VERSIONS = frozenset({1, 2, 3, 4, _CHECKPOINT_VERSION})
 _PRE_EXECUTION_PERMISSION_DENIED = "pre_execution_permission_denied"
+_INVALID_ARGUMENT_RECEIPT_LIMIT = 32
 
 
 def _tool_error_result(
@@ -985,6 +986,7 @@ def wrap_toolsets(
     from pydantic_ai.toolsets import ToolsetTool, WrapperToolset
 
     scheduler = _ToolCallScheduler(max_parallel)
+    argument_rejections: dict[str, dict[str, Any]] = {}
 
     class _CheckpointingToolset(WrapperToolset[Any]):
         async def call_tool(
@@ -1001,9 +1003,13 @@ def wrap_toolsets(
             ticket = scheduler.ticket()
             result: Any = None
             error: BaseException | None = None
+            execution: ToolExecutionContext | None = None
             try:
                 async with scheduler.slot(concurrency_policy):
-                    if checkpoint is not None:
+                    signature = _signature(name, tool_args)
+                    if signature in argument_rejections:
+                        result = deepcopy(argument_rejections[signature])
+                    elif checkpoint is not None:
                         replayed, replay_result = checkpoint.take_replay(name, tool_args)
                         if replayed:
                             result = replay_result
@@ -1077,6 +1083,18 @@ def wrap_toolsets(
                                     scope_rejection=execution.scope_rejection,
                                     permission_rejected=execution.permission_rejected,
                                 )
+                    if (execution is not None and execution.arguments_rejected
+                            and execution.outcome == "rejected"
+                            and (rejection := reported_tool_failure(result)) is not None):
+                        # Only trusted native evidence of argument validation is reusable.
+                        # Permissions, conflicts and external state are always evaluated live.
+                        if len(argument_rejections) >= _INVALID_ARGUMENT_RECEIPT_LIMIT:
+                            del argument_rejections[next(iter(argument_rejections))]
+                        argument_rejections[signature] = {
+                            **rejection,
+                            "instruction": "These exact arguments were already rejected before execution. "
+                            "Correct the arguments using the error above or choose another authorized action.",
+                        }
             except BaseException as exc:
                 error = exc
 

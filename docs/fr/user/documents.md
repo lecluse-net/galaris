@@ -646,6 +646,9 @@ L'agent conserve les informations utiles et peut ajouter des éléments distinct
 versions restent dans les révisions. Précisez si le résultat attendu est un journal chronologique
 ou un compte rendu : cette chronologie reste alors pertinente dans le document.
 
+Pour recevoir un document privé créé par l'agent dans votre tâche, demandez-lui de vous
+le partager, en lecture ou en modification. Le partage confirmé vous donne accès au lien.
+
 Le [guide des contenus riches](rich-content.md) explique l'édition, les liens et cartes,
 les pièces jointes, le partage, les versions et les exports. Pour travailler à côté d'un
 agent, ouvrez un document depuis la rubrique Documents de la discussion.

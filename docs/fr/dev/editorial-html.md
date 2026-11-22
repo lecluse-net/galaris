@@ -292,7 +292,10 @@ chargé ni modifier les ACL.
 
 Le partage MCP passe par `document_sharing` pour découvrir les destinataires et leur
 `lock_version`, puis `document_share` avec exactement un `agent_id`,
-`user_id` ou `team_id`. L’accès vaut `read`, `edit` ou `none` pour retirer ce grant précis.
+`user_id` ou `team_id`. Pour livrer un document au demandeur humain de la tâche racine
+courante, l'agent peut indiquer `recipient="requester"`. Galaris résout l'identité depuis
+la tâche et utilise `read` par défaut. L’accès vaut `read`, `edit` ou `none` pour retirer
+ce grant précis.
 Les équipes comprennent leurs membres humains et IA actuels. Cette mutation ne change ni
 le HTML ni sa révision : `expected_lock_version` protège les ACL, `expected_revision`
 protège les écritures de contenu. La compétence système Galaris fournit les exemples complets.

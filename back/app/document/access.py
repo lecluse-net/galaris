@@ -106,6 +106,18 @@ def writable_item_clause(agent_id: int | InstrumentedAttribute[int]) -> ColumnEl
         agent_team_grant_clause(agent_id, write=True)))
 
 
+async def working_set_document_access(agent_id: int, document_ids: set[UUID]) -> dict[UUID, bool]:
+    """Return the live write flag for each readable document, without loading content."""
+    result = await get_db().execute(
+        select(Document.id, writable_item_clause(agent_id)).where(
+            Document.id.in_(document_ids),
+            Document.deleted_at.is_(None),
+            readable_item_clause(agent_id),
+        )
+    )
+    return {document_id: can_write for document_id, can_write in result}
+
+
 def readable_item_for_agents_clause(agent_ids: Collection[int] | None) -> ColumnElement[bool]:
     if agent_ids is None:
         granted = exists(select(ShareGrant.id).where(

@@ -409,12 +409,17 @@ async def build_task_prompt(task: Any, extra_context: Optional[dict[str, str]] =
             "unavailable, explicitly report that limitation and the unfinished requirement."
         )
     if data.get("organization") == "tracked" or isinstance(data.get("work_plan"), dict):
+        work_plan_revision = data.get("work_plan_revision", 0)
         sections["work_organization"] = (
+            f"Work plan revision at the start of this run: {work_plan_revision}. "
             "This mission requires durable organization. Before substantive work, inspect "
             "the authorized sources and existing results needed to establish scope and a "
             "workable method. Use the latest work_plan_revision from task_get (initially 0) or "
             "the last successful task_work_update as expected_revision, independently of the Task "
-            "revision. Retain a bounded set of milestones, acceptance checks and plan.next_action. Keep "
+            "revision. Use merge=true and send only new or changed milestones by key. "
+            "Preserve completed milestones and their observations unless the objective requires "
+            "a revision with an explicit reason. Retain a bounded set of milestones, acceptance checks "
+            "and plan.next_action. Keep "
             "one end-to-end owner for a coherent deliverable; independent substantial items "
             "belong in the existing collection workflow. Update tracking after meaningful "
             "progress or a blocker, not after every tool call. Mark done only after performing "

@@ -161,6 +161,8 @@ The executor can update it with
 `task_work_update` on its active Task, with revision checks. Up to twenty milestones are
 retained; declaring one complete does not replace evidence of the result or its delivery.
 Tracking has its own revision, so execution checkpoints do not block progress updates.
+After resuming or applying an amendment, the agent rereads this revision. It can update
+only the relevant milestones and preserve the rest of the plan.
 If execution completes normally with a required milestone blocked, the Task shows
 **Completed · objective unmet**. The reason, next action and partial report remain available.
 An open wait keeps the Task waiting. Plan steps that depend on the missing result are skipped.

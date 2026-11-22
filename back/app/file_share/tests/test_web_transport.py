@@ -17,6 +17,34 @@ class _ResolverLoop:
 
 
 @pytest.mark.asyncio
+async def test_mcp_search_defaults_to_lexical_passages_for_public_file(db, monkeypatch):
+    import json
+
+    from app.file_share.mcp import search_files
+    from app.services import McpToolContext
+
+    uri = "https://files.example/report.txt"
+    body = b"The synthetic Quartz inventory totals 47 units."
+
+    async def resolve(value):
+        assert value == uri
+        return web_transport._ResolvedHttpsTarget(url=value, hostname="files.example",
+            host_header="files.example", addresses=("1.1.1.1",))
+
+    async def handle(request):
+        headers = {"content-length": str(len(body)), "content-type": "text/plain"}
+        return httpx.Response(200, headers=headers, content=body if request.method == "GET" else b"")
+
+    monkeypatch.setattr(web_transport, "_resolve_public_https", resolve)
+    monkeypatch.setattr(web_transport, "_new_client", lambda: httpx.AsyncClient(transport=httpx.MockTransport(handle)))
+    result = json.loads(await search_files(McpToolContext(agent_id=1, runtime="internal"),
+                                          uri, "Quartz inventory"))
+    assert result["mode"] == "text"
+    assert result["hits"][0]["resource"]["uri"] == uri
+    assert "47 units" in result["hits"][0]["passages"][0]["text"]
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("status", [200, 206])
 async def test_video_range_keeps_dns_pinning_and_reads_only_selected_bytes(monkeypatch, status):
     requested = []

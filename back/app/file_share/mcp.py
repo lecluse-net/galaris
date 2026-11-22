@@ -12,7 +12,7 @@ from typing import Annotated, Any, Literal
 from pydantic import Field
 
 from app.services import RecoverableToolError
-from app.services.contracts import ToolCallRejectedError
+from app.services.contracts import ToolArgumentsRejectedError, ToolCallRejectedError
 from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
 from core.document import MAX_PDF_EXPORT_BYTES, convert_to_pdf
 from core.util import RichTextError, complete_io
@@ -20,6 +20,7 @@ from core.util import RichTextError, complete_io
 from .resource_contracts import ResourceContext
 from .resource_uri import ResourceRevisionConflict, ResourceUriError, ResourceValidationError, parse_resource_uri
 from .resource_service import (
+    IncompleteResourceContent,
     _json_model,
     require_complete_content,
     list_schemes,
@@ -64,7 +65,11 @@ async def _file_preflight(ctx: McpToolContext, arguments: dict[str, Any]) -> dic
     from tempfile import TemporaryDirectory
     content = arguments.get("content")
     if isinstance(content, str):
-        require_complete_content(_decode_content(content, "base64" if arguments.get("encoding") == "base64" else "utf-8"))
+        decoded = _decode_content(content, "base64" if arguments.get("encoding") == "base64" else "utf-8")
+        try:
+            require_complete_content(decoded)
+        except IncompleteResourceContent as exc:
+            raise ToolArgumentsRejectedError(str(exc)) from exc
     context = await _resource_context(ctx)
     snapshots: dict[str, Any] = {}
     for key in ("uri", "source", "destination"):
@@ -203,6 +208,7 @@ async def file_info(
         "resource URIs that can be passed directly to every compatible file tool. "
         "mode='semantic' on an exact PDF, Office or text file URI (including file://UUID and "
         "document attachments) for bounded RAG passages with physical pages and character offsets. "
+        "Exact public HTTPS files default to mode='text'. Collections default to mode='name'. "
         "Use mode='text' for lexical passages without embedding calls. Repeat with another query "
         "to investigate further; one exact-file result contains selected passages, has no pagination, "
         "and does not create a memory. Access is rechecked for each query. "
@@ -226,7 +232,7 @@ async def search_files(
     ctx: McpToolContext,
     uri: str,
     query: str,
-    mode: Literal["name", "text", "semantic"] = "name",
+    mode: Literal["name", "text", "semantic"] | None = None,
     recursive: bool = True,
     max_results: int | None = None,
     cursor: str = "",
@@ -234,6 +240,14 @@ async def search_files(
 ) -> str:
     """Search one virtual resource tree."""
 
+    if uri.strip().lower().startswith("https://"):
+        if mode == "name":
+            raise ToolArgumentsRejectedError(
+                "This HTTPS URI names one file. Use mode='text' for exact passages or "
+                "mode='semantic' for content retrieval. Use search_web to discover web sources."
+            )
+        mode = mode or "text"
+    mode = mode or "name"
     if mode == "semantic" and uri.strip().lower().startswith("galaris://"):
         raise RecoverableToolError(
             "galaris:// supports only name and text search. Retry with mode='text', "
@@ -500,7 +514,9 @@ async def append_file(ctx: McpToolContext, uri: str, content: str, expected_revi
         "example start_line=10 and end_line=14 rewrites lines 10 through 14. Binary resources "
         "are rejected. Pass expected_revision for galaris://skill/ when known. For Nextcloud, "
         "pass expected_etag from file_read when known. On a revision or ETag conflict, read again "
-        "and locate the range in the current content before resubmitting the edit."
+        "and locate the range in the current content before resubmitting the edit. If the "
+        "history contains an omission marker, read the actual range and send the complete "
+        "replacement content."
         " Contact JSON at galaris://contact/<uuid> requires expected_etag from file_read/file_info; "
         "only display_name and coordinates are editable, and the result must remain valid JSON."
     ),
@@ -528,6 +544,8 @@ async def edit_file(
             expected_revision=expected_revision,
             expected_etag=expected_etag,
         )
+    except IncompleteResourceContent as exc:
+        raise ToolArgumentsRejectedError(str(exc)) from exc
     except (ResourceValidationError, ResourceUriError, RichTextError) as exc:
         raise FileEditRejected(str(exc)) from exc
     except (ResourceRevisionConflict, DocumentConflictError) as exc:
