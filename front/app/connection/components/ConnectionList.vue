@@ -679,15 +679,16 @@ async function persistForAction(payload: ConnectionPersistencePayload): Promise<
   }
 
   try {
-    const atomicScope = Object.hasOwn(payload.params, 'services.management_scope') || !!serviceStore.services.find(tool => tool.id === payload.data.service_id)?.has_mail
-    const data = { ...payload.data, ...(atomicScope ? { params: payload.params } : {}) }
+    const tool = serviceStore.services.find(tool => tool.id === payload.data.service_id)
+    const atomicParams = Object.hasOwn(payload.params, 'services.management_scope') || tool?.has_mail || tool?.code === 'console'
+    const data = { ...payload.data, ...(atomicParams ? { params: payload.params } : {}) }
     const connection = id
       ? await connectionStore.updateConnection(id, data)
       : await connectionStore.createConnection(data)
     // Retain an identity even when saving parameters fails after creation.
     if (current === dialogGeneration) actionConnection = connection
 
-    if (!atomicScope && Object.keys(payload.params).length > 0) {
+    if (!atomicParams && Object.keys(payload.params).length > 0) {
       await connectionStore.createOrUpdateParamsBulk(connection.id, payload.params)
     }
     return connection
@@ -718,8 +719,9 @@ async function onSubmit(payload: ConnectionPersistencePayload) {
 
   try {
     let connection: Connection
-    const atomicScope = Object.hasOwn(payload.params, 'services.management_scope') || !!serviceStore.services.find(tool => tool.id === payload.data.service_id)?.has_mail
-    const data = { ...payload.data, ...(atomicScope ? { params: payload.params } : {}) }
+    const tool = serviceStore.services.find(tool => tool.id === payload.data.service_id)
+    const atomicParams = Object.hasOwn(payload.params, 'services.management_scope') || tool?.has_mail || tool?.code === 'console'
+    const data = { ...payload.data, ...(atomicParams ? { params: payload.params } : {}) }
 
     if (payload.id) {
       const updateData: ConnectionUpdate = data
@@ -729,7 +731,7 @@ async function onSubmit(payload: ConnectionPersistencePayload) {
       connection = await connectionStore.createConnection(createData)
     }
 
-    if (!atomicScope && connection && Object.keys(payload.params).length > 0) {
+    if (!atomicParams && Object.keys(payload.params).length > 0) {
       await connectionStore.createOrUpdateParamsBulk(connection.id, payload.params)
     }
 

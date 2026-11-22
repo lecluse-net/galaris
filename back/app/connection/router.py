@@ -349,7 +349,7 @@ async def get_connection(connection_id: int):
 
 @router.post("", response_model=ConnectionSchema, status_code=status.HTTP_201_CREATED)
 @authorize(privileges=Privileges.CONNECTION_EDIT)
-async def create_connection(data: ConnectionCreate, request: Request):
+async def create_connection(data: ConnectionCreate, request: Request) -> ConnectionSchema:
     scope = await current_management_scope()
     await _require_agent(scope, data.agent_id)
     await _editable_tool(data.service_id)
@@ -382,13 +382,16 @@ async def create_connection(data: ConnectionCreate, request: Request):
         )
         if updated is not None:
             connection = updated
-    await _refresh_agent_indexes([connection.agent_id])
-    return connection
+    result = ConnectionSchema.model_validate(connection)
+    # Console exposes native tools. Search reconciles their live catalog on demand.
+    if tool is None or tool.code != "console":
+        await _refresh_agent_indexes([result.agent_id])
+    return result
 
 
 @router.patch("/{connection_id}", response_model=ConnectionSchema)
 @authorize(privileges=Privileges.CONNECTION_EDIT)
-async def update_connection(connection_id: int, update: ConnectionUpdate, request: Request):
+async def update_connection(connection_id: int, update: ConnectionUpdate, request: Request) -> ConnectionSchema:
     db = get_db()
     connection = await _managed_connection(connection_id)
     from app.services.facade import lock_services
@@ -399,6 +402,7 @@ async def update_connection(connection_id: int, update: ConnectionUpdate, reques
         await _editable_tool(update.service_id)
     scope = await current_management_scope()
     previous_agent_id = connection.agent_id
+    previous_service_id = connection.service_id
 
     new_service_id = update.service_id if update.service_id is not None else connection.service_id
     new_agent_id = update.agent_id or connection.agent_id
@@ -442,10 +446,11 @@ async def update_connection(connection_id: int, update: ConnectionUpdate, reques
 
     await db.commit()
     await db.refresh(connection)
-    await _refresh_agent_indexes(
-        sorted({previous_agent_id, connection.agent_id})
-    )
-    return connection
+    # A best-effort refresh can roll back its own work and expire ORM rows.
+    result = ConnectionSchema.model_validate(connection)
+    if target_tool is None or target_tool.code != "console" or previous_service_id != result.service_id:
+        await _refresh_agent_indexes(sorted({previous_agent_id, result.agent_id}))
+    return result
 
 
 @router.delete("/{connection_id}", status_code=status.HTTP_204_NO_CONTENT)

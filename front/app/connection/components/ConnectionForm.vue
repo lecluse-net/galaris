@@ -255,7 +255,7 @@
           type="submit"
           color="primary"
           :loading="loading || consoleAction === 'embedded'"
-          :disable="!isValidForm || consoleAction === 'editor'"
+          :disable="!isValidForm || consoleAction !== null"
         />
       </div>
     </div>
@@ -381,7 +381,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, onBeforeUnmount, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import { connectionParamLabel, connectionParamMessageKey, connectionParamOptions, sortedConnectionParamEntries } from '@/app/services/facade'
@@ -597,6 +597,13 @@ function hasGlobalValue(name: string): boolean {
   return globalParam(name)?.configured === true
 }
 
+function hasConsoleCredential(name: string): boolean {
+  return Boolean(effectiveParamValue(name))
+    || newlyConfiguredParams.value.has(name)
+    || props.configuredParams?.includes(name) === true
+    || hasGlobalValue(name)
+}
+
 function isGloballyForced(name: string): boolean {
   return hasGlobalValue(name) && globalParam(name)?.forced === true
 }
@@ -721,6 +728,7 @@ function onToolChange() {
 function resetForm() {
   consoleContext += 1
   consoleAction.value = null
+  generatedPublicKey.value = ''
   editorDeployed.value = false
   consoleTestStatus.value = null
   consoleTestResult.value = ''
@@ -748,6 +756,7 @@ function initForm(connection?: Connection, params?: Record<string, unknown> | nu
   oauthSavedDraft = null
   consoleContext += 1
   consoleAction.value = null
+  generatedPublicKey.value = ''
   editorDeployed.value = false
   consoleTestStatus.value = null
   consoleTestResult.value = ''
@@ -804,8 +813,8 @@ function buildSubmitPayload(active: boolean = form.value.active): ConnectionSubm
   for (const definition of schemaParameters.value) {
     const key = definition.name
     if (key === 'services.management_scope' && !canDelegateScope.value) continue
-    if (consoleTarget.value === 'embedded' && isConsoleManagedParam(key)) continue
     const value = paramValues.value[key] ?? ''
+    if (isConsoleManagedParam(key) && (consoleTarget.value === 'embedded' || value === '')) continue
     if (isGloballyForced(key)) {
       if (paramOverrides.value[key]) filteredParams[key] = null
       continue
@@ -835,7 +844,7 @@ function buildSubmitPayload(active: boolean = form.value.active): ConnectionSubm
 
 async function onSubmit() {
   if (!canEdit.value) return
-  if (!isValidForm.value) return
+  if (!isValidForm.value || consoleAction.value !== null) return
 
   if (selectedTool.value?.code === 'console' && consoleTarget.value === 'embedded') {
     const agentId = form.value.agent_id
@@ -875,7 +884,7 @@ function consoleErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
 }
 
-async function persistConsoleDraft(active = false): Promise<Connection> {
+async function persistConsoleDraft(): Promise<Connection> {
   if (!canEdit.value && form.value.id !== null) {
     return {
       id: form.value.id,
@@ -884,11 +893,16 @@ async function persistConsoleDraft(active = false): Promise<Connection> {
       active: form.value.active,
     }
   }
-  const payload = buildSubmitPayload(active)
+  const payload = buildSubmitPayload(props.connection?.active ?? false)
   if (!payload || !props.persistForAction) {
     throw new Error(t('connection.saveError'))
   }
+  const context = consoleContext
   const connection = await props.persistForAction(payload)
+  if (context !== consoleContext || form.value.agent_id !== connection.agent_id
+    || form.value.service_id !== connection.service_id || consoleTarget.value !== 'external') {
+    throw new Error(t('connection.saveError'))
+  }
   form.value.id = connection.id
   return connection
 }
@@ -939,30 +953,42 @@ function acceptPendingHostKey(): void {
 }
 
 async function generateKey(): Promise<void> {
+  const context = consoleContext
   consoleAction.value = 'key'
   try {
     const connection = await persistConsoleDraft()
     const { data } = await consoleService.generateKey(connection.id)
+    if (context !== consoleContext || form.value.id !== data.connection_id) return
     generatedPublicKey.value = data.public_key
     newlyConfiguredParams.value = new Set(newlyConfiguredParams.value).add('private_key')
     paramOverrides.value.private_key = true
     $q.notify({ type: 'positive', message: t('connection.console.keyGenerated') })
   } catch (error) {
-    $q.notify({ type: 'negative', message: `${t('connection.console.actionError')}: ${consoleErrorMessage(error)}` })
-  } finally { consoleAction.value = null }
+    if (context === consoleContext) $q.notify({ type: 'negative', message: `${t('connection.console.actionError')}: ${consoleErrorMessage(error)}` })
+  } finally { if (context === consoleContext) consoleAction.value = null }
 }
 
 async function testConsole(): Promise<void> {
+  if (canEdit.value && !hasConsoleCredential('private_key')) {
+    $q.notify({ type: 'warning', message: t('connection.console.generateKeyBeforeTest') })
+    return
+  }
+  if (canEdit.value && !hasConsoleCredential('known_host_key')) {
+    $q.notify({ type: 'warning', message: t('connection.console.confirmHostKeyBeforeTest') })
+    return
+  }
+  const context = consoleContext
   consoleAction.value = 'test'
   try {
-    const connection = await persistConsoleDraft(props.connection?.active ?? false)
+    const connection = await persistConsoleDraft()
     const { data } = await consoleService.testConnection(connection.id)
+    if (context !== consoleContext || form.value.id !== data.connection_id) return
     consoleTestStatus.value = data.status
     consoleTestResult.value = JSON.stringify(data, null, 2)
     showConsoleTestResult.value = true
   } catch (error) {
-    $q.notify({ type: 'negative', message: `${t('connection.console.actionError')}: ${consoleErrorMessage(error)}` })
-  } finally { consoleAction.value = null }
+    if (context === consoleContext) $q.notify({ type: 'negative', message: `${t('connection.console.actionError')}: ${consoleErrorMessage(error)}` })
+  } finally { if (context === consoleContext) consoleAction.value = null }
 }
 
 async function testMail(): Promise<void> {
@@ -1013,7 +1039,7 @@ async function installEditor(): Promise<void> {
   const context = consoleContext
   consoleAction.value = 'editor'
   try {
-    const connection = await persistConsoleDraft(props.connection?.active ?? false)
+    const connection = await persistConsoleDraft()
     const { data } = await consoleService.installEditor(connection.id)
     if (context !== consoleContext || form.value.id !== data.connection_id) return
     paramValues.value.code_runtime_port = String(data.port)
@@ -1046,6 +1072,8 @@ watch(() => selectedTool.value, () => {
   if (!props.connection) initParamsFromSchema()
   if (selectedTool.value?.has_mail) void loadApprovers()
 }, { immediate: true })
+
+onBeforeUnmount(() => { consoleContext += 1 })
 
 defineExpose({ initForm, resetForm })
 </script>

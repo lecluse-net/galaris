@@ -19,6 +19,100 @@ from app.services.models import Service
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("existing", [False, True], ids=["create", "update"])
+async def test_ssh_configuration_survives_tool_catalog_failure(client, monkeypatch, tmp_path, existing):
+    from uuid import uuid4
+
+    import asyncssh
+
+    from core.authorize import Assignment, Privilege, Role
+    from core.database import get_db_session
+    from core.user import UserModel, auth_service, refresh_session_service
+
+    suffix = uuid4().hex
+    async with get_db_session() as db:
+        privileges = list(await db.scalars(
+            select(Privilege).where(Privilege.code.in_(["CONNECTION_EDIT", "AGENT_MANAGE_ALL"])),
+        ))
+        role = Role(code=f"ssh-editor-{suffix}", privileges=privileges)
+        user = UserModel(email=f"ssh-editor-{suffix}@example.test", hashed_password="synthetic")
+        title = Title(label="Synthetic SSH editor", gender="X")
+        db.add_all([role, user, title])
+        tool = await db.scalar(select(Service).where(Service.code == "console"))
+        assert tool is not None
+        await db.flush()
+        db.add(Assignment(user_id=user.id, role_id=role.id, is_default=True))
+        agent = Agent(user_id=user.id, title_id=title.id, code=f"ssh-editor-{suffix}", first_name="Synthetic", last_name="SSH")
+        db.add(agent)
+        await db.flush()
+        metadata = {"agent_id": agent.id, "service_id": tool.id, "active": False}
+        connection_id = None
+        if existing:
+            connection = Connection(**metadata)
+            db.add(connection)
+            await db.flush()
+            connection_id = connection.id
+        refresh = await refresh_session_service.create_refresh_session(user.id)
+        token = await auth_service.create_access_token_for_user(
+            user, session_family=await refresh_session_service.family_for_token(refresh),
+        )
+    headers = {"Authorization": f"Bearer {token}"}
+    monkeypatch.setattr(router, "refresh_agent_tool_catalog", AsyncMock(side_effect=RuntimeError("Synthetic discovery failure")))
+
+    authorized_key = None
+
+    class Server(asyncssh.SSHServer):
+        def public_key_auth_supported(self):
+            return True
+
+        def validate_public_key(self, username, key):
+            return username == "synthetic" and authorized_key is not None and key == authorized_key
+
+    def run_command(process):
+        if process.command == '''printf '%s' "$HOME"''':
+            process.stdout.write("/synthetic")
+            process.exit(0)
+        else:
+            process.exit(127)
+
+    (tmp_path / "synthetic").mkdir()
+    host_key = asyncssh.generate_private_key("ssh-ed25519")
+    async with asyncssh.listen(
+        "127.0.0.1", 0, server_factory=Server, server_host_keys=[host_key], process_factory=run_command,
+        sftp_factory=lambda channel: asyncssh.SFTPServer(channel, chroot=str(tmp_path)),
+    ) as server:
+        target = {"host": "127.0.0.1", "port": server.get_port()}
+        scanned = await client.post("/api/console/host-key/scan", headers=headers, json=target)
+        assert scanned.status_code == 200, scanned.text
+        assert scanned.json()["fingerprint"] == host_key.get_fingerprint()
+        payload = {**metadata, "params": {
+            "host": target["host"], "port": str(target["port"]), "username": "synthetic",
+            "known_host_key": scanned.json()["key"],
+        }}
+        if connection_id is None:
+            saved = await client.post("/api/connections", headers=headers, json=payload)
+            assert saved.status_code == 201, saved.text
+            connection_id = saved.json()["id"]
+        else:
+            saved = await client.patch(f"/api/connections/{connection_id}", headers=headers, json=payload)
+            assert saved.status_code == 200, saved.text
+        assert saved.json()["active"] is False
+        console = f"/api/console/connections/{connection_id}"
+        generated = await client.post(f"{console}/generate-key", headers=headers)
+        assert generated.status_code == 200, generated.text
+        authorized_key = asyncssh.import_public_key(generated.json()["public_key"])
+        configured = await client.get(f"/api/connections/{connection_id}/params", headers=headers)
+        assert configured.status_code == 200, configured.text
+        assert configured.json()["params"]["private_key"] is None
+        assert "private_key" in configured.json()["configured_params"]
+
+        tested = await client.post(f"{console}/test", headers=headers)
+        assert tested.status_code == 200, tested.text
+        status = tested.json()["status"]
+        assert status["authenticated"] and status["host_key_verified"] and status["home_writable"], status
+
+
+@pytest.mark.asyncio
 async def test_dashboard_scope_delegation_is_human_global_local_and_bounded(client):
     from uuid import uuid4
     from core.authorize import Assignment, Privilege, Role

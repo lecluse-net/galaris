@@ -1,13 +1,18 @@
 import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 
 for (const active of [true, false]) {
-  test(`testing and deploying a Console preserve its saved activation after cancel and reopen (${active})`, async ({ page }) => {
+  test(`generating a key, testing and deploying preserve the Console configuration across reopening (${active})`, async ({ page }) => {
+    if (!active) await page.setViewportSize({ width: 390, height: 844 })
     const connection = { id: 42, agent_id: 7, service_id: 8, active }
-    const params = { host: 'console.example.test' }
+    const params = { host: 'console.example.test', known_host_key: 'synthetic-pinned-host-key' }
     const writes = []
+    let failSave = true
+    let generated = false
+    let tests = 0
     await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Alice', last_name: 'Example', agent_driver: 'internal' }])
     const tools = [{ id: 8, code: 'console', label: 'Console', can_disable: true, can_edit: false,
-      connection_schema: { params: { host: { type: 'string' } } }, global_params: {} }]
+      connection_schema: { params: { host: { type: 'string' }, known_host_key: { type: 'password' },
+        private_key: { type: 'password' } } }, global_params: {} }]
     await jsonRoute(page, '**/api/services', tools)
     await jsonRoute(page, '**/api/connections/service-options', tools)
     for (const endpoint of ['file-share/bridges', 'messenger/bridges', 'mail/approvers']) {
@@ -16,39 +21,63 @@ for (const active of [true, false]) {
     await page.route('**/api/connections?*', route => route.fulfill({ json: [connection] }))
     await page.route('**/api/connections/overview?*', route => route.fulfill({ json: [{ ...connection, params, configured_params: [] }] }))
     await page.route('**/api/connections/42/params?*', route => route.fulfill({ json: {
-      ...connection, connection_id: 42, params, configured_params: [],
+      ...connection, connection_id: 42, params: { host: params.host },
+      configured_params: ['known_host_key', ...(generated ? ['private_key'] : [])],
     } }))
     await page.route('**/api/connections/42', route => {
-      const data = route.request().postDataJSON()
-      writes.push(data)
-      Object.assign(connection, data)
+      if (failSave) {
+        failSave = false
+        return route.abort()
+      }
+      const { params: changes, ...metadata } = route.request().postDataJSON()
+      writes.push(metadata)
+      Object.assign(connection, metadata)
+      Object.assign(params, changes)
       return route.fulfill({ json: connection })
     })
-    await page.route('**/api/connections/42/params/bulk', route => {
-      Object.assign(params, route.request().postDataJSON().params)
-      return route.fulfill({ json: [] })
+    await page.route('**/api/console/connections/42/generate-key', route => {
+      generated = true
+      params.private_key = 'synthetic-private-key'
+      return route.fulfill({ json: { connection_id: 42, public_key: 'ssh-ed25519 AAAASyntheticPublicKey' } })
     })
-    await jsonRoute(page, '**/api/console/connections/42/test', { connection_id: 42, status: {
-      reachable: true, authenticated: true, host_key_verified: true, home_writable: true, sftp_available: true, mode: 'standard',
-    } })
+    await page.route('**/api/console/connections/42/test', route => {
+      tests++
+      const authenticated = Boolean(params.private_key && params.known_host_key)
+      return route.fulfill({ json: { connection_id: 42, status: {
+        reachable: true, authenticated, host_key_verified: authenticated, home_writable: true, sftp_available: true, mode: 'standard',
+      } } })
+    })
     await jsonRoute(page, '**/api/console/connections/42/install-editor', {
       connection_id: 42, port: 32123, version: '4.141.0', ready: true, already_installed: false,
     })
     await mount(page, 'app/connection/components/ConnectionList.vue', {
+      shell: true, dark: !active,
       privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT', 'AGENT_MANAGE_ALL'],
     })
+    if (!active) await page.locator('.q-drawer__backdrop').click({ position: { x: 380, y: 200 } })
     await page.getByRole('button', { name: 'All', exact: true }).click()
-    for (const action of ['Test', 'Deploy code editor']) {
+    for (const action of ['Generate key', 'Test', 'Deploy code editor']) {
       await page.getByRole('button', { name: 'Edit', exact: true }).click()
       const form = page.getByRole('dialog').first()
       // Unsaved activation changes must not take effect during a technical action.
       await form.getByRole('switch', { name: 'Active connection', exact: true }).click()
-      await form.getByText('SSH configuration tools', { exact: true }).locator('..')
-        .getByRole('button', { name: action, exact: true }).click()
-      if (action === 'Test') {
-        await expect(page.getByRole('dialog').last()).toContainText('"reachable": true')
+      const tools = form.getByText('SSH configuration tools', { exact: true }).locator('..')
+      const button = tools.getByRole('button', { name: action, exact: true })
+      if (action === 'Generate key') {
+        await tools.getByRole('button', { name: 'Test', exact: true }).click()
+        await expect(page.getByRole('alert').filter({ hasText: 'Generate an SSH key' })).toBeVisible()
+        expect(tests).toBe(0)
+        await button.click()
+        await expect(page.getByRole('alert').filter({ hasText: 'SSH action failed' })).toBeVisible()
+        expect(generated).toBe(false)
+        await button.click()
+        await expect(form.getByText(/grep.*ssh-ed25519 AAAASyntheticPublicKey/)).toBeVisible()
+      } else if (action === 'Test') {
+        await button.click()
+        await expect(page.getByRole('dialog').last()).toContainText('"authenticated": true')
         await page.getByRole('dialog').last().getByRole('button', { name: 'Close', exact: true }).last().click()
       } else {
+        await button.click()
         await expect(form.getByRole('status')).toContainText('The editor is deployed and its access is configured')
       }
       expect(writes.at(-1).active).toBe(active)
@@ -58,7 +87,8 @@ for (const active of [true, false]) {
     await page.getByRole('button', { name: 'Edit', exact: true }).click()
     await expect(page.getByRole('switch', { name: 'Active connection', exact: true })).toHaveAttribute('aria-checked', String(active))
     expect(connection.active).toBe(active)
-    expect(writes).toHaveLength(2)
+    expect(writes).toHaveLength(3)
+    expect(tests).toBe(1)
   })
 }
 
@@ -78,6 +108,7 @@ test('a legacy console helper can be upgraded, retried after failure and recheck
     props: {
       connection: { id: 42, agent_id: 7, service_id: 8, active: true },
       connectionParams: { host: 'console.example.test' },
+      configuredParams: ['private_key', 'known_host_key'],
       agentOptions: [{ value: 7, label: 'Alice', agentDriver: 'internal' }],
       serviceOptions: [{ id: 8, label: 'Console' }],
       tools: [{ id: 8, label: 'Console', code: 'console', connection_schema: { params: { host: { type: 'string' } } } }],
