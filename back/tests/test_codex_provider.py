@@ -95,7 +95,10 @@ async def test_native_nonstream_responses_consumes_codex_sse(monkeypatch, outcom
         "usage": {"input_tokens": 8, "output_tokens": 3, "total_tokens": 11},
     }
     requests = []
+    session_active = False
+
     async def upstream(request):
+        assert not session_active
         body = json.loads(request.content)
         requests.append(body)
         assert body["model"] == "gpt-6-astra"
@@ -130,7 +133,17 @@ async def test_native_nonstream_responses_consumes_codex_sse(monkeypatch, outcom
 
     @asynccontextmanager
     async def session():
-        yield None
+        nonlocal session_active
+        assert not session_active
+        session_active = True
+        try:
+            yield None
+        finally:
+            session_active = False
+
+    async def access_token(*_args, **_kwargs):
+        assert session_active, "Codex credential lookup held the caller's database session"
+        return _jwt({"https://api.openai.com/auth": {"chatgpt_account_id": "test"}})
 
     provider = SimpleNamespace(id=2, name="ChatGPT", is_active=True,
         catalog_code="openai-codex", provider_type="openai_codex", configuration={},
@@ -140,7 +153,7 @@ async def test_native_nonstream_responses_consumes_codex_sse(monkeypatch, outcom
         cost_per_input_token=None, cost_per_cached_input_token=None, cost_per_output_token=None)
     create = AsyncMock(return_value=SimpleNamespace(id=uuid4()))
     finalize = AsyncMock()
-    token = AsyncMock(return_value=_jwt({"https://api.openai.com/auth": {"chatgpt_account_id": "test"}}))
+    token = AsyncMock(side_effect=access_token)
     client_class = httpx.AsyncClient
     clients = []
     class Client(client_class):

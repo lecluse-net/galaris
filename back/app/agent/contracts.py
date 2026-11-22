@@ -1466,6 +1466,7 @@ class AgentRunControl:
     save_checkpoint: Callable[[AgentRunCheckpoint], Awaitable[None]] | None = None
     publish_event: Callable[[AgentRunEventV1], Awaitable[None]] | None = None
     save_native_history: Callable[[str], None] | None = None
+    record_activity: Callable[[], Awaitable[None]] | None = None
 
 
 @dataclass(frozen=True)

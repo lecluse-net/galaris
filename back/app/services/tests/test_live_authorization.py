@@ -45,6 +45,10 @@ async def test_mounted_tool_rechecks_rights_and_keeps_other_agents_operational(c
             await mandatory_services.sync_integrated_service_connections(identifier)
     async with get_db_session():
         servers = [await mcp_loader.build_agent_galaris_fastmcp(identifier, runtime="internal") for identifier in identifiers]
+    async with get_db_session() as caller:
+        async with Client(servers[0]) as client:
+            assert "team_list" in {tool.name for tool in await client.list_tools()}
+            assert not caller.in_transaction(), "Tool discovery must release its database connection before generation"
     async with Client(servers[0]) as client, Client(servers[1]) as other:
         arguments = {"url": "https://example.org/", "output": "content", "unused": "private"}
         assert not (await client.call_tool("browser_open", arguments)).is_error

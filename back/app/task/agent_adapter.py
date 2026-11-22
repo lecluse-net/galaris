@@ -25,7 +25,8 @@ from app.agent.contracts import (
 )
 from app.agent.task_port import TaskAmendmentUnavailableError, register_task_port
 from app.agent import EffectDescriptorV1, ScopePreflightV1
-from sqlalchemy import select, update as sql_update
+from sqlalchemy import Text, cast as sql_cast, func, or_, select, update as sql_update
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm.attributes import get_history, set_committed_value
 
 from . import collab, task_service
@@ -476,6 +477,37 @@ class SqlAlchemyAgentTaskAdapter:
                             "run_id": identity.get("request_run_id"), "at": now.isoformat(),
                         }}
             await task_service.save(task)
+
+        from . import scheduler
+
+        scheduler.notify_task_activity(task_id)
+
+    async def record_agent_run_activity(self, task_id: UUID, attempt_id: UUID, run_id: UUID) -> None:
+        """Refresh the watchdog from model data without rewriting the Task result."""
+        from core.database import get_db_session
+
+        now = datetime.now(timezone.utc)
+        active = select(Task.id).where(
+            Task.id == task_id,
+            Task.deleted_at.is_(None),
+            Task.status.not_in((TaskStatus.SUCCESS, TaskStatus.ERROR)),
+            Task.lease_token == TaskAttempt.lease_token,
+            or_(Task.lease_expires_at.is_(None), Task.lease_expires_at > now),
+            Task.data["_agent_run_identity"]["request_run_id"].as_string() == str(run_id),
+        ).exists()
+        async with get_db_session() as db:
+            recorded = await db.scalar(sql_update(TaskAttempt).where(
+                TaskAttempt.id == attempt_id,
+                TaskAttempt.task_id == task_id,
+                TaskAttempt.status == "CLAIMED",
+                active,
+            ).values(data=func.jsonb_set(
+                func.coalesce(TaskAttempt.data, sql_cast({}, JSONB)),
+                sql_cast(["runtime_activity"], ARRAY(Text)),
+                sql_cast({"run_id": str(run_id), "at": now.isoformat()}, JSONB),
+            )).returning(TaskAttempt.id).execution_options(synchronize_session=False))
+            if recorded is None:
+                raise StaleAgentRunError("The task attempt no longer owns this run activity.")
 
         from . import scheduler
 

@@ -543,6 +543,16 @@ async def _stream(
     )
     last_progress_persist = 0.0
 
+    async def record_model_activity() -> None:
+        nonlocal last_progress_persist
+        record_activity = task.control.record_activity
+        if record_activity is None:
+            return
+        now = time.monotonic()
+        if now - last_progress_persist >= _PROGRESS_PERSIST_INTERVAL:
+            last_progress_persist = now
+            await record_activity()
+
     async def persist_progress(force: bool = False) -> None:
         """Publish the live trace without creating a resumable run checkpoint."""
 
@@ -583,7 +593,7 @@ async def _stream(
         current_messages=[current_message] if current_message is not None else None,
         output_transport=None,
         checkpoint=checkpoint,
-        on_model_activity=persist_progress,
+        on_model_activity=record_model_activity,
         **native_history,
     )
     from . import run_control
@@ -603,12 +613,13 @@ async def _stream(
             if message.type == "text" and not message.success:
                 ai_result.success = False
 
-            # Reasoning uses tool-typed messages too, but its token deltas need the
-            # same throttle as text. Effects, failures and completed blocks stay immediate.
-            await persist_progress(
-                force=(message.type == "tool" and message.tool_name != "thinking")
-                or not message.success or message.stream_complete is True,
-            )
+            if message.stream_complete is not False or not message.stream_id or not message.success:
+                # The live trace records visible fragments. Tool results and
+                # closed blocks also update the durable result used on reopening.
+                await persist_progress(
+                    force=(message.type == "tool" and message.tool_name != "thinking")
+                    or not message.success or message.stream_complete is True,
+                )
 
             # Empty completion markers make a Task block visible without replaying text.
             if message.has_visible_content() or message.stream_complete is True:

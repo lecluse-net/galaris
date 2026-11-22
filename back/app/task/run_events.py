@@ -49,15 +49,23 @@ async def _can_read_event(user: UserModel, action: str, data: Mapping[str, Any])
 
 
 async def publish_task_run(event: AgentLiveEvent) -> None:
-    data = event.model_dump(mode="json", exclude_none=True)
-    from .live_checkpoint import checkpoint_live_event
+    from .live_checkpoint import checkpoint_live_event, mark_live_snapshot_published
 
+    snapshot = None
     try:
         snapshot = await checkpoint_live_event(event)
-        if snapshot is not None:
-            data["snapshot"] = snapshot.model_dump(mode="json")
+        fragment = event.message
+        if (snapshot is None and fragment is not None and fragment.stream_id
+                and fragment.stream_complete is False
+                and (fragment.type == "text" or fragment.tool_name == "thinking")):
+            # The next cumulative snapshot carries these fragments. Each emit
+            # reauthorizes recipients, so don't hold up the model on every delta.
+            return
     except Exception:
         logger.exception("Task activity checkpoint failed: task={} run={}", event.task_id, event.run_id)
+    data = event.model_dump(mode="json", exclude_none=True)
+    if snapshot is not None:
+        data["snapshot"] = snapshot.model_dump(mode="json")
     message = data.get("message")
     if isinstance(message, dict):
         message_data = cast(dict[str, object], message)
@@ -77,12 +85,16 @@ async def publish_task_run(event: AgentLiveEvent) -> None:
             for field in ("tool_arguments", "tool_result"):
                 raw_message[field] = project_tool_payload(cast(dict[str, Any] | None, raw_message.get(field)))
         result_data.pop("metadata", None)
-    await websocket.emit(
-        "agent_run",
-        "event",
-        data,
-        room=TaskRunRoom(event.task_id),
-    )
+    try:
+        await websocket.emit(
+            "agent_run",
+            "event",
+            data,
+            room=TaskRunRoom(event.task_id),
+        )
+    finally:
+        if snapshot is not None:
+            mark_live_snapshot_published(event)
 
 
 def register_events() -> None:

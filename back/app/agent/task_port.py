@@ -66,6 +66,7 @@ class AgentTaskPort(Protocol):
         data_patch: Mapping[str, Any] | None = None,
         execution_result: ExecutionResult | None = None,
     ) -> None: ...
+    async def record_agent_run_activity(self, task_id: UUID, attempt_id: UUID, run_id: UUID) -> None: ...
     async def append_agent_run_event(
         self, task: AgentTask, event: AgentRunEventV1
     ) -> None: ...
@@ -201,6 +202,9 @@ class _TaskPortProxy:
             data_patch=data_patch,
             execution_result=execution_result,
         )
+
+    async def record_agent_run_activity(self, task_id: UUID, attempt_id: UUID, run_id: UUID) -> None:
+        await self._require().record_agent_run_activity(task_id, attempt_id, run_id)
 
     async def append_agent_run_event(
         self, task: AgentTask, event: AgentRunEventV1

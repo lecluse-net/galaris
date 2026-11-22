@@ -297,6 +297,7 @@ async def test_internal_stream_publishes_initial_and_tool_progress(
     fragment_count: int,
 ) -> None:
     progress = AsyncMock()
+    activity = AsyncMock()
     clock = SimpleNamespace(now=100.0)
     monkeypatch.setattr(executor, "time", SimpleNamespace(time=executor.time.time, monotonic=lambda: clock.now))
     streamed_content = "Searching" if fragment_count == 9 else "a" * fragment_count
@@ -325,7 +326,7 @@ async def test_internal_stream_publishes_initial_and_tool_progress(
             "prompt": "Find the answer",
             "decision": {"route": "EXEC", "requires_action": True},
         }),
-        control=AgentRunControl(save_progress=progress),
+        control=AgentRunControl(save_progress=progress, record_activity=activity),
     )
 
     class FakeRuntime:
@@ -336,7 +337,9 @@ async def test_internal_stream_publishes_initial_and_tool_progress(
                 # Reasoning arrives as tool-typed fragments, but is not an executed tool.
                 kind = "tool" if stream_kind == "thinking" else "text"
                 tool_name = "thinking" if stream_kind == "thinking" else None
-                for fragment in streamed_content:
+                for index, fragment in enumerate(streamed_content):
+                    if index == len(streamed_content) // 2:
+                        clock.now += executor._PROGRESS_PERSIST_INTERVAL + 0.01
                     yield AIMessage(type=kind, tool_name=tool_name, content=fragment,
                         stream_id="content", stream_complete=False)
                 yield AIMessage(type=kind, tool_name=tool_name, content="",
@@ -381,7 +384,8 @@ async def test_internal_stream_publishes_initial_and_tool_progress(
 
     events = [event async for event in executor.stream(request)]
 
-    assert progress.await_count == (3 if use_tool else 2) + int(argument_stream)
+    assert progress.await_count == (3 if use_tool else 2)
+    assert activity.await_count == int(argument_stream)
     initial = progress.await_args_list[0].args[0]
     assert isinstance(initial, ExecutionResult)
     assert initial.messages == []
@@ -394,10 +398,6 @@ async def test_internal_stream_publishes_initial_and_tool_progress(
     observed_tools = ["thinking"] if stream_kind == "thinking" else []
     message_type = "tool" if stream_kind == "thinking" else "text"
 
-    if argument_stream:
-        during_arguments = progress.await_args_list[2].args[0]
-        assert during_arguments.tools_used == observed_tools
-        assert [message.type for message in during_arguments.messages] == [message_type]
     if use_tool:
         after_tool = progress.await_args_list[-1].args[0]
         assert isinstance(after_tool, ExecutionResult)

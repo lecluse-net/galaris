@@ -1066,17 +1066,11 @@ class _MediaFilteredFastMCP(FastMCP):
         if not any(tool.name in dynamic for tool in tools):
             return tools
 
-        async def current_names() -> set[str]:
-            return {definition.name for definition in await list_enabled_native_mcp_definitions(
+        # In-process MCP discovery can inherit the agent's run session. Keep the
+        # live authorization read short so generation doesn't retain that transaction.
+        async with get_db_session():
+            visible = {definition.name for definition in await list_enabled_native_mcp_definitions(
                 self.media_agent_id, runtime=self.runtime, allowed_tool_names=dynamic, conversation_only=self.conversation_only)}
-
-        try:
-            get_db()
-        except RuntimeError:
-            async with get_db_session():
-                visible = await current_names()
-        else:
-            visible = await current_names()
         return [tool for tool in tools if tool.name not in dynamic or tool.name in visible]
 
 

@@ -576,12 +576,15 @@ async def proxy_chat_completion(
     try:
         async with deadline.enforce():
             if transport is not None:
-                prepared = await transport.prepare_request(
-                    provider.id,
-                    connection,
-                    canonical_forwarded,
-                    force_stream=bridge_transport_nonstream,
-                )
+                # Provider credential lookup can open a transaction. End it
+                # before the network stream instead of retaining the caller's pool slot.
+                async with get_db_session():
+                    prepared = await transport.prepare_request(
+                        provider.id,
+                        connection,
+                        canonical_forwarded,
+                        force_stream=bridge_transport_nonstream,
+                    )
                 headers = prepared.headers
                 forwarded = prepared.body
                 endpoint = prepared.endpoint
@@ -1050,12 +1053,13 @@ async def proxy_responses(
     try:
         async with deadline.enforce():
             if transport is not None:
-                prepared = await transport.prepare_responses_request(
-                    provider.id,
-                    connection,
-                    canonical_forwarded,
-                    operation=operation,
-                )
+                async with get_db_session():
+                    prepared = await transport.prepare_responses_request(
+                        provider.id,
+                        connection,
+                        canonical_forwarded,
+                        operation=operation,
+                    )
                 endpoint = prepared.endpoint
                 headers = prepared.headers
                 forwarded = prepared.body

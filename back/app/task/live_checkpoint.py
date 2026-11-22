@@ -19,6 +19,14 @@ _MAX_MESSAGES = 40
 _MAX_CHARS = 4_000
 
 
+def mark_live_snapshot_published(event: AgentLiveEvent) -> None:
+    """Pace the next snapshot from the end of its WebSocket authorization and delivery."""
+    key = (event.task_id, event.run_id, event.attempt_id)
+    cached = _cache.get(key)
+    if cached is not None and cached[0].sequence == event.sequence:
+        _cache[key] = (cached[0], time.monotonic())
+
+
 async def checkpoint_live_event(event: AgentLiveEvent) -> LiveActivity | None:
     key = (event.task_id, event.run_id, event.attempt_id)
     attempt_filter = (TaskAttempt.id == event.attempt_id,) if event.attempt_id else ()
@@ -55,10 +63,11 @@ async def checkpoint_live_event(event: AgentLiveEvent) -> LiveActivity | None:
     terminal = event.kind in {"result", "failed", "cancelled"}
     now = time.monotonic()
     tool_event = event.message is not None and event.message.type == "tool" and event.message.tool_name != "thinking"
-    persist = terminal or tool_event or cached is None or now - cached[1] >= 1.0
+    completed_block = event.message is not None and event.message.stream_complete is True
+    persist = terminal or tool_event or completed_block or cached is None or now - cached[1] >= 1.0
     if persist:
         async with get_db_session() as db:
-            await db.execute(update(TaskAttempt).where(
+            recorded = await db.scalar(update(TaskAttempt).where(
                 TaskAttempt.task_id == event.task_id,
                 *attempt_filter,
                 TaskAttempt.data["agent_run"]["request_run_id"].as_string() == str(event.run_id),
@@ -66,7 +75,11 @@ async def checkpoint_live_event(event: AgentLiveEvent) -> LiveActivity | None:
             ).values(data=func.jsonb_set(
                 func.coalesce(TaskAttempt.data, cast({}, JSONB)),
                 cast(["live_activity"], ARRAY(Text)), cast(snapshot.model_dump(mode="json"), JSONB),
-            )).execution_options(synchronize_session=False))
+            )).returning(TaskAttempt.id).execution_options(synchronize_session=False))
+        if recorded is not None and event.kind == "message":
+            from . import scheduler
+
+            scheduler.notify_task_activity(event.task_id)
     if terminal:
         _cache.pop(key, None)
     else:

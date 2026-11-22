@@ -203,11 +203,13 @@ async def test_model_activity_without_visible_output_refreshes_only_current_run(
     lease, run_id = uuid4(), uuid4()
     old = datetime.now(timezone.utc) - timedelta(minutes=10)
     identity = {"request_run_id": str(run_id)}
+    partial = ExecutionResult(prompt="Synthetic work", messages=[], result="Keep this result")
     async with get_db_session() as db:
         task = Task(label="Synthetic argument generation", objective="<p>Prepare a report.</p>",
             status=TaskStatus.EXEC, lease_token=lease,
             lease_expires_at=datetime.now(timezone.utc) + timedelta(minutes=5),
             data={"_agent_run_identity": identity})
+        task.set_execution_result(partial)
         db.add(task)
         await db.flush()
         attempt = TaskAttempt(task_id=task.id, attempt_number=1, phase="EXEC", status="CLAIMED",
@@ -215,11 +217,10 @@ async def test_model_activity_without_visible_output_refreshes_only_current_run(
             data={"agent_run": identity, "effect_checkpoint": {"receipt": "synthetic-saved"}})
         db.add(attempt)
         await db.flush()
-        task_id, attempt_id, objective = task.id, attempt.id, task.objective
+        task_id, attempt_id, revision = task.id, attempt.id, task.revision
 
-    partial = ExecutionResult(prompt="", messages=[], result="")
-    await SqlAlchemyAgentTaskAdapter().persist_agent_run_state(task_id,
-        expected_objective=objective, expected_attempt_id=attempt_id, execution_result=partial)
+    adapter = SqlAlchemyAgentTaskAdapter()
+    await adapter.record_agent_run_activity(task_id, attempt_id, run_id)
     async with get_db_session() as db:
         task = await db.get(Task, task_id)
         attempt = await db.get(TaskAttempt, attempt_id)
@@ -227,10 +228,13 @@ async def test_model_activity_without_visible_output_refreshes_only_current_run(
         assert snapshot.last_activity_at > old
         assert snapshot.live is None  # Generated arguments are not an executed tool.
         assert task.get_execution_result() == partial
+        assert task.revision == revision
         assert attempt.data["effect_checkpoint"] == {"receipt": "synthetic-saved"}
         task.data = {"_agent_run_identity": {"request_run_id": str(uuid4())}}
         await db.flush()
         assert (await activity_snapshots([task]))[0].last_activity_at == old
+    with pytest.raises(StaleAgentRunError):
+        await adapter.record_agent_run_activity(task_id, attempt_id, run_id)
 
 
 @pytest.mark.asyncio

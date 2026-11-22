@@ -61,6 +61,69 @@ async def test_activity_numbers_attempts_within_their_phase(db, phases, expected
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("run_count", [1, 4, 8])
+async def test_task_run_broadcasts_cumulative_progress_without_sending_each_fragment(
+    committed_database, monkeypatch, run_count,
+):
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from uuid import UUID
+
+    from app.task import run_events
+    from core.database import get_db_session
+
+    runs: list[tuple[UUID, UUID, UUID]] = []
+    async with get_db_session() as db:
+        for _ in range(run_count):
+            task_id, run_id, attempt_id = uuid4(), uuid4(), uuid4()
+            db.add(Task(id=task_id, label="Synthetic streaming task", status=TaskStatus.EXEC))
+            db.add(TaskAttempt(id=attempt_id, task_id=task_id, attempt_number=1, phase="EXEC", status="CLAIMED",
+                worker_id="synthetic-worker", lease_token=uuid4(), data={"agent_run": {"request_run_id": str(run_id)}}))
+            runs.append((task_id, run_id, attempt_id))
+    clock = [100.0]
+    monkeypatch.setattr(live_checkpoint, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+
+    async def delivery(*_args, **_kwargs) -> None:
+        if run_count == 1:
+            # Even when authorization and delivery take longer than the interval,
+            # the wait must not make the next fragment immediately due.
+            clock[0] += 2
+
+    emit = AsyncMock(side_effect=delivery)
+    monkeypatch.setattr(run_events.websocket, "emit", emit)
+
+    async def publish(run: tuple[UUID, UUID, UUID], sequence: int, content: str, complete: bool = False) -> None:
+        task_id, run_id, attempt_id = run
+        await run_events.publish_task_run(AgentLiveEvent(task_id=task_id, run_id=run_id, attempt_id=attempt_id,
+            sequence=sequence, kind="message", message=AIMessage(type="tool", tool_name="thinking",
+                content=content, stream_id="synthetic-thinking", stream_complete=complete)))
+
+    async def burst(run: tuple[UUID, UUID, UUID]) -> None:
+        await publish(run, 1, "Start")
+        for sequence in range(2, 258):
+            await publish(run, sequence, " é")
+
+    await asyncio.gather(*(burst(run) for run in runs))
+    assert emit.await_count == run_count
+
+    clock[0] += 2
+    await asyncio.gather(*(publish(run, 258, " update") for run in runs))
+    assert emit.await_count == 2 * run_count
+    await asyncio.gather(*(publish(run, 259, " done") for run in runs))
+    await asyncio.gather(*(publish(run, 260, "", complete=True) for run in runs))
+    assert emit.await_count == 3 * run_count
+    for call in emit.await_args_list[-run_count:]:
+        message = call.args[2]["snapshot"]["result"]["messages"][0]
+        assert message["content"] == "Start" + " é" * 256 + " update done"
+        assert message["stream_complete"] is True
+    async with get_db_session() as db:
+        for _, _, attempt_id in runs:
+            attempt = await db.get(TaskAttempt, attempt_id)
+            assert attempt.data["live_activity"]["sequence"] == 260
+
+
+@pytest.mark.asyncio
 async def test_reconnect_recovers_current_attempt_without_leaking_payloads_or_replaying_effects(db):
     run_id, lease = uuid4(), uuid4()
     identity = {"request_run_id": str(run_id), "execution_target": {"metadata": {"streams_ai_messages": False}}}

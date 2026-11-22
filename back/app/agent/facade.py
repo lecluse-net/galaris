@@ -788,6 +788,10 @@ async def build_run_request(task: AgentTask) -> AgentRunRequest:
             execution_result=result,
         )
 
+    async def record_activity() -> None:
+        if attempt_id is not None:
+            await task_port.record_agent_run_activity(task.id, attempt_id, request_run_id)
+
     async def save_checkpoint(checkpoint: AgentRunCheckpoint) -> None:
         """Persist resumable driver state without exposing the task implementation."""
 
@@ -883,6 +887,7 @@ async def build_run_request(task: AgentTask) -> AgentRunRequest:
         limits=limits,
         control=AgentRunControl(
             save_progress=save_progress,
+            record_activity=record_activity if attempt_id is not None else None,
             save_checkpoint=save_checkpoint,
             publish_event=publish_event,
         ),
