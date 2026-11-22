@@ -1,6 +1,11 @@
 <template>
-  <section class="interaction-choice" :aria-label="choice.title">
-    <strong>{{ choice.title }}</strong>
+  <section class="interaction-choice" :class="{ 'interaction-choice--authorization': choice.is_authorization }" :aria-label="choice.title">
+    <header v-if="choice.is_authorization" class="authorization-header">
+      <q-icon name="verified_user" size="22px" class="authorization-icon" aria-hidden="true" />
+      <strong>{{ choice.title }}</strong>
+      <small>#{{ choice.reference }}</small>
+    </header>
+    <strong v-else>{{ choice.title }}</strong>
     <RichText v-if="choice.body_html" :content="choice.body_html" />
     <SafeMessageContent v-else-if="choice.body" :content="choice.body" />
     <div class="interaction-options">
@@ -19,7 +24,7 @@
         @click="answer(option.id)"
       />
     </div>
-    <small>#{{ choice.reference }}</small>
+    <small v-if="!choice.is_authorization">#{{ choice.reference }}</small>
     <p v-if="status !== 'PENDING'" class="interaction-status" role="status">
       {{ t(`chatInteraction.${status.toLowerCase()}`) }}
     </p>
@@ -94,6 +99,57 @@ async function answer(optionId: string): Promise<void> {
 <style scoped>
 .interaction-choice { display: grid; gap: 12px; min-width: 0; }
 .interaction-choice :deep(.rich-content) { background-color: var(--chat-surface-raised, var(--rich-background)); }
+.interaction-choice--authorization {
+  --authorization-surface: var(--solaire-blue-light);
+  --authorization-label-surface: var(--solaire-gray-light);
+}
+.body--dark .interaction-choice--authorization {
+  --authorization-surface: var(--solaire-blue-dark);
+  --authorization-label-surface: var(--solaire-gray-dark);
+}
+.authorization-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--authorization-surface);
+  overflow-wrap: anywhere;
+}
+.authorization-icon { color: var(--solaire-blue-accent); }
+.authorization-header small { margin-inline-start: auto; }
+.interaction-choice--authorization :deep(.rich-content) { font-size: inherit; }
+.interaction-choice--authorization :deep(.rich-content > h3:first-child) { margin: 0 0 8px; font-weight: 600; }
+.interaction-choice--authorization :deep(.rich-content > table.galaris-table-gray.galaris-table-minimal) {
+  border: 1px solid var(--chat-border, var(--rich-border));
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.interaction-choice--authorization :deep(.rich-content > table.galaris-table-gray.galaris-table-minimal > tbody > tr > :is(th, td)) {
+  padding: 6px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--rich-foreground);
+  vertical-align: top;
+}
+.interaction-choice--authorization :deep(.rich-content > table.galaris-table-gray.galaris-table-minimal > tbody > tr + tr > :is(th, td)) {
+  border-block-start: 1px solid var(--chat-border, var(--rich-border));
+}
+.interaction-choice--authorization :deep(.rich-content > table.galaris-table-gray.galaris-table-minimal > tbody > tr > th) {
+  width: 42%;
+  text-align: start;
+  background: var(--authorization-label-surface);
+}
+.interaction-choice--authorization :deep(.rich-content > blockquote:last-child) {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  border-inline-start: 3px solid var(--solaire-blue-accent);
+  border-radius: 4px;
+  background: var(--authorization-surface);
+  font-size: .875rem;
+}
 .interaction-options { display: flex; flex-wrap: wrap; gap: 8px; }
 .interaction-options :deep(.q-btn) { max-width: 100%; color: var(--solaire-blue-accent); }
 .interaction-option--selected { color: var(--solaire-green-accent) !important; }

@@ -18,11 +18,11 @@ def test_mail_review_uses_frozen_recipients_content_and_attachments(language, ti
     assert presentation["title"] == title
     assert presentation["fields"][0] == {"label": to_label, "value": "recipient@example.test"}
     body, body_html = notification_content(presentation, language=language)
-    assert body_html is None
+    assert body_html is not None and to_label in body_html
     for expected in ("copy@example.test", "hidden@example.test", "Synthetic greeting", "Have a good day.", "greeting.txt"):
-        assert expected in body
+        assert expected in body and expected in body_html
     for technical in ("Original draft", "Old text", "original@example.test", "synthetic-key", "synthetic-delivery", "synthetic-mime", "synthetic-hash"):
-        assert technical not in body
+        assert technical not in body and technical not in body_html
     assert arguments["subject"] == "Original draft"
 
 
@@ -44,7 +44,9 @@ def test_markup_is_inert_and_shortened_notifications_are_explicit():
         "content": '<img src="https://example.test/track">\n[Approve](https://example.test)\n```html\n<script>alert(1)</script>\n```',
     }, language="en")
     body, body_html = notification_content(presentation, language="en")
-    assert body_html is None
+    assert body_html is not None
+    assert "&lt;img" in body_html and "&lt;script&gt;" in body_html
+    assert "<img" not in body_html and "<script" not in body_html and "<a " not in body_html
     assert "<img" not in body and "<script" not in body and "[Approve](" not in body and "```" not in body
     presentation["fields"][0]["value"] = "x" * 7000
     shortened, body_html = notification_content(presentation, language="en")
@@ -72,7 +74,8 @@ def test_invalid_goal_markup_stays_literal_in_the_notification():
     })
     body, body_html = notification_content(presentation, language="en")
     assert "&lt;script&gt;" in body
-    assert body_html is None
+    assert body_html is not None and "&lt;script&gt;" in body_html
+    assert "<script" not in body_html
 
 
 def test_codex_review_explains_the_real_command_without_showing_the_transport_envelope():

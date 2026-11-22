@@ -55,10 +55,19 @@ test('the Chat menu updates the question and unread totals independently', async
 test('a rich approval body keeps its editorial structure and response controls', async ({ page }, testInfo) => {
   const room = { id: 'room-1', label: 'Conversation synthétique', agent_id: 7, agent_name: 'Agent synthétique',
     agent_active: false, writable: true, members: [], unread_count: 0, conversation_type: 'text' }
+  const approvalChoice = { ...choice, title: 'Demande d’autorisation', is_authorization: true,
+    body_html: '<h3>Créer un agent</h3><table class="galaris-table-gray galaris-table-minimal"><tbody>'
+      + '<tr><th>Prénom</th><td>Camille</td></tr><tr><th>Intitulé du poste</th><td>Relecture &lt;2026&gt;</td></tr>'
+      + '<tr><th>Code de l’agent</th><td>relecture-synthetique</td></tr><tr><th>Harnais</th><td>internal</td></tr>'
+      + '</tbody></table><p><strong>Fiche de poste</strong></p><h2>Plan du projet</h2><ul><li>Relire le bilan</li></ul>'
+      + '<p><strong>Personnalité</strong></p><p>Privilégie les exemples courts et précis.</p>'
+      + '<blockquote><p>Cette décision concerne uniquement l’action décrite ici.</p></blockquote>',
+    options: [{ id: 'allow', label: 'Autoriser cette action' }, { id: 'deny', label: 'Refuser cette action' }],
+  }
   const message = { id: 'approval-message', external_id: 'approval-external', room_id: room.id,
     files: [], is_mine: false, text: choice.body, created_at: '2026-09-18T12:00:00Z',
     sender: { display_name: room.agent_name, is_ai: true },
-    interaction: { ...choice, body_html: '<h2>Plan du projet</h2><ul><li>Relire le bilan</li></ul>' } }
+    interaction: approvalChoice }
   for (const [path, json] of [
     ['status', { enabled: true, chat_enabled: true, max_attachment_bytes: 1000000 }],
     ['rooms?*', { items: [room], total: 1 }],
@@ -75,14 +84,16 @@ test('a rich approval body keeps its editorial structure and response controls',
   await mount(page, 'app/chat/pages/index.vue', {
     route: '/chat?room=room-1', privileges: ['CHAT_SEND'], locale: 'fr', shell: true,
   })
-  const approval = page.getByRole('region', { name: choice.title })
-  for (const [width, dark] of [[1440, false], [390, true]]) {
+  const approval = page.getByRole('region', { name: approvalChoice.title })
+  for (const [width, dark] of [[1440, false], [1440, true], [390, true]]) {
     await page.setViewportSize({ width, height: 900 })
     await page.evaluate(value => window.testApp.dark(value), dark)
+    await expect(approval.getByRole('heading', { name: 'Créer un agent' })).toBeVisible()
+    await expect(approval.getByRole('row', { name: 'Intitulé du poste Relecture <2026>' })).toBeVisible()
     await expect(approval.getByRole('heading', { name: 'Plan du projet' })).toBeVisible()
     await expect(approval.getByRole('listitem')).toHaveText('Relire le bilan')
-    await expect(approval.getByRole('button', { name: 'Créer ce dossier' })).toBeEnabled()
-    await approval.screenshot({ path: testInfo.outputPath('rich-approval-' + width + '.png'), animations: 'disabled' })
+    await expect(approval.getByRole('button', { name: 'Autoriser cette action' })).toBeEnabled()
+    await approval.screenshot({ path: testInfo.outputPath(`rich-approval-${width}-${dark ? 'dark' : 'light'}.png`), animations: 'disabled' })
   }
 })
 

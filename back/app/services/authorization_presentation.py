@@ -14,13 +14,21 @@ from .schemas import Service
 from .service import get_service_by_id
 
 
-_GOAL_HTML_FIELDS = {
+_NATIVE_HTML_FIELDS = {
     "goal_create": "description",
     "goal_update": "description",
     "goal_update_suivi": "tracking_content",
+    "task_run": "objective",
+}
+_AGENT_ARGUMENTS = {"agent_create": "configuration", "agent_update": "changes"}
+_AGENT_HTML_FIELDS = {"job_description", "personality"}
+_AGENT_FIELD_LABELS = {
+    "agent_driver", "code", "fallback_profile_id", "first_name", "job_description", "job_title",
+    "last_name", "personality", "profile_id", "team_ids", "title_id", "user_id", "voice",
 }
 _NOTIFICATION_LIMIT = 6000
 _NATIVE_ACTIONS = {
+    "agent_admin": {*_AGENT_ARGUMENTS, "agent_delete"},
     "goal_management": {
         "goal_create",
         "goal_update",
@@ -209,11 +217,9 @@ async def present_authorization(
 ) -> ApprovalPresentation:
     if service is None and row.service_id is not None:
         service = await get_service_by_id(row.service_id)
-    native = _native_action(row.capability_name, row.source, row.capability_kind, service)
     return present_action(
         name=row.capability_name, source=row.source, arguments=arguments, language=language,
-        kind=row.capability_kind, service=service, runtime=row.runtime, native=native,
-        html_field=_GOAL_HTML_FIELDS.get(row.capability_name) if native else None,
+        kind=row.capability_kind, service=service, runtime=row.runtime,
     )
 
 
@@ -234,10 +240,21 @@ def _codex_review_values(name: str, arguments: dict[str, object]) -> dict[str, o
 
 def present_action(
     *, name: str, source: str, arguments: dict[str, object], language: str, html_field: str | None = None,
-    kind: str = "tool", service: Service | None = None, runtime: str = "", native: bool = False,
+    kind: str = "tool", service: Service | None = None, runtime: str = "",
 ) -> ApprovalPresentation:
     arguments = cast(dict[str, object], redacted_action_arguments(arguments))
     fields: list[ApprovalField] = []
+    native = _native_action(name, source, kind, service)
+    agent_profile = native and name in _AGENT_ARGUMENTS
+    html_fields = {html_field} if html_field else set[str]()
+    if native and (native_html_field := _NATIVE_HTML_FIELDS.get(name)):
+        html_fields.add(native_html_field)
+    if agent_profile:
+        html_fields.update(_AGENT_HTML_FIELDS)
+        envelope = _AGENT_ARGUMENTS[name]
+        if isinstance(profile := arguments.get(envelope), dict):
+            arguments = {key: value for key, value in arguments.items() if key != envelope}
+            arguments.update(cast(dict[str, object], profile))
     mail = source == "domain" and name in {"mail_send", "mail_reply", "mail_forward"}
     title = _title(name=name, source=source, kind=kind, language=language, native=native, service=service, runtime=runtime)
     if name == "mail_process" and source == "mcp" and kind == "tool":
@@ -251,15 +268,23 @@ def present_action(
         values = _codex_review_values(name, arguments) if source == "runtime" and runtime == "codex" else arguments
     goal = native and name.startswith("goal_")
     for key, value in values.items():
-        if value is None or value == "" or value == [] or value == {} or (goal and key == "expected_revision"):
+        empty = value is None or value == "" or value == [] or value == {}
+        show_empty = agent_profile and name == "agent_update" and key in _AGENT_FIELD_LABELS
+        if (empty and not show_empty) or (goal and key == "expected_revision"):
             continue
         label = key.replace("_", " ").capitalize()
-        if key == html_field or key in _FIELD_LABELS or (goal and key in _GOAL_FIELD_LABELS):
+        if native and name in _NATIVE_ACTIONS["agent_admin"] and key == "agent_id":
+            label = t("approval_preview.target_agent_id", language)
+        elif key in html_fields or key in _FIELD_LABELS or (goal and key in _GOAL_FIELD_LABELS) or (agent_profile and key in _AGENT_FIELD_LABELS):
             label = t(f"approval_preview.{key}", language)
+        if empty:
+            # Validated models can contribute defaults to the frozen payload.
+            fields.append({"label": label, "value": "—" if value is None else repr(value)})
+            continue
         if mail and key == "attachments" and isinstance(value, list):
             value = [cast(dict[str, object], item).get("filename", cast(dict[str, object], item)) if isinstance(item, dict) else item
                      for item in cast(list[object], value)]
-        if key == html_field and isinstance(value, str):
+        if key in html_fields and isinstance(value, str):
             try:
                 html = normalize_html(value, limit_length=key != "tracking_content")
             except RichTextError:
@@ -284,28 +309,37 @@ def notification_content(
 ) -> tuple[str, str | None]:
     title, fields = presentation["title"], presentation["fields"]
     text_parts = [_escape_markdown(title)]
-    rich_content = any(field.get("format") == "html" for field in fields)
-    html_parts = [f"<p>{escape(title)}</p>"] if rich_content else []
-    if explanation := presentation.get("explanation"):
+    explanation = presentation.get("explanation")
+    if explanation:
         text_parts.append(_escape_markdown(explanation))
-        if rich_content:
-            html_parts.append(f"<p>{escape(explanation)}</p>")
     for field in fields:
-        label, value = field["label"], field["value"]
-        is_html = field.get("format") == "html"
-        text = visible_text(value) if is_html else value
-        text_parts.append(f"{_escape_markdown(label)} :\n{_escape_markdown(text)}")
-        if rich_content:
-            html = value if is_html else "<p>" + escape(value).replace("\n", "<br>") + "</p>"
-            html_parts.extend((f"<p><strong>{escape(label)}</strong></p>", html))
+        value = field["value"]
+        text = visible_text(value) if field.get("format") == "html" else value
+        text_parts.append(f"{_escape_markdown(field['label'])} :\n{_escape_markdown(text)}")
+    decision_scope = scope or t("approval_preview.once", language)
     body = "\n\n".join(text_parts)
     if len(body) > _NOTIFICATION_LIMIT:
         body = body[:_NOTIFICATION_LIMIT] + "\n\n" + t("approval_preview.truncated", language)
-        rich_content = False
-    decision_scope = scope or t("approval_preview.once", language)
+        return body + "\n\n" + decision_scope, None
     body += "\n\n" + decision_scope
-    if not rich_content:
-        return body, None
-    html_parts.append(f"<p>{escape(decision_scope)}</p>")
+
+    html_parts = [f"<h3>{escape(title)}</h3>"]
+    if explanation:
+        html_parts.append(f"<p>{escape(explanation)}</p>")
+    rows: list[str] = []
+    sections: list[str] = []
+    for field in fields:
+        label, value = escape(field["label"]), field["value"]
+        if field.get("format") == "html":
+            sections.append(f"<p><strong>{label}</strong></p>{value}")
+        elif "\n" in value or len(value) > 120:
+            formatted = escape(value).replace("\n", "<br>")
+            sections.append(f"<p><strong>{label}</strong><br>{formatted}</p>")
+        else:
+            rows.append(f"<tr><th>{label}</th><td>{escape(value)}</td></tr>")
+    if rows:
+        html_parts.extend(('<table class="galaris-table-gray galaris-table-minimal"><tbody>', *rows, "</tbody></table>"))
+    html_parts.extend(sections)
+    html_parts.append(f"<blockquote><p>{escape(decision_scope)}</p></blockquote>")
     body_html = "".join(html_parts)
     return body, body_html if len(body_html) <= _NOTIFICATION_LIMIT else None

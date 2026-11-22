@@ -148,12 +148,15 @@ async def test_streamable_http_mcp_app_captures_and_filters_only_an_enabled_read
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(("name", "service_code", "field"), [
-    ("goal_create", "goal_management", "description"),
-    ("goal_update", "goal_management", "description"),
-    ("goal_update_suivi", "galaris", "tracking_content"),
+@pytest.mark.parametrize(("name", "service_code", "field", "label"), [
+    ("goal_create", "goal_management", "description", "Description"),
+    ("goal_update", "goal_management", "description", "Description"),
+    ("goal_update_suivi", "galaris", "tracking_content", "Tracking"),
+    ("task_run", "galaris", "objective", "Task objective"),
+    ("agent_create", "agent_admin", "job_description", "Job description"),
+    ("agent_update", "agent_admin", "personality", "Personality"),
 ])
-async def test_goal_approval_projects_html_to_the_recipient_chat(action, name, service_code, field):
+async def test_approval_projects_editorial_fields_to_the_recipient_chat(action, name, service_code, field, label):
     from app.connection import facade as connections
     from app.messenger import read_internal_interaction
     from app.messenger.models import Interaction
@@ -166,16 +169,22 @@ async def test_goal_approval_projects_html_to_the_recipient_chat(action, name, s
     html = "<h2>Planned work</h2><ul><li>Review the result</li></ul>"
     arguments = {field: html}
     async with get_db_session() as db:
+        agent = await db.get(Agent, action.agent_id)
+        if name == "agent_create":
+            arguments = {"configuration": {field: html, "first_name": "Synthetic", "last_name": "<Example>",
+                "code": "synthetic-review", "title_id": agent.title_id, "user_id": agent.user_id}}
+        elif name == "agent_update":
+            arguments = {"agent_id": action.agent_id, "changes": {field: html, "job_description": None, "team_ids": []}}
         chat = await db.scalar(select(Service).where(Service.code == "chat"))
         tool = await db.scalar(select(Service).where(Service.code == service_code))
         await connections.get_or_create_connection(chat.id, action.agent_id)
         connection = await connections.get_or_create_connection(tool.id, action.agent_id)
         await connections.set_connection_function_state(connection.id, name, "ask")
         definition = next(item for item in load_mcp_tools() if item.name == name)
-        goal_action = await bind_native_action(
+        native_action = await bind_native_action(
             McpToolContext(agent_id=action.agent_id, runtime="internal"), definition, arguments,
         )
-    identifier = await pending(goal_action)
+    identifier = await pending(native_action)
     await deliver_authorization_notifications()
     async with get_db_session() as db:
         row = await db.get(ActionAuthorization, identifier)
@@ -183,12 +192,19 @@ async def test_goal_approval_projects_html_to_the_recipient_chat(action, name, s
         assert choice is not None and choice.room_id is not None
         review = await present_authorization(row, arguments=arguments, language="en")
         assert [item for item in review["fields"] if item.get("format") == "html"] == [
-            {"label": "Description" if field == "description" else "Tracking", "value": html, "format": "html"},
+            {"label": label, "value": html, "format": "html"},
         ]
         choice_view = await read_internal_interaction(row.approver_user_id, UUID(choice.room_id), choice.id)
         assert choice_view.can_answer and choice_view.is_authorization
         assert choice_view.body_html is not None and html in choice_view.body_html
         assert "Review the result" in choice_view.body and "<h2>" not in choice_view.body
+        if name == "agent_create":
+            assert review["title"] == "Create an agent"
+            assert {"label": "Last name", "value": "<Example>"} in review["fields"]
+            assert "&lt;Example&gt;" in choice_view.body_html
+        if name == "agent_update":
+            assert {"label": "Job description", "value": "—"} in review["fields"]
+            assert {"label": "Team IDs", "value": "[]"} in review["fields"]
 
 
 @pytest.mark.asyncio
