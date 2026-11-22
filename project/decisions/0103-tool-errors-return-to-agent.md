@@ -108,3 +108,19 @@ La validation combine les tests de compactage et des dialogues avec un vrai agen
 Pydantic AI et un MCP synthétique : continuation ou arrêt honnête, diagnostic conservé,
 erreur visible, reprise sans double effet et refus d’écriture d’un aperçu. Les tests
 d’autorisation, de preuve native, d’annulation et de réconciliation restent applicables.
+
+## Complément du 23 novembre 2026 — répétition d’une page HTML
+
+La répétition d’une lecture réussie de la même page HTML versionnée a continué malgré
+la consigne générique. Pour les tâches du harnais interne, l’identité de la page vient
+du résultat autorisé. Elle combine URI, révision et bornes de blocs. La deuxième lecture
+consécutive fournit une consigne avec le curseur exact ou confirme la fin du document.
+À partir de quatre lectures consécutives, une nouvelle répétition suivant cette consigne
+arrête le run après le lot d’outils et avant une nouvelle inférence. La tâche conserve
+ses résultats et peut être relancée explicitement. Le résultat terminal empêche une
+relance automatique du même scénario.
+
+Le contexte du modèle garde les blocs complets d’un seul exemplaire dans son budget.
+Les autres reçus de cette même page gardent leurs identités d’appel et les coordonnées.
+Les lectures réellement exécutées vérifient toujours les droits et la révision.
+Le garde générique des erreurs, des autres outils et des conversations reste applicable.

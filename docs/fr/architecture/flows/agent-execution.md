@@ -891,6 +891,14 @@ arguments, le harnais interne réutilise ce rejet si les mêmes arguments revien
 Un appel corrigé est exécuté normalement. Les permissions, conflits de révision et effets
 incertains gardent leurs parcours de récupération. Voir [0103](../../../../project/decisions/0103-tool-errors-return-to-agent.md).
 
+Pendant une tâche du harnais interne, une deuxième lecture consécutive de la même page
+HTML révisée reçoit les arguments exacts de continuation, ou une confirmation de fin de
+document. À partir de quatre lectures consécutives, le harnais arrête la boucle si l’agent
+a encore relu la page après avoir reçu la consigne. Il attend la fin du lot d’outils courant. La tâche garde
+ses résultats enregistrés et expose un échec sans relance automatique. Les retours dupliqués
+dans le contexte du modèle gardent les coordonnées de lecture et le curseur. Un exemplaire
+des blocs complets est conservé dans le budget de contexte.
+
 ## Tours conversationnels et sessions audio temps réel
 
 Le streaming conserve la structure `AIResult → AIMessage → fragments`. Le `stream_id`

@@ -562,6 +562,70 @@ def test_document_budget_preserves_terminal_cursor_and_distinguishes_revisions()
     assert projected[-1]["blocks"] == newer["blocks"]
 
 
+def test_duplicate_document_receipts_keep_coordinates_without_repeating_body_previews() -> None:
+    page = _document_page(0, 54, 145)
+    messages = [message for index in range(17) for message in _document_exchange(page, f"read-{index}")]
+
+    projected = _document_results(compact_agent_history(messages, max_chars=145_000))
+
+    assert len(projected) == 17
+    assert [receipt["next_offset"] for receipt in projected] == [54] * 17
+    assert projected[-1]["blocks"] == page["blocks"]
+    assert all("content_preview" not in receipt and "blocks" not in receipt for receipt in projected[:-1])
+    assert all(len(json.dumps(receipt)) < 450 for receipt in projected[:-1])
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("follow_cursor", [True, False])
+async def test_document_read_loop_advances_with_the_exact_cursor_or_stops(monkeypatch, follow_cursor):
+    from pydantic_ai.models.function import DeltaToolCall
+    from app.harness.tests.test_runtime_cancellation import _CountingFunctionModel
+
+    pages = {start: _document_page(start, end, 145) for start, end in [(0, 54), (54, 117), (117, 145)]}
+    uri = pages[0]["uri"]
+    reads = []
+    requests = 0
+
+    def file_read(uri: str, revision: int, offset: int = 0, max_chars: int = 20_000) -> str:
+        assert uri == pages[0]["uri"] and revision == 3 and max_chars == 20_000
+        reads.append(offset)
+        return json.dumps(pages[offset], ensure_ascii=False)
+
+    async def model(messages, _info):
+        nonlocal requests
+        requests += 1
+        if requests == 9 or reads[-1:] == [117]:
+            yield "Synthetic reading finished."
+            return
+        guidance = "\n".join(str(part.content) for message in messages if isinstance(message, ModelRequest)
+                             for part in message.parts if isinstance(part, UserPromptPart))
+        arguments = {"uri": uri, "revision": 3}
+        if follow_cursor and "offset=54" in guidance:
+            arguments["offset"] = pages[reads[-1]]["next_offset"]
+        elif reads:
+            arguments.update(offset=0, max_chars=20_000)
+        yield {0: DeltaToolCall("file_read", json.dumps(arguments), tool_call_id=f"read-{requests}")}
+
+    monkeypatch.setattr(runtime, "build_model_for_llm", AsyncMock(
+        return_value=_CountingFunctionModel(stream_function=model),
+    ))
+    monkeypatch.setattr(runtime, "estimate_cost_from_usage", lambda *_args: 0.0)
+    agent = Agent(cast(LLM, SimpleNamespace(context_length=66_000)), task_id=uuid4(), tools=[file_read])
+    await agent.init()
+    messages = [message async for message in agent.run("Read all pages of the synthetic report.")]
+
+    if follow_cursor:
+        assert reads == [0, 0, 54, 117]
+        assert requests == 5
+        assert messages[-1].success
+    else:
+        assert reads == [0] * 4
+        assert requests == 4
+        assert agent.terminal_failure_kind == "document_read_loop"
+        assert not messages[-1].success
+        assert "54" in messages[-1].content
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("native_compaction,early_lookups", [(False, 0), (True, 0), (True, 2)])
 async def test_runtime_edits_a_long_document_after_three_reads(

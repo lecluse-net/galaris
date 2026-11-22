@@ -32,6 +32,10 @@ Les archives, sons, vidéos, formats non pris en charge et fichiers corrompus so
 
 ## Documents volumineux transmis à un agent
 
+Pour lire un document HTML Galaris avec `file_read`, l’agent reprend à `next_offset`
+sur la même révision. Si une tâche relit la même page en boucle, le harnais lui indique
+le curseur exact. Un arrêt pour répétition affiche ce point de reprise dans la tâche.
+
 En mode automatique, Galaris estime localement la place du document dans le contexte
 du modèle choisi, en tenant compte de la conversation, des outils et de la réponse
 à produire. Un document qui tient est fourni intégralement ; sinon, Galaris utilise

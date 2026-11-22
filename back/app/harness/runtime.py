@@ -81,6 +81,7 @@ _HISTORY_DOCUMENT_READ_MAX_BYTES = 128_000
 _WRAPUP_MAX_REQUESTS = 1
 _MAX_REASONING_RECOVERIES = 2
 _REPEATED_TOOL_NO_PROGRESS_LIMIT = 3
+_REPEATED_DOCUMENT_READ_LIMIT = 4
 _REPEATED_TEXT_NO_PROGRESS_LIMIT = 3
 _TEXT_PROGRESS_WINDOW = 32
 _TRACE_TOOL_RESULT_KEYS = frozenset(
@@ -131,6 +132,10 @@ def _trace_tool_result(value: object) -> dict[str, Any] | None:
 
 class RepeatedTextNoProgressError(RuntimeError):
     """Raised when a real-time model repeats prose without reaching an action."""
+
+
+class RepeatedDocumentReadError(RuntimeError):
+    """A Task repeated a versioned document page after receiving its next cursor."""
 
 
 class IncompleteModelResponseError(RuntimeError):
@@ -325,6 +330,7 @@ def _history_document_page(content: object) -> tuple[dict[str, object], tuple[st
 
 def _compact_resource_read_return(
     content: object, *, document_page: tuple[dict[str, object], tuple[str, int, int, int], str] | None = None,
+    duplicate: bool = False,
 ) -> str | dict[str, object] | None:
     """Keep a file read's cursor and revision when its old body leaves history."""
     decoded = document_page[0] if document_page is not None else decode_tool_result(content)
@@ -355,6 +361,9 @@ def _compact_resource_read_return(
         if key in resource
     }
     summary.setdefault("next_offset", None)
+    if duplicate:
+        summary["history_note"] = "Duplicate read. Use the complete receipt for these page coordinates."
+        return json.dumps(summary, ensure_ascii=False, separators=(",", ":")) if isinstance(content, str) else summary
     digest = hashlib.sha256(body.encode("utf-8", errors="replace")).hexdigest()[:16]
     summary["content"] = (
         f"[content omitted after execution: {len(body)} characters, sha256={digest}]"
@@ -412,7 +421,9 @@ def compact_stale_tool_returns(
                 remaining = max(0, remaining - size)
                 content = serialized if isinstance(original, str) else projected
             else:
-                content = _compact_resource_read_return(original, document_page=document_page)
+                content = _compact_resource_read_return(
+                    original, document_page=document_page, duplicate=key in retained_pages,
+                )
                 if content is None:
                     content = compact_tool_return(original, max_chars=_HISTORY_TOOL_RETURN_MAX_CHARS)
         elif index >= _HISTORY_TOOL_RETURNS_KEPT_INTACT and compact_other_returns:
@@ -733,6 +744,14 @@ def _reasoning_recovery_history(
 
 
 @dataclass
+class _DocumentReadStreak:
+    page: tuple[str, int, int, int]
+    next_offset: int | None
+    count: int = 1
+    guided_at: int = 0
+
+
+@dataclass
 class _StreamState:
     """Mutable stream accounting shared by the main run and its wrap-up pass."""
 
@@ -990,6 +1009,7 @@ class Agent(AgentRuntime):
         self.waiting_for_children = False
         self.authorization_requests: list[UUID] = []
         self._pending_tool_guidance: list[str] = []
+        self._document_read_streak: _DocumentReadStreak | None = None
         self.reasoning_recoveries = 0
 
     async def init(self) -> None:
@@ -1191,6 +1211,26 @@ class Agent(AgentRuntime):
                 self._active_checkpoint.waiting_for_children = False
             else:
                 raise ChildWaitRequested
+        streak = self._document_read_streak
+        if streak is not None and streak.count >= 2:
+            uri, revision, start, end = streak.page
+            continuation = (
+                t("agent_runtime.document_read_complete", self._language)
+                if streak.next_offset is None
+                else render_prompt(t("agent_runtime.document_read_continue", self._language),
+                                   uri=uri, revision=revision, offset=streak.next_offset)
+            )
+            if streak.count >= _REPEATED_DOCUMENT_READ_LIMIT and 0 < streak.guided_at < streak.count:
+                raise RepeatedDocumentReadError(render_prompt(
+                    t("agent_runtime.document_read_stopped", self._language),
+                    offset=start, continuation=continuation,
+                ))
+            if not streak.guided_at:
+                streak.guided_at = streak.count
+                _ctx.enqueue(render_prompt(
+                    t("agent_runtime.repeated_document_read_guidance", self._language),
+                    start=start, end=end, continuation=continuation,
+                ))
         self._model_generation_active = True
         self._request_start_usage = _ctx.usage.requests
         return request
@@ -1330,6 +1370,7 @@ class Agent(AgentRuntime):
         self.terminal_output = None
         self.waiting_for_children = False
         self._pending_tool_guidance.clear()
+        self._document_read_streak = None
         # Canonical attachment resources become bounded native content for this run.
         agent_input: Union[str, Sequence[Any]] = (
             (
@@ -1429,6 +1470,7 @@ class Agent(AgentRuntime):
                     agent_input = guidance
                     deferred_results = None
                     state = _StreamState(observe_text_no_progress=self._real_time)
+                    self._document_read_streak = None
                     self.terminal_output = None
         except ChildWaitRequested:
             self.waiting_for_children = True
@@ -1475,6 +1517,7 @@ class Agent(AgentRuntime):
             self._model_generation_active = False
             self._active_checkpoint = None
             self._task_prompt_input = None
+            self._document_read_streak = None
 
     async def _emit_stream_messages(
         self,
@@ -1540,11 +1583,20 @@ class Agent(AgentRuntime):
                 if not msg.success:
                     await self._record_tool_failure(event, tool_call_event, msg)
                 repeated = _observe_tool_result(state, msg, event.part.content)
+                page = (_history_document_page(event.part.content)
+                        if self._task_id is not None and msg.success and msg.tool_name == "file_read" else None)
+                if page is None:
+                    self._document_read_streak = None
+                elif self._document_read_streak is not None and self._document_read_streak.page == page[1]:
+                    self._document_read_streak.count += 1
+                else:
+                    next_offset = page[0].get("next_offset")
+                    self._document_read_streak = _DocumentReadStreak(page[1], next_offset if isinstance(next_offset, int) else None)
                 msg.execution_time = state.elapsed()
                 self.messages.append(msg)
                 self.cost += msg.cost
                 yield msg
-                if repeated:
+                if repeated and page is None:
                     key = "repeated_success_guidance" if msg.success else "repeated_error_guidance"
                     guidance = render_prompt(
                         t(f"agent_runtime.{key}", self._language),
@@ -1904,11 +1956,17 @@ class Agent(AgentRuntime):
         captured: list[_pydantic_messages.ModelMessage],
     ) -> AIMessage:
         """Build the terminal failure message, keeping the cost of consumed requests."""
-        error_msg = _format_exception(exc)
+        if isinstance(exc, RepeatedDocumentReadError):
+            error_msg = str(exc)
+            self.terminal_failure_kind = "document_read_loop"
+        else:
+            error_msg = _format_exception(exc)
         self.error = error_msg
         if _empty_model_output_failure(exc, captured):
             self.terminal_failure_kind = "empty_model_output"
-        if any(message.type == "text" and message.content for message in self.messages):
+        if not isinstance(exc, RepeatedDocumentReadError) and any(
+            message.type == "text" and message.content for message in self.messages
+        ):
             logger.exception("Agent stream finalization failed after emitting content")
         usage = self._run_usage_from_history(captured)
         self.cost += usage.cost

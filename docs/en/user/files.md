@@ -31,6 +31,10 @@ unsupported formats and corrupt files are rejected explicitly.
 
 ## Large documents supplied to an agent
 
+When reading a Galaris HTML document with `file_read`, the agent continues at
+`next_offset` on the same revision. If a Task keeps rereading a page, the harness supplies
+the exact cursor. A stop for repeated reads shows that continuation point in the Task.
+
 In automatic mode, Galaris locally estimates whether the complete document fits the
 selected model's context after the conversation, tools and output reserve. A document
 that fits is supplied completely; otherwise RAG searches its extracted text and supplies

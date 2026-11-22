@@ -56,6 +56,10 @@ default = {
         "budget_wrapup_tool_interrupted": "Exécution de l’outil interrompue : le run a atteint sa limite d’utilisation avant la fin de cet appel.",
         "repeated_error_guidance": "AVIS SYSTÈME — ${tool_name} a renvoyé trois fois de suite la même erreur pour les mêmes arguments. Ne répète pas aveuglément cet appel. Change d’approche : relis les compétences pertinentes, vérifie le schéma de l’outil et ses arguments, ou utilise une autre méthode autorisée. Si un effet est incertain, vérifie son état avant une nouvelle mutation. Les outils restent disponibles dans le run et le budget courants. Si aucune alternative ne permet de poursuivre, explique que tu as rencontré trois fois la même erreur, précise le blocage et ce qui reste inachevé. N’affirme pas avoir terminé sans preuve enregistrée.",
         "repeated_success_guidance": "AVIS SYSTÈME — ${tool_name} a répété trois fois la même opération sans progrès nouveau. Utilise les résultats enregistrés au lieu de recommencer. Change d’approche : relis les compétences pertinentes, vérifie le schéma de l’outil et ses arguments, ou utilise une autre méthode autorisée. Les outils restent disponibles dans le run et le budget courants. Si tu ne peux pas poursuivre, explique l’opération répétée et ce qui reste bloqué. Ces appels réussis ne sont pas trois erreurs ; n’affirme pas avoir terminé sans preuve enregistrée.",
+        "repeated_document_read_guidance": "AVIS SYSTÈME — file_read a déjà renvoyé la même page entre les offsets ${start} et ${end}. Utilise les blocs déjà reçus. ${continuation}",
+        "document_read_continue": "Pour poursuivre la lecture, appelle file_read sur ${uri}, revision=${revision}, avec offset=${offset}.",
+        "document_read_complete": "La page renvoyée atteint la fin du document. Poursuis la tâche avec le résultat enregistré.",
+        "document_read_stopped": "La tâche s’est arrêtée après plusieurs lectures de la même page à offset=${offset}. ${continuation}",
     },
     "janus": {
         "agent_list_heading": "Voici les agents disponibles :",

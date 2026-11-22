@@ -56,6 +56,10 @@ default = {
         "budget_wrapup_tool_interrupted": "Tool execution interrupted: the run reached its usage limit before this call completed.",
         "repeated_error_guidance": "SYSTEM NOTICE — ${tool_name} returned the same error three times in a row for the same arguments. Do not blindly repeat this call. Change approach: reread the relevant skills, check the tool schema and arguments, or use another authorized method. If an effect is uncertain, verify its state before another mutation. Tools remain available within the current run and budget. If no alternative can proceed, explain that you encountered the same error three times, describe the blocker and what remains unfinished. Do not claim completion without recorded evidence.",
         "repeated_success_guidance": "SYSTEM NOTICE — ${tool_name} repeated the same operation three times without new progress. Use the recorded results instead of repeating it. Change approach: reread the relevant skills, check the tool schema and arguments, or use another authorized method. Tools remain available within the current run and budget. If you cannot proceed, explain the repeated operation and what remains blocked. These successful calls are not three errors; do not claim completion without recorded evidence.",
+        "repeated_document_read_guidance": "SYSTEM NOTICE — file_read already returned the same page from offset ${start} to ${end}. Use the existing blocks. ${continuation}",
+        "document_read_continue": "To continue reading, call file_read for ${uri}, revision=${revision}, with offset=${offset}.",
+        "document_read_complete": "The returned page reached the end of the document. Continue the task using the recorded result.",
+        "document_read_stopped": "The task stopped after repeatedly reading the same document page at offset=${offset}. ${continuation}",
     },
     "janus": {
         "agent_list_heading": "Here are the available agents:",

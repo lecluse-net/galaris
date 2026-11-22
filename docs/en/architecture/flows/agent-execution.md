@@ -847,6 +847,14 @@ are dispatched normally. Permissions, revision conflicts and uncertain effects s
 their respective recovery paths.
 See [0103](../../../../project/decisions/0103-tool-errors-return-to-agent.md).
 
+During an internal harness Task, a second consecutive read of the same versioned HTML
+page prompts the model with the exact continuation arguments or confirms the end of the
+document. From the fourth consecutive read onward, the harness stops the loop if another
+read followed that guidance. It waits for the current tool batch to finish. The Task retains
+recorded results and exposes a failure without automatic retry. Duplicate receipts in
+the model context keep their page coordinates and cursor. One copy of the full blocks is
+retained within the context budget.
+
 ## Conversational Rounds and Real-Time Audio Sessions
 
 Service cards represent invocation updates rather than text fragments. `tool_call_external_id`

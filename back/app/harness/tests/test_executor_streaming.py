@@ -87,8 +87,10 @@ def test_task_correlation_preserves_both_task_and_run() -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("deep", [False, True], ids=["standard", "deep"])
-async def test_internal_turn_uses_the_prompt_for_its_mode(monkeypatch, deep):
+@pytest.mark.parametrize("deep, read_loop", [
+    (False, False), (True, False), (False, True),
+], ids=["standard", "deep", "document-read-loop"])
+async def test_internal_turn_uses_the_prompt_for_its_mode(monkeypatch, deep, read_loop):
     from app import console, messenger
 
     request = replace(_request(taskless=deep), deep_session_id=uuid4() if deep else None,
@@ -96,9 +98,12 @@ async def test_internal_turn_uses_the_prompt_for_its_mode(monkeypatch, deep):
     captured = {}
 
     class ModelBoundary:
+        terminal_failure_kind = "document_read_loop" if read_loop else None
+        error = "Repeated document read. Continue at offset=54." if read_loop else ""
+
         async def run(self, **options):
             captured.update(options)
-            yield AIMessage(type="text", content="Synthetic answer")
+            yield AIMessage(type="text", content=self.error or "Synthetic answer", success=not read_loop)
 
     mcp_tools, skills = object(), [object()]
     monkeypatch.setattr(executor, "build_agent_mcp_toolset", AsyncMock(return_value=mcp_tools))
@@ -117,7 +122,10 @@ async def test_internal_turn_uses_the_prompt_for_its_mode(monkeypatch, deep):
 
     result = await executor.run(request)
 
-    assert result.success
+    assert result.success is not read_loop
+    if read_loop:
+        assert result.failure is not None and result.failure.retry == "never"
+        assert "offset=54" in result.failure.message
     assert captured["prompt"] == (request.objective if deep else
         "Task request\n\n<tool_instructions>\nTask tool guide\n</tool_instructions>")
     assert boundary.await_args.kwargs["system_prompt"] == ("Synthetic profile" if deep else "Task instructions")

@@ -17,6 +17,7 @@ from app.agent.contracts import (
     AgentRunRequest,
     AgentSnapshot,
     ExecutionResult,
+    HarnessFailure,
     AIResult,
     AIMessage,
 )
@@ -647,7 +648,8 @@ async def _stream(
     reasoning_recoveries = getattr(runtime_agent, "reasoning_recoveries", 0)
     if reasoning_recoveries:
         ai_result.metadata["reasoning_recoveries"] = reasoning_recoveries
-    if getattr(runtime_agent, "terminal_failure_kind", None) == "reasoning_degeneration":
+    failure_kind = getattr(runtime_agent, "terminal_failure_kind", None)
+    if failure_kind == "reasoning_degeneration":
         ai_result.metadata["reasoning_recovery_exhausted"] = True
 
     terminal_output = getattr(runtime_agent, "terminal_output", None)
@@ -657,16 +659,14 @@ async def _stream(
     await executor_service.recover_after_verified_delivery(
         task,
         ai_result,
-        failure_kind=getattr(
-            runtime_agent,
-            "terminal_failure_kind",
-            None,
-        ),
+        failure_kind=failure_kind,
     )
 
     result = ExecutionResult(
         **ai_result.model_dump(exclude={"execution_time"}),
         execution_time=time.time() - start_time,
+        failure=HarnessFailure(code="runtime", message=str(getattr(runtime_agent, "error", ""))[:4000])
+        if failure_kind == "document_read_loop" else None,
     )
     if getattr(runtime_agent, "profile_fallback_used", False) is True:
         from app.agent import aggregate_llm_run_usage
