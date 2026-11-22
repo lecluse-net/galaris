@@ -158,6 +158,7 @@
                   :outcome="row.task.outcome"
                   :unavailable="activityUnavailable"
                   compact-waits
+                  hide-delegated-waits
                 />
                 <CompactTaskOperations
                   v-if="isTaskExpanded(row.task)"

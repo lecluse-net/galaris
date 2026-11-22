@@ -25,7 +25,7 @@ const bottomGap = page => scrolling(page).evaluate(node => node.scrollHeight - n
 test('a late message boundary preserves an open task detail but a room change closes it', async ({ page }) => {
   const item = { ...task(1), execution_result: result, plan: null, dispatcher_result: null, llm_calls: [] }
   await jsonRoute(page, '**/api/tasks/task-1', item)
-  await jsonRoute(page, '**/api/tasks/task-1/children', [])
+  await jsonRoute(page, '**/api/tasks/task-1/children?summary=true', [])
   await jsonRoute(page, '**/api/tasks/task-1/budget', { task_id: item.id, limits: {}, usage: {}, exceeded: false })
   await jsonRoute(page, '**/api/chat/rooms/room-b/tasks?*', { items: [], total: 0, page: 1, page_size: 10 })
   await panel(page, [item])
@@ -202,13 +202,85 @@ test('custom Harness uses only correlated calls and replaces updates and deleted
   await expect(page.getByText('Updated response', { exact: true })).toHaveCount(0)
 })
 
-test('waiting task explains its dependency and stops suggesting active work', async ({ page }) => {
+test('waiting task explains its dependency without duplicating delegated subtasks', async ({ page }) => {
   const item = { ...task(1), status: 'EXEC', execution_result: { ...result, messages: [{ type: 'tool', tool_name: 'search', content: 'Ready' }] } }
+  const child = { ...task(2), label: 'Prepare the report', objective: 'Compile the quarterly figures', status: 'EXEC', tree_parent_id: item.id, data: { delegated: true } }
   const snapshot = activityFor(item)
-  snapshot.operational = { operational_state: 'WAITING', resume_phase: 'EXEC', waits: [{ kind: 'HUMAN_REPLY', peer_display: 'Alice', question: 'Which period?' }] }
-  await panel(page, [item], 1, [snapshot])
+  snapshot.operational = { operational_state: 'WAITING', resume_phase: 'EXEC', waits: [
+    { kind: 'HUMAN_REPLY', peer_display: 'Alice', question: 'Which period?' },
+    { kind: 'DELEGATED_TASK', coordination_task_id: child.id, question: child.objective },
+  ] }
+  await panel(page, [item, child], 2, [snapshot, activityFor(child)])
   await expect(page.getByRole('status').filter({ hasText: 'Which period?' })).toBeVisible()
-  await expect(page.locator('.compact-operation-spinner')).toHaveCount(0)
+  await expect(page.getByText(child.label, { exact: true })).toHaveCount(1)
+  const parent = page.locator('.agent-task-row').filter({ hasText: item.label })
+  await expect(parent).not.toContainText(/Delegation running|Compile the quarterly figures/)
+  await expect(parent.locator('.compact-operation-spinner')).toHaveCount(0)
+})
+
+test('task details list delegated subtasks alongside planned steps', async ({ page }) => {
+  const planned = { ...task(2), parent_id: 'task-1', label: 'Check the data', data: { plan_step: 0 } }
+  const delegated = { ...task(3), parent_id: 'task-1', label: 'Review the sources', data: { delegated: true } }
+  const parent = { ...task(1), plan: { cursor: 1, steps: [{ label: planned.label }, { label: 'Draft the report' }] } }
+  for (const [item, children] of [[parent, [planned, delegated]], [delegated, []]]) {
+    await jsonRoute(page, `**/api/tasks/${item.id}`, item)
+    await jsonRoute(page, `**/api/tasks/${item.id}/children?summary=true`, children)
+    await jsonRoute(page, `**/api/tasks/${item.id}/budget`, { enabled: false, scope: 'task_tree' })
+  }
+  await panel(page, [parent])
+  await page.getByRole('button', { name: 'Details', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog.getByText('Sub-tasks', { exact: false })).toBeVisible()
+  await expect(dialog.getByText(planned.label, { exact: true }).filter({ visible: true })).toBeVisible()
+  await expect(dialog.getByText('Draft the report', { exact: true }).filter({ visible: true })).toBeVisible()
+  await dialog.getByText(delegated.label, { exact: true }).click()
+  await expect(dialog.getByText('Parent task', { exact: false })).toBeVisible()
+  await expect(dialog.getByText(delegated.objective, { exact: true })).toBeVisible()
+})
+
+test('task details keep delegated subtasks through resume and slow relation refreshes', async ({ page }) => {
+  await page.clock.install()
+  await page.clock.pauseAt(new Date())
+  let parent = { ...task(1), status: 'EXEC', paused: true, data: { pause_reasons: ['user'] } }
+  const child = { ...task(2), parent_id: parent.id, label: 'Review the sources', status: 'EXEC' }
+  let finishFirstRead
+  const firstRead = new Promise(resolve => { finishFirstRead = resolve })
+  let childReads = 0
+  let childrenUnavailable = false
+  await page.route('**/api/tasks/task-1/children*', async route => {
+    childReads++
+    if (childReads === 1) await firstRead
+    await route.fulfill(childrenUnavailable ? { status: 503, json: { detail: 'Temporarily unavailable' } } : { json: [child] })
+  })
+  await page.route('**/api/tasks/task-1', route => route.fulfill({ json: parent }))
+  await page.route('**/api/tasks/task-1/full', route => route.fulfill({ json: parent }))
+  await page.route('**/api/tasks/task-1/resume', route => {
+    parent = { ...parent, paused: false, revision: 2, data: {} }
+    return route.fulfill({ json: parent })
+  })
+  await jsonRoute(page, '**/api/tasks/task-1/budget', { enabled: false, scope: 'task_tree' })
+  await jsonRoute(page, '**/api/tasks/activity', [])
+  await jsonRoute(page, '**/api/tasks/recent?*', { items: [], total: 0 })
+  await mount(page, 'app/task/components/TaskDetail.vue', { props: { taskId: parent.id }, privileges: ['TASK_EDIT'] })
+  try {
+    await expect.poll(() => childReads).toBe(1)
+    await page.getByRole('button', { name: 'Resume', exact: true }).click()
+    await expect(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
+    await page.clock.fastForward(6_000)
+    expect(childReads).toBe(1)
+  } finally {
+    finishFirstRead()
+  }
+  await expect(page.getByText(child.label, { exact: true })).toBeVisible()
+
+  childrenUnavailable = true
+  await page.clock.fastForward(6_000)
+  await expect(page.getByRole('alert').filter({ hasText: 'Sub-tasks could not be loaded' })).toBeVisible()
+  await expect(page.getByText(child.label, { exact: true })).toBeVisible()
+  childrenUnavailable = false
+  await page.getByRole('button', { name: 'Retry', exact: true }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'Sub-tasks could not be loaded' })).toHaveCount(0)
+  await expect(page.getByText(child.label, { exact: true })).toBeVisible()
 })
 
 test('task details restore activity and expose the admitted demand and recorded delivery receipt', async ({ page }) => {
@@ -232,7 +304,7 @@ test('task details restore activity and expose the admitted demand and recorded 
     live: { run_id: 'run', sequence: 2, result: { ...result, success: false, messages: [{ type: 'text', content: 'Recovered detail activity', stream_id: 'text', stream_complete: true }] } } }
   await jsonRoute(page, '**/api/tasks/task-1/full', item)
   await jsonRoute(page, '**/api/tasks/task-1', item)
-  await jsonRoute(page, '**/api/tasks/task-1/children', [])
+  await jsonRoute(page, '**/api/tasks/task-1/children?summary=true', [])
   await jsonRoute(page, '**/api/tasks/activity', [snapshot])
   await jsonRoute(page, '**/api/tasks/task-1/budget', {
     enabled: false, scope: 'task_tree', provider_hard_cap: false,

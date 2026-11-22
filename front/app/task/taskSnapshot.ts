@@ -12,7 +12,7 @@ function timestamp(value: string | undefined): number | null {
  * Merge a task snapshot without allowing a delayed HTTP response to roll the UI
  * back after a newer WebSocket event has already been applied.
  */
-export function mergeTaskSnapshot<T extends Task>(current: T | null, incoming: T): T {
+export function mergeTaskSnapshot<T extends Pick<Task, 'id' | 'status' | 'revision' | 'updated_at'>>(current: T | null, incoming: T): T {
   if (!current || current.id !== incoming.id) return incoming
 
   if (incoming.revision < current.revision) return current

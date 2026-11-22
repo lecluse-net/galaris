@@ -73,7 +73,7 @@ test('a call opens and reopens its task through the shared resource detail', asy
   const task = { id: 'synthetic-task', revision: 1, label: 'Synthetic call task', status: 'SUCCESS', paused: false,
     objective: 'Saved task objective', agent_id: null, data: {}, plan: null, dispatcher_result: null, execution_result: null, llm_calls: [] }
   await jsonRoute(page, '**/api/tasks/synthetic-task', task)
-  await jsonRoute(page, '**/api/tasks/synthetic-task/children', [])
+  await jsonRoute(page, '**/api/tasks/synthetic-task/children?summary=true', [])
   await jsonRoute(page, '**/api/tasks/activity', [])
   await jsonRoute(page, '**/api/llm-providers/llms*', [])
   await mount(page, 'app/llm/components/LlmCall.vue', { props: { call: { ...call, task_id: task.id, task_label: task.label }, taskColor: { name: 'primary', hex: '#087FF5' } } })

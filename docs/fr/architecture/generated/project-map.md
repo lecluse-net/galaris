@@ -2059,7 +2059,7 @@ Aucune composante cyclique détectée.
 | POST | `/tasks/{task_id}/restore` | `app.task` | `restore_task` | oui | `back/app/task/router.py:322` |
 | POST | `/tasks/{task_id}/resume` | `app.task` | `resume_task` | oui | `back/app/task/router.py:350` |
 | POST | `/tasks/{task_id}/retry` | `app.task` | `retry_task` | oui | `back/app/task/router.py:229` |
-| POST | `/tasks/{task_id}/run` | `app.task` | `run_task` | oui | `back/app/task/router.py:395` |
+| POST | `/tasks/{task_id}/run` | `app.task` | `run_task` | oui | `back/app/task/router.py:402` |
 | GET | `/teams` | `core.team` | `list_teams` | oui | `back/core/team/router.py:13` |
 | POST | `/teams` | `core.team` | `create_team` | oui | `back/core/team/router.py:31` |
 | GET | `/teams/human-selection` | `core.team` | `human_selection` | oui | `back/core/team/router.py:25` |

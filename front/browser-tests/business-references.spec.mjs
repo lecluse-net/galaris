@@ -23,7 +23,7 @@ const goal = { ...goalFixture, id, description: '<p>FULL GOAL DESCRIPTION</p>' }
 async function fixtures(page) {
   await jsonRoute(page, `**/api/tasks/${id}`, task)
   await jsonRoute(page, `**/api/tasks/${id}/full`, task)
-  await jsonRoute(page, `**/api/tasks/${id}/children`, [])
+  await jsonRoute(page, `**/api/tasks/${id}/children?summary=true`, [])
   await jsonRoute(page, `**/api/tasks/${id}/budget`, { enabled: false })
   await jsonRoute(page, '**/api/tasks/activity', [])
   await jsonRoute(page, `**/api/conversations/rounds/${id}`, round)

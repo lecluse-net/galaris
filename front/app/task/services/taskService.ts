@@ -1,6 +1,6 @@
 import { api } from '@/core/api'
 import type { TaskActivitySnapshot, TaskCallRecoveryState } from '../activity'
-import type { Task, TaskCreate, TaskUpdate, TaskWithAssignments, TaskFull, TaskPage } from '../types'
+import type { Task, TaskChildSummary, TaskCreate, TaskUpdate, TaskWithAssignments, TaskFull, TaskPage } from '../types'
 import type { Agent } from '@/app/agent/contracts'
 export interface CostSummary {
   calls: number; estimated_calls: number; unknown_calls: number; running_calls: number
@@ -85,10 +85,9 @@ export class TaskService {
     return response.data
   }
 
-  /** Planned child tasks in creation order. */
-  async getChildren(id: string): Promise<Task[]> {
-    const response = await api.get(`/tasks/${id}/children`)
-    return response.data
+  /** Readable child tasks in creation order. */
+  async getChildren(id: string): Promise<TaskChildSummary[]> {
+    return (await api.get<TaskChildSummary[]>(`/tasks/${id}/children`, { params: { summary: true } })).data
   }
 
   async create(data: TaskCreate): Promise<Task> {

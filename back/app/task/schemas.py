@@ -224,3 +224,22 @@ class TaskFull(Task):
     """Complete task schema with flat relationships and no nested tree."""
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TaskChildSummary(BaseModel):
+    """Fields used to navigate child tasks and display their current state."""
+
+    id: UUID
+    revision: int
+    label: str
+    objective: str | None
+    status: TaskStatus
+    paused: bool
+    cost: float
+    updated_at: datetime | None
+    data: dict[str, Any]
+
+    @computed_field
+    @property
+    def outcome(self) -> str:
+        return task_outcome(self.status, self.data)

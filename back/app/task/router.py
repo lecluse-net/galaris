@@ -19,7 +19,7 @@ from .schemas import (
     TaskUpdate,
     TaskFull,
     TaskPage,
-    TaskBudget,
+    TaskBudget, TaskChildSummary,
 )
 from . import task_service
 from .activity_snapshot import TaskActivityQuery, TaskActivitySnapshot, activity_snapshots, readable_activity_tasks
@@ -374,12 +374,19 @@ async def read_task_full(
     return task
 
 
-@router.get("/{task_id}/children", response_model=List[TaskSchema])
+@router.get("/{task_id}/children", response_model=List[TaskSchema] | List[TaskChildSummary])
 @authorize(privileges=[Privileges.TASK_ACCESS, Privileges.TASK_EDIT])
 async def read_task_children(
     task_id: UUID,
+    summary: bool = False,
 ):
-    """List a planned task's children in creation order."""
+    """List a task's children in creation order."""
+    if summary:
+        scope = await current_management_scope()
+        children = await task_service.get_child_summaries(task_id, scope.agent_ids)
+        if children is None:
+            raise HTTPException(status_code=404, detail=await _detail("not_found"))
+        return children
     _, scope = await _task_scope_or_404(task_id)
     return [
         task

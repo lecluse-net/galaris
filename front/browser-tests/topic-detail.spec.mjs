@@ -41,7 +41,7 @@ async function openTopic(page, width = 1440) {
 for (const width of [1440, 390]) test(`topic rows open their target dialogs without leaving the dossier at ${width}px`, async ({ page }, testInfo) => {
   await jsonRoute(page, '**/api/tasks/topic-task/full', task)
   await jsonRoute(page, '**/api/tasks/topic-task', task)
-  await jsonRoute(page, '**/api/tasks/topic-task/children', [])
+  await jsonRoute(page, '**/api/tasks/topic-task/children?summary=true', [])
   await jsonRoute(page, '**/api/tasks/activity', [])
   await jsonRoute(page, '**/api/tasks/topic-task/budget', { enabled: false })
   await jsonRoute(page, '**/api/chat/rooms/topic-room', room)

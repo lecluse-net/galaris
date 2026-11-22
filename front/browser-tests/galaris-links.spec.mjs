@@ -170,7 +170,7 @@ for (const mode of ['read', 'edit', 'readonly']) test(`a Task citation opens its
   const task = { id, label: 'Synthetic cited task', objective: '<p>Synthetic task objective</p>', status: 'SUCCESS', paused: false, agent_id: null, parent_id: null, topic_id: null, data: {}, execution_result: result, revision: 1, created_at: '2026-09-01T12:00:00Z', updated_at: null, effort: 'standard', ai: true, cost: 0, messages: [] }
   await jsonRoute(page, `**/api/tasks/${id}/full`, task)
   await jsonRoute(page, `**/api/tasks/${id}`, task)
-  await jsonRoute(page, `**/api/tasks/${id}/children`, [])
+  await jsonRoute(page, `**/api/tasks/${id}/children?summary=true`, [])
   await jsonRoute(page, `**/api/tasks/${id}/budget`, { enabled: false })
   await jsonRoute(page, '**/api/tasks/activity', [])
   const html = `<p><a href="galaris://task/${id}">Synthetic cited task</a></p>`

@@ -22,6 +22,7 @@ from sqlalchemy import (
     update as sa_update,
 )
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import selectinload
 from sqlalchemy.orm.exc import StaleDataError
 from collections.abc import Collection
@@ -34,7 +35,7 @@ from core.i18n import current_language, is_supported, render_prompt, tr
 from app.agent.contracts import ReasoningEffort
 from app.agent import prepare_run_retry
 from .models import Task, TaskAttempt, TaskAttemptStatus, TaskStatus
-from .schemas import TaskUpdate, TaskCreate, Task as TaskSchema, TaskOverview
+from .schemas import TaskChildSummary, TaskUpdate, TaskCreate, Task as TaskSchema, TaskOverview
 from .workflow import TaskEvent, can_retry_blocked, transition
 from ..agent.models import Agent
 
@@ -252,6 +253,29 @@ async def get_children(parent_id: UUID, *, refresh: bool = False) -> Sequence[Ta
         query = query.execution_options(populate_existing=True)
     result = await db.execute(query)
     return result.scalars().all()
+
+
+async def get_child_summaries(
+    parent_id: UUID, scope: Collection[int] | None,
+) -> list[TaskChildSummary] | None:
+    """Return readable children, or None when the parent is missing or outside scope."""
+    db = get_db()
+    readable = Task.agent_id.is_not(None) if scope is None else Task.agent_id.in_(scope)
+    parent = await db.scalar(Task.histo_filter(select(Task.id).where(Task.id == parent_id, readable)))
+    if parent is None:
+        return None
+
+    # Read the display metadata without transferring full execution checkpoints.
+    keys = ("plan_step", "pause_reasons", "awaiting_reply", "resolves_await", "plan_skipped", "objective_blocker")
+    data = func.jsonb_build_object(
+        *(argument for key in keys for argument in (key, Task.data[key])), type_=JSONB,
+    ).label("data")
+    query = select(
+        Task.id, Task.revision, Task.label, Task.objective, Task.status,
+        Task.paused, Task.cost, Task.updated_at, data,
+    ).where(Task.parent_id == parent_id, readable).order_by(Task.created_at.asc(), Task.id.asc())
+    rows = (await db.execute(Task.histo_filter(query))).mappings()
+    return [TaskChildSummary.model_validate(row) for row in rows]
 
 
 def build(task_data: TaskCreate) -> Task:

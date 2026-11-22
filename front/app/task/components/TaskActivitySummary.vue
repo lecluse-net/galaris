@@ -60,20 +60,23 @@ import { taskService } from '../services/taskService'
 import { activitySilenceSeconds, type TaskActivitySnapshot, type TaskCallRecoveryState } from '../activity'
 import TaskStartupTiming from './TaskStartupTiming.vue'
 import type { TaskOutcome } from '../types'
-const { activity, outcome, unavailable = false, showLastActivity = true, compactWaits = false } = defineProps<{
+const { activity, outcome, unavailable = false, showLastActivity = true, compactWaits = false, hideDelegatedWaits = false } = defineProps<{
   activity?: TaskActivitySnapshot
   outcome?: TaskOutcome
   unavailable?: boolean
   showProvenance?: boolean
   showLastActivity?: boolean
   compactWaits?: boolean
+  hideDelegatedWaits?: boolean
 }>()
 const { t, locale } = useI18n()
-const waitDescriptions = computed(() => (activity?.operational.waits ?? []).map(wait => {
-  const target = wait.peer_display || wait.process_label
-  const label = t(`task.activity.${wait.kind}`)
-  return label + (target ? ` — ${target}` : '') + (wait.question ? ` : ${wait.question}` : '')
-}))
+const waitDescriptions = computed(() => (activity?.operational.waits ?? [])
+  .filter(wait => !hideDelegatedWaits || wait.kind !== 'DELEGATED_TASK')
+  .map(wait => {
+    const target = wait.peer_display || wait.process_label
+    const label = t(`task.activity.${wait.kind}`)
+    return label + (target ? ` — ${target}` : '') + (wait.question ? ` : ${wait.question}` : '')
+  }))
 const waitText = computed(() => compactWaits ? waitDescriptions.value.join('\n') : '')
 const waitPreview = ref('')
 const waitPreviewMeasure = useTemplateRef<HTMLElement>('waitPreviewMeasure')

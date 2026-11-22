@@ -358,7 +358,7 @@ async function taskDetails(page) {
     revision: 1, created_at: event.start, updated_at: null, effort: 'standard', ai: true, cost: 0, messages: [] }
   await jsonRoute(page, `**/api/tasks/${taskId}/full`, task)
   await jsonRoute(page, `**/api/tasks/${taskId}`, task)
-  await jsonRoute(page, `**/api/tasks/${taskId}/children`, [])
+  await jsonRoute(page, `**/api/tasks/${taskId}/children?summary=true`, [])
   await jsonRoute(page, `**/api/tasks/${taskId}/budget`, { enabled: false, scope: 'task_tree', provider_hard_cap: false,
     recorded_tokens: 0, recorded_cost: 0, active_phases: 0, reserved_tokens: 0, reserved_cost: 0,
     remaining_tokens: null, remaining_cost: null, remaining_seconds: null })

@@ -84,7 +84,7 @@ for (const width of [390, 1440]) {
     await jsonRoute(page, '**/api/mail/inbound/synthetic-receipt', { ...admitted, content: { body: 'Synthetic parcel delivered.' } })
     await jsonRoute(page, `**/api/tasks/${id}`, task)
     await jsonRoute(page, `**/api/tasks/${id}/full`, task)
-    await jsonRoute(page, `**/api/tasks/${id}/children`, [])
+    await jsonRoute(page, `**/api/tasks/${id}/children?summary=true`, [])
     await jsonRoute(page, `**/api/tasks/${id}/budget`, { enabled: false })
     await jsonRoute(page, '**/api/tasks/activity', [])
     await jsonRoute(page, '**/api/topics?*', [])

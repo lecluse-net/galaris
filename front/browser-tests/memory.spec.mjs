@@ -926,7 +926,7 @@ for (const width of [1440, 390]) {
       status: 'SUCCESS', paused: false, created_at: item.created_at, data: {}, assignments: [] }
     await jsonRoute(page, `**/api/tasks/${taskId}`, task)
     await jsonRoute(page, `**/api/tasks/${taskId}/full`, task)
-    await jsonRoute(page, `**/api/tasks/${taskId}/children`, [])
+    await jsonRoute(page, `**/api/tasks/${taskId}/children?summary=true`, [])
     await jsonRoute(page, `**/api/tasks/${taskId}/budget`, { enabled: false })
     await page.route('**/api/memory/items/doc-a?*', route => {
       if (route.request().method() === 'PUT') {

@@ -361,18 +361,20 @@
                 </q-expansion-item>
             </q-card>
 
-            <!-- Plan steps linked to their clickable persisted child tasks. -->
-            <q-card v-if="planRows.length" flat bordered class="q-mb-md">
+            <q-card v-if="subtaskRows.length || childrenState === 'loading' || childrenState === 'error'" flat bordered class="q-mb-md">
                 <q-card-section>
                     <div class="text-subtitle2 q-mb-sm text-primary">
                         <q-icon name="account_tree" size="xs" class="q-mr-xs" />
                         {{ $t('task.detail.subtasks') }}
-                        <span class="text-caption text-grey q-ml-xs">{{ planDoneCount }}/{{ planRows.length }}</span>
+                        <span v-if="subtaskRows.length" class="text-caption text-grey q-ml-xs">{{ subtaskDoneCount }}/{{ subtaskRows.length }}</span>
                     </div>
-                    <q-list separator dense>
+                    <PanelState v-if="childrenState === 'error'" state="error" :message="t('task.detail.subtasksLoadError')"
+                        :retry-label="t('task.detail.retry')" @retry="loadRelations(task)" />
+                    <PanelState v-else-if="childrenState === 'loading' && !subtaskRows.length" state="loading" />
+                    <q-list v-if="subtaskRows.length" separator dense>
                         <q-item
-                            v-for="row in planRows"
-                            :key="row.idx"
+                            v-for="row in subtaskRows"
+                            :key="row.child?.id ?? row.idx"
                             :clickable="!!row.child"
                             @click="row.child && onTaskClick(row.child.id)"
                         >
@@ -483,7 +485,8 @@ import { ResourceReferenceMenu, showConfirmationDialog } from '@/core/util'
 import { EditorialContent, richTextExcerpt } from '@/core/util'
 import { computed, ref, watch } from 'vue'
 import { useInterval, useQuasar } from 'quasar'
-import type { AIResult, Task, TaskContextCapsule, TaskContextKind, TaskFull } from '../types'
+import { isAxiosError } from 'axios'
+import type { AIResult, Task, TaskChildSummary, TaskContextCapsule, TaskContextKind, TaskFull } from '../types'
 import { taskService } from '../services/taskService'
 import {
   getTaskDisplayStatus,
@@ -506,7 +509,7 @@ import { agentService, type Agent } from '@/app/agent/facade'
 import { authService, type User } from '@/core/user/facade'
 import { useI18n } from 'vue-i18n'
 import { apiErrorDetail } from '@/core/api'
-import { StatusBadge } from '@/core/util'
+import { PanelState, StatusBadge } from '@/core/util'
 
 import DispatchResultComponent from './DispatchResult.vue'
 import PlannerResultComponent from './PlannerResult.vue'
@@ -935,10 +938,6 @@ const planSteps = computed<Array<{ objective?: string; label?: string }>>(
   () => (task.value?.plan?.steps as Array<{ objective?: string; label?: string }>) ?? []
 )
 const planCursor = computed(() => Number(task.value?.plan?.cursor ?? 0))
-const planDoneCount = computed(() => {
-  if (task.value && getTaskDisplayStatus(task.value) === 'SUCCESS') return planRows.value.length
-  return planRows.value.filter(row => row.child && getTaskDisplayStatus(row.child) === 'SUCCESS').length
-})
 function planStepState(idx: number): 'done' | 'current' | 'failed' | 'pending' {
   if (task.value && getTaskDisplayStatus(task.value) === 'SUCCESS') return 'done'
   if (idx < planCursor.value) return 'done'
@@ -961,13 +960,17 @@ function planStepColor(idx: number): string {
 }
 
 // Persisted child tasks and parent task used for tree navigation.
-const children = ref<Task[]>([])
+const children = ref<TaskChildSummary[]>([])
+const childrenState = ref<'idle' | 'loading' | 'ready' | 'error'>('idle')
 const parentTask = ref<Task | null>(null)
-let relationRequest = 0
+let relationRequest: { reload: boolean } | null = null
 
 // Prefer the live WebSocket-updated store version when available.
-const displayChildren = computed<Task[]>(() =>
-  children.value.map(c => taskStore.recentTasks.find(rt => rt.id === c.id) ?? c)
+const displayChildren = computed(() =>
+  children.value.map(child => {
+    const recent = taskStore.recentTasks.find(task => task.id === child.id)
+    return recent ? mergeTaskSnapshot<TaskChildSummary>(child, recent) : child
+  })
 )
 const activeReplyWaits = computed(() => displayChildren.value.flatMap((child) => {
   if (terminalStatuses.has(child.status)) return []
@@ -981,7 +984,7 @@ const activeReplyWaits = computed(() => displayChildren.value.flatMap((child) =>
     deadline: data.deadline ? String(data.deadline) : null,
   }]
 }))
-const resolvedByTask = computed<Task | null>(() => {
+const resolvedByTask = computed<TaskChildSummary | null>(() => {
   if (!task.value) return null
   const resolvedId = task.value.resolved_by_task_id
   if (resolvedId) {
@@ -994,26 +997,42 @@ const resolvedByTask = computed<Task | null>(() => {
   }) ?? null
 })
 
-interface PlanRow { idx: number; label: string; objective?: string; child?: Task }
-// Build one ordered view linking each plan step to its persisted child when present.
-// Otherwise show a pending step; without a plan, list children directly.
-const planRows = computed<PlanRow[]>(() => {
-  const byStep = new Map<number, Task>()
+interface PlanRow { idx: number; label: string; objective?: string; child?: TaskChildSummary }
+const plannedRows = computed<PlanRow[]>(() => {
+  if (!planSteps.value.length) return []
+  const byStep = new Map<number, TaskChildSummary>()
   for (const c of displayChildren.value) {
     const step = Number((c.data as Record<string, unknown> | undefined)?.plan_step ?? -1)
     if (step >= 0) byStep.set(step, c)
   }
-  if (planSteps.value.length) {
-    return planSteps.value.map((s, idx) => ({
-      idx,
-      label: s.label || t('task.detail.planStep', { n: idx + 1 }),
-      objective: s.objective,
-      child: byStep.get(idx),
-    }))
-  }
-  return displayChildren.value.map((c, idx) => ({
-    idx, label: c.label, objective: c.objective ?? undefined, child: c,
+  return planSteps.value.map((s, idx) => ({
+    idx,
+    label: s.label || t('task.detail.planStep', { n: idx + 1 }),
+    objective: s.objective,
+    child: byStep.get(idx),
   }))
+})
+
+const subtaskRows = computed<PlanRow[]>(() => {
+  const rows = plannedRows.value
+  const linkedChildren = new Set(rows.map(row => row.child?.id))
+  const otherRows = displayChildren.value.filter(child => !linkedChildren.has(child.id)).map((child, idx) => ({
+    idx: rows.length + idx,
+    label: child.label,
+    objective: child.objective ?? undefined,
+    child,
+  }))
+  return [...rows, ...otherRows]
+})
+
+function isCompletedSubtask(row: PlanRow): boolean {
+  return row.child !== undefined && getTaskDisplayStatus(row.child) === 'SUCCESS'
+}
+
+const planDoneCount = computed(() => plannedRows.value.filter(isCompletedSubtask).length)
+const subtaskDoneCount = computed(() => {
+  if (task.value && getTaskDisplayStatus(task.value) === 'SUCCESS') return subtaskRows.value.length
+  return subtaskRows.value.filter(isCompletedSubtask).length
 })
 
 function rowIcon(row: PlanRow): string {
@@ -1024,40 +1043,49 @@ function rowColor(row: PlanRow): string {
 }
 
 // Load child and parent tasks for navigation.
-async function loadRelations(t: TaskFull | null): Promise<void> {
-  const request = ++relationRequest
-  if (!t) {
-    children.value = []
-    parentTask.value = null
+async function loadRelations(selected: TaskFull, reloadAfterPending = false): Promise<void> {
+  if (props.taskId !== selected.id) return
+  if (relationRequest) {
+    relationRequest.reload ||= reloadAfterPending
     return
   }
-  const taskId = t.id
+  const request = { reload: false }
+  relationRequest = request
+  if (childrenState.value === 'idle') childrenState.value = 'loading'
   try {
-    const loadedChildren = await taskService.getChildren(taskId)
-    if (request !== relationRequest || task.value?.id !== taskId) return
-    children.value = loadedChildren.map((child) => {
-      const live = taskStore.latestTaskUpdate?.id === child.id
-        ? taskStore.latestTaskUpdate
-        : null
-      return live ? mergeTaskSnapshot(child, live) : child
-    })
-  } catch (err) {
-    if (request !== relationRequest || task.value?.id !== taskId) return
-    console.error('Failed to load task children:', err)
-    children.value = []
-  }
-  if (t.parent_id) {
     try {
-      const loadedParent = (await taskService.getById(t.parent_id)) as unknown as Task
-      if (request !== relationRequest || task.value?.id !== taskId) return
-      parentTask.value = loadedParent
+      const loadedChildren = await taskService.getChildren(selected.id)
+      if (relationRequest !== request) return
+      const known = new Map(children.value.map(child => [child.id, child]))
+      children.value = loadedChildren.map(child => {
+        const live = taskStore.latestTaskUpdate?.id === child.id ? taskStore.latestTaskUpdate : null
+        const previous = live ? mergeTaskSnapshot<TaskChildSummary>(known.get(child.id) ?? null, live) : known.get(child.id)
+        return mergeTaskSnapshot(previous ?? null, child)
+      })
+      childrenState.value = 'ready'
     } catch (err) {
-      if (request !== relationRequest || task.value?.id !== taskId) return
-      console.error('Failed to load parent task:', err)
-      parentTask.value = null
+      if (relationRequest !== request) return
+      const status = isAxiosError(err) ? err.response?.status : undefined
+      if (status === 401 || status === 403 || status === 404) children.value = []
+      childrenState.value = 'error'
     }
-  } else {
-    parentTask.value = null
+    if (!selected.parent_id) {
+      parentTask.value = null
+    } else {
+      try {
+        const loadedParent = await taskService.getById(selected.parent_id)
+        if (relationRequest === request) parentTask.value = loadedParent
+      } catch (err) {
+        if (relationRequest !== request) return
+        console.error('Failed to load parent task:', err)
+        parentTask.value = null
+      }
+    }
+  } finally {
+    if (relationRequest === request) {
+      relationRequest = null
+      if (request.reload && task.value) void loadRelations(task.value)
+    }
   }
 }
 const requesterVisible = computed(() => Boolean(task.value?.requester_agent_id != null || task.value?.created_by != null))
@@ -1181,6 +1209,10 @@ async function reconcileLiveTask(): Promise<void> {
 
 // Watch for taskId changes
 watch(() => props.taskId, () => {
+    relationRequest = null
+    children.value = []
+    childrenState.value = 'idle'
+    parentTask.value = null
     void loadTask()
 }, { immediate: true })
 
@@ -1204,10 +1236,10 @@ watch(() => taskStore.latestTaskUpdate, (updated) => {
     const childIndex = children.value.findIndex(child => child.id === updated.id)
     if (childIndex >= 0) {
         const next = [...children.value]
-        next[childIndex] = mergeTaskSnapshot(next[childIndex], updated)
+        next[childIndex] = mergeTaskSnapshot<TaskChildSummary>(next[childIndex], updated)
         children.value = next
     } else if (updated.parent_id === task.value.id) {
-        void loadRelations(task.value)
+        void loadRelations(task.value, true)
     }
     if (parentTask.value?.id === updated.id) {
         parentTask.value = mergeTaskSnapshot(parentTask.value, updated)
@@ -1220,7 +1252,7 @@ registerInterval(() => void reconcileLiveTask(), 5000)
 
 // Refresh child statuses when the plan cursor advances.
 watch(() => Number(task.value?.plan?.cursor ?? -1), (next, prev) => {
-    if (next !== prev && task.value) void loadRelations(task.value)
+    if (next !== prev && task.value) void loadRelations(task.value, true)
 })
 
 // Initial materialization creates the whole tree at once. WebSocket events may
@@ -1229,7 +1261,7 @@ watch(() => Number(task.value?.plan?.cursor ?? -1), (next, prev) => {
 watch(
     () => taskStore.recentTasks.filter(c => c.parent_id === task.value?.id).map(c => c.id).join(','),
     (next, prev) => {
-        if (next !== prev && task.value) void loadRelations(task.value)
+        if (next !== prev && task.value) void loadRelations(task.value, true)
     }
 )
 

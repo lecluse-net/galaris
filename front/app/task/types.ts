@@ -105,6 +105,9 @@ export interface Task {
   deleted_by?: number
 }
 
+export type TaskChildSummary = Pick<Task, 'id' | 'revision' | 'label' | 'objective' | 'status'
+  | 'outcome' | 'paused' | 'cost' | 'updated_at' | 'data'>
+
 export interface TaskPage {
   items: Task[]
   total: number
