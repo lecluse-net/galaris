@@ -28,6 +28,7 @@ from pydantic_ai import (
     PartDeltaEvent,
     PartEndEvent,
     PartStartEvent,
+    RunContext,
     UsageLimits,
     capture_run_messages,
     DeferredToolRequests,
@@ -72,6 +73,8 @@ _HISTORY_TOOL_ARGUMENT_MAX_CHARS = 6_000
 _HISTORY_TOOL_RETURN_MAX_CHARS = 4_000
 _HISTORY_TOOL_RETURN_PREVIEW_CHARS = 600
 _HISTORY_TOOL_RETURNS_KEPT_INTACT = 4
+# Share this budget between all read pages in one model request.
+_HISTORY_DOCUMENT_READ_MAX_BYTES = 128_000
 # A tool-free wrap-up turns a guarded run into an honest report. Recovery with effects is
 # a distinct Task retry path; leaving tools mounted here can consume the tiny budget before
 # the actual delivery call and can make the report perform untracked extra work.
@@ -284,18 +287,58 @@ def compact_completed_tool_arguments(
     return compacted
 
 
-def _compact_resource_read_return(content: object) -> str | dict[str, object] | None:
-    """Keep a file read's cursor and revision when its old body leaves history."""
+def _history_document_page(content: object) -> tuple[dict[str, object], tuple[str, int, int, int], str] | None:
+    """Recognize an exact, revision-scoped HTML page, including the history projection."""
     decoded = decode_tool_result(content)
     if not isinstance(decoded, dict):
         return None
+    page = cast(dict[str, object], decoded)
+    uri, revision = page.get("uri"), page.get("revision")
+    start, end, total = page.get("start"), page.get("end"), page.get("total")
+    blocks = page.get("blocks")
+    if (
+        page.get("media_type") != "text/html" or page.get("offset_unit") != "block"
+        or not isinstance(uri, str) or not uri.startswith("document://")
+        or not isinstance(revision, int) or not isinstance(start, int)
+        or not isinstance(end, int) or not isinstance(total, int)
+        or not 0 <= start <= end <= total or not isinstance(blocks, list)
+        or page.get("next_offset") != (end if end < total else None)
+    ):
+        return None
+    blocks = cast(list[object], blocks)
+    if len(blocks) != end - start:
+        return None
+    fragments: list[str] = []
+    for number, entry in enumerate(blocks, start + 1):
+        if not isinstance(entry, dict):
+            return None
+        block = cast(dict[str, object], entry)
+        html = block.get("html")
+        if block.get("number") != number or not isinstance(html, str):
+            return None
+        fragments.append(html)
+    body = "".join(fragments)
+    if "content" in page and page["content"] != body:
+        return None
+    return page, (uri, revision, start, end), body
+
+
+def _compact_resource_read_return(
+    content: object, *, document_page: tuple[dict[str, object], tuple[str, int, int, int], str] | None = None,
+) -> str | dict[str, object] | None:
+    """Keep a file read's cursor and revision when its old body leaves history."""
+    decoded = document_page[0] if document_page is not None else decode_tool_result(content)
+    if not isinstance(decoded, dict):
+        return None
     resource = cast(dict[str, object], decoded)
-    body = resource.get("content")
+    body = document_page[2] if document_page is not None else resource.get("content")
+    terminal_page = "total" in resource and resource.get("end") == resource["total"]
     if (
         not isinstance(resource.get("uri"), str)
         or not isinstance(body, str)
-        or len(body) <= _HISTORY_TOOL_RETURN_MAX_CHARS
-        or not all(key in resource for key in ("start", "end", "total", "next_offset"))
+        or (document_page is None and len(body) <= _HISTORY_TOOL_RETURN_MAX_CHARS)
+        or not all(key in resource for key in ("start", "end", "total"))
+        or (not terminal_page and "next_offset" not in resource)
     ):
         return None
 
@@ -311,6 +354,7 @@ def _compact_resource_read_return(content: object) -> str | dict[str, object] | 
         )
         if key in resource
     }
+    summary.setdefault("next_offset", None)
     digest = hashlib.sha256(body.encode("utf-8", errors="replace")).hexdigest()[:16]
     summary["content"] = (
         f"[content omitted after execution: {len(body)} characters, sha256={digest}]"
@@ -332,52 +376,62 @@ def _compact_resource_read_return(content: object) -> str | dict[str, object] | 
 
 def compact_stale_tool_returns(
     messages: list[_pydantic_messages.ModelMessage],
+    *, document_budget: int = 0, compact_other_returns: bool = True,
 ) -> list[_pydantic_messages.ModelMessage]:
     """Truncate large tool results from older turns.
 
     Every model request resends the whole history, so a few verbose tool results
     (command output, file dumps, page analyses) can consume the model context on their
     own. The most recent results stay intact; older large ones keep a short preview
-    plus size and digest. Resource reads retain their pagination metadata, distinguishing
-    history compaction from a read failure or an unfinished resource page.
+    plus size and digest. Numbered document pages have a separate shared budget.
+    Resource reads retain their pagination metadata when their bodies are omitted.
     """
-    positions: list[tuple[int, int]] = []
+    positions: list[tuple[int, int, _pydantic_messages.ToolReturnPart]] = []
     for message_index, message in enumerate(messages):
         if isinstance(message, _pydantic_messages.ModelRequest):
             for part_index, part in enumerate(message.parts):
                 if isinstance(part, _pydantic_messages.ToolReturnPart) and part.outcome == "success":
-                    positions.append((message_index, part_index))
-    if len(positions) <= _HISTORY_TOOL_RETURNS_KEPT_INTACT:
+                    positions.append((message_index, part_index, part))
+    updates: dict[tuple[int, int], _pydantic_messages.ToolReturnPart] = {}
+    retained_pages: set[tuple[str, int, int, int]] = set()
+    remaining = document_budget
+    for index, (message_index, part_index, part) in enumerate(reversed(positions)):
+        original = part.content
+        file_read = normalize_tool_name(part.tool_name) == "file_read"
+        document_page = _history_document_page(original) if file_read and document_budget else None
+        if document_page is not None:
+            page, key, _ = document_page
+            # Numbered blocks preserve both the HTML and the coordinates for file_edit.
+            projected = {name: value for name, value in page.items() if name != "content"}
+            projected.setdefault("next_offset", None)
+            serialized = json.dumps(projected, ensure_ascii=False, separators=(",", ":"))
+            size = len(serialized.encode("utf-8"))
+            # Let the model see a newly fetched indivisible block once if the whole history fits.
+            if key not in retained_pages and (size <= remaining or index == 0):
+                retained_pages.add(key)
+                remaining = max(0, remaining - size)
+                content = serialized if isinstance(original, str) else projected
+            else:
+                content = _compact_resource_read_return(original, document_page=document_page)
+                if content is None:
+                    content = compact_tool_return(original, max_chars=_HISTORY_TOOL_RETURN_MAX_CHARS)
+        elif index >= _HISTORY_TOOL_RETURNS_KEPT_INTACT and compact_other_returns:
+            preview = _compact_resource_read_return(original) if file_read else None
+            content = preview if preview is not None else compact_tool_return(original, max_chars=_HISTORY_TOOL_RETURN_MAX_CHARS)
+        else:
+            continue
+        if content != original:
+            updates[message_index, part_index] = replace(part, content=content)
+    if not updates:
         return messages
-    stale = set(positions[: -_HISTORY_TOOL_RETURNS_KEPT_INTACT])
 
     compacted: list[_pydantic_messages.ModelMessage] = []
     for message_index, message in enumerate(messages):
         if not isinstance(message, _pydantic_messages.ModelRequest):
             compacted.append(message)
             continue
-        parts: list[_pydantic_messages.ModelRequestPart] = []
-        changed = False
-        for part_index, part in enumerate(message.parts):
-            if (message_index, part_index) in stale and isinstance(
-                part, _pydantic_messages.ToolReturnPart
-            ):
-                content = part.content
-                resource_preview = (
-                    _compact_resource_read_return(content)
-                    if normalize_tool_name(part.tool_name) == "file_read"
-                    else None
-                )
-                if resource_preview is not None:
-                    part = replace(part, content=resource_preview)
-                    changed = True
-                else:
-                    compacted_content = compact_tool_return(content, max_chars=_HISTORY_TOOL_RETURN_MAX_CHARS)
-                    if compacted_content != content:
-                        part = replace(part, content=compacted_content)
-                        changed = True
-            parts.append(part)
-        compacted.append(replace(message, parts=parts) if changed else message)
+        parts = [updates.get((message_index, index), part) for index, part in enumerate(message.parts)]
+        compacted.append(replace(message, parts=parts) if parts != list(message.parts) else message)
     return compacted
 
 
@@ -453,73 +507,132 @@ def _history_chunks(
     return chunks
 
 
+def _current_prompt_request(
+    messages: list[_pydantic_messages.ModelMessage],
+    prompt: str | Sequence[_pydantic_messages.UserContent] | None,
+) -> _pydantic_messages.ModelRequest | None:
+    if prompt is not None:
+        for message in reversed(messages):
+            if isinstance(message, _pydantic_messages.ModelRequest) and any(
+                isinstance(part, _pydantic_messages.UserPromptPart) and part.content == prompt
+                for part in message.parts
+            ):
+                return message
+    return None
+
+
+def _has_document_page(chunk: list[_pydantic_messages.ModelMessage]) -> bool:
+    return any(
+        isinstance(part, _pydantic_messages.ToolReturnPart) and part.outcome == "success"
+        and normalize_tool_name(part.tool_name) == "file_read" and _history_document_page(part.content) is not None
+        for message in chunk if isinstance(message, _pydantic_messages.ModelRequest)
+        for part in message.parts
+    )
+
+
 def _bound_history_context(
     messages: list[_pydantic_messages.ModelMessage],
     *,
     max_chars: int,
+    protected_prompt: str | Sequence[_pydantic_messages.UserContent] | None = None,
 ) -> list[_pydantic_messages.ModelMessage]:
     if sum(_history_message_size(message) for message in messages) <= max_chars:
         return messages
     chunks = _history_chunks(messages)
-    kept = list(chunks)
-    omitted: list[list[_pydantic_messages.ModelMessage]] = []
-    while len(kept) > 4:
-        candidate = kept[0]
-        remaining = [message for chunk in kept[1:] for message in chunk]
-        if sum(_history_message_size(message) for message in remaining) <= max_chars:
-            omitted.append(candidate)
-            kept.pop(0)
-            break
-        omitted.append(candidate)
-        kept.pop(0)
-    if not omitted:
+    prompt_request = _current_prompt_request(messages, protected_prompt)
+    # Reserve the latest exchange and the active input, including its native attachments.
+    removable = [
+        index for index, chunk in enumerate(chunks[:-1])
+        if not any(message is prompt_request for message in chunk)
+    ]
+    if not removable:
         return messages
+    sizes = [sum(_history_message_size(message) for message in chunk) for chunk in chunks]
+    remaining = sum(sizes)
+    omitted: set[int] = set()
+
+    def summary(count: int, digest: str) -> _pydantic_messages.ModelRequest:
+        return _pydantic_messages.ModelRequest(parts=[_pydantic_messages.UserPromptPart(
+            "Earlier completed history was compacted by Galaris: "
+            f"{count} block(s), sha256={digest}. "
+            "Use durable resource URIs and tools to recover details if needed."
+        )])
+
+    # Prefer dropping old unrelated exchanges before dropping readable document pages.
+    marker_size = _history_message_size(summary(len(removable), "0" * 16))
+    for index in sorted(removable, key=lambda index: _has_document_page(chunks[index])):
+        omitted.add(index)
+        remaining -= sizes[index]
+        if remaining + marker_size <= max_chars:
+            break
     omitted_dump = _pydantic_messages.ModelMessagesTypeAdapter.dump_json(
-        [message for chunk in omitted for message in chunk]
+        [message for index in sorted(omitted) for message in chunks[index]]
     )
     digest = hashlib.sha256(omitted_dump).hexdigest()[:16]
-    summary = _pydantic_messages.ModelRequest(
-        parts=[
-            _pydantic_messages.UserPromptPart(
-                content=(
-                    "Earlier completed history was compacted by Galaris: "
-                    f"{len(omitted)} block(s), sha256={digest}. "
-                    "Use durable resource URIs and tools to recover details if needed."
-                )
-            )
-        ]
-    )
-    return [summary, *(message for chunk in kept for message in chunk)]
+    marker = summary(len(omitted), digest)
+    first_omitted = min(omitted)
+    return [
+        message for index, chunk in enumerate(chunks)
+        for message in ([marker] if index == first_omitted else [] if index in omitted else chunk)
+    ]
 
 
 def compact_agent_history(
     messages: list[_pydantic_messages.ModelMessage],
     *,
     max_chars: int | None = None,
+    protected_prompt: str | Sequence[_pydantic_messages.UserContent] | None = None,
 ) -> list[_pydantic_messages.ModelMessage]:
     """Compact payloads and enforce a model-aware total history budget."""
     messages = compact_completed_tool_arguments(messages)
     messages = compact_capability_load_returns(messages)
-    messages = compact_stale_tool_returns(messages)
-    if max_chars is not None:
-        budget = max(8_000, max_chars)
+    budget = max(8_000, max_chars) if max_chars is not None else None
+    messages = compact_stale_tool_returns(messages, document_budget=_document_history_budget(budget))
+    if budget is not None:
         if sum(_history_message_size(message) for message in messages) > budget:
             # Even a single new MCP result can exceed the context window. Keep its
             # call/return identity and an explicit preview rather than admitting an
             # unbounded recent body or treating a huge answer as a tool failure.
+            prompt_request = _current_prompt_request(messages, protected_prompt)
+            prompt_size = _history_message_size(prompt_request) if prompt_request is not None else 0
+            page_limit = max(4_000, budget - prompt_size - 1_000)
             compacted: list[_pydantic_messages.ModelMessage] = []
             for message in messages:
                 if isinstance(message, _pydantic_messages.ModelRequest):
                     parts = [
-                        replace(part, content=compact_tool_return(part.content, max_chars=max(4_000, budget // 8)))
+                        _bound_history_tool_return(part, budget=budget, page_limit=page_limit)
                         if isinstance(part, _pydantic_messages.ToolReturnPart) and part.outcome == "success" else part
                         for part in message.parts
                     ]
-                    message = replace(message, parts=parts)
+                    if parts != list(message.parts):
+                        message = replace(message, parts=parts)
                 compacted.append(message)
             messages = compacted
-        messages = _bound_history_context(messages, max_chars=budget)
+        messages = _bound_history_context(messages, max_chars=budget, protected_prompt=protected_prompt)
     return messages
+
+
+def _document_history_budget(context_budget: int | None) -> int:
+    return min(_HISTORY_DOCUMENT_READ_MAX_BYTES, context_budget // 2) if context_budget is not None else _HISTORY_DOCUMENT_READ_MAX_BYTES
+
+
+def _bound_history_tool_return(
+    part: _pydantic_messages.ToolReturnPart, *, budget: int, page_limit: int,
+) -> _pydantic_messages.ToolReturnPart:
+    original = part.content
+    if normalize_tool_name(part.tool_name) == "file_read":
+        page = _history_document_page(original)
+        if page is not None:
+            size = len(_pydantic_messages.ModelMessagesTypeAdapter.dump_json([
+                _pydantic_messages.ModelRequest(parts=[part]),
+            ]))
+            if size <= page_limit:
+                return part
+            preview = _compact_resource_read_return(original, document_page=page)
+            if preview is not None:
+                return replace(part, content=preview)
+    content = compact_tool_return(original, max_chars=max(4_000, budget // 8))
+    return replace(part, content=content) if content != original else part
 
 
 def _close_dangling_tool_calls(
@@ -863,6 +976,7 @@ class Agent(AgentRuntime):
         self._model_generation_active = False
         self._request_start_usage = 0
         self._active_checkpoint: HarnessRunCheckpoint | None = None
+        self._task_prompt_input: str | Sequence[_pydantic_messages.UserContent] | None = None
         self.manual_call_recoveries = 0
         self._agent: PydanticAgent[Any, str | DeferredToolRequests] | None = None
         self._model: Model | None = None
@@ -959,22 +1073,35 @@ class Agent(AgentRuntime):
         def process_history(
             messages: list[_pydantic_messages.ModelMessage],
         ) -> list[_pydantic_messages.ModelMessage]:
-            return compact_agent_history(messages, max_chars=history_max_chars)
+            return compact_agent_history(
+                messages, max_chars=history_max_chars,
+                protected_prompt=self._task_prompt_input,
+            )
 
         async def compact_native_history(
-            ctx: Any,
+            ctx: RunContext[Any],
             request_context: ModelRequestContext,
         ) -> ModelRequestContext:
-            messages = request_context.messages
+            prompt = self._task_prompt_input
+            messages = compact_stale_tool_returns(
+                request_context.messages, document_budget=_document_history_budget(history_max_chars),
+                compact_other_returns=False,
+            )
+            request_context = replace(request_context, messages=messages)
             if sum(_history_message_size(message) for message in messages) <= history_max_chars:
                 return request_context
             chunks = _history_chunks(messages)
-            if len(chunks) <= 2:
-                return request_context
-            prefix = [message for chunk in chunks[:-2] for message in chunk]
-            suffix = [message for chunk in chunks[-2:] for message in chunk]
-            if not prefix:
-                return request_context
+            prompt_request = _current_prompt_request(messages, prompt)
+            prefix_count = next((
+                index for index, chunk in enumerate(chunks[:-2])
+                if _has_document_page(chunk)
+            ), max(0, len(chunks) - 2))
+            prefix = [message for chunk in chunks[:prefix_count] for message in chunk]
+            if not prefix or (len(prefix) == 1 and prefix[0] is prompt_request):
+                return replace(request_context, messages=compact_agent_history(
+                    messages, max_chars=history_max_chars, protected_prompt=prompt,
+                ))
+            suffix = [message for chunk in chunks[prefix_count:] for message in chunk]
             compact_context = replace(request_context, messages=prefix)
             try:
                 compacted = await model.compact_messages(
@@ -989,10 +1116,19 @@ class Agent(AgentRuntime):
                 )
                 return replace(
                     request_context,
-                    messages=_bound_history_context(messages, max_chars=history_max_chars),
+                    messages=compact_agent_history(messages, max_chars=history_max_chars, protected_prompt=prompt),
                 )
             ctx.usage.incr(compacted.usage)
-            return replace(request_context, messages=[compacted, *suffix])
+            if prompt_request is not None and any(message is prompt_request for message in prefix):
+                # Native compaction can summarize the active prompt. Keep its exact input too.
+                suffix.insert(0, _pydantic_messages.ModelRequest(parts=[
+                    part for part in prompt_request.parts
+                    if isinstance(part, _pydantic_messages.UserPromptPart) and part.content == prompt
+                ]))
+            messages = [compacted, *suffix]
+            if sum(_history_message_size(message) for message in messages) > history_max_chars:
+                messages = compact_agent_history(messages, max_chars=history_max_chars, protected_prompt=prompt)
+            return replace(request_context, messages=messages)
 
         history_capability = (
             Hooks(
@@ -1219,6 +1355,7 @@ class Agent(AgentRuntime):
         if active_checkpoint is not None and active_checkpoint.request.data.get("reasoning_recovery_requested"):
             recovery_prompt = t("agent_runtime.reasoning_recovery_prompt", self._language)
             agent_input = [*([agent_input] if isinstance(agent_input, str) else agent_input), recovery_prompt]
+        self._task_prompt_input = agent_input if self._task_id is not None else None
 
         state = _StreamState(observe_text_no_progress=self._real_time)
         captured_messages: list[_pydantic_messages.ModelMessage] = []
@@ -1251,7 +1388,10 @@ class Agent(AgentRuntime):
                                 ):
                                     yield message
                     if save_native_history is not None and self.terminal_output is not None:
-                        compacted = compact_agent_history(captured_messages, max_chars=240_000)
+                        compacted = compact_agent_history(
+                            captured_messages, max_chars=240_000,
+                            protected_prompt=self._task_prompt_input,
+                        )
                         save_native_history(_pydantic_messages.ModelMessagesTypeAdapter.dump_json(compacted).decode())
                     break
                 except (ReasoningDegenerationError, RepeatedTextNoProgressError, RunCancelled) as interruption:
@@ -1334,6 +1474,7 @@ class Agent(AgentRuntime):
         finally:
             self._model_generation_active = False
             self._active_checkpoint = None
+            self._task_prompt_input = None
 
     async def _emit_stream_messages(
         self,

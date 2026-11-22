@@ -2,15 +2,18 @@ import json
 from types import SimpleNamespace
 from typing import Any, cast
 from unittest.mock import AsyncMock
+from uuid import uuid4
 
 import pytest
 from pydantic_ai.messages import (
     ModelMessage,
     ModelRequest,
     ModelResponse,
+    TextPart,
     ToolCallPart,
     ToolReturnPart,
     ModelMessagesTypeAdapter,
+    UserPromptPart,
 )
 
 from app.harness import runtime
@@ -461,6 +464,187 @@ def test_compact_agent_history_bounds_context_without_orphaning_tools() -> None:
         if isinstance(part, ToolReturnPart)
     }
     assert calls == returns
+
+
+def _document_page(start: int, end: int, total: int, *, revision: int = 3) -> dict[str, Any]:
+    blocks = [
+        {"number": number, "html": f"<p>{number} – " + "Synthetic section. " * 23 + "</p>"}
+        for number in range(start + 1, end + 1)
+    ]
+    return {
+        "uri": "document://00000000-0000-4000-8000-000000000001",
+        "revision": revision,
+        "media_type": "text/html",
+        "offset_unit": "block",
+        "start": start,
+        "end": end,
+        "total": total,
+        **({"next_offset": end} if end < total else {}),
+        "content": "".join(block["html"] for block in blocks),
+        "blocks": blocks,
+    }
+
+
+def _document_exchange(page: dict[str, Any], call_id: str) -> list[ModelMessage]:
+    return [
+        ModelResponse(parts=[ToolCallPart("file_read", {"uri": page["uri"], "offset": page["start"]}, call_id)]),
+        ModelRequest(parts=[ToolReturnPart("file_read", json.dumps(page, ensure_ascii=False), call_id)]),
+    ]
+
+
+def _document_results(messages: list[ModelMessage]) -> list[dict[str, Any]]:
+    return [
+        json.loads(part.content)
+        for message in messages if isinstance(message, ModelRequest)
+        for part in message.parts if isinstance(part, ToolReturnPart) and part.tool_name == "file_read"
+    ]
+
+
+@pytest.mark.parametrize("other_tools", [6, 25])
+def test_document_pages_survive_interleaved_tools_with_one_copy_of_the_html(other_tools: int) -> None:
+    pages = [_document_page(start, end, 145) for start, end in [(0, 54), (54, 117), (117, 145)]]
+    messages: list[ModelMessage] = []
+    for index, page in enumerate(pages):
+        messages.extend(_document_exchange(page, f"read-{index}"))
+    for index in range(other_tools):
+        messages.extend(_tool_exchange(index, "x" * 3_500))
+
+    compacted = compact_agent_history(messages, max_chars=145_000)
+    projected = _document_results(compacted)
+
+    assert [page["blocks"] for page in projected] == [page["blocks"] for page in pages]
+    assert [page["next_offset"] for page in projected] == [54, 117, None]
+    assert {page["revision"] for page in projected} == {3}
+    assert all("content" not in page for page in projected)
+    assert len(json.dumps(projected, ensure_ascii=False)) < len(json.dumps(pages, ensure_ascii=False)) * 0.6
+    assert len(ModelMessagesTypeAdapter.dump_json(compacted)) <= 145_000
+    assert _document_results(messages) == pages
+
+
+def test_whole_history_budget_preserves_current_prompt_and_tool_pairs() -> None:
+    objective = "Amended task: edit only the introduction."
+    messages: list[ModelMessage] = [
+        ModelRequest(parts=[UserPromptPart("Older task: rewrite the entire document. " * 200)]),
+        ModelRequest(parts=[UserPromptPart(objective)]),
+    ]
+    for index in range(12):
+        messages.extend(_tool_exchange(index, "x" * 2_000))
+
+    projected = compact_agent_history(messages, max_chars=10_000, protected_prompt=objective)
+
+    prompts = [part.content for message in projected if isinstance(message, ModelRequest)
+               for part in message.parts if isinstance(part, UserPromptPart)]
+    assert prompts.count(objective) == 1
+    assert all("Older task" not in str(prompt) for prompt in prompts)
+    assert len(ModelMessagesTypeAdapter.dump_json(projected)) <= 10_000
+    assert [part.tool_call_id for message in projected if isinstance(message, ModelResponse)
+            for part in message.parts if isinstance(part, ToolCallPart)] == [
+        part.tool_call_id for message in projected if isinstance(message, ModelRequest)
+        for part in message.parts if isinstance(part, ToolReturnPart)
+    ]
+
+
+def test_document_budget_preserves_terminal_cursor_and_distinguishes_revisions() -> None:
+    older = _document_page(0, 18, 18, revision=2)
+    newer = _document_page(0, 18, 18, revision=3)
+    messages = [
+        *_document_exchange(older, "older"),
+        *_document_exchange(newer, "newer"),
+        *_document_exchange(newer, "reread"),
+        *_tool_exchange(0, "ok"),
+    ]
+
+    projected = _document_results(compact_agent_history(messages, max_chars=20_000))
+
+    assert [(page["revision"], page["next_offset"]) for page in projected] == [(2, None), (3, None), (3, None)]
+    assert all(page["end"] == page["total"] == 18 for page in projected)
+    assert all("history_note" in page and "blocks" not in page for page in projected[:2])
+    assert projected[-1]["blocks"] == newer["blocks"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("native_compaction,early_lookups", [(False, 0), (True, 0), (True, 2)])
+async def test_runtime_edits_a_long_document_after_three_reads(
+    monkeypatch, native_compaction: bool, early_lookups: int,
+) -> None:
+    from pydantic_ai.models.function import DeltaToolCall
+    from app.harness.tests.test_runtime_cancellation import _CountingFunctionModel
+    from app.llm.provider_facade import ProviderResponsesPolicy
+
+    objective = "Replace the first numbered block of the document with its updated introduction."
+    pages = {start: _document_page(start, end, 145) for start, end in [(0, 54), (54, 117), (117, 145)]}
+    first = pages[0]
+    offsets: list[int] = []
+    edits: list[tuple[int, int, str]] = []
+    requests = 0
+    compactions = 0
+    lookups = 25 if native_compaction else 6
+
+    def file_read(uri: str, offset: int) -> str:
+        assert uri == first["uri"]
+        offsets.append(offset)
+        return json.dumps(pages[offset], ensure_ascii=False)
+
+    def agent_list(offset: int) -> str:
+        return f"Synthetic directory page {offset}." + ("x" * 3_500 if native_compaction else "")
+
+    def file_edit(revision: int, block: int, original: str) -> str:
+        edits.append((revision, block, original))
+        return "Introduction updated."
+
+    async def model(messages, _info):
+        nonlocal requests
+        requests += 1
+        step = requests - early_lookups
+        if step <= 0:
+            yield {0: DeltaToolCall(name="agent_list", json_args=json.dumps({"offset": requests - 100}))}
+        elif step <= 3:
+            args = {"uri": first["uri"], "offset": list(pages)[step - 1]}
+            yield {0: DeltaToolCall(name="file_read", json_args=json.dumps(args))}
+        elif step <= 3 + lookups:
+            yield {0: DeltaToolCall(name="agent_list", json_args=json.dumps({"offset": step - 4}))}
+        elif not edits:
+            prompts = [part.content for message in messages if isinstance(message, ModelRequest)
+                       for part in message.parts if isinstance(part, UserPromptPart)]
+            assert objective in prompts
+            if native_compaction and not early_lookups:
+                assert any("history was compacted" in str(prompt) for prompt in prompts)
+            page = next((page for page in _document_results(messages) if page["start"] == 0 and "blocks" in page), None)
+            if page is None:
+                yield {0: DeltaToolCall(name="file_read", json_args=json.dumps({"uri": first["uri"], "offset": 0}))}
+                return
+            first_block = page["blocks"][0]
+            args = {"revision": page["revision"], "block": first_block["number"], "original": first_block["html"]}
+            yield {0: DeltaToolCall(name="file_edit", json_args=json.dumps(args))}
+        else:
+            yield "Introduction updated."
+
+    provider = _CountingFunctionModel(stream_function=model)
+    if native_compaction:
+        class ResponsesModel(_CountingFunctionModel):
+            responses_policy = ProviderResponsesPolicy(model_profile=lambda _: None, supports_compaction=True)
+
+            async def compact_messages(self, context, *, instructions):
+                nonlocal compactions
+                assert early_lookups
+                assert _document_results(context.messages) == []
+                compactions += 1
+                return ModelResponse(parts=[TextPart("Compacted earlier directory pages.")])
+
+        monkeypatch.setattr(runtime._llm_pydantic_ai_utils, "InternalLLMResponsesModel", ResponsesModel)
+        provider = ResponsesModel(stream_function=model)
+    monkeypatch.setattr(runtime, "build_model_for_llm", AsyncMock(return_value=provider))
+    monkeypatch.setattr(runtime, "estimate_cost_from_usage", lambda *_args: 0.0)
+    agent = Agent(cast(LLM, SimpleNamespace(context_length=66_000)), task_id=uuid4(), tools=[file_read, agent_list, file_edit])
+    await agent.init()
+    output = [message async for message in agent.run(objective)]
+
+    assert all(message.success for message in output), agent.error
+    assert edits == [(3, 1, first["blocks"][0]["html"])]
+    assert offsets == [0, 54, 117]
+    assert requests == 5 + lookups + early_lookups
+    assert bool(compactions) is bool(early_lookups)
+    assert agent.terminal_output == "Introduction updated."
 
 
 @pytest.mark.asyncio
