@@ -15,6 +15,7 @@ import type { ActiveCall, ChatCommandCode, ConversationActivity, ConversationAct
 class ChatRoom extends BaseRoom { readonly className = 'ChatRoom' }
 
 const OBSERVED_REALTIME_MESSAGE_LIMIT = 500
+const SEND_RECEIPT_LOOKUP_TIMEOUT_MS = 5_000
 const externalMessageIdCollator = new Intl.Collator('en', {
   numeric: true,
   sensitivity: 'variant',
@@ -576,13 +577,29 @@ export function useChatState(documentId: () => string | null = () => null) {
       return true
     } catch (error) {
       if (!active()) return false
-      if (current()) {
-        const confirmed = messages.value.some(message => message.external_id === clientMessageId
-          && message.room_id === room.id && !message.id.startsWith('pending:'))
-        if (confirmed && axios.isAxiosError(error) && !error.response) {
+      if (current() && axios.isAxiosError(error) && !error.response) {
+        const matchesReceipt = (message: MessengerMessage): boolean =>
+          message.external_id === clientMessageId && message.room_id === room.id
+          && message.is_mine && message.direction === 'inbound' && !message.id.startsWith('pending:')
+        let receipt = messages.value.find(matchesReceipt)
+        if (!receipt && error.code === 'ERR_NETWORK') {
+          // The write may have committed before the connection dropped.
+          const page = await service.messages(
+            room.id, 1, messagesPageSize, null, null, AbortSignal.timeout(SEND_RECEIPT_LOOKUP_TIMEOUT_MS),
+          ).catch((lookupError: unknown) => {
+            if (current()) clearDeniedScope(lookupError)
+            return null
+          })
+          if (!current()) return false
+          receipt = messages.value.find(matchesReceipt) ?? page?.items.find(matchesReceipt)
+        }
+        if (receipt) {
           unconfirmedSend = null
+          mergeSentMessage(receipt)
           return true
         }
+      }
+      if (current()) {
         const optimisticStillExists = messages.value.some(message => message.id === optimisticMessage.id)
         if (optimisticStillExists) {
           messages.value = messages.value.filter(message => message.id !== optimisticMessage.id)

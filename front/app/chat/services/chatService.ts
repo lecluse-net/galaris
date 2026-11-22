@@ -98,7 +98,12 @@ export const chatService = {
   async updateRoomTopic(roomId: string, topicId: string | null): Promise<MessengerRoom> { return (await api.patch<MessengerRoom>(`${base}/rooms/${roomId}/topic`, { topic_id: topicId })).data },
   async commands(roomId: string): Promise<ChatCommandCatalog> { return (await api.get<ChatCommandCatalog>(`${base}/rooms/${roomId}/commands`)).data },
   async createRoom(agentId: number, label: string, topicId: string | null, showLastMessage: boolean, documentId: string | null = null): Promise<MessengerRoom> { return (await api.post<MessengerRoom>(`${base}/rooms`, { agent_id: agentId, label, topic_id: topicId, show_last_message: showLastMessage, ...(documentId ? { document_id: documentId } : {}) })).data },
-  async messages(roomId: string, page = 1, pageSize = 50, agentId: number | null = null, historyCursor: string | null = null): Promise<MessagePage<MessengerMessage>> { return (await api.get<MessagePage<MessengerMessage>>(`${base}/rooms/${roomId}/messages`, { params: { page, page_size: pageSize, agent_id: agentId, history_cursor: historyCursor } })).data },
+  async messages(roomId: string, page = 1, pageSize = 50, agentId: number | null = null, historyCursor: string | null = null, signal?: AbortSignal): Promise<MessagePage<MessengerMessage>> {
+    return (await api.get<MessagePage<MessengerMessage>>(`${base}/rooms/${roomId}/messages`, {
+      params: { page, page_size: pageSize, agent_id: agentId, history_cursor: historyCursor },
+      signal,
+    })).data
+  },
   async messageSpeechStatus(roomId: string, agentId: number | null = null): Promise<MessageSpeechStatus> { return (await api.get<MessageSpeechStatus>(`${base}/rooms/${roomId}/speech/status`, { params: { agent_id: agentId } })).data },
   async messageSpeechBlob(roomId: string, messageId: string, language: string, agentId: number | null = null): Promise<Blob> { return (await api.post<Blob>(`${base}/rooms/${roomId}/messages/${messageId}/speech`, undefined, { params: { language, agent_id: agentId }, responseType: 'blob' })).data },
   async updateMessageTopic(roomId: string, messageId: string, topicId: string, scope: MessageTopicChangeScope): Promise<MessageTopicUpdateResult> { return (await api.patch<MessageTopicUpdateResult>(`${base}/rooms/${roomId}/messages/${messageId}/topic`, { topic_id: topicId, scope })).data },

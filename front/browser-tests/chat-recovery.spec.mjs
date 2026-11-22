@@ -298,11 +298,18 @@ for (const refresh of ['blocked', 'failed']) {
   })
 }
 
-test('a canonical receipt recovers a lost POST response without erasing a newer draft', async ({ page }) => {
+for (const { receipt, nextDraft } of [
+  { receipt: 'socket', nextDraft: 'Synthetic next draft' },
+  { receipt: 'history', nextDraft: '' },
+  { receipt: 'history', nextDraft: 'Synthetic next draft' },
+]) {
+test(`a canonical receipt recovers a lost POST response (${receipt}, ${nextDraft ? 'new draft' : 'unchanged draft'})`, async ({ page }) => {
   const { messages } = await conversation(page)
   let submitted, release
+  let posts = 0
   const pending = new Promise(resolve => { release = resolve })
   await page.route('**/api/chat/rooms/room-a/messages', async route => {
+    posts++
     submitted = route.request().postDataJSON()
     await pending
     return route.abort('connectionreset')
@@ -311,24 +318,28 @@ test('a canonical receipt recovers a lost POST response without erasing a newer 
   await draft.fill('Synthetic first message')
   await page.getByRole('button', { name: 'Post', exact: true }).click()
   await expect.poll(() => submitted).toBeTruthy()
-  await draft.fill('Synthetic next draft')
+  if (nextDraft) await draft.fill(nextDraft)
   await page.route('**/api/chat/rooms/room-a/messages?*', route => route.fulfill({ json: {
     items: [messages['room-a'], { ...messages['room-a'], id: 'saved-message',
       external_id: submitted.client_message_id, text: submitted.text }], total: 2,
   } }))
   try {
-    await page.evaluate(() => window.testApp.emitSocket('chat.message', { data: { room_id: 'room-a', message_id: 'saved-message', is_new: true } }))
-    await expect.poll(() => page.evaluate(async () => {
-      const { useChatStore } = await import('/app/chat/stores/chat.ts')
-      return useChatStore(window.testApp.pinia).messages.some(message => message.id === 'saved-message')
-    })).toBe(true)
+    if (receipt === 'socket') {
+      await page.evaluate(() => window.testApp.emitSocket('chat.message', { data: { room_id: 'room-a', message_id: 'saved-message', is_new: true } }))
+      await expect.poll(() => page.evaluate(async () => {
+        const { useChatStore } = await import('/app/chat/stores/chat.ts')
+        return useChatStore(window.testApp.pinia).messages.some(message => message.id === 'saved-message')
+      })).toBe(true)
+    }
     release()
-    await expect(page.getByRole('button', { name: 'Post', exact: true })).toBeEnabled()
-    await expect(draft).toHaveValue('Synthetic next draft')
+    await expect(page.getByText('Synthetic first message', { exact: true })).toBeVisible()
+    await expect(draft).toHaveValue(nextDraft)
     await expect(page.locator('.q-notification')).toHaveCount(0)
     await expect(page.locator('input[type=file]')).toBeEnabled()
+    expect(posts).toBe(1)
   } finally { release() }
 })
+}
 
 test('a late POST receipt cannot clear another conversation draft', async ({ page }) => {
   const { rooms, messages } = await conversation(page)

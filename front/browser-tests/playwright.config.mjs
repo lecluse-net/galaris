@@ -23,6 +23,7 @@ export default defineConfig({
     { name: 'chromium', use: { browserName: 'chromium' } },
     { name: 'webkit-links', testMatch: 'galaris-links.spec.mjs', grep: /a document .* navigates without a modal/, use: { browserName: 'webkit' } },
     { name: 'webkit-composer', testMatch: 'chat.spec.mjs', grep: /composer/, use: { browserName: 'webkit' } },
+    { name: 'firefox-chat-recovery', testMatch: 'chat-recovery.spec.mjs', grep: /recovers a lost POST response/, use: { browserName: 'firefox' } },
     { name: 'firefox-shortcuts', testMatch: 'document-shortcuts.spec.mjs', use: { browserName: 'firefox' } },
     { name: 'webkit-shortcuts', testMatch: 'document-shortcuts.spec.mjs', use: { browserName: 'webkit' } },
     { name: 'firefox-mindmap-export', testMatch: 'mindmap.spec.mjs', grep: /image export and print/, use: { browserName: 'firefox' } },
