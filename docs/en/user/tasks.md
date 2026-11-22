@@ -156,16 +156,17 @@ to search memories, including when vector search is unavailable. “New topic”
 former subject from automatic search. Permissions and contact scope still apply; a subject
 from history does not constitute evidence.
 
-Task details show activity, tools and results; `task_get` exposes saved milestone tracking.
-The executor can update it with
-`task_work_update` on its active Task, with revision checks. Up to twenty milestones are
-retained; declaring one complete does not replace evidence of the result or its delivery.
-Tracking has its own revision, so execution checkpoints do not block progress updates.
-After resuming or applying an amendment, the agent rereads this revision. It can update
-only the relevant milestones and preserve the rest of the plan.
+Task details show activity, tools and results. The agent can retrieve saved tracking with
+`task_get` and send changes for its active Task to `task_work_update`. It supplies the milestone
+key and the fields to change. The server keeps the rest of the plan and returns the previous
+active milestone to pending when the agent starts another. The receipt confirms the saved plan
+and explains any omitted changes. Version checking is available for deliberate corrections or
+replacement. Tracking retains up to twenty milestones. A completed milestone expresses the
+agent's declared progress. Resources and action receipts establish fulfillment and delivery.
 If execution completes normally with a required milestone blocked, the Task shows
-**Completed · objective unmet**. The reason, next action and partial report remain available.
-An open wait keeps the Task waiting. Plan steps that depend on the missing result are skipped.
+**Completed · objective unmet**. The milestone label and partial report remain available, with
+the reason and next action when supplied. An open wait keeps the Task waiting. Plan steps that
+depend on the missing result are skipped.
 **Retry** resumes blocked work and preserves successfully completed steps.
 An unavailable optional addition, such as a conditional document note, does not fail the main
 reply. The agent explains its omission in the report; it is excluded from applicable milestones

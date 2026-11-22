@@ -115,9 +115,10 @@ async def test_task_completion_records_required_blockers_in_both_organizations(o
     prompt = await executor_service.build_task_prompt(request)
     assert "task_work_update" in prompt
     assert "required=true milestone in state=blocked" in prompt
-    assert "work_plan_revision" in prompt
-    assert "preserve any existing milestones" in prompt
     assert "optional additions required=false" in prompt
+    if organization == "tracked":
+        assert 'plan={"key":"research","state":"done"}' in prompt
+    assert "expected_revision" not in prompt
 
 
 @pytest.mark.asyncio

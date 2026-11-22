@@ -6,10 +6,14 @@ from pydantic import ValidationError
 
 from app.agent import WorkPlan, work_plan_progress
 from app.task import Task, TaskStatus
-from app.task.mcp import mcp_work_update
+from app.task.mcp import mcp_work_update as call_work_update
 from app.agent.work_contracts import WorkPlanInput
 from app.services.mcp_loader import McpToolContext
 from core.database import get_db_session
+
+
+async def mcp_work_update(ctx, draft, *args, **kwargs):
+    return await call_work_update(ctx, draft.model_dump(exclude_unset=True), *args, **kwargs)
 
 
 def plan(state="doing", observation="", next_action="Inspect the remaining inputs"):
@@ -99,34 +103,35 @@ async def test_work_tracking_survives_reload_and_preserves_completed_work(commit
         assert current.status == TaskStatus.EXEC
         assert current.data["work_plan"]["next_action"] == "Inspect the remaining inputs"
         # A stale write must not replace newer progress.
-        with pytest.raises(ValueError, match="revision changed"):
-            await mcp_work_update(ctx, tracked(completed_state, "Observed completion or unavailable optional output", ""), revision)
+        stale = await mcp_work_update(
+            ctx, tracked(completed_state, "Observed completion or unavailable optional output", ""), revision,
+        )
+        assert stale["status"] == "unchanged"
+        assert stale["work_plan_revision"] == started["work_plan_revision"]
         done = await mcp_work_update(ctx, tracked(completed_state, "Observed completion or unavailable optional output", ""), started["work_plan_revision"])
         duplicate = await mcp_work_update(ctx, tracked(completed_state, "Observed completion or unavailable optional output", ""), started["work_plan_revision"])
         assert duplicate == done
-        with pytest.raises(ValueError, match="revision reason"):
-            await mcp_work_update(ctx, tracked(), done["work_plan_revision"])
+        protected = await mcp_work_update(ctx, tracked(), done["work_plan_revision"])
+        assert protected["status"] == "unchanged"
+        assert protected["work_plan"] == done["work_plan"]
         reopened = await mcp_work_update(ctx, tracked(), done["work_plan_revision"], "A new input invalidates the initial assumption")
         assert reopened["work_plan"]["milestones"][0]["state"] == "doing"
         reclassified = tracked().model_dump(mode="json")
         reclassified["milestones"][0]["required"] = completed_state == "skipped"
         reclassified_plan = WorkPlan.model_validate(reclassified)
-        with pytest.raises(ValueError, match="required status"):
-            await mcp_work_update(ctx, reclassified_plan, reopened["work_plan_revision"])
+        protected = await mcp_work_update(ctx, reclassified_plan, reopened["work_plan_revision"])
+        assert protected["status"] == "unchanged"
+        assert protected["work_plan"] == reopened["work_plan"]
         changed = await mcp_work_update(ctx, reclassified_plan, reopened["work_plan_revision"],
                                         "The request clarifies which outputs are necessary")
         assert changed["work_plan"]["milestones"][0]["required"] == (completed_state == "skipped")
-        from app.services.tool_errors import classify_tool_failure
-        from app.services.contracts import ToolCallRejectedError
-        with pytest.raises(ToolCallRejectedError) as conflict:
-            await mcp_work_update(ctx, plan("done", "Output reread", ""), revision)
-        failure = classify_tool_failure(conflict.value)
-        assert failure.kind == "actionable"
-        assert "work_plan_revision" in failure.detail
+        conflict = await mcp_work_update(ctx, plan("done", "Output reread", ""), revision)
+        assert conflict["status"] == "unchanged"
+        assert conflict["work_plan_revision"] == changed["work_plan_revision"]
+        assert conflict["work_plan"] == changed["work_plan"]
         current.status = TaskStatus.SUCCESS
         await db.commit()
-        with pytest.raises(ValueError, match="terminal"):
-            await mcp_work_update(ctx, plan(), current.revision)
+        assert (await mcp_work_update(ctx, plan(), current.revision))["status"] == "unavailable"
 
 
 @pytest.mark.asyncio
@@ -138,17 +143,44 @@ async def test_progress_patch_preserves_completed_milestones_and_rejects_stale_w
         "key": "deliver", "label": "Deliver report", "acceptance": "Report delivered",
         "state": "doing",
     }], "next_action": "Review the report"})
-    with pytest.raises(ValueError, match="revision changed"):
-        await mcp_work_update(ctx, update, 0, merge=True)
+    stale = await mcp_work_update(ctx, update, 0, merge=True)
+    assert stale["status"] == "unchanged"
+    assert stale["work_plan"] == prepared["work_plan"]
     committed = await mcp_work_update(ctx, update, prepared["work_plan_revision"], merge=True)
     assert committed["work_plan"]["milestones"] == [
         *prepared["work_plan"]["milestones"], update.milestones[0].model_dump(mode="json"),
     ]
     assert committed["work_plan"]["next_action"] == "Review the report"
     assert await mcp_work_update(ctx, update, prepared["work_plan_revision"], merge=True) == committed
-    with pytest.raises(ValueError, match="revision reason.*prepare"):
-        await mcp_work_update(ctx, plan("pending", "", "Verify the source"),
-                              committed["work_plan_revision"], merge=True)
+    takeover = WorkPlanInput.model_validate({"milestones": [{
+        "key": "review", "label": "Review the report", "acceptance": "Report verified",
+        "state": "doing",
+    }]})
+    stale = await mcp_work_update(ctx, takeover, prepared["work_plan_revision"], merge=True)
+    assert stale["status"] == "unchanged"
+    assert stale["work_plan"] == committed["work_plan"]
+    advanced = await call_work_update(ctx, {"key": "review", "state": " Doing "})
+    assert advanced["work_plan_revision"] == 3
+    assert [(item["key"], item["state"]) for item in advanced["work_plan"]["milestones"]] == [
+        ("prepare", "done"), ("deliver", "pending"), ("review", "doing"),
+    ]
+    skipped = await call_work_update(ctx, {"milestones": [
+        {"key": "prepare", "state": "pending"},
+        {"key": "deliver", "state": "skipped"},
+        {"key": "review", "state": "done"},
+        {"label": "Missing key"},
+    ]})
+    assert skipped["status"] == "recorded"
+    assert len(skipped["notes"]) == 3
+    assert [(item["key"], item["state"]) for item in skipped["work_plan"]["milestones"]] == [
+        ("prepare", "done"), ("deliver", "pending"), ("review", "done"),
+    ]
+    assert skipped["work_plan"]["milestones"][0] == prepared["work_plan"]["milestones"][0]
+    assert skipped["work_plan"]["milestones"][2]["observation"] == ""
+    evidence = {"key": "review", "observation": "Verified the synthetic report"}
+    confirmed = await call_work_update(ctx, evidence)
+    assert confirmed["work_plan"]["milestones"][2]["observation"] == evidence["observation"]
+    assert await call_work_update(ctx, evidence) == confirmed
 
 
 @pytest.mark.asyncio
@@ -156,16 +188,17 @@ async def test_progress_patch_preserves_completed_milestones_and_rejects_stale_w
 async def test_tracking_is_owned_by_the_current_executor_and_respects_pause(committed_database, blocked):
     async with get_db_session() as db:
         current = await seed(db)
-        task_id, agent_id, revision = current.id, current.agent_id, 0
+        task_id, agent_id = current.id, current.agent_id
         current.paused = blocked == "pause"
         current.cancel_requested = blocked == "cancel"
-    async with get_db_session():
-        with pytest.raises(PermissionError):
-            await mcp_work_update(McpToolContext(agent_id=agent_id + 1, runtime="internal", task_id=task_id), plan(), revision)
-        with pytest.raises(PermissionError):
-            await mcp_work_update(McpToolContext(agent_id=agent_id, runtime="internal"), plan(), revision)
-        with pytest.raises(ValueError, match="inactive"):
-            await mcp_work_update(McpToolContext(agent_id=agent_id, runtime="internal", task_id=task_id), plan(), revision)
+    async with get_db_session() as db:
+        for ctx in (McpToolContext(agent_id=agent_id + 1, runtime="internal", task_id=task_id),
+                    McpToolContext(agent_id=agent_id, runtime="internal"),
+                    McpToolContext(agent_id=agent_id, runtime="internal", task_id=task_id)):
+            receipt = await call_work_update(ctx, {"key": "prepare", "state": "doing"})
+            assert receipt["status"] == "unavailable"
+            assert "work_plan" not in receipt
+        assert "work_plan" not in (await db.get(Task, task_id)).data
 
 
 @pytest.mark.asyncio
@@ -182,14 +215,25 @@ async def test_concurrent_progress_writers_cannot_erase_each_other(committed_dat
         async with get_db_session():
             return await mcp_work_update(ctx, plan(next_action=next_action), revision)
 
-    results = await asyncio.gather(write("Check source A"), write("Check source B"), return_exceptions=True)
-    assert sum(isinstance(result, dict) for result in results) == 1
-    assert sum(isinstance(result, ValueError) for result in results) == 1
+    results = await asyncio.gather(write("Check source A"), write("Check source B"))
+    assert sorted(result["status"] for result in results) == ["recorded", "unchanged"]
     async with get_db_session() as db:
         current = await db.get(Task, task_id)
         assert current.data["_agent_run_checkpoint"] == {"opaque": "preserved"}
         assert current.data["existing"] == {"keep": True}
         assert current.data["work_plan"]["next_action"] in {"Check source A", "Check source B"}
+
+    async def finish(key):
+        async with get_db_session():
+            return await call_work_update(ctx, {"key": key, "state": "done"})
+
+    results = await asyncio.gather(finish("source-a"), finish("source-b"))
+    assert [result["status"] for result in results] == ["recorded", "recorded"]
+    async with get_db_session() as db:
+        current = await db.get(Task, task_id)
+        assert {item["key"]: item["state"] for item in current.data["work_plan"]["milestones"]} == {
+            "prepare": "doing", "source-a": "done", "source-b": "done",
+        }
 
 
 @pytest.mark.asyncio
@@ -206,20 +250,13 @@ async def test_retry_cannot_execute_an_unanswered_organization_question(committe
         assert retried.data["organization"] == "clarify"
 
 
-@pytest.mark.parametrize("defect", ["unchecked", "no_next_action", "duplicate", "multiple_current",
-                                  "skip_required", "skip_without_reason"])
+@pytest.mark.parametrize("defect", ["duplicate", "multiple_current", "skip_required"])
 def test_tracking_requires_bounded_useful_progress(defect):
     raw = plan().model_dump()
-    if defect == "unchecked":
-        raw["milestones"][0]["state"] = "done"
-    elif defect == "no_next_action":
-        raw["next_action"] = ""
-    elif defect == "duplicate":
+    if defect == "duplicate":
         raw["milestones"].append(raw["milestones"][0].copy())
     elif defect == "skip_required":
         raw["milestones"][0].update(state="skipped", observation="Unavailable")
-    elif defect == "skip_without_reason":
-        raw["milestones"][0].update(state="skipped", required=False)
     else:
         raw["milestones"].append(raw["milestones"][0] | {"key": "another"})
     with pytest.raises(ValidationError):

@@ -49,7 +49,7 @@ et les tests du scheduler vérifient la clôture sans retry dans chaque phase co
 Le suivi d'un exécutant est un objet `galaris.work-plan/v1` dans les données de sa Task :
 au plus vingt jalons, critères d'acceptation, résultats observés, URI et prochaine action,
 avec un budget de contexte borné. `task_work_update` ne modifie que la Task active de
-l'exécutant ; la commande recharge et verrouille la ligne, contrôle `expected_revision`,
+l'exécutant ; la commande recharge et verrouille la ligne, contrôle `expected_revision` quand fourni,
 préserve les autres données et refuse les Tasks suspendues ou terminales. Un même contenu
 est idempotent ; modifier un jalon achevé demande une raison explicite. `task_get` fournit
 la révision et le suivi. Les mises à jour utilisent les événements Task existants.
@@ -59,7 +59,23 @@ pour un suivi absent ou historique. `expected_revision` compare ce compteur, inc
 uniquement lorsque les jalons changent. La révision globale de Task conserve son rôle de
 concurrence ORM et HTTP ; les checkpoints et l'activité ne périment plus une lecture du suivi.
 Le verrou de ligne continue de sérialiser les écrivains et les commandes de suspension ou d'arrêt.
-Un conflit de suivi est refusé avant mutation avec une consigne explicite de relecture.
+Un conflit de suivi conserve le plan courant et le rend dans le reçu.
+
+### Mise à jour courante par jalon
+
+`task_work_update(plan={"key":"recherche","state":"done"})` charge la tâche active de
+l’exécutant sous verrou et applique les champs fournis à la clé du jalon. Un appel peut aussi
+fournir plusieurs changements sous `plan.milestones`. Le serveur conserve les autres jalons
+et remet un ancien jalon actif en attente quand un nouveau démarre. Les critères d’acceptation,
+l’observation et la prochaine action sont facultatifs. L’observation décrit les faits connus.
+Un blocage sans observation conserve le libellé du jalon dans le résultat métier.
+
+`expected_revision` reste disponible pour les écritures versionnées. Le remplacement complet
+utilise la révision courante. Une correction d’un état terminé ou du caractère obligatoire
+utilise la révision courante et `revision_reason`. Les appels ordinaires protègent les jalons
+achevés et leur caractère obligatoire. Un reçu ordinaire expose le plan courant et les
+changements écartés, y compris pour une écriture versionnée périmée. Les refus d’autorisation
+et les défaillances d’infrastructure conservent leurs contrôles habituels.
 
 Les consignes de reprise demandent de contrôler les ressources et effets conservés avant
 de répéter une action. Un jalon coché est une déclaration du modèle, jamais une preuve de
@@ -79,7 +95,7 @@ un blocage déclaré. Les tâches déjà terminales ne sont pas réécrites.
 
 Précision du 7 novembre 2026 : chaque jalon distingue `required=true` (défaut conservateur
 pour les suivis existants) et `required=false`. Les compléments facultatifs restent séparés
-du livrable demandé. Un état `skipped` exige un jalon facultatif et une observation ;
+du livrable demandé. Un état `skipped` exige un jalon facultatif ;
 un complément facultatif `blocked` reste lui aussi une omission non bloquante à la clôture.
 La progression exclut ces omissions des jalons applicables et expose leur nombre `skipped`,
 sans les compter comme des réalisations. Les critères de succès du résultat restent inchangés.

@@ -285,22 +285,38 @@ async def test_work_update_recovers_misplaced_next_action_and_stale_revision(sco
             "plan": {**plan, "next_action": action}, "expected_revision": 0,
         })
         assert json.loads(replay.content[0].text) == receipt
-        contradictory = await client.call_tool("task_work_update", {
+        duplicate_alias = await client.call_tool("task_work_update", {
             "plan": {**plan, "next_action": action}, "next_action": "Use another destination",
             "expected_revision": 1,
         }, raise_on_error=False)
-        assert contradictory.is_error
-        assert contradictory.meta[EXECUTION_META_KEY]["outcome"] == "rejected"
-        assert "plan.next_action" in contradictory.content[0].text
+        assert not duplicate_alias.is_error
+        assert json.loads(duplicate_alias.content[0].text) == receipt
         conflict = await client.call_tool("task_work_update", {
             "plan": {**plan, "next_action": "Inspect the requested destination"}, "expected_revision": 0,
         }, raise_on_error=False)
-        assert conflict.is_error
-        assert conflict.meta[EXECUTION_META_KEY]["outcome"] == "rejected"
-        assert "work_plan_revision=1" in conflict.content[0].text
-        assert "task_get" in conflict.content[0].text
+        assert not conflict.is_error
+        assert conflict.meta[EXECUTION_META_KEY]["outcome"] == "returned"
+        conflict_receipt = json.loads(conflict.content[0].text)
+        assert conflict_receipt["status"] == "unchanged"
+        assert conflict_receipt["work_plan_revision"] == 1
+        assert conflict_receipt["work_plan"] == receipt["work_plan"]
+
+        finished = await client.call_tool("task_work_update", {
+            "plan": {"key": "write", "state": "done"},
+        })
+        completed = json.loads(finished.content[0].text)
+        assert completed["status"] == "recorded"
+        assert completed["work_plan_revision"] == 2
+        milestone = completed["work_plan"]["milestones"][0]
+        assert milestone["state"] == "done"
+        assert milestone["observation"] == ""
+        assert milestone["label"] == plan["milestones"][0]["label"]
+        assert milestone["acceptance"] == plan["milestones"][0]["acceptance"]
+        malformed = await client.call_tool("task_work_update", {"plan": ["wrong shape"]}, raise_on_error=False)
+        assert not malformed.is_error
+        assert json.loads(malformed.content[0].text)["status"] == "unchanged"
         inspected = await client.call_tool("task_get", {"task_id": str(task_id)})
-        assert json.loads(inspected.content[0].text)["work_plan"] == receipt["work_plan"]
+        assert json.loads(inspected.content[0].text)["work_plan"] == completed["work_plan"]
 
 
 @pytest.mark.asyncio

@@ -400,42 +400,20 @@ async def build_task_prompt(task: Any, extra_context: Optional[dict[str, str]] =
         sections["completion_check"] = (
             "Before finishing, compare the requested outcome with confirmed tool receipts. "
             "If a required operation remains blocked, record it with task_work_update as a "
-            "required=true milestone in state=blocked, with the observed cause and plan.next_action, "
-            "even for organization=direct. Use the latest work_plan_revision from task_get or "
-            "a successful task_work_update and preserve any existing milestones. "
-            "A partial update or an explanatory reply does "
-            "not complete the blocked requirement. Keep optional additions required=false; "
-            "a recoverable tool error alone does not make the whole task fail. If tracking is "
-            "unavailable, explicitly report that limitation and the unfinished requirement."
+            "required=true milestone in state=blocked, even for organization=direct. "
+            "Include the cause in observation when known and check that the receipt records the blocker. "
+            "Keep optional additions required=false. If tracking is unavailable, report the unfinished requirement."
         )
     if data.get("organization") == "tracked" or isinstance(data.get("work_plan"), dict):
-        work_plan_revision = data.get("work_plan_revision", 0)
         sections["work_organization"] = (
-            f"Work plan revision at the start of this run: {work_plan_revision}. "
-            "This mission requires durable organization. Before substantive work, inspect "
-            "the authorized sources and existing results needed to establish scope and a "
-            "workable method. Use the latest work_plan_revision from task_get (initially 0) or "
-            "the last successful task_work_update as expected_revision, independently of the Task "
-            "revision. Use merge=true and send only new or changed milestones by key. "
-            "Preserve completed milestones and their observations unless the objective requires "
-            "a revision with an explicit reason. Retain a bounded set of milestones, acceptance checks "
-            "and plan.next_action. Keep "
-            "one end-to-end owner for a coherent deliverable; independent substantial items "
-            "belong in the existing collection workflow. Update tracking after meaningful "
-            "progress or a blocker, not after every tool call. Mark done only after performing "
-            "the acceptance check and record what you actually observed with canonical URIs. "
-            "Separate required deliverables (required=true, the default) from explicitly "
-            "optional additions (required=false); never combine them in one milestone. "
-            "If an optional addition is unavailable, mark it skipped with the observed reason, "
-            "retain the main result and disclose the omission in the final reply. A rejected "
-            "optional document write must not prevent delivering the requested answer. "
-            "Do not downgrade a required deliverable to conceal a failure. Work tracking "
-            "never authorizes an effect or bypasses a rejected operation. "
-            "On resume, inspect existing outputs and reconcile uncertain effects before "
-            "repeating work. Reopen a milestone with an explicit revision reason when new "
-            "findings require changes. Tracking alone never proves that the request is fulfilled. "
-            "If task_work_update is unavailable, state that limitation and preserve continuity "
-            "using the authorized resources; never invent a persisted checkpoint.\n"
+            "Inspect authorized sources and existing outputs, then record the milestones that help "
+            'you resume the work. Send small updates with task_work_update, for example '
+            'plan={"key":"research","state":"done"}. Reuse existing keys and send changed fields. '
+            "Record verified outcomes or blockers in observation when known. Set next_action when "
+            "it helps the next step. Keep one end-to-end owner for a coherent deliverable. "
+            "Mark an unavailable optional milestone (required=false) skipped and disclose the omission. "
+            "On resume, verify existing outputs and reconcile uncertain effects before repeating work. "
+            "Use the tool receipt and actual resources to verify what is saved.\n"
             + json.dumps(data.get("work_plan"), ensure_ascii=False)
         )
     if referrer_type == "AGENT" and data.get("goal_referrer_agent_id") is not None:
@@ -773,7 +751,9 @@ async def _update_task_after_execution(
             blocked = [item for item in plan.milestones
                        if item.required and item.state == "blocked"] if plan else []
             if blocked:
-                reason = "\n".join(f"{item.label}: {item.observation}" for item in blocked)
+                reason = "\n".join(
+                    f"{item.label}: {item.observation}" if item.observation else item.label for item in blocked
+                )
                 task.data = {**data, "objective_blocker": reason[:4000]}
                 execution_result.metadata = {
                     **execution_result.metadata, "blocked_milestones": [item.key for item in blocked]

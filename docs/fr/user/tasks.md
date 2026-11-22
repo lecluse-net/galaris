@@ -178,16 +178,18 @@ récent pour rechercher les souvenirs, même si la recherche vectorielle est ind
 « Autre sujet » écarte cet ancien sujet de la recherche automatique. Les droits et la portée
 du contact continuent de s'appliquer ; un sujet d'historique ne constitue pas une preuve.
 
-Le détail de tâche permet d’inspecter l’activité, les outils et les résultats ; `task_get`
-expose le suivi par jalons enregistré. L’exécuteur peut le mettre à jour
-avec `task_work_update`, sur sa tâche active, avec contrôle de révision. Jusqu’à vingt jalons
-sont conservés ; un jalon déclaré terminé ne remplace pas la preuve du résultat ou de sa livraison.
-Le suivi possède sa propre révision : les sauvegardes d’exécution ne bloquent pas ses mises à jour.
-Après une reprise ou un amendement, l'agent relit cette révision. Il peut mettre à jour
-les seuls jalons concernés, en conservant le reste du suivi.
+Le détail de tâche permet d’inspecter l’activité, les outils et les résultats. L’agent retrouve
+le suivi enregistré avec `task_get` et envoie les changements de sa tâche active à
+`task_work_update`. Il indique la clé du jalon et les champs à modifier. Le serveur conserve
+le reste du suivi et remet l’ancien jalon actif en attente quand l’agent en active un autre.
+Le reçu confirme le suivi enregistré et explique les changements écartés.
+Le contrôle de révision est disponible pour corriger ou remplacer intentionnellement le plan.
+Le suivi conserve au plus vingt jalons. Un jalon terminé exprime l’avancement déclaré par
+l’agent. Les ressources et les reçus d’action établissent la réalisation et la livraison.
 Si l'exécution se termine normalement avec un jalon obligatoire bloqué, la tâche affiche
-**Terminée · objectif non atteint**. Le motif, la prochaine action et le bilan partiel restent
-consultables. Une attente déjà ouverte conserve la tâche en attente. Les étapes d'un plan
+**Terminée · objectif non atteint**. Le libellé du jalon bloqué et le bilan partiel restent
+consultables, ainsi que le motif et la prochaine action lorsque l’agent les a indiqués.
+Une attente déjà ouverte conserve la tâche en attente. Les étapes d'un plan
 qui dépendent du résultat manquant sont écartées. **Réessayer** relance le travail bloqué et
 préserve les étapes déjà réussies.
 Un complément facultatif indisponible, par exemple une note documentaire conditionnelle,

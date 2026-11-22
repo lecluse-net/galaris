@@ -248,12 +248,14 @@ async def test_final_cost_uses_attempt_base_cost(monkeypatch: pytest.MonkeyPatch
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("milestone_state,required,wait", [
-    ("done", True, None), ("blocked", True, None), ("pending", True, None),
-    ("blocked", False, None), ("skipped", False, None),
-    ("blocked", True, "input"), ("blocked", True, "children"), ("blocked", True, "authorization"),
+@pytest.mark.parametrize("milestone_state,required,wait,observation", [
+    ("done", True, None, ""), ("blocked", True, None, "Missing target authorization"),
+    ("blocked", True, None, ""), ("pending", True, None, ""),
+    ("blocked", False, None, ""), ("skipped", False, None, ""),
+    ("blocked", True, "input", ""), ("blocked", True, "children", ""),
+    ("blocked", True, "authorization", ""),
 ])
-async def test_final_outcome_preserves_declared_work_blockers(monkeypatch, milestone_state, required, wait):
+async def test_final_outcome_preserves_declared_work_blockers(monkeypatch, milestone_state, required, wait, observation):
     """Expose unmet required work separately from execution failures and waits."""
     from app.agent import WorkPlan, planner_service
     from app.task import collab
@@ -263,7 +265,7 @@ async def test_final_outcome_preserves_declared_work_blockers(monkeypatch, miles
                 ai=True, effort="standard", auto_approve=False, objective_media_type="text/html")
     milestone = {
         "key": "archives", "label": "Update selected archives", "acceptance": "Changes saved",
-        "state": milestone_state, "observation": "Missing target authorization" if milestone_state == "blocked" else "Checked",
+        "state": milestone_state, "observation": observation,
     }
     if not required:
         milestone["required"] = False
@@ -308,7 +310,7 @@ async def test_final_outcome_preserves_declared_work_blockers(monkeypatch, miles
         assert stored.failure is None
         assert stored.metadata["blocked_milestones"] == ["archives"]
         assert TaskSchema.model_validate(task).model_dump(mode="json")["outcome"] == "BLOCKED"
-        assert task.data and "Missing target authorization" in task.data["objective_blocker"]
+        assert task.data and (observation or milestone["label"]) in task.data["objective_blocker"]
     else:
         assert task.status == TaskStatus.SUCCESS
         assert stored.success is True

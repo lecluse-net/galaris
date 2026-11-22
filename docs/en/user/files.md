@@ -45,7 +45,8 @@ are reported.
 
 The agent can ask further questions about the same file with
 `file_search(uri="file://…", query="specific question", mode="semantic")`, or use the
-exact URI of a Document attachment or a readable remote file. Each query rechecks
+exact URI of a Document attachment or a readable remote file. A public HTTPS URL ending
+in `/` can also identify a specific page. Each query rechecks
 current access and reuses the available index, returning selected passages with
 source pages and positions. `mode="text"` searches lexically without embedding calls.
 Managed documentary file metadata advertises this capability to the agent. These

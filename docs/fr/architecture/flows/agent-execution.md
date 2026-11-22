@@ -99,24 +99,29 @@ une nouvelle question suspend la même tâche ; les réponses précédentes rest
 Les retours d'une ancienne série ne résolvent pas la suivante. Une question impossible à
 transmettre ou expirée sans réponse termine en erreur, sans travail ni retry automatique.
 Les inconnues techniques inspectables
-ne demandent pas de clarification humaine. `task_get` expose révision et suivi ; les écritures
-contrôlent propriétaire, phase et révision, et préservent les checkpoints. La progression
-des jalons reste déclarative : elle ne remplace pas la vérification des ressources ni le
-résultat terminal. Voir [0171](../../../../project/decisions/0171-adaptive-task-organization.md).
+ne demandent pas de clarification humaine. `task_get` expose révision et suivi. Les écritures
+contrôlent le propriétaire et la phase, verrouillent la tâche et préservent les checkpoints.
+Une mise à jour courante s’applique par clé au suivi existant. Le contrôle de révision est
+disponible pour une correction intentionnelle ou un remplacement complet. Les changements
+écartés sont expliqués dans le reçu. La progression est déclarative, et la clôture repose
+sur les ressources vérifiées et le résultat terminal.
+Voir [0171](../../../../project/decisions/0171-adaptive-task-organization.md).
 Les jalons obligatoires (`required=true`, défaut historique) restent séparés des compléments
-facultatifs (`required=false`). Un complément impossible peut être `skipped` avec une observation ;
+facultatifs (`required=false`). Un complément impossible peut être `skipped`, avec son motif s’il est connu ;
 son omission reste visible, sans compter comme travail obligatoire inachevé dans la progression.
 Un complément facultatif `blocked` a le même effet sur la progression et la clôture.
 Si l'exécution se termine normalement hors attente durable, un jalon obligatoire persisté
-`blocked` donne la phase terminale `SUCCESS` et le résultat métier `BLOCKED`. Le motif, le bilan
-et les effets acquis sont conservés. Le Planner clôt les étapes dépendantes et transmet le blocage
-au plan parent. La vérification des jalons est déterministe.
+`blocked` donne la phase terminale `SUCCESS` et le résultat métier `BLOCKED`. Le libellé du jalon
+bloqué, son motif s’il est fourni, le bilan et les effets acquis sont conservés. Le Planner
+clôt les étapes dépendantes et transmet le blocage au plan parent. La vérification des jalons
+est déterministe.
 La consigne de clôture demande aussi aux exécuteurs `direct` d'enregistrer un tel blocage
-avec `task_work_update`, en conservant les jalons existants et leur révision de suivi.
+avec `task_work_update`, en conservant les autres jalons.
 Cette consigne dépend de son application par le modèle ; la garde porte sur les jalons persistés.
 Une note documentaire conditionnelle refusée ne bloque donc pas la réponse principale ;
 l'exécuteur signale cette omission dans sa réponse. Le suivi n'accorde aucun droit d'écriture.
-Modifier le caractère obligatoire ou rouvrir un jalon `done`/`skipped` exige une raison de révision.
+Modifier le caractère obligatoire ou rouvrir un jalon `done`/`skipped` exige une révision
+courante et un motif explicite.
 
 Le harnais interne applique la politique `runtime.yaml` des compétences effectivement
 attribuées : `loading: eager` les charge dès la première requête en tâche, conversation texte

@@ -93,23 +93,27 @@ the clarification. If the Dispatcher still requires clarification, another quest
 the same Task while retaining earlier answers. Replies to an earlier round cannot resolve
 the next one. A question that cannot be delivered, or expires unanswered, fails without work
 or automatic retry. Inspectable technical unknowns do not require human clarification. `task_get`
-exposes revision and tracking; writes check ownership, phase and revision while preserving
-checkpoints. Milestone progress is declarative: it does not replace resource verification or
-the terminal result. See [0171](../../../../project/decisions/0171-adaptive-task-organization.md).
+exposes revision and tracking. Writes check ownership and phase, lock the Task and preserve
+checkpoints. Routine updates apply by key to the saved plan. Version checks are available
+for deliberate corrections or full replacement. The receipt explains omitted changes.
+Milestone progress is declarative. Completion relies on verified resources and the terminal
+result. See [0171](../../../../project/decisions/0171-adaptive-task-organization.md).
 Required milestones (`required=true`, the historical default) remain separate from optional
-additions (`required=false`). An unavailable addition may be `skipped` with an observation;
+additions (`required=false`). An unavailable addition may be `skipped` with its reason when known;
 its omission remains visible without counting as unfinished required work in progress.
 An optional `blocked` milestone has the same effect on progress and completion.
 When execution completes normally with no durable wait, a persisted required `blocked`
-milestone produces the terminal phase `SUCCESS` and business outcome `BLOCKED`. The reason,
-report and completed effects are retained. The Planner closes dependent steps and propagates
-the blocker to the parent plan. The milestone check is deterministic.
+milestone produces the terminal phase `SUCCESS` and business outcome `BLOCKED`. The milestone
+label, its reason when supplied, the report and completed effects are retained. The Planner
+closes dependent steps and propagates the blocker to the parent plan. The milestone check is
+deterministic.
 Completion instructions also ask `direct` executors to record such blockers with
-`task_work_update`, preserving existing milestones and their tracking revision.
+`task_work_update`, preserving the other milestones.
 These instructions depend on model compliance; the guard applies to persisted milestones.
 A rejected conditional document note therefore does not block the main reply; the executor
 discloses the omission in its response. Tracking grants no write permission.
-Changing required status or reopening a `done`/`skipped` milestone requires a revision reason.
+Changing required status or reopening a `done`/`skipped` milestone requires the current
+revision and an explicit reason.
 
 The internal harness applies `runtime.yaml` from effectively assigned skills: `loading: eager`
 loads them on the first request in Tasks, text conversations and turn-based voice; the default

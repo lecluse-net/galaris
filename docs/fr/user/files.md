@@ -48,6 +48,7 @@ toutes les pages ou leurs figures, demandez une analyse complète avec
 L'agent peut ensuite poser d'autres questions sur le même fichier avec
 `file_search(uri="file://…", query="question précise", mode="semantic")`, ou utiliser
 l'URI exacte d'une pièce jointe documentaire ou d'un fichier distant lisible.
+Une URL HTTPS publique qui se termine par `/` peut aussi désigner une page exacte.
 Chaque question vérifie les droits courants et réutilise l'index disponible pour
 fournir une sélection de passages avec leurs pages et positions. `mode="text"`
 recherche par mots sans appel d'embedding. Les métadonnées des fichiers documentaires

@@ -19,21 +19,23 @@ class WorkMilestone(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
     key: str = Field(min_length=1, max_length=80, pattern=r"^[a-zA-Z0-9_-]+$")
     label: str = Field(min_length=1, max_length=300)
-    acceptance: str = Field(min_length=1, max_length=1000)
+    acceptance: str = Field(default="", max_length=1000, description="How to verify that the milestone is complete.")
     required: bool = Field(default=True, description=(
         "Whether this milestone is necessary to fulfill the request. Keep required deliverables "
         "separate from optional additions; this field never grants permission for an effect."
     ))
-    state: Literal["pending", "doing", "done", "blocked", "skipped"] = "pending"
-    observation: str = Field(default="", max_length=1500)
+    state: Literal["pending", "doing", "done", "blocked", "skipped"] = Field(
+        default="pending", description="Only one milestone in the saved plan can be doing.",
+    )
+    observation: str = Field(default="", max_length=1500, description=(
+        "Record the verified result or the observed reason work is blocked or skipped, when available."
+    ))
     resource_refs: list[str] = Field(default_factory=list, max_length=8)
 
     @model_validator(mode="after")
-    def require_observed_outcomes(self) -> WorkMilestone:
+    def validate_milestone(self) -> WorkMilestone:
         if self.state == "skipped" and self.required:
             raise ValueError("Only an optional milestone can be skipped")
-        if self.state in {"done", "blocked", "skipped"} and not self.observation.strip():
-            raise ValueError("A completed, blocked or skipped milestone requires an observed result")
         if any("://" not in ref or len(ref) > 2000 for ref in self.resource_refs):
             raise ValueError("Milestone resources must use bounded canonical URIs")
         return self
@@ -51,7 +53,7 @@ class WorkPlanInput(BaseModel):
     schema_version: Literal["galaris.work-plan/v1"] = "galaris.work-plan/v1"
     milestones: list[WorkMilestone] = Field(min_length=1, max_length=20)
     next_action: str = Field(default="", max_length=1000, description=(
-        "The next concrete action when required work is unfinished, including what must happen to unblock it."
+        "The next concrete action, when known."
     ))
 
 
@@ -63,9 +65,7 @@ class WorkPlan(WorkPlanInput):
         if len({item.key for item in self.milestones}) != len(self.milestones):
             raise ValueError("Milestone keys must be unique")
         if sum(item.state == "doing" for item in self.milestones) > 1:
-            raise ValueError("An executor has at most one current milestone")
-        if any(item.state != "done" and not item.is_omitted for item in self.milestones) and not self.next_action.strip():
-            raise ValueError("Unfinished work must retain its next action in next_action")
+            raise ValueError("At most one milestone can be active in a full plan.")
         if len(json.dumps(self.model_dump(mode="json"), ensure_ascii=False)) > 20_000:
             raise ValueError("Work tracking exceeds its bounded context budget")
         return self

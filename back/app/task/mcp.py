@@ -6,11 +6,11 @@ import json
 import re
 import time
 from datetime import datetime
-from typing import Annotated, Any, Literal, Optional
+from typing import Annotated, Any, Literal, Optional, cast as type_cast
 from uuid import UUID, uuid4
 
 from loguru import logger
-from pydantic import Field
+from pydantic import Field, SkipValidation
 from sqlalchemy import String, cast, func, select, true
 
 from app.agent.contracts import ExecutionEffort, ExecutionResult, ForcedRoute
@@ -22,7 +22,7 @@ from core.database import get_db
 from core.i18n import default_language, is_supported, render_prompt, t
 from core.util import as_dict, visible_text
 from .access import agent_task_filter, require_agent_task_access
-from app.agent import WorkPlanInput, objective_blocker
+from app.agent import objective_blocker
 
 _OBJECTIVES_LIMIT = 4_000
 _FEEDBACK_LIMIT = 8_000
@@ -82,6 +82,7 @@ def _message(key: str, language: str, **values: Any) -> str:
     description=(
         "Return a compact operational view of a task with its canonical resource URI, target "
         "agent, requester, objective, feedback, business outcome, terminal diagnostics, progress, "
+        "work_plan and work_plan_revision, "
         "amendment eligibility, and explicit "
         "waits such as the colleague, question, and deadline. Accept a canonical "
         "galaris://task/ URI, a full UUID, or a unique UUID prefix. Inspect your own Task "
@@ -116,34 +117,31 @@ async def _work_update_preflight(_ctx: McpToolContext, arguments: dict[str, Any]
     approval_reason="Record bounded progress on the executing agent's own Task",
     authorization_preflight=_work_update_preflight,
     description=(
-        "Persist milestones and next action for your current long or complex Task. Read "
-        "task_get first. Set expected_revision to the latest work_plan_revision (initially 0) "
-        "from task_get or a successful task_work_update, never the Task revision. "
-        "Set plan.next_action for unfinished required work, including blocked work. "
-        "Keep preparation, acceptance checks, verified "
-        "observations and canonical resource references. Use merge=true to send only changed "
-        "milestones by key and keep all other milestones. Preserve completed milestones; "
-        "changing them requires revision_reason. Separate required milestones (default true) "
-        "from optional additions (required=false). Mark an unavailable optional addition "
-        "skipped with its observed reason, then deliver the main result and disclose the "
-        "omission. Changing required status also requires revision_reason. "
-        "This records progress without completing "
-        "the Task or executing any business action. Simple tasks need no work plan."
+        'Save progress on your current Task. For example, pass plan={"key":"research","state":"done"}. '
+        "Reuse the milestone key and send only changed fields. A new milestone can include a label. "
+        "States are pending, doing, done, blocked and skipped for optional milestones. "
+        "Add observation for a verified result or blocker and next_action when useful. "
+        "Use plan.milestones for several changes. Simple tasks need no plan. "
+        "Check the returned work_plan to see what was recorded."
     ), effect_policy="idempotent", concurrency_policy="exclusive")
 async def mcp_work_update(
-    ctx: McpToolContext, plan: WorkPlanInput, expected_revision: int,
+    ctx: McpToolContext,
+    plan: Annotated[SkipValidation[dict[str, Any] | None], Field(
+        description="A milestone change or a list under milestones.",
+    )] = None,
+    expected_revision: Annotated[int | None, Field(description="Only for intentional plan replacement or version checks.")] = None,
     revision_reason: str = "",
-    next_action: Annotated[str | None, Field(max_length=1000, description="Alias for plan.next_action.")] = None,
+    next_action: Annotated[str | None, Field(description="Alias for plan.next_action.")] = None,
     merge: bool = False,
 ) -> dict[str, object]:
-    from .work_tracking import WorkTrackingRejected, update_work_plan
+    from .work_tracking import update_work_plan
 
+    if plan is not None and not isinstance(type_cast(object, plan), dict):
+        return {"status": "unchanged", "notes": ["Pass a plan object with a milestone key or a milestones list."]}
+    draft = dict(plan or {})
     if next_action is not None:
-        next_action = next_action.strip()
-        if "next_action" in plan.model_fields_set and next_action != plan.next_action:
-            raise WorkTrackingRejected("next_action and plan.next_action must agree; provide plan.next_action only")
-        plan = plan.model_copy(update={"next_action": next_action})
-    return await update_work_plan(ctx, plan, expected_revision=expected_revision,
+        draft.setdefault("next_action", next_action)
+    return await update_work_plan(ctx, draft, expected_revision=expected_revision,
                                   revision_reason=revision_reason, merge=merge)
 
 

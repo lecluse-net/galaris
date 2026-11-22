@@ -696,7 +696,10 @@ async def galaris_resource_search(
         raise NotImplementedError("galaris:// does not expose semantic search.")
     route = _route(reference)
     if not route.is_collection:
-        raise ResourceUriError("file_search requires a galaris:// collection URI.")
+        raise ResourceUriError(
+            f"Search galaris://{route.kind}/ for matching resources. "
+            "Use file_read with the exact URI to inspect one resource."
+        )
     offset = max(0, int(cursor or "0"))
     limit = max(1, min(max_results, 500))
     if route.kind is None:

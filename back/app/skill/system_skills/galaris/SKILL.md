@@ -515,9 +515,11 @@ for authored HTML and Datasets for editable JSON when those are the requested re
 - `file_info(uri: str, include_checksum: bool = False) -> str`
 - `file_search(uri: str, query: str, mode: str | None = None, recursive: bool = True,
   max_results: int = 50, cursor: str = "") -> str`
-  On an exact public HTTPS document or PDF URL, use `mode="text"` for lexical passages
-  (the default for HTTPS) or `mode="semantic"` for a question about its content.
-  Collection and title discovery default to `name`.
+  For an exact public HTTPS page or document URL, including a URL ending in `/`, use
+  `mode="text"` for lexical passages (the default) or `mode="semantic"` for a question
+  about its content. Use `search_web` to discover sources across sites.
+  Collection and title discovery default to `name`. Use `file_read` to inspect an exact
+  `galaris://` resource and `file_search` with its collection URI to discover resources.
 - `file_read(uri: str, offset: int = 0, max_chars: int = 20000) -> str`
 - `file_create(path: str, content: str = "", encoding: "utf-8" | "base64" = "utf-8",
   name: str = "", document_format: str | None = None) -> str`
@@ -810,25 +812,19 @@ mean the colleague is unknown or unreachable. Contact permissions still apply.
   Inspect your own Tasks and the delegations you requested. For a colleague's Task delegated by
   someone else, ask the coordinator for the relevant contribution. Use `file_read` for a complete
   authorized snapshot.
-- `task_work_update(plan: dict, expected_revision: int, revision_reason: str = "", merge: bool = False) -> dict`
-  retains bounded milestones for your current active Task. Use it when substantial preparation,
-  a long run or recovery needs continuity; complete simple actions directly with their check.
-  The plan has `milestones` (unique `key`, `label`, `acceptance`, `state`, `observation`,
-  optional canonical `resource_refs`) and `next_action`. States are `pending`, `doing`, `done`
-  or `blocked`; at most one is doing. Done and blocked require an observed result. Read the
-  `work_plan_revision` with `task_get` (initially 0) and pass it as `expected_revision`;
-  this is separate from the Task's `revision`, which changes during execution checkpoints.
-  Read the live plan again after an amendment, resume or revision conflict.
-  Pass `merge=true` and include only the milestones you are adding or changing. Omitted
-  milestones and an omitted `next_action` are retained. Reopening or intentionally changing a
-  completed milestone still requires `revision_reason`. Use the returned `work_plan_revision`
-  for the next update.
-  Inspect sources before settling the method, update after meaningful progress and verify
-  actual resources before resuming an uncertain effect. Checked milestones do not prove delivery.
-  Keep one coherent deliverable together; use collection coordination for independent outputs.
-  Ask a targeted question when missing intent changes scope or depth; inspect technical unknowns
-  with authorized tools. If tracking is unavailable, report that limitation rather than inventing
-  a durable checkpoint.
+- `task_work_update(plan={"key":"research","state":"done"})` saves a change on your current
+  active Task. Reuse the existing milestone key and send the fields you want to change. For a new
+  milestone, provide a readable `label` when useful. To update several milestones, put them
+  under `plan.milestones`. Supported states are `pending`, `doing`, `done`, `blocked` and
+  `skipped` for optional milestones (`required=false`). Starting a new active milestone returns
+  the previous active milestone to `pending`. Add `observation` for verified results or reasons,
+  canonical `resource_refs` for related outputs and `next_action` when it helps continuation.
+  Routine changes use the current plan. Check the receipt's `work_plan` and `notes` to see which
+  changes were recorded. For an intentional correction of a completed milestone or a milestone's
+  required flag, use `merge=true`, the current `work_plan_revision` as `expected_revision`,
+  and a `revision_reason`. Read with `task_get` when you need to recover the saved plan.
+  Keep tracking for meaningful progress, blockers or continuity. Verify actual resources
+  before repeating an uncertain effect. Complete simple work directly with its check.
 - `file_list("galaris://text/")` lists your persisted text-conversation rounds and
   `file_list("galaris://voice/")` lists your persisted voice rounds. Read one with
   `file_read("galaris://text/<uuid>")` or `file_read("galaris://voice/<uuid>")`.

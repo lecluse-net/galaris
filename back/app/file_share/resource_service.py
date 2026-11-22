@@ -2785,7 +2785,9 @@ async def resource_search(
     normalized_query = query.strip()
     if not normalized_query:
         raise ValueError("A non-empty file search query is required.")
-    if (mode != 'name' and reference.locator and not reference.is_collection
+    # HTTPS paths ending in a slash can identify a single page.
+    if (mode != 'name' and reference.locator
+        and (reference.scheme == "https" or not reference.is_collection)
         and (reference.scheme not in {'galaris', 'memory', 'document', 'data'}
              or _document_attachment_ids(reference) is not None)):
         descriptor = await resource_info(ctx, reference)

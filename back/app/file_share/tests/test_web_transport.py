@@ -17,13 +17,14 @@ class _ResolverLoop:
 
 
 @pytest.mark.asyncio
-async def test_mcp_search_defaults_to_lexical_passages_for_public_file(db, monkeypatch):
+@pytest.mark.parametrize("path", ["/report.txt", "/reports/latest/"])
+async def test_mcp_search_defaults_to_lexical_passages_for_public_file(db, monkeypatch, path):
     import json
 
     from app.file_share.mcp import search_files
     from app.services import McpToolContext
 
-    uri = "https://files.example/report.txt"
+    uri = f"https://files.example{path}"
     body = b"The synthetic Quartz inventory totals 47 units."
 
     async def resolve(value):

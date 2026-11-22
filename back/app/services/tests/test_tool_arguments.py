@@ -69,8 +69,8 @@ async def test_unknown_arguments_do_not_bypass_required_type_or_nested_validatio
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("defect,location,reason", [
-    ("next_action", "plan", "Unfinished work must retain its next action"),
-    ("observation", "plan.milestones.0", "requires an observed result"),
+    ("duplicate", "plan", "Milestone keys must be unique"),
+    ("skip_required", "plan.milestones.0", "Only an optional milestone can be skipped"),
     ("state", "plan.milestones.0.state", "Input should be"),
 ])
 async def test_work_plan_rejection_explains_nested_constraint_and_accepts_correction(defect, location, reason):
@@ -86,10 +86,10 @@ async def test_work_plan_rejection_explains_nested_constraint_and_accepts_correc
     milestone = {"key": "inspect", "label": "Inspect the synthetic input",
                  "acceptance": "The input can be read", "state": "doing"}
     plan = {"milestones": [milestone], "next_action": "Read the input"}
-    if defect == "next_action":
-        plan.pop("next_action")
-    elif defect == "observation":
-        milestone["state"] = "done"
+    if defect == "duplicate":
+        plan["milestones"].append(milestone.copy())
+    elif defect == "skip_required":
+        milestone["state"] = "skipped"
     else:
         milestone["state"] = "synthetic-private-invalid-state"
     async with Client(server) as client:
@@ -103,6 +103,7 @@ async def test_work_plan_rejection_explains_nested_constraint_and_accepts_correc
         assert "synthetic-private-invalid-state" not in rendered
         assert "Inspect the synthetic input" not in rendered
         milestone.update(state="done", observation="The synthetic input was read")
+        plan["milestones"] = [milestone]
         plan["next_action"] = ""
         corrected = await client.call_tool("task_work_update", {"plan": plan, "expected_revision": 0})
         assert not corrected.is_error
