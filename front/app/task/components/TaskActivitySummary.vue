@@ -17,10 +17,14 @@
       {{ t(`task.activity.recovery_${recovery.state}`) }}
     </div>
     <div v-if="recoveryError" class="q-my-xs" role="alert">{{ recoveryError }}</div>
-    <div v-for="(wait, index) in activity.operational.waits" :key="index">
-      {{ t(`task.activity.${wait.kind}`) }}<span v-if="wait.peer_display || wait.process_label"> — {{ wait.peer_display || wait.process_label }}</span>
-      <span v-if="wait.question"> : {{ wait.question }}</span>
+    <div v-if="compactWaits && waitText" class="task-wait-preview">
+      <span>{{ waitPreview }}</span>
+      <div ref="waitPreviewMeasure" class="task-wait-preview-measure" aria-hidden="true"></div>
+      <q-resize-observer :debounce="0" @resize="updateWaitPreview" />
     </div>
+    <template v-else>
+      <div v-for="(description, index) in waitDescriptions" :key="index">{{ description }}</div>
+    </template>
     <div v-if="activity.next_attempt_at && activity.operational.operational_state === 'QUEUED'">
       {{ t('task.activity.retryAt', { time: date(activity.next_attempt_at) }) }}
     </div>
@@ -48,7 +52,7 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import { computed, ref, watch } from 'vue'
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import { useInterval } from 'quasar'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import { apiErrorDetail } from '@/core/api'
@@ -56,14 +60,57 @@ import { taskService } from '../services/taskService'
 import { activitySilenceSeconds, type TaskActivitySnapshot, type TaskCallRecoveryState } from '../activity'
 import TaskStartupTiming from './TaskStartupTiming.vue'
 import type { TaskOutcome } from '../types'
-const { activity, outcome, unavailable = false, showLastActivity = true } = defineProps<{
+const { activity, outcome, unavailable = false, showLastActivity = true, compactWaits = false } = defineProps<{
   activity?: TaskActivitySnapshot
   outcome?: TaskOutcome
   unavailable?: boolean
   showProvenance?: boolean
   showLastActivity?: boolean
+  compactWaits?: boolean
 }>()
 const { t, locale } = useI18n()
+const waitDescriptions = computed(() => (activity?.operational.waits ?? []).map(wait => {
+  const target = wait.peer_display || wait.process_label
+  const label = t(`task.activity.${wait.kind}`)
+  return label + (target ? ` — ${target}` : '') + (wait.question ? ` : ${wait.question}` : '')
+}))
+const waitText = computed(() => compactWaits ? waitDescriptions.value.join('\n') : '')
+const waitPreview = ref('')
+const waitPreviewMeasure = useTemplateRef<HTMLElement>('waitPreviewMeasure')
+
+function updateWaitPreview(): void {
+  const measure = waitPreviewMeasure.value
+  if (!measure?.clientWidth) return
+
+  const text = waitText.value
+  measure.textContent = text
+  let preview = text
+
+  if (measure.scrollHeight > measure.clientHeight) {
+    // Find the longest suffix that fits with the ellipsis at this panel width.
+    const characters = Array.from(text)
+    let start = 1
+    let end = characters.length
+    preview = '...'
+    while (start <= end) {
+      const middle = Math.floor((start + end) / 2)
+      const candidate = `...${characters.slice(middle).join('').trimStart()}`
+      measure.textContent = candidate
+      if (measure.scrollHeight > measure.clientHeight) {
+        start = middle + 1
+      } else {
+        preview = candidate
+        end = middle - 1
+      }
+    }
+  }
+
+  measure.textContent = ''
+  waitPreview.value = preview
+}
+
+watch([waitText, waitPreviewMeasure], updateWaitPreview, { flush: 'post' })
+
 const now = ref(Date.now())
 const { registerInterval } = useInterval()
 registerInterval(() => { now.value = Date.now() }, 1_000)
@@ -111,6 +158,9 @@ const date = (value: string) => new Date(value).toLocaleString(locale.value)
 
 <style scoped>
 .task-activity { overflow-wrap: anywhere; }
+.task-wait-preview, .task-wait-preview-measure { max-block-size: 5lh; overflow: clip; }
+.task-wait-preview { position: relative; white-space: pre-line; }
+.task-wait-preview-measure { position: absolute; inset: 0 0 auto; visibility: hidden; }
 .task-silence-warning { background: var(--solaire-orange-light); color: inherit; }
 .task-silence-warning :deep(.q-banner__avatar) { color: var(--solaire-orange-accent); }
 :global(.body--dark) .task-silence-warning { background: var(--solaire-orange-dark); }

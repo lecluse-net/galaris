@@ -152,7 +152,13 @@
                     @click.stop="openTask(row.task.id)"
                   />
                 </div>
-                <TaskActivitySummary v-if="isTaskExpanded(row.task)" :activity="activitySnapshots[row.task.id]" :outcome="row.task.outcome" :unavailable="activityUnavailable" />
+                <TaskActivitySummary
+                  v-if="isTaskExpanded(row.task)"
+                  :activity="activitySnapshots[row.task.id]"
+                  :outcome="row.task.outcome"
+                  :unavailable="activityUnavailable"
+                  compact-waits
+                />
                 <CompactTaskOperations
                   v-if="isTaskExpanded(row.task)"
                   display="summary"
