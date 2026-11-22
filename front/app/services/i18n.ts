@@ -28,6 +28,7 @@ export default {
     toolInventory: {
       title: 'Inventaire des outils',
       description: 'Outils natifs des services Galaris, accès en conversation et valeurs par défaut.',
+      toolDescription: 'Description',
       search: 'Rechercher un service ou un outil',
       serviceCount: '{count} service | {count} services',
       toolCount: '{count} outil | {count} outils',
@@ -576,6 +577,7 @@ catalogTitle: 'Catalogue', searchCatalog: 'Rechercher un service dans le catalog
     toolInventory: {
       title: 'Tool inventory',
       description: 'Native tools across Galaris services, conversation access, and defaults.',
+      toolDescription: 'Description',
       search: 'Search for a service or tool',
       serviceCount: '{count} service | {count} services',
       toolCount: '{count} tool | {count} tools',
@@ -1119,6 +1121,7 @@ catalogTitle: 'Catalog', searchCatalog: 'Search the service catalog', refreshCat
     toolInventory: {
       title: '工具清单',
       description: '查看 Galaris 服务的原生工具、对话访问和默认值。',
+      toolDescription: '描述',
       search: '搜索服务或工具',
       serviceCount: '{count} 个服务 | {count} 个服务',
       toolCount: '{count} 个工具 | {count} 个工具',

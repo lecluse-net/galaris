@@ -40,28 +40,54 @@ const tones: Record<InventoryToolState, StatusBadgeTone> = {
   enabled: 'success', ask: 'warning', disabled: 'error',
 }
 const columns = computed<QTableColumn<InventoryTool>[]>(() => [
-  { name: 'name', label: t('services.conversationTools.tool'), field: 'name', align: 'left', sortable: true },
-  { name: 'conversation', label: t('toolInventory.conversation'), field: 'conversation_enabled', align: 'left', sortable: true },
-  { name: 'authorization', label: t('toolInventory.authorization'), field: 'default_state', align: 'left', sortable: true },
+  {
+    name: 'name', label: t('services.conversationTools.tool'), field: 'name',
+    align: 'left', sortable: true, headerStyle: 'width: 22%',
+  },
+  {
+    name: 'description', label: t('toolInventory.toolDescription'), field: 'description',
+    align: 'left', classes: 'tool-description',
+  },
+  {
+    name: 'conversation', label: t('toolInventory.conversation'), field: 'conversation_enabled',
+    align: 'left', sortable: true, headerClasses: 'tool-conversation-header',
+  },
+  {
+    name: 'authorization', label: t('toolInventory.authorization'), field: 'default_state',
+    align: 'left', sortable: true, headerClasses: 'tool-authorization-header',
+  },
 ])
-
 </script>
 
 <style scoped>
-.tool-name {
+.tool-name,
+.inventory-table :deep(.tool-description) {
   overflow-wrap: anywhere;
+}
+
+.inventory-table :deep(.tool-description) {
+  white-space: pre-line;
 }
 
 .inventory-table :deep(table) {
   table-layout: fixed;
+  min-width: 520px;
 }
 
-.inventory-table :deep(th:first-child) {
-  width: 47%;
+.inventory-table :deep(td) {
+  vertical-align: top;
 }
 
 .inventory-table :deep(th) {
   white-space: normal;
+}
+
+.inventory-table :deep(.tool-conversation-header) {
+  width: 13%;
+}
+
+.inventory-table :deep(.tool-authorization-header) {
+  width: 17%;
 }
 
 @media (max-width: 1023px) {
@@ -70,8 +96,12 @@ const columns = computed<QTableColumn<InventoryTool>[]>(() => [
     padding-inline: 8px;
   }
 
-  .inventory-table :deep(th:first-child) {
-    width: 39%;
+  .inventory-table :deep(.tool-conversation-header) {
+    width: 96px;
+  }
+
+  .inventory-table :deep(.tool-authorization-header) {
+    width: 124px;
   }
 }
 </style>

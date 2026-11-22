@@ -24,6 +24,7 @@ async def test_development_tool_inventory_lists_service_defaults_without_an_agen
 
     from app.connection import ServiceFunctionState
     from app.services.mandatory_services import INTEGRATED_SERVICE_CODES
+    from app.services.mcp_loader import mcp_tools_by_service_code
     from app.services.models import Service
     from core.authorize import Assignment, Privilege, Role
     from core.database import get_db_session
@@ -99,6 +100,10 @@ async def test_development_tool_inventory_lists_service_defaults_without_an_agen
     inventory = {row["code"]: row for row in response.json()}
     assert set(inventory) == INTEGRATED_SERVICE_CODES
     assert {empty_code, external_code}.isdisjoint(inventory)
+    files = {tool["name"]: tool for tool in inventory["file_sharing"]["tools"]}
+    file_read = next(tool for tool in mcp_tools_by_service_code()["file_sharing"] if tool.name == "file_read")
+    assert file_read.description
+    assert files["file_read"]["description"] == file_read.description
     search = next(tool for tool in inventory["search"]["tools"] if tool["name"] == "search_web")
     assert search["conversation_enabled"] is True
     assert search["default_state"] == "ask"
@@ -122,7 +127,6 @@ async def test_development_tool_inventory_lists_service_defaults_without_an_agen
     assert browser_values["synthetic_password"] == {
         "value": None, "configured": True, "secret": True, "forced": False,
     }
-    files = {tool["name"]: tool for tool in inventory["file_sharing"]["tools"]}
     assert files["file_read"]["conversation_enabled"] is True
     assert files["file_read"]["default_state"] == "enabled"
     assert files["file_delete"]["conversation_enabled"] is False

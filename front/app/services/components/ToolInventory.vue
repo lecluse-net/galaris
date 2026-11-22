@@ -138,8 +138,6 @@ onScopeDispose(() => inventoryRequest?.abort())
 
 <style scoped>
 .tool-inventory {
-  max-width: 1200px;
-  margin-inline: auto;
   padding-top: 24px;
 }
 

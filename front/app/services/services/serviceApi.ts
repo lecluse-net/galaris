@@ -344,6 +344,7 @@ export type InventoryToolState = 'enabled' | 'disabled' | 'ask'
 
 export interface InventoryTool {
     name: string
+    description: string
     conversation_enabled: boolean
     default_state: InventoryToolState
     service_override: InventoryToolState | null

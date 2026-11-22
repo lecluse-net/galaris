@@ -22,6 +22,7 @@ from .secrets import public_connection_schema
 
 class InventoryTool(BaseModel):
     name: str
+    description: str
     conversation_enabled: bool
     default_state: EffectiveFunctionState
     service_override: EffectiveFunctionState | None = None
@@ -55,6 +56,7 @@ async def read_tool_inventory() -> list[ServiceToolInventory]:
         tools = [
             InventoryTool(
                 name=name,
+                description=tool.description,
                 conversation_enabled=name in native_open and tool.conversation_policy != "forbidden",
                 default_state=tool.approval, service_override=overrides.get(name),
             )
