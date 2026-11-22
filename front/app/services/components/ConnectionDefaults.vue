@@ -1,33 +1,35 @@
 <template>
-  <q-expansion-item icon="tune" :label="t('toolInventory.connectionParameters')"
-    :caption="t(`toolInventory.connectionDefaults.${service.connection_default}`)">
-    <q-markup-table v-if="parameters.length" flat dense class="connection-defaults">
-      <thead>
-        <tr>
-          <th scope="col">{{ t('toolInventory.parameter') }}</th>
-          <th scope="col">{{ t('toolInventory.softwareDefault') }}</th>
-          <th scope="col">{{ t('toolInventory.inheritedValue') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="{ name, label, defaultValue, inheritedValue, forced, scopeOptions } in parameters" :key="name">
-          <th scope="row">
-            <div>{{ label }}</div>
-            <code v-if="name !== label" class="text-caption">{{ name }}</code>
-            <div v-if="scopeOptions" class="text-caption q-mt-xs">
-              {{ t('toolInventory.scopeOptions', { options: scopeOptions }) }}
-            </div>
-          </th>
-          <td>{{ defaultValue }}</td>
-          <td>
-            {{ inheritedValue }}
-            <div v-if="forced" class="text-caption">{{ t('toolInventory.enforced') }}</div>
-          </td>
-        </tr>
-      </tbody>
-    </q-markup-table>
-    <div v-else class="q-px-md q-py-sm">{{ t('toolInventory.noParameters') }}</div>
-  </q-expansion-item>
+  <q-markup-table flat dense class="connection-defaults">
+    <thead>
+      <tr>
+        <th scope="col">
+          {{ t('toolInventory.connectionParameters') }}
+          <div class="text-caption">{{ t(`toolInventory.connectionDefaults.${service.connection_default}`) }}</div>
+        </th>
+        <th scope="col">{{ t('toolInventory.softwareDefault') }}</th>
+        <th scope="col">{{ t('toolInventory.inheritedValue') }}</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr v-if="!parameters.length">
+        <td colspan="3">{{ t('toolInventory.noParameters') }}</td>
+      </tr>
+      <tr v-for="{ name, label, defaultValue, inheritedValue, forced, scopeOptions } in parameters" :key="name">
+        <th scope="row">
+          <div>{{ label }}</div>
+          <code v-if="name !== label" class="text-caption">{{ name }}</code>
+          <div v-if="scopeOptions" class="text-caption q-mt-xs">
+            {{ t('toolInventory.scopeOptions', { options: scopeOptions }) }}
+          </div>
+        </th>
+        <td>{{ defaultValue }}</td>
+        <td>
+          {{ inheritedValue }}
+          <div v-if="forced" class="text-caption">{{ t('toolInventory.enforced') }}</div>
+        </td>
+      </tr>
+    </tbody>
+  </q-markup-table>
 </template>
 
 <script setup lang="ts">
@@ -71,7 +73,7 @@ const parameters = computed(() => sortedConnectionParamEntries(service.connectio
 }
 
 .connection-defaults thead th:first-child {
-  width: 46%;
+  width: 47%;
 }
 
 .connection-defaults tbody th {
@@ -82,6 +84,10 @@ const parameters = computed(() => sortedConnectionParamEntries(service.connectio
   .connection-defaults th,
   .connection-defaults td {
     padding-inline: 8px;
+  }
+
+  .connection-defaults thead th:first-child {
+    width: 39%;
   }
 }
 </style>
