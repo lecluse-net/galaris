@@ -520,7 +520,18 @@ async def test_native_responses_applies_policy_and_replays_reasoning_identity(
     empty_terminal: bool,
     responses_sse,
 ) -> None:
+    from app.llm import subscription_policy
+    from app.llm.provider_facade import ProviderConnection
+    from bridge.openai import codex_oauth
+    from bridge.openai.codex import CodexBridge
+
     captured: list[tuple[dict[str, Any], dict[str, Any]]] = []
+    forwarded: list[dict[str, Any]] = []
+    codex = catalog_code == "openai-codex"
+    connection = ProviderConnection(id=2, name="Synthetic ChatGPT", catalog_code="openai-codex",
+        provider_type="openai_codex", base_url="https://chatgpt.com/backend-api/codex")
+    monkeypatch.setattr(codex_oauth, "get_access_token", AsyncMock(return_value="synthetic-token"))
+    monkeypatch.setattr(subscription_policy, "enforce_subscription_access", AsyncMock(return_value=1))
     # Provider history and policy are independent of persisted fallback selection.
     monkeypatch.setattr(llm_service, "get_agent_fallback_model", AsyncMock(return_value=None))
 
@@ -529,6 +540,17 @@ async def test_native_responses_applies_policy_and_replays_reasoning_identity(
         **kwargs: Any,
     ) -> JSONResponse | StreamingResponse:
         captured.append((body, kwargs))
+        if codex:
+            prepared = await CodexBridge().prepare_responses_request(2, connection, body)
+            body = prepared.body
+            for index, item in enumerate(body["input"]):
+                if item.get("type") == "reasoning" and item.get("content"):
+                    return JSONResponse({"error": {
+                        "message": f"Invalid 'input[{index}].content': array too long.",
+                        "type": "invalid_request_error",
+                        "code": "array_above_max_length",
+                    }}, status_code=400)
+        forwarded.append(body)
 
         def reply(terminal: dict[str, Any]) -> JSONResponse | StreamingResponse:
             if not body.get("stream"):
@@ -558,6 +580,13 @@ async def test_native_responses_applies_policy_and_replays_reasoning_identity(
                                 }
                             ],
                             "encrypted_content": "opaque-reasoning",
+                            "content": [{"type": "reasoning_text", "text": "Synthetic raw reasoning."}],
+                        },
+                        {
+                            "id": "rs-raw",
+                            "type": "reasoning",
+                            "summary": [],
+                            "content": [{"type": "reasoning_text", "text": "Synthetic raw-only reasoning."}],
                         },
                         {
                             "id": "fc-1",
@@ -629,8 +658,8 @@ async def test_native_responses_applies_policy_and_replays_reasoning_identity(
     )
     assert isinstance(first_response.parts[0], ThinkingPart)
     assert first_response.parts[0].signature == "opaque-reasoning"
-    assert isinstance(first_response.parts[1], ToolCallPart)
-    assert first_response.parts[1].tool_call_id == "call-1"
+    assert isinstance(first_response.parts[2], ToolCallPart)
+    assert first_response.parts[2].tool_call_id == "call-1"
     assert first_response.usage.input_tokens == 10
     assert first_response.usage.output_tokens == 4
     first_body, _first_kwargs = captured[0]
@@ -673,6 +702,17 @@ async def test_native_responses_applies_policy_and_replays_reasoning_identity(
     )
     assert reasoning["id"] == "rs-1"
     assert reasoning["encrypted_content"] == "opaque-reasoning"
+    assert reasoning["content"] == [{"type": "reasoning_text", "text": "Synthetic raw reasoning."}]
+    raw_reasoning = next(item for item in second_body["input"] if item.get("id") == "rs-raw")
+    assert raw_reasoning["content"] == [{"type": "reasoning_text", "text": "Synthetic raw-only reasoning."}]
+    replayed_reasoning = [item for item in forwarded[1]["input"] if item.get("type") == "reasoning"]
+    if codex:
+        expected_input = list(second_body["input"])
+        expected_input[expected_input.index(reasoning)] = {key: value for key, value in reasoning.items() if key != "content"}
+        expected_input.remove(raw_reasoning)
+        assert forwarded[1]["input"] == expected_input
+    else:
+        assert replayed_reasoning == [reasoning, raw_reasoning]
     function_call = next(
         item for item in second_body["input"] if item.get("type") == "function_call"
     )

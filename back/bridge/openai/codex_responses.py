@@ -1,4 +1,4 @@
-"""Translate between Galaris' Chat Completions contract and Codex Responses."""
+"""Adapt Galaris requests and responses to the Codex Responses protocol."""
 
 from __future__ import annotations
 
@@ -12,6 +12,23 @@ from core.util import as_dict, as_list
 
 
 DEFAULT_INSTRUCTIONS = "You are a helpful assistant."
+
+
+def normalize_responses_input(raw_input: Any) -> Any:
+    """Prepare native history for Codex, which rejects raw reasoning content."""
+    if not isinstance(raw_input, list):
+        return raw_input
+
+    items: list[Any] = []
+    for raw in as_list(raw_input):
+        item = as_dict(raw)
+        if item.get("type") == "reasoning" and "content" in item:
+            # A fallback model may have supplied only raw reasoning, with nothing to replay.
+            if item["content"] and not (item.get("summary") or item.get("encrypted_content")):
+                continue
+            raw = {key: value for key, value in item.items() if key != "content"}
+        items.append(raw)
+    return items
 
 
 def _content_text(content: Any) -> str:

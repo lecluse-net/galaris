@@ -23,6 +23,7 @@ from .codex_models import base_model_name, apply_model_variant
 from .codex_responses import (
     CodexSSEAdapter,
     chat_completions_to_responses,
+    normalize_responses_input,
     responses_to_chat_completion,
 )
 
@@ -135,7 +136,7 @@ class CodexBridge:
         operation: ResponsesOperation = "create",
         force_refresh: bool = False,
     ) -> PreparedChatRequest:
-        """Forward an already-native Responses request without lossy conversion."""
+        """Prepare a native Responses request for the ChatGPT subscription endpoint."""
 
         token = await codex_oauth.get_access_token(
             provider_id,
@@ -144,6 +145,8 @@ class CodexBridge:
         suffix = "/responses/compact" if operation == "compact" else "/responses"
         forwarded = apply_model_variant(body, compact=operation == "compact")
         if operation == "create":
+            if "input" in forwarded:
+                forwarded["input"] = normalize_responses_input(forwarded["input"])
             # Codex requires SSE even when the internal caller wants a final JSON result.
             forwarded["stream"] = True
             # Match the Chat adapter: Codex rejects output caps and sampling settings,
