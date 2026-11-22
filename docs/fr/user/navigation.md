@@ -117,6 +117,17 @@ embarquées et les catalogues d’icônes de documents ; l’inventaire des comp
 leurs fichiers consommateurs. Les icônes personnelles des utilisateurs ne sont pas chargées.
 La route est exclue des constructions des autres environnements.
 
+**Développeurs → Inventaire des outils** (`/tool-inventory`) présente les
+services intégrés de Galaris et leurs outils natifs. La recherche porte sur les
+services et les noms d’outils. Chaque ligne indique l’ouverture en conversation,
+l’autorisation logicielle par défaut et la règle du service si elle a été définie.
+Chaque service présente l’activation prévue pour une connexion automatique,
+les paramètres, leurs défauts logiciels et les valeurs configurées au niveau du
+service. Le périmètre par défaut et les choix possibles sont visibles pour les
+services qui déclarent `services.management_scope`.
+Les valeurs secrètes sont masquées. La consultation nécessite `SERVICE_ACCESS` ou
+`SERVICE_EDIT`.
+
 | Section | Ce qu’on y trouve |
 |---|---|
 | **Configurer** | Fournisseurs & modèles, Agents, Services & connexions, Compétences |
@@ -124,7 +135,7 @@ La route est exclue des constructions des autres environnements.
 | **Connaissances** | Documents, Fichiers, Mémoire, Agenda, Contacts, Sujets |
 | **Superviser** | Tableau de bord, Activité, Dream, Permissions, Journal des mails, Journal des échecs |
 | **Administrer** | Préférences, Laboratoire, Console, Utilisateurs, Équipes, Rôles & autorisations, Plugins |
-| **Développeurs** (mode dev uniquement) | Référence graphique |
+| **Développeurs** (mode dev uniquement) | Référence graphique, Inventaire des outils |
 
 Dans la documentation technique, « Chat » correspond au menu **Discussion**,
 « tâches » à l’onglet **Tâches** d’**Activité**, « Topics » à **Sujets**

@@ -8,3 +8,4 @@ export type { Service, ConnectionParamDef, ConnectionParamOption } from './servi
 import { defineAsyncView } from '@/core/util/facade'
 
 export const ServicesList = /* @__PURE__ */ defineAsyncView(() => import('./components/ServicesList.vue'))
+export const ToolInventory = /* @__PURE__ */ defineAsyncView(() => import('./components/ToolInventory.vue'))

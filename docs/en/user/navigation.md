@@ -105,6 +105,15 @@ examples. The searchable glyph table includes bundled artwork and document icon 
 the component inventory lists consumer files. Personal user icons are not loaded.
 The route is excluded from builds for other environments.
 
+**Developers → Tool inventory** (`/tool-inventory`) lists Galaris built-in
+services and their native tools. Search by service or tool name. Each row shows
+conversation access, the software default permission, and any service rule.
+Each service shows the automatic connection state, connection parameters,
+software defaults, and configured service values. The default scope and
+available options appear for services that declare `services.management_scope`.
+Secret values are masked. Viewing
+requires `SERVICE_ACCESS` or `SERVICE_EDIT`.
+
 | Section | Contents |
 |---|---|
 | **Configure** | Providers & models, Agents, Services & connections, Skills |
@@ -112,7 +121,7 @@ The route is excluded from builds for other environments.
 | **Knowledge** | Documents, Files, Memory, Agenda, Contacts, Thematic dossiers |
 | **Monitor** | Dashboard, Activity, Dream, Permissions, Mail journal, Failure journal |
 | **Administer** | Preferences, Laboratory, Console, Users, Teams, Roles & permissions, Plugins |
-| **Developers** (dev mode only) | Visual reference |
+| **Developers** (dev mode only) | Visual reference, Tool inventory |
 
 Technical documentation may refer to “Tasks”, “Conversations” or “AI Lab”. Tasks and
 conversation histories are tabs inside **Activity**; the AI Lab is **Laboratory**.

@@ -432,6 +432,14 @@ Le [guide de navigation](../../user/navigation.md) détaille les onglets, le men
 - Conditions supplémentaires : developers: dynamic
 - Sources : `front/app/index/navigation.ts`
 
+## Développeurs → Inventaire des outils
+
+- Route : `/tool-inventory`
+- Usage : Outils natifs des services Galaris, accès en conversation et valeurs par défaut.
+- Visibilité du menu (privilèges) : (SERVICE_ACCESS OR SERVICE_EDIT)
+- Conditions supplémentaires : developers: dynamic
+- Sources : `front/app/index/navigation.ts`
+
 ## À propos
 
 - Route : `/about`

@@ -4295,7 +4295,8 @@
           "back/app/services/protocols.py",
           "back/app/services/rest.py",
           "back/app/services/router.py",
-          "back/app/services/service.py"
+          "back/app/services/service.py",
+          "back/app/services/tool_inventory.py"
         ],
         "source": "app.services",
         "target": "app.connection"
@@ -4392,6 +4393,7 @@
           "back/app/services/runtime_authorization_router.py",
           "back/app/services/runtime_permissions.py",
           "back/app/services/service.py",
+          "back/app/services/tool_inventory.py",
           "back/app/services/tool_search_service.py"
         ],
         "source": "app.services",
@@ -4441,6 +4443,13 @@
         ],
         "source": "app.services",
         "target": "core.params"
+      },
+      {
+        "files": [
+          "back/app/services/router.py"
+        ],
+        "source": "app.services",
+        "target": "core.settings"
       },
       {
         "files": [
@@ -21464,7 +21473,7 @@
         "declared_path": "/services",
         "file": "back/app/services/router.py",
         "handler": "list_services",
-        "line": 104,
+        "line": 106,
         "method": "GET",
         "module": "app.services"
       },
@@ -21473,7 +21482,7 @@
         "declared_path": "/services",
         "file": "back/app/services/router.py",
         "handler": "create_service",
-        "line": 212,
+        "line": 222,
         "method": "POST",
         "module": "app.services"
       },
@@ -21482,7 +21491,7 @@
         "declared_path": "/services/agents/{agent_id}/mcp-tools",
         "file": "back/app/services/router.py",
         "handler": "list_agent_mcp_tools",
-        "line": 118,
+        "line": 128,
         "method": "GET",
         "module": "app.services"
       },
@@ -21491,7 +21500,7 @@
         "declared_path": "/services/agents/{agent_id}/permissions",
         "file": "back/app/services/router.py",
         "handler": "read_agent_permission_catalog",
-        "line": 127,
+        "line": 137,
         "method": "GET",
         "module": "app.services"
       },
@@ -21500,7 +21509,7 @@
         "declared_path": "/services/capabilities",
         "file": "back/app/services/router.py",
         "handler": "list_supported_capabilities",
-        "line": 56,
+        "line": 58,
         "method": "GET",
         "module": "app.services"
       },
@@ -21509,7 +21518,7 @@
         "declared_path": "/services/catalog",
         "file": "back/app/services/router.py",
         "handler": "service_catalogue",
-        "line": 44,
+        "line": 46,
         "method": "GET",
         "module": "app.services"
       },
@@ -21518,7 +21527,7 @@
         "declared_path": "/services/catalog/refresh",
         "file": "back/app/services/router.py",
         "handler": "refresh_service_catalogue",
-        "line": 50,
+        "line": 52,
         "method": "POST",
         "module": "app.services"
       },
@@ -21527,7 +21536,7 @@
         "declared_path": "/services/import",
         "file": "back/app/services/router.py",
         "handler": "import_service",
-        "line": 347,
+        "line": 357,
         "method": "POST",
         "module": "app.services"
       },
@@ -21536,7 +21545,7 @@
         "declared_path": "/services/mcp-candidates",
         "file": "back/app/services/router.py",
         "handler": "prepare_mcp_candidate",
-        "line": 66,
+        "line": 68,
         "method": "POST",
         "module": "app.services"
       },
@@ -21545,8 +21554,17 @@
         "declared_path": "/services/test-mcp",
         "file": "back/app/services/router.py",
         "handler": "test_mcp_connection",
-        "line": 140,
+        "line": 150,
         "method": "POST",
+        "module": "app.services"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/services/tool-inventory",
+        "file": "back/app/services/router.py",
+        "handler": "list_tool_inventory",
+        "line": 117,
+        "method": "GET",
         "module": "app.services"
       },
       {
@@ -21563,7 +21581,7 @@
         "declared_path": "/services/{service_id}",
         "file": "back/app/services/router.py",
         "handler": "delete_service",
-        "line": 304,
+        "line": 314,
         "method": "DELETE",
         "module": "app.services"
       },
@@ -21572,7 +21590,7 @@
         "declared_path": "/services/{service_id}",
         "file": "back/app/services/router.py",
         "handler": "get_service",
-        "line": 160,
+        "line": 170,
         "method": "GET",
         "module": "app.services"
       },
@@ -21581,7 +21599,7 @@
         "declared_path": "/services/{service_id}",
         "file": "back/app/services/router.py",
         "handler": "update_service",
-        "line": 228,
+        "line": 238,
         "method": "PUT",
         "module": "app.services"
       },
@@ -21590,7 +21608,7 @@
         "declared_path": "/services/{service_id}/conversation-tools",
         "file": "back/app/services/router.py",
         "handler": "read_conversation_tools",
-        "line": 250,
+        "line": 260,
         "method": "GET",
         "module": "app.services"
       },
@@ -21599,7 +21617,7 @@
         "declared_path": "/services/{service_id}/conversation-tools",
         "file": "back/app/services/router.py",
         "handler": "update_conversation_tool",
-        "line": 276,
+        "line": 286,
         "method": "PATCH",
         "module": "app.services"
       },
@@ -21608,7 +21626,7 @@
         "declared_path": "/services/{service_id}/conversation-tools/discover",
         "file": "back/app/services/router.py",
         "handler": "discover_conversation_tools",
-        "line": 257,
+        "line": 267,
         "method": "POST",
         "module": "app.services"
       },
@@ -21617,7 +21635,7 @@
         "declared_path": "/services/{service_id}/deletion-impact",
         "file": "back/app/services/router.py",
         "handler": "service_deletion_impact",
-        "line": 292,
+        "line": 302,
         "method": "GET",
         "module": "app.services"
       },
@@ -21626,7 +21644,7 @@
         "declared_path": "/services/{service_id}/export",
         "file": "back/app/services/router.py",
         "handler": "export_service",
-        "line": 321,
+        "line": 331,
         "method": "GET",
         "module": "app.services"
       },
@@ -21635,7 +21653,7 @@
         "declared_path": "/services/{service_id}/global-params",
         "file": "back/app/services/router.py",
         "handler": "get_global_params",
-        "line": 172,
+        "line": 182,
         "method": "GET",
         "module": "app.services"
       },
@@ -21644,7 +21662,7 @@
         "declared_path": "/services/{service_id}/global-params",
         "file": "back/app/services/router.py",
         "handler": "update_global_params",
-        "line": 189,
+        "line": 199,
         "method": "PUT",
         "module": "app.services"
       },
@@ -23595,7 +23613,8 @@
       },
       {
         "files": [
-          "front/app/index/pages/services.vue"
+          "front/app/index/pages/services.vue",
+          "front/app/index/pages/tool-inventory.vue"
         ],
         "source": "app/index",
         "target": "app/services"
@@ -23674,6 +23693,7 @@
           "front/app/index/navigation.ts",
           "front/app/index/pages/about.vue",
           "front/app/index/pages/graphic-reference.vue",
+          "front/app/index/pages/tool-inventory.vue",
           "front/app/index/router.ts"
         ],
         "source": "app/index",
@@ -24199,6 +24219,7 @@
           "front/app/services/components/ServiceGlobalParameters.vue",
           "front/app/services/components/ServicesList.vue",
           "front/app/services/components/TelegramServiceSetup.vue",
+          "front/app/services/components/ToolInventory.vue",
           "front/app/services/navigation.ts"
         ],
         "source": "app/services",
@@ -24221,6 +24242,8 @@
           "front/app/services/components/ServiceImportDialog.vue",
           "front/app/services/components/ServiceMcpDiagnosticDialog.vue",
           "front/app/services/components/ServicesList.vue",
+          "front/app/services/components/ToolInventory.vue",
+          "front/app/services/components/ToolInventoryTable.vue",
           "front/app/services/index.ts",
           "front/app/services/stores/serviceStore.ts"
         ],
@@ -25466,6 +25489,11 @@
             "route_hint": "/task"
           },
           {
+            "file": "front/app/index/pages/tool-inventory.vue",
+            "module": "app/index",
+            "route_hint": "/tool-inventory"
+          },
+          {
             "file": "front/app/index/pages/welcome.vue",
             "module": "app/index",
             "route_hint": "/index/welcome"
@@ -26403,6 +26431,11 @@
         "file": "front/core/team/pages/index.vue",
         "module": "core/team",
         "route_hint": "/team"
+      },
+      {
+        "file": "front/app/index/pages/tool-inventory.vue",
+        "module": "app/index",
+        "route_hint": "/tool-inventory"
       },
       {
         "file": "front/app/services/pages/legacy.vue",

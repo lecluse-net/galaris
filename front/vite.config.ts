@@ -92,7 +92,7 @@ export default defineConfig({
         developmentWorkerRecovery(),
         VueRouter({
             routesFolder: getRoutesFolders(),
-            exclude: appEnv === 'dev' ? [] : ['**/graphic-reference.vue'],
+            exclude: appEnv === 'dev' ? [] : ['**/graphic-reference.vue', '**/tool-inventory.vue'],
             dts: './typed-router.d.ts',
             logs: true
         }),

@@ -18,6 +18,7 @@ def mcp_oauth_auth(params: Mapping[str, object], server_url: str) -> httpx.Auth 
 
 from . import admin_service as administration
 from .parameter_resolution import effective_param_value_expression as effective_param_value_expression
+from .schemas import EffectiveFunctionState as EffectiveFunctionState
 
 from .connection_service import (
     count_connections_by_service,
@@ -35,6 +36,7 @@ from .connection_service import (
     list_function_states,
     list_management_connections,
     list_service_function_states,
+    list_service_tool_policies,
     resolve_function_enabled,
     resolve_function_state,
     stored_function_state,
@@ -75,6 +77,7 @@ __all__ = [
     "has_any_active_tool_connection",
     "list_function_states", "list_management_connections", "CONNECTION_FUNCTION_READ_PRIVILEGES",
     "list_service_function_states",
+    "list_service_tool_policies",
     "resolve_function_enabled",
     "resolve_function_state", "stored_function_state",
     "project_function_policy",

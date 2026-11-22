@@ -432,6 +432,14 @@ The [navigation guide](../../user/navigation.md) explains tabs, the account menu
 - Additional conditions : developers: dynamic
 - Sources : `front/app/index/navigation.ts`
 
+## Developers → Tool inventory
+
+- Route : `/tool-inventory`
+- Purpose : Native tools across Galaris services, conversation access, and defaults.
+- Menu visibility (privileges) : (SERVICE_ACCESS OR SERVICE_EDIT)
+- Additional conditions : developers: dynamic
+- Sources : `front/app/index/navigation.ts`
+
 ## About
 
 - Route : `/about`

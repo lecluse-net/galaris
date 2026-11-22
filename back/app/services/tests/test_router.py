@@ -19,6 +19,117 @@ from app.services.schemas import (
 
 
 @pytest.mark.asyncio
+async def test_development_tool_inventory_lists_service_defaults_without_an_agent(client, monkeypatch):
+    from sqlalchemy import select
+
+    from app.connection import ServiceFunctionState
+    from app.services.mandatory_services import INTEGRATED_SERVICE_CODES
+    from app.services.models import Service
+    from core.authorize import Assignment, Privilege, Role
+    from core.database import get_db_session
+    from core.settings import settings
+    from core.user import UserModel
+    from core.user.user_service import encrypt_password
+
+    suffix = uuid4().hex
+    password = "synthetic-inventory-password"
+    empty_code, external_code = f"empty-{suffix}", f"external-{suffix}"
+    async with get_db_session() as db:
+        reader_privilege = await db.scalar(select(Privilege).where(Privilege.code == "SERVICE_ACCESS"))
+        assert reader_privilege is not None
+        empty = Service(code=empty_code, label="Synthetic service without tools")
+        external = Service(
+            code=external_code, label="Synthetic MCP server",
+            mcp_config={"type": "http", "url": "https://synthetic-secret.example.test/mcp"},
+            conversation_tools={"external": ["lookup"]},
+        )
+        search_service = await db.scalar(select(Service).where(Service.code == "search"))
+        browser = await db.scalar(select(Service).where(Service.code == "browser"))
+        assert search_service is not None and browser is not None
+        browser.connection_schema = {
+            **browser.connection_schema,
+            "params": {
+                **browser.connection_schema["params"],
+                "synthetic_password": {"type": "password", "default": "synthetic-secret-default"},
+            },
+        }
+        browser.global_params = {
+            **(browser.global_params or {}),
+            "public_access_mode": {"value": "allow", "forced": True},
+            "synthetic_password": {"value": "synthetic-secret-configured", "forced": False},
+        }
+        db.add_all([empty, external])
+        await db.flush()
+        db.add_all([
+            ServiceFunctionState(service_id=search_service.id, function_name="search_web", enabled=False),
+            ServiceFunctionState(service_id=search_service.id, function_name="search_web", state="ask", capability_kind="prompt"),
+        ])
+        emails = []
+        for name, privileges in (("reader", [reader_privilege]), ("visitor", [])):
+            role = Role(code=f"inventory-{name}-{suffix}", privileges=privileges)
+            user = UserModel(
+                email=f"inventory-{name}-{suffix}@example.com",
+                hashed_password=encrypt_password(password),
+                is_active=True,
+            )
+            db.add_all([role, user])
+            await db.flush()
+            db.add(Assignment(user_id=user.id, role_id=role.id, is_default=True))
+            emails.append(user.email)
+
+    path = "/api/services/tool-inventory"
+    monkeypatch.setattr(settings, "APP_ENV", "dev")
+    assert (await client.get(path)).status_code == 401
+    headers = []
+    for email in emails:
+        client.cookies.clear()
+        login = await client.post("/api/auth/login-json", json={"email": email, "password": password})
+        assert login.status_code == 200, login.text
+        headers.append({"Authorization": f"Bearer {login.json()['access_token']}"})
+    reader, visitor = headers
+    assert (await client.get(path, headers=visitor)).status_code == 403
+    for label in ("prod", "test", "pp", "DEV", ""):
+        monkeypatch.setattr(settings, "APP_ENV", label)
+        assert (await client.get(path, headers=reader)).status_code == 404
+
+    monkeypatch.setattr(settings, "APP_ENV", "dev")
+    response = await client.get(path, headers=reader)
+    assert response.status_code == 200, response.text
+    assert "synthetic-secret" not in response.text
+    inventory = {row["code"]: row for row in response.json()}
+    assert set(inventory) == INTEGRATED_SERVICE_CODES
+    assert {empty_code, external_code}.isdisjoint(inventory)
+    search = next(tool for tool in inventory["search"]["tools"] if tool["name"] == "search_web")
+    assert search["conversation_enabled"] is True
+    assert search["default_state"] == "ask"
+    assert search["service_override"] == "disabled"
+    assert inventory["search"]["connection_default"] == "active"
+    assert inventory["platform_admin"]["connection_default"] == "inactive"
+    assert inventory["topic"]["connection_default"] == "manual"
+    for code, expected in (("chat", "team"), ("skills", "personal"), ("platform_admin", "usage")):
+        settings = inventory[code]["connection_schema"]["params"]
+        assert settings["services.management_scope"]["default"] == expected
+        assert "services.management_scope" not in inventory[code]["global_params"]
+    chat_scope = inventory["chat"]["connection_schema"]["params"]["services.management_scope"]
+    assert {option["value"] for option in chat_scope["options"]} == {"none", "team", "all"}
+    browser_parameters = inventory["browser"]["connection_schema"]["params"]
+    browser_values = inventory["browser"]["global_params"]
+    assert browser_parameters["public_access_mode"]["default"] == "ask"
+    assert browser_values["public_access_mode"] == {
+        "value": "allow", "configured": True, "secret": False, "forced": True,
+    }
+    assert browser_parameters["synthetic_password"]["default"] == ""
+    assert browser_values["synthetic_password"] == {
+        "value": None, "configured": True, "secret": True, "forced": False,
+    }
+    files = {tool["name"]: tool for tool in inventory["file_sharing"]["tools"]}
+    assert files["file_read"]["conversation_enabled"] is True
+    assert files["file_read"]["default_state"] == "enabled"
+    assert files["file_delete"]["conversation_enabled"] is False
+    assert files["file_delete"]["default_state"] == "ask"
+
+
+@pytest.mark.asyncio
 async def test_conversation_allowlist_requires_a_human_service_editor(client, monkeypatch):
     from contextlib import AsyncExitStack
 

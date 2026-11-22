@@ -73,6 +73,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '///tool-inventory': RouteRecordInfo<
+      '///tool-inventory',
+      '/tool-inventory',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '///about': RouteRecordInfo<
       '///about',
       '/about',
@@ -493,6 +500,14 @@ declare module 'vue-router/auto-routes' {
     'app/index/pages/task.vue': {
       routes:
         | '///task'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'app/index/pages/tool-inventory.vue': {
+      routes:
+        | '///tool-inventory'
       views:
         | never
       pathParamNames:

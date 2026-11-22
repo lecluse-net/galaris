@@ -910,6 +910,20 @@ async def list_service_function_states(service_id: int) -> List[ServiceFunctionS
     return list(result.scalars().all())
 
 
+async def list_service_tool_policies(service_ids: Collection[int]) -> dict[int, dict[str, EffectiveFunctionState]]:
+    """Read stored service-wide tool rules, including legacy boolean decisions."""
+    if not service_ids:
+        return {}
+    rows = await get_db().scalars(select(ServiceFunctionState).where(
+        ServiceFunctionState.service_id.in_(service_ids),
+        ServiceFunctionState.capability_kind == "tool",
+    ))
+    policies: dict[int, dict[str, EffectiveFunctionState]] = {}
+    for row in rows:
+        policies.setdefault(row.service_id, {})[row.function_name] = stored_function_state(row)
+    return policies
+
+
 async def get_disabled_function_names(connection: Connection, *, capability_kind: CapabilityKind = "tool") -> set[str]:
     """Return function names disabled for a connection after cascade resolution."""
     conn_states = {s.function_name: stored_function_state(s) for s in await list_function_states(connection.id) if (s.capability_kind or "tool") == capability_kind}

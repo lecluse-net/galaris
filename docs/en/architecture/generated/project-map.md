@@ -11,16 +11,16 @@ tests remain authoritative for behavior.
 
 - 80 declared backend modules;
 - 41 declared frontend modules;
-- 652 backend dependency edges;
+- 653 backend dependency edges;
 - 231 frontend dependency edges;
 - 308 edges between `app`/`bridge` domains;
 - 30 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 0 directly bidirectional frontend pairs;
-- 835 detected HTTP/WebSocket handlers;
+- 836 detected HTTP/WebSocket handlers;
 - 203 detected SQLAlchemy tables;
 - 302 detected native MCP tools;
-- 58 detected Vue pages.
+- 59 detected Vue pages.
 
 ## Backend Modules
 
@@ -115,7 +115,7 @@ tests remain authoritative for behavior.
 | `core/team` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `services` | 1 |
 | `core/authorize` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 2 |
 | `core/params` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 3 |
-| `app/index` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 10 |
+| `app/index` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 11 |
 | `app/agent` | yes | `components`, `i18n.ts`, `navigation.ts`, `services`, `stores` | 0 |
 | `app/harnesses` | yes | `components`, `i18n.ts`, `pages`, `services` | 1 |
 | `app/services` | yes | `components`, `i18n.ts`, `navigation.ts`, `pages`, `presentation.ts`, `services`, `stores` | 1 |
@@ -531,7 +531,7 @@ tests remain authoritative for behavior.
 | `app.process` | `core.user` | `back/app/process/activity_controls.py`, `back/app/process/dataset_usage.py`, `back/app/process/events.py`, `back/app/process/facade.py`, `back/app/process/native_access.py`, `back/app/process/native_actors.py`, `back/app/process/native_definitions.py`, `back/app/process/process_service.py` |
 | `app.process` | `core.util` | `back/app/process/input_editing.py`, `back/app/process/native_router.py`, `back/app/process/process_service.py`, `back/app/process/run_data.py`, `back/app/process/run_resources.py` |
 | `app.services` | `app.agent` | `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/catalog.py`, `back/app/services/catalog_refresh_service.py`, `back/app/services/connection_functions.py`, `back/app/services/conversation_catalog.py`, `back/app/services/dbadmin.py`, `back/app/services/management_scope.py`, `back/app/services/mcp_loader.py`, `back/app/services/permission_catalog.py`, `back/app/services/resource_effects.py`, `back/app/services/router.py`, `back/app/services/runtime_authorization.py`, `back/app/services/runtime_permissions.py` |
-| `app.services` | `app.connection` | `back/app/services/admin_access.py`, `back/app/services/admin_candidates.py`, `back/app/services/admin_contracts.py`, `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/authorization.py`, `back/app/services/connection_diagnostics.py`, `back/app/services/connection_functions.py`, `back/app/services/conversation_catalog.py`, `back/app/services/dbadmin.py`, `back/app/services/documentation_service.py`, `back/app/services/facade.py`, `back/app/services/management_scope.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp.py`, `back/app/services/mcp_authorization.py`, `back/app/services/mcp_loader.py`, `back/app/services/permission_catalog.py`, `back/app/services/protocols.py`, `back/app/services/rest.py`, `back/app/services/router.py`, `back/app/services/service.py` |
+| `app.services` | `app.connection` | `back/app/services/admin_access.py`, `back/app/services/admin_candidates.py`, `back/app/services/admin_contracts.py`, `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/authorization.py`, `back/app/services/connection_diagnostics.py`, `back/app/services/connection_functions.py`, `back/app/services/conversation_catalog.py`, `back/app/services/dbadmin.py`, `back/app/services/documentation_service.py`, `back/app/services/facade.py`, `back/app/services/management_scope.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp.py`, `back/app/services/mcp_authorization.py`, `back/app/services/mcp_loader.py`, `back/app/services/permission_catalog.py`, `back/app/services/protocols.py`, `back/app/services/rest.py`, `back/app/services/router.py`, `back/app/services/service.py`, `back/app/services/tool_inventory.py` |
 | `app.services` | `app.console` | `back/app/services/mcp_loader.py` |
 | `app.services` | `app.documentation` | `back/app/services/documentation_service.py` |
 | `app.services` | `app.file_share` | `back/app/services/capabilities.py`, `back/app/services/parameter_definitions.py`, `back/app/services/resource_effects.py`, `back/app/services/router.py`, `back/app/services/service.py` |
@@ -540,11 +540,12 @@ tests remain authoritative for behavior.
 | `app.services` | `app.task` | `back/app/services/mcp_loader.py` |
 | `app.services` | `app.util` | `back/app/services/search_tool.py` |
 | `app.services` | `core.authorize` | `back/app/services/assertions.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/conversation_catalog.py`, `back/app/services/router.py`, `back/app/services/runtime_authorization_router.py` |
-| `app.services` | `core.database` | `back/app/services/admin_service.py`, `back/app/services/administration_lock.py`, `back/app/services/authorization.py`, `back/app/services/authorization_models.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/authorization_views.py`, `back/app/services/catalog_refresh_service.py`, `back/app/services/conversation_catalog.py`, `back/app/services/deletion.py`, `back/app/services/documentation_service.py`, `back/app/services/facade.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp_loader.py`, `back/app/services/models.py`, `back/app/services/runtime_authorization.py`, `back/app/services/runtime_authorization_router.py`, `back/app/services/runtime_permissions.py`, `back/app/services/service.py`, `back/app/services/tool_search_service.py` |
+| `app.services` | `core.database` | `back/app/services/admin_service.py`, `back/app/services/administration_lock.py`, `back/app/services/authorization.py`, `back/app/services/authorization_models.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/authorization_views.py`, `back/app/services/catalog_refresh_service.py`, `back/app/services/conversation_catalog.py`, `back/app/services/deletion.py`, `back/app/services/documentation_service.py`, `back/app/services/facade.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp_loader.py`, `back/app/services/models.py`, `back/app/services/runtime_authorization.py`, `back/app/services/runtime_authorization_router.py`, `back/app/services/runtime_permissions.py`, `back/app/services/service.py`, `back/app/services/tool_inventory.py`, `back/app/services/tool_search_service.py` |
 | `app.services` | `core.dbadmin` | `back/app/services/capability_migration.py`, `back/app/services/dbadmin.py`, `back/app/services/mandatory_services.py`, `back/app/services/naming_migration.py`, `back/app/services/protocol_migration.py` |
 | `app.services` | `core.failure_journal` | `back/app/services/mcp_loader.py` |
 | `app.services` | `core.i18n` | `back/app/services/agent_registry.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/connection_diagnostics.py`, `back/app/services/connection_functions.py`, `back/app/services/mcp.py`, `back/app/services/mcp_diagnostics.py`, `back/app/services/mcp_loader.py`, `back/app/services/router.py`, `back/app/services/search_tool.py`, `back/app/services/service.py`, `back/app/services/tool_errors.py` |
 | `app.services` | `core.params` | `back/app/services/mandatory_services.py`, `back/app/services/mcp_loader.py` |
+| `app.services` | `core.settings` | `back/app/services/router.py` |
 | `app.services` | `core.user` | `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/conversation_catalog.py`, `back/app/services/router.py` |
 | `app.services` | `core.util` | `back/app/services/admin_candidates.py`, `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/assertions.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/authorization_views.py`, `back/app/services/catalog.py`, `back/app/services/runtime_authorization.py`, `back/app/services/secrets.py`, `back/app/services/service.py` |
 | `app.share` | `core.database` | `back/app/share/models.py`, `back/app/share/service.py` |
@@ -912,14 +913,14 @@ tests remain authoritative for behavior.
 | `app/index` | `app/llm` | `front/app/index/components/AgentWorkspace.vue`, `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/pages/task.vue` |
 | `app/index` | `app/onboarding` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/pages/index.vue`, `front/app/index/pages/welcome.vue` |
 | `app/index` | `app/process` | `front/app/index/pages/task.vue` |
-| `app/index` | `app/services` | `front/app/index/pages/services.vue` |
+| `app/index` | `app/services` | `front/app/index/pages/services.vue`, `front/app/index/pages/tool-inventory.vue` |
 | `app/index` | `app/task` | `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/pages/task.vue` |
 | `app/index` | `app/voice` | `front/app/index/pages/task.vue` |
 | `app/index` | `core/api` | `front/app/index/components/AgentWorkspace.vue`, `front/app/index/composables/useAgentHarnessRuntime.ts`, `front/app/index/pages/agent.vue`, `front/app/index/pages/task.vue`, `front/app/index/services/dashboardService.ts`, `front/app/index/services/homeService.ts`, `front/app/index/stores/dashboardStore.ts` |
 | `app/index` | `core/authorize` | `front/app/index/components/AgentWorkspace.vue`, `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/navigation.ts`, `front/app/index/pages/agent.vue`, `front/app/index/pages/services.vue`, `front/app/index/pages/task.vue`, `front/app/index/stores/dashboardStore.ts` |
 | `app/index` | `core/navigation` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/components/Sidebar.vue`, `front/app/index/navigation.ts`, `front/app/index/pages/agent.vue`, `front/app/index/pages/services.vue`, `front/app/index/pages/task.vue` |
 | `app/index` | `core/params` | `front/app/index/components/AgentWorkspace.vue` |
-| `app/index` | `core/settings` | `front/app/index/components/HomePublic.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/components/Sidebar.vue`, `front/app/index/components/SidebarFooter.vue`, `front/app/index/environmentPresentation.ts`, `front/app/index/navigation.ts`, `front/app/index/pages/about.vue`, `front/app/index/pages/graphic-reference.vue`, `front/app/index/router.ts` |
+| `app/index` | `core/settings` | `front/app/index/components/HomePublic.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/components/Sidebar.vue`, `front/app/index/components/SidebarFooter.vue`, `front/app/index/environmentPresentation.ts`, `front/app/index/navigation.ts`, `front/app/index/pages/about.vue`, `front/app/index/pages/graphic-reference.vue`, `front/app/index/pages/tool-inventory.vue`, `front/app/index/router.ts` |
 | `app/index` | `core/team` | `front/app/index/components/AgentWorkspace.vue`, `front/app/index/pages/agent.vue` |
 | `app/index` | `core/user` | `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomePublic.vue`, `front/app/index/components/MainLayout.vue`, `front/app/index/pages/index.vue`, `front/app/index/pages/welcome.vue`, `front/app/index/stores/dashboardStore.ts` |
 | `app/index` | `core/util` | `front/app/index/components/AgentPreview.vue`, `front/app/index/components/AgentWorkspace.vue`, `front/app/index/components/DashboardLiveActivity.vue`, `front/app/index/components/HomeActionCenter.vue`, `front/app/index/components/HomeConnected.vue`, `front/app/index/composables/useAgentHarnessRuntime.ts`, `front/app/index/environmentPresentation.ts`, `front/app/index/graphic-reference/GalleryDialogCard.vue`, `front/app/index/graphic-reference/GalleryForms.vue`, `front/app/index/graphic-reference/GalleryNavigation.vue`, `front/app/index/graphic-reference/GalleryPatterns.vue`, `front/app/index/index.ts`, `front/app/index/pages/about.vue`, `front/app/index/pages/agent.vue`, `front/app/index/pages/graphic-reference.vue`, `front/app/index/pages/license.vue`, `front/app/index/pages/services.vue`, `front/app/index/pages/task.vue` |
@@ -964,9 +965,9 @@ tests remain authoritative for behavior.
 | `app/process` | `core/websocket` | `front/app/process/components/ExternalRunDialog.vue`, `front/app/process/components/NativeRunPanel.vue`, `front/app/process/components/ProcessRunsPanel.vue`, `front/app/process/composables/useProcessRunRefresh.ts` |
 | `app/services` | `app/agent` | `front/app/services/components/ServiceMcpDiagnosticDialog.vue` |
 | `app/services` | `core/api` | `front/app/services/components/ServiceGlobalParameters.vue`, `front/app/services/components/ServiceImportDialog.vue`, `front/app/services/components/ServiceMcpDiagnosticDialog.vue`, `front/app/services/components/ServicesList.vue`, `front/app/services/services/serviceApi.ts`, `front/app/services/stores/serviceStore.ts` |
-| `app/services` | `core/authorize` | `front/app/services/components/MatrixServiceSetup.vue`, `front/app/services/components/ServiceCatalog.vue`, `front/app/services/components/ServiceGlobalParameters.vue`, `front/app/services/components/ServicesList.vue`, `front/app/services/components/TelegramServiceSetup.vue`, `front/app/services/navigation.ts` |
+| `app/services` | `core/authorize` | `front/app/services/components/MatrixServiceSetup.vue`, `front/app/services/components/ServiceCatalog.vue`, `front/app/services/components/ServiceGlobalParameters.vue`, `front/app/services/components/ServicesList.vue`, `front/app/services/components/TelegramServiceSetup.vue`, `front/app/services/components/ToolInventory.vue`, `front/app/services/navigation.ts` |
 | `app/services` | `core/navigation` | `front/app/services/components/ServiceIcon.vue`, `front/app/services/components/ServiceIdentityIcon.vue`, `front/app/services/navigation.ts` |
-| `app/services` | `core/util` | `front/app/services/components/ServiceCard.vue`, `front/app/services/components/ServiceConversationTools.vue`, `front/app/services/components/ServiceGlobalParameters.vue`, `front/app/services/components/ServiceImportDialog.vue`, `front/app/services/components/ServiceMcpDiagnosticDialog.vue`, `front/app/services/components/ServicesList.vue`, `front/app/services/index.ts`, `front/app/services/stores/serviceStore.ts` |
+| `app/services` | `core/util` | `front/app/services/components/ServiceCard.vue`, `front/app/services/components/ServiceConversationTools.vue`, `front/app/services/components/ServiceGlobalParameters.vue`, `front/app/services/components/ServiceImportDialog.vue`, `front/app/services/components/ServiceMcpDiagnosticDialog.vue`, `front/app/services/components/ServicesList.vue`, `front/app/services/components/ToolInventory.vue`, `front/app/services/components/ToolInventoryTable.vue`, `front/app/services/index.ts`, `front/app/services/stores/serviceStore.ts` |
 | `app/share` | `core/util` | `front/app/share/components/OwnerAvatar.vue`, `front/app/share/components/OwnerSelect.vue`, `front/app/share/components/ResourceSharingPanel.vue`, `front/app/share/components/SharingPanel.vue`, `front/app/share/components/SharingRecipients.vue`, `front/app/share/ownerCache.ts`, `front/app/share/ownerGroups.ts`, `front/app/share/panel.ts` |
 | `app/skill` | `app/agent` | `front/app/skill/components/PersonalSkillManager.vue`, `front/app/skill/components/SkillAuthorizationManager.vue`, `front/app/skill/components/SkillOwnershipDialog.vue` |
 | `app/skill` | `core/api` | `front/app/skill/components/PersonalSkillManager.vue`, `front/app/skill/components/SkillOwnershipDialog.vue`, `front/app/skill/pages/index.vue`, `front/app/skill/services/skillService.ts`, `front/app/skill/stores/skillStore.ts` |
@@ -1984,27 +1985,28 @@ No cyclic component detected.
 | POST | `/runtime-authorizations/receipt` | `app.services` | `action_receipt` | no | `back/app/services/runtime_authorization_router.py:96` |
 | GET | `/runtime-authorizations/{identifier}` | `app.services` | `action_status` | no | `back/app/services/runtime_authorization_router.py:84` |
 | GET | `/services` | `app.process` | `read_process_tools` | yes | `back/app/process/router.py:130` |
-| GET | `/services` | `app.services` | `list_services` | yes | `back/app/services/router.py:104` |
-| POST | `/services` | `app.services` | `create_service` | yes | `back/app/services/router.py:212` |
-| GET | `/services/agents/{agent_id}/mcp-tools` | `app.services` | `list_agent_mcp_tools` | yes | `back/app/services/router.py:118` |
-| GET | `/services/agents/{agent_id}/permissions` | `app.services` | `read_agent_permission_catalog` | yes | `back/app/services/router.py:127` |
-| GET | `/services/capabilities` | `app.services` | `list_supported_capabilities` | yes | `back/app/services/router.py:56` |
-| GET | `/services/catalog` | `app.services` | `service_catalogue` | yes | `back/app/services/router.py:44` |
-| POST | `/services/catalog/refresh` | `app.services` | `refresh_service_catalogue` | yes | `back/app/services/router.py:50` |
-| POST | `/services/import` | `app.services` | `import_service` | yes | `back/app/services/router.py:347` |
-| POST | `/services/mcp-candidates` | `app.services` | `prepare_mcp_candidate` | yes | `back/app/services/router.py:66` |
-| POST | `/services/test-mcp` | `app.services` | `test_mcp_connection` | yes | `back/app/services/router.py:140` |
+| GET | `/services` | `app.services` | `list_services` | yes | `back/app/services/router.py:106` |
+| POST | `/services` | `app.services` | `create_service` | yes | `back/app/services/router.py:222` |
+| GET | `/services/agents/{agent_id}/mcp-tools` | `app.services` | `list_agent_mcp_tools` | yes | `back/app/services/router.py:128` |
+| GET | `/services/agents/{agent_id}/permissions` | `app.services` | `read_agent_permission_catalog` | yes | `back/app/services/router.py:137` |
+| GET | `/services/capabilities` | `app.services` | `list_supported_capabilities` | yes | `back/app/services/router.py:58` |
+| GET | `/services/catalog` | `app.services` | `service_catalogue` | yes | `back/app/services/router.py:46` |
+| POST | `/services/catalog/refresh` | `app.services` | `refresh_service_catalogue` | yes | `back/app/services/router.py:52` |
+| POST | `/services/import` | `app.services` | `import_service` | yes | `back/app/services/router.py:357` |
+| POST | `/services/mcp-candidates` | `app.services` | `prepare_mcp_candidate` | yes | `back/app/services/router.py:68` |
+| POST | `/services/test-mcp` | `app.services` | `test_mcp_connection` | yes | `back/app/services/router.py:150` |
+| GET | `/services/tool-inventory` | `app.services` | `list_tool_inventory` | yes | `back/app/services/router.py:117` |
 | GET | `/services/{service_code}/health` | `app.process` | `read_process_tool_health` | yes | `back/app/process/router.py:136` |
-| DELETE | `/services/{service_id}` | `app.services` | `delete_service` | yes | `back/app/services/router.py:304` |
-| GET | `/services/{service_id}` | `app.services` | `get_service` | yes | `back/app/services/router.py:160` |
-| PUT | `/services/{service_id}` | `app.services` | `update_service` | yes | `back/app/services/router.py:228` |
-| GET | `/services/{service_id}/conversation-tools` | `app.services` | `read_conversation_tools` | yes | `back/app/services/router.py:250` |
-| PATCH | `/services/{service_id}/conversation-tools` | `app.services` | `update_conversation_tool` | yes | `back/app/services/router.py:276` |
-| POST | `/services/{service_id}/conversation-tools/discover` | `app.services` | `discover_conversation_tools` | yes | `back/app/services/router.py:257` |
-| GET | `/services/{service_id}/deletion-impact` | `app.services` | `service_deletion_impact` | yes | `back/app/services/router.py:292` |
-| GET | `/services/{service_id}/export` | `app.services` | `export_service` | yes | `back/app/services/router.py:321` |
-| GET | `/services/{service_id}/global-params` | `app.services` | `get_global_params` | yes | `back/app/services/router.py:172` |
-| PUT | `/services/{service_id}/global-params` | `app.services` | `update_global_params` | yes | `back/app/services/router.py:189` |
+| DELETE | `/services/{service_id}` | `app.services` | `delete_service` | yes | `back/app/services/router.py:314` |
+| GET | `/services/{service_id}` | `app.services` | `get_service` | yes | `back/app/services/router.py:170` |
+| PUT | `/services/{service_id}` | `app.services` | `update_service` | yes | `back/app/services/router.py:238` |
+| GET | `/services/{service_id}/conversation-tools` | `app.services` | `read_conversation_tools` | yes | `back/app/services/router.py:260` |
+| PATCH | `/services/{service_id}/conversation-tools` | `app.services` | `update_conversation_tool` | yes | `back/app/services/router.py:286` |
+| POST | `/services/{service_id}/conversation-tools/discover` | `app.services` | `discover_conversation_tools` | yes | `back/app/services/router.py:267` |
+| GET | `/services/{service_id}/deletion-impact` | `app.services` | `service_deletion_impact` | yes | `back/app/services/router.py:302` |
+| GET | `/services/{service_id}/export` | `app.services` | `export_service` | yes | `back/app/services/router.py:331` |
+| GET | `/services/{service_id}/global-params` | `app.services` | `get_global_params` | yes | `back/app/services/router.py:182` |
+| PUT | `/services/{service_id}/global-params` | `app.services` | `update_global_params` | yes | `back/app/services/router.py:199` |
 | GET | `/skills` | `app.skill` | `list_skills` | yes | `back/app/skill/router.py:159` |
 | POST | `/skills` | `app.skill` | `create_skill` | yes | `back/app/skill/router.py:422` |
 | GET | `/skills/agents` | `app.skill` | `list_skill_agents` | yes | `back/app/skill/router.py:295` |
@@ -2822,6 +2824,7 @@ No cyclic component detected.
 | `/skill` | `app/skill` | `front/app/skill/pages/index.vue` |
 | `/task` | `app/index` | `front/app/index/pages/task.vue` |
 | `/team` | `core/team` | `front/core/team/pages/index.vue` |
+| `/tool-inventory` | `app/index` | `front/app/index/pages/tool-inventory.vue` |
 | `/tools` | `app/services` | `front/app/services/pages/legacy.vue` |
 | `/topic` | `app/topic` | `front/app/topic/pages/index.vue` |
 | `/topic/:id` | `app/topic` | `front/app/topic/pages/[id].vue` |

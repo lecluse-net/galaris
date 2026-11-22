@@ -25,6 +25,14 @@ const navigation: NavigationTree = {
                 to: '/graphic-reference',
                 order: 10,
             },
+            toolInventory: {
+                label: 'toolInventory.title',
+                description: 'toolInventory.description',
+                icon: 'fact_check',
+                to: '/tool-inventory',
+                order: 20,
+                privileges: [privileges.SERVICE_ACCESS, privileges.SERVICE_EDIT],
+            },
         },
     },
     pageFooter: {

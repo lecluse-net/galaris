@@ -340,7 +340,30 @@ export interface ConversationToolCatalog {
     next_connection_id: number | null
 }
 
+export type InventoryToolState = 'enabled' | 'disabled' | 'ask'
+
+export interface InventoryTool {
+    name: string
+    conversation_enabled: boolean
+    default_state: InventoryToolState
+    service_override: InventoryToolState | null
+}
+
+export interface ServiceToolInventory {
+    code: string
+    label: string
+    icon: ServiceIcon | null
+    connection_default: 'active' | 'inactive' | 'manual'
+    connection_schema: ConnectionSchema
+    global_params: Record<string, ServiceGlobalParam>
+    tools: InventoryTool[]
+}
+
 export default {
+    getToolInventory(signal: AbortSignal): Promise<AxiosResponse<ServiceToolInventory[]>> {
+        return api.get('/services/tool-inventory', { signal })
+    },
+
     getConversationTools(id: number, discover: boolean, signal: AbortSignal, afterConnectionId?: number): Promise<AxiosResponse<ConversationToolCatalog>> {
         const path = `/services/${id}/conversation-tools`
         return discover

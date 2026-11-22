@@ -6,6 +6,7 @@ from loguru import logger
 from pydantic import BaseModel, Field, ValidationError
 
 from core.authorize import authorize, Privileges
+from core.settings import settings
 from core.user import require_web_session
 from core.i18n import render_prompt, tr
 from app.agent import AgentOwnerAssertion
@@ -28,6 +29,7 @@ from .mcp_diagnostics import diagnose_mcp_connection
 from . import service
 from .deletion import DeletionConflict, ServiceDeletionImpact
 from .permission_catalog import AgentPermissionCatalog
+from .tool_inventory import ServiceToolInventory, read_tool_inventory
 from .capabilities import CapabilityDefinition
 
 from .service_catalog import ServiceCatalog, compose_catalog, read_catalog, refresh_catalog
@@ -108,6 +110,14 @@ async def list_services() -> list[ServiceListItem]:
     counts = await count_connections_by_service([record.id for record in records])
     return [ServiceListItem(**_to_public(record).model_dump(), connection_count=counts.get(record.id, 0))
         for record in records if _is_visible(record)]
+
+
+@router.get("/tool-inventory")
+@authorize(privileges=[Privileges.SERVICE_ACCESS, Privileges.SERVICE_EDIT])
+async def list_tool_inventory() -> list[ServiceToolInventory]:
+    if not settings.is_dev:
+        raise HTTPException(status_code=404)
+    return await read_tool_inventory()
 
 
 @router.get("/agents/{agent_id}/mcp-tools", response_model=List[ServiceMcpCatalogPublic])

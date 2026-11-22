@@ -2768,6 +2768,44 @@
       ]
     },
     {
+      "id": "developers.toolInventory",
+      "labels": {
+        "fr": "Inventaire des outils",
+        "en": "Tool inventory"
+      },
+      "breadcrumbs": {
+        "fr": [
+          "Développeurs",
+          "Inventaire des outils"
+        ],
+        "en": [
+          "Developers",
+          "Tool inventory"
+        ]
+      },
+      "route": "/tool-inventory",
+      "href": null,
+      "description": {
+        "fr": "Outils natifs des services Galaris, accès en conversation et valeurs par défaut.",
+        "en": "Native tools across Galaris services, conversation access, and defaults."
+      },
+      "privilege_groups": [
+        [
+          "SERVICE_ACCESS",
+          "SERVICE_EDIT"
+        ]
+      ],
+      "conditions": [
+        {
+          "node": "developers",
+          "visibility": "dynamic"
+        }
+      ],
+      "sources": [
+        "front/app/index/navigation.ts"
+      ]
+    },
+    {
       "id": "pageFooter.about",
       "labels": {
         "fr": "À propos",
