@@ -62,7 +62,6 @@ async def test_direct_conversation_documents_are_scoped_to_agent_and_contact(
         label="Conversation documents",
         description="",
         connection_schema={},
-        conversation_enabled=True,
     )
     db.add_all([title, tool])
     await db.flush()

@@ -355,18 +355,12 @@ async def test_batches_are_atomic_and_secret_literals_never_replace_values(deleg
 @pytest.mark.asyncio
 async def test_delegation_cannot_be_self_assigned_and_sync_preserves_disable(delegated, db):
     ctx, _, grant_id = delegated
-    for code in ("service_admin", "agent_admin", "platform_admin", "process_admin", "goal_management", "console", "galaris"):
-        tool = await db.scalar(select(Service).where(Service.code == code))
-        before = result(await mcp.service_admin_get(ctx, tool.id))
-        denied = json.loads(await mcp.service_admin_conversation_set(ctx, tool.id, True, before["version"]))
-        assert denied["error"]["kind"] == "access_denied"
     await connection_service.set_connection_function_state(grant_id, "service_admin_list", "disabled")
     denied = json.loads(await mcp.service_admin_list(ctx))
     assert denied["error"]["kind"] == "access_denied"
     await connection_service.set_connection_active(grant_id, False)
     await mandatory_services.sync_integrated_service_connections(ctx.agent_id)
     assert not (await connection_service.get_connection(grant_id)).active
-    assert not (await db.scalar(select(Service).where(Service.code == "service_admin"))).conversation_enabled
 
 
 @pytest_asyncio.fixture
@@ -387,7 +381,7 @@ async def existing_stdio(delegated, db):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("operation", ["definition", "global_params", "conversation", "function", "connection", "local_params", "create_connection"])
+@pytest.mark.parametrize("operation", ["definition", "global_params", "function", "connection", "local_params", "create_connection"])
 async def test_existing_stdio_is_read_only(existing_stdio, operation):
     ctx, service_id, connection_id, _ = existing_stdio
     current = result(await mcp.service_admin_get(ctx, service_id))
@@ -396,7 +390,6 @@ async def test_existing_stdio_is_read_only(existing_stdio, operation):
     calls = {
         "definition": lambda: mcp.service_admin_update(ctx, service_id, {"label": "Changed"}, version),
         "global_params": lambda: mcp.service_admin_global_params_set(ctx, service_id, {"script": {"value": "Changed"}}, version),
-        "conversation": lambda: mcp.service_admin_conversation_set(ctx, service_id, True, version),
         "function": lambda: mcp.service_admin_function_set(ctx, service_id, "lookup", "disabled", version),
         "connection": lambda: connection_mcp.service_admin_connection_update(ctx, connection_id, False, local_version),
         "local_params": lambda: connection_mcp.service_admin_connection_params_set(ctx, connection_id, {"script": {"value": "Changed"}}, local_version),

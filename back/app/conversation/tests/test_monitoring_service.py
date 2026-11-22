@@ -151,7 +151,6 @@ async def _scope(db: AsyncSession) -> tuple[Agent, Connection, Room, MessengerUs
         label="Conversation monitoring",
         description="",
         connection_schema={},
-        conversation_enabled=True,
     )
     db.add_all([title, tool])
     await db.flush()

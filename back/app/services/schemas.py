@@ -268,7 +268,6 @@ class ServiceBase(BaseModel):
     calendar_config: ProtocolConfig | None = None
     connection_schema: ConnectionSchema = Field(default_factory=ConnectionSchema)
     task_config: Optional[TaskConfig] = None
-    conversation_enabled: bool = False
 
 
 class ServiceCreate(ServiceBase):
@@ -297,7 +296,6 @@ class ServiceUpdate(BaseModel):
     calendar_config: ProtocolConfig | None = None
     connection_schema: Optional[ConnectionSchema] = None
     task_config: Optional[TaskConfig] = None
-    conversation_enabled: Optional[bool] = None
 
 
 class ServiceRead(ServiceBase):
@@ -370,7 +368,6 @@ class ServicePublic(BaseModel):
     has_calendar: bool = False
     can_edit: bool
     can_disable: bool = True
-    conversation_enabled: bool = False
     mcp_config: Optional[McpConfigPublic] = None
     file_share_config: Optional[FileShareConfig] = None
     messenger_config: Optional[MessengerConfig] = None
@@ -502,6 +499,21 @@ class ServiceMcpTestResponse(BaseModel):
 # Internal compatibility model.
 # =============================================================================
 
+ConversationToolSource = Literal["native", "external"]
+
+
+class ConversationToolEntry(BaseModel):
+    name: str
+    source: ConversationToolSource
+    enabled: bool
+
+
+class ConversationToolCatalog(BaseModel):
+    tools: list[ConversationToolEntry]
+    discovery_incomplete: bool = False
+    next_connection_id: int | None = None
+
+
 class Service(BaseModel):
     """Internal tool object built from API or database records."""
     code: str
@@ -518,7 +530,7 @@ class Service(BaseModel):
     calendar: ProtocolConfig | None = Field(default=None, alias="calendar_config")
     connection: ConnectionSchema = Field(default_factory=ConnectionSchema, alias="connection_schema")
     task: Optional[TaskConfig] = Field(default=None, alias="task_config")
-    conversation_enabled: bool = False
+    conversation_tools: dict[str, list[str]] = Field(default_factory=dict)
 
     @computed_field
     @property

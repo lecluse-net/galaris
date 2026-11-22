@@ -873,10 +873,10 @@ Its scheduler claims neither a Task nor an agent slot and launches a short round
 Pydantic AI harness and the effective agent profile's `low` text level. An empty column is a
 configuration error and does not fall back to the executor or current profile when the agent has a
 personal profile. The Hermes driver is never used as a fallback. The toolset is a dedicated
-projection: active connection, `Service.conversation_enabled` flag, function declared `short` or
-`deferred` for native functions, effective permissions, and runtime profile. An explicitly
-checked external MCP connector is mounted with its current function states; unchecked functions
-are not even resolved.
+projection: active connection, a tool on its Service's allowlist, effective permissions, and
+the runtime profile. Built-in Services get their allowlists from code. Custom Services need
+an opt-in for each tool at discovery and invocation. An external MCP connector with an empty
+allowlist is skipped.
 
 The conversational dispatcher profile responds directly to humans and arbitrates `EXEC`/`END`
 for a message emitted by another AI. This `END` terminates only the conversational round without

@@ -47,32 +47,14 @@
         </span>
       </div>
       <div class="col-12 col-md-grow">
-        <q-select
+        <ServiceFilterSelect
           v-model="selectedConnectionId"
-          :options="connectionOptions"
+          :tools="connectionOptions"
           :label="$t('connection.auth.selectConnection')"
-          clearable
-          dense
-          outlined
-          emit-value
-          map-options
+          show-origin
           :loading="connectionsLoading"
           :disable="connectionOptions.length === 0"
-        >
-          <template #option="scope">
-            <q-item v-bind="scope.itemProps">
-              <q-item-section avatar><ServiceIdentityIcon :service="scope.opt.tool" /></q-item-section>
-              <q-item-section>{{ scope.opt.label }}</q-item-section>
-              <q-item-section side><ServiceOriginBadge :tool="scope.opt.tool" /></q-item-section>
-            </q-item>
-          </template>
-          <template #selected-item="scope">
-            <span class="row items-center no-wrap">
-              <ServiceIdentityIcon :service="scope.opt.tool" :size="20" class="q-mr-sm" />
-              <span>{{ scope.opt.label }} <ServiceOriginBadge :tool="scope.opt.tool" class="q-ml-sm" /></span>
-            </span>
-          </template>
-        </q-select>
+        />
       </div>
     </div>
 
@@ -195,6 +177,9 @@
           <q-td :props="props">
             <span class="text-weight-medium">{{ props.row.name }}</span>
             <div class="text-caption">{{ $t(`connection.auth.kind.${props.row.capability_kind}`) }}</div>
+            <div v-if="ambiguousToolNames.has(props.row.name)" class="text-caption">
+              {{ t(`connection.auth.toolSource.${props.row.source}`) }}
+            </div>
           </q-td>
         </template>
         <template v-slot:body-cell-description="props">
@@ -235,6 +220,9 @@
                   <div class="col authorization-mobile-heading">
                     <div class="text-weight-medium authorization-function-name">
                       {{ props.row.name }}
+                    </div>
+                    <div v-if="ambiguousToolNames.has(props.row.name)" class="text-caption">
+                      {{ t(`connection.auth.toolSource.${props.row.source}`) }}
                     </div>
                     <div v-if="props.row.description" class="text-caption text-grey-7 q-mt-xs authorization-description">
                       {{ props.row.description }}
@@ -298,7 +286,7 @@ import { useQuasar } from 'quasar'
 import { useI18n } from 'vue-i18n'
 import { toolMessageKey } from '@/app/services/facade'
 import { AgentSelect, getAgentSelection } from '@/app/agent'
-import { SystemServiceIcon, ServiceIdentityIcon, ServiceFilterSelect, ServiceOriginBadge } from '@/app/services'
+import { SystemServiceIcon, ServiceFilterSelect } from '@/app/services'
 import connectionService, {
   saveFunctionPolicy,
   waitForFunctionPolicyWrites,
@@ -356,6 +344,16 @@ const systemConnection = computed(() => {
 const connectionsLoading = ref(true)
 const connectionsError = ref<string | null>(null)
 const functions = ref<ConnectionFunctionInfo[]>([])
+const ambiguousToolNames = computed(() => {
+  const names = new Set<string>()
+  const duplicates = new Set<string>()
+  for (const row of functions.value) {
+    if (row.capability_kind !== 'tool') continue
+    if (names.has(row.name)) duplicates.add(row.name)
+    names.add(row.name)
+  }
+  return duplicates
+})
 const loading = ref(false)
 const loadError = ref<string | null>(null)
 const search = ref('')
@@ -398,25 +396,18 @@ function getAgentName(agentId: number): string {
   return a ? `${a.first_name} ${a.last_name}`.trim() : `#${agentId}`
 }
 
-function getToolLabel(toolId: number): string {
-  const tool = tools.value.find(e => e.id === toolId)
-  return tool ? localizedToolLabel(tool) : `#${toolId}`
-}
-
 // Only active connections can expose MCP functions and therefore be selected.
-const activeConnections = computed(() => connections.value.filter(connection =>
-  connection.active && tools.value.some(tool => tool.id === connection.service_id)))
+const activeConnections = computed(() => connections.value.filter(connection => connection.active))
 const hasConnectionFilters = computed(() => filterAgent.value !== null || filterTool.value !== null)
 
 const connectionOptions = computed(() =>
   activeConnections.value
     .filter(c => filterAgent.value === null || c.agent_id === filterAgent.value)
     .filter(c => filterTool.value === null || c.service_id === filterTool.value)
-    .map(c => ({
-      label: `${getAgentName(c.agent_id)} — ${getToolLabel(c.service_id)}`,
-      value: c.id,
-      tool: tools.value.find(tool => tool.id === c.service_id),
-    }))
+    .map(c => {
+      const service = { code: c.service_code, label: c.service_label, can_edit: c.service_can_edit, icon: c.service_icon }
+      return { ...service, id: c.id, displayLabel: `${getAgentName(c.agent_id)} — ${localizedToolLabel(service)}` }
+    })
 )
 
 async function loadConnections(): Promise<void> {
@@ -659,12 +650,12 @@ watch([filterAgent, filterTool, filterState], () => {
 watch(connectionOptions, options => {
   if (
     selectedConnectionId.value !== null &&
-    !options.some(o => o.value === selectedConnectionId.value)
+    !options.some(o => o.id === selectedConnectionId.value)
   ) {
     selectedConnectionId.value = null
   }
   if (selectedConnectionId.value === null && options.length === 1) {
-    selectedConnectionId.value = options[0]?.value ?? null
+    selectedConnectionId.value = options[0]?.id ?? null
   }
 })
 

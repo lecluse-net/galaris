@@ -9,6 +9,12 @@ from app.agent.models import Agent, Title
 from app.connection.models import Connection
 from app.services import mandatory_services, service
 from app.services import dbadmin as tools_dbadmin
+from app.services.conversation_catalog import read_conversation_tools
+from app.services.mcp_loader import (
+    BUILTIN_CONVERSATION_TOOLS,
+    mcp_tools_by_service_code,
+    native_service_codes_for_service,
+)
 from app.services.models import Service
 import core.dbadmin as core_dbadmin
 
@@ -77,7 +83,6 @@ async def test_connection_dataset_is_idempotent_and_preserves_admin_activation(
     assert integrated_connection.active is True
     tool = await db.get(Service, integrated_connection.service_id)
     assert tool is not None
-    assert tool.conversation_enabled is (service_code not in {"image", "multimedia", "skills"})
     if service_code == "skills":
         from app.skill.interface import get_agent_scope
         from app.skill.contracts import SkillScope
@@ -171,24 +176,35 @@ def test_tool_defaults_enable_personal_skills_and_keep_other_administration_inac
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(("service_code", "default_enabled"), [
-    ("console", False), ("image", False), ("multimedia", False),
-    ("chat", True),
-])
-async def test_conversation_defaults_preserve_admin_choice(
-    db: AsyncSession,
-    service_code: str,
-    default_enabled: bool,
-) -> None:
-    tool = await db.scalar(select(Service).where(Service.code == service_code))
-    assert tool is not None
-    assert tool.conversation_enabled is default_enabled
+async def test_conversation_policy_is_fixed_for_builtin_services(db: AsyncSession) -> None:
+    codes = mandatory_services.INTEGRATED_SERVICE_CODES
+    services = {tool.code: tool for tool in await db.scalars(select(Service).where(Service.code.in_(codes)))}
+    assert services.keys() == codes
 
-    for enabled in (True, False):
-        await service.update_conversation_access(tool.id, enabled=enabled)
-        await mandatory_services.sync_mandatory_services()
-        await db.refresh(tool)
-        assert tool.conversation_enabled is enabled
+    skills = await read_conversation_tools(services["skills"].id)
+    assert skills is not None
+    assert {"skills_list", "skill_read"} <= {entry.name for entry in skills.tools}
+
+    definitions = mcp_tools_by_service_code()
+    for code, tool in services.items():
+        catalog = await read_conversation_tools(tool.id)
+        assert catalog is not None
+        native = {
+            definition.name: definition.conversation_policy != "forbidden"
+            for family in native_service_codes_for_service(tool)
+            for definition in definitions.get(family, ())
+        }
+        allowed = BUILTIN_CONVERSATION_TOOLS.get(code, frozenset())
+        assert {entry.name: entry.enabled for entry in catalog.tools} == {
+            name: eligible and name in allowed for name, eligible in native.items()
+        }, code
+        assert all(entry.source == "native" for entry in catalog.tools)
+
+    tool = services["image"]
+    with pytest.raises(ValueError):
+        await service.set_conversation_tool(tool.id, "image_generate", source="native", enabled=True)
+    with pytest.raises(ValueError):
+        await service.set_conversation_tool(tool.id, "image_from_pdf", source="native", enabled=False)
 
 
 def test_chat_is_auto_connected_active_without_mcp_tools() -> None:

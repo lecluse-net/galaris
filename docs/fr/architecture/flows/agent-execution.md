@@ -916,10 +916,10 @@ Son scheduler ne réclame ni tâche, ni slot d’agent et lance un round court a
 Pydantic AI et le niveau texte `low` du profil effectif de l’agent. Une colonne vide est
 une erreur de configuration et ne reprend ni l’exécuteur ni le profil courant lorsque l’agent a un
 profil personnel. Le driver Hermès n’est jamais repris. Le toolset est une
-projection dédiée : connexion active, case `Service.conversation_enabled`, fonction déclarée
-`short` ou `deferred` pour les fonctions natives, droits effectifs et profil du runtime. Un
-connecteur MCP externe explicitement coché est monté avec ses états de fonctions courants ; ceux
-qui ne sont pas cochés ne sont même pas résolus.
+projection dédiée : connexion active, fonction présente dans la liste de son Service, droits
+effectifs et profil du runtime. La liste des Services intégrés est fixée par le code. Pour un
+Service personnalisé, le catalogue et l'appel exigent une activation par fonction. Un
+connecteur MCP externe dont la liste est vide n'est pas résolu.
 
 Le profil conversationnel du dispatcher répond directement aux humains et arbitre `EXEC`/`END`
 pour un message émis par une autre IA. Ce `END` termine uniquement le round conversationnel sans

@@ -17,6 +17,20 @@ Mail and CalDAV are optional provider protocols. The **Personal agenda** system 
 to every agent by default without an external account; its functions use ordinary permissions.
 The agenda holds appointments and reminders, while Goals retain their own scheduled cycles.
 
+In **Services & connections → Services**, open **Conversation tools** on the Service
+card. This setting applies to all agents and requires the Service editing privilege.
+Each agent sees the eligible tools exposed by its active connection and allowed by
+its permissions. New tools start disabled. The Service card groups remote MCP tools by
+name, using the Service's shared settings and the active connections you have permission
+to inspect. **Refresh** runs discovery again. If the list is incomplete, check more
+connections when offered or enter the exact name of a missing tool. A server that requires
+account credentials needs at least one accessible connection that can list tools. For a
+`stdio` server, enter the exact tool name. The card saves the Service's allowlist in the
+database and reads remote MCP catalogs on demand.
+For built-in Services, the card lists every declared tool, even without a connection.
+The read-only **Allowed** column shows which tools
+[Galaris allows in conversation](../../../project/decisions/0308-conversation-tool-allowlists.md).
+
 For an Ionos mailbox, create a custom Service named **Ionos**, click **+**, then choose
 **IMAP & SMTP** under **Mail** in the menu. Enter IMAP/SMTP hosts, ports, security and other
 settings in the IMAP section followed by SMTP. Map account fields to standard connection
@@ -64,7 +78,7 @@ to inheritance while preserving other connections’ overrides.
 agent connections and function permissions. Its connection starts active when the bundled
 Galaris assistant is first created for the administrator, and inactive for other agents.
 Later deactivations remain preserved; previously initialized assistants do not automatically
-receive this new grant. Conversation access is initially disabled. The local
+receive this new grant. Its functions are reserved for Tasks. The local
 `services.management_scope` parameter bounds administration; activating the connection alone
 does not grant global scope. At creation, the Galaris assistant receives `all` on every
 built-in connection offering a scope, and those connections start active. Individual
@@ -91,9 +105,9 @@ and resource ACLs remain separate.
 Under **Services**, **Custom services** opens by default, before **Galaris built-in services**.
 These subtabs separate services you add from those provided by the platform. Creating or importing a service automatically
 shows the saved service’s subtab. Under **Connections** and **Authorizations**, the **Filter by
-service** selector groups choices under **Galaris** and **Custom**. The connection form's **Service**
-field uses the same sections for the services allowed in that form. List badges identify the
-same origin; optional integrated Services stay in the Galaris group when disableable, while
+service** selector shows **Custom** before **Galaris**. The **Service** field in the connection
+form and the connection picker under **Authorizations** use the same order. List badges identify
+each origin. Optional integrated Services stay in the Galaris group when disableable, while
 their definitions remain protected. A dedicated bridge does not create a standard Service:
 Services using Nextcloud, AFFiNE or a messaging bridge remain custom. n8n is no longer created
 automatically; an existing entry remains custom, with its process references and history.
@@ -132,8 +146,6 @@ the Service editing privilege.
 
 In **Configure → Services & connections → Connections** (`/services?tab=connections`), enable
 the agent's ServiceAdmin connection. In **Authorizations**, limit functions to the intended work.
-For Chat, also enable the Service's conversation mode under **Services**; long operations follow
-the normal conversation deferral rules.
 
 Reads and mutations check the active connection and exact function permission on every call.
 Integrated definitions are read-only. Mandatory Galaris, Conversation, Document, Memory and File Sharing
@@ -483,7 +495,7 @@ history is retained.
 |---|---|
 | Catalogue and definitions | `service_admin_list`, `service_admin_get`, `service_admin_create`, `service_admin_update` |
 | Dependencies and deletion | `service_admin_impact`, `service_admin_delete` |
-| Shared settings | `service_admin_global_params_set`, `service_admin_conversation_set` |
+| Shared settings | `service_admin_global_params_set` |
 | Diagnostics and functions | `service_admin_mcp_test`, `service_admin_function_list`, `service_admin_function_get`, `service_admin_function_set` |
 | Connections | `service_admin_connection_list`, `service_admin_connection_get`, `service_admin_connection_create`, `service_admin_connection_update`, `service_admin_connection_delete` |
 | Local parameters and tests | `service_admin_connection_params_set`, `service_admin_connection_param_delete`, `service_admin_connection_test` |

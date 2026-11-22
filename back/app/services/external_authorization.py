@@ -31,8 +31,12 @@ class ExternalAuthorizationMiddleware(Middleware):
 
     async def _claim(self, context: MiddlewareContext[Any], name: str, arguments: dict[str, Any],
                      kind: Literal["tool", "resource", "prompt"], schema: object, *, policy_name: str | None = None) -> UUID | None:
-        tool, params, _ = await resolve_live_connection(self.agent_id, self.connection_id, self.service_id,
-                                                       conversation_only=self.conversation_only)
+        if self.conversation_only and kind != "tool":
+            raise PermissionError("This MCP capability is not available in conversations")
+        tool, params, _ = await resolve_live_connection(
+            self.agent_id, self.connection_id, self.service_id,
+            function_name=name if self.conversation_only else "", conversation_only=self.conversation_only,
+        )
         execution = current_tool_execution()
         callback = execution.operation_id if execution is not None else uuid4()
         request = context.fastmcp_context.request_context if context.fastmcp_context else None

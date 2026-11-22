@@ -109,7 +109,7 @@ def _decrypt_if_needed(
 async def list_management_connections(
     *, agent_ids: frozenset[int] | None, service_id: int | None = None,
     agent_id: int | None = None, active_only: bool = False,
-    skip: int = 0, limit: int = 50,
+    skip: int = 0, limit: int = 50, after_id: int | None = None,
 ) -> list[Connection]:
     from app.agent import Agent
 
@@ -123,6 +123,8 @@ async def list_management_connections(
         query = query.where(Connection.agent_id == agent_id)
     if active_only:
         query = query.where(Connection.active.is_(True))
+    if after_id is not None:
+        query = query.where(Connection.id > after_id)
     return list((await get_db().scalars(query.order_by(Connection.id).offset(skip).limit(limit))).all())
 
 
@@ -1124,7 +1126,7 @@ async def connection_tool_options(*, include_globals: bool = False) -> list[dict
              "has_function_permissions": has_function_permissions(t),
              "has_file_share": bool(t.file_share_config), "has_messenger": bool(t.messenger_config),
              "has_mail": t.mail_config is not None, "has_calendar": t.calendar_config is not None,
-             "has_listener": bool(t.listener_config), "conversation_enabled": t.conversation_enabled,
+             "has_listener": bool(t.listener_config),
              "mcp_config": {"type": t.mcp_config.get("type")} if t.mcp_config else None,
              "calendar_config": {"settings": {name: t.calendar_config.get("settings", {}).get(name, "")
                  for name in ("source_kind", "auth_type")}} if t.calendar_config else None,

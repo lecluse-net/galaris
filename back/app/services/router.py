@@ -1,16 +1,19 @@
-from typing import Any, List
+from typing import Annotated, Any, List
 import asyncio
 
-from fastapi import APIRouter, Body, HTTPException, Response
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
 from loguru import logger
-from pydantic import ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 from core.authorize import authorize, Privileges
+from core.user import require_web_session
 from core.i18n import render_prompt, tr
 from app.agent import AgentOwnerAssertion
 from .assertions import ServiceCanEditAssertion
 from .models import Service as ServiceModel
 from .schemas import (
+    ConversationToolCatalog,
+    ConversationToolSource,
     ServiceMcpCatalogPublic,
     ServiceMcpTestRequest,
     ServiceMcpTestResponse,
@@ -236,24 +239,52 @@ async def update_service(service_id: int, data: ServiceUpdate):
     return _to_public(record)
 
 
-@router.patch("/{service_id}/conversation-access", response_model=ServicePublic)
-@authorize(privileges=[Privileges.SERVICE_EDIT])
-async def update_conversation_access(
-    service_id: int,
-    enabled: bool = Body(embed=True),
-) -> ServicePublic:
-    """Toggle conversation projection for optional Services, including reserved ones."""
+class ConversationToolUpdate(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    source: ConversationToolSource
+    enabled: bool
 
+
+@router.get("/{service_id}/conversation-tools", response_model=ConversationToolCatalog)
+@authorize(privileges=[Privileges.SERVICE_ACCESS, Privileges.SERVICE_EDIT])
+async def read_conversation_tools(service_id: int) -> ConversationToolCatalog:
+    return await _conversation_catalog(service_id, discover=False)
+
+
+@router.post("/{service_id}/conversation-tools/discover", response_model=ConversationToolCatalog,
+             dependencies=[Depends(require_web_session)])
+@authorize(privileges=Privileges.SERVICE_EDIT, assertion=ServiceCanEditAssertion)
+async def discover_conversation_tools(
+    service_id: int, after_connection_id: Annotated[int | None, Query(gt=0)] = None,
+) -> ConversationToolCatalog:
+    return await _conversation_catalog(service_id, discover=True, after_connection_id=after_connection_id)
+
+
+async def _conversation_catalog(
+    service_id: int, *, discover: bool, after_connection_id: int | None = None,
+) -> ConversationToolCatalog:
+    from .conversation_catalog import read_conversation_tools
+
+    catalogue = await read_conversation_tools(service_id, discover=discover, after_connection_id=after_connection_id)
+    if catalogue is None:
+        raise HTTPException(404, detail=await _detail("tool_not_found", service_id=service_id))
+    return catalogue
+
+
+@router.patch("/{service_id}/conversation-tools", dependencies=[Depends(require_web_session)])
+@authorize(privileges=[Privileges.SERVICE_EDIT])
+async def update_conversation_tool(service_id: int, data: ConversationToolUpdate) -> dict[str, bool]:
+    """Set the conversation eligibility of one tool for all connections to a custom Service."""
     try:
-        record = await service.update_conversation_access(service_id, enabled=enabled)
+        enabled = await service.set_conversation_tool(service_id, data.name, source=data.source, enabled=data.enabled)
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    if record is None:
+    if enabled is None:
         raise HTTPException(
             status_code=404,
             detail=await _detail("tool_not_found", service_id=service_id),
         )
-    return _to_public(record)
+    return {"enabled": enabled}
 
 
 @router.get("/{service_id}/deletion-impact", response_model=ServiceDeletionImpact)

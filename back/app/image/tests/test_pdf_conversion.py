@@ -46,16 +46,18 @@ async def test_pdf_image_is_a_real_page_and_launches_an_image_constrained_proces
     image_tool = await db.scalar(select(Service).where(Service.code == "image"))
     connection = await db.scalar(select(Connection).where(Connection.agent_id == owner.id, Connection.service_id == image_tool.id))
     if connection is None:
-        db.add(Connection(agent_id=owner.id, service_id=image_tool.id, active=True))
+        connection = Connection(agent_id=owner.id, service_id=image_tool.id, active=False)
+        db.add(connection)
     else:
-        connection.active = True
-    image_tool.conversation_enabled = False
+        connection.active = False
     await db.commit()
     assert "image_from_pdf" not in {item.name for item in await list_enabled_native_mcp_definitions(
         owner.id, runtime="internal", conversation_only=True)}
-    image_tool.conversation_enabled = True
+    connection.active = True
     await db.commit()
     assert "image_from_pdf" in {item.name for item in await list_enabled_native_mcp_definitions(
+        owner.id, runtime="internal", conversation_only=True)}
+    assert "image_generate" not in {item.name for item in await list_enabled_native_mcp_definitions(
         owner.id, runtime="internal", conversation_only=True)}
     resource_ctx = ResourceContext(agent_id=owner.id, runtime="internal")
     content = pdf_bytes()

@@ -479,7 +479,8 @@ def realtime_tools(
                 raise PermissionError("The realtime operation has no native authorization classification")
             round_id = current_round_id()
             context_key = f"voice:{voice_session_id}:round:{round_id}" if voice_session_id else f"principal:voice:{conversation_id}"
-            ctx = McpToolContext(agent_id=agent_id, runtime="internal", resources={"authorization_context": context_key})
+            ctx = McpToolContext(agent_id=agent_id, runtime="internal", conversation_only=True,
+                                 resources={"authorization_context": context_key})
             async with get_db_session():
                 bound_arguments = {**arguments, "voice_session": str(voice_session_id), "round": str(round_id),
                     "topic": str(topic_id), "contact": str(contact_memory_item_id)}

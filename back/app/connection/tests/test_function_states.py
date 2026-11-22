@@ -1,12 +1,11 @@
 """Authorization tests for MCP function exposure and connection-over-tool precedence."""
 
-from types import SimpleNamespace
-
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services import connection_functions
+from app.services.schemas import Service
 from .. import connection_service
 from ..models import Connection, ConnectionFunctionState, ServiceFunctionState
 
@@ -59,10 +58,11 @@ class TestAvailableFunctions:
     @pytest.mark.asyncio
     async def test_mixed_tool_lists_every_source_active_by_default(self):
         connection = Connection(id=11, service_id=35, agent_id=1, active=True)
-        tool = SimpleNamespace(
+        tool = Service(
             code="nextcloud",
-            can_disable=True,
-            mcp=SimpleNamespace(type="http"),
+            label="Synthetic connection",
+            mcp_config={"type": "http", "url": "https://mcp.example.test"},
+            conversation_tools={"external": ["nc_webdav_list_directory"]},
         )
 
         with (
@@ -111,7 +111,7 @@ class TestAvailableFunctions:
                 connection_functions,
                 "_list_external_functions",
                 AsyncMock(return_value=[
-                    ("nc_webdav_list_directory", "List a WebDAV directory."),
+                    ("nc_webdav_list_directory", "List a WebDAV directory.", "tool"),
                 ]),
             ),
         ):
@@ -125,20 +125,22 @@ class TestAvailableFunctions:
                 function["connection_state"],
                 function["global_state"],
                 function["effective"],
+                function["source"],
+                function["conversation_enabled"],
             )
             for function in result["functions"]
         } == {
-            "messenger_room_send_message": ("default", "default", True),
-            "nc_webdav_list_directory": ("default", "default", True),
+            "messenger_room_send_message": ("default", "default", True, "native", False),
+            "nc_webdav_list_directory": ("default", "default", True, "external", True),
         }
 
     @pytest.mark.asyncio
     async def test_local_functions_remain_configurable_when_external_source_fails(self):
         connection = Connection(id=11, service_id=35, agent_id=1, active=True)
-        tool = SimpleNamespace(
+        tool = Service(
             code="nextcloud",
-            can_disable=True,
-            mcp=SimpleNamespace(type="http"),
+            label="Synthetic connection",
+            mcp_config={"type": "http", "url": "https://mcp.example.test"},
         )
 
         with (

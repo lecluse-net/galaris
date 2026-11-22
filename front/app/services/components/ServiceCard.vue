@@ -21,16 +21,12 @@
         <q-icon name="link" color="primary" size="18px" />
         <span>{{ t('services.connectionCount', service.connection_count ?? 0) }}</span>
       </span>
-      <q-toggle :model-value="service.conversation_enabled" size="sm" color="primary"
-        :label="t('services.conversationAccess')"
-        :aria-label="t('services.conversationAccessFor', { name: label })"
-        :disable="!canEdit || service.can_disable === false || busy"
-        @update:model-value="value => emit('conversation', value)">
-        <q-tooltip>{{ t('services.conversationAccessHint') }}</q-tooltip>
-      </q-toggle>
-      <q-spinner v-if="busy" size="18px" color="primary" />
     </div>
     <q-card-actions align="right" class="q-pa-sm service-card-actions">
+      <!-- eslint-disable-next-line galaris/ui-conventions -- Match the other borderless service card actions. -->
+      <q-btn v-if="service.has_function_permissions || service.has_mcp" flat
+        :color="$q.dark.isActive ? 'white' : 'primary'" class="service-conversation-action"
+        icon="forum" size="sm" :label="t('services.conversationTools.open')" @click="emit('conversation')" />
       <!-- eslint-disable-next-line galaris/ui-conventions -- Restore the borderless service card action. -->
       <q-btn v-if="service.can_edit" flat color="secondary" icon="download" size="sm" :label="t('services.exportYaml')"
         :aria-label="t('services.exportYaml')" @click="emit('export')"><q-tooltip>{{ t('services.exportYaml') }}</q-tooltip></q-btn>
@@ -57,11 +53,11 @@ import ServiceIdentityIcon from './ServiceIdentityIcon.vue'
 import ServiceCapabilities from './ServiceCapabilities.vue'
 import SystemServiceIcon from './SystemServiceIcon.vue'
 
-const { service, label, description, definitions, canEdit, busy } = defineProps<{
-  service: Service; label: string; description: string; definitions: CapabilityDefinition[]; canEdit: boolean; busy: boolean
+const { service, label, description, definitions, canEdit } = defineProps<{
+  service: Service; label: string; description: string; definitions: CapabilityDefinition[]; canEdit: boolean
 }>()
 const emit = defineEmits<{
-  describe: []; export: []; parameters: []; edit: []; delete: []; conversation: [enabled: boolean]
+  describe: []; export: []; parameters: []; edit: []; delete: []; conversation: []
 }>()
 const { t } = useI18n()
 const excerpt = computed(() => richTextExcerpt(marked.parse(description.replace(/^#{1,6}\s+.*$/gm, ''), { async: false })))
@@ -77,6 +73,7 @@ const excerpt = computed(() => richTextExcerpt(marked.parse(description.replace(
 .service-card-description { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; min-height: 4.5em; overflow-wrap: anywhere; }
 .service-card-status { gap: 4px 12px; }
 .service-card-actions { gap: 4px; }
+.service-conversation-action :deep(.q-icon) { color: var(--solaire-blue-accent); }
 @media (max-width: 599px) {
   .service-card-content { grid-template-columns: 84px minmax(0, 1fr); }
   .service-card-icon { padding: 8px; }

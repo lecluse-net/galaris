@@ -19,6 +19,117 @@ from app.services.schemas import (
 
 
 @pytest.mark.asyncio
+async def test_conversation_allowlist_requires_a_human_service_editor(client, monkeypatch):
+    from contextlib import AsyncExitStack
+
+    import httpx2 as httpx
+    from fastmcp import FastMCP
+    from sqlalchemy import select
+    from app.agent.models import Agent, Title
+    from app.connection.models import Connection, ConnectionParam
+    from app.services.models import Service
+    from app.services import conversation_catalog
+    from core.authorize import Assignment, Privilege, Role
+    from core.database import get_db_session
+    from core.user import UserModel
+    from core.user.user_service import encrypt_password
+
+    suffix = uuid4().hex
+    password = "synthetic-conversation-admin"
+    async with get_db_session() as db:
+        builtin_id = await db.scalar(select(Service.id).where(Service.code == "search"))
+        service = Service(code=f"allowlist-{suffix}", label="Synthetic MCP", mcp_config={
+            "type": "http", "url": "https://tools.example.test/${connection:catalog}/mcp",
+            "headers": {"X-Example-Key": "${connection:token}"},
+        }, connection_schema={"params": {"catalog": {"type": "string"}, "token": {"type": "password"}}},
+            global_params={"catalog": {"value": "shared"}, "token": {"value": "synthetic_shared_token"}})
+        title = Title(label="Catalog agent", gender="N")
+        db.add_all([service, title])
+        users: list[UserModel] = []
+        for index, codes in enumerate((("SERVICE_ACCESS",), ("SERVICE_EDIT", "CONNECTION_ACCESS"), ("SERVICE_EDIT",))):
+            privileges = list(await db.scalars(select(Privilege).where(Privilege.code.in_(codes))))
+            role = Role(code=f"allowlist-{index}-{suffix}", privileges=privileges)
+            user = UserModel(email=f"allowlist-{index}-{suffix}@example.com", hashed_password=encrypt_password(password), is_active=True)
+            db.add_all([role, user])
+            await db.flush()
+            db.add(Assignment(user_id=user.id, role_id=role.id, is_default=True))
+            users.append(user)
+        for name, owner, active in (("one", 1, True), ("two", 1, True), ("other", 2, True), ("inactive", 1, False)):
+            agent = Agent(code=f"{name}-{suffix}", first_name="Synthetic", last_name=name, user_id=users[owner].id, title_id=title.id)
+            db.add(agent)
+            await db.flush()
+            connection = Connection(agent_id=agent.id, service_id=service.id, active=active)
+            db.add(connection)
+            await db.flush()
+            db.add_all([ConnectionParam(connection_id=connection.id, param_name=key, param_value=value)
+                for key, value in {"catalog": name, "token": f"synthetic_{name}_token"}.items()])
+        emails = [user.email for user in users]
+        service_id = service.id
+    path = f"/api/services/{service_id}/conversation-tools"
+    change = {"name": "lookup", "source": "external", "enabled": True}
+    assert (await client.patch(path, json=change)).status_code == 401
+    headers = []
+    for email in emails:
+        client.cookies.clear()
+        login = await client.post("/api/auth/login-json", json={"email": email, "password": password})
+        assert login.status_code == 200, login.text
+        headers.append({"Authorization": f"Bearer {login.json()['access_token']}"})
+    reader, editor, service_only = headers
+    requested: list[str] = []
+    applications = {}
+
+    async def remote_tool() -> str:
+        pytest.fail("Listing a catalog must never call an MCP tool")
+
+    async def diagnostic_client(url: str, *, allow_private: bool) -> httpx.AsyncClient:
+        requested.append(url)
+        return httpx.AsyncClient(transport=httpx.ASGITransport(app=applications[url]))
+
+    monkeypatch.setattr(conversation_catalog, "diagnostic_client", diagnostic_client)
+    monkeypatch.setattr(conversation_catalog, "_CONNECTION_PAGE_SIZE", 1)
+    assert (await client.patch(path, json=change, headers=reader)).status_code == 403
+    assert (await client.post(f"{path}/discover", headers=reader)).status_code == 403
+    builtin = await client.get(f"/api/services/{builtin_id}/conversation-tools", headers=reader)
+    assert builtin.json()["tools"] == [{"name": "search_web", "source": "native", "enabled": True}]
+    assert (await client.post(f"/api/services/{builtin_id}/conversation-tools/discover", headers=editor)).status_code == 403
+    assert not requested
+    assert (await client.patch(f"/api/services/{builtin_id}/conversation-tools",
+        json={"name": "search_web", "source": "native", "enabled": False}, headers=editor)).status_code == 422
+    def tools(response):
+        assert response.status_code == 200, response.text
+        return {row["name"]: row["enabled"] for row in response.json()["tools"]}
+
+    async with AsyncExitStack() as stack:
+        for name, names in (("shared", ("lookup",)), ("one", ("lookup", "list_items", "synthetic_one_token")),
+                            ("two", ("lookup", "account_only"))):
+            server = FastMCP(f"Synthetic {name}")
+            for tool_name in names:
+                server.tool(name=tool_name)(remote_tool)
+            application = server.http_app(path=f"/{name}/mcp")
+            await stack.enter_async_context(application.router.lifespan_context(application))
+            applications[f"https://tools.example.test/{name}/mcp"] = application
+
+        initial = await client.post(f"{path}/discover", headers=editor)
+        assert tools(initial) == {"lookup": False, "list_items": False}
+        assert initial.json()["discovery_incomplete"] is True  # The echoed credential was dropped.
+        after = initial.json()["next_connection_id"]
+        assert after is not None
+        following = await client.post(f"{path}/discover", params={"after_connection_id": after}, headers=editor)
+        assert tools(following) == {"lookup": False, "account_only": False}
+        assert following.json()["next_connection_id"] is None
+        assert set(requested) == set(applications)
+        requested.clear()
+        assert tools(await client.post(f"{path}/discover", headers=service_only)) == {"lookup": False}
+        assert requested == ["https://tools.example.test/shared/mcp"]
+    response = await client.patch(path, json=change, headers=editor)
+    assert response.status_code == 200, response.text
+    saved = await client.get(path, headers=reader)
+    assert saved.json()["tools"] == [{"name": "lookup", "source": "external", "enabled": True}]
+    async with get_db_session() as db:
+        assert (await db.get(Service, service_id)).conversation_tools == {"external": ["lookup"]}
+
+
+@pytest.mark.asyncio
 async def test_service_list_counts_existing_active_and_inactive_connections(db):
     from app.agent.models import Agent, Title
     from app.connection import Connection

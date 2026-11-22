@@ -78,7 +78,6 @@ async def _scope(db: AsyncSession, *, user_id: int | None = None) -> tuple[Agent
         label="Conversation transport",
         description="",
         connection_schema={},
-        conversation_enabled=True,
     )
     db.add_all([title, tool])
     await db.flush()

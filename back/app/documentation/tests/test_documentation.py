@@ -650,8 +650,6 @@ async def test_mcp_documentation_only_search_read_and_live_revocation(committed_
         connection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == agent_id, Service.code == "platform_admin"))
         connection.active = True
         connection_id = connection.id
-        tool = await db.get(Service, connection.service_id)
-        tool.conversation_enabled = True
         for name in ("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls"):
             db.add(ConnectionFunctionState(connection_id=connection_id, function_name=name, enabled=False))
     async with get_db_session():

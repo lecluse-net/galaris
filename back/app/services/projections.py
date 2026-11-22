@@ -50,7 +50,6 @@ def to_public(record: ServiceModel) -> ServicePublic:
         has_listener=listener_config is not None,
         can_edit=service_can_edit(record),
         can_disable=record.can_disable,
-        conversation_enabled=bool(record.conversation_enabled),
         mcp_config=(
             McpConfigPublic(**public_mcp_config(mcp_config))
             if mcp_config

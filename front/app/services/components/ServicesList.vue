@@ -1,8 +1,8 @@
 <template>
   <div>
     <q-tabs v-model="origin" dense align="left" class="q-mb-md tool-tabs" no-caps>
-      <q-tab name="custom" :label="$t('services.customServices')" />
-      <q-tab name="galaris" :label="$t('services.internalServices')" />
+      <q-tab v-for="group in SERVICE_ORIGINS" :key="group" :name="group"
+        :label="$t(group === 'custom' ? 'services.customServices' : 'services.internalServices')" />
     </q-tabs>
     <div class="row items-center q-gutter-sm q-mb-md tools-actions">
       <q-input
@@ -32,10 +32,10 @@
         <div class="service-grid-item">
           <ServiceCard :service="props.row" :label="localizedToolLabel(props.row)"
             :description="toolDescription(props.row)" :definitions="capabilityDefinitions"
-            :can-edit="canEdit" :busy="conversationAccessLoading.has(props.row.id)"
+            :can-edit="canEdit"
             @describe="openDescription(props.row)" @export="exportTool(props.row)"
             @parameters="openGlobalParams(props.row)" @edit="openEdit(props.row)"
-            @delete="confirmDelete(props.row)" @conversation="value => updateConversationAccess(props.row, value)" />
+            @delete="confirmDelete(props.row)" @conversation="openConversationTools(props.row)" />
         </div>
       </template>
     </q-table>
@@ -63,6 +63,8 @@
     <ServiceImportDialog v-model="importDialogOpen" :can-edit="canEdit" @imported="onServiceImported" />
 
     <ServiceGlobalParameters v-model="globalParamsDialogOpen" :tool="globalParamsTool" @saved="loadServices" />
+    <ServiceConversationTools v-model="conversationToolsOpen" :tool="conversationToolsService"
+      :label="conversationToolsService ? localizedToolLabel(conversationToolsService) : ''" :can-edit="canEdit" />
 
     <!-- ============================================================
          Create or edit dialog
@@ -456,6 +458,7 @@ import { storeRequests } from '@/core/util/facade'
 import { ref, computed, watch, onMounted, onActivated } from 'vue'
 import ServiceCatalog from './ServiceCatalog.vue'
 import ServiceCard from './ServiceCard.vue'
+import ServiceConversationTools from './ServiceConversationTools.vue'
 import ServiceIconEditor from './ServiceIconEditor.vue'
 import type { ServiceCreate, ServiceIcon as Icon, ServiceCatalogMetadata } from '../services/serviceApi'
 import { Markdown, NetworkAccessNotice } from '@/core/util'
@@ -486,7 +489,7 @@ import type { ServiceDeletionImpact } from '../services/serviceApi'
 import { useI18n } from 'vue-i18n'
 import { capabilityCode, capabilityLabels, toolCapabilitySelections } from '../capabilities'
 import type { CapabilityDefinition, CapabilityProtocol } from '../services/serviceApi'
-import { connectionParamLabel, sortedConnectionParamEntries, toolMessageKey, toolOrigin, type ServiceOrigin } from '../presentation'
+import { connectionParamLabel, SERVICE_ORIGINS, sortedConnectionParamEntries, toolMessageKey, toolOrigin, type ServiceOrigin } from '../presentation'
 import { privileges, usePrivilegeStore } from '@/core/authorize'
 import ServiceGlobalParameters from './ServiceGlobalParameters.vue'
 import ServiceImportDialog from './ServiceImportDialog.vue'
@@ -500,13 +503,19 @@ const serviceRequests = storeRequests(serviceStore)
 const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.SERVICE_EDIT))
 const search = ref<string | null>('')
-const origin = ref<ServiceOrigin>('custom')
+const origin = ref<ServiceOrigin>(SERVICE_ORIGINS[0])
 const catalogOpen = ref(false)
 const serviceIcon = ref<Icon | null>(null)
 const catalogInfo = ref<ServiceCatalogMetadata | null>(null)
 const iconEditorKey = ref(0)
 const visibleTools = computed(() => serviceStore.services.filter(tool => toolOrigin(tool) === origin.value))
-const conversationAccessLoading = ref<Set<number>>(new Set())
+const conversationToolsOpen = ref(false)
+const conversationToolsService = ref<Service | null>(null)
+
+function openConversationTools(tool: Service): void {
+  conversationToolsService.value = tool
+  conversationToolsOpen.value = true
+}
 function localizedParamLabel(param: { name: string } & Partial<ConnectionParamDef>, toolCode?: string): string {
   return connectionParamLabel(toolCode, param.name, param, t, te)
 }
@@ -517,28 +526,6 @@ function openGlobalParams(tool: Service): void {
   if (!canEdit.value || tool.can_disable === false) return
   globalParamsTool.value = tool
   globalParamsDialogOpen.value = true
-}
-
-async function updateConversationAccess(tool: Service, enabled: boolean): Promise<void> {
-  if (tool.can_disable === false) return
-  if (!canEdit.value || conversationAccessLoading.value.has(tool.id)) return
-  conversationAccessLoading.value = new Set(conversationAccessLoading.value).add(tool.id)
-  try {
-    await serviceApi.updateConversationAccess(tool.id, enabled)
-    await serviceStore.fetchServices()
-    $q.notify({ type: 'positive', message: t('services.conversationAccessUpdated') })
-  } catch (error: unknown) {
-    const detail = (error as { response?: { data?: { detail?: string } } })
-      .response?.data?.detail
-    $q.notify({
-      type: 'negative',
-      message: detail || t('services.conversationAccessError'),
-    })
-  } finally {
-    const next = new Set(conversationAccessLoading.value)
-    next.delete(tool.id)
-    conversationAccessLoading.value = next
-  }
 }
 
 const descriptionOpen = ref(false)
@@ -574,7 +561,6 @@ const columns = computed(() => [
   { name: 'code',        label: t('agent.colName'),     field: 'code',     align: 'left'   as const, sortable: true },
   { name: 'label', label: t('services.labelColumn'), field: 'label', align: 'left' as const, sortable: true },
   { name: 'capabilities', label: t('services.capabilities'), field: 'capabilities', align: 'left' as const },
-  { name: 'conversation_enabled', label: t('services.conversationAccess'), field: 'conversation_enabled', align: 'center' as const },
   { name: 'actions',     label: '',        field: 'actions',  align: 'right'  as const },
 ])
 

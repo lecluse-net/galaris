@@ -735,10 +735,11 @@ Un agent peut consulter l’annuaire des agents pendant une conversation pour id
 collègue et son rôle, sans créer de tâche. Demander la contribution d’un collègue suit la
 politique d’action habituelle et les droits de contact ; lire sa fiche ne le contacte pas.
 
-À l’initialisation, **Console SSH**, **Image** et **Multimédia** ne sont pas
-accessibles en mode conversation par défaut. Un administrateur peut autoriser chaque outil
-pour les conversations depuis le catalogue des Services. Ce réglage ne change pas leur accès
-dans les tâches ; les mises à jour conservent les choix déjà enregistrés.
+En conversation, seuls les outils MCP admis peuvent être utilisés. Galaris fixe la liste des
+outils de ses services intégrés. Pour les services personnalisés, un administrateur active
+chaque outil souhaité depuis **Outils en conversation** sur la carte du service, dans
+**Configurer → Services & connexions → Services**.
+Les permissions habituelles s’appliquent et les tâches gardent leur propre catalogue d’outils.
 
 Si une tâche attend votre accord pour lire un mail, répondez à la demande d’autorisation.
 Le harnais reprend la lecture du même message après la reprise de la tâche ; un refus

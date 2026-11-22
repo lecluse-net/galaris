@@ -29,7 +29,6 @@ async def display_scope(db, agents, memory_storage, monkeypatch):
                              messenger_config={"service": "internal"} if code == "chat" else None)
             db.add(tool)
             await db.flush()
-        tool.conversation_enabled = code != "memory"
         connection = Connection(service_id=tool.id, agent_id=agent.id, active=code != "memory")
         db.add(connection)
         if code == "conversation":
@@ -109,7 +108,7 @@ async def test_show_document_honors_function_policy_without_changing_content_or_
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("case", ["no_context", "voice", "other_agent", "unknown_room", "external",
-                                 "task", "inactive", "conversation_disabled", "memory_only"])
+                                 "task", "inactive", "function_disabled", "memory_only"])
 async def test_show_document_is_absent_outside_its_authorized_context(display_scope, db, case):
     from app.messenger.models import Room
 
@@ -133,14 +132,12 @@ async def test_show_document_is_absent_outside_its_authorized_context(display_sc
     elif case == "memory_only":
         connection.active = False
         memory_tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "memory"))
-        memory_tool.conversation_enabled = True
         memory_connection = await db.scalar(select(Connection).where(
             Connection.service_id == memory_tool.id, Connection.agent_id == agent.id,
         ))
         memory_connection.active = True
-    elif case == "conversation_disabled":
-        tool = await db.get(ServiceModel, connection.service_id)
-        tool.conversation_enabled = False
+    elif case == "function_disabled":
+        db.add(ConnectionFunctionState(connection_id=connection.id, function_name="document_show", enabled=False))
     await db.flush()
     async with Client(await server_for(agent, turn, conversation_only=case != "task")) as client:
         assert "document_show" not in {tool.name for tool in await client.list_tools()}

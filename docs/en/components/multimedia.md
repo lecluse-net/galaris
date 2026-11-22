@@ -12,7 +12,7 @@ text and images retain their existing configuration and Services.
 2. Add resources from the provider's capability catalog.
 3. Select resources in the **Multimedia** section of the agent's effective LLM profile.
 4. Check the agent's **Multimedia** connection, created automatically and active by default.
-   Saved deactivations are preserved; the Service's conversation mode requires explicit enabling.
+   Saved deactivations are preserved. Its functions are reserved for Tasks.
    Functions without a compatible resource remain absent from the MCP catalog.
 
 An agent with a custom profile uses that profile exclusively. Empty fields do not fall back

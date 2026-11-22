@@ -20,7 +20,6 @@ icon:
   encoding: text
   data: |-
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect x="4" y="4" width="56" height="56" rx="12" fill="#087FF5"/><path d="M20 18h24v6H26v10h14v6H26v6h18v6H20z" fill="#ffffff"/></svg>
-conversation_enabled: false
 capabilities:
 - rest.api
 rest_config:

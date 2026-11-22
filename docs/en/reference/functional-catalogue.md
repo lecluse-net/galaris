@@ -2897,11 +2897,9 @@ that rule and atomically clears this connection's override; other agents' overri
 Saving a rule requires no new remote MCP discovery. Function policies also apply to mandatory
 system services, whose definitions and connections remain protected.
 
-Browser, Search, Image and Multimedia connections start active. Browser and Search receive
-conversation eligibility at first initialisation. **Console SSH, Image, Mail and Multimedia**
-require explicit conversation-mode activation in the Service catalogue; this does not disable their
-Task access. Updates preserve saved choices, restrictions and credentials. Connection activation
-and conversation permission are distinct settings. Multimedia still needs compatible profile resources.
+Browser, Search, Image and Multimedia connections start active. Galaris defines which tools
+from its built-in Services are available in conversation. Custom Services, including Mail,
+require opt-in per tool under **Conversation tools** on the Service card. Multimedia still needs compatible profile resources.
 
 ### REST APIs and MCP OAuth authentication
 
@@ -3047,7 +3045,7 @@ cursors are invalidated when the corpus changes.
 
 Text/exact search needs no embedding model. A configured model progressively adds hybrid search;
 missing models, errors or incomplete indexes are reported while text search remains available.
-Access requires Administration, permitted documentation functions and, for chat, conversation mode.
+Access in Chat and Tasks requires Administration and permitted documentation functions.
 `galaris-knowledge` additionally requires `documentation_catalog` and skill/category permissions.
 It can guide section → screen → tab → action from documented journeys/menus without presuming
 user rights.
@@ -4606,7 +4604,7 @@ These 34 functions require AgentAdmin, current function permissions and the mana
 
 ### Delegated Service administration
 
-These 23 functions require ServiceAdmin. Built-in definitions and human delegations stay protected.
+These 22 functions require ServiceAdmin. Built-in definitions and human delegations stay protected.
 
 | Function | Family | Action and result |
 |---|---|---|
@@ -4617,7 +4615,6 @@ These 23 functions require ServiceAdmin. Built-in definitions and human delegati
 | `service_admin_impact` | `service_admin` | Inspect direct dependencies before deletion. |
 | `service_admin_delete` | `service_admin` | Delete a dependency-free definition without an implicit cascade. |
 | `service_admin_global_params_set` | `service_admin` | Atomically set global values and enforcement. |
-| `service_admin_conversation_set` | `service_admin` | Set an optional Service's conversational access. |
 | `service_admin_mcp_test` | `service_admin` | Test an HTTP/SSE candidate without saving or business calls. |
 | `service_admin_function_list` | `service_admin` | List functions and global state. |
 | `service_admin_function_get` | `service_admin` | Read a function's detailed schema and state. |

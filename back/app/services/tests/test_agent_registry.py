@@ -233,11 +233,11 @@ async def test_conversation_advertisement_lists_only_task_only_application_tools
         "app.connection.facade.get_connections_by_agent",
         AsyncMock(
             return_value=[
-                SimpleNamespace(service_id=1),
-                SimpleNamespace(service_id=2),
-                SimpleNamespace(service_id=3),
-                SimpleNamespace(service_id=4),
-                SimpleNamespace(service_id=5),
+                SimpleNamespace(service_id=1, active=True),
+                SimpleNamespace(service_id=2, active=True),
+                SimpleNamespace(service_id=3, active=True),
+                SimpleNamespace(service_id=4, active=True),
+                SimpleNamespace(service_id=5, active=True),
             ]
         ),
     )
@@ -245,21 +245,18 @@ async def test_conversation_advertisement_lists_only_task_only_application_tools
         1: Service(
             code="gitlab",
             label="GitLab",
-            conversation_enabled=False,
         ),
         2: Service(
             code="search",
             label="Web search",
-            conversation_enabled=True,
         ),
         3: Service(
             code="audio",
             label="Audio",
-            conversation_enabled=False,
         ),
-        4: Service(code="team-share", label="Synthetic file provider", conversation_enabled=False,
+        4: Service(code="team-share", label="Synthetic file provider",
                 file_share_config=FileShareConfig(service="samba", base_url="smb://files.example.test")),
-        5: Service(code="mixed-share", label="Synthetic MCP and file provider", conversation_enabled=False,
+        5: Service(code="mixed-share", label="Synthetic MCP and file provider",
                 file_share_config=FileShareConfig(service="samba", base_url="smb://files.example.test"),
                 mcp_config=McpConfig(type="http", url="https://tools.example.test/mcp")),
     }

@@ -365,12 +365,6 @@ async def service_admin_global_params_set(ctx: McpToolContext, service_id: int, 
     return await admin.invoke(ctx, "service_admin_global_params_set", admin.global_params_set, service_id=service_id, params=params, expected_version=expected_version)
 
 
-@mcp_tool("service_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", description="Change optional conversation access independently of function permissions. Administrative delegations and mandatory services remain human-only.", conversation_policy="deferred")
-async def service_admin_conversation_set(ctx: McpToolContext, service_id: int, enabled: bool, expected_version: str) -> str:
-    from . import admin_service as admin
-    return await admin.invoke(ctx, "service_admin_conversation_set", admin.conversation_set, service_id=service_id, enabled=enabled, expected_version=expected_version)
-
-
 @mcp_tool("service_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic', description="Test one non-persistent HTTP/SSE candidate, human-prepared candidate_reference, or existing service_id. Negotiates MCP and lists tools; never runs a remote function or saves configuration.", effect_policy="read", conversation_policy="deferred", timeout_seconds=40)
 async def service_admin_mcp_test(ctx: McpToolContext, service_id: int | None = None, candidate: dict[str, Any] | None = None, candidate_reference: str = "", offset: int = 0, limit: int = 50) -> str:
     from . import admin_service as admin

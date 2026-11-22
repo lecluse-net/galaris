@@ -58,7 +58,7 @@ async def test_streamable_http_mcp_app_captures_and_filters_only_an_enabled_read
 
     from app.connection import facade as connections
     from app.connection.models import Connection
-    from app.services import mcp_loader
+    from app.services import mcp_loader, service as services
     from app.services.contracts import ToolCallRejectedError
     from app.services.models import Service
     from core.api import create_app
@@ -81,22 +81,42 @@ async def test_streamable_http_mcp_app_captures_and_filters_only_an_enabled_read
     presentations = []
     room_id = uuid4()
     async with get_db_session() as db:
-        service = Service(code="test_inventory", label="Inventory", conversation_enabled=True,
+        service = Service(code="test_inventory", label="Inventory",
             mcp_config={"type": "http", "url": endpoint})
         db.add(service)
         await db.flush()
+        service_id = service.id
+        assert service.conversation_tools == {}
         connection = Connection(service_id=service.id, agent_id=action.agent_id, active=True)
         db.add(connection)
         await db.flush()
         connection_id = connection.id
         await connections.set_connection_function_state(connection_id, "sample_inventory", "enabled")
         await connections.set_connection_function_state(connection_id, APP_URI, "enabled", capability_kind="resource")
+        await services.set_conversation_tool(service_id, "sample_inventory", source="external", enabled=True)
+        owner = await db.get(Agent, action.agent_id)
+        restricted_agent = Agent(
+            code=f"inventory-{uuid4().hex}", title_id=owner.title_id, user_id=owner.user_id,
+            first_name="Restricted", last_name="Inventory Agent",
+        )
+        db.add(restricted_agent)
+        await db.flush()
+        restricted_connection = await connections.get_or_create_connection(service_id, restricted_agent.id)
+        await connections.set_connection_function_state(restricted_connection.id, "sample_inventory", "disabled")
+        restricted_server = await mcp_loader.build_agent_mcp(restricted_agent.id, conversation_only=True)
         server = await mcp_loader.build_agent_mcp(
             action.agent_id, conversation_only=True, resources={"mcp_presentation_sink": presentations.append},
         )
 
     async with application.router.lifespan_context(application):
+        async with Client(restricted_server) as client:
+            assert "test_inventory_sample_inventory" not in {tool.name for tool in await client.list_tools()}
+            assert (await client.call_tool("test_inventory_sample_inventory", raise_on_error=False)).is_error
         async with Client(server) as client:
+            visible = {tool.name for tool in await client.list_tools()}
+            assert "test_inventory_sample_inventory" in visible
+            assert "test_inventory_sample_value" not in visible
+            assert (await client.call_tool("test_inventory_sample_value", raise_on_error=False)).is_error
             result = await client.call_tool("test_inventory_sample_inventory")
             assert len(result.structured_content["table"]["rows"]) == 4
         presentation, = presentations
@@ -113,6 +133,18 @@ async def test_streamable_http_mcp_app_captures_and_filters_only_an_enabled_read
             await connections.set_connection_function_state(connection_id, "sample_inventory", "ask")
         with pytest.raises(ToolCallRejectedError):
             await mcp_loader.request_mcp_presentation(presentation, **params, arguments={"site": "Lille"})
+        async with get_db_session():
+            await services.set_conversation_tool(service_id, "sample_inventory", source="external", enabled=False)
+            task_server = await mcp_loader.build_agent_mcp(action.agent_id)
+        async with Client(server) as client:
+            assert "test_inventory_sample_inventory" not in {tool.name for tool in await client.list_tools()}
+            assert (await client.call_tool("test_inventory_sample_inventory", raise_on_error=False)).is_error
+        with pytest.raises(PermissionError):
+            await mcp_loader.request_mcp_presentation(presentation, **params)
+        async with Client(task_server) as client:
+            assert {"test_inventory_sample_inventory", "test_inventory_sample_value"} <= {
+                tool.name for tool in await client.list_tools()
+            }
 
 
 @pytest.mark.asyncio

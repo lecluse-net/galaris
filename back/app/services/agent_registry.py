@@ -231,8 +231,13 @@ async def _task_only_tools(agent_id: int) -> tuple[dict[str, str], ...]:
     inventory: dict[str, dict[str, str]] = {}
     native_codes = set(mcp_loader.mcp_tools_by_service_code())
     for connection in await connection_service.get_connections_by_agent(agent_id):
+        if not connection.active:
+            continue
         tool = await service.get_service_by_id(connection.service_id)
-        if tool is None or tool.conversation_enabled:
+        if tool is None or (
+            mcp_loader.conversation_tool_names(tool, source="native")
+            or mcp_loader.conversation_tool_names(tool, source="external")
+        ):
             continue
         if (tool.file_share is not None and tool.mcp is None
             and not (mcp_loader.native_service_codes_for_service(tool) & native_codes)):

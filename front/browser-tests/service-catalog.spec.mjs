@@ -20,7 +20,7 @@ async function routes(page, rows = []) {
 for (const [width, dark] of [[1400, false], [390, true]]) {
   test(`A catalog copy preserves its portable icon and parameters, survives save errors and does not overwrite an installed service (${width})`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 1000 })
-    const installed = { ...preset, id: 7, can_edit: true, can_disable: true, global_params: {}, conversation_enabled: false }
+    const installed = { ...preset, id: 7, can_edit: true, can_disable: true, global_params: {} }
     await routes(page, [installed])
     let writes = [], reject = true
     await page.route('**/api/services', route => {

@@ -25,7 +25,7 @@ permet de qualifier ces choix.
 3. Pour un accès documentaire seul, désactiver `conversation_round_get`, `voice_turn_get`,
    `llm_call` et `llm_calls`. Ces fonctions donnent accès à des données d'exécution sensibles ;
    elles ne sont pas nécessaires à la connaissance du produit.
-4. Activer le **mode conversation** du Service pour que ses fonctions soient proposées dans le Chat.
+4. Les deux fonctions documentaires figurent dans la liste intégrée des outils de conversation.
 5. Autoriser `galaris-knowledge` pour l'agent dans les attributions de compétences. Son
    défaut global est désactivé ; les réglages de compétence et de catégorie restent applicables.
    Sa projection effective exige également l'autorisation `documentation_catalog`.

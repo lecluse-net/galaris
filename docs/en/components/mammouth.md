@@ -17,7 +17,7 @@ creating another agent system or file management workflow.
    **Multimedia** section and check the agent's Multimedia connection.
 
 Multimedia connections are created automatically and active by default. Previously saved
-deactivations are preserved; the Service's conversation mode requires explicit enabling.
+deactivations are preserved. Multimedia tools are reserved for Tasks.
 Functions are exposed only when the profile has a compatible resource and both
 the provider and connection are active. See [Multimedia](multimedia.md).
 API credits are separate from Mammouth application quotas; the provider does not

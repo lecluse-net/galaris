@@ -134,11 +134,11 @@ async def list_services(actor: AdministrationContext, search: str = "", kind: st
         query = query.where(configured)
     total = await get_db().scalar(select(func.count()).select_from(query.subquery()))
     tools = (await get_db().scalars(query.options(load_only(
-        Service.id, Service.code, Service.label, Service.can_disable, Service.conversation_enabled, raiseload=True,
+        Service.id, Service.code, Service.label, Service.can_disable, raiseload=True,
     )).order_by(Service.code).offset(offset).limit(limit))).all()
     return {"total": total, "offset": offset, "limit": limit,
             "items": [{"id": tool.id, "code": tool.code, "label": tool.label, "integrated": tool.code in INTEGRATED_SERVICE_CODES,
-                       "system": not tool.can_disable, "conversation_enabled": tool.conversation_enabled} for tool in tools]}
+                       "system": not tool.can_disable} for tool in tools]}
 
 
 async def impact(actor: AdministrationContext, service_id: int, offset: int = 0, limit: int = 50) -> dict[str, Any]:
@@ -414,12 +414,6 @@ def _protect_destination_params(tool: Service, params: dict[str, Any]) -> None:
                 raise AdministrationError("access_denied", "Destination parameters require human administration.")
 
 
-async def conversation_set(actor: AdministrationContext, service_id: int, enabled: bool, expected_version: str) -> dict[str, Any]:
-    await _lock_mutation(actor, service_id, expected_version)
-    await service.update_conversation_access(service_id, enabled=enabled, commit=False)
-    return await _saved(actor, service_id)
-
-
 async def mcp_test(actor: AdministrationContext, service_id: int | None = None, connection_id: int | None = None,
                    candidate: dict[str, Any] | None = None, candidate_reference: str = "",
                    offset: int = 0, limit: int = 50, include_details: bool = False) -> dict[str, Any]:
@@ -528,7 +522,7 @@ async def function_list(actor: AdministrationContext, service_id: int, connectio
     selected_runtime = validate_agent_driver(runtime, require_available=False)
     server = build_galaris_fastmcp(target_agent or 0, runtime=selected_runtime, enabled_service_codes=set(native_service_codes_for_service(tool)))
     native = await server.list_tools()
-    functions = [function_detail(item).model_dump(mode="json") for item in native]
+    functions = [{**function_detail(item).model_dump(mode="json"), "source": "native"} for item in native]
     complete = True
     diagnostics: Any = None
     if tool.mcp:
@@ -536,23 +530,26 @@ async def function_list(actor: AdministrationContext, service_id: int, connectio
                                connection_id=connection_id, service_id=service_id if connection_id is None else None)
         diagnostics = result["diagnostic"]
         complete = bool(diagnostics["success"] and not diagnostics.get("truncated"))
-        functions.extend(diagnostics["tools"])
+        functions.extend({**item, "source": "external"} for item in diagnostics["tools"])
     globals_ = {row.function_name: connections.stored_function_state(row) for row in await connections.list_service_function_states(service_id) if (row.capability_kind or "tool") == "tool"}
     locals_ = {row.function_name: connections.stored_function_state(row) for row in await connections.list_function_states(connection_id) if (row.capability_kind or "tool") == "tool"} if connection_id is not None else {}
     visible: set[str] = {definition.name for definition in await list_enabled_native_mcp_definitions(
         target_agent or 0, runtime=selected_runtime, conversation_only=conversation_only,
     )} if connection is not None else set()
-    native_names = {item.name for item in native}
     external_executable = "execute" in await effective_capabilities(target_agent or 0, selected_runtime) if connection is not None else False
     for item in functions:
         name = item["name"]
-        from .mcp_loader import load_mcp_tools
-        definition = next((definition for definition in load_mcp_tools() if definition.name == name and definition.service_code in native_service_codes_for_service(tool)), None)
+        from .mcp_loader import conversation_tool_names, load_mcp_tools
+        is_native = item["source"] == "native"
+        definition = next((definition for definition in load_mcp_tools() if definition.name == name and definition.service_code in native_service_codes_for_service(tool)), None) if is_native else None
         policy = connections.project_function_policy(name, locals_, globals_, default=definition.approval if definition else "enabled", native=definition is not None)
         effective = policy["effective"]
-        item.update({**policy, "available": bool(connection and connection.active and effective and (
-                         name in visible if name in native_names else external_executable and (not conversation_only or tool.conversation_enabled)
-                     )), "source": "native" if name in native_names else "external"})
+        conversation_enabled = (definition is None or definition.conversation_policy != "forbidden") and name in conversation_tool_names(
+            tool, source="native" if is_native else "external",
+        )
+        item.update({**policy, "conversation_enabled": conversation_enabled, "available": bool(connection and connection.active and effective and (
+                         (not conversation_only or conversation_enabled) and (name in visible if is_native else external_executable)
+                     ))})
         if not include_details:
             for key in ("input_schema", "output_schema", "annotations"):
                 item.pop(key, None)

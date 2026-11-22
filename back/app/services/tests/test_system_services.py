@@ -56,7 +56,6 @@ async def test_system_definitions_are_immutable_and_function_modes_are_editable(
     db.add(ServiceFunctionState(service_id=optional_tool.id, function_name=function, enabled=False))
     # Existing installations may have disabled connections and either cascade level.
     connection.active = False
-    tool.conversation_enabled = False
     db.add_all(
         [
             ConnectionFunctionState(
@@ -71,7 +70,7 @@ async def test_system_definitions_are_immutable_and_function_modes_are_editable(
     await db.commit()
     await db.refresh(connection)
     await db.refresh(tool)
-    assert connection.active and tool.conversation_enabled
+    assert connection.active
     assert await connection_service.get_disabled_function_names(connection) == {function}
     assert function in await get_disabled_internal_function_names(agent.id)
     catalogue = await list_available_connection_functions(connection.id)
@@ -101,7 +100,7 @@ async def test_system_definitions_are_immutable_and_function_modes_are_editable(
     for operation in (
         lambda: connection_service.set_connection_active(connection.id, False),
         lambda: connection_service.set_param(connection.id, "anything", "value"),
-        lambda: service.update_conversation_access(tool.id, enabled=False),
+        lambda: service.set_conversation_tool(tool.id, "agent_get", source="native", enabled=False),
         lambda: service.update_global_params(tool.id, ServiceGlobalParamsUpdate()),
         lambda: service.update_service(tool.id, ServiceUpdate(label="Changed")),
         lambda: service.delete_service(tool.id),

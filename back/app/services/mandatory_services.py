@@ -19,12 +19,6 @@ from .models import Service as ServiceModel
 from .descriptions import DESCRIPTIONS
 
 
-DEFAULT_CONVERSATION_SERVICE_CODES = frozenset(
-    {
-        "galaris", "conversation", "memory", "document", "file_sharing",
-        "browser", "search",
-    }
-)
 SYSTEM_SERVICE_CODES = frozenset({"galaris", "conversation", "memory", "document", "file_sharing", "agenda"})
 
 
@@ -53,7 +47,7 @@ INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
         mcp_tools=(
             "service_admin_list", "service_admin_get", "service_admin_create", "service_admin_update",
             "service_admin_impact", "service_admin_delete", "service_admin_global_params_set",
-            "service_admin_conversation_set", "service_admin_mcp_test", "service_admin_function_list",
+            "service_admin_mcp_test", "service_admin_function_list",
             "service_admin_function_get", "service_admin_function_set", "service_admin_connection_list",
             "service_admin_connection_get", "service_admin_connection_create", "service_admin_connection_update",
             "service_admin_connection_delete", "service_admin_connection_params_set", "service_admin_connection_param_delete",

@@ -4,7 +4,7 @@ const privileges = ['SERVICE_ACCESS', 'SERVICE_EDIT', 'CONNECTION_ACCESS', 'CONN
 const region = { type: 'string', required: true, default: 'eu', description: 'Choose the service region.', label: 'Service region',
   options: [{ value: 'eu', label: 'Europe' }, { value: 'us', label: 'United States' }] }
 const tool = { id: 81, code: 'synthetic_region', label: 'Synthetic regions', can_edit: true, can_disable: true,
-  conversation_enabled: false, connection_schema: { params: { region, note: { type: 'string', label: 'Notes', required: false } } }, global_params: {} }
+  connection_schema: { params: { region, note: { type: 'string', label: 'Notes', required: false } } }, global_params: {} }
 const skillsScopeDefinition = { type: 'string', required: false, default: 'personal', builtin: true,
   label: 'services.connectionParamLabels.skillsScope', description: 'services.connectionParamDescriptions.skillsScope',
   options: ['usage', 'personal', 'team', 'all'].map(value => ({ value, label: `services.connectionParamOptions.skillsScope.${value}` })),

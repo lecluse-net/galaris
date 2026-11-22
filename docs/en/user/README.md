@@ -638,10 +638,10 @@ An Agent can consult the agent directory during a conversation to identify a col
 their role, without creating a Task. Asking for a colleague's contribution follows the usual
 action policy and contact permissions; reading a profile does not itself contact that Agent.
 
-On initialization, **Console SSH**, **Image**, and **Multimedia** are unavailable
-in conversation mode by default. An administrator can enable each Service for conversations
-in the Service catalog. This setting does not change access in Tasks; updates preserve
-previously saved choices.
+Conversations can use MCP tools that are enabled for conversation access. Galaris defines
+the list for built-in Services. For custom Services, an administrator enables individual tools
+from **Conversation tools** on its card under **Configure → Services & connections → Services**. Ordinary permissions
+still apply, and Tasks use their own tool catalogue.
 
 If a Task waits for your consent to read an email, answer its authorization request.
 The Harness continues reading the same message once the Task resumes; denial keeps

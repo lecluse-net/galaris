@@ -692,31 +692,30 @@ async def test_enabled_native_definition_projection_applies_every_visibility_fil
     ]
 
 
+def _conversation_connections(monkeypatch, configurations, *, disabled=None):
+    from app.connection import facade as connections
+    from app.services import service
+    from app.services.schemas import Service
+
+    services = {index: Service(code=code, label=code, **config)
+                for index, (code, config) in enumerate(configurations.items(), 1)}
+    active = [SimpleNamespace(id=index, service_id=index, active=True) for index in services]
+    monkeypatch.setattr(connections, "get_connections_by_agent", AsyncMock(return_value=active))
+    monkeypatch.setattr(connections, "get_disabled_function_names_many", AsyncMock(return_value=disabled or {}))
+    monkeypatch.setattr(service, "get_services_by_ids", AsyncMock(return_value=services))
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("revoked", [False, True])
-async def test_conversation_projection_intersects_checkbox_and_function_policy(
+async def test_conversation_projection_intersects_builtin_allowlist_and_function_policy(
     monkeypatch: pytest.MonkeyPatch,
     revoked: bool,
 ) -> None:
     from app.services import mcp_loader
 
-    async def enabled(_agent_id: int) -> set[str]:
-        return {"galaris", "conversation", "memory", "document", "file_sharing"}
-
-    async def disabled(_agent_id: int) -> set[str]:
-        return {"document_sharing"} if revoked else set()
-
-    checked_tools = SimpleNamespace(all=lambda: [
-        SimpleNamespace(code="galaris", messenger_config=None),
-        SimpleNamespace(code="conversation", messenger_config=None),
-        SimpleNamespace(code="file_sharing", messenger_config=None),
-        SimpleNamespace(code="memory", messenger_config=None),
-        SimpleNamespace(code="document", messenger_config=None),
-    ])
-    db = SimpleNamespace(scalars=AsyncMock(return_value=checked_tools))
-    monkeypatch.setattr(mcp_loader, "get_enabled_integrated_service_codes", enabled)
-    monkeypatch.setattr(mcp_loader, "get_disabled_internal_function_names", disabled)
-    monkeypatch.setattr(mcp_loader, "get_db", lambda: db)
+    _conversation_connections(monkeypatch, {
+        code: {} for code in ("galaris", "conversation", "memory", "document", "file_sharing")
+    }, disabled={4: {"document_sharing"}} if revoked else {})
 
     definitions = await mcp_loader.list_enabled_native_mcp_definitions(
         42,
@@ -754,22 +753,7 @@ async def test_conversation_projection_keeps_voice_stop_as_call_control(
 ) -> None:
     from app.services import mcp_loader
 
-    monkeypatch.setattr(
-        mcp_loader,
-        "get_enabled_integrated_service_codes",
-        AsyncMock(return_value={"voice"}),
-    )
-    monkeypatch.setattr(
-        mcp_loader,
-        "get_disabled_internal_function_names",
-        AsyncMock(return_value=set()),
-    )
-    checked_tools = SimpleNamespace(all=lambda: [])
-    monkeypatch.setattr(
-        mcp_loader,
-        "get_db",
-        lambda: SimpleNamespace(scalars=AsyncMock(return_value=checked_tools)),
-    )
+    _conversation_connections(monkeypatch, {"voice": {}})
 
     definitions = await mcp_loader.list_enabled_native_mcp_definitions(
         42,
@@ -807,29 +791,12 @@ async def test_task_projection_excludes_conversation_control_tools(
 
 
 @pytest.mark.asyncio
-async def test_checked_search_is_available_in_conversation_mode(
+async def test_web_search_is_available_in_conversation_mode(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.services import mcp_loader
 
-    monkeypatch.setattr(
-        mcp_loader,
-        "get_enabled_integrated_service_codes",
-        AsyncMock(return_value={"search"}),
-    )
-    monkeypatch.setattr(
-        mcp_loader,
-        "get_disabled_internal_function_names",
-        AsyncMock(return_value=set()),
-    )
-    checked_tools = SimpleNamespace(
-        all=lambda: [SimpleNamespace(code="search", messenger_config=None)]
-    )
-    monkeypatch.setattr(
-        mcp_loader,
-        "get_db",
-        lambda: SimpleNamespace(scalars=AsyncMock(return_value=checked_tools)),
-    )
+    _conversation_connections(monkeypatch, {"search": {}})
 
     definitions = await mcp_loader.list_enabled_native_mcp_definitions(
         42,
@@ -841,48 +808,29 @@ async def test_checked_search_is_available_in_conversation_mode(
 
 
 @pytest.mark.asyncio
-async def test_conversation_projection_maps_checked_bridge_to_messenger_family(
+@pytest.mark.parametrize("revoked", [False, True])
+async def test_conversation_projection_requires_both_grants_on_the_same_bridge(
     monkeypatch: pytest.MonkeyPatch,
+    revoked: bool,
 ) -> None:
     from app.services import mcp_loader
     import bridge.telegram  # noqa: F401
     from core.params.runtime_settings import runtime_settings
     monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", '["telegram"]')
 
-    monkeypatch.setattr(
-        mcp_loader,
-        "get_enabled_integrated_service_codes",
-        AsyncMock(return_value={"my-chat", "messenger"}),
-    )
-    monkeypatch.setattr(
-        mcp_loader,
-        "get_disabled_internal_function_names",
-        AsyncMock(return_value=set()),
-    )
-    checked_tools = SimpleNamespace(
-        all=lambda: [
-            SimpleNamespace(
-                code="my-chat",
-                messenger_config={"service": "telegram"},
-            )
-        ]
-    )
-    monkeypatch.setattr(
-        mcp_loader,
-        "get_db",
-        lambda: SimpleNamespace(scalars=AsyncMock(return_value=checked_tools)),
-    )
+    _conversation_connections(monkeypatch, {
+        "opted-in": {"messenger_config": {"service": "telegram"}, "conversation_tools": {"native": ["messenger_room_history"]}},
+        "opted-out": {"messenger_config": {"service": "telegram"}, "conversation_tools": {"external": ["messenger_room_history"]}},
+    }, disabled={1: {"messenger_room_history"}} if revoked else {})
 
     definitions = await mcp_loader.list_enabled_native_mcp_definitions(
         42,
         runtime="internal",
-        allowed_tool_names={"messenger_room_history"},
+        allowed_tool_names={"messenger_room_history", "messenger_search_users"},
         conversation_only=True,
     )
 
-    assert [definition.name for definition in definitions] == [
-        "messenger_room_history"
-    ]
+    assert [definition.name for definition in definitions] == ([] if revoked else ["messenger_room_history"])
 
 
 @pytest.mark.asyncio
@@ -901,8 +849,9 @@ async def test_conversation_aggregate_skips_unchecked_external_mcp(
     connection = SimpleNamespace(id=9, service_id=3, active=True)
     unchecked_tool = SimpleNamespace(
         code="external",
+        can_disable=True,
         mcp=SimpleNamespace(type="http"),
-        conversation_enabled=False,
+        conversation_tools={},
     )
     native = FastMCP("native")
     native_builder = AsyncMock(return_value=native)

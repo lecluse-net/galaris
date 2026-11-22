@@ -38,6 +38,7 @@ from .schemas import (
 )
 from . import connection_service
 from . import oauth_service
+from .facade import CONNECTION_FUNCTION_READ_PRIVILEGES
 from .oauth_service import DevicePoll, DevicePollResult, OAuthCallback, OAuthStart, OAuthStartOptions, OAuthStatus
 from app.services import (
     refresh_agent_tool_catalog,
@@ -708,7 +709,7 @@ async def test_connection(connection_id: int) -> ConnectionTestResult:
 
 
 @router.get("/{connection_id}/functions", response_model=ConnectionFunctionsResponse)
-@authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT, Privileges.PERMISSION_ACCESS, Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE])
+@authorize(privileges=CONNECTION_FUNCTION_READ_PRIVILEGES)
 async def list_connection_functions(connection_id: int):
     """List currently exposed MCP functions and their cascade state."""
     await _managed_connection(connection_id)

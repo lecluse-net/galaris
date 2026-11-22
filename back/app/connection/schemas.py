@@ -160,6 +160,8 @@ class ConnectionFunctionInfo(BaseModel):
     key: str = ""
     capability_kind: CapabilityKind = "tool"
     description: str
+    source: Literal["native", "external"]
+    conversation_enabled: bool = False
     # Connection and tool cascade states plus the resolved value.
     connection_state: FunctionState
     global_state: FunctionState

@@ -56,8 +56,8 @@ class Service(Base):
     # schema while configured values must survive upgrades and restarts.
     global_params: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     task_config: Mapped[Optional[Dict[str, Any]]] = mapped_column(JSONB, nullable=True)
-    conversation_enabled: Mapped[bool] = mapped_column(
-        Boolean, nullable=False, default=False, server_default="false"
+    conversation_tools: Mapped[dict[str, list[str]]] = mapped_column(
+        JSONB, nullable=False, default=dict, server_default=sql_text("'{}'::jsonb")
     )
 
     created_at: Mapped[datetime] = mapped_column(

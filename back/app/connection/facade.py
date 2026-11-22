@@ -3,6 +3,14 @@
 from collections.abc import Mapping
 import httpx2 as httpx
 
+from core.authorize import Privileges
+
+
+CONNECTION_FUNCTION_READ_PRIVILEGES = [
+    Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT,
+    Privileges.PERMISSION_ACCESS, Privileges.PERMISSION_DECIDE, Privileges.PERMISSION_REVOKE,
+]
+
 
 def mcp_oauth_auth(params: Mapping[str, object], server_url: str) -> httpx.Auth | None:
     from .oauth_runtime import mcp_oauth_auth as build_auth
@@ -25,6 +33,7 @@ from .connection_service import (
     has_active_service_function,
     has_any_active_tool_connection,
     list_function_states,
+    list_management_connections,
     list_service_function_states,
     resolve_function_enabled,
     resolve_function_state,
@@ -64,7 +73,7 @@ __all__ = [
     "has_active_tool_connection",
     "has_active_service_function",
     "has_any_active_tool_connection",
-    "list_function_states",
+    "list_function_states", "list_management_connections", "CONNECTION_FUNCTION_READ_PRIVILEGES",
     "list_service_function_states",
     "resolve_function_enabled",
     "resolve_function_state", "stored_function_state",

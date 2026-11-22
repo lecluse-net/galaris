@@ -142,6 +142,7 @@ export interface ConnectionFunctionInfo {
     key: string
     name: string
     description: string
+    source: 'native' | 'external'
     connection_state: FunctionState
     global_state: FunctionState
     effective: boolean

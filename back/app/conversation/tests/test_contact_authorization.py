@@ -77,7 +77,7 @@ async def _scope(db, monkeypatch, platform="telegram", *, onebot_stack=None):
     title = Title(label="Synthetic contact consent", gender="X")
     role = Role(code=f"contact-reviewer-{suffix}", privileges=[await db.scalar(select(Privilege).where(Privilege.code == "PERMISSION_DECIDE"))])
     tool = ServiceModel(code=f"contact-channel-{suffix}", label="Synthetic Telegram", description="", connection_schema={},
-                     messenger_config={"service": "telegram", "param_map": {"token": "token"}}, conversation_enabled=True)
+                     messenger_config={"service": "telegram", "param_map": {"token": "token"}})
     db.add_all([manager, outsider, title, role, tool])
     await db.flush()
     db.add_all([Assignment(user_id=u.id, role_id=role.id) for u in (manager, outsider)])

@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0308 — Autorisations MCP par outil en conversation](0308-conversation-tool-allowlists.md)
+
 - [0305 — Deep sessions own direct harness dialogue](0305-deep-harness-sessions.md)
 
 - [0304 — Runtime LLM calls are attributed to one task execution](0304-runtime-llm-call-attribution.md)

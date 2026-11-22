@@ -208,7 +208,6 @@ export interface Service {
     has_calendar?: boolean
     can_edit: boolean
     can_disable: boolean
-    conversation_enabled: boolean
     mcp_config?: McpConfig | null
     file_share_config?: FileShareConfig | null
     messenger_config?: MessengerConfig | null
@@ -238,7 +237,6 @@ export interface ServiceCreate {
     calendar_config?: ProtocolConfig | null
     connection_schema?: ConnectionSchema
     task_config?: TaskConfig | null
-    conversation_enabled?: boolean
 }
 
 export interface ServiceUpdate {
@@ -256,7 +254,6 @@ export interface ServiceUpdate {
     calendar_config?: ProtocolConfig | null
     connection_schema?: ConnectionSchema
     task_config?: TaskConfig | null
-    conversation_enabled?: boolean
 }
 
 export interface ServiceMcpTestRequest {
@@ -331,7 +328,29 @@ export interface ServiceDeletionImpact {
     detached_count: number
 }
 
+export interface ConversationToolEntry {
+    name: string
+    source: 'native' | 'external'
+    enabled: boolean
+}
+
+export interface ConversationToolCatalog {
+    tools: ConversationToolEntry[]
+    discovery_incomplete: boolean
+    next_connection_id: number | null
+}
+
 export default {
+    getConversationTools(id: number, discover: boolean, signal: AbortSignal, afterConnectionId?: number): Promise<AxiosResponse<ConversationToolCatalog>> {
+        const path = `/services/${id}/conversation-tools`
+        return discover
+            ? api.post(`${path}/discover`, undefined, { signal, params: { after_connection_id: afterConnectionId } })
+            : api.get(path, { signal })
+    },
+
+    setConversationTool(id: number, tool: ConversationToolEntry): Promise<AxiosResponse<{ enabled: boolean }>> {
+        return api.patch(`/services/${id}/conversation-tools`, tool)
+    },
     getCatalog(): Promise<AxiosResponse<ServiceCatalog>> {
         return api.get('/services/catalog')
     },
@@ -364,10 +383,6 @@ export default {
 
     updateService(id: number, data: ServiceUpdate): Promise<AxiosResponse<Service>> {
         return api.put(`/services/${id}`, data)
-    },
-
-    updateConversationAccess(id: number, enabled: boolean): Promise<AxiosResponse<Service>> {
-        return api.patch(`/services/${id}/conversation-access`, { enabled })
     },
 
     getGlobalParams(id: number): Promise<AxiosResponse<ServiceGlobalParamsResponse>> {

@@ -20,7 +20,6 @@ icon:
   encoding: text
   data: |-
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#087FF5"><path d="M10 5v11a3 3 0 1 1-2-2.83V7l12-3v10a3 3 0 1 1-2-2.83V3z"/></svg>
-conversation_enabled: false
 capabilities:
 - http.mcp
 mcp_config:

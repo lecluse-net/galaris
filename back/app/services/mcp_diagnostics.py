@@ -10,11 +10,12 @@ import socket
 import ssl
 import time
 from dataclasses import dataclass, field
-from typing import Any, Literal, Mapping
+from typing import Any, Literal, Mapping, cast
 from urllib.parse import urlparse
 
 import httpx2 as httpx
 from loguru import logger
+from mcp.types import Tool
 from pydantic_ai.mcp import MCPToolset
 
 from app.services.mcp import build_mcp_server
@@ -549,27 +550,7 @@ async def _diagnose_mcp_connection(
             if not isinstance(server, MCPToolset):
                 tools = await server.list_tools()
             else:
-                tools = []
-                cursor = None
-                seen: set[str] = set()
-                size = 0
-                for _ in range(10):
-                    page = await server.client.list_tools_mcp(cursor=cursor)
-                    for tool in page.tools:
-                        size += len(tool.model_dump_json().encode())
-                        if len(tools) >= 500 or size > 1024 * 1024:
-                            truncated = True
-                            break
-                        tools.append(tool)
-                    if truncated or not page.next_cursor:
-                        break
-                    if page.next_cursor in seen:
-                        truncated = True
-                        break
-                    seen.add(page.next_cursor)
-                    cursor = page.next_cursor
-                else:
-                    truncated = True
+                tools, truncated = await list_mcp_tools_bounded(cast(MCPToolset[Any], server))
     except Exception as exc:
         failure_kind = classify_mcp_exception(exc)
         logger.error(
@@ -687,6 +668,28 @@ def function_detail(tool: Any) -> ServiceMcpTestFunction:
         **({} if oversized else payload),
         truncated=oversized or len(str(tool.description or "")) > 8192,
     )
+
+
+async def list_mcp_tools_bounded(server: MCPToolset[Any]) -> tuple[list[Tool], bool]:
+    """Read tools/list pages from an open MCP session within the diagnostic budget."""
+    tools: list[Tool] = []
+    cursor = None
+    seen: set[str] = set()
+    size = 0
+    for _ in range(10):
+        page = await server.client.list_tools_mcp(cursor=cursor)
+        for tool in page.tools:
+            size += len(tool.model_dump_json().encode())
+            if len(tools) >= 500 or size > 1024 * 1024:
+                return tools, True
+            tools.append(tool)
+        if not page.next_cursor:
+            return tools, False
+        if page.next_cursor in seen:
+            break
+        seen.add(page.next_cursor)
+        cursor = page.next_cursor
+    return tools, True
 
 
 async def diagnose_mcp_connection(

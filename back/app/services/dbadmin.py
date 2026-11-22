@@ -15,7 +15,6 @@ from core.dbadmin import DbAdminDataSource, DbAdminDataset, DbAdminReconciler, D
 from .mandatory_services import (
     AUTO_CONNECTED_INTEGRATED_SERVICE_CODES,
     DEFAULT_ACTIVE_INTEGRATED_SERVICE_CODES,
-    DEFAULT_CONVERSATION_SERVICE_CODES,
     mandatory_service_rows,
     SYSTEM_SERVICE_CODES,
 )
@@ -86,7 +85,6 @@ async def _service_rows(
         record.code: record
         for record in await session.scalars(select(Service).execution_options(populate_existing=True))
     }
-    existing_codes = set(existing)
     for raw in mandatory_service_rows():
         row = dict(raw)
         messenger_config = row.get("messenger_config")
@@ -97,16 +95,6 @@ async def _service_rows(
         code = str(row["code"])
         if code in existing:
             row["global_params"] = _legacy_indexing_defaults(existing[code], cast(dict[str, object], row["connection_schema"]))
-        if code in SYSTEM_SERVICE_CODES or code not in existing_codes:
-            row["conversation_enabled"] = (
-                code in SYSTEM_SERVICE_CODES
-                or code in DEFAULT_CONVERSATION_SERVICE_CODES
-                # Mail remains opt-in even though it provides a messaging transport.
-                or (messenger_config is not None and code != "mail")
-            )
-        else:
-            # Omit administrator-owned values entirely, including during concurrent edits.
-            row.pop("conversation_enabled", None)
         rows.append(row)
     return tuple(rows)
 
@@ -188,7 +176,6 @@ def datasets(*, agent_id: int | None = None) -> tuple[DbAdminDataset, ...]:
                 "description",
                 "capabilities",
                 "can_disable",
-                "conversation_enabled",
                 "mcp_config",
                 "file_share_config",
                 "messenger_config",

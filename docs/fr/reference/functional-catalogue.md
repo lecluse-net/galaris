@@ -3690,12 +3690,9 @@ expurgées restent propres à l’opération. La projection des permissions se l
 choisie, sans élargir le périmètre de gestion.
 
 **Browser, Search, Image et Multimedia** disposent de connexions intégrées actives par défaut.
-Browser et Search sont autorisés en conversation à leur première initialisation. **Console SSH,
-Image, Mail et Multimedia** demandent au contraire une activation explicite du mode conversation
-dans le catalogue des Services ; cette règle ne désactive pas leur accès dans les tâches.
-Ces outils restent optionnels : les choix déjà enregistrés, restrictions et credentials sont
-conservés lors des mises à jour. L’activation d’une connexion et son autorisation en conversation
-sont deux réglages distincts. Les fonctions multimédias exigent les ressources IA compatibles du profil ;
+En conversation, Galaris fixe les fonctions admises pour ses services intégrés. Les services
+personnalisés, dont Mail, demandent une activation par outil dans **Outils en conversation** sur leur carte. Les
+fonctions multimédias exigent les ressources IA compatibles du profil ;
 leur présence dans le catalogue ne garantit pas leur disponibilité sur tous les agents.
 
 ### API REST et authentification OAuth MCP
@@ -3864,8 +3861,8 @@ d’architecture, ainsi que les décisions et les plans du projet.
   Avec un modèle configuré, l’index s’enrichit progressivement et la recherche devient hybride ;
   l’absence de modèle, une panne ou un index incomplet sont signalés, sans supprimer la voie texte.
 
-L’activation requiert la connexion **Administration**, les fonctions documentaires autorisées et,
-pour le Chat, le mode conversation du Service. La compétence `galaris-knowledge` apporte les concepts et
+L’activation requiert la connexion **Administration**, les fonctions documentaires autorisées,
+y compris pour le Chat. La compétence `galaris-knowledge` apporte les concepts et
 la méthode de recherche ; sa projection exige aussi `documentation_catalog` et les autorisations
 de compétence/catégorie. Il peut guider par **section → écran → onglet → action**, à partir des
 parcours et menus documentés, sans présumer des droits de l’utilisateur accompagné.
@@ -5808,7 +5805,7 @@ Les 34 fonctions exigent la connexion AgentAdmin, les permissions courantes et l
 
 ### Administration déléguée des Services
 
-Les 23 fonctions exigent ServiceAdmin. Les définitions intégrées et les délégations humaines restent protégées.
+Les 22 fonctions exigent ServiceAdmin. Les définitions intégrées et les délégations humaines restent protégées.
 
 | Fonction | Famille | Action et résultat |
 |---|---|---|
@@ -5819,7 +5816,6 @@ Les 23 fonctions exigent ServiceAdmin. Les définitions intégrées et les dél�
 | `service_admin_impact` | `service_admin` | Examiner les dépendances directes avant suppression. |
 | `service_admin_delete` | `service_admin` | Supprimer une définition sans dépendance, sans cascade implicite. |
 | `service_admin_global_params_set` | `service_admin` | Configurer atomiquement les valeurs globales et leur caractère imposé. |
-| `service_admin_conversation_set` | `service_admin` | Configurer l’accès conversationnel d’un Service optionnel. |
 | `service_admin_mcp_test` | `service_admin` | Tester un candidat HTTP/SSE sans sauvegarde ni fonction métier. |
 | `service_admin_function_list` | `service_admin` | Lister les fonctions et leur état global. |
 | `service_admin_function_get` | `service_admin` | Lire le schéma détaillé et l’état d’une fonction. |

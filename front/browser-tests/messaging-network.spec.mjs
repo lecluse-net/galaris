@@ -221,7 +221,7 @@ test(`${provider} setup rechecks the bridge before creation to avoid a newly con
 
 test('the Service messaging warning allows saving and remains accurate on reopening', async ({ page }) => {
   const tool = { id: 81, code: 'synthetic_messaging', label: 'Synthetic messaging', can_edit: true, can_disable: true,
-    conversation_enabled: false, connection_schema: { params: {} }, global_params: {}, has_messenger: true,
+    connection_schema: { params: {} }, global_params: {}, has_messenger: true,
     messenger_config: { service: 'whatsapp', settings: {}, param_map: {} } }
   let saved = tool
   const writes = []

@@ -23,7 +23,7 @@ supports qualification of those choices.
 3. For documentation-only access, disable `conversation_round_get`, `voice_turn_get`, `llm_call`
    and `llm_calls`. These inspection functions expose sensitive execution data and are not
    required to understand the product.
-4. Enable the Service's **conversation mode** to expose these functions in Chat.
+4. Both documentation functions are on the built-in conversation allowlist.
 5. Authorize `galaris-knowledge` for the agent in skill assignments. Its global default is
    disabled; skill and category overrides still apply. Its effective projection additionally
    requires `documentation_catalog` permission.

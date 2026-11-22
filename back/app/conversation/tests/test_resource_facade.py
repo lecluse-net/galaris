@@ -29,7 +29,6 @@ async def _round_scope(
         label="Round transport",
         description="",
         connection_schema={},
-        conversation_enabled=True,
     )
     db.add_all([title, tool])
     await db.flush()

@@ -27,7 +27,6 @@ from fastmcp.server.providers.proxy import ProxyProvider
 from fastmcp.tools.base import Tool
 from loguru import logger
 from pydantic import JsonValue
-from sqlalchemy import select
 
 from app.agent.contracts import (
     RuntimeName,
@@ -53,7 +52,7 @@ from .contracts import ScopePreflightRejected, ToolCallRejectedError, ToolPermis
 from .execution_evidence import ExecutionEvidenceMiddleware
 from .mcp_presentation import MCP_APP_EXTENSION, McpPresentation, McpPresentationSink, McpTable, app_tool_visible_to
 from .tool_arguments import ToolArgumentsMiddleware
-from .schemas import McpConfig, Service as ServiceConfiguration
+from .schemas import ConversationToolSource, McpConfig, Service as ServiceConfiguration
 
 ToolFunc = TypeVar("ToolFunc", bound=Callable[..., Any])
 
@@ -85,8 +84,12 @@ async def _resolve_live_connection(agent_id: int, connection_id: int, service_id
     if connection is None or not connection.active or connection.agent_id != agent_id or connection.service_id != service_id:
         raise PermissionError("The external MCP connection is inactive or has changed.")
     tool = await service.get_service_by_id(service_id)
-    if tool is None or tool.mcp is None or (conversation_only and not tool.conversation_enabled):
+    if tool is None or tool.mcp is None:
         raise PermissionError("The external MCP Tool is no longer available in this context.")
+    if conversation_only:
+        allowed = conversation_tool_names(tool, source="external")
+        if not allowed or (function_name and function_name not in allowed):
+            raise PermissionError("The external MCP Tool is no longer available in this context.")
     disabled = await connections.get_disabled_function_names(connection)
     if function_name and function_name in disabled:
         raise PermissionError("The external MCP function has been revoked.")
@@ -177,7 +180,7 @@ class McpToolDefinition:
     description: str
     required_capabilities: frozenset[str]
     function: Callable[..., Any]
-    conversation_policy: Literal["short", "deferred", "forbidden"] = "forbidden"
+    conversation_policy: Literal["short", "deferred", "forbidden"] | None = None
     task_enabled: bool = True
     timeout_seconds: float | None = None
     effect_policy: ToolEffectPolicy = "non_idempotent"
@@ -190,6 +193,7 @@ class McpToolDefinition:
     effect_descriptor: EffectDescriptorV1 | None = None
 
 
+# Execution classification is independent of Service eligibility.
 _CONVERSATION_TOOL_POLICIES: dict[str, Literal["short", "deferred"]] = {
     # Read-only colleague discovery does not require a background Task.
     "agent_list": "short",
@@ -232,6 +236,52 @@ _CONVERSATION_TOOL_POLICIES: dict[str, Literal["short", "deferred"]] = {
 }
 
 
+# Keyed by the concrete Service, including the native functions supplied by its protocols.
+BUILTIN_CONVERSATION_TOOLS: dict[str, frozenset[str]] = {
+    "galaris": frozenset({
+        "agent_list", "agent_get", "team_list", "team_members", "contact_list", "contact_get",
+        "process_list", "process_get", "process_list_runs", "process_get_run",
+    }),
+    "conversation": frozenset({
+        "document_show", "repository_show", "conversation_choice_resolve", "conversation_task_submit",
+        "conversation_task_list", "conversation_task_status", "conversation_task_pause",
+        "conversation_task_resume", "conversation_task_retry", "conversation_task_stop",
+        "conversation_process_start", "conversation_process_prepare", "conversation_process_pending",
+        "conversation_process_respond",
+    }),
+    "memory": frozenset({"memory_remember", "memory_forget", "memory_summarize", "memory_upcoming"}),
+    "document": frozenset({
+        "document_sharing", "document_share", "document_revision_list", "document_revision_compare",
+        "mindmap_create", "mindmap_read", "mindmap_add", "mindmap_edit",
+    }),
+    "file_sharing": frozenset({
+        "file_list", "file_info", "file_search", "file_read", "file_create", "file_write", "file_append",
+        "file_edit", "file_rename", "file_to_pdf",
+    }),
+    "agenda": frozenset({
+        "calendar_list", "calendar_events", "calendar_event_get", "calendar_is_available",
+        "calendar_find_free_slots", "calendar_create_event", "calendar_update_event", "calendar_delete_event",
+        "calendar_actions", "calendar_action_set",
+    }),
+    "chat": frozenset({
+        "messenger_room_send_message", "messenger_send_message_to_user", "messenger_list_rooms",
+        "messenger_room_history", "messenger_search_users",
+    }),
+    "search": frozenset({"search_web"}),
+    "image": frozenset({"image_from_pdf"}),
+    "voice": frozenset({"voice_call_stop"}),
+    "platform_admin": frozenset({"documentation_catalog", "documentation_search"}),
+}
+
+
+def conversation_tool_names(service: ServiceConfiguration, *, source: ConversationToolSource) -> Collection[str]:
+    from .assertions import service_can_edit
+
+    if not service.can_disable or not service_can_edit(service.code):
+        return BUILTIN_CONVERSATION_TOOLS.get(service.code, ()) if source == "native" else ()
+    return service.conversation_tools.get(source, ())
+
+
 def mcp_tool(
     service_code: str,
     *,
@@ -265,7 +315,7 @@ def mcp_tool(
             required_capabilities=frozenset(requires),
             conversation_policy=(
                 conversation_policy
-                or _CONVERSATION_TOOL_POLICIES.get(name or func.__name__, "forbidden")
+                or _CONVERSATION_TOOL_POLICIES.get(name or func.__name__)
             ),
             task_enabled=task_enabled,
             timeout_seconds=timeout_seconds,
@@ -317,14 +367,14 @@ class _ResilientProxyProvider(ProxyProvider):
         self._live_connection = live_connection
         self._mcp_apps = mcp_apps
 
-    async def _live_disabled(self) -> set[str]:
+    async def _live_tool_policy(self) -> tuple[set[str], Collection[str] | None]:
         if self._live_connection is None:
-            return self._disabled_functions or set()
+            return self._disabled_functions or set(), None
         from .live_external import resolve_live_connection
 
         agent_id, connection_id, service_id, conversation_only = self._live_connection
-        _, _, disabled = await resolve_live_connection(agent_id, connection_id, service_id, conversation_only=conversation_only)
-        return disabled
+        service, _, disabled = await resolve_live_connection(agent_id, connection_id, service_id, conversation_only=conversation_only)
+        return disabled, conversation_tool_names(service, source="external") if conversation_only else None
 
     async def _live_disabled_kind(self, kind: Literal["resource", "prompt"]) -> set[str]:
         if self._live_connection is None:
@@ -340,11 +390,15 @@ class _ResilientProxyProvider(ProxyProvider):
             return await connections.get_disabled_function_names(connection, capability_kind=kind)
 
     async def _get_resource(self, uri: str, version: Any = None) -> Resource | None:
+        if self._live_connection is not None and self._live_connection[3]:
+            return None
         if uri in await self._live_disabled_kind("resource"):
             return None
         return await super()._get_resource(uri, version)
 
     async def _get_resource_template(self, uri: str, version: Any = None) -> ResourceTemplate | None:
+        if self._live_connection is not None and self._live_connection[3]:
+            return None
         blocked = await self._live_disabled_kind("resource")
         if uri in blocked:
             return None
@@ -352,22 +406,24 @@ class _ResilientProxyProvider(ProxyProvider):
         return template if template is not None and template.uri_template not in blocked else None
 
     async def _get_prompt(self, name: str, version: Any = None) -> Prompt | None:
+        if self._live_connection is not None and self._live_connection[3]:
+            return None
         if name in await self._live_disabled_kind("prompt"):
             return None
         return await super()._get_prompt(name, version)
 
     async def _get_tool(self, name: str, version: Any = None) -> Tool | None:
-        if name in await self._live_disabled():
+        blocked, allowed = await self._live_tool_policy()
+        if name in blocked or (allowed is not None and name not in allowed):
             return None
         tool = await super()._get_tool(name, version)
         return tool if tool is None or not self._mcp_apps or app_tool_visible_to(tool, "model") else None
 
     async def _list_tools(self) -> Sequence[Tool]:
         try:
+            blocked, allowed = await self._live_tool_policy()
             tools = await super()._list_tools()
-            blocked = await self._live_disabled()
-            if blocked:
-                tools = [tool for tool in tools if tool.name not in blocked]
+            tools = [tool for tool in tools if tool.name not in blocked and (allowed is None or tool.name in allowed)]
             return [tool for tool in tools if app_tool_visible_to(tool, "model")] if self._mcp_apps else tools
         except Exception as exc:
             if self._discovery_source and self._discovery_failures is not None:
@@ -380,6 +436,8 @@ class _ResilientProxyProvider(ProxyProvider):
             return []
 
     async def _list_resources(self) -> Sequence[Resource]:
+        if self._live_connection is not None and self._live_connection[3]:
+            return []
         try:
             blocked = await self._live_disabled_kind("resource")
             return [resource for resource in await super()._list_resources() if str(resource.uri) not in blocked]
@@ -392,6 +450,8 @@ class _ResilientProxyProvider(ProxyProvider):
             return []
 
     async def _list_resource_templates(self) -> Sequence[ResourceTemplate]:
+        if self._live_connection is not None and self._live_connection[3]:
+            return []
         try:
             blocked = await self._live_disabled_kind("resource")
             return [template for template in await super()._list_resource_templates() if template.uri_template not in blocked]
@@ -404,6 +464,8 @@ class _ResilientProxyProvider(ProxyProvider):
             return []
 
     async def _list_prompts(self) -> Sequence[Prompt]:
+        if self._live_connection is not None and self._live_connection[3]:
+            return []
         try:
             blocked = await self._live_disabled_kind("prompt")
             return [prompt for prompt in await super()._list_prompts() if prompt.name not in blocked]
@@ -790,6 +852,32 @@ async def get_disabled_internal_function_names(agent_id: int) -> set[str]:
     return names
 
 
+async def _conversation_native_function_names(agent_id: int) -> set[str]:
+    """Project eligibility and function permissions on the same active connection."""
+    from app.connection import facade as connections
+    from .service import get_services_by_ids
+
+    active = [connection for connection in await connections.get_connections_by_agent(agent_id) if connection.active]
+    services = await get_services_by_ids({connection.service_id for connection in active})
+    disabled = await connections.get_disabled_function_names_many(active)
+    definitions_by_code = mcp_tools_by_service_code()
+    visible: set[str] = set()
+    for connection in active:
+        service = services.get(connection.service_id)
+        allowed = conversation_tool_names(service, source="native") if service is not None else ()
+        if service is None or not allowed:
+            continue
+        blocked = disabled.get(connection.id, ())
+        visible.update(
+            definition.name
+            for code in native_service_codes_for_service(service)
+            for definition in definitions_by_code.get(code, ())
+            if definition.name in allowed and definition.name not in blocked
+            and definition.conversation_policy != "forbidden"
+        )
+    return visible
+
+
 async def list_enabled_native_mcp_definitions(
     agent_id: int,
     *,
@@ -807,46 +895,23 @@ async def list_enabled_native_mcp_definitions(
     """
     from app.agent import effective_tool_profile
 
-    enabled_service_codes = await get_enabled_integrated_service_codes(agent_id)
     if conversation_only:
-        from app.services.models import Service
-
-        checked_tools = (
-            await get_db().scalars(
-                select(Service).where(Service.conversation_enabled.is_(True))
-            )
-        ).all()
-        conversation_codes: set[str] = set()
-        for tool in checked_tools:
-            conversation_codes.add(tool.code)
-            if getattr(tool, "mail_config", None) is not None:
-                conversation_codes.add("mail")
-            if tool.code == "agenda" or getattr(tool, "calendar_config", None) is not None:
-                conversation_codes.add("calendar")
-            messenger_config = tool.messenger_config or {}
-            service = str(messenger_config.get("service") or "")
-            if service:
-                from app.messenger import is_kind_enabled
-
-                if is_kind_enabled(service):
-                    conversation_codes.add("messenger")
-        # Ending a live call is a safety/control action, not optional foreground work.
-        # Keep it reachable whenever the agent has the Voice capability, even when the
-        # administrator did not enable the rest of that Service for short conversations.
-        if "voice" in enabled_service_codes:
-            conversation_codes.add("voice")
-        enabled_service_codes &= conversation_codes
-    disabled_names = await get_disabled_internal_function_names(agent_id)
+        available_names = await _conversation_native_function_names(agent_id)
+    else:
+        enabled_service_codes = await get_enabled_integrated_service_codes(agent_id)
+        disabled_names = await get_disabled_internal_function_names(agent_id)
+        available_names = {
+            definition.name for definition in load_mcp_tools()
+            if definition.service_code in enabled_service_codes
+            and definition.name not in disabled_names and definition.task_enabled
+        }
     allowed_names = frozenset(allowed_tool_names) if allowed_tool_names is not None else None
     profile = await effective_tool_profile(agent_id, runtime)
     definitions = [
         definition
         for definition in load_mcp_tools()
-        if definition.service_code in enabled_service_codes
-        and definition.name not in disabled_names
+        if definition.name in available_names
         and profile.supports(definition.required_capabilities)
-        and (not conversation_only or definition.conversation_policy != "forbidden")
-        and (conversation_only or definition.task_enabled)
         and (allowed_names is None or definition.name in allowed_names)
     ]
     if task_id is not None and any(definition.service_code == "messenger" for definition in definitions):
@@ -961,7 +1026,7 @@ async def build_agent_galaris_fastmcp(
         resources=resolved_resources,
         conversation_only=conversation_only,
     )
-    mcp: FastMCP = _MediaFilteredFastMCP(f"Galaris tools — Agent {agent_id}", agent_id=agent_id, runtime=runtime)
+    mcp: FastMCP = _MediaFilteredFastMCP(f"Galaris tools — Agent {agent_id}", agent_id=agent_id, runtime=runtime, conversation_only=conversation_only)
     for definition in definitions:
         mcp.tool()(_wrap_tool(definition, ctx))
         mcp.native_execution_names.add(definition.name)
@@ -980,10 +1045,11 @@ async def build_agent_galaris_fastmcp(
 
 
 class _MediaFilteredFastMCP(FastMCP):
-    def __init__(self, name: str, *, agent_id: int, runtime: RuntimeName = "internal") -> None:
+    def __init__(self, name: str, *, agent_id: int, runtime: RuntimeName = "internal", conversation_only: bool = False) -> None:
         super().__init__(name)  # pyright: ignore[reportUnknownMemberType]
         self.media_agent_id = agent_id
         self.runtime = runtime
+        self.conversation_only = conversation_only
         self.native_execution_names: set[str] = set()
         self.add_middleware(ToolArgumentsMiddleware())
         self.add_middleware(ExecutionEvidenceMiddleware(self.native_execution_names))
@@ -1000,7 +1066,7 @@ class _MediaFilteredFastMCP(FastMCP):
 
         async def current_names() -> set[str]:
             return {definition.name for definition in await list_enabled_native_mcp_definitions(
-                self.media_agent_id, runtime=self.runtime, allowed_tool_names=dynamic)}
+                self.media_agent_id, runtime=self.runtime, allowed_tool_names=dynamic, conversation_only=self.conversation_only)}
 
         try:
             get_db()
@@ -1155,7 +1221,7 @@ async def build_agent_mcp(
         tool = services.get(connection.service_id)
         if not tool or not tool.mcp:
             continue
-        if conversation_only and not tool.conversation_enabled:
+        if conversation_only and not conversation_tool_names(tool, source="external"):
             continue
         if not allow_stdio and tool.mcp.type == "stdio":
             if discovery_failures is not None:

@@ -14,8 +14,8 @@ et le texte restent configurés séparément.
    Un agent sans profil personnalisé suit le profil courant ; un champ vide dans un profil
    personnalisé ne reprend pas la valeur du profil courant.
 4. Vérifier la connexion **Multimedia** de l’agent. Elle est créée automatiquement et active
-   par défaut ; les désactivations enregistrées restent conservées. Le mode conversation du
-   Service exige une activation explicite. Sans ressource compatible, la fonction reste absente
+   par défaut et conserve les désactivations enregistrées. Ses fonctions sont réservées aux tâches.
+   Sans ressource compatible, la fonction reste absente
    du catalogue MCP.
 
 Le catalogue MCP et chaque appel revérifient connexion, capacité, fournisseur et ressource

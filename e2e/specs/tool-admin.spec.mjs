@@ -28,7 +28,6 @@ for (const mobile of [false, true]) {
     })
     const tools = await (await request.get('/api/services', { headers })).json()
     const admin = tools.find(tool => tool.code === 'service_admin')
-    expect(admin.conversation_enabled).toBe(false)
     const grants = await (await request.get(`/api/connections?service_id=${admin.id}&agent_id=${fixture.agent_id}`, { headers })).json()
     const grant = grants.length ? grants[0] : await (await request.post('/api/connections', {
       headers, data: { service_id: admin.id, agent_id: fixture.agent_id, active: false },

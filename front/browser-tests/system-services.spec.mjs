@@ -3,13 +3,13 @@ import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 const tools = [
   ...['galaris', 'conversation', 'memory', 'file_sharing'].map((code, index) => ({
     id: index + 1, code, label: code, description: 'System service description.',
-    can_disable: false, can_edit: false, conversation_enabled: true,
+    can_disable: false, can_edit: false,
     connection_schema: { params: {} }, global_params: {},
   })),
   { id: 5, code: 'matrix', label: 'Optional Service', description: '**Team handbook** for this connector.',
-    can_disable: true, can_edit: true, conversation_enabled: true, connection_schema: { params: {} }, global_params: {} },
+    can_disable: true, can_edit: true, connection_schema: { params: {} }, global_params: {} },
   { id: 6, code: 'empty', label: 'No description', description: '', can_disable: true,
-    can_edit: true, conversation_enabled: false, connection_schema: { params: {} }, global_params: {} },
+    can_edit: true, connection_schema: { params: {} }, global_params: {} },
 ]
 const connections = tools.slice(0, 5).map(tool => ({ id: tool.id, service_id: tool.id, agent_id: 7, active: true }))
 const permissionOptions = rows => rows.map(connection => {
@@ -957,7 +957,7 @@ for (const mobile of [false, true]) {
     await expect(rows).toHaveCount(50)
   })
 
-  test(`Service descriptions reopen and system switches remain read-only (${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
+  test(`Service descriptions reopen without service-wide conversation switches (${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: mobile ? 390 : 1400, height: 1000 })
     await routes(page)
     await mount(page, 'app/services/components/ServicesList.vue', { privileges })
@@ -965,7 +965,7 @@ for (const mobile of [false, true]) {
     const rows = page.getByRole('article')
     for (const name of ['Galaris', 'Conversation', 'Memory', 'File sharing']) {
       const row = rows.filter({ has: page.getByRole('button', { name, exact: true }) })
-      await expect(row.getByRole('switch')).toBeDisabled()
+      await expect(row.getByRole('switch')).toHaveCount(0)
       await expect(row.getByRole('img', { name: 'Mandatory system service' })).toBeVisible()
       await expect(row.getByRole('button', { name: 'Export', exact: true })).toHaveCount(0)
     }
@@ -987,7 +987,7 @@ for (const mobile of [false, true]) {
     await page.getByRole('button', { name: 'Optional Service', exact: true }).click()
     await expect(page.getByRole('dialog')).toContainText('Team handbook')
     await page.keyboard.press('Escape')
-    await expect(rows.filter({ hasText: 'Optional Service' }).getByRole('switch')).toBeEnabled()
+    await expect(rows.filter({ hasText: 'Optional Service' }).getByRole('switch')).toHaveCount(0)
     await page.getByRole('tab', { name: 'Custom services', exact: true }).click()
     await expect(page.getByRole('button', { name: 'No description', exact: true })).toHaveCount(0)
     await page.getByText('No description', { exact: true }).click()
@@ -1013,25 +1013,93 @@ for (const mobile of [false, true]) {
 }
 
 for (const mobile of [false, true]) {
-test(`System functions have editable one-action policies while their service remains mandatory (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
+test(`Conversation access is edited on the Service and fixed for built-ins (${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width: mobile ? 390 : 1400, height: 1000 })
   await routes(page)
   const writes = []
+  const allowed = new Set()
+  let fail = true
+  await jsonRoute(page, '**/api/services', tools.map(tool => ({
+    ...tool, has_function_permissions: tool.id === 1 || tool.id === 5, has_mcp: tool.id === 5,
+  })))
+  await jsonRoute(page, '**/api/services/1/conversation-tools', {
+    tools: [
+      { name: 'agent_get', source: 'native', enabled: true },
+      { name: 'task_get', source: 'native', enabled: false },
+    ],
+    discovery_incomplete: false,
+    next_connection_id: null,
+  })
+  await page.route(url => url.pathname.endsWith('/api/services/5/conversation-tools/discover'), route => {
+    const following = new URL(route.request().url()).searchParams.get('after_connection_id') === '15'
+    return route.fulfill({ json: {
+      tools: [...new Set(['external_read', following ? 'external_list' : 'external_search', ...allowed])]
+        .map(name => ({ name, source: 'external', enabled: allowed.has(name) })),
+      discovery_incomplete: true,
+      next_connection_id: following ? null : 15,
+    } })
+  })
+  await page.route('**/api/services/5/conversation-tools', route => {
+    const data = route.request().postDataJSON()
+    expect(data.source).toBe('external')
+    if (fail) { fail = false; return route.fulfill({ status: 503, json: {} }) }
+    if (data.enabled) allowed.add(data.name)
+    else allowed.delete(data.name)
+    return route.fulfill({ json: { enabled: data.enabled } })
+  })
   await page.route('**/api/connections/1/capabilities', route => {
     writes.push(route.request().postDataJSON())
     return route.fulfill({ json: { name: 'system_read', connection_state: 'ask', global_state: 'enabled',
       effective: true, effective_state: 'ask', default_state: 'enabled', state_source: 'connection' } })
   })
-  await mount(page, 'app/connection/components/AuthorizationManager.vue', { privileges })
+  await mount(page, 'app/index/pages/services.vue', { route: '/services?tab=authorizations', privileges, dark: mobile })
   const selector = page.getByRole('combobox').nth(2)
   await selector.click()
   await page.getByRole('option', { name: 'Alice Example — Galaris', exact: true }).click()
   await expect(page.getByText('system_read', { exact: true })).toBeVisible()
   const row = page.locator(mobile ? '.authorization-mobile-card' : 'tbody tr')
+  await expect(page.getByRole('switch', { name: 'Allow system_read in conversation' })).toHaveCount(0)
   await expect(page.getByText('This system service and its connection are mandatory.', { exact: false })).toBeVisible()
   await row.getByRole('group', { name: 'This connection: system_read' }).getByRole('button', { name: 'Ask', exact: true }).click()
   await expect.poll(() => writes).toEqual([{ function_name: 'system_read', state: 'ask', capability_kind: 'tool' }])
   await expect(row.getByRole('group', { name: 'This connection: system_read' }).getByRole('button', { name: 'Ask', exact: true })).toHaveAttribute('aria-pressed', 'true')
   if (mobile) await expect(row).toContainText('Ask')
+  await page.getByRole('tab', { name: 'Services', exact: true }).click()
+  const card = page.getByRole('article', { name: 'Optional Service', exact: true })
+  const open = card.getByRole('button', { name: 'Conversation tools', exact: true })
+  await open.click()
+  const dialog = page.getByRole('dialog')
+  const read = dialog.getByRole('switch', { name: 'Allow external_read in conversation (MCP server)' })
+  const list = dialog.getByRole('switch', { name: 'Allow external_list in conversation (MCP server)' })
+  await expect(dialog).toContainText('This setting applies to all agents.')
+  await expect(read).toHaveAttribute('aria-checked', 'false')
+  await read.press('Enter')
+  await expect(dialog.getByRole('alert')).toContainText('Unable to save conversation access.')
+  await expect(read).toHaveAttribute('aria-checked', 'false')
+  await read.click()
+  await expect(read).toHaveAttribute('aria-checked', 'true')
+  await dialog.getByRole('button', { name: 'Check more connections' }).click()
+  await expect(list).toHaveAttribute('aria-checked', 'false')
+  await expect(read).toHaveCount(1)
+  await expect(read).toHaveAttribute('aria-checked', 'true')
+  await expect(dialog.getByRole('switch', { name: 'Allow external_search in conversation (MCP server)' })).toBeVisible()
+  await dialog.getByRole('textbox', { name: 'Exact MCP tool name' }).fill('account_only_tool')
+  await dialog.getByRole('button', { name: 'Allow', exact: true }).click()
+  await expect(dialog.getByRole('switch', { name: 'Allow account_only_tool in conversation (MCP server)' }))
+    .toHaveAttribute('aria-checked', 'true')
+  await expect(dialog.getByRole('textbox', { name: 'Exact MCP tool name' })).toHaveValue('')
+  await expect(dialog.getByText('Enter a valid MCP tool name.')).toHaveCount(0)
+  await page.screenshot({ path: testInfo.outputPath('service-conversation-tools.png'), animations: 'disabled' })
+  await page.keyboard.press('Escape')
+  await expect(dialog).toHaveCount(0)
+  await open.click()
+  await expect(read).toHaveAttribute('aria-checked', 'true')
+  await page.keyboard.press('Escape')
+  await page.getByRole('tab', { name: 'Galaris built-in services', exact: true }).click()
+  await page.getByRole('article', { name: 'Galaris', exact: true })
+    .getByRole('button', { name: 'Conversation tools', exact: true }).click()
+  await expect(dialog.getByRole('row').filter({ hasText: 'agent_get' }).getByText('Allowed', { exact: true })).toBeVisible()
+  await expect(dialog.getByRole('row').filter({ hasText: 'task_get' }).getByText('Disabled', { exact: true })).toBeVisible()
+  await expect(dialog.getByRole('switch')).toHaveCount(0)
 })
 }

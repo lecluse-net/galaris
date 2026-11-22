@@ -34,6 +34,22 @@ globale du Service ou une exception locale. Modifier le global exige la gestion 
 ce choix remet la connexion courante en héritage sans supprimer les exceptions des autres connexions.
 Le catalogue est chargé à l’ouverture de l’onglet ; le bouton de rafraîchissement le recharge.
 
+Dans **Services & connexions → Services**, ouvrez **Outils en conversation** sur la carte
+du service. Le réglage est global à tous les agents et requiert le droit d’édition des
+Services. Chaque agent voit uniquement les outils admis que sa connexion active expose
+et que ses permissions autorisent. Les nouveaux outils partent désactivés. La fiche
+regroupe par nom les outils MCP distants annoncés avec les paramètres partagés du
+service et par les connexions actives que vous pouvez consulter. **Actualiser** relance
+la découverte. Si la liste est incomplète, explorez les connexions suivantes quand le
+bouton est proposé ou saisissez le nom exact d’un outil manquant. Un serveur qui exige
+des identifiants propres à un compte nécessite au moins une connexion accessible et
+autorisée à lister ses outils. Pour un serveur `stdio`, utilisez la saisie du nom exact.
+La fiche enregistre les autorisations du Service en base et interroge les catalogues MCP
+distants à la demande.
+Pour les services intégrés, la fiche affiche tous les outils déclarés par le service,
+même sans connexion. La colonne **Autorisé** indique en lecture seule lesquels sont
+[admis par Galaris en conversation](../../../project/decisions/0308-conversation-tool-allowlists.md).
+
 Pour une boîte Ionos, créer un service personnalisé nommé **Ionos**, cliquer sur **+**,
 puis choisir **IMAP & SMTP** sous **Mail** dans le menu. Renseigner les hôtes IMAP/SMTP,
 ports et sécurité dans la section IMAP puis SMTP. Associer les champs d'identification aux
@@ -69,8 +85,8 @@ fichiers ou une autre messagerie : créer un Service fournisseur nommé pour ces
 les connexions des agents et les permissions des fonctions. Sa connexion est active dès la
 création de l’assistant Galaris proposé à l’administrateur, et inactive par défaut pour les
 autres agents. Une désactivation ultérieure reste conservée ; les assistants déjà initialisés
-ne reçoivent pas automatiquement ce nouveau droit. Son mode conversation est initialement
-désactivé. Le paramètre local `services.management_scope` délimite l'administration ; activer
+ne reçoivent pas automatiquement ce nouveau droit. Ses fonctions sont réservées aux tâches.
+Le paramètre local `services.management_scope` délimite l'administration ; activer
 la connexion seule ne donne pas de portée globale. L'assistant Galaris reçoit `all` à sa
 création sur toutes ses connexions intégrées proposant une portée, qui démarrent actives.
 Les fonctions autorisées continuent d'affiner la délégation. ServiceAdmin ne reprend pas les
@@ -97,9 +113,9 @@ Les [privilèges humains](privileges.md), les fonctions accordées et les ACL re
 Dans **Services**, le sous-onglet **Services personnalisés** s'ouvre par défaut, avant
 **Services internes à Galaris**. Ils séparent les services que vous ajoutez de ceux fournis par la plateforme. Une création ou un
 import affiche automatiquement le sous-onglet du service enregistré. Dans **Connexions** et
-**Autorisations**, le filtre **Filtrer par service** regroupe les choix sous **Galaris** et
-**Personnalisé**. Le champ **Service** du formulaire de connexion reprend les mêmes sections,
-parmi les services autorisés dans ce formulaire. Les badges des listes rappellent cette origine ; les Services intégrés
+**Autorisations**, le filtre **Filtrer par service** affiche **Personnalisé** puis **Galaris**.
+Le champ **Service** du formulaire de connexion et le choix de la connexion dans
+**Autorisations** reprennent cet ordre. Les badges des listes rappellent cette origine. Les Services intégrés
 optionnels restent dans le groupe Galaris lorsqu’ils sont désactivables, mais leur définition
 reste protégée. Un bridge dédié ne crée pas de Service standard : les Services utilisant Nextcloud,
 AFFiNE ou un bridge de messagerie restent personnalisés. n8n n’est plus créé automatiquement ;
@@ -143,8 +159,7 @@ de l’interface, sous le privilège d’édition des Services.
 
 Dans **Configurer → Services & connexions → Connexions** (`/services?tab=connections`), activer
 la connexion ServiceAdmin de l’agent. Dans **Autorisations**, limiter les fonctions au travail
-attendu. Pour le Chat, activer aussi le mode conversation du Service dans **Services** ; les
-opérations longues restent déférées selon les règles conversationnelles normales.
+attendu.
 
 Les lectures comme les mutations vérifient la connexion active et la permission exacte à
 chaque appel. Les définitions intégrées restent non modifiables. Les services obligatoires
@@ -510,7 +525,7 @@ sont invalidés avant exécution ; l’historique des actions terminées reste c
 |---|---|
 | Catalogue et définition | `service_admin_list`, `service_admin_get`, `service_admin_create`, `service_admin_update` |
 | Dépendances et suppression | `service_admin_impact`, `service_admin_delete` |
-| Réglages partagés | `service_admin_global_params_set`, `service_admin_conversation_set` |
+| Réglages partagés | `service_admin_global_params_set` |
 | Diagnostic et fonctions | `service_admin_mcp_test`, `service_admin_function_list`, `service_admin_function_get`, `service_admin_function_set` |
 | Connexions | `service_admin_connection_list`, `service_admin_connection_get`, `service_admin_connection_create`, `service_admin_connection_update`, `service_admin_connection_delete` |
 | Paramètres et test local | `service_admin_connection_params_set`, `service_admin_connection_param_delete`, `service_admin_connection_test` |

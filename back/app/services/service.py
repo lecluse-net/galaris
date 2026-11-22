@@ -39,6 +39,7 @@ from .schemas import (
     ListenerConfig,
     MessengerConfig,
     McpConfig,
+    ConversationToolSource,
     TaskConfig,
     Service,
     ServiceCreate,
@@ -403,7 +404,7 @@ def _to_internal(record: ServiceModel) -> Service:
         ),
         connection_schema=ConnectionSchema(**connection_schema_for_service(record)),
         task_config=TaskConfig(**record.task_config) if record.task_config else None,
-        conversation_enabled=bool(record.conversation_enabled),
+        conversation_tools=record.conversation_tools,
     )
 
 
@@ -467,7 +468,6 @@ async def create_service(data: ServiceCreate, *, commit: bool = True) -> Service
         connection_schema=connection_schema,
         global_params=default_global_params(connection_schema),
         task_config=data.task_config.model_dump() if data.task_config else None,
-        conversation_enabled=data.conversation_enabled,
     )
     if not record.description.strip():
         from .descriptions import bridge_description
@@ -606,21 +606,42 @@ async def update_service(service_id: int, data: ServiceUpdate, *, commit: bool =
     return record
 
 
-async def update_conversation_access(
-    service_id: int, *, enabled: bool, commit: bool = True
-) -> Optional[ServiceModel]:
-    """Update the independent conversation projection switch."""
+async def set_conversation_tool(
+    service_id: int, name: str, *, source: ConversationToolSource, enabled: bool,
+) -> bool | None:
+    """Update one custom Service's conversation allowlist under the Service write lock."""
+    from .assertions import service_can_edit
+    from .mcp_loader import mcp_tools_by_service_code, native_service_codes_for_service
 
-    await lock_services([service_id], db=get_db())
-    record = await get_db().get(ServiceModel, service_id)
+    db = get_db()
+    await lock_services([service_id], db=db)
+    record = await db.get(ServiceModel, service_id, populate_existing=True)
     if record is None:
         return None
-    if record.can_disable is False:
+    if not service_can_edit(record):
         raise ValueError(await tr("services.errors.system_read_only"))
-    record.conversation_enabled = enabled
-    await finish_write(commit=commit, db=get_db())
-    await get_db().refresh(record)
-    return record
+    if not name or len(name.encode("utf-8")) > 255 or "\x00" in name:
+        raise ValueError(await tr("services.errors.invalid_tool_definition"))
+    supported = bool(record.mcp_config) if source == "external" else any(
+        definition.name == name and definition.conversation_policy != "forbidden"
+        for code in native_service_codes_for_service(record)
+        for definition in mcp_tools_by_service_code().get(code, ())
+    )
+    if enabled and not supported:
+        raise ValueError(await tr("services.errors.invalid_tool_definition"))
+    policy = dict(record.conversation_tools)
+    names = set(policy.get(source, ()))
+    if enabled:
+        names.add(name)
+    else:
+        names.discard(name)
+    if names:
+        policy[source] = sorted(names)
+    else:
+        policy.pop(source, None)
+    record.conversation_tools = policy
+    await db.commit()
+    return enabled
 
 
 async def deletion_impact(service_id: int) -> ServiceDeletionImpact | None:
@@ -798,9 +819,6 @@ def _record_to_export_dict(record: ServiceModel) -> Dict[str, object]:
         # Normalize persisted legacy JSON through the current public contract so
         # removed fields cannot reappear in exported YAML.
         d["task_config"] = TaskConfig(**record.task_config).model_dump()
-    # SQLAlchemy column defaults apply on flush. Coercion also supports transient records
-    # constructed by import/export callers before they have reached a session.
-    d["conversation_enabled"] = bool(record.conversation_enabled)
     return d
 
 

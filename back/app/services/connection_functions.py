@@ -15,6 +15,7 @@ from core.i18n import tr
 
 from . import service
 from .mcp_loader import (
+    conversation_tool_names,
     list_external_mcp_capabilities,
     list_internal_mcp_functions,
     mcp_tools_by_service_code,
@@ -142,11 +143,13 @@ async def list_available_connection_functions(
     for pair in pairs:
         name, description = pair[:2]
         kind: Literal["tool", "resource", "prompt"] = pair[2] if len(pair) == 3 else "tool"
-        identity = canonical((kind, name))
+        native = len(pair) == 2
+        source = "native" if native else "external"
+        identity = canonical((kind, name, source))
         if identity in seen:
             continue
         seen.add(identity)
-        definition = definitions.get(name) if kind == "tool" else None
+        definition = definitions.get(name) if native else None
         if kind != "tool":
             connection_states = {row.function_name: stored_function_state(row) for row in local_rows if row.capability_kind == kind}
             tool_states = {row.function_name: stored_function_state(row) for row in global_rows if row.capability_kind == kind}
@@ -156,8 +159,11 @@ async def list_available_connection_functions(
         policy = project_function_policy(name, connection_states, tool_states, capability_kind=kind,
                                          default=definition.approval if definition else "enabled",
                                          native=definition is not None)
-        functions.append({**policy, "key": identity, "description": description,
-                          "effective": connection.active and policy["effective"]})
+        functions.append({**policy, "key": identity, "description": description, "source": source,
+                          "effective": connection.active and policy["effective"],
+                          "conversation_enabled": kind == "tool" and (
+                              definition is None or definition.conversation_policy != "forbidden"
+                          ) and name in conversation_tool_names(tool, source=source)})
     return {
         "success": True,
         "message": f"{len(functions)} function(s) available",

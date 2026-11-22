@@ -59,15 +59,15 @@ async def test_service_admin_metadata_page_does_not_materialize_private_configur
     prefix = f"synthetic-admin-projection-{uuid4().hex}"
     tools = [Service(code=f"{prefix}-{index:03d}", label=f"Synthetic admin catalogue {index}",
         description="Synthetic private configuration. " * 4096,
-        conversation_enabled=index % 2 == 0, connection_schema={"params": {
+        connection_schema={"params": {
             "region": {"type": "string", "default": "north"},
             "credential": {"type": "password", "default": "synthetic-private-value"},
         }}) for index in range(count)]
     db.add_all(tools)
     await db.commit()
     expected = [{"id": tool.id, "code": tool.code, "label": tool.label,
-        "integrated": False, "system": False, "conversation_enabled": index % 2 == 0}
-        for index,tool in enumerate(tools)]
+        "integrated": False, "system": False}
+        for tool in tools]
     del tools
     db.expunge_all()
     tracemalloc.start()

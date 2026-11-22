@@ -23,7 +23,8 @@ const BUILT_IN_TOOL_CODES = new Set([
   "multimedia"
 ])
 
-export type ServiceOrigin = 'galaris' | 'custom'
+export const SERVICE_ORIGINS = ['custom', 'galaris'] as const
+export type ServiceOrigin = typeof SERVICE_ORIGINS[number]
 
 const INTERNAL_SERVICE_ICONS: Record<string, string> = {
   agenda: 'calendar_month', service_admin: 'hub', lab: 'science', multimedia: 'movie',

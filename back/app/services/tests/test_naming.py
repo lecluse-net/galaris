@@ -42,7 +42,6 @@ async def test_administration_rename_preserves_connections_and_function_policies
     original_id = tool.id
     tool.code = "galaris_admin"
     tool.label = "Galaris Admin"
-    tool.conversation_enabled = True
     tool.global_params = {"custom": {"value": "preserved", "forced": False}}
     title = Title(label="Naming", gender="X")
     db.add(title)
@@ -66,7 +65,6 @@ async def test_administration_rename_preserves_connections_and_function_policies
         await db.refresh(connection_policy)
         await db.refresh(tool_policy)
         assert tool.id == original_id and tool.code == "platform_admin" and tool.label == "Administration"
-        assert tool.conversation_enabled is True
         assert tool.global_params and tool.global_params["custom"]["value"] == "preserved"
         assert connection.service_id == original_id and connection.active is False
         assert connection_policy.state == tool_policy.state == "disabled"

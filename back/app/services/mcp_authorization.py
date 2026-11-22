@@ -30,7 +30,7 @@ def authorization_context_key(task_id: UUID | None, resources: dict[str, Any]) -
 
 
 async def bind_native_action(ctx: McpToolContext, definition: McpToolDefinition, arguments: dict[str, Any]) -> AuthorizationAction:
-    from .mcp_loader import native_service_codes_for_service
+    from .mcp_loader import conversation_tool_names, native_service_codes_for_service
     from .service import get_services_by_ids
 
     candidates: list[tuple[Connection, Service]] = []
@@ -54,8 +54,9 @@ async def bind_native_action(ctx: McpToolContext, definition: McpToolDefinition,
     if len(candidates) != 1:
         raise ToolCallRejectedError("The exact Service connection for this action must be resolved before authorization")
     connection, tool = candidates[0]
-    if ctx.conversation_only and not tool.conversation_enabled:
-        raise ToolCallRejectedError("This Service connection is not enabled for conversations")
+    if ctx.conversation_only and (definition.conversation_policy == "forbidden"
+            or definition.name not in conversation_tool_names(tool, source="native")):
+        raise ToolCallRejectedError("This tool is not enabled for conversations on the selected Service")
     _, params = await connections.get_params_as_dict(connection.id)
     preflight: dict[str, Any] = {}
     resolved = await connections.resolve_function(connection, definition.name)

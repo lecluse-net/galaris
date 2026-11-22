@@ -216,7 +216,8 @@ enable can override a global denial. `default` removes an override. Global write
 local overrides that remain effective.
 
 `service_admin_update` preserves omitted fields; null clears optional configuration.
-`service_admin_conversation_set` controls optional Service conversation access.
+Conversation eligibility for custom Services is configured by a human per tool in
+**Conversation tools** on the Service card. Built-in Service eligibility is set by Galaris.
 `service_admin_impact` reports dependencies; `service_admin_delete` refuses linked Services, so remove
 connections explicitly with `service_admin_connection_delete` before reading a fresh version
 and deleting. No global cascade is implicit.

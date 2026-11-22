@@ -30,10 +30,9 @@ Le scheduler conversationnel possède ses tables, leases et workers. Il n’acqu
 ni slot d’agent. Son contrôleur est toujours le harnais interne Pydantic AI avec la colonne
 `conversation_llm_id` de l’unique profil effectif de l’agent. Une colonne vide ne reprend ni
 l’exécuteur ni un autre profil. Son catalogue est
-deny-by-default : connexion active, case `Service.conversation_enabled`, politique de fonction
-`short | deferred | forbidden` pour les fonctions natives et profil du runtime doivent tous
-autoriser la fonction. Pour un connecteur MCP externe, la case du Service constitue l’autorisation
-conversationnelle explicite ; les états de fonctions de sa connexion continuent de s’appliquer.
+deny-by-default : connexion active, outil autorisé pour le Service, droits de fonction et profil
+du runtime. La liste des outils admissibles et sa configuration sont décrites dans la
+[décision 0308](0308-conversation-tool-allowlists.md).
 
 Le prompt système de ce contrôleur reste dédié et plus court que celui de l’executor. Il conserve
 cependant le nom, le genre, le poste, la personnalité et la fiche de poste de l’agent, puis ajoute

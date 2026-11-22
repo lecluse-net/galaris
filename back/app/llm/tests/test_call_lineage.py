@@ -181,7 +181,6 @@ async def test_one_call_is_visible_from_both_task_and_conversation_round(
         label="LLM lineage transport",
         description="",
         connection_schema={},
-        conversation_enabled=True,
     )
     db.add_all([title, tool])
     await db.flush()
