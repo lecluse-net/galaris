@@ -847,7 +847,10 @@ class _RoomListProjection:
 
 
 async def _room_list_projection(
-    room_ids: list[UUID], viewer_memberships: Sequence[RoomUser] = (),
+    room_ids: list[UUID],
+    viewer_memberships: Sequence[RoomUser],
+    *,
+    viewer_user_id: int | None,
 ) -> _RoomListProjection:
     """Load page projections in batches, independent of the number of rooms."""
     projection = _RoomListProjection()
@@ -893,9 +896,11 @@ async def _room_list_projection(
         .group_by(RoomUser.room_id)
     )
     projection.expected_agents = {room_id: agent_id if count == 1 else None for room_id, count, agent_id in agent_rows}
-    projection.pending_questions = await pending_room_question_deadlines(
-        [(member.room_id, member.user_id) for member in viewer_memberships],
-    )
+    if viewer_user_id is not None:
+        projection.pending_questions = await pending_room_question_deadlines(
+            [(member.room_id, member.user_id) for member in viewer_memberships],
+            viewer_user_id=viewer_user_id,
+        )
     return projection
 
 
@@ -907,6 +912,7 @@ async def _room_dto(
     agent: Agent,
     *,
     include_members: bool,
+    viewer_user_id: int | None = None,
     projection: _RoomListProjection | None = None,
 ) -> NativeMessengerRoom:
     is_internal = tool.code == CHAT_TOOL_CODE
@@ -935,7 +941,9 @@ async def _room_dto(
         await enrich_messenger_users([user for user, _relation in rows])
         members = [await _member_dto(user, relation) for user, relation in rows]
     if projection is None:
-        projection = await _room_list_projection([room.id], [membership] if membership is not None else [])
+        projection = await _room_list_projection(
+            [room.id], [membership] if membership is not None else [], viewer_user_id=viewer_user_id,
+        )
     last_message_dto = projection.last_messages.get(room.id)
     writable = bool(
         is_internal
@@ -1055,7 +1063,9 @@ async def list_internal_rooms(
             .limit(page_size)
         )
     ).all()
-    projection = await _room_list_projection([row[0].id for row in rows], [row[1] for row in rows])
+    projection = await _room_list_projection(
+        [row[0].id for row in rows], [row[1] for row in rows], viewer_user_id=user_id,
+    )
     return NativeMessengerRoomPage(
         items=[
             await _room_dto(
@@ -1080,7 +1090,7 @@ async def get_internal_room(user_id: int, room_id: UUID) -> NativeMessengerRoom 
     if tool is None or agent is None:
         return None
     return await _room_dto(
-        room, relation, connection, tool, agent, include_members=True
+        room, relation, connection, tool, agent, include_members=True, viewer_user_id=user_id,
     )
 
 
@@ -1177,7 +1187,8 @@ async def list_chat_rooms(
     ).all()
     items: list[NativeMessengerRoom] = []
     projection = await _room_list_projection(
-        [row[0].id for row in rows], [row[1] for row in rows] if agent_id is None else [],
+        [row[0].id for row in rows], [row[1] for row in rows],
+        viewer_user_id=user_id if agent_id is None else None,
     )
     provider_rooms_by_connection: dict[int, list[UUID]] = {}
     for room, membership, connection, tool, agent in rows:
@@ -1272,6 +1283,7 @@ async def get_chat_room(user_id: int, room_id: UUID) -> NativeMessengerRoom | No
         tool,
         agent,
         include_members=True,
+        viewer_user_id=user_id,
     )
 
 

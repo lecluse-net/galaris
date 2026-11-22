@@ -56,19 +56,23 @@ def _pending_questions() -> Select[tuple[UUID, UUID, str, datetime]]:
 
 async def pending_room_question_deadlines(
     memberships: Sequence[tuple[UUID, UUID]],
+    *,
+    viewer_user_id: int,
 ) -> dict[tuple[UUID, UUID], datetime]:
-    """Find published questions addressed to each human viewing the room list."""
+    """Find published questions the viewer can answer in each room."""
     if not memberships:
         return {}
-    rows = await get_db().execute(
+    rows = (await get_db().execute(
         _pending_questions().with_only_columns(
             RoomUser.room_id, RoomUser.user_id, Interaction.kind, func.max(Interaction.expires_at),
         ).where(tuple_(RoomUser.room_id, RoomUser.user_id).in_(memberships))
         .group_by(RoomUser.room_id, RoomUser.user_id, Interaction.kind)
-    )
+    )).all()
+    kinds = {kind for _, _, kind, _ in rows}
+    answerable_kinds = {kind for kind in kinds if await choice_authorized(kind, viewer_user_id)}
     deadlines: dict[tuple[UUID, UUID], datetime] = {}
     for room_id, user_id, kind, deadline in rows:
-        if choice_is_authorization(kind):
+        if kind not in answerable_kinds:
             continue
         key = (room_id, user_id)
         previous = deadlines.get(key)
@@ -78,7 +82,7 @@ async def pending_room_question_deadlines(
 
 
 async def chat_pending_question_summary(user_id: int) -> tuple[int, datetime | None]:
-    """Count the viewer's questions across Chat rooms and find the next expiry."""
+    """Count questions the viewer can answer across Chat rooms and find the next expiry."""
     from .native_facade import CHAT_TOOL_CODE, MAIL_TOOL_CODE, human_external_id
 
     rows = await get_db().execute(
@@ -93,7 +97,7 @@ async def chat_pending_question_summary(user_id: int) -> tuple[int, datetime | N
             ),
         ).group_by(Interaction.kind)
     )
-    questions = [(count, expiry) for kind, count, expiry in rows if not choice_is_authorization(kind)]
+    questions = [(count, expiry) for kind, count, expiry in rows if await choice_authorized(kind, user_id)]
     return sum(count for count, _ in questions), min((expiry for _, expiry in questions), default=None)
 
 

@@ -364,8 +364,15 @@ async def test_goal_message_authorizes_and_delivers_on_its_internal_connection(a
 async def test_api_decision_resolves_chat_choice_without_dispatch(action, monkeypatch, approved, processing):
     import app.services.authorization_notifications as outbox
     from app.connection import Connection
-    from app.services.models import Service
+    from app.messenger import (
+        ChoiceOption, ChoiceRequest, chat_pending_question_summary, list_chat_rooms,
+        mark_chat_room_read, request_user_choice,
+    )
     from app.messenger.models import Interaction
+    from app.services.models import Service
+    from core.authorize import Assignment, Privilege, Role
+    from core.authorize.context import role_id_ctx
+
     async with get_db_session() as db:
         chat = await db.scalar(select(Service).where(Service.code == "chat"))
         db.add(Connection(agent_id=action.agent_id, service_id=chat.id, active=True))
@@ -376,6 +383,41 @@ async def test_api_decision_resolves_chat_choice_without_dispatch(action, monkey
         interaction_id = row.interaction_id
         assert interaction_id is not None
         choice = await db.get(Interaction, interaction_id)
+        assert choice is not None and choice.room_id is not None
+        room_id = UUID(choice.room_id)
+        approver = row.approver_user_id
+        assert await mark_chat_room_read(approver, room_id)
+        assert await chat_pending_question_summary(approver) == (1, choice.expires_at)
+        rooms = await list_chat_rooms(approver)
+        assert {room.id: room.pending_question_until for room in rooms.items} == {room_id: choice.expires_at}
+        assert rooms.items[0].unread_count == 0
+
+        chat_access = await db.scalar(select(Privilege).where(Privilege.code == "CHAT_ACCESS"))
+        assert chat_access is not None
+        chat_only_role = Role(code=f"synthetic-chat-only-{uuid4().hex}", privileges=[chat_access])
+        db.add(chat_only_role)
+        await db.flush()
+        db.add(Assignment(user_id=approver, role_id=chat_only_role.id))
+        await db.commit()
+        token = role_id_ctx.set(chat_only_role.id)
+        try:
+            assert await chat_pending_question_summary(approver) == (0, None)
+            rooms = await list_chat_rooms(approver)
+            assert {room.id: room.pending_question_until for room in rooms.items} == {room_id: None}
+        finally:
+            role_id_ctx.reset(token)
+
+        question = await request_user_choice(
+            agent_id=action.agent_id, user_id=approver, idempotency_key="synthetic-follow-up",
+            request=ChoiceRequest(
+                kind="synthetic-follow-up", title="Continue the review?",
+                options=[ChoiceOption(id="yes", label="Yes")],
+            ),
+        )
+        assert question.room_id == choice.room_id
+        assert await chat_pending_question_summary(approver) == (2, min(choice.expires_at, question.expires_at))
+        rooms = await list_chat_rooms(approver)
+        assert rooms.items[0].pending_question_until == max(choice.expires_at, question.expires_at)
         if processing:
             choice.status = "PROCESSING"
             choice.processing_token = uuid4()
@@ -385,6 +427,9 @@ async def test_api_decision_resolves_chat_choice_without_dispatch(action, monkey
         await db.refresh(choice)
         assert choice.status == "RESOLVED"
         assert choice.resolution["option_id"] == ("allow" if approved else "deny")
+        assert await chat_pending_question_summary(approver) == (1, question.expires_at)
+        rooms = await list_chat_rooms(approver)
+        assert {room.id: room.pending_question_until for room in rooms.items} == {room_id: question.expires_at}
     monkeypatch.setattr(outbox, "wake_authorization_context", AsyncMock(return_value=True))
     await outbox.reconcile_authorizations()
     async with get_db_session() as db:
