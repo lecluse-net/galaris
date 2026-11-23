@@ -408,9 +408,9 @@ remains an agent action. Personal packages cannot be shared.
 
 ### Delegating administration to an agent
 
-When first created, the **Galaris** assistant receives global scope (`all`) on all its
-built-in connections offering a scope: Administration, ServiceAdmin, AgentAdmin, Process
-administration, Goal management, Skills and Chat. These connections start active.
+When first created, the **Galaris** assistant receives global management scope (`all`) for
+Services, Agent and Skills. On Chat, `all` sets the inter-agent communication scope.
+These connections start active.
 Other internal services without a separately configured external account, including Topics,
 also start active, with native functions enabled. Model prerequisites and resource permissions
 still apply.
@@ -421,26 +421,30 @@ Other agents cannot exchange messages, files or Tasks with this assistant, even 
 scope or a shared team: they receive an explicit permission refusal. Its internal identity
 survives renaming; naming another agent “Galaris” does not protect that agent.
 
-In **Services → Connections → edit a connection → Management scope**,
-`services.management_scope` also configures Process administration, ServiceAdmin,
-Goal management, Administration and AgentAdmin. Levels are `usage` (no administration),
+In **Services → Authorizations → Management scope**,
+`services.management_scope` sets delegation for the services that offer it.
+Available levels depend on the service and include `usage` (no administration),
 `personal` (own resources), `team` (agents sharing an active team) and `all` (global).
 Only a human with connection editing and global agent management may change this local
 value. Function permissions still apply. Team removals take effect on the next call.
+**Processes** and **Goals** start active for every agent with personal scope.
+**Agent** and **Services** start active in `usage` mode for directory and tool discovery.
+Their administrative commands require explicit delegation.
 
-ServiceAdmin limits personal and team scopes to connections; shared definitions and global
-settings require `all`. Process definitions follow their assigned agent, runs their
-launcher and Goals their responsible agent. Administration scopes Tasks, conversations
-and LLM traces without widening Document or private-memory permissions.
+In service administration, personal and team scopes apply to connections. Shared definitions
+and global settings require `all`. The **Services** scope also applies to conversations,
+model calls and incidents. **Tasks** and **Documents** have their own personal scope by default.
+Process definitions follow their assigned agent, runs their launcher
+and Goals their responsible agent.
 
-AgentAdmin only offers `usage`, `team`, `all`. Team scope allows creation in an explicitly
+Agent only offers `usage`, `team`, `all`. Team scope allows creation in an explicitly
 selected team of the caller, bounded by the human manager's rights. Even with global
 scope, an agent cannot administer itself or indirectly change its own title or team
 through a shared-reference mutation. Administrative delegation remains human-only.
 
-An inactive connection or missing scope grants no administration. After upgrading,
-configure existing administrative connections that lack this parameter: activation
-alone no longer grants access to everyone's data.
+An inactive connection grants no administration. Without a local setting, an active
+connection uses its service's default. See the [service administration guide](../admin/service-administration.md#built-in-service-scopes)
+for each service's scope.
 
 ### Using a Messaging System
 
@@ -681,12 +685,14 @@ do not prove delivery.
 
 When Matrix or Nextcloud Talk and a voice capability are configured, an Agent can participate in a call. Depending on the voice selected on its profile, Galaris uses either the transcription → Agent → synthesis pipeline or a low-latency native audio session. The second mode may retain no intermediate transcription: the absence of text in a native turn therefore does not indicate a lost call.
 
-Agent hangup (`voice_call_stop`) is active by default, without an additional approval
-request. To change a saved rule, open **Services → Authorizations**, select the **Voice**
-connection, search for `voice_call_stop`, and choose **Active** for this connection or
+Agent hangup requires the `voice_call_stop` permission. Open **Services → Authorizations**,
+select the **Chat** connection, search for `voice_call_stop`, and choose **Active**
+for this connection or
 under **Global (all)**. Explicit **Ask** and **Blocked** choices still override the
 software default. An approval request also offers **Always allow this function**,
 limited to that connection.
+
+For incoming calls, set **Automatically answer voice calls** on the Chat connection.
 
 In transcription → Agent → synthesis mode, listening stays active during transcription:
 you can speak again without waiting for its result. Local speech detection limits noise
@@ -738,7 +744,7 @@ journey below. The video specialist receives an excerpt bounded by its prompt bu
 returned to the Agent is limited to 120,000 characters, with an explicit truncation indicator.
 Speech-to-text calls are accounted separately from the video analysis cost.
 
-If the Agent has the Audio Service, attach the recording and then directly request the expected deliverable, for example:
+If the Agent has access to `audio_transcribe` on Multimedia, attach the recording and then directly request the expected deliverable, for example:
 
 > Transcribe `reunion-projet.mp4`, then summarize the topics discussed, decisions, owners, and actions with their deadlines. Also retain the complete transcription.
 

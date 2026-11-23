@@ -611,7 +611,12 @@ inference to stop; engine recovery reuses an acquired answer without calling aga
 
 Terminal states: `success`, `error`, `cancelled`.
 
-For internal processes, the first execution error stops admissions and requests cancellation
+An intermediate wait freezes its deadline or correlation in `waiting`. A gateway arms
+its waits together and keeps only the first result. An accepted event and its deduplication
+receipt are persisted under the run lock. A manual pause keeps successors in `ready`
+until the run resumes.
+
+For internal processes, the first uncaught execution error stops admissions and requests cancellation
 of active tasks and child runs. The run goes through `cancelling` to `error` after confirmed
 stops, preserving `error_code` and data. Cancelling a network harness that is waiting for MCP
 approval revokes its context and pending approval. The Process waits for that run to stop.
@@ -622,8 +627,9 @@ receipt. An uncertain external effect returns
 Python broker call, the diagnostic stays visible if the runner stops before the call
 receipt is recorded. Once a late receipt for the original call and all stops are
 confirmed, the run can become terminal. The diagnostic remains in its history and
-the tracker clears the active reconciliation blocker. No recovery activity
-or automatic process retry executes.
+the tracker clears the active reconciliation blocker. A confirmed error recognized by an
+error boundary can start its branch while the source occurrence remains in `error`.
+A retry requires an explicit action.
 For an approved local file creation, the Services journal receipt can close the
 context Task while stopping. The sandbox must still confirm its own stop.
 A queued run without an external identity remains under the start worker's control.

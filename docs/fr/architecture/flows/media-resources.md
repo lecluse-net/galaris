@@ -121,7 +121,8 @@ La requête, l'ordre des résultats et `SEARCH_DEFAULT_LANGUAGE` sont préservé
 diagnostic ne modifie pas implicitement celle du moteur. Aucun filtre lexical de pertinence
 n'est appliqué. `SearchClient.search()` garde sa liste pour les consommateurs synchrones ;
 `search_response()` et `asearch_response()` exposent également les limites de couverture.
-La recherche, Browser et le transport HTTPS de fichiers restent des capacités distinctes.
+Le service Navigateur regroupe `search_web` et les outils `browser_*`, avec des autorisations
+distinctes par fonction. Le transport HTTPS de fichiers conserve sa propre politique.
 
 ## Sessions Browser et autorisation des outils
 
@@ -253,7 +254,7 @@ borné (temps, mémoire, taille de sortie), puis crée l’image via `resource_c
 destination explicite. Le rendu conserve la page entière à 144 dpi au plus, avec 3000 pixels
 sur le plus grand côté. Le résultat expose URI source et dérivée, page, nombre de pages,
 dimensions et MIME. L’original reste inchangé et aucune destination existante n’est remplacée.
-L’annulation tue et attend le worker avant de supprimer les temporaires. Le Service Image et
+L’annulation tue et attend le worker avant de supprimer les temporaires. Le service Multimédia et
 les droits des deux ressources restent applicables, y compris en conversation. Un processus
 exigeant `image/*` reçoit l’URI PNG, jamais le PDF renommé.
 

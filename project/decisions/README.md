@@ -1,6 +1,25 @@
 # Décisions d'architecture
 
+- [0320 — Rattachement des permissions des outils natifs](0320-native-tool-permission-ownership.md)
+
+- [0319 — Portées de gestion Documents et Tâches](0319-document-task-management-scopes.md)
+
+- [0318 — Portée de gestion du service Contact](0318-contact-management-scope.md)
+
+- [0317 — Portée de gestion des agendas](0317-calendar-management-scope.md)
+- [0316 — Fusion des services Chat et Conversation](0316-chat-service-merge.md)
+- [0315 — Portée commune sur la connexion Services](0315-service-management-scope.md)
+- [0314 — Code du service Agenda](0314-calendar-service-code.md)
+- [0313 — Rattachement des outils aux services métier](0313-domain-service-tools.md)
+- [0312 — Fusion des services Administration et Voice](0312-admin-voice-service-merge.md)
+- [0311 — Services Agent, Services et Agenda](0311-agent-services-agenda-names.md)
+- [0310 — Service Objectifs avec une portée personnelle par défaut](0310-personal-goal-service.md)
+- [0309 — Service Processus avec une portée personnelle par défaut](0309-personal-process-service.md)
 - [0308 — Autorisations MCP par outil en conversation](0308-conversation-tool-allowlists.md)
+
+- [0307 — Durable events in native Processes](0307-native-process-events.md)
+
+- [0306 — Profile-based inference and human choices in Process](0306-process-inference-profiles.md)
 
 - [0305 — Deep sessions own direct harness dialogue](0305-deep-harness-sessions.md)
 

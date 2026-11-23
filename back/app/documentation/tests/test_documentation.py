@@ -112,14 +112,91 @@ async def test_refresh_makes_new_sources_searchable_without_model_or_agent_grant
     count = await db.scalar(select(func.count()).select_from(DocumentationPassage))
     assert await refresh_and_check(initial) == first
     assert await db.scalar(select(func.count()).select_from(DocumentationPassage)) == count
+    model_key = "a" * 64
+    await facade.index_embeddings(
+        initial, model_key=model_key, embed=AsyncMock(return_value=[[1.0, 0.0]] * len(initial.passages)),
+        batch_size=len(initial.passages),
+    )
     target = release_sources / "docs/fr/user/navigation.md"
     target.write_text("# Observatory guide\n\nStations moved to /new/stations.\n")
     current = facade.load_corpus(root=release_sources)
+    current_fingerprints = {passage.fingerprint for passage in current.passages}
+    shared_fingerprints = current_fingerprints & {passage.fingerprint for passage in initial.passages}
     refreshed = await refresh_and_check(current)
     assert refreshed.content_revision != first.content_revision
+    assert refreshed.removed_passages == len(initial.passages) - len(shared_fingerprints)
+    assert set(await db.scalars(select(DocumentationPassage.fingerprint))) == current_fingerprints
+    status = await facade.index_status(current, model_key=model_key)
+    assert status["embedded_passages"] == len(shared_fingerprints)
     result = await facade.search(current, "Stations", language="fr", path_prefix="docs/fr/user/navigation.md")
     assert "/new/stations" in result.hits[0].excerpt
     assert all(hit.checksum != facade.page_at(initial, "docs/fr/user/navigation.md").checksum for hit in result.hits)
+    await facade.search(initial, "Stations", language="fr")
+    assert set(await db.scalars(select(DocumentationPassage.fingerprint))) == current_fingerprints
+
+
+@pytest.mark.asyncio
+async def test_refresh_rolls_back_purge_when_sources_change_before_commit(
+    committed_database, release_sources, monkeypatch,
+):
+    from app.documentation import __main__ as cli
+    from app.documentation.readiness import check_corpus, refresh_and_check
+    from core.database import get_db_session
+
+    initial = facade.load_corpus(root=release_sources)
+    async with get_db_session():
+        await refresh_and_check(initial)
+
+    target = release_sources / "docs/fr/user/navigation.md"
+    target.write_text("# Observatory guide\n\nStations moved to /new/stations.\n")
+    current = facade.load_corpus(root=release_sources)
+    snapshots = iter((current, initial))
+    monkeypatch.setattr(cli, "load_corpus", lambda: next(snapshots))
+    with pytest.raises(ValueError, match="differs from the prepared"):
+        await cli._refresh(check_corpus(current))
+    async with get_db_session() as db:
+        fingerprints = set(await db.scalars(select(DocumentationPassage.fingerprint)))
+        assert fingerprints == {passage.fingerprint for passage in initial.passages}
+
+
+@pytest.mark.asyncio
+async def test_refresh_retires_passages_while_embeddings_are_in_flight(committed_database, release_sources):
+    from app.documentation.readiness import refresh_and_check
+    from core.database import get_db_session
+
+    initial = facade.load_corpus(root=release_sources)
+    async with get_db_session():
+        await refresh_and_check(initial)
+
+    started, release = asyncio.Event(), asyncio.Event()
+
+    async def embed(texts):
+        started.set()
+        await release.wait()
+        return [[1.0, 0.0] for _ in texts]
+
+    async def index():
+        async with get_db_session():
+            return await facade.index_embeddings(initial, model_key="a" * 64, embed=embed)
+
+    background = asyncio.create_task(index())
+    try:
+        await asyncio.wait_for(started.wait(), 5)
+        target = release_sources / "docs/fr/user/navigation.md"
+        target.write_text("# Observatory guide\n\nStations moved to /new/stations.\n")
+        current = facade.load_corpus(root=release_sources)
+        async with asyncio.timeout(5), get_db_session():
+            refreshed = await refresh_and_check(current)
+        assert refreshed.removed_passages > 0
+    finally:
+        release.set()
+        indexed = await asyncio.wait_for(background, 5)
+
+    assert indexed == len(initial.passages) - refreshed.removed_passages
+    async with get_db_session() as db:
+        assert set(await db.scalars(select(DocumentationPassage.fingerprint))) == {
+            passage.fingerprint for passage in current.passages
+        }
 
 
 @pytest.mark.asyncio
@@ -260,6 +337,7 @@ def test_shipped_sources_are_bounded_and_keep_provenance(sources):
 @pytest.mark.asyncio
 async def test_search_handles_questions_symbols_and_removed_sources(db, sources):
     snapshot = facade.load_corpus()
+    await facade.synchronize(snapshot)
     response = await facade.search(snapshot, "Comment partager un document ?", language="fr")
     assert response.hits[0].uri.endswith("docs/fr/user/documents.md")
     assert response.mode == "lexical"
@@ -282,6 +360,7 @@ async def test_search_handles_questions_symbols_and_removed_sources(db, sources)
 @pytest.mark.asyncio
 async def test_semantic_index_is_incremental_and_does_not_reuse_other_models(db, sources):
     snapshot = facade.load_corpus()
+    await facade.synchronize(snapshot)
 
     async def embed(texts):
         return [[1.0, 0.0] if "successive cycles" in text else [0.0, 1.0] for text in texts]
@@ -317,6 +396,7 @@ async def test_semantic_search_counts_the_full_scope_with_one_ranked_read(db):
     passages = tuple(Passage(sha256(str(n).encode()).hexdigest(), page, "Stations", 0, len(page.content))
                      for n in range(125))
     snapshot = Corpus("synthetic", "test", (page,), passages)
+    await facade.synchronize(snapshot)
 
     async def embed(texts):
         return [[1.0, 0.0] for _ in texts]
@@ -347,6 +427,7 @@ async def test_index_status_counts_only_current_corpus_in_one_read(db, sources, 
     from dataclasses import replace
 
     snapshot = facade.load_corpus()
+    await facade.synchronize(snapshot)
 
     async def embed(texts):
         return [[1.0, 0.0] for _ in texts]
@@ -406,6 +487,9 @@ async def test_background_index_keeps_search_and_other_embeddings_concurrent(
     from app.services import documentation_service
     from core.database import get_db_session
 
+    async with get_db_session():
+        await facade.synchronize(facade.load_corpus())
+
     started, release = asyncio.Event(), asyncio.Event()
     calls = []
 
@@ -457,6 +541,8 @@ async def test_background_index_backs_off_preserves_progress_and_recovers(
     page.write_text("# Synthetic guide\n" + "\n".join(
         f"## Station {index}\n\nSynthetic station instructions {index}.\n" for index in range(24)))
     snapshot = facade.load_corpus()
+    async with get_db_session():
+        await facade.synchronize(snapshot)
     now = 1000.0
     monkeypatch.setattr(documentation_service, "monotonic", lambda: now)
     calls = []
@@ -508,6 +594,9 @@ async def test_background_index_releases_lock_on_deadline_or_cancellation(
 ):
     from app.services import documentation_service
     from core.database import get_db_session
+
+    async with get_db_session():
+        await facade.synchronize(facade.load_corpus())
 
     started = asyncio.Event()
 
@@ -637,6 +726,7 @@ async def test_mcp_documentation_only_search_read_and_live_revocation(committed_
     # A provider failure must not prevent the user from finding and reading a guide.
     monkeypatch.setattr(documentation_service, "configured_embedding_model", AsyncMock(side_effect=RuntimeError("synthetic outage")))
     async with get_db_session() as db:
+        await facade.synchronize(facade.load_corpus())
         title = Title(label="Product knowledge", gender="X")
         user = User(email=f"knowledge-{uuid4().hex}@example.test", hashed_password="unused")
         db.add_all([title, user])

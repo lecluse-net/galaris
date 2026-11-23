@@ -273,12 +273,12 @@ Galaris gateway benefits before its response is published; an already published 
 keeps its provider. Models explicitly selected through the profile API and native voice
 follow their own contracts.
 
-To delegate this administration to an agent, enable its optional **AgentAdmin** connection
+To delegate this administration to an agent, enable its optional **Agent** connection
 under **Services & connections**. It starts active when the **Galaris** assistant is created;
 later deactivation is preserved. Its 34 functions remain limited to its human manager’s rights
 and scope. Generated portraits use the caller’s image model; wait for registration
 to be confirmed, then reopen the target’s record. See the
-[AgentAdmin contract](../dev/agent-admin.md) for connections, teams and Harnesses.
+[Agent contract](../dev/agent-admin.md) for connections, teams and Harnesses.
 When an agent avatar is saved, the image is converted to JPEG and reduced to at most
 500 × 500 pixels, preserving its proportions without enlarging small images.
 
@@ -287,7 +287,7 @@ the gender specified by its title, personality and job description. Its form and
 style are unrestricted, with a visually identifiable AI nature. The canvas remains square,
 without a circular mask or crop. The button appears only
 when the **default LLM profile** has an active, configured image model. Save profile changes
-before generation. The existing image service requests 1024 × 1024 and adapts the dimensions
+before generation. Galaris requests a 1024 × 1024 image and adapts the dimensions
 to the model, then saves the result like any other avatar. An error preserves the previous
 avatar; any Agent update during generation prevents its replacement, including an avatar
 replaced and then restored.
@@ -344,7 +344,7 @@ label. Agent connections, global parameters and MCP tests share these controls. 
 without choices remain free text; passwords stay masked. YAML export and import preserve
 choices and labels.
 
-To delegate catalogue and connection management, explicitly enable **ServiceAdmin** and follow
+To delegate catalogue and connection management, explicitly enable **Services** and follow
 the [delegated administration journey](../admin/service-administration.md).
 The Galaris assistant receives this active connection when first created; later deactivation
 is preserved. Prepare an MCP
@@ -453,7 +453,7 @@ to prevent duplicate execution and support task recovery; this page does not pre
 For browser access, a blocked action requires a new attempt after your reply; forms are not
 resubmitted automatically.
 
-To give an agent product knowledge, start in **Connections**, find its **Administration**
+To give an agent product knowledge, start in **Authorizations**, find its **Galaris**
 connection, then follow the [product knowledge guide](../admin/product-knowledge.md).
 A skill provides instructions; actual function access also depends on authorized Services and connections.
 
@@ -540,6 +540,10 @@ or transcription; unavailable analysis and incomplete coverage are reported expl
 
 The Chat home screen shows all conversations, like the chat window's **Conversations** section,
 then agents. Older and empty conversations are included, with the same filters and usual pagination.
+
+To configure the internal channel per agent, open **Services & connections → Connections**,
+edit the agent’s **Chat** connection and change **Internal channel**. External messaging uses
+its own connections.
 
 Compatible MCP tools display a table below the reply in internal Chat. **Filter** opens
 the service's form and refreshes the table on request. On desktop, open an editable Text
@@ -851,7 +855,7 @@ Useful distinctions:
   start or cancel indexing, and retry repairs.
 - **Monitor → Failure journal** (`/incident`) supports diagnosis; **Preferences → Logs**
   (`/params/logs`) configures retention and purges.
-  An authorized agent can read this journal through **Administration**: `incidents_list`
+  An authorized agent can read this journal through **Galaris** with `incidents_list`
   filters and paginates errors, then `incident_get` opens one occurrence's trace.
   Activate the connection and delegate personal, team or all scope as needed.
   Only all scope exposes incidents without an agent and global pattern diagnostics.

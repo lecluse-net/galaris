@@ -1196,9 +1196,20 @@ Voir la [décision sur les caches API](../../../project/decisions/0138-request-a
 ### Packages MCP de management agentique
 
 `app.contact.mcp` expose `contact_list`, `contact_get`, `contact_create` et `contact_update`
-sous le Service système `galaris`, en tâche et en conversation. Le propriétaire est toujours
-`ctx.agent_id`, sans paramètre d'élévation. Les mutations réutilisent les contrats Contacts ;
-elles préservent les identités et les coordonnées omises. Les écritures sont sur demande par défaut.
+sous le Service système `contact`. Les appels vérifient la permission sur la connexion
+de l'appelant et relisent sa portée locale `services.management_scope`. La liste filtre les
+propriétaires autorisés avant le comptage et la pagination. `owner_agent_id` permet de
+cibler un carnet dans la liste ou à la création. Sans cible, la création utilise le carnet
+de l'appelant. Les écritures sont sur demande par défaut et les mises à jour préservent les
+identités et les coordonnées omises.
+
+Les outils Documents et Tâches appliquent leur propre portée de connexion, avec
+`personal` par défaut. Les outils Documents combinent le propriétaire ciblé et
+les ACL de la ressource. Les opérations de partage déléguées exigent un droit
+d'écriture. L'analyse revérifie l'accès à la source entre ses étapes.
+Les projections MCP de tâches utilisent la portée Tâches, y compris sous
+`galaris://task/`. Le filtre s'applique avant pagination et résolution d'un
+préfixe UUID. Le suivi de travail vise la tâche en cours.
 
 La projection `galaris://contact/<uuid>` accepte aussi `file_write` et `file_edit` :
 seuls `display_name` et `coordinates` sont modifiables. Le port Contact lié au bootstrap
@@ -1226,9 +1237,9 @@ connexion comme namespace afin d'éviter les collisions entre fournisseurs.
 Les lectures Goal en libre-service passent par le Service `file_sharing`, via `file_list`,
 `file_search` et `file_read` sous `galaris://goal/`. Les commandes
 `goal_update_suivi`, `goal_run_now` et
-`goal_ask_referrer` appartiennent au package cœur `galaris`. `app.goal` impose côté serveur que le
-Goal appartienne à l'agent appelant. `goal_ask_referrer` exige en plus la tâche courante du Goal et
-ne bénéficie jamais d'une élévation administrative.
+`goal_ask_referrer` appartiennent au service `goal`. `app.goal` contrôle le responsable de
+l’objectif et la portée déléguée. `goal_ask_referrer` exige la tâche courante d’un objectif de
+l’agent appelant, quelle que soit la portée de gestion.
 
 `file_list("galaris://goal/")` expose un répertoire par Goal, nommé avec son titre,
 à l’URI stable `galaris://goal/<goal-uuid>/`. Il contient la référence du Goal en premier,
@@ -1242,35 +1253,28 @@ Les définitions de Process affectées passent également par `galaris://process
 est adressée par le même `workflow_id` que `process_get` et `process_start`. Cette projection reste
 en lecture seule et sa pagination est exécutée dans la requête SQL.
 
-Les tâches se découvrent et se lisent complètement par `galaris://task/`. Le package cœur
-`galaris` conserve néanmoins `task_get` comme vue opérationnelle compacte : elle projette la
+Les tâches se découvrent et se lisent complètement par `galaris://task/`. Le service Tâches
+(`task`) expose `task_get` comme vue opérationnelle compacte : elle projette la
 progression, les attentes, la pause et l'amendabilité sans remplacer le snapshot complet de
 `file_read`.
 
-Browser, Search, Image et Multimedia sont connectés actifs par défaut. Console
-interne est provisionnée automatiquement à la création d'un agent utilisant le
-harnais interne et activée après vérification SSH/SFTP. Si l'exécuteur est
-indisponible, la connexion reste inactive ; le provisionnement peut être relancé
-depuis les connexions. Browser et Search sont autorisés en conversation à leur première
-initialisation ; Console, Image et Multimedia exigent l'activation de cet accès dans le
-Service. Les réglages et restrictions existants sont conservés.
+Navigateur (`browser`) et Multimédia (`multimedia`) sont actifs par défaut. La liste native
+admet `search_web` et `image_from_pdf` en conversation, sous réserve des permissions et du
+runtime. La Console interne est provisionnée pour le harnais interne et activée après
+vérification SSH/SFTP. Le provisionnement peut être relancé depuis les connexions.
 
-Les packages `goal_management` et `process_admin` sont déclarés dans
-`app.services.mandatory_services` avec `default_active=False`. La synchronisation crée donc une connexion
-pour chaque agent compatible, mais ne lui accorde aucune fonction par défaut. `skills`
-démarre au contraire actif, avec la portée personnelle et les restrictions existantes préservées.
-Une connexion
-`goal_management` active avec une portée administrative élargit les fonctions Goal partagées
-aux agents de cette portée locale (`personal`, `team`, `all`) et expose
-uniquement les commandes administratives `goal_create`, `goal_update`, `goal_delete`, `goal_pause`,
-`goal_resume` et `goal_complete`. Conservez cette propriété pour toute capacité d'administration
-déléguée. `usage` ou une portée absente n'accorde aucune administration. `app.goal.mcp` revérifie
+`goal`, `skills` et `process` démarrent actifs avec la portée personnelle et conservent les
+restrictions existantes. Le service `goal` expose notamment `goal_create`, `goal_update`,
+`goal_delete`, `goal_pause`, `goal_resume` et `goal_complete`. Une délégation `team` ou `all`
+élargit les opérations à la portée accordée. La portée `usage` réserve l’accès aux fonctions
+personnelles. `app.goal.mcp` revérifie
 la connexion, la portée et les équipes au
 moment de chaque commande administrative, même si la fonction avait déjà été montée dans un
 toolset. Sans ce témoin, les fonctions partagées injectent l'identifiant de l'agent appelant jusque
 dans la requête du service et répondent comme si tout Goal étranger était inexistant.
 
-Les Services `galaris`, `conversation`, `document`, `memory` et `file_sharing` portent `can_disable=false`.
+Les Services `galaris`, `chat`, `document`, `memory`, `file_sharing`, `calendar`, `contact`
+et `task` portent `can_disable=false`. Voir le [guide des Services](../admin/service-administration.md).
 Cette propriété persistée appartient au logiciel et n'est pas acceptée par les contrats d'écriture.
 Leurs connexions sont créées pour tous les agents et convergent vers l'état actif, y compris après
 une désactivation historique. L’API protège leurs définitions, connexions actives et paramètres système contre les mutations
@@ -1280,9 +1284,9 @@ Autorisations reste utilisable pour leurs fonctions. Les Services optionnels
 conservent leurs activations et restrictions administrées. Les ACL métier, les compatibilités
 de harnais et les restrictions de contexte restent appliquées.
 
-Les fonctions de contrôle `conversation_*`, dont les réponses aux demandes humaines de Process,
-appartiennent au Service `conversation`, avec
-`document_show` ; elles restent réservées au contrôleur conversationnel. Le clic sur un Service
+Les fonctions `conversation_task_*` relèvent de Tâches et les `conversation_process_*`, dont les
+réponses aux demandes humaines, relèvent de Processus. Documents porte `document_show`. Ces
+fonctions restent réservées au contexte conversationnel. Le clic sur un Service
 décrit ouvre sa description ; aucun lien n'est présenté pour une description vide. Le catalogue
 livré décrit tous les Services natifs et les bridges de messagerie et de fichiers connus ; la
 synchronisation complète les descriptions de bridges vides et actualise les anciens textes courts
@@ -1297,13 +1301,10 @@ stockés en HTML éditorial par l'acquisition Memory. L'ancien argument inopéra
 est supprimé ; les règles normales de déduplication s'appliquent. Une erreur du modèle ne stocke
 ni transcription brute ni mémoire partielle.
 
-`platform_admin` est un quatrième package de management, également inactif par défaut. Il expose
-`conversation_round_get` et `voice_turn_get`, deux lectures par UUID primaire destinées à
-l’analyse complète des jeux de données conversationnels texte et voix, ainsi que `llm_call` et
-`llm_calls` pour inspecter les appels de modèles. Elles incluent les traces
-d’exécution et tous les `LLMCall` corrélés. Chaque wrapper revérifie la connexion
-`platform_admin` active au moment de l’appel ; la seule découverte préalable de la fonction ne
-constitue pas une autorisation durable.
+Chat porte `conversation_round_get` et `voice_turn_get`, deux lectures par UUID primaire
+des tours texte et voix qui incluent les traces d’exécution et les `LLMCall` corrélés. Galaris porte
+`llm_call` et `llm_calls`. Ces outils sont désactivés par défaut. Chaque appel vérifie la permission
+de la fonction sur son Service et la portée de gestion déléguée sur Services.
 
 Le journal des échecs est aussi exposé par `incidents_list` (liste paginée, filtres de dates
 inclusives avec fuseau, type, catégorie, récupération et recherche) puis `incident_get`
@@ -1315,7 +1316,7 @@ Ces outils sont en lecture seule et revérifient l'activation et la délégation
 `app.goal.mcp` adapte le service métier existant sans dupliquer sa persistance :
 
 - création avec propriétaire et référent agent explicites et distincts ;
-- liste et inspection bornées au propriétaire, sauf élévation `goal_management` ;
+- liste et inspection bornées au propriétaire par défaut, avec délégation via `goal` ;
 - historique des cycles séparé de la fiche Goal et suivi HTML modifiable explicitement ;
 - mise à jour et commandes pause/reprise/clôture/exécution immédiate protégées par
   `expected_revision` ;
@@ -1344,7 +1345,7 @@ d’outil, le montage FastMCP, l’inactivité par défaut et le mapping des con
 
 ### Audio, vidéo et fichiers volumineux
 
-`app.audio` expose `audio_transcribe` comme outil MCP natif sous le code intégré `audio`. Son
+`app.audio` expose `audio_transcribe` comme outil MCP natif sous le service Multimédia (`multimedia`). Son
 argument `file` est soit une URI canonique lisible de `app.file_share`, soit une URL HTTPS YouTube,
 jamais un contenu binaire dans le schéma du tool. Le contrat MCP reste unique afin que le modèle
 n’ait pas à choisir entre plusieurs fonctions selon que la source est un audio, une vidéo ou un
@@ -1491,9 +1492,8 @@ l'enregistrement, la configuration, les affectations et un adaptateur de traitem
 indépendant de n8n, ainsi que les garanties de reprise à vérifier. Plusieurs moteurs
 peuvent coexister ; le Service de chaque définition sélectionne son moteur.
 
-Les six fonctions personnelles de découverte, lancement et suivi externe appartiennent au
-package socle `galaris`, complétées par les commandes natives ; il n’existe
-plus de connexion `process` à activer. La définition associe explicitement un workflow à un agent,
+Le service `process` regroupe les fonctions de découverte, de lancement, de suivi et les commandes
+natives. Une définition externe associe explicitement un workflow à un agent,
 et les outils de liste, lecture, lancement et suivi filtrent ou revalident systématiquement cet
 agent. Les deux drivers ajoutent au prompt un catalogue compact des seuls processus affectés à
 l’appelant, y compris lorsqu’il dispose de droits d’administration. Tous sont affichés lorsque
@@ -1501,12 +1501,9 @@ l’agent en possède au plus dix ; au-delà, le modèle vectoriel multilingue c
 dix plus pertinents pour la demande, sans seuil, avec repli lexical déterministe. Un Process
 compatible reste prioritaire sur toute création ou modification de tâche.
 
-Le package séparé `process_admin` est auto-connecté **inactif**. Une activation explicite donne à
-l’agent administrateur les fonctions de découverte des moteurs, de CRUD des définitions avec un
-`agent_id` cible et de gestion des runs de tous les agents. Ces fonctions portent toutes le préfixe
-`process_admin_` afin qu’un modèle ne les confonde jamais avec son accès personnel. La compétence système
-`galaris` documente les deux surfaces, mais le prompt et la liste réelle des tools restent
-l’autorité d’accès.
+Les fonctions `process_admin_*` du même service appliquent la portée de gestion locale.
+Les portées d’équipe et globale nécessitent une délégation humaine. La découverte des moteurs,
+la synchronisation et l’association d’un workflow externe exigent la portée globale.
 
 L’API canonique est `/api/processes/...` et la page frontend est `/process`. L’ancien préfixe
 `/api/processus/...` reste un alias caché et déprécié pour ne pas casser les callbacks déjà

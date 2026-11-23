@@ -626,7 +626,12 @@ est réutilisé sans nouvel appel après reprise du moteur.
 
 États terminaux : `success`, `error`, `cancelled`.
 
-Pour les processus internes, la première erreur d'exécution interdit toute nouvelle
+Une attente intermédiaire fige son échéance ou sa corrélation en `waiting`. Une passerelle
+arme ses attentes ensemble et conserve uniquement le premier résultat. Un événement accepté
+et son reçu de déduplication sont persistés sous verrou du run. Une pause humaine maintient
+les successeurs en `ready` jusqu’à la reprise.
+
+Pour les processus internes, la première erreur d'exécution non interceptée interdit toute nouvelle
 activité et demande l'arrêt des tâches et enfants actifs. Le run passe par `cancelling`
 puis `error` après confirmation des arrêts, en conservant `error_code` et les données.
 Pour un harnais réseau en attente d'un accord MCP, l'annulation révoque le contexte
@@ -639,7 +644,8 @@ reste visible si le runner s'arrête avant que le reçu de l'appel soit enregist
 Une fois le reçu tardif de l'appel original et tous les arrêts confirmés,
 le run peut devenir terminal. Le diagnostic reste dans son historique et le suivi
 cesse de présenter la réconciliation comme un blocage actif.
-Aucun traitement de secours ou réessai automatique n'est exécuté.
+Une erreur confirmée et reconnue par un événement limite peut déclencher sa branche dédiée.
+L’occurrence source reste en `error`. Un réessai nécessite une action explicite.
 Pour une création locale approuvée, le reçu du journal Services peut clôturer la Task
 de contexte pendant l'arrêt. La sandbox doit toujours confirmer son arrêt propre.
 Un run en file d'attente sans identifiant distant reste sous la responsabilité du

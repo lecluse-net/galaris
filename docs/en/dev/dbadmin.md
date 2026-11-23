@@ -337,11 +337,18 @@ Datasets are ordered by `depends_on`. Reconcilers then run and may also depend o
 
 The `app.agent.initial_galaris` dataset proposes **Galaris** once, managed by the
 first active administrator, with its dedicated avatar bundled in the backend, the internal Harness,
-the current default LLM profile, active `platform_admin` (including documentation access),
-`service_admin`, `agent_admin`, `process_admin`, `goal_management`, `skills` and `chat`
-connections with `services.management_scope=all`, and an
-individual authorization for `galaris-lab`, `galaris-knowledge` and `galaris-plugin-development`.
-Their global defaults remain disabled.
+and the current default LLM profile. At creation, the assistant receives the catalog's
+automatically provisioned built-in connections, with their functions enabled, plus Topics.
+Services, Agent and Skills receive `all` scope. Chat receives `all` for inter-agent messaging
+and enables automatic answers. Agenda, Contact, Documents, Goals, Processes and Tasks retain
+personal scope. The assistant receives an individual authorization for `galaris-lab`,
+`galaris-knowledge` and `galaris-plugin-development`. These skills remain globally disabled by default.
+
+Renaming built-in Services preserves their identifiers and connection references. DbAdmin
+moves function settings and authorization history with relocated tools, including the merges into
+Chat, Galaris, Multimedia and Browser and the transfers to Documents, Tasks and Processes.
+Different settings for the same function abort the transfer transaction
+and preserve both values.
 If no administrator exists yet, the first signup replays the same dataset.
 The internal global `galaris.agent_id` parameter retains the agent's ID after renaming and deletion:
 later synchronizations neither recreate the agent nor reset its settings or revoked

@@ -90,8 +90,10 @@ Les fréquences et cycles parents de Goal existent ; l'inbox métier générique
 Événements durables, abonnements typés/filtrés/scopés, déduplication/curseur,
 réveil déterministe, priorités urgence/échéance/coût, portefeuille borné,
 budgets concurrence/coût/fréquence, backpressure/file morte/reprise administrative.
-Événement → cycle Goal → Task ordinaire → verdict corrélable.
-Redelivery sans double cycle, budgets et politiques conservés.
+Les [déclencheurs événementiels](declencheurs-evenementiels-et-dream.md) détaillent la réception
+et les actions configurables. Le [plan Travaux](travaux-et-fusion-des-objectifs.md) traite leur
+usage pour satisfaire une attente et la reprise des cycles Goal. Une livraison répétée conserve
+un seul passage et les mêmes politiques d’exécution.
 
 ## Connaissances gouvernées
 

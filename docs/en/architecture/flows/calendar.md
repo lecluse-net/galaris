@@ -3,13 +3,16 @@
 # Local agenda, providers and action execution
 
 `app.calendar` owns the canonical model for internal and external calendars. Each agent has a
-single system **Personal agenda** (`agenda`), created automatically without an external account;
+single system **Agenda** (`calendar`), created automatically without an external account;
 it cannot be disabled or deleted. Legacy additional internal agendas remain accessible, but
 new ones cannot be created. `bridge.calendar` adapts CalDAV, Google Calendar, Microsoft 365 /
 Outlook, iCloud and iCalendar subscriptions. Canonical events remain **iCalendar** (`VEVENT`, recurrence rules, exceptions and `VALARM`). An iCalendar
 file subscription is read-only.
 
 ## Configuration and authorization
+
+DbAdmin renames `agenda` to `calendar` on the existing Service row. A legacy provider using
+that code receives an available `calendar-provider` code and keeps its connections.
 
 The provider capability is `caldav.calendar`. `calendar_config.settings` holds source kind
 (`caldav` by default, `ical`, `google`, `microsoft` or `icloud`), timezone and working-hour preferences. Its `param_map`
@@ -68,6 +71,13 @@ are cached. Daily maintenance expires caches after thirty days under event locks
 concurrent rebuilds. Browsing an old month never schedules actions or removes future deadlines.
 Window responses contain compact metadata; details load full text and exceptions. Stale or
 unavailable sources cannot prove that a time slot is free.
+
+The system Agenda connection carries `services.management_scope`. Its `personal`, `team`,
+and `all` levels define which calendars MCP tools can read and manage. Calls targeting another
+agent's calendar use the caller's Agenda connection function permission. Each call rechecks the
+scope and team membership. The caller's own external calendars retain their provider connection
+for authorization. Writes and reminders use the calendar owner and the source connection.
+Automatic context continues to use the agent's own calendars. Human access follows API RBAC.
 
 Mutations require `expected_revision`. Scope is `series`, `occurrence` or `following`;
 `recurrence_key` retains the original identity after rescheduling. Changing the recurrence rule

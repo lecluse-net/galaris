@@ -4,18 +4,37 @@
 
 The `galaris` code and **Galaris** label are reserved exclusively for the Galaris system Service.
 No other Service code or label may contain this name, regardless of case.
-The administration Service uses `platform_admin` / **Administration** and the laboratory uses
-`lab` / **Lab**. Updates preserve the identity, connections and permissions of the former
-administration Service when renaming it.
+**Galaris** provides product documentation and scoped execution diagnostics. **Chat** provides the
+internal channel, pending choices, repository presentation, voice calls and turn inspection. In
+**Connections**, edit an agent’s Chat connection to change **Internal channel**. Use
+**Preferences → Messaging** to control its availability across the instance. The Chat connection
+in the permissions dashboard controls automatic answers on compatible bridges.
 
 A **Service** represents a service, for example **Ionos**. Its **protocols** are grouped
 by purpose: MCP, API, file sharing, messaging, Listener, Mail and Calendar.
 Each group uses a single protocol on that Service: HTTP or SSE for MCP,
 REST for API, AFFiNE/Nextcloud/Samba for file sharing, IMAP & SMTP for Mail, CalDAV for
 Calendar. The catalogue shows each group as a heading followed by its protocols.
-Mail and CalDAV are optional provider protocols. The **Personal agenda** system service is available
+Mail and CalDAV are optional provider protocols. The **Agenda** system service is available
 to every agent by default without an external account; its functions use ordinary permissions.
 The agenda holds appointments and reminders, while Goals retain their own scheduled cycles.
+In **Permissions → Agenda**, `services.management_scope` delegates management of events and
+reminders for the agent, their teams, or all agents. The default scope is personal.
+
+In **Permissions → Contact**, a global manager with permission to edit connections can set
+`services.management_scope` for an agent. `personal` covers the agent's address book,
+`team` adds the address books of agents sharing an active team, and `all` covers every
+address book. Resetting restores personal scope. The caller's Contact connection controls
+permission to call `contact_list`, `contact_get`, `contact_create`, and `contact_update`.
+An address created for another agent enters the address book used by that agent's inbound
+Mail policy.
+
+In **Permissions → Documents** and **Permissions → Tasks**, each connection has its own
+setting and defaults to personal scope. Documents tools check native document ownership
+and the resource's read or write permissions. A delegated agent with write access can
+manage sharing for an agent-owned document within its scope.
+Tasks tools and agent-facing `galaris://task/` views use the Tasks scope. An agent can read
+Tasks it requested. Targeting another agent with `task_run` requires team or global scope.
 
 In **Services & connections → Services**, open **Conversation tools** on the Service
 card. This setting applies to all agents and requires the Service editing privilege.
@@ -74,32 +93,64 @@ loads when the tab opens; its refresh button reloads it.
 override. Global changes require managing all agents; they return the current connection
 to inheritance while preserving other connections’ overrides.
 
-**ServiceAdmin** (`service_admin`) administers the global Service catalogue, shared parameters,
-agent connections and function permissions. Its connection starts active when the bundled
-Galaris assistant is first created for the administrator, and inactive for other agents.
-Later deactivations remain preserved; previously initialized assistants do not automatically
-receive this new grant. Its functions are reserved for Tasks. The local
-`services.management_scope` parameter bounds administration; activating the connection alone
-does not grant global scope. At creation, the Galaris assistant receives `all` on every
-built-in connection offering a scope, and those connections start active. Individual
-function grants further restrict delegation. ServiceAdmin does not inherit the agent manager's
-human rights. AgentAdmin retains its own scope and delegation.
+The **Services** Service (`service`) starts active in `usage` mode for every agent and exposes
+`services_list` in Tasks. Catalogue, parameter and connection administration require explicit
+delegation. The local `services.management_scope` and per-function permissions bound that access.
+The Galaris assistant proposed by installation receives global scope for Services at creation.
+The **Agent** Service applies its own delegation.
+
+<a id="built-in-service-scopes"></a>
+## Built-in Services and scopes
+
+System connections are created or reactivated for every agent. Functions retain their own
+**Active**, **Blocked** and **On request** modes. The scopes below govern delegated agent access.
+Human interface privileges and resource ACLs apply separately.
+
+| Service (code) | Initial connection | Default local scope | Functions or role |
+| --- | --- | --- | --- |
+| Galaris (`galaris`) | System | See Services for inspections | Documentation, LLM calls and incidents |
+| Chat (`chat`) | System | `team` for inter-agent communication; see Services for inspections | Internal channel, choices, repository presentation, voice calls and turn inspection |
+| Documents (`document`) | System | `personal` | Sharing, revisions, presentation, analysis and mind maps |
+| Memory (`memory`) | System | Agent's private memory | Remembering, upcoming items, summarizing and forgetting |
+| File sharing (`file_sharing`) | System | Source resource permissions | `file_*` functions and canonical URIs |
+| Agenda (`calendar`) | System | `personal` | Calendars, events, availability and actions |
+| Contact (`contact`) | System | `personal` | Address book search and management |
+| Tasks (`task`) | System | `personal` | Delegation, tracking and `task_*` and `conversation_task_*` commands |
+| Agent (`agent`) | Active | `usage` | Directory, teams and agent administration |
+| Services (`service`) | Active | `usage` | Inventory, Service administration and scope for execution inspections |
+| Goals (`goal`), Processes (`process`), Skills (`skills`) | Active | `personal` | Commands for their respective domains |
+| Browser (`browser`), Multimedia (`multimedia`) | Active | Function permissions | Web search and browsing, image/audio/video tools |
+| Lab (`lab`) | Inactive | Real sources require `all` on Services | Experiments, diagnostics and Process campaigns |
+| Topics (`topic`) | Configured on demand | Function permissions | Topic organization |
+| SSH console (`console`) | Provisioned for the internal harness | SSH account on the connection | Execution and `console://` storage |
+
+Mail, CalDAV and external messaging use provider connections. Their protocols and functions
+operate independently of the Agenda system Service and the internal Chat channel.
+The [code-derived project map](../architecture/generated/project-map.md) lists exact function names and Service codes.
 
 ## Enable and restrict delegation
 
 An administrative connection's `services.management_scope` offers `usage` (no administration),
 `personal` (the agent's resources), `team` (the union of its active teams) and `all` (global).
-Scope is local, without a global value or inheritance. AgentAdmin offers only `usage`, `team`
+Scope is local, without a global value or inheritance. Agent offers only `usage`, `team`
 and `all`, intersects delegation with its human manager's rights/scope and forbids modifying
-the caller. ServiceAdmin requires `all` for shared definitions, parameters and permissions;
-`personal` and `team` delegate only the relevant connections. Goal management follows the
-responsible agent, Administration the trace owner, and Process Admin its domain rules.
+the caller. Services requires `all` for shared definitions, parameters and permissions;
+`personal` and `team` delegate connections and inspections for the covered agents.
+Goals follows the responsible agent and Processes its domain rules. Tasks applies its own scope.
 [Skills](../user/skills.md) retain their distinction between usage and administration.
 
+The MCP registry assigns each native tool to its Service. A permission stored on an
+unrelated connection cannot change the tool's availability. A tool that administers a
+resource usually uses its own Service's scope. Chat and Galaris inspections use the
+shared Services scope and keep their original function grants. Lab requires global
+scope for real sources. Protocol tools use the source connection, with the built-in
+Calendar connection providing delegation for other agents' calendars. Peer communication
+uses the messaging connection's policy.
+
 Only a human web session with `CONNECTION_EDIT` and global agent management may save this
-delegation. Connection, scope and teams are reread on every call. Existing active connections
-without explicit scope need configuration; activation no longer grants global administration.
-Saving connection and scope is atomic. [Human privileges](privileges.md), function grants
+delegation. Each call rereads connection, scope and teams. A connection without a local
+override uses its Service's default. Saving connection and scope is atomic.
+[Human privileges](privileges.md), function grants
 and resource ACLs remain separate.
 
 Under **Services**, **Custom services** opens by default, before **Galaris built-in services**.
@@ -140,18 +191,18 @@ requires another confirmation. Tasks, goals and other independent resources link
 references are retained without those references. Other services’ data is retained. This operation
 does not delete external service data or cancel actions already started there.
 
-Protected built-in definitions remain non-deletable. ServiceAdmin MCP keeps its dependency-free
+Protected built-in definitions remain non-deletable. Services MCP keeps its dependency-free
 deletion rule; the cascade described here requires human confirmation through the interface and
 the Service editing privilege.
 
 In **Configure → Services & connections → Connections** (`/services?tab=connections`), enable
-the agent's ServiceAdmin connection. In **Authorizations**, limit functions to the intended work.
+the agent's Services connection. In **Authorizations**, limit functions to the intended work.
 
 Reads and mutations check the active connection and exact function permission on every call.
-Integrated definitions are read-only. Mandatory Galaris, Conversation, Document, Memory and File Sharing
-services can be inspected, but their settings and connections remain software-owned.
-Only humans can delegate or modify ServiceAdmin, AgentAdmin, Administration, Process Admin, Lab,
-Goal management, Skills and Console. A sequence of agent commands cannot grant
+The software protects integrated definitions and system connection activation. Authorized humans
+can configure function permissions, declared scopes and the internal Chat channel.
+Only humans can delegate Services, Agent, Processes, Lab, Goals, Skills and Console capabilities.
+A sequence of agent commands cannot grant
 administrative capabilities to its caller.
 
 ## Connect an MCP server with OAuth
@@ -356,10 +407,10 @@ prohibited link-local addresses remain blocked. The transport uses the validated
 preserves Host and the TLS name, requests uncompressed responses and refuses compressed
 responses to enforce its byte budget. Redirects and cross-origin SSE endpoints are refused.
 Changing the destination requires a separately prepared definition; credentials from an old
-destination are not transferred automatically. ServiceAdmin does not configure or execute stdio;
+destination are not transferred automatically. Services does not configure or execute stdio;
 existing definitions remain recognizable in redacted reads.
 Their settings, permissions and connections are read-only, with parameter values redacted.
-ServiceAdmin refresh skips all stdio sources connected to the selected agents and reports
+Services refresh skips all stdio sources connected to the selected agents and reports
 partial discovery without pruning their existing index.
 
 ## Parameters, permissions and commands

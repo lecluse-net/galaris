@@ -2,6 +2,9 @@
 
 Statut : accepté — 17 septembre 2026.
 
+Le [guide actuel des services intégrés](../../docs/fr/admin/service-administration.md#services-intégrés-et-portées)
+reflète les changements ultérieurs de composition, de permissions et de portées.
+
 ## Décision
 
 `galaris`, `conversation`, `memory` et `file_sharing` sont des services système obligatoires.

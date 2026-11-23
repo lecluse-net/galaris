@@ -34,17 +34,18 @@ revérifie l'accès à l'outil d'origine et les droits de sa ressource.
 
 | Service | Outils |
 | --- | --- |
-| Galaris | `agent_list`, `agent_get`, `team_list`, `team_members`, `contact_list`, `contact_get`, `process_list`, `process_get`, `process_list_runs`, `process_get_run` |
-| Conversation | `document_show`, `repository_show`, `conversation_choice_resolve`, `conversation_task_submit`, `conversation_task_list`, `conversation_task_status`, `conversation_task_pause`, `conversation_task_resume`, `conversation_task_retry`, `conversation_task_stop`, `conversation_process_start`, `conversation_process_prepare`, `conversation_process_pending`, `conversation_process_respond` |
+| Galaris | `documentation_catalog`, `documentation_search` |
+| Agent | `agent_list`, `agent_get`, `team_list`, `team_members` |
+| Contact | `contact_list`, `contact_get` |
+| Tâches | `conversation_task_submit`, `conversation_task_list`, `conversation_task_status`, `conversation_task_pause`, `conversation_task_resume`, `conversation_task_retry`, `conversation_task_stop` |
+| Processus | `process_list`, `process_get`, `process_list_runs`, `process_get_run`, `conversation_process_start`, `conversation_process_prepare`, `conversation_process_pending`, `conversation_process_respond` |
 | Memory | `memory_remember`, `memory_forget`, `memory_summarize`, `memory_upcoming` |
-| Documents | `document_sharing`, `document_share`, `document_revision_list`, `document_revision_compare`, `mindmap_create`, `mindmap_read`, `mindmap_add`, `mindmap_edit` |
+| Documents | `document_show`, `document_sharing`, `document_share`, `document_revision_list`, `document_revision_compare`, `mindmap_create`, `mindmap_read`, `mindmap_add`, `mindmap_edit` |
 | Partage de fichiers | `file_list`, `file_info`, `file_search`, `file_read`, `file_create`, `file_write`, `file_append`, `file_edit`, `file_rename`, `file_to_pdf` |
-| Agenda personnel | `calendar_list`, `calendar_events`, `calendar_event_get`, `calendar_is_available`, `calendar_find_free_slots`, `calendar_create_event`, `calendar_update_event`, `calendar_delete_event`, `calendar_actions`, `calendar_action_set` |
-| Chat | `messenger_room_send_message`, `messenger_send_message_to_user`, `messenger_list_rooms`, `messenger_room_history`, `messenger_search_users` |
-| Recherche Web | `search_web` |
-| Image | `image_from_pdf` |
-| Voice | `voice_call_stop` |
-| Administration | `documentation_catalog`, `documentation_search` |
+| Agenda | `calendar_list`, `calendar_events`, `calendar_event_get`, `calendar_is_available`, `calendar_find_free_slots`, `calendar_create_event`, `calendar_update_event`, `calendar_delete_event`, `calendar_actions`, `calendar_action_set` |
+| Chat | `repository_show`, `conversation_choice_resolve`, `voice_call_stop`, `messenger_room_send_message`, `messenger_send_message_to_user`, `messenger_list_rooms`, `messenger_room_history`, `messenger_search_users` |
+| Navigateur | `search_web` |
+| Multimédia | `image_from_pdf` |
 
 Les autres outils intégrés sont exclus du catalogue conversationnel. La voix native temps
 réel utilise son propre sous-ensemble d'opérations conversationnelles, avec la vérification

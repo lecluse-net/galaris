@@ -18,6 +18,13 @@ change its color, but cannot delete or disable it or create additional internal 
 External calendars supplement it. Any existing secondary internal agendas remain accessible
 to preserve their events.
 
+In **Permissions**, choose the agent and select **Agenda**. An authorized administrator can set
+`services.management_scope` to **Personal** (the default), **Team** (the agent and anyone who
+shares at least one team with it), or **Global** (all agents). This scope covers viewing events,
+checking availability, and managing events and their reminders with Agenda tools. Each function
+still follows its permission. A reminder runs for the calendar owner. iCalendar subscriptions
+remain read-only.
+
 When calendar reading is enabled for the agent, its context includes ongoing appointments and
 those in the next ten days, in chronological order and limited to ten occurrences in total by default.
 In **Preferences → Memory → Agent temporal context**, configure the horizon in days and the

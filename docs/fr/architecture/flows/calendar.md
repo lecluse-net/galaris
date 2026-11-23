@@ -3,7 +3,7 @@
 # Agenda local, fournisseurs et exécution des actions
 
 `app.calendar` possède le modèle canonique des agendas internes et externes. Chaque agent
-possède un unique **Agenda personnel** système (`agenda`) créé automatiquement, sans compte
+possède un unique **Agenda** système (`calendar`) créé automatiquement, sans compte
 externe ; il ne peut pas être désactivé ou supprimé. Les anciens agendas internes supplémentaires
 restent accessibles, sans possibilité d'en créer de nouveaux. `bridge.calendar` traduit
 CalDAV, Google Agenda, Microsoft 365 / Outlook, iCloud et les abonnements iCalendar ;
@@ -11,6 +11,9 @@ la représentation canonique des événements reste **iCalendar** (`VEVENT`,
 récurrences, exceptions et `VALARM`). Un abonnement à un fichier iCalendar est en lecture seule.
 
 ## Configuration et droits
+
+DbAdmin renomme `agenda` en `calendar` sur la ligne existante. Un ancien fournisseur qui
+occupe ce code reçoit un code `calendar-provider` disponible et conserve ses connexions.
 
 La capacité fournisseur est `caldav.calendar`. `calendar_config.settings` porte le type de
 source (`caldav`, par défaut, `ical`, `google`, `microsoft` ou `icloud`), le fuseau et les préférences de créneaux.
@@ -76,6 +79,14 @@ quotidiennement après trente jours, sous verrou d'événement pour préserver l
 concurrentes. Consulter un mois ancien ne programme aucune action et ne retire aucune échéance.
 Les vues renvoient les métadonnées compactes ; le détail charge le texte complet et les exceptions.
 Une disponibilité issue d'une source périmée ou indisponible reste inconnue.
+
+La connexion système Agenda porte `services.management_scope`. Les modes `personal`, `team` et
+`all` définissent les agendas que les outils MCP peuvent consulter et gérer. Les appels visant
+l’agenda d’un autre agent utilisent la permission de fonction de la connexion Agenda de l’appelant.
+Cette portée et l’appartenance aux équipes sont relues à chaque appel. Les agendas externes de
+l’appelant conservent leur propre connexion pour l’autorisation. Les écritures et rappels utilisent
+le propriétaire de l’agenda et la connexion de la source. Le contexte automatique conserve les
+agendas de l’agent et les accès humains restent soumis au RBAC de l’API.
 
 Les mutations contrôlent `expected_revision`. Le choix `series`, `occurrence` ou `following`
 précise leur portée ; une occurrence conserve son `recurrence_key` d'origine après déplacement.

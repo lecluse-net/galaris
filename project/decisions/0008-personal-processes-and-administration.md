@@ -1,6 +1,6 @@
 # ADR 0008 — Processus personnels et administration séparée
 
-- Statut : Accepted
+- Statut : remplacée par la [décision 0309](0309-personal-process-service.md)
 - Date : 2026-07-20
 
 ## Contexte

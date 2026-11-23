@@ -77,7 +77,7 @@ Quality controls appear under [operations](#exploitation).
 | **Decision model** | Closed-choice resource | Selects allowed answers for routing, topics or memory; writing stays with the same profile's text model. |
 | **Harness** | The program running an agent | Executes the model–tool loop, reports progress and returns a result. |
 | **Service** | Integration or capability set | Declares functions, parameters and optional messaging, file or event services. |
-| **Connection** | An agent's access to a Service | Holds activation, configuration, credentials and allowed functions; the six system-service connections are mandatory and protected. |
+| **Connection** | An agent's access to a Service | Holds activation, configuration, credentials and allowed functions; the eight system-service connections are mandatory and protected. |
 | **Durable inference** | Model request recorded before execution | Freezes request/authority, retains attempts/results and supports reading, subscription, pause, stop, resume and replay. |
 | **Skill** | Packaged instructions and resources | Describes a reusable method, possibly with files; grants no Service permissions. |
 | **Conversation / room** | An exchange on a channel | Retains messages, authors, files, topics and resulting work. |
@@ -328,10 +328,10 @@ harness state, lifecycle actions, logs, blocking Tasks and MCP URL/tokens for ex
 
 ### Delegated administration and portraits
 
-Optional **AgentAdmin** provides 34 functions to create, update and delete agents and manage
-their teams, connections, local function permissions, harnesses and, where permitted, titles
-and shared groups. `agent_list` and `agent_get` remain in the Galaris system service.
-Every call checks the active human manager's current privileges and scope. The connection's
+**Agent** exposes `agent_list` and `agent_get` in its default `usage` scope. With delegation,
+it can create, update and delete agents and manage teams, connections, local function permissions,
+harnesses and shared references. Administrative calls check the active human manager's privileges.
+The connection's
 local scope intersects that human scope, which only `AGENT_MANAGE_ALL` extends globally.
 Agents cannot delete themselves, change their own manager
 or assign administrative connections. System services stay protected and revocation also applies
@@ -352,12 +352,12 @@ image resource and never silently falls back to a text model.
 In the agent profile, **Generate avatar** opens a dialog for instructions before starting
 generation with the default LLM profile. Instructions specify the style, including realistic
 human portraits, and remain available after a failure. An agent uses `agent_avatar_generate`
-to regenerate and replace an authorised target's portrait without a separate Image connection.
+to regenerate and replace an authorised target's portrait through Agent.
 
 Any change to the agent while generation runs prevents replacement, including an avatar replaced
 and then restored; the current state is preserved.
 
-Sources: [AgentAdmin contract](../dev/agent-admin.md),
+Sources: [Agent contract](../dev/agent-admin.md),
 [delegation and MCP journeys](../../../back/app/agent/tests/test_agent_admin.py),
 [permissions administration](../admin/service-administration.md).
 
@@ -367,15 +367,14 @@ Sources: [AgentAdmin contract](../dev/agent-admin.md),
 **internal harness**, follows the **current LLM profile** and belongs to the first active
 administrator. Fresh installs wait for registration; existing installs receive the offer at DB sync.
 
-Ordinary skills/connections are initialized. **Administration**, **AgentAdmin** and **ServiceAdmin**
-are enabled at creation. Administration covers product documentation and permitted execution
-inspections, unlike its inactive default for other
-agents. The assistant individually receives `galaris-knowledge`, `galaris-lab` and
+Ordinary skills/connections are initialized. At creation, Galaris receives documentation and
+execution-inspection permissions. The assistant individually receives `galaris-knowledge`, `galaris-lab` and
 `galaris-plugin-development`, while global assignment remains disabled. The Lab connection stays inactive: having its skill does
 not grant permission to execute Lab tools.
 
-At creation, all its built-in connections offering a scope start active with `all`, including
-Goal management, Process administration, Skills and Chat. Previously initialized assistants
+At creation, Services, Agent and Skills start active with the `all` management scope.
+Chat starts active with the `all` inter-agent communication scope.
+Goals and Processes start active with personal scope. Previously initialized assistants
 do not automatically receive this expansion; saved restrictions and disabled connections remain.
 
 Identity, mission, profile, harness and permissions remain editable. Subsequent sync preserves
@@ -908,7 +907,7 @@ provider-advertised formats do not inherit support automatically.
 Media are reread under agent rights within a total byte budget, current messages before recent
 history. Each URI is materialized once; temporaries are cleaned and resume reuses checkpointed
 media. Refusals, format incompatibility and size limits are reported to the model. Dedicated
-Image/Audio/Multimedia analysis, saved descriptions/transcripts and fallbacks remain available.
+Multimedia tools remain available for dedicated analysis, saved descriptions and transcripts.
 A URI in prose alone does not download media.
 
 Sources: [media flow](../architecture/flows/media-resources.md),
@@ -1332,8 +1331,8 @@ opens after microphone activation and retains echo reduction. There is no intern
 previous local settings are ignored. **Enable audio** unlocks browser-blocked playback. Actual audio
 routing and Bluetooth profiles remain controlled by Android and the browser.
 
-Agent hangup (`voice_call_stop`) is active by default without additional approval. Explicit **Ask**
-or **Blocked** rules remain effective. Services → Authorizations can change the Voice connection's rule;
+Agent hangup requires `voice_call_stop` on Chat. Explicit **Ask**
+or **Blocked** rules remain effective. Services → Authorizations can change the Chat connection's rule;
 **Always allow this function** on a request remembers consent for that connection.
 
 Realtime voice supports interruption during slow tool calls: playback stops and the previous
@@ -2745,7 +2744,7 @@ distinguish protected system packages; create/rename/delete categories and assig
 global activation, category rules and per-agent exceptions; inspect the permission matrix/effective
 state/affected agents; and project permitted skills into supporting harnesses.
 
-Agents with Skill Management use `skills_list`, `skill_read`, `galaris://skill/` and permitted
+Agents with the relevant Skills permissions use `skills_list`, `skill_read`, `galaris://skill/` and permitted
 `file_*` operations. A new package starts with valid `SKILL.md`; revisions, system files and main-file
 operations retain their protections. Dream-learned procedures are personal packages with evidence
 and scores, becoming usable when their state and thresholds permit.
@@ -2829,7 +2828,7 @@ user-created Service internal. Creating a custom Service requires at least one a
 Deleting it through the interface previews dependent connections, settings, permissions,
 approvals and affected business references. Human confirmation permits transactional deletion;
 a stale impact preview is rejected and refreshed. Independent resources and external data
-remain. This cascade is separate from ServiceAdmin MCP, which refuses deletion while dependencies exist.
+remain. This cascade is separate from Services MCP, which refuses deletion while dependencies exist.
 
 A Service can expose MCP functions, file services, messaging and a listener. It includes parameter
 schemas and may define a Task template populated from incoming-event variables. Users can browse
@@ -2859,18 +2858,19 @@ Calendar connections migrate to custom provider Services, preserving parameters 
 Sources: [catalogue contract](../dev/service-catalog.md),
 [catalogue guarantees](../../../back/app/services/tests/test_service_catalog.py).
 
-### Six mandatory system services
+### Eight mandatory system services
 
-**Galaris (`galaris`), Conversation (`conversation`), Documents (`document`), Memory (`memory`), File Sharing
-(`file_sharing`) and Agenda (`agenda`)** belong to every agent. `can_disable=false` is a software property, not a user
-setting. DbAdmin creates/reactivates connections and conversational access. Definitions and
+**Galaris (`galaris`), Chat (`chat`), Documents (`document`), Memory (`memory`), File sharing
+(`file_sharing`), Agenda (`calendar`), Contact (`contact`) and Tasks (`task`)** belong to every agent. `can_disable=false` is a software property, not a user
+setting. DbAdmin creates or reactivates system connections. Definitions and
 connections stay protected; humans can configure functions with the same **Active**, **Blocked**,
 **On request** modes and inheritance as other Services. Historical ignored system restrictions are
 archived during migration. Mandatory activation never bypasses business ACLs or harness/context limits.
 
-The admission/status/control `conversation_*` commands and `document_show` belong to Conversation.
-`conversation_round_get`, `voice_turn_get`, `llm_call` and `llm_calls` belong to optional, initially
-inactive Administration. Each inspection rechecks the Admin connection even if discovery preceded
+Tasks owns `conversation_task_*`, Processes owns `conversation_process_*`, and Documents owns
+`document_show`. These tools still require conversation context.
+Chat also owns `conversation_round_get` and `voice_turn_get`. Galaris owns `llm_call`
+and `llm_calls`. Each inspection rechecks the function grant and Services scope even if discovery preceded
 revocation. Synchronisation fills missing standard descriptions, updates recognised old defaults
 and preserves custom descriptions.
 
@@ -2897,7 +2897,7 @@ that rule and atomically clears this connection's override; other agents' overri
 Saving a rule requires no new remote MCP discovery. Function policies also apply to mandatory
 system services, whose definitions and connections remain protected.
 
-Browser, Search, Image and Multimedia connections start active. Galaris defines which tools
+Browser and Multimedia connections start active. Galaris defines which tools
 from its built-in Services are available in conversation. Custom Services, including Mail,
 require opt-in per tool under **Conversation tools** on the Service card. Multimedia still needs compatible profile resources.
 
@@ -2932,22 +2932,21 @@ Sources: [REST/OAuth journey](../admin/service-administration.md),
 
 The **management scope** (`services.management_scope`) is local to each administrative connection:
 `usage` grants no administration, `personal` covers the agent's resources, `team` the union of
-its active teams and `all` the global scope. It applies to ServiceAdmin, Administration, Goals,
-Processes and Skills. Each call rechecks connection, scope, functions and membership. Only an
-authorised human can change delegation; global parameters cannot widen it. Older connections
-without an explicit scope need configuration. AgentAdmin offers `usage`, `team`, `all`, also
+its active teams and `all` the global scope. The choices and default depend on the Service.
+Each call rechecks connection, scope, function permission and membership. Only an authorised
+human can change the local delegation. Agent offers `usage`, `team`, `all`, also
 intersects the human manager's rights and scope, and prohibits self-administration.
 
-**ServiceAdmin** provides 23 functions to inspect/create/update/delete custom Services, configure shared
+**Services** provides 23 functions to inspect/create/update/delete custom Services, configure shared
 values and connections, set permissions and refresh catalogues. `personal` and `team` limit
 management to relevant connections; global definitions, values and permissions require `all`.
-ServiceAdmin does not inherit AgentAdmin's human scope. Built-in Services
+Services does not inherit Agent's human scope. Built-in Services
 stay protected and only humans assign administrative capabilities.
 
 A human prepares an HTTP/SSE candidate with credentials in **Test connection**, then shares its
 temporary agent-bound reference. Testing discovers functions without executing them; explicit
 creation after success adopts the candidate. Secrets remain server-side and new connections start
-inactive. ServiceAdmin cannot configure or execute `stdio`; existing definitions are redacted with
+inactive. Services cannot configure or execute `stdio`; existing definitions are redacted with
 read-only settings. Mutations require `expected_version`; batches are atomic and direct dependencies
 block deletion without a cascade. Conflicts require rereading and reconciliation.
 
@@ -2955,7 +2954,7 @@ Catalogue refresh runs directly with a 20-second budget and no technical Process
 completed agents are retained; partial results identify connections to refresh without replaying the saved mutation.
 Incomplete catalogues never trigger pruning.
 
-Sources: [ServiceAdmin journey](../admin/service-administration.md),
+Sources: [Services journey](../admin/service-administration.md),
 [local scopes](../../../back/app/services/tests/test_management_scopes.py),
 [delegation, secrets and conflicts](../../../back/app/services/tests/test_service_admin.py).
 
@@ -3025,8 +3024,7 @@ identity. The UI supplies URL/client configuration and named per-client tokens w
 revocation. Secrets appear at creation and are subsequently masked. External clients receive only
 the agent's permitted scope, not implicit global administration.
 
-AgentAdmin, ServiceAdmin, Administration, Lab, Goal Management, Skill Management, Topics and Process Administration
-separate specialised functions. Lab is initially inactive; its functions are inventoried below.
+Agent, Services, Lab, Goals, Skills, Topics and Processes expose specialised functions. Lab is initially inactive; its functions are inventoried below.
 
 ### Installed product documentation for agents
 
@@ -3045,15 +3043,13 @@ cursors are invalidated when the corpus changes.
 
 Text/exact search needs no embedding model. A configured model progressively adds hybrid search;
 missing models, errors or incomplete indexes are reported while text search remains available.
-Access in Chat and Tasks requires Administration and permitted documentation functions.
+Access in Chat and Tasks requires the relevant Galaris documentation function permissions.
 `galaris-knowledge` additionally requires `documentation_catalog` and skill/category permissions.
 It can guide section → screen → tab → action from documented journeys/menus without presuming
 user rights.
 
-A help agent can separately disable the four execution-inspection functions: documentation does
-not require reading live runs. Admin is off by default except when the initial Galaris assistant
-is created; enabling it unrestricted retains its other usual function permissions. Revoking Admin
-or `documentation_catalog` blocks reading, metadata and copying known URIs. Revoking only search
+Execution-inspection tools are disabled by default. Revoking `documentation_catalog` blocks
+reading, metadata and copying known URIs. Revoking only search
 leaves permitted reads. Documentation grants no mutation, reveals no actual account configuration,
 and distinguishes implemented behaviour from plans; current guides outrank historical intentions
 and results preserve provenance.
@@ -3642,8 +3638,8 @@ A native Process owns BPMN, revisions, owner and permissions within Process. An 
 references an engine Service and workflow identifier, label, description and agent assignment.
 Neither BPMN definitions nor run data are Documents. Users list/test engines for connectivity, authentication
 and cancellation support; synchronise workflows; create definitions and edit/delete assignments.
-Agents discover/start personal Processes, while Process Administration governs all-agent definitions
-and runs. Assigned Processes appear in agent context so existing workflows can be reused.
+Agents can discover and start their assigned Processes. Managing definitions and runs for all agents
+requires `all` scope on the Processes connection. Assigned Processes appear in agent context so existing workflows can be reused.
 
 ### Starting and monitoring a run
 
@@ -3992,7 +3988,7 @@ production prompts/models. Authorised agents can:
 - Register existing Tasks, analyse/reread evidence without replay and submit attributed agent reviews
   separate from human and automatic judgement.
 
-Real evidence/diagnosis additionally requires Administration and all four execution-inspection functions;
+Real evidence and diagnostics additionally require the four inspection functions on Galaris and Chat;
 documentation-only access is insufficient. Captures retain provenance and require confirmation of
 source-setting differences. Truncated ranges cannot masquerade as complete captures.
 
@@ -4095,6 +4091,10 @@ error/retry/recovery/causal distinction; bounded redacted/truncated traces and e
 diagnosis/root cause/remediation/fix commit/regression test; review states new, triaged, fix planned,
 resolved, ignored or regression; and authorised retention/cleanup. It is an evidence dossier, not
 automatic code repair; operational recovery and incident resolution are separate.
+
+Agents with the function grants can inspect incidents through `incidents_list` and
+`incident_get` on Galaris. Each call checks the function permission on Galaris and the
+live scope on Services. Global pattern diagnostics and counts require `all` scope.
 
 Durable round success (`SUCCEEDED`) marks its LLM/tool occurrences as recovered, preserving
 diagnostics and the aggregate pattern's review status. Other runs remain unchanged. Approval waits,
@@ -4445,9 +4445,9 @@ for subsequent calls without editing client files. Logs retain token name and ac
 | Area | Accurate product boundary |
 |---|---|
 | Integrated capability | May require a privilege, active connection, credentials and compatible resource. |
-| System services | Galaris, Conversation, Document, Memory and File Sharing are mandatory without granting new resource rights. |
-| Initial assistant | Created once with internal harness, Administration, AgentAdmin and ServiceAdmin; later edits/revocation/deletion persist. A usable model is still required. |
-| Delegated administration | Each connection's local scope bounds delegation; AgentAdmin also checks the manager's rights. ServiceAdmin requires `all` for the global catalogue. Agents cannot grant themselves administrative capabilities. |
+| System services | Galaris, Chat, Documents, Memory, File sharing, Agenda, Contact and Tasks are mandatory without granting new resource rights. |
+| Initial assistant | Created once with internal harness, Agent and Services; later edits/revocation/deletion persist. A usable model is still required. |
+| Delegated administration | Each connection's local scope bounds delegation; Agent also checks the manager's rights. Services requires `all` for the global catalogue. Agents cannot grant themselves administrative capabilities. |
 | Permanent consent | Enables one connection function without bypassing ACLs, blocks or resource preconditions. |
 | File indexing | Private per-agent catalogue with current source access and SHA-256 copy identity; discovery depends on providers and partial traversals are not exhaustive. |
 | Memory graph | 3D only, client spatial loading, hidden-item representatives and updates preserving navigation; WebGL required. Server map remains planned. |
@@ -4522,9 +4522,8 @@ full argument schemas. External MCP servers discover their own evolving function
 with descriptions/status in the effective catalogue. External-runtime capabilities and discovery
 mechanisms are not counted as additional native functions.
 
-Families follow effective ownership: Conversation handles conversational commands; optional Admin
-handles detailed inspection and documentation (initially inactive except on initial Galaris creation);
-optional Lab handles experiments. Mandatory services still respect execution context. Family columns
+Chat handles pending choices, voice calls and conversational inspection. Galaris
+handles documentation, model calls and incidents. The optional Lab handles experiments. Family columns
 show declared namespaces or the Topics Service's explicit selection; Messenger's transport connection
 selects the concrete Service.
 
@@ -4532,129 +4531,129 @@ selects the concrete Service.
 
 | Function | Family | Action/result |
 |---|---|---|
-| `agent_list` | `galaris` | List available agents with short profiles and current-profile URIs. |
-| `agent_get` | `galaris` | Read full identity, personality and job description, with a `file_read`-readable URI. |
-| `team_list` | `galaris` | Discover teams, including empty teams, with search, pagination and human/agent counts; grants no rights. |
-| `team_members` | `galaris` | Read active team members by name and human/agent kind, without private account details. |
-| `task_run` | `galaris` | Delegate a child Task to an authorised colleague and return its canonical URI; self-targeting is forbidden. |
-| `task_get` | `galaris` | Read compact operational state, revision, progress, milestones, next action, waits and available result. |
-| `task_work_update` | `galaris` | Record current Task milestones with owner, phase and revision checks; preserve checkpoints and justify changes to completed milestones. |
-| `task_stop` | `galaris` | Permanently stop another active root and unfinished descendants; reject current Task, ancestors and child targets. |
-| `conversation_task_submit` | `conversation` | Create/amend/explicitly replace with scope/revision checks; amendment conflict creates nothing and replacement waits for stop evidence. |
-| `conversation_task_list` | `conversation` | List recent conversation-scoped Tasks. |
-| `conversation_task_status` | `conversation` | Read a Task's phase, plan progress, error and bounded result. |
-| `conversation_task_pause` | `conversation` | Pause Task and unfinished descendants. |
-| `conversation_task_resume` | `conversation` | Resume user-paused work. |
-| `conversation_task_retry` | `conversation` | Retry failed work through its state machine. |
-| `conversation_task_stop` | `conversation` | Cancel unfinished work or return an already terminal state unchanged. |
-| `conversation_choice_resolve` | `conversation` | Resolve a pending interaction from an unambiguous human reply. |
-| `conversation_process_start` | `conversation` | Start an assigned Process linked to the conversation without awaiting completion. |
-| `conversation_process_prepare` | `conversation` | Prepare verified inputs for an assigned Process in a participant-scoped durable dossier, collecting missing information without starting activities. |
-| `document_show` | `conversation` | Request opening of a readable document in the current internal text room after rights/freshness checks; no sharing or Task invocation. |
-| `conversation_round_get` | `platform_admin` | Full administrative round dossier: messages, attempts, created/amended Tasks, Processes, result and calls. |
+| `agent_list` | `agent` | List available agents with short profiles and current-profile URIs. |
+| `agent_get` | `agent` | Read full identity, personality and job description, with a `file_read`-readable URI. |
+| `team_list` | `agent` | Discover teams, including empty teams, with search, pagination and human/agent counts; grants no rights. |
+| `team_members` | `agent` | Read active team members by name and human/agent kind, without private account details. |
+| `task_run` | `task` | Delegate a child Task to an authorised colleague and return its canonical URI; self-targeting is forbidden. |
+| `task_get` | `task` | Read compact operational state, revision, progress, milestones, next action, waits and available result. |
+| `task_work_update` | `task` | Record current Task milestones with owner, phase and revision checks; preserve checkpoints and justify changes to completed milestones. |
+| `task_stop` | `task` | Permanently stop another active root and unfinished descendants; reject current Task, ancestors and child targets. |
+| `conversation_task_submit` | `task` | Create/amend/explicitly replace with scope/revision checks; amendment conflict creates nothing and replacement waits for stop evidence. |
+| `conversation_task_list` | `task` | List recent conversation-scoped Tasks. |
+| `conversation_task_status` | `task` | Read a Task's phase, plan progress, error and bounded result. |
+| `conversation_task_pause` | `task` | Pause Task and unfinished descendants. |
+| `conversation_task_resume` | `task` | Resume user-paused work. |
+| `conversation_task_retry` | `task` | Retry failed work through its state machine. |
+| `conversation_task_stop` | `task` | Cancel unfinished work or return an already terminal state unchanged. |
+| `conversation_choice_resolve` | `chat` | Resolve a pending interaction from an unambiguous human reply. |
+| `conversation_process_start` | `process` | Start an assigned Process linked to the conversation without awaiting completion. |
+| `conversation_process_prepare` | `process` | Prepare verified inputs for an assigned Process in a participant-scoped durable dossier, collecting missing information without starting activities. |
+| `document_show` | `document` | Request opening of a readable document in the current internal text room after rights/freshness checks; no sharing or Task invocation. |
+| `conversation_round_get` | `chat` | Full administrative round dossier: messages, attempts, created/amended Tasks, Processes, result and calls. |
 
 ### Conversation: code and human activities
 
 | Function | Family | Action/result |
 |---|---|---|
-| `repository_show` | `conversation` | Present the Console's Git checkout in Chat, with reference, branch and optional authorised file/diff opening. |
-| `conversation_process_pending` | `conversation` | Page pending Process questions/activities and contracts within the exact conversation scope. |
-| `conversation_process_respond` | `conversation` | Submit the selected human reply, validate values/files and record an idempotent receipt without relaunching the Process. |
+| `repository_show` | `chat` | Present the Console's Git checkout in Chat, with reference, branch and optional authorised file/diff opening. |
+| `conversation_process_pending` | `process` | Page pending Process questions/activities and contracts within the exact conversation scope. |
+| `conversation_process_respond` | `process` | Submit the selected human reply, validate values/files and record an idempotent receipt without relaunching the Process. |
 
 ### Administering agents
 
-These 34 functions require AgentAdmin, current function permissions and the manager's rights.
+These 34 functions require Agent, current function permissions and the manager's rights.
 
 | Function | Family | Action and result |
 |---|---|---|
-| `agent_create` | `agent_admin` | Create an agent with an explicit manager and internal harness. |
-| `agent_update` | `agent_admin` | Update permitted fields while retaining the permanent code. |
-| `agent_delete` | `agent_admin` | Delete a manageable agent, excluding self-deletion. |
-| `agent_options` | `agent_admin` | Discover eligible administration values and targets. |
-| `agent_avatar_set` | `agent_admin` | Register an avatar from an authorised canonical URI. |
-| `agent_avatar_delete` | `agent_admin` | Remove the authorised target's avatar. |
-| `agent_avatar_generate` | `agent_admin` | Generate with the caller's image model and await registration. |
-| `agent_team_list` | `agent_admin` | List an authorised agent's team memberships. |
-| `agent_team_set` | `agent_admin` | Explicitly replace eligible memberships. |
-| `agent_service_list` | `agent_admin` | List available Services for a manageable target. |
-| `agent_connection_list` | `agent_admin` | List target connections within delegated scope. |
-| `agent_connection_get` | `agent_admin` | Read a connection with masked secrets and inheritance. |
-| `agent_connection_create` | `agent_admin` | Create an eligible optional connection. |
-| `agent_connection_update` | `agent_admin` | Update a connection without changing its identity. |
-| `agent_connection_delete` | `agent_admin` | Delete an authorised optional connection. |
-| `agent_connection_params_set` | `agent_admin` | Set eligible local parameters in a batch. |
-| `agent_connection_param_delete` | `agent_admin` | Remove a local parameter value. |
-| `agent_connection_function_list` | `agent_admin` | Read connection function modes. |
-| `agent_connection_function_set` | `agent_admin` | Set a local override or restore inheritance. |
-| `agent_harness_get` | `agent_admin` | Read harness configuration and capabilities. |
-| `agent_harness_set` | `agent_admin` | Select a compatible harness subject to blockers. |
-| `agent_harness_reset` | `agent_admin` | Reset harness configuration under its contract. |
-| `agent_harness_status` | `agent_admin` | Read the target harness's current state. |
-| `agent_harness_action` | `agent_admin` | Execute a lifecycle action offered by the harness. |
-| `agent_harness_logs` | `agent_admin` | Read bounded, redacted logs. |
-| `agent_harness_blockers` | `agent_admin` | List Tasks blocking a harness operation. |
-| `agent_title_list` | `agent_admin` | List titles with pagination. |
-| `agent_title_create` | `agent_admin` | Create a title with global rights. |
-| `agent_title_update` | `agent_admin` | Update a title with global rights. |
-| `agent_title_delete` | `agent_admin` | Delete an unreferenced title with global rights. |
-| `agent_group_list` | `agent_admin` | List accessible agent groups. |
-| `agent_group_create` | `agent_admin` | Create a shared group with global rights. |
-| `agent_group_update` | `agent_admin` | Update a shared group with global rights. |
-| `agent_group_delete` | `agent_admin` | Delete a group, detaching associated links and access. |
+| `agent_create` | `agent` | Create an agent with an explicit manager and internal harness. |
+| `agent_update` | `agent` | Update permitted fields while retaining the permanent code. |
+| `agent_delete` | `agent` | Delete a manageable agent, excluding self-deletion. |
+| `agent_options` | `agent` | Discover eligible administration values and targets. |
+| `agent_avatar_set` | `agent` | Register an avatar from an authorised canonical URI. |
+| `agent_avatar_delete` | `agent` | Remove the authorised target's avatar. |
+| `agent_avatar_generate` | `agent` | Generate with the caller's image model and await registration. |
+| `agent_team_list` | `agent` | List an authorised agent's team memberships. |
+| `agent_team_set` | `agent` | Explicitly replace eligible memberships. |
+| `agent_service_list` | `agent` | List available Services for a manageable target. |
+| `agent_connection_list` | `agent` | List target connections within delegated scope. |
+| `agent_connection_get` | `agent` | Read a connection with masked secrets and inheritance. |
+| `agent_connection_create` | `agent` | Create an eligible optional connection. |
+| `agent_connection_update` | `agent` | Update a connection without changing its identity. |
+| `agent_connection_delete` | `agent` | Delete an authorised optional connection. |
+| `agent_connection_params_set` | `agent` | Set eligible local parameters in a batch. |
+| `agent_connection_param_delete` | `agent` | Remove a local parameter value. |
+| `agent_connection_function_list` | `agent` | Read connection function modes. |
+| `agent_connection_function_set` | `agent` | Set a local override or restore inheritance. |
+| `agent_harness_get` | `agent` | Read harness configuration and capabilities. |
+| `agent_harness_set` | `agent` | Select a compatible harness subject to blockers. |
+| `agent_harness_reset` | `agent` | Reset harness configuration under its contract. |
+| `agent_harness_status` | `agent` | Read the target harness's current state. |
+| `agent_harness_action` | `agent` | Execute a lifecycle action offered by the harness. |
+| `agent_harness_logs` | `agent` | Read bounded, redacted logs. |
+| `agent_harness_blockers` | `agent` | List Tasks blocking a harness operation. |
+| `agent_title_list` | `agent` | List titles with pagination. |
+| `agent_title_create` | `agent` | Create a title with global rights. |
+| `agent_title_update` | `agent` | Update a title with global rights. |
+| `agent_title_delete` | `agent` | Delete an unreferenced title with global rights. |
+| `agent_group_list` | `agent` | List accessible agent groups. |
+| `agent_group_create` | `agent` | Create a shared group with global rights. |
+| `agent_group_update` | `agent` | Update a shared group with global rights. |
+| `agent_group_delete` | `agent` | Delete a group, detaching associated links and access. |
 
 ### Delegated Service administration
 
-These 22 functions require ServiceAdmin. Built-in definitions and human delegations stay protected.
+These 22 functions require Services. Built-in definitions and human delegations stay protected.
 
 | Function | Family | Action and result |
 |---|---|---|
-| `service_admin_list` | `service_admin` | List Services in the global catalogue. |
-| `service_admin_get` | `service_admin` | Read a definition, version and redacted settings. |
-| `service_admin_create` | `service_admin` | Create a secret-free definition or adopt a tested human candidate. |
-| `service_admin_update` | `service_admin` | Update a custom definition at the expected version. |
-| `service_admin_impact` | `service_admin` | Inspect direct dependencies before deletion. |
-| `service_admin_delete` | `service_admin` | Delete a dependency-free definition without an implicit cascade. |
-| `service_admin_global_params_set` | `service_admin` | Atomically set global values and enforcement. |
-| `service_admin_mcp_test` | `service_admin` | Test an HTTP/SSE candidate without saving or business calls. |
-| `service_admin_function_list` | `service_admin` | List functions and global state. |
-| `service_admin_function_get` | `service_admin` | Read a function's detailed schema and state. |
-| `service_admin_function_set` | `service_admin` | Set global mode and report local overrides. |
-| `service_admin_connection_list` | `service_admin` | List connections with pagination. |
-| `service_admin_connection_get` | `service_admin` | Read a connection and masked values. |
-| `service_admin_connection_create` | `service_admin` | Create an initially inactive connection. |
-| `service_admin_connection_update` | `service_admin` | Update a connection at the expected version. |
-| `service_admin_connection_delete` | `service_admin` | Delete an authorised optional connection. |
-| `service_admin_connection_params_set` | `service_admin` | Write local parameters atomically in a batch. |
-| `service_admin_connection_param_delete` | `service_admin` | Explicitly remove a local parameter. |
-| `service_admin_connection_test` | `service_admin` | Diagnose a connection, even inactive, without activating it. |
-| `service_admin_connection_function_list` | `service_admin` | List effective permissions and local availability. |
-| `service_admin_connection_function_set` | `service_admin` | Set local mode or restore inheritance. |
-| `service_admin_catalog_refresh` | `service_admin` | Refresh catalogues directly with partial results and targeted retry. |
+| `service_admin_list` | `service` | List Services in the global catalogue. |
+| `service_admin_get` | `service` | Read a definition, version and redacted settings. |
+| `service_admin_create` | `service` | Create a secret-free definition or adopt a tested human candidate. |
+| `service_admin_update` | `service` | Update a custom definition at the expected version. |
+| `service_admin_impact` | `service` | Inspect direct dependencies before deletion. |
+| `service_admin_delete` | `service` | Delete a dependency-free definition without an implicit cascade. |
+| `service_admin_global_params_set` | `service` | Atomically set global values and enforcement. |
+| `service_admin_mcp_test` | `service` | Test an HTTP/SSE candidate without saving or business calls. |
+| `service_admin_function_list` | `service` | List functions and global state. |
+| `service_admin_function_get` | `service` | Read a function's detailed schema and state. |
+| `service_admin_function_set` | `service` | Set global mode and report local overrides. |
+| `service_admin_connection_list` | `service` | List connections with pagination. |
+| `service_admin_connection_get` | `service` | Read a connection and masked values. |
+| `service_admin_connection_create` | `service` | Create an initially inactive connection. |
+| `service_admin_connection_update` | `service` | Update a connection at the expected version. |
+| `service_admin_connection_delete` | `service` | Delete an authorised optional connection. |
+| `service_admin_connection_params_set` | `service` | Write local parameters atomically in a batch. |
+| `service_admin_connection_param_delete` | `service` | Explicitly remove a local parameter. |
+| `service_admin_connection_test` | `service` | Diagnose a connection, even inactive, without activating it. |
+| `service_admin_connection_function_list` | `service` | List effective permissions and local availability. |
+| `service_admin_connection_function_set` | `service` | Set local mode or restore inheritance. |
+| `service_admin_catalog_refresh` | `service` | Refresh catalogues directly with partial results and targeted retry. |
 
 ### Document analysis
 
 | Function | Family | Action and result |
 |---|---|---|
-| `document_analyze` | `galaris` | Start a private resumable URI analysis with an inference-call budget. |
-| `document_analysis_get` | `galaris` | Read progress, answers and coverage after source checks. |
-| `document_analysis_cancel` | `galaris` | Request cancellation while retaining completed batches. |
+| `document_analyze` | `document` | Start a private resumable URI analysis with an inference-call budget. |
+| `document_analysis_get` | `document` | Read progress, answers and coverage after source checks. |
+| `document_analysis_cancel` | `document` | Request cancellation while retaining completed batches. |
 
 ### Goals
 
 | Function | Family | Action/result |
 |---|---|---|
-| `goal_create` | `goal_management` | Create with responsible agent, human referrer and trigger/frequency. |
-| `goal_update` | `goal_management` | Edit allowed fields at the expected revision. |
-| `goal_update_suivi` | `galaris` | Replace visible Goal HTML follow-up without arbitrarily changing state. |
-| `goal_pause` | `goal_management` | Pause future cycles. |
-| `goal_resume` | `goal_management` | Resume, including ended Goals while preserving history. |
-| `goal_complete` | `goal_management` | Finish the objective and stop future cycles. |
-| `goal_run_now` | `galaris` | Request an immediate cycle under activation/availability conditions. |
-| `goal_ask_referrer` | `galaris` | Ask a correlated human question, await reply and apply reminders/pause. |
-| `goal_retrospective_evidence` | `galaris` | During weekly review, sample the agent's own terminal Tasks and read redacted observations and evidence references. |
-| `goal_retrospective_learn` | `galaris` | Apply an evidence-backed improvement to a personal skill during weekly review. |
-| `goal_retrospective_record` | `galaris` | Save HTML tracking for the active retrospective at the expected revision. |
-| `goal_delete` | `goal_management` | Logically delete when no unfinished cycle prevents it. |
+| `goal_create` | `goal` | Create with responsible agent, human referrer and trigger/frequency. |
+| `goal_update` | `goal` | Edit allowed fields at the expected revision. |
+| `goal_update_suivi` | `goal` | Replace visible Goal HTML follow-up without arbitrarily changing state. |
+| `goal_pause` | `goal` | Pause future cycles. |
+| `goal_resume` | `goal` | Resume, including ended Goals while preserving history. |
+| `goal_complete` | `goal` | Finish the objective and stop future cycles. |
+| `goal_run_now` | `goal` | Request an immediate cycle under activation/availability conditions. |
+| `goal_ask_referrer` | `goal` | Ask a correlated human question, await reply and apply reminders/pause. |
+| `goal_retrospective_evidence` | `goal` | During weekly review, sample the agent's own terminal Tasks and read redacted observations and evidence references. |
+| `goal_retrospective_learn` | `goal` | Apply an evidence-backed improvement to a personal skill during weekly review. |
+| `goal_retrospective_record` | `goal` | Save HTML tracking for the active retrospective at the expected revision. |
+| `goal_delete` | `goal` | Logically delete when no unfinished cycle prevents it. |
 
 Goals/cycles also use `file_list`, `file_search` and `file_read` on `galaris://` collections. Cross-agent
 management needs the specialised connection; ordinary actions stay within the agent's scope.
@@ -4663,10 +4662,10 @@ management needs the specialised connection; ordinary actions stay within the ag
 
 | Function | Family | Action and result |
 |---|---|---|
-| `contact_list` | `galaris` | Search and paginate the calling agent's private address book. |
-| `contact_get` | `galaris` | Read an owned Contact's identities and coordinates by UUID. |
-| `contact_create` | `galaris` | Create a private contact with name and email, phone or postal address; asks by default and sends no message. |
-| `contact_update` | `galaris` | Edit an owned contact's name and coordinates while preserving identities; asks by default. |
+| `contact_list` | `contact` | Search and paginate the calling agent's private address book. |
+| `contact_get` | `contact` | Read an owned Contact's identities and coordinates by UUID. |
+| `contact_create` | `contact` | Create a private contact with name and email, phone or postal address; asks by default and sends no message. |
+| `contact_update` | `contact` | Edit an owned contact's name and coordinates while preserving identities; asks by default. |
 
 ### Memory, sharing and skills
 
@@ -4732,8 +4731,8 @@ application–Dataset consent is managed in the human UI, not exposed through MC
 
 | Function | Family | Action/result |
 |---|---|---|
-| `search_web` | `search` | Query SearXNG, return sources and report partial/degraded/failed search. |
-| `services_list` | `galaris` | Inspect permitted functions and distinguish current-run availability from a required new context. |
+| `search_web` | `browser` | Query SearXNG, return sources and report partial/degraded/failed search. |
+| `services_list` | `service` | Inspect permitted functions and distinguish current-run availability from a required new context. |
 | `browser_open` | `browser` | Open an isolated session with optional viewport. |
 | `browser_navigate` | `browser` | Change session URL. |
 | `browser_content` | `browser` | Read accessible content/element references, continuing by offset. |
@@ -4763,19 +4762,19 @@ application–Dataset consent is managed in the human UI, not exposed through MC
 | `messenger_room_send_file` | `messenger` | Attach a canonical-URI resource to a room. |
 | `messenger_send_file_to_user` | `messenger` | Deliver a canonical file to a specific user. |
 | `messenger_send_audio_message` | `messenger` | Produce MP3 using agent TTS and deliver to the recipient's resolved room. |
-| `voice_call_start` | `voice` | Start through the connection's voice provider. |
-| `voice_call_stop` | `voice` | Stop within the authorised scope. |
-| `voice_call_list` | `voice` | List accessible calls. |
-| `voice_turn_get` | `platform_admin` | Full administrative voice-turn dossier and correlated calls. |
+| `voice_call_start` | `chat` | Start through the connection's voice provider. |
+| `voice_call_stop` | `chat` | Stop within the authorised scope. |
+| `voice_call_list` | `chat` | List accessible calls. |
+| `voice_turn_get` | `chat` | Full administrative voice-turn dossier and correlated calls. |
 
 ### Media
 
 | Function | Family | Action/result |
 |---|---|---|
-| `image_generate` | `image` | Generate/edit/compose using references and destination; return actual dimensions. |
-| `image_read` | `image` | Analyse URI and persist active-attachment Memory description or private agent/URI memory; storage failure prevents success. |
-| `image_from_pdf` | `image` | Render a physical PDF page as PNG in an authorized destination, preserving the original, without inference or OCR. |
-| `audio_transcribe` | `audio` | Transcribe audio/video or fetch YouTube subtitles, retain verbatim and synthesise long content. |
+| `image_generate` | `multimedia` | Generate/edit/compose using references and destination; return actual dimensions. |
+| `image_read` | `multimedia` | Analyse URI and persist active-attachment Memory description or private agent/URI memory; storage failure prevents success. |
+| `image_from_pdf` | `multimedia` | Render a physical PDF page as PNG in an authorized destination, preserving the original, without inference or OCR. |
+| `audio_transcribe` | `multimedia` | Transcribe audio/video or fetch YouTube subtitles, retain verbatim and synthesise long content. |
 | `audio_read` | `multimedia` | Analyse sounds/music/audible events against a question. |
 | `video_read` | `multimedia` | Analyse video with supplied/embedded subtitles or transcription, retaining provenance and coverage. |
 | `sound_generate` | `multimedia` | Start sound-effect generation. |
@@ -4818,62 +4817,62 @@ application–Dataset consent is managed in the human UI, not exposed through MC
 
 | Function | Family | Action/result |
 |---|---|---|
-| `process_list` | `galaris` | Discover assigned Processes. |
-| `process_get` | `galaris` | Read definition, parameters and start contract. |
-| `process_start` | `galaris` | Start with structured input/files and durable tracking. |
-| `process_list_runs` | `galaris` | List agent-scoped executions. |
-| `process_get_run` | `galaris` | Read status, output, resources and error. |
-| `process_analyze_run` | `galaris` | Produce/read analysis of an authorised run dossier. |
+| `process_list` | `process` | Discover assigned Processes. |
+| `process_get` | `process` | Read definition, parameters and start contract. |
+| `process_start` | `process` | Start with structured input/files and durable tracking. |
+| `process_list_runs` | `process` | List agent-scoped executions. |
+| `process_get_run` | `process` | Read status, output, resources and error. |
+| `process_analyze_run` | `process` | Produce/read analysis of an authorised run dossier. |
 
 ### Native Processes: definitions, activities and debugging
 
 | Function | Family | Action/result |
 |---|---|---|
-| `processus_get` | `galaris` | Read authorised operational progress, waits, latest activity and available run actions. |
-| `process_definition_read` | `galaris` | Audit current saved BPMN, graph, instructions and actors of a readable definition. |
-| `process_create` | `galaris` | Create a private BPMN Process from graph/XML with immutable code. |
-| `process_update` | `galaris` | Update a definition at its expected revision; active runs retain frozen graphs. |
-| `process_validate` | `galaris` | Validate graph/BPMN without saving or business effects. |
-| `process_history` | `galaris` | Page saved definition states. |
-| `process_restore` | `galaris` | Restore a save as a new current version with revision checks. |
-| `process_archive` | `galaris` | Archive/reactivate a definition without deleting runs. |
-| `process_share` | `galaris` | As owner, grant/remove an agent's read/edit access. |
-| `process_activity_complete` | `galaris` | Submit validated current Process activity output and optional message from its Task only. |
-| `process_activity_question` | `galaris` | Ask a correlated question of the human launcher and suspend the current activity until reply. |
-| `process_run_inspect` | `galaris` | Read frozen graph, paginated occurrences, data and events. |
-| `process_run_children` | `galaris` | Page authorised immediate children without a business-depth ceiling. |
-| `process_run_occurrence` | `galaris` | Inspect an exact occurrence's prompts, inputs/outputs, attempts, Tasks and children. |
-| `process_run_metrics` | `galaris` | Read direct/inclusive costs/tokens, per-Task accounting and partial coverage. |
-| `process_run_control` | `galaris` | Persist pause, resume, step or breakpoints with idempotent command key and revision. |
-| `process_run_cancel` | `galaris` | Request cancellation and confirm admitted activities actually terminate. |
-| `process_run_retry` | `galaris` | Explicitly relaunch a terminal run with original input/latest definition and a required idempotency key. |
+| `processus_get` | `process` | Read authorised operational progress, waits, latest activity and available run actions. |
+| `process_definition_read` | `process` | Audit current saved BPMN, graph, instructions and actors of a readable definition. |
+| `process_create` | `process` | Create a private BPMN Process from graph/XML with immutable code. |
+| `process_update` | `process` | Update a definition at its expected revision; active runs retain frozen graphs. |
+| `process_validate` | `process` | Validate graph/BPMN without saving or business effects. |
+| `process_history` | `process` | Page saved definition states. |
+| `process_restore` | `process` | Restore a save as a new current version with revision checks. |
+| `process_archive` | `process` | Archive/reactivate a definition without deleting runs. |
+| `process_share` | `process` | As owner, grant/remove an agent's read/edit access. |
+| `process_activity_complete` | `process` | Submit validated current Process activity output and optional message from its Task only. |
+| `process_activity_question` | `process` | Ask a correlated question of the human launcher and suspend the current activity until reply. |
+| `process_run_inspect` | `process` | Read frozen graph, paginated occurrences, data and events. |
+| `process_run_children` | `process` | Page authorised immediate children without a business-depth ceiling. |
+| `process_run_occurrence` | `process` | Inspect an exact occurrence's prompts, inputs/outputs, attempts, Tasks and children. |
+| `process_run_metrics` | `process` | Read direct/inclusive costs/tokens, per-Task accounting and partial coverage. |
+| `process_run_control` | `process` | Persist pause, resume, step or breakpoints with idempotent command key and revision. |
+| `process_run_cancel` | `process` | Request cancellation and confirm admitted activities actually terminate. |
+| `process_run_retry` | `process` | Explicitly relaunch a terminal run with original input/latest definition and a required idempotency key. |
 
 ### Engine and execution administration
 
 | Function | Family | Action/result |
 |---|---|---|
-| `process_admin_engines` | `process_admin` | List engines/capabilities. |
-| `process_admin_sync` | `process_admin` | Synchronise engine definitions. |
-| `process_admin_list` | `process_admin` | List all-agent definitions within administrative scope. |
-| `process_admin_get` | `process_admin` | Read an administrative definition. |
-| `process_admin_create` | `process_admin` | Create definition/assignment. |
-| `process_admin_update` | `process_admin` | Edit definition, engine or assignment. |
-| `process_admin_delete` | `process_admin` | Delete an authorised definition. |
-| `process_admin_start` | `process_admin` | Start for the selected agent. |
-| `process_admin_list_runs` | `process_admin` | Search platform runs. |
-| `process_admin_get_run` | `process_admin` | Read detailed run information. |
-| `process_admin_refresh_run` | `process_admin` | Refresh remote status. |
-| `process_admin_cancel_run` | `process_admin` | Request cancellation according to engine capability. |
-| `process_admin_retry_run` | `process_admin` | Create an allowed recovery/new attempt. |
-| `process_admin_analyze_run` | `process_admin` | Analyse execution evidence. |
-| `process_admin_delete_run` | `process_admin` | Delete under state/retention rules. |
+| `process_admin_engines` | `process` | List engines/capabilities. |
+| `process_admin_sync` | `process` | Synchronise engine definitions. |
+| `process_admin_list` | `process` | List all-agent definitions within administrative scope. |
+| `process_admin_get` | `process` | Read an administrative definition. |
+| `process_admin_create` | `process` | Create definition/assignment. |
+| `process_admin_update` | `process` | Edit definition, engine or assignment. |
+| `process_admin_delete` | `process` | Delete an authorised definition. |
+| `process_admin_start` | `process` | Start for the selected agent. |
+| `process_admin_list_runs` | `process` | Search platform runs. |
+| `process_admin_get_run` | `process` | Read detailed run information. |
+| `process_admin_refresh_run` | `process` | Refresh remote status. |
+| `process_admin_cancel_run` | `process` | Request cancellation according to engine capability. |
+| `process_admin_retry_run` | `process` | Create an allowed recovery/new attempt. |
+| `process_admin_analyze_run` | `process` | Analyse execution evidence. |
+| `process_admin_delete_run` | `process` | Delete under state/retention rules. |
 
 ### Product documentation
 
 | Function | Family | Action/result |
 |---|---|---|
-| `documentation_catalog` | `platform_admin` | Discover version/languages/domains/entry points; also permits corpus reads under `galaris://documentation/`. |
-| `documentation_search` | `platform_admin` | Search installed sources with filters, excerpts, URIs, sections, status/provenance and text fallback when semantic search is unavailable. |
+| `documentation_catalog` | `galaris` | Discover version/languages/domains/entry points; also permits corpus reads under `galaris://documentation/`. |
+| `documentation_search` | `galaris` | Search installed sources with filters, excerpts, URIs, sections, status/provenance and text fallback when semantic search is unavailable. |
 
 ### Lab: Process campaigns
 
@@ -4969,15 +4968,15 @@ These functions additionally require Admin inspection permissions.
 
 | Function | Family | Action/result |
 |---|---|---|
-| `llm_calls` | `platform_admin` | Obtain recent call identifiers within a timestamped period. |
-| `llm_call` | `platform_admin` | Inspect UUID/unique-prefix calls: request, response, tools, usage, cost, errors and context. |
+| `llm_calls` | `galaris` | Obtain recent call identifiers within a timestamped period. |
+| `llm_call` | `galaris` | Inspect UUID/unique-prefix calls: request, response, tools, usage, cost, errors and context. |
 
 ### Incident journal
 
 | Function | Family | Action/result |
 |---|---|---|
-| `incidents_list` | `platform_admin` | List LLM/tool failures by filters, dates and pages within administrative scope, without loading traces. |
-| `incident_get` | `platform_admin` | Read an authorized incident's correlations and redacted trace, without replay, cleanup or status changes. |
+| `incidents_list` | `galaris` | List LLM/tool failures by filters, dates and pages within administrative scope, without loading traces. |
+| `incident_get` | `galaris` | Read an authorized incident's correlations and redacted trace, without replay, cleanup or status changes. |
 
 <a id="couverture"></a>
 ## 31. Module coverage and sources

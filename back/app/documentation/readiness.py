@@ -48,18 +48,20 @@ class DocumentationReady:
     build_version: str
     pages: int
     indexed_passages: int
+    removed_passages: int
     checked_languages: tuple[str, ...]
 
 
 async def refresh_and_check(corpus: Corpus, *, expected_revision: str | None = None) -> DocumentationReady:
-    """Synchronize lexical retrieval and prove that both navigation guides are retrievable.
+    """Replace retired passages and prove that both navigation guides are retrievable.
 
     Runs in the caller's transaction. Semantic indexing remains incremental and never
     makes deployment depend on an external model. No agent/Tool permissions are changed.
     """
-    from .search import index_status, search, synchronize
+    from .search import index_status, prune_retired, search, synchronize
 
     revision = check_corpus(corpus, expected_revision=expected_revision)
+    removed_passages = await prune_retired(corpus)
     await synchronize(corpus)
     for language in ("fr", "en"):
         page = page_at(corpus, f"docs/{language}/user/navigation.md")
@@ -73,4 +75,4 @@ async def refresh_and_check(corpus: Corpus, *, expected_revision: str | None = N
     if status["indexed_passages"] != len(corpus.passages):
         raise ValueError("The current documentation lexical index is incomplete.")
     return DocumentationReady(revision, corpus.revision, corpus.build_version,
-                              len(corpus.pages), len(corpus.passages), ("fr", "en"))
+                              len(corpus.pages), len(corpus.passages), removed_passages, ("fr", "en"))

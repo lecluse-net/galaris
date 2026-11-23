@@ -43,8 +43,8 @@ history and voice capabilities vary by channel.
 
 Every agent has a durable identity, mission, personality, skills and tools. Specialists can join
 teams of humans and agents, with access suited to their roles.
-Optional **AgentAdmin** and **ServiceAdmin** also delegate configuration: AgentAdmin respects
-the human manager's rights; ServiceAdmin manages the global catalogue through granted functions.
+Optional **Agent** and **Services** also delegate configuration: Agent respects
+the human manager's rights; Services manages the global catalogue through granted functions.
 Secrets stay server-side and humans assign administrative delegations.
 
 While preparing a study, an agent can ask a colleague for research or review. That contribution

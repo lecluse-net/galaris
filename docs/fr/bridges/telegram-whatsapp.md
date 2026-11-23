@@ -362,7 +362,7 @@ Prérequis :
 - la room contient exactement le bot et un interlocuteur ;
 - les événements de signalisation ne sont pas chiffrés ;
 - le homeserver expose idéalement `/_matrix/client/v3/voip/turnServer` avec des identifiants TURN ;
-- l’agent possède une connexion active à l’outil `voice` et un driver compatible voix.
+- la réponse automatique est activée sur la connexion Chat de l’agent et son driver prend en charge la voix.
 
 L’auto-réponse respecte `VOICE_AUTO_ANSWER_ENABLED` et la durée de l’invitation. Le flux `/sync`
 reste unique : un bus interne diffuse les événements d’appel au transport afin d’éviter deux

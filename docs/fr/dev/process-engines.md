@@ -310,12 +310,11 @@ pas confirmé par ce service.
    Ces nombres sont synthétiques : prendre le Service et l'agent réels autorisés.
    Le CRUD utilise `PROCESS_ADMIN` et le périmètre de gestion ; la découverte HTTP
    globale requiert également le périmètre global.
-6. L'agent utilise `process_list`, `process_get`, puis `process_start` du package
-   socle `galaris`. Ces fonctions et l'affectation doivent être autorisées.
+6. L'agent utilise `process_list`, `process_get`, puis `process_start` du service
+   `process`. Ces fonctions et l'affectation doivent être autorisées.
    Le contrôleur conversationnel utilise `conversation_process_start`.
-   Le package optionnel `process_admin`, inactif par défaut, fournit les équivalents
-   administratifs ; préciser `service_code="example"` car plusieurs valeurs par défaut
-   restent `n8n`.
+   Le même service expose les fonctions `process_admin_*`. Pour les appels qui prennent un
+   moteur, préciser `service_code="example"` car le défaut reste `n8n`.
 7. Régénérer et vérifier la documentation et l'architecture. En développement,
    `make sync-db` applique les données déclarées. L'ajout d'un module ou de sa
    configuration d'activation nécessite son chargement au bootstrap ; le simple hot

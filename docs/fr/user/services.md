@@ -17,6 +17,25 @@ Cliquer sur le nom ou la description ouvre sa fiche complète.
 La même icône accompagne le service dans la liste des connexions, les filtres et les
 listes de sélection, notamment pour créer une connexion ou régler les autorisations.
 
+Chaque agent dispose des connexions **Contact** et **Tâches**. Dans **Autorisations**,
+sélectionner le service qui porte l’outil à régler. **Multimédia** regroupe les outils audio,
+image et vidéo. **Navigateur** contient aussi `search_web`. Les équipes se règlent dans
+**Agent**, les outils `document_*` dans **Documents** et les `conversation_process_*` dans
+**Processus**. **Chat** regroupe le canal interne, les appels et les choix en attente.
+Les outils conversationnels restent disponibles dans leur contexte prévu. Le
+[guide des services intégrés](../admin/service-administration.md)
+indique où régler les permissions et les portées.
+
+Les outils Contact accèdent au carnet de l’agent par défaut. Un gestionnaire global peut
+étendre le périmètre aux agents de ses équipes ou à tous les agents dans **Permissions →
+Contact**. Chaque outil conserve sa permission. Pour consulter ou modifier un carnet
+délégué, utilisez les fonctions Contact.
+
+Les connexions **Documents** et **Tâches** disposent elles aussi de leur propre portée.
+Les outils Documents exigent les droits du document en plus du périmètre de la connexion.
+Dans **Permissions → Tâches**, accordez la portée **Équipe** pour que l'agent puisse
+déléguer du travail aux membres de ses équipes.
+
 Cliquer sur **Nouveau service** pour ouvrir la modale du catalogue, rechercher le fournisseur puis
 choisir **Configurer une copie**. La fiche s'ouvre dans l'éditeur habituel : vérifier le
 nom, compléter les adresses propres à votre installation, choisir les protocoles utiles

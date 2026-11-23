@@ -650,7 +650,7 @@ active attachments, including existing attachments. `DREAM_ATTACHMENT_TEXT_ENABL
 `DREAM_ATTACHMENT_DOCUMENT_ENABLED`, `DREAM_ATTACHMENT_IMAGE_ENABLED` and
 `DREAM_ATTACHMENT_VIDEO_ENABLED` all default to false. Dream preferences expose four checkboxes
 and a cost warning recommending suitable local models. They share Dream's idle gating and rotation.
-The composition root injects Image and Audio services through Dream's public ports. Audio decoding
+The composition root injects image and audio implementations through Dream's public ports. Audio decoding
 runs in a bounded process, killed and reaped on cancellation before temporary files are cleaned up.
 UTF-8/UTF-16 text, text PDFs and DOCX/XLSX/PPTX/ODT/ODS/ODP documents are extracted in a bounded
 process and summarized by the owner's Dream model (the current profile for human-owned documents).
@@ -1166,9 +1166,18 @@ a restart. See the [API cache decision](../../../project/decisions/0138-request-
 ### Agentic Management MCP Packages
 
 `app.contact.mcp` exposes `contact_list`, `contact_get`, `contact_create` and `contact_update`
-under the `galaris` system Service, in Tasks and conversations. Ownership always comes from
-`ctx.agent_id`, without an elevation parameter. Mutations reuse the Contacts contracts and
-preserve identities and omitted coordinates. Writes require approval by default.
+under the `contact` system Service. Calls check the caller's connection permission and
+read its local `services.management_scope`. The list filters authorized owners before counting
+and paginating. Pass `owner_agent_id` to target an address book when listing or creating contacts.
+Creation defaults to the caller's own address book. Writes require approval by default, and
+updates preserve identities and omitted coordinates.
+
+Documents and Tasks tools use their own connection scope, with `personal` as the
+default. Documents tools check the target owner and the resource ACL. Delegated
+sharing requires write access. Document analysis rechecks source access between
+steps. Task MCP projections use the Tasks scope, including `galaris://task/`.
+The scope filter runs before pagination and UUID-prefix resolution. Work tracking
+targets the current task.
 
 The `galaris://contact/<uuid>` projection also accepts `file_write` and `file_edit`:
 only `display_name` and `coordinates` are editable. The Contact port bound at bootstrap
@@ -1195,9 +1204,9 @@ namespace to avoid collisions between providers.
 Self-service Goal reads pass through the `file_sharing` Service, via
 `file_list`, `file_search`, and `file_read` under `galaris://goal/`.
 The commands `goal_update_suivi`, `goal_run_now`, and
-`goal_ask_referrer` belong to the core `galaris` package. `app.goal` enforces server-side that
-the Goal belongs to the calling agent. `goal_ask_referrer` additionally requires the Goal's
-current task and never receives administrative elevation.
+`goal_ask_referrer` belong to the `goal` Service. `app.goal` checks the Goal's owner and the
+delegated scope. `goal_ask_referrer` requires the current Task of the calling agent's own
+Goal at every management scope.
 
 `file_list("galaris://goal/")` exposes one directory per Goal, named after its title,
 at the stable URI `galaris://goal/<goal-uuid>/`. It contains the Goal reference first,
@@ -1211,34 +1220,27 @@ Assigned Process definitions also pass through `galaris://process/`; each resour
 is addressed by the same `workflow_id` as `process_get` and `process_start`. This projection
 remains read-only and its pagination is executed in the SQL query.
 
-Tasks are fully discovered and read through `galaris://task/`. The core
-`galaris` package nevertheless retains `task_get` as a compact operational view: it projects
+Tasks are fully discovered and read through `galaris://task/`. The Tasks Service
+(`task`) exposes `task_get` as a compact operational view: it projects
 progress, expectations, pause, and amendability without replacing the complete snapshot from
 `file_read`.
 
-Browser, Search, Image, and Multimedia connections start active by default. The
-embedded Console is provisioned when an agent using the internal harness is
-created and activated after SSH/SFTP verification. If the executor is unavailable,
-the connection remains inactive; provisioning can be retried from Connections.
-Browser and Search are enabled for conversations on first initialization; Console, Image
-and Multimedia require conversation access to be enabled in the Service. Existing settings
-and restrictions are preserved.
+Browser (`browser`) and Multimedia (`multimedia`) connections start active. The native list
+admits `search_web` and `image_from_pdf` in conversation subject to function permissions and
+runtime support. The embedded Console is provisioned for the internal harness and becomes
+active after SSH/SFTP verification. Provisioning can be retried from Connections.
 
-The `goal_management` and `process_admin` packages are declared in
-`app.services.mandatory_services` with `default_active=False`. Synchronization therefore creates a
-connection for every compatible agent, but grants it no functions by default. In contrast,
-`skills` starts active with personal scope, preserving existing restrictions. An active
-`goal_management` connection with administrative scope broadens shared Goal functions to agents
-within its local `personal`, `team` or `all` scope and exposes only the
-administrative commands `goal_create`, `goal_update`, `goal_delete`, `goal_pause`,
-`goal_resume`, and `goal_complete`. Preserve this property for every delegated administrative
-capability. `usage` or missing scope grants no administration. `app.goal.mcp` rechecks the
+`goal`, `skills` and `process` start active with personal scope and preserve existing restrictions.
+The `goal` Service includes `goal_create`, `goal_update`, `goal_delete`, `goal_pause`,
+`goal_resume` and `goal_complete`. A `team` or `all` delegation extends operations to the
+granted scope. The `usage` scope retains personal functions. `app.goal.mcp` rechecks the
 connection, scope and teams
 when each administrative command is called, even if the function had already been mounted in a
 toolset. Without this witness, shared functions inject the calling agent's identifier into the
 service request and respond as if every foreign Goal were nonexistent.
 
-The `galaris`, `conversation`, `document`, `memory` and `file_sharing` Services carry `can_disable=false`.
+The `galaris`, `chat`, `document`, `memory`, `file_sharing`, `calendar`, `contact` and `task`
+Services carry `can_disable=false`. See the [Service guide](../admin/service-administration.md).
 This persisted property is software-owned and absent from write contracts. Their connections are
 created for every agent and converge to active, including previously disabled connections. The API protects their definitions, active connections and system parameters from ordinary
 mutations. Their functions retain Enabled/Disabled/Ask modes and the global/agent cascade,
@@ -1247,9 +1249,9 @@ remains usable for their functions. Optional Services retain
 administrator-owned activation and restrictions. Business ACLs, harness compatibility and
 context restrictions still apply.
 
-The `conversation_*` control functions, including responses to Process human requests,
-belong to the `conversation` Service alongside
-`document_show`; they remain limited to the conversation controller. Clicking a described Service
+Tasks owns `conversation_task_*`. Processes owns `conversation_process_*`, including responses
+to human requests. Documents owns `document_show`. These functions remain restricted to
+conversation context. Clicking a described Service
 opens its description; empty descriptions have no link. The shipped catalog describes every
 native Service and known messaging/file bridge. Synchronization fills empty bridge descriptions
 and upgrades unchanged original short defaults without overwriting custom prose. Descriptions
@@ -1262,12 +1264,10 @@ agent's model. Attributed facts, decisions, commitments and open questions are s
 HTML through Memory acquisition. The ineffective `replace_existing` argument is removed; normal
 deduplication rules apply. Model failures store neither a raw transcript nor a partial memory.
 
-`platform_admin` is a fourth management package, also inactive by default. It exposes
-`conversation_round_get` and `voice_turn_get`, two primary-UUID reads intended for
-complete analysis of text and voice conversational datasets, plus `llm_call` and `llm_calls` for
-model-call inspection. They include execution traces and
-all correlated `LLMCall`s. Each wrapper rechecks the active `platform_admin` connection at call
-time; prior function discovery alone is not durable authorization.
+Chat owns `conversation_round_get` and `voice_turn_get`, which read the complete text or
+voice dataset by primary UUID, with execution traces and correlated `LLMCall`s. Galaris owns
+`llm_call` and `llm_calls`. These tools are disabled by default. Each call checks the owning
+connection’s function permission and the live management scope delegated on Services.
 
 The failure journal is also exposed through `incidents_list` (paginated list with inclusive
 timezone-aware date, kind, category, recovery and search filters), then `incident_get`
@@ -1279,7 +1279,7 @@ activation and delegation on every call.
 `app.goal.mcp` adapts the existing business service without duplicating its persistence:
 
 - creation with explicit and distinct owner and agent referrer;
-- lists and inspection bounded to the owner, except with `goal_management` elevation;
+- lists and inspection bounded to the owner by default, with delegation through `goal`;
 - cycle history separate from the Goal record and explicitly editable HTML tracking;
 - update and pause/resume/close/immediate-execution commands protected by
   `expected_revision`;
@@ -1306,7 +1306,7 @@ and mapping of contracts to services.
 
 ### Audio, Video, and Large Files
 
-`app.audio` exposes `audio_transcribe` as a native MCP tool under the integrated `audio` code. Its
+`app.audio` exposes `audio_transcribe` as a native MCP tool on the Multimedia (`multimedia`) Service. Its
 `file` argument is either a readable canonical URI from `app.file_share` or a YouTube HTTPS URL,
 never binary content in the tool schema. The MCP contract remains unique so the model does not
 have to choose between multiple functions depending on whether the source is audio, video, or
@@ -1451,9 +1451,8 @@ registration, configuration, assignments and a processing adapter independent of
 along with the recovery guarantees to verify. Multiple engines can coexist;
 each definition's Service selects its engine.
 
-The six personal functions for discovery, launch and external monitoring belong to the
-core `galaris` package, extended by native commands; there is
-no longer a `process` connection to activate. The definition explicitly associates a workflow
+The `process` Service groups discovery, launch, monitoring and native commands.
+An external definition explicitly associates a workflow
 with an agent, and list, read, launch, and tracking tools systematically filter or revalidate
 that agent. Both drivers add to the prompt a compact catalog of only the processes assigned to
 the caller, including when the caller has administrative rights. All are displayed when the
@@ -1461,11 +1460,9 @@ agent has at most ten; beyond that, the configured multilingual vector model sel
 most relevant to the request, without a threshold, with deterministic lexical fallback. A
 compatible Process retains priority over any Task creation or modification.
 
-The separate `process_admin` package is auto-connected **inactive**. Explicit activation gives
-the administrator agent functions for discovering engines, CRUD of definitions with a target
-`agent_id`, and managing runs for all agents. These functions all carry the `process_admin_`
-prefix so a model never confuses them with personal access. The `galaris` system skill
-documents both surfaces, but the prompt and actual tool list remain the access authority.
+The `process_admin_*` functions use the same service and enforce the connection's management scope.
+Team and global scopes require human delegation. Discovering or synchronizing engines and
+binding an external workflow require global scope.
 
 The canonical API is `/api/processes/...` and the frontend page is `/process`. The former
 `/api/processus/...` prefix remains a hidden, deprecated alias so already deployed callbacks

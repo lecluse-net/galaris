@@ -15,8 +15,10 @@ Une identité d’admission réutilisée doit conserver la même requête et la 
 `LLMInferenceAttempt` possède le lease, le résultat terminal et les appels physiques associés.
 `LLMInferenceCommand` conserve les reçus idempotents. `LLMCall` reste l’autorité de facturation ;
 `LLMCallEvent` conserve requêtes, messages, résultats et trames de protocole. Ces tables sont
-déclaratives et convergent par DbAdmin. La rétention des traces diagnostiques exclut les appels
-attachés à une inférence durable pour préserver sa relecture.
+déclaratives et convergent par DbAdmin. Le journal de flux reste disponible pendant
+l’exécution et dix minutes après la clôture de l’appel et de sa tentative durable.
+La rétention des autres détails s’applique après sept jours par défaut et attend la fin de
+leurs usages. La ligne de l’appel conserve ses coûts et ses durées.
 
 Le worker est supervisé au démarrage de l’application. Ses transactions d’admission, heartbeat
 et journalisation sont indépendantes et courtes. Il restaure l’autorité et la corrélation
@@ -24,8 +26,9 @@ enregistrées, sans hériter du contexte du premier appelant. La perte du lease 
 abandonnés et invalide les écritures tardives ; elle ne relance jamais implicitement le fournisseur.
 
 Le stream d’une tentative publie les messages persistés puis un unique `AIResult` terminal.
-Le curseur permet une reconnexion sans nouvelle génération. Fermer cet abonnement laisse le
-worker travailler. Les adaptateurs synchrones et HTTP conservent en revanche leur contrat
+Le curseur permet une reconnexion sans nouvelle génération. Après expiration des événements,
+le flux d’une tentative terminée peut encore renvoyer son résultat terminal. Fermer cet
+abonnement laisse le worker travailler. Les adaptateurs synchrones et HTTP conservent leur contrat
 d’annulation : abandonner leur appel demande l’arrêt et conserve les fragments déjà écrits.
 
 `pause` et `stop` interrompent aussi un fournisseur silencieux. `resume` crée une nouvelle

@@ -310,10 +310,10 @@ physical termination.
    CRUD uses `PROCESS_ADMIN` and the management scope; global HTTP discovery
    also requires the global scope.
 6. The agent uses `process_list`, `process_get`, then `process_start` from the
-   base `galaris` package. Those functions and the assignment must be authorized.
+   `process` Service. Those functions and the assignment must be authorized.
    The conversation controller uses `conversation_process_start`.
-   The optional `process_admin` package, inactive by default, provides administrative
-   equivalents; supply `service_code="example"` because several defaults remain `n8n`.
+   The same Service exposes `process_admin_*` functions. For calls that take an engine,
+   supply `service_code="example"` because the default remains `n8n`.
 7. Regenerate and check documentation and architecture. In development,
    `make sync-db` applies declared data. Adding a module or its activation
    configuration requires loading it during bootstrap; ordinary hot reload of

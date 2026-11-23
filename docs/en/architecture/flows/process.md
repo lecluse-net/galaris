@@ -4,7 +4,7 @@
 
 Native inspection and `processus_get` share persisted operational evidence: activities,
 waits, last activity and available commands. Runs, variables and attachments inherit the
-parent Process's existing policy; dedicated `process_admin` access remains available.
+parent Process's existing policy, including explicit delegation through the `process` connection.
 Filtering precedes counts and pagination and covers children and metrics.
 See [decision 0198](../../../../project/decisions/0198-process-run-data-and-files.md).
 
@@ -83,10 +83,9 @@ count identical launches requested within the current message, never historical 
 [decision 0195](../../../../project/decisions/0195-conversation-process-launch-permissions.md)
 for the limits of model-assisted interpretation and the covered tool surface.
 
-The six personal functions for discovery, launch and external monitoring belong to the
-`galaris` core package. Native definition, activity and debugging functions extend it
-under Process permissions; see the [BPMN profile](../../dev/native-processes.md). The optional
-`process` connection no longer exists. The prompt inventory is produced from exactly the same
+The `process` Service groups discovery, launch and monitoring with native definition,
+activity and debugging functions, subject to Process permissions. See the
+[BPMN profile](../../dev/native-processes.md). The prompt inventory is produced from the same
 projection as the MCP server; it therefore cites no function that is inactive, incompatible with
 the runtime, disabled, or removed from the Task scope.
 
@@ -155,16 +154,14 @@ fingerprint does not belong to the current effective catalog. The former
 `POST /connections/sync-integrated` endpoint is a deprecated alias; the current contract is
 `POST /connections/refresh-tools`.
 
-The `process_admin` package, inactive by default, constitutes a separate surface. Its
-`process_admin_*` functions can create, reassign, or delete a definition and manage runs for all
-Agents. Its connections are created inactive so that no global rights are granted
-implicitly.
+The `process` Service starts active for every agent with `personal` scope. Its
+`process_admin_*` functions check the live scope on every call. Team and global management
+require explicit delegation. Engine discovery and synchronization and external workflow binding
+require `all`.
 
-The `platform_admin` package follows the same explicit attribution rule. Its connections are
-created inactive, and its two read functions, `conversation_round_get` and `voice_turn_get`,
-recheck the active connection on the server side. They are used to analyze a complete text or
-voice turn with its durable state, execution trace, and all its LLM calls, without making this
-administrative dataset available to ordinary Agents.
+The Chat tools `conversation_round_get` and `voice_turn_get` require an explicit function
+grant and the management scope delegated on Services. They inspect the durable state, execution
+trace and model calls of a complete text or voice turn within that scope.
 
 The common tool boundary removes unknown keys from a closed schema before validation and
 authorization. It adds a `galaris.tool-arguments/v1` warning without changing business output

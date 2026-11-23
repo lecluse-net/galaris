@@ -224,26 +224,54 @@ après des splits imbriqués ; une branche IF non choisie ne bloque pas la conve
 Les fichiers conservent leur URI source : aucun transfert automatique n'accompagne le
 passage entre tâches. Un lien ne confère aucun droit sur la ressource.
 
+Le profil v2 compile les `intermediateCatchEvent` de type timer ou message,
+`eventBasedGateway` et `boundaryEvent` d’erreur. Un timer accepte un délai
+de 1 à 31 536 000 secondes, une date ISO 8601 avec fuseau ou une entrée `datetime`.
+Un message attend `event_name` et une `correlation_variable` parmi ses entrées
+`string`. Les valeurs et l’échéance absolue sont figées dans l’occurrence à son
+admission. La passerelle arme au moins deux attentes distinctes simultanément, puis seule
+l’attente gagnante se poursuit. Un délai déjà écoulé prime sur un signal reçu ensuite.
+Quand toutes les occurrences actives sont en attente d’événement, le prochain passage
+du planificateur est fixé à la première échéance ou réactivé par un signal reçu.
+
+Utiliser `POST /api/processes/internal/runs/{run_id}/events` ou `process_run_signal`
+avec `event_id` (UUID source), `name` et `correlation`. Il faut le droit de
+contrôler le run désigné et une unique attente active correspondante. Un signal reçu avant
+l’armement n’est pas mis en file. La réception et son reçu de déduplication sont persistés
+ensemble sous le verrou du run. La pause laisse les attentes armées se résoudre mais
+retient l’admission de leurs successeurs. L’annulation retire les attentes. Galaris
+expose ce contrat pour les producteurs d’événements à configurer.
+
+Une activité peut avoir un événement limite d’erreur, en plus de sa continuation normale.
+La branche intercepte les erreurs qualifiées par le moteur natif, actuellement les HTTP
+`4xx` hors `408`, `425` et `429`, et les échecs confirmés d’un calcul Monty.
+`error_code` permet de filtrer le code. L’occurrence source garde l’erreur et
+le journal conserve `node.error.caught`. Voir [0307](../../../project/decisions/0307-native-process-events.md).
+
 Les IF configurés possèdent exactement deux sorties : `decision` pour True et une sortie
-sans condition pour False. Les nouveaux IF utilisent `config.mode: code`, ou `mode: ai`
-avec `ai_mode: llm`, sur toute ligne. Les anciens modes agentiques et humains restent lisibles
-et exécutables pour préserver les définitions et snapshots existants. Les tentatives durables exigent un booléen
-`decision`, sans l'intégrer aux variables du run. Le choix humain passe par les boutons True/False
-de Messenger, sans tâche IA d'attente. Les IF historiques sans mode conservent leurs expressions.
+sans condition pour False. Le menu propose IF Python (`config.mode: code`), IF LLM décisionnel
+(`mode: ai`, `ai_mode: llm`) et IF Humain (`mode: human`, avec un acteur humain).
+Les tentatives durables exigent un booléen `decision`, sans l'intégrer aux variables du run.
+Pour un IF humain, `prompt` fixe la question ou `human_prompt_variable` désigne une entrée
+sélectionnée de type `string`. Une activité précédente peut construire cette entrée. Le texte
+est figé avant l'envoi des boutons Oui/Non dans Messenger. Les IF agentiques historiques et
+les IF historiques sans mode restent exécutables avec leur comportement d'origine.
 
 Pour un IF `mode: ai`, `config.ai_mode` vaut `task` (défaut historique) ou `llm`.
-Le sous-mode `llm` exige `config.llm_id`, un modèle texte ou décisionnel actif.
-Process utilise la façade d'inférence durable LLM, sans tâche ni outils agentiques :
-choix fermé true/false pour un modèle décisionnel, sortie structurée à booléen strict
-pour un modèle texte. L'identité déterministe est conservée dans le contexte de l'occurrence
-avant admission. Un reçu acquis est réutilisé après reprise ; une inférence interrompue ou
-échouée provoque une erreur explicite, sans nouvel appel automatique ni repli vers un autre
-modèle. L'annulation attend l'arrêt de l'inférence. Les appels sont corrélés au run et à
-la tentative pour les coûts par occurrence. Voir [0231](../../../project/decisions/0231-native-if-ai-execution-modes.md).
+Le sous-mode `llm` utilise `config.llm_profile` avec `model_field: decision_llm_id`.
+`profile_id` et `fallback_profile_id` omis ou nuls héritent du profil courant et du profil de
+secours par défaut. Le secours utilise sa propre colonne Décision après un échec récupérable.
+Les anciens `llm_id` restent exécutables avec leur sélection directe. L'identité de l'inférence
+reste liée à l'occurrence et un reçu acquis est réutilisé après reprise. L'annulation attend
+l'arrêt de l'inférence. Les appels restent corrélés au run et à la tentative pour les coûts.
+Voir [0231](../../../project/decisions/0231-native-if-ai-execution-modes.md).
 
 Les tâches typées proposent quatre traitements : `task` agentique (défaut), `task` avec
-`ai_mode: llm` et `llm_id`, `code` et `human_task`. Les tâches LLM réutilisent l'inférence
-durable avec `request_limit: 1`, aucun retry de sortie ni repli de modèle. Leur contrat
+`ai_mode: llm`, `code` et `human_task`. Les tâches LLM sélectionnent dans `llm_profile`
+un niveau de texte parmi ultra low, low, standard et high, partagé par les deux profils.
+Chaque profil fournit le modèle et l'effort de raisonnement de ce niveau. L'inférence durable
+applique le secours de profil sur les échecs fournisseur éligibles et conserve un budget
+d'une requête logique, sans réessai de sortie. Leur contrat
 structuré est `{"output": {...}}` en valeurs JSON ordinaires ; Process le convertit selon
 les seules sorties sélectionnées puis applique son intégration atomique habituelle.
 Elles exigent un modèle texte et ne créent aucune Task. Code, tâches LLM et IF LLM/code
@@ -431,7 +459,7 @@ Process restent vérifiés et un run terminé ne reçoit plus de fichiers. Pour 
 typés v2, les activités rendent leurs `output_files` au moteur au lieu de publier directement.
 Le moteur ne réécrit pas les modifications v1. États et reçus restent séparés des variables.
 Les URI canoniques ne contiennent jamais de token ou d'URL de transport.
-La première erreur d'exécution interdit toute nouvelle admission et demande l'arrêt
+La première erreur d'exécution non interceptée interdit toute nouvelle admission et demande l'arrêt
 des tâches et Runs enfants actifs. Une fois les arrêts confirmés, le run termine en
 `error`. `error_code` est renvoyé dans l'inspection et affiché dans le suivi ; un code
 fourni par un moteur enfant est conservé, sinon l'échec d'activité est `node_failed`.
@@ -456,7 +484,7 @@ compteurs d'occurrences, attentes documentées, dernière activité et actions d
 La lecture n'avance pas le moteur et ne déduit aucun blocage d'un simple délai.
 Les droits de lecture et d'écriture du processus s'appliquent à ses runs, données et
 pièces jointes. Partage et révocation sont immédiats, y compris pour les runs existants.
-Aucun nouveau privilège ni grant de run n'est créé. La connexion dédiée `process_admin`
+Aucun nouveau privilège ni grant de run n'est créé. La connexion dédiée `process`
 conserve son rôle d'administration. Les filtres précèdent comptage/pagination, enfants
 et métriques inclusives. Les snapshots de participants décrivent les affectations sans
 constituer une ACL distincte. Voir la [décision 0198](../../../project/decisions/0198-process-run-data-and-files.md).

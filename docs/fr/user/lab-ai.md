@@ -57,7 +57,7 @@ copier leurs jeux, modifier les prompts expérimentaux, lancer, suivre, arrêter
 rejuger et comparer les benchmarks, puis déposer ses propres évaluations.
 
 Pour capturer des tâches, messages, conversations, tours vocaux ou appels LLM réels,
-activez également **Administration** avec ses fonctions d'inspection des exécutions.
+autorisez les fonctions d’inspection de **Galaris** et **Chat**.
 L'accès à la seule documentation produit ne suffit pas. Les diagnostics de tâches
 nécessitent ce même accès supplémentaire.
 

@@ -37,11 +37,21 @@ existing priorities. `TASK_SCHEDULER_MAX_CONCURRENCY_PER_USER` limits simultaneo
 all agents of an owner (0 disables it). Transaction locks protect lease reservations; expiry
 releases capacity. Excess tasks wait at least five seconds, preserving their phase and results.
 
-`INCIDENT_TRACE_RETENTION_DAYS` and `LLM_TRACE_RETENTION_DAYS` default to zero. Positive values
-permit hourly batches of at most 100 eligible diagnostic payloads, preserving incident rows,
-accounting and references. Public `prune_traces(preview=True)` functions preview the next batch
-without mutation. Conversation/process traces and potentially needed task traces are retained.
-Back up required traces before enabling retention.
+`INCIDENT_TRACE_RETENTION_DAYS` defaults to zero. Positive values permit hourly batches of
+at most 100 eligible diagnostic payloads. Incident rows remain available.
+
+LLM stream events expire ten minutes after the call and its durable attempt, if any, have closed.
+The periodic job works in batches of up to 5,000 events and saves the first useful output
+timestamp before removing them. The durable terminal result remains available.
+
+Diagnostic call details expire after seven days. Set `LLM_TRACE_RETENTION_DAYS` to 1 through 6
+to shorten that period. Each pass processes up to 100 calls and keeps the first 500 characters
+of each call's `prompt` field. Costs, tokens and durations stay in `llm_calls` and remain
+available to reports after manual archiving. The call detail view keeps each
+tool's name, status and available timestamps. Retention removes tool arguments and result contents.
+Diagnostic details needed by active tasks,
+conversations, processes and inferences remain available while that work needs them. Retention
+preview reports eligible calls without changing their data.
 
 ## Signals and diagnosis
 
@@ -445,9 +455,10 @@ coverage. Missing branches remain visible in `artifacts/coverage.xml`.
 ## Reproducible growth and volume measurements
 
 `make tests ARGS='app/llm/tests/test_retention_growth.py'` simulates 84 days of creation,
-consumption and pruning. Weekly measurements include raw rows, logical bytes, retention
-reasons and PostgreSQL physical size. A logical plateau does not imply that MVCC pages
-are immediately returned to the system. After consumption, pruning preserves identities,
+consumption and pruning. Weekly measurements include raw rows and logical bytes, archived
+prompt bytes, retention reasons and PostgreSQL physical size. Raw trace volume stabilizes
+while archived excerpts continue to accumulate. PostgreSQL reuses MVCC pages.
+After consumption, pruning preserves identities,
 tokens, costs and business results. Report: `artifacts/llm-retention-growth.json`.
 
 `make tests ARGS='app/memory/tests/test_library_performance.py'` compares a 50-document

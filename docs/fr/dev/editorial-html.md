@@ -145,7 +145,7 @@ achèvement. Respecter le type de ressource demandé ; une opération indisponib
 explication de la limite, pas la création d'un document de substitution.
 
 Pour ces contenus durables, les documents Galaris sont le support canonique. Document, Memory et File Sharing
-sont des services système obligatoires, comme Galaris et Conversation. Leurs définitions et
+sont des services système obligatoires, comme Galaris et Chat. Leurs définitions et
 connexions restent protégées et actives. Leurs fonctions gardent les modes Actif, Bloqué,
 Sur demande et l’héritage global/local, configurables par un humain. Le catalogue effectif
 conserve les restrictions de contexte et les ACL des ressources ; les bridges optionnels

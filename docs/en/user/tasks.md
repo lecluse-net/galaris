@@ -14,6 +14,10 @@ use `CONVERSATION_ACCESS`/`CONVERSATION_CONTROL`, voice uses
 and Processes use `PROCESS_READ`/`PROCESS_ADMIN`. The page opens an authorized tab and adapts
 its actions to the active role. Reading one activity does not open the other histories.
 
+After LLM trace retention clears the detailed trace, the call detail shows up to 500 characters of its prompt.
+Manually archiving a call removes it from the log. Its cost still counts in the totals
+under **Activity → LLM calls** and in the Task cost report.
+
 A link to the Tasks tab or a Task retains its target while your permissions are checked.
 Content opens once access is confirmed; unauthorized tabs remain absent.
 

@@ -11,20 +11,21 @@ Benchmark judgments remain separate from candidate operating costs.
 
 ## Decision
 
-`app.llm` owns a minimal `llm_call_costs` register keyed by physical call UUID.
-Admission, streamed accounting, finalization and interruption persist it in the same
-transaction as the trace. Deleting a detailed trace clears its optional foreign key
-but keeps the amount, attribution, dates and pricing evidence; prompts, responses,
-credentials and tool arguments are absent. Terminal accounting accepts enrichment
-from an authoritative provider charge without reopening its terminal lifecycle.
+`app.llm` keeps the physical call and its accounting in `llm_calls`. Admission, streamed
+accounting, finalization and interruption update that row. Automatic retention compacts
+the diagnostic fields. Manual archiving also sets `deleted_at` and removes the call from
+the operational log. Accounting and timing reports include these rows. Terminal calls
+can fill an unknown inference cost from late token counters and known rates. A first
+provider charge can replace that estimate while preserving the terminal state.
 Repeated provider receipts do not charge the call twice.
 
 Provider-reported amounts, including explicit zero, precede estimates. Estimates
 freeze rates, counters and the cache convention actually used in the trace's
 `usage._galaris_cost`. Absent or invalid tariffs and missing token counters remain
 unknown. Subscription billing is zero per call; inference value remains independent
-and may be unknown. Historical traces are a read-through source when no register
-entry exists; historical data already deleted cannot be reconstructed or repriced.
+and may be unknown. DbAdmin transfers financial evidence from the retired `llm_call_costs`
+register and checks it before dropping the table. A register entry whose call was previously
+deleted becomes a minimal historized call with the original UUID and attribution.
 
 The Task cost endpoint follows both parent and source edges with distinct physical
 identities and current management scope. It includes preparation predating a Task

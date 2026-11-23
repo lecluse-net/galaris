@@ -17,6 +17,22 @@ Click the name or description to open the full description.
 The same icon accompanies the service in connection lists, filters and selectors,
 including when creating a connection or setting permissions.
 
+Every agent has **Contact** and **Tasks** connections. In **Authorizations**, select the Service
+that owns the tool you want to configure. **Multimedia** includes audio, image and video tools.
+**Browser** also includes `search_web`. Find team tools in **Agent**, `document_*` in
+**Documents**, and `conversation_process_*` in **Processes**. **Chat** groups the internal
+channel, calls and pending choices. See the [built-in Services guide](../admin/service-administration.md)
+for permissions and scopes. Conversation tools retain their
+original execution context.
+
+Contact tools access the agent's own address book by default. A global manager can extend
+the scope to agents in its teams or to all agents in **Permissions → Contact**. Each tool has
+its own permission. Use Contact functions to read or edit a delegated address book.
+
+The **Documents** and **Tasks** connections also have their own scopes. Documents tools
+require the document's permissions as well as the connection scope.
+In **Permissions → Tasks**, select **Team** to let the agent delegate work to teammates.
+
 Click **New service** to open the catalog dialog, find a provider and choose
 **Configure a copy**. The standard editor opens: review the name, enter your instance
 addresses, select the useful protocols and save. Then create agent connections and set

@@ -55,8 +55,9 @@ and monitoring of existing processes. This UI restriction does not replace API o
 
 ## Build and save
 
-The diagram handle menu offers **Calculation (Monty)**, **Isolated Python**,
-**MCP call** and **REST call**. Use **Isolated Python** for a CPython program
+The diagram handle menu groups actions under **Tasks**, **Choices**, **Start and end**,
+**Loops**, and **Calls**. It shows the groups available at the insertion point. A new
+diagram already contains its **Start** node. Use **Isolated Python** for a CPython program
 on the dedicated runner. Its **MCP and REST capabilities** field declares the
 operations the program may invoke through `call_service`. **MCP call** and
 **REST call** activities each perform a call declared directly in the diagram.
@@ -199,7 +200,7 @@ outputs and human replies; invalid calendar dates are rejected.
 for expected formats such as PDF or Images; a custom MIME type can also be entered.
 Leave the field empty to accept any format. Resource metadata and permissions are checked
 before integrating a constrained value.
-If you supply a PDF for a field requiring an image, the agent can use the **Image** Service
+If you supply a PDF for a field requiring an image, the agent can use the **Multimedia** Service
 (`image_from_pdf`) to render the relevant page as a PNG before submitting it. It uses the
 new image URI for launch or a human reply; the original PDF remains intact. Conversion needs
 neither a generation model nor a console. The Service must be active and permitted in the current
@@ -215,16 +216,18 @@ values. Explicit null requires nullable and never uses the default. False and ze
 Contract errors identify the task and variable. FOR/WHILE use the same editor and breadcrumbs.
 Old definitions retain their shared pool; **Configure process variables** starts
 an explicit conversion to complete before saving. Existing runs retain their original profile.
-**Processing** offers four task types: **Agentic AI** creates a Task for the lane's agent,
-with its tools and interactions; **AI LLM call** makes one call to the selected text **LLM model**,
-without tools or an agent Task; **Code** executes Python; **Human** waits for the assignee's
-reply in messaging. LLM outputs are checked against the selected variables before integration.
+**Processing** offers four task types. **Agentic AI** creates a Task for an agent and **Human**
+waits for the assignee's reply in messaging. **Code** executes Python. For **AI LLM call**,
+choose a text tier, a primary profile and a fallback profile. The inherited options use the
+current and default fallback profiles, as on an agent's settings. LLM outputs are checked
+against the selected variables before integration.
 
-An IF has two output handles, **True** and **False**, and two processing types: **Code**,
-with Python source, or **Decision AI**, with one call to a selected text or decision model,
-such as Jev. It can use any lane without changing its processing. A model failure ends the
-process in error and never selects False. Historical definitions and runs retain their modes
-until explicitly changed. Saving preserves both the processing type and selected model.
+The handle menu offers **IF · Python**, **IF · Decision LLM** and **IF · Human**. The first
+returns a boolean. The second uses the Decision column of the primary and fallback profiles.
+The third sends the assignee a question with Yes and No options. Enter a fixed question or
+choose a text input produced by an earlier step, such as a Code or LLM task. The diagram
+outputs remain **True** and **False**. The editor can convert saved direct-model activities
+to profiles.
 Code receives run data variables directly: `return variable_2 != "pas mon projet"` for
 an IF, or `return {"variable_1": variable_1 + 1}` to update a declared task output. The editor
 starts with a commented example; only valid outputs are integrated.
@@ -235,9 +238,18 @@ To bring the branches together, connect them directly to the next task: it waits
 activated branches to succeed and then starts once. An unselected IF branch does not block
 this wait. No dedicated parallel block needs to be added. The harness determines how many
 Tasks can actually execute concurrently.
-An execution error stops the process and its active branches. The observer returns the
-error code and message; the run data and files are preserved. There are no recovery
-activities or automatic retries to configure.
+
+Under **Waits**, **Wait for a deadline** resumes the same run after a delay, at a fixed
+date with a time zone, or at a date supplied by an input variable. **Wait for an event**
+matches a name and a correlation value such as the order number. The integration that
+observes delivery must send the signal to that run. The run panel shows the reason for
+waiting. An active wait survives a restart.
+
+Under **Choices**, **First event wins** can continue on delivery or send a reminder at
+the deadline. Connect each output to its own wait. A single branch starts. From an
+activity's output, **Add an error branch** handles a confirmed REST refusal or a failed
+calculation. An optional error code narrows the match. Operations with an uncertain
+outcome retain their reconciliation state.
 
 Validate checks the executable profile. Save creates a saved process revision. Invalid JSON
 drafts remain visible and prevent saving. The diagram opens directly, without tabs or
@@ -326,7 +338,7 @@ acting. The same activity continues after the decision.
 
 Agents use `processus_get` for this view. The Process's read policy authorizes its
 runs, data and files; its edit policy authorizes controls. Existing dedicated
-`process_admin` access remains available. Sharing a Process also shares its existing runs.
+`process` access remains available. Sharing a Process also shares its existing runs.
 
 A reply to an activity's question belongs to the existing run; it does not request a new
 launch. The agent replies briefly by default; ask for any details you need.

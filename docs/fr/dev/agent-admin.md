@@ -1,13 +1,14 @@
 <p align="right"><strong>Français</strong> · <a href="../../en/dev/agent-admin.md">English</a></p>
 
-# AgentAdmin
+# Agent
 
-AgentAdmin (`agent_admin`) est un Service intégré optionnel de 34 fonctions. Sa connexion
-est créée inactive pour les agents ordinaires. L’assistant **Galaris** proposé par
-l’installation la reçoit active dès sa création. Une synchronisation du catalogue ne
-réactive jamais une connexion désactivée et ne modifie pas les agents déjà initialisés.
-Un humain peut l’activer dans **Configurer → Services & connexions → Connexions**.
-`agent_list` et `agent_get` restent dans le service système Galaris.
+Le service intégré **Agent** (`agent`) regroupe l’annuaire et l’administration. Chaque agent
+reçoit une connexion active en mode `usage`, avec `agent_list`, `agent_get`, `team_list`
+et `team_members`.
+Les commandes d’administration exigent une portée d’équipe ou globale déléguée par un humain
+dans **Configurer → Services & connexions → Connexions**. L’assistant **Galaris** proposé
+par l’installation reçoit la délégation globale à sa création. Les synchronisations suivantes
+conservent les réglages de chaque connexion.
 
 L’annuaire `agent_list(offset=0, limit=50)` retourne du JSON compact : `items`
 (identifiant, URI du profil, code, nom et aperçu du poste), `count`, `offset`, `limit`,
@@ -17,6 +18,12 @@ le nombre d’entrées sous `limit` (1 à 500) : poursuivre avec `next_offset` j
 valeur nulle, plutôt que déduire la fin depuis `count`. Les profils détaillés et leurs
 modèles se lisent avec `agent_get`. L’ordre suit les noms puis l’identifiant ; après une
 création, suppression ou modification de nom concurrente, recommencer l’inventaire.
+
+Les réponses liées à un agent exposent `agent_id` à partir du profil, de l’appartenance
+ou de la connexion concernée. Une entrée d’annuaire conserve son champ `id`. Dans
+`team_members`, une personne a `agent_id: null` et garde son identifiant utilisateur.
+Les titres et groupes partagés ont aussi `agent_id: null`. `agent_get` renvoie le JSON
+avec `agent_id` et le texte détaillé dans `profile`.
 
 ## Délégation et droits
 
@@ -38,8 +45,8 @@ n’est nécessaire et aucun rôle sélectionné dans une requête HTTP ne rempl
 
 L’appelant ne peut ni se supprimer ni changer son propre responsable. Les connexions
 des services système sont protégées. Les connexions donnant des pouvoirs administratifs
-sont modifiables uniquement par les humains : AgentAdmin ne peut pas s’auto-attribuer des
-droits, déléguer AgentAdmin à un autre agent ou activer un autre Service administratif.
+sont modifiables uniquement par les humains : Agent ne peut pas s’auto-attribuer des
+droits, déléguer Agent à un autre agent ou activer un autre Service administratif.
 La cible d’une connexion est résolue côté serveur. Une révocation bloque aussi les appels
 sur un serveur MCP déjà monté ; la découverte se recalcule avec les droits courants.
 La [décision 0148](../../../project/decisions/0148-agent-admin-delegation.md) fixe ce contrat.
@@ -90,8 +97,7 @@ Le portrait utilise le prénom, le nom, le genre de la civilité et la personnal
 de la cible. Le HTML est lu comme texte descriptif et reste inchangé en base. Les instructions
 facultatives, au plus 4 000 caractères, précisent apparence, cadrage ou ambiance.
 Elles déterminent aussi le style, y compris un portrait humain réaliste ; aucune apparence
-non humaine n’est imposée. La régénération remplace l’avatar existant après succès et ne
-nécessite pas la connexion Image distincte. Avant de conclure à une fonction indisponible,
+non humaine n’est imposée. Via le service Agent, la régénération remplace l’avatar existant après succès. Avant de conclure à une fonction indisponible,
 l’agent consulte `services_list` et distingue le catalogue autorisé du contexte courant.
 
 Dans la fiche agent, **Générer un avatar** ouvre une modale de consignes facultatives.
@@ -163,7 +169,7 @@ leurs propres modèles distants et ne constitue pas un déploiement.
 
 Pour renouveler la recette après configuration humaine des credentials image de l'appelant :
 
-1. Utiliser un appelant et une cible entièrement fictifs ; activer AgentAdmin pour l'appelant
+1. Utiliser un appelant et une cible entièrement fictifs ; activer Agent pour l'appelant
    et vérifier que la génération est disponible.
 2. Donner à la cible une civilité et un profil HTML descriptif distincts de ceux de l'appelant,
    puis demander un portrait photographique avec `agent_avatar_generate`.

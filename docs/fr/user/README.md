@@ -474,18 +474,20 @@ reste effectuée par l'agent. Les packages personnels ne sont pas partageables.
 
 ### Déléguer une administration à un agent
 
-Dans **Services → Connexions → modifier une connexion → Portée de gestion**,
-`services.management_scope` configure aussi Administration des processus, ServiceAdmin,
-Gestion des objectifs, Administration et AgentAdmin. Les niveaux sont `usage` (aucune
+Dans **Services → Autorisations → Portée de gestion**,
+`services.management_scope` configure la délégation des services qui proposent ce réglage.
+Les niveaux dépendent du service : `usage` (aucune
 administration), `personal` (ses ressources), `team` (agents partageant une équipe
 active) et `all` (global). Seul un humain avec édition des connexions et gestion globale
 des agents peut changer cette valeur locale. Les autorisations des fonctions restent
 nécessaires. Les retraits d'équipe prennent effet dès l'appel suivant.
+**Processus** et **Objectifs** sont actifs par défaut pour chaque agent, avec la portée personnelle.
+**Agent** et **Services** démarrent actifs en mode `usage` pour consulter l’annuaire et les
+outils disponibles. Une délégation explicite donne accès à leurs commandes d’administration.
 
-À sa création, l'assistant **Galaris** reçoit le périmètre global (`all`) sur toutes
-ses connexions intégrées proposant une portée : Administration, ServiceAdmin, AgentAdmin,
-Administration des processus, Gestion des objectifs, Compétences et Chat. Ces connexions
-sont actives. Les autres services internes sans compte externe à configurer, dont Sujets,
+À sa création, l'assistant **Galaris** reçoit le périmètre de gestion global (`all`) sur
+Services, Agent et Compétences. Sur Chat, `all` règle la communication inter-agents.
+Ces connexions sont actives. Les autres services internes sans compte externe à configurer, dont Sujets,
 sont aussi actifs, et les fonctions natives sont autorisées. Les prérequis de modèle et les
 droits propres aux ressources restent applicables. Les synchronisations suivantes conservent vos restrictions et désactivations ;
 un assistant déjà initialisé se configure dans le formulaire de chaque connexion.
@@ -494,20 +496,20 @@ Les autres agents ne peuvent pas échanger de messages, fichiers ou tâches avec
 même avec une portée globale ou une équipe commune : ils reçoivent une interdiction explicite.
 Son identité interne persiste après renommage ; nommer un autre agent « Galaris » ne le protège pas.
 
-ServiceAdmin limite les niveaux personnel et équipe aux connexions ; les définitions et
-réglages partagés exigent `all`. Les définitions de processus suivent l'agent affecté,
-les exécutions leur lanceur et les objectifs leur responsable. Administration applique
-la portée aux tâches, conversations et traces LLM sans élargir les droits des documents
-ou souvenirs privés.
+Pour l’administration des services, les niveaux personnel et équipe permettent de gérer
+les connexions. Les définitions et réglages partagés exigent `all`. La portée de **Services**
+s’applique aussi aux conversations, appels LLM et incidents. **Tâches** et **Documents**
+ont leur propre portée, personnelle par défaut. Les définitions de
+processus suivent l’agent affecté, les exécutions leur lanceur et les objectifs leur responsable.
 
-AgentAdmin propose seulement `usage`, `team`, `all`. Il permet la création dans une
+Agent propose seulement `usage`, `team`, `all`. Il permet la création dans une
 équipe explicitement choisie de l'appelant, sous les droits du responsable humain.
 Même au niveau global, un agent ne peut s'administrer lui-même ni modifier son propre
 titre ou équipe par une mutation partagée. Les délégations restent humaines.
 
-Une connexion inactive ou sans portée explicite n'accorde aucune administration.
-Après mise à jour, configurez les anciennes connexions administratives dépourvues de
-ce paramètre : leur activation seule ne donne plus accès à toutes les données.
+Une connexion inactive n'accorde aucune administration. Sans réglage local, une connexion
+active utilise la valeur par défaut de son service. Les portées de chaque service figurent
+dans le [guide d'administration des services](../admin/service-administration.md#built-in-service-scopes).
 
 ### Passer par une messagerie
 
@@ -791,13 +793,15 @@ agent → synthèse, soit une session audio native à faible latence. Le second 
 aucune transcription intermédiaire : l’absence de texte dans un tour natif n’indique donc pas une
 perte de l’appel.
 
-Le raccrochage par l’agent (`voice_call_stop`) est actif par défaut, sans demande
-d’autorisation supplémentaire. Pour modifier une règle déjà enregistrée, ouvrez
-**Services → Autorisations**, sélectionnez la connexion **Voice**, recherchez
+Le raccrochage par l’agent exige l’autorisation `voice_call_stop`. Ouvrez
+**Services → Autorisations**, sélectionnez la connexion **Chat**, recherchez
 `voice_call_stop`, puis choisissez **Actif** pour cette connexion ou au niveau
 **Global (tous)**. Les choix explicites **Sur demande** et **Bloqué** restent prioritaires
 sur le défaut logiciel. Une demande d’accord propose aussi **Toujours autoriser cette
 fonction**, limité à la connexion concernée.
+
+Pour les appels entrants, utilisez le réglage **Réponse automatique aux appels vocaux** de la
+connexion Chat.
 
 Dans le mode transcription → agent → synthèse, l'écoute reste active pendant la
 transcription : vous pouvez reprendre la parole sans attendre son résultat. La détection
@@ -854,7 +858,7 @@ La confirmation conserve l'historique ; un arrêt encore en cours reste signalé
 Lors d'une suppression, le tour reste affiché tant que le nettoyage audio n'est pas
 achevé. Le suivi reprend après réouverture et traverse les indisponibilités temporaires.
 
-Si l’agent dispose de l’outil Audio, joignez l’enregistrement puis demandez directement le
+Si l’agent est autorisé à utiliser `audio_transcribe` sur Multimédia, joignez l’enregistrement puis demandez le
 livrable attendu, par exemple :
 
 > Transcris `reunion-projet.mp4`, puis résume les sujets discutés, les décisions, les responsables

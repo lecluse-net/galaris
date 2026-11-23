@@ -48,8 +48,8 @@ externes configurés. Les possibilités de fichiers, d’historique et de voix d
 Chaque agent possède une identité durable, une mission, une personnalité, des compétences et des
 moyens d’action. On peut organiser des spécialistes dans des équipes réunissant humains et agents,
 puis leur donner les accès utiles à leur rôle.
-Les outils optionnels **AgentAdmin** et **ServiceAdmin** permettent aussi de déléguer leur
-configuration : AgentAdmin respecte les droits du responsable humain ; ServiceAdmin administre
+Les outils optionnels **Agent** et **Services** permettent aussi de déléguer leur
+configuration : Agent respecte les droits du responsable humain ; Services administre
 le catalogue global selon les fonctions accordées. Les secrets restent côté serveur et les
 délégations administratives restent attribuées par les humains.
 

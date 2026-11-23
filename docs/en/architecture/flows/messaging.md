@@ -19,9 +19,11 @@ in activity monitoring. The manager receives the same durable request listed in
 Consent applies to this person on this connection, remains revocable and creates no Galaris
 account or resource share. Manual pauses, native Chat and Mail consent retain separate rules.
 
-Galaris exposes the native provider in `app.chat`, identified by the built-in `chat` Service. It
+Galaris exposes the native provider in `app.chat`, identified by the `chat` system Service. It
 reuses the canonical journal and rooms, without a network listener or secret. The user application
-`/chat` is also the unified read-only view of rooms originating from external bridges. The former
+`/chat` is also the unified read-only view of rooms originating from external bridges.
+The `chat.channel_enabled` connection setting controls the native channel for each agent.
+Chat functions, including voice on external bridges, follow their own permissions. The former
 local-loop `EmployeeMessenger` and its `galaris_messenger` Service remain removed.
 
 From a Task, `messenger_send_message_to_user` addresses an internal colleague with
@@ -59,19 +61,17 @@ metadata without changing the message text. Turn construction adds this context 
 prompt using only the newest incoming message, never treating an older message's displayed
 document as current UI state. Closing the document or losing access removes the indication
 from subsequent sends.
-The Conversation Service's `document_show(document=...)` requests opening a document in this same pane
+The Documents Service's `document_show(document=...)` requests opening a document in this same pane
 (or the mobile viewer). It accepts a UUID, a `document://` URI or a Galaris URL of the form
-`/documents?document_id=...` (or its legacy `/memory/documents` path). Availability requires an active Conversation connection, Conversation
-enabled for conversations and a text round in the agent's own internal room. The tool catalog
+`/documents?document_id=...` (or its legacy `/memory/documents` path). Availability requires permission
+for the function and a text round in the agent's own internal room. The tool catalog
 and prompt share this filter; execution rechecks permissions, document access and round freshness.
 The `chat.document_show` event contains only the room and document IDs, changes no sharing grants
 and is not a read receipt. The client ignores other rooms and saves current edits before opening;
 the document API still enforces viewer access. The action lives in `app.conversation.mcp` with
 `task_enabled=False`: all Tasks, including those launched from Chat, and voice exclude this tool.
 Memory provides document authorization through its adapter registered at bootstrap; its connection
-is not required. The Conversation Service and its connections are mandatory system services: built-in datasets
-initialize or reactivate them, and activation remains protected. Humans can still configure
-their function modes.
+is not required.
 This descriptive context must not trigger automatic attachment redelivery; editing
 requests still go through the conversation controller.
 
@@ -457,9 +457,9 @@ those still `running` are closed as `cancelled`, with their counters, costs, and
 intact.
 
 The unique identifier of a text or voice processing is `ConversationRound.id`. The modals display
-this primary UUID and copy it to the clipboard when clicked. The optional `platform_admin` MCP
-package, inactive by default, exposes `conversation_round_get`. Each function still requires an
-active connection at call time and returns all data persisted directly for that turn, as well as
+this primary UUID and copy it to the clipboard when clicked. Chat exposes
+`conversation_round_get` with an explicit function grant and the management scope delegated on
+Services. The tool returns all data persisted directly for that turn, as well as
 all correlated LLM calls. A voice turn does not contain audio bytes, which are not persisted in
 this conversation dataset.
 

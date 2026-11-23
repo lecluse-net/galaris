@@ -4,7 +4,7 @@
 
 L'inspection native et `processus_get` partagent l'état opérationnel persisté : activités,
 attentes, dernière activité et commandes disponibles. Les runs, leurs variables et leurs
-fichiers héritent des droits du processus parent ; la connexion dédiée `process_admin`
+fichiers héritent des droits du processus parent ; la connexion `process`
 conserve l'administration globale. Le filtrage précède comptage/pagination et couvre enfants
 et métriques. Voir la [décision 0198](../../../../project/decisions/0198-process-run-data-and-files.md).
 
@@ -92,10 +92,9 @@ identiques demandés dans le message courant, jamais les exécutions historiques
 Voir la [décision 0195](../../../../project/decisions/0195-conversation-process-launch-permissions.md)
 pour les limites de l'interprétation assistée et le périmètre des outils concernés.
 
-Les six fonctions personnelles de découverte, lancement et suivi externe appartiennent au
-package socle `galaris`. Les fonctions natives de définition, activités et débogage le complètent
-sous les droits propres du processus ; voir le [profil BPMN](../../dev/native-processes.md). La connexion
-optionnelle `process` n’existe plus. L’inventaire du prompt est produit depuis exactement la même
+Le service `process` regroupe les fonctions de découverte, lancement et suivi et les commandes
+natives de définition, activités et débogage, sous les droits propres du processus.
+Voir le [profil BPMN](../../dev/native-processes.md). L’inventaire du prompt est produit depuis la même
 projection que le serveur MCP ; il ne cite donc aucune fonction inactive, incompatible avec le
 runtime, désactivée ou retirée du scope de la tâche.
 
@@ -163,16 +162,14 @@ empreinte n’appartient pas au catalogue effectif courant. L’ancien endpoint
 `POST /connections/sync-integrated` est un alias déprécié ; le contrat courant est
 `POST /connections/refresh-tools`.
 
-Le package `process_admin`, inactif par défaut, constitue une surface distincte. Ses fonctions
-`process_admin_*` peuvent créer, réaffecter ou supprimer une définition et gérer les runs de tous
-les agents. Ses connexions sont créées inactives afin qu’aucun droit global ne soit accordé
-implicitement.
+Chaque agent reçoit une connexion `process` active avec la portée `personal`. Les fonctions
+`process_admin_*` vérifient la portée de la connexion à chaque appel. Les portées `team` et `all`
+nécessitent une délégation explicite. La découverte et la synchronisation des moteurs, ainsi que
+l’association d’un workflow externe, exigent `all`.
 
-Le package `platform_admin` suit la même règle d’attribution explicite. Ses connexions sont créées
-inactives et ses deux fonctions de lecture, `conversation_round_get` et `voice_turn_get`,
-revérifient la connexion active côté serveur. Elles servent à analyser un tour textuel ou vocal
-complet avec son état durable, sa trace d’exécution et tous ses appels LLM, sans rendre ce jeu de
-données administratif disponible aux agents ordinaires.
+Les outils `conversation_round_get` et `voice_turn_get` du service Chat exigent une autorisation
+explicite et la portée de gestion déléguée sur Services. Ils inspectent l’état durable, la trace
+d’exécution et les appels LLM d’un tour textuel ou vocal complet dans cette portée.
 
 La frontière commune des outils retire les clés inconnues d’un schéma fermé avant validation
 et autorisation. Elle ajoute un avis `galaris.tool-arguments/v1` sans modifier la sortie métier

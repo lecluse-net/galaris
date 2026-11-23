@@ -18,6 +18,13 @@ permettent de le renommer et de choisir sa couleur, mais pas de le supprimer, le
 créer d’autres agendas internes. Les agendas externes viennent en complément. Les éventuels
 anciens agendas internes supplémentaires restent accessibles pour conserver leurs événements.
 
+Dans **Permissions**, choisissez l’agent puis **Agenda**. Un administrateur habilité peut régler
+`services.management_scope` sur **Personnel** (par défaut), **Équipe** (l’agent et les agents qui
+partagent au moins une équipe avec lui) ou **Global** (tous les agents). Cette portée s’applique à
+la consultation, aux disponibilités et à la gestion des événements et de leurs rappels par les
+outils Agenda. Les fonctions restent soumises à leur permission. Un rappel s’exécute pour le
+propriétaire de l’agenda. Les abonnements iCalendar restent en lecture seule.
+
 Lorsque la lecture des agendas est activée pour l’agent, son contexte contient les rendez-vous
 en cours et des dix jours à venir, triés chronologiquement et limités à dix occurrences au total par défaut.
 Dans **Préférences → Mémoire → Contexte temporel des agents**, réglez séparément l’horizon

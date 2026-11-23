@@ -1,13 +1,14 @@
 <p align="right"><a href="../../fr/dev/agent-admin.md">Français</a> · <strong>English</strong></p>
 
-# AgentAdmin
+# Agent
 
-AgentAdmin (`agent_admin`) is an optional built-in Service with 34 functions. Its connection
-starts inactive for ordinary agents. The **Galaris** assistant proposed by the installation
-receives an active connection when first created. Catalogue synchronization never reactivates
-disabled connections or changes previously initialized agents. A human can enable it in
-**Configure → Services & connections → Connections**.
-`agent_list` and `agent_get` remain in the mandatory Galaris system service.
+The built-in **Agent** Service (`agent`) groups directory and administration tools. Every agent
+starts with an active `usage` connection for `agent_list`, `agent_get`, `team_list`
+and `team_members`. Administrative
+commands require team or global scope delegated by a human in
+**Configure → Services & connections → Connections**. The **Galaris** assistant proposed by
+installation receives a global delegation when created. Later synchronization preserves
+connection settings.
 
 The `agent_list(offset=0, limit=50)` directory returns compact JSON: `items`
 (ID, profile URI, code, name and job-title preview), `count`, `offset`, `limit`,
@@ -16,6 +17,11 @@ survives ordinary history compaction. This budget can reduce the entry count bel
 `limit` (1 to 500): follow `next_offset` until it is null instead of inferring completion
 from `count`. Read detailed profiles and their models with `agent_get`. Ordering follows
 names then IDs; restart the inventory after concurrent creation, deletion or renaming.
+
+Agent-specific results expose `agent_id` from the relevant profile, membership or
+connection. Directory entries retain their `id` field. In `team_members`, human entries
+carry `agent_id: null` and keep their user ID. Shared titles and groups also have
+`agent_id: null`. `agent_get` returns JSON with `agent_id` and the detailed text in `profile`.
 
 ## Delegation and privileges
 
@@ -36,8 +42,8 @@ role never replaces this delegation.
 | Harness blockers | `TASK_EDIT` |
 
 The caller cannot delete itself or change its own manager. System connections are protected.
-Connections granting administrative capabilities are human-controlled: AgentAdmin cannot
-grant itself rights, delegate AgentAdmin to another agent or enable another administrative
+Connections granting administrative capabilities are human-controlled: Agent cannot
+grant itself rights, delegate Agent to another agent or enable another administrative
 Service. Connection targets are resolved by the server. Revocation also blocks invocations on
 an already mounted MCP server, whose discovery evaluates current rights.
 [Decision 0148](../../../project/decisions/0148-agent-admin-delegation.md) defines this contract.
@@ -86,8 +92,7 @@ Portraits use the target’s first/last name, title gender and personality. HTML
 as descriptive text and remains unchanged in storage. Optional instructions, limited to
 4,000 characters, specify appearance, framing or atmosphere.
 They also determine the style, including realistic human portraits; a non-human appearance
-is never imposed. Regeneration replaces the existing avatar on success and does not require
-the separate Image connection. Before concluding that generation is unavailable, the agent
+is never imposed. Regeneration through the Agent Service replaces the existing avatar on success. Before concluding that generation is unavailable, the agent
 checks `services_list` and distinguishes the authorised catalogue from the current context.
 
 In the agent profile, **Generate avatar** opens a dialog for optional instructions.
@@ -154,7 +159,7 @@ SDKs against their own remote models and does not constitute deployment.
 
 To repeat acceptance after a human configures the caller's image-use credentials:
 
-1. Use an entirely fictional caller and target; enable AgentAdmin for the caller and check
+1. Use an entirely fictional caller and target; enable Agent for the caller and check
    that generation is available.
 2. Give the target a title and descriptive HTML profile distinct from the caller's, then
    request a photographic portrait through `agent_avatar_generate`.

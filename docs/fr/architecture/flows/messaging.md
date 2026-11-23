@@ -21,10 +21,12 @@ réponse. L'accord s'applique à la personne sur cette connexion, reste révocab
 ni compte Galaris ni partage de ressource. Les pauses manuelles, le Chat interne et le
 consentement Mail gardent leurs règles distinctes.
 
-Galaris expose le provider natif dans `app.chat`, identifié par le Service intégré `chat`. Il
+Galaris expose le provider natif dans `app.chat`, identifié par le Service système `chat`. Il
 réutilise le journal et les rooms canoniques, sans listener réseau ni secret. L’application
 utilisateur `/chat` est aussi la vue unifiée en lecture seule des rooms issues des bridges
-externes. L’ancien `EmployeeMessenger` en boucle
+externes. Le réglage `chat.channel_enabled` sur la connexion de l’agent contrôle le canal natif.
+Les fonctions du Service Chat, notamment la voix sur les bridges, suivent leurs propres permissions.
+L’ancien `EmployeeMessenger` en boucle
 locale et son Service `galaris_messenger` restent retirés.
 
 Depuis une tâche, `messenger_send_message_to_user` adresse un collègue interne par
@@ -64,10 +66,10 @@ référence `document://<uuid>` dans les métadonnées de ce message, sans chang
 La construction du tour ajoute cette indication au prompt à partir du seul message entrant
 le plus récent ; elle ne reprend jamais l'affichage d'un message ancien comme état courant.
 Fermer le document ou perdre son accès supprime cette indication des envois suivants.
-L'outil `document_show(document=...)`, rattaché au Service Conversation (`conversation`), demande l'ouverture dans ce même
+L'outil `document_show(document=...)`, rattaché au Service Documents (`document`), demande l'ouverture dans ce même
 panneau (ou la visionneuse mobile). Il accepte un UUID, une URI `document://` ou une URL
-Galaris `/documents?document_id=...` (ou son ancien chemin `/memory/documents`). Son exposition exige une connexion Conversation active,
-Conversation autorisé en conversation et un round textuel dans une room interne appartenant à l'agent.
+Galaris `/documents?document_id=...` (ou son ancien chemin `/memory/documents`). Son exposition exige
+une autorisation pour la fonction et un round textuel dans une room interne appartenant à l'agent.
 Le catalogue et le prompt partagent ce filtre ; l'appel revérifie les autorisations, l'accès au
 document et la fraîcheur du round. L'événement `chat.document_show` ne contient que la room et
 l'identifiant du document, ne modifie aucun partage et ne vaut pas accusé de lecture. Le client
@@ -75,9 +77,7 @@ ignore les autres rooms et préserve les sauvegardes avant ouverture ; les droit
 restent contrôlés par l'API documentaire. L'action est implémentée dans `app.conversation.mcp`
 avec `task_enabled=False` : aucune tâche, même issue du chat, ni la voix n'expose cet outil.
 Memory fournit le contrôle d'accès au document via son adaptateur enregistré au démarrage ;
-sa connexion n'est pas requise. Le Service Conversation et ses connexions sont des services système obligatoires : les datasets
-les initialisent ou les réactivent, et leur activation reste protégée. Les modes de leurs
-fonctions restent configurables par un humain.
+sa connexion n'est pas requise.
 Ce contexte descriptif ne doit pas déclencher le renvoi automatique d'une pièce jointe ;
 une demande d'édition reste soumise au contrôleur conversationnel.
 
@@ -469,9 +469,9 @@ coûts et sorties partielles intacts.
 
 L’identifiant unique d’un traitement textuel ou vocal est `ConversationRound.id`. Les modales
 affichent cet UUID primaire et le copient dans le presse-papiers au clic.
-Le package MCP optionnel `platform_admin`, inactif par défaut, expose `conversation_round_get`.
-Chaque fonction exige encore une connexion active au moment de l’appel et retourne toutes les données
-persistées directement pour ce tour ainsi que tous ses appels LLM corrélés. Le tour vocal ne
+Chat expose `conversation_round_get` avec une autorisation explicite et la portée de
+gestion déléguée sur Services. L’outil retourne les données persistées directement pour ce tour
+ainsi que tous ses appels LLM corrélés. Le tour vocal ne
 contient pas les octets audio, qui ne sont pas persistés dans ce jeu de données conversationnel.
 
 La même barre permet d’envoyer un tour dans un benchmark du Lab IA si l’utilisateur possède

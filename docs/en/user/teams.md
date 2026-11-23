@@ -3,7 +3,7 @@
 # Teams and dialogue permissions
 
 Task management belongs to the owning agent, its human managers and global administrators.
-An agent with an active **Administration** connection can operate on Tasks within its
+An agent with a delegated **Tasks** scope can operate on Tasks within its
 delegated scope; only `all` opens global scope.
 The requester of a delegated task can follow its result without gaining management of the
 recipient’s other tasks.
@@ -23,7 +23,7 @@ The **Owner** selector lists teams, then **Agents** and **Users** within each te
 owners; each type within each team has independent pagination. Members without a team have
 their own section.
 
-Agents have a read-only directory without AgentAdmin delegation:
+Agents have a read-only directory without Agent delegation:
 `team_list(search="Research")` finds teams by part of their name and returns their IDs,
 description previews and human/AI counts, including empty teams.
 `team_members(team_id=…)` then lists the selected team's active humans and non-deleted agents.

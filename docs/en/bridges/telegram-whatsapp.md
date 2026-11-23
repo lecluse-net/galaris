@@ -354,7 +354,7 @@ Prerequisites:
 - the room contains exactly the bot and one interlocutor;
 - signaling events are not encrypted;
 - the homeserver ideally exposes `/_matrix/client/v3/voip/turnServer` with TURN credentials;
-- the agent has an active connection to the `voice` Service and a voice-compatible driver.
+- the agent has automatic answers enabled on its Chat connection and uses a voice-compatible driver.
 
 Auto-answering respects `VOICE_AUTO_ANSWER_ENABLED` and the invitation duration. The `/sync` flow
 remains unique: an internal bus broadcasts call events to the transport to avoid two concurrent

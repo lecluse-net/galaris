@@ -55,7 +55,7 @@ prompts, start, monitor, cancel, resume, rejudge and compare benchmarks, and sub
 attributed agent assessments.
 
 Capturing real Tasks, messages, conversations, voice turns or LLM calls also requires
-**Administration** with its execution-inspection functions. Documentation-only access
+the inspection functions on **Galaris** and **Chat**. Documentation-only access
 does not grant this permission. Real Task diagnoses require the same additional access.
 
 The agent operates the same datasets and results as the Workbench. Synthetic datasets

@@ -207,25 +207,52 @@ Activated predecessors converge without a mandatory gateway, including nested sp
 an unselected IF branch does not block convergence. File references keep their
 source URI without automatic transfers between activities. A link grants no resource access.
 
+The v2 profile compiles timer and message `intermediateCatchEvent` elements,
+`eventBasedGateway`, and error `boundaryEvent` elements. A timer accepts a delay
+of 1 to 31,536,000 seconds, an ISO 8601 date with a time zone, or a `datetime` input.
+A message wait uses `event_name` and a selected `string` input named in
+`correlation_variable`. The deadline and values are frozen when the occurrence is
+admitted. An event-based gateway arms at least two distinct waits together and
+admits only the winner. A deadline that has already passed takes precedence over a
+signal received later.
+When every active occurrence is waiting for an event, the scheduler defers the next
+check until the earliest deadline or until a signal is accepted.
+
+Use `POST /api/processes/internal/runs/{run_id}/events` or `process_run_signal` with
+`event_id` (source UUID), `name` and `correlation`. The caller needs control of
+the specified run and the signal must match exactly one armed wait. Signals received
+before a wait is armed are not buffered. Acceptance and deduplication are stored
+together under the run lock. During pause, armed waits may resolve and successor
+admission is held. Cancelling the run retires the waits. Event producers can use
+this contract once configured.
+
+An activity can have an error boundary alongside its normal continuation. It
+catches errors qualified by the native engine, currently HTTP `4xx` except
+`408`, `425` and `429`, and confirmed Monty computation failures. The optional
+`error_code` filters the match. The failed occurrence keeps the error and the
+journal records `node.error.caught`. See [0307](../../../project/decisions/0307-native-process-events.md).
+
 Configured IFs have exactly two outputs: `decision` for True and an unconditional False output.
-New IFs use `config.mode: code`, or `mode: ai` with `ai_mode: llm`, on any lane.
-Historical agentic and human modes remain readable and executable for existing definitions
-and snapshots. Durable attempts require a boolean `decision`, without integrating it into run variables. Human decisions use Messenger's True/False buttons without an AI Task just to wait.
-Historical IFs without a mode retain their expressions.
+The menu offers Python IF (`config.mode: code`), Decision LLM IF (`mode: ai`, `ai_mode: llm`)
+and Human IF (`mode: human` with a human actor). Durable attempts require a boolean `decision`
+without integrating it into run variables. A Human IF uses a fixed `prompt` or a selected
+`string` input named in `human_prompt_variable`. An earlier activity can produce the text.
+The question is frozen before the Yes/No buttons are sent in Messenger. Historical agentic and
+expression IFs retain their execution behavior.
 
 For an IF with `mode: ai`, `config.ai_mode` is `task` (the historical default) or `llm`.
-The `llm` submode requires `config.llm_id`, an active text or decision model.
-Process uses the durable LLM inference facade, without a Task or agent tools: closed
-true/false choices for decision models, strictly boolean structured output for text
-models. The deterministic inference identity is stored in occurrence context before
-admission. Recovery reuses acquired answers; interrupted or failed inference causes an
-explicit error without automatically calling again or switching models. Cancellation
-waits for inference to stop. Calls are correlated with the run and attempt for occurrence
-costs. See [0231](../../../project/decisions/0231-native-if-ai-execution-modes.md).
+The `llm` submode uses `config.llm_profile` with `model_field: decision_llm_id`.
+Omitted or null `profile_id` and `fallback_profile_id` inherit the current and default fallback
+profiles. The fallback uses its own Decision column after a recoverable failure. Saved `llm_id`
+values retain their direct selection. The inference identity stays linked to the occurrence,
+recovery reuses acquired answers and cancellation waits for inference to stop. Calls retain
+run and attempt correlation for accounting. See [0231](../../../project/decisions/0231-native-if-ai-execution-modes.md).
 
 Typed tasks offer four processing types: agentic `task` (default), `task` with `ai_mode: llm`
-and `llm_id`, `code`, and `human_task`. LLM tasks reuse durable inference with `request_limit: 1`,
-no output retry and no model fallback. Their structured contract is `{"output": {...}}` using
+`code`, and `human_task`. LLM tasks select one text tier in `llm_profile` shared by both
+profiles. Each profile supplies the model and reasoning effort for that tier. Durable inference
+permits the profile fallback on eligible provider failures with one logical request and no
+output retry. Their structured contract is `{"output": {...}}` using
 ordinary JSON values; Process converts only selected outputs and applies its existing atomic
 integration. They require a text model and create no Task. Code, LLM tasks and LLM/code IFs
 may reference any actor or none. Agentic and human tasks retain their actor restrictions;
@@ -408,7 +435,7 @@ remain checked and terminal runs cannot receive files. For typed v2 runs, activi
 their `output_files` to the engine instead of publishing directly.
 The engine preserves v1 task edits. Scheduler state and receipts remain separate from
 business variables. Prompts contain canonical URIs without transport tokens or URLs.
-The first execution failure prevents new
+The first uncaught execution failure prevents new
 admissions and requests cancellation of active tasks and child runs. After confirmed
 stops, the run becomes `error`. Inspection returns `error_code`, also shown in the UI.
 A child's error code is preserved; an ordinary activity failure uses `node_failed`.
@@ -432,7 +459,7 @@ occurrence counts, documented waits, last activity and available actions. Readin
 does not advance the engine or infer a blockage from elapsed time.
 The Process's existing read/edit policy applies to its runs, data and attachments.
 Sharing and revocation apply immediately to existing runs, without new privileges or run
-grants. Dedicated `process_admin` access remains available. Filters precede counts,
+grants. Dedicated `process` access remains available. Filters precede counts,
 pagination, child reads and inclusive metrics. Participant snapshots describe assignments
 without granting an independent ACL. See [decision 0198](../../../project/decisions/0198-process-run-data-and-files.md).
 

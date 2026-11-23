@@ -29,13 +29,15 @@ distinctes des documents éditoriaux et de la mémoire des agents.
 La recherche combine plein texte, correspondances exactes et embeddings. Les embeddings sont
 mutualisés par empreinte de passage et identité du modèle. Un job périodique travaille par lots ;
 une couverture incomplète ou une panne sémantique n'empêche pas la lecture ni la recherche
-textuelle. Les lignes retirées sont éliminées après une période de grâce de sept jours.
+textuelle. Le rafraîchissement de l'index textuel vérifie le corpus préparé, supprime
+immédiatement les passages absents, insère les passages manquants et contrôle la recherche
+FR/EN dans la même transaction. Les rafraîchissements concurrents sont sérialisés. Les
+passages présents dans les deux corpus conservent leurs embeddings. La recherche consulte
+l'index en lecture seule et les embeddings de fond complètent les passages encore présents.
 
-L'indexation valide les nouveaux passages textuels dans une transaction courte avant
-d'appeler le fournisseur : une recherche concurrente ne doit pas attendre les embeddings
-sur un conflit d'insertion. Le verrou transactionnel PostgreSQL reste limité à l'indexation
-de fond entre workers ; il conserve une connexion pendant cet appel, sans verrou d'écriture
-sur les passages. Aucun verrou ou quota global n'est ajouté aux appels LLM ou aux recherches.
+Les workers d'embeddings partagent leur propre verrou transactionnel PostgreSQL pendant
+l'appel au fournisseur. Les lignes à mettre à jour sont verrouillées après la réponse.
+Une purge lexicale peut ainsi retirer des passages pendant l'appel au fournisseur.
 Les lots contiennent au plus huit passages ; le fournisseur dispose de 60 secondes, dans
 un job limité à 90 secondes. Les erreurs d'embeddings déclenchent un avertissement et une
 échéance de reprise progressive de 60 à 600 secondes, locale au processus, sans attente
@@ -81,12 +83,11 @@ Le catalogue documentaire expose ces sources comme points d’entrée du guidage
 `make docs-update` orchestre en développement la génération, les contrôles documentaires,
 la comparaison du corpus source avec le conteneur actif et la synchronisation de l’index
 textuel. `docs-prepare` prépare les sources sans instance active ; `docs-check` ne les modifie pas.
-`make update` depuis les sources lance automatiquement `docs-prepare` avant le build :
-une carte périmée est régénérée sans exiger une commande manuelle préalable.
-Les mises à jour depuis les sources ou depuis un paquet d’images qualifié synchronisent
-l’index textuel puis contrôlent le résultat dans le backend démarré avant de signaler leur
-réussite. Les paquets qualifiés conservent leurs sources documentaires embarquées immuables.
-La comparaison utilise
+`make update` utilise la documentation déjà préparée. Les mises à jour depuis les sources
+ou depuis un paquet d’images qualifié rafraîchissent l’index textuel dans le backend démarré
+avant de signaler leur réussite. Les paquets qualifiés conservent leurs sources
+documentaires embarquées immuables.
+Le rapport indique le nombre de passages indexés et supprimés. La comparaison utilise
 une empreinte du contenu indépendante du libellé de build ; les paquets se comparent à
 l’image candidate exacte, pas au worktree local. Un corpus absent, incomplet ou différent,
 ou un échec de recherche/lecture, fait échouer ce contrôle. Il n’accorde aucun droit aux agents

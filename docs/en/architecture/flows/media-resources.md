@@ -109,8 +109,8 @@ is a distinct search failure. Diagnostics copy neither queries, response bodies 
 The query, result order and `SEARCH_DEFAULT_LANGUAGE` are preserved. Diagnostic language does
 not implicitly change engine language. No lexical relevance filter is applied.
 `SearchClient.search()` keeps its list for synchronous consumers; `search_response()` and
-`asearch_response()` also expose coverage limitations. Search, Browser and HTTPS file transport
-remain separate capabilities.
+`asearch_response()` also expose coverage limitations. Browser includes `search_web` and the
+`browser_*` tools, with individual function permissions. HTTPS file transport has its own policy.
 
 ## Browser sessions and tool authorization
 
@@ -213,7 +213,7 @@ by time, memory and output size, then creates the image through `resource_create
 destination. The whole page is retained at up to 144 dpi, with a 3000-pixel longest side.
 The result includes source and derivative URIs, page, page count, dimensions and MIME.
 The source is unchanged and existing destinations are never overwritten. Cancellation kills
-and drains the worker before removing temporaries. The Image Service and both resources' permissions
+and drains the worker before removing temporaries. The Multimedia function and both resources' permissions
 remain applicable, including in conversations. A Process requiring `image/*` receives the PNG URI,
 never a renamed PDF.
 

@@ -17,19 +17,14 @@ supports qualification of those choices.
 
 ## Enable access
 
-1. In **Configure → Services & connections → Connections** (`/services?tab=connections`),
-   enable the agent's **Administration** connection.
-2. Keep `documentation_catalog` and `documentation_search` enabled in its function permissions.
-3. For documentation-only access, disable `conversation_round_get`, `voice_turn_get`, `llm_call`
-   and `llm_calls`. These inspection functions expose sensitive execution data and are not
-   required to understand the product.
-4. Both documentation functions are on the built-in conversation allowlist.
-5. Authorize `galaris-knowledge` for the agent in skill assignments. Its global default is
+1. In **Configure → Services & connections → Authorizations**, select the agent’s **Galaris**
+   connection and enable `documentation_catalog` and `documentation_search`.
+2. Authorize `galaris-knowledge` for the agent in skill assignments. Its global default is
    disabled; skill and category overrides still apply. Its effective projection additionally
    requires `documentation_catalog` permission.
 
-Administration remains inactive by default. Enabling a connection preserves the usual function
-authorization cascade: explicitly disable inspections for agents intended only to guide users.
+Both documentation functions are on the built-in conversation allowlist. For documentation-only
+access, leave execution inspections blocked and keep the Services management scope at `usage`.
 
 The skill supplies core concepts, retrieval guidance and assistance boundaries. It is available
 to subsequent executions through normal skill handling in the internal harness and compatible
@@ -103,8 +98,9 @@ make docs-update
 
 This command regenerates project and menu maps, checks their freshness, FR/EN guides and
 documentation links, then compares prepared sources with those actually visible in the running
-backend. It synchronizes the shared lexical index and verifies retrieval and reading of both
-navigation guides. Updates reach all already-authorized agents without changing permissions
+backend. In one transaction, it removes obsolete passages from the shared index, inserts missing
+passages, and verifies retrieval and reading of both navigation guides. Unchanged passages keep
+their embeddings. Updates reach all already-authorized agents without changing permissions
 or skill assignments. Editing documentation does not require a restart.
 
 If the backend image or mounts are outdated, the command fails explicitly: use `make update`
@@ -127,8 +123,8 @@ in the qualified images, without modifying those images. A failed refresh or ver
 prevents reporting deployment success. This check does not automatically restore a version
 that has already been replaced. Distributed bundles are checked during build and E2E tests too.
 
-The check reports the content fingerprint, corpus fingerprint, version and indexed passage
-count. Embeddings continue updating in the background when a vector model is configured;
+The check reports the content fingerprint, corpus fingerprint, version and counts of indexed
+and removed passages. Embeddings continue updating in the background when a vector model is configured;
 their completion and provider availability do not block lexical search or the update.
 Existing conversations retain previous answers; a new documentation read uses current sources.
 

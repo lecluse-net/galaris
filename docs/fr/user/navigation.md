@@ -297,12 +297,12 @@ Un harnais externe passant par la gateway Galaris bénéficie du secours avant l
 de sa réponse ; un flux déjà transmis conserve son fournisseur. Les modèles choisis
 explicitement par l'API de profils et la voix native suivent leurs contrats propres.
 
-Pour déléguer cette administration à un agent, activez sa connexion optionnelle **AgentAdmin**
+Pour déléguer cette administration à un agent, activez sa connexion optionnelle **Agent**
 dans **Services & connexions**. Elle est active par défaut à la création de l’assistant **Galaris** ;
 une désactivation ultérieure est conservée. Ses 34 fonctions restent limitées aux droits et au périmètre de
 son responsable humain. Le portrait généré utilise le modèle image de l’appelant ; attendez
 la confirmation d’enregistrement, puis rouvrez la fiche de la cible.
-Voir le [contrat AgentAdmin](../dev/agent-admin.md) pour les connexions, équipes et harnais.
+Voir le [contrat Agent](../dev/agent-admin.md) pour les connexions, équipes et harnais.
 À l’enregistrement d’un avatar d’agent, l’image est convertie en JPEG et réduite à
 500 × 500 pixels au maximum, en conservant ses proportions, sans agrandir les petites images.
 
@@ -312,8 +312,8 @@ La forme et le style sont libres, avec une nature d’agent IA visuellement iden
 Le canevas reste carré, sans masque ni recadrage circulaire.
 Le bouton apparaît uniquement si le **profil LLM par défaut** dispose d’un modèle image
 actif et configuré. Enregistrez les modifications de la fiche avant la génération.
-L’avatar est demandé en 1024 × 1024, avec les dimensions adaptées au modèle par le service
-image existant, puis enregistré comme les autres avatars. Une erreur conserve l’avatar
+Galaris demande un avatar de 1024 × 1024, adapte les dimensions au modèle, puis enregistre
+le résultat comme les autres avatars. Une erreur conserve l’avatar
 précédent ; toute modification de l'agent pendant la génération empêche son remplacement,
 y compris un avatar remplacé puis restauré.
 
@@ -373,7 +373,7 @@ communs aux connexions des agents, aux paramètres globaux et au test MCP. Sans 
 la saisie reste libre ; les mots de passe restent masqués. Les choix et libellés sont conservés
 lors de l’export et de l’import YAML.
 
-Pour déléguer la gestion du catalogue et des connexions, activer explicitement **ServiceAdmin**
+Pour déléguer la gestion du catalogue et des connexions, activer explicitement **Services**
 et suivre le [parcours d’administration déléguée](../admin/service-administration.md).
 L’assistant Galaris reçoit cette connexion active lors de sa création initiale ; une
 désactivation ultérieure est conservée.
@@ -492,8 +492,8 @@ la reprise des tâches ; cette page ne les présente pas comme des permissions.
 Pour le navigateur, une action bloquée attend une nouvelle tentative après votre réponse ; les
 formulaires ne sont pas resoumis automatiquement.
 
-Pour donner la connaissance du produit à un agent, partez de **Connexions**, trouvez sa
-connexion **Administration**, puis suivez le [guide de connaissance produit](../admin/product-knowledge.md).
+Pour donner la connaissance du produit à un agent, partez d’**Autorisations**, trouvez sa
+connexion **Galaris**, puis suivez le [guide de connaissance produit](../admin/product-knowledge.md).
 Une compétence fournit des instructions ; l’accès effectif aux fonctions dépend aussi
 des Services et connexions autorisés.
 
@@ -578,6 +578,10 @@ explique cette préparation à l'administrateur et au développeur.
 L’accueil de **Discussion** présente toutes les conversations, comme la rubrique
 **Conversations** de la fenêtre de chat, puis les agents. Les conversations anciennes et
 sans message sont incluses, avec les mêmes filtres et la pagination habituelle.
+
+Le canal interne se règle par agent dans **Services et connexions → Connexions**.
+Modifiez la connexion **Chat**, puis le réglage **Canal interne**. Les messageries externes
+utilisent leurs propres connexions.
 
 Les outils MCP compatibles affichent leur tableau sous la réponse dans le Chat interne.
 **Filtrer** ouvre le formulaire du service et actualise le tableau à la demande.
@@ -923,7 +927,7 @@ Quelques distinctions utiles :
   parcours, lancer une indexation, l'annuler ou relancer les réparations.
 - **Superviser → Journal des échecs** (`/incident`) sert au diagnostic ;
   **Préférences → Journaux** (`/params/logs`) configure la conservation et les purges.
-  Un agent autorisé peut consulter ce journal via **Administration** : `incidents_list`
+  Un agent autorisé peut consulter ce journal via **Galaris** avec `incidents_list`
   filtre et pagine les erreurs, puis `incident_get` ouvre la trace d'une occurrence.
   Activez la connexion et déléguez le périmètre personnel, équipe ou tous selon le besoin.
   Seul « tous » donne accès aux incidents sans agent et aux diagnostics globaux des motifs.

@@ -8,6 +8,10 @@ les conversations texte `CONVERSATION_ACCESS`/`CONVERSATION_CONTROL`, la voix
 et les processus `PROCESS_READ`/`PROCESS_ADMIN`. L’écran ouvre un onglet autorisé et adapte
 ses commandes au rôle actif. Consulter une activité ne donne pas accès aux autres historiques.
 
+Après la purge d’une trace LLM, le détail de l’appel affiche jusqu’à 500 caractères de son prompt.
+L’archivage manuel retire l’appel du journal. Son coût continue de compter dans les totaux
+d’**Activité → Appels LLM** et dans le bilan de la tâche.
+
 Un lien vers l'onglet Tâches ou une tâche conserve sa cible pendant la vérification de vos
 droits. Le contenu s'ouvre lorsque l'accès est confirmé ; les onglets non autorisés restent absents.
 

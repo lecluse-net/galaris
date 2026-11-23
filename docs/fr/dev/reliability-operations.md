@@ -41,11 +41,23 @@ les phases simultanées de tous les agents d’un propriétaire (0 = désactivé
 les places sous verrou transactionnel ; une expiration les libère. Une tâche excédentaire
 attend au moins cinq secondes sans changer de phase ni perdre son résultat.
 
-`INCIDENT_TRACE_RETENTION_DAYS` et `LLM_TRACE_RETENTION_DAYS` valent 0 par défaut. Une valeur
-positive autorise une purge horaire de 100 détails éligibles au maximum, jamais des lignes
-d’incidents ou des coûts. Les fonctions publiques `prune_traces(preview=True)` donnent le nombre
-du prochain lot sans mutation. Les détails conversation/process et ceux de tâches potentiellement
-requises sont conservés. Sauvegarder les traces nécessaires avant d’activer cette politique.
+`INCIDENT_TRACE_RETENTION_DAYS` vaut 0 par défaut. Une valeur positive autorise une purge
+horaire d’au plus 100 détails éligibles. Les lignes d’incidents restent disponibles.
+
+Les événements de flux LLM expirent dix minutes après la clôture de l’appel et de sa
+tentative durable, si elle existe. Le traitement automatique travaille par lots d’au plus
+5 000 événements et enregistre l’heure de la première sortie utile avant de les retirer.
+Le résultat terminal durable reste consultable.
+
+Les détails de diagnostic d’un appel expirent au bout de sept jours. Une valeur de 1 à 6 pour
+`LLM_TRACE_RETENTION_DAYS` raccourcit ce délai. Chaque passage traite au plus 100 appels et
+garde les 500 premiers caractères de leur champ `prompt`. Les coûts, les jetons et les durées
+restent dans `llm_calls` et continuent d’alimenter les bilans après un archivage manuel.
+La fiche de l’appel garde le nom, le statut et les horaires disponibles
+de chaque outil. La purge retire ses arguments et le contenu de son résultat.
+Les détails de diagnostic nécessaires aux tâches, conversations, processus et inférences
+encore actifs restent disponibles jusqu’à la fin de leur utilisation. La prévisualisation
+indique combien d’appels sont éligibles sans modifier leurs données.
 
 ## Signaux et diagnostic
 
@@ -499,8 +511,9 @@ séparément que les gardes de transition sont détectées lorsqu'elles sont aff
 
 `make tests ARGS='app/llm/tests/test_retention_growth.py'` simule 84 jours de création,
 consommation et purge. Il mesure chaque semaine les lignes brutes, leurs octets logiques,
-les motifs de conservation et la taille physique PostgreSQL. Le plateau logique ne signifie
-pas que les pages MVCC sont immédiatement rendues au système. Après consommation, la purge
+les octets des extraits archivés, les motifs de conservation et la taille physique PostgreSQL.
+Le volume des traces brutes se stabilise et les extraits archivés continuent de s’accumuler.
+PostgreSQL réutilise les pages MVCC. Après consommation, la purge
 conserve les identités, tokens, coûts et résultats métier. Rapport :
 `artifacts/llm-retention-growth.json`.
 

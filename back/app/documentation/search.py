@@ -6,7 +6,6 @@ import math
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import Float, cast, delete, func, literal, or_, select
 from sqlalchemy.dialects.postgresql import insert
@@ -60,34 +59,43 @@ async def synchronize(corpus: Corpus) -> None:
 
 
 async def index_embeddings(corpus: Corpus, *, model_key: str, embed: Embed, batch_size: int = 32) -> int:
-    await synchronize(corpus)
     fingerprints = [p.fingerprint for p in corpus.passages]
-    rows = list((await get_db().scalars(select(Row).options(
-        load_only(Row.id, Row.title, Row.content, raiseload=True),
-    ).where(
+    db = get_db()
+    rows = (await db.execute(select(Row.id, Row.title, Row.content).where(
         Row.fingerprint.in_(fingerprints),
         or_(Row.model_key.is_(None), Row.model_key != model_key, Row.embedding.is_(None)),
-    ).order_by(Row.id).limit(batch_size))).all())
+    ).order_by(Row.id).limit(batch_size))).all()
     if not rows:
         return 0
     vectors = await embed([f"{row.title}\n\n{row.content}" for row in rows])
     if len(vectors) != len(rows) or not vectors or not vectors[0]:
         raise ValueError("Invalid documentation embedding batch.")
     dimensions = len(vectors[0])
-    for row, vector in zip(rows, vectors, strict=True):
+    for vector in vectors:
         if len(vector) != dimensions or not all(math.isfinite(value) for value in vector):
             raise ValueError("Invalid documentation embedding dimensions or values.")
-        row.embedding, row.model_key, row.dimensions = vector, model_key, dimensions
-    await get_db().flush()
-    return len(rows)
+    by_id = {row.id: vector for row, vector in zip(rows, vectors, strict=True)}
+    # A refresh can retire passages while the provider is running. Lock only the
+    # rows that still exist after the response, for the duration of the write.
+    surviving = (await db.scalars(select(Row).options(
+        load_only(Row.id, raiseload=True),
+    ).where(Row.id.in_(by_id)).order_by(Row.id).with_for_update())).all()
+    for passage in surviving:
+        passage.embedding, passage.model_key, passage.dimensions = by_id[passage.id], model_key, dimensions
+    await db.flush()
+    return len(surviving)
 
 
-async def prune_retired(corpus: Corpus) -> None:
-    # Keep a grace period for rolling upgrades and quick rollbacks.
-    await get_db().execute(delete(Row).where(
-        Row.fingerprint.not_in([p.fingerprint for p in corpus.passages]),
-        Row.created_at < datetime.now(timezone.utc) - timedelta(days=7),
-    ))
+async def prune_retired(corpus: Corpus) -> int:
+    """Serialize lexical refreshes and retire passages outside the validated corpus."""
+    fingerprints = [p.fingerprint for p in corpus.passages]
+    if not fingerprints:
+        raise ValueError("Cannot refresh the documentation index with an empty corpus.")
+    db = get_db()
+    await db.execute(select(func.pg_advisory_xact_lock(func.hashtextextended("galaris-documentation-refresh", 0))))
+    connection = await db.connection()
+    result = await connection.execute(delete(Row).where(Row.fingerprint.not_in(fingerprints)))
+    return result.rowcount
 
 
 async def index_status(corpus: Corpus, *, model_key: str | None) -> dict[str, int | bool]:
@@ -122,7 +130,6 @@ async def search(
         raise ValueError("Documentation search limit must be between 1 and 50.")
     if language not in {"", "fr", "en", "und"} or kind not in {"", "documentation", "decision", "plan"}:
         raise ValueError("Unsupported documentation language or source kind.")
-    await synchronize(corpus)
     passages = {p.fingerprint: p for p in corpus.passages if
         (not language or p.page.language in {language, "und"})
         and (not domain or p.page.domain == domain)

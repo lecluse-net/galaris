@@ -93,10 +93,6 @@ async def refresh_documentation_index() -> None:
         return
     corpus = await asyncio.to_thread(documentation.load_corpus)
 
-    # Publish new lexical rows before waiting on the provider. Otherwise concurrent
-    # searches can block on synchronize's unique-key inserts throughout the HTTP call.
-    await documentation.synchronize(corpus)
-    await get_db().commit()
     # Keep cross-worker exclusion limited to background indexing. This deliberately
     # retains one DB connection, but no passage write locks during the network wait.
     if not await get_db().scalar(select(func.pg_try_advisory_xact_lock(func.hashtextextended("galaris-documentation-index", 0)))):
@@ -119,5 +115,4 @@ async def refresh_documentation_index() -> None:
             type(exc.__cause__ or exc).__name__, _index_retry_delay,
         )
         return
-    await documentation.prune_retired(corpus)
     _index_retry_at = _index_retry_delay = 0.0

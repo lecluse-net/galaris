@@ -60,8 +60,10 @@ d'interface ne remplace pas les droits API et MCP.
 
 ## Construire et enregistrer
 
-Le menu des poignées du diagramme propose **Calcul (Monty)**, **Python isolé**,
-**Appel MCP** et **Appel REST**. Utilisez **Python isolé** pour un programme CPython
+Le menu des poignées du diagramme regroupe les actions dans **Tâches**, **Choix**,
+**Début et fin**, **Boucles** et **Appels**. Il affiche les groupes disponibles à l’endroit
+où vous insérez le nœud. Le nœud **Début** est fourni à la création du diagramme.
+Utilisez **Python isolé** pour un programme CPython
 sur le runner dédié. Dans cette activité, le champ **Capacités MCP et REST** déclare
 les opérations que le programme peut appeler via `call_service`. Les activités
 **Appel MCP** et **Appel REST** exécutent chacune un appel déclaré directement dans
@@ -247,19 +249,20 @@ prépare une conversion explicite à compléter avant sauvegarde. Les runs déj�
 lancés conservent leur profil d'origine.
 Une erreur d'exécution arrête le processus et ses branches actives. Le suivi renvoie
 le code d'erreur, avec son message ; les données du run et les fichiers sont conservés.
-Il n'y a aucun traitement de secours ni réessai automatique à configurer.
-Le champ **Traitement** propose quatre types de tâches : **IA agentique** lance une tâche
-confiée à l'agent de la ligne, avec ses outils et interactions ; **IA appel LLM** effectue un
-unique appel au **Modèle LLM** texte choisi, sans outil ni tâche agentique ; **Code** exécute
-un programme Python ; **Humain** attend la réponse de la personne affectée dans sa messagerie.
-Les sorties LLM sont contrôlées selon les variables sélectionnées avant intégration.
+Le champ **Traitement** propose quatre types de tâches. **IA agentique** lance une tâche
+confiée à un agent et **Humain** attend la réponse de la personne affectée dans sa messagerie.
+**Code** exécute un programme Python. Pour **IA appel LLM**, choisissez un niveau de texte,
+un profil principal et un profil de secours. Les choix hérités utilisent le profil courant et
+le secours par défaut, comme sur la fiche d’un agent. Les sorties LLM sont contrôlées selon
+les variables sélectionnées avant intégration.
 
-Un IF possède deux poignées de sortie, **True** et **False**, et deux traitements :
-**Code**, avec un programme Python, ou **IA décisionnelle**, avec un unique appel au modèle
-texte ou décisionnel choisi, par exemple Jev. Il peut être placé sur n'importe quelle ligne,
-sans changer de traitement. Une erreur du modèle arrête le processus en erreur et ne choisit
-jamais False. Les définitions et runs historiques conservent leurs modes tant qu'ils ne sont
-pas explicitement modifiés. Le choix du traitement et du modèle est conservé à l'enregistrement.
+Le menu des poignées propose **IF · Python**, **IF · LLM décisionnel** et **IF · Humain**.
+Le premier retourne un booléen. Le deuxième utilise la colonne Décision des profils principal
+et de secours. Le troisième envoie une question à la personne affectée avec les options Oui et
+Non. Saisissez une question fixe ou sélectionnez comme source une entrée texte produite par
+une étape précédente, par exemple une tâche Code ou LLM. Les sorties du diagramme restent
+**True** et **False**. Les nœuds historiques qui désignent directement un modèle peuvent être
+convertis aux profils depuis l’éditeur.
 Le code reçoit les variables du
 run directement : `return variable_2 != "pas mon projet"` pour un IF, ou
 `return {"variable_1": variable_1 + 1}` pour mettre à jour une sortie déclarée d'une tâche.
@@ -271,6 +274,19 @@ Pour réunir les branches, reliez-les directement à la tâche suivante : elle a
 des branches activées puis démarre une seule fois. Une branche IF non choisie ne bloque pas
 cette attente. Aucun bloc de parallélisme dédié n'est à ajouter. Le harnais détermine combien
 de tâches peuvent réellement s'exécuter ensemble.
+
+Dans **Attentes**, **Attendre une échéance** reprend le même run après un délai, à une
+date fixe avec fuseau horaire, ou à la date fournie par une variable d’entrée. **Attendre
+un événement** attend un nom précis et une valeur de corrélation, par exemple le numéro
+de commande. L’intégration qui observe la livraison doit transmettre le signal à ce run.
+Le suivi affiche le motif de l’attente. Une attente armée survit au redémarrage.
+
+Dans **Choix**, **Premier événement reçu** permet, par exemple, de poursuivre à la
+livraison ou d’envoyer une relance à l’échéance. Reliez chaque sortie à sa propre attente.
+Une seule branche démarre. Depuis la sortie d’une activité, **Ajouter une branche d’erreur**
+permet de traiter un refus REST confirmé ou un échec de calcul confirmé. Le code d’erreur
+facultatif précise les erreurs prises en charge. Une opération au résultat incertain
+conserve son état de réconciliation.
 
 Valider vérifie le profil exécutable. Enregistrer crée une sauvegarde du processus.
 Un brouillon JSON invalide reste visible et bloque la sauvegarde. Le diagramme s'affiche
@@ -372,7 +388,7 @@ d'agir. La même activité se poursuit après la décision.
 
 Les agents utilisent `processus_get` pour cette vue. Les droits du processus autorisent
 la lecture de ses runs et de leurs données ; son droit d'écriture autorise les contrôles.
-L'administration dédiée `process_admin` reste disponible. Le partage d'un processus
+L'administration dédiée `process` reste disponible. Le partage d'un processus
 s'applique à ses exécutions existantes.
 
 Une réponse à la question d'une activité concerne l'exécution existante : elle ne demande

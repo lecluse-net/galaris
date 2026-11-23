@@ -4,18 +4,39 @@
 
 Le code `galaris` et le libellé **Galaris** sont réservés au seul Service système Galaris.
 Aucun autre code ou libellé de Service ne peut contenir ce nom, quelle que soit sa casse.
-Le Service d’administration utilise `platform_admin` / **Administration** et le laboratoire
-`lab` / **Lab**. La mise à jour conserve l’identité, les connexions et les autorisations
-de l’ancien Service d’administration lors de son renommage.
+**Galaris** fournit la documentation et les diagnostics d’exécution soumis à une portée.
+**Chat** fournit le canal interne, les choix en attente, la présentation de dépôts, les appels
+vocaux et l’inspection des tours. Dans **Connexions**, ouvrez les réglages Chat de l’agent pour
+modifier **Canal interne**. **Préférences → Messagerie** règle sa disponibilité pour l’instance.
+Le tableau des permissions de Chat permet de régler la réponse automatique sur les ponts compatibles.
 
 Un **Service** représente un service, par exemple **Ionos**. Ses **protocoles** sont regroupés
 par usage : MCP, API, partage, messagerie, Listener, Mail et Calendrier.
 Chaque groupe utilise un seul protocole sur ce service : HTTP ou SSE pour MCP,
 REST pour API, AFFiNE/Nextcloud/Samba pour le partage, IMAP & SMTP pour Mail, CalDAV pour
 Calendrier. Le catalogue présente chaque groupe comme un en-tête, suivi de ses protocoles.
-Mail et CalDAV sont des protocoles de fournisseurs optionnels. Le service système **Agenda personnel**
+Mail et CalDAV sont des protocoles de fournisseurs optionnels. Le service système **Agenda**
 est disponible par défaut pour chaque agent, sans compte externe ; ses fonctions suivent les
 permissions ordinaires. L’agenda porte les rendez-vous et rappels, les Goals conservent leurs cycles.
+Dans **Permissions → Agenda**, `services.management_scope` délègue la gestion des événements
+et rappels de l’agent, de ses équipes ou de tous les agents. La portée par défaut est personnelle.
+
+Dans **Permissions → Contact**, un gestionnaire global disposant du droit de modifier les
+connexions peut définir `services.management_scope` pour un agent. `personal` donne accès
+à son carnet, `team` ajoute les carnets des agents partageant une équipe active, et
+`all` couvre tous les carnets. La réinitialisation remet la portée personnelle. Les permissions
+de `contact_list`, `contact_get`, `contact_create` et `contact_update` s’appliquent sur la
+connexion Contact de l’appelant. Une adresse créée pour un autre agent entre dans le carnet
+utilisé par la politique Mail entrante de cet agent.
+
+Dans **Permissions → Documents** et **Permissions → Tâches**, le même réglage est
+indépendant pour chaque connexion. La portée personnelle est la valeur par défaut.
+Les outils Documents vérifient le propriétaire d'un document natif et ses droits de lecture
+ou d'écriture. Un agent délégué peut administrer le partage d'un document d'agent dans
+son périmètre s'il détient un droit d'écriture sur ce document.
+Les outils Tâches et les vues agentiques `galaris://task/` utilisent la portée Tâches.
+L'agent peut lire les tâches qu'il a demandées. Une cible distincte pour `task_run` exige la
+portée équipe ou globale.
 
 Dans **Services → Connexions**, le bouton **Tester** vérifie les paramètres enregistrés de la
 connexion sans modifier son activation ni ses autorisations. Enregistrer les modifications
@@ -81,33 +102,67 @@ et ne rétablissent pas un protocole désactivé après migration.
 L'ancien code `mail` conserve les URI `mail://` et ne peut pas héberger un partage de
 fichiers ou une autre messagerie : créer un Service fournisseur nommé pour ces combinaisons.
 
-**ServiceAdmin** (`service_admin`) administre le catalogue global des Services, leurs paramètres partagés,
-les connexions des agents et les permissions des fonctions. Sa connexion est active dès la
-création de l’assistant Galaris proposé à l’administrateur, et inactive par défaut pour les
-autres agents. Une désactivation ultérieure reste conservée ; les assistants déjà initialisés
-ne reçoivent pas automatiquement ce nouveau droit. Ses fonctions sont réservées aux tâches.
-Le paramètre local `services.management_scope` délimite l'administration ; activer
-la connexion seule ne donne pas de portée globale. L'assistant Galaris reçoit `all` à sa
-création sur toutes ses connexions intégrées proposant une portée, qui démarrent actives.
-Les fonctions autorisées continuent d'affiner la délégation. ServiceAdmin ne reprend pas les
-droits du responsable humain de l’agent. AgentAdmin conserve son propre périmètre et sa délégation.
+Le service **Services** (`service`) démarre actif en mode `usage` pour chaque agent et expose
+`services_list` dans les tâches. L’administration du catalogue, des paramètres et des connexions
+exige une délégation explicite. Elle suit la portée locale `services.management_scope` et les
+autorisations de chaque fonction. L’assistant Galaris proposé par l’installation reçoit la portée
+globale sur Services à sa création. Le service **Agent** applique sa propre délégation.
+
+<a id="built-in-service-scopes"></a>
+## Services intégrés et portées
+
+Les connexions système sont créées ou réactivées pour chaque agent. Les fonctions gardent
+leurs propres modes **Actif**, **Bloqué** et **Sur demande**. La portée ci-dessous concerne
+l'accès délégué des agents. Les privilèges de l'interface humaine et les ACL des ressources
+s'appliquent séparément.
+
+| Service (code) | Connexion initiale | Portée locale par défaut | Fonctions ou rôle |
+| --- | --- | --- | --- |
+| Galaris (`galaris`) | Système | Voir Services pour les inspections | Documentation, appels LLM, incidents |
+| Chat (`chat`) | Système | `team` pour la communication inter-agents ; voir Services pour les inspections | Canal interne, choix, présentation de dépôts, appels vocaux et inspection des tours |
+| Documents (`document`) | Système | `personal` | Partage, révisions, affichage, analyse et cartes mentales |
+| Memory (`memory`) | Système | Mémoire privée de l'agent | Mémorisation, rappel des éléments à venir, synthèse et oubli |
+| Partage de fichiers (`file_sharing`) | Système | Droits de la ressource source | Fonctions `file_*` et URI canoniques |
+| Agenda (`calendar`) | Système | `personal` | Agendas, événements, disponibilité et actions |
+| Contact (`contact`) | Système | `personal` | Recherche et gestion des carnets |
+| Tâches (`task`) | Système | `personal` | Délégation, suivi et commandes `task_*` et `conversation_task_*` |
+| Agent (`agent`) | Active | `usage` | Annuaire, équipes et administration d'agents |
+| Services (`service`) | Active | `usage` | Inventaire, administration des services et portée des inspections d'exécution |
+| Objectifs (`goal`), Processus (`process`), Compétences (`skills`) | Active | `personal` | Commandes propres à chaque domaine |
+| Navigateur (`browser`), Multimédia (`multimedia`) | Active | Permissions de fonction | Recherche Web et navigation, outils image/audio/vidéo |
+| Lab (`lab`) | Inactive | Les sources réelles exigent la portée `all` sur Services | Expériences, diagnostics et campagnes Processus |
+| Sujets (`topic`) | Sur configuration | Permissions de fonction | Classement thématique |
+| Console SSH (`console`) | Provisionnée pour le harnais interne | Compte SSH de la connexion | Exécution et stockage `console://` |
+
+Mail, CalDAV et les messageries externes utilisent des connexions fournisseur. Leurs protocoles
+et leurs fonctions restent indépendants du service système Agenda et du canal interne Chat.
+Les codes et noms exacts des fonctions sont inventoriés dans la [cartographie du code](../architecture/generated/project-map.md).
 
 ## Activer et limiter la délégation
 
 Dans le formulaire d'une connexion administrative, `services.management_scope` propose
 `usage` (aucune administration), `personal` (ressources de l'agent), `team` (union de ses
 équipes actives) et `all` (global). Cette portée est locale, sans valeur globale ni héritage.
-AgentAdmin propose seulement `usage`, `team`, `all` et intersecte la délégation avec les
+Agent propose seulement `usage`, `team`, `all` et intersecte la délégation avec les
 droits et le périmètre du responsable humain ; il interdit les modifications de l'appelant.
-ServiceAdmin exige `all` pour les définitions, paramètres et permissions partagés ; `personal`
-et `team` ne délèguent que les connexions concernées. Goal management suit l'agent responsable,
-Administration l'agent propriétaire des traces et Process Admin les règles de son domaine.
+Services exige `all` pour les définitions, paramètres et permissions partagés ; `personal`
+et `team` délèguent les connexions et les inspections des agents couverts. Objectifs suit
+l'agent responsable et Processus les règles de son domaine. Tâches applique sa propre portée.
 Les [compétences](../user/skills.md) conservent leur propre distinction entre usage et gestion.
+
+Le registre MCP rattache chaque outil natif à son Service. Une permission enregistrée
+sur une autre connexion ne modifie pas la disponibilité de cet outil. Lorsqu’un outil
+administre une ressource, la portée se lit normalement sur son propre Service.
+Les inspections de Chat et Galaris utilisent la portée commune de Services et gardent
+leur permission de fonction d’origine. Le Lab exige la portée globale pour ses sources
+réelles. Les outils de protocole utilisent la connexion de la source, avec la délégation
+Agenda sur sa connexion système pour les agendas d’autres agents. La communication
+entre pairs utilise la politique de la connexion de messagerie.
 
 Seul un humain en session web avec `CONNECTION_EDIT` et gestion globale des agents peut
 enregistrer cette délégation. Connexion, portée et équipes sont relues à chaque appel.
-Une ancienne connexion active sans portée explicite doit être configurée ; son activation
-ne donne plus une administration globale. La sauvegarde de connexion et portée est atomique.
+Sans réglage local, la connexion utilise la valeur par défaut de son Service.
+La sauvegarde de la connexion et de sa portée est atomique.
 Les [privilèges humains](privileges.md), les fonctions accordées et les ACL restent distincts.
 
 Dans **Services**, le sous-onglet **Services personnalisés** s'ouvre par défaut, avant
@@ -153,19 +208,19 @@ liés par une référence facultative sont conservés sans cette référence. Le
 services sont conservées. Les données du service externe et les actions déjà lancées chez lui
 ne sont pas supprimées ou annulées par cette opération.
 
-Les définitions intégrées protégées restent non supprimables. Le ServiceAdmin MCP conserve sa
+Les définitions intégrées protégées restent non supprimables. Le Services MCP conserve sa
 règle de suppression sans dépendances ; la cascade décrite ici est une confirmation humaine
 de l’interface, sous le privilège d’édition des Services.
 
 Dans **Configurer → Services & connexions → Connexions** (`/services?tab=connections`), activer
-la connexion ServiceAdmin de l’agent. Dans **Autorisations**, limiter les fonctions au travail
+la connexion Services de l’agent. Dans **Autorisations**, limiter les fonctions au travail
 attendu.
 
 Les lectures comme les mutations vérifient la connexion active et la permission exacte à
-chaque appel. Les définitions intégrées restent non modifiables. Les services obligatoires
-Galaris, Conversation, Document, Memory et File Sharing sont consultables, mais leurs réglages et
-connexions restent gérés par le logiciel. Seul un humain peut attribuer ou modifier ServiceAdmin,
-AgentAdmin, Administration, Process Admin, Lab, Goal management, Compétences et Console.
+chaque appel. Le logiciel protège les définitions intégrées et l'activation des connexions
+système. Un humain habilité peut régler les fonctions, les portées prévues et le canal interne
+Chat. Seul un humain peut déléguer les capacités de Services, Agent, Processus, Lab, Objectifs,
+Compétences et Console.
 Une chaîne de commandes agentiques ne permet pas de s’attribuer une capacité administrative.
 
 ## Connecter un serveur MCP avec OAuth
@@ -383,9 +438,9 @@ Le transport utilise l’adresse DNS validée, conserve Host et le nom TLS, dema
 non compressée et refuse les réponses compressées pour maintenir son plafond d’octets. Il refuse
 aussi les redirections et endpoints SSE d’une autre origine. Un changement de destination exige une nouvelle définition
 préparée ; les credentials d’une ancienne destination ne sont pas transférés automatiquement.
-ServiceAdmin n’exécute ni ne configure `stdio` ; une définition existante reste identifiable expurgée.
+Services n’exécute ni ne configure `stdio` ; une définition existante reste identifiable expurgée.
 Ses réglages, permissions et connexions sont en lecture seule, sans exposer les valeurs des
-paramètres. Un rafraîchissement ServiceAdmin ignore toutes les sources stdio des agents concernés
+paramètres. Un rafraîchissement Services ignore toutes les sources stdio des agents concernés
 et signale une découverte partielle sans supprimer leur index existant.
 
 ## Paramètres, droits et commandes
@@ -545,7 +600,7 @@ Une mutation d’un objet existant fournit `expected_version` obtenu par sa dern
 Cette empreinte couvre définition, paramètres, permissions et dépendances. Sur `conflict`,
 relire et réconcilier ; ne pas rejouer aveuglément. Une réponse perdue se réconcilie par code
 du Service ou par couple agent/Service. L’identité d’une connexion est immuable dans cette commande.
-La suppression par ServiceAdmin MCP d’un Service lié refuse toute cascade : retirer explicitement les connexions,
+La suppression par Services MCP d’un Service lié refuse toute cascade : retirer explicitement les connexions,
 examiner les références techniques, puis refaire la lecture et supprimer avec l’empreinte courante.
 
 Après une mutation, `persisted=true` confirme l’enregistrement, même si le rafraîchissement

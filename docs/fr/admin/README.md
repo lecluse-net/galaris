@@ -865,13 +865,14 @@ restent dans leurs connexions chiffrées.
 Pour Nextcloud Talk, configurez au minimum l’URL de base et le mode entrant (`polling` ou
 `signaling`). Les réglages généraux de voix se trouvent dans **Préférences → Voix**.
 
-Les services intégrés sont synchronisés au démarrage du backend. Galaris, Conversation, Document, Memory
-et File Sharing gardent leurs définitions et connexions actives protégées ; un humain peut
+Les services intégrés sont synchronisés au démarrage du backend. Galaris, Chat, Documents, Memory, Partage de fichiers, Agenda, Contact et Tâches gardent leurs définitions
+et connexions actives protégées ; un humain peut
 configurer les modes Actif, Bloqué et Sur demande de leurs fonctions. Les connexions optionnelles
 restent activables et désactivables par agent dans l’interface. Un driver n’obtient une fonction native
 que si son profil de capacités l’autorise ; l’absence d’une capacité entraîne un refus par
-défaut. Les fonctions personnelles de processus font partie du socle `galaris`. Le package
-technique `process_admin` est réservé à l’administration globale et reste inactif par défaut.
+défaut. Le service **Processus** (`process`) regroupe les fonctions MCP de processus. Chaque agent
+reçoit une connexion active avec la portée personnelle. Une portée d’équipe ou globale nécessite
+une délégation explicite.
 
 Le catalogue envoyé au driver respecte d’abord les droits de l’agent et les fonctions désactivées.
 Lorsque le runtime le permet, la découverte est différée : le modèle reçoit un index borné puis
@@ -959,21 +960,20 @@ conserver une seule politique d’autorisation.
 
 ### Réserver les capacités d’administration aux agents spécialisés
 
-Trois packages intégrés spécialisés sont créés pour chaque agent avec une connexion **inactive** :
+Les services intégrés suivants permettent de déléguer des fonctions de gestion :
 
 | Code technique | Libellé | Fonctions |
 |---|---|---|
-| `goal_management` | Gestion des objectifs | `goal_create`, `goal_update`, `goal_pause`, `goal_resume`, `goal_complete`, `goal_delete` ; lectures via File Sharing |
+| `goal` | Objectifs | Création, suivi et cycle de vie dans la portée de la connexion ; lectures via Partage de fichiers |
 | `skills` | Compétences | `skills_list`, `skill_read` et administration selon la portée locale |
-| `process_admin` | Administration des processus | CRUD des définitions et gestion des runs dans la portée locale déléguée |
+| `process` | Processus | Définitions, lancements et suivi dans la portée locale de la connexion |
 
 Après `make update` :
 
 1. ouvrez les connexions de l’agent DRH ;
-2. activez **Gestion des objectifs**, **Compétences** et, si nécessaire,
-   **Administration des processus** uniquement sur cet agent ;
-3. laissez ces connexions inactives sur les autres agents ;
-4. désactivez éventuellement certaines fonctions au niveau de la connexion, par exemple
+2. configurez la portée des connexions **Objectifs**, **Compétences** et **Processus** si sa mission exige
+   des droits au-delà de ses propres ressources ;
+3. désactivez éventuellement certaines fonctions au niveau de la connexion, par exemple
    `goal_delete`, si la DRH doit superviser sans pouvoir supprimer.
 
 L’activation d’une connexion contrôle ce que le modèle peut appeler. Le RBAC HTTP contrôle, lui,
@@ -998,7 +998,7 @@ centrale ; il n’expose aucun autre fichier du package.
 
 ### Transcription de fichiers audio, vidéo et liens YouTube
 
-Le tool intégré `audio` expose la fonction MCP suivante :
+Le service intégré Multimédia expose la fonction MCP suivante :
 
 ```text
 audio_transcribe(file: str, destination: str = "", language: str = "", minutes: float | None = None) -> str
@@ -1021,18 +1021,18 @@ sur la portion retenue.
 Après la mise à jour qui introduit la fonction :
 
 1. `make update` synchronise automatiquement le Service et crée les connexions manquantes ;
-2. activez la connexion intégrée **Audio** sur chaque agent autorisé à l’utiliser ;
+2. autorisez `audio_transcribe` sur la connexion **Multimédia** des agents concernés ;
 3. pour les fichiers audio ou vidéo, configurez un fournisseur actif capable de transcription ;
 4. ajoutez ou sélectionnez une ressource portant la capacité `transcription` ;
 5. affectez-la à l’usage **Transcription** du profil concerné.
 
-La connexion Audio est créée inactive par défaut, comme les autres capacités spécialisées. Si
-elle est activée sans modèle STT configuré, un fichier audio ou vidéo produit une erreur explicite
-au lieu de choisir un modèle implicite. Le service prend en charge OpenRouter, ElevenLabs et les
+La fonction `audio_transcribe` est bloquée par défaut pour les nouveaux agents. Sans modèle STT
+configuré, un fichier audio ou vidéo produit une erreur explicite. Le service prend en charge OpenRouter, ElevenLabs et les
 fournisseurs OpenAI-compatible selon leur endpoint de transcription configuré. Une URL YouTube
-avec sous-titres ne nécessite pas de modèle STT, mais requiert toujours la connexion **Audio**.
+avec sous-titres requiert l’autorisation `audio_transcribe`. La récupération de sous-titres
+ne nécessite aucun modèle STT.
 
-Un agent auquel on demande une transcription doit donc avoir sa connexion **Audio** active. Si le
+La transcription exige une connexion **Multimédia** active et la permission de la fonction. Si le
 tool est absent, l’exécuteur s’arrête avec une erreur de configuration. Pour un fichier local, il
 s’arrête aussi si le STT dédié n'est pas configuré ; il ne doit jamais tenter un repli par la
 console ou par son propre modèle de chat.

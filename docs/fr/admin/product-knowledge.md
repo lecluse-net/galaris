@@ -18,21 +18,14 @@ permet de qualifier ces choix.
 
 ## Activation
 
-1. Dans **Configurer → Services & connexions → Connexions** (`/services?tab=connections`),
-   activer la connexion **Administration** de l'agent.
-2. Dans les autorisations de cette connexion, conserver `documentation_catalog` et
-   `documentation_search` autorisés.
-3. Pour un accès documentaire seul, désactiver `conversation_round_get`, `voice_turn_get`,
-   `llm_call` et `llm_calls`. Ces fonctions donnent accès à des données d'exécution sensibles ;
-   elles ne sont pas nécessaires à la connaissance du produit.
-4. Les deux fonctions documentaires figurent dans la liste intégrée des outils de conversation.
-5. Autoriser `galaris-knowledge` pour l'agent dans les attributions de compétences. Son
+1. Dans **Configurer → Services & connexions → Autorisations**, sélectionner la connexion
+   **Galaris** de l’agent et autoriser `documentation_catalog` et `documentation_search`.
+2. Autoriser `galaris-knowledge` pour l'agent dans les attributions de compétences. Son
    défaut global est désactivé ; les réglages de compétence et de catégorie restent applicables.
    Sa projection effective exige également l'autorisation `documentation_catalog`.
 
-La connexion Administration reste inactive par défaut. L'activation seule conserve la cascade
-habituelle d'autorisations des fonctions : désactiver explicitement les inspections pour un
-agent chargé uniquement d'aider les utilisateurs.
+Les deux fonctions documentaires figurent dans la liste intégrée des outils de conversation.
+Pour un accès documentaire seul, laisser les inspections bloquées et la portée de Services sur `usage`.
 
 La compétence apporte les concepts fondamentaux, la méthode de recherche et les limites de
 l'assistance. Elle est disponible aux exécutions suivantes selon le mécanisme normal des compétences,
@@ -109,8 +102,10 @@ make docs-update
 
 Cette commande régénère les cartes du projet et des menus, vérifie leur fraîcheur, la
 présence des guides FR/EN et les liens documentaires, puis compare les sources préparées
-avec celles réellement visibles dans le backend actif. Elle synchronise l’index textuel
-commun et vérifie la recherche et la lecture des guides de navigation dans les deux langues.
+avec celles réellement visibles dans le backend actif. Dans une seule transaction, elle retire
+les anciens passages de l’index commun, ajoute les passages manquants et vérifie la recherche
+et la lecture des guides de navigation dans les deux langues. Les embeddings des passages
+inchangés restent disponibles.
 Les mises à jour concernent tous les agents déjà autorisés ; aucun droit ni affectation
 de compétence n’est modifié. Aucun redémarrage n’est nécessaire pour une édition documentaire.
 
@@ -137,8 +132,8 @@ contrôle empêche d’annoncer la réussite du déploiement.
 Ce contrôle ne restaure pas automatiquement une ancienne version déjà remplacée.
 Les paquets distribués sont également contrôlés à la construction et dans leurs tests E2E.
 
-Le contrôle imprime l’empreinte du contenu, celle du corpus, la version et le nombre de
-passages indexés. Les embeddings continuent à se mettre à jour en arrière-plan si un modèle
+Le contrôle imprime l’empreinte du contenu, celle du corpus, la version et les nombres de
+passages indexés et supprimés. Les embeddings continuent à se mettre à jour en arrière-plan si un modèle
 vectoriel est configuré ; leur achèvement et la disponibilité du fournisseur ne bloquent
 pas la recherche textuelle ni la mise à jour. Les conversations déjà engagées conservent
 leurs anciennes réponses : une nouvelle lecture documentaire utilise les sources actuelles.

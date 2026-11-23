@@ -281,6 +281,10 @@ in Memory or its revisions, that every read returns current canonical JSON, and 
 DbAdmin cleanup is idempotent without restoring old copies when text migration is
 replayed. Ordinary memories and private access rules remain protected.
 
+`app/contact/tests/test_mcp.py` runs through the MCP server with personal, team and global
+scopes. It checks pagination, out-of-scope denials, the caller's function permission,
+live team removal and creation in the target owner's address book.
+
 `app/contact/tests/test_file_resources.py` exercises Contacts, File Sharing and MCP with the
 real database: current names and coordinates, JSON export, isolation between agents, denied
 moves/deletes, forgetting, and listing/search pagination across 501 entries. HTTP checks
@@ -463,15 +467,15 @@ checks late responses, role changes, denial and disposal of metadata selectors.
 
 `app/services/tests/test_catalog_sql_budget.py` bounds delegated catalogue reads at
 10, 50 and 500 Services while preserving order, pagination, Unicode search, secret masking
-and current configuration after an independent write. AgentAdmin tests and
+and current configuration after an independent write. Agent tests and
 `e2e/specs/agent-admin.spec.mjs` verify allowed targets and denial after revocation.
 A ten-Service page retains a Python allocation budget with 0 or 500 large configurations
 outside the page; consumers without the projection then retain their complete
 configuration in the same session.
-ServiceAdmin metadata pages retain this budget at 10 and 500 entries despite large private
+Services metadata pages retain this budget at 10 and 500 entries despite large private
 descriptions; opening a detail afterwards restores its full configuration with secrets
 masked. Filters and revocations remain covered by `app/services/tests/test_service_admin.py`
-and the desktop/mobile ServiceAdmin journey.
+and the desktop/mobile Services journey.
 
 `core/storage/tests/test_lifecycle.py` exercises retirement of 10, 100 and 1,001 references,
 sharing, rollback, bytes retained before commit and purge recovery. Two PostgreSQL sessions
@@ -661,15 +665,19 @@ for every wording. Simple scoped coordinate lookups also verify that no embeddin
 The central `app/chat/tests/test_authorization.py` check also covers Document privileges on
 conversation listing and creation while preserving the room access assertion.
 
-`app/services/tests/test_management_scopes.py` protects connection-local Process,
-ServiceAdmin, Goal and Administration scopes: no implicit delegation, filtering before
+`app/services/tests/test_management_scopes.py` checks the nine local management scopes
+and isolates per-function permissions for every tool in those Services and for shared
+inspections. Domain journeys check filtering before
 pagination, denial of out-of-scope assignments and revocation after team removal.
 `app/agent/tests/test_agent_admin.py` covers team creation and the ban on self-mutation;
 avatar, connection and Harness journeys now target a separate managed agent.
-Conversation and LLM inspection, Tasks and `galaris://` projections use the same scopes.
+Turn and LLM inspection use Services scope. Tasks and their `galaris://task/` projections
+use the separate Tasks scope.
 `service-parameters.spec.mjs` exercises the shared form, atomic saving, errors and reopening.
-`management-scopes.spec.mjs` exercises all five forms, real MCP calls, revocation
-and saving/running/reopening a campaign backed by a native Dataset. Process campaign
+`test_conversation_admin_mcp.py` exercises text and voice inspections with Services scope,
+Chat function permission and live revocation in one MCP session.
+`management-scopes.spec.mjs` exercises the Agent, Services, Processes and Goals forms,
+their MCP calls, Galaris inspection and a campaign backed by a native Dataset. Process campaign
 tests also cover idempotency, conflicts and the absence of a Document created to
 store synthetic inputs.
 `app/goal/tests/test_goal_runner.py` checks inline Goal descriptions, the sole tracking Document
@@ -1573,7 +1581,7 @@ Tasks before inference. Human requests and same-agent steps remain admitted.
 invitations under none/team/all scopes. `app/agent/tests/test_default_agent.py` verifies maximum
 installation permissions and preservation of later human restrictions during synchronization.
 
-AgentAdmin is documented in [agent-admin.md](agent-admin.md).
+Agent is documented in [agent-admin.md](agent-admin.md).
 `back/app/agent/tests/test_team_directory.py` protects the shared read-only directory:
 empty and homonymous teams, current counts, overlapping human/agent IDs, literal searches
 and filters, inactive accounts and soft deletions, fresh reads after removal, and pagination
@@ -1932,7 +1940,7 @@ the suspended state before answering and cancels any active workers if it fails.
 immediate headers, MCP and native keepalives, late agreement and denial, a single call
 and no effect before agreement. SDK qualification also exercises the real MCP client
 against the SSE response, with one effect after continuation and none after denial.
-ServiceAdmin diagnostics use successive synthetic HTTP/SSE servers and check catalogue bounds
+Services diagnostics use successive synthetic HTTP/SSE servers and check catalogue bounds
 without executing its functions. Each server starts with a reset SSE shutdown flag, which
 the library retains at the test process level.
 `e2e/specs/document-authorization.spec.mjs` crosses the real Chat controller, internal harness,
@@ -2200,7 +2208,7 @@ in `test_mcp_loader.py` verifies that discovery observes the actual run server.
 `app/services/tests/test_tool_arguments.py` preserves required-argument, type and nested-object
 validation after removing unknown keys from a closed schema. The loader's MCP tests cover
 this correction for the internal and Hermes runtimes without changing structured output or
-exposing ignored values. Authorization and ServiceAdmin journeys preserve approval before
+exposing ignored values. Authorization and Services journeys preserve approval before
 effects, revocation and credential rotation for corrected calls, including external tools.
 `app/harness/tests/test_execution_evidence.py` verifies that the warning reaches a real
 Pydantic AI agent and its checkpoint without executing the effect again.
@@ -2426,7 +2434,7 @@ are in `front/browser-tests/`.
 | Service REST API | Credential inheritance and overrides, the agent's own active connection, authentication modes, HTTP errors, redirects, size and timeout limits; desktop/mobile form saving, reopening and disabling, and an assembled journey with masked credentials | `app/services/tests/test_rest.py`, `front/browser-tests/system-services.spec.mjs`, `e2e/specs/tools-rest.spec.mjs` |
 | Web search | Preserve query, encoding, order and configured language; distinguish empty, partial, degraded and failed searches; retain valid sources, redact raw exceptions and cancel transport without blocking the event loop | `back/app/services/tests/test_search.py` (replaced HTTP boundary, real client and tool) |
 | Service indexing parameters | Configure `services.fileindexing` per Service and connection with inheritance, overrides, imposed values and provider limits; carry over legacy preferences without reapplying them; respect effective values in search and automatic traversal; save from the embedded Console and retry failed writes; translate internal labels in all three languages | `back/app/services/tests/test_file_indexing.py`, `back/app/memory/tests/test_file_catalogue.py`, `front/browser-tests/service-parameters.spec.mjs`, `e2e/specs/service-parameters.spec.mjs` (desktop/mobile) |
-| ServiceAdmin administration | Test/create candidates without leaking secrets into model messages or checkpoints; initially inactive connection, inheritance, atomic batches, conflicts, dependencies and denied self-delegation; revocation and rotation in old FastMCP/Pydantic AI clients; bulk refresh returning results directly, rechecking rights and preserving business Processes | `back/app/services/tests/test_service_admin.py`, `test_admin_network.py`; `e2e/specs/tool-admin.spec.mjs` (assembled application, keyboard, backdrop dismissal/reopening, desktop/mobile) |
+| Services administration | Test/create candidates without leaking secrets into model messages or checkpoints; initially inactive connection, inheritance, atomic batches, conflicts, dependencies and denied self-delegation; revocation and rotation in old FastMCP/Pydantic AI clients; bulk refresh returning results directly, rechecking rights and preserving business Processes | `back/app/services/tests/test_service_admin.py`, `test_admin_network.py`; `e2e/specs/tool-admin.spec.mjs` (assembled application, keyboard, backdrop dismissal/reopening, desktop/mobile) |
 | Search availability | HTTP 200 without sources does not pass the probe; degradation retains sources and produces a distinct verdict | `back/app/services/tests/test_search.py`; `make check-search` for the opt-in external corpus, with human relevance review |
 | Infrastructure image updates | Pull configured images, including SearXNG, in dev and prod before building and restarting; a failed pull leaves services running and fails the command | `make tests-update` (real Make recipes, Docker boundary replaced) |
 | `connection` | Configure connections and functions without leaking secrets or another agent's scope | `test_connections.py`, `test_encryption.py`, `test_function_states.py` |
@@ -2552,7 +2560,7 @@ with a stale response. Merging excludes the source topic and uses the shared pag
 search. Evidence: `topics.spec.mjs`, `chat.spec.mjs`, `select-lifecycle.spec.mjs` and
 `filter-loading.spec.mjs` in `front/browser-tests/`.
 
-The Conversation tool `document_show` is covered by `back/app/memory/tests/test_document_show.py`
+The Documents tool `document_show` is covered by `back/app/document/tests/test_document_show.py`
 and `front/browser-tests/chat-document-workspace.spec.mjs`: internal Chat-only availability independent of the Memory connection,
 honoring system-service function denials,
 document access and revocation checks, opening and reopening the viewer without losing drafts,

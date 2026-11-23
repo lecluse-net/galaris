@@ -55,6 +55,8 @@ les comptes distants réels ou la réserve indépendante encore manquants.
 
 | Plan | Statut | Portée |
 |---|---|---|
+| [travaux-et-fusion-des-objectifs.md](travaux-et-fusion-des-objectifs.md) | `design` | Pilotage des Travaux, orientation des entrées, reprise des attentes, articulation avec Process, coûts et fusion des Objectifs. |
+| [declencheurs-evenementiels-et-dream.md](declencheurs-evenementiels-et-dream.md) | `design` | Dream comme gestionnaire d’événements, catalogue, graphe de branchement, tableau de bord et historique. Pilote Mail et Fichier avant l’automatisation des Travaux. |
 | [conversations-deep.md](conversations-deep.md) | `partial` | Basculement, reprise du flux, rattachement LLM et redirection Codex implémentés. Intégration du terminal natif sur le checkout Code et attachement à un terminal existant à compléter. |
 | [cartes-mentales-documentaires.md](cartes-mentales-documentaires.md) | `partial` | Type Document, édition de branches, MCP et échanges disponibles. Contenus riches, thèmes, intégration Texte et qualifications externes restent ouverts. |
 | [affichage-des-references-documentaires.md](affichage-des-references-documentaires.md) | `partial` | Socle Lien, Carte et Intégré dans Texte et Carte mentale. Lecteurs des autres formats et couverture des exports par format à étendre. |
