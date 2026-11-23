@@ -4,7 +4,7 @@ from core.scheduling import PeriodicJobRegistrar
 
 from .embedding_events import register_embedding_change_listener
 from .models import LLMCall
-from .retention import prune_traces
+from .retention import prune_call_events, prune_traces
 from . import model_usages
 from .profile_models import LlmProfile
 from .provider_models import LLM, LLMProvider
@@ -80,6 +80,8 @@ _register_events()
 def register_scheduler_jobs(register: PeriodicJobRegistrar) -> None:
     """Register LLM trace reconciliation in the durable Task scheduler."""
 
+    register("llm-trace-retention", prune_traces, interval=60.0, timeout=30.0)
+    register("llm-call-event-retention", prune_call_events, interval=10.0, timeout=30.0)
     register(
         "llm-running-call-reconciliation",
         llm_call_service.reconcile_stale_running_calls,

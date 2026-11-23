@@ -1,6 +1,33 @@
 import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 import { call } from './data.mjs'
 
+test('the details of an expired LLM call show saved tools and durations', async ({ page }) => {
+  await jsonRoute(page, '**/api/llm-providers/llms*', [])
+  const expired = {
+    ...call,
+    prompt: '',
+    system_prompt: '',
+    raw_response: '',
+    response_text: '',
+    usage: { ...call.usage, trace_retention: 'expired' },
+    tool_calls: [{
+      id: 'saved-tool',
+      name: 'file_read',
+      status: 'completed',
+      arguments: {},
+      started_at: '2026-09-01T12:00:00Z',
+      completed_at: '2026-09-01T12:00:02.350Z',
+    }],
+  }
+  await mount(page, 'app/llm/components/LlmCall.vue', { props: {
+    call: expired, taskColor: { name: 'primary', hex: '#087FF5' },
+  } })
+  await page.getByRole('button', { name: 'Details', exact: true }).click()
+  await expect(page.getByText('file_read', { exact: true })).toBeVisible()
+  await expect(page.getByText('2.35s')).toBeVisible()
+  await expect(page.getByText('Tool result pending the next LLM call.')).toHaveCount(0)
+})
+
 test('call origin shows the API token and preserves unnamed, historical and agent origins', async ({ page }) => {
   await jsonRoute(page, '**/api/llm-providers/llms*', [])
   const tokenCall = { ...call, purpose: null, api_token_label: 'External coding client', response_text: 'A preserved response' }
@@ -44,7 +71,7 @@ for (const component of ['LlmCall', 'LlmCallTaskDetail']) {
     }, privileges: ['LLM_CALL_ACCESS', 'LLM_CALL_PURGE'] })
     const stop = page.getByRole('button', { name: 'Stop this LLM call', exact: true })
     await expect(stop).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Delete this LLM call' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Archive this LLM call' })).toHaveCount(0)
     await setPrivileges(page, ['LLM_CALL_CONTROL', 'LLM_CALL_PURGE'])
     await stop.focus()
     await page.keyboard.press('Enter')
@@ -63,9 +90,9 @@ for (const component of ['LlmCall', 'LlmCallTaskDetail']) {
     expect(requests).toBe(2)
     await page.evaluate(data => window.testApp.setProps({ call: { ...data, status: 'cancelled' } }), running)
     await expect(stop).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Delete this LLM call' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Archive this LLM call' })).toBeVisible()
     await page.evaluate(data => window.testApp.setProps({ call: { ...data, status: 'completed', inference_attempt_id: null } }), running)
-    await expect(page.getByRole('button', { name: 'Delete this LLM call' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Archive this LLM call' })).toBeVisible()
   })
 }
 

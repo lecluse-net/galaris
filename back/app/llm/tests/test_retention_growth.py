@@ -36,7 +36,7 @@ async def test_twelve_weeks_reach_a_trace_plateau_without_losing_pending_evidenc
             return cls.current if tz else cls.current.replace(tzinfo=None)
 
     monkeypatch.setattr(retention, "datetime", Clock)
-    monkeypatch.setattr(runtime_settings, "LLM_TRACE_RETENTION_DAYS", 14)
+    monkeypatch.setattr(runtime_settings, "LLM_TRACE_RETENTION_DAYS", 7)
     monkeypatch.setattr(retention, "_releases", {
         "conversation_round": facade._released_trace_ids,
         "process_run": process_retention.released_trace_ids,
@@ -84,17 +84,25 @@ async def test_twelve_weeks_reach_a_trace_plateau_without_losing_pending_evidenc
             await release(cohorts[day - 21])
         await db.commit()
         await drain()
-        expected = (min(day + 1, 14) + min(day + 1, 21)) * 3 * copies
-        raw_count = await db.scalar(select(func.count()).select_from(LLMCall).where(LLMCall.prompt != ""))
+        expected = (min(day + 1, 7) + min(day + 1, 21)) * 3 * copies
+        raw_calls = LLMCall.response_text != ""
+        raw_count = await db.scalar(select(func.count()).select_from(LLMCall).where(raw_calls))
         assert raw_count == expected, (day, raw_count, expected)
         if day % 7 == 6:
             reasons = await retention.preview_trace_retention()
             assert reasons.get("eligible", 0) == 0
             if day >= 21:
                 assert all(reasons.get(key, 0) > 0 for key in ("conversation", "process", "task"))
-            logical_bytes = await db.scalar(select(func.sum(func.octet_length(LLMCall.prompt) + func.octet_length(LLMCall.response_text))))
+            logical_bytes = await db.scalar(select(
+                func.sum(func.octet_length(LLMCall.prompt) + func.octet_length(LLMCall.response_text)),
+            ).where(raw_calls))
+            archive_bytes = await db.scalar(select(
+                func.coalesce(func.sum(func.octet_length(LLMCall.prompt)), 0),
+            ).where(~raw_calls))
+            assert archive_bytes == ((day + 1) * 6 * copies - raw_count) * 500
             measurements.append({"week": (day + 1) // 7, "calls": (day + 1) * 6 * copies,
                                  "raw_traces": raw_count, "logical_trace_bytes": logical_bytes,
+                                 "archived_prompt_bytes": archive_bytes,
                                  "physical_table_bytes": await db.scalar(text("SELECT pg_total_relation_size('llm_calls')")),
                                  "protected_reasons": reasons})
 
@@ -103,14 +111,15 @@ async def test_twelve_weeks_reach_a_trace_plateau_without_losing_pending_evidenc
         await release(cohort)
     Clock.current += timedelta(days=22)
     await db.commit()
-    assert await drain() == 420
-    assert await db.scalar(select(func.count()).select_from(LLMCall).where(LLMCall.prompt != "")) == 0
+    assert await drain() == 336
+    assert await db.scalar(select(func.count()).select_from(LLMCall).where(LLMCall.response_text != "")) == 0
+    assert await db.scalar(select(func.sum(func.octet_length(LLMCall.prompt)))) == 2016 * 500
     total, tokens, cost = (await db.execute(select(func.count(LLMCall.id), func.sum(LLMCall.total_tokens), func.sum(LLMCall.cost)))).one()
     assert total == 2016 and tokens == total * 42 and cost == total * 0.125
     assert await db.scalar(select(func.count()).select_from(ProcessRun).where(ProcessRun.output.is_not(None))) == 168
     destination = Path(__file__).resolve().parents[4] / "artifacts/llm-retention-growth.json"
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(json.dumps({"simulated_days": 84, "retention_days": 14,
+    destination.write_text(json.dumps({"simulated_days": 84, "retention_days": 7,
         "consumer_delay_days": 21, "daily_calls": 24, "batch_limit": batch_size,
         "measurements": measurements, "final_calls": total, "final_tokens": tokens,
         "final_cost": cost, "raw_traces_after_all_consumers_release": 0,

@@ -4,8 +4,7 @@ from datetime import datetime
 from uuid import UUID
 
 from pydantic import BaseModel, Field
-from sqlalchemy import select, text
-from sqlalchemy.sql.selectable import ScalarSelect
+from sqlalchemy import ColumnElement, func, select, text
 
 from .models import LLMCall, LLMCallEvent, USEFUL_OUTPUT_EVENT_SQL
 
@@ -28,14 +27,15 @@ class LLMExecutionTiming(BaseModel):
     between_calls_seconds: float | None = None
 
 
-def first_output_timestamp() -> ScalarSelect[datetime]:
-    """Seek the earliest useful event, ignoring reasoning and internal decisions."""
-    return select(LLMCallEvent.created_at).where(
+def first_output_timestamp() -> ColumnElement[datetime]:
+    """Use the retained timestamp or seek the earliest useful event."""
+    observed = select(LLMCallEvent.created_at).where(
         LLMCallEvent.call_id == LLMCall.id,
         LLMCallEvent.created_at >= LLMCall.started_at,
         LLMCall.purpose.in_(("agent.exec", "agent.synthesis", "conversation.text", "conversation.audio")),
         text(USEFUL_OUTPUT_EVENT_SQL),
     ).order_by(LLMCallEvent.created_at).limit(1).correlate(LLMCall).scalar_subquery()
+    return func.coalesce(LLMCall.first_output_at, observed)
 
 
 def execution_timing(intervals: list[LLMProcessingTiming]) -> LLMExecutionTiming:

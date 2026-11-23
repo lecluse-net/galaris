@@ -27,8 +27,8 @@ async def _authorize(user: UserModel, action: str, data: Mapping[str, Any]) -> b
             scope.agent_ids,
         )) is not None
 
-    # A deleted row no longer exists. The publisher supplies only its durable
-    # provenance, and the same related resources still determine its visibility.
+    # The journal hides archived calls. Use their provenance to authorize
+    # the removal notification sent to readers of that journal.
     from app.task import Task
     from app.process import ProcessRun
     from app.conversation import ConversationRound

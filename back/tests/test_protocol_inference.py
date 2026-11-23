@@ -57,6 +57,7 @@ async def test_live_protocol_delivers_text_and_supervision_before_provider_finis
                 progress.set()
 
     monkeypatch.setattr(llm_call_service.websocket, "emit", receive)
+    monkeypatch.setattr(llm_call_service.websocket, "has_event_interest", lambda *_args, **_kwargs: True)
     request = ProtocolInferenceRequest(
         llm_id=llm.id, prompt="Synthetic greeting", purpose="lab.mechanism_run",
         agent_id=agent_id, deep_session_id=session_id, managed_runtime_request=managed_deep,

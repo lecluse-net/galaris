@@ -283,7 +283,7 @@ async def _read_wire(attempt_id: UUID, cursor: int) -> list[tuple[int, dict[str,
         LLMCall.inference_attempt_id == attempt_id,
         LLMCallEvent.inference_sequence > cursor,
         LLMCallEvent.payload["kind"].astext == "wire",
-    ).order_by(LLMCallEvent.inference_sequence).limit(500))
+    ).order_by(LLMCallEvent.inference_sequence).limit(500).execution_options(include_historized=True))
     return [(row.inference_sequence or 0, row.payload["wire"]) for row in rows]
 
 
@@ -292,7 +292,7 @@ async def _generation_completed(attempt_id: UUID | None) -> bool:
         return False
     statuses = list(await get_db().scalars(select(LLMCall.status).where(
         LLMCall.inference_attempt_id == attempt_id,
-    )))
+    ).execution_options(include_historized=True)))
     return bool(statuses) and all(status == "completed" for status in statuses)
 
 

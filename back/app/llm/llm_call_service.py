@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 
 from loguru import logger
 from pydantic import TypeAdapter
-from sqlalchemy import Select, and_, case, delete as sa_delete, exists, false, func, or_, select
+from sqlalchemy import Select, and_, exists, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import load_only
 from sqlalchemy.sql.elements import ColumnElement
@@ -23,7 +23,7 @@ from core.user import get_current_token_label, get_current_user_id
 from .correlation import current_llm_correlation_ref
 from .accounting_scope import record_persisted_call_cost
 from .costing import token_cost
-from .cost_accounting import COST_EVIDENCE_KEY
+from .cost_accounting import COST_EVIDENCE_KEY, call_cost
 from .image_trace import compact_request_images, compact_trace_images
 from .models import LLMCall
 from .purposes import LLMCallPurpose
@@ -42,6 +42,7 @@ from .trace import (
 _RECONCILIATION_BATCH_SIZE = 500
 _STALE_CALL_GRACE_SECONDS = 300
 _PROGRESS_PAYLOAD_ADAPTER = TypeAdapter(dict[str, Any])
+_call_columns = LLMCall.__table__.c
 
 if TYPE_CHECKING:
     from .admission import AdmissionContext
@@ -49,7 +50,7 @@ if TYPE_CHECKING:
 
 
 class InferenceCallDeletionError(ValueError):
-    """The durable inference owns this call's accounting and replay journal."""
+    """The call or a dependent runtime still needs its trace."""
 
 
 _TASK_REQUIRED_PURPOSES = frozenset(
@@ -153,11 +154,12 @@ def apply_agent_scope(
 
     return query.where(
         or_(
-            LLMCall.agent_id.in_(normalized),
+            _call_columns.agent_id.in_(normalized),
             exists(
                 select(Task.id).where(
-                    Task.id == LLMCall.task_id,
+                    Task.id == _call_columns.task_id,
                     Task.agent_id.in_(normalized),
+                    Task.deleted_at.is_(None),
                 )
             ),
             exists(
@@ -165,14 +167,16 @@ def apply_agent_scope(
                 .join(Room, Room.id == ConversationRound.room_id)
                 .join(Connection, Connection.id == Room.connection_id)
                 .where(
-                    ConversationRound.id == LLMCall.conversation_round_id,
+                    ConversationRound.id == _call_columns.conversation_round_id,
                     Connection.agent_id.in_(normalized),
+                    Room.deleted_at.is_(None),
                 )
             ),
             exists(
                 select(ProcessRun.id).where(
-                    ProcessRun.id == LLMCall.process_run_id,
+                    ProcessRun.id == _call_columns.process_run_id,
                     ProcessRun.launcher_agent_id.in_(normalized),
+                    ProcessRun.deleted_at.is_(None),
                 )
             ),
         )
@@ -416,7 +420,7 @@ def _apply_deep_room(query: Select[Any], room_id: UUID | None) -> Select[Any]:
         return query
     from app.conversation import DeepSession
 
-    return query.where(LLMCall.deep_session_id.in_(select(DeepSession.id).where(DeepSession.room_id == room_id)))
+    return query.where(_call_columns.deep_session_id.in_(select(DeepSession.id).where(DeepSession.room_id == room_id)))
 
 
 def _apply_call_date_range(
@@ -426,11 +430,11 @@ def _apply_call_date_range(
 ) -> Select[Any]:
     if date_from is not None:
         query = query.where(
-            LLMCall.started_at >= datetime.combine(date_from, time.min, tzinfo=timezone.utc)
+            _call_columns.started_at >= datetime.combine(date_from, time.min, tzinfo=timezone.utc)
         )
     if date_to is not None:
         exclusive_end = datetime.combine(date_to + timedelta(days=1), time.min, tzinfo=timezone.utc)
-        query = query.where(LLMCall.started_at < exclusive_end)
+        query = query.where(_call_columns.started_at < exclusive_end)
     return query
 
 
@@ -446,16 +450,18 @@ async def paginate_history(
 ) -> tuple[list[LLMCall], int, LLMCallSummary]:
     """Return one newest-first page of calls that are no longer running."""
     db = get_db()
-    history_filter = LLMCall.status != "running"
-    error_filter = LLMCall.status.not_in(("running", "completed", "cancelled"))
+    history_filter = _call_columns.status != "running"
+    error_filter = _call_columns.status.not_in(("running", "completed", "cancelled"))
     page_filter = error_filter if errors_only else history_filter
+    visible = _call_columns.deleted_at.is_(None)
+    # Read the physical table for accounting, including calls hidden from the log.
     totals_query = select(
-        func.count(LLMCall.id).filter(page_filter),
-        func.count(LLMCall.id).filter(LLMCall.status == "running"),
-        func.count(LLMCall.id).filter(LLMCall.status == "completed"),
-        func.count(LLMCall.id).filter(error_filter),
-        func.coalesce(func.sum(LLMCall.cost), 0.0),
-        func.coalesce(func.sum(LLMCall.inference_cost), 0.0),
+        func.count(_call_columns.id).filter(visible, page_filter),
+        func.count(_call_columns.id).filter(visible, _call_columns.status == "running"),
+        func.count(_call_columns.id).filter(visible, _call_columns.status == "completed"),
+        func.count(_call_columns.id).filter(visible, error_filter),
+        func.coalesce(func.sum(_call_columns.cost), 0.0),
+        func.coalesce(func.sum(_call_columns.inference_cost), 0.0),
     )
     totals_query = _apply_call_date_range(totals_query, date_from, date_to)
     totals_query = apply_agent_scope(totals_query, agent_ids)
@@ -564,15 +570,16 @@ async def serialize_calls(calls: Sequence[LLMCall]) -> list[LLMCallRead]:
                 payload["task_status"] = (
                     status.value if isinstance(status, TaskStatus) else str(status)
                 )
-                payload["prompt"] = _project_trace_prompt(
-                    purpose=(
-                        str(payload["purpose"])
-                        if payload.get("purpose") is not None
-                        else None
-                    ),
-                    request_prompt=str(payload.get("prompt") or ""),
-                    task_objective=str(objective or ""),
-                )
+                if payload["usage"].get("trace_retention") != "expired":
+                    payload["prompt"] = _project_trace_prompt(
+                        purpose=(
+                            str(payload["purpose"])
+                            if payload.get("purpose") is not None
+                            else None
+                        ),
+                        request_prompt=str(payload.get("prompt") or ""),
+                        task_objective=str(objective or ""),
+                    )
 
     agent_ids = set(by_agent)
     if agent_ids:
@@ -639,6 +646,7 @@ async def cost_for_task(task_id: UUID) -> float | None:
     result = await get_db().execute(
         select(func.count(LLMCall.id), func.coalesce(func.sum(LLMCall.cost), 0.0))
         .where(LLMCall.task_id == task_id, *task_owned_call_predicates())
+        .execution_options(include_historized=True)
     )
     count, cost = result.one()
     return float(cost) if count else None
@@ -660,7 +668,6 @@ async def _cancel_running_calls(
         call.completed_at = now
         call.duration = max(0.0, (now - call.started_at).total_seconds())
         call.error = call.error or reason
-        await persist_cost_evidence(db, call)
     await db.commit()
     for call in calls:
         await websocket.emit("llm_call", "update", _public(call), None)
@@ -772,7 +779,6 @@ async def reconcile_stale_running_calls(
                 )
             )
         calls.append(call)
-        await persist_cost_evidence(get_db(), call)
     await get_db().commit()
     for call in calls:
         await websocket.emit("llm_call", "update", _public(call), None)
@@ -787,13 +793,12 @@ async def reconcile_stale_running_calls(
 
 
 async def cleanup_all(*, agent_ids: Collection[int] | None = None) -> None:
-    """Permanently delete completed LLM calls without touching running calls."""
+    """Hide eligible calls and preserve their accounting history."""
+    from .retention import prune_traces
+
     db = get_db()
-    scoped_ids = apply_agent_scope(
-        select(LLMCall.id).where(LLMCall.status != "running", LLMCall.inference_attempt_id.is_(None)),
-        agent_ids,
-    )
-    await db.execute(sa_delete(LLMCall).where(LLMCall.id.in_(scoped_ids)))
+    while await prune_traces(hide=True, agent_ids=agent_ids):
+        await db.commit()
     await db.commit()
     await websocket.emit("llm_call", "cleanup", {}, None)
 
@@ -803,21 +808,32 @@ async def delete_call(
     *,
     agent_ids: Collection[int] | None = None,
 ) -> bool:
-    """Permanently delete an LLM call, including a running call."""
+    """Hide a completed trace while keeping the physical call in history."""
+    from .retention import prune_traces
+
     db = get_db()
-    call = await get_call(call_id, agent_ids=agent_ids)
-    if call is None:
+    query = apply_agent_scope(
+        select(LLMCall.id, LLMCall.agent_id, LLMCall.task_id, LLMCall.conversation_round_id,
+               LLMCall.process_run_id, LLMCall.deleted_at).where(LLMCall.id == call_id),
+        agent_ids,
+    ).execution_options(include_historized=True)
+    row = (await db.execute(query)).one_or_none()
+    if row is None:
         return False
-    if call.inference_attempt_id is not None:
-        raise InferenceCallDeletionError("This call belongs to a durable inference.")
+    if row.deleted_at is not None:
+        return True
+    if not await prune_traces(hide=True, agent_ids=agent_ids, call_id=call_id):
+        if await db.scalar(select(LLMCall.deleted_at).where(LLMCall.id == call_id)
+                           .execution_options(include_historized=True)) is not None:
+            return True
+        raise InferenceCallDeletionError("This call is running or its trace is still needed.")
     event = {
-        "id": str(call.id),
-        "agent_id": call.agent_id,
-        "task_id": str(call.task_id) if call.task_id else None,
-        "conversation_round_id": str(call.conversation_round_id) if call.conversation_round_id else None,
-        "process_run_id": str(call.process_run_id) if call.process_run_id else None,
+        "id": str(call_id),
+        "agent_id": row.agent_id,
+        "task_id": str(row.task_id) if row.task_id else None,
+        "conversation_round_id": str(row.conversation_round_id) if row.conversation_round_id else None,
+        "process_run_id": str(row.process_run_id) if row.process_run_id else None,
     }
-    await db.delete(call)
     await db.commit()
     await websocket.emit("llm_call", "delete", event, None)
     return True
@@ -872,6 +888,8 @@ async def attach_tool_results(
     message. The scan is scoped to the calling agent and falls back to task ID when the agent is
     unknown. Conversation-prefix scoring resolves provider IDs reused across parallel sessions.
     """
+    from .retention import call_trace_is_expired
+
     raw_results = {
         str(message.get("tool_call_id")): message.get("content")
         for message in messages
@@ -882,7 +900,7 @@ async def attach_tool_results(
     results = as_dict(await asyncio.to_thread(compact_trace_images, raw_results))
     query = select(LLMCall).options(
         load_only(LLMCall.id, LLMCall.tool_calls, raiseload=True),
-    ).order_by(LLMCall.started_at.desc()).limit(200)
+    ).where(~call_trace_is_expired()).order_by(LLMCall.started_at.desc()).limit(200)
     if task_id is not None:
         query = query.where(LLMCall.task_id == task_id)
     elif conversation_round_id is not None:
@@ -910,14 +928,28 @@ async def attach_tool_results(
     # Full traces are needed for lineage ties and the unchanged websocket payload,
     # not for the other calls in the bounded history window.
     matching_ids = {call_id for hits in candidates.values() for call_id, _ in hits}
-    matched = (await db.scalars(select(LLMCall).where(LLMCall.id.in_(matching_ids)))).all()
+    matched = (await db.scalars(
+        select(LLMCall)
+        .where(LLMCall.id.in_(matching_ids), ~call_trace_is_expired())
+        .order_by(LLMCall.completed_at, LLMCall.id)
+        .with_for_update(key_share=True)
+        .execution_options(populate_existing=True)
+    )).all()
     call_by_id = {call.id: call for call in matched}
+    for call in matched:
+        tools_by_call[call.id] = [dict(tool) for tool in call.tool_calls]
     now = datetime.now(timezone.utc).isoformat()
     dirty: set[UUID] = set()
     for service_id, hits in candidates.items():
-        hits = [hit for hit in hits if hit[0] in call_by_id]
+        hits = [
+            (call_id, index) for call_id, index in hits
+            if call_id in call_by_id
+            and index < len(tools_by_call[call_id])
+            and str(tools_by_call[call_id][index].get("id") or "") == service_id
+            and "result" not in tools_by_call[call_id][index]
+        ]
         if not hits:
-            continue  # A trace deleted between the two reads must not be recreated.
+            continue
         if len(hits) > 1:
             # Disambiguate IDs reused across parallel sessions by conversation lineage.
             hits = [max(hits, key=lambda h: _lineage_score(call_by_id[h[0]].request_messages, messages))]
@@ -982,7 +1014,7 @@ async def update_running_call(
     )
     async with AsyncSessionLocal() as db:
         call = await db.scalar(select(LLMCall).where(LLMCall.id == call_id).options(
-            load_only(*(getattr(LLMCall, name) for name in fields), raiseload=True),
+            load_only(LLMCall.deleted_at, *(getattr(LLMCall, name) for name in fields), raiseload=True),
         ).with_for_update())
         if call is None or call.status != "running":
             return
@@ -990,15 +1022,6 @@ async def update_running_call(
         previous_tools = call.tool_calls or []
         base_updated_at = call.updated_at
         usage = as_dict(trace.get("usage"))
-        counters = usage_counters(usage)
-        inference_cost, estimated = _cost(
-            usage,
-            counters,
-            input_rate,
-            cached_input_rate,
-            output_rate,
-            call.provider_code,
-        )
         call.response_text = response_text
         call.reasoning = reasoning
         now = datetime.now(timezone.utc)
@@ -1008,16 +1031,10 @@ async def update_running_call(
             started_at=now,
         )
         call.finish_reason = trace.get("finish_reason")
-        call.usage = _cost_usage(usage, input_rate, cached_input_rate, output_rate, estimated, inference_cost)
+        _update_call_cost(call, usage, input_rate, cached_input_rate, output_rate)
         call.upstream_request_id = trace.get("upstream_request_id")
         call.first_token_at = first_token_at or call.first_token_at
         call.duration = max(0.0, (now - call.started_at).total_seconds())
-        call.inference_cost = inference_cost
-        call.cost = 0.0 if call.is_subscription else inference_cost
-        call.cost_estimated = estimated
-        for key, value in counters.items():
-            setattr(call, key, value)
-        await persist_cost_evidence(db, call)
         await db.commit()
         record_persisted_call_cost(call.id, call.cost, inference_cost=call.inference_cost,
             cost_estimated=call.cost_estimated, is_subscription=call.is_subscription,
@@ -1277,7 +1294,6 @@ async def _persist_running_call(call: LLMCall, capture: TextCallCapture | None) 
         call.inference_attempt_id = owner.attempt_id
     db.add(call)
     await db.flush()
-    await persist_cost_evidence(db, call)
     if capture is not None:
         from .models import LLMCallEvent
 
@@ -1393,6 +1409,42 @@ def _cost_usage(
            if source == "pricing" else {})}}
 
 
+def _update_call_cost(
+    call: LLMCall, usage: dict[str, Any], input_rate: float | None, cached_input_rate: float | None,
+    output_rate: float | None, *, terminal: bool = False,
+) -> bool:
+    """Keep terminal provider receipts and fill missing costs from reliable evidence."""
+    counters = usage_counters(usage)
+    inference_cost, estimated = _cost(usage, counters, input_rate, cached_input_rate, output_rate, call.provider_code)
+    previous_usage = call.usage or {}
+    previously_reported = as_dict(previous_usage.get(COST_EVIDENCE_KEY)).get("source") == "provider"
+    if terminal and previously_reported:
+        return False
+    evidence = _cost_usage(usage, input_rate, cached_input_rate, output_rate, estimated, inference_cost)
+    if terminal and estimated:
+        if as_dict(evidence[COST_EVIDENCE_KEY]).get("source") != "pricing":
+            return False
+        previous_cost = call_cost(
+            call_id=call.id, status=call.status, cost=call.cost, inference_cost=call.inference_cost,
+            cost_estimated=call.cost_estimated, is_subscription=call.is_subscription, usage=previous_usage,
+        )
+        if previous_cost.inference_quality != "unknown":
+            return False
+    if previously_reported and estimated:
+        evidence[COST_EVIDENCE_KEY] = previous_usage[COST_EVIDENCE_KEY]
+    else:
+        call.inference_cost = inference_cost
+        call.cost = 0.0 if call.is_subscription else inference_cost
+        call.cost_estimated = estimated
+    if previous_usage.get("trace_retention") == "expired":
+        evidence["trace_retention"] = "expired"
+    call.usage = {**previous_usage, COST_EVIDENCE_KEY: evidence[COST_EVIDENCE_KEY]} if terminal else evidence
+    if not terminal or estimated:
+        for key, value in counters.items():
+            setattr(call, key, value)
+    return True
+
+
 async def finalize_call(
     call_id: UUID,
     *,
@@ -1419,93 +1471,55 @@ async def finalize_call(
     )
     stored_error = await asyncio.to_thread(compact_trace_images, error)
     async with AsyncSessionLocal() as db:
-        call = await db.scalar(select(LLMCall).where(LLMCall.id == call_id).with_for_update())
+        call = await db.scalar(select(LLMCall).where(LLMCall.id == call_id).with_for_update()
+                               .execution_options(include_historized=True))
         if call is None:
             return
-        if preserve_completed and call.status == "completed":
+        if preserve_completed and call.status == "completed" and status != "completed":
             return
-        if effective_model is not None:
-            call.effective_model = effective_model
-        now = datetime.now(timezone.utc)
         usage = as_dict(trace.get("usage"))
-        call.status = status
-        if response_text or not call.response_text:
-            call.response_text = response_text
-        if reasoning or not call.reasoning:
-            call.reasoning = reasoning
-        if raw_response is not None:
-            call.raw_response = raw_response
-        if current_tools:
-            call.tool_calls = _merge_tool_results(
-                call.tool_calls or [],
-                current_tools,
-                started_at=call.started_at,
+        if call.status != "running":
+            if not usage or not _update_call_cost(
+                call, usage, input_rate, cached_input_rate, output_rate, terminal=True,
+            ):
+                return
+        else:
+            if effective_model is not None:
+                call.effective_model = effective_model
+            now = datetime.now(timezone.utc)
+            call.status = status
+            if response_text or not call.response_text:
+                call.response_text = response_text
+            if reasoning or not call.reasoning:
+                call.reasoning = reasoning
+            if raw_response is not None:
+                call.raw_response = raw_response
+            if current_tools:
+                call.tool_calls = _merge_tool_results(
+                    call.tool_calls or [],
+                    current_tools,
+                    started_at=call.started_at,
+                )
+            call.finish_reason = trace.get("finish_reason") or call.finish_reason
+            if usage:
+                _update_call_cost(call, usage, input_rate, cached_input_rate, output_rate)
+            call.upstream_request_id = (
+                trace.get("upstream_request_id") or call.upstream_request_id
             )
-        call.finish_reason = trace.get("finish_reason") or call.finish_reason
-        if usage:
-            counters = usage_counters(usage)
-            inference_cost, estimated = _cost(
-                usage,
-                counters,
-                input_rate,
-                cached_input_rate,
-                output_rate,
-                call.provider_code,
-            )
-            call.usage = _cost_usage(usage, input_rate, cached_input_rate, output_rate, estimated, inference_cost)
-            call.inference_cost = inference_cost
-            call.cost = 0.0 if call.is_subscription else inference_cost
-            call.cost_estimated = estimated
-            for key, value in counters.items():
-                setattr(call, key, value)
-        call.upstream_request_id = (
-            trace.get("upstream_request_id") or call.upstream_request_id
-        )
-        call.error = stored_error if isinstance(stored_error, str) else None
-        call.first_token_at = first_token_at or call.first_token_at
-        call.completed_at = now
-        call.duration = max(0.0, (now - call.started_at).total_seconds())
-        if status not in {"running", "completed", "cancelled"}:
-            await _record_failure_incident(db, call)
-        await persist_cost_evidence(db, call)
+            call.error = stored_error if isinstance(stored_error, str) else None
+            call.first_token_at = first_token_at or call.first_token_at
+            call.completed_at = now
+            call.duration = max(0.0, (now - call.started_at).total_seconds())
+            if status not in {"running", "completed", "cancelled"}:
+                await _record_failure_incident(db, call)
+
         await db.commit()
-        await db.refresh(call)
         record_persisted_call_cost(call.id, call.cost, inference_cost=call.inference_cost,
             cost_estimated=call.cost_estimated, is_subscription=call.is_subscription,
             status=call.status, usage=call.usage, purpose=call.purpose)
-        payload = _public(call)
-    await websocket.emit("llm_call", "update", payload, None)
-
-
-async def persist_cost_evidence(db: AsyncSession, call: LLMCall) -> None:
-    """Commit billing and its retention-independent evidence atomically, once per call."""
-    from sqlalchemy.dialects.postgresql import insert
-    from .models import LLMCallCost
-
-    statement = insert(LLMCallCost).values(id=call.id, call_id=call.id, task_id=call.task_id,
-        agent_id=call.agent_id, correlation_ref=call.correlation_ref, purpose=call.purpose,
-        conversation_round_id=call.conversation_round_id,
-        started_at=call.started_at, completed_at=call.completed_at,
-        status=call.status, cost=call.cost, inference_cost=call.inference_cost,
-        cost_estimated=call.cost_estimated, is_subscription=call.is_subscription,
-        evidence=({COST_EVIDENCE_KEY: call.usage[COST_EVIDENCE_KEY]}
-                  if COST_EVIDENCE_KEY in (call.usage or {}) else {}))
-    columns = (LLMCallCost.cost, LLMCallCost.inference_cost, LLMCallCost.cost_estimated, LLMCallCost.evidence)
-    retained = (await db.execute(statement.on_conflict_do_update(index_elements=[LLMCallCost.id],
-        set_={name: getattr(statement.excluded, name) for name in (
-            "completed_at", "cost", "inference_cost", "cost_estimated", "is_subscription", "evidence")} | {
-            "status": case((LLMCallCost.status == "running", statement.excluded.status), else_=LLMCallCost.status)},
-        where=or_(LLMCallCost.status == "running", and_(
-            func.coalesce(LLMCallCost.evidence[COST_EVIDENCE_KEY]["source"].astext, "unknown") != "provider",
-            statement.excluded.evidence[COST_EVIDENCE_KEY]["source"].astext == "provider")))
-        .returning(*columns))).mappings().one_or_none()
-    if retained is None:
-        retained = (await db.execute(select(*columns).where(LLMCallCost.id == call.id))).mappings().one()
-    # Keep legacy numeric consumers consistent with the authoritative receipt too.
-    call.cost = retained["cost"]
-    call.inference_cost = retained["inference_cost"]
-    call.cost_estimated = retained["cost_estimated"]
-    call.usage = {**(call.usage or {}), **retained["evidence"]}
+        payload = _public(call) if call.deleted_at is None else None
+    if payload is not None:
+        await websocket.emit("llm_call", "update", payload, None)
 
 
 async def _record_failure_incident(db: AsyncSession, call: LLMCall) -> None:

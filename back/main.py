@@ -73,7 +73,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from app.messenger import deliver_choice_reminders
         from app.code import reconcile_sessions as reconcile_code_sessions
         from app.incident import prune_traces as prune_incident_traces
-        from app.llm import prune_traces as prune_llm_traces
         from core.user.refresh_session_service import purge_expired_sessions
         from core.observability import record_runtime_pressure
         from core.database.storage import record_storage_metrics
@@ -133,9 +132,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         )
         task_scheduler.register_periodic_job(
             "incident-trace-retention", prune_incident_traces, interval=3_600.0,
-        )
-        task_scheduler.register_periodic_job(
-            "llm-trace-retention", prune_llm_traces, interval=3_600.0,
         )
         task_scheduler.register_periodic_job(
             "expired-browser-sessions", purge_expired_sessions, interval=3_600.0,

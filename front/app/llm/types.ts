@@ -5,6 +5,7 @@ export interface LLMToolCall {
   arguments: Record<string, unknown>
   status: string
   result?: unknown
+  started_at?: string
   completed_at?: string
 }
 

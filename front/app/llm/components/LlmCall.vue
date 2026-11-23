@@ -92,12 +92,12 @@
           />
           <LlmCallStopButton :call="call" />
           <q-btn
-            v-if="deletable && !call.inference_attempt_id"
+            v-if="deletable && call.status !== 'running'"
             flat
             dense
             round
             color="negative"
-            icon="delete_forever"
+            icon="archive"
             :title="$t('llmCalls.deleteCall')"
             :aria-label="$t('llmCalls.deleteCall')"
             @click.stop="emit('delete', call)"

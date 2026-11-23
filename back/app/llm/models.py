@@ -10,7 +10,7 @@ from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, Str
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core.database import Base
+from core.database import Base, HistoryMixin
 
 
 # Shared by the partial index and timing reads. Keep these fixed literals in
@@ -99,6 +99,7 @@ class LLMCallEvent(Base):
     __table_args__ = (
         UniqueConstraint("call_id", "sequence"),
         UniqueConstraint("inference_id", "inference_sequence"),
+        Index("ix_llm_call_events_retention", "created_at"),
         # Timing projections seek the first useful output without scanning all
         # later stream fragments. Sequence order is not timestamp order.
         Index("ix_llm_call_events_call_created", "call_id", "created_at",
@@ -118,7 +119,7 @@ class LLMCallEvent(Base):
     )
 
 
-class LLMCall(Base):
+class LLMCall(HistoryMixin, Base):
     """A provider LLM call with an inspectable trace."""
 
     __tablename__ = "llm_calls"
@@ -245,41 +246,16 @@ class LLMCall(Base):
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc), index=True
     )
     first_token_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    first_output_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     duration: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)
     )
-    updated_at: Mapped[datetime] = mapped_column(
+    updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
     )
-
-
-class LLMCallCost(Base):
-    """Minimal billing evidence survives deletion of the detailed provider trace.
-
-    The primary identity is the physical call UUID, retained after call_id is cleared.
-    No prompts, credentials, responses or tool arguments belong in this register.
-    """
-
-    __tablename__ = "llm_call_costs"
-
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
-    call_id: Mapped[UUID | None] = mapped_column(ForeignKey("llm_calls.id", ondelete="SET NULL"), unique=True)
-    task_id: Mapped[UUID | None] = mapped_column(ForeignKey("tasks.id", ondelete="SET NULL"), index=True)
-    agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id", ondelete="SET NULL"), index=True)
-    conversation_round_id: Mapped[UUID | None] = mapped_column(ForeignKey("conversation_rounds.id", ondelete="SET NULL"), index=True)
-    correlation_ref: Mapped[str | None] = mapped_column(String(300), index=True)
-    purpose: Mapped[str | None] = mapped_column(String(120))
-    status: Mapped[str] = mapped_column(String(30))
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    cost: Mapped[float] = mapped_column(Float)
-    inference_cost: Mapped[float] = mapped_column(Float)
-    cost_estimated: Mapped[bool] = mapped_column(Boolean)
-    is_subscription: Mapped[bool] = mapped_column(Boolean)
-    evidence: Mapped[dict[str, Any]] = mapped_column(JSONB)

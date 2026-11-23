@@ -354,15 +354,21 @@ export function callExecutionResult(
   if (call.reasoning) {
     messages.push({ type: 'tool', tool_name: 'thinking', content: call.reasoning })
   }
+  const expired = call.usage?.trace_retention === 'expired'
   for (const tool of call.tool_calls || []) {
-    const result = tool.result == null
-      ? toolPending
-      : (typeof tool.result === 'string' ? tool.result : JSON.stringify(tool.result, null, 2))
+    let result = toolPending
+    if (expired) {
+      result = ''
+    } else if (tool.result != null) {
+      result = typeof tool.result === 'string' ? tool.result : JSON.stringify(tool.result, null, 2)
+    }
+    const elapsed = Date.parse(tool.completed_at ?? '') - Date.parse(tool.started_at ?? '')
     messages.push({
       type: 'tool',
       tool_name: displayToolName(tool.name || 'tool'),
       tool_arguments: tool.arguments || {},
       content: result,
+      ...(expired && elapsed >= 0 ? { execution_time: elapsed / 1000 } : {}),
     })
   }
   if (call.response_text) messages.push({ type: 'text', content: call.response_text })

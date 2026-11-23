@@ -169,7 +169,7 @@ async def _recorded_tracking_cost(
             ).where(
                 LLMCall.task_id == task_id,
                 LLMCall.started_at >= started_at,
-            )
+            ).execution_options(include_historized=True)
         )
     ).one()
     return (
@@ -480,7 +480,7 @@ async def _fail_judgement(
             select(func.coalesce(func.sum(LLMCall.cost), 0.0)).where(
                 LLMCall.task_id == cycle.task_id,
                 LLMCall.started_at >= cycle.judge_started_at,
-            )
+            ).execution_options(include_historized=True)
         )
         cycle.judge_cost += max(0.0, float(attempt_cost or 0.0))
     if llm_id is not None:

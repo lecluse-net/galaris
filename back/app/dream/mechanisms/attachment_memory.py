@@ -109,7 +109,7 @@ class AttachmentMemoryMechanism:
         async with get_db_session():
             cost = float(await get_db().scalar(select(func.sum(LLMCall.cost)).where(
                 LLMCall.correlation_ref == receipt_correlation_ref(claim.receipt_id),
-            )) or 0.0)
+            ).execution_options(include_historized=True)) or 0.0)
         return DreamPrepared(payload={"source": _snapshot(source), "description": description}, cost=cost)
 
     async def apply(self, claim: DreamClaim, payload: dict[str, Any]) -> int:

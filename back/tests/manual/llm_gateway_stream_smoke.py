@@ -3,10 +3,10 @@
 import asyncio
 
 import httpx
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
 from app.agent.models import Agent
-from app.llm import llm_service
+from app.llm import llm_call_service, llm_service
 from app.llm.models import LLMCall
 from app.mcp.models import AgentMcpToken
 from core.database import get_db_session, load_models
@@ -80,7 +80,7 @@ async def main() -> None:
         if call is None or call.status != "completed" or call.completed_at is None:
             raise RuntimeError(f"Finalisation incorrecte: {getattr(call, 'status', None)}")
         print(f"OK call={call.id} status={call.status} response={call.response_text!r}")
-        await db.execute(delete(LLMCall).where(LLMCall.id == call.id))
+        await llm_call_service.delete_call(call.id)
 
 
 if __name__ == "__main__":

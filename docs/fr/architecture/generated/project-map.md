@@ -18,7 +18,7 @@ tests restent l’autorité sur le comportement.
 - 1 composantes fortement connexes ;
 - 0 paires frontend directement bidirectionnelles ;
 - 836 handlers HTTP/WebSocket détectés ;
-- 203 tables SQLAlchemy détectées ;
+- 202 tables SQLAlchemy détectées ;
 - 302 outils MCP natifs détectés ;
 - 59 pages Vue détectées.
 
@@ -2226,9 +2226,8 @@ Aucune composante cyclique détectée.
 | `lab_process_cases` | `LabProcessCase` | `app.lab` | oui | `lab_process_campaigns.id`, `process_runs.id` | `back/app/lab/process_evaluation_models.py:34` |
 | `lab_task_diagnoses` | `LabTaskDiagnosis` | `app.lab` | oui | `tasks.id` | `back/app/lab/models.py:46` |
 | `lab_tasks` | `LabTask` | `app.lab` | non | `tasks.id` | `back/app/lab/models.py:30` |
-| `llm_call_costs` | `LLMCallCost` | `app.llm` | non | `agents.id`, `conversation_rounds.id`, `llm_calls.id`, `tasks.id` | `back/app/llm/models.py:262` |
 | `llm_call_events` | `LLMCallEvent` | `app.llm` | non | `llm_calls.id`, `llm_inferences.id` | `back/app/llm/models.py:95` |
-| `llm_calls` | `LLMCall` | `app.llm` | non | `agents.id`, `conversation_rounds.id`, `deep_sessions.id`, `llm_inference_attempts.id`, `llm_profiles.id`, `llms.id`, `multimedia_generations.id`, `process_runs.id`, `task_attempts.id`, `tasks.id`, `users.id` | `back/app/llm/models.py:121` |
+| `llm_calls` | `LLMCall` | `app.llm` | oui | `agents.id`, `conversation_rounds.id`, `deep_sessions.id`, `llm_inference_attempts.id`, `llm_profiles.id`, `llms.id`, `multimedia_generations.id`, `process_runs.id`, `task_attempts.id`, `tasks.id`, `users.id` | `back/app/llm/models.py:122` |
 | `llm_document_analyses` | `LLMDocumentAnalysis` | `app.llm` | non | `agents.id`, `tasks.id` | `back/app/llm/models.py:26` |
 | `llm_inference_attempts` | `LLMInferenceAttempt` | `app.llm` | non | `llm_inferences.id` | `back/app/llm/models.py:66` |
 | `llm_inference_commands` | `LLMInferenceCommand` | `app.llm` | non | `llm_inference_attempts.id`, `llm_inferences.id` | `back/app/llm/models.py:82` |

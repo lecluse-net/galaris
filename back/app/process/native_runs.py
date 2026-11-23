@@ -8,7 +8,7 @@ import json
 from typing import Any, Literal
 from uuid import UUID
 
-from sqlalchemy import func, select, true, literal, or_, false
+from sqlalchemy import Row, func, select, true, literal, or_, false
 from sqlalchemy.dialects.postgresql import JSONB
 
 from app.agent import AgentManagementScope
@@ -240,17 +240,21 @@ async def run_metrics(identity: UUID, actor: int | AgentManagementScope) -> dict
     descendants = descendants.union_all(select(ProcessRun.id).join(descendants, ProcessRun.parent_run_id == descendants.c.id))
     visible = select(ProcessRun.id).where(ProcessRun.id.in_(select(descendants.c.id)), readable_run_clause(actor,
         administrative=await administrative_run_clause(actor)))
-    calls = list(await get_db().scalars(select(LLMCall).where(LLMCall.process_run_id.in_(visible))))
+    call_fields = LLMCall.__table__.c
+    calls = list((await get_db().execute(select(
+        call_fields.process_run_id, call_fields.task_id, call_fields.correlation_ref, call_fields.cost,
+        call_fields.inference_cost, call_fields.duration, call_fields.total_tokens, call_fields.cost_estimated,
+    ).where(call_fields.process_run_id.in_(visible)))).all())
     direct = [call for call in calls if call.process_run_id == identity]
 
-    def summarize(rows: list[LLMCall]) -> dict[str, Any]:
+    def summarize(rows: list[Row[Any]]) -> dict[str, Any]:
         return {"calls": len(rows), "cost": sum(call.cost for call in rows) if rows else None,
             "inference_cost": sum(call.inference_cost for call in rows) if rows else None,
             "llm_duration_seconds": sum(call.duration for call in rows) if rows else None,
             "tokens": sum(call.total_tokens for call in rows) if rows else None,
             "estimated_calls": sum(1 for call in rows if call.cost_estimated)}
 
-    per_task: dict[str, list[LLMCall]] = {}
+    per_task: dict[str, list[Row[Any]]] = {}
     for call in direct:
         if call.task_id:
             per_task.setdefault(str(call.task_id), []).append(call)
@@ -259,7 +263,7 @@ async def run_metrics(identity: UUID, actor: int | AgentManagementScope) -> dict
     activity_tasks = list((await get_db().execute(select(ProcessNodeRun.node_key, ProcessNodeAttempt.task_id)
         .join(ProcessNodeAttempt, ProcessNodeAttempt.node_run_id == ProcessNodeRun.id)
         .where(ProcessNodeRun.run_id == identity, ProcessNodeAttempt.task_id.is_not(None)))).all())
-    per_node: dict[str, list[LLMCall]] = {}
+    per_node: dict[str, list[Row[Any]]] = {}
     for key, task_id in activity_tasks:
         per_node.setdefault(key, []).extend(call for call in direct if call.task_id == task_id)
     llm_bindings = (await get_db().execute(select(ProcessNodeAttempt.id, ProcessNodeRun.id, ProcessNodeRun.node_key)
@@ -285,8 +289,8 @@ async def run_metrics(identity: UUID, actor: int | AgentManagementScope) -> dict
     links = {run_id: (parent, caller) for run_id, parent, caller in (await get_db().execute(
         select(ProcessRun.id, ProcessRun.parent_run_id, ProcessRun.caller_node_attempt_id)
         .where(ProcessRun.id.in_(visible)))).all()}
-    own_calls: dict[UUID, list[LLMCall]] = {}
-    inclusive_calls: dict[UUID, list[LLMCall]] = {}
+    own_calls: dict[UUID, list[Row[Any]]] = {}
+    inclusive_calls: dict[UUID, list[Row[Any]]] = {}
     for call in calls:
         node_id = task_nodes.get(call.task_id) if call.process_run_id == identity and call.task_id is not None else None
         if call.process_run_id == identity and node_id is None:

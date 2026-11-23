@@ -157,7 +157,7 @@ for (const [section, catalogs] of Object.entries(sectionCatalogs)) {
     if (section === 'process') await expect(page.getByLabel('n8n URL', { exact: true })).toBeVisible()
     if (section === 'janus') await expect(page.locator('input')).toHaveCount(1)
     if (section === 'logs') {
-      for (const label of ['Purge processed tasks', 'Purge LLM calls', 'Empty the error log']) {
+      for (const label of ['Purge processed tasks', 'Archive LLM calls', 'Empty the error log']) {
         await expect(page.getByRole('button', { name: label, exact: true })).toBeVisible()
       }
     }

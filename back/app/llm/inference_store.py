@@ -120,7 +120,8 @@ async def execution_details(inference_id: UUID) -> tuple[list[Any], dict[UUID, f
     """Recover the last SDK transcript and project authoritative physical-call costs."""
     snapshot = await read(inference_id)
     call_ids = [key for attempt in snapshot.attempts for key in attempt.call_ids]
-    calls = list(await get_db().scalars(select(LLMCall).where(LLMCall.id.in_(call_ids))))
+    calls = list(await get_db().scalars(select(LLMCall).where(LLMCall.id.in_(call_ids))
+                                       .execution_options(include_historized=True)))
     transcript: list[Any] = []
     if call_ids:
         rows = await get_db().scalars(
@@ -368,6 +369,7 @@ async def read(inference_id: UUID) -> InferenceRead:
                 LLMCall.inference_attempt_id.in_([attempt.id for attempt in attempts]),
             )
             .order_by(LLMCall.started_at, LLMCall.id)
+            .execution_options(include_historized=True)
         )
     )
     return InferenceRead.model_validate(
@@ -438,6 +440,7 @@ async def read_event_batch(
         )
         .order_by(LLMCallEvent.inference_sequence)
         .limit(limit)
+        .execution_options(include_historized=True)
     )
     events = [
         InferenceRunEvent(
@@ -623,8 +626,6 @@ async def _close_abandoned_calls(
             call.completed_at = completed_at
             call.duration = max(0, (completed_at - call.started_at).total_seconds())
             call.error = error
-            from .llm_call_service import persist_cost_evidence
-            await persist_cost_evidence(db, call)
         if not rows or rows[-1].payload["kind"] == "result":
             continue
         result = AIResult(

@@ -8,7 +8,7 @@ from uuid import UUID, uuid4
 import httpx
 import pytest
 import pytest_asyncio
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from app.agent import AIResult
 from app.llm import LLM, LLMProvider, llm_call_service, proxy_service
@@ -311,7 +311,7 @@ async def test_interrupted_inference_preserves_partial_and_original_failure(db, 
 @pytest.mark.asyncio
 async def test_journal_follows_trace_retention_and_terminal_is_immutable(db, provider, monkeypatch):
     from app.llm.inference_journal import append_events
-    from app.llm.retention import prune_traces
+    from app.llm.retention import prune_call_events, prune_traces
     from core.params import runtime_settings
 
     llm, requests, _ = provider
@@ -321,9 +321,12 @@ async def test_journal_follows_trace_retention_and_terminal_is_immutable(db, pro
         await append_events(call_id, [{"kind": "message", "message": {}}])
     call = await llm_call_service.get_call(call_id)
     call.completed_at = call.updated_at = datetime.now(timezone.utc) - timedelta(days=40)
+    await db.execute(update(LLMCallEvent).where(LLMCallEvent.call_id == call_id)
+                     .values(created_at=call.completed_at))
     await db.commit()
     monkeypatch.setattr(runtime_settings, "LLM_TRACE_RETENTION_DAYS", 30)
     assert await prune_traces() == 1
+    assert await prune_call_events() > 0
     await db.commit()
     assert await read_inference_events(call_id) == []
     assert await read_inference_result(call_id) is None

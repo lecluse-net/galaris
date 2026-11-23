@@ -530,7 +530,10 @@ async def test_call_stop_http_requires_edit_privilege_and_management_scope(runti
             assert (await client.post(url)).status_code == 202
             await state(key, "stopped")
             assert (await client.post(url)).status_code == 202
-            assert (await client.delete(f"/llm-calls/{first.call_id}")).status_code == 409
+            assert (await client.delete(f"/llm-calls/{first.call_id}")).status_code == 204
+            assert (await client.get(f"/llm-calls/{first.call_id}")).status_code == 404
+            attempt = (await read_inference(key)).attempts[0]
+            assert first.call_id in attempt.call_ids and attempt.result is not None
     finally:
         await stream.aclose()
 
@@ -803,7 +806,7 @@ async def test_waiting_consumer_survives_pause_and_disconnect_does_not_cancel_wo
     await control_inference(key, "pause")
     await state(key, "paused")
     assert not consumer.done()
-    # Durable inference history is not a disposable diagnostic trace.
+    # Backdating a call alone does not expire a recently paused attempt.
     call = await db.get(LLMCall, first.call_id)
     call.completed_at = call.updated_at = datetime.now(timezone.utc) - timedelta(days=40)
     await db.commit()

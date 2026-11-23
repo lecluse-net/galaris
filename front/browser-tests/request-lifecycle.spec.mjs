@@ -40,11 +40,11 @@ test('a purge dialog closes during its request and its completion preserves anot
     await expect.poll(() => Boolean(release)).toBe(true)
     await page.locator('.q-dialog__backdrop').click({ position: { x: 5, y: 5 } })
     await expect(dialog).toHaveCount(0)
-    await page.getByRole('button', { name: 'Purge LLM calls', exact: true }).click()
-    await expect(dialog).toContainText('Purge LLM call history?')
+    await page.getByRole('button', { name: 'Archive LLM calls', exact: true }).click()
+    await expect(dialog).toContainText('Archive completed LLM calls?')
     const response = page.waitForResponse('**/api/tasks/cleanup')
     release(); await response
-    await expect(dialog).toContainText('Purge LLM call history?')
+    await expect(dialog).toContainText('Archive completed LLM calls?')
     await expect(dialog.getByRole('button', { name: 'Purge', exact: true })).toBeEnabled()
   } finally { release?.() }
 })

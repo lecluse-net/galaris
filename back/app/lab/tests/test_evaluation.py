@@ -1012,7 +1012,6 @@ async def test_generic_lab_task_capture_confirms_parameters_and_preserves_source
 
     await db.execute(delete(LabEvaluationCase).where(LabEvaluationCase.id == imported.id))
     await db.execute(delete(LabEvaluationDataset).where(LabEvaluationDataset.id == dataset.id))
-    await db.execute(delete(LLMCall).where(LLMCall.id == call.id))
     await db.execute(delete(Task).where(Task.id == task.id))
     await db.commit()
 
@@ -2011,7 +2010,6 @@ async def test_live_evidence_contains_attempts_llm_calls_and_related_tasks(
         signal["code"] == "attempt_failures" for signal in bundle.payload["deterministic_signals"]
     )
 
-    await db.execute(delete(LLMCall).where(LLMCall.id == call.id))
     await db.execute(delete(TaskAttempt).where(TaskAttempt.id == attempt.id))
     await db.execute(delete(Task).where(Task.id.in_([child.id, root.id])))
     await db.commit()

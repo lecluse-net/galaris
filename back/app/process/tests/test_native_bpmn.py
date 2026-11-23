@@ -3107,6 +3107,7 @@ async def test_managed_human_can_still_launch_an_assigned_external_process(db, n
 
 @pytest.mark.asyncio
 async def test_task_launched_process_preserves_causality_and_rejects_callbacks_or_legacy_edits(db, native):
+    from datetime import datetime, timezone
     from app.process.schemas import ProcessCallbackEvent, ProcessDefinitionCreate, ProcessDefinitionUpdate
     from app.llm import LLMCall
     from app.process.native_runs import run_metrics
@@ -3141,7 +3142,8 @@ async def test_task_launched_process_preserves_causality_and_rejects_callbacks_o
     child_attempt = await db.scalar(select(ProcessNodeAttempt).join(ProcessNodeRun).where(ProcessNodeRun.run_id == nested.id))
     db.add_all([LLMCall(process_run_id=launched.run_id, task_id=attempt.task_id, status="completed", cost=0.2, inference_cost=0.2, total_tokens=10, cost_estimated=False),
         LLMCall(process_run_id=launched.run_id, task_id=attempt.task_id, status="error", cost=0.1, inference_cost=0.1, total_tokens=5, cost_estimated=False),
-        LLMCall(process_run_id=nested.id, task_id=child_attempt.task_id, status="completed", cost=0, inference_cost=0.5, total_tokens=20, cost_estimated=True, is_subscription=True)])
+        LLMCall(process_run_id=nested.id, task_id=child_attempt.task_id, status="completed", cost=0, inference_cost=0.5,
+                total_tokens=20, cost_estimated=True, is_subscription=True, deleted_at=datetime.now(timezone.utc))])
     await db.commit()
     metrics = await run_metrics(launched.run_id, owner.id)
     assert metrics["direct"]["calls"] == 2 and metrics["direct"]["cost"] == pytest.approx(0.3)
@@ -3183,7 +3185,6 @@ async def test_task_launched_process_preserves_causality_and_rejects_callbacks_o
             await process_service.delete_run(run_id)
     # Historical rows may precede the native archive contract. A hidden
     # definition must never turn recovery into a new effect.
-    from datetime import datetime, timezone
     parent_run = await db.get(ProcessRun, launched.run_id)
     original_key = parent_run.idempotency_key
     parent.deleted_at = datetime.now(timezone.utc)

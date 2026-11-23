@@ -68,20 +68,28 @@ async def test_run_accounting_has_no_display_pagination_limit_and_guards_all_cal
 
 @pytest.mark.asyncio
 async def test_late_charge_enriches_unknown_cost_without_reopening_or_rebilling(db, monkeypatch):
-    from app.llm.models import LLMCallCost
+    from sqlalchemy import select
     monkeypatch.setattr(llm_call_service.websocket, "emit", AsyncMock())
     row = LLMCall(status="running", prompt="Synthetic private prompt")
     db.add(row)
     await db.commit()
     await llm_call_service.finalize_call(row.id, trace={}, status="cancelled")
-    await llm_call_service.finalize_call(row.id, trace={"usage": {"cost": .4}}, status="cancelled")
-    await llm_call_service.finalize_call(row.id, trace={"usage": {"cost": .9}}, status="cancelled")
+    await db.refresh(row)
+    completed_at = row.completed_at
+    assert await llm_call_service.delete_call(row.id)
+    await llm_call_service.finalize_call(row.id, trace={"usage": {"prompt_tokens": 100, "completion_tokens": 20}},
+                                         input_rate=2, output_rate=4)
+    await llm_call_service.finalize_call(row.id, trace={"usage": {"prompt_tokens": 100, "completion_tokens": 20}},
+                                         input_rate=100, output_rate=100)
+    await db.refresh(row)
+    assert row.cost == pytest.approx(.00028)
+    assert row.usage["_galaris_cost"]["source"] == "pricing"
+    assert row.cost_estimated is True
+    assert (row.input_tokens, row.output_tokens) == (100, 20)
+    await llm_call_service.finalize_call(row.id, trace={"usage": {"cost": .4}}, status="completed")
+    await llm_call_service.finalize_call(row.id, trace={"usage": {"cost": .9}}, status="completed")
     await db.refresh(row)
     assert row.cost == pytest.approx(.4)
-    identity = row.id
-    await db.delete(row)
-    await db.flush()
-    ledger = await db.get(LLMCallCost, identity, populate_existing=True)
-    assert ledger.call_id is None and ledger.cost == pytest.approx(.4)
-    assert ledger.status == "cancelled"
-    assert "Synthetic private prompt" not in str(ledger.evidence)
+    assert row.status == "cancelled" and row.completed_at == completed_at
+    assert row.deleted_at is not None and row.usage["trace_retention"] == "expired"
+    assert await db.scalar(select(LLMCall.id).where(LLMCall.id == row.id)) is None

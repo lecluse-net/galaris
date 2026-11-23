@@ -1669,16 +1669,17 @@ def _llm_call_attribution(
     from app.process import ProcessRun
     from app.task import Task
 
+    calls = LLMCall.__table__
     process_task = aliased(Task)
     process_round = aliased(ConversationRound)
     query = (
-        select(LLMCall.id)
-        .select_from(LLMCall)
-        .outerjoin(Task, Task.id == LLMCall.task_id)
-        .outerjoin(ConversationRound, ConversationRound.id == LLMCall.conversation_round_id)
-        .outerjoin(ProcessRun, ProcessRun.id == LLMCall.process_run_id)
+        select(calls.c.id)
+        .select_from(calls)
+        .outerjoin(Task, Task.id == calls.c.task_id)
+        .outerjoin(ConversationRound, ConversationRound.id == calls.c.conversation_round_id)
+        .outerjoin(ProcessRun, ProcessRun.id == calls.c.process_run_id)
         .outerjoin(process_task, process_task.id == ProcessRun.task_id)
-        .outerjoin(ConversationProcessLink, ConversationProcessLink.process_run_id == LLMCall.process_run_id)
+        .outerjoin(ConversationProcessLink, ConversationProcessLink.process_run_id == calls.c.process_run_id)
         .outerjoin(process_round, process_round.id == ConversationProcessLink.round_id)
     )
     if scoped:
@@ -1687,7 +1688,7 @@ def _llm_call_attribution(
     topic_id = type_cast(ColumnElement[UUID | None], func.coalesce(
         Task.topic_id, process_task.topic_id, process_round.topic_id, ConversationRound.topic_id))
     agent_id = type_cast(ColumnElement[int | None], func.coalesce(
-        LLMCall.agent_id, Task.agent_id, Connection.agent_id, ProcessRun.launcher_agent_id))
+        calls.c.agent_id, Task.agent_id, Connection.agent_id, ProcessRun.launcher_agent_id))
     return query, topic_id, agent_id
 
 
@@ -1699,9 +1700,10 @@ async def _available_usage_months(
 ) -> list[str]:
     from app.llm import LLMCall
 
+    calls = LLMCall.__table__
     query, topic_id, agent_id = _llm_call_attribution(scoped=agent_ids is not None)
     call_month = cast(
-        func.date_trunc("month", func.timezone(timezone_name, LLMCall.started_at)),
+        func.date_trunc("month", func.timezone(timezone_name, calls.c.started_at)),
         Date,
     ).label("month")
     query = query.with_only_columns(call_month)
@@ -1912,18 +1914,19 @@ async def list_page(
         month,
         timezone_name=timezone_name,
     )
+    calls = LLMCall.__table__
     usage_query, topic_id, agent_id = _llm_call_attribution(scoped=agent_ids is not None)
     usage_query = usage_query.with_only_columns(
             topic_id.label("topic_id"),
-            func.count(LLMCall.id).label("llm_calls"),
-            func.coalesce(func.sum(LLMCall.inference_cost), 0.0).label("inference_cost"),
+            func.count(calls.c.id).label("llm_calls"),
+            func.coalesce(func.sum(calls.c.inference_cost), 0.0).label("inference_cost"),
         )
     usage = (
         usage_query
         .where(
             topic_id.is_not(None),
-            LLMCall.started_at >= start,
-            LLMCall.started_at < end,
+            calls.c.started_at >= start,
+            calls.c.started_at < end,
         )
         .group_by(topic_id)
     )

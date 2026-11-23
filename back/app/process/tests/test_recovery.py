@@ -347,7 +347,8 @@ async def test_llm_trace_waits_for_process_consumer_release(db, monkeypatch, wai
     assert await traces.prune_traces() == 0
     monkeypatch.setattr(retention, "_guards", {"released": lambda: select(ProcessRun.id).where(false())})
     assert await traces.prune_traces() == 1
-    assert call.prompt == "" and call.cost == 0.75
+    assert call.prompt == "provider proof" and call.cost == 0.75
+    assert await traces.prune_traces() == 0
 
 
 @pytest.mark.asyncio

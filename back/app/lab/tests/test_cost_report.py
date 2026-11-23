@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
@@ -31,9 +32,11 @@ async def test_full_run_cost_includes_failures_orphan_calls_and_survives_trace_c
         judge_output={"rubric_version": "synthetic/v1", "critical_failures": []})
     failed = LabEvaluationRunCase(run_id=run.id, cost=.3, error="Synthetic paid failure",
         case_snapshot={}, score_details={"candidate_status": "failed", "candidate_cost_accounting": snapshot(uuid4(), .3)})
+    closed = datetime.now(timezone.utc)
     db.add_all([result, failed, LLMCall(id=paid, cost=.2, inference_cost=.2, cost_estimated=False, status="completed",
+        completed_at=closed,
         correlation_ref=f"lab://run/{run.id}/candidate/published"),
-        LLMCall(id=orphan, cost=.4, inference_cost=.4, cost_estimated=False, status="error",
+        LLMCall(id=orphan, cost=.4, inference_cost=.4, cost_estimated=False, status="error", completed_at=closed,
         correlation_ref=f"lab://run/{run.id}/candidate/lost-lease")])
     await db.flush()
     await db.commit()
@@ -43,9 +46,8 @@ async def test_full_run_cost_includes_failures_orphan_calls_and_survives_trace_c
     assert report.candidate.recorded_cost == pytest.approx(.9)
     assert report.cost_per_success == pytest.approx(.9)
     assert report.candidate.calls == 3  # Published call appears in both sources, once in the report.
-    await db.delete(await db.get(LLMCall, paid))
-    await db.delete(await db.get(LLMCall, orphan))
-    await db.flush()
+    assert await llm_call_service.delete_call(paid)
+    assert await llm_call_service.delete_call(orphan)
     assert (await economics(run)).cost_per_success == pytest.approx(.9)
     result.score_details = {**result.score_details, "candidate_cost_accounting": {}}
     await db.flush()

@@ -227,7 +227,8 @@ async def task_processing_timings(task_ids: tuple[UUID, ...]) -> dict[UUID, list
     columns = (LLMCall.id, LLMCall.purpose, LLMCall.started_at, LLMCall.completed_at, LLMCall.duration,
                first_output_timestamp(), LLMCall.fallback_reason.startswith(f"{MailSubscriptionAccessError.__name__}:"))
     calls = (await get_db().execute(select(LLMCall.task_id, *columns)
-             .where(LLMCall.task_id.in_(task_ids)).order_by(LLMCall.started_at))).all()
+             .where(LLMCall.task_id.in_(task_ids)).order_by(LLMCall.started_at)
+             .execution_options(include_historized=True))).all()
     candidate_rounds = select(ConversationTaskLink.round_id).where(ConversationTaskLink.task_id.in_(task_ids))
     unique_rounds = (select(ConversationTaskLink.round_id)
                      .where(ConversationTaskLink.round_id.in_(candidate_rounds))
@@ -241,6 +242,7 @@ async def task_processing_timings(task_ids: tuple[UUID, ...]) -> dict[UUID, list
                LLMCall.task_id.is_(None),
                LLMCall.purpose == LLMCallPurpose.CONVERSATION_TASK_OBJECTIVE.value)
         .distinct()
+        .execution_options(include_historized=True)
     )).all()
     for task_id, call_id, purpose, started, completed, duration, first_output, mail_fallback in (*calls, *preparations):
         result[task_id].append(LLMProcessingTiming(call_id=call_id, purpose=purpose,
@@ -261,7 +263,7 @@ async def conversation_execution_timing(round_id: UUID, *, agent_id: int) -> LLM
         LLMCall.id, LLMCall.purpose, LLMCall.started_at, LLMCall.completed_at,
         LLMCall.duration, first_output_timestamp(),
     ).where(LLMCall.conversation_round_id == round_id, LLMCall.agent_id == agent_id,
-            LLMCall.task_id.is_(None)))).all()
+            LLMCall.task_id.is_(None)).execution_options(include_historized=True))).all()
     return execution_timing([LLMProcessingTiming(call_id=call_id, purpose=purpose,
         started_at=start, completed_at=end, seconds=duration, first_output_at=output)
         for call_id, purpose, start, end, duration, output in rows])
@@ -276,7 +278,7 @@ async def aggregate_task_lineage_usage(task_ids: tuple[UUID, ...]) -> tuple[int,
     row = (await get_db().execute(select(
         func.coalesce(func.sum(LLMCall.total_tokens), 0),
         func.coalesce(func.sum(LLMCall.cost), 0.0),
-    ).where(LLMCall.task_id.in_(task_ids)))).one()
+    ).where(LLMCall.task_id.in_(task_ids)).execution_options(include_historized=True))).one()
     return max(0, int(row[0])), max(0.0, float(row[1]))
 
 
@@ -300,6 +302,7 @@ async def aggregate_agent_run_usage(
               "cache_write_tokens", "reasoning_tokens", "tool_calls", "cost", "inference_cost",
               "cost_estimated", "is_subscription", "usage", "purpose")
     calls = list(await get_db().scalars(select(LLMCall).where(LLMCall.agent_run_id == agent_run_id)
+        .execution_options(include_historized=True)
         .options(load_only(*(getattr(LLMCall, name) for name in fields), raiseload=True))))
     if agent_id is not None and any(call.agent_id != agent_id for call in calls):
         raise PermissionError("The agent run belongs to another runtime.")

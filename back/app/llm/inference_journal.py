@@ -63,7 +63,7 @@ async def append_events(
             LLMCall.cache_read_tokens, LLMCall.cache_write_tokens, LLMCall.reasoning_tokens,
             LLMCall.usage, LLMCall.is_subscription, LLMCall.cost_estimated, LLMCall.inference_cost,
             raiseload=True,
-        )).with_for_update()
+        )).with_for_update().execution_options(include_historized=True)
     )
     if call is None:
         raise LookupError("The inference call no longer exists.")

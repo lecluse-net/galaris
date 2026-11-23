@@ -551,7 +551,7 @@ async def read_call_history(
 @calls_router.delete("/cleanup", status_code=status.HTTP_204_NO_CONTENT)
 @authorize(privileges=Privileges.LLM_CALL_PURGE)
 async def cleanup_calls() -> None:
-    """Permanently delete completed LLM calls."""
+    """Archive eligible LLM call traces."""
     scope = await current_management_scope()
     await llm_call_service.cleanup_all(agent_ids=scope.agent_ids)
     return None
@@ -584,7 +584,7 @@ async def stop_llm_call(call_id: UUID) -> None:
 @calls_router.delete("/{call_id}", status_code=status.HTTP_204_NO_CONTENT)
 @authorize(privileges=Privileges.LLM_CALL_PURGE)
 async def delete_call(call_id: UUID) -> None:
-    """Permanently delete an LLM call, including a running call."""
+    """Archive a completed LLM call trace and retain its accounting."""
     scope = await current_management_scope()
     try:
         deleted = await llm_call_service.delete_call(call_id, agent_ids=scope.agent_ids)

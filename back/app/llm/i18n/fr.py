@@ -76,7 +76,7 @@ default: dict[str, object] = {
             "delete_failed": "Impossible de supprimer le modèle : ${error}",
             "call_not_found": "Appel LLM introuvable",
             "call_stop_unavailable": "Cet appel ne dispose pas d’une commande d’arrêt. Utilisez les commandes de la tâche ou du processus associé.",
-            "inference_call_protected": "Cet appel appartient à une inférence enregistrée. Son historique et ses coûts doivent être conservés.",
+            "inference_call_protected": "Cet appel est en cours ou un travail utilise encore sa trace.",
             "invalid_llm_token": "Jeton LLM absent ou invalide",
             "code_in_use": "Le code LLM « ${code} » est déjà utilisé",
             "invalid_profile_model_id": "Identifiant LLM invalide dans le champ de profil « ${model_field} » : « ${value} ». L’identifiant doit être un entier.",

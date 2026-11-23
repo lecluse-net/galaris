@@ -102,9 +102,15 @@ async def test_task_events_and_run_rooms_obey_manager_scope(db, monkeypatch, sub
         role_id_ctx.reset(role_token)
         user_service.set_current_user(None)
 
-    # Deletion still refreshes the owner's screen after the trace row is gone.
+    # Archiving refreshes the owner's screen and retains the physical call.
+    task.status = TaskStatus.SUCCESS
+    call.status = "completed"
+    call.completed_at = datetime.now(timezone.utc)
+    await db.commit()
     server.emit.reset_mock()
     assert await llm_call_service.delete_call(call.id)
+    await db.refresh(call, attribute_names=["deleted_at"])
+    assert call.deleted_at is not None
     assert [c.kwargs["room"] for c in server.emit.await_args_list] == ["0"]
 
     grant = ShareGrant(share_id=documents[0].share_id, agent_id=agents[1].id, can_write=False)

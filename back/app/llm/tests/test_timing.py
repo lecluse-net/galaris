@@ -42,7 +42,8 @@ async def test_first_output_read_remains_bounded_as_the_stream_grows(db, generic
 
     start = datetime(2026, 1, 1, tzinfo=timezone.utc)
     call = LLMCall(purpose="agent.exec", started_at=start)
-    db.add(call)
+    other_call = LLMCall(purpose="agent.exec", started_at=start)
+    db.add_all([call, other_call])
     await db.flush()
     # Mixed early evidence, including a pre-start event and sequence order that
     # differs from wall time: the result is the minimum valid timestamp.
@@ -61,7 +62,11 @@ async def test_first_output_read_remains_bounded_as_the_stream_grows(db, generic
     ] + [dict(id=uuid4(), call_id=call.id, sequence=index + len(payloads),
               created_at=start + timedelta(seconds=10 + index),
               payload={"kind": "message", "message": {"type": "text", "content": "Synthetic output"}})
-         for index in range(20000)])
+         for index in range(20000)] + [
+        dict(id=uuid4(), call_id=other_call.id, sequence=index, created_at=start + timedelta(seconds=2),
+             payload={"kind": "message", "message": {"type": "text", "content": "Another call"}})
+        for index in range(10000)
+    ])
     await db.execute(text("ANALYZE llm_call_events"))
     if generic_plan:
         await db.execute(text("SET LOCAL plan_cache_mode = force_generic_plan"))

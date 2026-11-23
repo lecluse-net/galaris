@@ -96,11 +96,11 @@ async def economics(run: LabEvaluationRun) -> RunEconomics:
         judge.update((entry.call_id, entry) for entry in entries)
 
     for stage, target in (("candidate", candidate), ("judge", judge)):
-        # Persisted snapshots survive trace cleanup; live traces also retain calls
+        # Persisted snapshots and historized calls also retain attempts
         # paid by a worker that lost its lease before it could publish a result.
         for entry in await correlated_cost_evidence(f"lab://run/{run.id}/{stage}/"):
             # A later authoritative receipt can refine a terminal estimate or
-            # unknown amount. The retained register governs those refinements.
+            # unknown amount recorded in a snapshot.
             target[entry.call_id] = entry
     candidate_summary = summarize_costs(candidate.values())
     judge_summary = summarize_costs(judge.values())

@@ -11973,20 +11973,6 @@
         "table": "lab_tasks"
       },
       {
-        "class_name": "LLMCallCost",
-        "file": "back/app/llm/models.py",
-        "foreign_keys": [
-          "agents.id",
-          "conversation_rounds.id",
-          "llm_calls.id",
-          "tasks.id"
-        ],
-        "history_mixin": false,
-        "line": 262,
-        "module": "app.llm",
-        "table": "llm_call_costs"
-      },
-      {
         "class_name": "LLMCallEvent",
         "file": "back/app/llm/models.py",
         "foreign_keys": [
@@ -12014,8 +12000,8 @@
           "tasks.id",
           "users.id"
         ],
-        "history_mixin": false,
-        "line": 121,
+        "history_mixin": true,
+        "line": 122,
         "module": "app.llm",
         "table": "llm_calls"
       },

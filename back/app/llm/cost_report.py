@@ -7,17 +7,15 @@ from sqlalchemy import select, func
 from sqlalchemy.sql.selectable import Subquery
 
 from core.database import get_db
-from .models import LLMCall, LLMCallCost
+from .models import LLMCall
 from .cost_accounting import CallCost, CostSummary, call_cost, summarize_costs
 
 
 def _cost_rows() -> Subquery:
     fields = ("id", "task_id", "conversation_round_id", "status", "purpose", "cost",
               "inference_cost", "cost_estimated", "is_subscription", "correlation_ref")
-    retained = select(*(getattr(LLMCallCost, name) for name in fields), LLMCallCost.evidence.label("usage"))
-    historical = select(*(getattr(LLMCall, name) for name in fields), LLMCall.usage).where(
-        ~select(LLMCallCost.id).where(LLMCallCost.id == LLMCall.id).exists())
-    return retained.union_all(historical).subquery("physical_costs")
+    columns = LLMCall.__table__.c
+    return select(*(columns[name] for name in (*fields, "usage"))).subquery("physical_costs")
 
 
 async def task_cost_evidence(task_ids: tuple[UUID, ...]) -> dict[UUID, list[CallCost]]:

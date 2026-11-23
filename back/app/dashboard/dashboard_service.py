@@ -17,6 +17,9 @@ from core.util import local_timezone_name, month_bounds
 from .schemas import AgentUsage, DailyLlmUsage, DashboardResponse, DashboardTotals
 
 
+_call_table = LLMCall.__table__
+
+
 def _previous_month(
     month: str,
     *,
@@ -60,32 +63,32 @@ async def _totals(
     task_result = await db.execute(task_query)
     task_rows = {row.current_month: row for row in task_result}
 
-    call_agent_id = func.coalesce(LLMCall.agent_id, Task.agent_id)
-    call_period = (LLMCall.started_at >= start).label("current_month")
+    call_agent_id = func.coalesce(_call_table.c.agent_id, Task.agent_id)
+    call_period = (_call_table.c.started_at >= start).label("current_month")
     llm_query = (
         select(
             call_period,
-            func.count(LLMCall.id).label("calls"),
-            func.count(LLMCall.id).filter(
-                (LLMCall.status == "error") | LLMCall.error.is_not(None)
+            func.count(_call_table.c.id).label("calls"),
+            func.count(_call_table.c.id).filter(
+                (_call_table.c.status == "error") | _call_table.c.error.is_not(None)
             ).label("errors"),
-            func.coalesce(func.sum(LLMCall.total_tokens), 0).label("tokens"),
+            func.coalesce(func.sum(_call_table.c.total_tokens), 0).label("tokens"),
             func.coalesce(
-                func.sum(LLMCall.cost),
+                func.sum(_call_table.c.cost),
                 0.0,
             ).label("cost"),
-            func.coalesce(func.sum(LLMCall.inference_cost), 0.0).label("inference_cost"),
+            func.coalesce(func.sum(_call_table.c.inference_cost), 0.0).label("inference_cost"),
             func.coalesce(
-                func.avg(LLMCall.duration).filter(LLMCall.status != "running"),
+                func.avg(_call_table.c.duration).filter(_call_table.c.status != "running"),
                 0.0,
             ).label("duration"),
         )
-        .select_from(LLMCall)
-        .where(LLMCall.started_at >= previous_start, LLMCall.started_at < end)
+        .select_from(_call_table)
+        .where(_call_table.c.started_at >= previous_start, _call_table.c.started_at < end)
         .group_by(call_period)
     )
     if agent_ids is not None:
-        llm_query = llm_query.outerjoin(Task, Task.id == LLMCall.task_id).where(
+        llm_query = llm_query.outerjoin(Task, Task.id == _call_table.c.task_id).where(
             call_agent_id.in_(agent_ids)
         )
     llm_result = await db.execute(llm_query)
@@ -127,49 +130,49 @@ async def _daily_usage(
     agent_ids: Collection[int] | None = None,
 ) -> list[DailyLlmUsage]:
     db = get_db()
-    day = cast(func.timezone(timezone_name, LLMCall.started_at), Date).label("usage_day")
+    day = cast(func.timezone(timezone_name, _call_table.c.started_at), Date).label("usage_day")
     label = func.coalesce(
         func.nullif(LLM.label, ""),
-        func.nullif(LLMCall.effective_model, ""),
-        func.nullif(LLMCall.requested_model, ""),
+        func.nullif(_call_table.c.effective_model, ""),
+        func.nullif(_call_table.c.requested_model, ""),
         "Unknown model",
     ).label("llm_label")
     provider = func.coalesce(
         func.nullif(LLMProvider.name, ""),
-        func.nullif(LLMCall.provider_name, ""),
+        func.nullif(_call_table.c.provider_name, ""),
         "",
     ).label("provider_name")
     query = (
         select(
             day,
-            LLMCall.llm_id,
+            _call_table.c.llm_id,
             label,
             provider,
-            func.count(LLMCall.id).label("calls"),
-            func.count(LLMCall.id)
-            .filter((LLMCall.status == "error") | LLMCall.error.is_not(None))
+            func.count(_call_table.c.id).label("calls"),
+            func.count(_call_table.c.id)
+            .filter((_call_table.c.status == "error") | _call_table.c.error.is_not(None))
             .label("errors"),
-            func.coalesce(func.sum(LLMCall.input_tokens), 0).label("input_tokens"),
-            func.coalesce(func.sum(LLMCall.output_tokens), 0).label("output_tokens"),
-            func.coalesce(func.sum(LLMCall.total_tokens), 0).label("tokens"),
+            func.coalesce(func.sum(_call_table.c.input_tokens), 0).label("input_tokens"),
+            func.coalesce(func.sum(_call_table.c.output_tokens), 0).label("output_tokens"),
+            func.coalesce(func.sum(_call_table.c.total_tokens), 0).label("tokens"),
             func.coalesce(
-                func.sum(LLMCall.cost),
+                func.sum(_call_table.c.cost),
                 0.0,
             ).label("cost"),
-            func.coalesce(func.sum(LLMCall.inference_cost), 0.0).label(
+            func.coalesce(func.sum(_call_table.c.inference_cost), 0.0).label(
                 "inference_cost"
             ),
         )
-        .select_from(LLMCall)
-        .outerjoin(LLM, LLM.id == LLMCall.llm_id)
+        .select_from(_call_table)
+        .outerjoin(LLM, LLM.id == _call_table.c.llm_id)
         .outerjoin(LLMProvider, LLMProvider.id == LLM.llm_provider_id)
-        .where(LLMCall.started_at >= start, LLMCall.started_at < end)
-        .group_by(day, LLMCall.llm_id, label, provider)
+        .where(_call_table.c.started_at >= start, _call_table.c.started_at < end)
+        .group_by(day, _call_table.c.llm_id, label, provider)
         .order_by(day, label)
     )
     if agent_ids is not None:
-        query = query.outerjoin(Task, Task.id == LLMCall.task_id).where(
-            func.coalesce(LLMCall.agent_id, Task.agent_id).in_(agent_ids)
+        query = query.outerjoin(Task, Task.id == _call_table.c.task_id).where(
+            func.coalesce(_call_table.c.agent_id, Task.agent_id).in_(agent_ids)
         )
     result = await db.execute(query)
 
@@ -228,30 +231,30 @@ async def _agent_usage(
         task_stats = task_stats.where(Task.agent_id.in_(agent_ids))
     task_stats = task_stats.subquery()
 
-    call_agent_id = func.coalesce(LLMCall.agent_id, Task.agent_id).label("agent_id")
+    call_agent_id = func.coalesce(_call_table.c.agent_id, Task.agent_id).label("agent_id")
     call_stats = (
         select(
             call_agent_id,
-            func.count(LLMCall.id).label("llm_calls"),
-            func.count(LLMCall.id)
-            .filter((LLMCall.status == "error") | LLMCall.error.is_not(None))
+            func.count(_call_table.c.id).label("llm_calls"),
+            func.count(_call_table.c.id)
+            .filter((_call_table.c.status == "error") | _call_table.c.error.is_not(None))
             .label("llm_errors"),
-            func.coalesce(func.sum(LLMCall.total_tokens), 0).label("tokens"),
+            func.coalesce(func.sum(_call_table.c.total_tokens), 0).label("tokens"),
             func.coalesce(
-                func.sum(LLMCall.cost),
+                func.sum(_call_table.c.cost),
                 0.0,
             ).label("cost"),
             func.coalesce(
-                func.avg(LLMCall.duration).filter(LLMCall.status != "running"),
+                func.avg(_call_table.c.duration).filter(_call_table.c.status != "running"),
                 0.0,
             ).label("average_llm_duration"),
         )
-        .select_from(LLMCall)
-        .outerjoin(Task, Task.id == LLMCall.task_id)
+        .select_from(_call_table)
+        .outerjoin(Task, Task.id == _call_table.c.task_id)
         .where(
             call_agent_id.is_not(None),
-            LLMCall.started_at >= start,
-            LLMCall.started_at < end,
+            _call_table.c.started_at >= start,
+            _call_table.c.started_at < end,
         )
         .group_by(call_agent_id)
     )
@@ -332,16 +335,16 @@ async def _available_months(
     if agent_ids is not None:
         task_month_query = task_month_query.where(Task.agent_id.in_(agent_ids))
     call_month = cast(
-        func.date_trunc("month", func.timezone(timezone_name, LLMCall.started_at)),
+        func.date_trunc("month", func.timezone(timezone_name, _call_table.c.started_at)),
         Date,
     ).label("month")
     call_month_query = (
         select(call_month)
-        .select_from(LLMCall)
+        .select_from(_call_table)
     )
     if agent_ids is not None:
-        call_month_query = call_month_query.outerjoin(Task, Task.id == LLMCall.task_id).where(
-            func.coalesce(LLMCall.agent_id, Task.agent_id).in_(agent_ids)
+        call_month_query = call_month_query.outerjoin(Task, Task.id == _call_table.c.task_id).where(
+            func.coalesce(_call_table.c.agent_id, Task.agent_id).in_(agent_ids)
         )
     month_rows = await db.execute(task_month_query.union(call_month_query))
     months = {

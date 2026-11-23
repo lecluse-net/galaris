@@ -71,7 +71,7 @@ default: dict[str, object] = {
             "delete_failed": "Could not delete the model: ${error}",
             "call_not_found": "LLM call not found",
             "call_stop_unavailable": "This call has no stop command. Use the controls of its associated task or process.",
-            "inference_call_protected": "This call belongs to a saved inference. Its history and costs must be preserved.",
+            "inference_call_protected": "This call is running or its trace is still in use.",
             "invalid_llm_token": "Invalid or missing LLM token",
             "code_in_use": "LLM code '${code}' is already in use",
             "invalid_profile_model_id": "Invalid LLM ID in profile field '${model_field}': '${value}'. The ID must be an integer.",

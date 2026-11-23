@@ -3,6 +3,7 @@ from unittest.mock import AsyncMock
 from uuid import UUID, uuid4
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.llm import llm_call_service
@@ -12,27 +13,9 @@ from app.task import task_service
 from app.task.models import Task, TaskStatus
 
 
-class FakeDb:
-    def __init__(self, call: object | None) -> None:
-        self.call = call
-        self.deleted: object | None = None
-        self.committed = False
-
-    async def get(self, model: object, call_id: object) -> object | None:
-        return self.call
-
-    async def scalar(self, query: object) -> object | None:
-        return self.call
-
-    async def delete(self, call: object) -> None:
-        self.deleted = call
-
-    async def commit(self) -> None:
-        self.committed = True
-
-
 @pytest.mark.asyncio
-async def test_media_completion_survives_late_failure_and_duplicate_cost(db, monkeypatch):
+@pytest.mark.parametrize("initial_cost,expected_cost", [(0.42, 0.42), (None, 0.84)])
+async def test_media_completion_survives_late_failure_and_duplicate_cost(db, monkeypatch, initial_cost, expected_cost):
     from app.llm.media_facade import finish_media_call
     from app.llm.media_contracts import MediaResult
 
@@ -40,44 +23,57 @@ async def test_media_completion_survives_late_failure_and_duplicate_cost(db, mon
     db.add(call)
     await db.commit()
     monkeypatch.setattr(llm_call_service.websocket, "emit", AsyncMock())
-    await finish_media_call(call.id, MediaResult(state="success", text="ready", cost=0.42))
+    await finish_media_call(call.id, MediaResult(state="success", text="ready", cost=initial_cost))
     await finish_media_call(call.id, MediaResult(state="error", error="stale observation", cost=0.01))
     await finish_media_call(call.id, MediaResult(state="success", text="duplicate", cost=0.84))
     await db.refresh(call)
     assert call.status == "completed" and call.error is None
-    assert call.response_text == "ready" and call.cost == pytest.approx(0.42)
+    assert call.response_text == "ready" and call.cost == pytest.approx(expected_cost)
 
 
 @pytest.mark.asyncio
-async def test_delete_call_deletes_and_emits_websocket(monkeypatch: pytest.MonkeyPatch) -> None:
-    call_id = uuid4()
-    call = LLMCall(id=call_id, agent_id=12)
-    db = FakeDb(call)
-    events: list[tuple[str, str, dict[str, str], object | None]] = []
+async def test_archive_call_preserves_accounting_and_emits_websocket(db: AsyncSession, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.conversation.tests.test_service import _scope
 
-    async def emit(channel: str, event: str, data: dict[str, str], room: object | None) -> None:
-        events.append((channel, event, data, room))
-
-    monkeypatch.setattr(llm_call_service, "get_db", lambda: db)
+    agent, _, _ = await _scope(db)
+    task = Task(label="Synthetic archive", agent_id=agent.id, status=TaskStatus.SUCCESS)
+    db.add(task)
+    await db.flush()
+    call = LLMCall(status="completed", completed_at=datetime.now(timezone.utc),
+                   prompt="User text", raw_response="Provider payload", cost=.5, total_tokens=12,
+                   task_id=task.id)
+    running = LLMCall(status="running", raw_response="Still in use")
+    db.add_all([call, running])
+    await db.commit()
+    emit = AsyncMock()
     monkeypatch.setattr(llm_call_service.websocket, "emit", emit)
 
-    assert await llm_call_service.delete_call(call_id) is True
-    assert db.deleted is call
-    assert db.committed is True
-    assert events == [("llm_call", "delete", {
-        "id": str(call_id), "agent_id": 12, "task_id": None,
+    assert not await llm_call_service.delete_call(call.id, agent_ids=[])
+    with pytest.raises(llm_call_service.InferenceCallDeletionError):
+        await llm_call_service.delete_call(running.id)
+    assert await llm_call_service.delete_call(call.id, agent_ids=[agent.id])
+    assert await llm_call_service.delete_call(call.id)
+    assert await llm_call_service.get_call(call.id) is None
+    calls, total, summary = await llm_call_service.paginate_history()
+    assert calls == [] and total == summary.completed == 0
+    assert summary.total_cost == .5
+    assert (await llm_call_service.paginate_history(agent_ids=[agent.id]))[2].total_cost == .5
+    assert (await llm_call_service.paginate_history(agent_ids=[]))[2].total_cost == 0
+    archived = (await db.execute(select(LLMCall).where(LLMCall.id == call.id)
+        .execution_options(include_historized=True))).scalar_one()
+    assert archived.deleted_at is not None and archived.raw_response == ""
+    assert archived.prompt == "User text" and archived.cost == .5 and archived.total_tokens == 12
+    emit.assert_awaited_once_with("llm_call", "delete", {
+        "id": str(call.id), "agent_id": None, "task_id": str(task.id),
         "conversation_round_id": None, "process_run_id": None,
-    }, None)]
+    }, None)
+    await llm_call_service.cleanup_all()
+    assert await llm_call_service.get_call(running.id) is running
 
 
 @pytest.mark.asyncio
-async def test_delete_call_returns_false_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    db = FakeDb(None)
-
-    monkeypatch.setattr(llm_call_service, "get_db", lambda: db)
-
+async def test_delete_call_returns_false_when_missing(db: AsyncSession) -> None:
     assert await llm_call_service.delete_call(uuid4()) is False
-    assert db.committed is False
 
 
 def _history_call(call_id: UUID, started_at: datetime, status: str = "completed") -> LLMCall:
@@ -446,13 +442,16 @@ async def test_call_date_range_is_inclusive_and_updates_global_summary(db: Async
         status="error",
     )
     error.cost = 0.2
+    archived = _history_call(uuid4(), datetime(2025, 3, 1, 12, tzinfo=timezone.utc))
+    archived.cost = archived.inference_cost = 0.5
+    archived.deleted_at = datetime(2025, 3, 2, tzinfo=timezone.utc)
     running = _history_call(
         uuid4(),
         datetime(2025, 3, 2, 0, 0, tzinfo=timezone.utc),
         status="running",
     )
     running.cost = 0.4
-    db.add_all([completed, error, running])
+    db.add_all([completed, error, archived, running])
     await db.commit()
 
     calls, total, summary = await llm_call_service.paginate_history(
@@ -472,7 +471,8 @@ async def test_call_date_range_is_inclusive_and_updates_global_summary(db: Async
     assert summary.completed == 1
     assert summary.errors == 1
     assert summary.running == 0
-    assert summary.total_cost == pytest.approx(0.3)
+    assert summary.total_cost == pytest.approx(0.8)
+    assert summary.total_inference_cost == pytest.approx(0.5)
     assert running_calls == []
 
 

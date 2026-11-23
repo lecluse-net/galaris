@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import cast
 
-from sqlalchemy import Table, func, select, update
+from sqlalchemy import Table, func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.dbadmin import (
@@ -114,6 +114,60 @@ async def _profile_codes_complete(session: AsyncSession, _transitions: SchemaTra
     )
 
 
+def _retires_call_costs(transitions: SchemaTransitionSet) -> bool:
+    return "llm_call_costs" in transitions.removed_tables
+
+
+async def _call_costs_transferred(session: AsyncSession, _transitions: SchemaTransitionSet) -> bool:
+    if await session.scalar(text("SELECT to_regclass('public.llm_call_costs')")) is None:
+        return True
+    return not await session.scalar(text("""
+        SELECT EXISTS (
+            SELECT 1 FROM public.llm_call_costs k
+            LEFT JOIN public.llm_calls c ON c.id = k.id
+            WHERE c.id IS NULL OR (k.call_id IS NOT NULL AND k.call_id <> k.id)
+               OR ROW(c.cost, c.inference_cost, c.cost_estimated, c.is_subscription, c.usage->'_galaris_cost')
+                  IS DISTINCT FROM
+                  ROW(k.cost, k.inference_cost, k.cost_estimated, k.is_subscription, k.evidence->'_galaris_cost')
+        )
+    """))
+
+
+async def _transfer_call_costs(session: AsyncSession, _transitions: SchemaTransitionSet) -> None:
+    await session.execute(text("""
+        INSERT INTO public.llm_calls (
+            id, task_id, agent_id, conversation_round_id, correlation_ref, purpose, status,
+            started_at, completed_at, created_at, updated_at, deleted_at, duration,
+            cost, inference_cost, cost_estimated, is_subscription, usage,
+            provider_name, requested_model, effective_model, stream, request_messages,
+            prompt, system_prompt, response_text, reasoning, tool_calls,
+            input_tokens, output_tokens, total_tokens, cache_read_tokens, cache_write_tokens, reasoning_tokens
+        )
+        SELECT k.id, k.task_id, k.agent_id, k.conversation_round_id, k.correlation_ref, k.purpose,
+            CASE WHEN k.status = 'running' THEN 'cancelled' ELSE k.status END,
+            k.started_at, coalesce(k.completed_at, k.started_at), k.started_at,
+            coalesce(k.completed_at, k.started_at), now(),
+            greatest(0, extract(epoch FROM k.completed_at - k.started_at)),
+            k.cost, k.inference_cost, k.cost_estimated, k.is_subscription,
+            k.evidence || '{"trace_retention": "expired"}'::jsonb,
+            '', '', '', false, '[]', '', '', '', '', '[]', 0, 0, 0, 0, 0, 0
+        FROM public.llm_call_costs k
+        WHERE NOT EXISTS (SELECT 1 FROM public.llm_calls c WHERE c.id = k.id)
+        ON CONFLICT (id) DO NOTHING
+    """))
+    # The old register was authoritative for the Task and Lab reports.
+    await session.execute(text("""
+        UPDATE public.llm_calls c
+        SET cost = k.cost, inference_cost = k.inference_cost, cost_estimated = k.cost_estimated,
+            is_subscription = k.is_subscription, usage = (c.usage - '_galaris_cost') || k.evidence
+        FROM public.llm_call_costs k
+        WHERE c.id = k.id AND (k.call_id IS NULL OR k.call_id = k.id)
+          AND ROW(c.cost, c.inference_cost, c.cost_estimated, c.is_subscription, c.usage->'_galaris_cost')
+              IS DISTINCT FROM
+              ROW(k.cost, k.inference_cost, k.cost_estimated, k.is_subscription, k.evidence->'_galaris_cost')
+    """))
+
+
 def register_dbadmin(registry: DbAdminRegistry) -> None:
     registry.register_data_source(DATA_SOURCE)
     registry.register_action(DbAdminAction(
@@ -125,4 +179,10 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
         key="app.llm.profile_codes", phase=DbAdminPhase.AFTER_EXPAND,
         checksum="ascii-stable-codes-v1", predicate=_needs_profile_codes,
         handler=_backfill_profile_codes, postcondition=_profile_codes_complete,
+    ))
+    registry.register_action(DbAdminAction(
+        key="app.llm.consolidate_call_costs", phase=DbAdminPhase.AFTER_EXPAND,
+        checksum="historized-physical-call-costs-v1", predicate=_retires_call_costs,
+        handler=_transfer_call_costs, postcondition=_call_costs_transferred,
+        requires_schema=frozenset({"llm_calls.deleted_at"}),
     ))
