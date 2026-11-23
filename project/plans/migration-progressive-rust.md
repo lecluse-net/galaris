@@ -113,6 +113,10 @@ capacité expérimentale non qualifiée. Chaque lot peut être subdivisé en liv
 
 ### R00 — Figer les contrats, consommateurs et mesures de départ
 
+Le [plan de persistance agentique asynchrone native](persistance-agentique-async-native.md)
+prépare une référence ciblée sur PostgreSQL et un corpus de conformité réutilisable par
+les lots R05, R07 et R11.
+
 1. Établir un inventaire à partir de `back/modules.py` et des imports réels : module,
    interface publique, dépendances, consommateurs, tables, jobs, HTTP/MCP et tests.
 2. Classer chaque responsabilité : règle pure, état en mémoire, I/O, persistance,
