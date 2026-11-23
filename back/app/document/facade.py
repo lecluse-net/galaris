@@ -154,3 +154,7 @@ __all__ += ["DocumentFormat", "DocumentFormatDefinition", "DocumentFormatRegistr
     "CapabilitySupport", "document_format_catalogue", "document_format_definition", "document_formats",
     "register_document_format", "document_source", "extract_document_content", "remap_document_references",
     "FormatExample", "FormatCheck", "FormatSuiteEvidence", "qualify_document_format", "document_format_conformance"]
+if TYPE_CHECKING:
+    from .tool_access import require_document_tool_scope as require_document_tool_scope
+_EXPORTS["require_document_tool_scope"] = ("tool_access", "require_document_tool_scope")
+__all__.append("require_document_tool_scope")

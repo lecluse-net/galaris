@@ -80,6 +80,7 @@ async def list_agents(
     for agent in agents[:limit]:
         item: dict[str, object] = {
             "id": agent.id,
+            "agent_id": agent.id,
             "resource_uri": f"galaris://agent/{agent.id}",
             "code": _preview(agent.code),
             "name": _preview(f"{agent.first_name} {agent.last_name}".strip(), 200),
@@ -100,6 +101,7 @@ async def get_agent_details(
     agent_id: int,
     *,
     language: str | None = None,
+    structured: bool = False,
 ) -> str:
     """Return one complete agent profile without text truncation."""
     lang = _language(language)
@@ -169,4 +171,7 @@ async def get_agent_details(
         lang, "console_execution", value=_boolean(lang, capabilities.console_execution)
     ))
 
-    return "\n".join(lines)
+    profile = "\n".join(lines)
+    if structured:
+        return json.dumps({"agent_id": agent.id, "profile": profile}, ensure_ascii=False)
+    return profile

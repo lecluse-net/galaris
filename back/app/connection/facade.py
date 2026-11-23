@@ -50,6 +50,8 @@ from .connection_service import (
     set_connection_active,
     delete_connection,
     get_params_for_api,
+    set_management_scope,
+    set_voice_auto_answer,
     set_params_bulk,
     delete_param,
     set_connection_function_state,
@@ -96,6 +98,6 @@ from .agent_admin_service import (
 __all__ += [
     "administration", "validate_param_value", "validate_params", "get_connection_by_agent_service",
     "get_agent_ids_by_tool", "get_or_create_connection", "create_connection", "set_connection_active", "delete_connection",
-    "get_params_for_api", "set_params_bulk", "delete_param", "set_connection_function_state",
+    "get_params_for_api", "set_management_scope", "set_voice_auto_answer", "set_params_bulk", "delete_param", "set_connection_function_state",
     "set_service_function_state", "resolve_function", "resolve_function_states_many",
 ]

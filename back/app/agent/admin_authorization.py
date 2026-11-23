@@ -83,7 +83,7 @@ async def delegated_admin(
                 raise PermissionError("The human manager lacks the required domain privilege")
         scope = await management_scope_for(manager, get_db())
         manager_is_global = scope.is_global
-        delegated = await administration_scope(caller_id, "agent_admin")
+        delegated = await administration_scope(caller_id, "agent")
         delegated.require_administration()
         if not delegated.is_global:
             ids = delegated.agent_ids or frozenset()
@@ -100,7 +100,7 @@ async def delegated_admin(
 async def admin_available(caller_id: int, *privileges: str, global_scope: bool = False) -> bool:
     """Live public catalogue predicate; mutations still check their exact function."""
     from app.services.facade import administration_scope
-    delegated = await administration_scope(caller_id, "agent_admin")
+    delegated = await administration_scope(caller_id, "agent")
     if delegated.level == "usage" or (global_scope and not delegated.is_global):
         return False
     caller = await get_db().scalar(select(Agent).where(Agent.id == caller_id)

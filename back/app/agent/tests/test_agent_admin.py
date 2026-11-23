@@ -18,7 +18,7 @@ from app.agent.avatars import portrait_snapshot, apply_generated_avatar, validat
 from app.agent.models import Agent, Title
 from app.agent import agent_service
 from app.connection.models import Connection, ConnectionFunctionState, ConnectionParam
-from app.connection import mcp as connections_mcp
+from app.connection import connection_service, mcp as connections_mcp
 from app.services import mandatory_services, mcp_loader
 from app.services.models import Service
 from core.authorize import Assignment, Privilege, Role
@@ -84,16 +84,15 @@ async def _make_admin_fixture(db):
     await db.flush()
     caller.profile_id = profile.id
     await mandatory_services.sync_integrated_service_connections(caller.id)
-    admin_tool = await db.scalar(select(Service).where(Service.code == "agent_admin"))
+    admin_tool = await db.scalar(select(Service).where(Service.code == "agent"))
     connection = await db.scalar(select(Connection).where(Connection.agent_id == caller.id, Connection.service_id == admin_tool.id))
-    assert connection.active is False
-    connection.active = True
+    assert connection.active is True
     db.add(ConnectionParam(connection_id=connection.id, param_name="services.management_scope", param_value="all"))
     # Domain journeys below have a human-enabled function policy. The real MCP
     # one-action suspension is verified in Tools authorization integration tests.
     from app.connection import facade as connections
     for definition in mcp_loader.load_mcp_tools():
-        if definition.service_code == "agent_admin":
+        if definition.service_code == "agent":
             await connections.set_connection_function_state(connection.id, definition.name, "enabled")
     await db.commit()
     return caller, owner, other, outsider, title, role, connection
@@ -181,11 +180,13 @@ async def test_crud_journey_preserves_html_code_and_default_delegation(db, admin
     data = await agent_mcp.agent_create(ctx, AdminAgentCreate(user_id=owner.id, title_id=title.id,
         code=f"created-{uuid4().hex}", first_name="Lyra", personality="<p>Patient <strong>observer</strong>.</p>"))
     target_id = data["id"]
+    assert data["agent_id"] == target_id
     assert data["resource_uri"] == f"galaris://agent/{target_id}"
     assert "<strong>observer</strong>" in data["personality"]
     target_connections = (await db.scalars(select(Connection).where(Connection.agent_id == target_id))).all()
-    admin_tool = await db.scalar(select(Service).where(Service.code == "agent_admin"))
-    assert not next(c for c in target_connections if c.service_id == admin_tool.id).active
+    admin_tool = await db.scalar(select(Service).where(Service.code == "agent"))
+    assert next(c for c in target_connections if c.service_id == admin_tool.id).active
+    assert await connection_service.get_management_scope(target_id, "agent") == "usage"
     details = await agent_mcp.get_agent(ctx, target_id)
     assert "Lyra" in details
     data = await agent_mcp.agent_update(ctx, target_id, AdminAgentUpdate(job_title="Observer", personality=None))
@@ -218,7 +219,7 @@ async def test_real_connection_target_and_system_or_delegation_protections(db, a
     await db.commit()
     with pytest.raises(PermissionError):
         await connections_mcp.agent_connection_get(ctx, outsider_connection.id)
-    for code in ("galaris", "agent_admin"):
+    for code in ("galaris", "agent"):
         connection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == caller.id, Service.code == code))
         with pytest.raises((ValueError, PermissionError)):
             await connections_mcp.agent_connection_update(ctx, connection.id, False)
@@ -244,7 +245,7 @@ async def test_catalogue_respects_scope_privileges_and_live_revocation(db, admin
     await mandatory_services.sync_integrated_service_connections(caller.id)
     await db.refresh(connection)
     assert not connection.active
-    assert not any(d.service_code == "agent_admin" for d in await mcp_loader.list_enabled_native_mcp_definitions(caller.id, runtime="internal"))
+    assert not any(d.service_code == "agent" for d in await mcp_loader.list_enabled_native_mcp_definitions(caller.id, runtime="internal"))
     with pytest.raises(PermissionError):
         await connections_mcp.agent_service_list(mcp_loader.McpToolContext(caller.id, "internal"), admin_subject.id)
 
@@ -369,10 +370,10 @@ async def test_mounted_catalogue_has_exact_functions_and_rechecks_every_call(db,
     await db.refresh(role, ["privileges"])
     role.privileges.append(await db.scalar(select(Privilege).where(Privilege.code == "AGENT_MANAGE_ALL")))
     await db.commit()
-    spec = next(s for s in mandatory_services.INTEGRATED_SERVICE_SPECS if s.code == "agent_admin")
+    spec = next(s for s in mandatory_services.INTEGRATED_SERVICE_SPECS if s.code == "agent")
     definitions = mcp_loader.load_mcp_tools()
-    assert {d.name for d in definitions if d.service_code == "agent_admin"} == set(spec.mcp_tools)
-    assert len(spec.mcp_tools) == 34
+    assert {d.name for d in definitions if d.service_code == "agent"} == set(spec.mcp_tools)
+    assert {"agent_list", "agent_get"} <= set(spec.mcp_tools)
     server = await mcp_loader.build_agent_galaris_fastmcp(caller.id)
     async with Client(server) as client:
         assert set(spec.mcp_tools) <= {t.name for t in await client.list_tools()}
@@ -412,7 +413,9 @@ async def test_mounted_catalogue_has_exact_functions_and_rechecks_every_call(db,
         assert (await client.call_tool("agent_options", {"category": "managers"}, raise_on_error=False)).is_error
         owner.is_active = False
         await db.commit()
-        assert not set(spec.mcp_tools) & {t.name for t in await client.list_tools()}
+        assert set(spec.mcp_tools) & {t.name for t in await client.list_tools()} == {
+            "agent_list", "agent_get", "team_list", "team_members",
+        }
         assert (await client.call_tool("agent_title_list", {}, raise_on_error=False)).is_error
 
 
@@ -596,6 +599,7 @@ async def test_shared_references_and_membership_preserve_legacy_consistency(db, 
     title = await agent_mcp.agent_title_update(ctx, title["id"], TitleUpdate(label="Synthetic Professor"))
     group = await agent_mcp.agent_group_create(ctx, AgentGroupCreate(name="Synthetic astronomy team"))
     group = await agent_mcp.agent_group_update(ctx, group["id"], AgentGroupUpdate(name="Synthetic observers", order=4))
+    assert title["agent_id"] is None and group["agent_id"] is None
     await agent_mcp.agent_update(ctx, admin_subject.id, AdminAgentUpdate(title_id=title["id"], team_ids=[group["id"]]))
     for _ in range(2):
         member = await agent_mcp.agent_team_set(ctx, admin_subject.id, group["id"], True)

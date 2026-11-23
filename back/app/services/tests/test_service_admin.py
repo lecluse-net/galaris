@@ -35,7 +35,7 @@ async def delegated(db):
                     last_name="Synthetic", agent_driver="internal") for name in ("Operator", "Recipient")]
     db.add_all(agents)
     await db.flush()
-    tool = await db.scalar(select(Service).where(Service.code == "service_admin"))
+    tool = await db.scalar(select(Service).where(Service.code == "service"))
     assert tool is not None
     grant = Connection(service_id=tool.id, agent_id=agents[0].id, active=True)
     db.add(grant)
@@ -45,7 +45,7 @@ async def delegated(db):
     # one-use MCP approval boundary has its own real persistence scenarios.
     from app.services.mcp_loader import load_mcp_tools
     for definition in load_mcp_tools():
-        if definition.service_code == "service_admin":
+        if definition.service_code == "service":
             await connection_service.set_connection_function_state(grant.id, definition.name, "enabled")
     await db.commit()
     return McpToolContext(agents[0].id, "internal"), agents[1].id, grant.id
@@ -154,7 +154,7 @@ async def test_tool_connection_lifecycle_and_conflicts(delegated, db):
     for capability in ("mcp", "task", "file_share", "messenger", "listener"):
         filtered = result(await mcp.service_admin_list(ctx, search=created["tool"]["code"], capability=capability))
         assert filtered["total"] == 0
-    assert result(await mcp.service_admin_list(ctx, search="service_admin", capability="mcp"))["total"] == 1
+    assert result(await mcp.service_admin_list(ctx, search="service", capability="mcp"))["total"] == 1
     changed = result(await mcp.service_admin_global_params_set(ctx, service_id, {"count": {"value": "3"}}, version))
     stale = json.loads(await mcp.service_admin_update(ctx, service_id, {"label": "Stale"}, version))
     assert stale["error"]["kind"] == "conflict"
@@ -568,15 +568,17 @@ async def test_native_mounted_admin_revocation(committed_database):
         db.add(agent)
         await db.flush()
         agent_id = agent.id
-        tool = await db.scalar(select(Service).where(Service.code == "service_admin"))
+        tool = await db.scalar(select(Service).where(Service.code == "service"))
         grant = Connection(service_id=tool.id, agent_id=agent_id, active=True)
         db.add(grant)
         await db.flush()
         grant_id = grant.id
+        await connection_service.set_param(grant_id, "services.management_scope", "personal", scope_edit_authorized=True)
     async with get_db_session():
         server = await build_agent_galaris_fastmcp(agent_id, runtime="internal")
     async with Client(server) as client:
-        assert not (await client.call_tool("service_admin_list", {})).is_error
+        response = await client.call_tool("service_admin_list", {})
+        assert not response.is_error and result(response.content[0].text)["total"] > 0
         async with get_db_session():
             await connection_service.set_connection_function_state(grant_id, "service_admin_list", "disabled")
         assert (await client.call_tool("service_admin_list", {}, raise_on_error=False)).is_error
@@ -763,7 +765,7 @@ async def test_candidate_credentials_stay_out_of_model_messages_and_checkpoints(
     secret = "synthetic-private-model-candidate-token"
     # This scenario verifies secret confinement after an explicit human policy grant.
     # Deferred approval itself is exercised separately without permitting the effect.
-    grant = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == ctx.agent_id, Service.code == "service_admin"))
+    grant = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == ctx.agent_id, Service.code == "service"))
     for function in ("service_admin_mcp_test", "service_admin_create"):
         await connection_service.set_connection_function_state(grant.id, function, "enabled")
     reference = prepare_candidate(CandidateRequest(agent_id=ctx.agent_id, definition={
@@ -803,7 +805,7 @@ async def test_concurrent_mutations_only_apply_one_examined_version(committed_da
         tool = Service(code=f"conflict_{uuid4().hex}", label="Examined configuration")
         db.add_all([agent, tool])
         await db.flush()
-        admin = await db.scalar(select(Service).where(Service.code == "service_admin"))
+        admin = await db.scalar(select(Service).where(Service.code == "service"))
         grant = Connection(service_id=admin.id, agent_id=agent.id, active=True)
         db.add(grant)
         await db.flush()

@@ -37,7 +37,7 @@ async def test_tools_list_omits_every_unauthorized_function_and_group(
             ],
         },
         {
-            "service_code": "process_admin",
+            "service_code": "process",
             "service_label": "Process administration",
             "service_description": "Includes process_admin_start.",
             "active": False,

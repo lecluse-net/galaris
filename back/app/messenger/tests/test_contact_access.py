@@ -287,9 +287,14 @@ async def test_messaging_scope_http_requires_global_web_delegation_and_preserves
         })
         assert response.status_code == 201, response.text
         assert (await state())[2][scope_name] == value
+    response = await client.patch(prefix, headers=headers[2], json={
+        "active": False, "params": {scope_name: "team"},
+    })
+    assert response.status_code == 403, response.text
+    assert await state() == (True, agent_id, {scope_name: "all"})
     for value in ("personal", "usage", "unknown"):
         response = await client.patch(prefix, headers=headers[2], json={
-            "active": False, "params": {scope_name: value},
+            "params": {scope_name: value},
         })
         assert response.status_code == 422, response.text
         assert await state() == (True, agent_id, {scope_name: "all"})

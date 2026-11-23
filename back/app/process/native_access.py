@@ -52,8 +52,10 @@ async def administrative_definition_clause(actor: ProcessActor) -> ColumnElement
     if not isinstance(actor, int):
         return false()
     from app.services.facade import administration_scope
-    scope = await administration_scope(actor, "process_admin")
-    return true() if scope.is_global else Definition.agent_id.in_(scope.agent_ids or ())
+    scope = await administration_scope(actor, "process")
+    if scope.is_global:
+        return true()
+    return Definition.agent_id.in_(scope.agent_ids or ()) if scope.level == "team" else false()
 
 
 async def administrative_run_clause(actor: ProcessActor) -> ColumnElement[bool]:
@@ -61,5 +63,7 @@ async def administrative_run_clause(actor: ProcessActor) -> ColumnElement[bool]:
         return false()
     from app.services.facade import administration_scope
     from .models import ProcessRun
-    scope = await administration_scope(actor, "process_admin")
-    return true() if scope.is_global else ProcessRun.launcher_agent_id.in_(scope.agent_ids or ())
+    scope = await administration_scope(actor, "process")
+    if scope.is_global:
+        return true()
+    return ProcessRun.launcher_agent_id.in_(scope.agent_ids or ()) if scope.level == "team" else false()

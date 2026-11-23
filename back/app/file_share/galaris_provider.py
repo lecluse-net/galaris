@@ -384,7 +384,8 @@ async def _read_payload(
         from app.task import read_task_resource
 
         assert isinstance(identifier, UUID)
-        return await read_task_resource(identifier, actor_agent_id=ctx.agent_id)
+        return await read_task_resource(identifier, actor_agent_id=ctx.agent_id,
+            allow_delegation=not ctx.browser_navigation)
     if kind == "text" or kind == "voice":
         from app.conversation import read_conversation_round_resource
 
@@ -439,6 +440,7 @@ async def _list_payloads(
 
         return await list_task_resources(
             actor_agent_id=ctx.agent_id,
+            allow_delegation=not ctx.browser_navigation,
             query=query,
             offset=offset,
             limit=limit,

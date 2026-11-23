@@ -149,12 +149,12 @@ async def test_streamable_http_mcp_app_captures_and_filters_only_an_enabled_read
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(("name", "service_code", "field", "label"), [
-    ("goal_create", "goal_management", "description", "Description"),
-    ("goal_update", "goal_management", "description", "Description"),
-    ("goal_update_suivi", "galaris", "tracking_content", "Tracking"),
-    ("task_run", "galaris", "objective", "Task objective"),
-    ("agent_create", "agent_admin", "job_description", "Job description"),
-    ("agent_update", "agent_admin", "personality", "Personality"),
+    ("goal_create", "goal", "description", "Description"),
+    ("goal_update", "goal", "description", "Description"),
+    ("goal_update_suivi", "goal", "tracking_content", "Tracking"),
+    ("task_run", "task", "objective", "Task objective"),
+    ("agent_create", "agent", "job_description", "Job description"),
+    ("agent_update", "agent", "personality", "Personality"),
 ])
 async def test_approval_projects_editorial_fields_to_the_recipient_chat(action, name, service_code, field, label):
     from app.connection import facade as connections
@@ -244,7 +244,7 @@ async def test_goal_question_needs_no_approval_by_default_but_preserves_explicit
     from app.services.models import Service
 
     async with get_db_session() as db:
-        tool = await db.scalar(select(Service).where(Service.code == "galaris"))
+        tool = await db.scalar(select(Service).where(Service.code == "goal"))
         connection = await connections.get_or_create_connection(tool.id, action.agent_id)
         await connections.set_connection_function_state(connection.id, "goal_ask_referrer", state)
         policy = await connections.resolve_function(connection, "goal_ask_referrer")
@@ -1766,22 +1766,15 @@ async def test_file_copy_approval_is_bound_to_the_observed_source_bytes(action, 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("mode", [None, "ask", "disabled"])
-async def test_realtime_hangup_defaults_to_enabled_and_preserves_explicit_policy(action, mode):
+async def test_realtime_hangup_uses_conversation_function_policy(action, mode):
     import json
-    from app.connection import Connection, facade as connections
+    from app.connection import facade as connections
     from app.services.models import Service
     from app.voice.realtime_tools import realtime_tools, execute_realtime_tool
     async with get_db_session() as db:
-        tool = await db.scalar(select(Service).where(Service.code == "voice"))
-        if tool is None:
-            tool = Service(code="voice", label="Synthetic voice")
-            db.add(tool)
-            await db.flush()
-        connection = Connection(agent_id=action.agent_id, service_id=tool.id, active=True)
-        db.add(connection)
-        await db.flush()
-        if mode is not None:
-            await connections.set_connection_function_state(connection.id, "voice_call_stop", mode)
+        tool = await db.scalar(select(Service).where(Service.code == "chat"))
+        connection = await connections.get_or_create_connection(tool.id, action.agent_id, active=True)
+        await connections.set_connection_function_state(connection.id, "voice_call_stop", mode or "enabled")
         await db.commit()
     hangup = asyncio.Event()
     tools = realtime_tools(agent_id=action.agent_id, conversation_id="synthetic-room", transport_kind="synthetic",

@@ -23,14 +23,14 @@ from .schemas import (
 )
 
 
-_GOAL_MANAGEMENT_TOOL_CODE = "goal_management"
+_GOAL_SERVICE_CODE = "goal"
 
 
 async def _weekly_retrospective_available(ctx: McpToolContext) -> bool:
     return await retrospective.available(ctx.agent_id, ctx.task_id)
 
 
-@mcp_tool("galaris", available_when=_weekly_retrospective_available,
+@mcp_tool("goal", available_when=_weekly_retrospective_available,
           approval="enabled", approval_reason="Read evidence for the agent's own weekly retrospective",
           effect_policy="read", concurrency_policy="safe",
           description="List a bounded sample of your own terminal Tasks for the current weekly review. "
@@ -41,7 +41,7 @@ async def goal_retrospective_evidence(
     return await retrospective.evidence(ctx.agent_id, ctx.task_id, source_task_uri)
 
 
-@mcp_tool("galaris", available_when=_weekly_retrospective_available,
+@mcp_tool("goal", available_when=_weekly_retrospective_available,
           approval="enabled", approval_reason="Apply verified learning to the agent's own personal skill",
           effect_policy="idempotent",
           description="Apply one evidence-backed improvement to your own personal skill during its weekly review. "
@@ -57,7 +57,7 @@ async def goal_retrospective_learn(
     return await retrospective.learn(ctx.agent_id, ctx.task_id, source_task_uri, operation)
 
 
-@mcp_tool("galaris", available_when=_weekly_retrospective_available,
+@mcp_tool("goal", available_when=_weekly_retrospective_available,
           approval="enabled", approval_reason="Save the current Goal's weekly retrospective",
           effect_policy="idempotent",
           description="Replace this retrospective's tracking with a short HTML fragment. Use the "
@@ -87,7 +87,7 @@ def _goal_payload(goal: Any) -> dict[str, Any]:
 async def _has_goal_management_access(ctx: McpToolContext) -> bool:
     """Require an active connection with an explicit local management scope."""
 
-    return (await administration_scope(ctx.agent_id, _GOAL_MANAGEMENT_TOOL_CODE)).level != "usage"
+    return (await administration_scope(ctx.agent_id, _GOAL_SERVICE_CODE)).level != "usage"
 
 
 async def _require_goal_management_access(ctx: McpToolContext) -> None:
@@ -95,7 +95,7 @@ async def _require_goal_management_access(ctx: McpToolContext) -> None:
 
     if not await _has_goal_management_access(ctx):
         raise PermissionError(
-            "An active goal_management connection is required for Goal administration."
+            "Goal administration requires an active goal connection with a management scope."
         )
 
 
@@ -157,7 +157,7 @@ async def _goal_management_command(
     return _goal_payload(result)
 
 
-@mcp_tool("galaris", approval="enabled", approval_reason="Ask the current Goal's configured human referrer for clarification without prior approval",
+@mcp_tool("goal", approval="enabled", approval_reason="Ask the current Goal's configured human referrer for clarification without prior approval",
 
     name="goal_ask_referrer",
     description=(
@@ -183,7 +183,7 @@ async def mcp_goal_ask_referrer(ctx: McpToolContext, question: str) -> str:
     )
 
 
-@mcp_tool("goal_management", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("goal", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="goal_create",
     description=(
@@ -211,7 +211,7 @@ async def mcp_goal_create(
     """Create an agent-owned Goal with an explicit human referrer."""
 
     await _require_goal_management_access(ctx)
-    (await administration_scope(ctx.agent_id, _GOAL_MANAGEMENT_TOOL_CODE)).require(agent_id)
+    (await administration_scope(ctx.agent_id, _GOAL_SERVICE_CODE)).require(agent_id)
     data = GoalCreate(
         title=title,
         description=description,
@@ -300,13 +300,13 @@ async def mcp_goal_get_suivi(
     return [dict(cycle.model_dump(mode="json")) for cycle in cycles.items]
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("goal", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="goal_update_suivi",
     description=(
         "Replace the tracking HTML of one visible Goal using the revision returned by "
         "file_read on galaris://goal/<uuid>. By default only the current agent's Goals can "
-        "be updated; an explicit goal_management scope permits the delegated agents' Goals."
+        "be updated; an explicit goal scope permits the delegated agents' Goals."
     ),
 )
 async def mcp_goal_update_suivi(
@@ -333,7 +333,7 @@ async def mcp_goal_update_suivi(
     return _goal_payload(result)
 
 
-@mcp_tool("goal_management", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("goal", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="goal_update",
     description=(
@@ -365,7 +365,7 @@ async def mcp_goal_update(
     await _require_goal_management_access(ctx)
     await owner_scope(ctx.agent_id, _goal_id(goal_id), manage=True)
     if agent_id is not None:
-        (await administration_scope(ctx.agent_id, _GOAL_MANAGEMENT_TOOL_CODE)).require(agent_id)
+        (await administration_scope(ctx.agent_id, _GOAL_SERVICE_CODE)).require(agent_id)
     values: dict[str, Any] = {"expected_revision": expected_revision}
     for key, value in (
         ("title", title),
@@ -407,7 +407,7 @@ async def mcp_goal_update(
     return _goal_payload(result)
 
 
-@mcp_tool("goal_management", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("goal", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="goal_pause",
     description="Pause a Goal using the revision read from galaris://goal/<uuid>.",
@@ -428,7 +428,7 @@ async def mcp_goal_pause(
     )
 
 
-@mcp_tool("goal_management", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("goal", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="goal_resume",
     description=(
@@ -452,7 +452,7 @@ async def mcp_goal_resume(
     )
 
 
-@mcp_tool("goal_management", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("goal", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="goal_complete",
     description=(
@@ -476,14 +476,14 @@ async def mcp_goal_complete(
     )
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("goal", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="goal_run_now",
     description=(
         "Schedule a Goal cycle immediately, using the revision read from "
         "galaris://goal/<uuid>. This also "
         "reactivates a paused or errored Goal when its referrer is available. By default only the "
-        "current agent's Goals can be launched; goal_management grants access to every Goal."
+        "current agent's Goals can be launched. Delegated scope controls any wider access."
     ),
 )
 async def mcp_goal_run_now(
@@ -506,7 +506,7 @@ async def mcp_goal_run_now(
     return _goal_payload(result)
 
 
-@mcp_tool("goal_management", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("goal", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="goal_delete",
     description=(

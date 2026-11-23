@@ -146,8 +146,10 @@ async def test_contact_files_write_and_edit_validate_preserve_identity_and_rejec
 
 
 @pytest.mark.asyncio
-async def test_contact_ownership_cannot_be_widened_by_management_scope_or_forged_metadata(db, agents, memory_storage):
+async def test_delegated_contact_scope_does_not_widen_file_access(db, agents, memory_storage):
+    from app.connection.facade import get_or_create_connection, set_management_scope
     from app.contact import mcp as contacts_mcp
+    from app.services.models import Service
 
     owner, other = agents
     # Even the same correspondent has a distinct private card for each agent.
@@ -159,6 +161,13 @@ async def test_contact_ownership_cannot_be_widened_by_management_scope_or_forged
     peer_ctx = ResourceContext(agent_id=other.id, runtime="internal", skill_management=True, management_scope=global_scope)
     peer_tool = McpToolContext(agent_id=other.id, runtime="internal",
         resources={"agent_id": owner.id, "management_scope": global_scope})
+    service_id = await db.scalar(select(Service.id).where(Service.code == "contact"))
+    assert service_id is not None
+    connection = await get_or_create_connection(service_id, other.id, active=True)
+    with pytest.raises(MemoryNotFoundError):
+        await contacts_mcp.mcp_contact_update(peer_tool, contacts[0].memory_item_id, "Unauthorized")
+    await set_management_scope(connection.id, "all", authorized=True)
+    assert (await contacts_mcp.mcp_contact_get(peer_tool, contacts[0].memory_item_id))["owner_agent_id"] == owner.id
     original = await files.resource_read(owner_ctx, owner_uri)
     peer_original = await files.resource_read(peer_ctx, peer_uri)
     assert [entry.uri for entry in (await files.resource_list(peer_ctx, "galaris://contact/")).entries] == [peer_uri]
@@ -172,8 +181,6 @@ async def test_contact_ownership_cannot_be_widened_by_management_scope_or_forged
         await mcp.write_file(peer_tool, owner_uri, '{"display_name":"Unauthorized"}', expected_etag=original.etag)
     with pytest.raises(FileNotFoundError):
         await mcp.edit_file(peer_tool, owner_uri, 1, 1, "{}", expected_etag=original.etag)
-    with pytest.raises(MemoryNotFoundError):
-        await contacts_mcp.mcp_contact_update(peer_tool, contacts[0].memory_item_id, "Unauthorized")
     with pytest.raises(ValueError, match="read-only"):
         await files.resource_write(peer_ctx, peer_uri,
             json.dumps({"display_name": "Unauthorized transfer", "owner_agent_id": owner.id}).encode(),

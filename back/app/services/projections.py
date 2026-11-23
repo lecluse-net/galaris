@@ -41,7 +41,7 @@ def to_public(record: ServiceModel) -> ServicePublic:
         has_mcp=bool(mcp_config),
         has_api=record.rest_config is not None,
         has_mail=record.mail_config is not None,
-        has_calendar=record.calendar_config is not None or record.code == "agenda",
+        has_calendar=record.calendar_config is not None or record.code == "calendar",
         mail_config=ProtocolConfig.model_validate(record.mail_config) if record.mail_config is not None else None,
         calendar_config=ProtocolConfig.model_validate(record.calendar_config) if record.calendar_config is not None else None,
         rest_config=RestConfig.model_validate(record.rest_config) if record.rest_config else None,

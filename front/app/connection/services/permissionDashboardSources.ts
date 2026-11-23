@@ -13,6 +13,7 @@ interface CatalogueConnection {
   active: boolean; can_disable: boolean; parameters: Record<string, string | null>
   parameter_sources?: Record<string, string>
   management_scope?: { value: string; configured: string | null; default: string; description: string; options: { value: string; label: string }[] } | null
+  voice_auto_answer?: boolean | null
 }
 interface CatalogueCapability {
   id: string; service_id: number; service_label: string; connection_id: number | null; name: string; description: string
@@ -77,6 +78,11 @@ export function createPermissionDashboard(t: Composer['t'], agents: AgentSelecti
               ...scope.options.map(option => ({ value: option.value, label: option.label ? t(option.label) : t(`permissions.dashboard.values.${option.value}`) }))],
             disabled: !row.active || !canConfigure() || !authorize.hasPrivilege(privileges.AGENT_MANAGE_ALL),
             save: value => api.put(`/connections/${row.connection_id}/management-scope`, { value: value === 'default' ? null : value }) })
+          if (typeof row.voice_auto_answer === 'boolean') controls.push({ id: 'voice-auto-answer',
+            label: t('permissions.dashboard.voiceAutoAnswer'), value: row.voice_auto_answer ? 'enabled' : 'disabled',
+            options: [{ value: 'enabled', label: t('connection.active') }, { value: 'disabled', label: t('connection.inactive') }],
+            disabled: !row.active || !canConfigure(),
+            save: value => api.put(`/connections/${row.connection_id}/voice-auto-answer`, { enabled: value === 'enabled' }) })
           const parameters = Object.entries(row.parameters).filter(([key]) => key !== 'services.management_scope'
             && (!query.customizedOnly || row.parameter_sources?.[key] === 'connection')).map(([key, value]) => {
             const known = ['allow', 'ask', 'true', 'false', 'block', 'team', 'all', 'none', 'personal', 'usage']

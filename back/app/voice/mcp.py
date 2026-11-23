@@ -39,9 +39,9 @@ def _turn_id(value: str) -> UUID:
         raise ValueError(f"Invalid voice conversation turn UUID: {value}") from exc
 
 
-@mcp_tool("platform_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
+@mcp_tool("chat", default_blocked=True, approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
 
-    name="voice_turn_get",
+    name="voice_turn_get", execution_inspection=True,
     description=(
         "Return the complete persisted dataset for one voice conversation turn by exact UUID: "
         "turn and call-session state, agent identity, transcript, accumulated objective, "
@@ -54,13 +54,13 @@ async def voice_turn_get(
     *,
     turn_id: str,
 ) -> dict[str, Any]:
-    """Inspect one voice turn through the optional administration package."""
+    """Inspect one voice turn within the delegated Services scope."""
 
     from .inspection_service import inspect_turn
 
     identifier = _turn_id(turn_id)
-    from app.services.facade import administration_scope
-    scope = await administration_scope(ctx.agent_id, "platform_admin")
+    from app.services.facade import service_administration_scope
+    scope = await service_administration_scope(ctx.agent_id)
     scope.require_administration()
     payload = await inspect_turn(identifier, agent_ids=scope.agent_ids)
     if payload is None:
@@ -289,7 +289,7 @@ async def _list_calls(agent_id: int, language: str | None = None) -> str:
     )
 
 
-@mcp_tool("voice", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("chat", default_blocked=True, approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="voice_call_start",
     description="Start a voice call in the current room on its exact messaging connection.",
@@ -310,7 +310,7 @@ async def mcp_start_voice_call(
     )
 
 
-@mcp_tool("voice", approval="enabled", approval_reason="Hangup releases an existing call without a new sensitive effect",
+@mcp_tool("chat", default_blocked=True, approval="enabled", approval_reason="Hangup releases an existing call without a new sensitive effect",
 
     name="voice_call_stop",
     description=(
@@ -346,7 +346,7 @@ async def mcp_stop_voice_call(
     )
 
 
-@mcp_tool("voice", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+@mcp_tool("chat", default_blocked=True, approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
 
     name="voice_call_list",
     description="List active voice calls for this AI agent.",

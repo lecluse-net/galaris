@@ -186,8 +186,8 @@ async def test_uploaded_map_uses_normal_revisions_and_authorized_export(client):
 
 
 @pytest.mark.asyncio
-async def test_mcp_batch_rejects_stale_revisions_unauthorized_writes_and_partial_operations(db, agents):
-    owner, peer = agents
+async def test_mcp_batch_rejects_stale_revisions_unauthorized_writes_and_partial_operations(db, document_tool_agents):
+    owner, peer = document_tool_agents
     owner_ctx = McpToolContext(agent_id=owner.id, runtime="internal")
     peer_ctx = McpToolContext(agent_id=peer.id, runtime="internal")
     created = json.loads(await mcp.mindmap_create(owner_ctx, title="Synthetic map"))
@@ -202,9 +202,9 @@ async def test_mcp_batch_rejects_stale_revisions_unauthorized_writes_and_partial
          "icon": "emoji:1F680", "body_html": "<p><strong>Measured result</strong></p>"},
         {"operation": "edit", "node_id": "branch", "checked": None},
     ])
-    with pytest.raises(resource_service.DocumentPermissionError):
+    with pytest.raises(PermissionError):
         await mcp.mindmap_edit(peer_ctx, uri, revision, commands)
-    with pytest.raises(resource_service.DocumentPermissionError):
+    with pytest.raises(PermissionError):
         await mcp.mindmap_add(peer_ctx, uri, revision, [
             NewBranch(node_id="unauthorized", parent_id=root, title="Unauthorized"),
         ])
@@ -228,6 +228,41 @@ async def test_mcp_batch_rejects_stale_revisions_unauthorized_writes_and_partial
         ("branch", "Main branch"), ("child", "Edited child"),
     ]
     assert unchanged["nodes"][0]["checked"] is None
+
+    from app.agent.dialogue_service import set_agent_membership
+    from core.team import TeamModel
+
+    team = TeamModel(name="Synthetic mind map editors")
+    db.add(team)
+    await db.flush()
+    for agent in (owner, peer):
+        await set_agent_membership(team.id, agent.id, True)
+    connection_id = await db.scalar(select(Connection.id).join(Service).where(
+        Connection.agent_id == peer.id, Service.code == "document",
+    ))
+    await connections.set_management_scope(connection_id, "team", authorized=True)
+    with pytest.raises(resource_service.DocumentPermissionError):
+        await mcp.mindmap_read(peer_ctx, uri)
+    grants = json.loads(await mcp.document_sharing(owner_ctx, uri))
+    await mcp.document_share(owner_ctx, uri, agent_id=peer.id, access="edit",
+        expected_lock_version=grants["lock_version"])
+    assert json.loads(await mcp.mindmap_read(peer_ctx, uri))["can_write"]
+    delegated = json.loads(await mcp.document_sharing(peer_ctx, uri))
+    assert delegated["can_manage"]
+    shared = json.loads(await mcp.document_share(peer_ctx, uri, team_id=team.id, access="read",
+        expected_lock_version=delegated["lock_version"]))
+    assert ("team", team.id) in {(grant["kind"], grant["id"]) for grant in shared["grants"]}
+    revised = json.loads(await mcp.mindmap_add(peer_ctx, uri, edited["revision"], [
+        NewBranch(node_id="delegated", parent_id=root, title="Delegated branch"),
+    ]))
+    assert revised["revision"] == edited["revision"] + 1
+    await set_agent_membership(team.id, owner.id, False)
+    with pytest.raises(PermissionError):
+        await mcp.mindmap_read(peer_ctx, uri)
+    with pytest.raises(PermissionError):
+        await mcp.document_sharing(peer_ctx, uri)
+    await connections.set_management_scope(connection_id, "all", authorized=True)
+    assert json.loads(await mcp.mindmap_read(peer_ctx, uri))["revision"] == revised["revision"]
 
 
 @pytest.mark.asyncio

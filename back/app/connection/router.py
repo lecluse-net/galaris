@@ -23,6 +23,7 @@ from .schemas import (
     ConnectionParamCreate,
     ConnectionParamUpdate,
     ManagementScopeUpdate,
+    VoiceAutoAnswerUpdate,
     ConnectionParamBulkCreate,
     ConnectionParamsResponse,
     AgentByParamResponse,
@@ -92,6 +93,13 @@ async def _managed_connection(connection_id: int, *, editable: bool = False) -> 
 async def _editable_tool(service_id: int) -> None:
     try:
         await connection_service.require_editable_tool(service_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+async def _editable_connection_params(connection_id: int, names: list[str]) -> None:
+    try:
+        await connection_service.require_editable_connection_params(connection_id, names)
     except ValueError as exc:
         raise HTTPException(status_code=403, detail=str(exc)) from exc
 
@@ -397,8 +405,14 @@ async def update_connection(connection_id: int, update: ConnectionUpdate, reques
     from app.services.facade import lock_services
 
     await lock_services([connection.service_id, update.service_id or connection.service_id])
-    connection = await _managed_connection(connection_id, editable=True)
-    if update.service_id is not None:
+    connection = await _managed_connection(connection_id)
+    if (update.params is None or update.active not in {None, connection.active}
+        or update.agent_id not in {None, connection.agent_id}
+        or update.service_id not in {None, connection.service_id}):
+        await _editable_tool(connection.service_id)
+    else:
+        await _editable_connection_params(connection_id, list(update.params))
+    if update.service_id is not None and update.service_id != connection.service_id:
         await _editable_tool(update.service_id)
     scope = await current_management_scope()
     previous_agent_id = connection.agent_id
@@ -492,6 +506,16 @@ async def update_management_scope(connection_id: int, data: ManagementScopeUpdat
     await _refresh_agent_indexes([connection.agent_id])
 
 
+@router.put("/{connection_id}/voice-auto-answer", status_code=204, dependencies=[Depends(require_web_session)])
+@authorize(privileges=Privileges.CONNECTION_EDIT)
+async def update_voice_auto_answer(connection_id: int, data: VoiceAutoAnswerUpdate) -> None:
+    await _managed_connection(connection_id)
+    try:
+        await connection_service.set_voice_auto_answer(connection_id, data.enabled)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
 @router.get("/{connection_id}/params", response_model=ConnectionParamsResponse)
 @authorize(privileges=[Privileges.CONNECTION_ACCESS, Privileges.CONNECTION_EDIT])
 async def get_connection_params(
@@ -542,7 +566,8 @@ async def get_single_param(
 @router.post("/{connection_id}/params", response_model=ConnectionParamSchema, status_code=status.HTTP_201_CREATED)
 @authorize(privileges=Privileges.CONNECTION_EDIT)
 async def create_or_update_param(connection_id: int, param: ConnectionParamCreate, request: Request):
-    await _managed_connection(connection_id, editable=True)
+    await _managed_connection(connection_id)
+    await _editable_connection_params(connection_id, [param.param_name])
     if param.connection_id != connection_id:
         raise HTTPException(
             status_code=400,
@@ -568,7 +593,8 @@ async def create_or_update_param(connection_id: int, param: ConnectionParamCreat
 @router.post("/{connection_id}/params/bulk", response_model=List[ConnectionParamSchema], status_code=status.HTTP_201_CREATED)
 @authorize(privileges=Privileges.CONNECTION_EDIT)
 async def create_or_update_params_bulk(connection_id: int, bulk_data: ConnectionParamBulkCreate, request: Request):
-    await _managed_connection(connection_id, editable=True)
+    await _managed_connection(connection_id)
+    await _editable_connection_params(connection_id, list(bulk_data.params))
     if bulk_data.connection_id != connection_id:
         raise HTTPException(
             status_code=400,
@@ -599,7 +625,8 @@ async def update_connection_param(
     update: ConnectionParamUpdate,
     request: Request,
 ):
-    await _managed_connection(connection_id, editable=True)
+    await _managed_connection(connection_id)
+    await _editable_connection_params(connection_id, [param_name])
     db = get_db()
     result = await db.execute(
         select(ConnectionParam).where(
@@ -628,7 +655,8 @@ async def update_connection_param(
 @router.delete("/{connection_id}/params/{param_name}", status_code=status.HTTP_204_NO_CONTENT)
 @authorize(privileges=Privileges.CONNECTION_EDIT)
 async def delete_param(connection_id: int, param_name: str, request: Request):
-    await _managed_connection(connection_id, editable=True)
+    await _managed_connection(connection_id)
+    await _editable_connection_params(connection_id, [param_name])
     deleted = await connection_service.delete_param(connection_id, param_name,
         scope_edit_authorized=await _authorize_scope_parameter(request, [param_name]))
     if not deleted:

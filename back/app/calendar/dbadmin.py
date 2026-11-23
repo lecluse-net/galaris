@@ -10,7 +10,7 @@ from core.dbadmin import DbAdminDataSource, DbAdminDataset, DbAdminRegistry
 
 
 async def _function_rows(session: AsyncSession) -> tuple[dict[str, object], ...]:
-    tool = await session.scalar(select(ServiceModel.id).where(ServiceModel.code == "agenda"))
+    tool = await session.scalar(select(ServiceModel.id).where(ServiceModel.code == "calendar"))
     if tool is None:
         return ()
     return tuple({"service_id": tool, "function_name": name, "capability_kind": "tool", "state": "enabled", "enabled": True}

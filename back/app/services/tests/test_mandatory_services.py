@@ -43,8 +43,8 @@ async def test_sync_integrated_connections_delegates_to_dbadmin_merge(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("service_code", [
-    "browser", "search", "image", "multimedia", "skills",
-    "galaris", "conversation", "memory", "document", "file_sharing",
+    "browser", "multimedia", "skills", "contact", "task",
+    "galaris", "chat", "memory", "document", "file_sharing",
 ])
 async def test_connection_dataset_is_idempotent_and_preserves_admin_activation(
     db: AsyncSession,
@@ -87,7 +87,7 @@ async def test_connection_dataset_is_idempotent_and_preserves_admin_activation(
         from app.skill.interface import get_agent_scope
         from app.skill.contracts import SkillScope
         assert await get_agent_scope(agent.id) == SkillScope.PERSONAL
-    if service_code == "conversation":
+    if service_code == "chat":
         from app.services.mcp_loader import list_enabled_native_mcp_definitions
         definitions = await list_enabled_native_mcp_definitions(agent.id, runtime="internal", conversation_only=True)
         assert {"conversation_process_pending", "conversation_process_respond"} <= {item.name for item in definitions}
@@ -103,17 +103,12 @@ async def test_connection_dataset_is_idempotent_and_preserves_admin_activation(
     assert integrated_connection.active is (service_code in mandatory_services.SYSTEM_SERVICE_CODES)
 
 
-def test_tool_defaults_enable_personal_skills_and_keep_other_administration_inactive() -> None:
+def test_tool_defaults_enable_personal_skills_processes_and_goals() -> None:
     specs = {spec.code: spec for spec in mandatory_services.INTEGRATED_SERVICE_SPECS}
 
-    assert {
-        "team_list",
-        "team_members",
-        "task_get",
-        "goal_update_suivi",
-        "goal_run_now",
-        "goal_ask_referrer",
-    } <= set(specs["galaris"].mcp_tools)
+    assert {"team_list", "team_members"} <= set(specs["agent"].mcp_tools)
+    assert {"task_get", "conversation_task_submit"} <= set(specs["task"].mcp_tools)
+    assert {"contact", "task"} <= mandatory_services.DEFAULT_ACTIVE_INTEGRATED_SERVICE_CODES
     assert {
         "file_schemes",
         "file_list",
@@ -129,6 +124,7 @@ def test_tool_defaults_enable_personal_skills_and_keep_other_administration_inac
         "file_rename",
         "file_delete",
         "file_to_pdf",
+        "dataset_query",
     } == set(specs["file_sharing"].mcp_tools)
     assert specs["file_sharing"].default_active is True
     assert set(specs["file_sharing"].mcp_tools).isdisjoint(
@@ -140,9 +136,12 @@ def test_tool_defaults_enable_personal_skills_and_keep_other_administration_inac
         "goal_get",
         "goal_get_suivi",
     }.isdisjoint(specs["galaris"].mcp_tools)
-    assert specs["goal_management"].auto_connect_agents is True
-    assert specs["goal_management"].default_active is False
-    assert set(specs["goal_management"].mcp_tools) == {
+    assert specs["goal"].auto_connect_agents is True
+    assert specs["goal"].default_active is True
+    assert set(specs["goal"].mcp_tools).isdisjoint(specs["galaris"].mcp_tools)
+    assert set(specs["goal"].mcp_tools) == {
+        "goal_update_suivi", "goal_run_now", "goal_ask_referrer",
+        "goal_retrospective_evidence", "goal_retrospective_learn", "goal_retrospective_record",
         "goal_create",
         "goal_update",
         "goal_delete",
@@ -152,27 +151,12 @@ def test_tool_defaults_enable_personal_skills_and_keep_other_administration_inac
     }
     assert specs["skills"].auto_connect_agents is True
     assert specs["skills"].default_active is True
-    assert specs["process_admin"].auto_connect_agents is True
-    assert specs["process_admin"].default_active is False
-    assert specs["platform_admin"].auto_connect_agents is True
-    assert specs["platform_admin"].default_active is False
-    assert set(specs["platform_admin"].mcp_tools) == {
-        "conversation_round_get",
-        "voice_turn_get",
-        "llm_call",
-        "llm_calls",
-        "incidents_list",
-        "incident_get",
-        "documentation_catalog",
-        "documentation_search",
-    }
-    assert {
-        "goal_management",
-        "process_admin",
-        "platform_admin",
-    } <= (
-        mandatory_services.DEFAULT_INACTIVE_INTEGRATED_SERVICE_CODES
-    )
+    assert specs["process"].auto_connect_agents is True
+    assert specs["process"].default_active is True
+    assert {"goal", "process"} <= mandatory_services.DEFAULT_ACTIVE_INTEGRATED_SERVICE_CODES
+    assert {"platform_admin", "voice", "audio", "image", "search"}.isdisjoint(specs)
+    assert set(mandatory_services.ADMIN_TOOLS) <= set(specs["galaris"].mcp_tools)
+    assert set(mandatory_services.CONVERSATION_INSPECTION_TOOLS + mandatory_services.VOICE_TOOLS) <= set(specs["chat"].mcp_tools)
 
 
 @pytest.mark.asyncio
@@ -200,20 +184,21 @@ async def test_conversation_policy_is_fixed_for_builtin_services(db: AsyncSessio
         }, code
         assert all(entry.source == "native" for entry in catalog.tools)
 
-    tool = services["image"]
+    tool = services["multimedia"]
     with pytest.raises(ValueError):
         await service.set_conversation_tool(tool.id, "image_generate", source="native", enabled=True)
     with pytest.raises(ValueError):
         await service.set_conversation_tool(tool.id, "image_from_pdf", source="native", enabled=False)
 
 
-def test_chat_is_auto_connected_active_without_mcp_tools() -> None:
+def test_chat_is_mandatory_and_combines_mcp_and_native_messaging() -> None:
     specs = {spec.code: spec for spec in mandatory_services.INTEGRATED_SERVICE_SPECS}
     chat = specs["chat"]
 
     assert chat.auto_connect_agents is True
     assert chat.default_active is True
-    assert chat.mcp_tools == ()
+    assert set(chat.mcp_tools) == set(mandatory_services.CHAT_TOOLS)
+    assert "chat" in mandatory_services.SYSTEM_SERVICE_CODES and "conversation" not in specs
     assert chat.messenger_service == "internal"
 
 
@@ -287,20 +272,41 @@ def test_mail_connection_parameters_keep_transport_and_reviewer_configuration() 
 
 def test_administration_scopes_are_explicit_local_and_domain_bounded() -> None:
     scopes = {
-        "skills": ["usage", "personal", "team", "all"],
-        "service_admin": ["usage", "personal", "team", "all"],
-        "process_admin": ["usage", "personal", "team", "all"],
-        "goal_management": ["usage", "personal", "team", "all"],
-        "platform_admin": ["usage", "personal", "team", "all"],
-        "agent_admin": ["usage", "team", "all"],
+        "skills": ("personal", ["usage", "personal", "team", "all"]),
+        "service": ("usage", ["usage", "personal", "team", "all"]),
+        "process": ("personal", ["usage", "personal", "team", "all"]),
+        "goal": ("personal", ["usage", "personal", "team", "all"]),
+        "calendar": ("personal", ["personal", "team", "all"]),
+        "contact": ("personal", ["personal", "team", "all"]),
+        "document": ("personal", ["personal", "team", "all"]),
+        "task": ("personal", ["personal", "team", "all"]),
+        "agent": ("usage", ["usage", "team", "all"]),
     }
-    for row in mandatory_services.mandatory_service_rows():
-        if row["code"] not in scopes:
-            continue
+    rows = {row["code"]: row for row in mandatory_services.mandatory_service_rows()}
+    assert "services.management_scope" not in rows["galaris"]["connection_schema"]["params"]
+    for code, (default, options) in scopes.items():
+        row = rows[code]
         parameter = row["connection_schema"]["params"]["services.management_scope"]
-        assert parameter["default"] == ("personal" if row["code"] == "skills" else "usage")
-        assert [item["value"] for item in parameter["options"]] == scopes[row["code"]]
+        assert parameter["default"] == default
+        assert [item["value"] for item in parameter["options"]] == options
         assert "services.management_scope" not in row["global_params"]
+
+    from app.services.mcp_loader import load_mcp_tools
+
+    inspections = {
+        "conversation_round_get": "chat", "voice_turn_get": "chat",
+        "llm_call": "galaris", "llm_calls": "galaris", "incident_get": "galaris", "incidents_list": "galaris",
+    }
+    definitions = load_mcp_tools()
+    assert len({definition.name for definition in definitions}) == len(definitions)
+    assert {d.name: d.service_code for d in definitions if d.execution_inspection} == inspections
+    for definition in definitions:
+        expected = "service" if definition.name in inspections else (
+            definition.service_code if definition.service_code in scopes else None
+        )
+        assert definition.management_scope_service == expected, definition.name
+    for spec in mandatory_services.INTEGRATED_SERVICE_SPECS:
+        assert {d.name for d in definitions if d.service_code == spec.code} == set(spec.mcp_tools), spec.code
 
 
 def test_messaging_scopes_are_connection_only_and_exclude_personal_management() -> None:
@@ -321,10 +327,11 @@ def test_messaging_scopes_are_connection_only_and_exclude_personal_management() 
 
 def test_external_mail_and_ical_remain_optional_while_personal_agenda_is_a_system_service() -> None:
     from app.services.protocols import protocol_parameters
-    codes = {row["code"] for row in mandatory_services.mandatory_service_rows()}
-    assert {"mail", "calendar"}.isdisjoint(codes)
-    assert {"mail", "calendar"}.isdisjoint(mandatory_services.INTEGRATED_SERVICE_CODES)
-    assert "agenda" in codes and "agenda" in mandatory_services.SYSTEM_SERVICE_CODES
+    rows = {row["code"]: row for row in mandatory_services.mandatory_service_rows()}
+    assert {"mail", "agenda", "calendar-provider"}.isdisjoint(rows)
+    assert "calendar" in mandatory_services.SYSTEM_SERVICE_CODES
+    assert rows["calendar"]["label"] == "Agenda"
+    assert rows["calendar"]["capabilities"] == ["internal.calendar"]
     assert {"timezone", "workday_start", "workday_end", "slot_step_minutes"} <= protocol_parameters("calendar").keys()
 
 

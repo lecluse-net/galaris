@@ -78,7 +78,7 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
                   agent_driver="internal", job_description="<p>Obtain authorized decisions and record evidence. Create content only when the mission requires it.</p>"),
                   actor_user_id=owner.id)
     connection = await db.scalar(select(Connection).join(ServiceModel).where(
-        Connection.agent_id == agent.id, ServiceModel.code == "galaris"))
+        Connection.agent_id == agent.id, ServiceModel.code == "goal"))
     assert connection is not None
     native_connection_id = connection.id
     await connections.set_connection_function_state(connection.id, "goal_ask_referrer", "enabled")

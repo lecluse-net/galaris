@@ -12,20 +12,20 @@ from .schemas import EngineError, EngineRunSnapshot
 
 
 async def _purge_avatar_processes(session: AsyncSession) -> None:
-    await _purge_technical_processes(session, "agent_admin", "avatar",
+    await _purge_technical_processes(session, "agent", "agent_admin", "avatar",
         "Avatar generation now uses a direct function; this obsolete workflow was removed.")
 
 
 async def _purge_catalog_refresh_processes(session: AsyncSession) -> None:
-    await _purge_technical_processes(session, "service_admin", "catalog_refresh",
+    await _purge_technical_processes(session, "service", "service_admin", "catalog_refresh",
         "Catalogue refresh now uses direct app.services functions; retry the unfinished agents there.")
 
 
-async def _purge_technical_processes(session: AsyncSession, service_code: str, operation: str,
+async def _purge_technical_processes(session: AsyncSession, service_code: str, engine_code: str, operation: str,
                                      message: str) -> None:
     definitions = list((await session.scalars(select(ProcessDefinition).where(
         ProcessDefinition.service_id.in_(select(ServiceModel.id).where(ServiceModel.code == service_code)),
-        ProcessDefinition.engine_process_id.regexp_match(rf"^{service_code}:[0-9]+:{operation}$"),
+        ProcessDefinition.engine_process_id.regexp_match(rf"^{engine_code}:[0-9]+:{operation}$"),
     ).execution_options(include_historized=True))).all())
     for definition in definitions:
         runs = list((await session.scalars(select(ProcessRun).where(

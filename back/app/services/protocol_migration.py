@@ -14,7 +14,9 @@ def _introduces_protocols(transitions: SchemaTransitionSet) -> bool:
 
 
 async def _convert_legacy_tools(session: AsyncSession, _transitions: SchemaTransitionSet) -> None:
-    for tool in await session.scalars(select(Service).where(Service.code.in_(("mail", "calendar")))):
+    for tool in await session.scalars(select(Service).where(
+        (Service.code == "mail") | ((Service.code == "calendar") & Service.can_disable.is_(True)),
+    )):
         if tool.code == "mail":
             tool.mail_config = {}
             if (tool.file_share_config or {}).get("service") == "mail":
@@ -30,7 +32,9 @@ async def _convert_legacy_tools(session: AsyncSession, _transitions: SchemaTrans
 
 
 async def _legacy_tools_converted(session: AsyncSession, _transitions: SchemaTransitionSet) -> bool:
-    for tool in await session.scalars(select(Service).where(Service.code.in_(("mail", "calendar")))):
+    for tool in await session.scalars(select(Service).where(
+        (Service.code == "mail") | ((Service.code == "calendar") & Service.can_disable.is_(True)),
+    )):
         if tool.code == "mail" and tool.mail_config is None:
             return False
         if tool.code == "calendar" and tool.calendar_config is None:

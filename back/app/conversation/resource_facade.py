@@ -13,7 +13,7 @@ from core.database import get_db
 
 from .inspection_service import inspect_round
 from .models import ConversationRound, ConversationRoundMessage
-from app.services.facade import administration_scope
+from app.services.facade import service_administration_scope
 
 
 ConversationResourceMedium = Literal["text", "voice"]
@@ -35,7 +35,7 @@ async def read_conversation_round_resource(
 ) -> dict[str, Any] | None:
     """Return an owned round or a round within the live administration scope."""
 
-    scope = await administration_scope(actor_agent_id, "platform_admin")
+    scope = await service_administration_scope(actor_agent_id)
     ids = None if scope.is_global else (scope.agent_ids or frozenset()) | {actor_agent_id}
     payload = await inspect_round(round_id, agent_ids=ids)
     if payload is None:
@@ -66,7 +66,7 @@ async def list_conversation_round_resources(
 ) -> list[dict[str, Any]]:
     """Filter owned and administrable rounds before applying the page limit."""
 
-    scope = await administration_scope(actor_agent_id, "platform_admin")
+    scope = await service_administration_scope(actor_agent_id)
     ids = (scope.agent_ids or frozenset()) | {actor_agent_id}
     statement = (
         select(

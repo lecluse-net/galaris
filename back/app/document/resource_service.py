@@ -782,13 +782,21 @@ async def update_item(
     document_append: bool = False,
     allow_goal_document_metadata_sync: bool = False,
     include_revisions: bool = True,
+    enforce_tool_scope: bool = False,
 ) -> Document:
     item = await _get_item_record(item_id, revisions=include_revisions)
-    if item is not None and (item.document_format == "data" or item.storage_kind == "file") and data.payload is not None:
+    if item is not None and (enforce_tool_scope or (
+        (item.document_format == "data" or item.storage_kind == "file") and data.payload is not None
+    )):
         await get_db().execute(select(Document.id).where(Document.id == item_id).with_for_update())
         item = await _get_item_record(item_id, revisions=include_revisions)
     if item is None:
         raise DocumentNotFoundError("Document not found.")
+    if enforce_tool_scope:
+        from .tool_access import require_document_tool_scope
+
+        assert isinstance(actor_agent_id, int)
+        await require_document_tool_scope(actor_agent_id, item_id)
     await assert_item_access(item, actor_agent_id, write=True, administrative=administrative)
     if data.payload is not None and item.document_format not in {"dataset", "process"}:
         from .formats import document_format_definition

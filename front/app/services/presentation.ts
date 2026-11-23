@@ -1,25 +1,22 @@
 import type { ConnectionParamDef, ConnectionParamOption, Service } from './services/serviceApi'
 
 const BUILT_IN_TOOL_CODES = new Set([
-  "agenda",
+  "calendar",
   "galaris",
-  "conversation",
+  "contact",
+  "task",
+  "document",
   "memory",
   "file_sharing",
-  "platform_admin",
-  "service_admin",
-  "agent_admin",
-  "goal_management",
+  "service",
+  "agent",
+  "goal",
   "skills",
-  "process_admin",
+  "process",
   "topic",
-  "search",
   "browser",
   "chat",
   "console",
-  "image",
-  "audio",
-  "voice",
   "multimedia"
 ])
 
@@ -27,12 +24,12 @@ export const SERVICE_ORIGINS = ['custom', 'galaris'] as const
 export type ServiceOrigin = typeof SERVICE_ORIGINS[number]
 
 const INTERNAL_SERVICE_ICONS: Record<string, string> = {
-  agenda: 'calendar_month', service_admin: 'hub', lab: 'science', multimedia: 'movie',
-  chat: 'forum', search: 'search', browser: 'language', galaris: 'img:/logo/128.png',
-  conversation: 'psychology_alt', memory: 'memory', document: 'description', file_sharing: 'folder_open',
-  process_admin: 'account_tree', agent_admin: 'people', topic: 'folder_copy',
-  goal_management: 'flag_circle', skills: 'psychology', platform_admin: 'monitor_heart',
-  console: 'terminal', image: 'image', audio: 'hearing', voice: 'record_voice_over',
+  calendar: 'calendar_month', service: 'hub', lab: 'science', multimedia: 'movie',
+  chat: 'forum', browser: 'language', galaris: 'img:/logo/128.png',
+  memory: 'memory', document: 'description', file_sharing: 'folder_open',
+  process: 'account_tree', agent: 'people', topic: 'folder_copy', contact: 'contacts', task: 'task_alt',
+  goal: 'flag_circle', skills: 'psychology',
+  console: 'terminal',
   app: 'hub', skill_management: 'auto_stories',
 }
 

@@ -58,6 +58,30 @@ for (const editable of [true, false]) test(`management scopes remain visible and
   expect(writes).toEqual([{ value: 'all' }, { value: 'all' }, { value: null }])
 })
 
+test('Chat auto-answer is saved separately from tool permissions', async ({ page }) => {
+  let enabled = false
+  const writes = []
+  await setup(page, { privileges: [...privileges, 'CONNECTION_EDIT'], routes: async () => {
+    await page.route('**/api/services/agents/7/permissions', route => route.fulfill({ json: {
+      ...empty, connections: [{ ...connection, service_code: 'chat', service_label: 'Chat',
+        can_disable: false, voice_auto_answer: enabled }],
+    } }))
+    await page.route('**/api/connections/9/voice-auto-answer', route => {
+      const data = route.request().postDataJSON()
+      writes.push(data)
+      enabled = data.enabled
+      return route.fulfill({ status: 204 })
+    })
+  } })
+  const control = page.getByRole('group', { name: 'Automatically answer voice calls', exact: true })
+  await expect(control.getByRole('button', { name: 'Inactive', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await control.getByRole('button', { name: 'Active', exact: true }).click()
+  await expect(control.getByRole('button', { name: 'Active', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Refresh', exact: true }).first().click()
+  await expect(control.getByRole('button', { name: 'Active', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  expect(writes).toEqual([{ enabled: true }])
+})
+
 for (const width of [390, 1440]) test(`one searchable dashboard manages inherited, blocked and pending rights at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
   const functions = Array.from({ length: 53 }, (_, index) => capability(index === 52 ? 'needle_function' : `synthetic_function_${index}`))

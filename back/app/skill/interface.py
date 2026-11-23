@@ -1,8 +1,7 @@
 """Shared package policy for agent Skills and File Share operations.
 
 Callers supply the authenticated agent identity, never a scope from tool input.
-Delegation is read from server-owned policy on every call. This module does not
-register an MCP tool or a route; legacy code-only consumers remain generic-only.
+Delegation is read from server-owned policy on every call.
 """
 
 from dataclasses import replace
@@ -50,10 +49,10 @@ async def get_agent_scope(actor_agent_id: int) -> SkillScope:
     """Use personal scope by default, but fail closed without an active connection.
 
     Ordinary usage remains independent of management delegation. Only the protected
-    local connection parameter carries explicit overrides. Unknown values are errors.
+    local connection parameter carries explicit overrides.
     """
-    from app.connection.facade import get_management_scope
-    return SkillScope(await get_management_scope(actor_agent_id, SKILLS_TOOL_CODE))
+    from app.services.facade import administration_level
+    return SkillScope(await administration_level(actor_agent_id, SKILLS_TOOL_CODE))
 
 
 async def _actor(actor_agent_id: int, *, lock: bool = False) -> None:

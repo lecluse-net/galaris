@@ -19,7 +19,7 @@ from core.database import get_db
 _INSPECTION_LIMIT_MAX = 100
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("document", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
     name="document_analyze", effect_policy="non_idempotent", concurrency_policy="safe",
     conversation_policy="forbidden", description=(
         "Analyze an authorized document URI in resumable bounded batches, including large reports. "
@@ -41,27 +41,27 @@ async def document_analyze(ctx: McpToolContext, uri: str, question: str,
         task_id=ctx.task_id, idempotency_key=key)
 
 
-@mcp_tool("galaris", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+@mcp_tool("document", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
     name="document_analysis_get", effect_policy="read", concurrency_policy="safe",
-    description="Read an owned document analysis and its explicit coverage after rechecking source access and version.")
+    description="Read a document analysis in your delegated Document scope after rechecking source access and version.")
 async def document_analysis_get(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
     from .document_service import read_analysis
 
     return await read_analysis(ctx.agent_id, UUID(run_id), runtime=ctx.runtime)
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("document", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
     name="document_analysis_cancel", effect_policy="idempotent", concurrency_policy="safe",
-    description="Cancel an owned document analysis; completed batches are retained and pending inference is stopped.")
+    description="Cancel a document analysis in your delegated Document scope. Completed batches are retained and pending inference is stopped.")
 async def document_analysis_cancel(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
     from .document_service import cancel_analysis
 
     return await cancel_analysis(ctx.agent_id, UUID(run_id), runtime=ctx.runtime)
 
 
-@mcp_tool("platform_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
+@mcp_tool("galaris", default_blocked=True, approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
 
-    name="llm_call",
+    name="llm_call", execution_inspection=True,
     description=(
         "Return a complete LLM-call inspection as JSON text, including request and response "
         "content, reasoning, tools, usage, costs, timings, errors, and safe summaries of its "
@@ -72,16 +72,16 @@ async def document_analysis_cancel(ctx: McpToolContext, run_id: str) -> dict[str
 async def mcp_llm_call(ctx: McpToolContext, llm_call_id: str) -> str:  # noqa: ARG001
     """Return the complete JSON representation of an LLM call."""
 
-    from app.services.facade import administration_scope
-    scope = await administration_scope(ctx.agent_id, "platform_admin")
+    from app.services.facade import service_administration_scope
+    scope = await service_administration_scope(ctx.agent_id)
     scope.require_administration()
     payload = await inspect_llm_call(llm_call_id, agent_ids=scope.agent_ids)
     return json.dumps(payload, ensure_ascii=False)
 
 
-@mcp_tool("platform_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
+@mcp_tool("galaris", default_blocked=True, approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
 
-    name="llm_calls",
+    name="llm_calls", execution_inspection=True,
     description=(
         "Return a JSON array containing only the IDs of the most recent LLM calls started in "
         "the inclusive datetime range. Datetimes must include a timezone offset."
@@ -95,8 +95,8 @@ async def mcp_llm_calls(
 ) -> str:
     """Return LLM-call IDs in an inclusive datetime range as JSON text."""
 
-    from app.services.facade import administration_scope
-    scope = await administration_scope(ctx.agent_id, "platform_admin")
+    from app.services.facade import service_administration_scope
+    scope = await service_administration_scope(ctx.agent_id)
     scope.require_administration()
     payload = await inspect_llm_calls(date_debut, date_fin, limit=limit, agent_ids=scope.agent_ids)
     return json.dumps(payload, ensure_ascii=False)

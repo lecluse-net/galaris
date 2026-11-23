@@ -33,6 +33,6 @@ async def calendar_connection(db, agent):
 async def personal(db, agent):
     await sync_integrated_service_connections(agent.id)
     connection = (await db.scalars(select(Connection).join(Service, Service.id == Connection.service_id)
-        .where(Connection.agent_id == agent.id, Service.code == "agenda"))).one()
+        .where(Connection.agent_id == agent.id, Service.code == "calendar"))).one()
     calendar = (await service.list_feeds(connection_id=connection.id))[0]
     return connection, await service.get_feed(calendar.id)

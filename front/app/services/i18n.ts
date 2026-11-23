@@ -263,6 +263,7 @@ catalogTitle: 'Catalogue', searchCatalog: 'Rechercher un service dans le catalog
       paramOptionLabel: 'Libellé du choix',
       removeParamOption: 'Supprimer ce choix',
       connectionParamLabels: {
+        chatChannel: "Canal interne",
         sync_interval_hours: 'Intervalle de synchronisation (heures)',
         imap_username: "Identifiant IMAP",
         ...calendarProviders.fr.labels,
@@ -347,22 +348,18 @@ catalogTitle: 'Catalogue', searchCatalog: 'Rechercher un service dans le catalog
       systemService: "Service système obligatoire",
       systemServiceHint: "Ce service système et sa connexion sont obligatoires. Ses fonctions restent configurables : bloquer une fonction peut empêcher le travail de l’agent.",
       builtins: {
-        agenda: { label: 'Agenda personnel', description: 'Rendez-vous et rappels personnels sans compte externe. Les rappels créent des tâches suivies. Les objectifs conservent le suivi durable et leurs propres cycles ; ne pas dupliquer une revue d’objectif dans l’agenda.' },
-        agent_admin: {
-          label: "AgentAdmin",
-          description: "Administration des autres agents selon services.management_scope : usage, équipe ou globale, sous les droits du responsable humain. Le niveau équipe permet la création dans une équipe de l’appelant. Aucune automodification, même au niveau global. Les délégations restent humaines. Inactif par défaut.",
+        calendar: { label: 'Agenda', description: 'Rendez-vous et rappels personnels sans compte externe. Les rappels créent des tâches suivies. Les objectifs conservent le suivi durable et leurs propres cycles ; ne pas dupliquer une revue d’objectif dans l’agenda.' },
+        agent: {
+          label: "Agent",
+          description: "Administration des autres agents selon services.management_scope : usage, équipe ou globale, sous les droits du responsable humain. Le niveau équipe permet la création dans une équipe de l’appelant. Aucune automodification, même au niveau global. Les délégations restent humaines. Actif par défaut en mode usage.",
         },
-        service_admin: {
-          label: "ServiceAdmin",
-          description: "Administration selon services.management_scope : usage, personnelle, équipe ou globale. Les niveaux personnel et équipe gèrent les connexions correspondantes ; les définitions et réglages partagés exigent le niveau global. La délégation reste humaine. Inactif par défaut. Les secrets restent côté serveur ; les tests MCP HTTP/SSE n’appellent aucune fonction métier.",
+        service: {
+          label: "Services",
+          description: "Administration selon services.management_scope : usage, personnelle, équipe ou globale. Les niveaux personnel et équipe gèrent les connexions correspondantes ; les définitions et réglages partagés exigent le niveau global. La délégation reste humaine. Actif par défaut en mode usage. Les secrets restent côté serveur ; les tests MCP HTTP/SSE n’appellent aucune fonction métier.",
         },
         galaris: {
           label: "Galaris",
-          description: "## Rôle\n\nCoordonner les agents, déléguer des tâches, consulter leur progression, suivre ses objectifs et exécuter les processus métier affectés. Les droits de propriété et de partage restent appliqués ; l’administration et les commandes conversationnelles ont leurs propres Services.\n\n## Possibilités\n\n- **Coordination** : découvrir les agents et consulter leur rôle pour choisir à qui déléguer une tâche.\n- **Tâches** : lancer un travail chez un autre agent, consulter son état et son résultat, ou arrêter une tâche admissible.\n- **Objectifs** : mettre à jour le suivi de ses objectifs, demander une nouvelle exécution et solliciter le référent dans le contexte prévu.\n- **Processus** : découvrir les workflows affectés, examiner leurs entrées, les lancer et suivre ou analyser leurs exécutions. Consulter aussi le catalogue des services disponibles.\n\n## Quand l’utiliser\n\nÀ utiliser pour répartir un travail entre spécialistes et garder un suivi durable. **Exemple :** déléguer une recherche à un agent, récupérer son résultat, puis déclencher un processus de traitement affecté.\n\n## Conditions et limites\n\nService système obligatoire. La délégation ne permet pas de lancer une tâche chez soi-même. L’accès aux tâches, objectifs et processus reste contrôlé ; les opérations administratives étendues nécessitent leurs Services dédiés.",
-        },
-        conversation: {
-          label: "Conversation",
-          description: "## Rôle\n\nTransformer une conversation en travail suivi : créer ou amender une tâche, consulter ses résultats, la mettre en pause, la reprendre, la relancer ou l’arrêter, et lancer un processus affecté. Appliquer les réponses aux interactions en attente et afficher les documents déjà accessibles au destinataire. Ces actions sont disponibles dans le contexte conversationnel.\n\n## Possibilités\n\n- **Passer à l’action depuis une discussion** : soumettre une tâche de fond avec un objectif autonome, sans bloquer l’échange.\n- **Suivre et piloter** : lister les tâches récentes, consulter leur progression et leurs résultats, mettre en pause, reprendre, réessayer ou arrêter selon leur état.\n- **Traiter les interactions** : transmettre la réponse de l’utilisateur à un choix en attente et démarrer un processus affecté.\n- **Présenter un document** : ouvrir dans le Chat interne un document que le destinataire peut déjà consulter.\n\n## Quand l’utiliser\n\nÀ utiliser pour piloter du travail en parlant naturellement à un agent. **Exemple :** « Prépare ce rapport », puis « Où en es-tu ? » et « Mets-le en pause ». La discussion reste disponible pendant le travail.\n\n## Conditions et limites\n\nService système obligatoire, réservé au contexte conversationnel. L’affichage documentaire concerne le Chat texte interne ; il ne partage pas le document et ne s’applique pas aux tâches ou aux messageries externes. Les commandes respectent les états durables et les messages utilisateur plus récents.",
+          description: "Consulter la documentation officielle et inspecter les appels LLM et incidents selon la portée déléguée sur Services.",
         },
         memory: {
           label: "Mémoire",
@@ -372,37 +369,29 @@ catalogTitle: 'Catalogue', searchCatalog: 'Rechercher un service dans le catalog
           label: "Partage de fichiers",
           description: "## Rôle\n\nDécouvrir et manipuler les ressources autorisées par URI canonique : fichiers, documents, mémoires, pièces jointes et données métier Galaris. Lire, rechercher, créer, modifier ou transférer un contenu selon les capacités du provider. Ce service ne donne ni accès aux ressources privées des autres agents ni système de fichiers local implicite.\n\n## Possibilités\n\n- **Découvrir** : connaître les espaces accessibles, parcourir leurs collections et rechercher des ressources par nom ou selon les modes proposés.\n- **Lire et inspecter** : obtenir les métadonnées ou lire un contenu par portions, à partir de son URI canonique.\n- **Rédiger** : créer des documents de travail ou des fichiers, remplacer leur contenu, ajouter du texte et effectuer des modifications ciblées.\n- **Transférer** : copier entre espaces, déplacer ou supprimer lorsque le service de stockage le permet ; gérer aussi les pièces jointes des documents.\n\n## Quand l’utiliser\n\nÀ utiliser comme point d’accès commun aux contenus, quel que soit leur stockage. **Exemple :** lire un document, enrichir sa version existante et copier une pièce jointe vers Nextcloud sans faire transiter tout le fichier dans la conversation.\n\n## Conditions et limites\n\nService système obligatoire. Chaque espace conserve ses droits et ses capacités : les données métier Galaris sont généralement en lecture seule, les documents utilisent du HTML et des révisions. L’accès à un stockage externe exige sa connexion ; un espace local n’existe que si une Console est disponible. Le partage des droits relève de Mémoire.",
         },
-        platform_admin: {
-          label: "Administration",
-          description: "## Connaissance de Galaris\n\nActivez documentation_catalog et documentation_search pour expliquer l’application à partir de sa documentation officielle versionnée. Lisez les sources via File Sharing sous galaris://documentation/. La compétence système galaris-knowledge accompagne les agents autorisés selon leurs attributions. La recherche sémantique se replie sur le texte si nécessaire. Pour un accès documentaire seul, désactivez conversation_round_get, voice_turn_get, llm_call et llm_calls. documentation_catalog contrôle aussi la lecture directe. Les deux outils documentaires sont admis dans le Chat.\n\n## Rôle\n\nInspecter les rounds conversationnels texte et voix et les appels LLM complets, avec requêtes, réponses, raisonnement, outils, consommation, coûts et erreurs, dans la portée personnelle, équipe ou globale définie par services.management_scope. Cette capacité administrative optionnelle est revérifiée à chaque appel.\n\n## Possibilités\n\n- **Auditer les conversations** : consulter le jeu de données complet d’un round texte ou d’un tour vocal, avec les entrées, tentatives, résultats et objets corrélés.\n- **Inspecter un appel de modèle** : lire les requêtes et réponses persistées, les services appelés, le raisonnement disponible, les erreurs et les durées.\n- **Examiner l’activité** : lister les identifiants des appels LLM sur une période, puis ouvrir ceux à analyser.\n- **Comprendre les coûts** : rapprocher consommation de tokens, coûts enregistrés et contexte d’exécution.\n\n## Quand l’utiliser\n\nÀ utiliser pour diagnostiquer un comportement d’agent, expliquer un échec ou auditer une exécution. **Exemple :** partir d’un round en erreur, retrouver les appels de modèle associés et vérifier les réponses des services.\n\n## Conditions et limites\n\nService administratif optionnel, inactif par défaut. Il donne accès à des données d’exécution de plusieurs agents, potentiellement sensibles. La connexion active et sa portée locale sont revérifiées à chaque appel ; usage n’accorde aucune administration. Il inspecte les données enregistrées ; il ne rejoue pas une exécution et ne modifie pas les résultats.",
-        },
-        goal_management: {
-          label: "Gestion des objectifs",
-          description: "## Rôle\n\nCréer, modifier, suspendre, reprendre, terminer et supprimer les objectifs durables dans la portée personnelle, équipe ou globale définie par services.management_scope. Usage n’accorde aucun droit de gestion ; les révisions protègent les modifications concurrentes.\n\n## Possibilités\n\n- **Définir un objectif durable** : choisir l’agent responsable, le référent humain, la description, la cadence et les paramètres de planification.\n- **Piloter son cycle de vie** : modifier l’objectif, le mettre en pause, le reprendre, le clôturer ou le supprimer selon les contraintes d’exécution.\n- **Administrer plusieurs agents** : étendre les opérations Goal partagées aux objectifs d’autres agents, au-delà du périmètre personnel habituel.\n\n## Quand l’utiliser\n\nÀ utiliser pour organiser un travail récurrent ou suivi dans le temps. **Exemple :** confier une veille périodique à un agent, ajuster sa fréquence et la suspendre lorsque la mission est terminée.\n\n## Conditions et limites\n\nService optionnel, inactif par défaut, aux droits étendus. Les modifications utilisent la révision courante pour éviter les écrasements concurrents. La suppression respecte les exécutions encore actives ; le changement de propriétaire est restreint après le début des cycles. Le suivi ordinaire de ses propres objectifs reste accessible avec Galaris.",
+        goal: {
+          label: "Objectifs",
+          description: "Créer, suivre et gérer les objectifs durables d’un agent. La connexion est active par défaut avec la portée personnelle. Un humain habilité peut déléguer une portée d’équipe ou globale. Les modifications utilisent la révision courante pour éviter les écrasements concurrents.",
         },
         skills: {
           label: "Compétences",
           description: "Un seul Service Compétences, avec les portées usage, personal, team et all déléguées par un humain habilité. Usage permet de consulter les compétences génériques autorisées et ses compétences personnelles actives. Personal permet de gérer ses propres packages. Team permet de gérer pour les agents de toutes ses équipes. All autorise l’administration explicite de tous les packages utilisateurs et la distribution des compétences génériques. Les fichiers passent par Partage de fichiers sous galaris://skill/personnal/<agent>/<code>/. Une compétence personnelle ne se partage jamais ; seul le retrait explicite de propriété la rend générique, initialement inactive pour tous. Les fichiers système restent protégés.",
         },
-        process_admin: {
-          label: "Administration des processus",
-          description: "## Rôle\n\nSynchroniser les workflows externes et affecter des processus aux agents. Créer, modifier et supprimer les définitions, inspecter les exécutions du périmètre délégué, actualiser leur état, les annuler ou les relancer et supprimer les exécutions terminées. L’exécution ordinaire des processus affectés reste dans Galaris.\n\n## Possibilités\n\n- **Préparer le catalogue** : découvrir les moteurs disponibles, synchroniser leurs workflows et créer les définitions affectées aux agents.\n- **Administrer les définitions** : consulter, modifier ou supprimer un processus, ses paramètres de description et son affectation.\n- **Superviser les exécutions** : lancer un processus pour un agent, consulter les runs autorisés, actualiser leur état, analyser les erreurs, annuler ou réessayer.\n- **Gérer l’historique** : supprimer une exécution terminée lorsque cette suppression est demandée.\n\n## Quand l’utiliser\n\nÀ utiliser pour mettre à disposition et maintenir les automatisations métier de l’instance. **Exemple :** découvrir un workflow n8n, l’affecter à un agent, puis analyser et relancer une exécution échouée.\n\n## Conditions et limites\n\nService administratif optionnel, inactif par défaut, limité par services.management_scope : usage, personal, team ou all. La synchronisation des moteurs et les définitions sans agent exigent all. Une découverte ne crée pas à elle seule une affectation. Les états terminaux et les règles de reprise restent appliqués. Le Service Galaris suffit à un agent pour exécuter ses propres processus affectés.",
+        process: {
+          label: "Processus",
+          description: "Créer, modifier et exécuter des processus métier, suivre leurs exécutions et intervenir selon les droits accordés. Le service est actif par défaut pour chaque agent avec la portée personnelle. Un humain habilité peut déléguer une portée d’équipe ou globale. La découverte des moteurs, leur synchronisation et l’association de workflows externes exigent la portée globale.",
         },
         topic: {
-          label: "Thèmes",
-          description: "## Rôle\n\nAdministrer l’organisation thématique partagée des tâches, messages, rounds conversationnels, mémoires et documents. Créer et modifier les thèmes, consulter leur contenu, réaffecter les éléments, fusionner ou scinder des thèmes.\n\n## Possibilités\n\n- **Construire le classement partagé** : créer des thèmes avec titre, description et mots-clés, puis mettre à jour leurs métadonnées.\n- **Explorer un thème** : consulter sa fiche et lister les objets qui lui sont rattachés.\n- **Réorganiser** : déplacer des éléments entre thèmes, fusionner des thèmes ou scinder un thème en sélectionnant les éléments à transférer.\n\n## Quand l’utiliser\n\nÀ utiliser pour garder une organisation cohérente entre plusieurs activités et agents. **Exemple :** regrouper les tâches, échanges et documents d’un même projet, puis séparer un sous-projet devenu autonome.\n\n## Conditions et limites\n\nService d’administration optionnel. Les thèmes sont partagés à l’échelle de l’instance ; les réorganisations ont donc une portée collective. La modification vérifie la révision courante. Une fusion ou un déplacement change le classement, sans conférer de nouveaux droits d’accès au contenu.",
-        },
-        search: {
-          label: "Recherche web",
-          description: "## Rôle\n\nRechercher sur le Web public via le service SearXNG local configuré et fournir des résultats à évaluer par l’agent. La lecture des pages complètes et les interactions avec les sites relèvent du Service Navigateur.\n\n## Possibilités\n\n- **Trouver des sources** : envoyer une requête au moteur SearXNG configuré et obtenir des résultats avec titres, liens et extraits.\n- **Explorer un sujet** : varier les formulations pour identifier la documentation, les annonces ou les sites pertinents.\n- **Préparer une lecture approfondie** : fournir les adresses à ouvrir ensuite avec le Navigateur.\n\n## Quand l’utiliser\n\nÀ utiliser au début d’une recherche ou pour retrouver une source publique précise. **Exemple :** chercher la documentation officielle d’un logiciel, puis consulter la page retenue pour vérifier une information.\n\n## Conditions et limites\n\nService optionnel, actif par défaut. SearXNG doit être disponible. Les résultats et extraits sont des pistes : ils ne garantissent ni l’exactitude ni la fraîcheur du contenu. Ce Service ne remplace pas la lecture complète d’une page et n’accède pas aux espaces privés d’un site.",
+          label: "Sujets",
+          description: "## Rôle\n\nAdministrer l’organisation thématique partagée des tâches, messages, rounds conversationnels, mémoires et documents. Créer et modifier les sujets, consulter leur contenu, réaffecter les éléments, fusionner ou scinder des sujets.\n\n## Possibilités\n\n- **Construire le classement partagé** : créer des sujets avec titre, description et mots-clés, puis mettre à jour leurs métadonnées.\n- **Explorer un sujet** : consulter sa fiche et lister les objets qui lui sont rattachés.\n- **Réorganiser** : déplacer des éléments entre sujets, fusionner des sujets ou scinder un sujet en sélectionnant les éléments à transférer.\n\n## Quand l’utiliser\n\nÀ utiliser pour garder une organisation cohérente entre plusieurs activités et agents. **Exemple :** regrouper les tâches, échanges et documents d’un même projet, puis séparer un sous-projet devenu autonome.\n\n## Conditions et limites\n\nService d’administration optionnel. Les sujets sont partagés à l’échelle de l’instance ; les réorganisations ont donc une portée collective. La modification vérifie la révision courante. Une fusion ou un déplacement change le classement, sans conférer de nouveaux droits d’accès au contenu.",
         },
         browser: {
           label: "Navigateur",
-          description: "## Rôle\n\nOuvrir et parcourir des pages dans une session de navigateur isolée. Lire leur contenu accessible, prendre des captures, cliquer, saisir du texte, défiler et fermer la session. Les actions sur les sites connectés utilisent les droits de cette session.\n\n## Possibilités\n\n- **Naviguer** : ouvrir une page, suivre une adresse, revenir en arrière et fermer la session.\n- **Comprendre une interface** : lire le contenu accessible d’une page et identifier ses éléments interactifs.\n- **Agir** : cliquer, remplir des champs, envoyer une saisie, utiliser le clavier et faire défiler la page.\n- **Observer le rendu** : prendre des captures et adapter la taille de la fenêtre pour examiner une interface.\n\n## Quand l’utiliser\n\nÀ utiliser lorsqu’une page doit être lue complètement ou qu’un site nécessite des interactions. **Exemple :** consulter une documentation, remplir un formulaire autorisé ou vérifier le rendu d’une page sur mobile.\n\n## Conditions et limites\n\nService optionnel, inactif par défaut. Chaque session est isolée et rattachée à son travail ; elle ne reprend pas automatiquement votre navigateur personnel. Les actions utilisent les droits du compte connecté dans cette session. Une connexion au Service ne vaut pas autorisation de publier, d’acheter ou d’envoyer des données.",
+          description: "## Rôle\n\nOuvrir et parcourir des pages dans une session de navigateur isolée. Lire leur contenu accessible, prendre des captures, cliquer, saisir du texte, défiler et fermer la session. Les actions sur les sites connectés utilisent les droits de cette session.\n\n## Possibilités\n\n- **Naviguer** : ouvrir une page, suivre une adresse, revenir en arrière et fermer la session.\n- **Comprendre une interface** : lire le contenu accessible d’une page et identifier ses éléments interactifs.\n- **Agir** : cliquer, remplir des champs, envoyer une saisie, utiliser le clavier et faire défiler la page.\n- **Observer le rendu** : prendre des captures et adapter la taille de la fenêtre pour examiner une interface.\n\n## Quand l’utiliser\n\nÀ utiliser lorsqu’une page doit être lue complètement ou qu’un site nécessite des interactions. **Exemple :** consulter une documentation, remplir un formulaire autorisé ou vérifier le rendu d’une page sur mobile.\n\n## Conditions et limites\n\nService optionnel, inactif par défaut. Chaque session est isolée et rattachée à son travail ; elle ne reprend pas automatiquement votre navigateur personnel. Les actions utilisent les droits du compte connecté dans cette session. Une connexion au Service ne vaut pas autorisation de publier, d’acheter ou d’envoyer des données. Utilise aussi SearXNG pour rechercher des sources publiques.",
         },
         chat: {
           label: "Chat",
-          description: "## Rôle\n\nFournir les conversations texte et audio natives de Galaris entre humains et agents. Cette connexion de messagerie transporte les échanges et pièces jointes ; le pilotage du travail conversationnel relève du service système Conversation.\n\n## Possibilités\n\n- **Dialoguer dans Galaris** : fournir le canal interne de conversation entre un utilisateur et un agent.\n- **Conserver le contexte des échanges** : rattacher les messages et pièces jointes à la conversation.\n- **Articuler discussion et travail** : permettre au contrôleur conversationnel de recevoir les demandes et de restituer les résultats des tâches.\n\n## Quand l’utiliser\n\nÀ utiliser pour travailler avec un agent directement depuis l’interface Galaris, sans installer de messagerie externe. **Exemple :** discuter d’un projet, joindre un document et demander à l’agent de préparer un résultat consultable dans le Chat.\n\n## Conditions et limites\n\nConnexion de messagerie optionnelle, active par défaut. Chat transporte les échanges ; les commandes de tâches et l’affichage documentaire sont fournis par le service Conversation. L’accès aux agents et aux documents suit les autorisations Galaris. Les fonctions audio disponibles dépendent de la configuration.",
+          description: "Service système qui fournit le canal interne et les fonctions de conversation autorisées. Résolvez des choix, affichez un dépôt, gérez les appels vocaux et inspectez les tours autorisés. Le canal interne se règle par agent, indépendamment des messageries externes.",
         },
         console: {
           label: "Console SSH",
@@ -412,29 +401,13 @@ catalogTitle: 'Catalogue', searchCatalog: 'Rechercher un service dans le catalog
           label: "Mail",
           description: "## Rôle\n\nRechercher et lire les boîtes IMAP, déplacer les messages, modifier leurs indicateurs et les mettre à la corbeille. Envoyer, répondre et transférer via SMTP avec pièces jointes et signature signalant l’agent IA. L’approbation humaine optionnelle et les limites de taille suivent les réglages de la connexion.\n\n## Possibilités\n\n- **Lire sa messagerie** : vérifier la connexion, lister les dossiers, rechercher des messages et consulter leur contenu et leurs pièces jointes.\n- **Organiser** : modifier les indicateurs, déplacer un message ou le mettre à la corbeille.\n- **Correspondre** : envoyer un nouveau courriel, répondre ou transférer, avec les pièces jointes autorisées.\n- **Contrôler l’envoi** : utiliser une identité d’expéditeur configurée, une signature signalant l’agent IA et, si demandé, une approbation humaine.\n\n## Quand l’utiliser\n\nÀ utiliser pour traiter une boîte de réception ou préparer une correspondance suivie. **Exemple :** retrouver un échange, lire son document joint, puis envoyer une réponse validée accompagnée du livrable.\n\n## Conditions et limites\n\nNécessite les paramètres IMAP/SMTP et les identifiants de chaque compte. Les envois utilisent une clé de reprise pour éviter les doublons ; tailles et délais sont bornés. Les messages reçus sont des contenus externes. L’activation de Mail ne remplace pas les consignes humaines sur les destinataires et les envois autorisés.",
         },
-        calendar: {
-          label: "Calendrier",
-          description: "## Rôle\n\nLire les calendriers iCalendar personnels ou délégués, consulter les événements, vérifier les disponibilités et rechercher des créneaux. Créer, modifier et supprimer les événements sur les calendriers HTTPS accessibles en écriture ; le fuseau horaire et les horaires de travail suivent la connexion.\n\n## Possibilités\n\n- **Consulter** : lister les calendriers configurés et lire leurs événements sur une période.\n- **Vérifier une disponibilité** : repérer les conflits pour un horaire donné et chercher des créneaux compatibles avec une durée.\n- **Planifier** : tenir compte du fuseau horaire, des horaires de travail et du pas de recherche configurés.\n- **Modifier un agenda** : créer, mettre à jour ou supprimer un événement sur un calendrier accessible en écriture.\n\n## Quand l’utiliser\n\nÀ utiliser pour préparer des rendez-vous et organiser le temps d’un agent ou d’un utilisateur qui lui délègue un calendrier. **Exemple :** trouver un créneau d’une heure sans conflit, puis créer l’événement dans l’agenda prévu.\n\n## Conditions et limites\n\nLes sources iCalendar doivent être configurées. Les calendriers en lecture seule ne permettent aucune mutation ; les opérations d’écriture nécessitent un calendrier HTTPS compatible. Les dates et fuseaux doivent être explicites. Créer un événement ne prouve pas qu’une invitation a été envoyée ou acceptée par tous les participants.",
-        },
         n8n: {
           label: "n8n",
           description: "## Rôle\n\nRelier un moteur de workflows n8n externe aux processus Galaris. Les workflows affectés s’exécutent de manière asynchrone avec un état durable, des entrées, des références de ressources et des résultats. L’exécution et l’administration passent par leurs Services respectifs.\n\n## Possibilités\n\n- **Relier les systèmes** : utiliser les workflows d’un moteur n8n externe comme processus métier Galaris.\n- **Transmettre les entrées** : fournir des paramètres et des références de fichiers aux workflows affectés.\n- **Suivre l’exécution** : conserver un processus durable avec statut, résultats et erreurs, même si le traitement se termine plus tard.\n- **Séparer les rôles** : administrer les définitions avec Administration des processus et exécuter les workflows affectés avec Galaris ou Conversation.\n\n## Quand l’utiliser\n\nÀ utiliser lorsqu’une opération métier doit enchaîner des intégrations externes dans un workflow déjà défini. **Exemple :** lancer un traitement de document ou une synchronisation entre services, puis récupérer le résultat à la fin du processus.\n\n## Conditions et limites\n\nNécessite un moteur n8n configuré et des workflows effectivement exposés et affectés. Ce Service ne fournit pas d’éditeur de workflows n8n dans Galaris et ne crée pas automatiquement leurs identifiants externes. Les droits et paramètres du moteur restent nécessaires.",
         },
-        image: {
-          label: "Image",
-          description: "## Rôle\n\nGénérer et retoucher des images avec les modèles configurés, ou décrire une image existante. Les entrées et sorties utilisent des URI de ressources autorisées ; la disponibilité dépend des capacités des modèles configurés.\n\n## Possibilités\n\n- **Créer** : générer une image à partir d’un brief, avec les dimensions et la destination prises en charge.\n- **Retoucher ou composer** : utiliser des images existantes comme références pour demander une modification ou une nouvelle composition.\n- **Comprendre** : décrire une image existante et répondre à une demande d’analyse visuelle.\n- **Réutiliser l’analyse** : conserver la description produite dans Mémoire, liée à la pièce jointe documentaire ou à la ressource concernée.\n\n## Quand l’utiliser\n\nÀ utiliser pour produire une illustration ou exploiter une information visuelle. **Exemple :** créer un visuel pour un rapport, adapter une illustration ou décrire une image reçue dans une conversation.\n\n## Conditions et limites\n\nService optionnel nécessitant des modèles compatibles. Les fichiers doivent être accessibles et la destination doit permettre l’écriture. Une génération peut varier et une analyse peut être imparfaite : vérifier les détails importants. Une analyse échoue si sa description ne peut pas être enregistrée ; elle n’est donc pas une simple lecture sans effet durable.",
-        },
-        audio: {
-          label: "Transcription audio",
-          description: "## Rôle\n\nTranscrire une ressource audio ou vidéo, ou récupérer les sous-titres publics YouTube disponibles. Fournir directement l’URI canonique de la source ; les formats pris en charge, la disponibilité du provider et les limites configurées déterminent le traitement.\n\n## Possibilités\n\n- **Transcrire la parole** : traiter un fichier audio ou extraire la piste parlée d’une vidéo pour obtenir du texte.\n- **Exploiter YouTube** : récupérer les sous-titres publics disponibles sans télécharger la vidéo entière.\n- **Traiter les contenus longs** : conserver la transcription et produire une synthèse lorsque le traitement dépasse le seuil prévu.\n- **Choisir la sortie** : utiliser la langue et la destination prises en charge, puis réutiliser les fichiers texte obtenus.\n\n## Quand l’utiliser\n\nÀ utiliser pour exploiter un entretien, une réunion enregistrée ou une conférence. **Exemple :** transcrire un enregistrement, lire sa synthèse et préparer un compte rendu dans un document de travail.\n\n## Conditions et limites\n\nService optionnel. Les fichiers audio/vidéo nécessitent un modèle de transcription configuré ; YouTube nécessite des sous-titres accessibles. Les sources privées, restreintes ou sans sous-titres peuvent être refusées. Ce Service traite la parole ; l’analyse de sons, de musique ou de scènes vidéo relève de Multimédia.",
-        },
-        voice: {
-          label: "Voix",
-          description: "## Rôle\n\nDémarrer, lister et arrêter les appels vocaux en temps réel via un provider disponible. Les appels nécessitent une connexion de messagerie ou vocale compatible configurée et conservent leur historique d’exécution Galaris.\n\n## Possibilités\n\n- **Démarrer un appel** : ouvrir une conversation vocale en temps réel dans un salon pris en charge.\n- **Suivre les appels** : lister les sessions actives de l’agent pour savoir lesquelles sont encore ouvertes.\n- **Terminer** : arrêter un appel lancé par l’agent à partir de son identifiant ou du salon concerné.\n\n## Quand l’utiliser\n\nÀ utiliser lorsqu’un échange oral interactif est préférable à une série de messages écrits. **Exemple :** démarrer un appel dans un salon compatible, discuter d’un sujet avec l’agent, puis clôturer la session.\n\n## Conditions et limites\n\nService optionnel. Il dépend d’un service de voix ou de messagerie compatible, de sa connexion et de la configuration audio de l’agent. Un appel est une communication réelle, pas une transcription de fichier ni une simple synthèse vocale. Les formats, salons et transports disponibles dépendent du provider.",
-        },
         multimedia: {
           label: "Multimédia",
-          description: "## Rôle\n\nAnalyser des contenus audio et vidéo et générer des effets sonores, de la musique ou des vidéos avec les modèles spécialisés configurés. Fournir des URI canoniques ; seules les opérations prises en charge par les providers de l’agent sont exposées.\n\n## Possibilités\n\n- **Analyser l’audio** : décrire des événements sonores, une ambiance, des instruments ou une musique.\n- **Analyser la vidéo** : examiner des scènes et des actions à partir d’une ressource vidéo.\n- **Créer des médias** : générer des effets sonores, de la musique ou une vidéo selon les options du modèle disponible.\n- **Suivre la production** : récupérer un processus durable, puis consulter sa progression et les URI des fichiers produits.\n\n## Quand l’utiliser\n\nÀ utiliser pour des travaux créatifs ou d’analyse qui dépassent la simple transcription. **Exemple :** décrire une séquence vidéo, créer une ambiance sonore ou produire une courte vidéo à partir d’un brief.\n\n## Conditions et limites\n\nService optionnel nécessitant des modèles spécialisés ; seules leurs opérations prises en charge sont exposées. La génération est asynchrone : un processus démarré n’est pas encore un média disponible. La destination doit être accessible en écriture. Pour les mots prononcés, utiliser Transcription audio ; pour les images fixes, utiliser Image.",
+          description: "Transcrire la parole, analyser les images, le son et la vidéo, convertir des pages PDF en images et générer des médias.",
         },
         messenger: {
           label: "Messagerie",
@@ -468,8 +441,21 @@ catalogTitle: 'Catalogue', searchCatalog: 'Rechercher un service dans le catalog
           label: "Fichiers AFFiNE",
           description: "## Rôle\n\nAccéder aux fichiers binaires des espaces AFFiNE autorisés avec le compte configuré. Transférer les ressources avec Partage de fichiers vers un espace explicite ; cette connexion ne modifie pas les blocs des documents AFFiNE.\n\n## Possibilités\n\n- **Déposer un fichier** : transférer un contenu binaire vers un espace de travail AFFiNE autorisé.\n- **Récupérer une ressource** : télécharger un fichier connu à partir de sa référence et de son espace de travail.\n- **Échanger entre stockages** : utiliser Partage de fichiers pour transférer une ressource entre AFFiNE et un autre espace accessible.\n\n## Quand l’utiliser\n\nÀ utiliser lorsque les fichiers produits ou consommés par un agent doivent rejoindre un espace AFFiNE existant. **Exemple :** envoyer une image ou un document binaire dans l’espace de travail prévu, puis conserver la référence retournée.\n\n## Conditions et limites\n\nNécessite un compte configuré et un espace de travail explicite et autorisé. Le bridge manipule des fichiers binaires, pas les blocs éditoriaux, bases ou mises en page des documents AFFiNE. Déposer un fichier ne signifie pas qu’il a été inséré dans une page ni partagé avec de nouveaux utilisateurs.",
         },
+        contact: {
+          label: "Contact",
+          description: "Consulter, rechercher et gérer les contacts accessibles à l’agent.",
+        },
+        task: {
+          label: "Tâches",
+          description: "Déléguer, suivre et piloter les tâches. En conversation, créer ou amender le travail, puis suivre sa progression.",
+        },
+        document: {
+          label: "Documents",
+          description: "Présenter dans le Chat, partager et analyser les documents accessibles. Consulter leurs révisions et travailler sur leurs cartes mentales.",
+        },
       },
       connectionParamDescriptions: {
+        chatChannel: "Autoriser les échanges via le canal interne pour cet agent.",
         managementScope: 'Portée propre à cette connexion : usage, gestion personnelle, agents de toutes ses équipes ou administration globale. Une connexion inactive ne donne aucun pouvoir de gestion.',
         skillsScope: 'Par défaut : utiliser les compétences autorisées et créer, modifier ou supprimer ses propres compétences personnelles. Ce niveau ne permet ni de modifier les compétences générales ni de changer leurs affectations. Le niveau équipe étend la gestion aux compétences personnelles et affectations génériques de ses équipes ; le niveau global permet aussi de modifier le catalogue général.',
         peerCommunication: 'Communication inter-agents sur cette connexion : aucune, agents partageant une équipe ou tous les agents. Les droits de contact avec les humains restent indépendants.',
@@ -810,6 +796,7 @@ catalogTitle: 'Catalog', searchCatalog: 'Search the service catalog', refreshCat
       paramOptionLabel: 'Choice label',
       removeParamOption: 'Remove this choice',
       connectionParamLabels: {
+        chatChannel: "Internal channel",
         sync_interval_hours: 'Synchronization interval (hours)',
         imap_username: "IMAP username",
         ...calendarProviders.en.labels,
@@ -894,22 +881,18 @@ catalogTitle: 'Catalog', searchCatalog: 'Search the service catalog', refreshCat
       systemService: "Mandatory system service",
       systemServiceHint: "This system service and its connection are mandatory. Function policies remain configurable: blocking a function may prevent the agent from working.",
       builtins: {
-        agenda: { label: 'Personal agenda', description: 'Personal appointments and reminders without an external account. Reminders create tracked Tasks. Goals retain durable outcome tracking and their own cycles; do not duplicate a Goal review in the agenda.' },
-        agent_admin: {
-          label: "AgentAdmin",
-          description: "Administer other agents according to services.management_scope: usage, team or global, bounded by the human manager’s rights. Team scope permits creation in a caller’s team. Self-modification is forbidden even with global scope. Delegation remains human-only. Inactive by default.",
+        calendar: { label: 'Agenda', description: 'Personal appointments and reminders without an external account. Reminders create tracked Tasks. Goals retain durable outcome tracking and their own cycles; do not duplicate a Goal review in the agenda.' },
+        agent: {
+          label: "Agent",
+          description: "Administer other agents according to services.management_scope: usage, team or global, bounded by the human manager’s rights. Team scope permits creation in a caller’s team. Self-modification is forbidden even with global scope. Delegation remains human-only. Active by default with usage scope.",
         },
-        service_admin: {
-          label: "ServiceAdmin",
-          description: "Administration follows services.management_scope: usage, personal, team or global. Personal and team scopes manage the corresponding connections; shared definitions and global settings require global scope. Delegation remains human-only. Inactive by default. Secrets stay server-side; HTTP/SSE MCP tests call no business functions.",
+        service: {
+          label: "Services",
+          description: "Administration follows services.management_scope: usage, personal, team or global. Personal and team scopes manage the corresponding connections; shared definitions and global settings require global scope. Delegation remains human-only. Active by default with usage scope. Secrets stay server-side; HTTP/SSE MCP tests call no business functions.",
         },
         galaris: {
           label: "Galaris",
-          description: "## Purpose\n\nCoordinate agents, delegate Tasks, inspect their progress, update your Goals and run assigned business Processes. Resource access remains subject to ownership and sharing rights; administration and conversation controls belong to separate Services.\n\n## Capabilities\n\n- **Coordination:** discover agents and inspect their roles to choose whom to delegate to.\n- **Tasks:** launch work for another agent, inspect its state and result, or stop an eligible task.\n- **Goals:** update tracking for owned goals, request another run and ask the referrer within the supported context.\n- **Processes:** discover assigned workflows, inspect inputs, launch them and track or analyze their runs. Also inspect the available tool catalog.\n\n## When to use it\n\nUse this service to distribute work among specialists and retain durable progress. **Example:** delegate research, collect the result, then launch an assigned processing workflow.\n\n## Requirements and limits\n\nMandatory system service. Delegation cannot target the calling agent itself. Task, goal and process access remains controlled; broader administrative operations require their dedicated Services.",
-        },
-        conversation: {
-          label: "Conversation",
-          description: "## Purpose\n\nTurn a conversation into tracked work: create or amend Tasks, inspect their results, pause, resume, retry or stop them, and launch assigned Processes. Resolve pending choices and show documents already accessible to the recipient. These actions are available in conversation context.\n\n## Capabilities\n\n- **Act from a discussion:** submit a background task with a self-contained objective without blocking the exchange.\n- **Track and control:** list recent tasks, inspect progress and results, pause, resume, retry or stop according to their state.\n- **Handle interactions:** submit a user's answer to a pending choice and launch an assigned process.\n- **Present documents:** open a document in internal Chat when the recipient already has read access.\n\n## When to use it\n\nUse it to manage work through natural conversation. **Example:** ask for a report, ask how it is progressing, then pause it. The discussion remains available while work runs.\n\n## Requirements and limits\n\nMandatory system service restricted to conversation context. Document presentation is for internal text Chat; it does not share access or apply to Tasks or external messengers. Commands respect durable states and newer user messages.",
+          description: "Search product documentation and inspect model calls and incidents within the scope delegated on Services.",
         },
         memory: {
           label: "Memory",
@@ -919,37 +902,29 @@ catalogTitle: 'Catalog', searchCatalog: 'Search the service catalog', refreshCat
           label: "File sharing",
           description: "## Purpose\n\nDiscover and manipulate authorized resources through canonical URIs: files, documents, memories, attachments and Galaris business records. Read, search, create, edit or transfer content where the provider supports it. This service grants neither access to other agents’ private resources nor an implicit local filesystem.\n\n## Capabilities\n\n- **Discover:** identify accessible spaces, browse collections and search by name or supported search modes.\n- **Read and inspect:** obtain metadata or read content in bounded portions from its canonical URI.\n- **Write:** create working documents or files, replace content, append text and make targeted edits.\n- **Transfer:** copy across spaces, move or delete where the storage service supports it, and manage document attachments.\n\n## When to use it\n\nUse it as the common entry point to content wherever it is stored. **Example:** read a document, enrich its existing version and copy an attachment to Nextcloud without moving the whole file through the conversation.\n\n## Requirements and limits\n\nMandatory system service. Each space retains its permissions and capabilities: Galaris business records are generally read-only, while documents use HTML and revisions. External storage requires its own connection; local space exists only with an available Console. Access sharing belongs to Memory.",
         },
-        platform_admin: {
-          label: "Administration",
-          description: "## Galaris knowledge\n\nEnable documentation_catalog and documentation_search to explain the application using its versioned official documentation. Read sources through File Sharing under galaris://documentation/. The galaris-knowledge system skill accompanies authorized agents according to their assignments. Semantic search falls back to text when needed. For documentation-only access, disable conversation_round_get, voice_turn_get, llm_call and llm_calls. documentation_catalog also controls direct reads. Both documentation tools are eligible for Chat.\n\n## Purpose\n\nInspect complete persisted text and voice conversation rounds and LLM calls, including requests, responses, reasoning, tool activity, usage, costs and errors within the personal, team or global scope set by services.management_scope. This optional administrative capability is checked again at each call.\n\n## Capabilities\n\n- **Audit conversations:** inspect the full dataset of a text round or voice turn, including inputs, attempts, results and related objects.\n- **Inspect model calls:** read persisted requests and responses, tool calls, available reasoning, errors and timings.\n- **Review activity:** list LLM-call identifiers within a date range, then open the calls worth examining.\n- **Understand costs:** relate token consumption and recorded costs to execution context.\n\n## When to use it\n\nUse it to diagnose agent behavior, explain a failure or audit an execution. **Example:** start from a failed round, find its model calls and inspect the tool responses.\n\n## Requirements and limits\n\nOptional administrative Service, inactive by default. It accesses execution data across agents, potentially including sensitive content. The active connection and its local scope are checked on every call; usage grants no administration. It inspects recorded data; it neither replays executions nor modifies results.",
-        },
-        goal_management: {
-          label: "Goal management",
-          description: "## Purpose\n\nCreate, modify, pause, resume, complete and delete long-running Goals within the personal, team or global scope set by services.management_scope. Usage grants no management rights; concurrent edits remain protected by revisions.\n\n## Capabilities\n\n- **Define durable goals:** choose the responsible agent, human referrer, description, cadence and schedule settings.\n- **Manage lifecycle:** update, pause, resume, complete or delete a goal subject to execution constraints.\n- **Administer multiple agents:** extend shared Goal operations beyond the caller's own goals.\n\n## When to use it\n\nUse it to organize recurring or continuing work. **Example:** assign periodic monitoring to an agent, adjust its frequency and pause it when the mission ends.\n\n## Requirements and limits\n\nOptional Service, inactive by default, with extended rights. Changes use the current revision to prevent concurrent overwrites. Deletion respects active executions; ownership changes are restricted once cycles have started. Ordinary tracking of owned goals remains available through Galaris.",
+        goal: {
+          label: "Goals",
+          description: "Create, track and manage an agent’s long-running goals. The connection starts active with personal scope. An authorized person can delegate team or global scope. Edits use the current revision to prevent concurrent overwrites.",
         },
         skills: {
           label: "Skills",
           description: "One Skills Service with usage, personal, team and all scopes delegated by an authorized human. Usage reads authorized generic skills and active own personal packages. Personal manages only your own packages. Team manages agents in any of your teams. All allows explicit administration of all user packages and generic distribution. Files use File Sharing under galaris://skill/personnal/<agent>/<code>/. Personal packages cannot be shared; explicit ownership release makes them generic, initially disabled for everyone. System files remain protected.",
         },
-        process_admin: {
-          label: "Process administration",
-          description: "## Purpose\n\nSynchronize external workflow definitions and assign Processes to agents. Create, modify and delete definitions, inspect authorized runs, refresh their state, cancel or retry them and delete terminal runs. Ordinary execution of assigned Processes remains in Galaris.\n\n## Capabilities\n\n- **Prepare the catalog:** discover engines, synchronize their workflows and create definitions assigned to agents.\n- **Manage definitions:** inspect, update or delete a process, its descriptive settings and assignment.\n- **Supervise runs:** launch a process for an agent, inspect authorized runs, refresh state, analyze errors, cancel or retry.\n- **Manage history:** delete a terminal run when removal is requested.\n\n## When to use it\n\nUse it to provide and maintain business automation across the instance. **Example:** discover an n8n workflow, assign it to an agent, then analyze and retry a failed run.\n\n## Requirements and limits\n\nOptional administrative Service, inactive by default, limited by services.management_scope: usage, personal, team or all. Engine synchronization and unassigned definitions require all. Discovery alone does not create an assignment. Terminal-state and retry rules still apply. Galaris is sufficient for agents executing their own assigned processes.",
+        process: {
+          label: "Processes",
+          description: "Create, edit and run business processes, inspect their runs and act within your permissions. The Service starts active for every agent with personal scope. An authorized person can delegate team or global scope. Discovering or synchronizing engines and binding external workflows require global scope.",
         },
         topic: {
           label: "Topics",
           description: "## Purpose\n\nAdminister the shared thematic organization of Tasks, messages, conversation rounds, memories and documents. Create and edit Topics, inspect their contents, reassign items and merge or split Topics.\n\n## Capabilities\n\n- **Build shared organization:** create topics with a title, description and keywords, then update their metadata.\n- **Explore a topic:** inspect its record and list its assigned objects.\n- **Reorganize:** move items between topics, merge topics or split one by selecting the items to transfer.\n\n## When to use it\n\nUse it to keep activities and agents organized consistently. **Example:** group a project's tasks, exchanges and documents, then separate a subproject that has become independent.\n\n## Requirements and limits\n\nOptional administrative Service. Topics are shared across the instance, so reorganization has a collective scope. Updates check the current revision. Merging or moving changes organization without granting new content access rights.",
         },
-        search: {
-          label: "Web search",
-          description: "## Purpose\n\nSearch the public web through the configured local SearXNG service and return results for the agent to assess. Reading full pages and interacting with sites use the Browser Service.\n\n## Capabilities\n\n- **Find sources:** query the configured SearXNG engine and receive results with titles, links and excerpts.\n- **Explore a subject:** vary search terms to identify relevant documentation, announcements or websites.\n- **Prepare deeper reading:** obtain addresses to open with Browser.\n\n## When to use it\n\nUse it at the start of research or to find a specific public source. **Example:** locate a software product's official documentation, then read the selected page to verify a detail.\n\n## Requirements and limits\n\nOptional service, active by default. SearXNG must be available. Results and excerpts are leads; they guarantee neither accuracy nor freshness. This Service does not replace reading complete pages or provide access to private website areas.",
-        },
         browser: {
           label: "Browser",
-          description: "## Purpose\n\nOpen and navigate web pages in an isolated browser session. Read accessible content, take screenshots, click controls, type, scroll and close the session. Actions on signed-in sites use that session’s access.\n\n## Capabilities\n\n- **Navigate:** open pages, follow addresses, go back and close sessions.\n- **Understand interfaces:** read accessible page content and identify interactive elements.\n- **Act:** click, fill fields, submit input, use the keyboard and scroll.\n- **Inspect appearance:** capture screenshots and change viewport size to examine an interface.\n\n## When to use it\n\nUse it when complete pages must be read or websites require interaction. **Example:** read documentation, fill an authorized form or inspect a page's mobile layout.\n\n## Requirements and limits\n\nOptional Service, inactive by default. Sessions are isolated and tied to their work; they do not automatically reuse your personal browser. Actions use the account rights in that session. Enabling the Service does not itself authorize publishing, purchasing or sending data.",
+          description: "## Purpose\n\nOpen and navigate web pages in an isolated browser session. Read accessible content, take screenshots, click controls, type, scroll and close the session. Actions on signed-in sites use that session’s access.\n\n## Capabilities\n\n- **Navigate:** open pages, follow addresses, go back and close sessions.\n- **Understand interfaces:** read accessible page content and identify interactive elements.\n- **Act:** click, fill fields, submit input, use the keyboard and scroll.\n- **Inspect appearance:** capture screenshots and change viewport size to examine an interface.\n\n## When to use it\n\nUse it when complete pages must be read or websites require interaction. **Example:** read documentation, fill an authorized form or inspect a page's mobile layout.\n\n## Requirements and limits\n\nOptional Service, inactive by default. Sessions are isolated and tied to their work; they do not automatically reuse your personal browser. Actions use the account rights in that session. Enabling the Service does not itself authorize publishing, purchasing or sending data. Use SearXNG to find public sources.",
         },
         chat: {
           label: "Chat",
-          description: "## Purpose\n\nProvide native Galaris text and audio conversations between humans and agents. This messaging connection carries exchanges and attachments; conversation work controls are supplied by the Conversation system Service.\n\n## Capabilities\n\n- **Talk within Galaris:** provide the internal conversation channel between a user and an agent.\n- **Retain exchange context:** associate messages and attachments with their conversation.\n- **Connect discussion to work:** let the conversation controller receive requests and deliver task results.\n\n## When to use it\n\nUse it to work with an agent directly in the Galaris interface without installing an external messenger. **Example:** discuss a project, attach a document and request a result that can be reviewed in Chat.\n\n## Requirements and limits\n\nOptional messaging connection, active by default. Chat carries exchanges; task commands and document presentation come from Conversation. Agent and document access follows Galaris permissions. Available audio features depend on configuration.",
+          description: "System Service for the internal channel and authorized conversation functions. Resolve choices, present a repository, manage voice calls and inspect authorized turns. Configure the internal channel per agent independently of external messaging.",
         },
         console: {
           label: "SSH console",
@@ -959,29 +934,13 @@ catalogTitle: 'Catalog', searchCatalog: 'Search the service catalog', refreshCat
           label: "Mail",
           description: "## Purpose\n\nSearch and read IMAP mailboxes, move messages, change flags and trash mail. Send, reply and forward through SMTP with attachments and an AI-agent disclosure signature. Optional human approval and size limits follow the connection settings.\n\n## Capabilities\n\n- **Read mail:** check connectivity, list folders, search messages and inspect bodies and attachments.\n- **Organize:** change flags, move messages or send them to Trash.\n- **Correspond:** send new mail, reply or forward with authorized attachments.\n- **Control delivery:** use the configured sender identity, an AI-agent disclosure signature and optional human approval.\n\n## When to use it\n\nUse it to process an inbox or maintain correspondence. **Example:** find an exchange, read its attachment and send an approved reply with the deliverable.\n\n## Requirements and limits\n\nRequires IMAP/SMTP settings and account credentials. Deliveries use a retry key to prevent duplicates; sizes and timeouts are bounded. Incoming messages are external content. Enabling Mail does not replace human instructions about recipients and authorized sends.",
         },
-        calendar: {
-          label: "Calendar",
-          description: "## Purpose\n\nRead configured personal or delegated iCalendar feeds, inspect events, check availability and find free slots. Create, update and delete events on writable HTTPS calendars; timezone and working hours follow the connection settings.\n\n## Capabilities\n\n- **Read:** list configured calendars and inspect events within a period.\n- **Check availability:** detect conflicts for a proposed time and find free slots of a given duration.\n- **Plan:** respect configured timezone, working hours and search increments.\n- **Update calendars:** create, update or delete events on writable calendars.\n\n## When to use it\n\nUse it to prepare appointments and organize time using personal or delegated calendars. **Example:** find a conflict-free one-hour slot and create the event in the intended calendar.\n\n## Requirements and limits\n\niCalendar sources must be configured. Read-only calendars cannot be modified; writes need a compatible HTTPS calendar. Dates and timezones should be explicit. Creating an event does not prove that invitations were sent or accepted by every participant.",
-        },
         n8n: {
           label: "n8n",
           description: "## Purpose\n\nConnect an external n8n workflow engine to Galaris Processes. Assigned workflows run asynchronously with durable status, inputs, resource references and results. Process execution and administration are exposed through their respective Services.\n\n## Capabilities\n\n- **Connect systems:** use an external n8n engine's workflows as Galaris business processes.\n- **Supply inputs:** pass parameters and file references to assigned workflows.\n- **Track execution:** retain durable status, results and errors even when work finishes later.\n- **Separate roles:** manage definitions with Process administration and run assigned workflows through Galaris or Conversation.\n\n## When to use it\n\nUse it when business operations should chain external integrations in an existing workflow. **Example:** launch document processing or synchronization between services, then collect the result when the process finishes.\n\n## Requirements and limits\n\nRequires a configured n8n engine and workflows that are exposed and assigned. This Service does not provide an n8n workflow editor within Galaris or automatically create external credentials. Engine permissions and settings remain necessary.",
         },
-        image: {
-          label: "Image",
-          description: "## Purpose\n\nGenerate and edit images with configured image models, or describe an existing image. Inputs and outputs use authorized resource URIs; availability depends on the configured model capabilities.\n\n## Capabilities\n\n- **Create:** generate an image from a brief using supported dimensions and destinations.\n- **Edit or compose:** use existing images as references for a change or a new composition.\n- **Understand:** describe an existing image and answer a visual-analysis request.\n- **Reuse analysis:** retain the description in Memory, associated with the document attachment or resource.\n\n## When to use it\n\nUse it to produce illustrations or work with visual information. **Example:** create a report visual, adapt an illustration or describe an image received in a conversation.\n\n## Requirements and limits\n\nOptional Service requiring compatible models. Inputs must be accessible and destinations writable. Generation can vary and analysis can be imperfect; verify important details. Analysis fails if its description cannot be saved, so it has a durable effect beyond reading.",
-        },
-        audio: {
-          label: "Audio transcription",
-          description: "## Purpose\n\nTranscribe an audio or video resource, or retrieve available public YouTube captions. Pass the canonical source URI directly; supported formats, provider availability and configured size limits determine processing.\n\n## Capabilities\n\n- **Transcribe speech:** process audio files or extract speech from video into text.\n- **Use YouTube:** retrieve available public captions without downloading the entire video.\n- **Handle long content:** retain the transcript and produce a synthesis when processing exceeds the supported threshold.\n- **Choose output:** use supported language and destination options, then reuse the resulting text files.\n\n## When to use it\n\nUse it for interviews, recorded meetings or talks. **Example:** transcribe a recording, read its synthesis and prepare meeting notes in a working document.\n\n## Requirements and limits\n\nOptional Service. Audio/video files require a configured transcription model; YouTube requires accessible captions. Private, restricted or captionless sources may be rejected. This Service handles speech; sound, music and video-scene analysis belongs to Multimedia.",
-        },
-        voice: {
-          label: "Voice",
-          description: "## Purpose\n\nStart, list and stop real-time voice calls through an available call provider. Calls require a configured compatible messaging or voice connection and retain their Galaris execution history.\n\n## Capabilities\n\n- **Start calls:** open a real-time voice conversation in a supported room.\n- **Track calls:** list the agent's active sessions to identify those still open.\n- **End calls:** stop an agent-started call using its identifier or room.\n\n## When to use it\n\nUse it when interactive spoken exchange is preferable to a sequence of written messages. **Example:** start a call in a compatible room, discuss a topic with the agent and close the session.\n\n## Requirements and limits\n\nOptional Service. It depends on a compatible voice or messaging service, its connection and the agent's audio configuration. Calls are real communications, not file transcription or simple speech generation. Available formats, rooms and transports depend on the provider.",
-        },
         multimedia: {
           label: "Multimedia",
-          description: "## Purpose\n\nAnalyze audio and video and generate sound effects, music or video using configured specialist models. Supply canonical resource URIs; only operations supported by the agent’s configured providers are exposed.\n\n## Capabilities\n\n- **Analyze audio:** describe sound events, ambience, instruments or music.\n- **Analyze video:** examine scenes and actions in a video resource.\n- **Create media:** generate sound effects, music or video using options supported by available models.\n- **Track production:** receive a durable process, then inspect progress and the resulting file URIs.\n\n## When to use it\n\nUse it for creative work or analysis beyond speech transcription. **Example:** describe a video sequence, generate ambience or create a short video from a brief.\n\n## Requirements and limits\n\nOptional Service requiring specialist models; only supported operations are exposed. Generation is asynchronous: a started process is not yet an available media file. Destinations must be writable. Use Audio transcription for spoken words and Image for still images.",
+          description: "Transcribe speech, analyze images, sound and video, convert PDF pages into images, and generate media.",
         },
         messenger: {
           label: "Messaging",
@@ -1015,8 +974,21 @@ catalogTitle: 'Catalog', searchCatalog: 'Search the service catalog', refreshCat
           label: "AFFiNE files",
           description: "## Purpose\n\nAccess file blobs in authorized AFFiNE workspaces using the configured account. Transfer resources through File sharing with an explicit workspace destination; this connection does not edit AFFiNE document blocks.\n\n## Capabilities\n\n- **Upload files:** transfer binary content to an authorized AFFiNE workspace.\n- **Retrieve resources:** download known files using their reference and workspace.\n- **Exchange across storage:** use File sharing to transfer resources between AFFiNE and another accessible space.\n\n## When to use it\n\nUse it when files produced or consumed by an agent belong in an existing AFFiNE workspace. **Example:** upload an image or binary document to the intended workspace and retain the returned reference.\n\n## Requirements and limits\n\nRequires a configured account and an explicit, authorized workspace. The bridge handles binary files, not AFFiNE document blocks, databases or layouts. Uploading a file does not mean it was inserted into a page or shared with new users.",
         },
+        contact: {
+          label: "Contact",
+          description: "Find and manage the contacts available to the agent.",
+        },
+        task: {
+          label: "Tasks",
+          description: "Delegate, track and control Tasks. Submit or amend work from a conversation and follow its progress.",
+        },
+        document: {
+          label: "Documents",
+          description: "Present in Chat, share and analyze accessible documents. Review revisions and work with mind maps.",
+        },
       },
       connectionParamDescriptions: {
+        chatChannel: "Allow this agent to exchange messages through the internal channel.",
         managementScope: 'Scope for this connection: usage, personal management, agents in any of its teams, or global administration. An inactive connection grants no management power.',
         skillsScope: 'By default: use authorized skills and create, edit or delete your own personal skills. This level cannot modify general skills or change their assignments. Team scope also manages personal skills and generic assignments within your teams; global scope can also edit the general catalogue.',
         peerCommunication: 'Inter-agent communication on this connection: none, agents sharing a team, or all agents. Human contact rights remain independent.',
@@ -1261,6 +1233,7 @@ catalogTitle: '服务目录', searchCatalog: '搜索服务目录', refreshCatalo
       invalidParamOptions: '“{name}”的选项无效：值必须非空、唯一且符合类型；默认值必须是一个选项。',
       paramOptionsHint: '选项替代自由文本输入。保存值，显示标签。', paramOptionValue: '值 *', paramOptionLabel: '选项标签', removeParamOption: '删除此选项',
       connectionParamLabels: {
+        chatChannel: "内部频道",
         sync_interval_hours: '同步间隔（小时）',
         imap_username: "IMAP 用户名",
         ...calendarProviders.zh.labels,
@@ -1335,22 +1308,18 @@ catalogTitle: '服务目录', searchCatalog: '搜索服务目录', refreshCatalo
       systemService: "必需的系统服务",
       systemServiceHint: "此系统服务及其连接为必需。功能策略仍可配置：阻止功能可能导致智能体无法工作。",
       builtins: {
-        agenda: { label: '个人日程', description: '无需外部账户即可管理个人预约和提醒。提醒会创建可跟踪的任务。目标保留长期结果跟踪及其自身周期；不要在日程中重复目标检查。' },
-        agent_admin: {
-          label: "AgentAdmin",
-          description: "通过 services.management_scope 选择仅使用、团队管理或全局管理，且不超过人类负责人的权限。团队范围允许在调用者的团队中创建智能体。任何范围都禁止修改自身。管理授权仅由人类授予。默认关闭。",
+        calendar: { label: '个人日程', description: '无需外部账户即可管理个人预约和提醒。提醒会创建可跟踪的任务。目标保留长期结果跟踪及其自身周期；不要在日程中重复目标检查。' },
+        agent: {
+          label: "Agent",
+          description: "通过 services.management_scope 选择仅使用、团队管理或全局管理，且不超过人类负责人的权限。团队范围允许在调用者的团队中创建智能体。任何范围都禁止修改自身。管理授权仅由人类授予。默认以仅使用范围启用。",
         },
-        service_admin: {
-          label: "ServiceAdmin",
-          description: "通过 services.management_scope 选择仅使用、个人、团队或全局管理。个人和团队范围管理对应连接；共享服务定义和全局设置要求全局权限。授权仅由人类授予，默认关闭。密钥保留在服务器端；HTTP/SSE MCP 测试不调用业务函数。",
+        service: {
+          label: "Services",
+          description: "通过 services.management_scope 选择仅使用、个人、团队或全局管理。个人和团队范围管理对应连接；共享服务定义和全局设置要求全局权限。授权仅由人类授予，默认以仅使用范围启用。密钥保留在服务器端；HTTP/SSE MCP 测试不调用业务函数。",
         },
         galaris: {
           label: "Galaris",
-          description: "## 用途\n\n协调智能体、委派任务、检查进度、更新自己的目标并执行已分配的业务流程。资源访问仍受所有权与共享权限约束；管理和对话控制由独立服务提供。\n\n## 功能\n\n- **协调：**发现智能体并查看其职责，选择合适的任务接收者。\n- **任务：**向其他智能体委派工作，查看状态与结果，停止符合条件的任务。\n- **目标：**更新自己的目标进展、请求再次执行，并在支持的上下文中询问目标负责人。\n- **流程：**发现已分配的工作流，检查输入、启动、跟踪及分析运行，并查看可用服务目录。\n\n## 使用场景\n\n适合将复杂工作分配给不同专家，同时保留持久进展。**示例：**委派资料研究，获取结果后启动已分配的数据处理流程。\n\n## 条件与限制\n\n这是必需的系统服务。不能向自己委派任务。任务、目标及流程的权限仍然生效；跨智能体的管理操作需要独立授权的管理服务。",
-        },
-        conversation: {
-          label: "对话",
-          description: "## 用途\n\n将对话转化为可跟踪的工作：创建或修订任务，检查结果，暂停、恢复、重试或停止任务，并启动已分配的流程。处理待定选择并展示收件人已有权访问的文档。这些操作仅在对话上下文中可用。\n\n## 功能\n\n- **对话中启动工作：**提交具有完整目标的后台任务，让交流继续。\n- **跟踪与控制：**列出最近任务，查看进度及结果，并根据当前状态暂停、恢复、重试或停止。\n- **处理交互：**将用户回复提交给待定选择，并启动已分配的流程。\n- **展示文档：**在内部聊天中打开收件人已有读取权限的文档。\n\n## 使用场景\n\n适合用自然语言管理工作。**示例：**要求撰写报告，随后询问进展，再请求暂停。工作执行期间仍可继续交流。\n\n## 条件与限制\n\n这是必需的系统服务，仅供对话上下文使用。文档展示只适用于内部文本聊天，不会授予共享权限，也不适用于任务或外部消息服务。命令遵守持久状态及用户后续消息。",
+          description: "查阅产品文档，并在 Services 委派的范围内检查模型调用与事件。",
         },
         memory: {
           label: "记忆",
@@ -1360,37 +1329,29 @@ catalogTitle: '服务目录', searchCatalog: '搜索服务目录', refreshCatalo
           label: "文件共享",
           description: "## 用途\n\n通过规范 URI 发现并操作已授权的文件、文档、记忆、附件及 Galaris 业务记录。按服务商支持的能力读取、搜索、创建、编辑或传输内容。本服务不会授予其他智能体私有资源的访问权，也不提供隐式本地文件系统。\n\n## 功能\n\n- **发现：**了解可访问空间、浏览集合，按名称或服务支持的模式搜索资源。\n- **读取与检查：**使用规范 URI 获取元数据或分段读取内容。\n- **撰写：**创建工作文档或文件，替换、追加或局部编辑内容。\n- **传输：**跨空间复制资源，在服务支持时移动或删除，并管理文档附件。\n\n## 使用场景\n\n适合作为不同存储内容的统一入口。**示例：**读取并完善现有文档，再将附件复制到 Nextcloud，无需把整个文件放入对话。\n\n## 条件与限制\n\n这是必需的系统服务。各空间保留自己的权限与能力：Galaris 业务记录通常只读，文档使用 HTML 和修订版本。外部存储需要独立连接，本地空间需要可用控制台。访问权限的共享由记忆服务管理。",
         },
-        platform_admin: {
-          label: "管理",
-          description: "## Galaris 产品知识\n\n启用 documentation_catalog 和 documentation_search，让智能体根据当前版本的官方文档解释应用。通过文件共享读取 galaris://documentation/ 下的来源。系统技能 galaris-knowledge 根据技能授权提供基础知识。仅授予文档访问时，请禁用 conversation_round_get、voice_turn_get、llm_call 和 llm_calls。documentation_catalog 同时控制直接读取；聊天中使用还需启用对话模式。\n\n## 用途\n\n跨智能体检查完整的文本和语音对话轮次以及 LLM 调用，包括请求、响应、推理、服务活动、用量、费用和错误。此可选管理权限会在每次调用时重新验证。\n\n## 功能\n\n- **审计对话：**查看文本轮次或语音轮次的完整数据，包括输入、尝试、结果和关联对象。\n- **检查模型调用：**读取已保存的请求、响应、服务调用、可用推理、错误及耗时。\n- **检查活动：**列出某时间段内的 LLM 调用标识，再查看具体调用。\n- **理解费用：**将 token 用量和已记录费用与执行上下文关联。\n\n## 使用场景\n\n适合诊断智能体行为、解释失败及审计运行。**示例：**从失败的对话轮次找到相关模型调用，并检查服务响应。\n\n## 条件与限制\n\n这是默认关闭的可选管理服务。services.management_scope 指定个人、团队或全局范围；usage 不授予管理权限。每次调用都会重新检查有效连接及其本地范围。它只检查已记录的数据，不会重放执行或更改结果。",
-        },
-        goal_management: {
-          label: "目标管理",
-          description: "## 用途\n\n按 services.management_scope 指定的个人、团队或全局范围创建、修改、暂停、恢复、完成和删除长期目标。usage 不授予管理权限；并发修改仍受版本检查保护。\n\n## 功能\n\n- **定义长期目标：**指定负责智能体、人类负责人、目标描述、执行频率及计划。\n- **管理生命周期：**根据执行约束修改、暂停、恢复、完成或删除目标。\n- **跨智能体管理：**将共用目标操作扩展至调用者以外的目标。\n\n## 使用场景\n\n适合组织重复执行或长期持续的工作。**示例：**安排定期信息监测，调整频率，并在任务结束时暂停目标。\n\n## 条件与限制\n\n这是默认关闭、具有扩展权限的可选服务。修改使用当前修订版本防止覆盖并发更改。删除受到活动运行限制，执行周期开始后变更所有者也受限。自己的普通目标跟踪仍可通过 Galaris 完成。",
+        goal: {
+          label: "目标",
+          description: "创建、跟踪和管理智能体的长期目标。连接默认启用，范围为个人。获授权的人员可以授予团队或全局范围。修改使用当前版本以防止并发覆盖。",
         },
         skills: {
           label: "技能",
           description: "单一 Skills 服务，由授权的人类管理员授予 usage、personal、team 或 all 范围。usage 可读取已授权的通用技能及自己的已启用个人技能。personal 仅管理自己的技能包。team 管理所在任一团队的智能体技能包。all 可明确管理所有用户技能包并分配通用技能。文件通过文件共享访问 galaris://skill/personnal/<agent>/<code>/。个人技能不能共享；必须明确移除所有权后才能成为通用技能，且初始对所有智能体停用。系统文件始终受保护。",
         },
-        process_admin: {
-          label: "流程管理",
-          description: "## 用途\n\n同步外部工作流定义并向智能体分配流程。创建、修改、删除定义，检查授权范围内的运行，刷新状态，取消或重试运行，以及删除终态运行。普通的已分配流程执行仍由 Galaris 服务提供。\n\n## 功能\n\n- **准备目录：**发现引擎、同步工作流，并创建向智能体分配的流程定义。\n- **管理定义：**查看、修改或删除流程及其描述和分配信息。\n- **监督运行：**为智能体启动流程，查看授权范围内的运行，刷新状态、分析错误、取消或重试。\n- **管理历史：**在明确要求删除时移除已终止的运行。\n\n## 使用场景\n\n适合提供及维护实例中的业务自动化。**示例：**发现 n8n 工作流并分配给智能体，随后分析并重试失败的运行。\n\n## 条件与限制\n\n这是默认关闭的可选管理服务，services.management_scope 可选 usage、personal、team 或 all。usage 不授予管理权限；同步引擎及未分配智能体的定义要求 all。发现工作流不会自动建立分配关系。终态和重试规则仍然有效；普通智能体执行自己的流程只需要 Galaris。",
+        process: {
+          label: "流程",
+          description: "创建、编辑和执行业务流程，查看运行状态并按权限进行操作。每个智能体默认启用此服务，管理范围为个人。获授权的人员可以授予团队或全局范围。发现或同步引擎以及绑定外部工作流需要全局范围。",
         },
         topic: {
           label: "主题",
           description: "## 用途\n\n管理任务、消息、对话轮次、记忆与文档共用的主题分类。创建、编辑主题，查看内容，重新分配条目以及合并或拆分主题。\n\n## 功能\n\n- **建立共享分类：**创建带标题、描述和关键词的主题，并更新元数据。\n- **探索主题：**查看主题记录及所属对象。\n- **重新组织：**移动条目、合并主题，或选定条目后拆分主题。\n\n## 使用场景\n\n适合统一多个活动及智能体的组织方式。**示例：**将一个项目的任务、交流与文档归为同一主题，再拆出独立的子项目。\n\n## 条件与限制\n\n这是可选管理服务。主题在整个实例中共享，因此重新分类影响共同组织。更新会检查当前修订版本；合并与移动不会授予新的内容访问权限。",
         },
-        search: {
-          label: "网页搜索",
-          description: "## 用途\n\n通过配置的本地 SearXNG 服务搜索公开网页，并返回供智能体评估的结果。读取完整网页及与网站交互使用浏览器服务。\n\n## 功能\n\n- **查找来源：**查询已配置的 SearXNG，获取标题、链接及摘要。\n- **探索主题：**调整搜索词以发现相关文档、公告和网站。\n- **准备深入阅读：**获取可交给浏览器打开的网址。\n\n## 使用场景\n\n适合开始研究或定位具体的公开来源。**示例：**找到软件官方文档，再阅读页面核实细节。\n\n## 条件与限制\n\n这是默认启用的可选服务，需要可用的 SearXNG。结果和摘要只是线索，不保证准确性或时效性；它不能替代完整页面阅读，也不提供网站私有区域的访问权。",
-        },
         browser: {
           label: "浏览器",
-          description: "## 用途\n\n在隔离的浏览器会话中打开和浏览网页。读取可访问内容、截屏、点击、输入、滚动并关闭会话。已登录网站的操作使用该会话拥有的权限。\n\n## 功能\n\n- **导航：**打开页面、访问地址、后退和关闭会话。\n- **理解界面：**读取可访问页面内容，识别交互元素。\n- **操作：**点击、填写字段、提交输入、使用键盘和滚动。\n- **观察外观：**截图及调整窗口尺寸以检查界面。\n\n## 使用场景\n\n适合完整阅读网页或执行网站交互。**示例：**阅读文档、填写获准的表单或检查移动端布局。\n\n## 条件与限制\n\n这是默认关闭的可选服务。会话相互隔离并归属对应工作，不会自动使用个人浏览器。操作使用会话中账户的权限；启用服务本身不代表获准发布、购买或传送数据。",
+          description: "## 用途\n\n在隔离的浏览器会话中打开和浏览网页。读取可访问内容、截屏、点击、输入、滚动并关闭会话。已登录网站的操作使用该会话拥有的权限。\n\n## 功能\n\n- **导航：**打开页面、访问地址、后退和关闭会话。\n- **理解界面：**读取可访问页面内容，识别交互元素。\n- **操作：**点击、填写字段、提交输入、使用键盘和滚动。\n- **观察外观：**截图及调整窗口尺寸以检查界面。\n\n## 使用场景\n\n适合完整阅读网页或执行网站交互。**示例：**阅读文档、填写获准的表单或检查移动端布局。\n\n## 条件与限制\n\n这是默认关闭的可选服务。会话相互隔离并归属对应工作，不会自动使用个人浏览器。操作使用会话中账户的权限；启用服务本身不代表获准发布、购买或传送数据。 可通过 SearXNG 搜索公开资料。",
         },
         chat: {
           label: "聊天",
-          description: "## 用途\n\n提供人类与智能体之间的 Galaris 原生文本及音频对话。此消息连接承载交流与附件；对话中的工作控制由必需的对话服务提供。\n\n## 功能\n\n- **内部交流：**在人类用户与智能体之间提供 Galaris 内部对话通道。\n- **保留交流上下文：**将消息及附件关联到所属对话。\n- **连接讨论与工作：**让对话控制器接收请求并交付任务结果。\n\n## 使用场景\n\n适合直接在 Galaris 界面与智能体协作，无需外部消息服务。**示例：**讨论项目、附上文档，并要求提供可在聊天中审阅的结果。\n\n## 条件与限制\n\n这是默认启用的可选消息连接。Chat 承载交流；任务控制和文档展示由 Conversation 提供。智能体与文档访问受 Galaris 权限约束，音频功能取决于配置。",
+          description: "系统服务，提供内部频道和已授权的对话功能：处理待答选项、展示代码仓库、管理语音通话及检查对话轮次。可为每个智能体单独配置内部频道，外部消息渠道的配置独立。",
         },
         console: {
           label: "控制台",
@@ -1400,29 +1361,13 @@ catalogTitle: '服务目录', searchCatalog: '搜索服务目录', refreshCatalo
           label: "邮件",
           description: "## 用途\n\n搜索和读取 IMAP 邮箱，移动邮件、更改标记或移至垃圾箱。通过 SMTP 发送、回复和转发邮件，支持附件并附加 AI 智能体声明。可选的人工批准及大小限制由连接配置决定。\n\n## 功能\n\n- **阅读邮件：**检查连接、列出文件夹、搜索邮件及读取正文和附件。\n- **整理：**修改标记、移动邮件或放入垃圾箱。\n- **通信：**发送、回复和转发邮件，并附上已授权的附件。\n- **控制投递：**使用配置的发件身份、AI 声明签名及可选人工批准。\n\n## 使用场景\n\n适合处理收件箱和持续通信。**示例：**找到既有交流、阅读附件，再发送经过批准的回复与交付文件。\n\n## 条件与限制\n\n需要 IMAP/SMTP 参数和账户凭据。投递使用重试键防止重复，大小与超时有限制。收到的邮件属于外部内容；启用 Mail 不能替代有关收件人和发送范围的人类指示。",
         },
-        calendar: {
-          label: "日历",
-          description: "## 用途\n\n读取已配置的个人或委托 iCalendar 源，查看事件、检查空闲状态并查找空闲时段。在可写的 HTTPS 日历中创建、修改和删除事件；时区及工作时间由连接配置决定。\n\n## 功能\n\n- **查看：**列出已配置日历并读取指定期间的事件。\n- **检查空闲：**识别候选时间的冲突，查找满足时长要求的空闲时段。\n- **安排：**遵守配置的时区、工作时间和搜索步长。\n- **修改：**在可写日历上创建、更新或删除事件。\n\n## 使用场景\n\n适合通过个人或委托日历安排约会与工作时间。**示例：**找到无冲突的一小时时段并创建事件。\n\n## 条件与限制\n\n必须配置 iCalendar 源。只读日历不能修改；写入需要兼容的 HTTPS 日历。日期和时区应明确。创建事件不证明邀请已经发送或获所有参与者接受。",
-        },
         n8n: {
           label: "n8n",
           description: "## 用途\n\n将外部 n8n 工作流引擎连接至 Galaris 流程。已分配的工作流异步运行，并保留持久状态、输入、资源引用与结果。流程执行及管理由各自的服务提供。\n\n## 功能\n\n- **连接系统：**将外部 n8n 引擎中的工作流作为 Galaris 业务流程使用。\n- **传递输入：**向已分配工作流提供参数及文件引用。\n- **跟踪执行：**保留持久状态、结果和错误，支持稍后完成的工作。\n- **区分职责：**通过流程管理服务管理定义，通过 Galaris 或 Conversation 执行已分配流程。\n\n## 使用场景\n\n适合将外部集成串成已有的业务工作流。**示例：**启动文档处理或跨服务同步，完成后获取结果。\n\n## 条件与限制\n\n需要配置 n8n 引擎，并公开和分配相应工作流。此服务不在 Galaris 内提供 n8n 编辑器，也不自动创建外部凭据；引擎自身权限和设置仍必需。",
         },
-        image: {
-          label: "图像",
-          description: "## 用途\n\n使用已配置的图像模型生成或编辑图像，或描述已有图像。输入和输出使用已授权的资源 URI；可用操作取决于配置的模型能力。\n\n## 功能\n\n- **创建：**根据需求生成图像，并使用支持的尺寸和目标位置。\n- **编辑或组合：**用已有图像作为参考，要求修改或重新构图。\n- **理解：**描述已有图像，回答视觉分析问题。\n- **复用分析：**将描述保存到记忆，并关联文档附件或资源。\n\n## 使用场景\n\n适合制作插图及利用视觉信息。**示例：**创建报告配图、调整插图或描述对话收到的图片。\n\n## 条件与限制\n\n这是需要兼容模型的可选服务。输入须可访问，目标须可写。生成结果可能变化，分析也可能不准确，应核实重要细节。描述无法保存时分析会失败，因此该操作具有持久影响。",
-        },
-        audio: {
-          label: "音频",
-          description: "## 用途\n\n转录音频或视频资源，或获取可用的公开 YouTube 字幕。直接传入规范源 URI；处理能力取决于支持的格式、服务可用性及配置的大小限制。\n\n## 功能\n\n- **转录语音：**处理音频文件或从视频提取语音并转为文字。\n- **利用 YouTube：**获取可用公开字幕，无需下载完整视频。\n- **处理长内容：**保留转录，并在超过处理阈值时生成综合摘要。\n- **选择输出：**使用支持的语言和目标位置，再复用文字文件。\n\n## 使用场景\n\n适合采访、录音会议或讲座。**示例：**转录录音，阅读摘要，再编写会议记录。\n\n## 条件与限制\n\n这是可选服务。音视频文件需要配置转录模型；YouTube 需要可访问字幕。私有、受限或无字幕来源可能被拒绝。该服务处理语言，声音、音乐和视频画面分析应使用多媒体服务。",
-        },
-        voice: {
-          label: "语音",
-          description: "## 用途\n\n通过可用的通话服务启动、列出和停止实时语音通话。需要配置兼容的消息或语音连接，且通话会保留 Galaris 执行历史。\n\n## 功能\n\n- **开始通话：**在支持的房间发起实时语音对话。\n- **跟踪通话：**列出智能体仍处于活动状态的会话。\n- **结束通话：**使用通话标识或房间停止由智能体发起的通话。\n\n## 使用场景\n\n适合需要互动口头交流的场景。**示例：**在兼容房间启动通话，与智能体讨论问题后关闭会话。\n\n## 条件与限制\n\n这是可选服务，依赖兼容的语音或消息服务、连接及智能体音频配置。通话是真实通信，不是文件转录或单纯语音合成。格式、房间与传输方式取决于服务商。",
-        },
         multimedia: {
           label: "多媒体",
-          description: "## 用途\n\n使用已配置的专用模型分析音频和视频，并生成音效、音乐或视频。输入使用规范资源 URI；只公开智能体已配置服务商支持的操作。\n\n## 功能\n\n- **分析音频：**描述声音事件、环境音、乐器或音乐。\n- **分析视频：**检查视频资源中的场景与动作。\n- **创建媒体：**根据可用模型支持的参数生成音效、音乐或视频。\n- **跟踪生产：**获取持久流程，再检查进展和生成文件的 URI。\n\n## 使用场景\n\n适合超出语音转录范围的创作与分析。**示例：**描述视频片段、生成环境音或根据需求制作短视频。\n\n## 条件与限制\n\n这是需要专用模型的可选服务，只公开受支持的操作。生成是异步的，流程启动不代表文件已可用。目标必须可写；语音文字使用音频转录，静态图片使用图像服务。",
+          description: "转录语音、分析图像和音视频、将 PDF 页面转换为图像及生成媒体。",
         },
         messenger: {
           label: "消息",
@@ -1456,8 +1401,21 @@ catalogTitle: '服务目录', searchCatalog: '搜索服务目录', refreshCatalo
           label: "AFFiNE",
           description: "## 用途\n\n使用配置的账户访问已授权 AFFiNE 工作区中的文件数据。通过文件共享服务传输资源，并明确指定目标工作区；此连接不编辑 AFFiNE 文档块。\n\n## 功能\n\n- **上传文件：**向已授权 AFFiNE 工作区传输二进制内容。\n- **获取资源：**通过文件引用和工作区下载已知文件。\n- **跨存储交换：**使用文件共享在 AFFiNE 与其他可访问空间之间传输资源。\n\n## 使用场景\n\n适合将智能体生成或使用的文件放入现有 AFFiNE 工作区。**示例：**向目标工作区上传图片或二进制文档，并保留返回引用。\n\n## 条件与限制\n\n需要配置账户并明确指定已授权工作区。桥接处理二进制文件，不编辑 AFFiNE 文档块、数据库或布局。上传文件不代表已插入页面或向新用户共享。",
         },
+        contact: {
+          label: "联系人",
+          description: "查找并管理智能体有权访问的联系人。",
+        },
+        task: {
+          label: "任务",
+          description: "委派、跟踪和控制任务。在对话中提交或修改任务并跟踪进度。",
+        },
+        document: {
+          label: "文档",
+          description: "在聊天中展示、共享和分析可访问的文档，查看版本并编辑思维导图。",
+        },
       },
       connectionParamDescriptions: {
+        chatChannel: "允许此智能体通过内部频道收发消息。",
         managementScope: '此连接的权限：使用、个人管理、所在任一团队的智能体管理或全局管理。未启用的连接不授予管理权限。',
         skillsScope: '默认可使用已授权技能，并创建、修改或删除自己的个人技能；不能修改通用技能或更改其分配。团队范围还可管理所在团队的个人技能和通用技能分配；全局范围还可编辑通用技能目录。',
         peerCommunication: '此连接上的智能体间通信：禁止、共享团队的智能体或所有智能体。与人类联系的权限单独管理。',

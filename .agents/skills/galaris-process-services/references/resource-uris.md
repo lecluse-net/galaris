@@ -28,7 +28,7 @@
 | `console://` | `console://path/file.ext` | home SSH de la console |
 | `memory://` | `memory://uuid` | souvenir gouverné, lecture générique |
 | `document://` | `document://uuid`, `document://uuid/attachments/`, `document://uuid/attachments/attachment-uuid`, `document://folders/`, `document://folders/uuid/` | document révisé, ses pièces jointes et collections de répertoires autorisés en lecture seule |
-| `data://` | `data://uuid`, `data://uuid/attachments/attachment-uuid` | jeu de données JSON, droits et historique de `app.dataset` |
+| `data://` | `data://uuid`, `data://uuid/attachments/attachment-uuid` | document Données JSON, droits et historique de `app.document` |
 | `file://` | `file://uuid` | fichier interne indépendant enregistré par `core.storage` |
 | `https://` | URL publique sans credentials ni fragment | source Web en lecture seule |
 | `galaris://` | `galaris://task/<uuid>`, `galaris://text/<uuid>`, `galaris://voice/<uuid>`, `galaris://goal/<uuid>`, `galaris://goal_cycle/<uuid>`, `galaris://process/<workflow-id>`, `galaris://skill/<skill-code>/<path>` | projections métier JSON en lecture seule ; fichiers de skills administrables sous autorisation |
@@ -87,10 +87,10 @@ dans `blockquote.galaris-link-card` dans un Document. Le rendu fournit l'icône 
 les documents de la branche ni embarquer les octets de l'icône. Le lien n'accorde aucun droit.
 `file_edit` remplace une plage inclusive de lignes UTF-8 (blocs pour les documents HTML).
 `file_create(path="data://", name=..., content=...)` crée un Dataset JSON indépendant.
-Dataset possède contenu, droits, historique et pièces jointes ; le JSON reste libre, sans
-schéma associé, et valide après chaque écriture. L'ancien `document_type="dataset"` dans
-`document://` délègue à Dataset ; seuls des alias vérifiés redirigent les anciennes URI.
-Les Documents HTML et définitions BPMN restent adressés par `document://`.
+Le document Données possède son contenu, ses droits, son historique et ses pièces jointes.
+Le JSON reste libre et valide après chaque écriture. L'ancien `document_type="dataset"` dans
+`document://` reste un accès de compatibilité limité aux alias vérifiés. Les définitions BPMN
+appartiennent à Processus, dont les définitions affectées se consultent sous `galaris://process/`.
 
 `file_list` borne une page à 500 entrées. Les collections `galaris://` renvoient un
 `next_cursor` lorsqu'une page suivante existe ; le client le repasse sans l'interpréter dans le
@@ -114,9 +114,10 @@ donc une erreur de protocole sauf si une seconde ressource persistante est expli
 Leurs destinations acceptent pareillement une URI writable et leurs résultats exposent l'URI
 canonique effectivement créée ou livrée.
 
-`galaris://` expose les collections `task/`, `text/`, `voice/`, `goal/`, `goal_cycle/` et
-`process/`. Il expose aussi `skill/` uniquement lorsque la connexion intégrée
-`skill_management` de l'agent est active. `galaris://skill/<skill-code>/` liste le package et
+`galaris://` expose notamment `task/`, `text/`, `voice/`, `goal/`, `process/`,
+`calendar/`, `contact/` et `agent/`. Les URI existantes de `goal_cycle/` restent lisibles.
+La lecture de `skill/` suit les droits d'usage des packages et les modifications suivent
+la portée du Service Compétences (`skills`). `galaris://skill/<skill-code>/` liste le package et
 `galaris://skill/<skill-code>/<path>` adresse un fichier, par exemple `SKILL.md`.
 `text/` et `voice/` sont deux vues filtrées des `ConversationRound` canoniques ; une même UUID
 n'est exposée que dans la collection correspondant à son média.
@@ -126,8 +127,10 @@ projection JSON. `process/` expose uniquement les workflows affectés à l'agent
 leur `workflow_id`, identique à celui des outils `process_*`. Les fichiers d'un skill utilisateur
 supportent create, write, append, edit, copy, move et delete dans les limites génériques ;
 `SKILL.md` reste obligatoire, validé et non supprimable, et les skills système ne sont jamais
-modifiables. Hors de `skill/`, write, append, move et delete sont toujours refusés sur ce schéma
-avec une erreur qui renvoie vers le domaine propriétaire.
+modifiables. La projection `galaris://contact/<uuid>` accepte aussi `file_write` et `file_edit`
+sur `display_name` et `coordinates` avec le `expected_etag` lu dans la ressource.
+Les opérations génériques Contact suivent les droits du propriétaire. La délégation de carnet
+s'exerce avec les outils du Service Contact.
 
 Les opérations génériques ne suppriment jamais un souvenir, un document ou une pièce jointe de
 messagerie. Une pièce jointe documentaire peut être supprimée par son URI lorsque l'agent possède

@@ -58,7 +58,7 @@ async def read_tool_inventory() -> list[ServiceToolInventory]:
                 name=name,
                 description=tool.description,
                 conversation_enabled=name in native_open and tool.conversation_policy != "forbidden",
-                default_state=tool.approval, service_override=overrides.get(name),
+                default_state=tool.default_state, service_override=overrides.get(name),
             )
             for name, tool in sorted(native.items())
         ]

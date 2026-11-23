@@ -43,7 +43,7 @@ async def test_pdf_image_is_a_real_page_and_launches_an_image_constrained_proces
     from app.services.mcp_loader import list_enabled_native_mcp_definitions
 
     owner, other = native
-    image_tool = await db.scalar(select(Service).where(Service.code == "image"))
+    image_tool = await db.scalar(select(Service).where(Service.code == "multimedia"))
     connection = await db.scalar(select(Connection).where(Connection.agent_id == owner.id, Connection.service_id == image_tool.id))
     if connection is None:
         connection = Connection(agent_id=owner.id, service_id=image_tool.id, active=False)
@@ -221,7 +221,7 @@ async def test_pdf_render_cancellation_kills_and_drains_the_worker(monkeypatch, 
 @pytest.mark.asyncio
 async def test_pdf_conversion_is_exposed_with_an_explicit_destination_and_positive_page():
     mcp = FastMCP("test")
-    add_galaris_tools(mcp, 1, runtime="internal", enabled_service_codes={"image"})
+    add_galaris_tools(mcp, 1, runtime="internal", enabled_service_codes={"multimedia"})
     tools = {tool.name: tool for tool in await mcp.list_tools()}
     schema = tools["image_from_pdf"].parameters
     assert schema["required"] == ["file", "destination"]

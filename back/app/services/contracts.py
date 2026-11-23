@@ -22,11 +22,28 @@ TOOL_ARGUMENTS_META_KEY = "galaris.tool-arguments/v1"
 FileIndexingMode = Literal["excluded", "known_uris", "recursive"]
 FILE_INDEXING_PARAM = "services.fileindexing"
 MANAGEMENT_SCOPE_PARAM = "services.management_scope"
+CHAT_CHANNEL_PARAM = "chat.channel_enabled"
+VOICE_AUTO_ANSWER_PARAM = "voice.auto_answer"
+
+PERSONAL_MANAGEMENT_SCOPES = ("personal", "team", "all")
+OPTIONAL_MANAGEMENT_SCOPES = ("usage", *PERSONAL_MANAGEMENT_SCOPES)
+MANAGEMENT_SCOPE_OPTIONS = {
+    "agent": ("usage", "team", "all"),
+    "calendar": PERSONAL_MANAGEMENT_SCOPES,
+    "contact": PERSONAL_MANAGEMENT_SCOPES,
+    "document": PERSONAL_MANAGEMENT_SCOPES,
+    "goal": OPTIONAL_MANAGEMENT_SCOPES,
+    "process": OPTIONAL_MANAGEMENT_SCOPES,
+    "service": OPTIONAL_MANAGEMENT_SCOPES,
+    "skills": OPTIONAL_MANAGEMENT_SCOPES,
+    "task": PERSONAL_MANAGEMENT_SCOPES,
+}
 
 
 def default_management_scope(service_code: str) -> str:
     """Software defaults for active connections without a local scope override."""
-    return "personal" if service_code == "skills" else "usage"
+    options = MANAGEMENT_SCOPE_OPTIONS.get(service_code, ())
+    return "personal" if "personal" in options and service_code != "service" else "usage"
 
 
 @dataclass

@@ -12,6 +12,7 @@ from sqlalchemy import select, text
 
 from app.connection import facade as connections
 from app.services import McpToolContext, RecoverableToolError, require_galaris_admin_access
+from app.services.facade import has_active_native_function
 from core.database import get_db
 
 from .capture_service import CaptureParametersMismatch
@@ -42,11 +43,9 @@ async def authorize(ctx: McpToolContext, action: str, *, sources: bool = False) 
     if sources:
         await require_galaris_admin_access(ctx.agent_id)
         for function in ("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls"):
-            if not await connections.has_active_service_function(
-                ctx.agent_id, "platform_admin", function
-            ):
+            if not await has_active_native_function(ctx.agent_id, function):
                 raise PermissionError(
-                    "Real Lab sources require the execution-inspection functions of platform_admin."
+                    "Real Lab sources require the execution-inspection functions in Galaris and Chat."
                 )
 
 

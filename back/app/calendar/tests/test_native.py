@@ -90,9 +90,9 @@ async def test_concurrent_readers_reuse_coverage_built_while_waiting_for_the_eve
         assert await db.scalar(select(func.count()).select_from(CalendarTrigger)) == 0
 
 
-def appointment(**kwargs):
-    return CalendarEventCreate(summary="Synthetic appointment", start=NOW + timedelta(minutes=30),
-        end=NOW + timedelta(minutes=60), **kwargs)
+def appointment(*, now=NOW, **kwargs):
+    return CalendarEventCreate(summary="Synthetic appointment", start=now + timedelta(minutes=30),
+        end=now + timedelta(minutes=60), **kwargs)
 
 
 @pytest.mark.asyncio
@@ -267,18 +267,20 @@ async def test_actions_have_distinct_tasks_results_and_recover_after_lost_admiss
 async def test_moving_and_deleting_occurrences_recalculates_pending_actions_without_affecting_other_instances(db, agent, personal, monkeypatch):
     _, feed = personal
     monkeypatch.setattr(task_port, "schedule", lambda _: None)
-    created = await service.create_calendar_event(feed.id, agent.id, appointment(rrule="FREQ=DAILY;COUNT=3", reminder_minutes_before=30))
-    rows = (await service.event_window(agent.id, NOW, NOW + timedelta(days=4))).items
+    now = datetime.now(timezone.utc).replace(second=0, microsecond=0) + timedelta(days=1)
+    created = await service.create_calendar_event(feed.id, agent.id,
+        appointment(now=now, rrule="FREQ=DAILY;COUNT=3", reminder_minutes_before=30))
+    rows = (await service.event_window(agent.id, now, now + timedelta(days=4))).items
     first_key = rows[0].recurrence_key
     moved = await service.update_calendar_event(feed.id, agent.id, created.uid, CalendarEventUpdate(expected_revision=1,
-        scope="occurrence", recurrence_key=first_key, start=NOW + timedelta(hours=2), end=NOW + timedelta(hours=3)))
-    after = (await service.event_window(agent.id, NOW, NOW + timedelta(days=4))).items
-    assert len(after) == 3 and after[0].recurrence_key == first_key and after[0].start == NOW + timedelta(hours=2)
-    assert await dispatch.dispatch_due(now=NOW) == 0
+        scope="occurrence", recurrence_key=first_key, start=now + timedelta(hours=2), end=now + timedelta(hours=3)))
+    after = (await service.event_window(agent.id, now, now + timedelta(days=4))).items
+    assert len(after) == 3 and after[0].recurrence_key == first_key and after[0].start == now + timedelta(hours=2)
+    assert await dispatch.dispatch_due(now=now) == 0
     await service.delete_calendar_event(feed.id, agent.id, created.uid, CalendarEventDelete(expected_revision=moved.revision,
         scope="occurrence", recurrence_key=first_key))
-    assert await dispatch.dispatch_due(now=NOW + timedelta(hours=2)) == 0
-    remaining = (await service.event_window(agent.id, NOW, NOW + timedelta(days=4))).items
+    assert await dispatch.dispatch_due(now=now + timedelta(hours=2)) == 0
+    remaining = (await service.event_window(agent.id, now, now + timedelta(days=4))).items
     assert len([row for row in remaining if row.status != "CANCELLED"]) == 2
     assert await db.scalar(select(func.count()).select_from(Task)) == 0
     # The next surviving occurrence still launches automatically with its recurrence context.

@@ -268,7 +268,7 @@ async def test_work_update_recovers_misplaced_next_action_and_stale_revision(sco
     task_id, agent_id = scoped_task
     async with get_db_session() as db:
         (await db.get(Task, task_id)).status = TaskStatus.EXEC
-    server = await _native_creation_server(task_id, agent_id, {"galaris": ["task_get", "task_work_update"]})
+    server = await _native_creation_server(task_id, agent_id, {"task": ["task_get", "task_work_update"]})
     plan = {"milestones": [{"key": "write", "label": "Update the synthetic report",
         "acceptance": "The report contains the verified result", "state": "blocked",
         "observation": "The destination has not been authorized"}]}
@@ -331,7 +331,7 @@ async def test_goal_creation_with_task_needs_no_future_uri_and_rechecks_manageme
     task_id, agent_id = scoped_task
     monkeypatch.setattr(task_port, "record_scope_preflight", SqlAlchemyAgentTaskAdapter().record_scope_preflight)
     server = await _native_creation_server(task_id, agent_id,
-        {"goal_management": ["goal_create"], "chat": []}, {"goal_management": "personal"})
+        {"goal": ["goal_create"], "chat": []}, {"goal": "personal"})
     async with get_db_session() as db:
         chat_connection = await db.scalar(select(Connection).join(ServiceModel).where(
             Connection.agent_id == agent_id, ServiceModel.code == "chat"))
@@ -349,7 +349,7 @@ async def test_goal_creation_with_task_needs_no_future_uri_and_rechecks_manageme
             assert await db.scalar(select(func.count()).select_from(Goal)) == before + 1
             assert not parse_scope((await db.get(Task, task_id)).data).grants
             management = await db.scalar(select(Connection).join(ServiceModel).where(
-                Connection.agent_id == agent_id, ServiceModel.code == "goal_management"))
+                Connection.agent_id == agent_id, ServiceModel.code == "goal"))
             management.active = False
         denied = await client.call_tool("goal_create", {**arguments, "title": "Denied synthetic Goal"}, raise_on_error=False)
         assert denied.is_error

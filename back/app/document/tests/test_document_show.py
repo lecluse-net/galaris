@@ -22,7 +22,7 @@ from core.settings import settings
 async def display_scope(db, agents, memory_storage, monkeypatch):
     agent, other = agents
     conversation_connection = None
-    for code in ("chat", "conversation", "memory"):
+    for code in ("chat", "document", "memory"):
         tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == code))
         if tool is None:
             tool = ServiceModel(code=code, label=code, connection_schema={},
@@ -31,7 +31,7 @@ async def display_scope(db, agents, memory_storage, monkeypatch):
             await db.flush()
         connection = Connection(service_id=tool.id, agent_id=agent.id, active=code != "memory")
         db.add(connection)
-        if code == "conversation":
+        if code == "document":
             conversation_connection = connection
     await db.flush()
     room = await create_internal_room(actor_user_id=agent.user_id, agent_id=agent.id)
@@ -175,6 +175,38 @@ async def test_show_document_rejects_invalid_or_revoked_requests(display_scope, 
         result = await client.call_tool("document_show", {"document": reference}, raise_on_error=False)
     assert result.is_error
     emit.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_show_document_requires_both_local_scope_and_document_read_access(display_scope, db):
+    from app.agent.dialogue_service import set_agent_membership
+    from app.connection.facade import set_management_scope
+    from app.document.item_sharing import update_agent_sharing
+    from core.team import TeamModel
+
+    agent, owner, turn, _, connection, emit = display_scope
+    document = await document_service.create_document(
+        owner_agent_id=owner.id, title="Synthetic shared report", content="<p>Report body</p>", task_id=None,
+    )
+    team = TeamModel(name="Synthetic document presentation team")
+    db.add(team)
+    await db.flush()
+    for member in (agent, owner):
+        await set_agent_membership(team.id, member.id, True)
+    args = {"document": str(document.id)}
+    async with Client(await server_for(agent, turn)) as client:
+        await set_management_scope(connection.id, "team", authorized=True)
+        emit.reset_mock()
+        assert (await client.call_tool("document_show", args, raise_on_error=False)).is_error
+        emit.assert_not_awaited()
+        await update_agent_sharing(document.id, agent_id=owner.id, kind="agent", target_id=agent.id, access="read")
+        emit.reset_mock()
+        assert not (await client.call_tool("document_show", args)).is_error
+        emit.assert_awaited_once()
+        await set_agent_membership(team.id, owner.id, False)
+        emit.reset_mock()
+        assert (await client.call_tool("document_show", args, raise_on_error=False)).is_error
+        emit.assert_not_awaited()
 
 
 @pytest.mark.asyncio

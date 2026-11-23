@@ -909,7 +909,7 @@ async def test_bpmn_activity_uses_real_claude_harness(inference_db, committed_na
         monkeypatch.setattr(OpenAIHarnessClient, "cancel_control_run", lose_stop_confirmation)
     if requires_approval:
         await grant_privileges(db, owner.user_id, "PERMISSION_DECIDE")
-    for service_code, function in (("file_sharing", "file_read"), ("galaris", "process_activity_complete")):
+    for service_code, function in (("file_sharing", "file_read"), ("process", "process_activity_complete")):
         service = await db.scalar(select(ServiceModel).where(ServiceModel.code == service_code))
         connection = await connection_service.get_or_create_connection(service.id, owner.id)
         await set_connection_function_state(connection.id, function,
@@ -1742,7 +1742,7 @@ async def test_python_capability_uses_live_service_scope_and_recovers_lost_reply
         monkeypatch.setattr(code_broker, "execute_workflow_tool", lose_file_acknowledgement)
     elif mcp:
         target = await create(actor_agent_id=owner.id, title="Synthetic target", graph=graph())
-        provider = await db.scalar(select(ServiceModel).where(ServiceModel.code == "galaris"))
+        provider = await db.scalar(select(ServiceModel).where(ServiceModel.code == "process"))
         connection = await connection_service.get_or_create_connection(provider.id, owner.id)
         await set_connection_function_state(connection.id, "process_definition_read", "ask" if approver else "enabled")
         operation, arguments = "process_definition_read", {"process_code": target.code}
@@ -3214,7 +3214,7 @@ async def test_tool_activity_uses_live_mcp_rights_and_finishes_its_context(infer
         from tests.authorization_fixtures import grant_privileges
         await grant_privileges(db, approver.id, "PERMISSION_DECIDE")
         owner.user_id = approver.id
-    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "galaris"))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "process"))
     connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
@@ -3680,7 +3680,7 @@ async def test_lab_real_campaign_idempotency_exact_evidence_and_private_inputs(d
     from app.lab.process_evaluation_models import LabProcessCase
     from uuid import UUID
     owner, stranger = native
-    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "galaris"))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "process"))
     connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
@@ -3735,7 +3735,7 @@ async def test_lab_rechecks_launch_rights_and_can_cancel_admitted_runs_after_cam
     from app.process.facade import launch_current
     from uuid import UUID
     owner, _ = native
-    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "galaris"))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "process"))
     connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()

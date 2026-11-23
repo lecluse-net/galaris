@@ -37,22 +37,27 @@ def current_protocol_connection(protocol: str, agent_id: int) -> int | None:
 
 
 async def resolve_protocol_connection(agent_id: int, protocol: Literal["mail", "calendar"], requested: int | None = None,
-                                      resource_id: int | None = None) -> int:
+                                      resource_id: int | None = None, *, native_only: bool = False) -> int:
     from app.connection import connection_service
     from .service import get_service_by_id
 
     candidates: list[int] = []
     native: list[int] = []
-    if requested is None and resource_id is not None and protocol in _resource_resolvers:
-        requested = await _resource_resolvers[protocol](agent_id, resource_id)
+    if resource_id is not None and protocol in _resource_resolvers:
+        resource_connection = await _resource_resolvers[protocol](agent_id, resource_id)
+        if requested is not None and requested != resource_connection:
+            raise PermissionError("The resource is unavailable through the selected connection")
+        requested = resource_connection
     providers: list[str] = []
     for connection in await connection_service.get_connections_by_agent(agent_id):
         if not connection.active or requested is not None and connection.id != requested:
             continue
         tool = await get_service_by_id(connection.service_id)
-        if tool is not None and (getattr(tool, protocol) is not None or protocol == "calendar" and tool.code == "agenda"):
+        if native_only and (tool is None or tool.code != protocol):
+            continue
+        if tool is not None and (getattr(tool, protocol) is not None or protocol == "calendar" and tool.code == "calendar"):
             candidates.append(connection.id)
-            if tool.code == "agenda" and protocol == "calendar":
+            if tool.code == "calendar" and protocol == "calendar":
                 native.append(connection.id)
             if protocol == "calendar":
                 providers.append(f"connection_id={connection.id} ({tool.code})")

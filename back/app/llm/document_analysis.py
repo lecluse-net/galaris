@@ -14,7 +14,7 @@ from uuid import UUID, uuid5
 from pydantic import BaseModel, ConfigDict, Field, JsonValue
 import httpx
 
-from app.file_share import ResourceContext, prepared_resource, resource_info
+from app.file_share import ResourceContext, prepared_resource, require_document_source_scope, resource_info
 from . import llm_service, model_usages
 from .contracts import ProtocolInferenceRequest
 from .facade import read_inference, control_inference
@@ -172,6 +172,7 @@ async def advance_step(analysis_id: UUID) -> DocumentAnalysisSnapshot:
     phase = "source_access"
     try:
         # Access is revalidated even while an inference is pending.
+        await require_document_source_scope(ctx, admission.uri)
         descriptor = await resource_info(ctx, admission.uri, revision=admission.revision)
         phase = "source_version"
         if admission.source_version and not same_source_content_version(admission.source_version, descriptor.model_dump(

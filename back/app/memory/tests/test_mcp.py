@@ -35,6 +35,12 @@ from app.services.mcp_loader import (
 
 
 async def share_document(ctx, *, document_id, **kwargs):
+    from app.connection.facade import get_or_create_connection
+    from app.services import ServiceModel
+    from core.database import get_db
+
+    service_id = await get_db().scalar(select(ServiceModel.id).where(ServiceModel.code == "document"))
+    await get_or_create_connection(service_id, ctx.agent_id, active=True, commit=False)
     state = json.loads(await document_mcp.document_sharing(ctx, document_id))
     return await document_mcp.document_share(ctx, document_id,
         expected_lock_version=state["lock_version"], **kwargs)
@@ -50,7 +56,7 @@ def test_memory_mcp_family_is_discovered_once() -> None:
     }
     assert set(names["memory"]) == expected
     assert {"document_share", "document_sharing"} <= set(names["document"])
-    assert "document_show" in names["conversation"]
+    assert "document_show" in names["document"]
     assert {
         "memory_search",
         "memory_get",

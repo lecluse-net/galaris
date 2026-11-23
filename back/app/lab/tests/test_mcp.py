@@ -70,9 +70,10 @@ async def provision(db):
         if definition.service_code == "lab":
             db.add(ConnectionFunctionState(connection_id=connection.id,
                 function_name=definition.name, state="enabled", enabled=True))
-    inspection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == agent.id, Service.code == "platform_admin"))
-    for name in ("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls"):
-        db.add(ConnectionFunctionState(connection_id=inspection.id, function_name=name, state="enabled", enabled=True))
+    for code, names in (("galaris", ("llm_call", "llm_calls")), ("chat", ("conversation_round_get", "voice_turn_get"))):
+        inspection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == agent.id, Service.code == code))
+        for name in names:
+            db.add(ConnectionFunctionState(connection_id=inspection.id, function_name=name, state="enabled", enabled=True))
     await db.flush()
     return agent.id, connection.id
 
@@ -576,11 +577,11 @@ async def test_capture_confirmation_survives_real_mcp_and_requires_source_access
             admin = await db.scalar(
                 select(Connection)
                 .join(Service)
-                .where(Connection.agent_id == agent_id, Service.code == "platform_admin")
+                .where(Connection.agent_id == agent_id, Service.code == "service")
             )
             admin.active = True
-            from app.connection.facade import set_params_bulk
-            await set_params_bulk(admin.id, {"services.management_scope": "all"}, commit=False, scope_edit_authorized=True)
+            from app.connection.facade import set_management_scope
+            await set_management_scope(admin.id, "all", commit=False, authorized=True)
         conflict = await client.call_tool("lab_case_import", args, raise_on_error=False)
         assert conflict.is_error
         text = " ".join(item.text for item in conflict.content if hasattr(item, "text"))
@@ -635,10 +636,10 @@ async def test_async_task_diagnosis_uses_real_evidence_and_persisted_diagnosis(d
     ctx, _ = actor
     _, llm, _ = benchmark
     monkeypatch.setattr(analysis_service.llm_service, "get_profile_llm_for_agent_id", AsyncMock(return_value=llm))
-    admin = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == ctx.agent_id, Service.code == "platform_admin"))
+    admin = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == ctx.agent_id, Service.code == "service"))
     admin.active = True
-    from app.connection.facade import set_params_bulk
-    await set_params_bulk(admin.id, {"services.management_scope": "all"}, commit=False, scope_edit_authorized=True)
+    from app.connection.facade import set_management_scope
+    await set_management_scope(admin.id, "all", commit=False, authorized=True)
     task = Task(label="Synthetic diagnosis", objective="<p>Report observatory opening hours.</p>", status=TaskStatus.SUCCESS,
         execution_result={"success": True, "result": "Opens at nine."})
     db.add(task)

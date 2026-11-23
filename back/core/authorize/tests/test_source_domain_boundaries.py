@@ -185,7 +185,7 @@ async def test_calendar_roles_use_scoped_metadata_and_do_not_open_connector_conf
         _, other_user = await actor([])
         other = await owned_agent(other_user)
         async with get_db_session() as db:
-            tool = (await db.scalars(select(Service).where(Service.code == "agenda"))).one()
+            tool = (await db.scalars(select(Service).where(Service.code == "calendar"))).one()
             connections = [Connection(agent_id=identity, service_id=tool.id, active=True) for identity in [own, other]]
             db.add_all(connections)
             await db.flush()

@@ -9,7 +9,6 @@ from app.agent.models import Agent, Title
 from app.connection import Connection, ConnectionFunctionState, ServiceFunctionState
 from app.services.dbadmin import datasets
 from app.services.mandatory_services import INTEGRATED_SERVICE_SPECS
-from app.services.mandatory_services import sync_mandatory_services
 from app.services.models import Service
 from app.services.schemas import ServiceCreate, ServiceUpdate
 from core.dbadmin import reconcile_dataset
@@ -37,8 +36,9 @@ def test_only_the_product_tool_uses_the_product_name() -> None:
 
 @pytest.mark.asyncio
 async def test_administration_rename_preserves_connections_and_function_policies(db: AsyncSession) -> None:
-    tool = await db.scalar(select(Service).where(Service.code == "platform_admin"))
-    assert tool is not None
+    tool = Service(code="galaris_admin", label="Synthetic legacy administration")
+    db.add(tool)
+    await db.flush()
     original_id = tool.id
     tool.code = "galaris_admin"
     tool.label = "Galaris Admin"
@@ -57,8 +57,9 @@ async def test_administration_rename_preserves_connections_and_function_policies
     db.add_all([connection_policy, tool_policy])
     await db.commit()
 
+    dataset = next(item for item in datasets() if item.key == "app.services.builtin_names")
     for _ in range(2):
-        await sync_mandatory_services()
+        await reconcile_dataset(db, dataset)
         await db.commit()
         await db.refresh(tool)
         await db.refresh(connection)
@@ -74,7 +75,7 @@ async def test_administration_rename_preserves_connections_and_function_policies
 @pytest.mark.asyncio
 async def test_administration_rename_refuses_a_code_collision_without_modifying_either_tool(db: AsyncSession) -> None:
     legacy = Service(code="galaris_admin", label="Galaris Admin")
-    db.add(legacy)
+    db.add_all([legacy, Service(code="platform_admin", label="Synthetic retired administration")])
     await db.commit()
     dataset = next(item for item in datasets() if item.key == "app.services.builtin_names")
     with pytest.raises(ValueError, match="already exists"):

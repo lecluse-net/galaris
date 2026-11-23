@@ -133,11 +133,8 @@ async def test_dashboard_scope_delegation_is_human_global_local_and_bounded(clie
             db.add(Assignment(user_id=user.id, role_id=role.id, is_default=True))
             users.append(user)
         title = Title(label="Synthetic scope dashboard", gender="X")
-        tool = await db.scalar(select(Service).where(Service.code == "galaris"))
-        tool.can_disable = False
-        # Exercise the narrow exception with a genuinely protected Service code.
-        tool.connection_schema = {"params": {"services.management_scope": {"type": "string", "required": False,
-            "default": "team", "options": [{"value": value} for value in ["none", "team", "all"]]}}}
+        tool = await db.scalar(select(Service).where(Service.code == "contact"))
+        assert tool is not None
         tool.global_params = {"services.management_scope": {"value": "all", "forced": True}}
         db.add(title); await db.flush()
         agent = Agent(user_id=users[1].id, title_id=title.id, code=f"scope-dashboard-{suffix}", first_name="Synthetic", last_name="Agent")
@@ -156,27 +153,27 @@ async def test_dashboard_scope_delegation_is_human_global_local_and_bounded(clie
         return next(row for row in response.json()["connections"] if row["service_id"] == tool.id)
     initial = await scope()
     assert initial["can_disable"] is False
-    assert initial["management_scope"]["value"] == "team"
+    assert initial["management_scope"]["value"] == "personal"
     assert initial["management_scope"]["configured"] is None
-    assert {option["value"] for option in initial["management_scope"]["options"]} == {"none", "team", "all"}
+    assert {option["value"] for option in initial["management_scope"]["options"]} == {"personal", "team", "all"}
     assert initial["parameter_sources"]["services.management_scope"] == "software"
     assert (await client.put(path, json={"value": "all"})).status_code == 401
     for actor in headers[1:]:
         assert (await client.put(path, headers=actor, json={"value": "all"})).status_code == 403
-    for invalid in [{"value": "personal"}, {"value": ""}, {"value": "all", "active": False}]:
+    for invalid in [{"value": "usage"}, {"value": ""}, {"value": "all", "active": False}]:
         assert (await client.put(path, headers=headers[0], json=invalid)).status_code == 422
-    assert (await client.put(path, headers=headers[0], json={"value": "none"})).status_code == 204
+    assert (await client.put(path, headers=headers[0], json={"value": "team"})).status_code == 204
     changed = await scope()
     assert changed["can_disable"] is False
-    assert changed["management_scope"]["value"] == changed["management_scope"]["configured"] == "none"
+    assert changed["management_scope"]["value"] == changed["management_scope"]["configured"] == "team"
     assert changed["parameter_sources"]["services.management_scope"] == "connection"
     # This narrow exception must not unlock any other property of a protected service.
     protected = await client.patch(f"/api/connections/{connection.id}", headers=headers[0], json={"active": False})
     assert protected.status_code == 403, protected.text
     assert (await client.put(path, headers=headers[0], json={"value": None})).status_code == 204
-    assert (await scope())["management_scope"]["value"] == "team"
+    assert (await scope())["management_scope"]["value"] == "personal"
     async with get_db_session():
-        assert await router.connection_service.get_management_scope(agent.id, connection_id=connection.id, default="team") == "team"
+        assert await router.connection_service.get_management_scope(agent.id, connection_id=connection.id) == "personal"
 
 
 @pytest.mark.asyncio

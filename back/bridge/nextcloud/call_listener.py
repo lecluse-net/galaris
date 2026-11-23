@@ -10,7 +10,6 @@ from typing import Any
 import httpx
 from loguru import logger
 from sqlalchemy import select
-from sqlalchemy.orm import aliased
 
 from core.params import runtime_settings
 from core.database import get_db_session
@@ -19,8 +18,8 @@ from core.util import as_dict, as_list
 from app.connection.models import Connection
 from app.agent.models import Agent
 from app.messenger import messaging_tool_records
-from app.services import service
 from app.voice.call_manager import voice_call_manager
+from app.voice.facade import voice_auto_answer_agents
 
 
 _DISCOVERY_ERROR_BACKOFF = 30.0
@@ -221,24 +220,17 @@ async def _discover_voice_capable_talk_connections() -> list[tuple[int, int]]:
         if not service_ids:
             return []
 
-        voice_tool = await service.get_service_record("voice")
-        if voice_tool is None:
+        voice_agents = await voice_auto_answer_agents()
+        if not voice_agents:
             return []
-
-        voice_connection = aliased(Connection)
 
         result = await db.execute(
             select(Connection.id, Connection.agent_id)
             .join(Agent, Agent.id == Connection.agent_id)
-            .join(
-                voice_connection,
-                voice_connection.agent_id == Connection.agent_id,
-            )
             .where(
                 Connection.service_id.in_(service_ids),
                 Connection.active.is_(True),
-                voice_connection.service_id == voice_tool.id,
-                voice_connection.active.is_(True),
+                Connection.agent_id.in_(voice_agents),
                 Agent.agent_driver.in_(voice_driver_codes),
             )
             .order_by(Connection.id)
@@ -329,7 +321,6 @@ async def _listen_connection(context: _TalkAutoAnswerContext) -> None:
 
 async def _voice_listening_is_enabled(context: _TalkAutoAnswerContext) -> bool:
     """Revalidate both capabilities required to listen for Talk calls."""
-    from app.connection import connection_service
     from app.messenger import resolve_messenger_configuration
 
     async with get_db_session():
@@ -342,10 +333,7 @@ async def _voice_listening_is_enabled(context: _TalkAutoAnswerContext) -> bool:
             return False
         if messenger.agent_id != context.agent_id:
             return False
-        return await connection_service.has_active_tool_connection(
-            context.agent_id,
-            "voice",
-        )
+        return bool(await voice_auto_answer_agents(context.agent_id))
 
 
 async def _refresh_rooms(context: _TalkAutoAnswerContext) -> None:

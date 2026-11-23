@@ -12,7 +12,7 @@ async def test_directory_mcp_exposes_optional_bounded_team_filters():
     from app.services.mcp_loader import add_galaris_tools
 
     server = FastMCP("Synthetic agent directory")
-    add_galaris_tools(server, 1, runtime="internal", enabled_service_codes={"galaris"})
+    add_galaris_tools(server, 1, runtime="internal", enabled_service_codes={"agent"})
     directory = next(tool for tool in await server.list_tools() if tool.name == "agent_list")
     properties = directory.parameters["properties"]
     assert "ctx" not in properties

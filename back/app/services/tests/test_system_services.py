@@ -12,6 +12,7 @@ from app.connection import Connection, ConnectionFunctionState, ServiceFunctionS
 from app.connection import connection_service, router as connection_router
 from app.connection.schemas import ConnectionCreate, ConnectionUpdate, FunctionStateUpdate
 from app.services import service
+from app.services.contracts import CHAT_CHANNEL_PARAM
 from app.services.connection_functions import list_available_connection_functions
 from app.services.dbadmin import datasets
 from app.services.descriptions import bridge_description
@@ -52,7 +53,8 @@ async def test_system_definitions_are_immutable_and_function_modes_are_editable(
     available = await list_available_connection_functions(connection.id)
     assert available["success"] and available["functions"]
     function = available["functions"][0]["name"]
-    optional_tool = await db.scalar(select(Service).where(Service.code == "search"))
+    previously_disabled = await connection_service.get_disabled_function_names(connection)
+    optional_tool = await db.scalar(select(Service).where(Service.code == "browser"))
     db.add(ServiceFunctionState(service_id=optional_tool.id, function_name=function, enabled=False))
     # Existing installations may have disabled connections and either cascade level.
     connection.active = False
@@ -71,7 +73,7 @@ async def test_system_definitions_are_immutable_and_function_modes_are_editable(
     await db.refresh(connection)
     await db.refresh(tool)
     assert connection.active
-    assert await connection_service.get_disabled_function_names(connection) == {function}
+    assert await connection_service.get_disabled_function_names(connection) == previously_disabled | {function}
     assert function in await get_disabled_internal_function_names(agent.id)
     catalogue = await list_available_connection_functions(connection.id)
     assert catalogue["success"] and catalogue["functions"]
@@ -85,6 +87,13 @@ async def test_system_definitions_are_immutable_and_function_modes_are_editable(
         AsyncMock(return_value=AgentManagementScope(1, None)),
     )
     request = Request({'type': 'http', 'method': 'PATCH', 'path': '/synthetic'})
+    if code == "chat":
+        from app.messenger import is_messenger_connection_active
+
+        updated = await connection_router.update_connection(connection.id,
+            ConnectionUpdate(agent_id=agent.id, service_id=tool.id, active=True, params={CHAT_CHANNEL_PARAM: "false"}),
+            request)
+        assert updated.active and not await is_messenger_connection_active(connection.id)
     for operation in (
         lambda: connection_router.update_connection(connection.id, ConnectionUpdate(active=False), request),
         lambda: connection_router.update_connection(connection.id, ConnectionUpdate(agent_id=999), request),
@@ -124,15 +133,16 @@ async def test_system_definitions_are_immutable_and_function_modes_are_editable(
 
 def test_native_function_families_have_their_expected_owners():
     names = mcp_tool_names_by_service_code()
-    assert {"llm_call", "llm_calls"} <= set(names["platform_admin"])
-    assert not {"llm_call", "llm_calls"} & set(names["galaris"])
+    assert {"llm_call", "llm_calls"} <= set(names["galaris"])
+    assert {"platform_admin", "voice", "audio", "image", "search"}.isdisjoint(names)
+    assert {"voice_call_start", "voice_call_stop", "voice_call_list", "voice_turn_get"} <= set(names["chat"])
     conversation_names = {
         name
         for group in names.values()
         for name in group
-        if name.startswith("conversation_") and name != "conversation_round_get"
+        if name.startswith("conversation_")
     }
-    assert conversation_names <= set(names["conversation"])
+    assert conversation_names <= set(names["chat"] + names["task"] + names["process"])
     assert {
         "conversation_choice_resolve", "conversation_task_submit", "conversation_task_list",
         "conversation_task_status", "conversation_task_pause", "conversation_task_resume",

@@ -271,7 +271,7 @@ async def test_mcp_run_lists_bound_reads_and_preserve_live_scope(db, workflow, c
         status="success", input={}, output={"retired": True}, deleted_at=origin))
     connection = None
     if administrative:
-        service = await db.scalar(select(ServiceModel).where(ServiceModel.code == "process_admin"))
+        service = await db.scalar(select(ServiceModel).where(ServiceModel.code == "process"))
         connection = Connection(agent_id=workflow.owner.id, service_id=service.id, active=True)
         db.add(connection)
         await db.flush()

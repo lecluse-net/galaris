@@ -286,7 +286,7 @@ async def test_parallel_native_tools_receive_distinct_database_sessions(
 
     monkeypatch.setattr(resource_effects, "record_tool_resources", AsyncMock())
     definition = mcp_loader.McpToolDefinition(
-        service_code="search",
+        service_code="browser",
         name="parallel_read",
         description="Read concurrently.",
         required_capabilities=frozenset(),
@@ -384,22 +384,17 @@ def test_mcp_loader_discovers_decorated_tools_by_service_code() -> None:
 
     names = mcp_tool_names_by_service_code()
 
-    assert "search_web" in names["search"]
+    assert "search_web" in names["browser"]
     assert {
-        "agent_list",
         "task_get",
         "task_run",
         "task_stop",
-        "goal_update_suivi",
-        "goal_run_now",
-        "goal_ask_referrer",
-        "process_list",
-        "process_get",
-        "process_start",
-        "process_list_runs",
-        "process_get_run",
-        "process_analyze_run",
-    } <= set(names["galaris"])
+    } <= set(names["task"])
+    assert {"agent_list", "agent_get", "team_list", "team_members"} <= set(names["agent"])
+    assert "services_list" in names["service"]
+    assert {"agent_list", "agent_get", "services_list"}.isdisjoint(names["galaris"])
+    assert not any(name.startswith("process_") or name == "processus_get" for name in names["galaris"])
+    assert not any(name.startswith("goal_") for name in names["galaris"])
     assert {
         "file_schemes",
         "file_list",
@@ -450,8 +445,8 @@ def test_mcp_loader_discovers_decorated_tools_by_service_code() -> None:
         "document_append",
     }.isdisjoint(names["memory"])
     assert all(name.startswith("messenger_") for name in names["messenger"])
-    assert {"image_generate", "image_read", "image_from_pdf"} <= set(names["image"])
-    assert names["audio"] == ("audio_transcribe",)
+    assert {"image_generate", "image_read", "image_from_pdf"} <= set(names["multimedia"])
+    assert "audio_transcribe" in names["multimedia"]
     assert {
         "goal_create",
         "goal_update",
@@ -459,11 +454,15 @@ def test_mcp_loader_discovers_decorated_tools_by_service_code() -> None:
         "goal_resume",
         "goal_complete",
         "goal_delete",
-    } == set(names["goal_management"])
+        "goal_update_suivi", "goal_run_now", "goal_ask_referrer",
+        "goal_retrospective_evidence", "goal_retrospective_learn", "goal_retrospective_record",
+    } == set(names["goal"])
     assert {"skills_list", "skill_read", "skill_update", "skill_set_enabled", "skill_delete",
             "skill_set_authorization", "skill_set_category_authorization", "skill_release_ownership"} == set(names["skills"])
     assert "skill_management" not in names
     assert {
+        "process_list", "process_get", "process_start", "process_list_runs",
+        "process_get_run", "process_analyze_run", "processus_get",
         "process_admin_engines",
         "process_admin_sync",
         "process_admin_list",
@@ -479,10 +478,10 @@ def test_mcp_loader_discovers_decorated_tools_by_service_code() -> None:
         "process_admin_retry_run",
         "process_admin_analyze_run",
         "process_admin_delete_run",
-    } == set(names["process_admin"])
-    assert {"conversation_round_get", "voice_turn_get", "llm_call", "llm_calls", "documentation_catalog", "documentation_search", "incidents_list", "incident_get"} == set(
-        names["platform_admin"]
-    )
+    } <= set(names["process"])
+    assert {"llm_call", "llm_calls", "documentation_catalog", "documentation_search", "incidents_list", "incident_get"} <= set(names["galaris"])
+    assert {"conversation_round_get", "voice_turn_get", "voice_call_start", "voice_call_stop", "voice_call_list"} <= set(names["chat"])
+    assert {"platform_admin", "voice", "audio", "image", "search"}.isdisjoint(names)
     assert {
         "topic_list",
         "topic_get",
@@ -591,6 +590,7 @@ async def test_agent_catalog_accumulates_mcp_messenger_and_file_share_capabiliti
     )
     native_definition = SimpleNamespace(
         name="messenger_room_send_message",
+        service_code="messenger",
         description="Send a message.",
         required_capabilities=frozenset(),
     )
@@ -666,7 +666,7 @@ async def test_enabled_native_definition_projection_applies_every_visibility_fil
     from app.services import mcp_loader
 
     async def enabled(_agent_id: int) -> set[str]:
-        return {"galaris", "file_sharing"}
+        return {"galaris", "file_sharing", "process"}
 
     async def disabled(_agent_id: int) -> set[str]:
         return {"task_stop"}
@@ -714,7 +714,7 @@ async def test_conversation_projection_intersects_builtin_allowlist_and_function
     from app.services import mcp_loader
 
     _conversation_connections(monkeypatch, {
-        code: {} for code in ("galaris", "conversation", "memory", "document", "file_sharing")
+        code: {} for code in ("galaris", "chat", "memory", "document", "file_sharing", "process", "agent", "task")
     }, disabled={4: {"document_sharing"}} if revoked else {})
 
     definitions = await mcp_loader.list_enabled_native_mcp_definitions(
@@ -730,6 +730,8 @@ async def test_conversation_projection_intersects_builtin_allowlist_and_function
             "file_search",
             "document_sharing",
             "process_start",
+            "process_list",
+            "process_admin_get",
             "task_run",
         },
         conversation_only=True,
@@ -743,6 +745,7 @@ async def test_conversation_projection_intersects_builtin_allowlist_and_function
         "conversation_task_resume",
         "conversation_task_retry",
         "file_search",
+        "process_list",
         "document_sharing",
     } - ({"document_sharing"} if revoked else set())
 
@@ -753,11 +756,12 @@ async def test_conversation_projection_keeps_voice_stop_as_call_control(
 ) -> None:
     from app.services import mcp_loader
 
-    _conversation_connections(monkeypatch, {"voice": {}})
+    _conversation_connections(monkeypatch, {"chat": {}})
 
     definitions = await mcp_loader.list_enabled_native_mcp_definitions(
         42,
         runtime="internal",
+        allowed_tool_names={"voice_call_stop", "voice_call_start", "voice_call_list", "voice_turn_get"},
         conversation_only=True,
     )
 
@@ -773,7 +777,7 @@ async def test_task_projection_excludes_conversation_control_tools(
     monkeypatch.setattr(
         mcp_loader,
         "get_enabled_integrated_service_codes",
-        AsyncMock(return_value={"galaris"}),
+        AsyncMock(return_value={"task"}),
     )
     monkeypatch.setattr(
         mcp_loader,
@@ -796,7 +800,7 @@ async def test_web_search_is_available_in_conversation_mode(
 ) -> None:
     from app.services import mcp_loader
 
-    _conversation_connections(monkeypatch, {"search": {}})
+    _conversation_connections(monkeypatch, {"browser": {}})
 
     definitions = await mcp_loader.list_enabled_native_mcp_definitions(
         42,
@@ -913,7 +917,7 @@ async def test_mcp_loader_filters_by_tool_and_runtime() -> None:
     internal_mcp = build_galaris_fastmcp(
         1,
         runtime="internal",
-        enabled_service_codes={"voice", "galaris", "file_sharing"},
+        enabled_service_codes={"chat", "galaris", "file_sharing", "task", "process", "document"},
     )
     internal_tools = {tool.name: tool for tool in await internal_mcp.list_tools()}
     internal_names = set(internal_tools)
@@ -921,7 +925,7 @@ async def test_mcp_loader_filters_by_tool_and_runtime() -> None:
     hermes_mcp = build_galaris_fastmcp(
         1,
         runtime="hermes",
-        enabled_service_codes={"voice", "galaris", "file_sharing"},
+        enabled_service_codes={"chat", "galaris", "file_sharing", "task", "process", "document"},
     )
     hermes_names = {tool.name for tool in await hermes_mcp.list_tools()}
 
@@ -929,10 +933,10 @@ async def test_mcp_loader_filters_by_tool_and_runtime() -> None:
         1,
         runtime="internal",
         enabled_service_codes={
-            "goal_management",
+            "goal",
             "skills",
-            "process_admin",
-            "platform_admin",
+            "process",
+            "chat",
         },
     )
     management_names = {tool.name for tool in await management_mcp.list_tools()}
@@ -943,7 +947,8 @@ async def test_mcp_loader_filters_by_tool_and_runtime() -> None:
         "goal_update_suivi",
         "goal_run_now",
         "goal_ask_referrer",
-    } <= internal_names
+    } <= management_names
+    assert not {"goal_update_suivi", "goal_run_now", "goal_ask_referrer"} & internal_names
     assert {"goal_list", "goal_get", "goal_get_suivi"}.isdisjoint(internal_names)
     assert "voice_call_start" in hermes_names
     assert "file_list" in hermes_names

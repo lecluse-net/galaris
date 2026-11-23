@@ -10,9 +10,32 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from sqlalchemy import func, or_, select
+from sqlalchemy.sql.elements import ColumnElement
+
+from app.connection import Connection
+from app.connection.facade import effective_param_value_expression
+from app.services import ServiceModel
+from app.services.contracts import CHAT_CHANNEL_PARAM
+from core.database import get_db
 from core.params import runtime_settings
 
 from . import facade
+
+
+def messenger_connection_active() -> ColumnElement[bool]:
+    """Resolve transport availability independently of the system service."""
+    channel = effective_param_value_expression(
+        ServiceModel.global_params, ServiceModel.connection_schema, Connection.id, CHAT_CHANNEL_PARAM,
+    )
+    return Connection.active.is_(True) & or_(
+        ServiceModel.code != "chat", func.lower(func.coalesce(channel, "true")).in_(("true", "1")),
+    )
+
+
+async def is_messenger_connection_active(connection_id: int) -> bool:
+    return bool(await get_db().scalar(select(messenger_connection_active()).select_from(Connection)
+        .join(ServiceModel, ServiceModel.id == Connection.service_id).where(Connection.id == connection_id)))
 
 
 @dataclass(frozen=True)

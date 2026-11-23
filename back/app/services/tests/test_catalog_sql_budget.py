@@ -154,24 +154,26 @@ async def test_native_catalog_batches_configuration_and_reloads_function_overrid
     connections = [Connection(agent_id=owner.id, service_id=tool.id, active=True) for tool in tools]
     db.add_all(connections)
     await db.flush()
-    db.add(ServiceFunctionState(service_id=tools[0].id, function_name="synthetic_disabled", state="disabled"))
+    index = next(index for index, tool in enumerate(tools) if tool.code == "calendar")
+    function = "calendar_list"
+    db.add(ServiceFunctionState(service_id=tools[index].id, function_name=function, state="disabled"))
     await db.flush()
     async with measured_reads(db, "native-tools-discovery") as enabled_reads:
         enabled = await mcp_loader.get_enabled_integrated_service_codes(owner.id)
     async with measured_reads(db, "native-tools-overrides") as disabled_reads:
         disabled = await mcp_loader.get_disabled_internal_function_names(owner.id)
     assert {tool.code for tool in tools} - {"messenger"} <= enabled
-    assert "synthetic_disabled" in disabled
+    assert function in disabled
     # The override projection also checks the fixed set of multimedia models.
     # Its budget must stay independent of the number of active connections.
     assert len(enabled_reads) <= 3 and len(disabled_reads) <= 20
-    db.add(ConnectionFunctionState(connection_id=connections[0].id,
-        function_name="synthetic_disabled", state="ask"))
+    db.add(ConnectionFunctionState(connection_id=connections[index].id,
+        function_name=function, state="ask"))
     await db.flush()
-    assert "synthetic_disabled" not in await mcp_loader.get_disabled_internal_function_names(owner.id)
-    connections[0].active = False
+    assert function not in await mcp_loader.get_disabled_internal_function_names(owner.id)
+    connections[index].active = False
     await db.flush()
-    assert tools[0].code not in await mcp_loader.get_enabled_integrated_service_codes(owner.id)
+    assert "calendar" not in await mcp_loader.get_enabled_integrated_service_codes(owner.id)
 
 
 @pytest.mark.asyncio
@@ -180,12 +182,12 @@ async def test_aggregate_catalog_reads_stay_bounded_with_more_active_connections
 
     owner, _ = agents
     agent_id = owner.id
-    native_service_id = await db.scalar(select(Service.id).where(Service.code == "galaris"))
+    native_service_id = await db.scalar(select(Service.id).where(Service.code == "process"))
     db.add(Connection(agent_id=agent_id, service_id=native_service_id, active=True))
     await db.flush()
     db.expunge_all()
     context = mcp_loader.McpToolContext(agent_id=agent_id, runtime="internal")
-    definition = next(tool for tool in mcp_loader.mcp_tools_by_service_code()["galaris"]
+    definition = next(tool for tool in mcp_loader.mcp_tools_by_service_code()["process"]
                       if tool.name == "process_list_runs")
     async with measured_reads(db, "aggregate-mcp-initial") as initial_reads:
         initial = await mcp_loader.build_agent_mcp(agent_id)

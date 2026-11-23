@@ -13,10 +13,10 @@ async def test_galaris_admin_access_requires_an_active_connection(
     witness = AsyncMock(return_value="usage")
     monkeypatch.setattr(connection_service, "get_management_scope", witness)
 
-    with pytest.raises(PermissionError, match="platform_admin"):
+    with pytest.raises(PermissionError, match="Services"):
         await require_galaris_admin_access(42)
 
-    witness.assert_awaited_once_with(42, "platform_admin")
+    witness.assert_awaited_once_with(42, "service")
 
 
 @pytest.mark.asyncio

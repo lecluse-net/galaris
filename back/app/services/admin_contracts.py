@@ -10,8 +10,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from .schemas import ServiceCreate, ServiceMcpTestRequest, ServiceUpdate
 
 HUMAN_ONLY_SERVICE_CODES = frozenset({
-    "service_admin", "agent_admin", "platform_admin", "process_admin", "lab",
-    "goal_management", "skills", "console",
+    "service", "agent", "process", "lab",
+    "goal", "skills", "console",
 })
 
 
@@ -36,10 +36,10 @@ class AdministrationContext:
         if self.agent_id is not None:
             from app.connection.facade import has_active_service_function
 
-            if not await has_active_service_function(self.agent_id, "service_admin", self.function_name):
+            if not await has_active_service_function(self.agent_id, "service", self.function_name):
                 raise AdministrationError("access_denied", "The exact live ServiceAdmin function grant is required.")
-            from .management_scope import administration_scope
-            scope = await administration_scope(self.agent_id, "service_admin")
+            from .management_scope import service_administration_scope
+            scope = await service_administration_scope(self.agent_id)
             if scope.level == "usage":
                 raise AdministrationError("access_denied", "An explicit ServiceAdmin management scope is required.")
             object.__setattr__(self, "_delegated_agent_ids", scope.agent_ids)

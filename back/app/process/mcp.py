@@ -23,10 +23,10 @@ from .schemas import (
 )
 
 
-@mcp_tool("galaris", name="processus_get", approval="enabled",
+@mcp_tool("process", name="processus_get", approval="enabled",
     approval_reason="Read process progress within the participant or active process administrator scope",
     effect_policy="read", concurrency_policy="safe",
-    description="Inspect an internal run's progress, active activities, human/authorization/Task/child waits, blockers, last activity and available controls. Only participating agents or an agent with active process_admin access may read it. Omit run_id inside an activity Task to inspect its owning run.")
+    description="Inspect an internal run's progress, active activities, human/authorization/Task/child waits, blockers, last activity and available controls. Only participating agents or an agent with an explicit Process service delegation may read it. Omit run_id inside an activity Task to inspect its owning run.")
 async def processus_get(ctx: McpToolContext, run_id: str | None = None) -> dict[str, Any]:
     if run_id is None:
         from sqlalchemy import select
@@ -67,12 +67,13 @@ async def _process_service_codes() -> dict[int, str]:
     }
 
 
-async def _admin_native_definition(ctx: McpToolContext, identity: int, *, write: bool = False) -> None:
+async def _admin_native_definition(ctx: McpToolContext, identity: int, *, write: bool = False) -> AdministrationScope:
     record = await process_service.get_definition(identity, for_update=write)
     scope = await _process_administration(ctx)
     if record is None:
         raise PermissionError("Process not found in the administration scope")
     scope.require(record.agent_id)
+    return scope
 
 
 async def _admin_native_run(ctx: McpToolContext, identity: UUID, *, control: bool = False) -> None:
@@ -81,10 +82,12 @@ async def _admin_native_run(ctx: McpToolContext, identity: UUID, *, control: boo
     if run is None:
         raise PermissionError("Run not found in the administration scope")
     scope.require(run.launcher_agent_id)
+    if scope.level == "personal" and run.engine_code == "galaris":
+        await native_runs.require_run(identity, ctx.agent_id, control=control)
 
 
 async def _process_administration(ctx: McpToolContext) -> AdministrationScope:
-    scope = await administration_scope(ctx.agent_id, "process_admin")
+    scope = await administration_scope(ctx.agent_id, "process")
     scope.require_administration()
     return scope
 
@@ -101,7 +104,7 @@ async def _require_visible_run(ctx: McpToolContext, identity: UUID) -> None:
         raise PermissionError("Run not found in this agent's participation scope")
 
 
-@mcp_tool("galaris", approval='enabled', approval_reason='Governed bounded read or polling',
+@mcp_tool("process", approval='enabled', approval_reason='Governed bounded read or polling',
 
     name="process_list",
     description="List only the business processes assigned to the current agent.",
@@ -110,7 +113,7 @@ async def process_list(ctx: McpToolContext) -> list[dict[str, Any]]:
     return await process_service.list_for_agent(ctx.agent_id)
 
 
-@mcp_tool("galaris", approval='enabled', approval_reason='Governed bounded read or polling',
+@mcp_tool("process", approval='enabled', approval_reason='Governed bounded read or polling',
 
     name="process_get",
     description="Describe one workflow assigned to the current agent.",
@@ -153,7 +156,7 @@ async def process_get(ctx: McpToolContext, workflow_id: str) -> dict[str, Any]:
     return result
 
 
-@mcp_tool("galaris", approval="enabled", approval_reason="Submit the current activity's validated output",
+@mcp_tool("process", approval="enabled", approval_reason="Submit the current activity's validated output",
     conversation_policy="forbidden", effect_policy="idempotent", name="process_activity_complete",
     description="For your current native Process activity Task only: submit changes to its process variables as ordinary JSON (for example output={\"age\": 42}). Optionally provide a concise user-facing message. The engine validates and stores typed data; your final prose is not parsed as JSON. Stop after acceptance.")
 async def process_activity_complete(ctx: McpToolContext, output: dict[str, Any], message: str = "") -> dict[str, Any]:
@@ -168,7 +171,7 @@ async def process_activity_complete(ctx: McpToolContext, output: dict[str, Any],
         raise RecoverableToolError(str(error)) from error
 
 
-@mcp_tool("galaris", approval="enabled", approval_reason="Ask the authenticated requester for activity input",
+@mcp_tool("process", approval="enabled", approval_reason="Ask the authenticated requester for activity input",
     conversation_policy="forbidden", effect_policy="idempotent", name="process_activity_question",
     description="For your current native Process activity Task only: ask its authenticated human requester a question and wait durably for the answer in messaging. Supply names from the process variable registry; omitted variables select the whole registry. Stop this turn after waiting_for_human. If answered=true, use the returned response and continue to process_activity_complete. Rephrasing a question for the same variables reuses its answer. Only to intentionally request a new answer, supply a new stable question_key (max 128 characters); reuse that key on retries and resumption. Never invent the answer or return the question as data.")
 async def process_activity_question(ctx: McpToolContext, question: str,
@@ -177,13 +180,13 @@ async def process_activity_question(ctx: McpToolContext, question: str,
     return await ask_input(ctx.task_id, ctx.agent_id, question, variables, question_key=question_key)
 
 
-@mcp_tool("galaris", approval="enabled", approval_reason="Resource-authorized process definition read", effect_policy="read",
+@mcp_tool("process", approval="enabled", approval_reason="Resource-authorized process definition read", effect_policy="read",
     name="process_definition_read", description="Read the current saved BPMN definition, graph, task instructions and actors to audit a process you can read.")
 async def process_definition_read(ctx: McpToolContext, process_code: str) -> dict[str, Any]:
     return await native_definitions.read(process_code, ctx.agent_id)
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Create a governed business process",
+@mcp_tool("process", approval="ask", approval_reason="Create a governed business process",
     name="process_create", description="Create your private internal BPMN process from a typed graph or BPMN XML; its code is immutable.")
 async def process_create(ctx: McpToolContext, title: str, graph: dict[str, Any] | None = None,
                          xml: str | None = None, code: str | None = None) -> dict[str, Any]:
@@ -192,7 +195,7 @@ async def process_create(ctx: McpToolContext, title: str, graph: dict[str, Any] 
     return await native_definitions.read(record.code or "", ctx.agent_id)
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Edit a governed business process",
+@mcp_tool("process", approval="ask", approval_reason="Edit a governed business process",
     name="process_update", description="Update a process you may edit with the read expected_revision. Future launches use this save; active runs keep their original graph.")
 async def process_update(ctx: McpToolContext, process_code: str, expected_revision: int,
                          graph: dict[str, Any] | None = None, xml: str | None = None, title: str | None = None) -> dict[str, Any]:
@@ -200,14 +203,14 @@ async def process_update(ctx: McpToolContext, process_code: str, expected_revisi
         graph=Workflow.model_validate(graph) if graph is not None else None, xml=xml, title=title)
 
 
-@mcp_tool("galaris", approval="enabled", approval_reason="Pure profile validation", effect_policy="read",
+@mcp_tool("process", approval="enabled", approval_reason="Pure profile validation", effect_policy="read",
     name="process_validate", description="Validate BPMN or a typed graph without saving or executing effects.")
 async def process_validate(ctx: McpToolContext, graph: dict[str, Any] | None = None, xml: str | None = None) -> dict[str, Any]:
     validated = validate_graph(Workflow.model_validate(graph)) if graph is not None else compile_bpmn(xml or "")
     return {"valid": True, "diagnostics": [], "graph": validated.model_dump(mode="json")}
 
 
-@mcp_tool("galaris", approval="enabled", approval_reason="Resource-authorized Process history", effect_policy="read",
+@mcp_tool("process", approval="enabled", approval_reason="Resource-authorized Process history", effect_policy="read",
     name="process_history", description="Read a Process definition's saved BPMN history for review. Launches have no selectable version.")
 async def process_history(ctx: McpToolContext, process_code: str, page: int = 1, page_size: int = 50) -> dict[str, Any]:
     if page < 1 or page_size not in {10, 20, 50, 100, 500}:
@@ -215,19 +218,19 @@ async def process_history(ctx: McpToolContext, process_code: str, page: int = 1,
     return await native_definitions.history(process_code, ctx.agent_id, limit=page_size, offset=(page - 1) * page_size)
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Restore Process BPMN",
+@mcp_tool("process", approval="ask", approval_reason="Restore Process BPMN",
     name="process_restore", description="Restore a readable Process revision as a new current BPMN save, if you may edit the process.")
 async def process_restore(ctx: McpToolContext, process_code: str, revision: int, expected_revision: int) -> dict[str, Any]:
     return await native_definitions.restore(process_code, ctx.agent_id, revision, expected_revision)
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Archive a governed process",
+@mcp_tool("process", approval="ask", approval_reason="Archive a governed process",
     name="process_archive", description="Archive or reactivate a process you can edit. Existing runs retain their history.")
 async def process_archive(ctx: McpToolContext, process_code: str, archived: bool = True) -> dict[str, Any]:
     return await native_definitions.archive(process_code, ctx.agent_id, archived)
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Change Process definition sharing",
+@mcp_tool("process", approval="ask", approval_reason="Change Process definition sharing",
     name="process_share", description="As the Process definition owner, grant an agent read/edit access or remove its Process grant.")
 async def process_share(ctx: McpToolContext, process_code: str, target_agent_id: int,
                         access: Literal["read", "edit", "none"]) -> dict[str, object]:
@@ -236,7 +239,7 @@ async def process_share(ctx: McpToolContext, process_code: str, target_agent_id:
         can_write=access == "edit", revoke=access == "none")
 
 
-@mcp_tool("galaris", approval="enabled", approval_reason="Resource-scoped live run read", effect_policy="read",
+@mcp_tool("process", approval="enabled", approval_reason="Resource-scoped live run read", effect_policy="read",
     name="process_run_inspect", description="Inspect a readable native run, its frozen graph, occurrences, run data and event cursor.")
 async def process_run_inspect(ctx: McpToolContext, run_id: str, page: int = 1, page_size: int = 50, after_event: int = 0) -> dict[str, Any]:
     if page < 1 or page_size not in {10, 20, 50, 100, 500} or after_event < 0:
@@ -244,7 +247,7 @@ async def process_run_inspect(ctx: McpToolContext, run_id: str, page: int = 1, p
     return await native_runs.inspect_run(_run_id(run_id), ctx.agent_id, page=page, page_size=page_size, after_event=after_event)
 
 
-@mcp_tool("galaris", approval="enabled", approval_reason="Resource-scoped child run read", effect_policy="read",
+@mcp_tool("process", approval="enabled", approval_reason="Resource-scoped child run read", effect_policy="read",
     name="process_run_children", description="Read one authorized page of a run's immediate child processes, without a depth limit.")
 async def process_run_children(ctx: McpToolContext, run_id: str, page: int = 1, page_size: int = 50) -> dict[str, Any]:
     if page < 1 or page_size not in {10, 20, 50, 100, 500}:
@@ -252,19 +255,19 @@ async def process_run_children(ctx: McpToolContext, run_id: str, page: int = 1, 
     return await native_runs.children(_run_id(run_id), ctx.agent_id, page=page, page_size=page_size)
 
 
-@mcp_tool("galaris", approval="enabled", approval_reason="Resource-scoped occurrence read", effect_policy="read",
+@mcp_tool("process", approval="enabled", approval_reason="Resource-scoped occurrence read", effect_policy="read",
     name="process_run_occurrence", description="Read one authorized activity occurrence, including actual prompts, attempt receipts, Tasks and child runs.")
 async def process_run_occurrence(ctx: McpToolContext, run_id: str, occurrence_id: str) -> dict[str, Any]:
     return await native_runs.inspect_occurrence(_run_id(run_id), _run_id(occurrence_id), ctx.agent_id)
 
 
-@mcp_tool("galaris", approval="enabled", approval_reason="Resource-scoped accounting read", effect_policy="read",
+@mcp_tool("process", approval="enabled", approval_reason="Resource-scoped accounting read", effect_policy="read",
     name="process_run_metrics", description="Read direct and inclusive recorded costs and tokens, with partial coverage and per-Task accounting.")
 async def process_run_metrics(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
     return await native_runs.run_metrics(_run_id(run_id), ctx.agent_id)
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Control a launched native process",
+@mcp_tool("process", approval="ask", approval_reason="Control a launched native process",
     name="process_run_control", description="Persist pause, resume, step or breakpoints for your run. Reuse command_key if the reply is lost; expected_revision detects concurrent debugger changes.")
 async def process_run_control(ctx: McpToolContext, run_id: str,
                               action: Literal["pause", "resume", "step", "breakpoints"], nodes: list[str] | None = None,
@@ -273,7 +276,7 @@ async def process_run_control(ctx: McpToolContext, run_id: str,
         command_key=command_key, expected_revision=expected_revision)
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Cancel a launched process",
+@mcp_tool("process", approval="ask", approval_reason="Cancel a launched process",
     name="process_run_cancel", description="Request cancellation of your run and confirm actual termination of its admitted activities.")
 async def process_run_cancel(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
     await native_runs.require_run(_run_id(run_id), ctx.agent_id, control=True)
@@ -281,7 +284,7 @@ async def process_run_cancel(ctx: McpToolContext, run_id: str) -> dict[str, Any]
     return {"id": str(run.id), "status": run.status}
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Launch another current process run",
+@mcp_tool("process", approval="ask", approval_reason="Launch another current process run",
     name="process_run_retry", description="Launch a terminal native run again using its inputs and canonical files with the latest saved process. Reuse the same idempotency key if the reply is lost.")
 async def process_run_retry(ctx: McpToolContext, run_id: str, idempotency_key: str) -> dict[str, Any]:
     run = await native_runs.require_run(_run_id(run_id), ctx.agent_id, control=True)
@@ -294,7 +297,7 @@ async def process_run_retry(ctx: McpToolContext, run_id: str, idempotency_key: s
     return response.model_dump(mode="json")
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("process", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="process_start",
     effect_descriptor=EffectDescriptorV1(capability="process.start", kind="process", target_arguments=("workflow_id",), target_prefix="galaris://process/", visibility="external", receipt="process", domain_assigned_selection=True),
@@ -340,10 +343,10 @@ async def process_start(
     return response.model_dump(mode="json")
 
 
-@mcp_tool("galaris", approval='enabled', approval_reason='Governed bounded read or polling',
+@mcp_tool("process", approval='enabled', approval_reason='Governed bounded read or polling',
 
     name="process_list_runs",
-    description="List participating internal runs and the current agent's external runs. An explicit process_admin management scope widens visibility to its delegated agents.",
+    description="List participating internal runs and the current agent's external runs. An explicit Process service delegation widens visibility to its delegated agents.",
 )
 async def process_list_runs(
     ctx: McpToolContext,
@@ -357,7 +360,7 @@ async def process_list_runs(
     return [summary.model_dump(mode="json") for summary in summaries]
 
 
-@mcp_tool("galaris", approval='enabled', approval_reason='Governed bounded read or polling',
+@mcp_tool("process", approval='enabled', approval_reason='Governed bounded read or polling',
 
     name="process_get_run",
     description="Read the persisted run allowed by its Process sharing policy or dedicated Process administration.",
@@ -370,7 +373,7 @@ async def process_get_run(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
     return detail.model_dump(mode="json", exclude={"events"})
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("process", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="process_analyze_run",
     description="Explain the result and errors of a run allowed by its Process sharing policy or dedicated Process administration.",
@@ -384,7 +387,7 @@ async def process_analyze_run(ctx: McpToolContext, run_id: str) -> dict[str, Any
     return (await process_service.analyze_run(run.id)).model_dump(mode="json")
 
 
-@mcp_tool("process_admin", approval='enabled', approval_reason='Governed bounded read or polling',
+@mcp_tool("process", approval='enabled', approval_reason='Governed bounded read or polling',
 
     name="process_admin_engines",
     description="List process engines that can back an administrative process definition.",
@@ -393,7 +396,7 @@ async def process_admin_engines(
     ctx: McpToolContext,  # noqa: ARG001
 ) -> list[dict[str, Any]]:
 
-    await _process_administration(ctx)
+    (await _process_administration(ctx)).require_global()
     tools = await process_service.list_process_tools()
     return [
         dict(ProcessToolRead.model_validate(tool).model_dump(mode="json"))
@@ -401,7 +404,7 @@ async def process_admin_engines(
     ]
 
 
-@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("process", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="process_admin_sync",
     description=(
@@ -419,7 +422,7 @@ async def process_admin_sync(
     return await process_service.sync_tool_definitions(service_code)
 
 
-@mcp_tool("process_admin", approval='enabled', approval_reason='Governed bounded read or polling',
+@mcp_tool("process", approval='enabled', approval_reason='Governed bounded read or polling',
 
     name="process_admin_list",
     description=(
@@ -452,7 +455,7 @@ async def process_admin_list(
     return visible
 
 
-@mcp_tool("process_admin", approval='enabled', approval_reason='Governed bounded read or polling',
+@mcp_tool("process", approval='enabled', approval_reason='Governed bounded read or polling',
 
     name="process_admin_get",
     description="Return any agent's process definition by its Galaris process ID.",
@@ -472,7 +475,7 @@ async def process_admin_get(
     return _definition_payload(definition, service_codes)
 
 
-@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("process", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="process_admin_create",
     description="Create and assign a process definition to the selected agent.",
@@ -486,7 +489,7 @@ async def process_admin_create(
     service_code: str = "n8n",
 ) -> dict[str, Any]:
 
-    (await _process_administration(ctx)).require(agent_id)
+    (await _process_administration(ctx)).require_global()
     tool = await process_service.get_process_tool_by_code(service_code)
     definition = await process_service.create_definition(
         ProcessDefinitionCreate(
@@ -500,7 +503,7 @@ async def process_admin_create(
     return _definition_payload(definition, {tool.id: tool.code})
 
 
-@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("process", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="process_admin_update",
     description=(
@@ -521,9 +524,11 @@ async def process_admin_update(
 
     if process_id <= 0:
         raise ValueError("process_id must be greater than zero")
-    await _admin_native_definition(ctx, process_id, write=True)
+    scope = await _admin_native_definition(ctx, process_id, write=True)
     if agent_id is not None:
-        (await _process_administration(ctx)).require(agent_id)
+        scope.require(agent_id)
+    if workflow_id is not None or service_code is not None:
+        scope.require_global()
     if clear_description and description is not None:
         raise ValueError("description and clear_description cannot be supplied together")
     values: dict[str, Any] = {}
@@ -553,7 +558,7 @@ async def process_admin_update(
     return _definition_payload(definition, service_codes)
 
 
-@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("process", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="process_admin_delete",
     description="Soft-delete any agent's process definition while preserving run history.",
@@ -572,7 +577,7 @@ async def process_admin_delete(
     return {"process_id": process_id, "deleted": True}
 
 
-@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("process", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="process_admin_start",
     description=(
@@ -614,7 +619,7 @@ async def process_admin_start(
     return dict(response.model_dump(mode="json"))
 
 
-@mcp_tool("process_admin", approval='enabled', approval_reason='Governed bounded read or polling',
+@mcp_tool("process", approval='enabled', approval_reason='Governed bounded read or polling',
 
     name="process_admin_list_runs",
     description="List process runs for every agent, optionally filtered by agent or workflow.",
@@ -637,6 +642,7 @@ async def process_admin_list_runs(
     summaries = await process_service.list_runs(
         agent_id=agent_id,
         administrative_agent_ids=scope.agent_ids,
+        participant_agent_id=ctx.agent_id if scope.level == "personal" else None,
         workflow_id=workflow_id,
         status=status,
         limit=limit,
@@ -644,7 +650,7 @@ async def process_admin_list_runs(
     return [summary.model_dump(mode="json") for summary in summaries]
 
 
-@mcp_tool("process_admin", approval='enabled', approval_reason='Governed bounded read or polling',
+@mcp_tool("process", approval='enabled', approval_reason='Governed bounded read or polling',
 
     name="process_admin_get_run",
     description="Read the persisted details of any agent's process run. The legacy refresh_if_stale flag only requests a freshness indication.",
@@ -664,7 +670,7 @@ async def process_admin_get_run(
     return dict(detail.model_dump(mode="json"))
 
 
-@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("process", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="process_admin_refresh_run",
     description="Refresh any agent's active process run from its engine.",
@@ -678,7 +684,7 @@ async def process_admin_refresh_run(
     return dict((await process_service._run_read(run)).model_dump(mode="json"))  # pyright: ignore[reportPrivateUsage]
 
 
-@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("process", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="process_admin_cancel_run",
     description="Cancel any agent's active process run.",
@@ -692,7 +698,7 @@ async def process_admin_cancel_run(
     return dict((await process_service._run_read(run)).model_dump(mode="json"))  # pyright: ignore[reportPrivateUsage]
 
 
-@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("process", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="process_admin_retry_run",
     description="Retry any agent's failed or cancelled process run.",
@@ -706,7 +712,7 @@ async def process_admin_retry_run(
     return dict(response.model_dump(mode="json"))
 
 
-@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("process", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="process_admin_analyze_run",
     description="Analyze the result and errors of any agent's process run.",
@@ -720,7 +726,7 @@ async def process_admin_analyze_run(
     return dict(analysis.model_dump(mode="json"))
 
 
-@mcp_tool("process_admin", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("process", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="process_admin_delete_run",
     description="Permanently delete any terminal process run.",

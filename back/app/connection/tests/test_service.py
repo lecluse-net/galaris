@@ -13,8 +13,9 @@ class TestConnectionService:
 
     @pytest.fixture
     def mock_db(self, monkeypatch):
-        """Isolate persistence; system-service refusals use PostgreSQL in test_system_tools."""
+        """Isolate persistence; test_connections covers system-service refusals with PostgreSQL."""
         monkeypatch.setattr(connection_service, "require_editable_connection", AsyncMock())
+        monkeypatch.setattr(connection_service, "require_editable_connection_params", AsyncMock())
         monkeypatch.setattr(connection_service, "require_editable_tool", AsyncMock())
         # Shared locks and whole-batch validation use PostgreSQL in test_service_admin.
         monkeypatch.setattr(connection_service, "lock_services", AsyncMock())

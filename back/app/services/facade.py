@@ -23,7 +23,9 @@ from .authorization_views import (
 from .admin_network import diagnostic_client as mcp_http_client
 from .management_scope import (
     AdministrationScope as AdministrationScope,
+    administration_level as administration_level,
     administration_scope as administration_scope,
+    service_administration_scope as service_administration_scope,
 )
 from .assertions import service_can_edit as service_can_edit
 from .service_catalog import (
@@ -43,7 +45,18 @@ from .mcp_loader import request_mcp_presentation as request_mcp_presentation
 async def has_active_admin_function(agent_id: int, function: str) -> bool:
     from app.connection.facade import has_active_service_function
 
-    return await has_active_service_function(agent_id, "agent_admin", function)
+    return await has_active_service_function(agent_id, "agent", function)
+
+
+async def has_active_native_function(agent_id: int, function: str) -> bool:
+    """Verify a built-in function on the Service that owns its MCP declaration."""
+    from app.connection.facade import has_active_service_function
+    from .mcp_loader import load_mcp_tools
+
+    definitions = [definition for definition in load_mcp_tools() if definition.name == function]
+    if len(definitions) != 1:
+        return False
+    return await has_active_service_function(agent_id, definitions[0].service_code, function)
 
 
 async def get_service_by_id(service_id: int) -> Service | None:
@@ -196,6 +209,8 @@ __all__ = [
     "get_service",
     "get_runtime_global_params",
     "has_active_admin_function",
+    "has_active_native_function",
+    "administration_level",
     "lock_services",
     "finish_write",
     "AdministrationContext",

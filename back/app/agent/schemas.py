@@ -37,6 +37,7 @@ class TitleUpdate(BaseModel):
 
 class Title(TitleBase):
     id: int
+    agent_id: None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -54,6 +55,7 @@ class AgentGroupUpdate(BaseModel):
 
 class AgentGroup(AgentGroupBase):
     id: int
+    agent_id: None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -176,6 +178,7 @@ class AgentUpdate(HumanApprovalFields):
 
 
 class AgentManagerInfo(BaseModel):
+    agent_id: None = None
     id: int
     email: str
     display_name: Optional[str] = None
@@ -207,6 +210,11 @@ class Agent(AgentBase):
     is_owner: bool = False
     profile: Optional[LlmProfileInfo] = None
     fallback_profile: Optional[LlmProfileInfo] = None
+
+    @computed_field
+    @property
+    def agent_id(self) -> int:
+        return self.id
 
     @computed_field
     @property

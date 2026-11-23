@@ -23,7 +23,7 @@ async def seed(agent_id):
     await sync_integrated_service_connections(agent_id)
     db = get_db()
     rows = (await db.execute(select(Connection, ServiceModel.code).join(ServiceModel).where(
-        Connection.agent_id == agent_id, ServiceModel.code.in_(("file_sharing", "conversation")),
+        Connection.agent_id == agent_id, ServiceModel.code.in_(("file_sharing", "chat")),
     ))).all()
     assert len(rows) == 2
     for connection, code in rows:

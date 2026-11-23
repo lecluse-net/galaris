@@ -19,6 +19,7 @@ async def read_task_resource(
     task_id: UUID,
     *,
     actor_agent_id: int,
+    allow_delegation: bool = True,
 ) -> dict[str, Any] | None:
     """Return one complete Task snapshot visible to its owner or requester."""
 
@@ -26,7 +27,7 @@ async def read_task_resource(
         Task.histo_filter(
             select(Task).where(
                 Task.id == task_id,
-                await agent_task_filter(actor_agent_id),
+                await agent_task_filter(actor_agent_id, allow_delegation=allow_delegation),
             )
         )
     )
@@ -43,6 +44,7 @@ async def list_task_resources(
     query: str = "",
     offset: int = 0,
     limit: int = 100,
+    allow_delegation: bool = True,
 ) -> list[dict[str, Any]]:
     """Return bounded Task summaries visible to one agent."""
 
@@ -57,7 +59,7 @@ async def list_task_resources(
         Task.requester_agent_id,
         Task.created_at,
         Task.updated_at,
-    ).where(await agent_task_filter(actor_agent_id))
+    ).where(await agent_task_filter(actor_agent_id, allow_delegation=allow_delegation))
     normalized_query = query.strip()
     if normalized_query:
         pattern = f"%{normalized_query}%"

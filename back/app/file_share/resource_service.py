@@ -651,6 +651,16 @@ async def resource_accessible(ctx: ResourceContext, uri: object, capability: Res
         return False
 
 
+async def require_document_source_scope(ctx: ResourceContext, uri: str) -> ResourceUri:
+    """Apply Document tool scope to native sources, including their attachments and aliases."""
+    from app.document.facade import require_document_tool_scope
+
+    reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
+    identity = UUID(reference.segments[0]) if reference.scheme in {"data", "document"} and reference.segments else None
+    await require_document_tool_scope(ctx.agent_id, identity)
+    return reference
+
+
 @observe_operation
 async def resource_info(
     ctx: ResourceContext,

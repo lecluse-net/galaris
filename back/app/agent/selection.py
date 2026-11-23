@@ -3,7 +3,7 @@
 from typing import Literal
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
 from sqlalchemy import select
 from core.database import get_db
 from core.team import TeamModel
@@ -28,6 +28,11 @@ class AgentSelectionOption(BaseModel):
     updated_at: datetime | None = None
     driver: str | None = None
     teams: list[AgentSelectionTeam] = Field(default_factory=list[AgentSelectionTeam])
+
+    @computed_field
+    @property
+    def agent_id(self) -> int:
+        return self.id
 
 
 async def selection_options(scope: AgentSelectionScope) -> list[AgentSelectionOption]:

@@ -29,6 +29,10 @@ from tests.test_inference_lifecycle import runtime, state
 async def setup_source(db, tmp_path, monkeypatch, count=17, content=None):
     monkeypatch.setattr(type(settings), 'GALARIS_INTERNAL_MESSENGER_ROOT', str(tmp_path / 'chat'))
     agent, owner, _ = await _scope(db)
+    from app.connection.facade import get_or_create_connection
+
+    service_id = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == "document"))
+    await get_or_create_connection(service_id, agent.id, active=True, commit=False)
     room = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
     messenger = await get_messenger(room.connection_id)
     path = tmp_path / 'source.pdf'; pdf(path, count=count)
@@ -421,7 +425,9 @@ async def test_temporary_cache_reuses_preparation_and_rechecks_source_access(db,
         async with prepared_resource(ResourceContext(stranger.id, 'internal'), uri):
             pytest.fail('Preparation granted source access to another agent')
     from app.connection import Connection
-    connection = await db.scalar(select(Connection).where(Connection.agent_id == agent.id))
+    connection = await db.scalar(select(Connection).join(ServiceModel).where(
+        Connection.agent_id == agent.id, ServiceModel.code == "chat",
+    ))
     connection.active = False
     await db.commit()
     with pytest.raises((PermissionError, ValueError)):
@@ -463,7 +469,9 @@ async def test_cancel_waits_for_inference_stop_and_never_admits_another_batch(ru
         if trigger == "source_unavailable_after_completion":
             gate.set()
             await state(pending, "completed")
-        connection = await db.scalar(select(Connection).where(Connection.agent_id == agent.id))
+        connection = await db.scalar(select(Connection).join(ServiceModel).where(
+            Connection.agent_id == agent.id, ServiceModel.code == "chat",
+        ))
         connection.active = False
         await db.commit()
         snapshot = await advance_analysis(reference)
@@ -613,12 +621,43 @@ async def test_scheduler_progresses_analysis_without_polling_and_enforces_owners
         await cancel_analysis(stranger.id, reference, runtime='internal')
     # Revoking source access hides even a completed answer, while its owner can stop work.
     from app.connection import Connection
-    connection = await db.scalar(select(Connection).where(Connection.agent_id == agent.id))
+    connection = await db.scalar(select(Connection).join(ServiceModel).where(
+        Connection.agent_id == agent.id, ServiceModel.code == "chat",
+    ))
     connection.active = False
     await db.commit()
     with pytest.raises((PermissionError, ValueError)):
         await read_analysis(agent.id, reference, runtime='internal')
     assert (await cancel_analysis(agent.id, reference, runtime='internal'))['status'] == 'success'
+
+
+@pytest.mark.asyncio
+async def test_document_analysis_delegation_requires_scope_and_source_access(runtime, tmp_path, monkeypatch):
+    from app.connection.facade import get_or_create_connection, set_management_scope
+    from app.document import document_service, item_sharing, resource_service
+    from app.llm.mcp import document_analysis_cancel, document_analysis_get
+    from app.services import McpToolContext
+
+    db, llm, _, _ = runtime
+    owner, _ = await setup_source(db, tmp_path, monkeypatch, count=1)
+    peer, _, _ = await _scope(db)
+    service_id = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == "document"))
+    connection = await get_or_create_connection(service_id, peer.id)
+    document = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic report",
+        content="<p>Synthetic report content.</p>", task_id=None)
+    _, reference = await setup_run(db, owner, f"document://{document.id}", llm.id)
+    ctx = McpToolContext(agent_id=peer.id, runtime="internal")
+    await set_management_scope(connection.id, "all", authorized=True)
+    with pytest.raises(resource_service.DocumentPermissionError):
+        await document_analysis_get(ctx, str(reference))
+    await item_sharing.update_agent_sharing(document.id, agent_id=owner.id, kind="agent",
+        target_id=peer.id, access="read")
+    assert (await document_analysis_get(ctx, str(reference)))["analysis_id"] == str(reference)
+    await set_management_scope(connection.id, None, authorized=True)
+    with pytest.raises(PermissionError):
+        await document_analysis_cancel(ctx, str(reference))
+    await set_management_scope(connection.id, "all", authorized=True)
+    assert (await document_analysis_cancel(ctx, str(reference)))["status"] == "cancelled"
 
 
 @pytest.mark.asyncio
@@ -716,9 +755,11 @@ async def test_document_worker_uses_the_real_mcp_agreement(runtime, tmp_path, mo
     profile = LlmProfile(label='Synthetic approved reader', text_standard_llm_id=llm.id)
     db.add(profile); await db.flush()
     agent.profile_id = profile.id
-    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == 'galaris'))
-    connection = Connection(agent_id=agent.id, service_id=tool.id, active=True)
-    db.add(connection); await db.commit()
+    connection = await db.scalar(select(Connection).join(ServiceModel).where(
+        Connection.agent_id == agent.id, ServiceModel.code == "document",
+    ))
+    assert connection is not None
+    await db.commit()
     server = await build_agent_galaris_fastmcp(agent.id, allowed_tool_names={'document_analyze'})
     requests = []
     def respond(request):

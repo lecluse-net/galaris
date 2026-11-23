@@ -68,7 +68,7 @@ async def _new_agent(db: Any, prefix: str) -> Agent:
 
 
 @pytest.mark.asyncio
-async def test_goal_self_service_tool_schemas_are_exposed_by_galaris() -> None:
+async def test_goal_self_service_tool_schemas_are_exposed_by_goal_service() -> None:
     from fastmcp import FastMCP
 
     # Schema discovery mounts real wrappers; dynamic agent authorization belongs
@@ -77,7 +77,7 @@ async def test_goal_self_service_tool_schemas_are_exposed_by_galaris() -> None:
     add_galaris_tools(
         server, 90,
         runtime="internal",
-        enabled_service_codes={"galaris", "file_sharing"},
+        enabled_service_codes={"goal", "file_sharing"},
     )
     tools = {tool.name: tool for tool in await server.list_tools()}
 
@@ -198,7 +198,7 @@ async def test_goal_management_access_requires_the_active_package(
     assert await mcp._has_goal_management_access(  # pyright: ignore[reportPrivateUsage]
         ctx
     ) is True
-    assert active_connection.await_args_list[0].args == (90, "goal_management")
+    assert active_connection.await_args_list[0].args == (90, "goal")
 
 
 @pytest.mark.asyncio
@@ -286,7 +286,7 @@ async def test_every_goal_admin_tool_revalidates_the_live_management_witness(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     denied = AsyncMock(
-        side_effect=PermissionError("goal_management connection is inactive")
+        side_effect=PermissionError("goal connection is inactive")
     )
     service = AsyncMock()
     monkeypatch.setattr(mcp, "_require_goal_management_access", denied)
@@ -325,11 +325,11 @@ async def test_live_management_connection_controls_cross_owner_goal_access(db: A
     db.add_all([own_goal, foreign_goal])
 
     management_tool = await db.scalar(
-        select(Service).where(Service.code == "goal_management")
+        select(Service).where(Service.code == "goal")
     )
     if management_tool is None:
         management_tool = Service(
-            code="goal_management",
+            code="goal",
             label="Goal management",
             description="",
             connection_schema={},

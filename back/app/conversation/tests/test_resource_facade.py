@@ -99,9 +99,9 @@ async def test_conversation_round_resources_are_scoped_by_connection_owner(
     db.add_all(memberships)
     await db.flush()
     assert await read_conversation_round_resource(foreign_round.id, actor_agent_id=owner.id) is None
-    tool = await db.scalar(select(Service).where(Service.code == "platform_admin"))
+    tool = await db.scalar(select(Service).where(Service.code == "service"))
     connection = await connection_service.get_or_create_connection(tool.id, owner.id, active=True)
-    await connection_service.set_param(connection.id, "services.management_scope", "team", scope_edit_authorized=True)
+    await connection_service.set_management_scope(connection.id, "team", authorized=True)
     assert {row["id"] for row in await list_conversation_round_resources(actor_agent_id=owner.id)} == {
         str(own_round.id), str(foreign_round.id)}
     assert await conversation_round_get(McpToolContext(owner.id, "internal"), round_id=str(foreign_round.id)) is not None

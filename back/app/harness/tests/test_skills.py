@@ -50,7 +50,7 @@ async def test_authorized_product_guide_loads_without_agent_identity_and_respect
     db.add(unassigned)
     await db.flush()
     connections = (await db.scalars(select(Connection).join(ServiceModel).where(
-        Connection.agent_id.in_([assistant.id, other.id]), ServiceModel.code == "platform_admin",
+        Connection.agent_id.in_([assistant.id, other.id]), ServiceModel.code == "galaris",
     ))).all()
     before = [(connection.id, connection.active) for connection in connections]
 

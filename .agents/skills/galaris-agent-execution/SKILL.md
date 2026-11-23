@@ -71,7 +71,7 @@ recherche, rédaction, revue, délégation et conversation ; conserver les sourc
 le document. Les messages portent la discussion et le renvoi au contenu. Ne pas remplacer ce
 document par un fichier `.md` ou `.html` à cause d'une erreur temporaire. Préserver la politique
 conversation/Task et le partage explicite avant transmission à un collaborateur. Memory et
-File Sharing sont des services système obligatoires, comme Galaris et Conversation ; les ACL
+File Sharing sont des services système obligatoires, comme Galaris et Chat ; les ACL
 des ressources et les restrictions de contexte restent prioritaires.
 Voir `docs/fr/dev/editorial-html.md`, section « Documents comme pivot de l'information ».
 
@@ -110,6 +110,9 @@ L'inspection agentique ordinaire des Tasks et des rounds passe par `file_list`, 
 opérationnelle compacte d'une Task (progression, attentes, pause et amendabilité), tandis que
 `file_read` fournit son snapshot complet. Garder les autres outils métier dédiés aux commandes
 (`task_run`, `task_stop`) et aux surfaces administratives enrichies.
+La projection de tâche et ses commandes lisent la portée de la connexion `task`. Les
+inspections enrichies des tours et appels lisent la portée de la connexion `service`
+en plus des permissions de fonction sur Chat ou Galaris.
 
 Une Task présentée à un humain ou à un modèle est toujours référencée par son URI canonique
 complète `galaris://task/<uuid>`. L'UUID nu reste réservé aux champs techniques internes, aux clés

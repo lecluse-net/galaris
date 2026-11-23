@@ -27,9 +27,12 @@ _AGENT_FIELD_LABELS = {
     "last_name", "personality", "profile_id", "team_ids", "title_id", "user_id", "voice",
 }
 _NOTIFICATION_LIMIT = 6000
+_MOVED_GOAL_ACTIONS = {"goal_update_suivi", "goal_run_now"}
+_MOVED_PROCESS_ACTIONS = {"process_start", "process_create", "process_update", "process_share", "process_run_cancel"}
 _NATIVE_ACTIONS = {
-    "agent_admin": {*_AGENT_ARGUMENTS, "agent_delete"},
-    "goal_management": {
+    "agent": {*_AGENT_ARGUMENTS, "agent_delete"},
+    "goal": {
+        *_MOVED_GOAL_ACTIONS,
         "goal_create",
         "goal_update",
         "goal_pause",
@@ -38,16 +41,14 @@ _NATIVE_ACTIONS = {
         "goal_delete",
     },
     "galaris": {
-        "goal_update_suivi",
-        "goal_run_now",
+        # Keep the human-readable presentation of approvals recorded before the split.
+        *_MOVED_GOAL_ACTIONS,
+        *_MOVED_PROCESS_ACTIONS,
         "task_run",
         "task_stop",
-        "process_start",
-        "process_create",
-        "process_update",
-        "process_share",
-        "process_run_cancel",
     },
+    "process": _MOVED_PROCESS_ACTIONS,
+    "task": {"task_run", "task_stop"},
     "file_sharing": {
         "file_create",
         "file_write",
@@ -273,7 +274,7 @@ def present_action(
         if (empty and not show_empty) or (goal and key == "expected_revision"):
             continue
         label = key.replace("_", " ").capitalize()
-        if native and name in _NATIVE_ACTIONS["agent_admin"] and key == "agent_id":
+        if native and name in _NATIVE_ACTIONS["agent"] and key == "agent_id":
             label = t("approval_preview.target_agent_id", language)
         elif key in html_fields or key in _FIELD_LABELS or (goal and key in _GOAL_FIELD_LABELS) or (agent_profile and key in _AGENT_FIELD_LABELS):
             label = t(f"approval_preview.{key}", language)

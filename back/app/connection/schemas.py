@@ -76,6 +76,10 @@ class ManagementScopeUpdate(BaseModel):
     value: str | None
 
 
+class VoiceAutoAnswerUpdate(BaseModel):
+    enabled: bool
+
+
 class ConnectionParam(ConnectionParamBase):
     id: int
 

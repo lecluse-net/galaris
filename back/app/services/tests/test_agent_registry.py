@@ -162,14 +162,14 @@ async def test_tool_advertisement_contains_only_projected_native_functions(
 
     definitions = (
         mcp_loader.McpToolDefinition(
-            service_code="galaris",
+            service_code="service",
             name="services_list",
             description="List tools.",
             required_capabilities=frozenset(),
             function=noop,
         ),
         mcp_loader.McpToolDefinition(
-            service_code="galaris",
+            service_code="process",
             name="process_start",
             description="Start process.",
             required_capabilities=frozenset(),
@@ -188,7 +188,8 @@ async def test_tool_advertisement_contains_only_projected_native_functions(
     )
 
     assert advertisement.tool_names == frozenset({"services_list", "process_start"})
-    assert "`galaris`: `services_list`, `process_start`" in advertisement.text
+    assert "`service`: `services_list`" in advertisement.text
+    assert "`process`: `process_start`" in advertisement.text
     assert "inactive_tool" not in advertisement.text
     projected.assert_awaited_once_with(
         12,
@@ -212,7 +213,7 @@ async def test_conversation_advertisement_lists_only_task_only_application_tools
 
     definitions = (
         mcp_loader.McpToolDefinition(
-            service_code="search",
+            service_code="browser",
             name="search_web",
             description="Search the web.",
             required_capabilities=frozenset(),
@@ -234,8 +235,8 @@ async def test_conversation_advertisement_lists_only_task_only_application_tools
         AsyncMock(
             return_value=[
                 SimpleNamespace(service_id=1, active=True),
-                SimpleNamespace(service_id=2, active=True),
-                SimpleNamespace(service_id=3, active=True),
+                SimpleNamespace(id=2, service_id=2, active=True),
+                SimpleNamespace(id=3, service_id=3, active=True),
                 SimpleNamespace(service_id=4, active=True),
                 SimpleNamespace(service_id=5, active=True),
             ]
@@ -247,12 +248,12 @@ async def test_conversation_advertisement_lists_only_task_only_application_tools
             label="GitLab",
         ),
         2: Service(
-            code="search",
-            label="Web search",
+            code="browser",
+            label="Browser",
         ),
         3: Service(
-            code="audio",
-            label="Audio",
+            code="multimedia",
+            label="Multimedia",
         ),
         4: Service(code="team-share", label="Synthetic file provider",
                 file_share_config=FileShareConfig(service="samba", base_url="smb://files.example.test")),
@@ -264,6 +265,8 @@ async def test_conversation_advertisement_lists_only_task_only_application_tools
         "app.services.service.get_service_by_id",
         AsyncMock(side_effect=lambda service_id: tools[service_id]),
     )
+    disabled = {tool.name for tool in mcp_loader.mcp_tools_by_service_code()["browser"] if tool.name != "search_web"}
+    monkeypatch.setattr("app.connection.facade.get_disabled_function_names_many", AsyncMock(return_value={2: disabled}))
 
     advertisement = await agent_registry.build_agent_tool_advertisement(
         12,
@@ -274,14 +277,16 @@ async def test_conversation_advertisement_lists_only_task_only_application_tools
 
     assert advertisement.tool_names == frozenset({"search_web", "file_list"})
     assert "## Task capability context" in advertisement.text
-    assert '{"code": "audio", "label": "Audio"}' in advertisement.text
+    assert '{"code": "multimedia", "label": "Multimedia"}' in advertisement.text
     assert '{"code": "gitlab", "label": "GitLab"}' in advertisement.text
-    assert '{"code": "search", "label": "Web search"}' not in advertisement.text
+    assert '{"code": "browser", "label": "Browser"}' not in advertisement.text
     assert '"code": "team-share"' not in advertisement.text
     assert '"code": "mixed-share"' in advertisement.text
     assert "file_list(uri='<tool-code>://')" in advertisement.text
     # The projection supplies facts; the action policy owns admission decisions.
     assert advertisement.text.endswith(await agent_registry.build_task_capability_context(12))
+    disabled.remove("browser_open")
+    assert '{"code": "browser", "label": "Browser"}' in await agent_registry.build_task_capability_context(12)
 
 
 @pytest.mark.asyncio

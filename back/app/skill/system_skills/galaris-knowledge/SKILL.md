@@ -1,6 +1,6 @@
 ---
 name: galaris-knowledge
-description: Explain Galaris features and guide users through the application using the official documentation shipped with their installation. Use for product questions, choosing a workflow, permissions, setup and usage troubleshooting. This knowledge complements the agent's existing role and requires authorized Administration documentation functions.
+description: Explain Galaris features and guide users through the application using the official documentation shipped with their installation. Use for product questions, choosing a workflow, permissions, setup and usage troubleshooting. Requires the authorized documentation functions on the Galaris Service.
 ---
 
 # Understand and explain Galaris
@@ -104,7 +104,9 @@ permission, configuration or successful change from general documentation alone.
 
 Distinguish connection activation, per-function enabled/blocked/on-request policy, runtime and
 conversation availability, management scope and resource ACLs. Required system connections
-remain active while their functions stay configurable. An active administration connection
+remain active while their functions stay configurable. Use the Service guide for the current tool
+owner and the connection that provides its scope. For example, Chat owns turn inspection and
+Services provides its delegated scope. An active administration connection
 does not imply global authority. A pending human agreement is neither a completed action nor
 a service failure; retain its existing interaction instead of creating a bypass or duplicate.
 

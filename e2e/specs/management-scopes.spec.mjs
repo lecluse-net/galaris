@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 import { collectPageErrors } from '../page-errors.mjs'
 import { selectOption } from '../select-option.mjs'
 
-test('five administrative Services retain a human-selected scope and enforce it on native MCP calls', async ({ page, request }) => {
+test('administrative Services retain local scopes and execution inspection uses the Services delegation', async ({ page, request }) => {
   test.setTimeout(180_000)
   const errors = collectPageErrors(page)
   const checked = async response => {
@@ -38,8 +38,6 @@ test('five administrative Services retain a human-selected scope and enforce it 
     const records = await checked(await request.get(`/api/connections?service_id=${tool.id}&agent_id=${agentId}`, { headers }))
     return records[0] ?? checked(await request.post('/api/connections', { headers, data: { service_id: tool.id, agent_id: agentId, active: true } }))
   }
-  const chat = await connectionFor('chat', peer.id)
-  await checked(await request.patch(`/api/connections/${chat.id}`, { headers, data: { active: true } }))
   await checked(await request.post('/api/chat/rooms', { headers, data: { agent_id: peer.id } }))
   const referrers = await checked(await request.get(`/api/goals/referrers/messenger?agent_id=${peer.id}`, { headers }))
   const referrer = referrers.find(item => item.is_current_user)
@@ -56,19 +54,18 @@ test('five administrative Services retain a human-selected scope and enforce it 
     },
   } }))
   const domains = [
-    { code: 'agent_admin', label: 'AgentAdmin', function: 'agent_update', args: { agent_id: peer.id, changes: { job_title: 'Synthetic scoped update' } } },
-    { code: 'service_admin', label: 'ServiceAdmin', function: 'service_admin_connection_list', args: { agent_id: peer.id } },
-    { code: 'process_admin', label: 'Administration des processus', function: 'process_admin_get', args: { process_id: process.id } },
-    { code: 'goal_management', label: 'Gestion des objectifs', function: 'goal_update', args: { goal_id: goal.id, expected_revision: goal.revision, title: 'Synthetic updated Goal' } },
-    { code: 'platform_admin', label: 'Administration', function: 'llm_calls', args: { date_debut: '2026-01-01T00:00:00Z', date_fin: '2026-12-31T23:59:59Z' } },
+    { code: 'agent', label: 'Agent', function: 'agent_update', args: { agent_id: peer.id, changes: { job_title: 'Synthetic scoped update' } } },
+    { code: 'service', label: 'Services', function: 'service_admin_connection_list', args: { agent_id: peer.id } },
+    { code: 'process', label: 'Processus', function: 'process_admin_get', args: { process_id: process.id } },
+    { code: 'goal', label: 'Objectifs', function: 'goal_update', args: { goal_id: goal.id, expected_revision: goal.revision, title: 'Synthetic updated Goal' } },
   ]
   const invoke = async domain => {
-    if (domain.code === 'goal_management') {
+    if (domain.code === 'goal') {
       const current = await checked(await request.get(`/api/goals/${goal.id}`, { headers }))
       domain.args.expected_revision = current.revision
     }
     const result = await checked(await request.post(`${prefix}/call/${domain.function}`, { data: domain.args }))
-    const data = domain.code === 'service_admin' && typeof result.data === 'string' ? JSON.parse(result.data) : result.data
+    const data = domain.code === 'service' && typeof result.data === 'string' ? JSON.parse(result.data) : result.data
     return { ...result, data, is_error: result.is_error || data?.success === false }
   }
   const caller = await checked(await request.get(`/api/agents/${fixture.agent_id}`, { headers }))
@@ -99,21 +96,37 @@ test('five administrative Services retain a human-selected scope and enforce it 
     await dialog.getByRole('button', { name: 'Fermer', exact: true }).click()
     const result = await invoke(domain)
     expect(result.is_error, `${domain.code}: ${JSON.stringify(result)}`).toBe(false)
-    if (domain.code === 'goal_management') domain.args.expected_revision = result.data.revision
-    if (domain.code === 'agent_admin') {
+    if (domain.code === 'agent') {
+      expect(result.data.agent_id).toBe(peer.id)
       const self = await checked(await request.post(`${prefix}/call/agent_update`, {
         data: { agent_id: fixture.agent_id, changes: { job_title: 'Forbidden self mutation' } },
       }))
       expect(self.is_error).toBe(true)
     }
     await checked(await request.put(`/api/agents/teams/${team.id}/members/${peer.id}`, { headers, data: { present: false } }))
-    if (domain.code !== 'platform_admin') expect((await invoke(domain)).is_error, `${domain.code}: removed teammate`).toBe(true)
+    expect((await invoke(domain)).is_error, `${domain.code}: removed teammate`).toBe(true)
     await scope('all')
     expect((await invoke(domain)).is_error, `${domain.code}: global scope`).toBe(false)
     await checked(await request.put(`/api/agents/teams/${team.id}/members/${peer.id}`, { headers, data: { present: true } }))
     await scope('usage')
     expect((await invoke(domain)).is_error, `${domain.code}: live scope revocation`).toBe(true)
   }
+  await test.step('Inspection requires both the Galaris function and the Services scope', async () => {
+    const services = await connectionFor('service', fixture.agent_id)
+    const galaris = await connectionFor('galaris', fixture.agent_id)
+    const inspection = { function: 'llm_calls', args: {
+      date_debut: '2026-01-01T00:00:00Z', date_fin: '2026-12-31T23:59:59Z',
+    } }
+    const permissions = `/api/connections/${galaris.id}/functions/llm_calls`
+    await checked(await request.put(permissions, { headers, data: { state: 'enabled' } }))
+    expect((await invoke(inspection)).is_error).toBe(true)
+    await checked(await request.patch(`/api/connections/${services.id}`, {
+      headers, data: { params: { 'services.management_scope': 'personal' } },
+    }))
+    expect((await invoke(inspection)).is_error).toBe(false)
+    await checked(await request.put(permissions, { headers, data: { state: 'disabled' } }))
+    expect((await invoke(inspection)).is_error).toBe(true)
+  })
   await test.step('Process Lab saves a native Dataset and executes its synthetic case', async () => {
     await page.goto('/lab/processes')
     await page.getByRole('spinbutton', { name: 'Agent exécutant', exact: true }).fill(String(peer.id))

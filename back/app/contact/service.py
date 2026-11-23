@@ -16,6 +16,7 @@ from app.memory import (
     split_messenger_contact,
     forget_messenger_contact,
     list_messenger_contacts,
+    list_messenger_contacts_for_owners,
     merge_messenger_contacts,
     update_messenger_contact,
 )
@@ -165,6 +166,21 @@ async def list_contacts(
         limit=limit,
         offset=offset,
     )
+    return _contact_page(records, total, limit=limit, offset=offset)
+
+
+async def list_contacts_for_owners(
+    *, owner_agent_ids: frozenset[int] | None, query: str, limit: int, offset: int,
+) -> ContactPage:
+    records, total = await list_messenger_contacts_for_owners(
+        owner_agent_ids=owner_agent_ids, query=query, limit=limit, offset=offset,
+    )
+    return _contact_page(records, total, limit=limit, offset=offset)
+
+
+def _contact_page(
+    records: tuple[MessengerContactRecord, ...], total: int, *, limit: int, offset: int,
+) -> ContactPage:
     return ContactPage(
         items=[_read(record) for record in records],
         total=total,
@@ -176,8 +192,16 @@ async def list_contacts(
 
 async def get_contact(*, agent_id: int, contact_item_id: UUID, for_update: bool = False) -> ContactRead:
     """Read a canonical contact without exposing another agent's private directory."""
+    return await get_contact_for_owners(
+        contact_item_id=contact_item_id, owner_agent_ids=frozenset({agent_id}), for_update=for_update,
+    )
+
+
+async def get_contact_for_owners(
+    *, contact_item_id: UUID, owner_agent_ids: frozenset[int] | None, for_update: bool = False,
+) -> ContactRead:
     contact = await (lock_messenger_contact(contact_item_id) if for_update else get_messenger_contact(contact_item_id))
-    if contact is None or contact.owner_agent_id != agent_id:
+    if contact is None or (owner_agent_ids is not None and contact.owner_agent_id not in owner_agent_ids):
         raise MemoryNotFoundError("Contact not found.")
     return _read(contact)
 

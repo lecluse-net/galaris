@@ -2,9 +2,11 @@
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services import connection_functions
+from app.agent import Agent, Title
+from app.services import ServiceModel, connection_functions
 from app.services.schemas import Service
 from .. import connection_service
 from ..models import Connection, ConnectionFunctionState, ServiceFunctionState
@@ -34,22 +36,28 @@ class TestDisabledFunctionNames:
     """Build the denylist consumed by the runtime."""
 
     @pytest.mark.asyncio
-    async def test_blacklist_follows_cascade(self, monkeypatch):
-        monkeypatch.setattr(connection_service, "service_can_disable", AsyncMock(return_value=True))
-        connection = Connection(id=1, service_id=7, agent_id=3, active=True)
-        conn_rows = [
-            # Re-enabled at connection level despite the global block, so it is exposed.
-            ConnectionFunctionState(connection_id=1, function_name="a", enabled=True),
-        ]
-        tool_rows = [
-            ServiceFunctionState(service_id=7, function_name="a", enabled=False),
-            ServiceFunctionState(service_id=7, function_name="b", enabled=False),  # Blocked via Tool.
-        ]
-        with patch.object(connection_service, "list_function_states", AsyncMock(return_value=conn_rows)), \
-             patch.object(connection_service, "list_service_function_states", AsyncMock(return_value=tool_rows)):
-            disabled = await connection_service.get_disabled_function_names(connection)
+    async def test_blacklist_follows_cascade(self, db: AsyncSession) -> None:
+        chat_id = (await db.execute(select(ServiceModel.id).where(ServiceModel.code == "chat"))).scalar_one()
+        title = Title(label="Synthetic policy owner", gender="X")
+        db.add(title)
+        await db.flush()
+        agent = Agent(code="synthetic-policy-owner", title_id=title.id, first_name="Synthetic", last_name="Agent")
+        db.add(agent)
+        await db.flush()
+        connection = Connection(service_id=chat_id, agent_id=agent.id, active=True)
+        db.add(connection)
+        await db.flush()
+        db.add_all([
+            ServiceFunctionState(service_id=chat_id, function_name="voice_call_start", state="disabled", enabled=False),
+            ServiceFunctionState(service_id=chat_id, function_name="repository_show", state="disabled", enabled=False),
+            ConnectionFunctionState(connection_id=connection.id, function_name="voice_call_start", state="enabled", enabled=True),
+        ])
+        await db.flush()
 
-        assert disabled == {"b"}
+        disabled = await connection_service.get_disabled_function_names(connection)
+
+        assert {"repository_show", "voice_call_stop"} <= disabled
+        assert {"voice_call_start", "conversation_choice_resolve"}.isdisjoint(disabled)
 
 
 class TestAvailableFunctions:

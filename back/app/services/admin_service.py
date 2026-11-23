@@ -164,7 +164,7 @@ async def _lock_mutation(actor: AdministrationContext, service_id: int, expected
                          global_mutation: bool = True) -> Service:
     from app.connection.facade import administration
 
-    caller = await service.get_service_record("service_admin") if actor.agent_id is not None else None
+    caller = await service.get_service_record("service") if actor.agent_id is not None else None
     await lock_services([service_id, *([caller.id] if caller else [])])
     await actor.require()
     tool = await record(service_id)
@@ -212,7 +212,7 @@ async def refresh_batch(agent_ids: list[int], *, actor: AdministrationContext | 
             await release_db_transaction()
             result = await refresh_agents_tool_catalogs(selected, allow_stdio=False)
             if actor is not None:
-                caller = await service.get_service_record("service_admin")
+                caller = await service.get_service_record("service")
                 if caller is not None:
                     await lock_services([caller.id])
                 await actor.require()
@@ -315,7 +315,7 @@ async def create(actor: AdministrationContext, definition: dict[str, Any] | None
         _secret_definition(data)
         if data.mcp_config:
             await resolve_destination(data.mcp_config.url or "", allow_private=False)
-    caller = await service.get_service_record("service_admin")
+    caller = await service.get_service_record("service")
     if caller is not None:
         await lock_services([caller.id])
     await actor.require()
@@ -542,7 +542,7 @@ async def function_list(actor: AdministrationContext, service_id: int, connectio
         from .mcp_loader import conversation_tool_names, load_mcp_tools
         is_native = item["source"] == "native"
         definition = next((definition for definition in load_mcp_tools() if definition.name == name and definition.service_code in native_service_codes_for_service(tool)), None) if is_native else None
-        policy = connections.project_function_policy(name, locals_, globals_, default=definition.approval if definition else "enabled", native=definition is not None)
+        policy = connections.project_function_policy(name, locals_, globals_, default=definition.default_state if definition else "enabled", native=definition is not None)
         effective = policy["effective"]
         conversation_enabled = (definition is None or definition.conversation_policy != "forbidden") and name in conversation_tool_names(
             tool, source="native" if is_native else "external",

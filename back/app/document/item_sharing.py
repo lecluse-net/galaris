@@ -19,6 +19,7 @@ from .access import human_item_access, managed_item_agent_ids
 from .models import Document
 from .schemas import DocumentSharing, DocumentSharingUpdate, DocumentSharingLevelUpdate
 from . import sharing_inheritance
+from .tool_access import require_document_tool_scope
 
 
 async def item_actor(
@@ -134,15 +135,24 @@ async def _update_grant(item: Document, data: DocumentSharingUpdate) -> None:
     await service.commit_item_sharing(item)
 
 
-async def agent_sharing(item_id: UUID, *, agent_id: int) -> DocumentSharing:
-    """Let an agent inspect its own recipients without impersonating its human manager."""
+async def _require_agent_sharing(item: Document, agent_id: int, *, enforce_tool_scope: bool) -> None:
+    if enforce_tool_scope:
+        await require_document_tool_scope(agent_id, item.id)
+    if item.owner_agent_id == agent_id:
+        return
+    if not enforce_tool_scope or item.owner_agent_id is None:
+        raise service.DocumentPermissionError("Only the owner can manage sharing")
+    await service.assert_item_access(item, agent_id, write=True)
+
+
+async def agent_sharing(item_id: UUID, *, agent_id: int, enforce_tool_scope: bool = False) -> DocumentSharing:
+    """Read recipients as the owner or a scoped agent with document write access."""
     item = await service.item_record(item_id, revisions=False, contents=False)
     if item is None:
         raise service.DocumentNotFoundError("Memory not found")
     if item.node_kind != "document":
         raise service.DocumentPermissionError("Memories are private; sharing belongs to documents")
-    if item.owner_agent_id != agent_id:
-        raise service.DocumentPermissionError("Only the owner can manage sharing")
+    await _require_agent_sharing(item, agent_id, enforce_tool_scope=enforce_tool_scope)
     return await _sharing_state(item, manage=not item.read_only and not item.source_managed)
 
 
@@ -150,6 +160,7 @@ async def update_agent_sharing(
     item_id: UUID, *, agent_id: int, kind: Literal["agent", "user", "team"],
     target_id: int, access: Literal["read", "edit", "none"],
     expected_lock_version: int | None = None, document_only: bool = False,
+    enforce_tool_scope: bool = False,
 ) -> DocumentSharing:
     """Update one explicit grant atomically; edits do not grant the right to reshare."""
     await sharing_inheritance.lock_sharing()
@@ -159,8 +170,9 @@ async def update_agent_sharing(
         raise service.DocumentNotFoundError("Memory not found")
     if item.node_kind != "document":
         raise service.DocumentConflictError("The selected memory is not a document.")
-    if item.owner_agent_id != agent_id or item.read_only or item.source_managed:
+    if item.read_only or item.source_managed:
         raise service.DocumentPermissionError("Only the owner of an editable item can manage sharing")
+    await _require_agent_sharing(item, agent_id, enforce_tool_scope=enforce_tool_scope)
     if expected_lock_version is not None and item.lock_version != expected_lock_version:
         # This check precedes every grant mutation. A stale version (including one
         # invalidated by a content edit) is safe for the model to reload and retry.
@@ -178,4 +190,7 @@ async def update_agent_sharing(
         expected_lock_version=item.lock_version,
     )
     await _update_grant(item, data)
-    return await agent_sharing(item_id, agent_id=agent_id)
+    refreshed = await service.item_record(item_id, revisions=False, contents=False)
+    assert refreshed is not None
+    can_manage = refreshed.owner_agent_id == agent_id or (await service.effective_access(refreshed, agent_id)).can_write
+    return await _sharing_state(refreshed, manage=can_manage)

@@ -3,6 +3,7 @@ export default {
     permissions: {
       dashboard: {
         editManagementScope: 'Périmètre de {tool} (services.management_scope)',
+        voiceAutoAnswer: 'Réponse automatique aux appels vocaux',
         defaultScope: 'Valeur par défaut : {value}',
         managementScopeHint: 'Seul un gestionnaire global peut déléguer ce périmètre à l’agent.',
         description: 'Tous les droits d’un agent, leurs règles héritées et leurs demandes en attente',
@@ -290,6 +291,7 @@ export default {
     permissions: {
       dashboard: {
         editManagementScope: 'Scope for {tool} (services.management_scope)',
+        voiceAutoAnswer: 'Automatically answer voice calls',
         defaultScope: 'Default: {value}',
         managementScopeHint: 'Only a global manager can delegate this scope to the agent.',
         description: 'All agent permissions, inherited policies and pending requests',
@@ -574,6 +576,7 @@ export default {
     permissions: {
       dashboard: {
         editManagementScope: '{tool} 的范围 (services.management_scope)',
+        voiceAutoAnswer: '自动接听语音通话',
         customizedOnly: '自定义设置',
         customizedHint: '显示此智能体的专属设置和已保存的决定。停用的工具仅计一次，其功能不计入。隐藏全局规则和待处理请求。',
         resetFilters: '重置筛选条件',

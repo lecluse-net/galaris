@@ -157,7 +157,7 @@ async def list_available_connection_functions(
             connection_states = {row.function_name: stored_function_state(row) for row in local_rows if (row.capability_kind or "tool") == "tool"}
             tool_states = {row.function_name: stored_function_state(row) for row in global_rows if (row.capability_kind or "tool") == "tool"}
         policy = project_function_policy(name, connection_states, tool_states, capability_kind=kind,
-                                         default=definition.approval if definition else "enabled",
+                                         default=definition.default_state if definition else "enabled",
                                          native=definition is not None)
         functions.append({**policy, "key": identity, "description": description, "source": source,
                           "effective": connection.active and policy["effective"],

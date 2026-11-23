@@ -78,7 +78,7 @@ async def test_task_access_separates_delegated_reads_from_management_and_live_ad
         await mcp_stop_task(ctx, uri)
     target.requester_agent_id = None
 
-    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "platform_admin"))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "task"))
     connection = Connection(agent_id=peer.id, service_id=tool.id, active=False)
     db.add(connection)
     await db.flush()
@@ -86,17 +86,27 @@ async def test_task_access_separates_delegated_reads_from_management_and_live_ad
         await mcp_stop_task(ctx, uri)
     connection.active = True
     await db.flush()
-    from app.connection.connection_service import set_param
-    await set_param(connection.id, "services.management_scope", "all", scope_edit_authorized=True)
+    from app.connection.facade import set_management_scope
+    await set_management_scope(connection.id, "team", authorized=True)
     assert (await mcp_get_task(ctx, uri))["id"] == str(target.id)
     assert await read_task_resource(target.id, actor_agent_id=peer.id) is not None
+    assert await read_task_resource(target.id, actor_agent_id=peer.id, allow_delegation=False) is None
     assert [row["id"] for row in await list_task_resources(actor_agent_id=peer.id)] == [str(target.id)]
+    from app.conversation import ConversationTurn
+    from app.conversation.mcp import conversation_task_status
+
+    turn = ConversationTurn(room_id=uuid4(), round_id=uuid4(), agent_id=peer.id, language="en",
+        origin="text", objective="Inspect the Task", messages=())
+    chat = McpToolContext(agent_id=peer.id, runtime="internal", resources={"conversation_turn": turn})
+    assert (await conversation_task_status(chat, task_id=uri))["id"] == str(target.id)
     connection.active = False
     await db.flush()
     with pytest.raises(PermissionError):
         await mcp_get_task(ctx, uri)
     with pytest.raises(PermissionError):
         await mcp_stop_task(ctx, uri)
+    with pytest.raises(ValueError, match="not found"):
+        await conversation_task_status(chat, task_id=uri)
     assert target.status == TaskStatus.CREATE
     connection.active = True
     await db.flush()
@@ -335,7 +345,7 @@ async def test_llm_call_and_llm_calls_return_complete_json_and_ids(db: AsyncSess
     from sqlalchemy import select
     from app.connection import Connection
     from app.services import ServiceModel
-    admin_tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "platform_admin"))
+    admin_tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "service"))
     assert admin_tool is not None
     ctx = McpToolContext(agent_id=agent.id, runtime="internal")
     with pytest.raises(PermissionError):
@@ -345,8 +355,8 @@ async def test_llm_call_and_llm_calls_return_complete_json_and_ids(db: AsyncSess
     connection = Connection(agent_id=agent.id, service_id=admin_tool.id, active=True)
     db.add(connection)
     await db.commit()
-    from app.connection.connection_service import set_param
-    await set_param(connection.id, "services.management_scope", "all", scope_edit_authorized=True)
+    from app.connection.facade import set_management_scope
+    await set_management_scope(connection.id, "all", authorized=True)
     detail = json.loads(await mcp_llm_call(ctx, str(first.id)))
     ids = json.loads(await mcp_llm_calls(ctx, start, end, limit=2))
     connection.active = False

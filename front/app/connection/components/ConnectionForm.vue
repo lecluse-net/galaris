@@ -6,6 +6,7 @@
           v-model="form.agent_id"
           :options="agentOptions"
           :label="t('connection.agent')"
+          :disable="isSystemConnection"
           filled
           emit-value
           map-options
@@ -17,6 +18,7 @@
           :tools="selectableTools"
           :label="t('connection.tool')"
           :clearable="false"
+          :disable="isSystemConnection"
           :dense="false"
           filled
           @update:model-value="onToolChange"
@@ -238,7 +240,7 @@
 
     <div class="connection-form-actions row items-center q-mt-md">
       <q-toggle
-        v-if="selectedTool?.code !== 'console' || consoleTarget === 'external'"
+        v-if="!isSystemConnection && (selectedTool?.code !== 'console' || consoleTarget === 'external')"
         v-model="form.active"
         :label="t('connection.activeConnection')"
         color="positive"
@@ -425,6 +427,7 @@ interface Service {
   code: string
   label: string
   can_edit?: boolean
+  can_disable?: boolean
   has_mcp?: boolean
   mcp_config?: { type?: string } | null
   connection_schema?: {
@@ -533,6 +536,7 @@ const selectableTools = computed(() => props.serviceOptions.map(option => {
 const selectedTool = computed(() =>
   form.value.service_id ? props.tools.find(t => t.id === form.value.service_id) ?? null : null
 )
+const isSystemConnection = computed(() => props.connection != null && selectedTool.value?.can_disable === false)
 
 const selectedAgent = computed(() =>
   form.value.agent_id ? props.agentOptions.find(agent => agent.value === form.value.agent_id) ?? null : null

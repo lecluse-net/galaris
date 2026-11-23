@@ -13,7 +13,7 @@ from loguru import logger
 from app.documentation import facade as documentation
 from app.llm import EmbeddingError, configured_embedding_model
 
-from .admin_access import require_documentation_access
+from .admin_access import GALARIS_ADMIN_SERVICE_CODE, require_documentation_access
 
 
 _INDEX_BATCH_SIZE = 8
@@ -50,7 +50,7 @@ async def documentation_search(agent_id: int, query: str, *, language: str = "",
     from app.connection import facade as connections
 
     await require_documentation_access(agent_id)
-    if not await connections.has_active_service_function(agent_id, "platform_admin", "documentation_search"):
+    if not await connections.has_active_service_function(agent_id, GALARIS_ADMIN_SERVICE_CODE, "documentation_search"):
         raise PermissionError("The documentation_search function is disabled.")
     if not query.strip() or len(query) > 1000 or not 1 <= limit <= 50:
         raise ValueError("Use a query of 1–1000 characters and a limit of 1–50 results.")
@@ -78,15 +78,21 @@ async def documentation_search(agent_id: int, query: str, *, language: str = "",
 async def refresh_documentation_index() -> None:
     """Scheduler root: bounded, restartable batches, with no inference on the request path."""
     from app.connection import facade as connections
+    from app.connection import Connection
     from sqlalchemy import func, select
     from core.database import get_db
+    from .models import Service
 
     global _index_retry_at, _index_retry_delay
     if monotonic() < _index_retry_at:
         return
 
     # The scheduler owns this callback's session and transaction.
-    if not await connections.has_any_active_tool_connection("platform_admin"):
+    ids = await get_db().scalars(select(Connection.id).join(Service).where(
+        Service.code == GALARIS_ADMIN_SERVICE_CODE, Connection.active.is_(True),
+    ))
+    states = await connections.resolve_function_states_many(ids.all(), "documentation_catalog")
+    if "enabled" not in states.values():
         return
     model = await configured_embedding_model()
     if model is None:

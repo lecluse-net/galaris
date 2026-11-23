@@ -135,7 +135,7 @@ async def list_tools(search: str, skip: int, limit: int) -> dict[str, Any]:
     values: list[dict[str, Any]] = []
     for record in selected:
         if record.id in current:
-            values.append({"id": record.id, "code": record.code, "label": record.label,
+            values.append({"agent_id": None, "id": record.id, "code": record.code, "label": record.label,
                            "mandatory": not record.can_disable,
                            "human_only": record.code in HUMAN_ONLY_SERVICE_CODES,
                            "connection_schema": public_connection_schema(record.connection_schema or {})})

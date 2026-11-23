@@ -44,9 +44,8 @@ async def test_development_tool_inventory_lists_service_defaults_without_an_agen
             mcp_config={"type": "http", "url": "https://synthetic-secret.example.test/mcp"},
             conversation_tools={"external": ["lookup"]},
         )
-        search_service = await db.scalar(select(Service).where(Service.code == "search"))
         browser = await db.scalar(select(Service).where(Service.code == "browser"))
-        assert search_service is not None and browser is not None
+        assert browser is not None
         browser.connection_schema = {
             **browser.connection_schema,
             "params": {
@@ -62,8 +61,8 @@ async def test_development_tool_inventory_lists_service_defaults_without_an_agen
         db.add_all([empty, external])
         await db.flush()
         db.add_all([
-            ServiceFunctionState(service_id=search_service.id, function_name="search_web", enabled=False),
-            ServiceFunctionState(service_id=search_service.id, function_name="search_web", state="ask", capability_kind="prompt"),
+            ServiceFunctionState(service_id=browser.id, function_name="search_web", enabled=False),
+            ServiceFunctionState(service_id=browser.id, function_name="search_web", state="ask", capability_kind="prompt"),
         ])
         emails = []
         for name, privileges in (("reader", [reader_privilege]), ("visitor", [])):
@@ -104,14 +103,15 @@ async def test_development_tool_inventory_lists_service_defaults_without_an_agen
     file_read = next(tool for tool in mcp_tools_by_service_code()["file_sharing"] if tool.name == "file_read")
     assert file_read.description
     assert files["file_read"]["description"] == file_read.description
-    search = next(tool for tool in inventory["search"]["tools"] if tool["name"] == "search_web")
+    search = next(tool for tool in inventory["browser"]["tools"] if tool["name"] == "search_web")
     assert search["conversation_enabled"] is True
     assert search["default_state"] == "ask"
     assert search["service_override"] == "disabled"
-    assert inventory["search"]["connection_default"] == "active"
-    assert inventory["platform_admin"]["connection_default"] == "inactive"
+    assert inventory["browser"]["connection_default"] == "active"
+    assert inventory["galaris"]["connection_default"] == "active"
     assert inventory["topic"]["connection_default"] == "manual"
-    for code, expected in (("chat", "team"), ("skills", "personal"), ("platform_admin", "usage")):
+    assert "services.management_scope" not in inventory["galaris"]["connection_schema"]["params"]
+    for code, expected in (("chat", "team"), ("skills", "personal"), ("service", "usage")):
         settings = inventory[code]["connection_schema"]["params"]
         assert settings["services.management_scope"]["default"] == expected
         assert "services.management_scope" not in inventory[code]["global_params"]
@@ -152,7 +152,7 @@ async def test_conversation_allowlist_requires_a_human_service_editor(client, mo
     suffix = uuid4().hex
     password = "synthetic-conversation-admin"
     async with get_db_session() as db:
-        builtin_id = await db.scalar(select(Service.id).where(Service.code == "search"))
+        builtin_id = await db.scalar(select(Service.id).where(Service.code == "browser"))
         service = Service(code=f"allowlist-{suffix}", label="Synthetic MCP", mcp_config={
             "type": "http", "url": "https://tools.example.test/${connection:catalog}/mcp",
             "headers": {"X-Example-Key": "${connection:token}"},
@@ -205,7 +205,7 @@ async def test_conversation_allowlist_requires_a_human_service_editor(client, mo
     assert (await client.patch(path, json=change, headers=reader)).status_code == 403
     assert (await client.post(f"{path}/discover", headers=reader)).status_code == 403
     builtin = await client.get(f"/api/services/{builtin_id}/conversation-tools", headers=reader)
-    assert builtin.json()["tools"] == [{"name": "search_web", "source": "native", "enabled": True}]
+    assert [row for row in builtin.json()["tools"] if row["enabled"]] == [{"name": "search_web", "source": "native", "enabled": True}]
     assert (await client.post(f"/api/services/{builtin_id}/conversation-tools/discover", headers=editor)).status_code == 403
     assert not requested
     assert (await client.patch(f"/api/services/{builtin_id}/conversation-tools",

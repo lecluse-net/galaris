@@ -122,7 +122,7 @@ async def _store_image(
     return mutation.uri
 
 
-@mcp_tool("image", approval="ask", approval_reason="Creates an image in the selected authorized file destination",
+@mcp_tool("multimedia", approval="ask", approval_reason="Creates an image in the selected authorized file destination",
     name="image_from_pdf", effect_policy="non_idempotent", conversation_policy="deferred", timeout_seconds=180,
     description=(
         "Convert one physical PDF page to a faithful PNG image, without an AI model or content changes. "
@@ -174,7 +174,7 @@ async def image_from_pdf(ctx: McpToolContext, file: str, destination: str, page:
         raise RecoverableToolError(_message(language, "pdf_conversion_failed")) from exc
 
 
-@mcp_tool("image", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("multimedia", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="image_generate",
     description=(
@@ -262,7 +262,7 @@ async def generate_image(
         )) from exc
 
 
-@mcp_tool("image", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("multimedia", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="image_read",
     description=(

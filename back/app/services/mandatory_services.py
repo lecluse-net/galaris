@@ -17,9 +17,45 @@ from core.params import runtime_settings
 
 from .models import Service as ServiceModel
 from .descriptions import DESCRIPTIONS
+from .contracts import CHAT_CHANNEL_PARAM, MANAGEMENT_SCOPE_OPTIONS
 
 
-SYSTEM_SERVICE_CODES = frozenset({"galaris", "conversation", "memory", "document", "file_sharing", "agenda"})
+AGENT_DISCOVERY_TOOLS = ("agent_list", "agent_get", "team_list", "team_members")
+SERVICE_DISCOVERY_TOOLS = ("services_list",)
+ADMIN_TOOLS = ("documentation_catalog", "documentation_search", "llm_call", "llm_calls", "incidents_list", "incident_get")
+CONVERSATION_INSPECTION_TOOLS = ("conversation_round_get", "voice_turn_get")
+VOICE_TOOLS = ("voice_call_start", "voice_call_stop", "voice_call_list")
+CHAT_TOOLS = (*CONVERSATION_INSPECTION_TOOLS, *VOICE_TOOLS, "repository_show", "conversation_choice_resolve")
+CONTACT_TOOLS = ("contact_list", "contact_get", "contact_create", "contact_update")
+TASK_TOOLS = ("task_run", "task_get", "task_work_update", "task_stop")
+DOCUMENT_ANALYSIS_TOOLS = ("document_analyze", "document_analysis_get", "document_analysis_cancel")
+CONVERSATION_TASK_TOOLS = (
+    "conversation_task_submit", "conversation_task_list", "conversation_task_status", "conversation_task_pause",
+    "conversation_task_resume", "conversation_task_retry", "conversation_task_stop",
+)
+CONVERSATION_PROCESS_TOOLS = (
+    "conversation_process_start", "conversation_process_prepare", "conversation_process_pending", "conversation_process_respond",
+)
+IMAGE_TOOLS = ("image_generate", "image_read", "image_from_pdf")
+AUDIO_TOOLS = ("audio_transcribe",)
+SEARCH_TOOLS = ("search_web",)
+SPECIALIST_MEDIA_TOOLS = ("audio_read", "video_read", "sound_generate", "music_generate", "video_generate")
+
+GOAL_SELF_SERVICE_TOOLS = (
+    "goal_update_suivi", "goal_run_now", "goal_ask_referrer",
+    "goal_retrospective_evidence", "goal_retrospective_learn", "goal_retrospective_record",
+)
+
+PROCESS_SELF_SERVICE_TOOLS = (
+    "process_list", "process_get", "process_start", "process_list_runs",
+    "process_get_run", "process_analyze_run", "processus_get",
+    "process_activity_complete", "process_activity_question",
+    "process_definition_read", "process_create", "process_update", "process_validate",
+    "process_history", "process_restore", "process_archive", "process_share",
+    "process_run_inspect", "process_run_occurrence", "process_run_children", "process_run_metrics", "process_run_control", "process_run_cancel", "process_run_retry",
+)
+
+SYSTEM_SERVICE_CODES = frozenset({"galaris", "chat", "memory", "document", "file_sharing", "calendar", "contact", "task"})
 
 
 @dataclass(frozen=True)
@@ -34,17 +70,20 @@ class IntegratedServiceSpec:
     default_active: bool = False
     file_share_service: str | None = None
     messenger_service: str | None = None
-    management_scopes: tuple[str, ...] = ()
+    @property
+    def management_scopes(self) -> tuple[str, ...]:
+        return MANAGEMENT_SCOPE_OPTIONS.get(self.code, ())
 
 
 INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
-    IntegratedServiceSpec(code="agenda", label="Personal agenda", description=DESCRIPTIONS["agenda"],
+    IntegratedServiceSpec(code="calendar", label="Agenda", description=DESCRIPTIONS["calendar"],
         mcp_tools=("calendar_list", "calendar_events", "calendar_is_available", "calendar_find_free_slots",
-                   "calendar_create_event", "calendar_update_event", "calendar_delete_event"), default_active=True),
+                   "calendar_create_event", "calendar_update_event", "calendar_delete_event",
+                   "calendar_event_get", "calendar_actions", "calendar_action_set"), default_active=True),
     IntegratedServiceSpec(
-        code="service_admin", label="ServiceAdmin", description=DESCRIPTIONS["service_admin"],
-        management_scopes=("usage", "personal", "team", "all"),
+        code="service", label="Services", description=DESCRIPTIONS["service"],
         mcp_tools=(
+            *SERVICE_DISCOVERY_TOOLS,
             "service_admin_list", "service_admin_get", "service_admin_create", "service_admin_update",
             "service_admin_impact", "service_admin_delete", "service_admin_global_params_set",
             "service_admin_mcp_test", "service_admin_function_list",
@@ -54,7 +93,7 @@ INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
             "service_admin_connection_test", "service_admin_connection_function_list", "service_admin_connection_function_set",
             "service_admin_catalog_refresh",
         ),
-        default_active=False,
+        default_active=True,
     ),
     IntegratedServiceSpec(
         code="lab", label="Lab", description=DESCRIPTIONS["lab"],
@@ -117,29 +156,23 @@ INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
     IntegratedServiceSpec(
         code="multimedia", label="Multimedia",
         description=DESCRIPTIONS["multimedia"],
-        mcp_tools=("audio_read", "video_read", "sound_generate", "music_generate", "video_generate", "multimedia_get_run"),
+        mcp_tools=(*SPECIALIST_MEDIA_TOOLS, "multimedia_get_run", *IMAGE_TOOLS, *AUDIO_TOOLS),
         default_active=True,
     ),
     IntegratedServiceSpec(
         code="chat",
         label="Chat",
         description=DESCRIPTIONS["chat"],
-        mcp_tools=(),
+        mcp_tools=CHAT_TOOLS,
         default_active=True,
         messenger_service="internal",
-    ),
-    IntegratedServiceSpec(
-        code="search",
-        label="Web search",
-        description=DESCRIPTIONS["search"],
-        mcp_tools=("search_web",),
-        default_active=True,
     ),
     IntegratedServiceSpec(
         code="browser",
         label="Browser",
         description=DESCRIPTIONS["browser"],
         mcp_tools=(
+            *SEARCH_TOOLS,
             "browser_open",
             "browser_navigate",
             "browser_content",
@@ -157,35 +190,7 @@ INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
         code="galaris",
         label="Galaris",
         description=DESCRIPTIONS["galaris"],
-        mcp_tools=(
-            "agent_list", "agent_get", "team_list", "team_members",
-            "contact_list", "contact_get", "contact_create", "contact_update",
-            "task_run", "task_get", "task_stop",
-            "goal_update_suivi",
-            "goal_retrospective_evidence", "goal_retrospective_learn", "goal_retrospective_record",
-            "goal_run_now", "goal_ask_referrer",
-            "process_list", "process_get", "process_start", "process_list_runs",
-            "process_get_run", "process_analyze_run", "processus_get",
-            "process_activity_complete", "process_activity_question",
-            "process_definition_read", "process_create", "process_update", "process_validate",
-            "process_history", "process_restore", "process_archive", "process_share",
-            "process_run_inspect", "process_run_occurrence", "process_run_children", "process_run_metrics", "process_run_control", "process_run_cancel", "process_run_retry",
-            "document_analyze", "document_analysis_get", "document_analysis_cancel",
-            "services_list",
-        ),
-        default_active=True,
-    ),
-    IntegratedServiceSpec(
-        code="conversation",
-        label="Conversation",
-        description=DESCRIPTIONS["conversation"],
-        mcp_tools=(
-            "document_show", "repository_show", "conversation_task_submit", "conversation_task_list",
-            "conversation_task_status", "conversation_task_pause", "conversation_task_resume",
-            "conversation_task_retry", "conversation_task_stop", "conversation_choice_resolve",
-            "conversation_process_start", "conversation_process_prepare",
-            "conversation_process_pending", "conversation_process_respond",
-        ),
+        mcp_tools=ADMIN_TOOLS,
         default_active=True,
     ),
     IntegratedServiceSpec(
@@ -202,8 +207,14 @@ INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
     ),
     IntegratedServiceSpec(
         code="document", label="Documents", description=DESCRIPTIONS["document"],
-        mcp_tools=("document_sharing", "document_share", "mindmap_create", "mindmap_read", "mindmap_add", "mindmap_edit"), default_active=True,
+        mcp_tools=("document_sharing", "document_share", "document_revision_list", "document_revision_compare",
+                    "document_show", *DOCUMENT_ANALYSIS_TOOLS, "mindmap_create", "mindmap_read", "mindmap_add", "mindmap_edit"),
+        default_active=True,
     ),
+    IntegratedServiceSpec(code="contact", label="Contact", description=DESCRIPTIONS["contact"],
+                          mcp_tools=CONTACT_TOOLS, default_active=True),
+    IntegratedServiceSpec(code="task", label="Tasks", description=DESCRIPTIONS["task"],
+                          mcp_tools=(*TASK_TOOLS, *CONVERSATION_TASK_TOOLS), default_active=True),
     IntegratedServiceSpec(
         code="file_sharing",
         label="File sharing",
@@ -212,15 +223,17 @@ INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
             "file_schemes", "file_list", "file_info", "file_search",
             "file_read", "file_create", "file_write", "file_append", "file_edit",
             "file_copy", "file_move", "file_rename", "file_delete", "file_to_pdf",
+            "dataset_query",
         ),
         default_active=True,
     ),
     IntegratedServiceSpec(
-        code="process_admin",
-        management_scopes=("usage", "personal", "team", "all"),
-        label="Process administration",
-        description=DESCRIPTIONS["process_admin"],
+        code="process",
+        label="Processes",
+        description=DESCRIPTIONS["process"],
         mcp_tools=(
+            *PROCESS_SELF_SERVICE_TOOLS,
+            *CONVERSATION_PROCESS_TOOLS,
             "process_admin_engines",
             "process_admin_sync",
             "process_admin_list",
@@ -237,12 +250,12 @@ INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
             "process_admin_analyze_run",
             "process_admin_delete_run",
         ),
-        default_active=False,
+        default_active=True,
     ),
     IntegratedServiceSpec(
-        code="agent_admin", label="AgentAdmin", description=DESCRIPTIONS["agent_admin"],
-        management_scopes=("usage", "team", "all"),
+        code="agent", label="Agent", description=DESCRIPTIONS["agent"],
         mcp_tools=(
+            *AGENT_DISCOVERY_TOOLS,
             "agent_create", "agent_update", "agent_delete", "agent_options",
             "agent_avatar_set", "agent_avatar_delete", "agent_avatar_generate",
             "agent_team_list", "agent_team_set", "agent_service_list",
@@ -254,7 +267,7 @@ INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
             "agent_title_list", "agent_title_create", "agent_title_update", "agent_title_delete",
             "agent_group_list", "agent_group_create", "agent_group_update", "agent_group_delete",
         ),
-        default_active=False,
+        default_active=True,
     ),
     IntegratedServiceSpec(
         code="topic",
@@ -274,11 +287,11 @@ INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
         default_active=False,
     ),
     IntegratedServiceSpec(
-        code="goal_management",
-        management_scopes=("usage", "personal", "team", "all"),
-        label="Gestion des objectifs",
-        description=DESCRIPTIONS["goal_management"],
+        code="goal",
+        label="Goals",
+        description=DESCRIPTIONS["goal"],
         mcp_tools=(
+            *GOAL_SELF_SERVICE_TOOLS,
             "goal_create",
             "goal_update",
             "goal_pause",
@@ -286,25 +299,15 @@ INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
             "goal_complete",
             "goal_delete",
         ),
-        default_active=False,
+        default_active=True,
     ),
     IntegratedServiceSpec(
         code="skills",
-        management_scopes=("usage", "personal", "team", "all"),
         label="Skills",
         description=DESCRIPTIONS["skills"],
         mcp_tools=("skills_list", "skill_read", "skill_update", "skill_set_enabled", "skill_delete",
                    "skill_set_authorization", "skill_set_category_authorization", "skill_release_ownership"),
         default_active=True,
-    ),
-    IntegratedServiceSpec(
-        code="platform_admin",
-        management_scopes=("usage", "personal", "team", "all"),
-        label="Administration",
-        description=DESCRIPTIONS["platform_admin"],
-        mcp_tools=("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls",
-                   "documentation_catalog", "documentation_search", "incidents_list", "incident_get"),
-        default_active=False,
     ),
     IntegratedServiceSpec(
         code="console",
@@ -323,25 +326,6 @@ INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
         auto_connect_agents=False,
         default_active=True,
         file_share_service="console",
-    ),
-    IntegratedServiceSpec(
-        code="image",
-        label="Image",
-        description=DESCRIPTIONS["image"],
-        mcp_tools=("image_generate", "image_read", "image_from_pdf"),
-        default_active=True,
-    ),
-    IntegratedServiceSpec(
-        code="audio",
-        label="Audio",
-        description=DESCRIPTIONS["audio"],
-        mcp_tools=("audio_transcribe",),
-    ),
-    IntegratedServiceSpec(
-        code="voice",
-        label="Voice",
-        description=DESCRIPTIONS["voice"],
-        mcp_tools=("voice_call_start", "voice_call_stop", "voice_call_list"),
     ),
 )
 
@@ -569,6 +553,12 @@ def mandatory_service_rows() -> list[dict[str, Any]]:
             }
         )
         params = cast(dict[str, dict[str, Any]], connection_schema.get("params") or {})
+        if spec.code == "chat":
+            params[CHAT_CHANNEL_PARAM] = {
+                **_param("boolean", required=False, default="true"),
+                "label": "services.connectionParamLabels.chatChannel",
+                "description": "services.connectionParamDescriptions.chatChannel",
+            }
         if spec.management_scopes:
             from .contracts import default_management_scope
             from .parameter_definitions import management_scope_parameter
@@ -580,7 +570,7 @@ def mandatory_service_rows() -> list[dict[str, Any]]:
                 scope["description"] = "services.connectionParamDescriptions.skillsScope"
                 for option in scope["options"]:
                     option["label"] = f"services.connectionParamOptions.skillsScope.{option['value']}"
-            connection_schema["params"] = params
+        connection_schema["params"] = params
         for order, (name, definition) in enumerate(params.items()):
             definition["order"] = order
             definition.setdefault("label", f"services.connectionParamLabels.{name}")
@@ -628,18 +618,23 @@ def mandatory_service_rows() -> list[dict[str, Any]]:
         })
     from .capabilities import capabilities_from_values
     for row in rows:
-        row["capabilities"] = ["internal.calendar"] if row["code"] == "agenda" else capabilities_from_values(row)
+        row["capabilities"] = ["internal.calendar"] if row["code"] == "calendar" else capabilities_from_values(row)
     return rows
 
 
 async def sync_mandatory_services() -> list[ServiceModel]:
     """Apply the module DataSource through the DbAdmin merge engine."""
     from core.dbadmin import reconcile_dataset
-    from .dbadmin import datasets
+    from .builtin_merge import merge_builtin_services, merge_conversation_into_chat, merge_media_and_search_services
+    from .dbadmin import datasets, move_galaris_function_policies
 
     db = get_db()
     for dataset in datasets():
         await reconcile_dataset(db, dataset)
+    await move_galaris_function_policies(db)
+    await merge_builtin_services(db)
+    await merge_conversation_into_chat(db)
+    await merge_media_and_search_services(db)
     await db.flush()
     codes = tuple(str(row["code"]) for row in mandatory_service_rows())
     synced = list(
@@ -654,9 +649,11 @@ async def sync_mandatory_services() -> list[ServiceModel]:
 
 
 async def initialize_admin_agent_connections(agent_id: int) -> None:
-    """Grant maximum native permissions once, when the Galaris assistant is created."""
+    """Seed native permissions once, when the Galaris assistant is created."""
     from app.connection import Connection
-    from app.connection.facade import get_or_create_connection, set_params_bulk, set_connection_function_state
+    from app.connection.facade import (
+        get_or_create_connection, set_connection_function_state, set_management_scope, set_voice_auto_answer,
+    )
     from .contracts import MANAGEMENT_SCOPE_PARAM
     from .mcp_loader import load_mcp_tools, native_service_codes_for_service
 
@@ -674,9 +671,10 @@ async def initialize_admin_agent_connections(agent_id: int) -> None:
         )
     ):
         connection.active = True
-        if MANAGEMENT_SCOPE_PARAM in tool.connection_schema.get("params", {}):
-            await set_params_bulk(connection.id, {MANAGEMENT_SCOPE_PARAM: "all"},
-                                  commit=False, scope_edit_authorized=True)
+        if tool.code not in {"calendar", "contact", "document", "goal", "process", "task"} and MANAGEMENT_SCOPE_PARAM in tool.connection_schema.get("params", {}):
+            await set_management_scope(connection.id, "all", commit=False, authorized=True)
+        if tool.code == "chat":
+            await set_voice_auto_answer(connection.id, True, commit=False)
         codes = native_service_codes_for_service(tool)
         for definition in definitions:
             if definition.service_code in codes:

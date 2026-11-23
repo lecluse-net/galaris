@@ -83,11 +83,39 @@ async def list_messenger_contacts(
 ) -> tuple[tuple[MessengerContactRecord, ...], int]:
     """List active contacts; supplied identity collections select their union."""
 
+    return await _list_messenger_contacts(
+        MemoryItem.owner_agent_id == owner_agent_id, query=query, limit=limit, offset=offset,
+        contact_item_id=contact_item_id, messenger_identities=messenger_identities,
+        galaris_user_ids=galaris_user_ids,
+    )
+
+
+async def list_messenger_contacts_for_owners(
+    *, owner_agent_ids: Collection[int] | None, query: str, limit: int, offset: int,
+) -> tuple[tuple[MessengerContactRecord, ...], int]:
+    """Page contacts for authorized owners. None explicitly selects all owners."""
+    owner_filter = (
+        MemoryItem.owner_agent_id.is_not(None) if owner_agent_ids is None
+        else MemoryItem.owner_agent_id.in_(owner_agent_ids)
+    )
+    return await _list_messenger_contacts(owner_filter, query=query, limit=limit, offset=offset)
+
+
+async def _list_messenger_contacts(
+    owner_filter: ColumnElement[bool],
+    *,
+    query: str,
+    limit: int,
+    offset: int,
+    contact_item_id: UUID | None = None,
+    messenger_identities: Collection[tuple[str, str]] | None = None,
+    galaris_user_ids: Collection[int] | None = None,
+) -> tuple[tuple[MessengerContactRecord, ...], int]:
     bounded_limit = max(1, min(limit, 500))
     bounded_offset = max(0, offset)
     normalized_query = " ".join(query.split())[:500]
     filters = [
-        MemoryItem.owner_agent_id == owner_agent_id,
+        owner_filter,
         MemoryItem.source_managed.is_(True),
         MemoryItem.managed_source_kind == MESSENGER_CONTACT_SOURCE_KIND,
     ]
@@ -107,10 +135,11 @@ async def list_messenger_contacts(
             ))
         if not identity_conditions:
             return (), 0
-        filters.append(MemoryItem.id.in_(select(MemoryContactIdentity.contact_item_id).where(
-            MemoryContactIdentity.owner_agent_id == owner_agent_id,
+        filters.append(exists(select(MemoryContactIdentity.id).where(
+            MemoryContactIdentity.contact_item_id == MemoryItem.id,
+            MemoryContactIdentity.owner_agent_id == MemoryItem.owner_agent_id,
             or_(*identity_conditions),
-        ).distinct()))
+        )))
     if normalized_query:
         pattern = f"%{normalized_query}%"
         filters.append(

@@ -21,7 +21,7 @@ from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
 from core.database import get_db
 from core.i18n import default_language, is_supported, render_prompt, t
 from core.util import as_dict, visible_text
-from .access import agent_task_filter, require_agent_task_access
+from .access import agent_task_filter, require_agent_task_access, task_management_scope
 from app.agent import objective_blocker
 
 _OBJECTIVES_LIMIT = 4_000
@@ -76,7 +76,7 @@ def _message(key: str, language: str, **values: Any) -> str:
     return render_prompt(t(f"task_mcp.{key}", language), **values)
 
 
-@mcp_tool("galaris", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+@mcp_tool("task", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
 
     name="task_get",
     description=(
@@ -86,7 +86,7 @@ def _message(key: str, language: str, **values: Any) -> str:
         "amendment eligibility, and explicit "
         "waits such as the colleague, question, and deadline. Accept a canonical "
         "galaris://task/ URI, a full UUID, or a unique UUID prefix. Inspect your own Task "
-        "or a delegation you requested. For a sibling Task you cannot access, ask its coordinator "
+        "or a delegation you requested, and Tasks covered by your Task connection scope. For a sibling Task you cannot access, ask its coordinator "
         "for the contribution your step needs."
     ),
     effect_policy="read",
@@ -99,11 +99,11 @@ async def mcp_get_task(
     """Return the main attributes of a task."""
 
     language = await context_language(ctx)
-    task = await _resolve_task(task_id, language=language)
+    task = await _resolve_task(task_id, language=language, actor_agent_id=ctx.agent_id)
     if task is None:
-        raise ValueError(_message("task_not_found", language, task_id=task_id))
+        raise PermissionError(_message("task_not_found", language, task_id=task_id))
     await require_agent_task_access(task, ctx.agent_id)
-    return await get_task(task_id, language=language)
+    return await get_task(task.id, language=language)
 
 
 async def _work_update_preflight(_ctx: McpToolContext, arguments: dict[str, Any]) -> dict[str, Any]:
@@ -113,7 +113,7 @@ async def _work_update_preflight(_ctx: McpToolContext, arguments: dict[str, Any]
     return {}
 
 
-@mcp_tool("galaris", name="task_work_update", approval="enabled",
+@mcp_tool("task", name="task_work_update", approval="enabled",
     approval_reason="Record bounded progress on the executing agent's own Task",
     authorization_preflight=_work_update_preflight,
     description=(
@@ -149,11 +149,11 @@ async def mcp_task(ctx: McpToolContext, task_id: str) -> str:
     """Return the complete JSON representation of a task."""
 
     language = await context_language(ctx)
-    task = await _resolve_task(task_id, language=language)
+    task = await _resolve_task(task_id, language=language, actor_agent_id=ctx.agent_id)
     if task is None:
-        raise ValueError(_message("task_not_found", language, task_id=task_id))
+        raise PermissionError(_message("task_not_found", language, task_id=task_id))
     await require_agent_task_access(task, ctx.agent_id)
-    payload = await inspect_task(task_id, language=language)
+    payload = await inspect_task(task.id, language=language)
     return json.dumps(payload, ensure_ascii=False)
 
 
@@ -187,7 +187,7 @@ async def mcp_list_paused_tasks(
     return await list_paused_tasks(ctx, limit=limit)
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("task", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="task_stop",
     description=(
@@ -206,11 +206,11 @@ async def mcp_stop_task(
     return await stop_task(ctx, task_id=task_id, reason=reason)
 
 
-@mcp_tool("galaris", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("task", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="task_run",
     description=(
-        "Create a child task delegated to a peer and return its canonical galaris://task/ URI. Never target your own "
+        "Create a child task for a peer in your Task connection scope and return its canonical galaris://task/ URI. Never target your own "
         "agent_id; perform that work directly. Write `objective` as a rich-text HTML fragment with a direct instruction to the "
         "recipient. Your task waits and resumes automatically with the child result. Use this "
         "for delegated work; use messenger_send_message_to_user for conversation. `effort` may "
@@ -238,15 +238,15 @@ async def mcp_run_task(
     blocked = await delegation_blocked_message(ctx.task_id)
     if blocked is not None:
         raise ValueError(blocked)
+    from app.agent import require_peer_interaction
+    await require_peer_interaction(ctx.agent_id, agent_id)
+    scope = await task_management_scope(ctx.agent_id)
+    scope.require(agent_id)
     if not await _delegation_target_exists(agent_id):
         language = await _context_language(ctx)
         raise ValueError(
             _message("agent_not_found", language, agent_id=agent_id)
         )
-    from app.agent import require_agent_contact
-    from app.services import has_galaris_admin_access
-    if not await has_galaris_admin_access(ctx.agent_id):
-        await require_agent_contact(ctx.agent_id, peer_agent_id=agent_id)
     task_id = await run_task(
         requester_agent_id=ctx.agent_id,
         agent_id=agent_id,
@@ -943,9 +943,9 @@ async def stop_task(
 ) -> dict[str, Any]:
     """Stop an active root task and all unfinished descendants."""
     language = await _context_language(ctx)
-    target = await _resolve_task(task_id, language=language)
+    target = await _resolve_task(task_id, language=language, actor_agent_id=ctx.agent_id, manage=True)
     if target is None:
-        raise ValueError(
+        raise PermissionError(
             _message("task_not_found", language, task_id=task_id)
         )
     await require_agent_task_access(target, ctx.agent_id, manage=True)
@@ -1063,9 +1063,14 @@ async def _resolve_task(
     task_id: str | UUID,
     *,
     language: str | None = None,
+    actor_agent_id: int | None = None,
+    manage: bool = False,
 ) -> Task | None:
     """Resolve a task by canonical URI, full UUID, or unique UUID prefix."""
     db = get_db()
+    statement = select(Task)
+    if actor_agent_id is not None:
+        statement = statement.where(await agent_task_filter(actor_agent_id, manage=manage))
     selector = _task_selector(task_id)
     raw_id = str(selector).strip()
     try:
@@ -1075,7 +1080,7 @@ async def _resolve_task(
         if len(raw_id) < 8:
             raise ValueError(_message("invalid_uuid", lang, task_id=task_id)) from None
         query = (
-            select(Task)
+            statement
             .where(cast(Task.id, String).ilike(f"{raw_id}%"))
             .limit(2)
         )
@@ -1087,7 +1092,7 @@ async def _resolve_task(
             )) from None
         return matches[0] if matches else None
 
-    result = await db.execute(Task.histo_filter(select(Task).where(Task.id == task_uuid)))
+    result = await db.execute(Task.histo_filter(statement.where(Task.id == task_uuid)))
     return result.scalar_one_or_none()
 
 

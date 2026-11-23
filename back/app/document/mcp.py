@@ -15,6 +15,7 @@ from .formats import DocumentRevisionRegion
 from .mindmap import MindMap, MindMapNode, NodeKey, NodeTitle
 from .mindmap.commands import AddBranch, BranchCommand, BranchCommandError, NewBranch, apply_commands
 from .schemas import DocumentPayload, DocumentUpdate
+from .tool_access import require_document_tool_scope
 
 DocumentUri = Annotated[str, Field(pattern=r"^document://[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$")]
 MindMapUri = DocumentUri
@@ -40,6 +41,7 @@ def _apply_mindmap_commands(mindmap: MindMap, commands: list[BranchCommand]) -> 
 async def document_revision_list(ctx: McpToolContext, document_id: DocumentUri,
     offset: Annotated[int, Field(ge=0)] = 0, limit: Annotated[int, Field(ge=1, le=50)] = 20) -> str:
     identity = _identity(document_id)
+    await require_document_tool_scope(ctx.agent_id, identity)
     page = await resource_service.list_document_content_revisions(identity, actor_agent_id=ctx.agent_id,
         offset=offset, limit=limit)
     return json.dumps({"uri": f"document://{identity}", **page.model_dump(mode="json", exclude={
@@ -54,7 +56,9 @@ async def document_revision_list(ctx: McpToolContext, document_id: DocumentUri,
         idempotence="read_only", receipt="resource"), effect_policy="read", concurrency_policy="safe")
 async def document_revision_compare(ctx: McpToolContext, document_id: DocumentUri,
     before_revision: RevisionNumber, after_revision: RevisionNumber, region: DocumentRevisionRegion | None = None) -> str:
-    result = await resource_service.compare_document_content_revisions(_identity(document_id), before_revision,
+    identity = _identity(document_id)
+    await require_document_tool_scope(ctx.agent_id, identity)
+    result = await resource_service.compare_document_content_revisions(identity, before_revision,
         after_revision, actor_agent_id=ctx.agent_id, region=region)
     return json.dumps(result, ensure_ascii=False)
 
@@ -69,6 +73,7 @@ async def mindmap_create(ctx: McpToolContext, title: Annotated[str, Field(min_le
     path: Literal["document://"] = "document://") -> str:
     if path != "document://":
         raise ValueError("Mind maps use the document:// collection")
+    await require_document_tool_scope(ctx.agent_id)
     mindmap = MindMap(version=1, nodes=[MindMapNode(id="root", parent=None, title=root_title if root_title is not None else title)])
     if branches:
         mindmap = _apply_mindmap_commands(mindmap, [*branches])
@@ -90,6 +95,7 @@ async def mindmap_read(ctx: McpToolContext, document_id: MindMapUri,
     if offset < 0 or not 1 <= limit <= 50:
         raise ValueError("Invalid mind map pagination")
     identity = _identity(document_id)
+    await require_document_tool_scope(ctx.agent_id, identity)
     item, content, access, _, _ = await resource_service.get_item(identity, agent_id=ctx.agent_id,
         record_llm_access=True, task_id=ctx.task_id, include_revisions=False)
     if item.document_format != "mindmap":
@@ -149,6 +155,7 @@ async def _edit_mindmap(ctx: McpToolContext, document_id: MindMapUri, expected_r
     if expected_revision < 1 or not 1 <= len(operations) <= 50:
         raise ValueError("Provide a revision and between 1 and 50 operations")
     identity = _identity(document_id)
+    await require_document_tool_scope(ctx.agent_id, identity)
     item, content, access, _, _ = await resource_service.get_item(identity, agent_id=ctx.agent_id,
         include_revisions=False)
     if not access.can_write:
@@ -161,19 +168,19 @@ async def _edit_mindmap(ctx: McpToolContext, document_id: MindMapUri, expected_r
     saved = await resource_service.update_item(identity,
         DocumentUpdate(expected_revision=expected_revision, payload=DocumentPayload(text=updated.source())),
         actor_agent_id=ctx.agent_id, actor_task_id=ctx.task_id,
-        document_revision_author_agent_id=ctx.agent_id, include_revisions=False)
+        document_revision_author_agent_id=ctx.agent_id, include_revisions=False, enforce_tool_scope=True)
     return json.dumps({"uri": f"document://{identity}", "name": saved.title, "revision": saved.revision, "total": len(updated.nodes)})
 
 
 @mcp_tool("document", name="document_sharing", approval="enabled",
     approval_reason="Read the current permissions of an accessible document",
-    description="Inspect an owned Document's grants, recipient options and lock_version. Pass its document:// URI or UUID. Use the returned recipient IDs and lock_version with document_share. Paginate options with offset/limit (50 by default, maximum 500).",
+    description="Inspect a Document's grants, recipient options and lock_version. Requires ownership or write access and a delegated Document scope. Pass its document:// URI or UUID. Use the returned recipient IDs and lock_version with document_share. Paginate options with offset/limit (50 by default, maximum 500).",
     effect_policy="read", concurrency_policy="safe")
 async def document_sharing(ctx: McpToolContext, document_id: str, search: str = "",
     kind: Literal["agent", "user", "team"] | None = None, offset: int = 0, limit: int = 50) -> str:
     if offset < 0 or not 1 <= limit <= 500:
         raise ValueError("Invalid recipient pagination")
-    state = await item_sharing.agent_sharing(_identity(document_id), agent_id=ctx.agent_id)
+    state = await item_sharing.agent_sharing(_identity(document_id), agent_id=ctx.agent_id, enforce_tool_scope=True)
     options = [option for option in state.options if (kind is None or option.kind == kind)
         and search.strip().casefold() in option.label.casefold()]
     return json.dumps({**state.model_dump(mode="json", exclude={"options"}),
@@ -229,7 +236,7 @@ async def _document_share_preflight(ctx: McpToolContext, arguments: dict[str, An
     approval_reason="Change access to a shared Document",
     authorization_preflight=_document_share_preflight,
     description=(
-        'Share an owned Document. For delivery to the human requester of your current root Task, '
+        'Share a Document you own or can edit within your delegated Document scope. For delivery to the human requester of your current root Task, '
         'pass recipient="requester" and access="read". For other recipients, pass exactly one '
         'agent_id, user_id or team_id returned by document_sharing. Get expected_lock_version '
         'from document_sharing. Access defaults to read for the requester shortcut and edit '
@@ -248,6 +255,6 @@ async def document_share(ctx: McpToolContext, document_id: str, agent_id: int | 
     state = await item_sharing.update_agent_sharing(identity, agent_id=ctx.agent_id,
         kind=kind, target_id=target, access=access or ("read" if recipient == "requester" else "edit"),
         expected_lock_version=expected_lock_version,
-        document_only=True)
+        document_only=True, enforce_tool_scope=True)
     return json.dumps({"document_id": str(identity), "uri": f"document://{identity}",
         **state.model_dump(mode="json", exclude={"options"})}, ensure_ascii=False)

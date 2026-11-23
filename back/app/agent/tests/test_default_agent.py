@@ -9,7 +9,7 @@ from sqlalchemy import delete, select
 from app.agent.defaults import default_agent_dataset
 from app.agent.models import Agent, Title
 from app.connection import Connection
-from app.connection.facade import get_management_scope, has_active_service_function, set_params_bulk
+from app.connection.facade import get_management_scope, has_active_service_function, set_connection_function_state, set_management_scope
 from app.skill import AgentSkill, skill_service
 from app.skill.dbadmin import datasets as skill_datasets
 from app.services import ServiceModel, has_documentation_access, has_galaris_admin_access, initialize_admin_agent_connections
@@ -44,6 +44,7 @@ async def test_new_galaris_has_all_internal_tools_and_function_permissions(db):
     from app.connection.facade import resolve_function, set_connection_function_state
     from app.services import load_mcp_tools, native_service_codes_for_service
     from app.services.mandatory_services import AUTO_CONNECTED_INTEGRATED_SERVICE_CODES
+    from app.voice.facade import voice_auto_answer_agents
 
     await _admin(db)
     await reconcile_dataset(db, default_agent_dataset())
@@ -64,12 +65,13 @@ async def test_new_galaris_has_all_internal_tools_and_function_permissions(db):
             if definition.service_code in native_service_codes_for_service(tool):
                 policy = await resolve_function(connection, definition.name)
                 assert policy["effective_state"] == "enabled", definition.name
+    assert await voice_auto_answer_agents() == {agent.id}
     assert await has_active_service_function(agent.id, "topic", "topic_create")
     # Initial maximum permissions remain ordinary administrator-owned settings afterward.
-    admin_connection = next(connection for connection, tool in connections if tool.code == "agent_admin")
+    admin_connection = next(connection for connection, tool in connections if tool.code == "agent")
     await set_connection_function_state(admin_connection.id, "agent_create", "disabled", commit=False)
-    await set_params_bulk(admin_connection.id, {"services.management_scope": "team"},
-                          commit=False, scope_edit_authorized=True)
+    await set_management_scope(admin_connection.id, "team",
+                          commit=False, authorized=True)
     admin_connection.active = False
     await db.commit()
     for definition in tool_datasets():
@@ -77,7 +79,7 @@ async def test_new_galaris_has_all_internal_tools_and_function_permissions(db):
     await reconcile_dataset(db, default_agent_dataset())
     await db.refresh(admin_connection)
     assert not admin_connection.active
-    assert await get_management_scope(agent.id, "agent_admin") == "usage"
+    assert await get_management_scope(agent.id, "agent") == "usage"
     assert (await resolve_function(admin_connection, "agent_create"))["effective_state"] == "disabled"
 
 
@@ -106,10 +108,16 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     validate_avatar(agent.avatar)
     assert await has_galaris_admin_access(agent.id)
     assert await has_documentation_access(agent.id)
-    assert await has_active_service_function(agent.id, "service_admin", "service_admin_list")
-    assert await has_active_service_function(agent.id, "agent_admin", "agent_options")
-    scoped_tools = {"platform_admin", "service_admin", "agent_admin", "skills",
-                    "process_admin", "goal_management", "chat"}
+    assert await has_active_service_function(agent.id, "service", "service_admin_list")
+    assert await has_active_service_function(agent.id, "agent", "agent_options")
+    scoped_tools = {"service", "agent", "skills", "chat"}
+    assert await get_management_scope(agent.id, "galaris") == "usage"
+    assert await get_management_scope(agent.id, "process") == "personal"
+    assert await get_management_scope(agent.id, "goal") == "personal"
+    assert await get_management_scope(agent.id, "calendar") == "personal"
+    assert await get_management_scope(agent.id, "contact") == "personal"
+    assert await get_management_scope(agent.id, "document") == "personal"
+    assert await get_management_scope(agent.id, "task") == "personal"
     for service_code in scoped_tools:
         assert await get_management_scope(agent.id, service_code) == "all", service_code
     skill = await skill_service.get_by_code(skill_code)
@@ -127,14 +135,18 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     await db.flush()
     agent.profile_id = custom_profile.id
     agent.agent_driver = "hermes"
-    for service_code in scoped_tools:
+    for service_code in scoped_tools | {"contact"}:
         admin_service_id = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == service_code))
         connection = (await db.scalars(select(Connection).where(
             Connection.agent_id == agent.id, Connection.service_id == admin_service_id,
         ))).one()
-        await set_params_bulk(connection.id, {"services.management_scope": "team"},
-                              commit=False, scope_edit_authorized=True)
+        await set_management_scope(connection.id, "team",
+                              commit=False, authorized=True)
         connection.active = False
+    galaris = (await db.scalars(select(Connection).join(ServiceModel).where(
+        Connection.agent_id == agent.id, ServiceModel.code == "galaris",
+    ))).one()
+    await set_connection_function_state(galaris.id, "documentation_catalog", "disabled", commit=False)
     await db.commit()
     await skill_service.set_agent_authorization(skill.id, agent.id, "disabled")
 
@@ -148,8 +160,8 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     )
     assert not await has_galaris_admin_access(agent.id)
     assert not await has_documentation_access(agent.id)
-    assert not await has_active_service_function(agent.id, "service_admin", "service_admin_list")
-    assert not await has_active_service_function(agent.id, "agent_admin", "agent_options")
+    assert not await has_active_service_function(agent.id, "service", "service_admin_list")
+    assert not await has_active_service_function(agent.id, "agent", "agent_options")
     assert skill_code not in await skill_service.get_assigned_codes(agent.id)
     assignment = await db.scalar(select(AgentSkill).where(
         AgentSkill.agent_id == agent.id, AgentSkill.skill_id == skill.id,
@@ -160,14 +172,19 @@ async def test_seed_waits_for_manager_then_preserves_edits_revocations_and_delet
     from app.connection.models import ConnectionParam
 
     scoped_connections = (await db.execute(
-        select(Connection.active, ConnectionParam.param_value)
+        select(ServiceModel.code, Connection.active, ConnectionParam.param_value)
         .join(ServiceModel, ServiceModel.id == Connection.service_id)
         .join(ConnectionParam, ConnectionParam.connection_id == Connection.id)
-        .where(Connection.agent_id == agent.id, ServiceModel.code.in_(scoped_tools),
+        .where(Connection.agent_id == agent.id, ServiceModel.code.in_(scoped_tools | {"contact"}),
                ConnectionParam.param_name == "services.management_scope")
     )).all()
-    assert len(scoped_connections) == len(scoped_tools)
-    assert all(not active and scope == "team" for active, scope in scoped_connections)
+    assert {code: (active, scope) for code, active, scope in scoped_connections} == {
+        "service": (False, "team"),
+        "agent": (False, "team"),
+        "skills": (False, "team"),
+        "chat": (True, "team"),
+        "contact": (True, "team"),
+    }
 
     agent.soft_delete()
     await db.commit()
@@ -193,10 +210,10 @@ async def test_seed_preserves_existing_galaris_agent(db):
     assert not await has_galaris_admin_access(existing.id)
     for definition in tool_datasets():
         await reconcile_dataset(db, definition)
-    assert not await has_active_service_function(existing.id, "service_admin", "service_admin_list")
-    assert await has_active_service_function(proposal.id, "service_admin", "service_admin_list")
-    assert not await has_active_service_function(existing.id, "agent_admin", "agent_options")
-    assert await has_active_service_function(proposal.id, "agent_admin", "agent_options")
+    assert await get_management_scope(existing.id, "service") == "usage"
+    assert await has_active_service_function(proposal.id, "service", "service_admin_list")
+    assert await get_management_scope(existing.id, "agent") == "usage"
+    assert await has_active_service_function(proposal.id, "agent", "agent_options")
     # Documentation access alone must not grant the bundled assistant's skills.
     await initialize_admin_agent_connections(existing.id)
     assert await has_documentation_access(existing.id)
@@ -319,7 +336,7 @@ async def test_first_signup_immediately_proposes_manageable_galaris(client, monk
     )
     assert connections.status_code == 200, connections.text
     async with get_db_session() as db:
-        service_id = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == "agent_admin"))
+        service_id = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == "agent"))
     assert next(row for row in connections.json() if row["service_id"] == service_id)["active"] is True
     authorizations = await client.get(
         "/api/skills/authorizations", headers=headers, params={"agent_id": agent["id"]},

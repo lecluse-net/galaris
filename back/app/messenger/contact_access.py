@@ -76,8 +76,20 @@ async def require_internal_peer_contact(
     agent_id: int, peer_agent_id: int, *, connection_id: int | None = None,
 ) -> None:
     """Apply the shared peer policy to native Chat's Task-backed delivery."""
+    from app.services import ServiceModel
+    from .configuration import messenger_connection_active
+
+    active = dict((await get_db().execute(
+        select(Connection.agent_id, Connection.id).join(ServiceModel, ServiceModel.id == Connection.service_id)
+        .where(ServiceModel.code == "chat", Connection.agent_id.in_((agent_id, peer_agent_id)),
+               messenger_connection_active()),
+    )).tuples().all())
+    sender = active.get(agent_id)
+    recipient = active.get(peer_agent_id)
+    if sender is None or recipient is None or connection_id not in {None, sender}:
+        raise AgentScopeDeniedError("Contact is not authorized by the dialogue policy")
     await _require_peer_exchange(
-        agent_id, peer_agent_id, sender_connection_id=connection_id, recipient_connection_id=None,
+        agent_id, peer_agent_id, sender_connection_id=sender, recipient_connection_id=recipient,
     )
 
 

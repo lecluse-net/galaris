@@ -59,6 +59,7 @@ from .contact_directory import (
     get_messenger_contact,
     contact_labels,
     list_messenger_contacts,
+    list_messenger_contacts_for_owners,
     merge_messenger_contacts,
     update_messenger_contact,
 )
@@ -172,6 +173,7 @@ __all__ = [
     "contact_labels",
     "forget_messenger_contact",
     "list_messenger_contacts",
+    "list_messenger_contacts_for_owners",
     "merge_messenger_contacts",
     "update_messenger_contact",
     "create_mail_contact",

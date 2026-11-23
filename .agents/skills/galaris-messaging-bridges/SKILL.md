@@ -23,6 +23,11 @@ bridge concerné. Charger aussi `onebot-11` pour OneBot.
 Le sens entrant doit converger vers la même façade, qu’il parte d’un websocket inverse, d’un
 webhook push, d’un polling ou d’une boucle de synchronisation.
 
+Le Service système Chat (`chat`) porte le canal interne et les outils de choix, présentation
+de dépôt, voix et inspection des tours. `chat.channel_enabled` règle le canal de chaque
+agent. Le réglage d'instance reste dans Préférences → Messagerie. Les bridges externes et
+la réponse automatique aux appels compatibles gardent leurs réglages propres.
+
 ## Traiter un message entrant
 
 1. Authentifier et identifier la connexion avant de faire confiance au payload.
@@ -44,7 +49,7 @@ Lorsque le résultat demande un contenu rédigé durable à conserver, réviser 
 privilégier un document `document://` pertinent existant lorsque Memory
 et les fonctions nécessaires sont disponibles (Memory et File Sharing sont des services système obligatoires).
 La conversation porte la discussion et le lien vers ce document, sans entretenir une autre
-version dans un fichier `.md` ou `.html`. `memory_sharing` puis `document_share` donnent accès
+version dans un fichier `.md` ou `.html`. `document_sharing` puis `document_share` donnent accès
 au destinataire Galaris ; ni le lien ni `document_show` ne changent les droits. Une livraison
 externe de fichier conserve son propre contrat et son reçu. Respecter les ACL des ressources
 et toute désactivation d'une connexion de messagerie optionnelle.

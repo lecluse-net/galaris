@@ -1,10 +1,13 @@
 import { test, expect, mount, jsonRoute, setPrivileges } from './fixtures.mjs'
 
 const tools = [
-  ...['galaris', 'conversation', 'memory', 'file_sharing'].map((code, index) => ({
+  ...['galaris', 'chat', 'memory', 'file_sharing'].map((code, index) => ({
     id: index + 1, code, label: code, description: 'System service description.',
     can_disable: false, can_edit: false,
-    connection_schema: { params: {} }, global_params: {},
+    connection_schema: { params: code === 'chat' ? {
+      'chat.channel_enabled': { type: 'boolean', default: 'true', required: false,
+        label: 'services.connectionParamLabels.chatChannel' },
+    } : {} }, global_params: {},
   })),
   { id: 5, code: 'matrix', label: 'Optional Service', description: '**Team handbook** for this connector.',
     can_disable: true, can_edit: true, connection_schema: { params: {} }, global_params: {} },
@@ -211,12 +214,12 @@ for (const width of [390, 1400]) {
     await page.setViewportSize({ width, height: 1000 })
     await routes(page)
     const locale = width === 390 ? 'fr' : 'en'
-    const searchTool = { id: 7, code: 'search', label: 'Web search', can_edit: false, can_disable: true, connection_schema: { params: {} }, global_params: {} }
+    const browserTool = { id: 7, code: 'browser', label: 'Browser', can_edit: false, can_disable: true, connection_schema: { params: {} }, global_params: {} }
     await mount(page, 'app/connection/components/ConnectionForm.vue', { locale, privileges, props: {
       defaultAgentId: 7,
       agentOptions: [{ value: 7, label: 'Synthetic Agent', agentDriver: 'internal' }],
-      serviceOptions: [searchTool, tools[4], tools[5]].map(tool => ({ id: tool.id, label: tool.label })),
-      tools: [...tools, searchTool],
+      serviceOptions: [browserTool, tools[4], tools[5]].map(tool => ({ id: tool.id, label: tool.label })),
+      tools: [...tools, browserTool],
     } })
     const select = page.getByRole('combobox', { name: locale === 'fr' ? 'Service' : 'Service', exact: true })
     await select.click()
@@ -226,7 +229,7 @@ for (const width of [390, 1400]) {
     await expect(popup.getByRole('option', { name: 'Galaris', exact: true })).toHaveCount(0)
     await expect(popup.getByRole('option', { name: locale === 'fr' ? 'Personnalisé' : 'Custom', exact: true })).toHaveCount(0)
     await page.screenshot({ path: testInfo.outputPath('grouped-connection-tools.png'), animations: 'disabled' })
-    await popup.getByRole('option', { name: locale === 'fr' ? 'Recherche web' : 'Web search', exact: true }).click()
+    await popup.getByRole('option', { name: locale === 'fr' ? 'Navigateur' : 'Browser', exact: true }).click()
     await expect(popup).toHaveCount(0)
     await select.click()
     await page.getByRole('option', { name: 'No description', exact: true }).click()
@@ -963,7 +966,7 @@ for (const mobile of [false, true]) {
     await mount(page, 'app/services/components/ServicesList.vue', { privileges })
     await page.getByRole('tab', { name: 'Galaris built-in services', exact: true }).click()
     const rows = page.getByRole('article')
-    for (const name of ['Galaris', 'Conversation', 'Memory', 'File sharing']) {
+    for (const name of ['Galaris', 'Chat', 'Memory', 'File sharing']) {
       const row = rows.filter({ has: page.getByRole('button', { name, exact: true }) })
       await expect(row.getByRole('switch')).toHaveCount(0)
       await expect(row.getByRole('img', { name: 'Mandatory system service' })).toBeVisible()
@@ -994,10 +997,25 @@ for (const mobile of [false, true]) {
     await expect(page.getByRole('dialog')).toHaveCount(0)
   })
 
-  test(`System connections stay visible without edit or delete actions (${mobile ? 'mobile' : 'desktop'})`, async ({ page }) => {
+  test(`Chat channel settings preserve the mandatory connection (${mobile ? 'mobile' : 'desktop'})`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: mobile ? 390 : 1400, height: 1000 })
     await routes(page)
-    await mount(page, 'app/connection/components/ConnectionList.vue', { privileges })
+    await jsonRoute(page, '**/api/connections/service-options', tools.map(tool => tool.code === 'chat' ? {
+      ...tool, global_params: { 'chat.channel_enabled': { value: 'true', configured: true } },
+    } : tool))
+    let channel
+    await page.route('**/api/connections/2/params?*', route => route.fulfill({ json: {
+      ...connections[1], connection_id: 2,
+      params: channel === undefined ? {} : { 'chat.channel_enabled': channel }, configured_params: [],
+    } }))
+    await page.route('**/api/connections/2', route => {
+      expect(route.request().method()).toBe('PATCH')
+      const update = route.request().postDataJSON()
+      expect(update).toMatchObject({ agent_id: 7, service_id: 2, active: true })
+      channel = update.params['chat.channel_enabled']
+      return route.fulfill({ json: connections[1] })
+    })
+    await mount(page, 'app/connection/components/ConnectionList.vue', { privileges, dark: mobile })
     const rows = page.locator(mobile ? '.connection-mobile-card' : 'tbody tr')
     await expect(rows).toHaveCount(5)
     for (let i = 0; i < 4; i++) {
@@ -1005,10 +1023,26 @@ for (const mobile of [false, true]) {
       await expect(row.getByRole('switch')).toBeDisabled()
       await expect(row.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
       // Diagnostics and permission inspection remain usable on mandatory services.
-      await expect(row.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(0)
+      await expect(row.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(i === 1 ? 1 : 0)
       await expect(row.getByRole('button', { name: 'Delete', exact: true })).toHaveCount(0)
     }
     await expect(rows.nth(4).getByRole('switch')).toBeEnabled()
+    const chat = rows.filter({ hasText: 'Chat' })
+    const open = chat.getByRole('button', { name: 'Edit', exact: true })
+    await open.click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByText('Inherited global parameters (1)', { exact: true }).click()
+    await dialog.getByRole('button', { name: 'Customize', exact: true }).click()
+    const internalChannel = dialog.getByRole('switch', { name: 'Internal channel' })
+    await expect(internalChannel).toHaveAttribute('aria-checked', 'true')
+    await internalChannel.press('Space')
+    await dialog.getByRole('button', { name: 'Edit', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    expect(channel).toBe('false')
+    await open.click()
+    await expect(internalChannel).toHaveAttribute('aria-checked', 'false')
+    await expect(chat.getByRole('switch')).toHaveAttribute('aria-checked', 'true')
+    await dialog.screenshot({ path: testInfo.outputPath('chat-channel-settings.png'), animations: 'disabled' })
   })
 }
 

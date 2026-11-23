@@ -469,7 +469,9 @@ async def test_galaris_json_resource_can_be_copied_to_console(
         task_id: object,
         *,
         actor_agent_id: int,
+        allow_delegation: bool = True,
     ) -> dict[str, object]:
+        assert allow_delegation
         assert task_id == identifier
         assert actor_agent_id == 1
         return {

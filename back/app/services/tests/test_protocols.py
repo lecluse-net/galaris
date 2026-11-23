@@ -179,6 +179,8 @@ async def test_provider_composes_mail_calendar_and_keeps_connections_isolated(db
 
 @pytest.mark.asyncio
 async def test_protocol_upgrade_preserves_legacy_connections_secrets_and_calendar_history(db):
+    from app.services.mandatory_services import sync_mandatory_services
+
     transitions = SchemaTransitionSet(added_columns=frozenset({"services.mail_config", "services.calendar_config"}))
     assert _introduces_protocols(transitions)
     assert not _introduces_protocols(SchemaTransitionSet())
@@ -186,6 +188,10 @@ async def test_protocol_upgrade_preserves_legacy_connections_secrets_and_calenda
         messenger_config={"service": "mail"}, file_share_config={"service": "mail", "base_url": ""},
         global_params={"imap_host": {"value": "imap.example.test", "forced": True}})
     legacy_calendar = Service(code="calendar", label="Existing calendar provider", global_params={})
+    native = (await db.scalars(select(Service).where(Service.code == "calendar"))).one()
+    native.code = "agenda"
+    native_id = native.id
+    await db.flush()
     title = Title(label="Migration", gender="N")
     db.add_all([legacy_mail, legacy_calendar, title])
     await db.flush()
@@ -214,6 +220,13 @@ async def test_protocol_upgrade_preserves_legacy_connections_secrets_and_calenda
     await _convert_legacy_tools(db, transitions)
     await _convert_legacy_tools(db, transitions)
     assert await _legacy_tools_converted(db, transitions)
+    for _ in range(2):
+        await sync_mandatory_services()
+        await db.refresh(native)
+        await db.refresh(legacy_calendar)
+        assert (native.id, native.code, native.label) == (native_id, "calendar", "Agenda")
+        assert native.calendar_config is None
+        assert legacy_calendar.code == "calendar-provider"
     assert (mail.id, calendar.id, feed.id, feed.url_encrypted, legacy_mail.global_params) == original
     assert not mail.active and calendar.active
     assert (await db.scalar(select(ConnectionParam.param_value).where(ConnectionParam.connection_id == mail.id))) == secret

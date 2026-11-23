@@ -45,7 +45,7 @@ async def acquired_document_evidence(
     Unknown provider versions remain explicitly unknown. They are never presented
     as proof that today's bytes are identical to those previously analysed.
     """
-    from app.file_share import ResourceContext, resource_info
+    from app.file_share import ResourceContext, require_document_source_scope, resource_info
 
     if not task_ids or not uris:
         return []
@@ -67,9 +67,9 @@ async def acquired_document_evidence(
         uri = str(row.input["uri"])
         runtime = str(row.input.get("runtime") or "internal")
         try:
-            descriptor = await resource_info(
-                ResourceContext(agent_id=agent_id, runtime=runtime, task_id=row.task_id), uri
-            )
+            ctx = ResourceContext(agent_id=agent_id, runtime=runtime, task_id=row.task_id)
+            await require_document_source_scope(ctx, uri)
+            descriptor = await resource_info(ctx, uri)
         except PermissionError, FileNotFoundError, ValueError:
             continue
         version: dict[str, Any] = dict(row.input.get("source_version") or {})

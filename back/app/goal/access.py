@@ -8,12 +8,12 @@ from . import goal_service
 
 
 async def readable_agents(actor_agent_id: int) -> frozenset[int] | None:
-    scope = await administration_scope(actor_agent_id, "goal_management")
+    scope = await administration_scope(actor_agent_id, "goal")
     return None if scope.is_global else (scope.agent_ids or frozenset()) | {actor_agent_id}
 
 
 async def owner_scope(actor_agent_id: int, goal_id: UUID, *, manage: bool = False) -> int:
-    scope = await administration_scope(actor_agent_id, "goal_management")
+    scope = await administration_scope(actor_agent_id, "goal")
     if manage:
         scope.require_administration()
     record = await goal_service.get_by_id(goal_id, for_update=manage)

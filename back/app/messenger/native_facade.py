@@ -71,6 +71,7 @@ from .user_service import enrich_messenger_users, resolve_messenger_user
 from .native_interactions import message_interaction_answers, message_interactions, pending_room_question_deadlines
 from .facade import get_messenger, get_spec, is_kind_enabled, kind_for_tool
 from .ingest import fetch_bytes
+from .configuration import is_messenger_connection_active, messenger_connection_active
 
 
 CHAT_TOOL_CODE = "chat"
@@ -104,7 +105,7 @@ async def _internal_tool() -> Service | None:
 async def internal_connection(connection_id: int) -> NativeMessengerConnection | None:
     row = (
         await get_db().execute(
-            select(Connection, Service, Agent)
+            select(Connection, Service, Agent, messenger_connection_active())
             .join(Service, Service.id == Connection.service_id)
             .join(Agent, Agent.id == Connection.agent_id)
             .where(
@@ -115,7 +116,7 @@ async def internal_connection(connection_id: int) -> NativeMessengerConnection |
     ).one_or_none()
     if row is None:
         return None
-    connection, tool, agent = row
+    connection, tool, agent, active = row
     name = " ".join(
         part for part in (agent.first_name, agent.last_name) if part
     ).strip() or agent.code
@@ -126,7 +127,7 @@ async def internal_connection(connection_id: int) -> NativeMessengerConnection |
         agent_id=agent.id,
         agent_code=agent.code,
         agent_name=name,
-        active=bool(connection.active),
+        active=bool(active),
     )
 
 
@@ -247,7 +248,7 @@ async def list_internal_agent_page(
     page_size: int | None = None,
 ) -> tuple[list[NativeMessengerAgent], int]:
     query = (
-        select(Connection, Agent)
+        select(Connection, Agent, messenger_connection_active())
             .join(Service, Service.id == Connection.service_id)
             .join(Agent, Agent.id == Connection.agent_id)
             .where(Service.code == CHAT_TOOL_CODE)
@@ -256,7 +257,7 @@ async def list_internal_agent_page(
     if agent_ids is not None:
         query = query.where(Agent.id.in_(agent_ids))
     if active_only:
-        query = query.where(Connection.active.is_(True))
+        query = query.where(messenger_connection_active())
     if search.strip():
         name = func.trim(func.concat_ws(" ", Agent.first_name, Agent.last_name))
         query = query.where(or_(
@@ -280,9 +281,9 @@ async def list_internal_agent_page(
                 ).strip()
                 or agent.code
             ),
-            active=bool(connection.active),
+            active=bool(active),
         )
-        for connection, agent in rows
+        for connection, agent, active in rows
     ]
     labels = await _internal_room_labels(
         actor_user_id, [agent.connection_id for agent in agents]
@@ -537,11 +538,12 @@ async def create_internal_room(
     row = (
         await get_db().execute(
             select(Connection, Agent)
+            .join(Service, Service.id == Connection.service_id)
             .join(Agent, Agent.id == Connection.agent_id)
             .where(
                 Connection.service_id == tool.id,
                 Connection.agent_id == agent_id,
-                Connection.active.is_(True),
+                messenger_connection_active(),
             )
             .with_for_update()
         )
@@ -914,6 +916,7 @@ async def _room_dto(
     include_members: bool,
     viewer_user_id: int | None = None,
     projection: _RoomListProjection | None = None,
+    transport_active: bool | None = None,
 ) -> NativeMessengerRoom:
     is_internal = tool.code == CHAT_TOOL_CODE
     members: list[NativeMessengerMember] = []
@@ -945,11 +948,15 @@ async def _room_dto(
             [room.id], [membership] if membership is not None else [], viewer_user_id=viewer_user_id,
         )
     last_message_dto = projection.last_messages.get(room.id)
+    if transport_active is None:
+        transport_active = connection.active and (
+            not is_internal or await is_messenger_connection_active(connection.id)
+        )
     writable = bool(
         is_internal
         and membership is not None
         and membership.role == "owner"
-        and connection.active
+        and transport_active
         and projection.expected_agents.get(room.id) == connection.agent_id
     )
     member_key = (room.id, membership.user_id) if membership is not None else None
@@ -981,7 +988,7 @@ async def _room_dto(
         source=None if is_internal else source,
         messenger_label=messenger_label,
         messenger_active=bool(
-            connection.active and is_kind_enabled(messenger_kind)
+            transport_active and is_kind_enabled(messenger_kind)
         ),
         writable=writable,
         role=membership.role if membership is not None else "viewer",
@@ -1042,7 +1049,7 @@ async def list_internal_rooms(
             )
         )
     base = (
-        select(Room, RoomUser, Connection, Service, Agent)
+        select(Room, RoomUser, Connection, Service, Agent, messenger_connection_active())
         .join(Connection, Connection.id == Room.connection_id)
         .join(Service, Service.id == Connection.service_id)
         .join(Agent, Agent.id == Connection.agent_id)
@@ -1070,9 +1077,9 @@ async def list_internal_rooms(
         items=[
             await _room_dto(
                 room, membership, connection, tool, agent, include_members=False,
-                projection=projection,
+                projection=projection, transport_active=transport_active,
             )
-            for room, membership, connection, tool, agent in rows
+            for room, membership, connection, tool, agent, transport_active in rows
         ],
         total=total,
         page=page,
@@ -1124,7 +1131,7 @@ async def list_chat_rooms(
         )
     )
     base = (
-        select(Room, RoomUser, Connection, Service, Agent)
+        select(Room, RoomUser, Connection, Service, Agent, messenger_connection_active())
         .join(Connection, Connection.id == Room.connection_id)
         .join(Service, Service.id == Connection.service_id)
         .join(Agent, Agent.id == Connection.agent_id)
@@ -1191,7 +1198,7 @@ async def list_chat_rooms(
         viewer_user_id=user_id if agent_id is None else None,
     )
     provider_rooms_by_connection: dict[int, list[UUID]] = {}
-    for room, membership, connection, tool, agent in rows:
+    for room, membership, connection, tool, agent, transport_active in rows:
         items.append(
             await _room_dto(
                 room,
@@ -1200,7 +1207,7 @@ async def list_chat_rooms(
                 tool,
                 agent,
                 include_members=False,
-                projection=projection,
+                projection=projection, transport_active=transport_active,
             )
         )
         if connection.active and tool.code != CHAT_TOOL_CODE:

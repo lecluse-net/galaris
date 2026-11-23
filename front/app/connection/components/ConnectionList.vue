@@ -130,9 +130,9 @@
       <template v-slot:body-cell-actions="props">
         <q-td :props="props" @click.stop>
           <ConnectionTestButton v-if="canTest" :connection-id="props.row.id" icon-only />
-          <q-btn v-if="canInspectPermissions(props.row) && (!canEdit || isSystemTool(props.row.service_id))" flat round color="primary" icon="shield"
+          <q-btn v-if="canInspectPermissions(props.row) && !canEditSettings(props.row.service_id)" flat round color="primary" icon="shield"
             :aria-label="t('permissions.title')" @click="openDialog(props.row)" />
-          <q-btn v-if="canEdit && !isSystemTool(props.row.service_id)" flat round color="primary" icon="edit" size="sm" :aria-label="$t('common.edit')" @click="openDialog(props.row)" />
+          <q-btn v-if="canEditSettings(props.row.service_id)" flat round color="primary" icon="edit" size="sm" :aria-label="$t('common.edit')" @click="openDialog(props.row)" />
           <q-btn v-if="canEdit && !isSystemTool(props.row.service_id)" flat round color="negative" icon="delete" size="sm" :aria-label="$t('common.delete')" @click="confirmDelete(props.row)" />
         </q-td>
       </template>
@@ -188,14 +188,14 @@
               </div>
             </q-card-section>
 
-            <template v-if="canTest || canInspectPermissions(props.row) || (canEdit && !isSystemTool(props.row.service_id))">
+            <template v-if="canTest || canInspectPermissions(props.row) || canEditSettings(props.row.service_id)">
               <q-separator />
               <q-card-actions align="right" class="q-px-sm q-py-xs" @click.stop>
                 <ConnectionTestButton v-if="canTest" :connection-id="props.row.id" icon-only />
-                <q-btn v-if="canInspectPermissions(props.row) && (!canEdit || isSystemTool(props.row.service_id))" flat round color="primary" icon="shield"
+                <q-btn v-if="canInspectPermissions(props.row) && !canEditSettings(props.row.service_id)" flat round color="primary" icon="shield"
                   :aria-label="t('permissions.title')" @click="openDialog(props.row)" />
                 <q-btn
-                  v-if="canEdit && !isSystemTool(props.row.service_id)"
+                  v-if="canEditSettings(props.row.service_id)"
                   flat round color="primary" icon="edit" size="sm"
                   :aria-label="$t('common.edit')"
                   @click="openDialog(props.row)"
@@ -348,7 +348,8 @@ const privilegeStore = usePrivilegeStore()
 const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.CONNECTION_EDIT))
 const canTest = computed(() => canEdit.value || privilegeStore.hasPrivilege(privileges.CONNECTION_ACCESS))
 const connectionTab = ref('settings')
-const showSettings = computed(() => !currentConnection.value || !isSystemTool(currentConnection.value.service_id))
+const showSettings = computed(() => !currentConnection.value || !isSystemTool(currentConnection.value.service_id)
+  || canEditSettings(currentConnection.value.service_id))
 function canInspectPermissions(connection: Connection): boolean {
   return canViewPermissions.value && Boolean(serviceStore.services.find(tool => tool.id === connection.service_id)?.has_function_permissions)
 }
@@ -464,7 +465,8 @@ const agentOptions = computed(() =>
 )
 
 const serviceOptions = computed(() =>
-  serviceStore.services.filter(tool => tool.can_disable !== false).map(tool => ({ id: tool.id, label: localizedToolLabel(tool) }))
+  serviceStore.services.filter(tool => tool.can_disable !== false || tool.id === currentConnection.value?.service_id)
+    .map(tool => ({ id: tool.id, label: localizedToolLabel(tool) }))
 )
 
 function localizedToolLabel(tool: Service): string {
@@ -479,6 +481,9 @@ function getAgentName(agentId: number): string {
 
 function isSystemTool(toolId: number): boolean {
   return toolsById.value.get(toolId)?.can_disable === false
+}
+function canEditSettings(toolId: number): boolean {
+  return canEdit.value && (!isSystemTool(toolId) || toolsById.value.get(toolId)?.code === 'chat')
 }
 function getToolLabel(toolId: number): string {
   const tool = toolsById.value.get(toolId)
@@ -561,14 +566,15 @@ function hasVisibleParams(connectionId: number, toolId: number): boolean {
 
 async function openDialog(connection?: Connection) {
   if (!canEdit.value && !props.previewConnectionId && !(connection && canInspectPermissions(connection))) return
-  if (connection && isSystemTool(connection.service_id) && !canInspectPermissions(connection)) return
+  if (connection && isSystemTool(connection.service_id) && !canEditSettings(connection.service_id)
+    && !canInspectPermissions(connection)) return
   const generation = ++dialogGeneration
-  connectionTab.value = connection && (isSystemTool(connection.service_id) || !canEdit.value) ? 'permissions' : 'settings'
+  connectionTab.value = connection && !canEditSettings(connection.service_id) ? 'permissions' : 'settings'
   actionConnection = null
   saveError.value = null
   existingConnectionTarget.value = null
   currentConnection.value = connection || null
-  if (connection && isSystemTool(connection.service_id)) {
+  if (connection && isSystemTool(connection.service_id) && !canEditSettings(connection.service_id)) {
     currentConnectionParams.value = null
     currentConnectionConfiguredParams.value = []
     showDialog.value = true
@@ -680,7 +686,7 @@ async function persistForAction(payload: ConnectionPersistencePayload): Promise<
 
   try {
     const tool = serviceStore.services.find(tool => tool.id === payload.data.service_id)
-    const atomicParams = Object.hasOwn(payload.params, 'services.management_scope') || tool?.has_mail || tool?.code === 'console'
+    const atomicParams = Object.hasOwn(payload.params, 'services.management_scope') || tool?.has_mail || tool?.code === 'console' || tool?.code === 'chat'
     const data = { ...payload.data, ...(atomicParams ? { params: payload.params } : {}) }
     const connection = id
       ? await connectionStore.updateConnection(id, data)
@@ -720,7 +726,7 @@ async function onSubmit(payload: ConnectionPersistencePayload) {
   try {
     let connection: Connection
     const tool = serviceStore.services.find(tool => tool.id === payload.data.service_id)
-    const atomicParams = Object.hasOwn(payload.params, 'services.management_scope') || tool?.has_mail || tool?.code === 'console'
+    const atomicParams = Object.hasOwn(payload.params, 'services.management_scope') || tool?.has_mail || tool?.code === 'console' || tool?.code === 'chat'
     const data = { ...payload.data, ...(atomicParams ? { params: payload.params } : {}) }
 
     if (payload.id) {
@@ -876,7 +882,8 @@ async function loadPreview(): Promise<void> {
     if (request !== previewRequest || !showDialog.value) return
     if (connectionRequests.fetchConnectionOverview?.error) throw connectionRequests.fetchConnectionOverview.error
     const connection = connectionStore.connections.find(row => row.id === props.previewConnectionId)
-    if (!connection || (isSystemTool(connection.service_id) && !canInspectPermissions(connection))) throw new Error(t('connection.auth.loadConnectionsError'))
+    if (!connection || (isSystemTool(connection.service_id) && !canEditSettings(connection.service_id)
+      && !canInspectPermissions(connection))) throw new Error(t('connection.auth.loadConnectionsError'))
     await openDialog(connection)
   } catch (error) {
     if (request === previewRequest) previewError.value = apiErrorDetail(error) || t('connection.auth.loadConnectionsError')

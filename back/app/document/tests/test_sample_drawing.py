@@ -63,13 +63,13 @@ async def test_sample_drawing_uses_immutable_document_revisions(client, memory_s
 
 
 @pytest.mark.asyncio
-async def test_agent_can_read_and_compare_only_authorized_drawing_revisions(agents, memory_storage, monkeypatch):
+async def test_agent_can_read_and_compare_only_authorized_drawing_revisions(document_tool_agents, memory_storage, monkeypatch):
     monkeypatch.setattr(formats, "registry", DocumentFormatRegistry())
     monkeypatch.setattr(formats, "_native_registered", False)
     monkeypatch.setattr(formats, "_format_availability", {})
     drawing = definition()
     register_document_format(drawing)
-    owner, peer = agents
+    owner, peer = document_tool_agents
     owner_ctx = McpToolContext(agent_id=owner.id, runtime="internal")
     peer_ctx = McpToolContext(agent_id=peer.id, runtime="internal")
     item = await document_service.create_document(owner_agent_id=owner.id, title="Synthetic canvas",
@@ -102,9 +102,27 @@ async def test_agent_can_read_and_compare_only_authorized_drawing_revisions(agen
     assert cropped["details"]["changed_pixels"] == 1
     assert cropped["details"]["changed_bounds"] == {"x": 5, "y": 4, "width": 1, "height": 1}
 
-    with pytest.raises(resource_service.DocumentPermissionError):
+    with pytest.raises(PermissionError):
         await mcp.document_revision_list(peer_ctx, uri)
-    with pytest.raises(resource_service.DocumentPermissionError):
+    with pytest.raises(PermissionError):
         await mcp.document_revision_compare(peer_ctx, uri, 1, 2)
     with pytest.raises(resource_service.DocumentPermissionError):
         await resource_read(ResourceContext(agent_id=peer.id, runtime="internal"), uri, revision=1)
+
+    from sqlalchemy import select
+    from app.connection import Connection, facade as connections
+    from app.document.item_sharing import update_agent_sharing
+    from app.services import ServiceModel
+    from core.database import get_db
+
+    connection = await get_db().scalar(select(Connection).join(ServiceModel).where(
+        Connection.agent_id == peer.id, ServiceModel.code == "document",
+    ))
+    await update_agent_sharing(identity, agent_id=owner.id, kind="agent", target_id=peer.id, access="read")
+    with pytest.raises(PermissionError):
+        await mcp.document_revision_list(peer_ctx, uri)
+    with pytest.raises(PermissionError):
+        await mcp.document_revision_compare(peer_ctx, uri, 1, 2)
+    await connections.set_management_scope(connection.id, "all", authorized=True)
+    assert json.loads(await mcp.document_revision_list(peer_ctx, uri))["items"] == history["items"]
+    assert json.loads(await mcp.document_revision_compare(peer_ctx, uri, 1, 2))["details"] == result["details"]

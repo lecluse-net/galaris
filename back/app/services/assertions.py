@@ -11,7 +11,11 @@ from .models import Service as ServiceModel
 from .mandatory_services import INTEGRATED_SERVICE_CODES
 
 
-READ_ONLY_TOOL_CODES = frozenset({"app", "skill_management", *INTEGRATED_SERVICE_CODES})
+READ_ONLY_TOOL_CODES = frozenset({
+    "app", "skill_management", "agent_admin", "service_admin", "goal_management", "process_admin",
+    "galaris_admin", "platform_admin", "voice", "audio", "image", "search", "agenda", "conversation",
+    *INTEGRATED_SERVICE_CODES,
+})
 
 
 def service_can_edit(record_or_code: ServiceModel | str | None) -> bool:

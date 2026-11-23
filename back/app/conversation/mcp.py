@@ -18,6 +18,7 @@ from app.agent import (
     get_plan_progress,
 )
 from app.task import STARTUP_TIMING_DATA_KEY, TaskAdmissionTiming, Task, TaskCreate, TaskStatus, amendment_basis
+from app.task.facade import agent_task_filter
 from app.services import (
     McpToolContext,
     RecoverableToolError,
@@ -96,7 +97,7 @@ def _display_document_id(value: str) -> UUID:
     return UUID(reference)
 
 
-@mcp_tool("conversation", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+@mcp_tool("document", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
 
     conversation_policy="short",
     task_enabled=False,
@@ -113,11 +114,14 @@ async def document_show(ctx: McpToolContext, document: str) -> dict[str, str]:
     if turn.agent_id != ctx.agent_id:
         raise PermissionError("Document presentation requires the current internal Chat conversation.")
     identifier = _display_document_id(document)
+    from app.file_share import ResourceContext, require_document_source_scope
+    await require_document_source_scope(ResourceContext(agent_id=ctx.agent_id, runtime=ctx.runtime),
+        f"document://{identifier}")
     await display_conversation_document(turn, identifier)
     return {"status": "requested", "uri": f"document://{identifier}", "room_id": str(turn.room_id)}
 
 
-@mcp_tool("conversation", approval="enabled", approval_reason="Present an authorized existing Git repository without modifying its files",
+@mcp_tool("chat", approval="enabled", approval_reason="Present an authorized existing Git repository without modifying its files",
     conversation_policy="short", task_enabled=True, available_when=can_show_repository,
     description="Present the actual Console Git checkout in the current Chat code pane, before editing it through SSH. Pass a console:// directory or returned galaris://code/<uuid>. Human access still requires an explicit repository grant. Does not clone, save, commit or push. Available to live Tasks explicitly linked to internal Chat.")
 async def repository_show(ctx: McpToolContext, repository: str, file: str | None = None,
@@ -235,9 +239,9 @@ async def _validate_dispatch_mode(
         raise ValueError("plan is unavailable for the selected Task harness")
 
 
-@mcp_tool("platform_admin", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
+@mcp_tool("chat", default_blocked=True, approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
 
-    name="conversation_round_get",
+    name="conversation_round_get", execution_inspection=True,
     description=(
         "Return the complete persisted dataset for one text conversation round by exact UUID: "
         "round and room state, agent identity, canonical messages, attempts, Tasks created or "
@@ -250,12 +254,12 @@ async def conversation_round_get(
     *,
     round_id: str,
 ) -> dict[str, Any]:
-    """Inspect one text round through the optional administration package."""
+    """Inspect one text round within the delegated Services scope."""
 
 
     identifier = _round_id(round_id)
-    from app.services.facade import administration_scope
-    scope = await administration_scope(ctx.agent_id, "platform_admin")
+    from app.services.facade import service_administration_scope
+    scope = await service_administration_scope(ctx.agent_id)
     scope.require_administration()
     payload = await inspect_round(identifier, agent_ids=scope.agent_ids)
     if payload is None:
@@ -322,13 +326,16 @@ async def _task_summary_dict(task: Task) -> dict[str, Any]:
     return item
 
 
-async def _visible_task(ctx: McpToolContext, raw_id: str, *, lock: bool = False) -> Task:
+async def _visible_task(ctx: McpToolContext, raw_id: str, *, manage: bool = True, lock: bool = False) -> Task:
+    if _turn(ctx).agent_id != ctx.agent_id:
+        raise PermissionError("Task access requires the current conversation agent.")
     task_id = _task_uuid(raw_id)
-    query = select(Task).where(Task.id == task_id, Task.deleted_at.is_(None)).execution_options(populate_existing=True)
+    query = select(Task).where(Task.id == task_id, Task.deleted_at.is_(None),
+        await agent_task_filter(ctx.agent_id, manage=manage)).execution_options(populate_existing=True)
     if lock:
         query = query.with_for_update().execution_options(populate_existing=True)
     task = await get_db().scalar(Task.histo_filter(query))
-    if task is None or task.agent_id != ctx.agent_id:
+    if task is None:
         raise ValueError("Task not found for this agent.")
     return task
 
@@ -534,7 +541,7 @@ async def _create_conversation_task(
     )
 
 
-@mcp_tool("conversation", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("task", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="conversation_task_submit",
     effect_policy="idempotent",
@@ -580,6 +587,8 @@ async def conversation_task_submit(
     reason: str | None = None,
 ) -> dict[str, Any]:
     turn = await _fresh(ctx, before_effect=False)
+    if turn.agent_id != ctx.agent_id:
+        raise PermissionError("Task admission requires the current conversation agent.")
     clean_objective = objective.strip()
     if not clean_objective:
         raise ValueError("objective is required")
@@ -803,7 +812,7 @@ async def admit_background_task(
     )
 
 
-@mcp_tool("conversation", approval='enabled', approval_reason='Governed bounded read or polling',
+@mcp_tool("task", approval='enabled', approval_reason='Governed bounded read or polling',
 
     name="conversation_task_list",
     conversation_policy="short",
@@ -818,13 +827,15 @@ async def conversation_task_list(
     ctx: McpToolContext, *, active_only: bool = False, limit: int = 10
 ) -> list[dict[str, Any]]:
     turn = _turn(ctx)
+    if turn.agent_id != ctx.agent_id:
+        raise PermissionError("Task listing requires the current conversation agent.")
     connection_id = _connection_id(turn)
     room_id = str(turn.messaging_context.get("room_id") or "")
     safe_limit = min(max(limit, 1), 20)
     query = Task.histo_filter(
         select(Task)
         .where(
-            Task.agent_id == ctx.agent_id,
+            await agent_task_filter(ctx.agent_id, manage=True),
             Task.deleted_at.is_(None),
             Task.parent_id.is_(None),
             Task.messenger_connection_id == connection_id,
@@ -844,7 +855,7 @@ async def conversation_task_list(
     return items
 
 
-@mcp_tool("conversation", approval='enabled', approval_reason='Governed bounded read or polling',
+@mcp_tool("task", approval='enabled', approval_reason='Governed bounded read or polling',
 
     name="conversation_task_status",
     conversation_policy="short",
@@ -855,13 +866,13 @@ async def conversation_task_list(
     ),
 )
 async def conversation_task_status(ctx: McpToolContext, *, task_id: str) -> dict[str, Any]:
-    task = await _visible_task(ctx, task_id)
+    task = await _visible_task(ctx, task_id, manage=False)
     result = await _task_dict(task, progress=await get_plan_progress(task.id))
     _observe_task_definition(ctx, task)
     return result
 
 
-@mcp_tool("conversation", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+@mcp_tool("chat", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
 
     name="conversation_choice_resolve",
     conversation_policy="deferred",
@@ -918,7 +929,7 @@ async def conversation_choice_resolve(
     }
 
 
-@mcp_tool("conversation", approval="enabled", approval_reason="Record the assigned human's response to an existing process request",
+@mcp_tool("process", approval="enabled", approval_reason="Record the assigned human's response to an existing process request",
     conversation_policy="short", task_enabled=False,
     description='Complete a pending process_human_activity from this human\'s chat reply, including attached files. Use the exact pending reference and ordinary JSON values matching the declared output types, for example output={"age": 27}. The server validates and stores typed values; do not stringify numbers or booleans. When outputs is null for a historical activity, submit a completion summary as {text: summary}. Never guess missing values or select between ambiguous requests; ask for clarification. File values are canonical URIs supplied in the conversation, never bytes or paths. Does not launch another Task or Process.')
 async def conversation_process_respond(ctx: McpToolContext, *, reference: str,
@@ -927,7 +938,7 @@ async def conversation_process_respond(ctx: McpToolContext, *, reference: str,
     return await respond_to_process_activity(await _fresh(ctx), reference, output, typed_values=typed_values)
 
 
-@mcp_tool("conversation", approval="enabled", approval_reason="Read this participant's pending process requests",
+@mcp_tool("process", approval="enabled", approval_reason="Read this participant's pending process requests",
     conversation_policy="short", task_enabled=False,
     description="Read complete pending process requests and expected output variables for the current conversation participant. Use before interpreting a reply or a file attachment, and page through multiple requests when necessary. Returns no other participant's work.")
 async def conversation_process_pending(ctx: McpToolContext, *, page: int = 1) -> dict[str, Any]:
@@ -964,7 +975,7 @@ async def _mutate_task(ctx: McpToolContext, task_id: str, command: str) -> dict[
     return await _task_dict(changed)
 
 
-@mcp_tool("conversation", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("task", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="conversation_task_pause",
     conversation_policy="deferred",
@@ -975,7 +986,7 @@ async def conversation_task_pause(ctx: McpToolContext, *, task_id: str) -> dict[
     return await _mutate_task(ctx, task_id, "pause")
 
 
-@mcp_tool("conversation", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("task", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="conversation_task_resume",
     conversation_policy="deferred",
@@ -986,7 +997,7 @@ async def conversation_task_resume(ctx: McpToolContext, *, task_id: str) -> dict
     return await _mutate_task(ctx, task_id, "resume")
 
 
-@mcp_tool("conversation", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("task", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="conversation_task_retry",
     conversation_policy="deferred",
@@ -1006,7 +1017,7 @@ async def conversation_task_retry(ctx: McpToolContext, *, task_id: str) -> dict[
     return await _mutate_task(ctx, task_id, "retry")
 
 
-@mcp_tool("conversation", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("task", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="conversation_task_stop",
     conversation_policy="deferred",
@@ -1017,7 +1028,7 @@ async def conversation_task_stop(ctx: McpToolContext, *, task_id: str) -> dict[s
     return await _mutate_task(ctx, task_id, "stop")
 
 
-@mcp_tool("conversation", approval="enabled", approval_reason="Prepare the current participant's inputs without launching a Process",
+@mcp_tool("process", approval="enabled", approval_reason="Prepare the current participant's inputs without launching a Process",
     name="conversation_process_prepare", conversation_policy="deferred", task_enabled=False, timeout_seconds=60,
     description=("Prepare or update an assigned Process input dossier before launch. Read process_get; search authorized "
         "Memory/files for existing information, pass verified ordinary JSON values in input, and reuse exact file URIs. "
@@ -1033,7 +1044,7 @@ async def conversation_process_prepare(ctx: McpToolContext, workflow_id: str,
     return result or {"status": "legacy", "instruction": "Inspect this historical/external workflow's own input contract."}
 
 
-@mcp_tool("conversation", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("process", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="conversation_process_start",
     conversation_policy="deferred",

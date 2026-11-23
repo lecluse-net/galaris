@@ -67,6 +67,7 @@ from .resource_contracts import (
 from .resource_delivery import deliver_resource_to_messenger
 from .resource_description import record_resource_description
 from .resource_service import (
+    require_document_source_scope as require_document_source_scope,
     list_schemes,
     materialize_resource,
     preferred_local_resource_uri,
@@ -149,6 +150,7 @@ __all__ = [
     "DeliveredResource",
     "MaterializedResource",
     "ResourceContext",
+    "require_document_source_scope",
     "resource_accessible",
     "ResourceDescriptor",
     "ResourceListing",

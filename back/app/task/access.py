@@ -3,18 +3,22 @@
 from sqlalchemy import or_, true
 from sqlalchemy.sql.elements import ColumnElement
 
-from app.services import has_galaris_admin_access
+from app.services.facade import AdministrationScope, administration_scope
 
 from .models import Task
 
 
-async def agent_task_filter(agent_id: int, *, manage: bool = False) -> ColumnElement[bool]:
+async def task_management_scope(agent_id: int) -> AdministrationScope:
+    return await administration_scope(agent_id, "task")
+
+
+async def agent_task_filter(agent_id: int, *, manage: bool = False, allow_delegation: bool = True) -> ColumnElement[bool]:
     """Membership alone grants no management; explicit administration is scoped."""
-    from app.services.facade import administration_scope
-    scope = await administration_scope(agent_id, "platform_admin")
-    administrative = true() if scope.is_global else Task.agent_id.in_(scope.agent_ids or ())
-    owner = Task.agent_id == agent_id
-    return or_(administrative, owner) if manage else or_(administrative, owner, Task.requester_agent_id == agent_id)
+    scope = await task_management_scope(agent_id) if allow_delegation else AdministrationScope("personal", frozenset({agent_id}))
+    if scope.is_global:
+        return true()
+    owners = Task.agent_id.in_((scope.agent_ids or frozenset()) | {agent_id})
+    return owners if manage else or_(owners, Task.requester_agent_id == agent_id)
 
 
 async def require_agent_task_access(task: Task, agent_id: int, *, manage: bool = False) -> None:
@@ -22,5 +26,5 @@ async def require_agent_task_access(task: Task, agent_id: int, *, manage: bool =
         return
     if not manage and task.requester_agent_id == agent_id:
         return
-    if not await has_galaris_admin_access(agent_id, target_agent_id=task.agent_id):
+    if not (await task_management_scope(agent_id)).allows(task.agent_id):
         raise PermissionError("Task not found in the current agent scope.")

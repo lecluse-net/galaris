@@ -77,7 +77,7 @@ def test_generated_image_defaults_to_console_or_requires_a_destination() -> None
 @pytest.mark.asyncio
 async def test_generate_image_schema_accepts_flexible_optional_args() -> None:
     mcp = FastMCP("test")
-    add_galaris_tools(mcp, 1, runtime="internal", enabled_service_codes={"image"})
+    add_galaris_tools(mcp, 1, runtime="internal", enabled_service_codes={"multimedia"})
 
     tools = {tool.name: tool for tool in await mcp.list_tools()}
     schema = tools["image_generate"].parameters
@@ -388,7 +388,7 @@ async def test_image_failure_is_an_mcp_error_without_artifact_effects(db, monkey
     agent = Agent(code=f"image-failure-{uuid4().hex}", first_name="Synthetic", last_name="Image", title_id=title.id)
     db.add(agent)
     await db.flush()
-    image_tool = await db.scalar(select(Service).where(Service.code == "image"))
+    image_tool = await db.scalar(select(Service).where(Service.code == "multimedia"))
     connection = Connection(agent_id=agent.id, service_id=image_tool.id, active=True)
     db.add(connection)
     await db.flush()
@@ -407,7 +407,7 @@ async def test_image_failure_is_an_mcp_error_without_artifact_effects(db, monkey
     monkeypatch.setattr(image_mcp, "_store_image", store)
     monkeypatch.setattr(resource_effects, "record_tool_resources", effects)
     definition = mcp_loader.McpToolDefinition(
-        service_code="image", name="image_generate", description="Generate an image.",
+        service_code="multimedia", name="image_generate", description="Generate an image.",
         required_capabilities=frozenset(), function=image_mcp.generate_image,
     )
     wrapper = mcp_loader._wrap_tool(definition, McpToolContext(agent_id=agent.id, runtime=runtime))

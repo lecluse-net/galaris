@@ -455,6 +455,7 @@ async def test_index_status_counts_only_current_corpus_in_one_read(db, sources, 
 @pytest_asyncio.fixture
 async def indexing_agent(committed_database, monkeypatch):
     from app.connection.models import Connection
+    from app.connection.facade import set_connection_function_state
     from app.agent.models import Agent, Title
     from app.services.models import Service
     from app.services import documentation_service, mandatory_services
@@ -475,8 +476,9 @@ async def indexing_agent(committed_database, monkeypatch):
         agent_id = agent.id
         await mandatory_services.sync_integrated_service_connections(agent_id)
         connection = await db.scalar(select(Connection).join(Service).where(
-            Connection.agent_id == agent_id, Service.code == "platform_admin"))
-        connection.active = True
+            Connection.agent_id == agent_id, Service.code == "galaris"))
+        for name in ("documentation_catalog", "documentation_search"):
+            await set_connection_function_state(connection.id, name, "enabled", commit=False)
     return agent_id
 
 
@@ -640,7 +642,8 @@ async def test_background_index_releases_lock_on_deadline_or_cancellation(
 @pytest.mark.asyncio
 async def test_documentation_access_can_exclude_audits_and_is_revoked_live(db, sources):
     from app.agent.models import Agent, Title
-    from app.connection.models import Connection, ConnectionFunctionState
+    from app.connection.models import Connection
+    from app.connection.facade import set_connection_function_state
     from app.services.models import Service
     from app.services import mandatory_services
     from app.services import documentation_service
@@ -655,15 +658,14 @@ async def test_documentation_access_can_exclude_audits_and_is_revoked_live(db, s
     db.add(agent)
     await db.flush()
     await mandatory_services.sync_integrated_service_connections(agent.id)
-    connection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == agent.id, Service.code == "platform_admin"))
+    connection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == agent.id, Service.code == "galaris"))
     ctx = ResourceContext(agent_id=agent.id, runtime="internal")
     uri = "galaris://documentation/docs/fr/user/documents.md"
     with pytest.raises(PermissionError):
         await resource_service.resource_read(ctx, uri)
 
-    connection.active = True
-    for name in ("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls"):
-        db.add(ConnectionFunctionState(connection_id=connection.id, function_name=name, enabled=False))
+    for name in ("documentation_catalog", "documentation_search"):
+        await set_connection_function_state(connection.id, name, "enabled", commit=False)
     await db.flush()
     catalog = await documentation_service.documentation_catalog(agent.id)
     assert catalog["pages"] == 6
@@ -694,15 +696,14 @@ async def test_documentation_access_can_exclude_audits_and_is_revoked_live(db, s
     assert "galaris-knowledge" not in await skill_service.get_assigned_codes(agent.id)
     await skill_service.set_agent_authorization(knowledge.id, agent.id, "enabled")
     assert "galaris-knowledge" in await skill_service.get_assigned_codes(agent.id)
-    disabled = ConnectionFunctionState(connection_id=connection.id, function_name="documentation_catalog", enabled=False)
-    db.add(disabled)
+    await set_connection_function_state(connection.id, "documentation_catalog", "disabled", commit=False)
     await db.flush()
     assert "galaris-knowledge" not in await skill_service.get_assigned_codes(agent.id)
     for operation in (resource_service.resource_read(ctx, uri), resource_service.resource_info(ctx, uri),
                       documentation_service.documentation_catalog(agent.id)):
         with pytest.raises(PermissionError):
             await operation
-    await db.delete(disabled)
+    await set_connection_function_state(connection.id, "documentation_catalog", "enabled", commit=False)
     await db.flush()
     assert (await resource_service.resource_read(ctx, uri)).content
     connection.active = False
@@ -717,7 +718,8 @@ async def test_mcp_documentation_only_search_read_and_live_revocation(committed_
     from uuid import uuid4
     from fastmcp import Client
     from app.agent.models import Agent, Title
-    from app.connection.models import Connection, ConnectionFunctionState
+    from app.connection.models import Connection
+    from app.connection.facade import set_connection_function_state
     from app.services.models import Service
     from app.services import mandatory_services, mcp_loader, documentation_service
     from core.database import get_db_session
@@ -737,11 +739,10 @@ async def test_mcp_documentation_only_search_read_and_live_revocation(committed_
         await db.flush()
         agent_id = agent.id
         await mandatory_services.sync_integrated_service_connections(agent_id)
-        connection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == agent_id, Service.code == "platform_admin"))
-        connection.active = True
+        connection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == agent_id, Service.code == "galaris"))
         connection_id = connection.id
-        for name in ("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls"):
-            db.add(ConnectionFunctionState(connection_id=connection_id, function_name=name, enabled=False))
+        for name in ("documentation_catalog", "documentation_search"):
+            await set_connection_function_state(connection.id, name, "enabled", commit=False)
     async with get_db_session():
         server = await mcp_loader.build_agent_galaris_fastmcp(agent_id, conversation_only=True)
     async with Client(server) as client:
@@ -761,7 +762,7 @@ async def test_mcp_documentation_only_search_read_and_live_revocation(committed_
         assert source["corpus_revision"] == payload["corpus_revision"]
         assert source["checksum"] == hit["checksum"]
         async with get_db_session() as db:
-            db.add(ConnectionFunctionState(connection_id=connection_id, function_name="documentation_catalog", enabled=False))
+            await set_connection_function_state(connection_id, "documentation_catalog", "disabled", commit=False)
         denied = await client.call_tool("file_read", {"uri": hit["uri"]}, raise_on_error=False)
         assert denied.is_error
         denied_search = await client.call_tool("documentation_search", {"query": "document"}, raise_on_error=False)

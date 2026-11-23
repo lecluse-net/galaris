@@ -124,6 +124,7 @@ from .voice_journal import (
 )
 from .configuration import (
     ResolvedMessengerConfiguration,
+    is_messenger_connection_active,
     resolve_messenger_configuration,
 )
 from .journal import hydrate_messages
@@ -328,6 +329,7 @@ __all__ = [
     "record_audio_message",
     "ResolvedMessengerConfiguration",
     "resolve_messenger_configuration",
+    "is_messenger_connection_active",
     "hydrate_messages",
     "conversation_audio_transcripts",
     "attachment_resource_uri",

@@ -8,11 +8,11 @@ import uuid
 
 from loguru import logger
 from sqlalchemy import select
-from sqlalchemy.orm import aliased
 
 from app.agent.models import Agent
 from app.connection.models import Connection
 from app.voice.call_manager import voice_call_manager
+from app.voice.facade import voice_auto_answer_agents
 from core.params import runtime_settings
 from core.database import get_db_session
 from core.util import as_dict
@@ -45,7 +45,6 @@ async def _discover_connections() -> dict[int, int]:
         return {}
     from app.agent import list_driver_specs
     from app.messenger import messaging_tool_records
-    from app.services import service
 
     voice_drivers = tuple(
         spec.code for spec in list_driver_specs() if spec.tool_profile.voice_calling
@@ -55,19 +54,15 @@ async def _discover_connections() -> dict[int, int]:
     async with get_db_session() as db:
         messenger_tools = await messaging_tool_records("matrix")
         service_ids = [int(tool.id) for tool in messenger_tools]
-        voice_tool = await service.get_service_record("voice")
-        if not service_ids or voice_tool is None:
+        if not service_ids or not (voice_agents := await voice_auto_answer_agents()):
             return {}
-        voice_connection = aliased(Connection)
         rows = await db.execute(
             select(Connection.id, Connection.agent_id)
             .join(Agent, Agent.id == Connection.agent_id)
-            .join(voice_connection, voice_connection.agent_id == Connection.agent_id)
             .where(
                 Connection.service_id.in_(service_ids),
                 Connection.active.is_(True),
-                voice_connection.service_id == voice_tool.id,
-                voice_connection.active.is_(True),
+                Connection.agent_id.in_(voice_agents),
                 Agent.agent_driver.in_(voice_drivers),
             )
             .order_by(Connection.id)
@@ -215,6 +210,8 @@ async def _answer_invite(
     from .call import MatrixCall
 
     async with get_db_session():
+        if not await voice_auto_answer_agents(agent_id):
+            return
         transport = await MatrixCall.from_connection_id(
             connection_id,
             outgoing=False,

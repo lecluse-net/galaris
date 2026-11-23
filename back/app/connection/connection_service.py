@@ -170,6 +170,21 @@ async def require_editable_connection(connection_id: int) -> None:
     if connection is not None:
         await require_editable_tool(connection.service_id)
 
+
+async def require_editable_connection_params(connection_id: int, names: Collection[str]) -> None:
+    from app.services.contracts import CHAT_CHANNEL_PARAM, MANAGEMENT_SCOPE_PARAM
+    from app.services.facade import get_service_by_id
+
+    connection = await get_connection(connection_id)
+    if connection is None:
+        return
+    await lock_services([connection.service_id], db=get_db())
+    tool = await get_service_by_id(connection.service_id)
+    if tool is not None and not tool.can_disable and (
+        tool.code != "chat" or set(names) - {CHAT_CHANNEL_PARAM, MANAGEMENT_SCOPE_PARAM}
+    ):
+        raise ValueError(await tr("services.errors.system_read_only"))
+
 async def get_or_create_connection(service_id: int, agent_id: int, *, active: bool = True, commit: bool = True) -> Connection:
     await lock_services([service_id], db=get_db())
     db = get_db()
@@ -290,13 +305,20 @@ async def get_management_scope(
 
 
 async def has_active_service_function(agent_id: int, service_code: str, function_name: str) -> bool:
-    """Check the live connection and its effective function authorization."""
-    from app.services import ServiceModel
+    """Check live authorization for a registered native function on the named Service."""
+    from app.services import ServiceModel, load_mcp_tools, native_service_codes_for_service
 
-    connections = (await get_db().scalars(select(Connection).join(ServiceModel).where(
-        Connection.agent_id == agent_id, Connection.active.is_(True), ServiceModel.code == service_code,
-    ))).all()
-    for connection in connections:
+    owners = {definition.service_code for definition in load_mcp_tools() if definition.name == function_name}
+    if not owners:
+        return False
+    rows = (await get_db().execute(
+        select(Connection, ServiceModel).join(ServiceModel, ServiceModel.id == Connection.service_id).where(
+            Connection.agent_id == agent_id, Connection.active.is_(True), ServiceModel.code == service_code,
+        )
+    )).all()
+    for connection, service in rows:
+        if owners.isdisjoint(native_service_codes_for_service(service)):
+            continue
         policy = await resolve_function(connection, function_name)
         if policy["effective_state"] == "enabled":
             return True
@@ -559,7 +581,9 @@ async def get_connections_by_param(
     return list(result.scalars().all())
 
 
-async def set_management_scope(connection_id: int, value: str | None, *, authorized: bool = False) -> None:
+async def set_management_scope(
+    connection_id: int, value: str | None, *, authorized: bool = False, commit: bool = True,
+) -> None:
     """Delegate only the declared local scope, including on mandatory services."""
     from app.services.contracts import MANAGEMENT_SCOPE_PARAM
 
@@ -577,15 +601,33 @@ async def set_management_scope(connection_id: int, value: str | None, *, authori
         raise ValueError("Management scope requires declared choices")
     if value == "":
         raise ValueError("Choose a scope or reset to its default")
+    await _write_local_parameter(connection_id, MANAGEMENT_SCOPE_PARAM, value, commit=commit)
+
+
+async def set_voice_auto_answer(connection_id: int, enabled: bool, *, commit: bool = True) -> None:
+    from app.services.contracts import VOICE_AUTO_ANSWER_PARAM
+    from app.services.facade import get_service_by_id
+
+    connection = await get_connection(connection_id)
+    if connection is None:
+        raise ValueError("Connection not found")
+    await lock_services([connection.service_id], db=get_db())
+    tool = await get_service_by_id(connection.service_id)
+    if tool is None or tool.code != "chat":
+        raise ValueError("Voice auto-answer requires a Chat connection")
+    await _write_local_parameter(connection_id, VOICE_AUTO_ANSWER_PARAM, "true" if enabled else "false", commit=commit)
+
+
+async def _write_local_parameter(connection_id: int, name: str, value: str | None, *, commit: bool) -> None:
     row = await get_db().scalar(select(ConnectionParam).where(
         ConnectionParam.connection_id == connection_id,
-        ConnectionParam.param_name == MANAGEMENT_SCOPE_PARAM,
+        ConnectionParam.param_name == name,
     ))
     if row is None:
-        get_db().add(ConnectionParam(connection_id=connection_id, param_name=MANAGEMENT_SCOPE_PARAM, param_value=value))
+        get_db().add(ConnectionParam(connection_id=connection_id, param_name=name, param_value=value))
     else:
         row.param_value = value
-    await finish_write(commit=True, db=get_db())
+    await finish_write(commit=commit, db=get_db())
 
 
 async def set_param(
@@ -595,7 +637,7 @@ async def set_param(
     *, commit: bool = True, scope_edit_authorized: bool = False,
 ) -> ConnectionParam:
     _require_scope_write({param_name: param_value}, scope_edit_authorized)
-    await require_editable_connection(connection_id)
+    await require_editable_connection_params(connection_id, [param_name])
     db = get_db()
     connection = await get_connection(connection_id)
     if not connection:
@@ -658,7 +700,7 @@ async def set_params_bulk(
     *, commit: bool = True, scope_edit_authorized: bool = False,
 ) -> List[ConnectionParam]:
     _require_scope_write(params, scope_edit_authorized)
-    await require_editable_connection(connection_id)
+    await require_editable_connection_params(connection_id, params.keys())
     connection = await get_connection(connection_id)
     if connection is None:
         raise ValueError("Connection not found")
@@ -754,7 +796,7 @@ def _require_scope_write(params: Mapping[str, object], authorized: bool) -> None
 async def delete_param(connection_id: int, param_name: str, *, commit: bool = True,
                        scope_edit_authorized: bool = False) -> bool:
     _require_scope_write({param_name: None}, scope_edit_authorized)
-    await require_editable_connection(connection_id)
+    await require_editable_connection_params(connection_id, [param_name])
     db = get_db()
     result = await db.execute(
         delete(ConnectionParam).where(
@@ -928,11 +970,29 @@ async def get_disabled_function_names(connection: Connection, *, capability_kind
     """Return function names disabled for a connection after cascade resolution."""
     conn_states = {s.function_name: stored_function_state(s) for s in await list_function_states(connection.id) if (s.capability_kind or "tool") == capability_kind}
     tool_states = {s.function_name: stored_function_state(s) for s in await list_service_function_states(connection.service_id) if (s.capability_kind or "tool") == capability_kind}
+    defaults: set[str] = set()
+    if capability_kind == "tool":
+        defaults = (await _default_blocked_functions({connection.service_id})).get(connection.service_id, set())
     return {
         name
-        for name in (set(conn_states) | set(tool_states))
-        if not resolve_function_enabled(name, conn_states, tool_states)
+        for name in (set(conn_states) | set(tool_states) | defaults)
+        if resolve_function_state(name, conn_states, tool_states,
+            default="disabled" if name in defaults else "enabled") == "disabled"
     }
+
+
+async def _default_blocked_functions(service_ids: set[int]) -> dict[int, set[str]]:
+    from app.services import ServiceModel, load_mcp_tools
+
+    by_code: dict[str, set[str]] = {}
+    for definition in load_mcp_tools():
+        if definition.default_blocked:
+            by_code.setdefault(definition.service_code, set()).add(definition.name)
+    if not by_code:
+        return {}
+    return {identity: by_code[code] for identity, code in await get_db().execute(
+        select(ServiceModel.id, ServiceModel.code).where(ServiceModel.id.in_(service_ids), ServiceModel.code.in_(by_code)),
+    )}
 
 
 async def get_disabled_function_names_many(connections: Collection[Connection], *,
@@ -954,11 +1014,14 @@ async def get_disabled_function_names_many(connections: Collection[Connection], 
     for row in global_rows:
         if (row.capability_kind or "tool") == capability_kind:
             global_states.setdefault(row.service_id, {})[row.function_name] = stored_function_state(row)
+    defaults = await _default_blocked_functions({connection.service_id for connection in connections}) if capability_kind == "tool" else {}
     result: dict[int, set[str]] = {}
     for connection in connections:
         overrides, inherited = local.get(connection.id, {}), global_states.get(connection.service_id, {})
-        result[connection.id] = {name for name in overrides.keys() | inherited.keys()
-                                 if not resolve_function_enabled(name, overrides, inherited)}
+        blocked = defaults.get(connection.service_id, set())
+        result[connection.id] = {name for name in overrides.keys() | inherited.keys() | blocked
+                                 if resolve_function_state(name, overrides, inherited,
+                                     default="disabled" if name in blocked else "enabled") == "disabled"}
     return result
 
 
@@ -1080,7 +1143,7 @@ async def resolve_function(connection: Connection, function_name: str, *, capabi
     if tool is not None and capability_kind == "tool":
         for definition in load_mcp_tools():
             if definition.name == function_name and definition.service_code in native_service_codes_for_service(tool):
-                default = definition.approval
+                default = definition.default_state
                 native = True
                 break
     conn_states = {s.function_name: stored_function_state(s) for s in await list_function_states(connection.id) if (s.capability_kind or "tool") == capability_kind}
@@ -1119,7 +1182,7 @@ async def resolve_function_states_many(connection_ids: Collection[int], function
         default: EffectiveFunctionState = "enabled"
         for definition in definitions:
             if definition.service_code in codes:
-                default = definition.approval
+                default = definition.default_state
                 break
         defaults[service_id] = default
     return {identity: resolve_function_state(function_name,

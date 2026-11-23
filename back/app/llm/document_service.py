@@ -8,8 +8,8 @@ from uuid import UUID, uuid4
 from sqlalchemy import and_, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 
-from app.file_share import ResourceContext, prepared_resource, resource_info
-from app.services.facade import AuthorizationClosed, authorized_request, claim_deferred_dispatch, finish_action, register_deferred_dispatch
+from app.file_share import ResourceContext, prepared_resource, require_document_source_scope, resource_info
+from app.services.facade import AuthorizationClosed, administration_scope, authorized_request, claim_deferred_dispatch, finish_action, register_deferred_dispatch
 from core.database import get_db
 from core.user import get_current_user_id
 from .document_analysis import advance_step, cancel_step, prepare_input
@@ -24,6 +24,8 @@ async def start_analysis(agent_id: int, input_data: dict[str, Any], *,
     from .document_analysis import DocumentAdmission
 
     admission = DocumentAdmission.model_validate(input_data)
+    await require_document_source_scope(ResourceContext(agent_id=agent_id, runtime=admission.runtime, task_id=task_id),
+        admission.uri)
     if idempotency_key is not None and len(idempotency_key) > 255:
         raise ValueError("Document analysis idempotency key exceeds 255 characters")
     db = get_db()
@@ -66,11 +68,27 @@ async def start_analysis(agent_id: int, input_data: dict[str, Any], *,
     return await read_analysis(agent_id, key, runtime=admission.runtime)
 
 
-async def owned_analysis(agent_id: int, analysis_id: UUID, *, runtime: str) -> LLMDocumentAnalysis:
+async def _scoped_analysis(agent_id: int, analysis_id: UUID) -> LLMDocumentAnalysis:
+    scope = await administration_scope(agent_id, "document")
+    scope.require_administration()
     row = await get_db().get(LLMDocumentAnalysis, analysis_id, populate_existing=True)
-    if row is None or row.agent_id != agent_id:
+    if row is None or not scope.allows(row.agent_id):
         raise PermissionError("Document analysis not accessible")
-    ctx = ResourceContext(agent_id=agent_id, runtime=runtime, task_id=row.task_id)
+    return row
+
+
+async def _analysis_source_context(row: LLMDocumentAnalysis, agent_id: int, runtime: str) -> ResourceContext:
+    owns_run = row.agent_id == agent_id
+    ctx = ResourceContext(agent_id=agent_id, runtime=runtime, task_id=row.task_id if owns_run else None)
+    reference = await require_document_source_scope(ctx, str(row.input["uri"]))
+    if not owns_run and reference.scheme not in {"document", "data"}:
+        raise PermissionError("Only analyses of native documents can be accessed through delegation")
+    return ctx
+
+
+async def _readable_analysis(agent_id: int, analysis_id: UUID, *, runtime: str) -> LLMDocumentAnalysis:
+    row = await _scoped_analysis(agent_id, analysis_id)
+    ctx = await _analysis_source_context(row, agent_id, runtime)
     uri, revision = str(row.input["uri"]), row.input.get("revision")
     await resource_info(ctx, uri, revision=revision)
     if row.checkpoint.get("source_sha256"):
@@ -81,7 +99,7 @@ async def owned_analysis(agent_id: int, analysis_id: UUID, *, runtime: str) -> L
 
 
 async def read_analysis(agent_id: int, analysis_id: UUID, *, runtime: str) -> dict[str, Any]:
-    row = await owned_analysis(agent_id, analysis_id, runtime=runtime)
+    row = await _readable_analysis(agent_id, analysis_id, runtime=runtime)
     # run_id is retained solely for compatibility with existing tool arguments.
     return {"analysis_id": str(row.id), "run_id": str(row.id),
             **snapshot(row).model_dump(mode="json"), "source_uri": row.input["uri"],
@@ -94,9 +112,10 @@ async def advance_analysis(analysis_id: UUID) -> DocumentAnalysisSnapshot:
 
 
 async def cancel_analysis(agent_id: int, analysis_id: UUID, *, runtime: str) -> dict[str, Any]:
-    row = await get_db().get(LLMDocumentAnalysis, analysis_id, populate_existing=True)
-    if row is None or row.agent_id != agent_id:
-        raise PermissionError("Document analysis not accessible")
+    row = await _scoped_analysis(agent_id, analysis_id)
+    if row.agent_id != agent_id:
+        ctx = await _analysis_source_context(row, agent_id, runtime)
+        await resource_info(ctx, str(row.input["uri"]), revision=row.input.get("revision"))
     result = await cancel_step(analysis_id)
     result = await publish(analysis_id, result)
     if result.status in TERMINAL_STATUSES:

@@ -18,6 +18,7 @@ _PAGE_MAX_CHARS = 4_000
 
 class TeamIdentity(BaseModel):
     id: int
+    agent_id: None = None
     name: str
 
 
@@ -30,6 +31,7 @@ class TeamDirectoryEntry(TeamIdentity):
 class TeamDirectoryMember(BaseModel):
     kind: Literal["agent", "user"]
     id: int
+    agent_id: int | None
     name: str
     code: str | None = None
     job_title: str | None = None
@@ -150,6 +152,7 @@ async def list_team_members(
                                   .offset(offset).limit(limit + 1))
     page = _page([
         TeamDirectoryMember(kind=member_kind, id=identity, name=_preview(name, 200),
+                            agent_id=identity if member_kind == "agent" else None,
                             code=_preview(code, 100) if code else None, job_title=_preview(job, 100) if job else None,
                             resource_uri=f"galaris://agent/{identity}" if member_kind == "agent" else None)
         for member_kind, identity, name, code, job in rows

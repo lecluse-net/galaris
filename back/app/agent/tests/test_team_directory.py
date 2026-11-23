@@ -173,14 +173,14 @@ async def test_real_mcp_directory_needs_no_admin_and_rechecks_revocation(inferen
     data = await directory(db)
     await mandatory_services.sync_integrated_service_connections(data.caller.id)
     connection = await db.scalar(select(Connection).join(Service).where(
-        Connection.agent_id == data.caller.id, Service.code == "galaris"))
+        Connection.agent_id == data.caller.id, Service.code == "agent"))
     await db.commit()
     user_service.set_current_user(None)
     definitions = await mcp_loader.list_enabled_native_mcp_definitions(
         data.caller.id, runtime=runtime, conversation_only=True)
     assert {"team_list", "team_members"} <= {item.name for item in definitions}
-    assert not any(item.service_code == "agent_admin" for item in definitions)
-    server = mcp_loader.build_galaris_fastmcp(data.caller.id, runtime=runtime, enabled_service_codes={"galaris"})
+    assert {item.name for item in definitions if item.service_code == "agent"} == {"agent_list", "agent_get", "team_list", "team_members"}
+    server = mcp_loader.build_galaris_fastmcp(data.caller.id, runtime=runtime, enabled_service_codes={"agent"})
     async with Client(server) as client:
         tools = {tool.name: tool for tool in await client.list_tools()}
         for name in ("team_list", "team_members"):
@@ -192,8 +192,20 @@ async def test_real_mcp_directory_needs_no_admin_and_rechecks_revocation(inferen
         result = await client.call_tool("team_list", {"search": "Alpha"})
         teams = json.loads(result.content[0].text)
         assert {item["id"] for item in teams["items"]} == {data.team.id, data.duplicate.id}
+        assert all(item["agent_id"] is None for item in teams["items"])
+        result = await client.call_tool("agent_list", {"team_id": data.team.id})
+        assert [(item["id"], item["agent_id"]) for item in json.loads(result.content[0].text)["items"]] == [
+            (data.peer.id, data.peer.id),
+        ]
+        profile = await client.call_tool("agent_get", {"agent_id": data.peer.id})
+        assert json.loads(profile.content[0].text)["agent_id"] == data.peer.id
         result = await client.call_tool("team_members", {"team_id": data.team.id, "kind": "agent"})
-        assert [item["id"] for item in json.loads(result.content[0].text)["items"]] == [data.peer.id]
+        assert [(item["id"], item["agent_id"]) for item in json.loads(result.content[0].text)["items"]] == [
+            (data.peer.id, data.peer.id),
+        ]
+        humans = await client.call_tool("team_members", {"team_id": data.team.id, "kind": "user"})
+        assert json.loads(humans.content[0].text)["items"]
+        assert all(item["agent_id"] is None for item in json.loads(humans.content[0].text)["items"])
         for arguments in ({"team_id": 0}, {"team_id": data.team.id, "limit": 501},
                           {"team_id": data.team.id, "kind": "human"}):
             assert (await client.call_tool("team_members", arguments, raise_on_error=False)).is_error

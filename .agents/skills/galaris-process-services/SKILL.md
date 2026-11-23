@@ -27,6 +27,13 @@ avec ses protocoles, paramètres et connexions. Un **outil MCP** est une fonctio
 Conserver les noms imposés par MCP, FastMCP et Pydantic AI, dont `Tool`, `ToolResult`,
 `tools/list` et les toolsets : ils ne désignent pas l'ancien domaine Galaris.
 
+Vérifier le rattachement d'une fonction dans son décorateur `mcp_tool` et son activation
+par défaut dans `back/app/services/mandatory_services.py`. Le
+[guide des Services](../../../docs/fr/admin/service-administration.md#services-intégrés-et-portées)
+décrit les connexions et leurs portées. Un préfixe MCP historique ou le module Python
+ne détermine ni le Service ni la connexion à autoriser. Agenda, Contact, Documents et
+Tâches appliquent leur propre portée, en plus des permissions de fonction et des ACL.
+
 Le catalogue sous `back/app/services/service_catalog/` distribue une fiche YAML autonome
 par service, avec ses métadonnées et son icône embarquée. Lire
 `docs/fr/dev/service-catalog.md` avant de modifier ce format. Réutiliser les schémas et
@@ -56,7 +63,7 @@ actions et exécutions liées aux Tasks. `bridge.calendar` traduit CalDAV (proto
 et les abonnements iCalendar HTTPS en lecture seule. Les consultations et commandes restent
 locales ; la synchronisation bidirectionnelle utilise un outbox transactionnel, les jetons
 CalDAV, les ETag et des écritures conditionnelles, sans écrasement des conflits.
-Le service système `agenda` est actif par défaut et sans identifiants externes ; une source
+Le service système Agenda (`calendar`) est actif par défaut et sans identifiants externes ; une source
 externe est optionnelle. Les fonctions `calendar_*` gardent leurs contrôles habituels et choisissent
 l’agenda personnel par défaut. Un identifiant de calendrier lie l’appel à sa connexion réelle.
 Les actions admettent des Tasks idempotentes indépendamment des périodes consultées. Les
@@ -94,8 +101,7 @@ télécharge. Ne limiter ni le planner ni le process à un stockage local.
 
 ## Fichiers et ressources
 
-Galaris, Conversation, Memory et File Sharing sont des services système obligatoires
-(`can_disable=false`, propriété gérée par le logiciel). Lorsque les capacités nécessaires sont autorisées,
+Lorsque les capacités nécessaires sont autorisées,
 les documents `document://` sont le support canonique des contenus rédigés durables requis par
 le résultat. Une Task ne nécessite pas à elle seule un document ; privilégier le document
 pertinent existant et ne pas remplacer une ressource métier par un document.
@@ -182,11 +188,9 @@ répertoire temporaire borné et automatiquement nettoyé. L'appelant passe donc
 autre provider.
 
 Le provider natif `galaris://` projette en lecture seule les collections `task/`, `text/`, `voice/`,
-`goal/` et `goal_cycle/`. Sa couche provider route l'URI, mais chaque domaine possède la requête, les ACL
-et la sérialisation de sa projection publique. La collection `skill/` est une exception administrée :
-elle expose les fichiers des packages uniquement à un agent dont la connexion `skill_management` est
-active. Les skills système y restent en lecture seule. Les autres opérations génériques de mutation
-sur `galaris://` sont refusées ; `file_copy` peut exporter un snapshot JSON vers un autre schéma.
+`goal/` et `goal_cycle/`, entre autres projections. Sa couche provider route l'URI et chaque domaine
+possède la requête, les ACL et la sérialisation. Consulter le contrat des URI pour les exceptions
+d'écriture de `contact/` et `skill/`. `file_copy` peut exporter un snapshot JSON.
 
 Valider taille, type, nom, URI et destination. Une destination collection conserve par défaut le
 nom exposé par les métadonnées de la source, y compris lorsque son locator est un identifiant opaque.
@@ -198,13 +202,12 @@ l’isolation entre agents, la connexion active, les ACL du domaine et l'overwri
 chaque nouveau transport. Un nouveau provider expose ses capacités par protocoles optionnels ; il
 ne prétend pas supporter list, move ou delete sans implémentation réelle.
 
-Les fonctions de contrôle `conversation_*` appartiennent au Service `conversation` et restent
-limitées au contrôleur conversationnel, y compris les réponses aux activités humaines.
-`repository_show` appartient au même Service et accepte aussi les Tasks explicitement liées
-au Chat interne ; il ne clone, ne committe et ne publie aucun dépôt.
-`conversation_round_get`, `voice_turn_get`, `llm_call` et
-`llm_calls` appartiennent à `platform_admin`, optionnel, avec vérification de sa connexion active
-à chaque appel. Ne pas exposer les inspections LLM dans le service système `galaris`.
+Les commandes `conversation_task_*` et `conversation_process_*` relèvent de Tâches et de Processus.
+`conversation_choice_resolve` et `repository_show` relèvent de Chat. `repository_show` accepte aussi
+les Tasks explicitement liées au Chat interne. `document_show` relève de Documents et exige un tour
+textuel du Chat interne. Les inspections `conversation_round_get` et `voice_turn_get` relèvent de
+Chat. Les appels LLM et incidents relèvent de Galaris. Leurs permissions de fonction sont relues
+sur leur connexion d'origine, et la portée d'inspection sur la connexion `service`.
 
 ## Sécurité et observabilité
 

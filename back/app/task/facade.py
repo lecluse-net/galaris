@@ -9,6 +9,7 @@ from app.agent import get_agent_record
 from core.i18n import render_prompt, t
 from core.util import convert_to_html
 from core.database import get_db
+from .access import agent_task_filter as agent_task_filter
 from .work_projection import (
     TaskWorkSnapshot as TaskWorkSnapshot,
     list_work_snapshots as list_work_snapshots,

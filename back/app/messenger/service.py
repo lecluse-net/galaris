@@ -387,6 +387,11 @@ async def _process_incoming(message: Message) -> UUID | None:
             connection.id,
         )
         return
+    if actual_kind == "internal":
+        from .configuration import is_messenger_connection_active
+
+        if not await is_messenger_connection_active(connection.id):
+            return
     message.platform = actual_kind
     bridge_spec = facade.get_spec(actual_kind)
     if actual_kind == "internal" and not message.is_ai:
@@ -810,6 +815,7 @@ async def messenger_for_agent(agent_id: int) -> Optional[facade.MessengerFacade]
     """Choose Chat by default, then the oldest active available connection."""
     from app.connection import connection_service
     from app.services import service
+    from .configuration import is_messenger_connection_active
 
     candidates: list[tuple[bool, int]] = []
     for conn in await connection_service.get_connections_by_agent(agent_id):
@@ -818,6 +824,8 @@ async def messenger_for_agent(agent_id: int) -> Optional[facade.MessengerFacade]
         tool = await service.get_service_by_id(conn.service_id)
         kind = _bridge_kind_for_tool(tool)
         if kind and facade.is_kind_enabled(kind) and facade.get_factory(kind):
+            if kind == "internal" and not await is_messenger_connection_active(conn.id):
+                continue
             candidates.append((kind != "internal", int(conn.id)))
     if not candidates:
         return None
@@ -973,7 +981,9 @@ async def recent_user_room(
     from sqlalchemy import func, or_, select
 
     from app.connection import Connection
+    from app.services import ServiceModel
     from core.database import get_db
+    from .configuration import messenger_connection_active
 
     value = user.strip()
     if not value:
@@ -988,10 +998,11 @@ async def recent_user_room(
             MessengerUser.display_name,
         )
         .join(Connection, Connection.id == Message.connection_id)
+        .join(ServiceModel, ServiceModel.id == Connection.service_id)
         .join(MessengerUser, MessengerUser.id == Message.messenger_user_id)
         .where(
             Connection.agent_id == agent_id,
-            Connection.active.is_(True),
+            messenger_connection_active(),
             Message.direction == "inbound",
             Message.room_id.is_not(None),
             Message.messenger_user_id.is_not(None),

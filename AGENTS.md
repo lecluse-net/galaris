@@ -245,7 +245,7 @@ materialization is neither durable nor addressable by the agent. Consult the
 
 Reserve `galaris` / `Galaris` exclusively for the built-in Galaris Service. No other Service
 code or label may contain that name, regardless of case or Unicode compatibility forms.
-Use service or domain names, such as `platform_admin` / `Administration` and `lab` / `Lab`.
+Use service or domain names, such as `service` / `Services` and `lab` / `Lab`.
 
 MCP tools, connections, and files use the contracts of `app.services`, `app.mcp`,
 `app.connection`, and `app.file_share`. Business workflows use `app.process`: external

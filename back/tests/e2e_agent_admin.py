@@ -32,7 +32,7 @@ async def setup(caller_id: int) -> dict[str, int]:
         if caller is None or not caller.code.startswith("browser-"):
             raise HTTPException(404, "Synthetic browser agent not found")
         await sync_integrated_service_connections(caller_id)
-        tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "agent_admin"))
+        tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "agent"))
         connection = await db.scalar(select(Connection).where(Connection.agent_id == caller_id, Connection.service_id == tool.id))
         connection.active = True
         await connections.set_params_bulk(connection.id, {"services.management_scope": "all"},
@@ -40,7 +40,7 @@ async def setup(caller_id: int) -> dict[str, int]:
         # This existing journey exercises portraits, with delegation explicitly granted.
         from app.services.mcp_loader import load_mcp_tools
         for definition in load_mcp_tools():
-            if definition.service_code == "agent_admin":
+            if definition.service_code == "agent":
                 await connections.set_connection_function_state(connection.id, definition.name, "enabled")
         provider = LLMProvider(name=f"Synthetic portrait {uuid4().hex}", base_url="https://portrait.example.test")
         db.add(provider)
@@ -77,7 +77,7 @@ async def call(caller_id: int, function: str, arguments: dict[str, Any],
 async def revoke(caller_id: int) -> dict[str, bool]:
     async with get_db_session() as db:
         connection = await db.scalar(select(Connection).join(ServiceModel).where(
-            Connection.agent_id == caller_id, ServiceModel.code == "agent_admin"))
+            Connection.agent_id == caller_id, ServiceModel.code == "agent"))
         connection.active = False
         await db.commit()
         return {"revoked": True}

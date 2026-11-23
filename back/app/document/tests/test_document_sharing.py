@@ -123,13 +123,13 @@ async def grant(item, scope, kind, identity, can_write):
 
 
 @pytest.mark.asyncio
-async def test_mcp_share_to_current_human_requester_is_explicit_and_read_only(db, agents):
+async def test_mcp_share_to_current_human_requester_is_explicit_and_read_only(db, document_tool_agents):
     from app.document import mcp
     from app.services.contracts import ToolCallRejectedError
     from app.services import McpToolContext
     from app.task import Task, TaskStatus
 
-    owner, peer = agents
+    owner, peer = document_tool_agents
     human = await user(db)
     task = Task(label="Return a synthetic report", status=TaskStatus.EXEC, agent_id=owner.id,
                 requester_user_id=human.id)
@@ -160,13 +160,13 @@ async def test_mcp_share_to_current_human_requester_is_explicit_and_read_only(db
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(("node_kind", "document_format"), [("document", "text"), ("document", "dataset")])
-async def test_mcp_sharing_uses_live_team_membership_and_preserves_other_grants(db, agents, memory_storage, node_kind, document_format):
+async def test_mcp_sharing_uses_live_team_membership_and_preserves_other_grants(db, document_tool_agents, memory_storage, node_kind, document_format):
     from app.document import mcp
     from app.services.mcp_loader import McpToolContext
     from core.team.service import set_human_membership
     from app.agent.dialogue_service import set_agent_membership
 
-    owner, peer = agents
+    owner, peer = document_tool_agents
     human = await user(db)
     team = TeamModel(name="Research group")
     db.add(team)
@@ -208,13 +208,13 @@ async def test_mcp_sharing_uses_live_team_membership_and_preserves_other_grants(
         assert access.can_read and not access.can_write
         with pytest.raises(service.DocumentPermissionError):
             await service.assert_item_access(record, actor, write=True)
-    with pytest.raises(service.DocumentPermissionError):
+    with pytest.raises(PermissionError):
         await mcp.document_sharing(peer_ctx, uri)
 
     await share(team_id=team.id, access="edit")
     for actor in (peer.id, HumanActor(human.id)):
         assert (await effective_access(await service.item_record(item.id), actor)).can_write
-    with pytest.raises(service.DocumentPermissionError):
+    with pytest.raises(PermissionError):
         await mcp.document_share(peer_ctx, uri, user_id=human.id, access="edit")
 
     # Removing one membership or grant must not accidentally remove independent access.

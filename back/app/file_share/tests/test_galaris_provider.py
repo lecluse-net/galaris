@@ -145,7 +145,9 @@ async def test_galaris_task_is_a_scoped_read_only_json_file(
         task_id: object,
         *,
         actor_agent_id: int,
+        allow_delegation: bool,
     ) -> dict[str, Any]:
+        assert allow_delegation
         observed.update(task_id=task_id, actor_agent_id=actor_agent_id)
         return {
             "id": str(identifier),

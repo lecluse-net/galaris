@@ -3,11 +3,28 @@
 from __future__ import annotations
 
 from loguru import logger
+from sqlalchemy import select
 
 from .interface import CallProvider
 
 _providers: dict[str, CallProvider] = {}
 _started_provider_kinds: set[str] = set()
+
+
+async def voice_auto_answer_agents(agent_id: int | None = None) -> set[int]:
+    """List agents opted in to receive automatic answers through compatible bridges."""
+    from app.connection import Connection, ConnectionParam
+    from app.services import ServiceModel
+    from app.services.contracts import VOICE_AUTO_ANSWER_PARAM
+    from core.database import get_db
+
+    statement = (select(Connection.agent_id).join(ServiceModel, ServiceModel.id == Connection.service_id)
+                 .join(ConnectionParam, ConnectionParam.connection_id == Connection.id)
+                 .where(ServiceModel.code == "chat", Connection.active.is_(True),
+                        ConnectionParam.param_name == VOICE_AUTO_ANSWER_PARAM, ConnectionParam.param_value == "true"))
+    if agent_id is not None:
+        statement = statement.where(Connection.agent_id == agent_id)
+    return set(await get_db().scalars(statement))
 
 
 class VoiceTranscriptionUnavailable(RuntimeError):

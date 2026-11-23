@@ -188,6 +188,12 @@ async def test_task_run_returns_canonical_task_uri(
     await db.flush()
     await set_agent_membership(team.id, 7, True)
     await set_agent_membership(team.id, 8, True)
+    from sqlalchemy import select
+    from app.connection.facade import get_or_create_connection, set_management_scope
+    from app.services import ServiceModel
+
+    task_service_id = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == "task"))
+    connection = await get_or_create_connection(task_service_id, 7, active=True)
 
     task_id = uuid4()
     monkeypatch.setattr(
@@ -204,6 +210,12 @@ async def test_task_run_returns_canonical_task_uri(
     monkeypatch.setattr("app.task.runner.go_next", lambda *_args, **_kwargs: None)
 
     execution = ToolExecutionContext(uuid4(), "task_run")
+    with pytest.raises(PermissionError):
+        await task_mcp.mcp_run_task(
+            McpToolContext(agent_id=7, runtime="internal"),
+            agent_id=8, label="Personal scope", objective="Execute",
+        )
+    await set_management_scope(connection.id, "team", authorized=True)
     with tool_execution(execution):
         result = await task_mcp.mcp_run_task(
             McpToolContext(agent_id=7, runtime="hermes", task_id=uuid4()),
@@ -223,21 +235,7 @@ async def test_task_run_returns_canonical_task_uri(
         )
     task_mcp.run_task.assert_awaited_once()
 
-    from sqlalchemy import select
-    from app.connection import Connection
-    from app.services import ServiceModel
-
-    admin_tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "platform_admin"))
-    connection = Connection(agent_id=7, service_id=admin_tool.id, active=True)
-    db.add(connection)
-    await db.flush()
-    with pytest.raises(PermissionError):
-        await task_mcp.mcp_run_task(
-            McpToolContext(agent_id=7, runtime="internal"),
-            agent_id=8, label="Undelegated administration", objective="Execute",
-        )
-    from app.connection.facade import set_params_bulk
-    await set_params_bulk(connection.id, {"services.management_scope": "all"}, commit=False, scope_edit_authorized=True)
+    await set_management_scope(connection.id, "all", commit=False, authorized=True)
     result = await task_mcp.mcp_run_task(
         McpToolContext(agent_id=7, runtime="internal"),
         agent_id=8, label="Administrative delegation", objective="Execute",
@@ -261,6 +259,9 @@ async def test_task_run_rejects_a_missing_target_agent(
         AsyncMock(return_value=False),
     )
     monkeypatch.setattr(task_mcp, "_context_language", AsyncMock(return_value="en"))
+    from app.services.facade import AdministrationScope
+    monkeypatch.setattr("app.agent.require_peer_interaction", AsyncMock())
+    monkeypatch.setattr(task_mcp, "task_management_scope", AsyncMock(return_value=AdministrationScope("all", None)))
     run_task = AsyncMock()
     monkeypatch.setattr(task_mcp, "run_task", run_task)
 

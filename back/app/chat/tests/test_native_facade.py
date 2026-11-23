@@ -32,6 +32,7 @@ from app.chat.provider import InternalMessenger
 from app.conversation.models import ConversationRoundMessage
 from app.topic import Topic
 from app.services import ServiceModel as Service
+from app.services.contracts import CHAT_CHANNEL_PARAM
 from core.database import get_db, get_db_session
 from core.user import UserModel as User
 
@@ -906,9 +907,11 @@ async def test_room_creation_refuses_an_inactive_agent_connection(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("disabled_channel_only", [False, True])
 async def test_chat_rooms_expose_the_effective_messenger_state(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,
+    disabled_channel_only: bool,
 ) -> None:
     agent, owner, _member = await _scope(db)
     room = await create_internal_room(
@@ -931,13 +934,20 @@ async def test_chat_rooms_expose_the_effective_messenger_state(
         select(Connection).where(Connection.id == room.connection_id)
     )
     assert connection is not None
-    connection.active = False
+    if disabled_channel_only:
+        db.add(ConnectionParam(connection_id=connection.id, param_name=CHAT_CHANNEL_PARAM, param_value="false"))
+    else:
+        connection.active = False
     await db.flush()
 
     inactive_page = await native_facade.list_chat_rooms(owner.id)
 
     assert inactive_page.items[0].id == room.id
     assert inactive_page.items[0].messenger_active is False
+    assert inactive_page.items[0].writable is False
+    assert await create_internal_room(actor_user_id=owner.id, agent_id=agent.id) is None
+    with pytest.raises(PermissionError):
+        await native_facade.publish_internal_message(user_id=owner.id, room_id=room.id, client_message_id=uuid4(), text="Synthetic")
 
 
 @pytest.mark.asyncio
