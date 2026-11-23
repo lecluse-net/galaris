@@ -54,7 +54,16 @@ async def require_agent_profile_model(
     model_field: str,
 ) -> LLM:
     """Resolve a configured usage or fail before calling a model runtime."""
-    llm = await resolve_agent_profile_model(agent, model_field)
+    return _require_configured_model(await resolve_agent_profile_model(agent, model_field), model_field)
+
+
+async def require_agent_profile_model_for_id(agent_id: int | None, model_field: str) -> LLM:
+    """Resolve a persisted agent's model without accessing an ORM relationship."""
+    llm = await llm_service.get_profile_llm_for_agent_id(model_field, agent_id)
+    return _require_configured_model(llm, model_field)
+
+
+def _require_configured_model(llm: LLM | None, model_field: str) -> LLM:
     if llm is None:
         raise AgentModelConfigurationError(
             f"No model is configured for usage {model_field!r} in the effective profile."

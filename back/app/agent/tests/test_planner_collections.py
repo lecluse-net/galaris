@@ -201,7 +201,7 @@ async def test_single_work_unit_executes_without_inventory_or_replanning(
     worker, _ = agents
     monkeypatch.setattr(planner_service, "go_next", MagicMock())
     monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
-    monkeypatch.setattr(planner_service, "require_agent_profile_model", AsyncMock(return_value=object()))
+    monkeypatch.setattr(planner_service, "require_agent_profile_model_for_id", AsyncMock(return_value=object()))
     monkeypatch.setattr(planner_service, "run_structured", AsyncMock(
         return_value=SimpleNamespace(output="Work verified", cost=0.0)))
     root = Task(label="Complete assigned work", objective=objective,
@@ -240,7 +240,7 @@ async def test_collection_journey_survives_restart_and_retries_only_failed_items
     monkeypatch.setattr(planner_service.runtime_settings, "TASK_PLAN_MAX_LEAVES", 2)
     monkeypatch.setattr(planner_service, "go_next", MagicMock())
     monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
-    monkeypatch.setattr(planner_service, "require_agent_profile_model", AsyncMock(return_value=object()))
+    monkeypatch.setattr(planner_service, "require_agent_profile_model_for_id", AsyncMock(return_value=object()))
     monkeypatch.setattr(planner_service, "run_structured", AsyncMock(
         return_value=SimpleNamespace(output="Verified collection", cost=0.0)))
     root = Task(label="Convert ordered workspaces", objective="<p>Create a document per source.</p>",

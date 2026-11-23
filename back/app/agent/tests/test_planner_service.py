@@ -390,7 +390,7 @@ async def test_build_plan_passes_canonical_history_to_prompt(
     )
     monkeypatch.setattr(
         planner_service,
-        "require_agent_profile_model",
+        "require_agent_profile_model_for_id",
         AsyncMock(return_value=SimpleNamespace()),
     )
     structured = AsyncMock(

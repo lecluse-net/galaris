@@ -89,6 +89,32 @@ async def test_force_termination_survives_stale_views_and_failed_followups(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("failed_phase", [TaskStatus.PLAN, TaskStatus.DISPATCH])
+async def test_retry_resumes_failed_phase_before_any_plan_is_saved(
+    db: AsyncSession, monkeypatch: pytest.MonkeyPatch, failed_phase: TaskStatus,
+) -> None:
+    task = _task(status=TaskStatus.ERROR, ai=True, last_error="Synthetic failure",
+                 attempt_count=2, consecutive_failures=1)
+    routed = TaskAttempt(task=task, attempt_number=1, phase=TaskStatus.CREATE.value,
+                         status=TaskAttemptStatus.SUCCESS.value, worker_id="synthetic",
+                         lease_token=uuid4())
+    failed = TaskAttempt(task=task, attempt_number=2, phase=failed_phase.value,
+                         status=TaskAttemptStatus.ERROR.value, worker_id="synthetic",
+                         lease_token=uuid4(), error="Synthetic failure")
+    db.add_all([task, routed, failed])
+    await db.commit()
+    monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
+
+    retried = await task_service.retry(task.id, task.revision)
+
+    assert retried is not None
+    assert retried.status == failed_phase and retried.plan is None
+    assert retried.last_error is None and retried.consecutive_failures == 0
+    await db.refresh(failed)
+    assert failed.status == TaskAttemptStatus.ERROR.value and failed.error == "Synthetic failure"
+
+
+@pytest.mark.asyncio
 async def test_retry_uses_delivery_only_recovery_for_failed_plan(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,

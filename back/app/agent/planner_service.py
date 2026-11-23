@@ -46,7 +46,7 @@ from .contracts import (
 from .execution_errors import HarnessExecutionError
 from .conversation_context import conversation_context_block
 from .delivery_evidence import receipt_matches_artifact, receipt_source, references_exact_resource
-from .model_resolver import require_agent_profile_model
+from .model_resolver import require_agent_profile_model_for_id
 from .task_port import task_port
 from .work_contracts import objective_blocker
 from .planner_contracts import (
@@ -2168,7 +2168,7 @@ async def _build_plan(
         from app.services.metrics import observe_planner_prompt
 
         observe_planner_prompt(characters=len(catalog_block) + len(search_block))
-    llm = llm_override or await require_agent_profile_model(task.agent, model_usages.PLANNER)
+    llm = llm_override or await require_agent_profile_model_for_id(task.agent_id, model_usages.PLANNER)
     result = await run_structured(
         llm=llm,
         output_type=Plan,
@@ -2235,7 +2235,7 @@ async def _build_blocked_recovery(
         search_block, enriched_tool_names = await _tool_search_results_block(task, catalog)
         prompt = "\n".join(block for block in (prompt, catalog_block, search_block) if block)
 
-    llm = await require_agent_profile_model(task.agent, model_usages.PLANNER)
+    llm = await require_agent_profile_model_for_id(task.agent_id, model_usages.PLANNER)
     result = await run_structured(
         llm=llm,
         output_type=BlockedPlanRecovery,
@@ -2271,7 +2271,7 @@ async def _build_blocked_recovery(
 
 async def _synthesize(task: Task, steps_block: str) -> tuple[str, float]:
     """Synthesize the global result and cost from completed step results."""
-    llm = await require_agent_profile_model(task.agent, model_usages.PLANNER)
+    llm = await require_agent_profile_model_for_id(task.agent_id, model_usages.PLANNER)
     raw_brief = (task.plan or {}).get("brief")
     brief_data = cast(dict[str, Any], raw_brief) if isinstance(raw_brief, dict) else {}
     objective = str(brief_data.get("objective") or "").strip() or (task.objective or task.label)

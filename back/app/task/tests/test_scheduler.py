@@ -73,6 +73,79 @@ async def test_planner_synthesis_does_not_block_lease_renewal(
 
 
 @pytest.mark.asyncio
+async def test_planner_materializes_standalone_conversation_task(
+    db, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import app.services
+    from app.agent import OBJECTIVE_IS_STANDALONE_DATA_KEY, planner_service
+    from app.llm.profile_models import LlmProfile
+    from app.llm.provider_models import LLM, LLMProvider
+    from app.memory.models import MemoryItem
+    from app.services.catalog import catalog_entry_from_definition, catalog_from_entries
+    from app.task import task_service
+    from core.database import get_db
+
+    title = Title(label="Synthetic planner", gender="X")
+    provider = LLMProvider(name="Synthetic planner", base_url="https://example.test")
+    db.add_all([title, provider])
+    await db.flush()
+    llm = LLM(llm_provider_id=provider.id, code="synthetic-plan",
+              llm_name="synthetic", label="Synthetic planner")
+    db.add(llm)
+    await db.flush()
+    profile = LlmProfile(code="synthetic-plan", label="Synthetic planner", text_high_llm_id=llm.id)
+    db.add(profile)
+    await db.flush()
+    agent = Agent(title_id=title.id, first_name="Synthetic", last_name="Planner",
+                  code="synthetic-plan", profile_id=profile.id)
+    db.add(agent)
+    await db.flush()
+    contact = MemoryItem(owner_agent_id=agent.id, memory_resource_id="synthetic-contact",
+                         memory_content_hash="0" * 64)
+    db.add(contact)
+    await db.flush()
+    task = Task(label="Plan synthetic work", objective="Write a summary", agent_id=agent.id,
+                contact_memory_item_id=contact.id, status=TaskStatus.PLAN, ai=True,
+                data={"origin": "conversation", OBJECTIVE_IS_STANDALONE_DATA_KEY: True})
+    db.add(task)
+    await db.commit()
+    task_id = task.id
+    llm_id = llm.id
+
+    async def discover_tools(agent_id, *, runtime, task_id):
+        session = get_db()
+        current = await session.get(Task, task_id)
+        assert current is not None
+        # Reproduce the unloaded relationship observed after catalog discovery.
+        session.expire(current, ["agent"])
+        entry = catalog_entry_from_definition(
+            runtime=runtime, name="synthetic_read", description="Read synthetic notes",
+            parameters_json_schema={},
+        )
+        return catalog_from_entries(agent_id=agent_id, runtime=runtime, entries=[entry])
+
+    structured = AsyncMock(return_value=SimpleNamespace(
+        output=planner_service.Plan(steps=[planner_service.PlanStep(
+            label="Write summary", objective="Summarize the synthetic notes",
+        )]), cost=0.0, messages=[],
+    ))
+    monkeypatch.setattr(app.services, "build_effective_tool_catalog", discover_tools)
+    monkeypatch.setattr(planner_service, "run_structured", structured)
+    monkeypatch.setattr(task_service.websocket, "emit", AsyncMock())
+    monkeypatch.setattr(planner_service, "go_next", lambda _task_id: None)
+
+    await scheduler._plan(task_id)
+
+    structured.assert_awaited_once()
+    assert structured.await_args.kwargs["llm"].id == llm_id
+    await db.refresh(task)
+    assert task.status == TaskStatus.PLAN and task.paused
+    children = await task_service.get_children(task_id)
+    assert len(children) == 1
+    assert children[0].status == TaskStatus.DISPATCH and not children[0].paused
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("final_outcome", ["success", "exhausted", "unsafe"])
 async def test_plan_waits_for_scheduler_retry_decision(
     committed_database, monkeypatch, final_outcome,

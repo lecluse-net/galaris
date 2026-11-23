@@ -837,9 +837,19 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
             data["reasoning_recovery_requested"] = True
         data = prepare_run_retry(data)
         data.pop("objective_blocker", None)
-        transition(task, TaskEvent.RETRY_BLOCKED if blocked else TaskEvent.RETRY)
+        retry_event = TaskEvent.RETRY_BLOCKED if blocked else TaskEvent.RETRY
+        if task.status == TaskStatus.ERROR and task.lease_token is None:
+            # A failed decomposition has a PLAN attempt even if it never saved a plan.
+            latest_phase = await get_db().scalar(
+                select(TaskAttempt.phase)
+                .where(TaskAttempt.task_id == task.id)
+                .order_by(TaskAttempt.attempt_number.desc())
+                .limit(1)
+            )
+            if latest_phase == TaskStatus.PLAN.value:
+                retry_event = TaskEvent.RETRY_PLAN
+        transition(task, retry_event)
         task.data = data
-        transition(task, TaskEvent.ROUTE_TO_EXECUTION)
         task.execution_result = None
         task.feedback = None
     clear_pauses(task)
