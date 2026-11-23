@@ -18,9 +18,11 @@ class ConversationInterruption:
 
     def __init__(
         self, pending: Callable[[], Awaitable[bool]], *, poll_seconds: float = 0.25,
+        wait_for_change: Callable[[], Awaitable[None]] | None = None,
     ) -> None:
         self.pending = pending
         self.poll_seconds = poll_seconds
+        self.wait_for_change = wait_for_change
         self.requested = False
         self.cancel: Callable[[], None] | None = None
         self._monitor: asyncio.Task[None] | None = None
@@ -39,7 +41,10 @@ class ConversationInterruption:
 
     async def _watch(self) -> None:
         while True:
-            await asyncio.sleep(self.poll_seconds)
+            if self.wait_for_change is None:
+                await asyncio.sleep(self.poll_seconds)
+            else:
+                await self.wait_for_change()
             if await self._check():
                 if self.cancel is not None:
                     self.cancel()

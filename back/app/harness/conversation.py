@@ -950,7 +950,7 @@ class HarnessConversationController:
                 return turn.should_interrupt is not None and await turn.should_interrupt()
 
             interruption = (
-                ConversationInterruption(pending_interruption)
+                ConversationInterruption(pending_interruption, wait_for_change=turn.wait_for_interrupt)
                 if turn.should_interrupt is not None or turn.should_suspend is not None else None
             )
             skills = [] if turn.force_response else await build_internal_skill_capabilities(turn.agent_id)

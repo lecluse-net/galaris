@@ -1238,6 +1238,17 @@ depuis l’ADR 0058 et la reprise échoue explicitement.
 
 ## Erreur, annulation et reprise
 
+- La recherche d’outils utilise des transactions courtes pour lire et écrire l’index, puis
+  libère la connexion avant chaque appel d’embedding. Des recherches concurrentes sur le même
+  catalogue et le même modèle partagent le rafraîchissement de l’index dans le processus.
+- Le streaming d’une conversation texte vérifie les commandes et les nouveaux messages au
+  réveil qui suit leur commit, avec une réconciliation PostgreSQL toutes les deux secondes en
+  l’absence de signal. La garde durable avant un effet reste obligatoire.
+- Les fragments de supervision LLM et les instantanés périodiques de texte ou de réflexion
+  des tâches sont produits pour des clients intéressés. Pour chaque exécution, le WebSocket
+  des tâches conserve le dernier instantané en attente si un envoi est déjà en cours.
+  Les checkpoints de reprise et les résultats terminaux restent indépendants de l’affichage.
+
 - DeepSeek reprend automatiquement un tour terminé sur une erreur HTTP fournisseur temporaire
   (408, 429, 500, 502, 503 ou 504) dans la même instance SDK et la même session, avant de fermer
   l'acteur. Le nouveau tour conserve l'historique et les résultats d'outils ; il ne resoumet pas

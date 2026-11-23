@@ -1183,6 +1183,17 @@ longer been available since ADR 0058, and resumption fails explicitly.
 
 ## Error, Cancellation, and Resumption
 
+- Tool search uses short transactions to read and write the index and releases the
+  connection before each embedding call. Concurrent searches for the same catalog and
+  model share one index refresh within the process.
+- Text conversation streaming checks for controls and new messages on a post-commit
+  wakeup, with a PostgreSQL reconciliation every two seconds when no signal arrives.
+  The durable guard before an effect still applies.
+- LLM supervision fragments and periodic Task text or reasoning snapshots are produced
+  for interested clients. Each live Task run keeps the latest pending snapshot while
+  a WebSocket send is in flight. Recovery checkpoints and terminal results are
+  independent of live display.
+
 - DeepSeek automatically continues a turn ending with a temporary provider HTTP error
   (408, 429, 500, 502, 503 or 504) in the same SDK instance and session before closing the actor.
   The new turn retains history and tool results without resubmitting the original objective.

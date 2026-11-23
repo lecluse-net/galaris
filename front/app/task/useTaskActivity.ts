@@ -198,11 +198,26 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
 
   websocket.createWebsocket()
   websocket.onEvent('agent_run', 'event', onEvent)
-  websocket.onEvent('llm_call', 'create', onCall)
-  websocket.onEvent('llm_call', 'update', onCall)
-  websocket.onEvent('llm_call', 'progress', onCallProgress)
-  websocket.onEvent('llm_call', 'delete', schedule)
-  websocket.onEvent('llm_call', 'cleanup', schedule)
+  watch(
+    () => privilegeStore.hasAnyPrivilege([privileges.LLM_CALL_ACCESS, privileges.LLM_CALL_CONTROL])
+      && tasks().some(task => !['SUCCESS', 'ERROR'].includes(task.status) && !streamsNative(task)),
+    (needsCalls, _previous, onCleanup) => {
+      if (!needsCalls) return
+      websocket.onEvent('llm_call', 'create', onCall)
+      websocket.onEvent('llm_call', 'update', onCall)
+      websocket.onEvent('llm_call', 'progress', onCallProgress)
+      websocket.onEvent('llm_call', 'delete', schedule)
+      websocket.onEvent('llm_call', 'cleanup', schedule)
+      onCleanup(() => {
+        websocket.offEvent('llm_call', 'create', onCall)
+        websocket.offEvent('llm_call', 'update', onCall)
+        websocket.offEvent('llm_call', 'progress', onCallProgress)
+        websocket.offEvent('llm_call', 'delete', schedule)
+        websocket.offEvent('llm_call', 'cleanup', schedule)
+      })
+    },
+    { immediate: true },
+  )
   websocket.onConnect(schedule)
   const stopPolling = startVisiblePolling(async () => { if (joined.size) await refresh() }, 15_000)
   watch(() => tasks().map(task => `${task.id}:${task.revision}:${task.status}:${taskRunId(task)}`).join('|'), () => {
@@ -230,11 +245,6 @@ export function useTaskActivity(tasks: () => readonly Task[]) {
     stopPolling()
     for (const id of joined) rooms.release(id)
     websocket.offEvent('agent_run', 'event', onEvent)
-    websocket.offEvent('llm_call', 'create', onCall)
-    websocket.offEvent('llm_call', 'update', onCall)
-    websocket.offEvent('llm_call', 'progress', onCallProgress)
-    websocket.offEvent('llm_call', 'delete', schedule)
-    websocket.offEvent('llm_call', 'cleanup', schedule)
     websocket.offConnect(schedule)
   })
   return { snapshots, unavailable, resultFor, refresh }

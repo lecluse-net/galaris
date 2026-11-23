@@ -83,15 +83,27 @@ async def test_task_run_broadcasts_cumulative_progress_without_sending_each_frag
             runs.append((task_id, run_id, attempt_id))
     clock = [100.0]
     monkeypatch.setattr(live_checkpoint, "time", SimpleNamespace(monotonic=lambda: clock[0]))
+    first_publications = asyncio.Event()
+    final_publications = asyncio.Event()
+    release_transport = asyncio.Event()
+    first_count = 0
+    final_count = 0
 
-    async def delivery(*_args, **_kwargs) -> None:
-        if run_count == 1:
-            # Even when authorization and delivery take longer than the interval,
-            # the wait must not make the next fragment immediately due.
-            clock[0] += 2
+    async def delivery(_subject, _action, payload, **_kwargs) -> None:
+        nonlocal first_count, final_count
+        if payload["sequence"] == 1:
+            first_count += 1
+            if first_count == run_count:
+                first_publications.set()
+            await release_transport.wait()
+        elif payload["sequence"] == 260:
+            final_count += 1
+            if final_count == run_count:
+                final_publications.set()
 
     emit = AsyncMock(side_effect=delivery)
     monkeypatch.setattr(run_events.websocket, "emit", emit)
+    monkeypatch.setattr(run_events.websocket, "has_event_interest", lambda *_args, **_kwargs: True)
 
     async def publish(run: tuple[UUID, UUID, UUID], sequence: int, content: str, complete: bool = False) -> None:
         task_id, run_id, attempt_id = run
@@ -105,14 +117,22 @@ async def test_task_run_broadcasts_cumulative_progress_without_sending_each_frag
             await publish(run, sequence, " é")
 
     await asyncio.gather(*(burst(run) for run in runs))
+    async with asyncio.timeout(1):
+        await first_publications.wait()
     assert emit.await_count == run_count
 
-    clock[0] += 2
-    await asyncio.gather(*(publish(run, 258, " update") for run in runs))
+    try:
+        async with asyncio.timeout(1):
+            clock[0] += 2
+            await asyncio.gather(*(publish(run, 258, " update") for run in runs))
+            await asyncio.gather(*(publish(run, 259, " done") for run in runs))
+            await asyncio.gather(*(publish(run, 260, "", complete=True) for run in runs))
+        assert emit.await_count == run_count
+    finally:
+        release_transport.set()
+    async with asyncio.timeout(1):
+        await final_publications.wait()
     assert emit.await_count == 2 * run_count
-    await asyncio.gather(*(publish(run, 259, " done") for run in runs))
-    await asyncio.gather(*(publish(run, 260, "", complete=True) for run in runs))
-    assert emit.await_count == 3 * run_count
     for call in emit.await_args_list[-run_count:]:
         message = call.args[2]["snapshot"]["result"]["messages"][0]
         assert message["content"] == "Start" + " é" * 256 + " update done"

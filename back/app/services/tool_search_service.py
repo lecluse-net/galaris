@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import math
 import re
@@ -10,9 +11,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Literal, cast
+from weakref import WeakValueDictionary
 
 from loguru import logger
-from sqlalchemy import Float, cast as sql_cast, delete, func, or_, select
+from sqlalchemy import Float, cast as sql_cast, delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -32,6 +34,7 @@ INDEX_EMBEDDING_TIMEOUT_SECONDS = 30.0
 QUERY_EMBEDDING_TIMEOUT_SECONDS = 5.0
 EMBEDDING_BATCH_SIZE = 64
 _SEARCH_TOKEN_RE = re.compile(r"[A-Za-zÀ-ÖØ-öø-ÿ0-9]+")
+_embedding_locks: WeakValueDictionary[tuple[str, str, int], asyncio.Lock] = WeakValueDictionary()
 
 
 @dataclass(frozen=True)
@@ -70,13 +73,10 @@ async def _embed_many(
     return await model.embed(texts, timeout=timeout_seconds)
 
 
-async def _sync_documents(
-    catalog: AgentToolCatalog,
-) -> dict[str, ToolSearchDocument]:
-    """Upsert public metadata while keeping authorization outside the index."""
-
-    if not catalog.entries:
-        return {}
+async def _insert_documents(entries: Sequence[AgentToolCatalogEntry]) -> None:
+    """Insert immutable metadata keyed by its definition fingerprint."""
+    if not entries:
+        return
     now = datetime.now(timezone.utc)
     values = [
         {
@@ -88,84 +88,94 @@ async def _sync_documents(
             "search_text": entry.input_summary,
             "last_seen_at": now,
         }
-        for entry in catalog.entries
+        for entry in sorted(entries, key=lambda entry: entry.definition_fingerprint)
     ]
-    statement = pg_insert(ToolSearchDocument).values(values)
-    statement = statement.on_conflict_do_update(
+    statement = pg_insert(ToolSearchDocument).values(values).on_conflict_do_nothing(
         index_elements=[ToolSearchDocument.definition_fingerprint],
-        set_={
-            "runtime": statement.excluded.runtime,
-            "name": statement.excluded.name,
-            "description": statement.excluded.description,
-            "parameters_json_schema": statement.excluded.parameters_json_schema,
-            "search_text": statement.excluded.search_text,
-            "last_seen_at": now,
-            "updated_at": now,
-        },
     )
     await get_db().execute(statement)
-    await get_db().flush()
-    result = await get_db().scalars(
-        select(ToolSearchDocument).where(
-            ToolSearchDocument.definition_fingerprint.in_(
-                [entry.definition_fingerprint for entry in catalog.entries]
-            )
-        )
-    )
-    return {document.definition_fingerprint: document for document in result.all()}
 
 
-async def _ensure_embeddings(
+async def _read_index_state(
     catalog: AgentToolCatalog,
-    documents: dict[str, ToolSearchDocument],
-    *,
-    model: ConfiguredEmbeddingModel,
-    expected_dimensions: int,
-    force: bool = False,
-) -> tuple[int | None, int]:
-    missing = [
-        entry
-        for entry in catalog.entries
-        if (
-            force
-            or (document := documents.get(entry.definition_fingerprint)) is None
-            or document.embedding is None
-            or document.model_key != model.key
-            or document.dimensions != expected_dimensions
-        )
-    ]
-    if missing:
-        for offset in range(0, len(missing), EMBEDDING_BATCH_SIZE):
-            batch = missing[offset : offset + EMBEDDING_BATCH_SIZE]
-            embeddings = await _embed_many(
-                [entry.embedding_text for entry in batch],
-                model=model,
-                timeout_seconds=INDEX_EMBEDDING_TIMEOUT_SECONDS,
-            )
-            dimensions = len(embeddings[0])
-            if dimensions != expected_dimensions:
-                raise EmbeddingError(
-                    "The tool embedding dimension changed during index refresh."
-                )
-            for entry, embedding in zip(batch, embeddings, strict=True):
-                document = documents.get(entry.definition_fingerprint)
-                if document is None:
-                    continue
-                document.model_key = model.key
-                document.model_code = model.code
-                document.dimensions = dimensions
-                document.embedding = embedding
-        await get_db().flush()
+) -> dict[str, tuple[str | None, int | None, bool]]:
+    stored = await get_db().execute(select(
+        ToolSearchDocument.definition_fingerprint,
+        ToolSearchDocument.model_key,
+        ToolSearchDocument.dimensions,
+        ToolSearchDocument.embedding.is_not(None),
+    ).where(ToolSearchDocument.definition_fingerprint.in_(
+        [entry.definition_fingerprint for entry in catalog.entries]
+    )))
+    return {key: (model_key, dimensions, present)
+            for key, model_key, dimensions, present in stored.tuples()}
 
-    dimensions = {
-        document.dimensions
-        for document in documents.values()
-        if document.model_key == model.key
-        and document.embedding is not None
-        and document.dimensions is not None
-    }
-    resolved_dimensions = next(iter(dimensions)) if len(dimensions) == 1 else None
-    return resolved_dimensions, len(missing)
+
+async def _compute_index_embeddings(
+    entries: Sequence[AgentToolCatalogEntry],
+    *, model: ConfiguredEmbeddingModel, dimensions: int,
+) -> dict[str, list[float]]:
+    vectors: dict[str, list[float]] = {}
+    for offset in range(0, len(entries), EMBEDDING_BATCH_SIZE):
+        batch = entries[offset : offset + EMBEDDING_BATCH_SIZE]
+        embeddings = await _embed_many(
+            [entry.embedding_text for entry in batch],
+            model=model,
+            timeout_seconds=INDEX_EMBEDDING_TIMEOUT_SECONDS,
+        )
+        if any(len(vector) != dimensions for vector in embeddings):
+            raise EmbeddingError("The tool embedding dimension changed during index refresh.")
+        vectors.update((entry.definition_fingerprint, vector)
+                       for entry, vector in zip(batch, embeddings, strict=True))
+    return vectors
+
+
+async def _store_index_embeddings(
+    vectors: dict[str, list[float]],
+    *, model: ConfiguredEmbeddingModel, dimensions: int, force: bool = False,
+) -> int:
+    db = get_db()
+    updated = 0
+    for fingerprint, vector in sorted(vectors.items()):
+        statement = update(ToolSearchDocument).where(
+            ToolSearchDocument.definition_fingerprint == fingerprint,
+        )
+        if not force:
+            statement = statement.where(or_(
+                ToolSearchDocument.model_key.is_distinct_from(model.key),
+                ToolSearchDocument.dimensions.is_distinct_from(dimensions),
+                ToolSearchDocument.embedding.is_(None),
+            ))
+        recorded = await db.scalar(statement.values(
+            model_key=model.key, model_code=model.code, dimensions=dimensions, embedding=vector,
+        ).returning(ToolSearchDocument.id).execution_options(synchronize_session=False))
+        updated += recorded is not None
+    return updated
+
+
+async def _fill_missing_embeddings(
+    catalog: AgentToolCatalog,
+    indexed: dict[str, tuple[str | None, int | None, bool]],
+    *, model: ConfiguredEmbeddingModel, dimensions: int, force: bool = False,
+) -> int:
+    expected = (model.key, dimensions, True)
+    if not force and all(indexed.get(entry.definition_fingerprint) == expected
+                         for entry in catalog.entries):
+        return 0
+    key = (catalog.version, model.key, dimensions)
+    lock = _embedding_locks.setdefault(key, asyncio.Lock())
+    async with lock:
+        # Several workers can observe a cold index. Refresh its metadata after
+        # waiting, and hold this process-local lock across the provider only.
+        async with get_db_session():
+            current = await _read_index_state(catalog)
+        missing = [entry for entry in catalog.entries
+                   if force or current.get(entry.definition_fingerprint) != expected]
+        if not missing:
+            return 0
+        vectors = await _compute_index_embeddings(missing, model=model, dimensions=dimensions)
+        async with get_db_session():
+            return await _store_index_embeddings(vectors, model=model, dimensions=dimensions, force=force)
 
 
 def _merge_catalogs(
@@ -207,17 +217,18 @@ async def refresh_catalog_index(
     fingerprints = [
         entry.definition_fingerprint for entry in projection.entries
     ]
-    documents: dict[str, ToolSearchDocument] = {}
     pruned = 0
-    async with get_db().begin_nested():
-        documents = await _sync_documents(projection)
+    async with get_db_session() as db:
+        indexed = await _read_index_state(projection)
+        await _insert_documents([entry for entry in projection.entries
+                                 if entry.definition_fingerprint not in indexed])
         if prune_stale:
             statement = delete(ToolSearchDocument)
             if fingerprints:
                 statement = statement.where(
                     ToolSearchDocument.definition_fingerprint.not_in(fingerprints)
                 )
-            deleted = await get_db().execute(
+            deleted = await db.execute(
                 statement.returning(ToolSearchDocument.id)
             )
             pruned = len(deleted.all())
@@ -232,14 +243,14 @@ async def refresh_catalog_index(
         )
 
     try:
-        async with get_db().begin_nested():
+        async with get_db_session():
             model = await configured_embedding_model()
     except Exception:
         logger.exception("Tool index refresh embedding model resolution failed")
         model = None
     if model is None:
         return ToolIndexRefreshResult(
-            documents_indexed=len(documents),
+            documents_indexed=len(projection.entries),
             embeddings_refreshed=0,
             documents_pruned=pruned,
             semantic_available=False,
@@ -247,13 +258,8 @@ async def refresh_catalog_index(
         )
 
     try:
-        cached_dimensions = {
-            document.dimensions
-            for document in documents.values()
-            if document.model_key == model.key
-            and document.embedding is not None
-            and document.dimensions is not None
-        }
+        cached_dimensions = {dimensions for model_key, dimensions, present in indexed.values()
+                             if model_key == model.key and present and dimensions is not None}
         if not force_embeddings and len(cached_dimensions) == 1:
             expected_dimensions = next(iter(cached_dimensions))
         else:
@@ -263,18 +269,17 @@ async def refresh_catalog_index(
                 timeout_seconds=QUERY_EMBEDDING_TIMEOUT_SECONDS,
             )
             expected_dimensions = len(probe[0])
-        async with get_db().begin_nested():
-            _dimensions, refreshed = await _ensure_embeddings(
-                projection,
-                documents,
-                model=model,
-                expected_dimensions=expected_dimensions,
-                force=force_embeddings,
-            )
+        refreshed = await _fill_missing_embeddings(
+            projection,
+            indexed,
+            model=model,
+            dimensions=expected_dimensions,
+            force=force_embeddings,
+        )
     except EmbeddingError:
         logger.warning("Tool index refresh fell back to lexical retrieval")
         return ToolIndexRefreshResult(
-            documents_indexed=len(documents),
+            documents_indexed=len(projection.entries),
             embeddings_refreshed=0,
             documents_pruned=pruned,
             semantic_available=False,
@@ -283,7 +288,7 @@ async def refresh_catalog_index(
     except Exception:
         logger.exception("Tool index refresh semantic projection failed")
         return ToolIndexRefreshResult(
-            documents_indexed=len(documents),
+            documents_indexed=len(projection.entries),
             embeddings_refreshed=0,
             documents_pruned=pruned,
             semantic_available=False,
@@ -291,7 +296,7 @@ async def refresh_catalog_index(
         )
 
     return ToolIndexRefreshResult(
-        documents_indexed=len(documents),
+        documents_indexed=len(projection.entries),
         embeddings_refreshed=refreshed,
         documents_pruned=pruned,
         semantic_available=True,
@@ -485,7 +490,7 @@ async def search_catalog(
     limit: int = 8,
     surface: str = "planner",
 ) -> ToolSearchResult:
-    """Search only the supplied effective catalog, with lexical fail-open."""
+    """Search an effective catalog using short, independent transactions."""
 
     started = time.monotonic()
     normalized_query = " ".join(query.split())[:4_000]
@@ -512,10 +517,11 @@ async def search_catalog(
         MAX_CANDIDATES,
         max(24, bounded_limit * 3),
     )
-    documents: dict[str, ToolSearchDocument] = {}
     try:
-        async with get_db().begin_nested():
-            documents = await _sync_documents(catalog)
+        async with get_db_session():
+            indexed = await _read_index_state(catalog)
+            await _insert_documents([entry for entry in catalog.entries
+                                     if entry.definition_fingerprint not in indexed])
             lexical = await _lexical_fingerprints(
                 catalog,
                 query=normalized_query,
@@ -529,11 +535,11 @@ async def search_catalog(
             limit=bounded_limit,
             surface=surface,
             started=started,
-            reason="search_projection_unavailable",
+            reason="search_transaction_unavailable",
         )
 
     try:
-        async with get_db().begin_nested():
+        async with get_db_session():
             model = await configured_embedding_model()
     except Exception:
         logger.exception("Tool discovery embedding model resolution failed")
@@ -571,23 +577,16 @@ async def search_catalog(
             timeout_seconds=QUERY_EMBEDDING_TIMEOUT_SECONDS,
         )
         query_embedding = embeddings[0]
-        async with get_db().begin_nested():
-            dimensions, _refreshed = await _ensure_embeddings(
+        dimensions = len(query_embedding)
+        await _fill_missing_embeddings(catalog, indexed, model=model, dimensions=dimensions)
+        async with get_db_session():
+            semantic = await _semantic_fingerprints(
                 catalog,
-                documents,
                 model=model,
-                expected_dimensions=len(query_embedding),
+                dimensions=dimensions,
+                query_embedding=query_embedding,
+                limit=candidate_limit,
             )
-            if dimensions is not None and dimensions == len(query_embedding):
-                semantic = await _semantic_fingerprints(
-                    catalog,
-                    model=model,
-                    dimensions=dimensions,
-                    query_embedding=query_embedding,
-                    limit=candidate_limit,
-                )
-            else:
-                semantic = []
     except EmbeddingError:
         logger.warning("Tool discovery fell back to lexical retrieval")
         semantic = []
@@ -624,48 +623,7 @@ async def search_catalog(
     return result
 
 
-async def search_catalog_in_isolated_session(
-    catalog: AgentToolCatalog,
-    *,
-    query: str,
-    limit: int = 8,
-    surface: str = "planner",
-) -> ToolSearchResult:
-    """Search without sharing the caller's contextual SQLAlchemy session.
-
-    Pydantic AI may execute capability and MCP calls concurrently. A dedicated
-    transaction prevents an optional discovery failure from invalidating the durable
-    Task transaction used by checkpoints. The fallback is intentionally database-free.
-    """
-
-    started = time.monotonic()
-    normalized_query = " ".join(query.split())[:4_000]
-    bounded_limit = max(1, min(limit, MAX_RESULTS))
-    if not normalized_query or not catalog.entries:
-        return await search_catalog(
-            catalog,
-            query=normalized_query,
-            limit=bounded_limit,
-            surface=surface,
-        )
-    try:
-        async with get_db_session():
-            return await search_catalog(
-                catalog,
-                query=normalized_query,
-                limit=bounded_limit,
-                surface=surface,
-            )
-    except Exception:
-        logger.exception("Isolated tool discovery transaction failed")
-        return _catalog_only_fallback(
-            catalog,
-            query=normalized_query,
-            limit=bounded_limit,
-            surface=surface,
-            started=started,
-            reason="search_transaction_unavailable",
-        )
+search_catalog_in_isolated_session = search_catalog
 
 
 __all__ = [

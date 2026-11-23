@@ -159,7 +159,7 @@ async def _execute_action(round_id: UUID, lease_token: UUID) -> None:
         ConversationExecutionError,
         ConversationOutcome,
     )
-    from .preparation import ConversationSuperseded
+    from .preparation import ConversationSuperseded, watch_room_control
     from .facade import publish_round_activity
     from .runtime import ConversationRuntimeStream
     from .service import build_turn, complete_round, fail_round
@@ -182,7 +182,8 @@ async def _execute_action(round_id: UUID, lease_token: UUID) -> None:
         )
         await progress.start()
         await publish_round_activity(round_id)
-        outcome = await controller.run(turn)
+        with watch_room_control(turn.room_id) as wait_for_interrupt:
+            outcome = await controller.run(replace(turn, wait_for_interrupt=wait_for_interrupt))
         terminal_result = outcome.execution_result
         if terminal_result is None:
             terminal_result = progress.snapshot()

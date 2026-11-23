@@ -304,9 +304,10 @@ response. Purging or changing the viewer invalidates pending reads. Stream gaps 
 recovery when received during an HTTP request; a new selection does not wait for a blocked
 request belonging to an older selection.
 
-While generating a text response, the harness checks every 250 ms whether a `FROZEN`
-successor has been admitted in the same room under the current lease. This short-session
-read also works across workers and never marks an effect. The signal cancels inference
+While generating a text response, an admission or control commit wakes the room’s
+harness. It checks the current lease and any `FROZEN` successor or pending command in a
+short session without marking an effect. A check every two seconds covers commits
+from another worker. The signal cancels inference
 through the Pydantic AI token; hooks between inference and tools prevent a newly stale
 call from starting. An already started tool finishes before interruption. The final guard
 preserves the transitions above and the partial trace, marked `interrupted_by_new_input`,

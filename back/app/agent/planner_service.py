@@ -25,6 +25,8 @@ from uuid import UUID
 from pprint import pformat
 from loguru import logger
 from pydantic import BaseModel, ValidationError
+from sqlalchemy.exc import MissingGreenlet
+from core.database import release_db_transaction
 from core.params import Params, params_service, prompt_default
 from core.params import runtime_settings
 from core.util import as_dict, as_list
@@ -35,11 +37,13 @@ from .contracts import (
     AgentTaskDraft,
     AgentTask,
     ExecutionResult,
+    HarnessFailure,
     OBJECTIVE_IS_STANDALONE_DATA_KEY,
     TaskPhase,
     TaskTransition,
     WorkingResource,
 )
+from .execution_errors import HarnessExecutionError
 from .conversation_context import conversation_context_block
 from .delivery_evidence import receipt_matches_artifact, receipt_source, references_exact_resource
 from .model_resolver import require_agent_profile_model
@@ -335,6 +339,9 @@ async def advance(task: Task) -> None:
             await _start_plan(task)
         else:
             await _advance_plan(task)
+    except HarnessExecutionError:
+        # The scheduler owns bounded retry and terminal classification.
+        raise
     except Exception as e:  # Never leave a task stuck in PLAN.
         logger.exception("Planner: unexpected error for task {}", task.id)
         await _complete_planner_failure(
@@ -918,8 +925,17 @@ def _mark_plan_waiting(task: Task) -> None:
 
 async def _start_plan(task: Task) -> None:
     """Build, materialize, and activate a plan, or pause for clarification."""
+    task_id = task.id
     try:
         plan, cost, _dump = await _build_plan(task)
+    except MissingGreenlet as exc:
+        logger.exception("Planner: implicit database I/O during decomposition of task {}", task_id)
+        raise HarnessExecutionError(HarnessFailure(
+            code="runtime",
+            message="MissingGreenlet: implicit database I/O while preparing a plan.",
+            retry="never",
+            effects="none",
+        )) from exc
     except Exception as e:
         from .execution_scope import ScopePlanError
         if isinstance(e, ScopePlanError) and e.needs_target:
@@ -927,7 +943,7 @@ async def _start_plan(task: Task) -> None:
                 _translate_for_task(task, "planner.scope_target_question")
             ]):
                 return
-        logger.exception("Planner: failed to decompose task {}", task.id)
+        logger.exception("Planner: failed to decompose task {}", task_id)
         await _complete_planner_failure(
             task,
             _translate_for_task(task, "planner.decomposition_error").format(error=e),
@@ -2345,10 +2361,7 @@ async def _effective_tool_catalog(task: Task) -> AgentToolCatalog | None:
     if not task.agent_id:
         return None
     try:
-        try:
-            agent = task.agent
-        except Exception:
-            agent = None
+        agent = task.agent
         from app.agent import validate_agent_driver
         from app.services import build_effective_tool_catalog
 
@@ -2401,12 +2414,14 @@ async def _tool_search_results_block(
     catalog: AgentToolCatalog,
 ) -> tuple[str, frozenset[str]]:
     """Return detailed top matches without changing the exhaustive manifest."""
+    query = _tool_search_query(task)
+    await release_db_transaction()
     try:
         from app.services import search_catalog
 
         result = await search_catalog(
             catalog,
-            query=_tool_search_query(task),
+            query=query,
             limit=8,
             surface="planner",
         )

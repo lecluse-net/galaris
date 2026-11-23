@@ -388,6 +388,29 @@ async def test_registered_resource_room_join_checks_privilege_and_membership(
     assert fake_server.joined == [("sid-member", "DocumentRoom:allowed")]
 
 
+async def test_room_only_progress_does_not_open_sql_for_unrelated_subscribers(monkeypatch):
+    class ProgressRoom(websocket.BaseRoom):
+        pass
+
+    class Manager:
+        def get_participants(self, _namespace, _room):
+            return ()
+
+    server = FakeSocketServer()
+    server.manager = Manager()
+    monkeypatch.setattr(websocket, "_sio", server)
+    monkeypatch.setattr(websocket, "get_db_session", Mock(side_effect=AssertionError("Unexpected SQL")))
+    websocket.register_resource_room(
+        "synthetic", ProgressRoom, required_privileges="TASK_ACCESS",
+        authorize=AsyncMock(return_value=True), joined_actions=frozenset({"progress"}),
+    )
+    websocket._connected_identities["unrelated"] = websocket._SocketIdentity(42, None)
+    room = ProgressRoom("visible")
+    assert not websocket.has_event_interest("synthetic", "progress", room=room)
+    await websocket.emit("synthetic", "progress", {"increment": 1}, room=room)
+    assert server.events == []
+
+
 async def test_displayed_resource_room_is_authorized_and_scoped_to_user(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

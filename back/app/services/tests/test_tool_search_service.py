@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock
@@ -15,6 +16,58 @@ from app.services.catalog import (
 )
 from app.services.models import ToolSearchDocument
 from app.services import tool_search_service
+
+
+@pytest.mark.asyncio
+async def test_eight_tool_searches_can_reach_the_provider_concurrently(
+    committed_database, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from core.database import get_db_session
+
+    catalog = _catalog(("synthetic_room_history", "Read room messages"))
+    model = tool_search_service.ConfiguredEmbeddingModel(
+        key="synthetic", code="synthetic", model_name="synthetic", base_url="http://vector.test",
+    )
+    monkeypatch.setattr(tool_search_service, "configured_embedding_model", AsyncMock(return_value=model))
+    release = asyncio.Event()
+    all_at_provider = asyncio.Event()
+    queries = 0
+    refreshes = 0
+
+    async def embed(texts: list[str], **_kwargs: object) -> list[list[float]]:
+        nonlocal queries, refreshes
+        if texts[0].startswith("room messages"):
+            queries += 1
+            if queries == 8:
+                all_at_provider.set()
+            await release.wait()
+        else:
+            refreshes += 1
+        return [[1.0, 0.0] for _ in texts]
+
+    monkeypatch.setattr(tool_search_service, "_embed_many", embed)
+    searches = [asyncio.create_task(tool_search_service.search_catalog_in_isolated_session(
+        catalog, query=f"room messages {index}", surface="test",
+    )) for index in range(8)]
+    try:
+        async with asyncio.timeout(5):
+            await all_at_provider.wait()
+            # A ninth transaction can update this fingerprint while queries
+            # wait on the provider; the repository must hold no row lock.
+            async with get_db_session() as db:
+                assert (await db.scalars(select(ToolSearchDocument).where(
+                    ToolSearchDocument.definition_fingerprint == catalog.entries[0].definition_fingerprint,
+                ).with_for_update(nowait=True))).one()
+        release.set()
+        results = await asyncio.gather(*searches)
+        assert all(result.mode == "hybrid" for result in results)
+        assert refreshes == 1
+    finally:
+        release.set()
+        for search in searches:
+            if not search.done():
+                search.cancel()
+        await asyncio.gather(*searches, return_exceptions=True)
 
 
 def _catalog(*definitions: tuple[str, str]) -> AgentToolCatalog:
@@ -285,23 +338,10 @@ async def test_isolated_search_rolls_back_before_database_free_fallback(
         yield
         raise RuntimeError("transaction invalidated during commit")
 
-    async def successful_database_search(
-        catalog: AgentToolCatalog,
-        **_kwargs: object,
-    ) -> tool_search_service.ToolSearchResult:
-        return tool_search_service.ToolSearchResult(
-            query="gitlab commits",
-            catalog_version=catalog.version,
-            mode="hybrid",
-            hits=(),
-        )
-
     monkeypatch.setattr(tool_search_service, "get_db_session", failing_commit)
-    monkeypatch.setattr(
-        tool_search_service,
-        "search_catalog",
-        successful_database_search,
-    )
+    monkeypatch.setattr(tool_search_service, "_read_index_state", AsyncMock(return_value={}))
+    monkeypatch.setattr(tool_search_service, "_insert_documents", AsyncMock())
+    monkeypatch.setattr(tool_search_service, "_lexical_fingerprints", AsyncMock(return_value=[]))
 
     result = await tool_search_service.search_catalog_in_isolated_session(
         catalog,

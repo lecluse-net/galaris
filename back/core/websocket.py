@@ -83,6 +83,7 @@ class _ResourceRoomPolicy:
     authorize: ResourceRoomAuthorization
     displayed_only: bool = False
     joined_only: bool = False
+    joined_actions: frozenset[str] = frozenset()
 
 
 # Private module state.
@@ -195,6 +196,7 @@ def register_resource_room(
     authorize: ResourceRoomAuthorization,
     displayed_only: bool = False,
     joined_only: bool = False,
+    joined_actions: frozenset[str] = frozenset(),
 ) -> None:
     """Register resource authorization, optionally limiting events to its open page.
 
@@ -218,6 +220,7 @@ def register_resource_room(
         authorize=authorize,
         displayed_only=displayed_only,
         joined_only=joined_only,
+        joined_actions=joined_actions,
     )
 
 
@@ -298,7 +301,9 @@ async def emit(
 
         event_name = f"{subject}.{action}"
         displayed_room = str(room) if room_policy and room_policy.displayed_only else None
-        resource_room = str(room) if room is not None and room_policy and room_policy.joined_only else None
+        resource_room = str(room) if room is not None and room_policy and (
+            room_policy.joined_only or action in room_policy.joined_actions
+        ) else None
         # Event subscriptions describe a kind of event, not interest in every
         # resource. Filter room members before any session/permission DB reads.
         participants = (
@@ -403,6 +408,22 @@ def _parse_event_subscriptions(raw: object) -> frozenset[str] | None:
 def _event_is_requested(sid: str, event_name: str) -> bool:
     subscriptions = _event_subscriptions.get(sid)
     return subscriptions is None or event_name in subscriptions
+
+
+def has_event_interest(subject: str, action: str, *, room: BaseRoom | None = None) -> bool:
+    """A cheap producer hint. The emit path still enforces all access checks."""
+    if _event_relay is not None:
+        return True
+    if _sio is None:
+        return False
+    name = f"{subject}.{action}"
+    if room is not None:
+        participants = cast(Iterable[tuple[str, str]], _sio.manager.get_participants("/", str(room)))  # pyright: ignore[reportUnknownMemberType]
+        return any(
+            sid in _connected_identities and _event_is_requested(sid, name)
+            for sid, _ in participants
+        )
+    return any(_event_is_requested(sid, name) for sid in _connected_identities)
 
 
 async def _handle_event_subscriptions(sid: str, data: object) -> bool:

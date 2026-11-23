@@ -106,11 +106,14 @@ async def _publish_activity(round_id: UUID, room_id: UUID) -> None:
 
 
 async def _publish_runtime(room_id: UUID, event: ConversationRuntimeEvent) -> None:
+    room = ChatRoom(room_id)
+    if not websocket.has_event_interest("chat", "runtime", room=room):
+        return
     await websocket.emit(
         "chat",
         "runtime",
         {"room_id": str(room_id), **event.model_dump(mode="json")},
-        room=ChatRoom(room_id),
+        room=room,
     )
 
 
@@ -174,6 +177,7 @@ def register_events() -> None:
         ChatRoom,
         required_privileges="CHAT_ACCESS",
         authorize=_can_access_room,
+        joined_actions=frozenset({"activity", "runtime"}),
     )
 
 

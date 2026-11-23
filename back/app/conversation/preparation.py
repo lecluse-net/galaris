@@ -3,9 +3,47 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Generator
+from contextlib import contextmanager
+from uuid import UUID
+
+from core.database import after_commit
 
 from .contracts import ConversationTurn
+
+
+_room_waiters: dict[UUID, set[asyncio.Event]] = {}
+_CONTROL_RECONCILE_SECONDS = 2.0
+
+
+@contextmanager
+def watch_room_control(room_id: UUID) -> Generator[Callable[[], Awaitable[None]]]:
+    event = asyncio.Event()
+    waiters = _room_waiters.setdefault(room_id, set())
+    waiters.add(event)
+
+    async def wait() -> None:
+        try:
+            async with asyncio.timeout(_CONTROL_RECONCILE_SECONDS):
+                await event.wait()
+        except TimeoutError:
+            pass
+        event.clear()
+
+    try:
+        yield wait
+    finally:
+        waiters.remove(event)
+        if not waiters:
+            del _room_waiters[room_id]
+
+
+def wake_room_after_commit(room_id: UUID) -> None:
+    def notify() -> None:
+        for event in _room_waiters.get(room_id, ()):
+            event.set()
+
+    after_commit(notify, key=("conversation-control", room_id))
 
 
 class ConversationSuperseded(asyncio.CancelledError):
@@ -33,8 +71,12 @@ async def run_preparation[T](turn: ConversationTurn, operation: Callable[[], Awa
         raise ConversationSuperseded
 
     async def watch() -> None:
+        wait_for_change = turn.wait_for_interrupt
         while True:
-            await asyncio.sleep(0.25)
+            if wait_for_change is None:
+                await asyncio.sleep(0.25)
+            else:
+                await wait_for_change()
             if await check():
                 return
 

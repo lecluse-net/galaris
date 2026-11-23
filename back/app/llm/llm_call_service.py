@@ -712,17 +712,18 @@ async def reconcile_stale_running_calls(
 ) -> int:
     """Close abandoned traces, never deleting their usage or partial response.
 
-    A trace is eligible immediately when its linked Task is soft-deleted. Otherwise it is
-    eligible only after no persisted activity for longer than the Task action timeout plus a
-    safety margin. Streaming token updates refresh ``updated_at`` every half-second, so an active
-    generation is not selected merely because it started a long time ago.
+    A trace is eligible immediately for a deleted Task or a terminal execution.
+    Otherwise it must be stale and have no live provider permit. A stream without
+    observers may have no partial trace writes for its entire lifetime.
     """
 
     from app.task.models import Task, TaskStatus
+    from .provider_scheduler import active_call_ids
 
     current_time = now or datetime.now(timezone.utc)
     idle_limit = stale_after or _default_stale_after()
     stale_before = current_time - idle_limit
+    active_calls = active_call_ids()
     rows = (
         await get_db().execute(
             select(LLMCall, Task.deleted_at, Task.status)
@@ -738,7 +739,7 @@ async def reconcile_stale_running_calls(
                         LLMCall.purpose == LLMCallPurpose.AGENT_EXEC,
                         Task.status.in_((TaskStatus.SUCCESS, TaskStatus.ERROR)),
                     ),
-                    LLMCall.updated_at <= stale_before,
+                    and_(LLMCall.updated_at <= stale_before, LLMCall.id.not_in(active_calls)),
                 ),
             )
             .order_by(LLMCall.updated_at.asc(), LLMCall.id.asc())

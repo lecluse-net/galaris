@@ -204,6 +204,11 @@ def bind_call(call_id: UUID, permit: Permit) -> None:
     _calls[call_id] = permit
 
 
+def active_call_ids() -> tuple[UUID, ...]:
+    """Physical calls currently owned by the backend's provider scheduler."""
+    return tuple(_calls)
+
+
 def release_call(call_id: UUID) -> None:
     permit = _calls.pop(call_id, None)
     if permit is not None:

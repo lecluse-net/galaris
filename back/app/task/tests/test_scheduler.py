@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 import pytest
 from asyncpg.exceptions import CannotConnectNowError
 from sqlalchemy import delete, select, text
+from sqlalchemy.exc import MissingGreenlet
 
 from app.agent.contracts import ReasoningDegenerationError, StaleAgentRunError
 from app.agent.models import Agent, Title
@@ -889,6 +890,41 @@ async def test_failed_planner_retry_stays_in_plan_phase(db) -> None:
     await db.execute(delete(TaskAttempt).where(TaskAttempt.task_id == task_id))
     await db.execute(delete(Task).where(Task.id == task_id))
     await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_implicit_orm_io_in_planner_fails_once_with_a_durable_cause(db, monkeypatch):
+    from app.agent import planner_service
+    from app.task.agent_adapter import as_agent_task
+    from app.task.task_service import get_by_id
+    from core.database import get_db_session
+
+    task_id, lease_token = uuid4(), uuid4()
+    db.add_all([
+        Task(id=task_id, label="Synthetic plan", status=TaskStatus.PLAN,
+             ai=True, lease_token=lease_token),
+        TaskAttempt(task_id=task_id, attempt_number=1, phase=TaskStatus.PLAN.value,
+                    worker_id="test-worker", lease_token=lease_token),
+    ])
+    await db.commit()
+    builder = AsyncMock(side_effect=MissingGreenlet("synthetic implicit ORM read"))
+    monkeypatch.setattr(planner_service, "_build_plan", builder)
+
+    async def action(*_args):
+        async with get_db_session():
+            task = await get_by_id(task_id)
+            await planner_service.advance(as_agent_task(task))
+
+    monkeypatch.setattr(scheduler, "_run_action", action)
+    await scheduler._run_claimed_action(task_id, TaskStatus.PLAN, lease_token)
+    builder.assert_awaited_once()
+    db.expire_all()
+    task = await db.get(Task, task_id)
+    assert task.status == TaskStatus.ERROR and task.next_attempt_at is None
+    assert task.consecutive_failures == 1
+    assert task.get_execution_result().failure.retry == "never"
+    attempt = await db.scalar(select(TaskAttempt).where(TaskAttempt.task_id == task_id))
+    assert attempt.status == TaskAttemptStatus.ERROR.value and not attempt.retryable
 
 
 @pytest.mark.asyncio

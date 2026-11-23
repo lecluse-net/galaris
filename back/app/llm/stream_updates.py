@@ -9,6 +9,7 @@ from uuid import UUID
 import anyio
 from loguru import logger
 
+from core import websocket
 from . import llm_call_service
 
 
@@ -21,16 +22,20 @@ class StreamUpdates:
     Finalization cancels and joins this worker before storing the terminal trace.
     """
 
-    def __init__(self, call_id: UUID, snapshot: Callable[[], dict[str, Any]]) -> None:
+    def __init__(
+        self, call_id: UUID, snapshot: Callable[[], dict[str, Any]],
+        *, has_viewer: Callable[[], bool] | None = None,
+    ) -> None:
         self.call_id = call_id
         self.snapshot = snapshot
+        self.has_viewer = has_viewer or (lambda: websocket.has_event_interest("llm_call", "progress"))
         self._task: asyncio.Task[None] | None = None
         self._last_update = 0.0
         self._dirty = False
         self._closed = False
 
     def changed(self) -> None:
-        if self._closed:
+        if self._closed or not self.has_viewer():
             return
         self._dirty = True
         if self._task is not None and not self._task.done():
@@ -43,6 +48,8 @@ class StreamUpdates:
             if delay > 0:
                 await asyncio.sleep(delay)
             self._dirty = False
+            if not self.has_viewer():
+                return
             self._last_update = time.monotonic()
             try:
                 await llm_call_service.update_running_call(self.call_id, **self.snapshot())

@@ -1876,8 +1876,11 @@ async def test_repeated_worker_restarts_do_not_exhaust_conversation_retries(db):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("action", ["pause", "stop", "respond"])
 @pytest.mark.parametrize("running", [False, True])
-async def test_human_control_keeps_inputs_and_suppresses_unfinished_answer(db, action, running):
+async def test_human_control_keeps_inputs_and_suppresses_unfinished_answer(db, action, running, monkeypatch):
     from app.conversation import control_round, list_room_activity
+    from app.conversation import preparation
+
+    monkeypatch.setattr(preparation, "_CONTROL_RECONCILE_SECONDS", 30.0)
     agent, connection, room = await _scope(db)
     message = await _message(db, connection, room, 1, "Prepare a synthetic answer")
     await admit_message(message, agent_id=agent.id, connection_id=connection.id)
@@ -1887,7 +1890,10 @@ async def test_human_control_keeps_inputs_and_suppresses_unfinished_answer(db, a
     else:
         round_ = await db.scalar(select(ConversationRound).where(ConversationRound.room_id == room.id))
     token = round_.lease_token
-    command = await control_round(room.id, round_.id, action, expected_attempt=round_.attempt_count)
+    with preparation.watch_room_control(room.id) as wait_for_interrupt:
+        command = await control_round(room.id, round_.id, action, expected_attempt=round_.attempt_count)
+        async with asyncio.timeout(1):
+            await wait_for_interrupt()
     await db.refresh(round_)
     if running:
         assert command.control_action == action

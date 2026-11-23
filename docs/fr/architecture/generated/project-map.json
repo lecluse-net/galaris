@@ -1137,6 +1137,7 @@
           "back/app/conversation/mcp.py",
           "back/app/conversation/models.py",
           "back/app/conversation/monitoring_service.py",
+          "back/app/conversation/preparation.py",
           "back/app/conversation/process_admission.py",
           "back/app/conversation/process_inputs.py",
           "back/app/conversation/process_interactions.py",

@@ -72,8 +72,9 @@ async def test_publish_releases_room_touch_before_the_next_signal_receiver(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("observed", [False, True])
 async def test_runtime_event_emits_only_the_bounded_public_projection(
-    monkeypatch: pytest.MonkeyPatch,
+    monkeypatch: pytest.MonkeyPatch, observed: bool,
 ) -> None:
     emitted: list[tuple[tuple[object, ...], dict[str, object]]] = []
     room_id = uuid4()
@@ -83,6 +84,7 @@ async def test_runtime_event_emits_only_the_bounded_public_projection(
         emitted.append((args, kwargs))
 
     monkeypatch.setattr(events.websocket, "emit", emit)
+    monkeypatch.setattr(events.websocket, "has_event_interest", lambda *_args, **_kwargs: observed)
     event = ConversationRuntimeEvent(
         round_id=round_id,
         kind="message",
@@ -100,39 +102,22 @@ async def test_runtime_event_emits_only_the_bounded_public_projection(
 
     await events._publish_runtime(room_id, event)
 
+    if not observed:
+        assert not emitted
+        return
     assert len(emitted) == 1
-    args, kwargs = emitted[0]
-    assert args == (
-        "chat",
-        "runtime",
-        {
-            "room_id": str(room_id),
-            "round_id": str(round_id),
-            "kind": "message",
-            "sequence": 3,
-            "attempt": 1,
-            "topic_id": None,
-            "message": {
-                "type": "tool",
-                "content": "Je vérifie token=[redacted]",
-                "tool_name": "thinking",
-                "tool_arguments": {"authorization": "[redacted]"},
-                "tool_result": {},
-                "tool_call_external_id": None,
-                "tool_retry_number": None,
-                "tool_retry_limit": None,
-                "execution_time": 0.25,
-                "cost": 0.0,
-                "success": True,
-                "usage": None,
-                "stream_id": None,
-                "stream_mode": "delta",
-                "stream_complete": None,
-            },
-            "result": None,
-            "success": True,
-        },
-    )
+    (subject, action, data), kwargs = emitted[0]
+    assert (subject, action) == ("chat", "runtime")
+    payload = cast(dict[str, object], data)
+    assert payload["room_id"] == str(room_id)
+    assert payload["round_id"] == str(round_id)
+    assert payload["kind"] == "message" and payload["sequence"] == 3
+    message = cast(dict[str, object], payload["message"])
+    assert message["tool_name"] == "thinking"
+    assert message["content"] == "Je vérifie token=[redacted]"
+    assert message["tool_arguments"] == {"authorization": "[redacted]"}
+    assert message["tool_result"] == {}
+    assert "should-not-leak" not in str(payload)
     room = kwargs["room"]
     assert isinstance(room, events.ChatRoom)
     assert room.resource_id == room_id

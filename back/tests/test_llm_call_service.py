@@ -346,6 +346,26 @@ async def test_deleting_task_cancels_call_without_deleting_token_history(
 
 
 @pytest.mark.asyncio
+async def test_unobserved_stream_with_a_provider_permit_is_not_stale(db: AsyncSession) -> None:
+    from app.llm import provider_scheduler
+
+    now = datetime.now(timezone.utc)
+    call = _history_call(uuid4(), now - timedelta(minutes=15), status="running")
+    db.add(call)
+    await db.commit()
+    permit = await provider_scheduler.acquire_call(123456, 1, 0, owner=None)
+    provider_scheduler.bind_call(call.id, permit)
+    try:
+        assert await llm_call_service.reconcile_stale_running_calls(
+            now=now, stale_after=timedelta(minutes=5),
+        ) == 0
+        await db.refresh(call)
+        assert call.status == "running"
+    finally:
+        provider_scheduler.release_call(call.id)
+
+
+@pytest.mark.asyncio
 async def test_reconciler_detects_recent_call_linked_to_soft_deleted_task(
     db: AsyncSession,
     monkeypatch: pytest.MonkeyPatch,

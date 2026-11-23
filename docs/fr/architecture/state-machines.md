@@ -313,9 +313,10 @@ une réponse antérieure encore utile. Purge et changement de point de vue inval
 en attente. Un trou dans le stream réarme le rattrapage reçu pendant une requête HTTP ;
 une nouvelle sélection n'attend pas la requête bloquée d'une ancienne sélection.
 
-Pendant la génération de la réponse texte, le harnais vérifie toutes les 250 ms si un
-successeur `FROZEN` a été admis dans la même room, sous le lease courant. Cette lecture
-en session courte fonctionne aussi entre workers et ne marque aucun effet. Le signal
+Pendant la génération de la réponse texte, un commit d’admission ou de commande réveille
+le harnais de la room. Il vérifie le lease courant et l’existence d’un successeur `FROZEN`
+ou d’une commande en session courte, sans marquer d’effet. Une vérification toutes les
+deux secondes couvre les commits d’un autre worker. Le signal
 annule l'inférence via le token Pydantic AI ; les hooks entre inférences et outils empêchent
 le démarrage d'un nouvel appel devenu obsolète. Un outil déjà commencé finit avant cette
 interruption. La garde finale conserve les transitions ci-dessus et la trace partielle,

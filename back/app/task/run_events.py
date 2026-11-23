@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+from dataclasses import dataclass
 from typing import Any, cast
 from collections.abc import Mapping
 from uuid import UUID
@@ -21,6 +23,44 @@ from .trace_projection import project_tool_payload
 
 class TaskRunRoom(websocket.BaseRoom):
     """One live Task run, joined by its durable Task UUID."""
+
+
+@dataclass
+class _Publication:
+    latest: dict[str, Any] | None
+    worker: asyncio.Task[None] | None = None
+
+
+_publications: dict[tuple[UUID, UUID, UUID | None], _Publication] = {}
+
+
+async def _drain_publication(
+    key: tuple[UUID, UUID, UUID | None], room: TaskRunRoom, publication: _Publication,
+) -> None:
+    try:
+        while (payload := publication.latest) is not None:
+            publication.latest = None
+            try:
+                async with asyncio.timeout(2.0):
+                    await websocket.emit("agent_run", "event", payload, room=room)
+            except Exception:
+                logger.warning("Task progress delivery failed: task={} run={}", key[0], key[1])
+    finally:
+        _publications.pop(key, None)
+
+
+def _publish_projection(event: AgentLiveEvent, room: TaskRunRoom, payload: dict[str, Any]) -> None:
+    key = (event.task_id, event.run_id, event.attempt_id)
+    publication = _publications.get(key)
+    if publication is not None:
+        # The cumulative snapshot replaces all unfinished progress for this run.
+        publication.latest = payload
+        return
+    publication = _Publication(latest=payload)
+    _publications[key] = publication
+    publication.worker = asyncio.create_task(
+        _drain_publication(key, room, publication), name=f"task-progress:{event.run_id}",
+    )
 
 
 async def _can_read_task(user_id: int, resource_id: str) -> bool:
@@ -49,11 +89,13 @@ async def _can_read_event(user: UserModel, action: str, data: Mapping[str, Any])
 
 
 async def publish_task_run(event: AgentLiveEvent) -> None:
-    from .live_checkpoint import checkpoint_live_event, mark_live_snapshot_published
+    from .live_checkpoint import checkpoint_live_event
 
+    room = TaskRunRoom(event.task_id)
+    observed = websocket.has_event_interest("agent_run", "event", room=room)
     snapshot = None
     try:
-        snapshot = await checkpoint_live_event(event)
+        snapshot = await checkpoint_live_event(event, track_fragments=observed)
         fragment = event.message
         if (snapshot is None and fragment is not None and fragment.stream_id
                 and fragment.stream_complete is False
@@ -63,9 +105,14 @@ async def publish_task_run(event: AgentLiveEvent) -> None:
             return
     except Exception:
         logger.exception("Task activity checkpoint failed: task={} run={}", event.task_id, event.run_id)
-    data = event.model_dump(mode="json", exclude_none=True)
+    if not observed:
+        return
     if snapshot is not None:
+        data = event.model_dump(mode="json", exclude_none=True, exclude={"message", "result"})
         data["snapshot"] = snapshot.model_dump(mode="json")
+        _publish_projection(event, room, data)
+        return
+    data = event.model_dump(mode="json", exclude_none=True)
     message = data.get("message")
     if isinstance(message, dict):
         message_data = cast(dict[str, object], message)
@@ -85,16 +132,7 @@ async def publish_task_run(event: AgentLiveEvent) -> None:
             for field in ("tool_arguments", "tool_result"):
                 raw_message[field] = project_tool_payload(cast(dict[str, Any] | None, raw_message.get(field)))
         result_data.pop("metadata", None)
-    try:
-        await websocket.emit(
-            "agent_run",
-            "event",
-            data,
-            room=TaskRunRoom(event.task_id),
-        )
-    finally:
-        if snapshot is not None:
-            mark_live_snapshot_published(event)
+    _publish_projection(event, room, data)
 
 
 def register_events() -> None:

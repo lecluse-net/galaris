@@ -1265,6 +1265,7 @@ async def _fail_claim(
                     result=failure_feedback,
                     success=False,
                     cost=0.0,
+                    failure=exc.failure if isinstance(exc, HarnessExecutionError) else None,
                 )
             else:
                 execution_result.success = False

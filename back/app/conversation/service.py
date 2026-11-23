@@ -42,6 +42,7 @@ from .contracts import (
     ConversationControlAction, ConversationControlConflict, ConversationControlResult,
 )
 from .control_service import REQUESTED_ACTIONS, available_round_actions
+from .preparation import wake_room_after_commit
 from .models import (
     ConversationProcessLink,
     ConversationRound,
@@ -267,6 +268,7 @@ async def admit_message(
                 previous.finished_at = _now()
             previous.status = "SUPERSEDED"
             previous.encrypted_checkpoint = None
+    wake_room_after_commit(room.id)
     await get_db().commit()
     return True
 
@@ -2197,6 +2199,7 @@ async def control_round(
         round_.control_action = action
         if round_.status not in PROCESSING_ROUND_STATUSES:
             await apply_requested_control(round_)
+    wake_room_after_commit(room_id)
     await db.commit()
     from .facade import publish_round_activity, wake
     await publish_round_activity(round_.id)

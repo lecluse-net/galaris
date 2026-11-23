@@ -6,6 +6,7 @@ import tracemalloc
 from pathlib import Path
 from time import perf_counter
 from unittest.mock import AsyncMock
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import event
@@ -66,8 +67,6 @@ async def test_running_trace_cost_does_not_transfer_request_history(db, monkeypa
 @pytest.mark.asyncio
 @pytest.mark.parametrize("during_update", [False, True])
 async def test_supervision_flushes_last_fragment_without_another_provider_event(monkeypatch, during_update):
-    from uuid import uuid4
-
     published = []
     first = asyncio.Event()
     release = asyncio.Event()
@@ -80,7 +79,7 @@ async def test_supervision_flushes_last_fragment_without_another_provider_event(
             await release.wait()
 
     monkeypatch.setattr(llm_call_service, "update_running_call", receive)
-    updates = StreamUpdates(uuid4(), lambda: {"trace": {"response_text": text}})
+    updates = StreamUpdates(uuid4(), lambda: {"trace": {"response_text": text}}, has_viewer=lambda: True)
     try:
         updates.changed()
         await asyncio.wait_for(first.wait(), 1)
@@ -109,7 +108,7 @@ async def test_slow_supervision_is_bounded_and_joined_before_terminal(monkeypatc
             released.set()
 
     monkeypatch.setattr(llm_call_service, "update_running_call", slow)
-    updates = StreamUpdates(uuid4(), lambda: snapshots.append(True) or {"trace": {}})
+    updates = StreamUpdates(uuid4(), lambda: snapshots.append(True) or {"trace": {}}, has_viewer=lambda: True)
     updates.changed()
     await asyncio.wait_for(entered.wait(), 1)
     for _ in range(10000):
@@ -117,6 +116,31 @@ async def test_slow_supervision_is_bounded_and_joined_before_terminal(monkeypatc
     assert len(snapshots) == 1
     await asyncio.wait_for(updates.close(), 1)
     assert released.is_set()
+
+
+@pytest.mark.asyncio
+async def test_eight_unobserved_streams_skip_partial_trace_work(monkeypatch):
+    write = AsyncMock()
+    monkeypatch.setattr(llm_call_service, "update_running_call", write)
+    viewer = False
+    streams = [
+        StreamUpdates(uuid4(), lambda: {"trace": {"response_text": "latest"}},
+                      has_viewer=lambda: viewer)
+        for _ in range(8)
+    ]
+    try:
+        for _ in range(1000):
+            for stream in streams:
+                stream.changed()
+        await asyncio.sleep(0)
+        write.assert_not_awaited()
+
+        viewer = True
+        streams[0].changed()
+        await asyncio.sleep(0)
+        write.assert_awaited_once_with(streams[0].call_id, trace={"response_text": "latest"})
+    finally:
+        await asyncio.gather(*(stream.close() for stream in streams))
 
 
 @pytest.mark.asyncio

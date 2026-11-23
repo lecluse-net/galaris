@@ -15,6 +15,7 @@ async def test_context_interruption_reaches_chat_without_private_runtime_metadat
 
     emitted = AsyncMock()
     monkeypatch.setattr(events.websocket, "emit", emitted)
+    monkeypatch.setattr(events.websocket, "has_event_interest", lambda *_args, **_kwargs: True)
     monkeypatch.setattr(facade, "publish_runtime_event", events._publish_runtime)
     stream = ConversationRuntimeStream(room_id=uuid4(), round_id=uuid4())
     await stream.start()
