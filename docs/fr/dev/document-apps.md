@@ -15,6 +15,11 @@ de contexte arrête le runtime ; le rendu reprend après une sauvegarde valide.
 Les anciens manifestes `language-galaris-app` restent lisibles et exécutables sans montrer
 leur JSON. Les nouveaux documents utilisent le HTML direct.
 
+Chaque nouvelle application écrite par un agent place son HTML, son CSS et son JavaScript
+dans une même balise `<section>` au premier niveau. Le texte éditorial reste à l'extérieur.
+Le serveur valide le document résultant de chaque écriture. Un bloc historique peut être
+conservé tel quel lors d'une retouche du texte environnant.
+
 Le runtime isolé suit le thème de l’application sans redémarrer ses scripts ni perdre les
 valeurs saisies. Il ne rajoute aucun fond aux zones de texte. Une correction d’affichage
 ajuste les couleurs de texte illisibles selon leur fond réel, y compris lorsqu’un CSS impose
@@ -41,6 +46,7 @@ documentaires vérifiés restent lisibles :
 
 ```html
 <p>Texte modifiable dans l'éditeur habituel.</p>
+<section>
 <form id="entry" data-dataset="data://11111111-1111-4111-8111-111111111111">
   <label>Réponse <input name="answer" required></label>
   <button>Enregistrer</button>
@@ -64,6 +70,7 @@ document.getElementById('entry').onsubmit = async event => {
   } finally { button.disabled = false; }
 };
 </script>
+</section>
 ```
 
 `data-dataset` déclare la ressource. `data-dataset-alias` choisit son alias (`entries` par
@@ -95,16 +102,20 @@ committée reste durable. Les déclarations du HTML direct utilisent l'identifia
 
 ## Isolation et limites
 
-Le runtime est isolé dans deux iframes opaques, sans accès au DOM parent, aux cookies,
-au stockage de Galaris, aux popups ou à la navigation du parent. Ce mécanisme est interne :
+Le texte mis en forme, les tableaux et les sections repliables composés uniquement de
+balises passives s'affichent dans une seule iframe opaque. Une CSP y limite les scripts
+au code de rendu Galaris. Les applications utilisent deux iframes opaques, sans accès au
+DOM parent, aux cookies, au stockage de Galaris, aux popups ou à la navigation du parent.
+Ce mécanisme est interne :
 aucun cadre visuel, titre applicatif ou bouton supplémentaire n'est ajouté au document.
 Le texte éditorial reste dans l’éditeur ; la portion interactive est conservée comme source
 opaque par son modèle, puis restituée en HTML ordinaire à la sauvegarde.
-Les objets statiques indépendants sont séparés aux frontières du texte éditorial. En présence
-de scripts, de styles globaux, de gestionnaires d’événements ou de références SVG partagées,
-la région du premier au dernier objet reste dans le même contexte isolé. Le regroupement
-reste volontairement conservateur : analyser arbitrairement le code pour en déduire ses
-dépendances pourrait casser les sélecteurs, identifiants et états partagés.
+Chaque `<section>` applicative délimite son propre contexte. Les anciens documents qui
+contiennent des dépendances globales gardent le regroupement du premier au dernier objet.
+Un graphique statique se présente comme un `<svg>` autonome, éventuellement dans un
+`<figure>` avec une légende éditable `<figcaption>`. Ses styles et ses définitions restent
+propres à l'image vectorielle en édition, en lecture et à l'export. Le document conserve
+le SVG dans son HTML.
 
 Le runtime charge Three.js à l’ouverture si le code du document référence `THREE` ou
 importe une des bibliothèques prises en charge. Il expose `THREE`, `THREE.OrbitControls`

@@ -2,7 +2,7 @@ from .legacy_fixtures import legacy_dataset
 import asyncio
 import json
 from html import escape
-from uuid import uuid4
+from uuid import UUID, uuid4
 from unittest.mock import AsyncMock
 
 import pytest
@@ -22,6 +22,61 @@ def block(dataset_id, *, access="write", **overrides):
            "javascript": "document.querySelector('form').onsubmit = event => event.preventDefault();",
            "datasets": {"entries": {"uri": f"document://{dataset_id}", "access": access}}, **overrides}
     return '<p>Introduction</p><pre><code class="language-galaris-app">' + escape(json.dumps(app)) + '</code></pre>'
+
+
+@pytest.mark.asyncio
+async def test_agent_file_operations_validate_the_final_document_layout(db, agents, memory_storage):
+    from sqlalchemy import select
+    from app.connection.facade import get_or_create_connection
+    from app.file_share import resource_service as files
+    from app.file_share.resource_contracts import ResourceContext
+    from app.services import ServiceModel
+    from core.util import RichTextError
+
+    owner, _ = agents
+    service_id = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == "document"))
+    await get_or_create_connection(service_id, owner.id, active=True, commit=False)
+    ctx = ResourceContext(agent_id=owner.id, runtime="internal")
+    svg = '<figure><svg viewbox="0 0 20 10"><style>.bar{fill:blue}</style><rect class="bar" height="10" width="20"></rect></svg><figcaption>Chart</figcaption></figure>'
+    application = '<section><style>section{display:grid}</style><form><input></form><script>void 0;</script></section>'
+    editorial = '<p>Between figures</p>'
+    with pytest.raises(RichTextError, match="top-level <section>"):
+        await files.resource_create(ctx, "document://", b'<p>Intro</p><style>p{color:red}</style>', name="Invalid layout")
+    with pytest.raises(RichTextError, match="Keep SVG definitions"):
+        await files.resource_create(ctx, "document://", b'<figure><svg><use href="#outside"></use></svg></figure>', name="Missing definition")
+    with pytest.raises(RichTextError, match="Use a standalone"):
+        await files.resource_create(ctx, "document://", (f"<section>{editorial}{svg}</section>").encode(), name="Figures and prose in one section")
+
+    created = await files.resource_create(ctx, "document://", (svg + editorial + application + svg).encode(), name="Bounded layout")
+    assert created.revision == 1
+    with pytest.raises(RichTextError, match="top-level <section>"):
+        await files.resource_write(ctx, created.uri, b'<p>Replace</p><script>void 0;</script>', expected_revision=1)
+    with pytest.raises(RichTextError, match="top-level <section>"):
+        await files.resource_append(ctx, created.uri, '<p onclick="void 0">New paragraph</p>', expected_revision=1)
+    with pytest.raises(RichTextError, match="top-level <section>"):
+        await files.resource_edit(ctx, created.uri, start_line=2, end_line=2,
+            content="<style>p{color:red}</style>", expected_revision=1)
+
+    identity = created.uri.removeprefix("document://")
+    item, content, *_ = await service.get_item(UUID(identity), agent_id=owner.id)
+    assert item.revision == 1
+    assert content == (svg + editorial + application + svg).encode()
+    edited = await files.resource_edit(ctx, created.uri, start_line=2, end_line=2,
+        content="<p>Updated between figures</p>", expected_revision=1)
+    assert edited.revision == 2
+    _, content, *_ = await service.get_item(UUID(identity), agent_id=owner.id)
+    assert content == (svg + "<p>Updated between figures</p>" + application + svg).encode()
+
+
+def test_existing_unbounded_markup_can_be_preserved_during_an_agent_edit():
+    from app.document.agent_html_layout import require_agent_html_layout
+    from core.util import RichTextError
+
+    old_style = "<style>p{color:blue}</style>"
+    original = old_style + "<p>Old</p>"
+    require_agent_html_layout(old_style + "<p>Edited</p>", original)
+    with pytest.raises(RichTextError, match="top-level <section>"):
+        require_agent_html_layout(old_style + "<p>Edited</p>" + old_style, original)
 
 
 async def setup(db, agents):

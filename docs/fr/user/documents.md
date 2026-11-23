@@ -21,10 +21,15 @@ Discussion, les fenêtres d'aperçu et le suivi des objectifs, avec son adaptati
 Les champs de texte riche — souvenirs, profils d'agents, description d'objectif et résumé —
 utilisent une barre simple : mise en forme courante, titres, listes, alignements, code en ligne
 et en bloc, cases à cocher, tableaux, séparateurs et liens Galaris.
+
 Ses groupes tiennent sur une rangée chacun et passent à la ligne selon la place disponible,
 sans défilement horizontal. Le plein écran, les pièces jointes et l'insertion d'équations
 restent réservés au mode complet ;
 les contenus déjà enregistrés restent conservés.
+
+Dans un document Texte, les graphiques SVG autonomes s'affichent à leur place. Vous pouvez
+modifier leurs légendes et les paragraphes entre les figures, puis imprimer ou exporter le
+document avec ses graphiques.
 
 ## Importer un fichier
 

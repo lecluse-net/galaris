@@ -19,9 +19,13 @@ A document body uses the same full editor in the library, Chat, preview dialogs 
 Goal tracking, including its mobile layout. Rich text fields — memories, Agent profiles,
 Goal descriptions and summaries — use a simple toolbar with common formatting,
 headings, lists, alignment, inline and block code, checklists, tables, separators and Galaris links.
+
 Each group has one row and wraps when space is limited, without horizontal scrolling.
 Fullscreen, attachments and equation insertion remain in full mode;
 previously saved content is preserved.
+
+Standalone SVG charts appear in place in a Text document. You can edit their captions
+and the paragraphs between figures, then print or export the document with its charts.
 
 ## Import a file
 

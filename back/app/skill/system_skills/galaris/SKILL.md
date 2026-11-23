@@ -334,8 +334,11 @@ including nullable inputs. Search authorized Memory and files for known facts an
 before asking the human. Preserve false, zero and actual defaults; unknown is never null.
 Use the conversation input dossier below to collect missing values across messages.
 
-**HTML/JavaScript document applications:** keep the type `html` and write ordinary HTML
-directly: `<form>`, `<style>` and `<script>`. No JSON application manifest is required.
+**HTML/JavaScript document applications:** use ordinary HTML. Put the form, CSS and
+JavaScript for each application inside its own top-level `<section>`. Leave editorial
+headings and paragraphs outside. For a static chart, use a top-level `<figure>` with one
+standalone `<svg>` and an optional `<figcaption>`. Keep the SVG's definitions and
+references inside it.
 The usual editor and toolbar stay present; prose remains editable, forms render in place,
 and the document editor offers no Source view. Non-document rich-text fields retain Source. No extra edit,
 view, start or form-builder mode is needed. Code executes in isolation when the saved page

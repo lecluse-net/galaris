@@ -11,6 +11,7 @@ import { embeddedResourceCards, isLinkedImageCard, prepareDocumentCard, renderLi
 import { applyReferenceAppearance, explicitReferenceMode } from './documentReference'
 import { webLinkCardImage, prependWebLinkImage } from './webLinkPreview'
 import { renderMath, mathSnapshotStyles } from './mathRendering'
+import { renderSvgFigures } from './editorialSvg'
 
 const MAX_SNAPSHOT_BYTES = 12_000_000
 
@@ -79,10 +80,11 @@ export async function prepareDocumentSnapshot(
     }
   })) : []
   if (!resolveRenderedContent) hideInteractiveSource(doc.body, title)
+  const inlineImages = [...doc.querySelectorAll('img')]
+  renderSvgFigures(doc.body)
   highlightDocumentCode(doc.body)
   await renderMath(doc.body)
   const mathCss = await mathSnapshotStyles(doc.body, signal)
-  const inlineImages = [...doc.querySelectorAll('img')]
   if (resolveLinkedImage) {
     const linkedImages = [...doc.querySelectorAll('blockquote')].filter(isLinkedImageCard)
     await Promise.all(linkedImages.map(card => renderLinkedImage(card, resolveLinkedImage, signal, imageUrl)))

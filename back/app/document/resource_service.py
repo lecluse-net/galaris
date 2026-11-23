@@ -31,6 +31,7 @@ from .content_diff import content_diff_hunks as _content_diff_hunks
 from .document_apps import document_apps
 from .formats import DocumentRevisionRegion, document_format_definition
 from .content_validation import validate_document_content
+from .agent_html_layout import require_agent_html_layout
 from .lifecycle import notify_document
 from .item_projection import item_to_public
 from .safety import assert_safe_text, assert_safe_value
@@ -934,7 +935,10 @@ async def update_item(
                 limit_length=not _is_goal_document(item),
             ).encode("utf-8")
             if item.node_kind == "document":
-                apps = document_apps(content.decode("utf-8"))
+                html = content.decode("utf-8")
+                if document_revision_author_agent_id is not None and item.content_profile == "document":
+                    require_agent_html_layout(html, item.content)
+                apps = document_apps(html)
                 if apps and item.deletion_protected:
                     raise ValueError("Managed editorial documents cannot contain applications.")
             if item.media_type == "text/html" and data.media_type not in (None, "text/html"):
@@ -1304,7 +1308,7 @@ def revision_for(item: Document, *, author_agent_id: int | None, task_id: UUID |
     return DocumentRevision(document_id=item.id, revision=item.revision, provider_code=item.provider_code, resource_id=item.resource_id, content=item.content, file_id=item.file_id, storage_kind=item.storage_kind, content_hash=item.content_hash, content_type=item.content_type, media_type=item.media_type, content_profile_version=item.content_profile_version, format_version=item.format_version, filename=item.filename, title=item.title, metadata_=dict(item.metadata_), temporal=item.temporal, task_id=task_id, author_agent_id=author_agent_id, author_user_id=author_user_id, document_content_version=document_content_version, document_append=document_append)
 
 
-async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = None, deletion_protected: bool = False, deduplicate: bool = False, owner_user_id: int | None = None, initial_editor_agent_id: int | None = None, workflow_metadata: bool = False, clone_source: DocumentCloneSource | None = None, prepared_clone: PreparedDocumentClone | None = None, defer_commit: bool = False) -> tuple[Document, bool]:
+async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = None, deletion_protected: bool = False, deduplicate: bool = False, owner_user_id: int | None = None, initial_editor_agent_id: int | None = None, workflow_metadata: bool = False, clone_source: DocumentCloneSource | None = None, prepared_clone: PreparedDocumentClone | None = None, defer_commit: bool = False, agent_authored: bool = False) -> tuple[Document, bool]:
     if defer_commit and (data.document_format != "text" or data.provider_code != "native"
                          or clone_source is not None or prepared_clone is not None):
         raise ValueError("Deferred creation requires an inline native Text document.")
@@ -1313,7 +1317,7 @@ async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = 
             copied = data.model_copy(update={"payload": DocumentPayload(text=prepared.content)})
             return await create_item(copied, actor_task_id=actor_task_id, deletion_protected=deletion_protected,
                 deduplicate=deduplicate, owner_user_id=owner_user_id, initial_editor_agent_id=initial_editor_agent_id,
-                workflow_metadata=workflow_metadata, prepared_clone=prepared)
+                workflow_metadata=workflow_metadata, prepared_clone=prepared, agent_authored=agent_authored)
     if data.owner_agent_id is None and owner_user_id is None:
         raise DocumentPermissionError("A Document requires a human or Agent owner")
     if not workflow_metadata and any(key in data.metadata for key in ("creation_command", "process_code")):
@@ -1334,6 +1338,8 @@ async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = 
             limit_length=not (deletion_protected and data.metadata.get("goal_document_kind") in {"description", "tracking"}),
         ).encode()
         media_type = "text/html"
+        if agent_authored and not deletion_protected:
+            require_agent_html_layout(content.decode("utf-8"))
     permitted_images = {f"document://{prepared_clone.identity}/attachments/{attachment.id}" for attachment in prepared_clone.attachments} if prepared_clone else set[str]()
     if data.document_format in {"text", "html"} and image_references(content.decode("utf-8", errors="replace")) - permitted_images:
         raise DocumentPermissionError("The image must belong to this document's attachments")

@@ -39,6 +39,7 @@ from .byte_budget import BufferedAdmissionDeferred, ByteBudget, buffered_io_budg
 
 from .rich_text import (
     ContentProfile,
+    HtmlNode,
     RichTextError,
     attachment_reference,
     archived_document_html,
@@ -47,6 +48,7 @@ from .rich_text import (
     html_blocks,
     image_references,
     normalize_html,
+    parse_html,
     read_html_page,
     replace_visible_text,
     visible_text,
@@ -97,6 +99,7 @@ __all__ = [
     "country_from_localization",
     "TemporalAnchor",
     "ContentProfile",
+    "HtmlNode",
     "RichTextError",
     "attachment_reference",
     "archived_document_html",
@@ -105,6 +108,7 @@ __all__ = [
     "html_blocks",
     "image_references",
     "normalize_html",
+    "parse_html",
     "read_html_page",
     "replace_visible_text",
     "visible_text",

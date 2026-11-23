@@ -33,6 +33,7 @@ import { useDocumentLinkIcons } from '../documentLinkIcons'
 import '../editorialTheme.css'
 import { webLinkCardImage, prependWebLinkImage } from '../webLinkPreview'
 import { renderMath } from '../mathRendering'
+import { renderSvgFigures } from '../editorialSvg'
 const { content, profile = 'rich-text', resolveImage, resolveResourceImage, resourceAgentId = null, registerReferenceActions, resizeReference } = defineProps<{
   content: string
   profile?: ContentProfile
@@ -135,6 +136,8 @@ watch(() => [content, profile, resolveImage, resolveResourceImage, resourceAgent
   revoke()
   const doc = new DOMParser().parseFromString('<body>' + sanitizeRichHtml(content, profile), 'text/html')
   hideInteractiveSource(doc.body, t('richEditor.embeddedApplication'))
+  const images = [...doc.body.querySelectorAll('img')]
+  if (profile === 'document') renderSvgFigures(doc.body)
   highlightDocumentCode(doc.body)
   const mathRendering = renderMath(doc.body).catch(() => { /* Keep the visible source fallback if math assets fail. */ })
   const targets = [...doc.body.querySelectorAll('blockquote.galaris-link-card')].map(card => referencePlayer(card))
@@ -150,7 +153,6 @@ watch(() => [content, profile, resolveImage, resolveResourceImage, resourceAgent
     if (href) link.setAttribute('href', href)
     else link.removeAttribute('href')
   })
-  const images = [...doc.body.querySelectorAll('img')]
   const webCards = profile === 'document' ? [...doc.body.querySelectorAll('blockquote.galaris-web-card')] : []
   const linkedImages = profile === 'document' ? [...doc.body.querySelectorAll('blockquote')].filter(isLinkedImageCard) : []
   const references = images.map(image => attachmentReference(image.getAttribute('src') ?? ''))

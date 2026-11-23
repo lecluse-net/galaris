@@ -29,6 +29,11 @@ document or leaving it stops the runtime; rendering resumes after a valid save.
 Existing `language-galaris-app` manifests remain compatible without showing their JSON.
 Use ordinary HTML for new documents.
 
+Each new application authored by an agent places its HTML, CSS and JavaScript in a
+single top-level `<section>`. Keep editorial prose outside it. The server checks the
+complete result of each write. An edit to surrounding prose can carry an existing legacy
+block through unchanged.
+
 ## Shared Dataset example
 
 Create a Dataset containing `[]` with `file_create(path="data://", name="Responses",
@@ -38,6 +43,7 @@ aliases remain readable:
 
 ```html
 <p>Prose editable through the usual toolbar.</p>
+<section>
 <form id="entry" data-dataset="data://11111111-1111-4111-8111-111111111111">
   <label>Answer <input name="answer" required></label>
   <button>Save</button>
@@ -61,6 +67,7 @@ document.getElementById('entry').onsubmit = async event => {
   } finally { button.disabled = false; }
 };
 </script>
+</section>
 ```
 
 `data-dataset` declares a resource. `data-dataset-alias` selects its alias (default `entries`).
@@ -91,13 +98,16 @@ remain durable. Direct HTML uses the technical identifier `document-html` on the
 
 ## Isolation and limits
 
-Two opaque iframes isolate code from the parent DOM, cookies, Galaris storage, popups and parent
+Styled text, tables and collapsible sections using only passive markup render in a single
+opaque iframe. Its CSP restricts scripts to the Galaris rendering code. Applications use two
+opaque iframes to isolate code from the parent DOM, cookies, Galaris storage, popups and parent
 navigation. This is internal: no visual frame, application heading or extra button is added.
 Editorial prose stays in the editor; its model preserves interactive content opaquely and restores
-ordinary HTML in saved content. Independent static objects split at editorial prose
-boundaries. Scripts, global styles, event handlers or shared SVG references keep the region
-from the first to the last object in one isolated context. Grouping is deliberately conservative:
-guessing dependencies from arbitrary code could break selectors, IDs and shared state.
+ordinary HTML in saved content. Each application `<section>` has its own context.
+Legacy documents with global dependencies retain grouping from the first to the last
+object. Use a standalone `<svg>` for a static chart, optionally inside a `<figure>` with an
+editable `<figcaption>`. Its styles and definitions stay inside the vector image in the
+editor, reader and exports. The document retains the SVG in its HTML.
 
 The runtime loads Three.js on opening when the document code references `THREE` or
 imports a supported library. It exposes `THREE`, `THREE.OrbitControls` and

@@ -8,6 +8,12 @@ Dataset ownership and URI examples are superseded by
 [ADR 0187](0187-dataset-domain-and-typed-contracts.md). New bindings use independent `data://`
 resources; the HTML execution, personal consent and access guarantees below remain applicable.
 
+Le contrat actuel sous Tiptap délimite chaque nouvelle application rédigée par un agent
+dans une `<section>` de premier niveau. Les figures SVG autonomes ont un rendu vectoriel
+statique dans le flux éditorial. Les anciennes régions à dépendances globales restent
+lisibles avec leur regroupement historique. Le serveur contrôle ces limites sur le
+résultat de chaque écriture d'agent.
+
 ## Décision
 
 Les agents écrivent directement du HTML avec formulaires, CSS et JavaScript dans les documents

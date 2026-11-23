@@ -23,8 +23,9 @@ const photoId = '22222222-2222-4222-8222-222222222222'
 const photoUri = `document://${datasetId}/attachments/${photoId}`
 const photoBytes = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFklEQVR4nGNkYPjPwMDAxMDAwMDAAAALHwEDmIWXfgAAAABJRU5ErkJggg==', 'base64')
 
-for (const width of [1440, 390]) test(`static styled documents keep a small runtime and usable disclosure at ${width}px`, async ({ page }, testInfo) => {
+for (const width of [1440, 390]) test(`static styled documents render in one isolated frame at ${width}px`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 900 })
+  await page.addInitScript(() => { window.print = () => {} })
   const rows = Array.from({ length: 6 }, (_, index) => `<tr><th>Item ${index + 1}</th><td>${index * 3}</td><td>Available</td></tr>`).join('')
   const html = `<style>.inventory{border-collapse:collapse;width:100%}.inventory th,.inventory td{padding:8px;border:1px solid #777}</style><h2>Synthetic inventory</h2><table class="inventory">${rows}</table><details><summary>Show totals</summary><p>18 items available</p></details>`
   const item = { ...document, content_profile: 'document', media_type: 'text/html', payload: { text: html } }
@@ -34,20 +35,37 @@ for (const width of [1440, 390]) test(`static styled documents keep a small runt
   await jsonRoute(page, '**/api/documents/doc-a?*', { item, agent_id: 7 })
   await jsonRoute(page, '**/api/documents/doc-a/attachments?*', [])
   await mount(page, 'app/document/components/DocumentEditor.vue', { props: { documentId: 'doc-a', agentId: 7 }, privileges: ['DOCUMENT_EDIT'] })
-  const content = inner(page)
+  const content = page.frameLocator('.document-application-frame')
+  await expect(content.locator('body')).toContainText('Synthetic inventory')
+  await expect(content.locator('iframe')).toHaveCount(0)
+  expect(await content.locator('body').evaluate(() => typeof window.galaris)).toBe('undefined')
   await expect(content.getByRole('heading', { name: 'Synthetic inventory' })).toBeVisible()
   await expect(content.getByRole('row')).toHaveCount(6)
   const totals = content.getByText('18 items available', { exact: true })
   await expect(totals).toBeHidden()
   await content.locator('summary').click()
   await expect(totals).toBeVisible()
+  await page.evaluate(() => window.testApp.dark(true))
+  await expect(content.locator('html')).toHaveAttribute('data-galaris-theme', 'dark')
+  await expect(totals).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('static-styled-document-dark.png') })
+  if (width === 1440) {
+    await page.getByRole('button', { name: 'Print', exact: true }).click()
+    await expect(page.frameLocator('.document-print-frame').getByText('18 items available', { exact: true })).toBeVisible()
+    await page.evaluate(() => {
+      const frame = document.querySelector('.document-print-frame')
+      frame.contentWindow.dispatchEvent(new frame.contentWindow.Event('afterprint'))
+    })
+  }
+  await page.evaluate(() => window.testApp.dark(false))
+  await expect(content.locator('html')).toHaveAttribute('data-galaris-theme', 'light')
   await content.locator('summary').click()
   await expect(totals).toBeHidden()
   await page.screenshot({ path: testInfo.outputPath('static-styled-document.png') })
   expect(await editorHtml(page)).toBe(await page.evaluate(html => new DOMParser().parseFromString('<body>' + html, 'text/html').body.innerHTML, html))
   const runtimeBytes = await page.locator('.document-application-frame').evaluate(frame => new TextEncoder().encode(frame.srcdoc).length)
   await testInfo.attach('static-runtime.json', { body: JSON.stringify({ width, authoredBytes: Buffer.byteLength(html), runtimeBytes }), contentType: 'application/json' })
-  // A small static document must not carry a full 3D engine in each isolated frame.
+  // Static content must stay lightweight even when a document has several objects.
   expect(runtimeBytes).toBeLessThan(64_000)
 })
 

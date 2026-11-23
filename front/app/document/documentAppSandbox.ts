@@ -7,6 +7,65 @@ import { applyDocumentContrast, solaire } from '@/core/util'
 const policy = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; media-src data: blob:; font-src data:; connect-src 'none'; frame-src blob:; worker-src 'none'; form-action 'none'; base-uri 'none'"
 const quoted = (value: unknown): string => JSON.stringify(value).replaceAll('<', '\\u003c').replaceAll('>', '\\u003e').replaceAll('&', '\\u0026')
 
+const staticTags = new Set('style article section header footer main aside div span p h1 h2 h3 h4 h5 h6 strong em b i u s del sub sup blockquote ul ol li dl dt dd hr br pre code mark figure figcaption table caption colgroup col thead tbody tfoot tr th td details summary'.split(' '))
+const staticAttributes = new Set('id class style title role lang dir hidden open name media colspan rowspan scope headers span start reversed'.split(' '))
+
+/** Allow only markup that cannot run code or navigate its own frame. */
+export function staticSandboxDocument(app: DocumentApp, dark: boolean, notifyFocus: boolean): string | null {
+  if (app.javascript?.trim() || Object.keys(app.datasets ?? {}).length) return null
+  const template = document.createElement('template')
+  template.innerHTML = app.html ?? ''
+  for (const element of template.content.querySelectorAll('*')) {
+    if (element.namespaceURI !== 'http://www.w3.org/1999/xhtml' || !staticTags.has(element.localName)) return null
+    if ([...element.attributes].some(({ name }) => !staticAttributes.has(name) && !name.startsWith('aria-'))) return null
+  }
+  const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('')
+  const staticPolicy = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; form-action 'none'; base-uri 'none'; script-src 'nonce-" + nonce + "'"
+  return sandboxHtml({ ...app, html: template.innerHTML }, staticPolicy, dark, '<script nonce="' + nonce + '">' + renderingScript(notifyFocus) + '</script>')
+}
+
+function sandboxHtml(app: DocumentApp, csp: string, dark: boolean, head: string, tail = ''): string {
+  return '<!doctype html><html data-galaris-theme="' + (dark ? 'dark' : 'light') + '"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'
+    + csp + '"><meta name="referrer" content="no-referrer">'
+    + head + '<style>html{font-family:system-ui,sans-serif;color-scheme:light;color:' + solaire.gray.dark + '}html[data-galaris-theme="dark"]{color-scheme:dark;color:' + solaire.gray.light + '}body{margin:0;display:flow-root}'
+    + (app.css ?? '').replace(/<\/style/gi, '<\\/style') + '</style></head><body>' + (app.html ?? '') + tail + '</body></html>'
+}
+
+function renderingScript(notifyFocus: boolean): string {
+  return `
+    (() => {
+      ${applicationSnapshotScript}
+      if (${quoted(notifyFocus)}) for (const type of ['pointerdown', 'focusin']) addEventListener(type, event => {
+        if (event.isTrusted) parent.postMessage({type: 'galaris-app-focus'}, '*');
+      }, true);
+      const applyDocumentContrast = (${applyDocumentContrast.toString()});
+      const refreshContrast = () => applyDocumentContrast(document, document.documentElement.dataset.galarisTheme === 'dark' ? 'rgb(39, 39, 39)' : 'rgb(255, 255, 255)');
+      addEventListener('message', event => {
+        if (event.source !== parent) return;
+        if (event.data?.type === 'galaris-host-theme' && typeof event.data.dark === 'boolean') {
+          document.documentElement.dataset.galarisTheme = event.data.dark ? 'dark' : 'light';
+          refreshContrast();
+        }
+        if (event.data !== 'galaris-app-snapshot' || !event.ports[0]) return;
+        const reply = event.ports[0];
+        captureRenderedDocument().then(html => reply.postMessage({html}), () => reply.postMessage({error: 'Snapshot unavailable'})).finally(() => reply.close());
+      });
+      addEventListener('DOMContentLoaded', () => {
+        refreshContrast();
+        let timer;
+        const observer = new MutationObserver(records => {
+          if (timer || records.every(record => record.target.nodeType === 1 && record.target.closest('style[data-galaris-contrast]'))) return;
+          timer = setTimeout(() => { timer = undefined; refreshContrast(); }, 250);
+        });
+        observer.observe(document.body, {subtree:true, childList:true, attributes:true, attributeFilter:['style','class','open']});
+        observer.observe(document.head, {subtree:true, childList:true, characterData:true});
+        addEventListener('pagehide', () => { observer.disconnect(); clearTimeout(timer); });
+        const report = () => parent.postMessage({type: 'galaris-app-height', height: document.body.scrollHeight}, '*');
+        new ResizeObserver(report).observe(document.body); report();
+      });
+    })();`
+}
+
 export function appSandboxDocument(app: DocumentApp, threeSource: string, dark = false, notifyFocus = false): string {
   const libraries = threeSource ? '<script>' + threeSource.replace(/<\/script/gi, '<\\/script') + '</script>' : ''
   const sdk = `
@@ -28,18 +87,6 @@ export function appSandboxDocument(app: DocumentApp, threeSource: string, dark =
       for (const constructor of new Set([URL, window.webkitURL].filter(Boolean))) {
         Object.defineProperty(constructor, 'createObjectURL', {value: passiveBlobUrl, writable: false, configurable: false});
       }
-      ${applicationSnapshotScript}
-      if (${quoted(notifyFocus)}) for (const type of ['pointerdown', 'focusin']) addEventListener(type, event => {
-        if (event.isTrusted) parent.postMessage({type: 'galaris-app-focus'}, '*');
-      }, true);
-      const applyDocumentContrast = (${applyDocumentContrast.toString()});
-      function updateTheme(dark) {
-        document.documentElement.dataset.galarisTheme = dark ? 'dark' : 'light';
-        applyDocumentContrast(document, dark ? 'rgb(39, 39, 39)' : 'rgb(255, 255, 255)');
-      }
-      addEventListener('message', event => {
-        if (event.source === parent && event.data?.type === 'galaris-host-theme' && typeof event.data.dark === 'boolean') updateTheme(event.data.dark);
-      });
       // Keep the displayed WebGL frame available to the existing static snapshot
       // path, without re-running authored animation or Dataset mutations at export.
       const canvasContext = HTMLCanvasElement.prototype.getContext;
@@ -47,11 +94,6 @@ export function appSandboxDocument(app: DocumentApp, threeSource: string, dark =
         if (kind === 'webgl' || kind === 'webgl2' || kind === 'experimental-webgl') options = {...options, preserveDrawingBuffer: true};
         return canvasContext.call(this, kind, options);
       };
-      addEventListener('message', event => {
-        if (event.source !== parent || event.data !== 'galaris-app-snapshot' || !event.ports[0]) return;
-        const reply = event.ports[0];
-        captureRenderedDocument().then(html => reply.postMessage({html}), () => reply.postMessage({error: 'Snapshot unavailable'})).finally(() => reply.close());
-      });
       let port, sequence = 0;
       const pending = new Map();
       let ready;
@@ -84,26 +126,10 @@ export function appSandboxDocument(app: DocumentApp, threeSource: string, dark =
         append: (alias, value, expectedRevision) => request(alias, 'append', value, expectedRevision)
       })})});
       parent.postMessage('galaris-app-ready', '*');
-      addEventListener('DOMContentLoaded', () => {
-        const refreshContrast = () => applyDocumentContrast(document, document.documentElement.dataset.galarisTheme === 'dark' ? 'rgb(39, 39, 39)' : 'rgb(255, 255, 255)');
-        refreshContrast();
-        let timer;
-        const observer = new MutationObserver(records => {
-          if (timer || records.every(record => record.target.nodeType === 1 && record.target.closest('style[data-galaris-contrast]'))) return;
-          timer = setTimeout(() => { timer = undefined; refreshContrast(); }, 250);
-        });
-        observer.observe(document.body, {subtree:true, childList:true, attributes:true, attributeFilter:['style','class']});
-        observer.observe(document.head, {subtree:true, childList:true, characterData:true});
-        addEventListener('pagehide', () => { observer.disconnect(); clearTimeout(timer); });
-        const report = () => parent.postMessage({type: 'galaris-app-height', height: document.body.scrollHeight}, '*');
-        new ResizeObserver(report).observe(document.body); report();
-      });
     })();`
-  const inner = '<!doctype html><html data-galaris-theme="' + (dark ? 'dark' : 'light') + '"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'
-    + policy.replace('frame-src blob:', "frame-src 'none'") + '"><meta name="referrer" content="no-referrer">'
-    + '<script>' + sdk + '</script>' + libraries + '<style>html{font-family:system-ui,sans-serif;color-scheme:light;color:' + solaire.gray.dark + '}html[data-galaris-theme="dark"]{color-scheme:dark;color:' + solaire.gray.light + '}body{margin:0;display:flow-root}'
-    + (app.css ?? '').replace(/<\/style/gi, '<\\/style') + '</style></head><body>' + (app.html ?? '')
-    + '<script>' + (app.javascript ?? '').replace(/<\/script/gi, '<\\/script') + '</script></body></html>'
+  const inner = sandboxHtml(app, policy.replace('frame-src blob:', "frame-src 'none'"), dark,
+    '<script>' + sdk + renderingScript(notifyFocus) + '</script>' + libraries,
+    '<script>' + (app.javascript ?? '').replace(/<\/script/gi, '<\\/script') + '</script>')
   return '<!doctype html><html style="color-scheme:' + (dark ? 'dark' : 'light') + '"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="'
     + policy + '"><meta name="referrer" content="no-referrer"><style>html,body,iframe{margin:0;width:100%;height:100%;border:0;background:transparent}iframe{color-scheme:inherit}</style></head><body>'
     + '<iframe sandbox="allow-scripts allow-forms" referrerpolicy="no-referrer" title="Application"></iframe><script>'

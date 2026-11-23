@@ -1,7 +1,7 @@
 <template>
   <div ref="host" class="document-application" :aria-label="app.title">
     <div v-if="error" role="alert" class="text-negative q-mb-sm">{{ error }}</div>
-    <iframe v-if="running" ref="frame" :srcdoc="source" sandbox="allow-scripts allow-forms" referrerpolicy="no-referrer" :title="app.title" class="document-application-frame" :style="{ height: height + 'px', colorScheme: $q.dark.isActive ? 'dark' : 'light' }" @load="connect" />
+    <iframe v-if="running" :key="generation" ref="frame" :srcdoc="source" :sandbox="interactive ? 'allow-scripts allow-forms' : 'allow-scripts'" referrerpolicy="no-referrer" :title="app.title" class="document-application-frame" :style="{ height: height + 'px', colorScheme: $q.dark.isActive ? 'dark' : 'light' }" @load="connect" />
   </div>
 </template>
 <script setup lang="ts">
@@ -11,7 +11,7 @@ import { useI18n } from 'vue-i18n'
 import { useQuasar } from 'quasar'
 import type { RegisterDocumentCapture } from '@/core/util'
 import { documentService } from '../services/documentService'
-import { appSandboxDocument } from '@/app/document/documentAppSandbox'
+import { appSandboxDocument, staticSandboxDocument } from '@/app/document/documentAppSandbox'
 import { prepareDocumentAppLibraries } from '@/app/document/documentAppLibraries'
 import type { AppDatasetRequest, DocumentApp } from '@/app/document/documentApps'
 import { materializeAppResources, type AppMediaResolver } from '@/app/document/documentAppResources'
@@ -24,6 +24,7 @@ const host = useTemplateRef('host')
 const running = ref(false), source = ref(''), error = ref('')
 const height = ref(240)
 let channel: MessageChannel | null = null
+let interactive = false
 let controller = new AbortController()
 let generation = 0, pending = 0, requests = 0, started = 0
 const ids = new Set<string>()
@@ -53,6 +54,7 @@ async function capture(signal: AbortSignal): Promise<string> {
 function stop(): void {
   ++generation
   running.value = false
+  interactive = false
   controller.abort()
   channel?.port1.close(); channel?.port2.close(); channel = null
   source.value = ''
@@ -65,11 +67,19 @@ async function start(): Promise<void> {
   error.value = ''; requests = 0; started = Date.now()
   const current = generation
   try {
+    const notifyFocus = Boolean(host.value?.closest('[data-editor-surface][contenteditable="true"]'))
+    const staticSource = staticSandboxDocument(app, $q.dark.isActive, notifyFocus)
+    if (staticSource !== null) {
+      source.value = staticSource
+      running.value = true
+      return
+    }
     const { app: prepared, threeSource } = await prepareDocumentAppLibraries(app)
     if (current !== generation) return
     const materialized = await materializeAppResources(prepared, resolveMedia ?? ((id, attachment, signal) => documentService.documentAttachmentBlob(id, attachment, null, signal)), controller.signal)
     if (current !== generation) return
     source.value = appSandboxDocument(materialized, threeSource, $q.dark.isActive, Boolean(host.value?.closest('[data-editor-surface][contenteditable="true"]')))
+    interactive = true
     running.value = true
   } catch {
     if (current === generation) error.value = t('documents.apps.failed')
@@ -78,6 +88,7 @@ async function start(): Promise<void> {
 function connect(): void {
   if (!running.value || !frame.value?.contentWindow || channel) return
   frame.value.contentWindow.postMessage({ type: 'galaris-host-theme', dark: $q.dark.isActive }, '*')
+  if (!interactive) return
   const current = generation
   channel = new MessageChannel()
   const port = channel.port1

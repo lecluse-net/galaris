@@ -1661,6 +1661,7 @@
       },
       {
         "files": [
+          "back/app/document/agent_html_layout.py",
           "back/app/document/converted_import.py",
           "back/app/document/data/attachments.py",
           "back/app/document/data/provider.py",

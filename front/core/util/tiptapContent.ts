@@ -18,6 +18,7 @@ import { mathNode } from './editorialMath'
 import { isLinkedImageCard } from './resourceCards'
 import { decorateReferenceAppearance, linkIconElement, referenceAttributes, referenceSizeChanges } from './documentReference'
 import { mountImageResize } from './imageResize'
+import { EditorialSvg, EditorialSvgFigure } from './editorialSvgNode'
 
 export type EditorToolbarGroupName = 'reading' | 'editing' | 'text' | 'paragraph' | 'insert'
 export const calloutKinds = ['info', 'warning', 'question', 'error', 'stop', 'forbidden', 'search'] as const
@@ -208,7 +209,7 @@ const CodeBlock = Node.create({
 
 const HtmlAttributes = (adapters: ContentAdapters) => Extension.create({
   name: 'editorialAttributes',
-  addGlobalAttributes: () => [{ types: ['paragraph', 'heading', 'blockquote', 'bulletList', 'orderedList', 'listItem', 'table', 'tableRow', 'tableCell', 'tableHeader', 'tableFigure', 'caption'], attributes: {
+  addGlobalAttributes: () => [{ types: ['paragraph', 'heading', 'blockquote', 'bulletList', 'orderedList', 'listItem', 'table', 'tableRow', 'tableCell', 'tableHeader', 'tableFigure', 'editorialSvgFigure', 'caption'], attributes: {
     editorialClass: { default: null, parseHTML: element => element.getAttribute('class'), renderHTML: attrs => attrs.editorialClass ? { class: attrs.editorialClass } : {} },
     editorialStyle: { default: null, parseHTML: element => element.getAttribute('style'), renderHTML: attrs => attrs.editorialStyle ? { style: attrs.editorialStyle } : {} },
     reversed: { default: false, parseHTML: element => element.hasAttribute('reversed'), renderHTML: attrs => attrs.reversed ? { reversed: '' } : {} },
@@ -304,7 +305,7 @@ export function contentExtensions(adapters: ContentAdapters): Extensions {
   }).configure({ resizable: true, View: EditorialTableView }),
   Node.create({ name: 'tableFigure', group: 'block', content: 'table caption?', parseHTML: () => [{ tag: 'figure.table' }], renderHTML: ({ HTMLAttributes }) => ['figure', mergeAttributes({ class: 'table' }, HTMLAttributes), 0] }),
   Node.create({ name: 'caption', content: 'inline*', parseHTML: () => [{ tag: 'figcaption' }, { tag: 'caption' }], renderHTML: () => ['figcaption', 0] }),
-  HtmlAttributes(adapters), CodeBlock, RawObject(adapters), ResourceCard(adapters), mathNode('inline', adapters.editMath), mathNode('block', adapters.editMath), Checklist, ChecklistItem, ...(adapters.profile === 'document' ? [DocumentImage(adapters, false), DocumentImage(adapters, true)] : [])]
+  HtmlAttributes(adapters), CodeBlock, RawObject(adapters), ResourceCard(adapters), mathNode('inline', adapters.editMath), mathNode('block', adapters.editMath), Checklist, ChecklistItem, ...(adapters.profile === 'document' ? [DocumentImage(adapters, false), DocumentImage(adapters, true), EditorialSvg, EditorialSvgFigure] : [])]
 }
 
 /** Resolve links in the editing view only; the model continues to carry canonical URIs. */

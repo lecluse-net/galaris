@@ -14,6 +14,8 @@
 .rich-content .editorial-checklist-control input { width: 1em; height: 1em; accent-color: var(--q-primary, var(--solaire-blue-accent)); cursor: pointer; }
 .rich-content .editorial-checklist-control input:disabled { cursor: default; }
 .rich-content figure { margin: 1em auto; }
+.rich-content .editorial-svg-image { display: block; margin-inline: auto; }
+.rich-content figure:has(> .editorial-svg-image) > figcaption { display: block; }
 .rich-content figure.image { display: table; clear: both; max-width: 100%; }
 .rich-content figure.image img { display: block; max-width: 100%; height: auto; }
 .rich-content figure.image.image_resized { display: block; box-sizing: border-box; }

@@ -1,6 +1,7 @@
 import DOMPurify from 'dompurify'
 import { editorialClasses, validEditorialStyle } from './editorialHtmlStyle'
 import { hideInteractiveSource, protectInteractiveHtml } from './interactiveHtml'
+import { svgCode } from './editorialSvg'
 import type { ResourceDetailTarget } from './resourceDetail'
 import { defaultReferenceFormatting, type ReferenceFormatting } from './resourceReference'
 import { attachmentReference } from './documentResource'
@@ -178,6 +179,7 @@ export function sanitizeRichHtml(html: string, profile: ContentProfile = 'rich-t
 export function richTextExcerpt(html: string): string {
   const doc = new DOMParser().parseFromString('<body>' + sanitizeRichHtml(html, 'document'), 'text/html')
   hideInteractiveSource(doc.body, '')
+  doc.body.querySelectorAll(svgCode).forEach(code => code.parentElement!.remove())
   doc.querySelectorAll('script').forEach(script => script.remove())
   for (const block of doc.body.querySelectorAll('p,li,tr,h1,h2,h3,pre,br')) block.append('\n')
   return doc.body.textContent?.trim() ?? ''

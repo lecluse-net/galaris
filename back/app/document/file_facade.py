@@ -109,6 +109,7 @@ async def create_document_file_resource(
         document_format=document_format,
         task_id=task_id,
         binary_content=binary_content,
+        agent_authored=True,
     )
     return {"id": str(item.id), "size": item.size_bytes, "revision": item.revision}
 

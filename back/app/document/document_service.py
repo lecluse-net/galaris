@@ -178,6 +178,7 @@ async def create_document(
     prepared_clone: PreparedDocumentClone | None = None,
     binary_content: bytes | None = None,
     defer_commit: bool = False,
+    agent_authored: bool = False,
 ) -> Document:
     """Create a private, mutable, non-deduplicated working document."""
     if document_format in {"data", "dataset"}:
@@ -243,6 +244,7 @@ async def create_document(
         clone_source=clone_source,
         prepared_clone=prepared_clone,
         defer_commit=defer_commit,
+        agent_authored=agent_authored,
     )
     return item
 
