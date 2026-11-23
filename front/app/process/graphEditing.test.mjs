@@ -15,14 +15,18 @@ test('all four task types remain explicit when created from a human lane', () =>
     assert.equal(processingMode(node), expectedMode)
     assert.equal(node.config.actor, actor)
   }
-  const decision = createActivity('if', graph, 'person')
-  assert.equal(processingMode(decision), 'llm')
-  assert.equal(decision.config.actor, 'person')
+  for (const [kind, mode] of [['if_code', 'code'], ['if_llm', 'llm'], ['if_human', 'human']]) {
+    const decision = createActivity(kind, graph, 'person')
+    assert.equal(decision.kind, 'if')
+    assert.equal(processingMode(decision), mode)
+    assert.equal(decision.config.actor, 'person')
+  }
 })
 
 test('moving an activity preserves its execution type, instructions and variable bindings', () => {
-  for (const kind of ['llm_task', 'code', 'if']) {
-    const node = { ...createActivity(kind, graph, 'ai'), inputs: ['source'], outputs: kind === 'if' ? [] : ['result'] }
+  for (const kind of ['llm_task', 'code', 'if_code', 'if_llm']) {
+    const activity = createActivity(kind, graph, 'ai')
+    const node = { ...activity, inputs: ['source'], outputs: activity.kind === 'if' ? [] : ['result'] }
     for (const actor of ['person', '', 'ai']) {
       const moved = assignActivityActor(node, actor, graph)
       assert.deepEqual(moved, { ...node, config: { ...node.config, actor: actor || null } })

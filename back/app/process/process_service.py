@@ -1355,7 +1355,8 @@ async def _apply_snapshot(run: ProcessRun, snapshot: EngineRunSnapshot, event_ty
         "last_observed_at": _utcnow().isoformat(),
         "refresh_failures": 0,
         "last_refresh_error": None,
-        "next_refresh_at": None,
+        "next_refresh_at": run.engine_metadata.get("native", {}).get("wait_refresh_at")
+            if run.engine_code == "galaris" and run.status == "running" else None,
         "observation_degraded": False,
     }
     if run.error_code == "observation_unavailable":
@@ -1693,6 +1694,8 @@ async def cancel_run(run_id: UUID) -> ProcessRun:
         await _resolve_await_if_terminal(run)
         return run
     await _transition(run, "cancelling", event_type="engine.cancel.requested")
+    if run.engine_code == "galaris" and run.engine_metadata.get("native", {}).get("wait_refresh_at"):
+        run.engine_metadata = {**run.engine_metadata, "next_refresh_at": None}
     await get_db().commit()
     try:
         snapshot = await engine.cancel_run(_engine_run_reference(run))

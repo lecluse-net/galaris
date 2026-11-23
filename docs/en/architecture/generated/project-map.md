@@ -17,9 +17,9 @@ tests remain authoritative for behavior.
 - 30 directly bidirectional domain pairs;
 - 1 strongly connected components;
 - 0 directly bidirectional frontend pairs;
-- 837 detected HTTP/WebSocket handlers;
+- 839 detected HTTP/WebSocket handlers;
 - 202 detected SQLAlchemy tables;
-- 302 detected native MCP tools;
+- 303 detected native MCP tools;
 - 59 detected Vue pages.
 
 ## Backend Modules
@@ -510,18 +510,18 @@ tests remain authoritative for behavior.
 | `app.plugin` | `core.update_diagnostics` | `back/app/plugin/service.py` |
 | `app.plugin` | `core.user` | `back/app/plugin/service.py` |
 | `app.plugin` | `core.util` | `back/app/plugin/runtime.py` |
-| `app.process` | `app.agent` | `back/app/process/catalogue.py`, `back/app/process/dataset_usage.py`, `back/app/process/events.py`, `back/app/process/facade.py`, `back/app/process/input_editing.py`, `back/app/process/input_provenance.py`, `back/app/process/mcp.py`, `back/app/process/native_access.py`, `back/app/process/native_actors.py`, `back/app/process/native_definitions.py`, `back/app/process/native_router.py`, `back/app/process/native_runs.py`, `back/app/process/native_sharing.py`, `back/app/process/process_service.py`, `back/app/process/resource_facade.py`, `back/app/process/resource_previews.py`, `back/app/process/router.py`, `back/app/process/run_resources.py` |
+| `app.process` | `app.agent` | `back/app/process/catalogue.py`, `back/app/process/dataset_usage.py`, `back/app/process/events.py`, `back/app/process/facade.py`, `back/app/process/input_editing.py`, `back/app/process/input_provenance.py`, `back/app/process/mcp.py`, `back/app/process/native_access.py`, `back/app/process/native_actors.py`, `back/app/process/native_definitions.py`, `back/app/process/native_router.py`, `back/app/process/native_runs.py`, `back/app/process/native_sharing.py`, `back/app/process/process_service.py`, `back/app/process/resource_facade.py`, `back/app/process/resource_previews.py`, `back/app/process/router.py`, `back/app/process/run_resources.py`, `back/app/process/wait_events.py` |
 | `app.process` | `app.console` | `back/app/process/native_engine.py`, `back/app/process/process_service.py`, `back/app/process/router.py` |
 | `app.process` | `app.dataset` | `back/app/process/values.py` |
 | `app.process` | `app.document` | `back/app/process/definition_migration.py`, `back/app/process/facade.py`, `back/app/process/run_data.py`, `back/app/process/run_resources.py` |
 | `app.process` | `app.file_share` | `back/app/process/facade.py`, `back/app/process/input_provenance.py`, `back/app/process/native_engine.py`, `back/app/process/native_router.py`, `back/app/process/process_service.py`, `back/app/process/router.py`, `back/app/process/run_data.py`, `back/app/process/run_resources.py`, `back/app/process/values.py` |
-| `app.process` | `app.llm` | `back/app/process/__init__.py`, `back/app/process/agent_capabilities.py`, `back/app/process/dbadmin.py`, `back/app/process/llm_decisions.py`, `back/app/process/native_runs.py`, `back/app/process/process_service.py` |
+| `app.process` | `app.llm` | `back/app/process/__init__.py`, `back/app/process/agent_capabilities.py`, `back/app/process/bpmn.py`, `back/app/process/dbadmin.py`, `back/app/process/llm_decisions.py`, `back/app/process/native_router.py`, `back/app/process/native_runs.py`, `back/app/process/process_service.py` |
 | `app.process` | `app.memory` | `back/app/process/events.py`, `back/app/process/native_actors.py`, `back/app/process/native_router.py`, `back/app/process/native_runs.py`, `back/app/process/router.py` |
 | `app.process` | `app.services` | `back/app/process/__init__.py`, `back/app/process/activity_jobs.py`, `back/app/process/bpmn.py`, `back/app/process/catalogue.py`, `back/app/process/code_broker.py`, `back/app/process/dbadmin.py`, `back/app/process/input_preparation.py`, `back/app/process/mcp.py`, `back/app/process/native_access.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/native_runs.py`, `back/app/process/process_service.py`, `back/app/process/resource_facade.py`, `back/app/process/run_resources.py` |
 | `app.process` | `app.share` | `back/app/process/definition_migration.py`, `back/app/process/models.py`, `back/app/process/native_access.py`, `back/app/process/native_router.py`, `back/app/process/native_sharing.py` |
 | `app.process` | `app.task` | `back/app/process/activity_controls.py`, `back/app/process/activity_jobs.py`, `back/app/process/code_broker.py`, `back/app/process/native_engine.py`, `back/app/process/process_service.py`, `back/app/process/retention.py`, `back/app/process/run_observation.py`, `back/app/process/run_resources.py` |
 | `app.process` | `core.authorize` | `back/app/process/dataset_usage.py`, `back/app/process/facade.py`, `back/app/process/native_access.py`, `back/app/process/native_router.py`, `back/app/process/native_sharing.py`, `back/app/process/router.py` |
-| `app.process` | `core.database` | `back/app/process/activity_controls.py`, `back/app/process/activity_jobs.py`, `back/app/process/catalogue.py`, `back/app/process/code_broker.py`, `back/app/process/dataset_usage.py`, `back/app/process/events.py`, `back/app/process/export.py`, `back/app/process/facade.py`, `back/app/process/human_requests.py`, `back/app/process/input_editing.py`, `back/app/process/input_preparation.py`, `back/app/process/input_provenance.py`, `back/app/process/interface.py`, `back/app/process/llm_decisions.py`, `back/app/process/mcp.py`, `back/app/process/models.py`, `back/app/process/native_actors.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/native_runs.py`, `back/app/process/native_sharing.py`, `back/app/process/process_service.py`, `back/app/process/progress.py`, `back/app/process/query_policy.py`, `back/app/process/replacement.py`, `back/app/process/resource_facade.py`, `back/app/process/resource_previews.py`, `back/app/process/retention.py`, `back/app/process/run_data.py`, `back/app/process/run_observation.py`, `back/app/process/run_resources.py`, `back/app/process/workers.py` |
+| `app.process` | `core.database` | `back/app/process/activity_controls.py`, `back/app/process/activity_jobs.py`, `back/app/process/catalogue.py`, `back/app/process/code_broker.py`, `back/app/process/dataset_usage.py`, `back/app/process/events.py`, `back/app/process/export.py`, `back/app/process/facade.py`, `back/app/process/human_requests.py`, `back/app/process/input_editing.py`, `back/app/process/input_preparation.py`, `back/app/process/input_provenance.py`, `back/app/process/interface.py`, `back/app/process/llm_decisions.py`, `back/app/process/mcp.py`, `back/app/process/models.py`, `back/app/process/native_actors.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/native_runs.py`, `back/app/process/native_sharing.py`, `back/app/process/process_service.py`, `back/app/process/progress.py`, `back/app/process/query_policy.py`, `back/app/process/replacement.py`, `back/app/process/resource_facade.py`, `back/app/process/resource_previews.py`, `back/app/process/retention.py`, `back/app/process/run_data.py`, `back/app/process/run_observation.py`, `back/app/process/run_resources.py`, `back/app/process/wait_events.py`, `back/app/process/workers.py` |
 | `app.process` | `core.dbadmin` | `back/app/process/dbadmin.py`, `back/app/process/definition_migration.py`, `back/app/process/document_format_migration.py` |
 | `app.process` | `core.i18n` | `back/app/process/fake_engine.py`, `back/app/process/mcp.py`, `back/app/process/process_service.py`, `back/app/process/registry.py`, `back/app/process/router.py` |
 | `app.process` | `core.params` | `back/app/process/__init__.py`, `back/app/process/input_editing.py`, `back/app/process/process_service.py`, `back/app/process/retention.py`, `back/app/process/router.py`, `back/app/process/run_data.py`, `back/app/process/workers.py` |
@@ -1785,44 +1785,46 @@ No cyclic component detected.
 | PATCH | `/incidents/patterns/{pattern_id}` | `app.incident` | `patch_pattern` | yes | `back/app/incident/router.py:124` |
 | GET | `/incidents/recent` | `app.incident` | `read_recent_incidents` | yes | `back/app/incident/router.py:90` |
 | GET | `/incidents/{incident_id}` | `app.incident` | `read_incident` | yes | `back/app/incident/router.py:115` |
-| GET | `/internal/agents` | `app.process` | `native_execution_agents` | yes | `back/app/process/native_router.py:153` |
-| GET | `/internal/decision-models` | `app.process` | `native_decision_models` | yes | `back/app/process/native_router.py:118` |
-| GET | `/internal/definitions` | `app.process` | `native_list_definitions` | yes | `back/app/process/native_router.py:160` |
-| POST | `/internal/definitions` | `app.process` | `native_create_definition` | yes | `back/app/process/native_router.py:167` |
-| GET | `/internal/definitions/{code}` | `app.process` | `native_read_definition` | yes | `back/app/process/native_router.py:181` |
-| PUT | `/internal/definitions/{code}` | `app.process` | `native_update_definition` | yes | `back/app/process/native_router.py:222` |
-| POST | `/internal/definitions/{code}/archive` | `app.process` | `native_archive_definition` | yes | `back/app/process/native_router.py:274` |
-| GET | `/internal/definitions/{code}/history` | `app.process` | `native_definition_history` | yes | `back/app/process/native_router.py:230` |
-| DELETE | `/internal/definitions/{code}/history/{revision}` | `app.process` | `native_delete_revision` | yes | `back/app/process/native_router.py:251` |
-| GET | `/internal/definitions/{code}/history/{revision}` | `app.process` | `native_history_detail` | yes | `back/app/process/native_router.py:237` |
-| PATCH | `/internal/definitions/{code}/owner` | `app.process` | `native_transfer_owner` | yes | `back/app/process/native_router.py:188` |
-| POST | `/internal/definitions/{code}/restore` | `app.process` | `native_restore_definition` | yes | `back/app/process/native_router.py:244` |
-| POST | `/internal/definitions/{code}/runs` | `app.process` | `native_launch` | yes | `back/app/process/native_router.py:281` |
-| GET | `/internal/definitions/{code}/sharing` | `app.process` | `native_sharing` | yes | `back/app/process/native_router.py:258` |
-| PUT | `/internal/definitions/{code}/sharing` | `app.process` | `native_update_sharing` | yes | `back/app/process/native_router.py:266` |
-| GET | `/internal/humans` | `app.process` | `native_human_options` | yes | `back/app/process/native_router.py:109` |
-| GET | `/internal/owner-options` | `app.process` | `native_owner_options` | yes | `back/app/process/native_router.py:136` |
-| GET | `/internal/resource-options` | `app.process` | `native_resource_options` | yes | `back/app/process/native_router.py:209` |
-| GET | `/internal/resource-preview` | `app.process` | `native_resource_preview` | yes | `back/app/process/native_router.py:196` |
-| GET | `/internal/runs` | `app.process` | `native_run_list` | yes | `back/app/process/native_router.py:291` |
-| GET | `/internal/runs/{identity}` | `app.process` | `native_inspect_run` | yes | `back/app/process/native_router.py:299` |
-| GET | `/internal/runs/{identity}/activities/{node_key}` | `app.process` | `native_activity_occurrences` | yes | `back/app/process/native_router.py:417` |
-| POST | `/internal/runs/{identity}/cancel` | `app.process` | `native_cancel` | yes | `back/app/process/native_router.py:447` |
-| GET | `/internal/runs/{identity}/children` | `app.process` | `native_run_children` | yes | `back/app/process/native_router.py:425` |
-| POST | `/internal/runs/{identity}/control` | `app.process` | `native_control` | yes | `back/app/process/native_router.py:439` |
-| GET | `/internal/runs/{identity}/files/{file_id}` | `app.process` | `native_run_file` | yes | `back/app/process/native_router.py:344` |
-| PATCH | `/internal/runs/{identity}/files/{file_id}` | `app.process` | `native_rename_run_file` | yes | `back/app/process/native_router.py:336` |
-| PATCH | `/internal/runs/{identity}/inputs` | `app.process` | `native_contribute_inputs` | yes | `back/app/process/native_router.py:318` |
-| GET | `/internal/runs/{identity}/inputs/provenance` | `app.process` | `native_input_provenance` | yes | `back/app/process/native_router.py:369` |
-| POST | `/internal/runs/{identity}/inputs/{name}/file` | `app.process` | `native_upload_input` | yes | `back/app/process/native_router.py:327` |
-| GET | `/internal/runs/{identity}/metrics` | `app.process` | `native_metrics` | yes | `back/app/process/native_router.py:432` |
-| GET | `/internal/runs/{identity}/nodes/{node_identity}` | `app.process` | `native_inspect_node` | yes | `back/app/process/native_router.py:311` |
-| POST | `/internal/runs/{identity}/retry` | `app.process` | `native_retry` | yes | `back/app/process/native_router.py:456` |
-| GET | `/internal/runs/{identity}/variables/content` | `app.process` | `native_variable_content` | yes | `back/app/process/native_router.py:396` |
-| GET | `/internal/runs/{identity}/variables/resource` | `app.process` | `native_variable_resource` | yes | `back/app/process/native_router.py:357` |
-| GET | `/internal/runs/{identity}/variables/thumbnail` | `app.process` | `native_variable_thumbnail` | yes | `back/app/process/native_router.py:382` |
-| GET | `/internal/sharing-options` | `app.process` | `native_sharing_options` | yes | `back/app/process/native_router.py:125` |
-| POST | `/internal/validate` | `app.process` | `native_validate_definition` | yes | `back/app/process/native_router.py:145` |
+| GET | `/internal/agents` | `app.process` | `native_execution_agents` | yes | `back/app/process/native_router.py:161` |
+| GET | `/internal/decision-models` | `app.process` | `native_decision_models` | yes | `back/app/process/native_router.py:120` |
+| GET | `/internal/definitions` | `app.process` | `native_list_definitions` | yes | `back/app/process/native_router.py:168` |
+| POST | `/internal/definitions` | `app.process` | `native_create_definition` | yes | `back/app/process/native_router.py:175` |
+| GET | `/internal/definitions/{code}` | `app.process` | `native_read_definition` | yes | `back/app/process/native_router.py:189` |
+| PUT | `/internal/definitions/{code}` | `app.process` | `native_update_definition` | yes | `back/app/process/native_router.py:230` |
+| POST | `/internal/definitions/{code}/archive` | `app.process` | `native_archive_definition` | yes | `back/app/process/native_router.py:282` |
+| GET | `/internal/definitions/{code}/history` | `app.process` | `native_definition_history` | yes | `back/app/process/native_router.py:238` |
+| DELETE | `/internal/definitions/{code}/history/{revision}` | `app.process` | `native_delete_revision` | yes | `back/app/process/native_router.py:259` |
+| GET | `/internal/definitions/{code}/history/{revision}` | `app.process` | `native_history_detail` | yes | `back/app/process/native_router.py:245` |
+| PATCH | `/internal/definitions/{code}/owner` | `app.process` | `native_transfer_owner` | yes | `back/app/process/native_router.py:196` |
+| POST | `/internal/definitions/{code}/restore` | `app.process` | `native_restore_definition` | yes | `back/app/process/native_router.py:252` |
+| POST | `/internal/definitions/{code}/runs` | `app.process` | `native_launch` | yes | `back/app/process/native_router.py:289` |
+| GET | `/internal/definitions/{code}/sharing` | `app.process` | `native_sharing` | yes | `back/app/process/native_router.py:266` |
+| PUT | `/internal/definitions/{code}/sharing` | `app.process` | `native_update_sharing` | yes | `back/app/process/native_router.py:274` |
+| GET | `/internal/humans` | `app.process` | `native_human_options` | yes | `back/app/process/native_router.py:111` |
+| GET | `/internal/llm-profiles` | `app.process` | `native_llm_profiles` | yes | `back/app/process/native_router.py:127` |
+| GET | `/internal/owner-options` | `app.process` | `native_owner_options` | yes | `back/app/process/native_router.py:144` |
+| GET | `/internal/resource-options` | `app.process` | `native_resource_options` | yes | `back/app/process/native_router.py:217` |
+| GET | `/internal/resource-preview` | `app.process` | `native_resource_preview` | yes | `back/app/process/native_router.py:204` |
+| GET | `/internal/runs` | `app.process` | `native_run_list` | yes | `back/app/process/native_router.py:299` |
+| GET | `/internal/runs/{identity}` | `app.process` | `native_inspect_run` | yes | `back/app/process/native_router.py:307` |
+| GET | `/internal/runs/{identity}/activities/{node_key}` | `app.process` | `native_activity_occurrences` | yes | `back/app/process/native_router.py:425` |
+| POST | `/internal/runs/{identity}/cancel` | `app.process` | `native_cancel` | yes | `back/app/process/native_router.py:462` |
+| GET | `/internal/runs/{identity}/children` | `app.process` | `native_run_children` | yes | `back/app/process/native_router.py:433` |
+| POST | `/internal/runs/{identity}/control` | `app.process` | `native_control` | yes | `back/app/process/native_router.py:447` |
+| POST | `/internal/runs/{identity}/events` | `app.process` | `native_signal` | yes | `back/app/process/native_router.py:455` |
+| GET | `/internal/runs/{identity}/files/{file_id}` | `app.process` | `native_run_file` | yes | `back/app/process/native_router.py:352` |
+| PATCH | `/internal/runs/{identity}/files/{file_id}` | `app.process` | `native_rename_run_file` | yes | `back/app/process/native_router.py:344` |
+| PATCH | `/internal/runs/{identity}/inputs` | `app.process` | `native_contribute_inputs` | yes | `back/app/process/native_router.py:326` |
+| GET | `/internal/runs/{identity}/inputs/provenance` | `app.process` | `native_input_provenance` | yes | `back/app/process/native_router.py:377` |
+| POST | `/internal/runs/{identity}/inputs/{name}/file` | `app.process` | `native_upload_input` | yes | `back/app/process/native_router.py:335` |
+| GET | `/internal/runs/{identity}/metrics` | `app.process` | `native_metrics` | yes | `back/app/process/native_router.py:440` |
+| GET | `/internal/runs/{identity}/nodes/{node_identity}` | `app.process` | `native_inspect_node` | yes | `back/app/process/native_router.py:319` |
+| POST | `/internal/runs/{identity}/retry` | `app.process` | `native_retry` | yes | `back/app/process/native_router.py:471` |
+| GET | `/internal/runs/{identity}/variables/content` | `app.process` | `native_variable_content` | yes | `back/app/process/native_router.py:404` |
+| GET | `/internal/runs/{identity}/variables/resource` | `app.process` | `native_variable_resource` | yes | `back/app/process/native_router.py:365` |
+| GET | `/internal/runs/{identity}/variables/thumbnail` | `app.process` | `native_variable_thumbnail` | yes | `back/app/process/native_router.py:390` |
+| GET | `/internal/sharing-options` | `app.process` | `native_sharing_options` | yes | `back/app/process/native_router.py:133` |
+| POST | `/internal/validate` | `app.process` | `native_validate_definition` | yes | `back/app/process/native_router.py:153` |
 | POST | `/janus/openai/chat/completions` | `app.agent` | `janus_chat_completions` | yes | `back/app/agent/openai_router.py:179` |
 | GET | `/janus/openai/models` | `app.agent` | `get_janus_models` | yes | `back/app/agent/openai_router.py:163` |
 | GET | `/llm-calls` | `app.llm` | `read_calls` | yes | `back/app/llm/call_router.py:477` |
@@ -2542,30 +2544,30 @@ No cyclic component detected.
 | `conversation_process_start` | `process` | `app.conversation` | `conversation_process_start` | `back/app/conversation/mcp.py:1068` |
 | `process_activity_complete` | `process` | `app.process` | `process_activity_complete` | `back/app/process/mcp.py:162` |
 | `process_activity_question` | `process` | `app.process` | `process_activity_question` | `back/app/process/mcp.py:177` |
-| `process_admin_analyze_run` | `process` | `app.process` | `process_admin_analyze_run` | `back/app/process/mcp.py:720` |
-| `process_admin_cancel_run` | `process` | `app.process` | `process_admin_cancel_run` | `back/app/process/mcp.py:692` |
-| `process_admin_create` | `process` | `app.process` | `process_admin_create` | `back/app/process/mcp.py:483` |
-| `process_admin_delete` | `process` | `app.process` | `process_admin_delete` | `back/app/process/mcp.py:566` |
-| `process_admin_delete_run` | `process` | `app.process` | `process_admin_delete_run` | `back/app/process/mcp.py:734` |
-| `process_admin_engines` | `process` | `app.process` | `process_admin_engines` | `back/app/process/mcp.py:395` |
-| `process_admin_get` | `process` | `app.process` | `process_admin_get` | `back/app/process/mcp.py:463` |
-| `process_admin_get_run` | `process` | `app.process` | `process_admin_get_run` | `back/app/process/mcp.py:658` |
-| `process_admin_list` | `process` | `app.process` | `process_admin_list` | `back/app/process/mcp.py:432` |
-| `process_admin_list_runs` | `process` | `app.process` | `process_admin_list_runs` | `back/app/process/mcp.py:627` |
-| `process_admin_refresh_run` | `process` | `app.process` | `process_admin_refresh_run` | `back/app/process/mcp.py:678` |
-| `process_admin_retry_run` | `process` | `app.process` | `process_admin_retry_run` | `back/app/process/mcp.py:706` |
-| `process_admin_start` | `process` | `app.process` | `process_admin_start` | `back/app/process/mcp.py:588` |
-| `process_admin_sync` | `process` | `app.process` | `process_admin_sync` | `back/app/process/mcp.py:415` |
-| `process_admin_update` | `process` | `app.process` | `process_admin_update` | `back/app/process/mcp.py:514` |
-| `process_analyze_run` | `process` | `app.process` | `process_analyze_run` | `back/app/process/mcp.py:381` |
+| `process_admin_analyze_run` | `process` | `app.process` | `process_admin_analyze_run` | `back/app/process/mcp.py:729` |
+| `process_admin_cancel_run` | `process` | `app.process` | `process_admin_cancel_run` | `back/app/process/mcp.py:701` |
+| `process_admin_create` | `process` | `app.process` | `process_admin_create` | `back/app/process/mcp.py:492` |
+| `process_admin_delete` | `process` | `app.process` | `process_admin_delete` | `back/app/process/mcp.py:575` |
+| `process_admin_delete_run` | `process` | `app.process` | `process_admin_delete_run` | `back/app/process/mcp.py:743` |
+| `process_admin_engines` | `process` | `app.process` | `process_admin_engines` | `back/app/process/mcp.py:404` |
+| `process_admin_get` | `process` | `app.process` | `process_admin_get` | `back/app/process/mcp.py:472` |
+| `process_admin_get_run` | `process` | `app.process` | `process_admin_get_run` | `back/app/process/mcp.py:667` |
+| `process_admin_list` | `process` | `app.process` | `process_admin_list` | `back/app/process/mcp.py:441` |
+| `process_admin_list_runs` | `process` | `app.process` | `process_admin_list_runs` | `back/app/process/mcp.py:636` |
+| `process_admin_refresh_run` | `process` | `app.process` | `process_admin_refresh_run` | `back/app/process/mcp.py:687` |
+| `process_admin_retry_run` | `process` | `app.process` | `process_admin_retry_run` | `back/app/process/mcp.py:715` |
+| `process_admin_start` | `process` | `app.process` | `process_admin_start` | `back/app/process/mcp.py:597` |
+| `process_admin_sync` | `process` | `app.process` | `process_admin_sync` | `back/app/process/mcp.py:424` |
+| `process_admin_update` | `process` | `app.process` | `process_admin_update` | `back/app/process/mcp.py:523` |
+| `process_analyze_run` | `process` | `app.process` | `process_analyze_run` | `back/app/process/mcp.py:390` |
 | `process_archive` | `process` | `app.process` | `process_archive` | `back/app/process/mcp.py:229` |
 | `process_create` | `process` | `app.process` | `process_create` | `back/app/process/mcp.py:191` |
 | `process_definition_read` | `process` | `app.process` | `process_definition_read` | `back/app/process/mcp.py:185` |
 | `process_get` | `process` | `app.process` | `process_get` | `back/app/process/mcp.py:121` |
-| `process_get_run` | `process` | `app.process` | `process_get_run` | `back/app/process/mcp.py:368` |
+| `process_get_run` | `process` | `app.process` | `process_get_run` | `back/app/process/mcp.py:377` |
 | `process_history` | `process` | `app.process` | `process_history` | `back/app/process/mcp.py:215` |
 | `process_list` | `process` | `app.process` | `process_list` | `back/app/process/mcp.py:112` |
-| `process_list_runs` | `process` | `app.process` | `process_list_runs` | `back/app/process/mcp.py:351` |
+| `process_list_runs` | `process` | `app.process` | `process_list_runs` | `back/app/process/mcp.py:360` |
 | `process_restore` | `process` | `app.process` | `process_restore` | `back/app/process/mcp.py:223` |
 | `process_run_cancel` | `process` | `app.process` | `process_run_cancel` | `back/app/process/mcp.py:281` |
 | `process_run_children` | `process` | `app.process` | `process_run_children` | `back/app/process/mcp.py:252` |
@@ -2573,9 +2575,10 @@ No cyclic component detected.
 | `process_run_inspect` | `process` | `app.process` | `process_run_inspect` | `back/app/process/mcp.py:244` |
 | `process_run_metrics` | `process` | `app.process` | `process_run_metrics` | `back/app/process/mcp.py:266` |
 | `process_run_occurrence` | `process` | `app.process` | `process_run_occurrence` | `back/app/process/mcp.py:260` |
-| `process_run_retry` | `process` | `app.process` | `process_run_retry` | `back/app/process/mcp.py:289` |
+| `process_run_retry` | `process` | `app.process` | `process_run_retry` | `back/app/process/mcp.py:298` |
+| `process_run_signal` | `process` | `app.process` | `process_run_signal` | `back/app/process/mcp.py:289` |
 | `process_share` | `process` | `app.process` | `process_share` | `back/app/process/mcp.py:235` |
-| `process_start` | `process` | `app.process` | `process_start` | `back/app/process/mcp.py:313` |
+| `process_start` | `process` | `app.process` | `process_start` | `back/app/process/mcp.py:322` |
 | `process_update` | `process` | `app.process` | `process_update` | `back/app/process/mcp.py:200` |
 | `process_validate` | `process` | `app.process` | `process_validate` | `back/app/process/mcp.py:208` |
 | `processus_get` | `process` | `app.process` | `processus_get` | `back/app/process/mcp.py:30` |

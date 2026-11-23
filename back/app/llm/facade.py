@@ -48,7 +48,7 @@ from .provider_facade import (
 
 if TYPE_CHECKING:
     from app.agent.contracts import AIResult
-from .contracts import InferenceEvent, InferenceRequest, TextInferenceRequest, StructuredOutputSpec, InferenceRead, InferenceCommand, InferenceAction, InferenceRunEvent, DecisionInferenceRequest
+from .contracts import InferenceEvent, InferenceRequest, TextInferenceRequest, StructuredOutputSpec, InferenceRead, InferenceCommand, InferenceAction, InferenceRunEvent, DecisionInferenceRequest, InferenceProfileSelection
 from .decision_contracts import ChoiceQuestion, DecisionResult, DecisionUnavailable, ProviderDecisionResponse
 from .provider_facade import ProviderConnection, ProviderAuthenticationError, register_decision_provider
 from .inference_execution import run_decision
@@ -69,10 +69,36 @@ async def start_inference(request: InferenceRequest, *, inference_id: UUID | Non
     return await submit(request, inference_id=inference_id)
 
 
-async def prepare_inference(request: InferenceRequest, *, inference_id: UUID | None = None) -> UUID:
+async def prepare_inference(
+    request: InferenceRequest, *, inference_id: UUID | None = None,
+    profile_selection: InferenceProfileSelection | None = None,
+) -> UUID:
     """Admit and freeze an immutable request without scheduling a provider call."""
     from .inference_execution import submit
-    return await submit(request, inference_id=inference_id, prepared=True)
+    return await submit(request, inference_id=inference_id, prepared=True, profile_selection=profile_selection)
+
+
+class ProfileOption(TypedDict):
+    id: int
+    label: str
+
+
+class ProfileOptions(TypedDict):
+    profiles: list[ProfileOption]
+    current_profile_id: int | None
+    default_fallback_profile_id: int | None
+
+
+async def list_profile_options() -> ProfileOptions:
+    """List profile names and inherited defaults for profile selectors."""
+    from . import profile_service
+
+    profiles = await profile_service.list_profiles()
+    return ProfileOptions(
+        profiles=[ProfileOption(id=profile.id, label=profile.label) for profile in profiles],
+        current_profile_id=await profile_service.get_current_profile_id(),
+        default_fallback_profile_id=next((profile.id for profile in profiles if profile.is_default_fallback), None),
+    )
 
 
 async def import_document_analysis(

@@ -42,7 +42,8 @@ async def deliver_human_requests() -> int:
         requests.append(ProcessHumanRequest(attempt_id=attempt.id, run_id=run.id,
             agent_id=run.launcher_agent_id,
             user_id=occurrence.context["human_user_id"], title=occurrence.context["human_title"],
-            instructions=question["question"] if question.get("status") == "pending" else str(node.config.get("prompt", "")), input=attempt.input,
+            instructions=question["question"] if question.get("status") == "pending" else
+                str(occurrence.context.get("human_question_text", node.config.get("prompt", ""))), input=attempt.input,
             outputs=question["outputs"] if question.get("status") == "pending" else [item.model_dump(mode="json") for item in activity_variables(graph, node)] if graph.typed else None,
             files=occurrence.context.get("input_files", []), decision=original.kind == "if" and not question,
             partial=graph.typed and question.get("status") != "pending",

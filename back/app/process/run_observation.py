@@ -41,7 +41,11 @@ async def observe_run(run: ProcessRun, *, can_control: bool, visible_children: s
         task = task_states.get(attempt.task_id) if attempt and attempt.task_id else None
         kind = "ready" if node.status == "ready" else "engine"
         detail: dict[str, Any] = {}
-        if question.get("status") == "pending" or attempt and attempt.status == "human_waiting":
+        if context.get("pending_waits"):
+            waits: list[dict[str, Any]] = context["pending_waits"]
+            kind = "event_choice" if definition.get("kind") == "event_choice" else "timer" if waits[0].get("due_at") else "event_wait"
+            detail = {"waits": waits, "wake_received": bool(context.get("wake_receipt"))}
+        elif question.get("status") == "pending" or attempt and attempt.status == "human_waiting":
             kind = "human_reply"
             detail = {"question": str(question.get("question") or (attempt.prompt if attempt else "") or "")[:2000],
                 "user_id": question.get("user_id") or context.get("human_user_id")}

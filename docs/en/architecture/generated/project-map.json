@@ -4010,7 +4010,8 @@
           "back/app/process/resource_facade.py",
           "back/app/process/resource_previews.py",
           "back/app/process/router.py",
-          "back/app/process/run_resources.py"
+          "back/app/process/run_resources.py",
+          "back/app/process/wait_events.py"
         ],
         "source": "app.process",
         "target": "app.agent"
@@ -4060,8 +4061,10 @@
         "files": [
           "back/app/process/__init__.py",
           "back/app/process/agent_capabilities.py",
+          "back/app/process/bpmn.py",
           "back/app/process/dbadmin.py",
           "back/app/process/llm_decisions.py",
+          "back/app/process/native_router.py",
           "back/app/process/native_runs.py",
           "back/app/process/process_service.py"
         ],
@@ -4170,6 +4173,7 @@
           "back/app/process/run_data.py",
           "back/app/process/run_observation.py",
           "back/app/process/run_resources.py",
+          "back/app/process/wait_events.py",
           "back/app/process/workers.py"
         ],
         "source": "app.process",
@@ -9980,7 +9984,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_analyze_run",
-        "line": 720,
+        "line": 729,
         "module": "app.process",
         "name": "process_admin_analyze_run",
         "namespace": "process"
@@ -9988,7 +9992,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_cancel_run",
-        "line": 692,
+        "line": 701,
         "module": "app.process",
         "name": "process_admin_cancel_run",
         "namespace": "process"
@@ -9996,7 +10000,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_create",
-        "line": 483,
+        "line": 492,
         "module": "app.process",
         "name": "process_admin_create",
         "namespace": "process"
@@ -10004,7 +10008,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_delete",
-        "line": 566,
+        "line": 575,
         "module": "app.process",
         "name": "process_admin_delete",
         "namespace": "process"
@@ -10012,7 +10016,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_delete_run",
-        "line": 734,
+        "line": 743,
         "module": "app.process",
         "name": "process_admin_delete_run",
         "namespace": "process"
@@ -10020,7 +10024,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_engines",
-        "line": 395,
+        "line": 404,
         "module": "app.process",
         "name": "process_admin_engines",
         "namespace": "process"
@@ -10028,7 +10032,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_get",
-        "line": 463,
+        "line": 472,
         "module": "app.process",
         "name": "process_admin_get",
         "namespace": "process"
@@ -10036,7 +10040,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_get_run",
-        "line": 658,
+        "line": 667,
         "module": "app.process",
         "name": "process_admin_get_run",
         "namespace": "process"
@@ -10044,7 +10048,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_list",
-        "line": 432,
+        "line": 441,
         "module": "app.process",
         "name": "process_admin_list",
         "namespace": "process"
@@ -10052,7 +10056,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_list_runs",
-        "line": 627,
+        "line": 636,
         "module": "app.process",
         "name": "process_admin_list_runs",
         "namespace": "process"
@@ -10060,7 +10064,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_refresh_run",
-        "line": 678,
+        "line": 687,
         "module": "app.process",
         "name": "process_admin_refresh_run",
         "namespace": "process"
@@ -10068,7 +10072,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_retry_run",
-        "line": 706,
+        "line": 715,
         "module": "app.process",
         "name": "process_admin_retry_run",
         "namespace": "process"
@@ -10076,7 +10080,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_start",
-        "line": 588,
+        "line": 597,
         "module": "app.process",
         "name": "process_admin_start",
         "namespace": "process"
@@ -10084,7 +10088,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_sync",
-        "line": 415,
+        "line": 424,
         "module": "app.process",
         "name": "process_admin_sync",
         "namespace": "process"
@@ -10092,7 +10096,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_admin_update",
-        "line": 514,
+        "line": 523,
         "module": "app.process",
         "name": "process_admin_update",
         "namespace": "process"
@@ -10100,7 +10104,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_analyze_run",
-        "line": 381,
+        "line": 390,
         "module": "app.process",
         "name": "process_analyze_run",
         "namespace": "process"
@@ -10140,7 +10144,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_get_run",
-        "line": 368,
+        "line": 377,
         "module": "app.process",
         "name": "process_get_run",
         "namespace": "process"
@@ -10164,7 +10168,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_list_runs",
-        "line": 351,
+        "line": 360,
         "module": "app.process",
         "name": "process_list_runs",
         "namespace": "process"
@@ -10228,9 +10232,17 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_run_retry",
-        "line": 289,
+        "line": 298,
         "module": "app.process",
         "name": "process_run_retry",
+        "namespace": "process"
+      },
+      {
+        "file": "back/app/process/mcp.py",
+        "handler": "process_run_signal",
+        "line": 289,
+        "module": "app.process",
+        "name": "process_run_signal",
         "namespace": "process"
       },
       {
@@ -10244,7 +10256,7 @@
       {
         "file": "back/app/process/mcp.py",
         "handler": "process_start",
-        "line": 313,
+        "line": 322,
         "module": "app.process",
         "name": "process_start",
         "namespace": "process"
@@ -19670,7 +19682,7 @@
         "declared_path": "/internal/agents",
         "file": "back/app/process/native_router.py",
         "handler": "native_execution_agents",
-        "line": 153,
+        "line": 161,
         "method": "GET",
         "module": "app.process"
       },
@@ -19679,7 +19691,7 @@
         "declared_path": "/internal/decision-models",
         "file": "back/app/process/native_router.py",
         "handler": "native_decision_models",
-        "line": 118,
+        "line": 120,
         "method": "GET",
         "module": "app.process"
       },
@@ -19688,7 +19700,7 @@
         "declared_path": "/internal/definitions",
         "file": "back/app/process/native_router.py",
         "handler": "native_list_definitions",
-        "line": 160,
+        "line": 168,
         "method": "GET",
         "module": "app.process"
       },
@@ -19697,7 +19709,7 @@
         "declared_path": "/internal/definitions",
         "file": "back/app/process/native_router.py",
         "handler": "native_create_definition",
-        "line": 167,
+        "line": 175,
         "method": "POST",
         "module": "app.process"
       },
@@ -19706,7 +19718,7 @@
         "declared_path": "/internal/definitions/{code}",
         "file": "back/app/process/native_router.py",
         "handler": "native_read_definition",
-        "line": 181,
+        "line": 189,
         "method": "GET",
         "module": "app.process"
       },
@@ -19715,7 +19727,7 @@
         "declared_path": "/internal/definitions/{code}",
         "file": "back/app/process/native_router.py",
         "handler": "native_update_definition",
-        "line": 222,
+        "line": 230,
         "method": "PUT",
         "module": "app.process"
       },
@@ -19724,7 +19736,7 @@
         "declared_path": "/internal/definitions/{code}/archive",
         "file": "back/app/process/native_router.py",
         "handler": "native_archive_definition",
-        "line": 274,
+        "line": 282,
         "method": "POST",
         "module": "app.process"
       },
@@ -19733,7 +19745,7 @@
         "declared_path": "/internal/definitions/{code}/history",
         "file": "back/app/process/native_router.py",
         "handler": "native_definition_history",
-        "line": 230,
+        "line": 238,
         "method": "GET",
         "module": "app.process"
       },
@@ -19742,7 +19754,7 @@
         "declared_path": "/internal/definitions/{code}/history/{revision}",
         "file": "back/app/process/native_router.py",
         "handler": "native_delete_revision",
-        "line": 251,
+        "line": 259,
         "method": "DELETE",
         "module": "app.process"
       },
@@ -19751,7 +19763,7 @@
         "declared_path": "/internal/definitions/{code}/history/{revision}",
         "file": "back/app/process/native_router.py",
         "handler": "native_history_detail",
-        "line": 237,
+        "line": 245,
         "method": "GET",
         "module": "app.process"
       },
@@ -19760,7 +19772,7 @@
         "declared_path": "/internal/definitions/{code}/owner",
         "file": "back/app/process/native_router.py",
         "handler": "native_transfer_owner",
-        "line": 188,
+        "line": 196,
         "method": "PATCH",
         "module": "app.process"
       },
@@ -19769,7 +19781,7 @@
         "declared_path": "/internal/definitions/{code}/restore",
         "file": "back/app/process/native_router.py",
         "handler": "native_restore_definition",
-        "line": 244,
+        "line": 252,
         "method": "POST",
         "module": "app.process"
       },
@@ -19778,7 +19790,7 @@
         "declared_path": "/internal/definitions/{code}/runs",
         "file": "back/app/process/native_router.py",
         "handler": "native_launch",
-        "line": 281,
+        "line": 289,
         "method": "POST",
         "module": "app.process"
       },
@@ -19787,7 +19799,7 @@
         "declared_path": "/internal/definitions/{code}/sharing",
         "file": "back/app/process/native_router.py",
         "handler": "native_sharing",
-        "line": 258,
+        "line": 266,
         "method": "GET",
         "module": "app.process"
       },
@@ -19796,7 +19808,7 @@
         "declared_path": "/internal/definitions/{code}/sharing",
         "file": "back/app/process/native_router.py",
         "handler": "native_update_sharing",
-        "line": 266,
+        "line": 274,
         "method": "PUT",
         "module": "app.process"
       },
@@ -19805,7 +19817,16 @@
         "declared_path": "/internal/humans",
         "file": "back/app/process/native_router.py",
         "handler": "native_human_options",
-        "line": 109,
+        "line": 111,
+        "method": "GET",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/llm-profiles",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_llm_profiles",
+        "line": 127,
         "method": "GET",
         "module": "app.process"
       },
@@ -19814,7 +19835,7 @@
         "declared_path": "/internal/owner-options",
         "file": "back/app/process/native_router.py",
         "handler": "native_owner_options",
-        "line": 136,
+        "line": 144,
         "method": "GET",
         "module": "app.process"
       },
@@ -19823,7 +19844,7 @@
         "declared_path": "/internal/resource-options",
         "file": "back/app/process/native_router.py",
         "handler": "native_resource_options",
-        "line": 209,
+        "line": 217,
         "method": "GET",
         "module": "app.process"
       },
@@ -19832,7 +19853,7 @@
         "declared_path": "/internal/resource-preview",
         "file": "back/app/process/native_router.py",
         "handler": "native_resource_preview",
-        "line": 196,
+        "line": 204,
         "method": "GET",
         "module": "app.process"
       },
@@ -19841,7 +19862,7 @@
         "declared_path": "/internal/runs",
         "file": "back/app/process/native_router.py",
         "handler": "native_run_list",
-        "line": 291,
+        "line": 299,
         "method": "GET",
         "module": "app.process"
       },
@@ -19850,7 +19871,7 @@
         "declared_path": "/internal/runs/{identity}",
         "file": "back/app/process/native_router.py",
         "handler": "native_inspect_run",
-        "line": 299,
+        "line": 307,
         "method": "GET",
         "module": "app.process"
       },
@@ -19859,7 +19880,7 @@
         "declared_path": "/internal/runs/{identity}/activities/{node_key}",
         "file": "back/app/process/native_router.py",
         "handler": "native_activity_occurrences",
-        "line": 417,
+        "line": 425,
         "method": "GET",
         "module": "app.process"
       },
@@ -19868,7 +19889,7 @@
         "declared_path": "/internal/runs/{identity}/cancel",
         "file": "back/app/process/native_router.py",
         "handler": "native_cancel",
-        "line": 447,
+        "line": 462,
         "method": "POST",
         "module": "app.process"
       },
@@ -19877,7 +19898,7 @@
         "declared_path": "/internal/runs/{identity}/children",
         "file": "back/app/process/native_router.py",
         "handler": "native_run_children",
-        "line": 425,
+        "line": 433,
         "method": "GET",
         "module": "app.process"
       },
@@ -19886,7 +19907,16 @@
         "declared_path": "/internal/runs/{identity}/control",
         "file": "back/app/process/native_router.py",
         "handler": "native_control",
-        "line": 439,
+        "line": 447,
+        "method": "POST",
+        "module": "app.process"
+      },
+      {
+        "authorized": true,
+        "declared_path": "/internal/runs/{identity}/events",
+        "file": "back/app/process/native_router.py",
+        "handler": "native_signal",
+        "line": 455,
         "method": "POST",
         "module": "app.process"
       },
@@ -19895,7 +19925,7 @@
         "declared_path": "/internal/runs/{identity}/files/{file_id}",
         "file": "back/app/process/native_router.py",
         "handler": "native_run_file",
-        "line": 344,
+        "line": 352,
         "method": "GET",
         "module": "app.process"
       },
@@ -19904,7 +19934,7 @@
         "declared_path": "/internal/runs/{identity}/files/{file_id}",
         "file": "back/app/process/native_router.py",
         "handler": "native_rename_run_file",
-        "line": 336,
+        "line": 344,
         "method": "PATCH",
         "module": "app.process"
       },
@@ -19913,7 +19943,7 @@
         "declared_path": "/internal/runs/{identity}/inputs",
         "file": "back/app/process/native_router.py",
         "handler": "native_contribute_inputs",
-        "line": 318,
+        "line": 326,
         "method": "PATCH",
         "module": "app.process"
       },
@@ -19922,7 +19952,7 @@
         "declared_path": "/internal/runs/{identity}/inputs/provenance",
         "file": "back/app/process/native_router.py",
         "handler": "native_input_provenance",
-        "line": 369,
+        "line": 377,
         "method": "GET",
         "module": "app.process"
       },
@@ -19931,7 +19961,7 @@
         "declared_path": "/internal/runs/{identity}/inputs/{name}/file",
         "file": "back/app/process/native_router.py",
         "handler": "native_upload_input",
-        "line": 327,
+        "line": 335,
         "method": "POST",
         "module": "app.process"
       },
@@ -19940,7 +19970,7 @@
         "declared_path": "/internal/runs/{identity}/metrics",
         "file": "back/app/process/native_router.py",
         "handler": "native_metrics",
-        "line": 432,
+        "line": 440,
         "method": "GET",
         "module": "app.process"
       },
@@ -19949,7 +19979,7 @@
         "declared_path": "/internal/runs/{identity}/nodes/{node_identity}",
         "file": "back/app/process/native_router.py",
         "handler": "native_inspect_node",
-        "line": 311,
+        "line": 319,
         "method": "GET",
         "module": "app.process"
       },
@@ -19958,7 +19988,7 @@
         "declared_path": "/internal/runs/{identity}/retry",
         "file": "back/app/process/native_router.py",
         "handler": "native_retry",
-        "line": 456,
+        "line": 471,
         "method": "POST",
         "module": "app.process"
       },
@@ -19967,7 +19997,7 @@
         "declared_path": "/internal/runs/{identity}/variables/content",
         "file": "back/app/process/native_router.py",
         "handler": "native_variable_content",
-        "line": 396,
+        "line": 404,
         "method": "GET",
         "module": "app.process"
       },
@@ -19976,7 +20006,7 @@
         "declared_path": "/internal/runs/{identity}/variables/resource",
         "file": "back/app/process/native_router.py",
         "handler": "native_variable_resource",
-        "line": 357,
+        "line": 365,
         "method": "GET",
         "module": "app.process"
       },
@@ -19985,7 +20015,7 @@
         "declared_path": "/internal/runs/{identity}/variables/thumbnail",
         "file": "back/app/process/native_router.py",
         "handler": "native_variable_thumbnail",
-        "line": 382,
+        "line": 390,
         "method": "GET",
         "module": "app.process"
       },
@@ -19994,7 +20024,7 @@
         "declared_path": "/internal/sharing-options",
         "file": "back/app/process/native_router.py",
         "handler": "native_sharing_options",
-        "line": 125,
+        "line": 133,
         "method": "GET",
         "module": "app.process"
       },
@@ -20003,7 +20033,7 @@
         "declared_path": "/internal/validate",
         "file": "back/app/process/native_router.py",
         "handler": "native_validate_definition",
-        "line": 145,
+        "line": 153,
         "method": "POST",
         "module": "app.process"
       },

@@ -31,6 +31,7 @@ from .contracts import (
     StructuredInferenceRequest,
     ProtocolInferenceRequest,
     DecisionInferenceRequest,
+    InferenceProfileSelection,
 )
 from .correlation import current_llm_correlation_ref, deep_inference_scope, llm_correlation_scope
 from .decision_contracts import DecisionResult
@@ -63,9 +64,12 @@ async def read(inference_id: UUID) -> InferenceRead:
     return await transaction(lambda: inference_store.read(inference_id))
 
 
-async def submit(request: InferenceRequest, *, inference_id: UUID | None = None, prepared: bool = False) -> UUID:
+async def submit(
+    request: InferenceRequest, *, inference_id: UUID | None = None, prepared: bool = False,
+    profile_selection: InferenceProfileSelection | None = None,
+) -> UUID:
     # Resolve before admission; subsequent attempts use the frozen explicit effort.
-    from .llm_service import get_agent_fallback_model, get_llm
+    from .llm_service import get_agent_fallback_model, get_llm, get_profile_fallback_model
     from .profile_fallback import ProfileFallbackRoute
     from .structured_service import resolve_reasoning_effort
     from .subscription_policy import (
@@ -91,7 +95,12 @@ async def submit(request: InferenceRequest, *, inference_id: UUID | None = None,
             resolved.profile_fallback = None
             resolved.profile_fallback_llm_id = None
             resolved.profile_fallback_reasoning_effort = None
-            if resolved.allow_profile_fallback:
+            if resolved.allow_profile_fallback and profile_selection is not None:
+                fallback = await get_profile_fallback_model(
+                    profile_selection.profile_id, llm.id, model_field=profile_selection.model_field,
+                    fallback_profile_id=profile_selection.fallback_profile_id,
+                )
+            elif resolved.allow_profile_fallback:
                 fallback = await get_agent_fallback_model(
                     resolved.agent_id, llm.id, model_field=resolved.model_field, purpose=resolved.purpose,
                 )
@@ -105,7 +114,10 @@ async def submit(request: InferenceRequest, *, inference_id: UUID | None = None,
             if fallback is None or not allows_automatic_subscription_fallback(fallback[1]):
                 raise
             profile_id, secondary, effort = fallback
-            requester = await enforce_subscription_access(secondary.provider, task_id=request.task_id)
+            requester = await enforce_subscription_access(
+                secondary.provider, task_id=request.task_id,
+                conversation_round_id=request.conversation_round_id, process_run_id=request.process_run_id,
+            )
             resolved.llm_id = secondary.id
             resolved.reasoning_effort = effort
             resolved.profile_fallback = ProfileFallbackRoute(
@@ -134,13 +146,23 @@ async def submit(request: InferenceRequest, *, inference_id: UUID | None = None,
             from .decision_binding import model_binding
 
             resolved.model_bindings = {str(llm.id): model_binding(llm)}
+            resolved.fallback_decision_llm_id = None
+            if profile_selection is not None and resolved.allow_profile_fallback:
+                decision_fallback = await get_profile_fallback_model(
+                    profile_selection.profile_id, llm.id, model_field=profile_selection.model_field,
+                    fallback_profile_id=profile_selection.fallback_profile_id,
+                )
+                if decision_fallback is not None:
+                    _, secondary, _ = decision_fallback
+                    resolved.fallback_decision_llm_id = secondary.id
+                    resolved.model_bindings[str(secondary.id)] = model_binding(secondary)
             if resolved.allow_text_fallback and resolved.fallback_llm_id is not None:
                 fallback = await get_llm(resolved.fallback_llm_id)
                 if fallback is None:
                     raise LookupError("Decision fallback model not found.")
                 resolved.model_bindings[str(fallback.id)] = model_binding(fallback)
         resolved.correlation_ref = request.correlation_ref or current_llm_correlation_ref()
-        if (request.model_field is not None and request.reasoning_effort is None
+        if (profile_selection is None and request.model_field is not None and request.reasoning_effort is None
                 and resolved.llm_id == request.llm_id):
             resolved.reasoning_effort = await resolve_reasoning_effort(
                 request.model_field, request.agent_id

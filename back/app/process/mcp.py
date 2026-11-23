@@ -284,6 +284,15 @@ async def process_run_cancel(ctx: McpToolContext, run_id: str) -> dict[str, Any]
     return {"id": str(run.id), "status": run.status}
 
 
+@mcp_tool("process", approval="ask", approval_reason="Deliver an event that may advance a business process",
+    name="process_run_signal", description="Deliver an observed event to its exact waiting native run. Reuse event_id on repeated delivery. The event name and correlation must match an active wait.")
+async def process_run_signal(ctx: McpToolContext, run_id: str, event_id: UUID,
+                             name: str, correlation: str) -> dict[str, Any]:
+    from .wait_events import ProcessSignal, signal_run
+
+    return await signal_run(_run_id(run_id), ctx.agent_id, ProcessSignal(event_id=event_id, name=name, correlation=correlation))
+
+
 @mcp_tool("process", approval="ask", approval_reason="Launch another current process run",
     name="process_run_retry", description="Launch a terminal native run again using its inputs and canonical files with the latest saved process. Reuse the same idempotency key if the reply is lost.")
 async def process_run_retry(ctx: McpToolContext, run_id: str, idempotency_key: str) -> dict[str, Any]:

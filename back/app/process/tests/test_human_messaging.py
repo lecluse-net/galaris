@@ -31,7 +31,8 @@ from core.user import UserModel
 from .test_native_bpmn import native as native, finish_run
 
 
-async def setup_wait(db, native, monkeypatch, *, typed=True, file_output=False, sequential=False, decision=False):
+async def setup_wait(db, native, monkeypatch, *, typed=True, file_output=False, sequential=False, decision=False,
+                     question_text=None):
     owner, _ = native
     user = UserModel(email=f"human-{uuid4().hex}@example.invalid", hashed_password="synthetic", is_active=True)
     db.add(user)
@@ -50,36 +51,54 @@ async def setup_wait(db, native, monkeypatch, *, typed=True, file_output=False, 
         graph.nodes.append(Node(id="declined", kind="end"))
         graph.flows[1].condition = "decision"
         graph.flows.append(Flow(id="no", source="review", target="declined"))
+        if question_text is not None:
+            graph.variables = [Variable(name="review_text", type="string", nullable=False)]
+            graph.nodes[1].inputs = ["review_text"]
+            graph.nodes[1].config.pop("prompt")
+            graph.nodes[1].config["human_prompt_variable"] = "review_text"
+            graph.nodes.insert(1, Node(id="prepare", kind="code", outputs=["review_text"], config={
+                "code": f"return {{'review_text': {question_text!r}}}", "dataset_code": True,
+            }))
+            graph.flows[0].target = "prepare"
+            graph.flows.append(Flow(id="prepared", source="prepare", target="review"))
     if sequential:
         graph.nodes.insert(2, Node(id="confirm", kind="human_task", title="Second synthetic approval",
             config={"actor": "reviewer", "prompt": "Confirm this second invented step."}))
         graph.flows = [Flow(id="a", source="start", target="review"), Flow(id="b", source="review", target="confirm"),
             Flow(id="c", source="confirm", target="end")]
-    graph.outputs = [variable.name for variable in graph.variables]
+    graph.outputs = [] if decision else [variable.name for variable in graph.variables]
     for node in graph.nodes:
-        if node.kind not in {"start", "if"}:
+        if node.kind not in {"start", "if", "code"}:
             node.outputs = list(graph.outputs)
     definition = await create(actor_agent_id=owner.id, title="Synthetic human workflow", graph=graph)
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
     await process_service.process_start_jobs(engine_code="galaris")
-    for _ in range(4):
-        await process_service.refresh_run(launched.run_id)
+    for _ in range(30):
+        run = await process_service.refresh_run(launched.run_id)
+        pending = await db.scalar(select(ProcessNodeAttempt.id).join(ProcessNodeRun).where(
+            ProcessNodeRun.run_id == launched.run_id, ProcessNodeAttempt.status == "human_waiting").limit(1))
+        if pending is not None:
+            break
+        assert run.status not in process_service.TERMINAL_STATUSES, run.error_message
+    else:
+        raise AssertionError("The synthetic workflow did not reach the human activity")
     monkeypatch.setattr(human_directory, "_directory", SimpleNamespace(list_humans=AsyncMock(return_value=())))
     monkeypatch.setattr(human_directory, "_messenger", ProcessHumanMessenger())
     return owner, user, launched.run_id
 
 
-@pytest.mark.parametrize("answer", [True, False])
+@pytest.mark.parametrize("answer,question_text", [(True, None), (False, "Decline the synthetic quote after review?")])
 @pytest.mark.asyncio
-async def test_human_decision_buttons_complete_the_chosen_branch_without_an_ai_task(db, native, monkeypatch, answer):
-    owner, user, run_id = await setup_wait(db, native, monkeypatch, decision=True)
+async def test_human_decision_buttons_complete_the_chosen_branch_without_an_ai_task(db, native, monkeypatch, answer, question_text):
+    owner, user, run_id = await setup_wait(db, native, monkeypatch, decision=True, question_text=question_text)
     chat = await db.scalar(select(Service).where(Service.code == "chat"))
     db.add(Connection(agent_id=owner.id, service_id=chat.id, active=True))
     await db.commit()
     await deliver_human_requests()
     choice = await db.scalar(select(Interaction).where(Interaction.kind == PROCESS_HUMAN_INTERACTION))
     assert choice.metadata_["decision"]
-    assert choice.options == [{"id": "true", "label": "True", "aliases": []}, {"id": "false", "label": "False", "aliases": []}]
+    assert choice.body == (question_text or "Is this the requested project?")
+    assert choice.options == [{"id": "true", "label": "Yes", "aliases": []}, {"id": "false", "label": "No", "aliases": []}]
     room = await db.get(Room, UUID(choice.room_id))
     sender = MessengerUser(id=uuid4(), external_id=choice.user_id, is_ai=False)
     incoming = Message(connection_id=choice.connection_id, service_id=choice.service_id,
@@ -91,8 +110,8 @@ async def test_human_decision_buttons_complete_the_chosen_branch_without_an_ai_t
     run = await finish_run(db, run_id)
     assert run.status == "success", run.error_message
     nodes = list(await db.scalars(select(ProcessNodeRun.node_key).where(ProcessNodeRun.run_id == run.id)))
-    assert sorted(nodes) == sorted(["start", "review", "end" if answer else "declined"])
-    assert await db.scalar(select(ProcessNodeAttempt.task_id).join(ProcessNodeRun).where(ProcessNodeRun.run_id == run.id)) is None
+    assert set(nodes) == {"start", "review", "end" if answer else "declined"} | ({"prepare"} if question_text else set())
+    assert await db.scalar(select(ProcessNodeAttempt.task_id).join(ProcessNodeRun).where(ProcessNodeRun.run_id == run.id, ProcessNodeAttempt.task_id.is_not(None))) is None
 
 
 @pytest.mark.asyncio

@@ -187,7 +187,8 @@ async def test_complete_human_decision_journey(inference_db, monkeypatch, langua
             receipts = [json.loads(message["content"]) for message in body["messages"]
                         if message.get("role") == "tool" and message.get("tool_call_id") in tracking_reads]
             assert receipts and receipts[-1]["uri"] == tracking_uri
-            assert "content" in receipts[-1]
+            assert receipts[-1]["offset_unit"] == "block"
+            assert isinstance(receipts[-1]["blocks"], list)
             assert "goal_ask_referrer" in {tool["name"] for tool in functions}
             tool_name = "goal_ask_referrer"
             value = {

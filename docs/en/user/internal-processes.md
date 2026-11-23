@@ -57,16 +57,16 @@ and monitoring of existing processes. This UI restriction does not replace API o
 
 The diagram handle menu groups actions under **Tasks**, **Choices**, **Start and end**,
 **Loops**, and **Calls**. It shows the groups available at the insertion point. A new
-diagram already contains its **Start** node. Use **Isolated Python** for a CPython program
+diagram already contains its **Start** node. Use **Python** for a CPython program
 on the dedicated runner. Its **MCP and REST capabilities** field declares the
 operations the program may invoke through `call_service`. **MCP call** and
 **REST call** activities each perform a call declared directly in the diagram.
 [Configure Python code and capabilities](../dev/native-processes.md#python-capabilities)
 
 If the REST configuration or request is rejected before sending, **REST call** ends
-with an error. In **Isolated Python**, `call_service` reports the rejection to the program.
+with an error. In **Python**, `call_service` reports the rejection to the program.
 
-In **Isolated Python**, `input_files` contains the run's file references. Add
+In **Python**, `input_files` contains the run's file references. Add
 resulting URIs to `output_files` to make them visible as attachments to later steps.
 Use `return` to set output variables.
 Each execution has its own `/tmp` directory, which is removed when the script ends.

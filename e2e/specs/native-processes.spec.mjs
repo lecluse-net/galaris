@@ -46,9 +46,10 @@ test('an agentic activity keeps its selected execution agent without adding a la
   const definition = await created.json(), path = `/api/processes/internal/definitions/${definition.code}`
   await page.goto(`/process/internal/${definition.code}`)
   await page.getByRole('button', { name: /^(Output of Start|Sortie de Début)$/ }).click()
-  for (const name of [/^(Isolated Python|Python isolé)$/, /^(MCP call|Appel MCP)$/, /^(REST call|Appel REST)$/]) {
+  for (const name of [/^Python$/, /^(MCP call|Appel MCP)$/, /^(REST call|Appel REST)$/]) {
     await expect(page.getByRole('button', { name })).toBeVisible()
   }
+  await expect(page.getByRole('button', { name: /^(Calculation|Calcul) \(Monty\)$/ })).toHaveCount(0)
   await page.getByRole('button', { name: /^(Agentic AI|IA agentique)$/ }).click()
   const panel = page.getByRole('complementary', { name: /^(Activity settings|Paramètres de l’activité)$/ })
   await panel.getByRole('textbox', { name: /^(Title|Titre)$/ }).fill('Synthetic agentic work')
@@ -163,7 +164,7 @@ test(`a real ${mode} IF follows its boolean branch after Dataset code execution`
     await observer.goto(`/process/internal/run/${identity}`)
     await expect(observer.getByRole('button', { name: 'Synthetic project decision · check', exact: true })).toHaveAttribute('aria-current', 'step')
     await page.goto(`/chat?room=${room}`)
-    await page.getByRole('region', { name: 'Synthetic project decision', exact: true }).getByRole('button', { name: 'False', exact: true }).click()
+    await page.getByRole('region', { name: 'Synthetic project decision', exact: true }).getByRole('button', { name: /^(No|Non)$/ }).click()
   }
   await expect.poll(async () => (await (await request.get(`/api/processes/internal/runs/${identity}`, { headers })).json()).status,
     { timeout: 30_000 }).toBe('success')

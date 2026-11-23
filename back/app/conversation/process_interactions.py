@@ -66,7 +66,8 @@ class ProcessHumanMessenger:
         language = await current_language(user_id=request.user_id)
         choice = ChoiceRequest(kind=PROCESS_HUMAN_INTERACTION, title=request.title,
             body=request.instructions if request.decision else request.instructions + "\n\n" + t("process.human.messaging_reply", language),
-            options=[ChoiceOption(id="true", label="True"), ChoiceOption(id="false", label="False")] if request.decision else [],
+            options=[ChoiceOption(id="true", label=t("process.human.yes", language)),
+                     ChoiceOption(id="false", label=t("process.human.no", language))] if request.decision else [],
             free_text=not request.decision, interpretation_required=not request.decision,
             timeout_seconds=10 * 365 * 24 * 3600, language=language,
             reminder_delays=_ACTIVITY_QUESTION_REMINDER_DELAYS if request.question_id is not None else (),

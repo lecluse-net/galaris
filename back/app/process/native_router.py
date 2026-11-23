@@ -11,6 +11,7 @@ from starlette.background import BackgroundTask
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.agent import AgentManagementScope, current_management_scope
+from app.llm.facade import ProfileOptions, list_profile_options
 from app.memory import MemoryConflictError, MemoryPermissionError, MemoryNotFoundError
 from app.share import SharingUpdate as DocumentSharingLevelUpdate
 from core.authorize import authorize, Privileges
@@ -22,6 +23,7 @@ from . import native_sharing as definition_sharing
 from .bpmn import Workflow, compile_bpmn, to_bpmn, validate_graph
 from .schemas import ProcessFileInput
 from .run_data import RunDataConflictError
+from .wait_events import ProcessSignal, signal_run
 
 routes = APIRouter(prefix="/internal")
 
@@ -118,6 +120,12 @@ async def native_human_options(agent_id: int = Query(..., gt=0)) -> list[dict[st
 async def native_decision_models() -> list[dict[str, Any]]:
     from .llm_decisions import model_options
     return await model_options()
+
+
+@routes.get("/llm-profiles")
+@authorize(privileges=[Privileges.PROCESS_READ, "PROCESS_EDIT", Privileges.PROCESS_ADMIN])
+async def native_llm_profiles() -> ProfileOptions:
+    return await list_profile_options()
 
 
 @routes.get("/sharing-options")
@@ -440,6 +448,13 @@ async def native_control(identity: UUID, data: DebuggerRequest) -> dict[str, Any
     with domain_errors():
         return await runs.control_run(identity, await current_management_scope(), data.action, data.nodes,
             command_key=data.command_key, expected_revision=data.expected_revision)
+
+
+@routes.post("/runs/{identity}/events")
+@authorize(privileges=[Privileges.PROCESS_LAUNCH, Privileges.PROCESS_ADMIN])
+async def native_signal(identity: UUID, data: ProcessSignal) -> dict[str, Any]:
+    with domain_errors():
+        return await signal_run(identity, await current_management_scope(), data)
 
 
 @routes.post("/runs/{identity}/cancel")

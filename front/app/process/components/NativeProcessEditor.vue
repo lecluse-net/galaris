@@ -64,7 +64,8 @@
                     <q-btn flat round dense icon="close" :aria-label="t('nativeProcesses.closeSettings')" @click="selectedNode = null; selectedFlow = null" />
                   </div>
                   <template v-if="selected">
-                    <q-select v-if="modeEditable" :model-value="selected.kind === 'if' && !selected.config.mode ? null : currentMode" :options="processingOptions"
+                    <q-select v-if="modeEditable" :model-value="processingSelection" :options="processingOptions"
+                      :display-value="selected.kind === 'code' ? t('nativeProcesses.kinds.code') : undefined"
                       outlined emit-value map-options :readonly="!editable" :label="t('nativeProcesses.processingMode')" @update:model-value="setProcessingMode" />
                     <q-select v-if="contractActivity || selected.kind === 'if'" :model-value="configString('actor') || null" :options="actorOptions"
                       emit-value map-options outlined clearable :readonly="!editable" :label="t('nativeProcesses.taskActor')" @update:model-value="setActor" />
@@ -77,10 +78,24 @@
                       @update:inputs="setNodeVariables('inputs', $event)" @update:outputs="setNodeVariables('outputs', $event)" />
                     <ProcessAiDecision v-if="currentMode === 'llm'" :key="selected.id"
                       :config="selected.config" :decision="selected.kind === 'if'" :readonly="!editable" @change="setConfig" />
-                    <q-input v-if="selected.kind === 'task' || selected.kind === 'human_task' || selected.kind === 'if' && selected.config.mode && currentMode !== 'code'" :model-value="configString('prompt')" outlined type="textarea" autogrow :readonly="!editable" :label="t('nativeProcesses.instructions')" @update:model-value="setConfig('prompt', String($event ?? ''))" />
+                    <q-select v-if="selected.kind === 'if' && currentMode === 'human'" :model-value="configString('human_prompt_variable') || null"
+                      :options="textInputOptions" outlined emit-value map-options clearable :readonly="!editable"
+                      :label="t('nativeProcesses.humanQuestionTextSource')" @update:model-value="setConfig('human_prompt_variable', $event)" />
+                    <q-input v-if="selected.kind === 'task' || selected.kind === 'human_task' || selected.kind === 'if' && selected.config.mode && currentMode !== 'code' && !(currentMode === 'human' && configString('human_prompt_variable'))" :model-value="configString('prompt')" outlined type="textarea" autogrow :readonly="!editable" :label="t('nativeProcesses.instructions')" @update:model-value="setConfig('prompt', String($event ?? ''))" />
                     <q-input v-if="selected.kind === 'for'" :model-value="configString('items')" outlined :readonly="!editable" :label="t('nativeProcesses.items')" @update:model-value="setConfig('items', String($event ?? ''))" />
                     <q-input v-if="selected.kind === 'while'" :model-value="configString('condition')" outlined :readonly="!editable" :label="t('nativeProcesses.whileCondition')" @update:model-value="setConfig('condition', String($event ?? ''))" />
                     <q-input v-if="selected.kind === 'call'" :model-value="configString('process_code')" outlined :readonly="!editable" :label="t('nativeProcesses.processCode')" @update:model-value="setConfig('process_code', String($event ?? ''))" />
+                    <template v-if="selected.kind === 'timer'">
+                      <q-select :model-value="timerMode" :options="timerOptions" outlined emit-value map-options :readonly="!editable" :label="t('nativeProcesses.wait.mode')" @update:model-value="setTimerMode" />
+                      <q-input v-if="timerMode === 'delay_seconds'" :model-value="configString('delay_seconds')" type="number" min="1" max="31536000" step="1" outlined :readonly="!editable" :label="t('nativeProcesses.wait.delay_seconds')" @update:model-value="setConfig('delay_seconds', $event == null || $event === '' ? null : Number($event))" />
+                      <q-input v-else-if="timerMode === 'at'" :model-value="configString('at')" placeholder="2026-12-01T09:00:00+01:00" outlined :readonly="!editable" :label="t('nativeProcesses.wait.at')" @update:model-value="setConfig('at', String($event ?? ''))" />
+                      <q-select v-else :model-value="configString('date_variable') || null" :options="dateInputOptions" outlined emit-value map-options :readonly="!editable" :label="t('nativeProcesses.wait.date_variable')" @update:model-value="setConfig('date_variable', $event)" />
+                    </template>
+                    <template v-if="selected.kind === 'event_wait'">
+                      <q-input :model-value="configString('event_name')" outlined :readonly="!editable" :label="t('nativeProcesses.wait.eventName')" @update:model-value="setConfig('event_name', String($event ?? ''))" />
+                      <q-select :model-value="configString('correlation_variable') || null" :options="textInputOptions" outlined emit-value map-options :readonly="!editable" :label="t('nativeProcesses.wait.correlationVariable')" @update:model-value="setConfig('correlation_variable', $event)" />
+                    </template>
+                    <q-input v-if="selected.kind === 'error_boundary'" :model-value="configString('error_code')" outlined :readonly="!editable" :label="t('nativeProcesses.wait.errorCode')" @update:model-value="setConfig('error_code', String($event ?? '').trim() || null)" />
                     <CodeEditor v-if="selected.kind === 'python' || selected.kind === 'code' || selected.kind === 'if' && currentMode === 'code'" :key="`${selected.id}-code`" :model-value="configString('code')" language="python" :readonly="!editable" :label="t('nativeProcesses.pythonCode')" @update:model-value="setConfig('code', $event)" />
                     <CodeEditor v-if="selected.kind === 'python'" :key="`${selected.id}-capabilities`" :model-value="configJson('capabilities')" language="json" :readonly="!editable" :label="t('nativeProcesses.pythonCapabilities')" @update:model-value="setConfigJson('capabilities', $event)" />
                     <q-input v-if="selected.kind === 'tool_call'" :model-value="configString('tool')" outlined :readonly="!editable" :label="t('nativeProcesses.tool')" @update:model-value="setConfig('tool', String($event ?? ''))" />
@@ -90,7 +105,7 @@
                     </template>
                     <q-btn outline color="primary" v-if="selected.body"  icon="open_in_new" :label="t('nativeProcesses.openBody')" @click="openBody" />
                     <CodeEditor v-if="(selected.kind === 'tool_call' || selected.kind === 'program') && localGraph.schema_version === 'galaris.bpmn/v1'" :key="`${selected.id}-input`" :model-value="configJson('input')" language="json" :readonly="!editable" :label="t('nativeProcesses.toolArguments')" @update:model-value="setConfigJson('input', $event)" />
-                    <template v-if="contractActivity && !modeEditable && localGraph.schema_version === 'galaris.bpmn/v2'">
+                    <template v-if="contractActivity && (!modeEditable || selected.kind === 'python') && localGraph.schema_version === 'galaris.bpmn/v2'">
                       <CodeEditor :key="`${selected.id}-mapping`" :model-value="configJson('input_mapping')" language="json" :readonly="!editable" :label="t('nativeProcesses.variables.mapping')" @update:model-value="setConfigJson('input_mapping', $event)" />
                       <template v-if="selected.kind === 'tool_call' || selected.kind === 'rest' || selected.kind === 'call'">
                         <CodeEditor :key="`${selected.id}-external`" :model-value="configJson('external_output')" language="json" :readonly="!editable" :label="t('nativeProcesses.variables.externalOutput')" @update:model-value="setConfigJson('external_output', $event)" />
@@ -202,7 +217,7 @@ import ProcessSharingDraft from './ProcessSharingDraft.vue'
 import ProcessVariableDeclarations from './ProcessVariableDeclarations.vue'
 import ProcessVariableBindings from './ProcessVariableBindings.vue'
 import ProcessVariableUsage from './ProcessVariableUsage.vue'
-import { allowsVariableDirection, processInputs, processOutputs, updateProcessVariables, type VariableDirection } from '../variableBindings'
+import { allowsVariableDirection, processInputs, processOutputs, updateProcessVariables, withVariableBindings, type VariableDirection } from '../variableBindings'
 import ProcessAiDecision from './ProcessAiDecision.vue'
 import ProcessAgentSelect from './ProcessAgentSelect.vue'
 import { persistLayout, processingMode, canAssignActivityActor, assignActivityActor, defaultDecisionCode, defaultTaskCode } from '../graphEditing'
@@ -274,26 +289,49 @@ const localGraph = computed<BpmnGraph>({ get: () => atPath(graph.value, bodyPath
   graph.value = replace(graph.value, bodyPath.value)
 } })
 const selected = computed(() => localGraph.value.nodes.find(node => node.id === selectedNode.value))
-const modeEditable = computed(() => localGraph.value.schema_version === 'galaris.bpmn/v2' && selected.value && ['task', 'human_task', 'code', 'if'].includes(selected.value.kind))
+const modeEditable = computed(() => localGraph.value.schema_version === 'galaris.bpmn/v2' && selected.value && ['task', 'human_task', 'code', 'python', 'if'].includes(selected.value.kind))
 const currentMode = computed(() => selected.value ? processingMode(selected.value) : 'ai')
+const processingSelection = computed(() => {
+  if (selected.value?.kind === 'if' && !selected.value.config.mode) return null
+  if (selected.value?.kind === 'python') return 'python'
+  return currentMode.value
+})
+function inputOptions(type: 'string' | 'datetime') {
+  return (graph.value.variables ?? []).filter(variable => variable.type === type && selected.value?.inputs?.includes(variable.name))
+    .map(variable => ({ value: variable.name, label: variable.label || variable.name }))
+}
+const textInputOptions = computed(() => inputOptions('string'))
+const dateInputOptions = computed(() => inputOptions('datetime'))
+const timerKeys = ['delay_seconds', 'at', 'date_variable'] as const
+const timerMode = computed(() => timerKeys.find(key => key in (selected.value?.config ?? {})) ?? 'delay_seconds')
+const timerOptions = computed(() => timerKeys.map(value => ({ value, label: t('nativeProcesses.wait.' + value) })))
+function setTimerMode(value: typeof timerKeys[number]): void {
+  editNode(node => ({ ...node, config: Object.fromEntries([
+    ...Object.entries(node.config).filter(([key]) => !timerKeys.some(timerKey => timerKey === key)),
+    [value, value === 'delay_seconds' ? 60 : ''],
+  ]) }))
+}
 const processingOptions = computed(() => (selected.value?.kind === 'if'
-  ? [...(selected.value.config.mode && ['ai', 'human'].includes(currentMode.value) ? [currentMode.value] : []), 'code', 'llm']
-  : ['ai', 'llm', 'code', 'human']).map(value => ({ value,
+  ? [...(selected.value.config.mode && currentMode.value === 'ai' ? ['ai'] : []), 'code', 'llm', 'human']
+  : ['ai', 'llm', ...(selected.value?.kind === 'code' ? [] : ['python']), 'human']).map(value => ({ value,
   label: t('nativeProcesses.processingModes.' + (selected.value?.kind === 'if' && value === 'llm' ? 'decision' : value)),
-  disable: selected.value?.kind === 'if' && ['ai', 'human'].includes(value) || value === 'human' && !localGraph.value.actors?.some(actor => actor.kind === 'human') })))
+  disable: selected.value?.kind === 'if' && value === 'ai' || value === 'human' && !localGraph.value.actors?.some(actor => actor.kind === 'human') })))
 function setProcessingMode(value: unknown): void {
   if (!editable.value || !modeEditable.value || !processingOptions.value.some(option => option.value === value && !option.disable)) return
   const converting = selected.value?.kind === 'if' && !selected.value.config.mode ? selected.value.id : null
-  const required = selected.value?.kind === 'if' ? null : value === 'ai' ? 'agent' : value === 'human' ? 'human' : null
+  const required = value === 'human' ? 'human' : selected.value?.kind !== 'if' && value === 'ai' ? 'agent' : null
   editNode(node => {
     const config: Record<string, unknown> = { prompt: '', ...node.config }
     delete config.ai_mode
-    if (node.kind === 'if') return { ...node, config: { ...config, mode: value === 'llm' ? 'ai' : 'code', ...(value === 'llm' ? { ai_mode: 'llm' } : {}), code: config.code ?? defaultDecisionCode } }
-    delete config.mode
+    if (value === 'llm' && config.llm_profile == null && typeof config.llm_id !== 'number')
+      config.llm_profile = { model_field: node.kind === 'if' ? 'decision_llm_id' : 'text_standard_llm_id' }
     if (required && (required === 'human' || config.actor) && localGraph.value.actors?.find(actor => actor.id === config.actor)?.kind !== required)
       config.actor = localGraph.value.actors?.find(actor => actor.kind === required)?.id ?? null
-    return { ...node, kind: value === 'code' ? 'code' : value === 'human' ? 'human_task' : 'task', config: { ...config,
-      ...(value === 'llm' ? { ai_mode: 'llm' } : {}), code: config.code ?? defaultTaskCode, ...(value === 'code' ? { dataset_code: true } : {}) } }
+    if (node.kind === 'if') return { ...node, config: { ...config, mode: value === 'llm' ? 'ai' : value,
+      ...(value === 'llm' ? { ai_mode: 'llm' } : {}), code: config.code ?? defaultDecisionCode } }
+    delete config.mode
+    return { ...node, kind: value === 'python' ? 'python' : value === 'human' ? 'human_task' : 'task', config: { ...config,
+      ...(value === 'llm' ? { ai_mode: 'llm' } : {}), code: config.code ?? defaultTaskCode, ...(value === 'python' ? { dataset_code: true } : {}) } }
   })
   if (converting) {
     const links = localGraph.value.flows.filter(flow => flow.source === converting)
@@ -310,7 +348,9 @@ function toggleScript(phase: 'preprocess' | 'postprocess', enabled: boolean): vo
 function setVariables(values: ProcessVariable[]): void {
   if (editable.value) graph.value = updateProcessVariables(graph.value, values)
 }
-function setNodeVariables(direction: VariableDirection, values: string[]): void { editNode(node => allowsVariableDirection(node.kind, direction) ? { ...node, [direction]: values } : node) }
+function setNodeVariables(direction: VariableDirection, values: string[]): void {
+  editNode(node => allowsVariableDirection(node.kind, direction) ? withVariableBindings(node, direction, values) : node)
+}
 function setBindingsGraph(value: BpmnGraph): void { if (editable.value) graph.value = value }
 function upgradeProfile(): void {
   if (!editable.value) return
@@ -421,7 +461,13 @@ function editNode(update: (node: BpmnNode) => BpmnNode): void { if (!editable.va
 function configString(key: string): string { return String(selected.value?.config[key] ?? '') }
 function configJson(key: string): string { return drafts.value[selectedNode.value + ':' + key] ?? JSON.stringify(selected.value?.config[key] ?? (key === 'external_output' ? { $expr: 'result' } : key === 'request' ? { method: 'GET', path: '' } : { $expr: 'data' }), null, 2) }
 function setTitle(value: unknown): void { editNode(node => ({ ...node, title: String(value ?? '') })) }
-function setConfig(key: string, value: unknown): void { editNode(node => ({ ...node, config: { ...node.config, [key]: value } })) }
+function setConfig(key: string, value: unknown): void {
+  editNode(node => {
+    const config = { ...node.config, [key]: value }
+    if (key === 'llm_profile') delete config.llm_id
+    return { ...node, config }
+  })
+}
 function setConfigJson(key: string, value: string): void { if (!editable.value) return; const id = selectedNode.value + ':' + key; drafts.value[id] = value; try { setConfig(key, JSON.parse(value)); invalidDrafts.value[id] = false } catch { invalidDrafts.value[id] = true } }
 function assertDrafts(): void {
   if (invalidDrafts.value.process) throw new Error(t('nativeProcesses.variables.invalid'))
@@ -432,7 +478,10 @@ function removeFlow(): void { if (editable.value) localGraph.value = { ...localG
 function removeNode(id: string): void {
   const node = localGraph.value.nodes.find(node => node.id === id)
   if (!editable.value || node?.kind === 'start' || node?.kind === 'end' && localGraph.value.nodes.filter(node => node.kind === 'end').length <= 1) return
-  localGraph.value = { ...localGraph.value, nodes: localGraph.value.nodes.filter(node => node.id !== id), flows: localGraph.value.flows.filter(flow => flow.source !== id && flow.target !== id) }
+  const removed = new Set([id, ...localGraph.value.flows.filter(flow => flow.source === id &&
+    localGraph.value.nodes.some(target => target.id === flow.target && target.kind === 'error_boundary')).map(flow => flow.target)])
+  localGraph.value = { ...localGraph.value, nodes: localGraph.value.nodes.filter(node => !removed.has(node.id)),
+    flows: localGraph.value.flows.filter(flow => !removed.has(flow.source) && !removed.has(flow.target)) }
   for (const key of Object.keys(drafts.value)) if (key.startsWith(id + ':')) { delete drafts.value[key]; delete invalidDrafts.value[key] }
   selectedNode.value = null
 }

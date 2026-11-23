@@ -1,6 +1,7 @@
 default = {
     "process": {
-        "human": {"messaging_reply": "Répondez dans cette conversation. Vous pouvez joindre les fichiers demandés ; je vous demanderai les précisions nécessaires."},
+        "human": {"messaging_reply": "Répondez dans cette conversation. Vous pouvez joindre les fichiers demandés ; je vous demanderai les précisions nécessaires.",
+                  "yes": "Oui", "no": "Non"},
         "tracking": "Processus lancé. Identifiant de suivi Galaris : ${run_id}.",
         "summary": {
             "queued": "Le processus est en file d’attente.",

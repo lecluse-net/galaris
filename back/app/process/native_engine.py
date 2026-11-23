@@ -22,11 +22,16 @@ from .llm_decisions import simple_llm, observe_decision, stop_decision
 from .values import normalize_patch, validate_values, loads_values, unwrap, external_patch, ValueContractError
 from .expressions import evaluate, resolve
 from .engine import ProcessEngineError
-from .models import ProcessNodeAttempt, ProcessNodeRun, ProcessRun
+from .models import ProcessNodeAttempt, ProcessNodeRun, ProcessRun, ProcessRunEvent
+from .wait_events import WAIT_KINDS, WakeReceipt, activate_wait, expired_timer, pending_waits
 from .run_data import (integrate_workflow_values, workflow_attachment_receipt,
     create_workflow_attachment, read_run_workspace, initialize_run_data)
 from .schemas import (EngineError, EngineProcessDefinition, EngineRunReference, EngineRunSnapshot,
                       EngineStartResult, ProcessEngineHealth, ProcessStartPayload, ProcessFileInput)
+
+
+class BoundaryActivityError(ProcessEngineError):
+    """An activity outcome that can safely select a modeled error branch."""
 
 
 def now() -> datetime:
@@ -195,7 +200,7 @@ class NativeProcessEngine:
     async def get_run(self, run: EngineRunReference) -> EngineRunSnapshot:
         reference = run
         record = await self._lock(reference.id)
-        if record.engine_metadata.get("native", {}).get("cancel_requested"):
+        if record.status == "cancelling" or record.engine_metadata.get("native", {}).get("cancel_requested"):
             await get_db().commit()
             return await self.cancel_run(reference)
         if not record.engine_metadata.get("native", {}).get("initialized") or record.status in process_service.TERMINAL_STATUSES:
@@ -258,10 +263,17 @@ class NativeProcessEngine:
             current = await self._fenced(record.id, claim)
             if current is not None:
                 state = deepcopy(current.engine_metadata["native"])
-                if not state.get("paused") and not await self._ancestor_paused(current) and state.get("status") == "running":
+                state.pop("wait_refresh_at", None)
+                if state.get("status") == "running":
                     pending = list(await get_db().scalars(select(ProcessNodeRun).where(
                         ProcessNodeRun.run_id == current.id, ProcessNodeRun.status.in_(("ready", "waiting")))))
-                    if pending and all(item.status == "waiting" and (local_graph(current, item).node(item.node_key).kind in {"parallel", "for", "while"}
+                    if pending and all(item.status == "waiting" and item.context.get("pending_waits")
+                                       and not item.context.get("wake_receipt") for item in pending):
+                        deadline = min((wait.due_at for item in pending for wait in pending_waits(item)
+                                        if wait.due_at is not None), default=None)
+                        state["wait_refresh_at"] = deadline.isoformat() if deadline else "infinity"
+                    elif not state.get("paused") and not await self._ancestor_paused(current) and pending and all(
+                        item.status == "waiting" and (local_graph(current, item).node(item.node_key).kind in {"parallel", "for", "while"}
                         or local_graph(current, item).typed and len(local_graph(current, item).incoming(item.node_key)) > 1
                         and not item.context.get("converged")) for item in pending):
                         state.update(status="error", error={"code": "unmatched_parallel_join",
@@ -354,6 +366,11 @@ class NativeProcessEngine:
                 if not await self._join(run, occurrence, graph, claim, admit_activity=True):
                     return
             values = await self._workspace_values(run, occurrence)
+            if node.kind in {*WAIT_KINDS, "event_choice"}:
+                await self._wait(run, occurrence, graph, node, values, claim)
+                return
+            if node.kind == "error_boundary":
+                values["output"] = occurrence.context.get("boundary_error", {})
             result: dict[str, Any] | None = None
             if node.kind == "if" and node.config.get("mode") is not None:
                 result = await self._effect(run, occurrence, decision_activity(node), claim)
@@ -448,6 +465,8 @@ class NativeProcessEngine:
             if reloaded is None:
                 return
             occurrence = reloaded
+            if current.engine_metadata["native"].get("cancel_requested"):
+                return
             occurrence.status = "error"
             occurrence.finished_at = now()
             state = deepcopy(current.engine_metadata["native"])
@@ -461,11 +480,54 @@ class NativeProcessEngine:
                 current.engine_metadata = {**current.engine_metadata, "native": state}
                 await get_db().commit()
                 return
+            if isinstance(error, BoundaryActivityError):
+                boundary = next((flow for flow in graph.outgoing(node.id)
+                    if graph.node(flow.target).kind == "error_boundary"
+                    and graph.node(flow.target).config.get("error_code") in (None, error.code)), None)
+                if boundary is not None:
+                    failure = {"code": error.code, "message": str(error), "node_name": node.id}
+                    occurrence.output = failure
+                    if state.get("step_root") == str(occurrence.id):
+                        state.pop("step_root", None)
+                    state["sequence"] += 1
+                    current.engine_metadata = {**current.engine_metadata, "native": state}
+                    enqueue(current, boundary.target, {**occurrence.context, "incoming_flow": boundary.id,
+                            "boundary_error": failure, "values": values})
+                    get_db().add(ProcessRunEvent(run_id=current.id, event_id=f"node:{occurrence.id}:error-caught",
+                        source="native", event_type="node.error.caught",
+                        payload={"node": node.id, "occurrence": str(occurrence.id), "error": failure, "boundary": boundary.target}))
+                    await get_db().commit()
+                    return
             state.update(status="cancelling", cancel_requested=True, failure=True,
                 error={"code": error.code if isinstance(error, ProcessEngineError) else "node_failed",
                     "message": str(error), "node_name": node.id})
             current.engine_metadata = {**current.engine_metadata, "native": state}
             await get_db().commit()
+
+    async def _wait(self, run: ProcessRun, occurrence: ProcessNodeRun, graph: Workflow, node: Node,
+                    values: dict[str, Any], claim: str) -> None:
+        at = now()
+        context = occurrence.context
+        if inherited := context.get("triggered_wait"):
+            receipt = WakeReceipt.model_validate(inherited)
+        else:
+            candidates = pending_waits(occurrence)
+            if not candidates:
+                candidates = ([activate_wait(graph.node(flow.target), values["data"], at, flow=flow)
+                               for flow in graph.outgoing(node.id)] if node.kind == "event_choice"
+                              else [activate_wait(node, values["data"], at)])
+                occurrence.status = "waiting"
+                occurrence.started_at = occurrence.started_at or at
+                occurrence.context = {**context, "pending_waits": [item.model_dump(mode="json") for item in candidates]}
+                await get_db().commit()
+                return
+            raw = context.get("wake_receipt")
+            receipt = WakeReceipt.model_validate(raw) if raw is not None else expired_timer(candidates, at)
+            if receipt is None:
+                return
+        values["output"] = receipt.model_dump(mode="json", exclude_none=True)
+        await self._complete(run, occurrence, graph, values, claim,
+                             selected_flow=receipt.flow if node.kind == "event_choice" else None)
 
     async def _effect(self, run: ProcessRun, occurrence: ProcessNodeRun, node: Node, claim: str) -> dict[str, Any] | None:
         attempt = await get_db().scalar(select(ProcessNodeAttempt).where(ProcessNodeAttempt.node_run_id == occurrence.id)
@@ -510,13 +572,24 @@ class NativeProcessEngine:
                     "input_files": deepcopy(input_files)}
             if not isinstance(inputs, dict):
                 raise ValueError("Activity input must be an object")
+            prepared_inputs = cast(dict[str, Any], inputs)
             attempt = ProcessNodeAttempt(id=uuid4(), node_run_id=occurrence.id, number=previous.number + 1 if previous else 1,
-                input=inputs, status="intent")
+                input=prepared_inputs, status="intent")
+            human_question: str | None = None
             if node.kind in {"task", "human_task"}:
-                prompt = str(node.config["prompt"])
+                prompt = str(node.config.get("prompt", ""))
+                if node.kind == "human_task" and node.config.get("mode") == "human":
+                    question_variable = node.config.get("human_prompt_variable")
+                    if question_variable is not None:
+                        value = prepared_inputs.get(question_variable)
+                        question = unwrap(value) if value is not None else None
+                        if not isinstance(question, str) or not question.strip():
+                            raise ProcessEngineError("human_question_missing", f"{node.id}: the selected human question input is empty")
+                        human_question = question
+                        prompt = question
                 if typed and node.kind == "task":
                     prompt = build_activity_prompt(local_graph(run, occurrence), node,
-                        inputs=cast(dict[str, Any], inputs), data=occurrence.context["integration_baseline"],
+                        inputs=prepared_inputs, data=occurrence.context["integration_baseline"],
                         files=occurrence.context["input_files"], mode="llm" if simple_llm(node) else "agent")
                 elif typed:
                     prompt += "\n\nActivity inputs (typed JSON, immutable):\n" + json.dumps(inputs, ensure_ascii=False)
@@ -527,13 +600,15 @@ class NativeProcessEngine:
                         prompt += "\nReturn only changes to process variables as a typed JSON object, without prose or Markdown fences. Omitted variables keep their current values."
                     prompt += "\nLocal input files (canonical URIs):\n" + json.dumps(occurrence.context["input_files"], ensure_ascii=False)
                 else:
-                    prompt = self._legacy_prompt(prompt, run, node, cast(dict[str, Any], inputs), workspace)
+                    prompt = self._legacy_prompt(prompt, run, node, prepared_inputs, workspace)
                 attempt.prompt = prompt
             if node.kind == "human_task":
                 assigned = next(item for item in local_graph(run, occurrence).actors if item.id == node.config["actor"])
                 occurrence.context = {**occurrence.context, "human_user_id": assigned.user_id,
                     "human_title": node.title or node.id, "human_request_sent": None,
                     "human_request_retry_at": None, "human_request_closed": None}
+                if human_question is not None:
+                    occurrence.context = {**occurrence.context, "human_question_text": human_question}
                 attempt.status = "human_waiting"
             occurrence.status = "waiting"
             occurrence.started_at = now()
@@ -570,7 +645,9 @@ class NativeProcessEngine:
         if graph.typed and attempt.status == "returned":
             raw_output = (attempt.receipt or {})["output"]
             if node.kind == "rest" and raw_output["status_code"] >= 400:
-                raise ProcessEngineError("rest_http_error", f"REST API returned HTTP {raw_output['status_code']}")
+                status = raw_output["status_code"]
+                error_type = BoundaryActivityError if 400 <= status < 500 and status not in {408, 425, 429} else ProcessEngineError
+                raise error_type("rest_http_error", f"REST API returned HTTP {status}")
             mapped = resolve(node.config.get("external_output", {"$expr": "result"}),
                 {"result": raw_output})
             result = external_patch(activity_variables(graph, node), mapped, path=f"{node.id}.output", typed_values=node.config.get("external_output_typed", False))
@@ -943,11 +1020,13 @@ class NativeProcessEngine:
                 if not error.retryable:
                     raise
         if observation.status == "unknown" or observation.stopped and observation.status in {"error", "cancelled"}:
-            raise ProcessEngineError("isolated_code_failed", observation.diagnostic or "Isolated execution did not succeed")
+            error_type = BoundaryActivityError if observation.status == "error" and node.kind == "code" else ProcessEngineError
+            raise error_type("isolated_code_failed", observation.diagnostic or "Isolated execution did not succeed")
         return deepcopy(job["result"]) if "result" in job else None
 
     async def _complete(self, run: ProcessRun, occurrence: ProcessNodeRun, graph: Workflow,
-                        values: dict[str, Any], claim: str, *, forward: bool = True) -> None:
+                        values: dict[str, Any], claim: str, *, forward: bool = True,
+                        selected_flow: str | None = None) -> None:
         current = await self._fenced(run.id, claim)
         if current is None or current.engine_metadata.get("native", {}).get("cancel_requested"):
             return
@@ -956,12 +1035,14 @@ class NativeProcessEngine:
         occurrence.finished_at = now()
         context = {key: value for key, value in occurrence.context.items() if key not in {
             "loop", "converged", "integration_baseline", "input_files", "output_files", "preparation_snapshot", "code_jobs", "human_user_id", "human_title",
-            "human_request_sent", "human_request_retry_at", "human_request_closed"}}
+            "human_request_sent", "human_request_retry_at", "human_request_closed", "pending_waits", "wake_receipt",
+            "triggered_wait", "boundary_error"}}
         context.pop("activity_question", None)
         context.pop("activity_question_history", None)
         context.pop("activity_result", None)
         context["values"] = values
-        flows = graph.outgoing(occurrence.node_key) if forward else []
+        flows = [flow for flow in graph.outgoing(occurrence.node_key) if graph.node(flow.target).kind != "error_boundary"
+                 and (selected_flow is None or flow.id == selected_flow)] if forward else []
         node = graph.node(occurrence.node_key)
         if node.kind == "if":
             flows = [next((flow for flow in flows if flow.condition is not None and evaluate(flow.condition, values)),
@@ -969,13 +1050,15 @@ class NativeProcessEngine:
         if len(flows) > 1:
             context["forks"] = [*context.get("forks", []), {"key": str(occurrence.id), "base": deepcopy(values), "count": len(flows)}]
         for flow in flows:
-            enqueue(current, flow.target, {**context, "incoming_flow": flow.id})
+            successor = {**context, "incoming_flow": flow.id}
+            if selected_flow is not None:
+                successor["triggered_wait"] = values["output"]
+            enqueue(current, flow.target, successor)
         state = deepcopy(current.engine_metadata["native"])
         if state.get("step_root") == str(occurrence.id):
             state.pop("step_root", None)
         state["sequence"] += 1
         current.engine_metadata = {**current.engine_metadata, "native": state}
-        from .models import ProcessRunEvent
         get_db().add(ProcessRunEvent(run_id=current.id, event_id=f"node:{occurrence.id}:success", source="native",
             event_type="node.completed", payload={"node": occurrence.node_key, "occurrence": str(occurrence.id)}))
         await get_db().commit()

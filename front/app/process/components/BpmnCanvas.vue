@@ -85,18 +85,23 @@
                 <q-menu anchor="bottom middle" self="top middle" class="handle-menu">
                   <q-list style="min-width: 240px">
                     <q-item-label header>{{ t(port.side === 'input' ? 'nativeProcesses.insertBefore' : 'nativeProcesses.continueFlow') }}</q-item-label>
-                    <q-item v-for="kind in availableKinds.filter(kind => kind !== 'end' || port.side === 'output' && !adjacent(node.id, port.side, port.outcome).length)" :key="kind" clickable v-close-popup
-                      :disable="kind === 'human_task' && !modelValue.actors?.some(actor => actor.kind === 'human')" @click="add(node.id, port.side, kind, false, port.outcome)">
-                      <q-item-section avatar><q-icon :name="nodeIcons[kind === 'llm_task' ? 'task' : kind]" /></q-item-section><q-item-section>{{ activityLabel(kind) }}</q-item-section>
-                    </q-item>
+                    <ProcessActivityMenuItems :typed="typedGraph" :has-human-actor="hasHumanActor"
+                      :allow-end="port.side === 'output' && !adjacent(node.id, port.side, port.outcome).length"
+                      :waits-only="port.side === 'output' && node.kind === 'event_choice'"
+                      @select="kind => add(node.id, port.side, kind, false, port.outcome)" />
                     <q-separator />
                     <q-item clickable v-close-popup @click="connecting = { id: node.id, side: port.side, outcome: port.outcome }"><q-item-section avatar><q-icon name="link" /></q-item-section><q-item-section>{{ t('nativeProcesses.connect') }}</q-item-section></q-item>
                     <template v-if="port.side === 'output' && port.outcome === undefined && adjacent(node.id, port.side).length">
                       <q-item clickable><q-item-section avatar><q-icon name="call_split" /></q-item-section><q-item-section>{{ t('nativeProcesses.addBranch') }}</q-item-section>
-                        <ContextSubmenu><q-list><q-item v-for="kind in availableKinds" :key="kind" clickable v-close-popup
-                          :disable="kind === 'human_task' && !modelValue.actors?.some(actor => actor.kind === 'human')" @click="add(node.id, port.side, kind, true)"><q-item-section>{{ activityLabel(kind) }}</q-item-section></q-item></q-list></ContextSubmenu>
+                        <ContextSubmenu><q-list><ProcessActivityMenuItems :typed="typedGraph" :has-human-actor="hasHumanActor"
+                          :waits-only="node.kind === 'event_choice'"
+                          @select="kind => add(node.id, port.side, kind, true)" /></q-list></ContextSubmenu>
                       </q-item>
                     </template>
+                    <q-item v-if="port.side === 'output' && canAttachErrorBoundary(modelValue, node)" clickable v-close-popup @click="addErrorBoundary(node)">
+                      <q-item-section avatar><q-icon :name="nodeIcons.error_boundary" /></q-item-section>
+                      <q-item-section>{{ t('nativeProcesses.addErrorBoundary') }}</q-item-section>
+                    </q-item>
                     <q-item v-for="flow in adjacent(node.id, port.side, port.outcome)" :key="flow.id" clickable v-close-popup @click="emit('flow', flow.id)"><q-item-section avatar><q-icon name="edit" /></q-item-section><q-item-section>{{ t('nativeProcesses.flow', { source: title(flow.source), target: title(flow.target) }) }}</q-item-section></q-item>
                   </q-list>
                 </q-menu>
@@ -150,7 +155,8 @@ import { useI18n } from 'vue-i18n'
 import { ContextSubmenu, GraphViewControls } from '@/core/util'
 import ProcessRunStatusBadge from './ProcessRunStatusBadge.vue'
 import type { BpmnGraph, BpmnNode, BpmnFlow, ProcessActor, ProcessAgentOption } from '../services/nativeProcessService'
-import { activityKinds, nodeIcons, graphLayout, insertActivity, canConnectActivities, connectActivities, assignActivityActor, canAssignActivityActor, laneHeaderWidth, nodeStartX, type ActivityKind } from '../graphEditing'
+import { activityLabelKey, nodeIcons, graphLayout, insertActivity, canConnectActivities, connectActivities, assignActivityActor, canAssignActivityActor, canAttachErrorBoundary, attachErrorBoundary, laneHeaderWidth, nodeStartX, type ActivityKind } from '../graphEditing'
+import ProcessActivityMenuItems from './ProcessActivityMenuItems.vue'
 import ProcessLaneHeader from './ProcessLaneHeader.vue'
 import ProcessNodeFrame from './ProcessNodeFrame.vue'
 const props = withDefaults(defineProps<{ modelValue: BpmnGraph; readonly?: boolean; showGuide?: boolean; autoFit?: boolean; embedded?: boolean; inspectorLabel?: string; selected?: string | null; selectedFlow?: string | null;
@@ -351,7 +357,7 @@ const flowLabelStyles = computed(() => {
   }))
 })
 function ports(node: BpmnNode): { side: 'input' | 'output'; outcome?: boolean }[] {
-  return node.kind === 'start' ? [{ side: 'output' }] : node.kind === 'end' ? [{ side: 'input' }] : node.kind === 'if' ? [{ side: 'input' }, { side: 'output', outcome: true }, { side: 'output', outcome: false }] : [{ side: 'input' }, { side: 'output' }]
+  return node.kind === 'start' || node.kind === 'error_boundary' ? [{ side: 'output' }] : node.kind === 'end' ? [{ side: 'input' }] : node.kind === 'if' ? [{ side: 'input' }, { side: 'output', outcome: true }, { side: 'output', outcome: false }] : [{ side: 'input' }, { side: 'output' }]
 }
 function adjacent(id: string, side: 'input' | 'output', outcome?: boolean): BpmnFlow[] { return props.modelValue.flows.filter(flow => side === 'input' ? flow.target === id : flow.source === id && (outcome === undefined || (flow.condition !== null) === outcome)) }
 function statusClass(node: BpmnNode): string { return node.kind === 'start' ? '' : `state-${props.statuses[node.id] ?? 'idle'}` }
@@ -476,12 +482,20 @@ function onFullscreenChange(): void {
 function onFullscreenKey(event: KeyboardEvent): void {
   if (event.key === 'Escape' && isFullscreen.value && document.fullscreenElement === null) setFullscreen(false)
 }
-function activityLabel(kind: ActivityKind): string { return t(kind === 'task' && props.modelValue.schema_version === 'galaris.bpmn/v2' ? 'nativeProcesses.processingModes.ai' : kind === 'llm_task' ? 'nativeProcesses.processingModes.llm' : 'nativeProcesses.kinds.' + kind) }
-function activityTypeLabel(node: BpmnNode): string { return activityLabel(node.kind === 'task' && node.config.ai_mode === 'llm' ? 'llm_task' : node.kind) }
-const availableKinds = computed(() => activityKinds.filter(kind => props.modelValue.schema_version === 'galaris.bpmn/v2' || !['llm_task', 'code', 'python', 'rest'].includes(kind)))
+const typedGraph = computed(() => props.modelValue.schema_version === 'galaris.bpmn/v2')
+const hasHumanActor = computed(() => props.modelValue.actors?.some(actor => actor.kind === 'human') ?? false)
+function activityTypeLabel(node: BpmnNode): string {
+  return t(activityLabelKey(node.kind === 'task' && node.config.ai_mode === 'llm' ? 'llm_task' : node.kind, typedGraph.value))
+}
 function add(anchor: string, side: 'input' | 'output', kind: ActivityKind, branch = false, outcome?: boolean): void {
   if (props.readonly) return
-  const next = insertActivity(props.modelValue, anchor, side, kind, branch, outcome)
+  applyInsertion(insertActivity(props.modelValue, anchor, side, kind, branch, outcome))
+}
+function addErrorBoundary(node: BpmnNode): void {
+  if (!props.readonly && canAttachErrorBoundary(props.modelValue, node))
+    applyInsertion(attachErrorBoundary(props.modelValue, node))
+}
+function applyInsertion(next: { graph: BpmnGraph; id: string }): void {
   const positions = graphLayout(next.graph).positions
   emit('update:modelValue', { ...next.graph, nodes: next.graph.nodes.map(node => ({ ...node, ...positions[node.id]! })) }); emit('select', next.id)
 }

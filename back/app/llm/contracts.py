@@ -4,12 +4,29 @@ from typing import Annotated, Literal
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field, JsonValue, TypeAdapter, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, field_validator, model_validator
 
 from app.agent.contracts import AIMessage, AIResult
+from . import model_usages
 from .provider_facade import ReasoningEffort
 from .decision_contracts import ChoiceQuestion
 from .profile_fallback import ProfileFallbackRoute
+
+
+class InferenceProfileSelection(BaseModel):
+    """Select the same usage in the primary and fallback profiles."""
+
+    model_config = ConfigDict(extra="forbid")
+    model_field: str = model_usages.TEXT_STANDARD
+    profile_id: Annotated[int, Field(gt=0, strict=True)] | None = None
+    fallback_profile_id: Annotated[int, Field(gt=0, strict=True)] | None = None
+
+    @field_validator("model_field")
+    @classmethod
+    def validate_usage(cls, value: str) -> str:
+        if value not in (*model_usages.TEXT_TIERS, model_usages.DECISION):
+            raise ValueError("An LLM activity requires a text tier or the decision usage")
+        return value
 
 
 class InferenceInput(BaseModel):
@@ -76,6 +93,7 @@ class DecisionInferenceRequest(InferenceInput):
     schema_version: Literal["galaris.decision-inference-request/v1"] = "galaris.decision-inference-request/v1"
     questions: dict[str, ChoiceQuestion] = Field(min_length=1)
     fallback_llm_id: int | None = None
+    fallback_decision_llm_id: int | None = None
     allow_text_fallback: bool = True
     timeout_seconds: float | None = Field(default=None, gt=0, allow_inf_nan=False)
     model_bindings: dict[str, str] = Field(default_factory=dict)

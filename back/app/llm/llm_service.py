@@ -76,12 +76,23 @@ async def get_agent_fallback_model(
                             if getattr(primary, field) == primary_llm_id), None)
     if model_field not in model_usages.ALL or getattr(primary, model_field) != primary_llm_id:
         return None
+    return await get_profile_fallback_model(
+        primary_id, primary_llm_id, model_field=model_field, fallback_profile_id=agent.fallback_profile_id,
+    )
+
+
+async def get_profile_fallback_model(
+    primary_profile_id: int | None, primary_llm_id: int, *,
+    model_field: str, fallback_profile_id: int | None,
+) -> tuple[int, LLM, ReasoningEffort | None] | None:
+    from . import profile_service
+
     secondary = (
-        await profile_service.get_profile(agent.fallback_profile_id)
-        if agent.fallback_profile_id is not None
+        await profile_service.get_profile(fallback_profile_id)
+        if fallback_profile_id is not None
         else await profile_service.get_default_fallback_profile()
     )
-    if secondary is None or secondary.id == primary_id:
+    if secondary is None or secondary.id == primary_profile_id:
         return None
     fallback_id = getattr(secondary, model_field)
     if fallback_id is None or fallback_id == primary_llm_id:
@@ -90,6 +101,27 @@ async def get_agent_fallback_model(
     if llm is None:
         return None
     return secondary.id, llm, await profile_service.get_profile_reasoning_effort(secondary.id, model_field)
+
+
+async def get_inference_profile_model(
+    model_field: str, profile_id: int | None,
+) -> tuple[int, LLM, ReasoningEffort | None] | None:
+    from . import profile_service
+    from .reasoning import normalize_reasoning_effort
+
+    reasoning_field = model_usages.reasoning_field_for_text_tier(model_field)
+    if reasoning_field is None and model_field != model_usages.DECISION:
+        return None
+    selected_id = profile_id if profile_id is not None else await profile_service.get_current_profile_id()
+    profile = await profile_service.get_profile(selected_id) if selected_id is not None else None
+    if profile is None:
+        return None
+    model_id: int | None = getattr(profile, model_field)
+    llm = await get_llm(model_id, fresh=True) if model_id is not None else None
+    if llm is None:
+        return None
+    reasoning = normalize_reasoning_effort(getattr(profile, reasoning_field)) if reasoning_field else None
+    return profile.id, llm, reasoning
 
 
 def caps_for_llm(llm: Optional[LLM]) -> MediaCaps:

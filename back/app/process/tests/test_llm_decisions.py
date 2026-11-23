@@ -10,8 +10,9 @@ from sqlalchemy import func, select
 
 from app.agent import Agent
 from app.agent.models import Title
-from app.llm import LLMCall
+from app.llm import LLM, LLMCall, profile_service
 from app.llm.facade import read_inference, run_decision
+from app.llm.profile_models import LlmProfile
 from app.process import process_service, registry
 from app.process.bpmn import Actor, Flow, Node, compile_bpmn, to_bpmn, validate_graph
 from app.process.activity_prompts import CONTRACT_SEPARATOR
@@ -45,7 +46,9 @@ async def workflow(decisions):
 async def launch(workflow, model_id, assigned_agent=None, *, graph=None):
     db, agent, *_ = workflow
     graph = graph or decision_graph("ai")
-    graph.nodes[1].config.update(ai_mode="llm", llm_id=model_id)
+    graph.nodes[1].config["ai_mode"] = "llm"
+    if model_id is not None:
+        graph.nodes[1].config["llm_id"] = model_id
     if assigned_agent is not None:
         graph.actors = [Actor(id="reviewer", name="Reviewer", kind="agent", agent_id=assigned_agent)]
         graph.nodes[1].config["actor"] = "reviewer"
@@ -224,15 +227,57 @@ async def test_unassigned_agent_cannot_attribute_inference_to_process_activity(w
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("lane", [None, "agent", "human"])
-async def test_llm_task_integrates_only_selected_outputs_once_without_creating_a_task(workflow, runtime, lane):
+async def test_profile_decision_uses_frozen_fallback_decision_and_advances_one_branch(workflow):
+    db, _, selected_id, native_calls, text_calls, mode = workflow
+    selected = await db.get(LLM, selected_id)
+    backup = LLM(llm_provider_id=selected.llm_provider_id, code=f"decision-backup-{uuid4()}",
+                 label="Synthetic backup decision", llm_name="test/backup-decision",
+                 primary_capability="decision", service_capabilities=["decision"])
+    db.add(backup)
+    await db.flush()
+    primary = LlmProfile(label="Synthetic primary", decision_llm_id=selected_id)
+    fallback = LlmProfile(label="Synthetic fallback", decision_llm_id=backup.id)
+    db.add_all([primary, fallback])
+    await db.commit()
+    assert await profile_service.set_default_fallback_profile(fallback.id)
+    await db.commit()
+
+    async def fail_first_call():
+        mode["status"] = 503 if len(native_calls) == 1 else 200
+
+    mode.update(selections={"decision": "false"}, before_response=fail_first_call)
+    graph = decision_graph("ai")
+    graph.nodes[1].config["llm_profile"] = {"profile_id": primary.id, "model_field": "decision_llm_id"}
+    run_id = await launch(workflow, None, graph=graph)
+    run = await drive(db, run_id)
+    assert run.status == "success", run.error_message
+    occurrence = await db.scalar(select(ProcessNodeRun).where(ProcessNodeRun.run_id == run_id, ProcessNodeRun.node_key == "check"))
+    completed = await read_inference(UUID(occurrence.context["llm_inference_id"]))
+    assert completed.request.llm_id == selected_id
+    assert completed.request.fallback_decision_llm_id == backup.id
+    assert completed.attempts[-1].result.structured_output["fallback_reason"]
+    assert [call["model"] for call in native_calls] == [selected.llm_name, backup.llm_name]
+    assert text_calls == []
+    nodes = await db.scalars(select(ProcessNodeRun.node_key).where(ProcessNodeRun.run_id == run_id))
+    assert set(nodes) == {"start", "check", "no"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("lane,use_profile", [(None, False), ("agent", False), ("human", False), (None, True)])
+async def test_llm_task_integrates_only_selected_outputs_once_without_creating_a_task(workflow, runtime, lane, use_profile):
     db, agent, *_ = workflow
     _, text_model, calls, mode = runtime
     mode["outputs"] = [json.dumps({"output": {"variable_1": 124, "variable_2": "Synthetic result"}})]
     graph = decision_graph("ai")
+    config = {"ai_mode": "llm", "prompt": "Return the next number and a synthetic label."}
+    if use_profile:
+        primary = LlmProfile(label="Synthetic preferred text", text_low_llm_id=text_model.id,
+                             text_low_reasoning_effort="low")
+        db.add(primary)
+        await db.commit()
+        config["llm_profile"] = {"profile_id": primary.id, "model_field": "text_low_llm_id"}
     graph.nodes = [graph.nodes[0], Node(id="check", kind="task", inputs=["variable_1"],
-        outputs=["variable_1", "variable_2"], config={"ai_mode": "llm", "llm_id": text_model.id,
-            "prompt": "Return the next number and a synthetic label."}), graph.nodes[2]]
+        outputs=["variable_1", "variable_2"], config=config), graph.nodes[2]]
     graph.flows = [Flow(id="a", source="start", target="check"), Flow(id="b", source="check", target="yes")]
     if lane:
         executor = agent
@@ -242,7 +287,7 @@ async def test_llm_task_integrates_only_selected_outputs_once_without_creating_a
         graph.actors = [Actor(id="role", name="Synthetic role", kind=lane,
             **({"agent_id": executor.id} if lane == "agent" else {"user_id": agent.user_id}))]
         graph.nodes[1].config["actor"] = "role"
-    run_id = await launch(workflow, text_model.id, graph=graph)
+    run_id = await launch(workflow, None if use_profile else text_model.id, graph=graph)
     await drive(db, run_id, until=lambda: bool(calls))
     occurrence = await db.scalar(select(ProcessNodeRun).where(ProcessNodeRun.run_id == run_id, ProcessNodeRun.node_key == "check"))
     completed = await decision_tests.lifecycle.state(UUID(occurrence.context["llm_inference_id"]), "completed")
@@ -253,7 +298,10 @@ async def test_llm_task_integrates_only_selected_outputs_once_without_creating_a
     assert run.output == run.data
     assert await db.scalar(select(func.count()).select_from(Task)) == 0
     assert completed.request.request_limit == 1 and completed.request.output_retries == 0
-    assert not completed.request.allow_profile_fallback
+    assert completed.request.allow_profile_fallback == use_profile
+    if use_profile:
+        assert completed.request.model_field == "text_low_llm_id"
+        assert completed.request.reasoning_effort == "low"
     contract = json.loads(completed.request.prompt.rsplit(CONTRACT_SEPARATOR, 1)[1])
     assert [item["name"] for item in contract["input_variables"]] == ["variable_1"]
     assert [item["name"] for item in contract["output_variables"]] == ["variable_1", "variable_2"]

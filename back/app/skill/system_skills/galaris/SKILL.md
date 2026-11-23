@@ -1193,8 +1193,15 @@ than inventing expression syntax. Services use existing Connections; never put s
 Documentary program execution requires its separately registered executor.
 
 Configured typed IFs use `config.mode` (`ai`, `code`, `human`) and exactly two flows:
-`condition: "decision"` for True, `condition: null` for False. Agent actors permit AI/code;
-human actors require human mode and answer through Messenger's True/False choices.
+`condition: "decision"` for True, `condition: null` for False. A human IF requires a human
+actor and waits for a Yes/No choice in Messenger. Set a fixed `config.prompt`, or set
+`config.human_prompt_variable` to a selected string input produced by an earlier activity.
+For direct LLM activities, set `config.ai_mode: llm` and `config.llm_profile`. Use
+`model_field: "decision_llm_id"` for `mode: ai` IFs. A text task selects one of
+`text_ultra_low_llm_id`, `text_low_llm_id`, `text_standard_llm_id` or `text_high_llm_id`.
+`profile_id` and `fallback_profile_id` are optional; omitted or null values inherit the
+current and default fallback profiles. Both profiles use the same selected column.
+Historical direct `llm_id` values remain executable. Provide one selection per activity.
 The decision must be a strict boolean and does not become a run variable. Historical
 IFs without a mode keep their existing flow expressions.
 Pure Python-subset computations use isolated Monty workers without host/network capabilities.
@@ -1202,9 +1209,19 @@ For `dataset_code: true`, valid run variable names are local parameters and ever
 through `dataset[name]`. IF code returns a bool; task code returns ordinary JSON output values
 matching its declarations, for example `return {"amount": amount + 1}`. The engine validates
 and integrates the result; direct mutable DB access and arbitrary Python packages are unavailable.
-An execution error stops the process and its active tasks/children, preserves its data
-and files, and returns `error_code`. There are no recovery handlers or automatic process
-retries. Legacy `error_handler`, `catch` and `retry` settings have no execution effect.
+For timed waits use `kind: "timer"` with exactly one of `config.delay_seconds`,
+`config.at` (ISO 8601 date with a time zone), or `config.date_variable` (a selected
+`datetime` input). For correlated waits use `kind: "event_wait"` with
+`config.event_name` and `config.correlation_variable` (a selected `string` input).
+Connect `kind: "event_choice"` to at least two distinct wait nodes with no other
+predecessor. It continues only through the winning wait.
+
+Attach `kind: "error_boundary"` to a REST or Monty activity with one additional
+graph edge from the activity to the boundary. Keep the activity's normal continuation.
+Give the boundary its own outgoing flow and optionally set `config.error_code`.
+An uncaught error stops the process and its active tasks and children, preserves its data
+and files, and returns `error_code`. Legacy `error_handler`, `catch` and `retry` settings
+have no execution effect.
 
 `process_history`, `process_restore` and `process_archive` manage saved content. Launch, retry and
 child calls always use the latest save; there is no execution version selector. A running process
@@ -1305,6 +1322,11 @@ inclusive measurements. Unknown or partial cost is not zero. `process_run_contro
 pause/resume/step/breakpoints. Reuse its UUID `command_key` after a lost reply;
 `expected_revision` protects against concurrent debugger changes. Pause stops new admissions,
 while accepted work remains observable.
+`process_run_signal` delivers an observed event to an exact run using its event name
+and the correlation value shown by `process_run_inspect`. Reuse the source event UUID
+after a lost reply. Use timed waits and event waits in typed processes, and an
+event-based choice when the first of several waits should determine a single path.
+Attach an error branch to an activity to handle a confirmed Process error.
 `process_run_cancel` requests confirmed cancellation; `process_run_retry` creates a fresh run
 from the original inputs and files, using current content and a caller-provided idempotency key.
 Control requires Run ownership/control rights, beyond a read grant.

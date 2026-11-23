@@ -141,7 +141,9 @@ async def execute_decision(
             decision = await _native(request, request.timeout_seconds)
             result = AIResult(prompt=request.prompt, system_prompt=request.system_prompt)
         except DecisionUnavailable as exc:
-            if (not request.allow_text_fallback or request.fallback_llm_id is None
+            use_decision_fallback = request.fallback_decision_llm_id is not None
+            use_text_fallback = request.allow_text_fallback and request.fallback_llm_id is not None
+            if (not (use_decision_fallback or use_text_fallback)
                     or (request.request_limit is not None and request.request_limit < 2)):
                 raise
             owner = inference_owner.get()
@@ -151,6 +153,16 @@ async def execute_decision(
                     if operation.status != "running":
                         raise asyncio.CancelledError("Decision inference is stopping.")
                 await transaction(check_active)
+            if request.fallback_decision_llm_id is not None:
+                decision = await _native(request.model_copy(update={"llm_id": request.fallback_decision_llm_id}),
+                                         request.timeout_seconds)
+                decision.fallback_reason = str(exc)
+                result = AIResult(prompt=request.prompt, system_prompt=request.system_prompt)
+                result.structured_output = decision.model_dump(mode="json")
+                result.result = decision.model_dump_json()
+                result.metadata["decision"] = decision.model_dump(mode="json")
+                return result
+            assert request.fallback_llm_id is not None
             fallback = await llm_service.get_llm(request.fallback_llm_id)
             if fallback is None or "chat" not in (fallback.service_capabilities or []):
                 raise ValueError("Decision fallback requires a text model.")
@@ -160,7 +172,7 @@ async def execute_decision(
                 raise ValueError("Decision fallback binding changed after admission.")
             output_registry.register("galaris.decision.selection/v1", DecisionSelection, validator_factory=_validator)
             result = await run_inference(StructuredInferenceRequest(
-                **request.model_dump(exclude={"schema_version", "questions", "fallback_llm_id",
+                **request.model_dump(exclude={"schema_version", "questions", "fallback_llm_id", "fallback_decision_llm_id",
                                               "allow_text_fallback", "timeout_seconds", "llm_id",
                                               "prompt", "request_limit", "model_bindings"}),
                 llm_id=fallback.id,

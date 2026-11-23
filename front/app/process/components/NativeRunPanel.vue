@@ -26,7 +26,12 @@
           <q-item v-for="activity in run.operational.activities" :key="activity.occurrence_id" clickable @click="inspectActivity(activity)">
             <q-item-section>
               <q-item-label>{{ activityTitle(activity) }}</q-item-label>
-              <q-item-label caption>{{ t(`nativeProcesses.waitKinds.${activity.kind}`, activity.kind) }}</q-item-label>
+              <q-item-label caption>{{ t(activity.waits ? `nativeProcesses.kinds.${activity.kind}` : `nativeProcesses.waitKinds.${activity.kind}`, activity.kind) }}</q-item-label>
+              <div v-if="activity.wake_received" class="q-mt-xs">{{ t('nativeProcesses.wait.received') }}</div>
+              <div v-for="wait in activity.waits" :key="wait.node_key" class="q-mt-xs">
+                {{ wait.due_at ? t('nativeProcesses.wait.due', { date: formatDate(wait.due_at) })
+                  : t('nativeProcesses.wait.event', { name: wait.name, correlation: wait.correlation }) }}
+              </div>
               <div v-if="activity.question" class="q-mt-xs">{{ activity.question }}</div>
               <div v-for="(wait, index) in activity.task?.waits.filter(wait => wait.question)" :key="index" class="q-mt-xs">{{ wait.question }}</div>
               <div v-if="activity.task?.last_error" class="q-mt-xs">{{ t('nativeProcesses.lastTaskError', { error: activity.task.last_error }) }}</div>

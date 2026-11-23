@@ -3,8 +3,22 @@ import type { BpmnGraph, BpmnNode, NodeKind, ProcessVariable } from './services/
 export type VariableDirection = 'inputs' | 'outputs'
 export interface VariableConsumer { key: string; path: string[]; node: BpmnNode }
 
+const inputReferences = { human_prompt_variable: 'string', correlation_variable: 'string', date_variable: 'datetime' } as const
+
 export function allowsVariableDirection(kind: NodeKind, direction: VariableDirection): boolean {
-  return direction === 'inputs' ? kind !== 'end' : kind !== 'start' && kind !== 'if'
+  return direction === 'inputs' ? !['end', 'event_choice', 'error_boundary'].includes(kind)
+    : !['start', 'if', 'timer', 'event_wait', 'event_choice', 'error_boundary'].includes(kind)
+}
+
+export function withVariableBindings(node: BpmnNode, direction: VariableDirection, values: string[]): BpmnNode {
+  const config = { ...node.config }
+  if (direction === 'inputs') for (const key of Object.keys(inputReferences)) {
+    const value = config[key]
+    if (typeof value !== 'string' || values.includes(value)) continue
+    if (key === 'date_variable') config[key] = null
+    else delete config[key]
+  }
+  return { ...node, [direction]: values, config }
 }
 
 export function processInputs(graph: BpmnGraph): string[] {
@@ -39,7 +53,8 @@ export function setVariableUsage(graph: BpmnGraph, name: string, direction: Vari
     const nodes = body.nodes.map(node => {
       const location = [...path, node.id], names = node[direction] ?? []
       const selected = allowsVariableDirection(node.kind, direction) && keys.includes(JSON.stringify(location))
-      return { ...node, [direction]: selected ? names.includes(name) ? names : [...names, name] : names.filter(value => value !== name),
+      const values = selected ? names.includes(name) ? names : [...names, name] : names.filter(value => value !== name)
+      return { ...withVariableBindings(node, direction, values),
         body: node.body ? visit(node.body, location) : null }
     })
     return { ...body, nodes }
@@ -56,8 +71,19 @@ export function updateProcessVariables(graph: BpmnGraph, variables: ProcessVaria
     return [...new Set(values.map(value => renamed >= 0 && value === previous[renamed]!.name ? variables[renamed]!.name : value).filter(value => names.has(value)))]
   }
   function visit(body: BpmnGraph): BpmnGraph {
-    return { ...body, nodes: body.nodes.map(node => ({ ...node,
-      inputs: references(node.inputs), outputs: references(node.outputs), body: node.body ? visit(node.body) : null })) }
+    return { ...body, nodes: body.nodes.map(node => {
+      const config = { ...node.config }
+      for (const [key, type] of Object.entries(inputReferences)) {
+        const value = config[key]
+        if (typeof value !== 'string') continue
+        const [name] = references([value])
+        if (variables.some(variable => variable.name === name && variable.type === type)) config[key] = name
+        else if (key === 'date_variable') config[key] = null
+        else delete config[key]
+      }
+      return { ...node, config, inputs: references(node.inputs), outputs: references(node.outputs),
+        body: node.body ? visit(node.body) : null }
+    }) }
   }
   return { ...visit(graph), variables }
 }

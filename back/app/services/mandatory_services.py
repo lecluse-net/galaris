@@ -52,7 +52,7 @@ PROCESS_SELF_SERVICE_TOOLS = (
     "process_activity_complete", "process_activity_question",
     "process_definition_read", "process_create", "process_update", "process_validate",
     "process_history", "process_restore", "process_archive", "process_share",
-    "process_run_inspect", "process_run_occurrence", "process_run_children", "process_run_metrics", "process_run_control", "process_run_cancel", "process_run_retry",
+    "process_run_inspect", "process_run_occurrence", "process_run_children", "process_run_metrics", "process_run_control", "process_run_cancel", "process_run_retry", "process_run_signal",
 )
 
 SYSTEM_SERVICE_CODES = frozenset({"galaris", "chat", "memory", "document", "file_sharing", "calendar", "contact", "task"})

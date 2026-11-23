@@ -15,6 +15,7 @@ from .dataset_usage import find_dataset_run_usages as find_dataset_run_usages
 from .dataset_usage import find_dataset_definition_usages as find_dataset_definition_usages
 from .values import ValueContractError as ValueContractError
 from .input_provenance import read_input_provenance as read_input_provenance
+from .wait_events import ProcessSignal as ProcessSignal, signal_run as signal_run
 from .input_preparation import (input_run as input_run, sync_input_run as sync_input_run,
     start_input_run as start_input_run, validate_input_run_replay as validate_input_run_replay)
 

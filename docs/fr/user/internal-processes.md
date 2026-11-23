@@ -63,16 +63,16 @@ d'interface ne remplace pas les droits API et MCP.
 Le menu des poignées du diagramme regroupe les actions dans **Tâches**, **Choix**,
 **Début et fin**, **Boucles** et **Appels**. Il affiche les groupes disponibles à l’endroit
 où vous insérez le nœud. Le nœud **Début** est fourni à la création du diagramme.
-Utilisez **Python isolé** pour un programme CPython
+Utilisez **Python** pour un programme CPython
 sur le runner dédié. Dans cette activité, le champ **Capacités MCP et REST** déclare
 les opérations que le programme peut appeler via `call_service`. Les activités
 **Appel MCP** et **Appel REST** exécutent chacune un appel déclaré directement dans
 le diagramme. [Configurer le code et ses capacités](../dev/native-processes.md#python-capabilities)
 
 Si la configuration ou la requête REST est rejetée avant envoi, **Appel REST** termine
-en erreur. Dans **Python isolé**, `call_service` signale ce refus au programme.
+en erreur. Dans **Python**, `call_service` signale ce refus au programme.
 
-Dans **Python isolé**, `input_files` contient les références des fichiers du run.
+Dans **Python**, `input_files` contient les références des fichiers du run.
 Ajoutez les URI produites dans `output_files` pour les rendre visibles comme pièces
 jointes aux étapes suivantes. Utilisez `return` pour renseigner les variables de sortie.
 Chaque exécution possède son propre répertoire `/tmp`, supprimé à la fin du script.

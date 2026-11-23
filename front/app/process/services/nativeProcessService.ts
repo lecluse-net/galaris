@@ -3,7 +3,7 @@ import type { SharingState as DocumentSharing, SharingUpdate as DocumentSharingL
 import type { OwnerOption } from '@/app/share'
 import { createOwnerOptionsCache } from '@/app/share/facade'
 
-export type NodeKind = 'start' | 'end' | 'task' | 'human_task' | 'tool_call' | 'rest' | 'code' | 'python' | 'program' | 'call' | 'if' | 'parallel' | 'for' | 'while'
+export type NodeKind = 'start' | 'end' | 'task' | 'human_task' | 'tool_call' | 'rest' | 'code' | 'python' | 'program' | 'call' | 'if' | 'parallel' | 'for' | 'while' | 'timer' | 'event_wait' | 'event_choice' | 'error_boundary'
 import { valueTypes as sharedValueTypes } from '@/app/dataset/contracts'
 export const valueTypes = sharedValueTypes.filter(type => type !== 'Dataset')
 export type ValueType = typeof valueTypes[number]
@@ -12,7 +12,11 @@ import type { TypedValue } from '@/app/dataset'
 export interface ProcessVariable { name: string; label?: string; description?: string; type: ValueType; nullable: boolean; default?: TypedValue; document_format?: string; mime_type?: string }
 export interface ProcessActor { id: string; name: string; kind: 'agent' | 'human'; agent_id: number | null; user_id: number | null }
 export interface ProcessAgentOption { id: number; label: string; has_avatar?: boolean }
-export interface ProcessDecisionModel { id: number; label: string; provider: string; decision: boolean; chat?: boolean }
+export interface ProcessProfileOptions {
+  profiles: { id: number; label: string }[]
+  current_profile_id: number | null
+  default_fallback_profile_id: number | null
+}
 export interface BpmnNode {
   id: string; kind: NodeKind; title: string; config: Record<string, unknown>; x: number; y: number; body: BpmnGraph | null
   inputs?: string[]; outputs?: string[]
@@ -44,6 +48,8 @@ export interface NodeOccurrencePage { items: NodeOccurrence[]; total: number; pa
 export interface RunActivity {
   kind: string; occurrence_id: string; node_key: string; title?: string; body_path: string[]; since: string | null
   question?: string; run_id?: string
+  waits?: { node_key: string; due_at?: string | null; name?: string | null; correlation?: string | null }[]
+  wake_received?: boolean
   task?: { last_error: string | null; pause_reasons: string[]; waits: { kind: string; question?: string }[] }
 }
 export interface RunObservation {
@@ -86,8 +92,8 @@ export const nativeProcessService = {
     const form = new FormData(); form.append('upload', file)
     await api.post(`${base}/runs/${id}/inputs/${encodeURIComponent(name)}/file`, form, { params: { expected_revision: revision }, signal })
   },
-  async decisionModels(signal: AbortSignal): Promise<ProcessDecisionModel[]> {
-    return (await api.get(`${base}/decision-models`, { signal })).data
+  async llmProfiles(signal: AbortSignal): Promise<ProcessProfileOptions> {
+    return (await api.get<ProcessProfileOptions>(`${base}/llm-profiles`, { signal })).data
   },
   runUrl(id: string): string { return `galaris://processes/runs/${encodeURIComponent(id)}` },
   async agents(): Promise<ProcessAgentOption[]> { return (await api.get(`${base}/agents`)).data },

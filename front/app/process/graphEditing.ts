@@ -1,14 +1,36 @@
 import { emptyGraph, type BpmnGraph, type BpmnNode, type NodeKind } from './services/nativeProcessService'
 
 // Existing parallel nodes remain readable; ordinary links express new splits and joins.
-export type ActivityKind = NodeKind | 'llm_task'
+export type ActivityKind = NodeKind | 'llm_task' | 'if_code' | 'if_llm' | 'if_human'
 export type ProcessingMode = 'ai' | 'llm' | 'code' | 'human'
-export const activityKinds: ActivityKind[] = ['task', 'llm_task', 'code', 'python', 'tool_call', 'rest', 'human_task', 'if', 'for', 'while', 'call', 'end']
+export const activityGroups: { key: string; kinds: ActivityKind[] }[] = [
+  { key: 'tasks', kinds: ['human_task', 'task', 'python', 'llm_task'] },
+  { key: 'choices', kinds: ['if_code', 'if_llm', 'if_human', 'event_choice', 'if'] },
+  { key: 'startEnd', kinds: ['end'] },
+  { key: 'waits', kinds: ['timer', 'event_wait'] },
+  { key: 'loops', kinds: ['for', 'while'] },
+  { key: 'calls', kinds: ['tool_call', 'rest', 'call'] },
+]
 export const nodeIcons: Record<NodeKind, string> = { start: 'play_arrow', end: 'stop', task: 'smart_toy', human_task: 'person',
-  if: 'alt_route', parallel: 'call_split', for: 'repeat', while: 'loop', call: 'account_tree', tool_call: 'build', rest: 'http', code: 'code', python: 'terminal', program: 'code' }
+  if: 'alt_route', parallel: 'call_split', for: 'repeat', while: 'loop', call: 'account_tree', tool_call: 'build', rest: 'http', code: 'code', python: 'terminal', program: 'code',
+  timer: 'schedule', event_wait: 'mark_email_unread', event_choice: 'device_hub', error_boundary: 'error_outline' }
+export const waitKinds: readonly NodeKind[] = ['timer', 'event_wait']
+const errorSources: readonly NodeKind[] = ['rest', 'code']
 const identity = (prefix: string): string => prefix + '_' + crypto.randomUUID().replaceAll('-', '').slice(0, 12)
 export const defaultDecisionCode = '# Example: return variable_2 != "pas mon projet"\nreturn True'
 export const defaultTaskCode = '# Example: return {"variable_1": variable_1 + 1}\nreturn {}'
+
+export function activityNodeKind(activity: ActivityKind): NodeKind {
+  if (activity === 'llm_task') return 'task'
+  if (activity === 'if_code' || activity === 'if_llm' || activity === 'if_human') return 'if'
+  return activity
+}
+
+export function activityLabelKey(kind: ActivityKind, typed: boolean): string {
+  if (kind === 'task' && typed) return 'nativeProcesses.processingModes.ai'
+  if (kind === 'llm_task') return 'nativeProcesses.processingModes.llm'
+  return `nativeProcesses.kinds.${kind}`
+}
 
 export function processingMode(node: BpmnNode): ProcessingMode {
   if (node.kind === 'human_task' || node.kind === 'if' && node.config.mode === 'human') return 'human'
@@ -31,8 +53,8 @@ export function assignActivityActor(node: BpmnNode, key: string, graph: BpmnGrap
 }
 
 export function createActivity(activity: ActivityKind, graph: BpmnGraph, actorKey?: string): BpmnNode {
-  const kind: NodeKind = activity === 'llm_task' ? 'task' : activity
-  const required = activity === 'task' ? 'agent' : activity === 'human_task' ? 'human' : null
+  const kind = activityNodeKind(activity)
+  const required = activity === 'task' ? 'agent' : activity === 'human_task' || activity === 'if_human' ? 'human' : null
   const actor = graph.actors?.find(actor => actor.id === actorKey && (!required || actor.kind === required))
     ?? (required ? graph.actors?.find(actor => actor.kind === required) : undefined)
   const id = identity(kind)
@@ -45,17 +67,47 @@ export function createActivity(activity: ActivityKind, graph: BpmnGraph, actorKe
   }
 
   const config: Record<string, unknown> = kind === 'task' || kind === 'human_task' ? { prompt: '' } : kind === 'for' ? { items: 'input.items' } : kind === 'while' ? { condition: 'false' } : {}
-  if (kind === 'if' && graph.schema_version === 'galaris.bpmn/v2') Object.assign(config, { mode: 'ai', ai_mode: 'llm', prompt: '', code: defaultDecisionCode })
-  if (activity === 'llm_task') Object.assign(config, { ai_mode: 'llm' })
+  if (activity === 'if_code') Object.assign(config, { mode: 'code', code: defaultDecisionCode })
+  if (activity === 'if_llm') Object.assign(config, { mode: 'ai', ai_mode: 'llm', prompt: '', llm_profile: { model_field: 'decision_llm_id' } })
+  if (activity === 'if_human') Object.assign(config, { mode: 'human', prompt: '' })
+  if (activity === 'llm_task') Object.assign(config, { ai_mode: 'llm', llm_profile: { model_field: 'text_standard_llm_id' } })
   if (kind === 'code' || kind === 'python') Object.assign(config, { code: defaultTaskCode, dataset_code: true })
+  if (kind === 'timer') config.delay_seconds = 60
   if (actor && ['task', 'human_task', 'code', 'python', 'if'].includes(kind)) config.actor = actor.id
   return { id, kind, title: '', config, body, x: 0, y: 0 }
+}
+
+export function canAttachErrorBoundary(graph: BpmnGraph, source: BpmnNode): boolean {
+  const outgoing = graph.flows.filter(flow => flow.source === source.id)
+  return graph.schema_version === 'galaris.bpmn/v2' && errorSources.includes(source.kind) && outgoing.length > 0
+    && !outgoing.some(flow => graph.nodes.some(node => node.id === flow.target && node.kind === 'error_boundary'))
+}
+
+export function attachErrorBoundary(graph: BpmnGraph, source: BpmnNode): { graph: BpmnGraph; id: string } {
+  const event = createActivity('error_boundary', graph)
+  return { graph: { ...graph, nodes: [...graph.nodes, event], flows: [...graph.flows,
+    { id: identity('flow'), source: source.id, target: event.id, condition: null }] }, id: event.id }
 }
 
 export function insertActivity(graph: BpmnGraph, anchor: string, side: 'input' | 'output', kind: ActivityKind, branch = false, outcome?: boolean): { graph: BpmnGraph; id: string } {
   const parent = graph.nodes.find(node => node.id === anchor)!
   const node = createActivity(kind, graph, String(parent.config.actor ?? ''))
-  const adjacent = graph.flows.filter(flow => side === 'output' ? flow.source === anchor && (outcome === undefined || (flow.condition !== null) === outcome) : flow.target === anchor)
+  const adjacent = graph.flows.filter(flow => side === 'output' ? flow.source === anchor
+    && !graph.nodes.some(item => item.id === flow.target && item.kind === 'error_boundary')
+    && (outcome === undefined || (flow.condition !== null) === outcome) : flow.target === anchor)
+  if (node.kind === 'event_choice') {
+    const candidates = [createActivity('event_wait', graph), createActivity('timer', graph)]
+    const splice = !branch && adjacent.length === 1 ? adjacent[0] : undefined
+    const flows = graph.flows.map(flow => flow.id === splice?.id || !splice && side === 'input' && flow.target === anchor
+      ? { ...flow, target: node.id } : flow)
+    if (!splice && side === 'output') flows.push({ id: identity('flow'), source: anchor, target: node.id, condition: outcome === true ? 'decision' : null })
+    const target = splice?.target ?? (side === 'input' ? anchor : undefined)
+    for (const candidate of candidates) {
+      flows.push({ id: identity('flow'), source: node.id, target: candidate.id, condition: null })
+      if (target) flows.push({ id: identity('flow'), source: candidate.id, target, condition: null })
+    }
+    return { graph: { ...graph, nodes: [...graph.nodes, node, ...candidates], flows }, id: node.id }
+  }
   if (side === 'input' && !branch && adjacent.length > 1) {
     return { graph: { ...graph, nodes: [...graph.nodes, node], flows: [...graph.flows.map(flow => flow.target === anchor ? { ...flow, target: node.id } : flow),
       { id: identity('flow'), source: node.id, target: anchor, condition: null },
@@ -72,6 +124,10 @@ export function insertActivity(graph: BpmnGraph, anchor: string, side: 'input' |
 export function canConnectActivities(graph: BpmnGraph, source: string, target: string, outcome?: boolean): boolean {
   const from = graph.nodes.find(node => node.id === source), to = graph.nodes.find(node => node.id === target)
   if (!from || !to || source === target || from.kind === 'end' || to.kind === 'start') return false
+  if (to.kind === 'error_boundary' || from.kind === 'event_choice' && (!waitKinds.includes(to.kind) ||
+      graph.flows.some(flow => flow.target === target && flow.source !== source))) return false
+  if (graph.flows.some(flow => flow.target === target && flow.source !== source
+      && graph.nodes.some(node => node.id === flow.source && node.kind === 'event_choice'))) return false
   if (outcome !== undefined && from.kind !== 'if') return false
   if (from.kind === 'if' && from.config.mode && outcome === undefined) return false
   if (graph.flows.some(flow => flow.source === source && flow.target === target)) return true

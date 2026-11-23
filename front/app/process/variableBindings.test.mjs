@@ -25,10 +25,12 @@ test('both editing directions use the same references, including nested steps an
 
 test('renaming and deleting variables updates all references without changing other directions or declarations', () => {
   const original = graph()
+  original.nodes[0].config.human_prompt_variable = 'source'
   const renamed = updateProcessVariables(original, [{ ...original.variables[0], name: 'renamed' }, original.variables[1]])
   assert.deepEqual(variableUsage(renamed, 'renamed', 'inputs'), ['["work"]', '["loop","inside"]', '["start"]'])
   assert.deepEqual(variableUsage(renamed, 'source', 'inputs'), [])
   assert.deepEqual(renamed.nodes[1].body.nodes[0].outputs, ['renamed'])
+  assert.equal(renamed.nodes[0].config.human_prompt_variable, 'renamed')
   const reordered = updateProcessVariables(renamed, [...renamed.variables].reverse())
   assert.deepEqual(variableUsage(reordered, 'renamed', 'inputs'), variableUsage(renamed, 'renamed', 'inputs'))
   const removed = updateProcessVariables(reordered, reordered.variables.filter(variable => variable.name !== 'renamed'))
@@ -36,6 +38,7 @@ test('renaming and deleting variables updates all references without changing ot
   assert.deepEqual(removed.nodes[1].body.nodes[0].outputs, [])
   assert.deepEqual(processOutputs(removed), ['result'])
   assert.deepEqual(removed.variables, [original.variables[1]])
+  assert.equal(removed.nodes[0].config.human_prompt_variable, undefined)
 })
 
 test('control-node directions cannot be assigned from the variable even with forged selections', () => {

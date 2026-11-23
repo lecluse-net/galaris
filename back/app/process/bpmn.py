@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from .code_capabilities import capabilities
 from .expressions import parse_expression
 from .values import Variable, validate_declarations, normalize_patch, normalize_reply
+from .wait_events import EventSettings, TimerSettings, WAIT_KINDS
 
 BPMN = "http://www.omg.org/spec/BPMN/20100524/MODEL"
 GALARIS = "https://galaris.ai/bpmn/v1"
@@ -30,7 +31,7 @@ class Flow(BaseModel):
     condition: str | None = None
 
 
-NodeKind: TypeAlias = Literal["start", "end", "task", "human_task", "tool_call", "rest", "code", "python", "program", "call", "if", "parallel", "for", "while"]
+NodeKind: TypeAlias = Literal["start", "end", "task", "human_task", "tool_call", "rest", "code", "python", "program", "call", "if", "parallel", "for", "while", "timer", "event_wait", "event_choice", "error_boundary"]
 PYTHON_ACTIVITY_KINDS = frozenset({"code", "python"})
 ACTIVITY_KINDS = frozenset({"task", "human_task", "tool_call", "rest", "program", "call"}) | PYTHON_ACTIVITY_KINDS
 
@@ -164,8 +165,9 @@ class Workflow(BaseModel):
 
 
 _TAGS: dict[str, NodeKind] = {"startEvent": "start", "endEvent": "end", "task": "task", "userTask": "human_task", "serviceTask": "tool_call",
-         "scriptTask": "program", "callActivity": "call", "exclusiveGateway": "if", "parallelGateway": "parallel"}
-_TAGS_BACK = {kind: tag for tag, kind in _TAGS.items()}
+         "scriptTask": "program", "callActivity": "call", "exclusiveGateway": "if", "parallelGateway": "parallel",
+         "intermediateCatchEvent": "timer", "eventBasedGateway": "event_choice", "boundaryEvent": "error_boundary"}
+_TAGS_BACK = {**{kind: tag for tag, kind in _TAGS.items()}, "event_wait": "intermediateCatchEvent"}
 
 
 def decision_activity(node: Node) -> Node:
@@ -206,19 +208,19 @@ def validate_graph(graph: Workflow, _identities: set[str] | None = None,
             raise ValueError("Inline bodies share the process variables and cannot declare their own")
     elif graph.variables:
         raise ValueError("Data declarations require the galaris.bpmn/v2 profile")
-    registry = {variable.name for variable in (_variables if _variables is not None else graph.variables)}
+    registry = {variable.name: variable for variable in (_variables if _variables is not None else graph.variables)}
     for owner in [graph, *graph.nodes]:
         for direction in ("inputs", "outputs"):
             names: list[str] = getattr(owner, direction)
-            if len(set(names)) != len(names) or set(names) - registry:
+            if len(set(names)) != len(names) or set(names) - registry.keys():
                 raise ValueError(f"{getattr(owner, 'id', 'process')}.{direction}: select unique declared process variables")
             if names and not graph.typed:
                 raise ValueError("Variable selections require the galaris.bpmn/v2 profile")
         if isinstance(owner, Node):
-            if owner.kind in {"if", "start"} and owner.outputs:
+            if owner.kind in {"if", "start", "event_choice", "error_boundary", *WAIT_KINDS} and owner.outputs:
                 raise ValueError(f"{owner.id}: {owner.kind} nodes cannot have output variables")
-            if owner.kind == "end" and owner.inputs:
-                raise ValueError(f"{owner.id}: end nodes cannot have input variables")
+            if owner.kind in {"end", "event_choice", "error_boundary"} and owner.inputs:
+                raise ValueError(f"{owner.id}: {owner.kind} nodes cannot have input variables")
     identities = [node.id for node in graph.nodes] + [flow.id for flow in graph.flows]
     if len(set(identities)) != len(identities):
         raise ValueError("Node and flow identifiers must be unique")
@@ -239,7 +241,14 @@ def validate_graph(graph: Workflow, _identities: set[str] | None = None,
             if node.kind not in {"if", "task"} or not graph.typed or node.config["ai_mode"] not in ("task", "llm"):
                 raise ValueError("AI execution modes belong to typed tasks or IF activities and require task or llm")
         direct_llm = node.config.get("ai_mode") == "llm" and (node.kind == "task" or node.kind == "if" and mode == "ai")
-        if direct_llm:
+        if direct_llm and "llm_profile" in node.config:
+            from app.llm import model_usages
+            from app.llm.contracts import InferenceProfileSelection
+
+            selection = InferenceProfileSelection.model_validate(node.config["llm_profile"])
+            if "llm_id" in node.config or (selection.model_field == model_usages.DECISION) != (node.kind == "if"):
+                raise ValueError("Use a text profile tier for an LLM task and the decision usage for a decision IF")
+        elif direct_llm:
             model_id = node.config.get("llm_id")
             if type(model_id) is not int or model_id <= 0:
                 raise ValueError("A simple LLM activity requires a configured model")
@@ -248,7 +257,12 @@ def validate_graph(graph: Workflow, _identities: set[str] | None = None,
                 raise ValueError("IF processing modes require the typed profile and ai, code or human")
             if mode == "code" and not str(node.config.get("code", "")).strip():
                 raise ValueError("A code IF requires Python source")
-            if mode != "code" and not str(node.config.get("prompt", "")).strip():
+            question_variable = node.config.get("human_prompt_variable") if mode == "human" else None
+            if question_variable is not None:
+                if (not isinstance(question_variable, str) or question_variable not in node.inputs
+                        or registry[question_variable].type != "string"):
+                    raise ValueError(f"{node.id}: the human question must use a selected text input")
+            elif mode != "code" and not str(node.config.get("prompt", "")).strip():
                 raise ValueError("An AI or human IF requires instructions")
             assigned = actors.get(str(node.config.get("actor", "")))
             if mode == "human" and (assigned is None or assigned.kind != "human"):
@@ -307,10 +321,37 @@ def validate_graph(graph: Workflow, _identities: set[str] | None = None,
         raise ValueError("Every node must be reachable from the start")
     for node in graph.nodes:
         outgoing = graph.outgoing(node.id)
+        incoming = graph.incoming(node.id)
         if node.kind == "end" and outgoing or node.kind != "end" and not outgoing:
             raise ValueError("Only end events may have no outgoing flow")
         if node.kind == "start" and graph.incoming(node.id):
             raise ValueError("Start events cannot have incoming flows")
+        if node.kind in {*WAIT_KINDS, "event_choice", "error_boundary"} and not graph.typed:
+            raise ValueError("Process events require the typed profile")
+        if node.kind == "timer":
+            timer = TimerSettings.model_validate(node.config)
+            if sum(value is not None for value in (timer.delay_seconds, timer.at, timer.date_variable)) != 1:
+                raise ValueError(f"{node.id}: select exactly one deadline or duration")
+            if timer.date_variable is not None and (timer.date_variable not in node.inputs or registry[timer.date_variable].type != "datetime"):
+                raise ValueError(f"{node.id}: select a datetime input for the deadline")
+        if node.kind == "event_wait":
+            event = EventSettings.model_validate(node.config)
+            if event.correlation_variable not in node.inputs or registry[event.correlation_variable].type != "string":
+                raise ValueError(f"{node.id}: select a string input for event correlation")
+        if node.kind == "event_choice":
+            targets = {flow.target for flow in outgoing}
+            if (len(outgoing) < 2 or len(targets) != len(outgoing) or
+                    any(nodes[target].kind not in WAIT_KINDS or len(graph.incoming(target)) != 1 for target in targets)):
+                raise ValueError(f"{node.id}: connect the event choice to at least two distinct waits with no other incoming flow")
+        if node.kind == "error_boundary":
+            code = node.config.get("error_code")
+            if code is not None and (not isinstance(code, str) or not re.fullmatch(r"[A-Za-z0-9_.-]{1,100}", code)):
+                raise ValueError(f"{node.id}: invalid error code")
+            if len(incoming) != 1 or nodes[incoming[0].source].kind not in {"rest", "code"}:
+                raise ValueError(f"{node.id}: attach the error event to a REST or Monty activity")
+            siblings = graph.outgoing(incoming[0].source)
+            if sum(nodes[flow.target].kind == "error_boundary" for flow in siblings) != 1 or len(siblings) < 2:
+                raise ValueError(f"{node.id}: the activity requires one error event and a normal continuation")
         if node.kind == "if":
             if node.config.get("mode") is not None and (len(outgoing) != 2 or {flow.condition for flow in outgoing} != {"decision", None}):
                 raise ValueError("A configured IF requires exactly one True and one False output")
@@ -356,6 +397,8 @@ def compile_bpmn(xml: str) -> Workflow:
     processes = root.findall(f"{{{BPMN}}}process")
     if len(processes) != 1:
         raise ValueError("Exactly one executable process is required")
+    messages = {item.get("id"): item.get("name") for item in root.findall(f"{{{BPMN}}}message")}
+    errors = {item.get("id"): item.get("errorCode") for item in root.findall(f"{{{BPMN}}}error")}
     positions: dict[str, tuple[float, float]] = {}
     for shape in root.iter(f"{{{DI}}}BPMNShape"):
         bounds = shape.find(f"{{{DC}}}Bounds")
@@ -386,6 +429,42 @@ def compile_bpmn(xml: str) -> Workflow:
                 if (tag, service_kind) not in {("serviceTask", "rest"), ("scriptTask", "code"), ("scriptTask", "python")}:
                     raise ValueError("Unsupported service activity kind")
                 kind = service_kind
+            if tag == "eventBasedGateway" and (child.get("eventGatewayType", "Exclusive") != "Exclusive"
+                    or child.get("instantiate", "false") not in {"false", "0"}):
+                raise ValueError("Only non-instantiating exclusive event gateways are supported")
+            if tag == "intermediateCatchEvent":
+                definitions = [item for item in child if item.tag.endswith("EventDefinition")]
+                if len(definitions) != 1:
+                    raise ValueError("An intermediate wait requires exactly one timer or message definition")
+                definition = definitions[0]
+                if definition.tag == f"{{{BPMN}}}messageEventDefinition":
+                    kind = "event_wait"
+                    properties["event_name"] = messages.get(definition.get("messageRef"))
+                elif definition.tag == f"{{{BPMN}}}timerEventDefinition":
+                    duration = definition.findtext(f"{{{BPMN}}}timeDuration")
+                    date = definition.findtext(f"{{{BPMN}}}timeDate")
+                    if duration and (match := re.fullmatch(r"PT([0-9]+)S", duration)):
+                        properties.update(delay_seconds=int(match[1]))
+                    elif date and (match := re.fullmatch(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}", date)):
+                        properties.update(date_variable=match[1])
+                    elif date:
+                        properties.update(at=date)
+                    else:
+                        raise ValueError("Unsupported BPMN timer expression")
+                else:
+                    raise ValueError("Unsupported intermediate event definition")
+            if kind == "error_boundary":
+                definition = child.find(f"{{{BPMN}}}errorEventDefinition")
+                if definition is None or child.get("cancelActivity") == "false":
+                    raise ValueError("Only interrupting boundary error events are supported")
+                error_ref = definition.get("errorRef")
+                if error_ref is not None:
+                    if error_ref not in errors or not errors[error_ref]:
+                        raise ValueError("Boundary event refers to an unknown error code")
+                    properties["error_code"] = errors[error_ref]
+                identity = child.get("id", "")
+                flows.append(Flow(id=properties.pop("boundary_flow", identity[:240] + "__attached"),
+                    source=child.get("attachedToRef", ""), target=identity))
             x, y = positions.get(child.get("id", ""), (0, 0))
             selection = child.find(f"{{{BPMN}}}extensionElements/{{{GALARIS}}}variables")
             references: dict[str, Any] = json.loads(selection.text or "{}") if selection is not None else {}
@@ -439,12 +518,35 @@ def to_bpmn(graph: Workflow, code: str = "workflow") -> str:
             config = {**node.config, **({"loop_kind": node.kind} if node.body else {})}
             if node.kind == "rest" or node.kind in PYTHON_ACTIVITY_KINDS:
                 config["activity_kind"] = node.kind
+            if node.kind == "timer":
+                definition = ET.SubElement(element, f"{{{BPMN}}}timerEventDefinition")
+                if config.get("delay_seconds") is not None:
+                    ET.SubElement(definition, f"{{{BPMN}}}timeDuration").text = f"PT{config['delay_seconds']}S"
+                else:
+                    ET.SubElement(definition, f"{{{BPMN}}}timeDate").text = (
+                        "${" + str(config["date_variable"]) + "}" if config.get("date_variable") else str(config["at"]))
+            if node.kind == "event_wait":
+                message = identifier("Message_" + node.id)
+                root.insert(0, ET.Element(f"{{{BPMN}}}message", {"id": message, "name": str(config["event_name"])}))
+                ET.SubElement(element, f"{{{BPMN}}}messageEventDefinition", {"messageRef": message})
+            if node.kind == "error_boundary":
+                attachment = workflow.incoming(node.id)[0]
+                element.set("attachedToRef", attachment.source)
+                config["boundary_flow"] = attachment.id
+                attributes: dict[str, str] = {}
+                if config.get("error_code"):
+                    code_ref = identifier("Error_" + node.id)
+                    root.insert(0, ET.Element(f"{{{BPMN}}}error", {"id": code_ref, "errorCode": str(config["error_code"])}))
+                    attributes["errorRef"] = code_ref
+                ET.SubElement(element, f"{{{BPMN}}}errorEventDefinition", attributes)
             ET.SubElement(extension, f"{{{GALARIS}}}config").text = json.dumps(config, ensure_ascii=False, allow_nan=False)
             if node.body:
                 write(element, node.body)
             shape = ET.SubElement(plane, f"{{{DI}}}BPMNShape", {"id": identifier("Shape_" + node.id), "bpmnElement": node.id})
             ET.SubElement(shape, f"{{{DC}}}Bounds", {"x": str(node.x), "y": str(node.y), "width": "160", "height": "70"})
         for flow in workflow.flows:
+            if workflow.node(flow.target).kind == "error_boundary":
+                continue
             element = ET.SubElement(parent, f"{{{BPMN}}}sequenceFlow", {"id": flow.id, "sourceRef": flow.source, "targetRef": flow.target})
             if flow.condition is not None:
                 ET.SubElement(element, f"{{{BPMN}}}conditionExpression").text = flow.condition
