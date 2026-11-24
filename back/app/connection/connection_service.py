@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Collection
 from typing import TYPE_CHECKING, Any, Dict, Optional, List, Tuple, cast, Mapping
-from sqlalchemy import CursorResult, delete, exists, func, or_, select
+from sqlalchemy import CursorResult, Select, delete, exists, func, or_, select
 from sqlalchemy.types import JSON
 from sqlalchemy.orm import joinedload
 
@@ -18,6 +18,11 @@ from core.i18n import render_prompt, tr
 
 
 _encryption = get_encryption_service()
+
+
+def services_with_mcp_oauth_grants() -> Select[tuple[int]]:
+    """Identify Services with an existing MCP authorization without reading credentials."""
+    return select(Connection.service_id).join(ConnectionOAuth).where(ConnectionOAuth.grant.is_not(None))
 
 
 async def count_connections_by_service(service_ids: Collection[int]) -> dict[int, int]:
@@ -78,6 +83,18 @@ def _is_password_field(param_name: str, tool_schema: Optional[Dict[str, Any]]) -
     return tool_schema.get("properties", {}).get(param_name, {}).get("type") == "password"
 
 
+def _is_secret_value(name: str, value: object, schema: dict[str, Any] | None) -> bool:
+    return _is_password_field(name, schema) or isinstance(value, str) and _encryption.is_encrypted(value)
+
+
+async def clear_service_param_values(service_id: int, names: Collection[str]) -> None:
+    if names:
+        await get_db().execute(delete(ConnectionParam).where(
+            ConnectionParam.connection_id.in_(select(Connection.id).where(Connection.service_id == service_id)),
+            ConnectionParam.param_name.in_(names),
+        ))
+
+
 def _encrypt_if_needed(
     param_name: str,
     param_value: Optional[str],
@@ -129,7 +146,7 @@ async def list_management_connections(
 
 
 async def connection_overviews(connections: Collection[Connection]) -> list[ConnectionOverview]:
-    """Read local parameters and schemas once per page, never decrypting secrets."""
+    """Read local parameters and schemas once per page without serializing secrets."""
     if not connections:
         return []
     from app.services.facade import get_services_by_ids
@@ -143,7 +160,7 @@ async def connection_overviews(connections: Collection[Connection]) -> list[Conn
     configured: dict[int, list[str]] = {connection.id: [] for connection in connections}
     service_ids = {connection.id: connection.service_id for connection in connections}
     for param in params:
-        secret = _is_password_field(param.param_name, schemas.get(service_ids[param.connection_id]))
+        secret = _is_secret_value(param.param_name, param.param_value, schemas.get(service_ids[param.connection_id]))
         values[param.connection_id][param.param_name] = None if secret else param.param_value
         if secret and param.param_value:
             configured[param.connection_id].append(param.param_name)
@@ -397,7 +414,7 @@ async def _get_local_params_as_dict(
     # default and implicit I/O raises MissingGreenlet under SQLAlchemy async.
     db = get_db()
     result = await db.execute(
-        select(ConnectionOAuth.connection_id, ConnectionParam)
+        select(ConnectionOAuth.grant.is_not(None), ConnectionParam)
         .select_from(Connection)
         .outerjoin(ConnectionOAuth, ConnectionOAuth.connection_id == Connection.id)
         .outerjoin(ConnectionParam, ConnectionParam.connection_id == Connection.id)
@@ -418,7 +435,7 @@ async def _get_local_params_as_dict(
         result_dict[param.param_name] = value
 
     return connection_obj, RuntimeConnectionParams(result_dict, connection_obj.id,
-        oauth_enabled=bool(rows and rows[0][0] is not None))
+        oauth_enabled=bool(rows and rows[0][0]))
 
 
 async def merge_with_global_params(
@@ -478,7 +495,7 @@ async def get_params_for_api(
     configured: List[str] = []
     safe: Dict[str, Any] = {}
     for name, value in params.items():
-        if _is_password_field(name, tool_schema):
+        if _is_secret_value(name, value, tool_schema):
             safe[name] = None
             if value:
                 configured.append(name)
@@ -493,7 +510,7 @@ async def redact_param(param: ConnectionParam) -> ConnectionParam:
     if connection is None:
         return param
     tool_schema = await _get_tool_schema(connection.service_id)
-    if not _is_password_field(param.param_name, tool_schema):
+    if not _is_secret_value(param.param_name, param.param_value, tool_schema):
         return param
     return ConnectionParam(
         id=param.id,
@@ -518,7 +535,7 @@ async def redact_params(params: Collection[ConnectionParam]) -> List[ConnectionP
     return [
         ConnectionParam(id=param.id, connection_id=param.connection_id,
                         param_name=param.param_name, param_value=None)
-        if _is_password_field(param.param_name, schemas.get(service_ids.get(param.connection_id, -1)))
+        if _is_secret_value(param.param_name, param.param_value, schemas.get(service_ids.get(param.connection_id, -1)))
         else param
         for param in params
     ]
@@ -648,6 +665,7 @@ async def set_param(
             )
         )
 
+    await lock_services([connection.service_id], db=db)
     await validate_params(connection.service_id, {param_name: param_value})
 
     from app.services import facade as service
@@ -704,6 +722,7 @@ async def set_params_bulk(
     connection = await get_connection(connection_id)
     if connection is None:
         raise ValueError("Connection not found")
+    await lock_services([connection.service_id])
     tool = await _validated_tool_params(connection.service_id, params)
     schema = _tool_schema(tool)
     existing: Dict[str, ConnectionParam] = {}
@@ -1204,7 +1223,8 @@ async def connection_tool_options(*, include_globals: bool = False) -> list[dict
              "has_file_share": bool(t.file_share_config), "has_messenger": bool(t.messenger_config),
              "has_mail": t.mail_config is not None, "has_calendar": t.calendar_config is not None,
              "has_listener": bool(t.listener_config),
-             "mcp_config": {"type": t.mcp_config.get("type")} if t.mcp_config else None,
+             "mcp_config": {"type": t.mcp_config.get("type"),
+                 "auth": {"type": cast(dict[str, object], t.mcp_config.get("auth") or {}).get("type", "none")}} if t.mcp_config else None,
              "calendar_config": {"settings": {name: t.calendar_config.get("settings", {}).get(name, "")
                  for name in ("source_kind", "auth_type")}} if t.calendar_config else None,
              "connection_schema": public_connection_schema(service.connection_schema_for_service(t)),

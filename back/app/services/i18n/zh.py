@@ -105,6 +105,7 @@ default: dict[str, object] = {
             "internal_export_forbidden": "无法导出 Galaris 内置服务。",
             "legacy_mail_namespace": "此已迁移的服务保留 mail:// 兼容命名空间。若要添加文件共享或其他消息传输，请创建以服务提供商命名的服务。",
             "system_read_only": "此强制系统服务为只读且始终启用。",
+            "mcp_auth_change_confirmation": "请重新打开服务并确认更改 MCP 身份验证方式后再清除旧凭据。",
             "tool_not_found": "未找到服务 ${service_id}",
             "tool_exists_code": "服务 '${code}' 已存在",
             "invalid_yaml": "无效的 YAML",

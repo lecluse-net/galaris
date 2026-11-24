@@ -284,6 +284,7 @@ default: dict[str, object] = {
             "internal_export_forbidden": "Galaris built-in services cannot be exported.",
             "legacy_mail_namespace": "This migrated Service retains the mail:// compatibility namespace. Create a named provider Service to add file sharing or another messaging transport.",
             "system_read_only": "This mandatory system service is read-only and always enabled.",
+            "mcp_auth_change_confirmation": "Reopen the Service and confirm the change to MCP authentication before clearing the old credentials.",
             "tool_not_found": "Service ${service_id} not found",
             "tool_exists_code": "Service '${code}' already exists",
             "invalid_yaml": "Invalid YAML",

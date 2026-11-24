@@ -7,10 +7,20 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_permission_inventory_can_skip_resource_enumeration(monkeypatch):
+@pytest.mark.parametrize("include_resources", [False, True])
+@pytest.mark.parametrize("supports_optional_capabilities", [False, True])
+async def test_permission_inventory_discovers_only_supported_capabilities(monkeypatch, include_resources, supports_optional_capabilities):
     from app.services import mcp_loader
     from app.services.schemas import Service
+    from mcp.types import PromptsCapability, ResourcesCapability, ServerCapabilities, ToolsCapability
+
     class CatalogueClient:
+        server_capabilities = ServerCapabilities(
+            tools=ToolsCapability(),
+            resources=ResourcesCapability() if supports_optional_capabilities else None,
+            prompts=PromptsCapability() if supports_optional_capabilities else None,
+        )
+
         async def __aenter__(self):
             return self
         async def __aexit__(self, *_args):
@@ -18,15 +28,26 @@ async def test_permission_inventory_can_skip_resource_enumeration(monkeypatch):
         async def list_tools(self):
             return [SimpleNamespace(name="synthetic_function", description="Synthetic function")]
         async def list_prompts(self):
+            assert supports_optional_capabilities
             return [SimpleNamespace(name="synthetic_prompt", description="Synthetic prompt")]
         async def list_resources(self):
-            raise AssertionError("The permissions dashboard must not enumerate resources")
+            assert include_resources and supports_optional_capabilities
+            return [SimpleNamespace(uri="test://synthetic", description="Synthetic resource")]
         async def list_resource_templates(self):
-            raise AssertionError("The permissions dashboard must not enumerate resource templates")
+            assert include_resources and supports_optional_capabilities
+            return [SimpleNamespace(uri_template="test://{name}", description="Synthetic template")]
     monkeypatch.setattr(mcp_loader, "Client", lambda _transport: CatalogueClient())
     monkeypatch.setattr(mcp_loader, "_external_transport", lambda *_args: object())
-    result = await mcp_loader.list_external_mcp_capabilities(Service(code="synthetic", label="Synthetic"), {}, include_resources=False)
-    assert result == [("synthetic_function", "Synthetic function", "tool"), ("synthetic_prompt", "Synthetic prompt", "prompt")]
+    result = await mcp_loader.list_external_mcp_capabilities(
+        Service(code="synthetic", label="Synthetic"), {}, include_resources=include_resources,
+    )
+    expected = [("synthetic_function", "Synthetic function", "tool")]
+    if supports_optional_capabilities:
+        if include_resources:
+            expected.extend([("test://synthetic", "Synthetic resource", "resource"),
+                             ("test://{name}", "Synthetic template", "resource")])
+        expected.append(("synthetic_prompt", "Synthetic prompt", "prompt"))
+    assert result == expected
 
 # pyright: reportPrivateUsage=false
 

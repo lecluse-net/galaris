@@ -547,7 +547,7 @@ tests restent l’autorité sur le comportement.
 | `app.services` | `core.params` | `back/app/services/mandatory_services.py`, `back/app/services/mcp_loader.py` |
 | `app.services` | `core.settings` | `back/app/services/router.py` |
 | `app.services` | `core.user` | `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/conversation_catalog.py`, `back/app/services/router.py` |
-| `app.services` | `core.util` | `back/app/services/admin_candidates.py`, `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/assertions.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/authorization_views.py`, `back/app/services/catalog.py`, `back/app/services/runtime_authorization.py`, `back/app/services/secrets.py`, `back/app/services/service.py` |
+| `app.services` | `core.util` | `back/app/services/admin_candidates.py`, `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/assertions.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/authorization_views.py`, `back/app/services/catalog.py`, `back/app/services/mcp_authentication.py`, `back/app/services/runtime_authorization.py`, `back/app/services/secrets.py`, `back/app/services/service.py` |
 | `app.share` | `core.database` | `back/app/share/models.py`, `back/app/share/service.py` |
 | `app.share` | `core.dbadmin` | `back/app/share/dbadmin.py` |
 | `app.skill` | `app.agent` | `back/app/skill/dbadmin.py`, `back/app/skill/interface.py`, `back/app/skill/learning_service.py`, `back/app/skill/models.py`, `back/app/skill/ownership_recovery.py`, `back/app/skill/personal_catalogue.py`, `back/app/skill/router.py`, `back/app/skill/skill_service.py` |
@@ -2582,7 +2582,7 @@ Aucune composante cyclique détectée.
 | `process_update` | `process` | `app.process` | `process_update` | `back/app/process/mcp.py:200` |
 | `process_validate` | `process` | `app.process` | `process_validate` | `back/app/process/mcp.py:208` |
 | `processus_get` | `process` | `app.process` | `processus_get` | `back/app/process/mcp.py:30` |
-| `service_admin_catalog_refresh` | `service` | `app.services` | `service_admin_catalog_refresh` | `back/app/services/mcp.py:393` |
+| `service_admin_catalog_refresh` | `service` | `app.services` | `service_admin_catalog_refresh` | `back/app/services/mcp.py:396` |
 | `service_admin_connection_create` | `service` | `app.connection` | `service_admin_connection_create` | `back/app/connection/mcp.py:20` |
 | `service_admin_connection_delete` | `service` | `app.connection` | `service_admin_connection_delete` | `back/app/connection/mcp.py:30` |
 | `service_admin_connection_function_list` | `service` | `app.connection` | `service_admin_connection_function_list` | `back/app/connection/mcp.py:50` |
@@ -2593,17 +2593,17 @@ Aucune composante cyclique détectée.
 | `service_admin_connection_params_set` | `service` | `app.connection` | `service_admin_connection_params_set` | `back/app/connection/mcp.py:35` |
 | `service_admin_connection_test` | `service` | `app.connection` | `service_admin_connection_test` | `back/app/connection/mcp.py:45` |
 | `service_admin_connection_update` | `service` | `app.connection` | `service_admin_connection_update` | `back/app/connection/mcp.py:25` |
-| `service_admin_create` | `service` | `app.services` | `service_admin_create` | `back/app/services/mcp.py:339` |
-| `service_admin_delete` | `service` | `app.services` | `service_admin_delete` | `back/app/services/mcp.py:357` |
-| `service_admin_function_get` | `service` | `app.services` | `service_admin_function_get` | `back/app/services/mcp.py:381` |
-| `service_admin_function_list` | `service` | `app.services` | `service_admin_function_list` | `back/app/services/mcp.py:375` |
-| `service_admin_function_set` | `service` | `app.services` | `service_admin_function_set` | `back/app/services/mcp.py:387` |
-| `service_admin_get` | `service` | `app.services` | `service_admin_get` | `back/app/services/mcp.py:333` |
-| `service_admin_global_params_set` | `service` | `app.services` | `service_admin_global_params_set` | `back/app/services/mcp.py:363` |
-| `service_admin_impact` | `service` | `app.services` | `service_admin_impact` | `back/app/services/mcp.py:351` |
-| `service_admin_list` | `service` | `app.services` | `service_admin_list` | `back/app/services/mcp.py:327` |
-| `service_admin_mcp_test` | `service` | `app.services` | `service_admin_mcp_test` | `back/app/services/mcp.py:369` |
-| `service_admin_update` | `service` | `app.services` | `service_admin_update` | `back/app/services/mcp.py:345` |
+| `service_admin_create` | `service` | `app.services` | `service_admin_create` | `back/app/services/mcp.py:342` |
+| `service_admin_delete` | `service` | `app.services` | `service_admin_delete` | `back/app/services/mcp.py:360` |
+| `service_admin_function_get` | `service` | `app.services` | `service_admin_function_get` | `back/app/services/mcp.py:384` |
+| `service_admin_function_list` | `service` | `app.services` | `service_admin_function_list` | `back/app/services/mcp.py:378` |
+| `service_admin_function_set` | `service` | `app.services` | `service_admin_function_set` | `back/app/services/mcp.py:390` |
+| `service_admin_get` | `service` | `app.services` | `service_admin_get` | `back/app/services/mcp.py:336` |
+| `service_admin_global_params_set` | `service` | `app.services` | `service_admin_global_params_set` | `back/app/services/mcp.py:366` |
+| `service_admin_impact` | `service` | `app.services` | `service_admin_impact` | `back/app/services/mcp.py:354` |
+| `service_admin_list` | `service` | `app.services` | `service_admin_list` | `back/app/services/mcp.py:330` |
+| `service_admin_mcp_test` | `service` | `app.services` | `service_admin_mcp_test` | `back/app/services/mcp.py:372` |
+| `service_admin_update` | `service` | `app.services` | `service_admin_update` | `back/app/services/mcp.py:348` |
 | `services_list` | `service` | `app.services` | `list_mcp_tools` | `back/app/services/mcp.py:90` |
 | `skill_delete` | `skills` | `app.skill` | `mcp_skill_delete` | `back/app/skill/mcp.py:62` |
 | `skill_read` | `skills` | `app.skill` | `mcp_skill_read` | `back/app/skill/mcp.py:29` |

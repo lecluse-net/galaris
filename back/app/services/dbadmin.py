@@ -5,13 +5,14 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import cast
 
-from sqlalchemy import Table, case, delete, func, literal, select
+from sqlalchemy import Select, Table, case, delete, func, literal, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent import Agent
 from app.connection import Connection, ConnectionFunctionState, ConnectionParam, ServiceFunctionState
-from core.dbadmin import DbAdminDataSource, DbAdminDataset, DbAdminReconciler, DbAdminRegistry
+from app.connection.facade import services_with_mcp_oauth_grants
+from core.dbadmin import DbAdminAction, DbAdminDataSource, DbAdminDataset, DbAdminPhase, DbAdminReconciler, DbAdminRegistry, SchemaTransitionSet
 
 from .mandatory_services import (
     AGENT_DISCOVERY_TOOLS,
@@ -27,6 +28,28 @@ from .mandatory_services import (
 from .models import Service
 from .descriptions import bridge_description
 from .contracts import FILE_INDEXING_PARAM, MANAGEMENT_SCOPE_PARAM
+from .secrets import MCP_AUTH_MODE_EXPLICIT
+
+
+def _legacy_services_with_mcp_oauth() -> Select[tuple[Service]]:
+    return select(Service).where(
+        Service.id.in_(services_with_mcp_oauth_grants()),
+        Service.mcp_config["type"].astext.in_(("http", "sse")),
+        Service.mcp_config[MCP_AUTH_MODE_EXPLICIT].as_boolean().is_not(True),
+        Service.mcp_config["auth"]["type"].astext.is_distinct_from("oauth"),
+    )
+
+
+async def _mcp_auth_modes_migrated(session: AsyncSession, _: SchemaTransitionSet) -> bool:
+    return await session.scalar(_legacy_services_with_mcp_oauth().with_only_columns(Service.id).limit(1)) is None
+
+
+async def _migrate_mcp_auth_modes(session: AsyncSession, _: SchemaTransitionSet) -> None:
+    for record in await session.scalars(_legacy_services_with_mcp_oauth().with_for_update()):
+        config = record.mcp_config or {}
+        auth = cast(dict[str, object], config.get("auth") or {})
+        record.mcp_config = {**config, "auth": {**auth, "type": "oauth"}, MCP_AUTH_MODE_EXPLICIT: True}
+    await session.flush()
 
 
 def _legacy_indexing_defaults(record: Service, schema: dict[str, object]) -> dict[str, object]:
@@ -366,6 +389,12 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
     from .protocol_migration import register_protocol_migration
     register_protocol_migration(registry)
     registry.register_data_source(DATA_SOURCE)
+    registry.register_action(DbAdminAction(
+        key="app.services.explicit_mcp_oauth", phase=DbAdminPhase.AFTER_EXPAND,
+        checksum="preserve-existing-mcp-grants",
+        predicate=lambda _: True, handler=_migrate_mcp_auth_modes, postcondition=_mcp_auth_modes_migrated,
+        requires_schema=frozenset({"services.mcp_config", "connections.service_id", "connection_oauth.grant"}),
+    ))
     registry.register_reconciler(DbAdminReconciler(
         key="app.services.galaris_function_policies", handler=move_galaris_function_policies,
         depends_on=("app.services.mandatory.connections",),

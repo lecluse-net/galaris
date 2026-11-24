@@ -158,6 +158,9 @@ def _build_auth_headers(
     if auth.type == "none":
         return headers
 
+    if auth.type == "oauth":
+        raise ValueError(t("connection_api.oauth.authorization_required"))
+
     if auth.type == "basic":
         login = connection_params.get(auth.login_param, "")
         password = connection_params.get(auth.password_param, "")
@@ -229,7 +232,7 @@ def build_mcp_server(
         url = resolve_connection_references(mcp.url or "", params)
     except MissingConnectionReference as exc:
         raise ValueError(_error("connection_reference_missing", parameter=exc.parameter)) from exc
-    oauth = mcp_auth if mcp_auth is not None else (mcp_oauth_auth(params, url) if mcp.type != "stdio" else None)
+    oauth = (mcp_auth if mcp_auth is not None else mcp_oauth_auth(params, url)) if mcp.auth.type == "oauth" else None
 
     try:
         auth_headers = {} if oauth is not None else _build_auth_headers(mcp.auth, params)

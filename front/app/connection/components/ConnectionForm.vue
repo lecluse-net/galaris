@@ -61,7 +61,7 @@
     </q-banner>
 
     <McpOAuthConnection
-      v-if="selectedTool?.mcp_config?.type === 'http' || selectedTool?.mcp_config?.type === 'sse'"
+      v-if="selectedTool?.mcp_config?.auth?.type === 'oauth' && ['http', 'sse'].includes(selectedTool?.mcp_config?.type ?? '')"
       :key="`${form.agent_id}:${form.service_id}`"
       :connection-id="props.connection?.agent_id === form.agent_id && props.connection?.service_id === form.service_id ? form.id : null"
       :can-edit="canEdit"
@@ -429,7 +429,7 @@ interface Service {
   can_edit?: boolean
   can_disable?: boolean
   has_mcp?: boolean
-  mcp_config?: { type?: string } | null
+  mcp_config?: { type?: string, auth?: { type?: string } } | null
   connection_schema?: {
     params?: Record<string, Partial<ConnectionParamDef>>
   }

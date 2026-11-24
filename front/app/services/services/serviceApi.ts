@@ -33,7 +33,7 @@ export interface ServiceCatalog {
 // =============================================================================
 
 export interface McpAuth {
-    type: 'bearer' | 'header' | 'basic' | 'none'
+    type: 'oauth' | 'bearer' | 'header' | 'basic' | 'none'
     header_name?: string
     param?: string
     login_param?: string
@@ -246,6 +246,7 @@ export interface ServiceUpdate {
     label?: string
     description?: string
     mcp_config?: McpConfig | null
+    expected_mcp_auth_type?: McpAuth['type']
     rest_config?: RestConfig | null
     file_share_config?: FileShareConfig | null
     messenger_config?: MessengerConfig | null

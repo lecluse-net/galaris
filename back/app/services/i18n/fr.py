@@ -298,6 +298,7 @@ default: dict[str, object] = {
             "internal_export_forbidden": "Les services internes à Galaris ne peuvent pas être exportés.",
             "legacy_mail_namespace": "Ce service migré conserve l’espace de compatibilité mail://. Créez un service nommé pour le fournisseur afin d’ajouter un partage de fichiers ou une autre messagerie.",
             "system_read_only": "Ce service système obligatoire est en lecture seule et toujours actif.",
+            "mcp_auth_change_confirmation": "Rouvrez le Service et confirmez le changement d’authentification MCP pour effacer les anciens identifiants.",
             "tool_not_found": "Service ${service_id} introuvable",
             "tool_exists_code": "Le service « ${code} » existe déjà",
             "invalid_yaml": "YAML invalide",

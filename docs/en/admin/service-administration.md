@@ -205,14 +205,23 @@ Only humans can delegate Services, Agent, Processes, Lab, Goals, Skills and Cons
 A sequence of agent commands cannot grant
 administrative capabilities to its caller.
 
+<a id="mcp-oauth"></a>
 ## Connect an MCP server with OAuth
 
-Under **Connections**, open the agent’s active **HTTP** or **SSE** MCP connection
-and click **Connect account**. Sign in with the provider and approve access. Galaris
-retrieves and stores the token automatically. OAuth belongs only to the connection:
-the usual flow requires no Client ID, scope or secret, and there is no OAuth setting in the Service.
+In the **HTTP** or **SSE** MCP Service, select **OAuth 2.0** as the authentication type.
+Under **Connections**, open the agent’s active connection and click **Connect account**.
+Sign in with the provider and approve access. Galaris stores the token on that connection.
+The usual flow requires no Client ID, scope or secret.
 If a connection already exists for that agent and service, the button reuses its saved
 parameters and activates it if needed, even when it is absent from the displayed list.
+
+On update, a Service with an existing MCP authorization switches to **OAuth 2.0** and
+keeps its existing authorizations. Other connections to that Service must authorize
+their own accounts. The authentication type remains editable on the Service.
+
+Changing the method manually requires confirmation. It clears MCP OAuth authorizations on
+the Service’s connections and removes credentials the Service no longer uses. Referenced
+parameters and Calendar authorizations are kept.
 
 Galaris discovers the provider’s capabilities and stops as soon as setup succeeds:
 

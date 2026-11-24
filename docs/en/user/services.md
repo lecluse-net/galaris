@@ -38,6 +38,11 @@ Click **New service** to open the catalog dialog, find a provider and choose
 addresses, select the useful protocols and save. Then create agent connections and set
 their permissions. Adding a preset neither grants access nor activates agent connections.
 
+For an HTTP or SSE MCP Service, choose the authentication type in its Service settings.
+Selecting **OAuth 2.0** adds **Connect account** to the agent’s connection.
+If you later change methods, the confirmation explains which credentials will be cleared.
+Follow the [OAuth authorization steps](../admin/service-administration.md#mcp-oauth).
+
 The initial catalog includes Qonto, Nextcloud, GitLab, Matrix, n8n, Redmine and Telegram.
 Each preset explains the capabilities it provides. REST access does not promise every
 product feature; provider permissions and limitations still apply. For self-hosted APIs,

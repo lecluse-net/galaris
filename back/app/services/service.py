@@ -16,9 +16,11 @@ from .rest_contracts import RestConfig
 from .administration_lock import lock_services, finish_write
 from .deletion import DeletionConflict, ServiceDeletionImpact
 from .parameter_definitions import with_standard_params
-from .protocols import ProtocolConfig, referenced_protocol_params, with_protocol_params
+from .protocols import ProtocolConfig, protocol_parameter_bindings, referenced_protocol_params, with_protocol_params
+from .mcp_authentication import mcp_auth_mode, mcp_secret_parameters, replace_mcp_auth
 from .capabilities import CONFIG_FIELDS, configuration_values, effective_capabilities, resolve_selections
 from .secrets import (
+    MCP_AUTH_MODE_EXPLICIT,
     SecretPlaceholderWithoutValue,
     export_listener_config,
     export_messenger_config,
@@ -64,8 +66,11 @@ def connection_schema_for_service(record: ServiceModel) -> Dict[str, Any]:
     schema = with_protocol_params(record.connection_schema or {},
         mail=ProtocolConfig.model_validate(record.mail_config) if record.mail_config is not None else None,
         calendar=ProtocolConfig.model_validate(record.calendar_config) if record.calendar_config is not None else None,
-        preserve=referenced_protocol_params(record.mcp_config, record.rest_config, record.messenger_config,
-            record.file_share_config, record.listener_config))
+        preserve=referenced_protocol_params(record.rest_config, record.messenger_config,
+            record.file_share_config, record.listener_config, mcp_config=record.mcp_config))
+    params = cast(dict[str, dict[str, Any]], schema.get("params") or {})
+    for name in mcp_secret_parameters(record.mcp_config) & params.keys():
+        params[name] = {**params[name], "type": "password"}
     return with_standard_params(schema, code=record.code,
                                 file_share_config=record.file_share_config,
                                 messenger_config=record.messenger_config)
@@ -125,7 +130,7 @@ def public_global_params(record: ServiceModel) -> Dict[str, ServiceGlobalParamPu
         entry = entries.get(name) or {}
         stored = entry.get("value")
         configured = isinstance(stored, str) and stored != ""
-        secret = _global_param_is_secret(definition)
+        secret = _global_param_is_secret(definition) or isinstance(stored, str) and _encryption.is_encrypted(stored)
         result[name] = ServiceGlobalParamPublic(
             value=None if secret or not configured else str(stored),
             configured=configured,
@@ -317,7 +322,7 @@ async def _protect_mcp(
     existing: Dict[str, Any] | None = None,
 ) -> Dict[str, Any]:
     try:
-        return protect_mcp_config(config, existing=existing)
+        return {**protect_mcp_config(config, existing=existing), MCP_AUTH_MODE_EXPLICIT: True}
     except SecretPlaceholderWithoutValue as exc:
         raise ValueError(
             render_prompt(
@@ -511,11 +516,34 @@ async def update_service(service_id: int, data: ServiceUpdate, *, commit: bool =
         if target[field] != updates.get(field, original[field]):
             updates[field] = target[field]
     data = ServiceUpdate.model_validate({**updates, "capabilities": selected})
+    values = data.model_dump()
+    old_mcp = record.mcp_config
+    target_mcp = cast(dict[str, Any] | None, values["mcp_config"]) if "mcp_config" in data.model_fields_set else old_mcp
+    old_auth_mode = mcp_auth_mode(old_mcp)
+    auth_changed = old_mcp is not None and old_auth_mode != mcp_auth_mode(target_mcp)
+    if (auth_changed or data.expected_mcp_auth_type is not None) and data.expected_mcp_auth_type != old_auth_mode:
+        raise ValueError(await tr("services.errors.mcp_auth_change_confirmation"))
+    retired_mcp_params: set[str] = set()
+    if auth_changed and old_mcp is not None:
+        target_mcp, retired_mcp_params = replace_mcp_auth(old_mcp, target_mcp)
+        mail = cast(dict[str, Any] | None, target["mail_config"])
+        used = referenced_protocol_params(*(target[name] for name in CONFIG_FIELDS.values()
+            if name not in {"mcp_config", "rest_config"}), mcp_config=target_mcp)
+        if rest := target["rest_config"]:
+            config = RestConfig.model_validate(rest)
+            used.update(referenced_protocol_params(config.base_url, config.header_params))
+            if config.auth.type == "basic":
+                used.update((config.auth.login_param, config.auth.password_param))
+            elif config.auth.type != "none":
+                used.add(config.auth.param)
+        if mail is not None and not mail.get("param_map") and not mail.get("settings"):
+            used.update(str(binding["legacy_parameter"]) for binding in protocol_parameter_bindings("mail").values())
+        retired_mcp_params.difference_update(used)
     if "mail_config" in data.model_fields_set and data.mail_config is None and record.mail_config is not None:
         from app.connection.facade import administration
 
         await administration.require_singleton_connections(service_id)
-    values = data.model_dump()
+    values["mcp_config"] = target_mcp
     target_connection_schema = cast(
         Dict[str, Any],
         values.get("connection_schema")
@@ -556,7 +584,8 @@ async def update_service(service_id: int, data: ServiceUpdate, *, commit: bool =
         calendar=(data.calendar_config if "calendar_config" in data.model_fields_set else
             ProtocolConfig.model_validate(record.calendar_config) if record.calendar_config is not None else None),
         preserve=referenced_protocol_params(*(values.get(name) if name in data.model_fields_set else getattr(record, name)
-            for name in ("mcp_config", "rest_config", "messenger_config", "file_share_config", "listener_config"))))
+            for name in ("rest_config", "messenger_config", "file_share_config", "listener_config")),
+            mcp_config=values.get("mcp_config") if "mcp_config" in data.model_fields_set else record.mcp_config))
     if target_messenger_config is not None:
         await _validate_messenger_config(
             target_messenger_config,
@@ -565,6 +594,8 @@ async def update_service(service_id: int, data: ServiceUpdate, *, commit: bool =
     rest_config = values.get("rest_config") if "rest_config" in data.model_fields_set else record.rest_config
     _validate_rest_config(RestConfig.model_validate(rest_config) if rest_config else None, target_connection_schema)
     for field in data.model_fields_set:
+        if field == "expected_mcp_auth_type":
+            continue
         value = values[field]
         if field in {"mail_config", "calendar_config"} and value is not None:
             value = ProtocolConfig.model_validate(value).model_dump(exclude_defaults=True)
@@ -590,7 +621,17 @@ async def update_service(service_id: int, data: ServiceUpdate, *, commit: bool =
             connection_schema = cast(Dict[str, Any], value)
             await _validate_connection_schema(connection_schema)
         setattr(record, field, value)
-    if {"connection_schema", "file_share_config", "messenger_config", "mail_config", "calendar_config"} & data.model_fields_set:
+    if auth_changed:
+        from app.connection.facade import clear_service_mcp_authorizations, clear_service_param_values
+
+        await clear_service_mcp_authorizations(service_id)
+        await clear_service_param_values(service_id, retired_mcp_params)
+        params = cast(dict[str, Any], record.connection_schema.get("params") or {})
+        record.connection_schema = {**record.connection_schema, "params": {
+            name: definition for name, definition in params.items() if name not in retired_mcp_params}}
+        record.global_params = {name: entry for name, entry in (record.global_params or {}).items()
+                                if name not in retired_mcp_params}
+    if {"mcp_config", "connection_schema", "file_share_config", "messenger_config", "mail_config", "calendar_config"} & data.model_fields_set:
         record.connection_schema = connection_schema_for_service(record)
         record.global_params = merge_default_global_params(
             record.global_params,
@@ -887,7 +928,8 @@ async def import_from_yaml_string(
     if existing:
         # Build the update from the complete schema so future fields are not omitted. Optional
         # nulls are included to mirror imported YAML exactly.
-        update = ServiceUpdate(**tool_data.model_dump(exclude={"code"}))
+        update = ServiceUpdate(**tool_data.model_dump(exclude={"code"}),
+                               expected_mcp_auth_type=mcp_auth_mode(existing.mcp_config))
         updated = await update_service(existing.id, update)
         return updated, False  # type: ignore[return-value]
 

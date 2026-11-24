@@ -223,15 +223,23 @@ Chat. Seul un humain peut déléguer les capacités de Services, Agent, Processu
 Compétences et Console.
 Une chaîne de commandes agentiques ne permet pas de s’attribuer une capacité administrative.
 
+<a id="mcp-oauth"></a>
 ## Connecter un serveur MCP avec OAuth
 
-Dans **Connexions**, ouvrir la connexion active de l’agent vers le serveur MCP
-**HTTP** ou **SSE**, puis cliquer sur **Connecter le compte**. Se connecter chez le
-fournisseur et accepter les droits. Galaris récupère et conserve le token automatiquement.
-OAuth se gère uniquement sur la connexion : le parcours habituel ne demande aucun Client ID,
-scope ou secret, et aucun réglage OAuth n’est nécessaire dans le Service.
+Dans le Service MCP **HTTP** ou **SSE**, choisir **OAuth 2.0** comme type d’authentification.
+Dans **Connexions**, ouvrir la connexion active de l’agent, puis cliquer sur **Connecter le compte**.
+Se connecter chez le fournisseur et accepter les droits. Galaris conserve le jeton sur cette
+connexion. Le parcours habituel ne demande aucun Client ID, scope ou secret.
 Si une connexion existe déjà pour cet agent et ce service, le bouton la réutilise avec ses
 paramètres enregistrés et la réactive si nécessaire, même si elle n’est pas dans la liste affichée.
+
+À la mise à jour, un Service dont une connexion possède déjà une autorisation MCP passe
+à **OAuth 2.0** et conserve les autorisations existantes. Les autres connexions de ce Service
+doivent alors autoriser leur propre compte. La méthode peut ensuite être modifiée dans le Service.
+
+Un changement manuel de méthode demande confirmation. Il retire les autorisations MCP OAuth
+des connexions du Service et efface les anciens identifiants devenus inutilisés. Les paramètres
+encore référencés et les autorisations Agenda sont conservés.
 
 Galaris découvre les possibilités du fournisseur et s’arrête dès qu’une préparation réussit :
 

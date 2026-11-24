@@ -456,7 +456,7 @@ async def mcp_test(actor: AdministrationContext, service_id: int | None = None, 
             raise AdministrationError("configuration_invalid", "Service has no external MCP configuration.")
         existing = tool.mcp_config
         request = ServiceMcpTestRequest(code=tool.code, mcp_config=McpConfig(**runtime_mcp_config(existing)), params=params)
-        if connection_id is not None:
+        if connection_id is not None and request.mcp_config.auth.type == "oauth":
             mcp_auth = mcp_oauth_auth(params, request.mcp_config.url or "")
     _safe_mcp(request.mcp_config, literals=True)
     secret_values = [str(value) for value in request.params.values() if value]

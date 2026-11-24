@@ -50,7 +50,7 @@ async def prepare_connection(db, monkeypatch):
     await db.flush()
     agent = Agent(user_id=user.id, title_id=title.id, code=f"oauth-{uuid4().hex}", first_name="OAuth", last_name="Synthetic")
     tool = Service(code=f"oauth_{uuid4().hex}", label="Synthetic OAuth MCP",
-                mcp_config={"type": "http", "url": "https://mcp.example.test/mcp", "auth": {"type": "none"}})
+                mcp_config={"type": "http", "url": "https://mcp.example.test/mcp", "auth": {"type": "oauth"}})
     db.add_all([agent, tool])
     await db.flush()
     connection = Connection(agent_id=agent.id, service_id=tool.id, active=True)
@@ -110,6 +110,110 @@ async def prepare_connection(db, monkeypatch):
 def callback(start):
     query = parse_qs(urlsplit(start.authorization_url).query)
     return OAuthCallback(state=query["state"][0], code="synthetic-code"), query
+
+
+@pytest.mark.asyncio
+async def test_legacy_grant_selects_oauth_once_and_preserves_an_explicit_bearer_choice(db, oauth_connection):
+    from app.services.dbadmin import _mcp_auth_modes_migrated, _migrate_mcp_auth_modes
+    from app.services.schemas import McpConfig, ServiceUpdate
+    from core.dbadmin import SchemaTransitionSet
+
+    connection, user_id, tool, _, _ = oauth_connection
+    await oauth_service.complete(connection, callback(await oauth_service.start(connection, user_id))[0], user_id)
+    grant = (await db.get(ConnectionOAuth, connection.id)).grant
+    url = tool.mcp_config["url"]
+    bearer = {"type": "http", "url": url, "auth": {"type": "bearer", "param": "token"}}
+    tool.mcp_config = bearer
+    untouched = Service(code=f"bearer_{uuid4().hex}", label="Synthetic bearer", mcp_config=bearer)
+    db.add(untouched)
+    await db.flush()
+    calendar_only = Connection(agent_id=connection.agent_id, service_id=untouched.id, active=True)
+    db.add(calendar_only)
+    await db.flush()
+    db.add(ConnectionOAuth(connection_id=calendar_only.id, calendar_grant=grant))
+    await db.flush()
+
+    transitions = SchemaTransitionSet()
+    assert not await _mcp_auth_modes_migrated(db, transitions)
+    await _migrate_mcp_auth_modes(db, transitions)
+    assert await _mcp_auth_modes_migrated(db, transitions)
+    assert tool.mcp_config["auth"]["type"] == "oauth"
+    assert untouched.mcp_config["auth"]["type"] == "bearer"
+    assert (await db.get(ConnectionOAuth, connection.id)).grant == grant
+    assert await oauth_service.access_token(connection.id, url) == "synthetic-access-1"
+
+    update = ServiceUpdate(mcp_config=McpConfig.model_validate(bearer))
+    with pytest.raises(ValueError):
+        await service.update_service(tool.id, update)
+    assert (await db.get(ConnectionOAuth, connection.id)).grant == grant
+    row = await db.get(ConnectionOAuth, connection.id)
+    row.calendar_grant = get_encryption_service().encrypt("synthetic-calendar-credential")
+    calendar_grant = row.calendar_grant
+    await service.update_service(tool.id, update.model_copy(update={"expected_mcp_auth_type": "oauth"}))
+    await _migrate_mcp_auth_modes(db, transitions)
+    assert await _mcp_auth_modes_migrated(db, transitions)
+    assert tool.mcp_config["auth"]["type"] == "bearer"
+    assert (await db.get(ConnectionOAuth, connection.id)).grant is None
+    assert (await db.get(ConnectionOAuth, connection.id)).calendar_grant == calendar_grant
+    with pytest.raises(OAuthError, match="configuration"):
+        await oauth_service.start(connection, user_id)
+    # An old OAuth credential must not override the manually selected Bearer mode.
+    current = await service.get_service_by_id(tool.id)
+    _, params = await connection_service.get_params_as_dict(connection)
+    params["token"] = "synthetic-manual-token"
+    transport = _external_transport(current, params)
+    assert transport.auth is None
+    assert transport.headers["Authorization"] == "Bearer synthetic-manual-token"
+
+
+@pytest.mark.asyncio
+async def test_legacy_encrypted_connection_values_are_redacted_even_without_a_secret_definition(db, oauth_connection):
+    from app.connection import ConnectionParam
+
+    connection, *_ = oauth_connection
+    encrypted = get_encryption_service().encrypt("synthetic-retired-account-value")
+    param = ConnectionParam(connection_id=connection.id, param_name="old_token", param_value=encrypted)
+    db.add(param)
+    await db.flush()
+    _, safe, configured = await connection_service.get_params_for_api(connection)
+    assert safe["old_token"] is None and "old_token" in configured
+    overview = (await connection_service.connection_overviews([connection]))[0]
+    assert overview.params["old_token"] is None and "old_token" in overview.configured_params
+    assert (await connection_service.redact_param(param)).param_value is None
+    assert (await connection_service.redact_params([param]))[0].param_value is None
+
+
+@pytest.mark.asyncio
+async def test_authentication_change_clears_obsolete_credentials_and_preserves_shared_values(db, oauth_connection):
+    from app.services.schemas import McpConfig, ServiceUpdate
+    from core.util import SECRET_MASK
+
+    connection, _, tool, *_ = oauth_connection
+    url = tool.mcp_config["url"]
+    encryption = get_encryption_service()
+    tool.connection_schema = {"params": {"login": {"type": "string"}, "password": {"type": "password"}}}
+    tool.rest_config = {"base_url": "https://rest.example.test", "header_params": {"X-Login": "login"}}
+    tool.mcp_config = {"type": "http", "url": url,
+        "auth": {"type": "basic", "token_static": encryption.encrypt("obsolete-static")},
+        "headers": {"Authorization": encryption.encrypt("obsolete-header"), "X-Tenant": encryption.encrypt("tenant")}}
+    tool.global_params = {"password": {"value": encryption.encrypt("obsolete-global"), "forced": False}}
+    await db.flush()
+    await connection_service.set_params_bulk(connection.id, {"login": "shared-user", "password": "obsolete-local"})
+
+    update = ServiceUpdate(expected_mcp_auth_type="basic", mcp_config=McpConfig.model_validate({
+        "type": "http", "url": url, "auth": {"type": "oauth", "token_static": SECRET_MASK},
+        "headers": {"authorization": SECRET_MASK, "X-Tenant": SECRET_MASK},
+    }))
+    await service.update_service(tool.id, update)
+    assert tool.mcp_config["auth"]["type"] == "oauth"
+    assert tool.mcp_config["auth"]["token_static"] is None
+    assert set(tool.mcp_config["headers"]) == {"X-Tenant"}
+    assert set(tool.connection_schema["params"]) == {"login"}
+    assert "password" not in tool.global_params
+    _, params = await connection_service.get_params_as_dict(connection)
+    assert params == {"login": "shared-user"}
+    with pytest.raises(ValueError):
+        await service.update_service(tool.id, update)
 
 
 @pytest.mark.asyncio
@@ -481,7 +585,7 @@ async def test_real_http_and_sse_clients_discover_and_execute_with_oauth(committ
         tool = await db.get(Service, tool.id)
         # OAuth overrides ordinary Service credentials for this connection only.
         tool.mcp_config = {"type": "sse" if url.endswith("/sse") else "http", "url": url,
-                           "auth": {"type": "bearer", "param": "unused_token"},
+                           "auth": {"type": "oauth", "param": "unused_token", "url_param": "legacy_token"},
                            "headers": {"Authorization": "${connection:unused_token}"}}
         await db.commit()
         data, _ = callback(await oauth_service.start(connection, user_id))
@@ -677,11 +781,29 @@ async def test_calendar_oauth_keeps_mcp_grants_isolated_and_rotates_refresh_toke
     with pytest.raises(OAuthError, match='authorization_required'):
         await oauth_service.access_token(connection.id, grant.server_url, 'calendar')
 
+    from app.services.schemas import ServiceUpdate
+
+    exchange = oauth_service._exchange
+
+    async def change_mcp_while_calendar_exchanges(*args):
+        token = await exchange(*args)
+        await service.update_service(tool.id, ServiceUpdate(expected_mcp_auth_type="oauth", mcp_config={
+            "type": "http", "url": tool.mcp_config["url"], "auth": {"type": "none"},
+        }))
+        return token
+
+    renewal, _ = callback(await oauth_service.start(connection, user_id, purpose="calendar"))
+    monkeypatch.setattr(oauth_service, "_exchange", change_mcp_while_calendar_exchanges)
+    await oauth_service.complete(connection, renewal, user_id)
+    await db.refresh(row)
+    assert row.grant is None
+    assert (await oauth_service.status(connection, "calendar")).connected
+
 
 def test_legacy_tool_oauth_configuration_is_readable_without_manual_settings():
-    # OAuth now belongs to the connection; obsolete Service settings are ignored.
+    # The mode is explicit; obsolete Service-owned OAuth client settings are ignored.
     config = McpConfig.model_validate({"type": "http", "url": "https://mcp.example.test/mcp",
         "auth": {"type": "oauth", "oauth_client_id": "legacy-client", "oauth_scopes": "legacy-scope"}})
-    assert config.auth.type == "none"
+    assert config.auth.type == "oauth"
     assert "oauth_client_id" not in config.model_dump_json()
     assert "oauth_scopes" not in config.model_dump_json()

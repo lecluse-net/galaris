@@ -76,6 +76,17 @@ def test_mcp_literals_are_encrypted_at_rest_and_write_only() -> None:
     assert public["headers"]["X-Connection"] == "${connection:api_key}"
 
 
+def test_legacy_oauth_material_is_not_emitted_in_service_metadata_or_yaml() -> None:
+    from app.services.secrets import export_mcp_config
+
+    stored = {"type": "http", "token": "synthetic-legacy-token",
+        "auth": {"type": "oauth", "oauth_client_secret": "synthetic-client-secret",
+        "access_token": "synthetic-access-token", "refresh_token": "synthetic-refresh-token"}}
+    for safe in (public_mcp_config(stored), export_mcp_config(stored)):
+        assert safe["auth"]["type"] == "oauth"
+        assert "synthetic" not in repr(safe)
+
+
 def test_write_only_placeholders_preserve_existing_values() -> None:
     existing = protect_mcp_config({
         "type": "http",

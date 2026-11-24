@@ -8,17 +8,22 @@ autorisé, sans réponse brute ni jeton. Le bouton Réessayer relance l’action
 - Date : 2026-10-15.
 - Statut : accepté.
 
-Les connexions MCP HTTP/SSE proposent un bouton **Connecter le compte**, sans réglage
-OAuth dans le Service ni saisie habituelle de Client ID, scopes ou secret. `app.connection` possède
+Un Service MCP HTTP/SSE choisit son type d’authentification. Les connexions d’un Service
+en mode OAuth proposent **Connecter le compte**, sans saisie habituelle de Client ID, scopes ou secret. `app.connection` possède
 le parcours humain et les grants par connexion ; `app.services`
 construit les transports et conserve ses règles d'exposition et d'autorisation des fonctions.
 Les jetons ne sont ni des paramètres EAV, ni des secrets globaux du Service, ni des données
 fournies au modèle. Une table `connection_oauth`, supprimée avec sa connexion, conserve
 le grant et la demande temporaire dans des enveloppes chiffrées par la clé existante.
 Le bouton enregistre d’abord le brouillon de connexion, puis ouvre le fournisseur ;
-un échec d’enregistrement ne lance aucune autorisation. Les anciennes configurations
-OAuth du Service restent lisibles, normalisées vers une authentification ordinaire sans
-identifiants. Les accords liés à leur ancienne empreinte demandent une reconnexion.
+un échec d’enregistrement ne lance aucune autorisation. DbAdmin convertit les anciennes
+configurations qui ont déjà une autorisation MCP. Le mode devient OAuth et les accords
+conservent leur empreinte et leurs jetons. Le marqueur interne du Service distingue un mode
+déjà migré ou explicitement enregistré d’une configuration historique.
+Un changement manuel exige de confirmer le mode précédent. La transaction supprime les
+autorisations MCP et les paramètres d’authentification devenus inutilisés, en conservant les
+références actives et les autorisations Agenda. Le verrou du Service protège cette transition
+des écritures concurrentes et couvre la persistance d’un nouveau retour OAuth MCP.
 
 Le navigateur ouvre le fournisseur puis revient sur `/connection/oauth-callback`. Cette
 page transmet code et state à une API authentifiée par JWT web, protégée par
@@ -68,9 +73,9 @@ la destination MCP explicitement configurée peut être privée. HTTPS est requi
 Les configurations OAuth propriétaires hors métadonnées MCP restent hors de ce lot.
 
 Un marqueur typé, non sérialisé dans les paramètres, relie les transports à leur connexion
-et indique si celle-ci possède un accord ou une demande OAuth. Les autres connexions
-du même Service conservent leur authentification ordinaire. Le grant OAuth remplace les
-en-têtes d’authentification ordinaires et ne place jamais de jeton dans l’URL.
+et indique si elle possède un accord MCP. Chaque connexion à un Service en mode OAuth
+doit disposer de son propre accord. Seul le mode OAuth utilise cet accord, et le jeton
+est envoyé dans un en-tête d’authentification.
 L'adaptateur HTTPX commun aux clients FastMCP et Pydantic AI résout le grant au moment
 de chaque requête, dans une transaction autonome courte. Le verrou de ligne sérialise
 le renouvellement et sa rotation entre workers. L'empreinte lie le grant à l'agent, au Service,

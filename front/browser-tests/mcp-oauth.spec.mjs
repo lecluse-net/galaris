@@ -16,7 +16,7 @@ for (const [kind, width] of [['google', 390], ['microsoft', 1440]]) test(`calend
   })
   await page.route('**/synthetic-calendar-login?*', route => route.fulfill({ contentType: 'text/html', body: 'Synthetic calendar sign-in' }))
   const tool = { id: 8, code: 'synthetic_calendar', label: 'Synthetic Calendar', has_calendar: true,
-    calendar_config: { settings: { source_kind: kind } }, mcp_config: { type: 'http' }, global_params: {}, connection_schema: { params: {} } }
+    calendar_config: { settings: { source_kind: kind } }, mcp_config: { type: 'http', auth: { type: 'oauth' } }, global_params: {}, connection_schema: { params: {} } }
   await mount(page, 'app/connection/components/ConnectionForm.vue', { privileges: ['CONNECTION_EDIT'], props: {
     connection: { id: 42, agent_id: 7, service_id: 8, active: true }, connectionParams: {}, tools: [tool],
     agentOptions: [{ value: 7, label: 'Synthetic Agent', agentDriver: 'internal' }], serviceOptions: [{ id: 8, label: 'Synthetic Calendar' }],
@@ -179,7 +179,7 @@ test(`OAuth reuses an existing connection and its saved parameters (${scenario})
   await page.route('**/api/connections/overview?*', route => route.fulfill({ json: scenario === 'listed'
     ? [{ ...existing, params: { region: savedRegion, secret: null }, configured_params: ['secret'] }] : [] }))
   const tools = [{ id: 19, code: 'synthetic_mcp', label: 'Synthetic MCP', has_mcp: true,
-    mcp_config: { type: 'http', auth: { type: 'none' } },
+    mcp_config: { type: 'http', auth: { type: 'oauth' } },
     global_params: { secret: { configured: true, value: null, forced: false } }, connection_schema: { params: {
       region: { type: 'string', label: 'Service region', default: 'eu', required: false },
       secret: { type: 'password', label: 'Service secret', required: false },
@@ -258,7 +258,7 @@ test('OAuth retries a parameter save without recreating the connection or losing
   let parameterWrites = 0
   let starts = 0
   const tools = [{ id: 19, code: 'synthetic_mcp', label: 'Synthetic MCP', has_mcp: true,
-    mcp_config: { type: 'http', auth: { type: 'none' } },
+    mcp_config: { type: 'http', auth: { type: 'oauth' } },
     connection_schema: { params: { region: { type: 'string', label: 'Service region', required: false } } } }]
   await jsonRoute(page, '**/api/services', tools)
   await jsonRoute(page, '**/api/connections/service-options', tools)
@@ -313,8 +313,8 @@ test('OAuth retries a parameter save without recreating the connection or losing
   expect(starts).toBe(2)
 })
 
-for (const transport of ['http', 'sse', 'stdio']) {
-  test(`account authorization belongs to the ${transport} connection`, async ({ page }) => {
+for (const [transport, auth] of [['http', 'oauth'], ['sse', 'oauth'], ['http', 'bearer'], ['http', 'header'], ['http', 'basic'], ['http', 'none'], ['stdio', 'none']]) {
+  test(`account authorization for a ${transport} connection using ${auth}`, async ({ page }) => {
     await jsonRoute(page, '**/api/agents?*', [{ id: 7, first_name: 'Synthetic', last_name: 'Agent', agent_driver: 'internal' }])
   await jsonRoute(page, '**/api/agents/selection?*', [{ id: 7, label: 'Synthetic Agent', agent_driver: 'internal' }])
     await jsonRoute(page, '**/api/connections/42/oauth', { connected: false, pending: false, reconnect_required: false })
@@ -325,12 +325,12 @@ for (const transport of ['http', 'sse', 'stdio']) {
         agentOptions: [{ value: 7, label: 'Synthetic agent', agentDriver: 'internal' }],
         serviceOptions: [{ id: 19, label: 'Synthetic MCP' }],
         tools: [{ id: 19, code: 'synthetic_mcp', label: 'Synthetic MCP', has_mcp: true,
-          mcp_config: { type: transport, auth: { type: 'none' } }, connection_schema: { params: {} } }],
+          mcp_config: { type: transport, auth: { type: auth } }, connection_schema: { params: {} } }],
       },
     })
     const button = page.getByRole('button', { name: 'Connect account', exact: true })
-    if (transport === 'stdio') await expect(button).toHaveCount(0)
-    else await expect(button).toBeEnabled()
+    if (auth === 'oauth') await expect(button).toBeEnabled()
+    else await expect(button).toHaveCount(0)
   })
 }
 
@@ -352,7 +352,7 @@ test(`account authorization saves first and retries errors (connection changes: 
       agentOptions: [{ value: 7, label: 'Synthetic agent', agentDriver: 'internal' }],
       serviceOptions: [{ id: 19, label: 'Synthetic MCP' }],
       tools: [{ id: 19, code: 'synthetic_mcp', label: 'Synthetic MCP', has_mcp: true,
-        mcp_config: { type: 'http', auth: { type: 'none' } }, connection_schema: { params: {} } }],
+        mcp_config: { type: 'http', auth: { type: 'oauth' } }, connection_schema: { params: {} } }],
     },
   })
   await page.evaluate(() => window.testApp.setProps({ persistForAction: async payload => {

@@ -180,6 +180,35 @@ async function openMcpServiceEditor(page, options = {}) {
 const mcpDiagnostic = page => page.getByRole('dialog').filter({ has: page.getByRole('button', { name: 'Run test', exact: true }) })
 const mcpTestUrl = '**/api/services/test-mcp'
 
+test('the chosen MCP authentication is saved and shown when the service is reopened', async ({ page }) => {
+  await openMcpServiceEditor(page)
+  let saved = mcpService
+  await page.route('**/api/services', route => route.fulfill({ json: [saved] }))
+  await page.route('**/api/services/12', route => {
+    if (route.request().method() !== 'GET') saved = { ...saved, ...route.request().postDataJSON() }
+    return route.fulfill({ json: saved })
+  })
+  const editor = page.getByRole('dialog').filter({ hasText: 'Edit service' })
+  const authType = editor.getByRole('combobox', { name: 'Auth type' })
+  await authType.click()
+  await page.getByRole('option', { name: 'OAuth 2.0', exact: true }).click()
+  await expect(editor.getByText('Authorize and test the account from Connections.')).toBeVisible()
+  await editor.getByRole('button', { name: 'Save', exact: true }).click()
+  const confirmation = page.getByRole('dialog').filter({ hasText: 'Change MCP authentication' })
+  const confirm = confirmation.getByRole('button', { name: 'Change and clear credentials' })
+  await expect(confirm).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(confirmation).toHaveCount(0)
+  expect(saved.mcp_config.auth.type).toBe('bearer')
+  await editor.getByRole('button', { name: 'Save', exact: true }).click()
+  await confirm.click()
+  await expect(editor).toHaveCount(0)
+  expect(saved.mcp_config.auth.type).toBe('oauth')
+  expect(saved.expected_mcp_auth_type).toBe('bearer')
+  await page.getByRole('article', { name: 'Synthetic MCP', exact: true }).getByRole('button', { name: 'Edit service' }).click()
+  await expect(editor.getByText('OAuth 2.0', { exact: true })).toBeVisible()
+})
+
 test('an MCP result from a closed dialog cannot appear after reopening', async ({ page }, testInfo) => {
   let release
   const pending = new Promise(resolve => { release = resolve })

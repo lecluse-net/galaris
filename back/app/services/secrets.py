@@ -9,6 +9,7 @@ from typing import Any, cast
 
 from core.util import SECRET_MASK, get_encryption_service
 
+MCP_AUTH_MODE_EXPLICIT = "auth_mode_explicit"
 
 _CONNECTION_REFERENCE_RE = re.compile(
     r"\$\{connection:([A-Za-z0-9_.-]+)\}"
@@ -129,6 +130,7 @@ def protect_mcp_config(
 def runtime_mcp_config(config: Mapping[str, Any]) -> dict[str, Any]:
     """Return an in-memory MCP configuration with static values decrypted."""
     runtime = copy.deepcopy(dict(config))
+    runtime.pop(MCP_AUTH_MODE_EXPLICIT, None)
     auth = cast(dict[str, Any], runtime.get("auth") or {})
     token = auth.get("token_static")
     if isinstance(token, str):
@@ -142,11 +144,13 @@ def runtime_mcp_config(config: Mapping[str, Any]) -> dict[str, Any]:
 
 def public_mcp_config(config: Mapping[str, Any]) -> dict[str, Any]:
     """Return MCP metadata without any literal static value."""
-    public = copy.deepcopy(dict(config))
+    from .schemas import McpAuthPublic, McpConfigPublic
+
+    public = {key: copy.deepcopy(value) for key, value in config.items() if key in McpConfigPublic.model_fields}
     auth = cast(dict[str, Any], public.get("auth") or {})
     token = auth.pop("token_static", None)
     auth["token_static_configured"] = bool(token)
-    public["auth"] = auth
+    public["auth"] = {key: value for key, value in auth.items() if key in McpAuthPublic.model_fields}
     for name in ("headers", "env"):
         values = cast(dict[str, str], public.get(name) or {})
         public[name] = {key: _public_value(value) for key, value in values.items()}

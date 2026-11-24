@@ -74,7 +74,7 @@
         <DialogHeader :title="editingTool ? $t('services.editService') : $t('services.newService')" :close-label="$t('common.close')" />
 
         <q-card-section class="galaris-dialog-body">
-          <q-form @submit.prevent="saveTool" class="q-gutter-y-md">
+          <q-form @submit.prevent="saveTool()" class="q-gutter-y-md">
 
             <section class="tool-section">
               <div class="text-subtitle2 text-grey-7 q-mb-sm">{{ $t('services.mainFields') }}</div>
@@ -169,7 +169,9 @@
 
                         <div class="text-caption text-grey-6 q-mt-sm q-mb-xs">{{ $t('services.auth') }}</div>
                         <div class="row q-gutter-md items-start">
-                          <q-select v-model="form.mcp_config.auth.type" :options="authTypeOptions" :label="$t('services.authType')"
+                          <q-select :model-value="form.mcp_config.auth.type" :options="authTypeOptions" :label="$t('services.authType')"
+                            @update:model-value="selectMcpAuth"
+                            :hint="form.mcp_config.auth.type === 'oauth' ? $t('services.authOAuthHint') : undefined"
                             emit-value map-options dense outlined class="col-auto" style="min-width: 140px" />
                           <template v-if="form.mcp_config.auth.type === 'bearer'">
                             <ConnectionParamSelect v-model="form.mcp_config.auth.param" :options="connParamNames" :label="$t('services.tokenParam')"
@@ -194,7 +196,7 @@
                           </template>
                         </div>
                         <q-banner
-                          v-if="form.mcp_config.auth.token_static_configured"
+                          v-if="form.mcp_config.auth.type !== 'oauth' && form.mcp_config.auth.token_static_configured"
                           dense rounded class="bg-solaire-orange-light text-solaire-orange q-mt-sm"
                         >
                           <template #avatar><q-icon name="key" color="solaire-orange" /></template>
@@ -207,7 +209,7 @@
                             />
                           </template>
                         </q-banner>
-                        <q-input v-if="!['none', 'basic'].includes(form.mcp_config.auth.type) && form.mcp_config.type !== 'stdio'"
+                        <q-input v-if="['bearer', 'header'].includes(form.mcp_config.auth.type) && form.mcp_config.type !== 'stdio'"
                           v-model="form.mcp_config.auth.url_param" :label="$t('services.urlParam')"
                           dense outlined style="max-width: 280px" :hint="$t('services.urlParamHint')" />
                         <div class="text-caption text-grey-6 q-mt-sm q-mb-xs">{{ $t('services.staticHeaders') }}</div>
@@ -215,7 +217,7 @@
                           :placeholder="$t('services.headersPlaceholder')" :hint="$t('services.writeOnlyMappingHint')" />
                         <div class="row justify-end q-mt-md">
                           <q-btn
-                            v-if="canEdit"
+                            v-if="canEdit && form.mcp_config.auth.type !== 'oauth'"
                             outline
                             color="secondary"
                             icon="lan"
@@ -378,7 +380,18 @@
         <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
           <q-btn v-if="editingTool?.can_edit" outline color="primary" icon="download" :label="$t('services.exportYaml')" @click="exportTool(editingTool)" />
           <q-btn color="primary" outline :label="$t('common.cancel')" v-close-popup />
-          <q-btn v-if="canEdit" color="primary" :label="editingTool ? $t('common.save') : $t('common.create')" :loading="saving" :disable="missingCreationCapability" @click="saveTool" />
+          <q-btn v-if="canEdit" color="primary" :label="editingTool ? $t('common.save') : $t('common.create')" :loading="saving" :disable="missingCreationCapability" @click="saveTool()" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog data-confirmation v-model="mcpAuthChangeOpen">
+      <q-card class="galaris-dialog-card" style="width: min(560px, 95vw); max-width: 95vw">
+        <DialogHeader :title="$t('services.changeMcpAuthTitle')" :close-label="$t('common.close')" />
+        <q-card-section class="galaris-dialog-body">{{ $t('services.changeMcpAuthWarning') }}</q-card-section>
+        <q-card-actions align="right" class="q-pa-md galaris-dialog-actions">
+          <q-btn color="primary" outline :label="$t('common.cancel')" v-close-popup />
+          <q-btn data-autofocus color="negative" :label="$t('services.changeMcpAuthConfirm')" @click="confirmMcpAuthChange" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -566,6 +579,7 @@ const columns = computed(() => [
 
 const authTypeOptions = computed(() => [
   { label: t('services.authNone'), value: 'none' },
+  ...(form.value.mcp_config.type === 'stdio' ? [] : [{ label: t('services.authOAuth'), value: 'oauth' }]),
   { label: t('services.authBearer'), value: 'bearer' },
   { label: t('services.authHeader'), value: 'header' },
   { label: t('services.authBasic'), value: 'basic' },
@@ -631,6 +645,7 @@ const saving = ref(false)
 const editingTool = ref<Service | null>(null)
 const deletingTool = ref<Service | null>(null)
 const mcpTestDialogOpen = ref(false)
+const mcpAuthChangeOpen = ref(false)
 
 const hasMcp = ref(false)
 const hasApi = ref(false)
@@ -714,7 +729,9 @@ function addCapability(value: string) {
   if (!recognized) return
   if (recognized) {
     if (code === 'mcp' && ['http', 'sse', 'stdio'].includes(protocol)) {
-      form.value.mcp_config.type = protocol as McpConfig['type']; hasMcp.value = true
+      form.value.mcp_config.type = protocol as McpConfig['type']
+      if (protocol === 'stdio' && form.value.mcp_config.auth.type === 'oauth') form.value.mcp_config.auth.type = 'none'
+      hasMcp.value = true
     } else if (code === 'api') hasApi.value = true
     else if (code === 'file_share') { form.value.file_share_config.service = protocol; hasFileShare.value = true; onFileShareServiceChange() }
     else if (code === 'messenger') { form.value.messenger_config.service = protocol; hasMessenger.value = true; onMessengerServiceChange(true) }
@@ -765,6 +782,7 @@ const pendingParamUsages = computed(() =>
 )
 watch(dialogOpen, open => {
   if (!open) {
+    mcpAuthChangeOpen.value = false
     protocolMenuOpen.value = false
     protocolDeleteOpen.value = false
     pendingProtocolDelete.value = ''
@@ -798,6 +816,7 @@ function mcpConfigForForm(config?: McpConfig | null): McpFormConfig {
   const defaults = emptyMcpConfig()
   if (!config) return defaults
   const cloned: McpConfig = JSON.parse(JSON.stringify(config))
+  delete cloned.auth?.token_static
   return {
     ...defaults,
     ...cloned,
@@ -806,6 +825,14 @@ function mcpConfigForForm(config?: McpConfig | null): McpFormConfig {
       ...(cloned.auth ?? {}),
     },
   }
+}
+
+function selectMcpAuth(type: McpAuth['type']) {
+  if (type === form.value.mcp_config.auth.type) return
+  const saved = editingTool.value?.mcp_config
+  form.value.mcp_config.auth = saved && (saved.auth?.type ?? 'none') === type
+    ? mcpConfigForForm(saved).auth
+    : { ...emptyMcpConfig().auth, type }
 }
 const emptyFileShareConfig = (): FileShareConfig => ({ service: '', base_url: '', param_map: {} })
 
@@ -1159,7 +1186,12 @@ function buildCandidateDefinition(): ServiceCreate {
   }
 }
 
-async function saveTool() {
+function confirmMcpAuthChange() {
+  mcpAuthChangeOpen.value = false
+  void saveTool(true)
+}
+
+async function saveTool(confirmedMcpAuth = false) {
   if (!canEdit.value) return
   if (missingCreationCapability.value) {
     $q.notify({ type: 'warning', message: t('services.capabilityRequired') }); return
@@ -1167,11 +1199,20 @@ async function saveTool() {
   if (!form.value.code.trim() || !form.value.label.trim()) {
     $q.notify({ type: 'warning', message: t('services.saveRequired') }); return
   }
-  saving.value = true
   try {
     const payload = buildPayload()
+    const savedMcp = editingTool.value?.mcp_config
+    const previousAuth = savedMcp?.auth?.type ?? 'none'
+    const newAuth = payload.mcp_config?.auth?.type ?? 'none'
+    const changingMcpAuth = !!savedMcp && previousAuth !== newAuth
+    if (changingMcpAuth && !confirmedMcpAuth) {
+      mcpAuthChangeOpen.value = true
+      return
+    }
+    saving.value = true
     if (editingTool.value) {
-      await serviceStore.updateService(editingTool.value.id, { label: form.value.label, description: form.value.description, icon: serviceIcon.value, catalog: catalogInfo.value, ...payload })
+      await serviceStore.updateService(editingTool.value.id, { label: form.value.label, description: form.value.description, icon: serviceIcon.value, catalog: catalogInfo.value, ...payload,
+        expected_mcp_auth_type: changingMcpAuth ? previousAuth : undefined })
       $q.notify({ type: 'positive', message: t('services.updated') })
     } else {
       await serviceStore.createService({ code: form.value.code, label: form.value.label, description: form.value.description, icon: serviceIcon.value, catalog: catalogInfo.value, ...payload })

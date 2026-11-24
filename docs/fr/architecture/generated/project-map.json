@@ -4488,6 +4488,7 @@
           "back/app/services/authorization_router.py",
           "back/app/services/authorization_views.py",
           "back/app/services/catalog.py",
+          "back/app/services/mcp_authentication.py",
           "back/app/services/runtime_authorization.py",
           "back/app/services/secrets.py",
           "back/app/services/service.py"
@@ -10288,7 +10289,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_catalog_refresh",
-        "line": 393,
+        "line": 396,
         "module": "app.services",
         "name": "service_admin_catalog_refresh",
         "namespace": "service"
@@ -10376,7 +10377,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_create",
-        "line": 339,
+        "line": 342,
         "module": "app.services",
         "name": "service_admin_create",
         "namespace": "service"
@@ -10384,7 +10385,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_delete",
-        "line": 357,
+        "line": 360,
         "module": "app.services",
         "name": "service_admin_delete",
         "namespace": "service"
@@ -10392,7 +10393,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_function_get",
-        "line": 381,
+        "line": 384,
         "module": "app.services",
         "name": "service_admin_function_get",
         "namespace": "service"
@@ -10400,7 +10401,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_function_list",
-        "line": 375,
+        "line": 378,
         "module": "app.services",
         "name": "service_admin_function_list",
         "namespace": "service"
@@ -10408,7 +10409,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_function_set",
-        "line": 387,
+        "line": 390,
         "module": "app.services",
         "name": "service_admin_function_set",
         "namespace": "service"
@@ -10416,7 +10417,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_get",
-        "line": 333,
+        "line": 336,
         "module": "app.services",
         "name": "service_admin_get",
         "namespace": "service"
@@ -10424,7 +10425,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_global_params_set",
-        "line": 363,
+        "line": 366,
         "module": "app.services",
         "name": "service_admin_global_params_set",
         "namespace": "service"
@@ -10432,7 +10433,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_impact",
-        "line": 351,
+        "line": 354,
         "module": "app.services",
         "name": "service_admin_impact",
         "namespace": "service"
@@ -10440,7 +10441,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_list",
-        "line": 327,
+        "line": 330,
         "module": "app.services",
         "name": "service_admin_list",
         "namespace": "service"
@@ -10448,7 +10449,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_mcp_test",
-        "line": 369,
+        "line": 372,
         "module": "app.services",
         "name": "service_admin_mcp_test",
         "namespace": "service"
@@ -10456,7 +10457,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_update",
-        "line": 345,
+        "line": 348,
         "module": "app.services",
         "name": "service_admin_update",
         "namespace": "service"

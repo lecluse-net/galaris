@@ -1127,8 +1127,8 @@ def _external_transport(tool: Any, params: dict[str, Any]) -> Any:
     mcp = tool.mcp
     if mcp.type in {"sse", "http"}:
         url = resolve_connection_references(mcp.url or "", params)
-        oauth = mcp_oauth_auth(params, url)
-        if oauth is None and mcp.auth.url_param:
+        oauth = mcp_oauth_auth(params, url) if mcp.auth.type == "oauth" else None
+        if mcp.auth.type != "oauth" and mcp.auth.url_param:
             url = _inject_url_param(url, mcp.auth, params)
         transport = SSETransport if mcp.type == "sse" else StreamableHttpTransport
         return transport(url, headers=_resolve_auth_headers(mcp, params, oauth=oauth is not None), auth=oauth)
@@ -1347,15 +1347,19 @@ async def list_external_mcp_capabilities(tool: ServiceConfiguration, params: dic
                                          include_resources: bool = True) -> list[tuple[str, str, Literal["tool", "resource", "prompt"]]]:
     result: list[tuple[str, str, Literal["tool", "resource", "prompt"]]] = []
     async with Client(_external_transport(tool, params)) as client:
+        capabilities = client.server_capabilities
+        if capabilities is None:
+            raise RuntimeError("MCP server capabilities were not negotiated")
         tools = await client.list_tools()
         result.extend((item.name, item.description or "", "tool") for item in tools)
-        if include_resources:
+        if include_resources and capabilities.resources is not None:
             resources = await client.list_resources()
             templates = await client.list_resource_templates()
             result.extend((str(item.uri), item.description or "", "resource") for item in resources)
             result.extend((item.uri_template, item.description or "", "resource") for item in templates)
-        prompts = await client.list_prompts()
-    result.extend((item.name, item.description or "", "prompt") for item in prompts)
+        if capabilities.prompts is not None:
+            prompts = await client.list_prompts()
+            result.extend((item.name, item.description or "", "prompt") for item in prompts)
     return result
 
 

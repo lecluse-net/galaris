@@ -8,7 +8,7 @@ from app.connection import Connection, ConnectionParam, ConnectionFunctionState,
 from app.services import service, native_service_codes_for_service
 from app.services.models import Service
 from app.services.protocols import ProtocolConfig, bind_protocol_connection, reset_protocol_connection
-from app.services.schemas import ServiceCreate, ServiceUpdate, ServiceGlobalParamsUpdate, ServiceGlobalParamUpdate, FileShareConfig, ConnectionSchema
+from app.services.schemas import ServiceCreate, ServiceUpdate, ServiceGlobalParamsUpdate, ServiceGlobalParamUpdate, FileShareConfig, ConnectionSchema, McpAuth, McpConfig
 from app.services.projections import to_public
 from app.services.protocol_migration import _convert_legacy_tools, _introduces_protocols, _legacy_tools_converted
 from app.calendar.models import CalendarFeed
@@ -46,6 +46,27 @@ def test_ical_advertises_standard_connection_parameter_bindings():
     assert "url" not in protocol.parameters
     assert not {"access_mode", "trigger_on_start", "trigger_on_alarm", "action_kind",
         "process_workflow_id", "action_instructions"} & protocol.connection_parameters.keys()
+
+
+@pytest.mark.asyncio
+async def test_basic_mcp_keeps_its_password_parameter_until_authentication_is_disabled(db):
+    mcp = McpConfig(type="http", url="https://mcp.example.test", auth=McpAuth(type="basic"))
+    provider = await service.create_service(ServiceCreate(code="synthetic-basic-mcp", label="Synthetic Basic MCP", mcp_config=mcp))
+    assert to_public(provider).connection_schema.params["password"].type == "password"
+    updated = await service.update_service(provider.id, ServiceUpdate(
+        mcp_config=mcp.model_copy(update={"auth": McpAuth()}), expected_mcp_auth_type="basic",
+    ))
+    assert updated is not None
+    assert "password" not in to_public(updated).connection_schema.params
+
+
+@pytest.mark.asyncio
+async def test_open_mcp_does_not_invent_a_password_parameter(db):
+    mcp = McpConfig(type="http", url="https://mcp.example.test/mcp")
+    provider = await service.create_service(ServiceCreate(code="synthetic-open-mcp", label="Synthetic open MCP", mcp_config=mcp))
+    options = await connection_service.connection_tool_options()
+    option = next(item for item in options if item["id"] == provider.id)
+    assert "password" not in option["connection_schema"]["params"]
 
 
 @pytest.mark.asyncio

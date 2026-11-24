@@ -42,6 +42,11 @@ nom, compléter les adresses propres à votre installation, choisir les protocol
 et enregistrer. Créer ensuite les connexions des agents et régler leurs autorisations.
 L'ajout d'une fiche n'accorde aucun accès et n'active aucune connexion automatiquement.
 
+Pour un Service MCP HTTP ou SSE, choisissez le type d’authentification dans la fiche du
+Service. Le choix **OAuth 2.0** affiche **Connecter le compte** dans la connexion de l’agent.
+Si vous changez ensuite de méthode, la confirmation indique quels identifiants seront effacés.
+Suivez le [parcours d’autorisation OAuth](../admin/service-administration.md#mcp-oauth).
+
 Le catalogue initial propose Qonto, Nextcloud, GitLab, Matrix, n8n, Redmine et Telegram.
 Les fiches expliquent les capacités proposées. Une API REST ne garantit pas toutes les
 fonctionnalités du produit ; les droits et limites du fournisseur continuent de s'appliquer.

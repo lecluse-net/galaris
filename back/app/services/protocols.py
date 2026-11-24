@@ -235,21 +235,31 @@ def protocol_parameter_bindings(protocol: str) -> dict[str, dict[str, Any]]:
         for role, (name, suggested) in roles.items()}
 
 
-def referenced_protocol_params(*configs: object) -> set[str]:
+def referenced_protocol_params(*configs: object, mcp_config: dict[str, Any] | None = None) -> set[str]:
     """Keep a protocol parameter while another active protocol still references it."""
     names: set[str] = set()
-    def visit(value: object) -> None:
+    def visit(value: object, *, literal_names: bool) -> None:
         if isinstance(value, str):
-            names.add(value)
+            if literal_names:
+                names.add(value)
             names.update(re.findall(r"\$\{connection:([^}]+)\}", value))
         elif isinstance(value, dict):
             for child in cast(dict[object, object], value).values():
-                visit(child)
+                visit(child, literal_names=literal_names)
         elif isinstance(value, list):
             for child in cast(list[object], value):
-                visit(child)
+                visit(child, literal_names=literal_names)
     for config in configs:
-        visit(config)
+        visit(config, literal_names=True)
+    if mcp_config:
+        # MCP literals are values unless a field explicitly names a Connection parameter.
+        # In particular, Basic login/password defaults are inactive for an open MCP.
+        visit(mcp_config, literal_names=False)
+        auth = cast(dict[str, Any], mcp_config.get("auth") or {})
+        if auth.get("type") == "basic":
+            names.update((auth.get("login_param", "login"), auth.get("password_param", "password")))
+        if (auth.get("type") in ("bearer", "header") or (auth.get("type") != "oauth" and auth.get("url_param"))) and (param := auth.get("param")):
+            names.add(param)
     return names
 
 

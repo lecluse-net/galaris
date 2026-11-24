@@ -25,7 +25,7 @@ from sqlalchemy import select
 
 from app.services.facade import get_service_by_id, mcp_http_client
 from app.services import McpConfig
-from app.services.facade import resolve_connection_references
+from app.services.facade import lock_services, resolve_connection_references
 from core.database import get_db
 from core.settings import settings
 from core.util import get_encryption_service
@@ -227,7 +227,7 @@ async def configuration(connection: Connection, purpose: Literal["mcp", "calenda
         url, binding, params = await calendar_configuration(connection)
         return None, url, binding, params
     tool = await get_service_by_id(connection.service_id)
-    if tool is None or tool.mcp is None or tool.mcp.type == "stdio":
+    if tool is None or tool.mcp is None or tool.mcp.auth.type != "oauth" or tool.mcp.type == "stdio":
         raise OAuthError("configuration")
     _, params = await connection_service.get_params_as_dict(connection)
     url = resolve_connection_references(tool.mcp.url or "", params)
@@ -408,6 +408,10 @@ async def _registered_client(metadata: AuthorizationMetadata, url: str, callback
 
 
 async def _store_pending(connection: Connection, pending: Pending, state: str, *, expires_in: int = 600) -> None:
+    if pending.grant.purpose == "mcp":
+        await lock_services([connection.service_id])
+        if (await configuration(connection, "mcp"))[2] != pending.grant.binding:
+            raise OAuthError("invalid_state")
     # Serialize starts/disconnects on the parent even when no credential exists.
     await get_db().execute(select(Connection.id).where(Connection.id == connection.id).with_for_update())
     row = await _row(connection.id, lock=True)
@@ -626,7 +630,9 @@ async def complete(connection: Connection, callback: OAuthCallback, user_id: int
     _, _, binding, _ = await configuration(connection, pending.grant.purpose)
     # Consume before external I/O: denial, interruption and a lost response cannot
     # make this code reusable. A failed exchange requires a fresh authorization.
-    generation = row.state_hash
+    # Keep the protocol identifiable while the external exchange is in flight.
+    generation = f"{pending.grant.purpose}:{row.state_hash}"[:64]
+    row.state_hash = generation
     row.pending = None
     row.expires_at = None
     await get_db().commit()
@@ -651,19 +657,35 @@ async def complete(connection: Connection, callback: OAuthCallback, user_id: int
     await get_db().commit()
 
 
+async def _clear_authorization(row: ConnectionOAuth, purpose: Literal["mcp", "calendar"]) -> None:
+    if purpose == "calendar":
+        row.calendar_grant = None
+    else:
+        row.grant = None
+    pending = Pending.model_validate_json(_decrypt(row.pending)) if row.pending else None
+    other_protocol = "calendar:" if purpose == "mcp" else "mcp:"
+    clear_pending = pending.grant.purpose == purpose if pending else not (row.state_hash or "").startswith(other_protocol)
+    if clear_pending:
+        row.pending, row.state_hash, row.expires_at = None, None, None
+    if row.grant is None and row.calendar_grant is None and row.state_hash is None and row.pending is None:
+        await get_db().delete(row)
+
+
+async def clear_service_mcp_authorizations(service_id: int) -> None:
+    """Clear MCP credentials within the Service update transaction."""
+    db = get_db()
+    rows = await db.scalars(select(ConnectionOAuth).join(Connection).where(Connection.service_id == service_id)
+        .order_by(ConnectionOAuth.connection_id).with_for_update(of=ConnectionOAuth)
+        .execution_options(populate_existing=True))
+    for row in rows:
+        await _clear_authorization(row, "mcp")
+
+
 async def disconnect(connection: Connection, purpose: Literal["mcp", "calendar"] = "mcp") -> None:
     await get_db().execute(select(Connection.id).where(Connection.id == connection.id).with_for_update())
     row = await _row(connection.id, lock=True)
     if row:
-        if purpose == "calendar":
-            row.calendar_grant = None
-        else:
-            row.grant = None
-        pending = Pending.model_validate_json(_decrypt(row.pending)) if row.pending else None
-        if not pending or pending.grant.purpose == purpose:
-            row.pending, row.state_hash, row.expires_at = None, None, None
-        if row.grant is None and row.calendar_grant is None and row.pending is None:
-            await get_db().delete(row)
+        await _clear_authorization(row, purpose)
     await _authorization_changed(connection.id, purpose)
     await get_db().commit()
 

@@ -26,15 +26,12 @@ class ServiceCatalogMetadata(BaseModel):
 # MCP configuration
 # =============================================================================
 
+McpAuthType = Literal["oauth", "bearer", "header", "basic", "none"]
+
+
 class McpAuth(BaseModel):
     """Authentication configuration for an MCP server."""
-    type: Literal["bearer", "header", "basic", "none"] = "none"
-
-    @field_validator("type", mode="before")
-    @classmethod
-    def connection_owned_oauth(cls, value: object) -> object:
-        # Read previously saved Services without retaining connection credentials.
-        return "none" if value == "oauth" else value
+    type: McpAuthType = "none"
 
     # Header name for custom-header authentication.
     header_name: str = "Authorization"
@@ -70,15 +67,16 @@ class McpConfig(BaseModel):
     auth: McpAuth = Field(default_factory=McpAuth)
     timeout: int = 120
 
+    @model_validator(mode="after")
+    def oauth_requires_http(self) -> "McpConfig":
+        if self.type == "stdio" and self.auth.type == "oauth":
+            raise ValueError("MCP OAuth requires HTTP or SSE")
+        return self
+
 class McpAuthPublic(BaseModel):
     """Read model exposing credential presence but never its value."""
 
-    type: Literal["bearer", "header", "basic", "none"] = "none"
-
-    @field_validator("type", mode="before")
-    @classmethod
-    def connection_owned_oauth(cls, value: object) -> object:
-        return "none" if value == "oauth" else value
+    type: McpAuthType = "none"
     header_name: str = "Authorization"
     param: Optional[str] = None
     login_param: str = "login"
@@ -288,6 +286,7 @@ class ServiceUpdate(BaseModel):
 
     description: Optional[str] = None
     mcp_config: Optional[McpConfig] = None
+    expected_mcp_auth_type: McpAuthType | None = None
     rest_config: RestConfig | None = None
     file_share_config: Optional[FileShareConfig] = None
     messenger_config: Optional[MessengerConfig] = None

@@ -16,11 +16,18 @@ def mcp_oauth_auth(params: Mapping[str, object], server_url: str) -> httpx.Auth 
     from .oauth_runtime import mcp_oauth_auth as build_auth
     return build_auth(params, server_url)
 
+
+async def clear_service_mcp_authorizations(service_id: int) -> None:
+    from .oauth_service import clear_service_mcp_authorizations as clear_authorizations
+    await clear_authorizations(service_id)
+
 from . import admin_service as administration
 from .parameter_resolution import effective_param_value_expression as effective_param_value_expression
 from .schemas import EffectiveFunctionState as EffectiveFunctionState
 
 from .connection_service import (
+    clear_service_param_values as clear_service_param_values,
+    services_with_mcp_oauth_grants as services_with_mcp_oauth_grants,
     count_connections_by_service,
     get_management_scope as get_management_scope,
     tool_connection_options,
