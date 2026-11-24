@@ -208,6 +208,7 @@ export interface Service {
     has_calendar?: boolean
     can_edit: boolean
     can_disable: boolean
+    desktop_mcp_relay?: boolean
     mcp_config?: McpConfig | null
     file_share_config?: FileShareConfig | null
     messenger_config?: MessengerConfig | null

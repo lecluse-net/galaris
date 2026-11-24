@@ -9,6 +9,9 @@ import { configureUpdates } from './updates.ts'
 import type { DesktopState, Locale } from './contracts.ts'
 import messages from '../renderer/messages.json'
 import { writeFailure } from './diagnostics.ts'
+import { DesktopMcpRelay } from './mcpRelay.ts'
+import { ChatScreenChannel } from './chatScreen.ts'
+import { ScreenPrompt } from './screenPrompt.ts'
 
 const launcherURL = 'galaris-desktop://launcher/index.html'
 protocol.registerSchemesAsPrivileged([{ scheme: 'galaris-desktop', privileges: { standard: true, secure: true } }])
@@ -27,6 +30,8 @@ let updatePromptPending = false
 let state: DesktopState
 let updates: ReturnType<typeof configureUpdates>
 let interval: NodeJS.Timeout | undefined
+let relay: DesktopMcpRelay
+let chatScreen: ChatScreenChannel
 
 function t(key: keyof typeof messages.en, parameters: Record<string, string> = {}): string {
   let value: string = messages[state?.locale ?? 'en'][key]
@@ -41,6 +46,23 @@ function showLauncher(): void {
   launcher.show()
   launcher.focus()
   broadcast()
+}
+function showSettings(page: DesktopState['settingsPage']): void {
+  state.settingsPage = page
+  showLauncher()
+}
+
+async function getWorkspaceAccess(origin: string): Promise<string | null> {
+  const contents = remote?.active
+  if (!contents || contents.isDestroyed() || state.server !== origin || !sameOrigin(contents.getURL(), origin)) return null
+  try {
+    const token: unknown = await contents.executeJavaScriptInIsolatedWorld(1002, [{
+      code: 'location.origin === ' + JSON.stringify(origin) + ' ? localStorage.getItem("access_token") : null'
+    }])
+    return state.server === origin && remote?.active === contents && !contents.isDestroyed()
+      && sameOrigin(contents.getURL(), origin) && typeof token === 'string' && token.length <= 4096
+      && /^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token) ? token : null
+  } catch { return null }
 }
 function recordFailure(stage: string, error: unknown): boolean {
   try { writeFailure(app.getPath('userData'), app.getVersion(), stage, error); return true } catch {
@@ -66,6 +88,8 @@ function authorize(event: Electron.IpcMainInvokeEvent, workspace = false): void 
 
 function configureSession(origin: string): Electron.Session {
   const ses = session.fromPartition(partitionFor(origin))
+  chatScreen.install(ses, origin, contents => !quitting && !installing && remote?.origin === origin
+    && remote.active === contents)
   ses.setSpellCheckerEnabled(true)
   if (process.platform !== 'darwin') ses.setSpellCheckerLanguages(['fr', 'en-US'].filter(language => ses.availableSpellCheckerLanguages.includes(language)))
   // Replacing handlers prevents accumulation when the same server is reopened.
@@ -157,6 +181,7 @@ async function connect(input: unknown): Promise<void> {
     remote = win
     candidate = undefined
     state.server = origin
+    relay.activate(origin)
     state.connecting = false
     window.on('closed', () => {
       if (remote !== win) return
@@ -185,8 +210,9 @@ async function connect(input: unknown): Promise<void> {
 function buildMenu(): void {
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     { label: t('appMenu'), submenu: [
-      { label: t('changeServer'), accelerator: 'CmdOrCtrl+,', click: showLauncher },
-      { label: t('check'), click: () => { showLauncher(); void updates.check() } },
+      { label: t('changeServer'), accelerator: 'CmdOrCtrl+,', click: () => showSettings('server') },
+      { label: t('mcpTitle'), click: () => showSettings('mcp') },
+      { label: t('check'), click: () => { showSettings('server'); void updates.check() } },
       { type: 'separator' }, { label: t('quit'), accelerator: 'CmdOrCtrl+Q', click: () => app.quit() }
     ] },
     { role: 'editMenu' },
@@ -211,11 +237,10 @@ async function start(): Promise<void> {
   const locale: Locale = language === 'fr' || language === 'zh' ? language : 'en'
   state = {
     server: await readServer(app.getPath('userData'), !app.isPackaged), locale, version: app.getVersion(),
-    error: '', connecting: false, diagnosticsFailed: false, update: { status: 'disabled', percent: 0, version: '' }
+    settingsPage: 'server', error: '', connecting: false, diagnosticsFailed: false,
+    update: { status: 'disabled', percent: 0, version: '' }
   }
   const localSession = session.fromPartition('launcher')
-  localSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
-  localSession.setPermissionCheckHandler(() => false)
   const root = path.resolve(__dirname, '../dist')
   localSession.protocol.handle('galaris-desktop', request => {
     const url = new URL(request.url)
@@ -226,6 +251,12 @@ async function start(): Promise<void> {
   launcher = new BrowserWindow({
     width: 720, height: 720, minWidth: 420, minHeight: 520, show: false, title: 'Galaris',
     webPreferences: { ...remotePreferences, session: localSession, preload: path.join(__dirname, 'preload.cjs') }
+  })
+  const screenPrompt = new ScreenPrompt(localSession, path.join(__dirname, 'preload.cjs'), locale, t('screenTitle'))
+  chatScreen = new ChatScreenChannel((request, signal) => remote
+    ? screenPrompt.open(remote.window, request, signal, t('screenTitle')) : Promise.resolve(null))
+  relay = new DesktopMcpRelay(app.getPath('userData'), value => {
+    if (!launcher.isDestroyed()) launcher.webContents.send('desktop:mcp-changed', value)
   })
   launcher.webContents.on('will-navigate', event => event.preventDefault())
   launcher.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
@@ -252,6 +283,25 @@ async function start(): Promise<void> {
   ipcMain.handle('desktop:cancel', event => { authorize(event); cancel() })
   ipcMain.handle('desktop:check-updates', event => { authorize(event); return updates.check() })
   ipcMain.handle('desktop:install-update', event => { authorize(event); return confirmInstall() })
+  ipcMain.handle('desktop:mcp-open', event => { authorize(event); showSettings('mcp') })
+  ipcMain.handle('desktop:mcp-close', event => {
+    authorize(event)
+    if (remote && !remote.window.isDestroyed()) launcher.close()
+    else showSettings('server')
+  })
+  ipcMain.handle('desktop:mcp-state', event => { authorize(event); return relay.snapshot() })
+  ipcMain.handle('desktop:mcp-discover', event => { authorize(event); return relay.discover() })
+  ipcMain.handle('desktop:mcp-import', async event => {
+    authorize(event)
+    const result = await dialog.showOpenDialog(launcher, {
+      title: t('mcpImport'), properties: ['openFile'], filters: [{ name: 'MCP', extensions: ['json', 'toml'] }]
+    })
+    if (!result.canceled && result.filePaths[0]) await relay.importFile(result.filePaths[0])
+  })
+  ipcMain.handle('desktop:mcp-share', (event, id: unknown, enabled: unknown) => {
+    authorize(event)
+    if (typeof id === 'string' && typeof enabled === 'boolean') return relay.setSharing(id, enabled, getWorkspaceAccess)
+  })
   const enabled = app.isPackaged && (process.platform === 'win32' || (process.platform === 'linux' && Boolean(process.env.APPIMAGE)))
   autoUpdater.logger = null
   autoUpdater.on('error', error => {
@@ -262,6 +312,7 @@ async function start(): Promise<void> {
     state.update = update; broadcast()
   }, () => { updatePromptPending = true; offerUpdate() })
   buildMenu()
+  await relay.load()
   await launcher.loadURL(launcherURL)
   if (state.server) await connect(state.server)
   else showLauncher()
@@ -325,6 +376,8 @@ else {
     quitting = true
     if (remote && !remote.window.isDestroyed()) { event.preventDefault(); void remote.close(); return }
     clearInterval(interval)
+    relay?.stop()
+    chatScreen?.stop()
   })
   app.on('window-all-closed', () => app.quit())
   void app.whenReady().then(start).catch(error => {

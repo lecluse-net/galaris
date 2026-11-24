@@ -47,7 +47,7 @@ async def attachment_context(committed_database, monkeypatch, tmp_path):
         context = {
             "user_id": owner.id, "user_email": owner.email, "role_id": role.id,
             "url": f"/api/chat/rooms/{room.id}/attachments",
-            "agent_id": agent.id,
+            "agent_id": agent.id, "other_agent_id": other_agent.id,
             "room_id": room.id, "connection_id": room.connection_id, "room_external_id": room.external_id,
             "headers": {"Authorization": f"Bearer {token}"}, "uri": source.uri,
             "denied_uri": denied.uri, "root": tmp_path / "chat",

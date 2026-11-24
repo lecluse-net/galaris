@@ -30,6 +30,55 @@ Chaque adresse de serveur possède ses propres cookies et données locales. Pour
 serveur ou réessayer après une erreur réseau, utiliser **Galaris → Changer de serveur…**.
 Fermer cette fenêtre de configuration ramène à la fenêtre Galaris déjà ouverte.
 
+## Partager un MCP local
+
+Ouvrir **Galaris → MCP locaux** dans le menu du client. **Découvrir** lit les
+configurations utilisateur de Claude Desktop, Codex, Visual Studio Code et Cursor.
+Pour une autre application ou une configuration de projet, utiliser **Importer une
+configuration** et choisir un fichier MCP JSON ou TOML. La découverte se limite à
+ces fichiers de configuration. Les serveurs découverts restent privés.
+
+Activer l’interrupteur du MCP voulu. Le compte connecté doit pouvoir modifier
+les Services. Le serveur sélectionné ajoute alors un **Service MCP HTTP** portant le
+nom détecté. Dans **Services & connexions**, créer ou choisir une Connexion pour
+l’agent, tester la découverte et régler les permissions des fonctions. Pour les
+utiliser dans le Chat, autoriser aussi les outils voulus dans **Outils en conversation**.
+
+Les outils du MCP s’exécutent avec les droits de l’application locale. Le relais
+refuse les lectures directes de ressources `file://` sur le poste.
+
+La Connexion de l’agent se crée sans compte ni mot de passe. Si le MCP demande un
+jeton, renseigner ses en-têtes HTTP dans le fichier MCP local ou utiliser une variable
+d’environnement disponible dans le client. Par exemple, `bearer_token_env_var` donne
+le nom de la variable qui fournit le jeton. Le client présente ces identifiants au MCP
+sur le poste. Si le MCP HTTP ou SSE refuse l’accès au moment du partage, le client
+affiche le refus avant d’enregistrer le Service. Corriger la configuration, puis choisir
+**Découvrir** et réessayer. Les commandes `stdio` utilisent leur environnement configuré.
+
+Le client prend en charge les commandes `stdio` et les endpoints Streamable HTTP
+ou SSE en boucle locale. Le poste contacte uniquement l’adresse HTTPS de Galaris
+pour le relais. Aucun port entrant supplémentaire n’est nécessaire. Si le réseau
+filtre le trafic HTTPS, il doit autoriser les requêtes du client vers votre instance.
+
+Le partage est propre au poste et au serveur sélectionné. Fermer le client ou mettre
+le poste en veille rend les MCP indisponibles. Une modification de la configuration
+détectée par **Découvrir** suspend le partage jusqu’à une nouvelle approbation.
+Désactiver le partage conserve le Service et les réglages de Connexion.
+Supprimer le Service dans Galaris révoque le relais côté serveur.
+
+## Montrer une partie de son écran à un agent
+
+Dans une discussion lancée depuis le client desktop, l’agent peut demander une
+capture avec `chat_screenshot`, un outil du Service **Chat**. La demande s’ouvre
+sur le poste et dans la session qui a envoyé le message. L’outil est réservé
+aux tours de discussion textuels du Chat interne.
+
+Choisir un écran ou une fenêtre, prendre la capture et vérifier son aperçu. Seul
+le bouton **Envoyer la capture** téléverse l’image vers le serveur Galaris.
+**Refuser** ou fermer la fenêtre annule l’envoi. Chaque demande nécessite une
+nouvelle décision. Galaris enregistre l’image comme fichier privé de l’agent
+et renvoie une URI `file://…` que l’agent peut joindre à son message.
+
 ## Onglets et orthographe
 
 À gauche des onglets, les flèches **Précédent** et **Suivant** parcourent l’historique

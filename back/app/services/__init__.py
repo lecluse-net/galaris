@@ -9,6 +9,7 @@ from .protocols import (
 from .rest_contracts import RestAuth, RestConfig, RestError, RestRequest, RestResponse
 from .rest import execute_rest_request
 from .service import get_service_codes
+from .desktop_relay import prune_requests as prune_desktop_relay_requests
 from .catalog import (
     AgentToolCatalog,
     AgentToolCatalogEntry,
@@ -105,6 +106,7 @@ __all__ = [
     "initialize_admin_agent_connections",
     "native_failure_key",
     "get_service_codes",
+    "prune_desktop_relay_requests",
     "ServiceModel",
     "ToolSearchDocument",
     "AgentToolCatalog",

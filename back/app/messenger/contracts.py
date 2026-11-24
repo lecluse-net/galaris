@@ -12,6 +12,10 @@ from app.services.contracts import McpPresentation
 from .document_focus import DocumentFocus as DocumentFocus
 
 
+# Server-verified desktop tab provenance, separate from the model-visible message.
+CHAT_SCREEN_SOURCE_KEY = "chat_desktop_screen_source"
+
+
 def resolve_effective_topic_id(
     message_topic_id: UUID | None,
     *,

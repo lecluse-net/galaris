@@ -1,5 +1,47 @@
 import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 
+test('a shared desktop MCP connection can be created without an account or password', async ({ page }) => {
+  const tools = [{ id: 19, code: 'synthetic_desktop', label: 'Synthetic Desktop MCP', has_mcp: true,
+    mcp_config: { type: 'http' }, desktop_mcp_relay: true, global_params: {}, connection_schema: { params: {} } }]
+  const connections = []
+  await jsonRoute(page, '**/api/connections/service-options', tools)
+  await jsonRoute(page, '**/api/agents/selection?*', [{ id: 7, label: 'Synthetic Agent', agent_driver: 'internal' }])
+  await jsonRoute(page, '**/api/mail/approvers', [])
+  await jsonRoute(page, '**/api/connections?*', [])
+  await jsonRoute(page, '**/api/connections/42/params?*', {
+    connection_id: 42, agent_id: 7, service_id: 19, params: {}, configured_params: [],
+  })
+  await page.route('**/api/connections/overview?*', route => route.fulfill({ json: connections }))
+  await page.route('**/api/connections', route => {
+    expect(route.request().method()).toBe('POST')
+    const data = route.request().postDataJSON()
+    expect(data).toEqual({ agent_id: 7, service_id: 19, active: true })
+    const connection = { ...data, id: 42 }
+    connections.push(connection)
+    return route.fulfill({ status: 201, json: connection })
+  })
+  await mount(page, 'app/connection/components/ConnectionList.vue', {
+    privileges: ['CONNECTION_ACCESS', 'CONNECTION_EDIT', 'AGENT_MANAGE_ALL'],
+  })
+  await page.getByRole('button', { name: 'New Connection', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('combobox', { name: 'Agent', exact: true }).click()
+  await page.getByRole('option', { name: 'Synthetic Agent', exact: true }).click()
+  await dialog.getByRole('combobox', { name: 'Service', exact: true }).click()
+  await page.getByRole('option', { name: 'Synthetic Desktop MCP', exact: true }).click()
+  await expect(dialog.getByRole('button', { name: 'Connect account', exact: true })).toHaveCount(0)
+  await expect(dialog.locator('input[type="password"]')).toHaveCount(0)
+  await dialog.getByRole('button', { name: 'Create', exact: true }).click()
+  await expect(dialog).toBeHidden()
+  const row = page.getByRole('row', { name: /Synthetic Agent Synthetic Desktop MCP/ })
+  await expect(row.getByRole('switch')).toBeChecked()
+  expect(connections).toHaveLength(1)
+  await row.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect(dialog.getByRole('button', { name: 'Edit', exact: true })).toBeVisible()
+  await expect(dialog.getByRole('button', { name: 'Connect account', exact: true })).toHaveCount(0)
+  await expect(dialog.locator('input[type="password"]')).toHaveCount(0)
+})
+
 for (const [kind, width] of [['google', 390], ['microsoft', 1440]]) test(`calendar OAuth remains independent from MCP (${kind})`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height: 1000 })
   let connected = true, fail = true

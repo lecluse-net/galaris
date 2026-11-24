@@ -6,6 +6,7 @@ import hashlib
 import json
 import time
 from datetime import datetime, timedelta, timezone
+from secrets import token_urlsafe
 from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
@@ -20,6 +21,8 @@ from app.connection import connection_service, oauth_loopback, oauth_service
 from app.connection.models import Connection, ConnectionOAuth
 from app.connection.oauth_service import OAuthCallback, OAuthError, Grant
 from app.connection.oauth_service import DevicePoll, OAuthStartOptions, RegisteredClient
+from app.connection.oauth_runtime import mcp_oauth_auth
+from app.connection.parameter_resolution import RuntimeConnectionParams
 from pydantic import SecretStr
 from app.services.models import Service
 from app.services.mcp import build_mcp_server
@@ -27,6 +30,7 @@ from app.services.mcp_loader import _external_transport
 from app.services.schemas import McpConfig
 from app.services.tests.test_service_admin import synthetic_mcp  # noqa: F401 - shared real HTTP/SSE server
 from app.services import service
+from app.services.desktop_relay import Registration, register
 from core.user import UserModel
 from core.util import get_encryption_service
 from core.database import get_db_session
@@ -574,6 +578,22 @@ async def test_grant_isolated_between_connections_and_invalidated_by_config(db, 
     assert (await oauth_service.status(connection)).reconnect_required
     with pytest.raises(OAuthError, match="authorization_required"):
         await oauth_service.access_token(connection.id, tool.mcp_config["url"])
+
+
+@pytest.mark.asyncio
+async def test_desktop_relay_connection_never_discovers_or_uses_oauth(db, oauth_connection):
+    connection, user_id, _, requests, _ = oauth_connection
+    service_id = await register(Registration(relay=uuid4(), label="Synthetic desktop"), token_urlsafe(32))
+    connection.service_id = service_id
+    await db.flush()
+    with pytest.raises(OAuthError, match="configuration"):
+        await oauth_service.start(connection, user_id)
+    assert requests == []
+    assert await db.get(ConnectionOAuth, connection.id) is None
+    tool = await service.get_service_by_id(service_id)
+    assert tool is not None and tool.mcp is not None and tool.mcp.url is not None
+    params = RuntimeConnectionParams({}, connection.id, oauth_enabled=True)
+    assert mcp_oauth_auth(params, tool.mcp.url) is None
 
 
 @pytest.mark.asyncio

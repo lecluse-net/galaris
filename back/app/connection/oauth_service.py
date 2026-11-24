@@ -23,7 +23,7 @@ from mcp.shared.auth import OAuthClientInformationFull, OAuthClientMetadata, OAu
 from pydantic import AnyHttpUrl, AnyUrl, BaseModel, Field, SecretStr, ValidationError
 from sqlalchemy import select
 
-from app.services.facade import get_service_by_id, mcp_http_client
+from app.services.facade import get_service_by_id, is_desktop_mcp_url, mcp_http_client
 from app.services import McpConfig
 from app.services.facade import lock_services, resolve_connection_references
 from core.database import get_db
@@ -232,7 +232,7 @@ async def configuration(connection: Connection, purpose: Literal["mcp", "calenda
     _, params = await connection_service.get_params_as_dict(connection)
     url = resolve_connection_references(tool.mcp.url or "", params)
     _origin(url)
-    if urlsplit(url).query:
+    if is_desktop_mcp_url(url) or urlsplit(url).query:
         raise OAuthError("configuration")
     # Authorization belongs to this agent connection and its resolved resource.
     binding = _hash(f"{connection.agent_id}:{connection.service_id}:{url}")

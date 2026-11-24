@@ -1522,6 +1522,12 @@ parallel Goal scheduler.
 
 ## Messaging
 
+Use `chat_screenshot` exclusively to request a participant's screen or window in a live
+internal Chat turn from the Galaris desktop client. The participant selects and approves the
+image. Use the returned `uri` verbatim as the source for a message attachment. If the tool
+is unavailable or the participant declines, ask them to attach an image themselves. Never
+use a shell, an external MCP, or a shared drive to capture or stage the participant's screen.
+
 Messaging tool arguments accept the room value supplied by the Task or room listing, which may be
 a canonical room UUID or an opaque provider value such as a Talk token, Matrix room, or OneBot
 group. Reuse it; never invent it. Resource URIs are stricter and always use the canonical room

@@ -11,15 +11,15 @@ tests restent l’autorité sur le comportement.
 
 - 80 modules backend déclarés ;
 - 41 modules frontend déclarés ;
-- 653 arêtes de dépendance backend ;
+- 655 arêtes de dépendance backend ;
 - 231 arêtes de dépendance frontend ;
-- 308 arêtes entre domaines `app`/`bridge` ;
+- 310 arêtes entre domaines `app`/`bridge` ;
 - 30 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 0 paires frontend directement bidirectionnelles ;
-- 839 handlers HTTP/WebSocket détectés ;
-- 202 tables SQLAlchemy détectées ;
-- 303 outils MCP natifs détectés ;
+- 845 handlers HTTP/WebSocket détectés ;
+- 206 tables SQLAlchemy détectées ;
+- 304 outils MCP natifs détectés ;
 - 59 pages Vue détectées.
 
 ## Modules backend
@@ -55,7 +55,7 @@ tests restent l’autorité sur le comportement.
 | `app.dashboard` | app | non | oui | `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.lab` | app | non | oui | `contracts.py`, `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.messenger` | app | non | oui | `contracts.py`, `facade.py`, `i18n/`, `interface.py`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
-| `app.chat` | app | non | oui | `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
+| `app.chat` | app | non | oui | `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.conversation` | app | non | oui | `contracts.py`, `facade.py`, `i18n/`, `mcp.py`, `models.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.browser` | app | non | oui | `i18n/`, `mcp.py`, `privileges.py`, `router.py`, `schemas.py`, `tests/` |
 | `app.image` | app | non | oui | `i18n/`, `mcp.py`, `router.py`, `schemas.py`, `tests/` |
@@ -207,27 +207,29 @@ tests restent l’autorité sur le comportement.
 | `app.chat` | `app.agent` | `back/app/chat/assertions.py`, `back/app/chat/document_conversation.py`, `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/schemas.py` |
 | `app.chat` | `app.browser` | `back/app/chat/router.py`, `back/app/chat/thumbnail_service.py` |
 | `app.chat` | `app.code` | `back/app/chat/events.py`, `back/app/chat/router.py` |
-| `app.chat` | `app.conversation` | `back/app/chat/document_previews.py`, `back/app/chat/events.py`, `back/app/chat/mcp_apps.py`, `back/app/chat/router.py`, `back/app/chat/schemas.py` |
+| `app.chat` | `app.conversation` | `back/app/chat/desktop_screen.py`, `back/app/chat/document_previews.py`, `back/app/chat/events.py`, `back/app/chat/mcp.py`, `back/app/chat/mcp_apps.py`, `back/app/chat/router.py`, `back/app/chat/schemas.py` |
 | `app.chat` | `app.document` | `back/app/chat/document_conversation.py` |
-| `app.chat` | `app.messenger` | `back/app/chat/assertions.py`, `back/app/chat/document_conversation.py`, `back/app/chat/document_previews.py`, `back/app/chat/draft_service.py`, `back/app/chat/events.py`, `back/app/chat/mcp_apps.py`, `back/app/chat/provider.py`, `back/app/chat/push_service.py`, `back/app/chat/router.py`, `back/app/chat/schemas.py`, `back/app/chat/storage.py`, `back/app/chat/thumbnail_service.py` |
+| `app.chat` | `app.file_share` | `back/app/chat/mcp.py` |
+| `app.chat` | `app.messenger` | `back/app/chat/assertions.py`, `back/app/chat/desktop_screen.py`, `back/app/chat/document_conversation.py`, `back/app/chat/document_previews.py`, `back/app/chat/draft_service.py`, `back/app/chat/events.py`, `back/app/chat/mcp_apps.py`, `back/app/chat/provider.py`, `back/app/chat/push_service.py`, `back/app/chat/router.py`, `back/app/chat/schemas.py`, `back/app/chat/storage.py`, `back/app/chat/thumbnail_service.py` |
+| `app.chat` | `app.services` | `back/app/chat/mcp.py` |
 | `app.chat` | `app.topic` | `back/app/chat/router.py` |
 | `app.chat` | `app.voice` | `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/webrtc.py` |
 | `app.chat` | `core.authorize` | `back/app/chat/assertions.py`, `back/app/chat/dbadmin.py`, `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/webrtc.py` |
-| `app.chat` | `core.database` | `back/app/chat/document_conversation.py`, `back/app/chat/draft_service.py`, `back/app/chat/emoji_service.py`, `back/app/chat/events.py`, `back/app/chat/mcp_apps.py`, `back/app/chat/models.py`, `back/app/chat/push_service.py`, `back/app/chat/router.py`, `back/app/chat/storage.py`, `back/app/chat/thumbnail_service.py`, `back/app/chat/webrtc.py` |
+| `app.chat` | `core.database` | `back/app/chat/desktop_screen.py`, `back/app/chat/document_conversation.py`, `back/app/chat/draft_service.py`, `back/app/chat/emoji_service.py`, `back/app/chat/events.py`, `back/app/chat/mcp_apps.py`, `back/app/chat/models.py`, `back/app/chat/push_service.py`, `back/app/chat/router.py`, `back/app/chat/storage.py`, `back/app/chat/thumbnail_service.py`, `back/app/chat/webrtc.py` |
 | `app.chat` | `core.dbadmin` | `back/app/chat/dbadmin.py` |
 | `app.chat` | `core.i18n` | `back/app/chat/router.py` |
 | `app.chat` | `core.params` | `back/app/chat/dbadmin.py`, `back/app/chat/push_service.py`, `back/app/chat/router.py`, `back/app/chat/storage.py`, `back/app/chat/thumbnail_service.py` |
 | `app.chat` | `core.scheduling` | `back/app/chat/__init__.py` |
 | `app.chat` | `core.settings` | `back/app/chat/storage.py`, `back/app/chat/webrtc.py` |
 | `app.chat` | `core.storage` | `back/app/chat/draft_service.py`, `back/app/chat/router.py`, `back/app/chat/storage.py` |
-| `app.chat` | `core.user` | `back/app/chat/document_conversation.py`, `back/app/chat/draft_service.py`, `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/webrtc.py` |
-| `app.chat` | `core.util` | `back/app/chat/push_service.py`, `back/app/chat/router.py`, `back/app/chat/storage.py`, `back/app/chat/thumbnail_service.py` |
+| `app.chat` | `core.user` | `back/app/chat/desktop_screen.py`, `back/app/chat/document_conversation.py`, `back/app/chat/draft_service.py`, `back/app/chat/events.py`, `back/app/chat/router.py`, `back/app/chat/webrtc.py` |
+| `app.chat` | `core.util` | `back/app/chat/desktop_screen.py`, `back/app/chat/push_service.py`, `back/app/chat/router.py`, `back/app/chat/storage.py`, `back/app/chat/thumbnail_service.py` |
 | `app.code` | `core.authorize` | `back/app/code/gateway.py`, `back/app/code/lifecycle.py`, `back/app/code/router.py`, `back/app/code/service.py` |
 | `app.code` | `core.database` | `back/app/code/gateway.py`, `back/app/code/lifecycle.py`, `back/app/code/models.py`, `back/app/code/resource_facade.py`, `back/app/code/router.py`, `back/app/code/runtime_configuration.py`, `back/app/code/service.py` |
 | `app.code` | `core.settings` | `back/app/code/gateway.py`, `back/app/code/service.py` |
 | `app.code` | `core.user` | `back/app/code/lifecycle.py`, `back/app/code/router.py`, `back/app/code/service.py` |
 | `app.connection` | `app.agent` | `back/app/connection/admin_service.py`, `back/app/connection/agent_admin_mcp.py`, `back/app/connection/connection_service.py`, `back/app/connection/function_permissions.py`, `back/app/connection/router.py` |
-| `app.connection` | `app.services` | `back/app/connection/admin_service.py`, `back/app/connection/agent_admin_mcp.py`, `back/app/connection/agent_admin_service.py`, `back/app/connection/calendar_oauth.py`, `back/app/connection/connection_service.py`, `back/app/connection/function_permissions.py`, `back/app/connection/mcp.py`, `back/app/connection/oauth_service.py`, `back/app/connection/router.py` |
+| `app.connection` | `app.services` | `back/app/connection/admin_service.py`, `back/app/connection/agent_admin_mcp.py`, `back/app/connection/agent_admin_service.py`, `back/app/connection/calendar_oauth.py`, `back/app/connection/connection_service.py`, `back/app/connection/function_permissions.py`, `back/app/connection/mcp.py`, `back/app/connection/oauth_runtime.py`, `back/app/connection/oauth_service.py`, `back/app/connection/router.py` |
 | `app.connection` | `core.authorize` | `back/app/connection/assertions.py`, `back/app/connection/facade.py`, `back/app/connection/router.py` |
 | `app.connection` | `core.database` | `back/app/connection/admin_service.py`, `back/app/connection/agent_admin_service.py`, `back/app/connection/connection_service.py`, `back/app/connection/function_permissions.py`, `back/app/connection/models.py`, `back/app/connection/oauth_runtime.py`, `back/app/connection/oauth_service.py`, `back/app/connection/router.py` |
 | `app.connection` | `core.dbadmin` | `back/app/connection/dbadmin.py` |
@@ -539,15 +541,15 @@ tests restent l’autorité sur le comportement.
 | `app.services` | `app.messenger` | `back/app/services/authorization_notifications.py`, `back/app/services/capabilities.py`, `back/app/services/mcp_loader.py`, `back/app/services/service.py` |
 | `app.services` | `app.task` | `back/app/services/mcp_loader.py` |
 | `app.services` | `app.util` | `back/app/services/search_tool.py` |
-| `app.services` | `core.authorize` | `back/app/services/assertions.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/conversation_catalog.py`, `back/app/services/router.py`, `back/app/services/runtime_authorization_router.py` |
-| `app.services` | `core.database` | `back/app/services/admin_service.py`, `back/app/services/administration_lock.py`, `back/app/services/authorization.py`, `back/app/services/authorization_models.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/authorization_views.py`, `back/app/services/catalog_refresh_service.py`, `back/app/services/conversation_catalog.py`, `back/app/services/deletion.py`, `back/app/services/documentation_service.py`, `back/app/services/facade.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp_loader.py`, `back/app/services/models.py`, `back/app/services/runtime_authorization.py`, `back/app/services/runtime_authorization_router.py`, `back/app/services/runtime_permissions.py`, `back/app/services/service.py`, `back/app/services/tool_inventory.py`, `back/app/services/tool_search_service.py` |
+| `app.services` | `core.authorize` | `back/app/services/assertions.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/conversation_catalog.py`, `back/app/services/desktop_relay_router.py`, `back/app/services/router.py`, `back/app/services/runtime_authorization_router.py` |
+| `app.services` | `core.database` | `back/app/services/admin_service.py`, `back/app/services/administration_lock.py`, `back/app/services/authorization.py`, `back/app/services/authorization_models.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/authorization_views.py`, `back/app/services/catalog_refresh_service.py`, `back/app/services/conversation_catalog.py`, `back/app/services/deletion.py`, `back/app/services/desktop_relay.py`, `back/app/services/desktop_relay_models.py`, `back/app/services/documentation_service.py`, `back/app/services/facade.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp_loader.py`, `back/app/services/models.py`, `back/app/services/runtime_authorization.py`, `back/app/services/runtime_authorization_router.py`, `back/app/services/runtime_permissions.py`, `back/app/services/service.py`, `back/app/services/tool_inventory.py`, `back/app/services/tool_search_service.py` |
 | `app.services` | `core.dbadmin` | `back/app/services/capability_migration.py`, `back/app/services/dbadmin.py`, `back/app/services/mandatory_services.py`, `back/app/services/naming_migration.py`, `back/app/services/protocol_migration.py` |
 | `app.services` | `core.failure_journal` | `back/app/services/mcp_loader.py` |
 | `app.services` | `core.i18n` | `back/app/services/agent_registry.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/connection_diagnostics.py`, `back/app/services/connection_functions.py`, `back/app/services/mcp.py`, `back/app/services/mcp_diagnostics.py`, `back/app/services/mcp_loader.py`, `back/app/services/router.py`, `back/app/services/search_tool.py`, `back/app/services/service.py`, `back/app/services/tool_errors.py` |
 | `app.services` | `core.params` | `back/app/services/mandatory_services.py`, `back/app/services/mcp_loader.py` |
 | `app.services` | `core.settings` | `back/app/services/router.py` |
-| `app.services` | `core.user` | `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/conversation_catalog.py`, `back/app/services/router.py` |
-| `app.services` | `core.util` | `back/app/services/admin_candidates.py`, `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/assertions.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/authorization_views.py`, `back/app/services/catalog.py`, `back/app/services/mcp_authentication.py`, `back/app/services/runtime_authorization.py`, `back/app/services/secrets.py`, `back/app/services/service.py` |
+| `app.services` | `core.user` | `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/conversation_catalog.py`, `back/app/services/desktop_relay_router.py`, `back/app/services/router.py` |
+| `app.services` | `core.util` | `back/app/services/admin_candidates.py`, `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/assertions.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/authorization_views.py`, `back/app/services/catalog.py`, `back/app/services/desktop_relay.py`, `back/app/services/mcp_authentication.py`, `back/app/services/runtime_authorization.py`, `back/app/services/secrets.py`, `back/app/services/service.py` |
 | `app.share` | `core.database` | `back/app/share/models.py`, `back/app/share/service.py` |
 | `app.share` | `core.dbadmin` | `back/app/share/dbadmin.py` |
 | `app.skill` | `app.agent` | `back/app/skill/dbadmin.py`, `back/app/skill/interface.py`, `back/app/skill/learning_service.py`, `back/app/skill/models.py`, `back/app/skill/ownership_recovery.py`, `back/app/skill/personal_catalogue.py`, `back/app/skill/router.py`, `back/app/skill/skill_service.py` |
@@ -1061,6 +1063,7 @@ tests restent l’autorité sur le comportement.
 | `app.dream` | 14 | `app.agent`, `app.connection`, `app.contact`, `app.conversation`, `app.dataset`, `app.document`, `app.goal`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.task`, `app.topic`, `app.voice` |
 | `bridge.hermes` | 12 | `app.agent`, `app.connection`, `app.file_share`, `app.harnesses`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.skill`, `bridge.harness` |
 | `app.topic` | 11 | `app.agent`, `app.connection`, `app.conversation`, `app.dataset`, `app.document`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.task` |
+| `app.chat` | 10 | `app.agent`, `app.browser`, `app.code`, `app.conversation`, `app.document`, `app.file_share`, `app.messenger`, `app.services`, `app.topic`, `app.voice` |
 | `app.document` | 10 | `app.agent`, `app.conversation`, `app.file_share`, `app.goal`, `app.llm`, `app.memory`, `app.process`, `app.services`, `app.share`, `app.task` |
 | `app.memory` | 10 | `app.agent`, `app.conversation`, `app.document`, `app.goal`, `app.llm`, `app.process`, `app.services`, `app.task`, `app.topic`, `app.voice` |
 | `app.process` | 10 | `app.agent`, `app.console`, `app.dataset`, `app.document`, `app.file_share`, `app.llm`, `app.memory`, `app.services`, `app.share`, `app.task` |
@@ -1070,7 +1073,6 @@ tests restent l’autorité sur le comportement.
 | `app.services` | 9 | `app.agent`, `app.connection`, `app.console`, `app.documentation`, `app.file_share`, `app.llm`, `app.messenger`, `app.task`, `app.util` |
 | `app.voice` | 9 | `app.agent`, `app.connection`, `app.conversation`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.task` |
 | `app.agent` | 8 | `app.file_share`, `app.image`, `app.llm`, `app.messenger`, `app.process`, `app.services`, `app.share`, `app.skill` |
-| `app.chat` | 8 | `app.agent`, `app.browser`, `app.code`, `app.conversation`, `app.document`, `app.messenger`, `app.topic`, `app.voice` |
 | `app.messenger` | 8 | `app.agent`, `app.connection`, `app.conversation`, `app.file_share`, `app.llm`, `app.memory`, `app.services`, `app.task` |
 | `app.contact` | 7 | `app.agent`, `app.conversation`, `app.llm`, `app.memory`, `app.messenger`, `app.services`, `app.task` |
 | `app.onboarding` | 7 | `app.agent`, `app.connection`, `app.llm`, `app.messenger`, `app.process`, `app.services`, `app.skill` |
@@ -1133,10 +1135,10 @@ tests restent l’autorité sur le comportement.
 |---|---:|---|
 | `app.llm` | 45 | `app.agent`, `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.goal`, `app.harness`, `app.image`, `app.lab`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.services`, `app.task`, `app.topic`, `app.voice`, `bridge.anthropic`, `bridge.azure_speech`, `bridge.byteplus`, `bridge.cerebras`, `bridge.codex`, `bridge.cohere`, `bridge.deepseek`, `bridge.deepseek_harness`, `bridge.elevenlabs`, `bridge.fireworks`, `bridge.google`, `bridge.groq`, `bridge.hermes`, `bridge.huggingface`, `bridge.mammouth`, `bridge.mistral`, `bridge.models_dev`, `bridge.nvidia`, `bridge.ollama`, `bridge.openai`, `bridge.openrouter`, `bridge.perplexity`, `bridge.sunoapi`, `bridge.together`, `bridge.xai` |
 | `app.agent` | 35 | `app.calendar`, `app.chat`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.process`, `app.services`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.claude_agent`, `bridge.code_server`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud` |
-| `app.services` | 34 | `app.agent`, `app.audio`, `app.browser`, `app.calendar`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.document`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.image`, `app.incident`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.plugin`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
+| `app.services` | 35 | `app.agent`, `app.audio`, `app.browser`, `app.calendar`, `app.chat`, `app.connection`, `app.console`, `app.contact`, `app.conversation`, `app.document`, `app.file_share`, `app.goal`, `app.harness`, `app.harnesses`, `app.image`, `app.incident`, `app.lab`, `app.llm`, `app.mcp`, `app.memory`, `app.messenger`, `app.multimedia`, `app.onboarding`, `app.plugin`, `app.process`, `app.skill`, `app.task`, `app.topic`, `app.voice`, `app.webhook`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.whatsapp` |
 | `app.messenger` | 24 | `app.agent`, `app.audio`, `app.browser`, `app.chat`, `app.contact`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.harness`, `app.lab`, `app.llm`, `app.onboarding`, `app.services`, `app.task`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.telegram`, `bridge.whatsapp` |
 | `app.connection` | 22 | `app.browser`, `app.calendar`, `app.console`, `app.conversation`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.messenger`, `app.onboarding`, `app.services`, `app.skill`, `app.topic`, `app.voice`, `app.webhook`, `bridge.hermes`, `bridge.mail`, `bridge.matrix`, `bridge.nextcloud`, `bridge.one_bot`, `bridge.whatsapp` |
-| `app.file_share` | 20 | `app.agent`, `app.audio`, `app.browser`, `app.calendar`, `app.console`, `app.conversation`, `app.document`, `app.harness`, `app.image`, `app.llm`, `app.messenger`, `app.multimedia`, `app.process`, `app.services`, `bridge.calendar`, `bridge.code_server`, `bridge.hermes`, `bridge.mail`, `bridge.nextcloud`, `bridge.samba` |
+| `app.file_share` | 21 | `app.agent`, `app.audio`, `app.browser`, `app.calendar`, `app.chat`, `app.console`, `app.conversation`, `app.document`, `app.harness`, `app.image`, `app.llm`, `app.messenger`, `app.multimedia`, `app.process`, `app.services`, `bridge.calendar`, `bridge.code_server`, `bridge.hermes`, `bridge.mail`, `bridge.nextcloud`, `bridge.samba` |
 | `app.task` | 17 | `app.audio`, `app.contact`, `app.conversation`, `app.dashboard`, `app.document`, `app.dream`, `app.file_share`, `app.goal`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.process`, `app.services`, `app.topic`, `app.voice`, `app.webhook` |
 | `app.process` | 14 | `app.agent`, `app.conversation`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.n8n` |
 | `app.conversation` | 12 | `app.chat`, `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.topic`, `app.voice` |
@@ -1402,68 +1404,71 @@ Aucune composante cyclique détectée.
 | GET | `/calendars/{calendar_id}/sync-runs` | `app.calendar` | `sync_runs` | oui | `back/app/calendar/router.py:217` |
 | POST | `/calendars/{calendar_id}/test` | `app.calendar` | `test_calendar` | oui | `back/app/calendar/router.py:307` |
 | GET | `/catalogue` | `app.process` | `read_catalogue` | oui | `back/app/process/router.py:94` |
-| GET | `/chat/agents/{agent_id}/avatar` | `app.chat` | `read_agent_avatar` | oui | `back/app/chat/router.py:470` |
-| GET | `/chat/documents/{document_id}/conversation` | `app.chat` | `read_document_conversation_preference` | oui | `back/app/chat/router.py:204` |
-| PUT | `/chat/documents/{document_id}/conversation` | `app.chat` | `update_document_conversation_preference` | oui | `back/app/chat/router.py:217` |
-| GET | `/chat/emojis/frequent` | `app.chat` | `read_frequent_emojis` | oui | `back/app/chat/router.py:389` |
-| POST | `/chat/emojis/usage` | `app.chat` | `create_emoji_usage` | oui | `back/app/chat/router.py:398` |
-| GET | `/chat/identities` | `app.chat` | `read_identity_mappings` | oui | `back/app/chat/router.py:408` |
-| DELETE | `/chat/identities/{service_id}` | `app.chat` | `delete_identity_mapping` | oui | `back/app/chat/router.py:438` |
-| PUT | `/chat/identities/{service_id}` | `app.chat` | `update_identity_mapping` | oui | `back/app/chat/router.py:417` |
-| GET | `/chat/inbox` | `app.chat` | `read_inbox` | oui | `back/app/chat/router.py:344` |
-| GET | `/chat/push/configuration` | `app.chat` | `read_push_configuration` | oui | `back/app/chat/router.py:356` |
-| DELETE | `/chat/push/subscriptions` | `app.chat` | `remove_push_subscription` | oui | `back/app/chat/router.py:379` |
-| POST | `/chat/push/subscriptions` | `app.chat` | `create_push_subscription` | oui | `back/app/chat/router.py:366` |
-| GET | `/chat/recipients` | `app.chat` | `read_recipients` | oui | `back/app/chat/router.py:445` |
-| GET | `/chat/rooms` | `app.chat` | `read_rooms` | oui | `back/app/chat/router.py:490` |
-| POST | `/chat/rooms` | `app.chat` | `create_room` | oui | `back/app/chat/router.py:522` |
-| GET | `/chat/rooms/{room_id}` | `app.chat` | `read_room` | oui | `back/app/chat/router.py:552` |
-| PATCH | `/chat/rooms/{room_id}` | `app.chat` | `update_room_preferences` | oui | `back/app/chat/router.py:572` |
-| GET | `/chat/rooms/{room_id}/activity` | `app.chat` | `read_activity` | oui | `back/app/chat/router.py:1063` |
-| GET | `/chat/rooms/{room_id}/activity/{round_id}` | `app.chat` | `read_activity_detail` | oui | `back/app/chat/router.py:1078` |
-| POST | `/chat/rooms/{room_id}/activity/{round_id}/control` | `app.chat` | `control_response` | oui | `back/app/chat/router.py:1092` |
-| PATCH | `/chat/rooms/{room_id}/archive` | `app.chat` | `update_room_archive` | oui | `back/app/chat/router.py:590` |
-| POST | `/chat/rooms/{room_id}/attachments` | `app.chat` | `create_attachment_message` | oui | `back/app/chat/router.py:1338` |
-| POST | `/chat/rooms/{room_id}/calls` | `app.chat` | `start_call` | oui | `back/app/chat/router.py:1539` |
-| GET | `/chat/rooms/{room_id}/calls/active` | `app.chat` | `read_active_call` | oui | `back/app/chat/router.py:1598` |
-| GET | `/chat/rooms/{room_id}/calls/status` | `app.chat` | `read_voice_call_status` | oui | `back/app/chat/router.py:1512` |
-| DELETE | `/chat/rooms/{room_id}/calls/{call_id}` | `app.chat` | `stop_call` | oui | `back/app/chat/router.py:1657` |
-| POST | `/chat/rooms/{room_id}/calls/{call_id}/candidates` | `app.chat` | `add_call_candidate` | oui | `back/app/chat/router.py:1622` |
-| GET | `/chat/rooms/{room_id}/commands` | `app.chat` | `read_room_commands` | oui | `back/app/chat/router.py:631` |
-| GET | `/chat/rooms/{room_id}/deep` | `app.chat` | `read_deep_room` | oui | `back/app/chat/router.py:645` |
-| GET | `/chat/rooms/{room_id}/deep/{submission_id}/events` | `app.chat` | `read_deep_events` | oui | `back/app/chat/router.py:651` |
-| POST | `/chat/rooms/{room_id}/deep/{submission_id}/stop` | `app.chat` | `stop_deep_room_submission` | oui | `back/app/chat/router.py:662` |
-| POST | `/chat/rooms/{room_id}/dictation` | `app.chat` | `transcribe_dictation` | oui | `back/app/chat/router.py:1287` |
-| GET | `/chat/rooms/{room_id}/documents` | `app.chat` | `read_room_documents` | oui | `back/app/chat/router.py:1130` |
-| POST | `/chat/rooms/{room_id}/documents` | `app.chat` | `create_room_document` | oui | `back/app/chat/router.py:1160` |
-| GET | `/chat/rooms/{room_id}/draft` | `app.chat` | `get_private_draft` | oui | `back/app/chat/router.py:1689` |
-| PUT | `/chat/rooms/{room_id}/draft` | `app.chat` | `save_private_draft` | oui | `back/app/chat/router.py:1696` |
-| DELETE | `/chat/rooms/{room_id}/draft/files/{key}` | `app.chat` | `discard_private_draft_file` | oui | `back/app/chat/router.py:1718` |
-| POST | `/chat/rooms/{room_id}/draft/files/{key}` | `app.chat` | `upload_private_draft_file` | oui | `back/app/chat/router.py:1706` |
-| GET | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `download_file` | oui | `back/app/chat/router.py:1467` |
-| PATCH | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `rename_chat_attachment` | oui | `back/app/chat/router.py:1457` |
-| GET | `/chat/rooms/{room_id}/interactions/{interaction_id}` | `app.chat` | `read_interaction` | oui | `back/app/chat/router.py:1206` |
-| POST | `/chat/rooms/{room_id}/interactions/{interaction_id}/answer` | `app.chat` | `answer_interaction` | oui | `back/app/chat/router.py:1215` |
-| GET | `/chat/rooms/{room_id}/messages` | `app.chat` | `read_messages` | oui | `back/app/chat/router.py:670` |
-| POST | `/chat/rooms/{room_id}/messages` | `app.chat` | `create_message` | oui | `back/app/chat/router.py:1231` |
-| GET | `/chat/rooms/{room_id}/messages/{message_id}/mcp-apps/{presentation_id}` | `app.chat` | `open_message_mcp_app` | oui | `back/app/chat/router.py:692` |
-| POST | `/chat/rooms/{room_id}/messages/{message_id}/mcp-apps/{presentation_id}` | `app.chat` | `filter_message_mcp_app` | oui | `back/app/chat/router.py:700` |
-| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews` | `app.chat` | `read_message_previews` | oui | `back/app/chat/router.py:838` |
-| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/content` | `app.chat` | `read_message_preview_content` | oui | `back/app/chat/router.py:1017` |
-| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/image` | `app.chat` | `read_message_preview_image` | oui | `back/app/chat/router.py:964` |
-| POST | `/chat/rooms/{room_id}/messages/{message_id}/previews/repository` | `app.chat` | `open_message_directory_repository` | oui | `back/app/chat/router.py:933` |
-| POST | `/chat/rooms/{room_id}/messages/{message_id}/speech` | `app.chat` | `read_message_speech` | oui | `back/app/chat/router.py:739` |
-| PATCH | `/chat/rooms/{room_id}/messages/{message_id}/topic` | `app.chat` | `update_message_topic` | oui | `back/app/chat/router.py:807` |
-| POST | `/chat/rooms/{room_id}/mute` | `app.chat` | `set_muted` | oui | `back/app/chat/router.py:1449` |
-| GET | `/chat/rooms/{room_id}/processes` | `app.chat` | `read_room_processes` | oui | `back/app/chat/router.py:1188` |
-| POST | `/chat/rooms/{room_id}/read` | `app.chat` | `mark_read` | oui | `back/app/chat/router.py:1441` |
-| GET | `/chat/rooms/{room_id}/repositories` | `app.chat` | `discover_room_repositories` | oui | `back/app/chat/router.py:894` |
-| POST | `/chat/rooms/{room_id}/repositories` | `app.chat` | `open_room_repository` | oui | `back/app/chat/router.py:910` |
-| GET | `/chat/rooms/{room_id}/speech/status` | `app.chat` | `read_message_speech_status` | oui | `back/app/chat/router.py:713` |
-| GET | `/chat/rooms/{room_id}/tasks` | `app.chat` | `read_room_tasks` | oui | `back/app/chat/router.py:1109` |
-| PATCH | `/chat/rooms/{room_id}/topic` | `app.chat` | `update_room_topic` | oui | `back/app/chat/router.py:607` |
-| GET | `/chat/status` | `app.chat` | `read_status` | oui | `back/app/chat/router.py:334` |
-| GET | `/chat/viewer-agents` | `app.chat` | `read_viewer_agents` | oui | `back/app/chat/router.py:463` |
+| GET | `/chat/agents/{agent_id}/avatar` | `app.chat` | `read_agent_avatar` | oui | `back/app/chat/router.py:532` |
+| DELETE | `/chat/desktop-screen` | `app.chat` | `disconnect_desktop_screen` | oui | `back/app/chat/router.py:237` |
+| POST | `/chat/desktop-screen/poll` | `app.chat` | `poll_desktop_screen` | oui | `back/app/chat/router.py:221` |
+| POST | `/chat/desktop-screen/{identifier}/complete` | `app.chat` | `complete_desktop_screen` | oui | `back/app/chat/router.py:246` |
+| GET | `/chat/documents/{document_id}/conversation` | `app.chat` | `read_document_conversation_preference` | oui | `back/app/chat/router.py:266` |
+| PUT | `/chat/documents/{document_id}/conversation` | `app.chat` | `update_document_conversation_preference` | oui | `back/app/chat/router.py:279` |
+| GET | `/chat/emojis/frequent` | `app.chat` | `read_frequent_emojis` | oui | `back/app/chat/router.py:451` |
+| POST | `/chat/emojis/usage` | `app.chat` | `create_emoji_usage` | oui | `back/app/chat/router.py:460` |
+| GET | `/chat/identities` | `app.chat` | `read_identity_mappings` | oui | `back/app/chat/router.py:470` |
+| DELETE | `/chat/identities/{service_id}` | `app.chat` | `delete_identity_mapping` | oui | `back/app/chat/router.py:500` |
+| PUT | `/chat/identities/{service_id}` | `app.chat` | `update_identity_mapping` | oui | `back/app/chat/router.py:479` |
+| GET | `/chat/inbox` | `app.chat` | `read_inbox` | oui | `back/app/chat/router.py:406` |
+| GET | `/chat/push/configuration` | `app.chat` | `read_push_configuration` | oui | `back/app/chat/router.py:418` |
+| DELETE | `/chat/push/subscriptions` | `app.chat` | `remove_push_subscription` | oui | `back/app/chat/router.py:441` |
+| POST | `/chat/push/subscriptions` | `app.chat` | `create_push_subscription` | oui | `back/app/chat/router.py:428` |
+| GET | `/chat/recipients` | `app.chat` | `read_recipients` | oui | `back/app/chat/router.py:507` |
+| GET | `/chat/rooms` | `app.chat` | `read_rooms` | oui | `back/app/chat/router.py:552` |
+| POST | `/chat/rooms` | `app.chat` | `create_room` | oui | `back/app/chat/router.py:584` |
+| GET | `/chat/rooms/{room_id}` | `app.chat` | `read_room` | oui | `back/app/chat/router.py:614` |
+| PATCH | `/chat/rooms/{room_id}` | `app.chat` | `update_room_preferences` | oui | `back/app/chat/router.py:634` |
+| GET | `/chat/rooms/{room_id}/activity` | `app.chat` | `read_activity` | oui | `back/app/chat/router.py:1125` |
+| GET | `/chat/rooms/{room_id}/activity/{round_id}` | `app.chat` | `read_activity_detail` | oui | `back/app/chat/router.py:1140` |
+| POST | `/chat/rooms/{room_id}/activity/{round_id}/control` | `app.chat` | `control_response` | oui | `back/app/chat/router.py:1154` |
+| PATCH | `/chat/rooms/{room_id}/archive` | `app.chat` | `update_room_archive` | oui | `back/app/chat/router.py:652` |
+| POST | `/chat/rooms/{room_id}/attachments` | `app.chat` | `create_attachment_message` | oui | `back/app/chat/router.py:1402` |
+| POST | `/chat/rooms/{room_id}/calls` | `app.chat` | `start_call` | oui | `back/app/chat/router.py:1605` |
+| GET | `/chat/rooms/{room_id}/calls/active` | `app.chat` | `read_active_call` | oui | `back/app/chat/router.py:1664` |
+| GET | `/chat/rooms/{room_id}/calls/status` | `app.chat` | `read_voice_call_status` | oui | `back/app/chat/router.py:1578` |
+| DELETE | `/chat/rooms/{room_id}/calls/{call_id}` | `app.chat` | `stop_call` | oui | `back/app/chat/router.py:1723` |
+| POST | `/chat/rooms/{room_id}/calls/{call_id}/candidates` | `app.chat` | `add_call_candidate` | oui | `back/app/chat/router.py:1688` |
+| GET | `/chat/rooms/{room_id}/commands` | `app.chat` | `read_room_commands` | oui | `back/app/chat/router.py:693` |
+| GET | `/chat/rooms/{room_id}/deep` | `app.chat` | `read_deep_room` | oui | `back/app/chat/router.py:707` |
+| GET | `/chat/rooms/{room_id}/deep/{submission_id}/events` | `app.chat` | `read_deep_events` | oui | `back/app/chat/router.py:713` |
+| POST | `/chat/rooms/{room_id}/deep/{submission_id}/stop` | `app.chat` | `stop_deep_room_submission` | oui | `back/app/chat/router.py:724` |
+| POST | `/chat/rooms/{room_id}/dictation` | `app.chat` | `transcribe_dictation` | oui | `back/app/chat/router.py:1351` |
+| GET | `/chat/rooms/{room_id}/documents` | `app.chat` | `read_room_documents` | oui | `back/app/chat/router.py:1192` |
+| POST | `/chat/rooms/{room_id}/documents` | `app.chat` | `create_room_document` | oui | `back/app/chat/router.py:1222` |
+| GET | `/chat/rooms/{room_id}/draft` | `app.chat` | `get_private_draft` | oui | `back/app/chat/router.py:1755` |
+| PUT | `/chat/rooms/{room_id}/draft` | `app.chat` | `save_private_draft` | oui | `back/app/chat/router.py:1762` |
+| DELETE | `/chat/rooms/{room_id}/draft/files/{key}` | `app.chat` | `discard_private_draft_file` | oui | `back/app/chat/router.py:1784` |
+| POST | `/chat/rooms/{room_id}/draft/files/{key}` | `app.chat` | `upload_private_draft_file` | oui | `back/app/chat/router.py:1772` |
+| GET | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `download_file` | oui | `back/app/chat/router.py:1533` |
+| PATCH | `/chat/rooms/{room_id}/files/{file_id}` | `app.chat` | `rename_chat_attachment` | oui | `back/app/chat/router.py:1523` |
+| GET | `/chat/rooms/{room_id}/interactions/{interaction_id}` | `app.chat` | `read_interaction` | oui | `back/app/chat/router.py:1268` |
+| POST | `/chat/rooms/{room_id}/interactions/{interaction_id}/answer` | `app.chat` | `answer_interaction` | oui | `back/app/chat/router.py:1277` |
+| GET | `/chat/rooms/{room_id}/messages` | `app.chat` | `read_messages` | oui | `back/app/chat/router.py:732` |
+| POST | `/chat/rooms/{room_id}/messages` | `app.chat` | `create_message` | oui | `back/app/chat/router.py:1293` |
+| GET | `/chat/rooms/{room_id}/messages/{message_id}/mcp-apps/{presentation_id}` | `app.chat` | `open_message_mcp_app` | oui | `back/app/chat/router.py:754` |
+| POST | `/chat/rooms/{room_id}/messages/{message_id}/mcp-apps/{presentation_id}` | `app.chat` | `filter_message_mcp_app` | oui | `back/app/chat/router.py:762` |
+| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews` | `app.chat` | `read_message_previews` | oui | `back/app/chat/router.py:900` |
+| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/content` | `app.chat` | `read_message_preview_content` | oui | `back/app/chat/router.py:1079` |
+| GET | `/chat/rooms/{room_id}/messages/{message_id}/previews/image` | `app.chat` | `read_message_preview_image` | oui | `back/app/chat/router.py:1026` |
+| POST | `/chat/rooms/{room_id}/messages/{message_id}/previews/repository` | `app.chat` | `open_message_directory_repository` | oui | `back/app/chat/router.py:995` |
+| POST | `/chat/rooms/{room_id}/messages/{message_id}/speech` | `app.chat` | `read_message_speech` | oui | `back/app/chat/router.py:801` |
+| PATCH | `/chat/rooms/{room_id}/messages/{message_id}/topic` | `app.chat` | `update_message_topic` | oui | `back/app/chat/router.py:869` |
+| POST | `/chat/rooms/{room_id}/mute` | `app.chat` | `set_muted` | oui | `back/app/chat/router.py:1515` |
+| GET | `/chat/rooms/{room_id}/processes` | `app.chat` | `read_room_processes` | oui | `back/app/chat/router.py:1250` |
+| POST | `/chat/rooms/{room_id}/read` | `app.chat` | `mark_read` | oui | `back/app/chat/router.py:1507` |
+| GET | `/chat/rooms/{room_id}/repositories` | `app.chat` | `discover_room_repositories` | oui | `back/app/chat/router.py:956` |
+| POST | `/chat/rooms/{room_id}/repositories` | `app.chat` | `open_room_repository` | oui | `back/app/chat/router.py:972` |
+| GET | `/chat/rooms/{room_id}/speech/status` | `app.chat` | `read_message_speech_status` | oui | `back/app/chat/router.py:775` |
+| GET | `/chat/rooms/{room_id}/tasks` | `app.chat` | `read_room_tasks` | oui | `back/app/chat/router.py:1171` |
+| PATCH | `/chat/rooms/{room_id}/topic` | `app.chat` | `update_room_topic` | oui | `back/app/chat/router.py:669` |
+| GET | `/chat/status` | `app.chat` | `read_status` | oui | `back/app/chat/router.py:396` |
+| GET | `/chat/viewer-agents` | `app.chat` | `read_viewer_agents` | oui | `back/app/chat/router.py:525` |
 | POST | `/code/agents/{agent_id}/repository` | `app.code` | `open_agent_repository` | oui | `back/app/code/router.py:26` |
 | GET | `/code/rooms/{room_id}` | `app.code` | `room_workspaces` | oui | `back/app/code/router.py:52` |
 | POST | `/code/sessions/{identifier}/heartbeat` | `app.code` | `heartbeat` | oui | `back/app/code/router.py:99` |
@@ -1562,6 +1567,9 @@ Aucune composante cyclique détectée.
 | DELETE | `/definitions/{process_id}` | `app.process` | `delete_definition` | oui | `back/app/process/router.py:215` |
 | GET | `/definitions/{process_id}` | `app.process` | `read_definition` | oui | `back/app/process/router.py:193` |
 | PUT | `/definitions/{process_id}` | `app.process` | `update_definition` | oui | `back/app/process/router.py:199` |
+| POST | `/desktop-mcp` | `app.services` | `register_desktop_relay` | oui | `back/app/services/desktop_relay_router.py:30` |
+| POST | `/desktop-mcp/{identifier}/complete` | `app.services` | `complete_desktop_relay` | non | `back/app/services/desktop_relay_router.py:55` |
+| POST | `/desktop-mcp/{identifier}/poll` | `app.services` | `poll_desktop_relay` | non | `back/app/services/desktop_relay_router.py:42` |
 | POST | `/documents` | `app.document` | `create_managed_document` | oui | `back/app/document/router.py:246` |
 | GET | `/documents/folder-collections` | `app.document` | `read_folder_collection` | oui | `back/app/document/router.py:105` |
 | GET | `/documents/folder-collections/{folder_id}` | `app.document` | `read_folder_collection` | oui | `back/app/document/router.py:105` |
@@ -1988,28 +1996,28 @@ Aucune composante cyclique détectée.
 | POST | `/runtime-authorizations/receipt` | `app.services` | `action_receipt` | non | `back/app/services/runtime_authorization_router.py:96` |
 | GET | `/runtime-authorizations/{identifier}` | `app.services` | `action_status` | non | `back/app/services/runtime_authorization_router.py:84` |
 | GET | `/services` | `app.process` | `read_process_tools` | oui | `back/app/process/router.py:130` |
-| GET | `/services` | `app.services` | `list_services` | oui | `back/app/services/router.py:106` |
-| POST | `/services` | `app.services` | `create_service` | oui | `back/app/services/router.py:222` |
-| GET | `/services/agents/{agent_id}/mcp-tools` | `app.services` | `list_agent_mcp_tools` | oui | `back/app/services/router.py:128` |
-| GET | `/services/agents/{agent_id}/permissions` | `app.services` | `read_agent_permission_catalog` | oui | `back/app/services/router.py:137` |
-| GET | `/services/capabilities` | `app.services` | `list_supported_capabilities` | oui | `back/app/services/router.py:58` |
-| GET | `/services/catalog` | `app.services` | `service_catalogue` | oui | `back/app/services/router.py:46` |
-| POST | `/services/catalog/refresh` | `app.services` | `refresh_service_catalogue` | oui | `back/app/services/router.py:52` |
-| POST | `/services/import` | `app.services` | `import_service` | oui | `back/app/services/router.py:357` |
-| POST | `/services/mcp-candidates` | `app.services` | `prepare_mcp_candidate` | oui | `back/app/services/router.py:68` |
-| POST | `/services/test-mcp` | `app.services` | `test_mcp_connection` | oui | `back/app/services/router.py:150` |
-| GET | `/services/tool-inventory` | `app.services` | `list_tool_inventory` | oui | `back/app/services/router.py:117` |
+| GET | `/services` | `app.services` | `list_services` | oui | `back/app/services/router.py:108` |
+| POST | `/services` | `app.services` | `create_service` | oui | `back/app/services/router.py:224` |
+| GET | `/services/agents/{agent_id}/mcp-tools` | `app.services` | `list_agent_mcp_tools` | oui | `back/app/services/router.py:130` |
+| GET | `/services/agents/{agent_id}/permissions` | `app.services` | `read_agent_permission_catalog` | oui | `back/app/services/router.py:139` |
+| GET | `/services/capabilities` | `app.services` | `list_supported_capabilities` | oui | `back/app/services/router.py:60` |
+| GET | `/services/catalog` | `app.services` | `service_catalogue` | oui | `back/app/services/router.py:48` |
+| POST | `/services/catalog/refresh` | `app.services` | `refresh_service_catalogue` | oui | `back/app/services/router.py:54` |
+| POST | `/services/import` | `app.services` | `import_service` | oui | `back/app/services/router.py:359` |
+| POST | `/services/mcp-candidates` | `app.services` | `prepare_mcp_candidate` | oui | `back/app/services/router.py:70` |
+| POST | `/services/test-mcp` | `app.services` | `test_mcp_connection` | oui | `back/app/services/router.py:152` |
+| GET | `/services/tool-inventory` | `app.services` | `list_tool_inventory` | oui | `back/app/services/router.py:119` |
 | GET | `/services/{service_code}/health` | `app.process` | `read_process_tool_health` | oui | `back/app/process/router.py:136` |
-| DELETE | `/services/{service_id}` | `app.services` | `delete_service` | oui | `back/app/services/router.py:314` |
-| GET | `/services/{service_id}` | `app.services` | `get_service` | oui | `back/app/services/router.py:170` |
-| PUT | `/services/{service_id}` | `app.services` | `update_service` | oui | `back/app/services/router.py:238` |
-| GET | `/services/{service_id}/conversation-tools` | `app.services` | `read_conversation_tools` | oui | `back/app/services/router.py:260` |
-| PATCH | `/services/{service_id}/conversation-tools` | `app.services` | `update_conversation_tool` | oui | `back/app/services/router.py:286` |
-| POST | `/services/{service_id}/conversation-tools/discover` | `app.services` | `discover_conversation_tools` | oui | `back/app/services/router.py:267` |
-| GET | `/services/{service_id}/deletion-impact` | `app.services` | `service_deletion_impact` | oui | `back/app/services/router.py:302` |
-| GET | `/services/{service_id}/export` | `app.services` | `export_service` | oui | `back/app/services/router.py:331` |
-| GET | `/services/{service_id}/global-params` | `app.services` | `get_global_params` | oui | `back/app/services/router.py:182` |
-| PUT | `/services/{service_id}/global-params` | `app.services` | `update_global_params` | oui | `back/app/services/router.py:199` |
+| DELETE | `/services/{service_id}` | `app.services` | `delete_service` | oui | `back/app/services/router.py:316` |
+| GET | `/services/{service_id}` | `app.services` | `get_service` | oui | `back/app/services/router.py:172` |
+| PUT | `/services/{service_id}` | `app.services` | `update_service` | oui | `back/app/services/router.py:240` |
+| GET | `/services/{service_id}/conversation-tools` | `app.services` | `read_conversation_tools` | oui | `back/app/services/router.py:262` |
+| PATCH | `/services/{service_id}/conversation-tools` | `app.services` | `update_conversation_tool` | oui | `back/app/services/router.py:288` |
+| POST | `/services/{service_id}/conversation-tools/discover` | `app.services` | `discover_conversation_tools` | oui | `back/app/services/router.py:269` |
+| GET | `/services/{service_id}/deletion-impact` | `app.services` | `service_deletion_impact` | oui | `back/app/services/router.py:304` |
+| GET | `/services/{service_id}/export` | `app.services` | `export_service` | oui | `back/app/services/router.py:333` |
+| GET | `/services/{service_id}/global-params` | `app.services` | `get_global_params` | oui | `back/app/services/router.py:184` |
+| PUT | `/services/{service_id}/global-params` | `app.services` | `update_global_params` | oui | `back/app/services/router.py:201` |
 | GET | `/skills` | `app.skill` | `list_skills` | oui | `back/app/skill/router.py:159` |
 | POST | `/skills` | `app.skill` | `create_skill` | oui | `back/app/skill/router.py:422` |
 | GET | `/skills/agents` | `app.skill` | `list_skill_agents` | oui | `back/app/skill/router.py:295` |
@@ -2132,12 +2140,14 @@ Aucune composante cyclique détectée.
 | `calendar_sync_operations` | `CalendarSyncOperation` | `app.calendar` | non | `calendar_events.id`, `calendar_feeds.id` | `back/app/calendar/models.py:139` |
 | `calendar_sync_runs` | `CalendarSyncRun` | `app.calendar` | non | `calendar_feeds.id`, `calendar_sync_operations.id` | `back/app/calendar/models.py:162` |
 | `calendar_triggers` | `CalendarTrigger` | `app.calendar` | non | `calendar_events.id`, `calendar_feeds.id`, `tasks.id` | `back/app/calendar/models.py:192` |
-| `chat_document_conversations` | `ChatDocumentConversation` | `app.chat` | non | `documents.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:25` |
-| `chat_draft_files` | `ChatDraftFile` | `app.chat` | non | `files.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:206` |
-| `chat_drafts` | `ChatDraft` | `app.chat` | non | `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:191` |
-| `chat_emoji_usages` | `ChatEmojiUsage` | `app.chat` | non | `users.id` | `back/app/chat/models.py:46` |
-| `chat_push_deliveries` | `ChatPushDelivery` | `app.chat` | non | `chat_push_subscriptions.id`, `messenger_messages.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:126` |
-| `chat_push_subscriptions` | `ChatPushSubscription` | `app.chat` | non | `users.id` | `back/app/chat/models.py:83` |
+| `chat_desktop_screen_requests` | `ChatDesktopScreenRequest` | `app.chat` | non | `chat_desktop_screen_sessions.id`, `conversation_rounds.id`, `messenger_rooms.id` | `back/app/chat/models.py:36` |
+| `chat_desktop_screen_sessions` | `ChatDesktopScreenSession` | `app.chat` | non | `users.id` | `back/app/chat/models.py:25` |
+| `chat_document_conversations` | `ChatDocumentConversation` | `app.chat` | non | `documents.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:53` |
+| `chat_draft_files` | `ChatDraftFile` | `app.chat` | non | `files.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:234` |
+| `chat_drafts` | `ChatDraft` | `app.chat` | non | `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:219` |
+| `chat_emoji_usages` | `ChatEmojiUsage` | `app.chat` | non | `users.id` | `back/app/chat/models.py:74` |
+| `chat_push_deliveries` | `ChatPushDelivery` | `app.chat` | non | `chat_push_subscriptions.id`, `messenger_messages.id`, `messenger_rooms.id`, `users.id` | `back/app/chat/models.py:154` |
+| `chat_push_subscriptions` | `ChatPushSubscription` | `app.chat` | non | `users.id` | `back/app/chat/models.py:111` |
 | `code_conversation_links` | `CodeConversationLink` | `app.code` | non | `code_workspaces.id`, `messenger_rooms.id`, `tasks.id` | `back/app/code/models.py:44` |
 | `code_display_requests` | `CodeDisplayRequest` | `app.code` | non | `code_workspaces.id`, `messenger_rooms.id`, `tasks.id` | `back/app/code/models.py:54` |
 | `code_grants` | `CodeGrant` | `app.code` | non | `agents.id`, `code_workspaces.id`, `users.id` | `back/app/code/models.py:30` |
@@ -2175,6 +2185,8 @@ Aucune composante cyclique détectée.
 | `deep_room_modes` | `DeepRoomMode` | `app.conversation` | non | `messenger_rooms.id` | `back/app/conversation/models.py:27` |
 | `deep_sessions` | `DeepSession` | `app.conversation` | non | `agents.id`, `code_workspaces.id`, `messenger_rooms.id`, `users.id` | `back/app/conversation/models.py:34` |
 | `deep_submissions` | `DeepSubmission` | `app.conversation` | non | `deep_sessions.id`, `messenger_messages.id` | `back/app/conversation/models.py:58` |
+| `desktop_mcp_relays` | `DesktopMcpRelay` | `app.services` | non | `services.id` | `back/app/services/desktop_relay_models.py:12` |
+| `desktop_mcp_requests` | `DesktopMcpRequest` | `app.services` | non | `desktop_mcp_relays.id` | `back/app/services/desktop_relay_models.py:22` |
 | `document_app_grants` | `DocumentAppGrant` | `app.document` | oui | `documents.id`, `users.id` | `back/app/document/models.py:116` |
 | `document_app_write_budgets` | `DocumentAppWriteBudget` | `app.document` | non | `documents.id`, `users.id` | `back/app/document/models.py:133` |
 | `document_attachments` | `DocumentAttachment` | `app.document` | non | `documents.id`, `memory_items.id` | `back/app/document/models.py:157` |
@@ -2294,7 +2306,7 @@ Aucune composante cyclique détectée.
 | `runtime_run_grants` | `RuntimeRunGrant` | `app.services` | non | `agent_mcp_tokens.id`, `agents.id` | `back/app/services/authorization_models.py:82` |
 | `service_action_authorizations` | `ActionAuthorization` | `app.services` | non | `agents.id`, `connections.id`, `messenger_interactions.id`, `runtime_action_permissions.id`, `runtime_run_grants.id`, `services.id`, `users.id` | `back/app/services/authorization_models.py:13` |
 | `service_function_state` | `ServiceFunctionState` | `app.connection` | non | `services.id` | `back/app/connection/models.py:84` |
-| `services` | `Service` | `app.services` | non | — | `back/app/services/models.py:24` |
+| `services` | `Service` | `app.services` | non | — | `back/app/services/models.py:25` |
 | `share_configs` | `ShareConfig` | `app.share` | oui | — | `back/app/share/models.py:23` |
 | `share_grants` | `ShareGrant` | `app.share` | non | `agent_groups.id`, `agents.id`, `share_configs.id`, `users.id` | `back/app/share/models.py:46` |
 | `skill_categories` | `SkillCategory` | `app.skill` | oui | — | `back/app/skill/models.py:31` |
@@ -2307,7 +2319,7 @@ Aucune composante cyclique détectée.
 | `team_audit` | `TeamAudit` | `core.team` | oui | — | `back/core/team/models.py:28` |
 | `team_users` | `TeamUser` | `core.team` | non | `agent_groups.id`, `users.id` | `back/core/team/models.py:19` |
 | `titles` | `Title` | `app.agent` | non | — | `back/app/agent/models.py:27` |
-| `tool_search_documents` | `ToolSearchDocument` | `app.services` | non | — | `back/app/services/models.py:82` |
+| `tool_search_documents` | `ToolSearchDocument` | `app.services` | non | — | `back/app/services/models.py:83` |
 | `topics` | `Topic` | `app.topic` | oui | `memory_items.id` | `back/app/topic/models.py:15` |
 | `user_help_dismissals` | `UserHelpDismissal` | `core.user` | non | `users.id` | `back/core/user/models.py:83` |
 | `user_llm_preferences` | `UserLlmPreferences` | `app.llm` | non | `llm_profiles.id`, `llms.id`, `users.id` | `back/app/llm/profile_models.py:120` |
@@ -2388,6 +2400,7 @@ Aucune composante cyclique détectée.
 | `calendar_is_available` | `calendar` | `app.calendar` | `calendar_is_available` | `back/app/calendar/mcp.py:101` |
 | `calendar_list` | `calendar` | `app.calendar` | `calendar_list` | `back/app/calendar/mcp.py:43` |
 | `calendar_update_event` | `calendar` | `app.calendar` | `calendar_update_event` | `back/app/calendar/mcp.py:208` |
+| `chat_screenshot` | `chat` | `app.chat` | `chat_screenshot` | `back/app/chat/mcp.py:40` |
 | `conversation_choice_resolve` | `chat` | `app.conversation` | `conversation_choice_resolve` | `back/app/conversation/mcp.py:888` |
 | `conversation_round_get` | `chat` | `app.conversation` | `conversation_round_get` | `back/app/conversation/mcp.py:252` |
 | `repository_show` | `chat` | `app.conversation` | `repository_show` | `back/app/conversation/mcp.py:127` |

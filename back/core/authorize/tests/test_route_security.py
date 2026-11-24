@@ -113,6 +113,9 @@ def test_independent_auth_route_allowlist_is_exact() -> None:
         ("app.llm.profile_inference_router", "embeddings"),
         ("app.llm.profile_inference_router", "decisions"),
         ("app.mcp.router", "agent_mcp_endpoint"),
+        ("app.services.desktop_relay_router", "poll_desktop_relay"),
+        ("app.services.desktop_relay_router", "complete_desktop_relay"),
+        ("app.services.desktop_relay_router", "desktop_relay_mcp"),
         # Token + issued run context; denial and foreign request paths have real HTTP coverage.
         ("app.services.runtime_authorization_router", "request_action"),
         ("app.services.runtime_authorization_router", "context_status"),

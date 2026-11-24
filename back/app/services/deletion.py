@@ -140,6 +140,10 @@ async def collect(tool: Service, *, lock: bool = False) -> DeletionPlan:
             if new:
                 pending.append((policies, new))
         for table in tables:
+            # These expiring deliveries are already deleted by the relay FK.
+            # In-flight polling must not invalidate the confirmed deletion impact.
+            if table.name == "desktop_mcp_requests":
+                continue
             for constraint in sorted(table.foreign_key_constraints, key=lambda item: str(item.column_keys)):
                 if constraint.referred_table is not parent:
                     continue

@@ -5,6 +5,7 @@ from .rest_contracts import RestConfig
 from .protocols import ProtocolConfig
 from .capabilities import effective_capabilities
 from . import service
+from .desktop_relay import is_desktop_mcp_url
 from .models import Service as ServiceModel
 from .schemas import (
     ConnectionSchema,
@@ -50,6 +51,7 @@ def to_public(record: ServiceModel) -> ServicePublic:
         has_listener=listener_config is not None,
         can_edit=service_can_edit(record),
         can_disable=record.can_disable,
+        desktop_mcp_relay=is_desktop_mcp_url(mcp_config.get("url")) if mcp_config else False,
         mcp_config=(
             McpConfigPublic(**public_mcp_config(mcp_config))
             if mcp_config

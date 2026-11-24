@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
 from app.code import workspace_context, human_repository_info, human_directory_repository, human_repository_candidates, RepositoryCandidates, CodeRuntimeNotConfiguredError, WorkspaceInfo
 from pydantic import Json
@@ -19,10 +19,10 @@ from core.database import get_db
 from core.storage import FileRename
 from .draft_service import (DraftSnapshot, DraftWrite, DraftFile, DraftConflict, DraftFileUnavailable, read_draft,
     write_draft, upload_draft_file, draft_attachments, clear_sent_draft, discard_draft_file)
-from core.util import source_code_response_headers
+from core.util import complete_io, source_code_response_headers
 from core.i18n import current_language, tr
 from core.params import runtime_settings
-from core.user import user_service, require_web_session
+from core.user import current_web_session_family, user_service, require_web_session
 from app.agent import (
     AgentManagementScope,
     AgentDialogueAssertion,
@@ -98,6 +98,7 @@ from app.conversation import (
 )
 
 from . import storage
+from . import desktop_screen
 from .document_conversation import document_conversation_agents, read_document_conversation, write_document_conversation
 from .document_previews import with_deleted_document_previews
 from .assertions import (
@@ -197,6 +198,67 @@ _DICTATION_MIME_TYPES = {
 }
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+
+def _desktop_identity(key: str) -> tuple[int, str, UUID] | None:
+    user_id = user_service.get_current_user_id()
+    family = current_web_session_family()
+    if user_id is None or family is None:
+        return None
+    identity = desktop_screen.tab_identity(user_id, family, key)
+    return (user_id, family, identity) if identity is not None else None
+
+
+async def _desktop_source(key: str) -> UUID | None:
+    identity = _desktop_identity(key)
+    if identity is None:
+        return None
+    return identity[2] if await desktop_screen.tab_is_live(*identity) else None
+
+
+@router.post("/desktop-screen/poll", dependencies=[Depends(require_web_session)])
+@authorize(privileges=SEND)
+async def poll_desktop_screen(request: Request, initialize: bool = False, active: UUID | None = None) -> desktop_screen.ScreenRequest | None:
+    identity = _desktop_identity(request.headers.get(desktop_screen.SCREEN_HEADER, ""))
+    if identity is None:
+        raise HTTPException(403)
+    await desktop_screen.register_tab(*identity)
+    if initialize:
+        return None
+    if active is not None:
+        if not await desktop_screen.await_screen_authorization(identity[2], active):
+            raise HTTPException(410)
+        return None
+    return await desktop_screen.next_screen_request(identity[2])
+
+
+@router.delete("/desktop-screen", status_code=204, dependencies=[Depends(require_web_session)])
+@authorize(privileges=SEND)
+async def disconnect_desktop_screen(request: Request) -> Response:
+    identity = _desktop_identity(request.headers.get(desktop_screen.SCREEN_HEADER, ""))
+    if identity is not None:
+        await desktop_screen.forget_tab(identity[2])
+    return Response(status_code=204)
+
+
+@router.post("/desktop-screen/{identifier}/complete", status_code=204, dependencies=[Depends(require_web_session)])
+@authorize(privileges=SEND)
+async def complete_desktop_screen(identifier: UUID, request: Request) -> Response:
+    identity = _desktop_identity(request.headers.get(desktop_screen.SCREEN_HEADER, ""))
+    if identity is None:
+        raise HTTPException(403)
+    data = bytearray()
+    async for chunk in request.stream():
+        if len(data) + len(chunk) > desktop_screen.MAX_IMAGE_BYTES:
+            raise HTTPException(413)
+        data.extend(chunk)
+    image = bytes(data) if data else None
+    if image is not None and (request.headers.get("content-type") != "image/jpeg"
+                              or not await complete_io(desktop_screen.verify_image, image)):
+        raise HTTPException(415)
+    if not await desktop_screen.complete_screen_request(identity[2], identity[0], identifier, image):
+        raise HTTPException(404)
+    return Response(status_code=204)
 
 
 @router.get("/documents/{document_id}/conversation", response_model=DocumentConversationPreference)
@@ -1228,7 +1290,8 @@ async def answer_interaction(
 
 @router.post("/rooms/{room_id}/messages", response_model=NativeMessengerMessage, status_code=201)
 @authorize(privileges=SEND, assertion=InternalRoomAccessAssertion)
-async def create_message(room_id: UUID, data: MessageCreate) -> NativeMessengerMessage:
+async def create_message(room_id: UUID, data: MessageCreate,
+                         desktop_key: Annotated[str | None, Header(alias=desktop_screen.SCREEN_HEADER)] = None) -> NativeMessengerMessage:
     _require_enabled()
     await _validate_topic(data.topic_id)
     try:
@@ -1270,6 +1333,7 @@ async def create_message(room_id: UUID, data: MessageCreate) -> NativeMessengerM
             repository_context=repository_context,
             document_focus=data.document_focus,
             language=data.language or await current_language(),
+            desktop_screen_session=await _desktop_source(desktop_key or ""),
         )
     except PermissionError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
@@ -1351,6 +1415,7 @@ async def create_attachment_message(
     resource_uris: Annotated[Json[AttachmentResourceUris] | None, Form()] = None,
     draft_file_keys: list[UUID] = Form(default=[], max_length=20),
     draft_revision: int | None = Form(default=None, ge=0),
+    desktop_key: Annotated[str | None, Header(alias=desktop_screen.SCREEN_HEADER)] = None,
 ) -> NativeMessengerMessage:
     _require_enabled()
     await _validate_topic(topic_id)
@@ -1421,6 +1486,7 @@ async def create_attachment_message(
             repository_context=repository_context,
             document_focus=document_focus,
             language=language or await current_language(),
+            desktop_screen_session=await _desktop_source(desktop_key or ""),
         )
     except BaseException:
         # Admission may fail after the canonical message/file row was committed. The

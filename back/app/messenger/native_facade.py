@@ -37,6 +37,7 @@ from ._observations import (
     ObservedMessengerUser,
 )
 from .contracts import (
+    CHAT_SCREEN_SOURCE_KEY,
     ChatViewerAgent,
     NativeInteractionAnswer,
     NativeMessengerAgent,
@@ -1976,6 +1977,7 @@ async def publish_internal_message(
     repository_context: dict[str, str | None] | None = None,
     document_focus: DocumentFocus | None = None,
     language: str | None = None,
+    desktop_screen_session: UUID | None = None,
 ) -> NativeMessengerMessage | None:
     # Admission runs in its own durable database session and locks the canonical
     # room while attaching the message to a ConversationRound. Keeping a lock in
@@ -2055,6 +2057,8 @@ async def publish_internal_message(
 
     direct_task_requested = task_requested or reasoning_effort_override is not None
     metadata: dict[str, object] = {}
+    if desktop_screen_session is not None:
+        metadata[CHAT_SCREEN_SOURCE_KEY] = str(desktop_screen_session)
     if resource_uris:
         metadata["resource_uris"] = list(dict.fromkeys(resource_uris))
     if repository_context is not None:

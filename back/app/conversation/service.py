@@ -19,7 +19,7 @@ from sqlalchemy.orm import aliased
 
 from app.agent.contracts import AIResult, AgentRunCheckpoint, ExecutionResult, ReasoningEffort, TaskMessage
 from app.agent import assess_checkpoint, message_prompt
-from app.messenger.contracts import DocumentFocus
+from app.messenger.contracts import CHAT_SCREEN_SOURCE_KEY, DocumentFocus
 from app.services.contracts import MCP_PRESENTATIONS_KEY
 from app.connection import Connection
 from app.messenger import (
@@ -828,6 +828,15 @@ async def build_turn(
             owned.encrypted_checkpoint = get_encryption_service().encrypt(canonical_authorization_snapshot(checkpoint))
             await get_db().commit()
 
+    source = hydrated[-1].metadata_.get(CHAT_SCREEN_SOURCE_KEY)
+    desktop_screen_session: UUID | None = None
+    if (round_.requester_user_id is not None and isinstance(source, str)
+            and all(message.platform == "internal" and message.metadata_.get(CHAT_SCREEN_SOURCE_KEY) == source
+                    for message in hydrated)):
+        try:
+            desktop_screen_session = UUID(source)
+        except ValueError:
+            pass
     turn = ConversationTurn(
         room_id=room.id,
         round_id=round_.id,
@@ -873,6 +882,7 @@ async def build_turn(
             for choice in pending_choices
         ),
         omitted_input_count=omitted,
+        desktop_screen_session=desktop_screen_session,
         topic_id=round_.topic_id,
         direct_task_requested=_direct_task_requested(hydrated[-1]),
         reasoning_effort_override=_task_reasoning_effort(hydrated[-1]),

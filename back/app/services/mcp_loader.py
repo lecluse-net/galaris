@@ -291,6 +291,7 @@ BUILTIN_CONVERSATION_TOOLS: dict[str, frozenset[str]] = {
         "calendar_actions", "calendar_action_set",
     }),
     "chat": frozenset({
+        "chat_screenshot",
         "repository_show", "conversation_choice_resolve", "voice_call_stop",
         "messenger_room_send_message", "messenger_send_message_to_user", "messenger_list_rooms",
         "messenger_room_history", "messenger_search_users",

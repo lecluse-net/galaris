@@ -1213,7 +1213,7 @@ async def resolve_function_states_many(connection_ids: Collection[int], function
 
 async def connection_tool_options(*, include_globals: bool = False) -> list[dict[str, Any]]:
     from app.services import service, has_function_permissions
-    from app.services.facade import public_connection_schema, service_can_edit
+    from app.services.facade import is_desktop_mcp_url, public_connection_schema, service_can_edit
     records = await service.get_all_service_records()
     return [{"id": t.id, "code": t.code, "label": t.label, "description": t.description,
              "icon": t.icon,
@@ -1223,6 +1223,7 @@ async def connection_tool_options(*, include_globals: bool = False) -> list[dict
              "has_file_share": bool(t.file_share_config), "has_messenger": bool(t.messenger_config),
              "has_mail": t.mail_config is not None, "has_calendar": t.calendar_config is not None,
              "has_listener": bool(t.listener_config),
+             "desktop_mcp_relay": is_desktop_mcp_url(t.mcp_config.get("url")) if t.mcp_config else False,
              "mcp_config": {"type": t.mcp_config.get("type"),
                  "auth": {"type": cast(dict[str, object], t.mcp_config.get("auth") or {}).get("type", "none")}} if t.mcp_config else None,
              "calendar_config": {"settings": {name: t.calendar_config.get("settings", {}).get(name, "")

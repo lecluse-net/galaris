@@ -19,6 +19,7 @@ from core.database import Base
 from core.database.vector import Vector
 from .authorization_models import ActionAuthorization as ActionAuthorization, RuntimeRunGrant as RuntimeRunGrant
 from .contracts import FileIndexingMode
+from .desktop_relay_models import DesktopMcpRelay as DesktopMcpRelay, DesktopMcpRequest as DesktopMcpRequest
 
 
 class Service(Base):

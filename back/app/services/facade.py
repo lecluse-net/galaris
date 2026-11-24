@@ -65,6 +65,12 @@ async def get_service_by_id(service_id: int) -> Service | None:
     return await service.get_service_by_id(service_id)
 
 
+def is_desktop_mcp_url(url: str | None) -> bool:
+    from .desktop_relay import is_desktop_mcp_url as matches_relay
+
+    return matches_relay(url)
+
+
 async def get_services_by_ids(service_ids: Collection[int]) -> dict[int, Service]:
     from . import service
 
@@ -205,6 +211,7 @@ __all__ = [
     "invalidate_authorization_context",
     "current_action_covers",
     "get_service_by_id",
+    "is_desktop_mcp_url",
     "get_services_by_ids",
     "get_service",
     "get_runtime_global_params",

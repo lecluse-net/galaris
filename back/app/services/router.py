@@ -39,6 +39,8 @@ from .authorization_router import router as authorization_router
 router.include_router(authorization_router)
 from .runtime_authorization_router import router as runtime_authorization_router
 router.include_router(runtime_authorization_router)
+from .desktop_relay_router import router as desktop_relay_router
+router.include_router(desktop_relay_router)
 
 
 @router.get("/catalog")

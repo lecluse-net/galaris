@@ -1,18 +1,88 @@
 import { test, expect, _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { createServer, type Server } from 'node:http'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
+import { parseMcpFile } from '../src/mcpDiscovery.ts'
 
 let server: Server
 let origin: string
 let profile: string
 let client: ElectronApplication | undefined
 let pageErrors: string[] = []
+let screen: { room: string; key: string; requests: string[]; results: Buffer[] } | undefined
+const desktopRoute = '/api/services/desktop-mcp'
+let relay: {
+  id: string; token: string; registrations: number; polls: number; stopped: boolean
+  jobs: { request: string; session: string; message: unknown }[]
+  replies: Map<string, unknown>
+} | undefined
 
 test.beforeAll(async () => {
   server = createServer((request, response) => {
+    if (request.url === '/protected-mcp') {
+      response.writeHead(401, { 'WWW-Authenticate': 'Bearer' }).end()
+      return
+    }
+    if (screen && request.url?.startsWith('/api/chat/')) {
+      const state = screen
+      const key = request.headers['x-galaris-chat-desktop']
+      const chunks: Buffer[] = []
+      request.on('data', chunk => { chunks.push(chunk as Buffer) })
+      request.on('end', () => {
+        const route = '/api/chat/desktop-screen'
+        if (request.url === route + '/poll?initialize=true' && typeof key === 'string'
+          && request.headers.authorization === 'Bearer synthetic.test.token') {
+          state.key = key
+          response.writeHead(200, { 'Content-Type': 'application/json' }).end('null')
+        } else if (typeof key !== 'string' || key !== state.key) {
+          response.writeHead(403).end()
+        } else if (request.url === '/api/chat/rooms/' + state.room + '/messages') {
+          state.requests.push(randomUUID())
+          response.writeHead(201).end()
+        } else if (request.url === route + '/poll' || request.url?.startsWith(route + '/poll?active=')) {
+          const id = request.url.endsWith('/poll') ? state.requests.shift() : undefined
+          const result = id ? { id, agent: 'Synthetic Agent', reason: 'Check the test screen.',
+            expires_at: new Date(Date.now() + 40_000).toISOString() } : null
+          setTimeout(() => response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(result)), 150)
+        } else {
+          if (request.url?.endsWith('/complete')) state.results.push(Buffer.concat(chunks))
+          response.writeHead(204).end()
+        }
+      })
+      return
+    }
+    if (relay && request.url?.startsWith(desktopRoute)) {
+      const state = relay
+      let text = ''
+      request.setEncoding('utf8')
+      request.on('data', chunk => { text += chunk })
+      request.on('end', () => {
+        response.setHeader('Content-Type', 'application/json')
+        const token = request.headers['x-desktop-mcp-token']
+        if (request.url === desktopRoute && request.headers.authorization === 'Bearer synthetic.test.token'
+          && typeof token === 'string') {
+          state.id = JSON.parse(text).relay
+          state.token = token
+          state.registrations++
+          response.end('{"service_id":42}')
+        } else if (token === state.token && state.id && request.url?.startsWith(desktopRoute + '/' + state.id + '/')) {
+          if (request.url.endsWith('/poll?offline=true')) {
+            state.stopped = true
+            response.end('null')
+          } else if (request.url.endsWith('/poll')) {
+            state.polls++
+            setTimeout(() => response.end(JSON.stringify(state.jobs.shift() ?? null)), 40)
+          } else {
+            const { request: id, response: reply } = JSON.parse(text)
+            state.replies.set(id, reply)
+            response.writeHead(204).end()
+          }
+        } else response.writeHead(403).end()
+      })
+      return
+    }
     if (request.url === '/shell') {
       response.writeHead(200, { 'Content-Type': 'text/html' })
       response.end(`<!doctype html><title>Synthetic workspace</title><style>
@@ -76,6 +146,8 @@ test.afterEach(async ({}, info) => {
   }
   for (const page of client?.windows() ?? []) await page.evaluate(() => { window.onbeforeunload = null }).catch(() => {})
   await client?.close(); client = undefined
+  relay = undefined
+  screen = undefined
   await rm(profile, { recursive: true, force: true })
   expect(pageErrors).toEqual([])
 })
@@ -83,7 +155,7 @@ test.afterEach(async ({}, info) => {
 async function launch(expectVisible = true): Promise<Page> {
   client = await electron.launch({
     args: ['--no-sandbox', '--lang=en-US', '--use-fake-device-for-media-stream', '.'],
-    env: { ...process.env, LANG: 'en_US.UTF-8', GALARIS_DESKTOP_USER_DATA: profile }
+    env: { ...process.env, LANG: 'en_US.UTF-8', GALARIS_DESKTOP_USER_DATA: profile, CODEX_HOME: profile }
   })
   const launcher = await client.firstWindow()
   for (const page of client.windows()) page.on('pageerror', error => pageErrors.push(error.message))
@@ -110,6 +182,139 @@ async function shortcut(keyCode: string, modifiers: ('control' | 'shift')[] = ['
     contents.sendInputEvent({ type: 'keyUp', ...input })
   }, { keyCode, modifiers })
 }
+
+test('desktop Chat asks locally and uploads a single image only after confirmation', async () => {
+  const state = { room: randomUUID(), key: '', requests: [], results: [] as Buffer[] }
+  screen = state
+  const launcher = await launch()
+  const remote = await openServer(launcher)
+  const ask = async (): Promise<Page> => {
+    const window = client!.waitForEvent('window', page => page.url().endsWith('?screenshot'))
+    const sent = await remote.evaluate(async room => {
+      const response = await fetch('/api/chat/rooms/' + room + '/messages', {
+        method: 'POST', headers: { Authorization: 'Bearer synthetic.test.token', 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: 'Synthetic desktop message' })
+      })
+      return response.status
+    }, state.room)
+    expect(sent).toBe(201)
+    return await window
+  }
+  const denied = await ask()
+  await expect(denied.getByText('Synthetic Agent is asking to see part of your screen.')).toBeVisible()
+  await denied.getByRole('button', { name: 'Decline', exact: true }).last().click()
+  await expect.poll(() => state.results.map(result => result.length)).toEqual([0])
+
+  const approved = await ask()
+  await approved.getByRole('button', { name: 'Choose a source' }).click()
+  await approved.getByRole('combobox', { name: 'Screen or window' }).click()
+  await approved.getByRole('option').first().click()
+  await approved.getByRole('button', { name: 'Take screenshot' }).click()
+  await expect(approved.getByRole('img', { name: 'Screenshot preview' })).toBeVisible()
+  expect(state.results).toHaveLength(1)
+  await approved.getByRole('button', { name: 'Send screenshot' }).click()
+  await expect.poll(() => state.results.at(1)?.subarray(0, 3).toString('hex')).toBe('ffd8ff')
+  expect(state.results).toHaveLength(2)
+})
+
+test('shares a local MCP directly from its switch and resumes no partial share automatically', async () => {
+  const fixture = path.join(profile, 'inventory.cjs')
+  const config = path.join(profile, 'config.toml')
+  const received = path.join(profile, 'mcp-received.txt')
+  await writeFile(fixture, [
+    "const readline = require('node:readline')",
+    "const { appendFileSync } = require('node:fs')",
+    "readline.createInterface({ input: process.stdin }).on('line', line => {",
+    "  const message = JSON.parse(line)",
+    "  if (message.id === undefined) return",
+    "  appendFileSync(" + JSON.stringify(received) + ", message.method + '\\n')",
+    "  const result = message.method === 'initialize'",
+    "    ? { protocolVersion: message.params.protocolVersion, capabilities: { tools: {}, resources: {} }, serverInfo: { name: 'Synthetic inventory', version: '1.0.0' } }",
+    "    : message.method === 'tools/list'",
+    "    ? { tools: [",
+    "      { name: 'inventory', inputSchema: { type: 'object' } },",
+    "      { name: 'stock_count', inputSchema: { type: 'object' } },",
+    "    ] }",
+    "    : message.method === 'resources/read'",
+    "    ? { contents: [{ uri: message.params.uri, mimeType: 'text/html;profile=mcp-app', text: '<p>Synthetic stock</p>' }] }",
+    "    : { content: [{ type: 'text', text: 'Synthetic stock' }] }",
+    "  console.log(JSON.stringify({ jsonrpc: '2.0', id: message.id, result }))",
+    "})",
+  ].join('\n'))
+  const configuration = (args: string[]) => [
+    '[mcp_servers.inventory]', 'command = ' + JSON.stringify(process.execPath), 'args = ' + JSON.stringify(args),
+    '[mcp_servers.protected]', 'url = ' + JSON.stringify(origin + '/protected-mcp'),
+  ].join('\n')
+  const initial = configuration([fixture])
+  await writeFile(config, initial)
+  const [partial] = parseMcpFile(initial, config, 'Codex')
+  const priorRelay = randomUUID()
+  const token = 's'.repeat(43)
+  await writeFile(path.join(profile, 'desktop-mcp.json'), JSON.stringify({
+    settings: { imported: [], servers: { [origin]: { [partial!.summary.id]: {
+      relay: priorRelay, token, fingerprint: partial!.fingerprint, summary: partial!.summary, enabled: true, tools: ['inventory'],
+    } } } },
+  }))
+  const state = { id: priorRelay, token, registrations: 0, polls: 0, stopped: false,
+    jobs: [] as NonNullable<typeof relay>['jobs'], replies: new Map<string, unknown>() }
+  relay = state
+  const launcher = await launch()
+  await launcher.getByRole('button', { name: 'Local MCP' }).click()
+  await expect(launcher.getByRole('heading', { name: 'Local MCP' })).toBeVisible()
+  const toggle = launcher.getByRole('switch', { name: 'Share inventory' })
+  await expect(toggle).toBeVisible()
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
+  expect(state.registrations).toBe(0)
+  await launcher.getByRole('button', { name: 'Back', exact: true }).click()
+  const remote = await openServer(launcher)
+  await remote.evaluate(() => localStorage.setItem('access_token', 'synthetic.test.token'))
+  await client!.evaluate(({ Menu }) => {
+    Menu.getApplicationMenu()!.items[0]!.submenu!.items.find(item => item.label === 'Local MCP')!.click()
+  })
+  const protectedToggle = launcher.getByRole('switch', { name: 'Share protected' })
+  await protectedToggle.click()
+  await expect(launcher.getByRole('alert')).toContainText('The local MCP requires authentication (HTTP 401)')
+  await expect(protectedToggle).toHaveAttribute('aria-checked', 'false')
+  expect(state.registrations).toBe(0)
+  expect(state.polls).toBe(0)
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-checked', 'true')
+  await expect(launcher.getByText('Relay online')).toBeVisible()
+  expect(state.registrations).toBe(1)
+  expect(state.id).toBe(priorRelay)
+  await expect(readFile(received, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+  const session = randomUUID()
+  const initialized = randomUUID()
+  state.jobs.push({ request: initialized, session, message: { method: 'initialize', params: {
+    protocolVersion: '2025-11-25', capabilities: {}, clientInfo: { name: 'Synthetic server', version: '1.0.0' }
+  } } })
+  await expect.poll(() => state.replies.get(initialized)).toMatchObject({ result: { serverInfo: { name: 'Synthetic inventory' } } })
+  const send = async (method: string, params?: Record<string, unknown>) => {
+    const request = randomUUID()
+    state.jobs.push({ request, session, message: { method, params } })
+    await expect.poll(() => state.replies.get(request)).toBeDefined()
+    return state.replies.get(request)
+  }
+  expect(await send('tools/list')).toMatchObject({ result: { tools: [{ name: 'inventory' }, { name: 'stock_count' }] } })
+  expect(await send('tools/call', { name: 'stock_count', arguments: {} })).toEqual({
+    result: { content: [{ type: 'text', text: 'Synthetic stock' }] },
+  })
+  expect(await send('resources/read', { uri: 'file:///synthetic/private.txt' })).toMatchObject({ error: { code: -32003 } })
+  expect(await send('resources/read', { uri: 'ui://inventory/table' })).toMatchObject({
+    result: { contents: [{ text: '<p>Synthetic stock</p>' }] },
+  })
+  expect((await readFile(received, 'utf8')).trim().split('\n')).toEqual([
+    'initialize', 'tools/list', 'tools/call', 'resources/read',
+  ])
+  await writeFile(config, configuration([fixture, 'changed']))
+  await launcher.getByRole('button', { name: 'Discover', exact: true }).click()
+  await expect(launcher.getByText(/Configuration changed/)).toBeVisible()
+  await expect.poll(() => state.stopped).toBe(true)
+  await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
+  await expect(launcher.getByText('Private', { exact: true })).toHaveCount(2)
+})
 
 test('connects, retains cookies and drafts after restart, and isolates servers', async () => {
   const launcher = await launch()

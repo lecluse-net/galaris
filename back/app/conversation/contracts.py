@@ -156,6 +156,7 @@ class ConversationTurn:
     produced_document_references: Callable[[], tuple[str, ...]] | None = None
     # Server-rendered annotations for the newest input, kept separate from the full source.
     display_context: str = ""
+    desktop_screen_session: UUID | None = None
 
     @property
     def sender_is_ai(self) -> bool:

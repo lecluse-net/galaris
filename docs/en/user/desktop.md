@@ -30,6 +30,55 @@ Each server address has separate cookies and local data. To change servers or re
 a network failure, use **Galaris → Change server…**. Closing this configuration window
 returns to the existing Galaris window.
 
+## Share a local MCP
+
+Open **Galaris → Local MCP** from the desktop menu. **Discover** reads user
+configurations for Claude Desktop, Codex, Visual Studio Code, and Cursor. For
+another application or a project configuration, choose **Import configuration**
+and select a JSON or TOML MCP file. Discovery only reads these configuration files.
+Discovered servers stay private.
+
+Turn on the switch for the MCP you want. The signed-in account needs permission to
+edit Services. The selected server creates an **HTTP MCP Service** with the
+discovered name. In **Services & connections**, create or select a Connection
+for an agent, test discovery, and set function permissions. For use in Chat,
+also enable the selected tools in **Conversation tools**.
+
+MCP tools run with the local application's permissions. The relay rejects direct
+reads of `file://` resources on the device.
+
+Create the agent Connection without an account or password. If the MCP requires a
+token, set its HTTP headers in the local MCP file or use an environment variable
+available to the client. For example, `bearer_token_env_var` names the variable that
+provides the token. The client presents those credentials to the MCP on the device.
+If an HTTP or SSE MCP rejects access when you turn on sharing, the client shows the
+error before registering the Service. Correct the configuration, choose **Discover**,
+and try again. `stdio` commands use their configured environment.
+
+The client supports `stdio` commands and Streamable HTTP or SSE endpoints on
+loopback. The desktop contacts the Galaris HTTPS address to run the relay. No
+additional inbound port is required. If the network filters HTTPS traffic,
+it must allow requests from the desktop client to your instance.
+
+Sharing applies to this device and the selected server. Closing the client or
+putting the computer to sleep makes its MCPs unavailable. A configuration
+change detected by **Discover** pauses sharing until you approve it again.
+Turning off sharing keeps the Service and Connection settings. Deleting the
+Service in Galaris revokes its relay on the server.
+
+## Show an agent part of your screen
+
+In a discussion started from the desktop client, the agent can request a screenshot
+with `chat_screenshot`, a tool in the **Chat** Service. The request opens on the
+device and in the session that sent the message. The tool is available during text
+turns in internal Chat.
+
+Choose a screen or window, take a screenshot, and review the preview. The
+**Send screenshot** button uploads the image to the Galaris server.
+**Decline** or closing the window cancels the upload. Each request requires a new
+decision. Galaris saves the image as a private managed file for the agent and returns
+a `file://…` URI the agent can attach to its message.
+
 ## Tabs and spelling
 
 To the left of the tabs, **Back** and **Forward** browse the active tab’s page history.

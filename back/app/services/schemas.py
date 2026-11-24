@@ -367,6 +367,7 @@ class ServicePublic(BaseModel):
     has_calendar: bool = False
     can_edit: bool
     can_disable: bool = True
+    desktop_mcp_relay: bool = False
     mcp_config: Optional[McpConfigPublic] = None
     file_share_config: Optional[FileShareConfig] = None
     messenger_config: Optional[MessengerConfig] = None

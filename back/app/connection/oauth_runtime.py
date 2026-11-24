@@ -8,6 +8,7 @@ from urllib.parse import urlsplit
 
 import httpx2 as httpx
 
+from app.services.facade import is_desktop_mcp_url
 from core.database import get_db_session
 from core.i18n import t
 from .oauth_service import OAuthError, access_token, invalidate_token
@@ -48,6 +49,6 @@ class ConnectionOAuthAuth(httpx.Auth):
 
 
 def mcp_oauth_auth(params: Mapping[str, object], server_url: str) -> httpx.Auth | None:
-    if not isinstance(params, RuntimeConnectionParams) or not params.oauth_enabled:
+    if not isinstance(params, RuntimeConnectionParams) or not params.oauth_enabled or is_desktop_mcp_url(server_url):
         return None
     return ConnectionOAuthAuth(params.connection_id, server_url)

@@ -1,10 +1,14 @@
 <template>
-  <main class="desktop-launcher q-pa-lg">
+  <McpSettings v-if="state.settingsPage === 'mcp'" />
+  <main v-else class="desktop-launcher q-pa-lg">
     <q-card flat bordered class="launcher-card">
       <q-card-section class="row items-center q-gutter-md">
         <img :src="icon" alt="" width="56" height="56">
         <div><h1 class="text-h5 q-my-none">{{ t('title') }}</h1><p class="q-mb-none text-body2">{{ t('intro') }}</p></div>
       </q-card-section>
+      <q-card-actions>
+        <q-btn outline color="primary" icon="extension" :label="t('mcpTitle')" :disable="state.connecting" @click="windowAPI.openMcpSettings()" />
+      </q-card-actions>
       <q-separator />
       <q-card-section>
         <q-form @submit="connect">
@@ -37,6 +41,7 @@ import { onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { DesktopState } from '../src/contracts'
 import icon from '../../front/public/pwa/icon-512.png'
+import McpSettings from './McpSettings.vue'
 
 const { initialState } = defineProps<{ initialState: DesktopState }>()
 const { t } = useI18n()

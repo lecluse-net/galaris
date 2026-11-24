@@ -3215,6 +3215,10 @@ isolated previews, clipboard, microphone permission with a simulated device and 
 return with same-tab state preserved. The real updater rejects corrupted bytes before
 succeeding on retry; local diagnostics cover causes, secret redaction, rotation and write
 failures.
+The desktop MCP journey discovers a synthetic Codex configuration, verifies explicit
+sharing, calls a real `stdio` MCP, and pauses the relay when the configuration changes.
+`app/services/tests/test_desktop_relay.py` covers RBAC registration, credential isolation,
+dispatch across PostgreSQL connections, and revocation.
 Unsaved changes prevent quitting or switching servers while preserving the current
 session; installation restarts pass through the same closing protection. Tabs retain drafts,
 share server cookies, open internal links and honor shortcuts and dirty-page close vetoes.

@@ -3,8 +3,8 @@
 # Client desktop Electron
 
 Le package indépendant `desktop/` réutilise l’interface du serveur et embarque seulement
-le sélecteur de serveur, la barre d’onglets Vue/Quasar et le moteur Electron. Il n’ajoute aucun module métier,
-serveur local, accès Node à l’interface distante ou configuration CORS.
+le sélecteur de serveur, les réglages MCP locaux, la barre d’onglets Vue/Quasar et le moteur Electron.
+Les vues distantes restent isolées des opérations locales.
 Voir la décision [0292](../../../project/decisions/0292-desktop-client.md) et le
 [parcours utilisateur](../user/desktop.md).
 
@@ -71,6 +71,49 @@ n’a pas besoin d’être recompilé pour cette disposition.
 Les permissions refusent les frames et origines tierces et demandent un accord natif pour
 les capacités prises en charge. Les schémas de programmes locaux ne sont jamais transmis
 à `shell.openExternal`. Les certificats invalides restent refusés.
+
+## Relais MCP
+
+Le processus principal découvre les configurations utilisateur connues et les fichiers
+choisis dans le sélecteur natif. Il conserve l’empreinte de la configuration partagée
+pour chaque serveur Galaris. Le renderer local reçoit les résumés et états des MCP.
+Les commandes, arguments, URL locales et variables restent dans le processus principal.
+Les instances `stdio` démarrent à la demande, par session MCP.
+
+Le partage crée un Service HTTP sous le privilège `SERVICE_EDIT` de la session web.
+La session sert à l’inscription explicite, puis le poste utilise un secret limité à ce
+relais. Le serveur conserve un secret différent dans la configuration protégée du
+Service. Les secrets côté poste utilisent le coffre du système lorsqu’il est disponible.
+Sous Linux sans coffre utilisable, les réglages utilisent un fichier utilisateur en mode
+`0600`.
+
+Sur le réseau, le poste récupère les demandes et envoie les réponses par POST HTTPS sur
+l’origine existante de Galaris, via la pile réseau Chromium. Le backend accède au MCP
+représentant le poste par son endpoint HTTP authentifié sur le port d’écoute interne
+existant. Les droits de connexion et de fonction suivent le chemin MCP habituel.
+Les requêtes en transit sont chiffrées, expirent, sont réclamées une fois et sont supprimées après livraison
+ou expiration. Les vues HTML suivent le même relais que les outils. Le processus principal
+refuse les lectures de ressources dont l’URI utilise le schéma `file:`. Les notifications
+spontanées et les demandes de sampling ou d’elicitation restent locales.
+
+## Capture ponctuelle dans le Chat
+
+Le processus principal associe une clé éphémère à l’onglet desktop qui envoie un
+message du Chat. Il établit la présence via le même point d’entrée HTTPS et ajoute
+la clé à la requête du message. Le backend associe cette présence à un compte et à
+une famille de session web active. Si un tour fusionne des messages de provenances
+différentes, le catalogue n’expose pas `chat_screenshot`. La garde de l’outil relit
+la session et les droits de la discussion avant la demande, puis pendant l’attente.
+
+Seule la fenêtre locale d’autorisation reçoit la permission Electron de capture
+après sélection et geste utilisateur. Elle en extrait une image JPEG bornée et
+arrête immédiatement la piste. La prévisualisation reste locale jusqu’à la
+confirmation. La réponse chiffrée en transit dans PostgreSQL est supprimée à la
+consommation ou à l’expiration. Après validation du tour courant, le Service Chat
+enregistre les octets dans le stockage de fichiers gérés du serveur. L’outil renvoie
+l’URI canonique `file://<uuid>`, le nom et le type MIME. L’agent peut joindre le fichier
+en utilisant cette URI. La fermeture de l’onglet, la déconnexion et l’expiration
+invalident les demandes en cours.
 
 ## Distribution et mises à jour
 

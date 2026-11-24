@@ -22,6 +22,34 @@ from sqlalchemy.orm import Mapped, mapped_column
 from core.database import Base
 
 
+class ChatDesktopScreenSession(Base):
+    """Short-lived presence of a single desktop tab and web login."""
+
+    __tablename__ = "chat_desktop_screen_sessions"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    web_family: Mapped[str] = mapped_column(String(36))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
+class ChatDesktopScreenRequest(Base):
+    """One capture request; only the selected client can claim or complete it."""
+
+    __tablename__ = "chat_desktop_screen_requests"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    session_id: Mapped[UUID] = mapped_column(ForeignKey("chat_desktop_screen_sessions.id", ondelete="CASCADE"), index=True)
+    round_id: Mapped[UUID] = mapped_column(ForeignKey("conversation_rounds.id", ondelete="CASCADE"), index=True)
+    room_id: Mapped[UUID] = mapped_column(ForeignKey("messenger_rooms.id", ondelete="CASCADE"), index=True)
+    agent_label: Mapped[str] = mapped_column(String(255))
+    reason: Mapped[str] = mapped_column(String(400))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    outcome: Mapped[str | None] = mapped_column(String(20))
+    image_ciphertext: Mapped[str | None] = mapped_column(Text)
+
+
 class ChatDocumentConversation(Base):
     """The last room opened by one human alongside one Document."""
 

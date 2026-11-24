@@ -3374,6 +3374,10 @@ téléchargement, aperçu isolé, presse-papiers, permission micro avec périph�
 retour OAuth avec conservation du state du même onglet. Le moteur réel de mise à jour
 refuse des octets corrompus avant de réussir au réessai ; les diagnostics locaux couvrent
 la cause, la suppression des secrets, la rotation et l’échec d’écriture.
+Le parcours MCP desktop découvre une configuration Codex synthétique, vérifie le
+partage explicite, appelle un vrai MCP `stdio` et suspend le relais après un changement
+de configuration. `app/services/tests/test_desktop_relay.py` couvre l’inscription RBAC,
+l’isolation des secrets, le passage des appels entre connexions PostgreSQL et la révocation.
 Les changements non enregistrés empêchent de quitter ou de changer de serveur sans
 perdre la session en cours ; le redémarrage d’installation passe par cette même fermeture.
 Les onglets conservent leurs brouillons, partagent les cookies du serveur, ouvrent les liens

@@ -1,5 +1,9 @@
 # Décisions d'architecture
 
+- [0324 — One-shot desktop screenshots in Chat](0324-chat-desktop-screenshot.md)
+
+- [0323 — Desktop MCP relay over outbound HTTPS](0323-desktop-mcp-relay.md)
+
 - [0320 — Rattachement des permissions des outils natifs](0320-native-tool-permission-ownership.md)
 
 - [0319 — Portées de gestion Documents et Tâches](0319-document-task-management-scopes.md)

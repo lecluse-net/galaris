@@ -104,6 +104,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from app.services.authorization_notifications import deliver_authorization_notifications, reconcile_authorizations
         task_scheduler.register_periodic_job("action-authorization-notifications", deliver_authorization_notifications, interval=2.0)
         task_scheduler.register_periodic_job("action-authorization-reconciliation", reconcile_authorizations, interval=30.0)
+        from app.services import prune_desktop_relay_requests
+        task_scheduler.register_periodic_job("desktop-mcp-relay-expiry", prune_desktop_relay_requests, interval=30.0)
         from app.services.documentation_service import refresh_documentation_index
         task_scheduler.register_periodic_job(
             "documentation-index", refresh_documentation_index, interval=30.0, timeout=90.0,

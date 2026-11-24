@@ -23,7 +23,11 @@
   "overrides": {
     "minimatch@>=7 <11.0.1": "11.0.9"
   },
-  "dependencies": { "electron-updater": "6.8.11" },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "electron-updater": "6.8.11",
+    "smol-toml": "1.9.0"
+  },
   "devDependencies": {
     "@playwright/test": "1.64.0",
     "@quasar/extras": "2.1.0",
