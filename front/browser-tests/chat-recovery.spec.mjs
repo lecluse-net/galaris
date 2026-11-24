@@ -647,6 +647,48 @@ for (const section of [
   })
 }
 
+test('task update bursts keep one room task read in flight and reconcile after a failure', async ({ page }) => {
+  const task = { id: 'task-a', label: 'Initial task', status: 'SUCCESS', agent_id: null, data: {}, revision: 1,
+    tree_parent_id: null, created_at: '2026-09-01T12:00:00Z' }
+  const tasksUrl = '**/api/chat/rooms/room-a/tasks?*'
+  await jsonRoute(page, tasksUrl, { items: [task], total: 1, page: 1, page_size: 10 })
+  await jsonRoute(page, '**/api/tasks/activity', [])
+  await conversation(page, ['CHAT_SEND', 'TASK_ACCESS'])
+  await expect(page.getByText(task.label, { exact: true })).toBeVisible()
+  await page.clock.install()
+
+  let release
+  const blocked = new Promise(resolve => { release = resolve })
+  let reads = 0, active = 0, peak = 0
+  const updated = { ...task, label: 'Reconciled task', revision: 2 }
+  await page.route(tasksUrl, async route => {
+    const first = ++reads === 1
+    peak = Math.max(peak, ++active)
+    try {
+      if (first) {
+        await blocked
+        await route.abort('failed')
+      } else {
+        await route.fulfill({ json: { items: [updated], total: 1, page: 1, page_size: 10 } })
+      }
+    } finally { active-- }
+  })
+  const signal = () => page.evaluate(() => window.testApp.emitSocket('task.update', { data: {} }))
+  try {
+    await signal()
+    await page.clock.runFor(300)
+    await expect.poll(() => reads).toBe(1)
+    for (let burst = 0; burst < 3; burst++) {
+      await signal()
+      await page.clock.runFor(300)
+    }
+    release()
+    await expect(page.getByText(updated.label, { exact: true })).toBeVisible()
+    expect(peak).toBe(1)
+    expect(reads).toBe(2)
+  } finally { release() }
+})
+
 for (const status of [403, 404]) {
   test(`a late ${status} from a previous room cannot clear the current conversation`, async ({ page }) => {
     await conversation(page)

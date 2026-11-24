@@ -292,6 +292,7 @@ const canEdit = computed(() => privilegeStore.hasPrivilege(privileges.TASK_EDIT)
 const { resolveTopicRefs, topicTitle } = useTopicRefs()
 let requestSequence = 0
 let refreshTimer: ReturnType<typeof setTimeout> | null = null
+let refreshPending = false
 let scrollFrame: number | null = null
 let scrollVisibilityFrame: number | null = null
 let taskScrollResizeObserver: ResizeObserver | null = null
@@ -614,6 +615,7 @@ async function load(reset = true, scrollAfterLoad = false): Promise<void> {
     if (sequence === requestSequence) {
       loading.value = false
       hasCompletedInitialTaskLoad.value = true
+      flushRefresh()
     }
   }
 }
@@ -647,7 +649,10 @@ async function loadOlderTasks(): Promise<void> {
   } catch (caught) {
     if (sequence === requestSequence) error.value = apiErrorDetail(caught) ?? t('chat.tasksLoadError')
   } finally {
-    if (sequence === requestSequence) loadingOlder.value = false
+    if (sequence === requestSequence) {
+      loadingOlder.value = false
+      flushRefresh()
+    }
   }
 }
 
@@ -719,8 +724,24 @@ defineExpose({ scrollToBottom: scrollTasksToBottom })
 
 function scheduleRefresh(): void {
   if (!props.canRead) return
-  if (refreshTimer) window.clearTimeout(refreshTimer)
-  refreshTimer = setTimeout(() => { void load(false) }, 250)
+  refreshPending = true
+  // A steady stream of task events must still allow the list to refresh.
+  refreshTimer ??= setTimeout(() => {
+    refreshTimer = null
+    flushRefresh()
+  }, 250)
+}
+
+function flushRefresh(): void {
+  if (!refreshPending || refreshTimer !== null || loading.value || loadingOlder.value) return
+  refreshPending = false
+  void load(false)
+}
+
+function clearRefresh(): void {
+  if (refreshTimer !== null) window.clearTimeout(refreshTimer)
+  refreshTimer = null
+  refreshPending = false
 }
 
 function applyTaskEventSnapshot(event: TaskSnapshotEvent): void {
@@ -754,7 +775,7 @@ function onTaskDelete(event: TaskDeleteEvent): void {
 }
 
 function onTaskMutation(): void { scheduleRefresh() }
-function onConnect(): void { void load(false) }
+function onConnect(): void { scheduleRefresh() }
 
 function subscribe(): void {
   if (subscribed) return
@@ -839,6 +860,7 @@ watch(() => props.canRead && tasks.value.length > 0, value => emit('has-items', 
 watch(
   () => [props.roomId, props.fromMessageId, props.viewerAgentId, props.canRead] as const,
   ([roomId, , viewerAgentId, canRead], previous) => {
+    clearRefresh()
     if (roomId !== previous?.[0] || viewerAgentId !== previous?.[2] || canRead !== previous?.[3]) {
       tasks.value = []
       total.value = 0
@@ -865,7 +887,7 @@ watch(() => tasks.value.map(task => task.topic_id), ids => { void resolveTopicRe
 
 onBeforeUnmount(() => {
   requestSequence += 1
-  if (refreshTimer) window.clearTimeout(refreshTimer)
+  clearRefresh()
   if (scrollFrame !== null) window.cancelAnimationFrame(scrollFrame)
   if (scrollVisibilityFrame !== null) window.cancelAnimationFrame(scrollVisibilityFrame)
   disconnectTaskScrollResizeObserver()
