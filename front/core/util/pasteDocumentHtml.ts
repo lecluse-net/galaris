@@ -1,6 +1,7 @@
 import DOMPurify from 'dompurify'
 import { attachmentReference, sanitizeRichHtml } from './richText'
 import { editorialClasses, validEditorialStyle } from './editorialHtmlStyle'
+import { chartAttribute, readChartFigure } from './editorialChart'
 
 const tags = 'p h1 h2 h3 h4 h5 h6 strong em u s b i del blockquote ul ol li hr a table thead tbody tfoot tr th td pre code br mark span img figure figcaption caption colgroup col sub sup div section article main header footer aside'.split(' ')
 const inlineStyles = ['color', 'background-color', 'font-family', 'font-size', 'text-align', 'vertical-align', 'border', 'border-collapse']
@@ -35,7 +36,8 @@ export async function pasteDocumentHtml(html: string, options: {
   const safe = DOMPurify.sanitize(markup, {
     WHOLE_DOCUMENT: true, ALLOWED_TAGS: ['html', 'head', 'body', 'style', ...tags],
     ALLOWED_ATTR: ['style', 'class', 'id', 'href', 'title', 'alt', 'width', 'height', 'colspan', 'rowspan', 'colwidth', 'start', 'reversed', 'value'],
-    ALLOW_DATA_ATTR: false, ADD_ATTR: ['data-paste-image', 'data-color', 'data-math', 'data-code-lines', 'data-code-nowrap', 'data-checked'],
+    ALLOW_DATA_ATTR: false, ADD_ATTR: ['data-paste-image', 'data-color', 'data-math', 'data-code-lines', 'data-code-nowrap', 'data-checked', chartAttribute],
+    ADD_URI_SAFE_ATTR: [chartAttribute],
   })
   const frame = document.createElement('iframe')
   frame.setAttribute('sandbox', 'allow-same-origin')
@@ -84,7 +86,7 @@ export async function pasteDocumentHtml(html: string, options: {
       if (!element.className) element.removeAttribute('class')
       // Keep pre > code intact: wrapping it in font spans turns a code block
       // into ordinary paragraphs during Tiptap's conversion.
-      if (element.closest('pre')) continue
+      if (element.closest('pre') || readChartFigure(element.parentElement ?? element) || readChartFigure(element)) continue
       for (const [key, value] of style.inline) {
         if (validEditorialStyle(key, value) && !['rgba(0, 0, 0, 0)', 'transparent', 'normal', 'start', '16px', 'none', '0px none rgb(0, 0, 0)'].includes(value)) element.style.setProperty(key, value)
       }

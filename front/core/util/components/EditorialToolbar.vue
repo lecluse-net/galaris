@@ -127,7 +127,9 @@ const groups = computed(() => {
       button('equation.block', 'calculate', editor.isActive('blockMath')),
     ]] },
     { name: 'insert' as const, rows: [[button('link', 'link'), button('galarisLink', 'folder_open'), ...(document ? [button('resources.uploadFile', 'upload_file')] : [])],
-      ...(document || mode === 'simple' ? [[button('insertTable', 'table_chart'), ...(document ? [button('insertEmoji', 'sentiment_satisfied_alt')] : []), button('separator', 'horizontal_rule')]] : [])] },
+      ...(document || mode === 'simple' ? [[button('insertTable', 'table_chart'),
+        ...(document ? [button('chart.insert', 'bar_chart'), button('insertEmoji', 'sentiment_satisfied_alt')] : []),
+        button('separator', 'horizontal_rule')]] : [])] },
   ].map(group => {
     const rows = group.rows.map(row => row.filter(item => !hiddenActions.includes(item.key))).filter(row => row.length)
     return { ...group, rows: mode === 'full' ? rows : [rows.flat().filter(item => simpleKeys.includes(item.key))] }

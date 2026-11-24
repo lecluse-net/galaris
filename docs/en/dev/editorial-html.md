@@ -86,6 +86,17 @@ host’s explicit integration point for the interactive HTML runtime. In a mind 
 the node saves its fragment in `body_html`. Reference selection keeps the reader
 mounted, and editing the body makes the full editorial toolbar available.
 
+A chart is an HTML figure with `data-galaris-chart`. The attribute contains
+URI-component-encoded JSON with `version: 1`, the type (`bar`, `line` or `pie`), the title,
+and `{label, value}` rows. Editors, readers and export snapshots use the same ECharts
+renderer. Existing SVGs with this attribute remain readable and editable. Text documents
+and mind map nodes (`body_html`) share this format.
+Generic server-only HTML conversions include the text caption with its values.
+
+`document_chart` validates the values and returns the HTML block to insert. Agents save
+it through file commands or `mindmap_add` and `mindmap_edit`, with their usual access and
+revision checks.
+
 ## Documents as the information hub
 
 Agent profiles are virtual `galaris://agent/<id>` resources, without documents or folders

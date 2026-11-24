@@ -15,9 +15,93 @@ async function fixture(page, content) {
   return () => item.payload.text
 }
 
-const mountEditor = page => mount(page, 'app/document/components/DocumentEditor.vue', {
-  props: { documentId: 'doc-a', agentId: 7 }, privileges: ['DOCUMENT_EDIT'],
+const mountEditor = (page, options = {}) => mount(page, 'app/document/components/DocumentEditor.vue', {
+  props: { documentId: 'doc-a', agentId: 7 }, privileges: ['DOCUMENT_EDIT'], ...options,
 })
+
+for (const { width, kind } of [{ width: 1440, kind: 'Line' }, { width: 390, kind: 'Pie' }]) {
+  test(`editable charts preserve their data through autosave, reopening and PDF export (${kind})`, async ({ page }, testInfo) => {
+    await page.setViewportSize({ width, height: 844 })
+    const mobile = width < 1024
+    const legacy = mobile ? '' : '<style>.legacy-note{font-weight:bold}</style><div class="legacy-note">Legacy note</div>'
+    const saved = await fixture(page, legacy + '<p>Quarterly review</p>')
+    const options = { route: '/documents', shell: true, dark: mobile }
+    async function openDocument() {
+      await mountEditor(page, options)
+      if (mobile) await page.locator('.q-drawer__backdrop').click({ position: { x: width - 10, y: 200 } })
+    }
+    await openDocument()
+    const surface = page.getByRole('textbox', { name: 'Content', exact: true })
+    await surface.getByText('Quarterly review', { exact: true }).click()
+    await page.keyboard.press('End')
+    if (mobile) await page.getByRole('button', { name: 'More tools', exact: true }).click()
+    await page.getByRole('button', { name: 'Insert chart', exact: true }).click()
+    const create = page.getByRole('dialog', { name: 'Insert chart' })
+    const apply = dialog => dialog.getByRole('button', { name: 'Apply', exact: true })
+    await expect(apply(create)).toBeDisabled()
+    await create.getByLabel('Chart title (optional)').fill('Orders < East & West')
+    await create.getByLabel('Label 1', { exact: true }).fill('Winter & spring')
+    await create.getByLabel('Value 1', { exact: true }).fill('12,5')
+    await create.getByRole('button', { name: 'Add a value' }).click()
+    await create.getByLabel('Label 2', { exact: true }).fill('Summer < fall')
+    await create.getByLabel('Value 2', { exact: true }).fill('8')
+    const chartName = 'Orders < East & West'
+    await expect(create.getByRole('img', { name: chartName, exact: true })).toBeVisible()
+    await apply(create).click()
+    const figure = surface.getByRole('img', { name: chartName, exact: true })
+    await expect(figure).toHaveJSProperty('complete', true)
+    expect(await figure.evaluate(image => image.naturalWidth)).toBeGreaterThan(0)
+    await expect.poll(saved).toContain('<svg')
+    await expect(surface.getByText('Quarterly review', { exact: true })).toBeVisible()
+
+    await page.evaluate(() => window.testApp.unmount())
+    await openDocument()
+    await figure.click()
+    const editButton = page.getByRole('toolbar', { name: 'Contextual actions' }).getByRole('button', { name: 'Edit chart' })
+    await editButton.click()
+    const edit = page.getByRole('dialog', { name: 'Edit chart' })
+    if (!mobile) {
+      await edit.getByLabel('Value 1', { exact: true }).fill('42')
+      await page.locator('.q-dialog__backdrop').click({ position: { x: 5, y: 5 } })
+      await expect(edit).toBeHidden()
+      await figure.click()
+      await page.keyboard.press('Enter')
+    }
+    await expect(edit.getByLabel('Label 2', { exact: true })).toHaveValue('Summer < fall')
+    await expect(edit.getByLabel('Value 1', { exact: true })).toHaveValue('12.5')
+    await edit.getByRole('combobox', { name: 'Chart type' }).click()
+    await page.getByRole('option', { name: kind, exact: true }).click()
+    await edit.getByLabel('Value 2', { exact: true }).fill('-9')
+    if (kind === 'Pie') {
+      await expect(apply(edit)).toBeDisabled()
+      await edit.getByLabel('Value 2', { exact: true }).fill('9')
+    }
+    await edit.getByLabel('Chart title (optional)').fill('Updated orders')
+    await expect(edit.getByRole('img', { name: 'Updated orders', exact: true })).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath('chart-dialog.png') })
+    await apply(edit).click()
+    await expect.poll(saved).toContain('Updated orders')
+    await expect(surface.getByRole('img', { name: 'Updated orders', exact: true })).toHaveCount(1)
+    await expect(figure).toHaveCount(0)
+
+    let snapshot
+    await page.route('**/api/documents/doc-a/export-pdf', route => {
+      snapshot = route.request().postDataJSON().html
+      return route.fulfill({ contentType: 'application/pdf', body: '%PDF-1.7\nfixture' })
+    })
+    const download = page.waitForEvent('download')
+    if (mobile) await page.getByRole('button', { name: 'More tools', exact: true }).click()
+    await page.getByRole('button', { name: 'Export as PDF', exact: true }).click()
+    await download
+    const preview = await page.context().newPage()
+    await preview.setContent(snapshot)
+    const exported = preview.getByRole('img', { name: 'Updated orders', exact: true })
+    await expect(exported).toHaveJSProperty('complete', true)
+    expect(await exported.evaluate(image => image.naturalWidth)).toBeGreaterThan(0)
+    await expect(preview.getByText('Quarterly review', { exact: true })).toBeVisible()
+    await preview.close()
+  })
+}
 
 test.describe('document editing on touch screens', () => {
   test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })

@@ -43,6 +43,11 @@ bundle its fonts locally. Rendering DOM remains transient. Print, PDF and portab
 embed the static markup, styles and fonts so export needs neither JavaScript nor network
 access. Preserve the MathLive and KaTeX font notices under `public/licenses/`.
 
+The `document_chart` tool encodes validated chart data on an HTML figure. ECharts
+renders these figures in Text documents, mind map nodes and static export preparation.
+The editor also supports SVG charts with embedded data, using the same ECharts renderer
+when their values are edited.
+
 Keep `protectInteractiveHtml` / `restoreInteractiveHtml`: related custom HTML, CSS and
 scripts travel together as opaque nodes. Their editing DOM hosts the existing isolated
 application runtime. Source is limited to non-document `rich-text` fields; documents expose

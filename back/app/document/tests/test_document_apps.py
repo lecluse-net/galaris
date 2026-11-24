@@ -29,8 +29,9 @@ async def test_agent_file_operations_validate_the_final_document_layout(db, agen
     from sqlalchemy import select
     from app.connection.facade import get_or_create_connection
     from app.file_share import resource_service as files
-    from app.file_share.resource_contracts import ResourceContext
-    from app.services import ServiceModel
+    from app.file_share.resource_contracts import EditorialResourceRead, ResourceContext
+    from app.document.mcp import ChartRow, document_chart
+    from app.services import McpToolContext, ServiceModel
     from core.util import RichTextError
 
     owner, _ = agents
@@ -38,6 +39,13 @@ async def test_agent_file_operations_validate_the_final_document_layout(db, agen
     await get_or_create_connection(service_id, owner.id, active=True, commit=False)
     ctx = ResourceContext(agent_id=owner.id, runtime="internal")
     svg = '<figure><svg viewbox="0 0 20 10"><style>.bar{fill:blue}</style><rect class="bar" height="10" width="20"></rect></svg><figcaption>Chart</figcaption></figure>'
+
+    async def editable_chart(value: int) -> str:
+        result = await document_chart(McpToolContext(agent_id=owner.id, runtime="internal"),
+            "bar", [ChartRow(label="Trial", value=value)], title="Synthetic review count")
+        return json.loads(result)["html"]
+
+    chart = await editable_chart(8)
     application = '<section><style>section{display:grid}</style><form><input></form><script>void 0;</script></section>'
     editorial = '<p>Between figures</p>'
     with pytest.raises(RichTextError, match="top-level <section>"):
@@ -47,7 +55,7 @@ async def test_agent_file_operations_validate_the_final_document_layout(db, agen
     with pytest.raises(RichTextError, match="Use a standalone"):
         await files.resource_create(ctx, "document://", (f"<section>{editorial}{svg}</section>").encode(), name="Figures and prose in one section")
 
-    created = await files.resource_create(ctx, "document://", (svg + editorial + application + svg).encode(), name="Bounded layout")
+    created = await files.resource_create(ctx, "document://", (svg + editorial + application + chart).encode(), name="Bounded layout")
     assert created.revision == 1
     with pytest.raises(RichTextError, match="top-level <section>"):
         await files.resource_write(ctx, created.uri, b'<p>Replace</p><script>void 0;</script>', expected_revision=1)
@@ -60,12 +68,23 @@ async def test_agent_file_operations_validate_the_final_document_layout(db, agen
     identity = created.uri.removeprefix("document://")
     item, content, *_ = await service.get_item(UUID(identity), agent_id=owner.id)
     assert item.revision == 1
-    assert content == (svg + editorial + application + svg).encode()
+    assert content == (svg + editorial + application + chart).encode()
     edited = await files.resource_edit(ctx, created.uri, start_line=2, end_line=2,
         content="<p>Updated between figures</p>", expected_revision=1)
     assert edited.revision == 2
     _, content, *_ = await service.get_item(UUID(identity), agent_id=owner.id)
-    assert content == (svg + "<p>Updated between figures</p>" + application + svg).encode()
+    assert content == (svg + "<p>Updated between figures</p>" + application + chart).encode()
+
+    read = await files.resource_read(ctx, created.uri)
+    assert isinstance(read, EditorialResourceRead)
+    chart_block = read.blocks[-1]
+    assert chart_block["html"] == chart
+    updated_chart = await editable_chart(12)
+    await files.resource_edit(ctx, created.uri, start_line=chart_block["number"], end_line=chart_block["number"],
+        content=updated_chart, expected_revision=read.revision)
+    latest = await files.resource_read(ctx, created.uri)
+    assert latest.revision == 3
+    assert latest.content == read.content.replace(chart, updated_chart)
 
 
 def test_existing_unbounded_markup_can_be_preserved_during_an_agent_edit():

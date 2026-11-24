@@ -34,6 +34,7 @@ import '../editorialTheme.css'
 import { webLinkCardImage, prependWebLinkImage } from '../webLinkPreview'
 import { renderMath } from '../mathRendering'
 import { renderSvgFigures } from '../editorialSvg'
+import { renderChartFigures } from '../editorialChartDisplay'
 const { content, profile = 'rich-text', resolveImage, resolveResourceImage, resourceAgentId = null, registerReferenceActions, resizeReference } = defineProps<{
   content: string
   profile?: ContentProfile
@@ -138,6 +139,8 @@ watch(() => [content, profile, resolveImage, resolveResourceImage, resourceAgent
   hideInteractiveSource(doc.body, t('richEditor.embeddedApplication'))
   const images = [...doc.body.querySelectorAll('img')]
   if (profile === 'document') renderSvgFigures(doc.body)
+  const chartRendering = profile === 'document'
+    ? renderChartFigures(doc.body).catch(() => { /* Keep captions if rendering fails. */ }) : undefined
   highlightDocumentCode(doc.body)
   const mathRendering = renderMath(doc.body).catch(() => { /* Keep the visible source fallback if math assets fail. */ })
   const targets = [...doc.body.querySelectorAll('blockquote.galaris-link-card')].map(card => referencePlayer(card))
@@ -161,7 +164,7 @@ watch(() => [content, profile, resolveImage, resolveResourceImage, resourceAgent
     image.removeAttribute('src')
   })
   rendered.value = doc.body.innerHTML
-  await Promise.all([mathRendering, ...images.map(async (image, index) => {
+  await Promise.all([mathRendering, chartRendering, ...images.map(async (image, index) => {
     const reference = references[index]
     if (!reference || !resolveImage) return
     try {

@@ -19,7 +19,7 @@ tests remain authoritative for behavior.
 - 0 directly bidirectional frontend pairs;
 - 845 detected HTTP/WebSocket handlers;
 - 206 detected SQLAlchemy tables;
-- 304 detected native MCP tools;
+- 305 detected native MCP tools;
 - 59 detected Vue pages.
 
 ## Backend Modules
@@ -2421,15 +2421,16 @@ No cyclic component detected.
 | `document_analysis_cancel` | `document` | `app.llm` | `document_analysis_cancel` | `back/app/llm/mcp.py:56` |
 | `document_analysis_get` | `document` | `app.llm` | `document_analysis_get` | `back/app/llm/mcp.py:47` |
 | `document_analyze` | `document` | `app.llm` | `document_analyze` | `back/app/llm/mcp.py:31` |
-| `document_revision_compare` | `document` | `app.document` | `document_revision_compare` | `back/app/document/mcp.py:57` |
-| `document_revision_list` | `document` | `app.document` | `document_revision_list` | `back/app/document/mcp.py:41` |
-| `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:246` |
-| `document_sharing` | `document` | `app.document` | `document_sharing` | `back/app/document/mcp.py:179` |
+| `document_chart` | `document` | `app.document` | `document_chart` | `back/app/document/mcp.py:39` |
+| `document_revision_compare` | `document` | `app.document` | `document_revision_compare` | `back/app/document/mcp.py:88` |
+| `document_revision_list` | `document` | `app.document` | `document_revision_list` | `back/app/document/mcp.py:72` |
+| `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:277` |
+| `document_sharing` | `document` | `app.document` | `document_sharing` | `back/app/document/mcp.py:210` |
 | `document_show` | `document` | `app.conversation` | `document_show` | `back/app/conversation/mcp.py:112` |
-| `mindmap_add` | `document` | `app.document` | `mindmap_add` | `back/app/document/mcp.py:138` |
-| `mindmap_create` | `document` | `app.document` | `mindmap_create` | `back/app/document/mcp.py:71` |
-| `mindmap_edit` | `document` | `app.document` | `mindmap_edit` | `back/app/document/mcp.py:148` |
-| `mindmap_read` | `document` | `app.document` | `mindmap_read` | `back/app/document/mcp.py:92` |
+| `mindmap_add` | `document` | `app.document` | `mindmap_add` | `back/app/document/mcp.py:169` |
+| `mindmap_create` | `document` | `app.document` | `mindmap_create` | `back/app/document/mcp.py:102` |
+| `mindmap_edit` | `document` | `app.document` | `mindmap_edit` | `back/app/document/mcp.py:179` |
+| `mindmap_read` | `document` | `app.document` | `mindmap_read` | `back/app/document/mcp.py:123` |
 | `dataset_query` | `file_sharing` | `app.document` | `dataset_query` | `back/app/document/data/mcp.py:23` |
 | `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:493` |
 | `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:577` |

@@ -8934,8 +8934,16 @@
       },
       {
         "file": "back/app/document/mcp.py",
+        "handler": "document_chart",
+        "line": 39,
+        "module": "app.document",
+        "name": "document_chart",
+        "namespace": "document"
+      },
+      {
+        "file": "back/app/document/mcp.py",
         "handler": "document_revision_compare",
-        "line": 57,
+        "line": 88,
         "module": "app.document",
         "name": "document_revision_compare",
         "namespace": "document"
@@ -8943,7 +8951,7 @@
       {
         "file": "back/app/document/mcp.py",
         "handler": "document_revision_list",
-        "line": 41,
+        "line": 72,
         "module": "app.document",
         "name": "document_revision_list",
         "namespace": "document"
@@ -8951,7 +8959,7 @@
       {
         "file": "back/app/document/mcp.py",
         "handler": "document_share",
-        "line": 246,
+        "line": 277,
         "module": "app.document",
         "name": "document_share",
         "namespace": "document"
@@ -8959,7 +8967,7 @@
       {
         "file": "back/app/document/mcp.py",
         "handler": "document_sharing",
-        "line": 179,
+        "line": 210,
         "module": "app.document",
         "name": "document_sharing",
         "namespace": "document"
@@ -8975,7 +8983,7 @@
       {
         "file": "back/app/document/mcp.py",
         "handler": "mindmap_add",
-        "line": 138,
+        "line": 169,
         "module": "app.document",
         "name": "mindmap_add",
         "namespace": "document"
@@ -8983,7 +8991,7 @@
       {
         "file": "back/app/document/mcp.py",
         "handler": "mindmap_create",
-        "line": 71,
+        "line": 102,
         "module": "app.document",
         "name": "mindmap_create",
         "namespace": "document"
@@ -8991,7 +8999,7 @@
       {
         "file": "back/app/document/mcp.py",
         "handler": "mindmap_edit",
-        "line": 148,
+        "line": 179,
         "module": "app.document",
         "name": "mindmap_edit",
         "namespace": "document"
@@ -8999,7 +9007,7 @@
       {
         "file": "back/app/document/mcp.py",
         "handler": "mindmap_read",
-        "line": 92,
+        "line": 123,
         "module": "app.document",
         "name": "mindmap_read",
         "namespace": "document"

@@ -78,6 +78,9 @@ menu map in the user's language using `file_read`:
 `galaris://documentation/docs/fr/architecture/generated/navigation.md`
 (replace `fr` with `en` for English). They are also catalogue entrypoints.
 Search with domain="user" for workflows; the generated menu map is in domain="architecture".
+For chart insertion and editing in Text documents and mind map nodes, read the current
+Documents guide in the user's language (`galaris://documentation/docs/fr/user/documents.md`
+or its English equivalent).
 
 Give section → screen → tab → action using the documented UI labels, then a relative
 application path when supported. Distinguish page tabs from tabs inside an agent record.

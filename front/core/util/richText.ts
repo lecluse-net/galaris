@@ -1,5 +1,6 @@
 import DOMPurify from 'dompurify'
 import { editorialClasses, validEditorialStyle } from './editorialHtmlStyle'
+import { chartAttribute, chartSelector, readChartFigure } from './editorialChart'
 import { hideInteractiveSource, protectInteractiveHtml } from './interactiveHtml'
 import { svgCode } from './editorialSvg'
 import type { ResourceDetailTarget } from './resourceDetail'
@@ -110,16 +111,17 @@ export function sanitizeRichHtml(html: string, profile: ContentProfile = 'rich-t
   const clean = DOMPurify.sanitize(html, {
     ALLOWED_TAGS: 'p h1 h2 h3 h4 h5 h6 strong em u s blockquote ul ol li hr a table thead tbody tfoot tr th td pre code br mark span figure figcaption caption colgroup col sub sup b i del'.split(' ').concat(profile === 'document' ? ['img'] : []),
     ALLOWED_ATTR: ['href', 'title', 'rel', 'target', 'start', 'colspan', 'rowspan', 'colwidth', 'class', 'src', 'alt', 'width', 'style', 'data-color', 'data-rich-reference', 'height', 'value', 'reversed'],
-    ADD_ATTR: ['data-math', 'data-code-lines', 'data-code-nowrap', 'data-checked', ...(profile === 'document' ? referenceAttributes : [])],
+    ADD_ATTR: ['data-math', 'data-code-lines', 'data-code-nowrap', 'data-checked', ...(profile === 'document' ? [...referenceAttributes, chartAttribute] : [])],
     FORCE_BODY: true,
     ALLOW_DATA_ATTR: false,
-    ADD_URI_SAFE_ATTR: ['start', 'colspan', 'rowspan', 'colwidth', 'width', 'height', 'value', 'data-color', 'data-math', 'data-code-lines', 'data-code-nowrap', 'data-checked', 'type', 'async', 'defer', ...referenceAttributes],
+    ADD_URI_SAFE_ATTR: ['start', 'colspan', 'rowspan', 'colwidth', 'width', 'height', 'value', 'data-color', 'data-math', 'data-code-lines', 'data-code-nowrap', 'data-checked', 'type', 'async', 'defer', chartAttribute, ...referenceAttributes],
     // Exact href validation follows sanitization; provider schemes are not an
     // executable browser protocol and are rewritten to application navigation.
     ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|[a-z][a-z0-9+.-]*:\/\/)/,
   })
   const doc = new DOMParser().parseFromString('<body>' + clean, 'text/html')
   for (const element of doc.body.querySelectorAll<HTMLElement>('*')) {
+    if (element.hasAttribute(chartAttribute) && !readChartFigure(element)) element.removeAttribute(chartAttribute)
     for (const attribute of referenceAttributes) {
       const value = element.getAttribute(attribute)
       if (value !== null && (profile !== 'document' || !validReferenceAttribute(element, attribute, value))) element.removeAttribute(attribute)
@@ -173,7 +175,7 @@ export function sanitizeRichHtml(html: string, profile: ContentProfile = 'rich-t
   for (const figure of doc.body.querySelectorAll('figure.image,span.image-inline')) {
     if (!figure.querySelector('img') && !figure.textContent?.trim()) figure.remove()
   }
-  if (!doc.body.textContent?.replaceAll('\u00a0', ' ').trim() && !doc.body.querySelector('table,hr,img')) return ''
+  if (!doc.body.textContent?.replaceAll('\u00a0', ' ').trim() && !doc.body.querySelector('table,hr,img,' + chartSelector)) return ''
   return doc.body.innerHTML
 }
 export function richTextExcerpt(html: string): string {

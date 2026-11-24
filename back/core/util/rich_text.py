@@ -661,6 +661,7 @@ def normalize_html(
         attributes={
             **ATTRIBUTES,
             "*": ATTRIBUTES["*"] | REFERENCE_ATTRIBUTES,
+            "figure": ATTRIBUTES.get("figure", set()) | {"data-galaris-chart"},
             "script": {"src", "type", "async", "defer"},
         } if profile == "document" else ATTRIBUTES,
         clean_content_tags=set() if profile == "document" else {"script", "style"},

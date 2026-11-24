@@ -35,7 +35,7 @@ export function svgFigureSource(element: Element): Element | null {
   return isStandaloneSvg(element) ? element : null
 }
 
-export function protectSvg(source: Element): void {
+export function protectSvg(source: Element): HTMLPreElement {
   const doc = source.ownerDocument
   const pre = doc.createElement('pre')
   const code = doc.createElement('code')
@@ -43,6 +43,7 @@ export function protectSvg(source: Element): void {
   code.textContent = source.outerHTML
   pre.append(code)
   source.replaceWith(pre)
+  return pre
 }
 
 function readSvg(doc: Document, source: string): Element | null {

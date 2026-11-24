@@ -1,10 +1,12 @@
 """Domain operations for shared Documents and structured mind maps."""
 
 import json
+from html import escape
 from typing import Annotated, Any, Literal
+from urllib.parse import quote
 from uuid import UUID
 
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from app.agent import EffectDescriptorV1
 from app.services import McpToolContext, mcp_tool
@@ -20,6 +22,35 @@ from .tool_access import require_document_tool_scope
 DocumentUri = Annotated[str, Field(pattern=r"^document://[0-9a-fA-F]{8}(?:-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}$")]
 MindMapUri = DocumentUri
 RevisionNumber = Annotated[int, Field(ge=1)]
+ChartKind = Literal["bar", "line", "pie"]
+
+
+class ChartRow(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    label: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=60)]
+    value: Annotated[float, Field(strict=True, ge=-1e15, le=1e15, allow_inf_nan=False)]
+
+
+@mcp_tool("document", name="document_chart", approval="enabled", conversation_policy="short",
+    approval_reason="Prepare an editable chart from supplied values",
+    description="Use this for charts in Text documents and mind map nodes. Pass chart_type (bar, line or pie), an optional title, and 1–20 rows with a label and numeric value. The returned html is a native editable chart rendered by Galaris with ECharts. Insert it verbatim via the existing document or mind map writing tool. This call does not save anything.",
+    effect_policy="read", concurrency_policy="safe")
+async def document_chart(ctx: McpToolContext, chart_type: ChartKind,
+    rows: Annotated[list[ChartRow], Field(min_length=1, max_length=20)],
+    title: Annotated[str, StringConstraints(strip_whitespace=True, max_length=100)] = "") -> str:
+    if chart_type == "pie" and (any(row.value < 0 for row in rows) or not any(row.value > 0 for row in rows)):
+        raise ToolArgumentsRejectedError("Pie values must be nonnegative, with at least one positive value.")
+    chart = {"version": 1, "type": chart_type, "title": title,
+        "rows": [row.model_dump(mode="json") for row in rows]}
+    try:
+        encoded = quote(json.dumps(chart, ensure_ascii=False, separators=(",", ":")), safe="")
+    except UnicodeEncodeError as exc:
+        raise ToolArgumentsRejectedError("Chart labels and title must be valid Unicode.") from exc
+    values = " · ".join(f"{row.label} {row.value}" for row in rows)
+    caption = f"{title} · {values}" if title else values
+    fragment = f'<figure data-galaris-chart="{encoded}"><figcaption>{escape(caption)}</figcaption></figure>'
+    return json.dumps({"html": fragment}, ensure_ascii=True)
 
 
 def _identity(value: str) -> UUID:

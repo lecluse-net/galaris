@@ -2,6 +2,7 @@
 
 from io import BytesIO
 import json
+from urllib.parse import quote
 from zipfile import ZipFile
 
 from PIL import Image
@@ -195,11 +196,15 @@ async def test_mcp_batch_rejects_stale_revisions_unauthorized_writes_and_partial
     assert created["root_id"] == "root"
     read = json.loads(await mcp.mindmap_read(owner_ctx, uri))
     root, revision = read["root_id"], read["revision"]
+    chart_data = {"version": 1, "type": "bar", "title": "Trial count", "rows": [{"label": "April", "value": 8}]}
+    encoded = quote(json.dumps(chart_data), safe="")
+    body = (f'<p><strong>Measured result</strong></p><svg data-galaris-chart="{encoded}" height="40" width="60">'
+            '<title>Trial count</title><rect height="8" width="15" x="5" y="22"></rect><text x="5" y="38">April 8</text></svg>')
     commands = TypeAdapter(list[BranchCommand]).validate_python([
         {"operation": "add", "node_id": "branch", "parent_id": root, "title": "Main branch", "checked": True},
         {"operation": "add", "node_id": "child", "parent_id": "branch", "title": "Child", "checked": False},
         {"operation": "edit", "node_id": "child", "title": "Edited child",
-         "icon": "emoji:1F680", "body_html": "<p><strong>Measured result</strong></p>"},
+         "icon": "emoji:1F680", "body_html": body},
         {"operation": "edit", "node_id": "branch", "checked": None},
     ])
     with pytest.raises(PermissionError):
@@ -212,7 +217,7 @@ async def test_mcp_batch_rejects_stale_revisions_unauthorized_writes_and_partial
     assert edited["revision"] == revision + 1 and edited["total"] == 3
     node = json.loads(await mcp.mindmap_read(owner_ctx, uri, node_id="child"))["node"]
     assert node["icon"] == "emoji:1F680"
-    assert node["body_html"] == "<p><strong>Measured result</strong></p>"
+    assert node["body_html"] == body
     assert node["checked"] is False
     with pytest.raises(resource_service.DocumentConflictError):
         await mcp.mindmap_edit(owner_ctx, uri, revision, commands)
@@ -282,6 +287,15 @@ async def test_mcp_missing_branch_explains_how_to_add_it(db, agents):
     arguments = {"document_id": created["uri"], "expected_revision": created["revision"]}
 
     async with Client(server) as client:
+        compiled = await client.call_tool("document_chart", {"chart_type": "bar",
+            "rows": [{"label": "Trial & review", "value": 8}]})
+        chart = json.loads(compiled.content[0].text)["html"]
+        assert "Trial &amp; review" in chart and "<svg" not in chart
+        invalid = await client.call_tool("document_chart", {"chart_type": "pie",
+            "rows": [{"label": "Trial", "value": -8}]}, raise_on_error=False)
+        assert invalid.is_error
+        assert invalid.meta[EXECUTION_META_KEY]["outcome"] == "rejected"
+
         result = await client.call_tool("mindmap_edit", {**arguments, "operations": [
             {"operation": "edit", "node_id": "appendix"},
         ]}, raise_on_error=False)
@@ -298,7 +312,7 @@ async def test_mcp_missing_branch_explains_how_to_add_it(db, agents):
         assert "field to change" in empty_edit.content[0].text
 
         added = await client.call_tool("mindmap_add", {**arguments, "branches": [
-            {"node_id": "appendix", "parent_id": created["root_id"], "title": "Appendix"},
+            {"node_id": "appendix", "parent_id": created["root_id"], "title": "Appendix", "body_html": chart},
             {"node_id": "sources", "parent_id": "appendix", "title": "Sources"},
         ]})
         assert json.loads(added.content[0].text)["revision"] == created["revision"] + 1
@@ -309,6 +323,8 @@ async def test_mcp_missing_branch_explains_how_to_add_it(db, agents):
         assert "revision conflict" in stale.content[0].text
 
     saved = json.loads(await mcp.mindmap_read(owner_ctx, created["uri"]))
+    branch = json.loads(await mcp.mindmap_read(owner_ctx, created["uri"], node_id="appendix"))["node"]
+    assert branch["body_html"] == chart
     assert saved["revision"] == created["revision"] + 1
     assert [(node["id"], node["parent"]) for node in saved["nodes"]] == [
         (created["root_id"], None), ("appendix", created["root_id"]), ("sources", "appendix"),

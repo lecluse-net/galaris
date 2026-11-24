@@ -92,6 +92,18 @@ dans le corps. Les instantanés d’impression/PDF/HTML incluent le rendu statiq
 polices locales intégrées, sans script ni téléchargement externe. Voir aussi la
 [décision 0203](../../../project/decisions/0203-tiptap-html-editor.md).
 
+Un graphique est une figure HTML avec `data-galaris-chart`. L’attribut contient le JSON
+encodé comme composant d’URI avec `version: 1`, le type (`bar`, `line` ou `pie`), le titre
+et les lignes `{label, value}`. L’éditeur, les lecteurs et les instantanés d’export utilisent
+le même rendu ECharts. Les anciens SVG avec cet attribut restent lisibles et modifiables.
+Le format est commun aux documents Texte et au `body_html` des nœuds de carte mentale.
+Les conversions génériques de HTML effectuées uniquement côté serveur reprennent la
+légende textuelle avec les valeurs.
+
+L’outil `document_chart` valide les valeurs et renvoie le bloc HTML à insérer. L’agent
+l’enregistre via les commandes de fichiers ou via `mindmap_add` et `mindmap_edit`, avec
+leurs droits et contrôles de révision habituels.
+
 ## Documents comme pivot de l'information
 
 Les profils d'agents sont des ressources virtuelles `galaris://agent/<id>`, sans document

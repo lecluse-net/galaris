@@ -338,6 +338,66 @@ test('global replace preserves rich markup and undo restores the complete operat
   expect((await savedMap(page)).nodes[2]).toEqual(replaced)
 })
 
+test('a branch chart authored from data remains editable and appears in print and PDF sharing', async ({ page }) => {
+  await page.addInitScript(() => { window.print = () => { window.printCalls = 1 } })
+  const documentTitle = 'Synthetic survey'
+  const chart = encodeURIComponent(JSON.stringify({
+    version: 1, type: 'bar', title: 'Trial results', rows: [{ label: 'April', value: 8 }],
+  }))
+  const nodes = [
+    { id: 'root', parent: null, title: documentTitle },
+    { id: 'counts', parent: 'root', title: 'Field counts',
+      body_html: `<p>Field counts</p><figure data-galaris-chart="${chart}"><figcaption>Trial results</figcaption></figure>` },
+    { id: 'notes', parent: 'root', title: 'Next steps' },
+  ]
+  await mount(page, mapEditor, { props: { modelValue: JSON.stringify({ version: 1, nodes }), documentTitle } })
+  const branch = page.getByRole('treeitem', { name: 'Field counts', exact: true })
+  const surface = branch.locator('[data-editor-surface]')
+  await expect(branch.getByRole('img', { name: 'Trial results' })).toBeVisible()
+  await branch.press('Alt+Enter')
+  await expect(surface).toBeFocused()
+  await surface.getByRole('img', { name: 'Trial results' }).click()
+  await page.getByRole('toolbar', { name: 'Contextual actions' }).getByRole('button', { name: 'Edit chart' }).click()
+  const edit = page.getByRole('dialog', { name: 'Edit chart' })
+  await expect(edit.getByLabel('Value 1', { exact: true })).toHaveValue('8')
+  await edit.getByLabel('Value 1', { exact: true }).fill('12')
+  await edit.getByLabel('Chart title (optional)').fill('Revised trials')
+  await edit.getByRole('button', { name: 'Apply', exact: true }).click()
+  await page.getByRole('button', { name: 'Return to map', exact: true }).click()
+  const stored = await savedMap(page)
+  expect(stored.nodes.find(node => node.id === 'notes')).toEqual(nodes[2])
+  expect(stored.nodes.find(node => node.id === 'counts').body_html).not.toContain('<svg')
+  await mount(page, mapEditor, { props: { modelValue: JSON.stringify(stored), documentTitle } })
+  await expect(branch.getByRole('img', { name: 'Revised trials' })).toBeVisible()
+  await expect(branch.getByRole('img', { name: 'Trial results' })).toHaveCount(0)
+
+  const tools = page.getByRole('group', { name: 'Export', exact: true })
+  await tools.getByRole('button', { name: 'Print', exact: true }).click()
+  const printed = page.frameLocator('.document-print-frame')
+  await expect.poll(() => page.evaluate(() => document.querySelector('.document-print-frame')?.contentWindow?.printCalls)).toBe(1)
+  await expect.poll(() => printed.getByRole('img', { name: 'Revised trials' }).evaluate(img => img.naturalWidth)).toBeGreaterThan(0)
+  await page.locator('.document-print-frame').evaluate(frame => frame.contentWindow.dispatchEvent(new Event('afterprint')))
+
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'canShare', { configurable: true, value: () => true })
+    Object.defineProperty(navigator, 'share', { configurable: true, value: async () => {} })
+    return window.testApp.setProps({ exportPdf: async html => {
+      window.mapPdf = html
+      return new Blob(['%PDF-1.7'], { type: 'application/pdf' })
+    } })
+  })
+  await tools.getByRole('button', { name: 'Share', exact: true }).click()
+  await page.getByRole('dialog', { name: 'Share document', exact: true }).getByRole('button', { name: 'Share', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => Boolean(window.mapPdf))).toBe(true)
+  const snapshot = await page.context().newPage()
+  await snapshot.setContent(await page.evaluate(() => window.mapPdf))
+  const figure = snapshot.getByRole('img', { name: 'Revised trials' })
+  await expect(figure).toHaveJSProperty('complete', true)
+  expect(await figure.evaluate(img => img.naturalWidth)).toBeGreaterThan(0)
+  await snapshot.close()
+})
+
 test('image export and print include a folded branch and its attachment without opening it', async ({ page, browserName }, testInfo) => {
   await page.addInitScript(() => { window.print = () => { window.printCalls = (window.printCalls ?? 0) + 1 } })
   const title = 'Expedition'

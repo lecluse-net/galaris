@@ -24,8 +24,8 @@ Each group has one row and wraps when space is limited, without horizontal scrol
 Fullscreen, attachments and equation insertion remain in full mode;
 previously saved content is preserved.
 
-Standalone SVG charts appear in place in a Text document. You can edit their captions
-and the paragraphs between figures, then print or export the document with its charts.
+Text documents and rich mind map nodes display charts in place. You or an agent can create
+them and edit their data in the editor.
 
 ## Import a file
 
@@ -213,6 +213,10 @@ with a PDF download available on devices that cannot share files.
 Choose **Add rich content** or press **Alt+Enter** to edit a paragraph directly in
 the node. The existing title becomes the first paragraph. The node displays its
 content directly, and **Enter** opens it for editing.
+In the node’s rich content, choose **Insert → Insert chart** to select a chart type and
+enter values. On mobile, open **More tools**. To update the values, open the node’s editor,
+select the chart and choose **Edit chart**. The chart remains visible after reopening,
+in print and in the shared PDF.
 The toolbar adapts to the selection and offers formatting, lists and
 tables. **Insert file** and **Galaris** create one child node per resource
 under the selected node. While editing rich content, these commands insert
@@ -231,8 +235,8 @@ and **Show URL** change how supported resources are displayed.
 modern XMind (`.xmind` with `content.json`) and the Galaris format (`.mindmap`).
 The **Download source** menu offers the same formats. Interchange preserves the
 tree, titles, plain-text notes and portable links. Styling, images, attachments
-and application-specific features stay in the original file. PDF export presents
-the text and hierarchy.
+and application-specific features stay in the original file. The shared PDF includes
+the text, hierarchy and charts in nodes.
 
 ### Work on a mind map with an agent
 
@@ -240,6 +244,7 @@ In Chat, ask the agent to create a mind map, read its nodes or edit them. It can
 also choose this format for a result that fits a tree, such as a plan grouped by
 workstream. Available functions and the agent's permissions determine what it can
 do. A write may require approval.
+You can ask it to insert an editable chart in a node by providing the values or their source.
 
 If you send a message with the map open beside Chat, the context can tell the agent
 which document you are viewing. Node selection stays in the editor. Give the node
@@ -359,6 +364,12 @@ In the toolbar, **Text** includes **Special characters** and the inline equation
 **Quote** is at the end of the first row of **Paragraph**; its second row includes
 **Code block** and the block equation.
 **Insert table** is on the second row of **Insert**.
+
+To add a chart to a Text document, choose **Insert → Insert chart**. On mobile, find
+the command in **More tools**. Choose bars, line or pie, then enter labels and values.
+You can add a title and check the preview before applying. To update the data, select the chart
+and choose **Edit chart**. The chart remains visible after reopening, in document history,
+in print and in exports.
 
 **Inline equation** inserts a formula within the text; **Block equation** displays it
 on a separate line. Both buttons open the MathLive visual editor, with its symbol

@@ -279,7 +279,7 @@ BUILTIN_CONVERSATION_TOOLS: dict[str, frozenset[str]] = {
     "memory": frozenset({"memory_remember", "memory_forget", "memory_summarize", "memory_upcoming"}),
     "document": frozenset({
         "document_show", "document_sharing", "document_share", "document_revision_list", "document_revision_compare",
-        "mindmap_create", "mindmap_read", "mindmap_add", "mindmap_edit",
+        "document_chart", "mindmap_create", "mindmap_read", "mindmap_add", "mindmap_edit",
     }),
     "file_sharing": frozenset({
         "file_list", "file_info", "file_search", "file_read", "file_create", "file_write", "file_append",

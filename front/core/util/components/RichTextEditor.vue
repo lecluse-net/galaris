@@ -22,7 +22,7 @@
         </template>
         <template #trailing>
           <Teleport :to="contextToolbarTarget ?? 'body'" :disabled="!contextToolbarTarget">
-            <div v-if="contextToolbarVisible && activeContext && !readonly && !sourceMode && !resourceDetail && !dialogOpen && !mathOpen"
+            <div v-if="contextToolbarVisible && activeContext && !readonly && !sourceMode && !resourceDetail && !dialogOpen && !mathOpen && !chartDialog"
               class="editorial-toolbar-group editorial-context-toolbar" role="toolbar" :aria-label="t('richEditor.contextActions')" @mousedown.prevent>
               <span class="editorial-toolbar-title" aria-hidden="true">{{ t('richEditor.contextActions') }}</span>
               <div class="editorial-toolbar-row">
@@ -105,6 +105,7 @@
     <div v-if="importRequest" role="status" class="row items-center q-gutter-sm q-pa-sm"><q-spinner />{{ t('richEditor.resources.importingHtml') }}<q-btn flat round dense icon="close" :aria-label="t('common.cancel')" @click="importRequest?.abort()" /></div>
     <input v-if="profile === 'document'" ref="fileInput" type="file" multiple hidden @change="chooseFiles" />
     <InternalResourcePicker v-if="!pickResources && linkOpen" v-model:picker-open="linkOpen" :agent-id="resourceAgentId" :editable="!readonly" @picked="finishInternalSelection" />
+    <EditorialChartDialog v-if="chartDialog" :initial="chartDialog.initial" @close="closeChart()" @apply="applyChart" />
     <q-dialog v-model="dialogOpen" :aria-label="t('richEditor.' + dialog)" @hide="releaseDialog">
       <q-card class="galaris-dialog-card" style="width: 480px; max-width: 95vw">
         <DialogHeader :title="t('richEditor.' + dialog)" :close-label="t('common.close')" />
@@ -144,6 +145,8 @@ import type { MathKind } from '../mathRendering'
 import DocumentOutline from './DocumentOutline.vue'
 import EditorialSource from './EditorialSource.vue'
 import EditorialContextActions from './EditorialContextActions.vue'
+import EditorialChartDialog from './EditorialChartDialog.vue'
+import { isEditorialChart, readEditorialChart, type EditorialChart } from '../editorialChart'
 import { useContextMenuDismissal } from '../contextMenuDismissal'
 import { withTableStyle, type TablePalette, type TableTreatment } from '../editorialTableStyles'
 import { editorialIcon } from '../editorialIcons'
@@ -274,6 +277,48 @@ const anchors = new Set<Anchor>()
 function anchor(from = editor.value?.state.selection.from ?? 1, to = editor.value?.state.selection.to ?? from): Anchor { const value = { from, to, valid: true, generation }; anchors.add(value); return value }
 function valid(value: Anchor): boolean { return value.valid && value.generation === generation && Boolean(editor.value?.isEditable) && !sourceMode.value }
 function release(value?: Anchor): void { if (value) { value.valid = false; anchors.delete(value) } }
+function chartFromNode(node?: ProseMirrorNode | null): EditorialChart | null {
+  if (node?.type.name === 'editorialChart' && isEditorialChart(node.attrs.chart)) return node.attrs.chart
+  return node?.type.name === 'editorialSvg' ? readEditorialChart(node.attrs.source) : null
+}
+const chartDialog = shallowRef<{ initial: EditorialChart | null; at: Anchor; original?: ProseMirrorNode } | null>(null)
+function closeChart(restoreFocus = true): void {
+  if (!chartDialog.value) return
+  release(chartDialog.value.at)
+  chartDialog.value = null
+  const current = editor.value, started = generation
+  if (restoreFocus) void nextTick(() => {
+    if (current && editor.value === current && !current.isDestroyed && generation === started && current.isEditable && !chartDialog.value) current.view.focus()
+  })
+}
+function openChart(editPosition?: number): void {
+  const current = editor.value
+  if (profile !== 'document' || !current?.isEditable || chartDialog.value) return
+  const { selection, doc } = current.state
+  if (editPosition !== undefined) {
+    const original = doc.nodeAt(editPosition)
+    const initial = chartFromNode(original)
+    if (initial && original) chartDialog.value = { initial, at: anchor(editPosition, editPosition + original.nodeSize), original }
+    return
+  }
+  const { $to } = selection
+  // Place figures at document level, outside list items, table cells and code.
+  const inlineInsertion = selection.empty && $to.depth === 1 && ['paragraph', 'heading'].includes($to.parent.type.name)
+  const position = $to.depth && !inlineInsertion ? $to.after(1) : selection.to
+  chartDialog.value = { initial: null, at: anchor(position) }
+}
+function applyChart(chart: EditorialChart, source: string): void {
+  const current = editor.value, target = chartDialog.value
+  if (!current || !target || !valid(target.at)) { closeChart(); return }
+  const { at, original } = target
+  if (original) {
+    if (!current.state.doc.nodeAt(at.from)?.eq(original)) { closeChart(); return }
+    const attributes = original.type.name === 'editorialSvg' ? { source } : { chart }
+    const transaction = closeHistory(current.state.tr).setNodeMarkup(at.from, undefined, attributes)
+    current.view.dispatch(transaction.setSelection(NodeSelection.create(transaction.doc, at.from)))
+  } else insertAt(at, source, false)
+  closeChart()
+}
 const mathOpen = ref(false), mathKind = ref<MathKind>('inline'), mathLatex = ref('')
 let mathAnchor: Anchor | undefined, mathOriginal: ProseMirrorNode | undefined
 function closeMath(restoreFocus = true): void {
@@ -306,7 +351,7 @@ function applyMath(latex: string): void {
   closeMath()
 }
 function request(): AbortController { const value = new AbortController(); requests.add(value); return value }
-function stop(): void { emojiOpen.value = false; closeEmoji(false); closeMath(false); pointerRequest++; pointerMenu.value?.hide(); pointerTextContext.value = false; pointerSelection = undefined; generation++; requests.forEach(value => value.abort()); requests.clear(); exportJobs.clear(); exportBusy.value = []; anchors.forEach(value => { value.valid = false }); anchors.clear(); personalVoice?.stop(); uploadProgress.value = null; importRequest.value = null; shareOpen.value = false; dialogOpen.value = false; findOpen.value = false; linkOpen.value = false; objectPreview.value = null }
+function stop(): void { emojiOpen.value = false; closeEmoji(false); closeMath(false); closeChart(false); pointerRequest++; pointerMenu.value?.hide(); pointerTextContext.value = false; pointerSelection = undefined; generation++; requests.forEach(value => value.abort()); requests.clear(); exportJobs.clear(); exportBusy.value = []; anchors.forEach(value => { value.valid = false }); anchors.clear(); personalVoice?.stop(); uploadProgress.value = null; importRequest.value = null; shareOpen.value = false; dialogOpen.value = false; findOpen.value = false; linkOpen.value = false; objectPreview.value = null }
 function inputHtml(value: string): string {
   if (mediaType === 'text/markdown') value = marked.parse(value, { async: false })
   if (mediaType === 'text/plain') { const paragraph = document.createElement('p'); paragraph.textContent = value; value = paragraph.outerHTML }
@@ -428,10 +473,16 @@ function createEditor(): void {
       handlePaste: (view, event) => handleTransfer(event.clipboardData, view.state.selection.from, event),
       handleDrop: (view, event, _slice, moved) => moved ? false : handleTransfer(event.dataTransfer, view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? view.state.selection.from, event),
       handleClickOn: (view, _pos, node, nodePos, _event, direct) => {
-        if (!direct || !['documentImage', 'inlineImage', 'resourceCard'].includes(node.type.name)) return false
+        if (!direct || !(['documentImage', 'inlineImage', 'resourceCard'].includes(node.type.name)
+          || chartFromNode(node))) return false
         if (readonly && node.type.name !== 'resourceCard') return true
         view.dispatch(view.state.tr.setSelection(NodeSelection.create(view.state.doc, nodePos)))
         view.focus()
+        return true
+      },
+      handleDoubleClickOn: (_view, _pos, node, nodePos, _event, direct) => {
+        if (readonly || !direct || !chartFromNode(node)) return false
+        openChart(nodePos)
         return true
       },
       handleKeyDown: (_view, event) => {
@@ -469,6 +520,10 @@ function createEditor(): void {
         if (readonly) return false
         if (mod && !event.shiftKey && !event.altKey && event.key.toLowerCase() === 'k') { showDialog('link'); return true }
         if (profile !== 'document') return false
+        if (event.key === 'Enter' && !mod && !event.altKey && !event.shiftKey && selectedChart.value) {
+          openChart(current.state.selection.from)
+          return true
+        }
         if (event.key === 'Tab' && !mod && !event.altKey && current.isActive('table')) {
           event.preventDefault()
           const moved = event.shiftKey ? current.commands.goToPreviousCell() : current.commands.goToNextCell()
@@ -511,15 +566,21 @@ const personalVoice = editorVoiceProvider?.({ html, editable: () => !readonly &&
 const voice = computed(() => personalVoice?.controls.value)
 const selectedType = computed(() => { void revision.value; const current = editor.value; if (!current) return ''; const selection = current.state.selection; return selection instanceof NodeSelection ? selection.node.type.name : current.isActive('codeBlock') ? 'codeBlock' : '' })
 const selectedAttributes = computed(() => { void revision.value; return editor.value?.getAttributes(selectedType.value) ?? {} })
+const selectedChart = computed(() => {
+  void revision.value
+  const selection = editor.value?.state.selection
+  return selection instanceof NodeSelection ? chartFromNode(selection.node) : null
+})
 const activeContext = computed(() => {
   void revision.value
   const current = editor.value
   if (readonly || !current || current.isDestroyed || sourceMode.value) return null
-  let kind: 'code' | 'table' | 'resource' | 'object' | 'equation'
+  let kind: 'code' | 'table' | 'resource' | 'object' | 'equation' | 'chart'
   if (selectedType.value === 'codeBlock') kind = 'code'
   else if (['inlineMath', 'blockMath'].includes(selectedType.value)) kind = 'equation'
   else if (['documentImage', 'inlineImage', 'resourceCard'].includes(selectedType.value) || current.isActive('link')) kind = 'resource'
   else if (selectedType.value === 'rawObject') kind = 'object'
+  else if (selectedChart.value) kind = 'chart'
   else if (current.isActive('table')) kind = 'table'
   else return null
   return { kind }
@@ -1237,6 +1298,8 @@ const contextActions = computed(() => {
       current.view.dispatch(closeHistory(current.state.tr))
       current.chain().deleteSelection().focus().run()
     })
+  } else if (activeContext.value?.kind === 'chart') {
+    add('editChart', editorialIcon('edit', 'edit'), 'chart.edit', () => openChart(editor.value?.state.selection.from))
   } else if (activeContext.value?.kind === 'resource') {
     add('open', editorialIcon('open', 'open_in_new'), 'open', openSelection)
     add('copyReference', 'link', 'copy', () => { void copyToClipboard(selectionUri()).then(() => $q.notify({ type: 'positive', message: t('common.copied') })).catch(() => $q.notify({ type: 'negative', message: t('richEditor.copyError') })) })
@@ -1330,6 +1393,7 @@ function action(key: string, value?: string): void {
   if (key === 'find' && !sourceMode.value) { if (findOpen.value) closeFind(); else showDialog('find'); return }
   if (readonly || sourceMode.value) return
   if (current.view.hasFocus()) syncKeyboardSelection()
+  if (key === 'chart.insert') { openChart(); return }
   current.view.dispatch(closeHistory(current.state.tr))
   const chain = current.chain()
   if (!current.view.hasFocus()) chain.focus()

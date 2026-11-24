@@ -5,7 +5,8 @@
 `app/document/tests/test_mindmap.py` covers structural interchange, library import,
 revision export under the document ACL and atomic MCP branch commands.
 `front/browser-tests/mindmap.spec.mjs` exercises keyboard branch creation,
-reopening the saved document and the export request.
+reopening the saved document and the export request. A chart edited in a node survives
+reopening and appears in print and in the shared PDF snapshot.
 `e2e/specs/mindmap.spec.mjs` connects real import, editing, reopening and FreeMind
 download in the assembled application.
 
@@ -887,6 +888,9 @@ read-only and mobile views, draft isolation on content changes
 and static exports with embedded fonts and no network access. `core/util/tests/test_rich_text.py`
 validates their HTML contract; `app/document/tests/test_editorial_content.py` covers persistence,
 revisions and permissions.
+
+`document-figures.spec.mjs` creates charts in the document editor, edits their data after
+autosave and reopening, and checks the SVG in the PDF snapshot on desktop and mobile.
 
 `front/browser-tests/tiptap-preservation.spec.mjs` covers the HTML corpus through Tiptap,
 serialization, reopening and reading: canonical references, tables and opaque HTML/CSS/JavaScript.

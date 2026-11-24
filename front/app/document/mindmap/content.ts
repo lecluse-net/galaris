@@ -1,4 +1,4 @@
-import { attachmentReference, canonicalRichLink, documentResourceHtml, richLinkTarget, validRichLink } from '@/core/util'
+import { attachmentReference, canonicalRichLink, documentResourceHtml, richLinkTarget, sanitizeRichHtml, validRichLink } from '@/core/util'
 import { documentUriFromLink, providerImageReference, referenceMode, referenceUri, validReferenceAttribute } from '@/core/util/facade'
 
 import { connectorDescriptions, nodesByParent, parseMindMap, type MindMap, type MindMapNode } from './model'
@@ -103,7 +103,9 @@ export function mindMapOutline(map: MindMap): string {
     const checkbox = node.checked == null ? '' : node.checked ? '☑ ' : '☐ '
     const value = node.value ? ` ${escapeHtml(node.value)}` : ''
     const connectors = (descriptions.get(node.id) ?? []).map(mindMapParagraphHtml).join('')
-    return `<li><p><strong>${checkbox}${escapeHtml(node.title)}</strong>${value}</p>${note}${link}${node.body_html ?? ''}${connectors}${branches.length ? list(branches) : ''}</li>`
+    // SVGs and applications are top-level objects within each node's HTML body.
+    const body = node.body_html ? sanitizeRichHtml(node.body_html, 'document') : ''
+    return `<li><p><strong>${checkbox}${escapeHtml(node.title)}</strong>${value}</p>${note}${link}${body}${connectors}${branches.length ? list(branches) : ''}</li>`
   }
   function list(nodes: MindMapNode[]): string { return `<ul>${nodes.map(branch).join('')}</ul>` }
   return list(children.get(null) ?? [])

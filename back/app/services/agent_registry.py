@@ -121,6 +121,12 @@ async def build_agent_tool_advertisement(
             "restrictions below concern functions owned by those Services, not file resources "
             "accessed through the available file_* functions.",
         ])
+    if "document_chart" in tool_names:
+        lines.append(
+            "For charts in a Text document or mind map node, call document_chart with the type, title and data. "
+            "Insert the returned html verbatim so the document renders it with ECharts and keeps the values editable. "
+            "Do not draw SVG or include charting scripts yourself."
+        )
     if "document_show" in tool_names:
         lines.append(
             "Use document_show(document=...) to present a relevant working document directly "

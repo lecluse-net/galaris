@@ -5,7 +5,8 @@
 `app/document/tests/test_mindmap.py` couvre les conversions structurelles, l’import
 dans la bibliothèque, l’export d’une révision sous ACL et les commandes MCP atomiques.
 `front/browser-tests/mindmap.spec.mjs` exerce la création d’une branche au clavier,
-la réouverture du document enregistré et la demande d’export.
+la réouverture du document enregistré et la demande d’export. Un graphique édité dans un
+nœud est conservé à la réouverture, à l’impression et dans l’instantané du PDF partagé.
 `e2e/specs/mindmap.spec.mjs` relie l’import réel, l’édition, la réouverture et le
 téléchargement FreeMind dans l’application assemblée.
 
@@ -924,6 +925,10 @@ lecture seule et mobile, isolement des brouillons
 lors d’un changement de contenu et export statique avec polices intégrées sans réseau.
 `core/util/tests/test_rich_text.py` valide leur contrat HTML ;
 `app/document/tests/test_editorial_content.py` vérifie persistance, révisions et droits.
+
+`document-figures.spec.mjs` crée des graphiques dans l’éditeur de documents, reprend leurs
+données après sauvegarde et réouverture, et vérifie le SVG de l’instantané PDF sur ordinateur
+et mobile.
 
 `front/browser-tests/tiptap-preservation.spec.mjs` couvre la conservation du corpus HTML
 dans Tiptap, la sérialisation, la réouverture et la lecture : références canoniques, tableaux et

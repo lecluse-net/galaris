@@ -12,6 +12,7 @@ import { applyReferenceAppearance, explicitReferenceMode } from './documentRefer
 import { webLinkCardImage, prependWebLinkImage } from './webLinkPreview'
 import { renderMath, mathSnapshotStyles } from './mathRendering'
 import { renderSvgFigures } from './editorialSvg'
+import { renderChartFigures } from './editorialChartDisplay'
 
 const MAX_SNAPSHOT_BYTES = 12_000_000
 
@@ -82,6 +83,8 @@ export async function prepareDocumentSnapshot(
   if (!resolveRenderedContent) hideInteractiveSource(doc.body, title)
   const inlineImages = [...doc.querySelectorAll('img')]
   renderSvgFigures(doc.body)
+  await renderChartFigures(doc.body)
+  signal.throwIfAborted()
   highlightDocumentCode(doc.body)
   await renderMath(doc.body)
   const mathCss = await mathSnapshotStyles(doc.body, signal)

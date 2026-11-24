@@ -27,9 +27,8 @@ sans défilement horizontal. Le plein écran, les pièces jointes et l'insertion
 restent réservés au mode complet ;
 les contenus déjà enregistrés restent conservés.
 
-Dans un document Texte, les graphiques SVG autonomes s'affichent à leur place. Vous pouvez
-modifier leurs légendes et les paragraphes entre les figures, puis imprimer ou exporter le
-document avec ses graphiques.
+Les documents Texte et les nœuds enrichis des cartes mentales affichent les graphiques
+dans le contenu. Vous ou un agent pouvez les créer et reprendre leurs données dans l’éditeur.
 
 ## Importer un fichier
 
@@ -236,6 +235,11 @@ menu du système, ou l’enregistrement du fichier si le partage de PDF est indi
 Choisissez **Ajouter du contenu riche** ou pressez **Alt+Entrée** pour éditer un
 paragraphe directement dans le nœud. Le titre existant devient le premier paragraphe.
 Le nœud affiche son contenu directement et **Entrée** y ouvre l’éditeur.
+Dans le contenu riche du nœud, **Insertion → Insérer un graphique** ouvre le choix
+du type de graphique et la saisie des valeurs. Sur mobile, ouvrez **Autres outils**.
+Pour mettre à jour les valeurs, ouvrez l’éditeur du nœud, sélectionnez le graphique
+puis choisissez **Modifier le graphique**. Le graphique reste visible à la réouverture,
+à l’impression et dans le PDF partagé.
 La barre d’outils s’adapte à la sélection et
 propose alors la mise en forme, les listes et les tableaux. **Insérer un fichier**
 et **Galaris** créent un enfant par ressource sous le nœud sélectionné.
@@ -256,7 +260,8 @@ XMind récent (`.xmind` avec `content.json`) et le format Galaris (`.mindmap`).
 Le menu **Télécharger la source** propose les mêmes formats. Les échanges conservent
 l’arborescence, les titres, les notes en texte et les liens portables. Les styles,
 images, pièces jointes et fonctionnalités propres aux applications sources restent
-dans le fichier d’origine. L’export PDF présente le texte et la hiérarchie.
+dans le fichier d’origine. Le PDF partagé présente le texte, la hiérarchie et les
+graphiques des nœuds.
 
 ### Travailler sur une carte avec un agent
 
@@ -264,6 +269,8 @@ Dans le Chat, demandez à l’agent de créer une carte, de lire ses nœuds ou d
 modifier. Il peut aussi choisir ce format pour un résultat qui se prête à une
 arborescence, comme un plan par chantier. Les fonctions et les droits de l’agent
 déterminent les actions possibles. Une approbation peut être nécessaire pour écrire.
+Vous pouvez lui demander d’insérer un graphique modifiable dans un nœud en lui donnant
+les valeurs ou leur source.
 
 Si vous écrivez avec la carte ouverte à côté du Chat, le contexte peut indiquer à
 l’agent quel document vous consultez. La sélection de nœuds reste dans l’interface.
@@ -396,6 +403,13 @@ Dans la barre d’outils, **Texte** regroupe les **Caractères spéciaux** et l�
 **Citation** termine la première ligne de **Paragraphe** ; sa seconde ligne regroupe
 **Bloc de code** et l’équation en bloc.
 **Insérer un tableau** se trouve sur la seconde ligne d’**Insertion**.
+
+Pour ajouter un graphique à un document Texte, choisissez **Insertion → Insérer un graphique**.
+Sur mobile, cette commande se trouve dans **Autres outils**. Choisissez des barres, une courbe
+ou des secteurs, puis saisissez les libellés et les valeurs. Vous pouvez ajouter un titre
+et vérifier le résultat dans l’aperçu avant de valider. Pour reprendre les données,
+sélectionnez le graphique puis choisissez **Modifier le graphique**. Le graphique reste visible
+à la réouverture, dans les versions du document, à l’impression et dans les exports.
 
 **Équation en ligne** insère une formule au milieu du texte ; **Équation en bloc**
 l’affiche sur une ligne séparée. Les deux boutons ouvrent l’éditeur visuel MathLive,
