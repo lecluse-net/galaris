@@ -83,7 +83,7 @@ export function createPermissionDashboard(t: Composer['t'], agents: AgentSelecti
             options: [{ value: 'enabled', label: t('connection.active') }, { value: 'disabled', label: t('connection.inactive') }],
             disabled: !row.active || !canConfigure(),
             save: value => api.put(`/connections/${row.connection_id}/voice-auto-answer`, { enabled: value === 'enabled' }) })
-          const parameters = Object.entries(row.parameters).filter(([key]) => key !== 'services.management_scope'
+          const parameters = Object.entries(row.parameters).filter(([key]) => (connectionId !== undefined || key !== 'services.management_scope')
             && (!query.customizedOnly || row.parameter_sources?.[key] === 'connection')).map(([key, value]) => {
             const known = ['allow', 'ask', 'true', 'false', 'block', 'team', 'all', 'none', 'personal', 'usage']
             const display = value !== null && known.includes(value.toLowerCase()) ? t(`permissions.dashboard.values.${value.toLowerCase()}`) : value ?? '—'

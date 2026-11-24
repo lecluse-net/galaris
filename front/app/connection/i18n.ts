@@ -68,6 +68,7 @@ export default {
     },
     connection: {
       settingsTab: 'Configuration',
+      permissionScope: 'Paramètres de périmètre du service',
       localPolicy: 'Local (cette connexion)',
       test: {
         savedSettings: 'Teste les paramètres enregistrés. Enregistrez vos modifications avant de les tester.',
@@ -353,6 +354,7 @@ export default {
     },
     connection: {
       settingsTab: 'Settings',
+      permissionScope: 'Service scope settings',
       localPolicy: 'Local (this connection)',
       test: {
         savedSettings: 'Tests the saved settings. Save your changes before testing them.',
@@ -626,6 +628,7 @@ export default {
     nav: { connection: '连接', connection_desc: '连接管理', mailJournal: '邮件日志', mailJournal_desc: '授权并记录智能体收发的邮件' },
     connection: {
       settingsTab: '设置',
+      permissionScope: '服务范围设置',
       localPolicy: '本地（此连接）',
       test: {
         savedSettings: '测试已保存的设置。请先保存更改再进行测试。',

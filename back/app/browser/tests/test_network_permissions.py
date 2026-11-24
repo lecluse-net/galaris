@@ -143,6 +143,7 @@ async def test_upgrade_preserves_existing_browser_site_policy(db, saved_mode):
 async def test_public_access_mode_inherits_global_settings_and_supports_agent_override(db):
     from app.connection import connection_service
     from app.services import service
+    from app.services.permission_catalog import agent_permission_catalog
     from app.services.schemas import ServiceGlobalParamsUpdate
 
     agents, _, connections = await setup_scope(db, public_access_mode=None)
@@ -151,7 +152,19 @@ async def test_public_access_mode_inherits_global_settings_and_supports_agent_ov
                              method="POST", addresses=["93.184.215.14"])
     await service.update_global_params(service_id, ServiceGlobalParamsUpdate(params={
         "public_access_mode": {"value": "allow"},
+        "allow_local_network": {"clear": True},
+        "network_filter_mode": {"clear": True},
+        "permission_methods": {"clear": True},
     }))
+    catalog = await agent_permission_catalog(agents[0].id, connection_id=connections[0].id)
+    assert catalog.connections[0].parameters == {
+        "public_access_mode": "allow", "allow_local_network": "false", "network_filter_mode": "block",
+        "network_filter": None, "permission_methods": "POST PUT PATCH DELETE WEBSOCKET",
+    }
+    assert catalog.connections[0].parameter_sources == {
+        "public_access_mode": "tool", "allow_local_network": "software", "network_filter_mode": "software",
+        "network_filter": "software", "permission_methods": "software",
+    }
     assert (await authorize_network(request)).allowed
     request.owner.agent_id = agents[1].id
     assert (await authorize_network(request)).allowed

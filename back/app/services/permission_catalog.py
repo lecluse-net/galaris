@@ -104,12 +104,17 @@ async def agent_permission_catalog(agent_id: int, *, connection_id: int | None =
                 parameter_sources[MANAGEMENT_SCOPE_PARAM] = "connection" if local_scope is not None else "software"
             for key in ("public_access_mode", "allow_local_network", "network_filter_mode", "network_filter", "permission_methods"):
                 definition = tool.connection.params.get(key)
-                if key in parameters and (definition is None or definition.type != "password"):
+                if definition is not None and definition.type == "password":
+                    continue
+                if key in parameters:
                     safe_parameters[key] = str(parameters[key]) if parameters[key] is not None else None
                     global_parameter = global_parameters.get(key)
                     parameter_sources[key] = ("tool" if global_parameter and global_parameter.forced else
-                        "connection" if key in local_parameters else
+                        "connection" if local_parameters.get(key) not in (None, "") else
                         "tool" if global_parameter and global_parameter.configured else "software")
+                elif definition is not None:
+                    safe_parameters[key] = definition.default or None
+                    parameter_sources[key] = "software"
         result.connections.append(ConnectionPermission(service_id=record.id, service_code=tool.code,
             service_label=tool.label, description=tool.description or "", connection_id=connection.id if connection else None,
             active=active, can_disable=tool.can_disable, parameters=safe_parameters, parameter_sources=parameter_sources,

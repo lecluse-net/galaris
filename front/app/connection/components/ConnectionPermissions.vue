@@ -1,5 +1,11 @@
 <template>
   <div>
+    <q-card v-if="servicePermission?.description" flat bordered class="q-mb-md">
+      <q-card-section>
+        <h3 class="text-subtitle2 q-mt-none q-mb-xs">{{ t('connection.permissionScope') }}</h3>
+        <div class="permission-parameters">{{ servicePermission.description }}</div>
+      </q-card-section>
+    </q-card>
     <div class="row items-center q-gutter-sm q-mb-md">
       <q-input v-model="search" class="col" outlined dense clearable :label="t('connection.auth.search')">
         <template #prepend><q-icon name="search" /></template>
@@ -15,17 +21,22 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { createPermissionDashboard } from '../services/permissionDashboardSources'
 import { waitForFunctionPolicyWrites } from '../services/connectionService'
 import type { Connection } from '../services/connectionService'
-import type { PermissionControl, PermissionEntry } from '../services/permissionDashboard'
+import { filterPermissionEntries, type PermissionControl, type PermissionEntry } from '../services/permissionDashboard'
 import PermissionEntryTable from './PermissionEntryTable.vue'
 
 const props = defineProps<{ connection: Connection }>()
 const { t } = useI18n()
-const search = ref(''), entries = ref<PermissionEntry[]>([]), warnings = ref<string[]>([])
+const search = ref(''), warnings = ref<string[]>([])
+const servicePermission = ref<PermissionEntry>()
+const entries = computed(() => {
+  const functions = servicePermission.value?.children ?? []
+  return filterPermissionEntries(functions, { search: search.value ?? '', state: 'all', offset: 0, limit: functions.length }).items
+})
 const loading = ref(false), busy = ref(false), error = ref(false)
 const actionError = ref(false)
 let generation = 0, disposed = false
@@ -35,15 +46,16 @@ async function load() {
   const current = ++generation
   controller?.abort()
   const request = controller = new AbortController()
-  loading.value = true; error.value = false; entries.value = []; warnings.value = []
+  loading.value = true; error.value = false; servicePermission.value = undefined; warnings.value = []
   try {
     await waitForFunctionPolicyWrites(props.connection.service_id)
     if (current !== generation || disposed) return
     const panel = dashboard.panels.find(panel => panel.id === 'functions')!
-    const page = await panel.load!({ agentId: props.connection.agent_id, search: search.value ?? '', state: 'all',
+    const page = await panel.load!({ agentId: props.connection.agent_id, search: '', state: 'all',
       offset: 0, limit: 500, signal: request.signal, toolId: props.connection.service_id })
     if (current !== generation || disposed) return
-    entries.value = page.items.flatMap(row => row.children ?? []); warnings.value = page.warnings ?? []
+    servicePermission.value = page.items.find(row => row.toolId === props.connection.service_id)
+    warnings.value = page.warnings ?? []
   } catch { if (current === generation && !disposed) error.value = true }
   finally { if (current === generation && !disposed) loading.value = false }
 }
@@ -66,7 +78,10 @@ watch(() => [props.connection.id, props.connection.agent_id, props.connection.se
   actionError.value = false
   dashboard.dispose(); dashboard = createPermissionDashboard(t, [], props.connection.id); void load()
 })
-watch(search, load)
 void load()
 onBeforeUnmount(() => { disposed = true; generation++; controller?.abort(); dashboard.dispose() })
 </script>
+
+<style scoped>
+.permission-parameters { overflow-wrap: anywhere; white-space: pre-wrap; }
+</style>

@@ -32,8 +32,13 @@ test('Connection permissions preserve saved decisions, reconcile failures and is
   const writes = []
   await page.route('**/api/services/agents/7/permissions?connection_id=*', route => {
     const other = new URL(route.request().url()).searchParams.get('connection_id') === '43'
+    const scope = other ? 'personal' : 'team'
     return route.fulfill({ json: { connections: [{ service_id: 8, service_code: 'synthetic', service_label: 'Synthetic',
-      connection_id: other ? 43 : 42, active: true, can_disable: true, parameters: {} }], capabilities: [{
+      connection_id: other ? 43 : 42, active: true, can_disable: true,
+      management_scope: { value: scope, configured: other ? scope : null, default: 'team', description: '',
+        options: [{ value: 'personal', label: '' }, { value: 'team', label: '' }] },
+      parameters: { 'services.management_scope': scope, public_access_mode: 'ask' },
+      parameter_sources: { 'services.management_scope': other ? 'connection' : 'software', public_access_mode: 'tool' } }], capabilities: [{
       id: '8:tool:lookup', service_id: 8, service_label: 'Synthetic', connection_id: other ? 43 : 42,
       name: other ? 'other_lookup' : 'lookup', description: 'Synthetic function', capability_kind: 'tool',
       connection_state: other ? 'default' : state, global_state: globalState, default_state: 'ask',
@@ -56,11 +61,20 @@ test('Connection permissions preserve saved decisions, reconcile failures and is
   const local = page.getByRole('group', { name: 'Local (this connection)', exact: true })
   const global = page.getByRole('group', { name: 'Global (all)', exact: true })
   await mount(page, 'app/connection/components/ConnectionPermissions.vue', { props, privileges })
+  const defaultScope = page.getByText('Management scope: Team · Software default', { exact: false })
+  await expect(defaultScope).toBeVisible()
+  await expect(page.getByText('Public sites: On request · Global tool policy', { exact: false })).toBeVisible()
+  const search = page.getByRole('textbox', { name: 'Search a function', exact: true })
+  await search.fill('no matching function')
+  await expect(page.getByText('lookup', { exact: true })).toHaveCount(0)
+  await expect(defaultScope).toBeVisible()
+  await search.clear()
   await expect(global.getByRole('button', { name: 'Allow', exact: true })).toBeDisabled()
   await local.getByRole('button', { name: 'Allow', exact: true }).click()
   await expect(local.getByRole('button', { name: 'Allow', exact: true })).toHaveAttribute('aria-pressed', 'true')
   expect(writes).toEqual([{ function_name: 'lookup', capability_kind: 'tool', state: 'enabled' }])
   await mount(page, 'app/connection/components/ConnectionPermissions.vue', { props, privileges })
+  await expect(defaultScope).toBeVisible()
   await expect(local.getByRole('button', { name: 'Allow', exact: true })).toHaveAttribute('aria-pressed', 'true')
   fail = true
   await local.getByRole('button', { name: 'Deny', exact: true }).click()
@@ -72,7 +86,13 @@ test('Connection permissions preserve saved decisions, reconcile failures and is
   await expect(global.getByRole('button', { name: 'Deny', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await expect(local.getByRole('button', { name: 'Inherit', exact: true })).toHaveAttribute('aria-pressed', 'true')
   expect(writes.at(-1)).toEqual({ function_name: 'lookup', capability_kind: 'tool', state: 'disabled', global_policy: true, inherit_connection: true })
-  await page.evaluate(() => window.testApp.setProps({ connection: { id: 43, service_id: 8, agent_id: 7, active: true } }))
+  await page.setViewportSize({ width: 390, height: 900 })
+  await page.evaluate(async () => {
+    await window.testApp.dark(true)
+    await window.testApp.setProps({ connection: { id: 43, service_id: 8, agent_id: 7, active: true } })
+  })
+  await expect(page.getByText('Management scope: Personal · Agent policy', { exact: false })).toBeVisible()
+  await expect(defaultScope).toHaveCount(0)
   await expect(page.getByText('other_lookup', { exact: true })).toBeVisible()
   await expect(page.getByText('lookup', { exact: true })).toHaveCount(0)
 })

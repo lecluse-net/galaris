@@ -58,7 +58,7 @@ export interface PermissionPanelDefinition {
 
 export interface PermissionPagination { page: number; rowsPerPage: number; rowsNumber?: number }
 
-export function filterPermissionEntries(items: PermissionEntry[], query: PermissionQuery): PermissionPage {
+export function filterPermissionEntries(items: PermissionEntry[], query: Omit<PermissionQuery, 'agentId' | 'signal'>): PermissionPage {
   const needle = query.search.trim().toLocaleLowerCase()
   const matching = items.filter(row => (query.toolId == null || row.toolId === query.toolId)
     && (!needle || [row.title, row.description, row.scope, row.origin, row.note]
