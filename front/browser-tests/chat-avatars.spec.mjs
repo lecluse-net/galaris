@@ -53,11 +53,11 @@ test('the remaining bubble keeps a shared request alive and reopening retries fa
   expect(requests).toBe(2)
 })
 
-test('new bubbles reuse a fresh avatar and revalidate after expiration without blanking current bubbles', async ({ page }) => {
-  let requests = 0, release
-  await page.route('**/api/chat/agents/7/avatar', async route => {
-    if (++requests === 2) await new Promise(resolve => { release = resolve })
-    await route.fulfill({ contentType: 'image/png', body: png })
+test('new bubbles reuse the displayed portrait throughout the session', async ({ page }) => {
+  let requests = 0
+  await page.route('**/api/chat/agents/7/avatar', route => {
+    requests++
+    return route.fulfill({ contentType: 'image/png', body: png })
   })
   await timeline(page, 1)
   const first = page.locator('.internal-agent-avatar img').first()
@@ -68,14 +68,11 @@ test('new bubbles reuse a fresh avatar and revalidate after expiration without b
   await page.waitForTimeout(200)
   expect(requests).toBe(1)
   await expect(first).toHaveAttribute('src', previous)
-  await page.evaluate(() => { const now = Date.now; Date.now = () => now() + 61_000 })
+  await page.evaluate(() => { const now = Date.now; Date.now = () => now() + 24 * 60 * 60_000 })
   await page.evaluate(messages => window.testApp.setProps({ messages }), messages(20))
-  await expect.poll(() => Boolean(release)).toBe(true)
   await expect(page.locator('.internal-agent-avatar img')).toHaveCount(20)
   await expect(first).toHaveAttribute('src', previous)
-  release()
-  await expect(first).not.toHaveAttribute('src', previous)
-  expect(requests).toBe(2)
+  expect(requests).toBe(1)
 })
 
 test('session changes discard pending avatars, share the fresh image and clear on logout', async ({ page }) => {

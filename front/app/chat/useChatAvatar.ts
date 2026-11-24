@@ -1,5 +1,5 @@
 import { computed, ref, shallowRef, watch, type ComputedRef, type Ref } from 'vue'
-import { AUTH_TOKEN_CHANGED_EVENT } from '@/core/api'
+import { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
 import { onSessionReadInvalidation } from '@/core/util/facade'
 import { chatService } from './services/chatService'
 
@@ -13,6 +13,7 @@ interface AvatarEntry {
 // Bound by mounted consumers, never retained across a visit to another page.
 const avatars = new Map<number, AvatarEntry>()
 let unsubscribe: (() => void) | undefined
+let session: string | null = sessionGeneration()
 
 function clear(entry: AvatarEntry): void {
   entry.request?.abort()
@@ -30,11 +31,11 @@ async function load(id: number, entry: AvatarEntry, keepImage = false): Promise<
     const blob = await chatService.agentAvatarBlob(id, request.signal)
     if (!request.signal.aborted && avatars.get(id) === entry && entry.blob !== blob) {
       if (entry.url.value) URL.revokeObjectURL(entry.url.value)
-      entry.url.value = URL.createObjectURL(blob)
+      entry.url.value = blob ? URL.createObjectURL(blob) : ''
       entry.blob = blob
     }
   } catch {
-    // Initials remain available; a new visit retries absent or unavailable images.
+    // Initials remain available when the image request fails.
     if (!request.signal.aborted && avatars.get(id) === entry) {
       if (entry.url.value) URL.revokeObjectURL(entry.url.value)
       entry.url.value = ''
@@ -46,9 +47,12 @@ async function load(id: number, entry: AvatarEntry, keepImage = false): Promise<
 }
 
 function onSessionChanged(event: Event): void {
+  const next = (event as CustomEvent<string | null>).detail ? sessionGeneration() : null
+  if (next === session) return
+  session = next
   for (const [id, entry] of avatars) {
     clear(entry)
-    if ((event as CustomEvent<string | null>).detail) void load(id, entry)
+    if (session !== null) void load(id, entry)
   }
 }
 
@@ -56,6 +60,7 @@ function acquire(id: number): AvatarEntry {
   let entry = avatars.get(id)
   if (!entry) {
     if (!avatars.size) {
+      session = sessionGeneration()
       window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, onSessionChanged)
       unsubscribe = onSessionReadInvalidation('agent-avatar', key => {
         for (const [id, current] of avatars) if (key === undefined || key === String(id)) void load(id, current)
@@ -65,7 +70,7 @@ function acquire(id: number): AvatarEntry {
     avatars.set(id, entry)
     void load(id, entry)
   } else if (!entry.request) {
-    // A newly displayed bubble consults the short-lived, endpoint-specific blob cache.
+    // Keep the visible image while the endpoint cache supplies a newly mounted bubble.
     void load(id, entry, true)
   }
   entry.users++

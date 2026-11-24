@@ -1,5 +1,5 @@
 import api, { AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
-import { createSessionResponseCache, invalidateSessionReads, readSessionImage } from '@/core/util/facade'
+import { createSessionResponseCache, invalidateSessionImages, invalidateSessionReads, readSessionImage } from '@/core/util/facade'
 import type { AxiosResponse } from 'axios'
 
 const referenceOptions = { sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration, maxAgeMs: 60_000 }
@@ -180,7 +180,7 @@ export const agentService = {
     },
     async generateAvatar(id: number, instructions = ''): Promise<AxiosResponse<{ status: string; registered: boolean }>> {
         const response = await api.post<{ status: string; registered: boolean }>(`/agents/${id}/avatar/generate`, { instructions })
-        invalidateSessionReads('agent-avatar', String(id))
+        await invalidateSessionImages('agent-avatar', String(id))
         invalidateSessionReads('agent-selection')
         invalidateSessionReads('agent-catalogue')
         return response
@@ -213,14 +213,14 @@ export const agentService = {
     },
     async updateAgent(id: number, agent: AgentUpdate): Promise<AxiosResponse<Agent>> {
         const response = await api.put(`/agents/${id}`, agent, { headers: { 'X-Editorial-Profile-Version': '1' } })
-        invalidateSessionReads('agent-avatar', String(id))
+        await invalidateSessionImages('agent-avatar', String(id))
         invalidateSessionReads('agent-selection')
         invalidateSessionReads('agent-catalogue')
         return response
     },
     async deleteAgent(id: number): Promise<AxiosResponse<void>> {
         const response = await api.delete(`/agents/${id}`)
-        invalidateSessionReads('agent-avatar', String(id))
+        await invalidateSessionImages('agent-avatar', String(id))
         invalidateSessionReads('agent-selection')
         invalidateSessionReads('agent-catalogue')
         return response
@@ -233,7 +233,7 @@ export const agentService = {
                 'Content-Type': 'multipart/form-data'
             }
         })
-        invalidateSessionReads('agent-avatar', String(id))
+        await invalidateSessionImages('agent-avatar', String(id))
         invalidateSessionReads('agent-selection')
         invalidateSessionReads('agent-catalogue')
         return response
@@ -243,13 +243,15 @@ export const agentService = {
     },
     async getAvatarBlobUrl(id: number, signal?: AbortSignal, updatedAt?: string | null): Promise<string> {
         const params = new URLSearchParams({ updated_at: updatedAt ?? '' })
-        const blob = await readSessionImage('agent-avatar', String(id), `/agents/${id}/avatar?${params}`, signal, updatedAt || undefined)
+        const blob = await readSessionImage('agent-avatar', String(id), `/agents/${id}/avatar?${params}`, {
+            signal, version: updatedAt || undefined,
+        })
         signal?.throwIfAborted()
         return blob ? URL.createObjectURL(blob) : ''
     },
     async deleteAvatar(id: number): Promise<AxiosResponse<void>> {
         const response = await api.delete(`/agents/${id}/avatar`)
-        invalidateSessionReads('agent-avatar', String(id))
+        await invalidateSessionImages('agent-avatar', String(id))
         invalidateSessionReads('agent-selection')
         invalidateSessionReads('agent-catalogue')
         return response

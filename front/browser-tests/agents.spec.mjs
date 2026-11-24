@@ -450,18 +450,13 @@ test('a refreshed portrait survives an older catalogue avatar response', async (
   await page.route('**/api/agents/7/avatar?*', async route => {
     started = true
     await pending
-    await route.fulfill({ contentType: 'image/png', body: image })
+    await route.fulfill({ contentType: 'image/png', body: image }).catch(() => {})
   })
   await page.route('**/api/agents/8/avatar?*', route => route.fulfill({ contentType: 'image/png', body: image }))
   await mount(page, 'app/index/pages/agent.vue', { privileges: ['AGENT_EDIT'] })
   await expect.poll(() => started).toBe(true)
-  // Observe disposal at the browser resource boundary, without mocking the loader.
-  await page.evaluate(() => {
-    window.disposedPortraits = 0
-    const revoke = URL.revokeObjectURL.bind(URL)
-    URL.revokeObjectURL = url => { window.disposedPortraits++; revoke(url) }
-  })
   try {
+    const cancelled = page.waitForEvent('requestfailed', request => new URL(request.url()).pathname === '/api/agents/7/avatar')
     catalogue = [{ ...catalogue[0], has_avatar: false, updated_at: '2026-01-01T12:01:00Z' }, { ...target, has_avatar: true, updated_at: '2026-01-01T12:00:00Z' }]
     await page.evaluate(async () => {
       const { invalidateSessionReads } = await import('/core/util/sessionReadCache.ts')
@@ -472,8 +467,9 @@ test('a refreshed portrait survives an older catalogue avatar response', async (
     const portrait = page.getByRole('img', { name: 'Lyra Synthetic', exact: true })
     await expect(portrait).toBeVisible()
     await expect(portrait).toHaveJSProperty('naturalWidth', 1)
+    await cancelled
     release()
-    await expect.poll(() => page.evaluate(() => window.disposedPortraits)).toBeGreaterThan(0)
+    await expect(page.locator('.agent-image-container img')).toHaveCount(1)
     await expect(portrait).toBeVisible()
     await expect(portrait).toHaveJSProperty('naturalWidth', 1)
   } finally { release() }

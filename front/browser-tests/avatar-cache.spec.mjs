@@ -3,6 +3,54 @@ import { test, expect, mount, jsonRoute } from './fixtures.mjs'
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGP8/x8AAwMCAHwG0LwAAAAASUVORK5CYII=', 'base64')
 const harness = 'test-support/browser/AgentAvatarHarness.vue'
 
+test('both authorized avatar endpoints reuse their own portraits after a full page reload', async ({ page }) => {
+  await page.addInitScript(() => {
+    if (!localStorage.getItem('galaris:session-generation')) {
+      localStorage.setItem('access_token', 'component-test')
+      localStorage.setItem('galaris:session-generation', 'avatar-reload-test')
+    }
+  })
+  let removed = false
+  let management = 0, chat = 0
+  await page.route(/\/api\/agents\/7\/avatar(?:\?.*)?$/, route => {
+    if (route.request().method() === 'DELETE') {
+      removed = true
+      return route.fulfill({ status: 204 })
+    }
+    management++
+    return removed ? route.fulfill({ status: 404 }) : route.fulfill({ contentType: 'image/png', body: png })
+  })
+  await page.route('**/api/chat/agents/7/avatar', route => {
+    chat++
+    return removed ? route.fulfill({ status: 404 }) : route.fulfill({ contentType: 'image/png', body: png })
+  })
+  async function expectPortraits(expectedReads) {
+    await mount(page, harness, { props: { showChat: true } })
+    const portraits = page.getByRole('img', { name: 'Test Agent' })
+    await expect(portraits).toHaveCount(3)
+    await expect.poll(() => portraits.evaluateAll(images => images.map(image => image.naturalWidth))).toEqual([1, 1, 1])
+    expect([management, chat]).toEqual([expectedReads, expectedReads])
+  }
+  await expectPortraits(1)
+  await expectPortraits(1)
+
+  await page.evaluate(() => window.testApp.setProps({ showManagement: false, showChat: false }))
+  await page.evaluate(async () => {
+    const { clearStoredSession, saveAccessToken } = await import('/core/api.ts')
+    clearStoredSession()
+    saveAccessToken('second-user')
+  })
+  await expectPortraits(2)
+  await page.evaluate(() => window.testApp.setProps({ showManagement: false, showChat: false }))
+  await page.evaluate(async () => {
+    const { agentService } = await import('/app/agent/services/agentService.ts')
+    await agentService.deleteAvatar(7)
+  })
+  await mount(page, harness, { props: { showChat: true } })
+  await expect.poll(() => [management, chat]).toEqual([3, 3])
+  await expect(page.getByRole('img', { name: 'Test Agent' })).toHaveCount(0)
+})
+
 test('text and phone histories display and reuse portraits without the administration catalogue', async ({ page }, testInfo) => {
   const date = '2026-01-01T12:00:00Z'
   const agent = { agent_id: 7, agent_name: 'Test Agent', room_id: 'synthetic-room' }

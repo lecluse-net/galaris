@@ -22,7 +22,7 @@ async function load(refresh = false): Promise<void> {
   const id = owner.id
   request = current
   try {
-    const blob = await readSessionImage('agent-avatar', String(id), `/agents/${id}/avatar`, current.signal)
+    const blob = await readSessionImage('agent-avatar', String(id), `/agents/${id}/avatar`, { signal: current.signal })
     if (blob && !current.signal.aborted) agentUrl.value = URL.createObjectURL(blob)
   } catch { /* Keep initials when an avatar is unavailable or the read was cancelled. */ }
 }

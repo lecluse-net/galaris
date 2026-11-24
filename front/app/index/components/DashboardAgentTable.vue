@@ -90,7 +90,7 @@ const { agents } = defineProps<{ agents: AgentUsage[] }>()
 const { t, locale } = useI18n()
 const avatarUrls = reactive<Record<number, string>>({})
 const loadingAvatarIds = new Set<number>()
-let disposed = false
+const avatarRequests = new AbortController()
 
 watch(
   () => agents.map(agent => `${agent.agent_id}:${agent.has_avatar}`).join(','),
@@ -99,7 +99,7 @@ watch(
 )
 
 onBeforeUnmount(() => {
-  disposed = true
+  avatarRequests.abort()
   for (const url of Object.values(avatarUrls)) URL.revokeObjectURL(url)
 })
 
@@ -124,22 +124,22 @@ async function syncAvatars(): Promise<void> {
     URL.revokeObjectURL(url)
     delete avatarUrls[id]
   }
-  for (const agent of agents) {
-    if (!agent.has_avatar || avatarUrls[agent.agent_id] || loadingAvatarIds.has(agent.agent_id)) continue
+  await Promise.all(agents.map(async agent => {
+    if (!agent.has_avatar || avatarUrls[agent.agent_id] || loadingAvatarIds.has(agent.agent_id)) return
     loadingAvatarIds.add(agent.agent_id)
     try {
-      const url = await agentService.getAvatarBlobUrl(agent.agent_id)
-      if (disposed || !agents.some(item => item.agent_id === agent.agent_id && item.has_avatar)) {
+      const url = await agentService.getAvatarBlobUrl(agent.agent_id, avatarRequests.signal)
+      if (avatarRequests.signal.aborted || !agents.some(item => item.agent_id === agent.agent_id && item.has_avatar)) {
         URL.revokeObjectURL(url)
       } else {
         avatarUrls[agent.agent_id] = url
       }
     } catch (error) {
-      console.error(`Failed to load dashboard avatar for agent ${agent.agent_id}:`, error)
+      if (!avatarRequests.signal.aborted) console.error(`Failed to load dashboard avatar for agent ${agent.agent_id}:`, error)
     } finally {
       loadingAvatarIds.delete(agent.agent_id)
     }
-  }
+  }))
 }
 
 function initials(name: string): string {

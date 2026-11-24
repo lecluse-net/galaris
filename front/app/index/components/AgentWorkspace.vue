@@ -728,7 +728,7 @@ const avatarProfileUnsaved = computed(() => {
 })
 const avatarUrls = reactive<Record<number, string>>({})
 const avatarVersions: Record<number, string> = {}
-let avatarLoadGeneration = 0
+let avatarLoad: AbortController | undefined
 
 const agentInitials = (agent: Pick<Agent, 'first_name' | 'last_name' | 'code'>) => {
   const fullName = `${agent?.first_name || ''} ${agent?.last_name || ''}`.trim()
@@ -744,28 +744,37 @@ const agentInitials = (agent: Pick<Agent, 'first_name' | 'last_name' | 'code'>) 
 
 // Load avatars for agents
 const loadAvatars = async () => {
-  const generation = ++avatarLoadGeneration
-  for (const agent of agents.value) {
-    if (pageDisposed || generation !== avatarLoadGeneration) return
+  avatarLoad?.abort()
+  const { signal } = avatarLoad = new AbortController()
+  const portraits = agents.value.filter(agent => agent.has_avatar)
+  const ids = new Set(portraits.map(agent => agent.id))
+  for (const [id, url] of Object.entries(avatarUrls)) {
+    if (ids.has(Number(id))) continue
+    URL.revokeObjectURL(url)
+    delete avatarUrls[Number(id)]
+    delete avatarVersions[Number(id)]
+  }
+  await Promise.all(portraits.map(async agent => {
     const updatedAt = agent.updated_at ?? ''
-    if (!agent.has_avatar || avatarVersions[agent.id] !== updatedAt) {
-      if (avatarUrls[agent.id]) URL.revokeObjectURL(avatarUrls[agent.id])
+    if (avatarUrls[agent.id] && avatarVersions[agent.id] === updatedAt) return
+    if (avatarUrls[agent.id]) {
+      URL.revokeObjectURL(avatarUrls[agent.id])
       delete avatarUrls[agent.id]
     }
-    if (agent.has_avatar && !avatarUrls[agent.id]) {
-      try {
-        const url = await agentService.getAvatarBlobUrl(agent.id, undefined, updatedAt)
-        const current = agents.value.find(item => item.id === agent.id)
-        if (!pageDisposed && generation === avatarLoadGeneration && current?.has_avatar && (current.updated_at ?? '') === updatedAt) {
-          if (avatarUrls[agent.id]) URL.revokeObjectURL(avatarUrls[agent.id])
-          avatarUrls[agent.id] = url
-          avatarVersions[agent.id] = updatedAt
-        } else URL.revokeObjectURL(url)
-      } catch (error) {
-        console.error(`Failed to load avatar for agent ${agent.id}:`, error)
+    try {
+      const url = await agentService.getAvatarBlobUrl(agent.id, signal, updatedAt)
+      const current = agents.value.find(item => item.id === agent.id)
+      if (signal.aborted || !current?.has_avatar || (current.updated_at ?? '') !== updatedAt) {
+        URL.revokeObjectURL(url)
+        return
       }
+      if (avatarUrls[agent.id]) URL.revokeObjectURL(avatarUrls[agent.id])
+      avatarUrls[agent.id] = url
+      avatarVersions[agent.id] = updatedAt
+    } catch (error) {
+      if (!signal.aborted) console.error(`Failed to load avatar for agent ${agent.id}:`, error)
     }
-  }
+  }))
 }
 
 // Rich text editor state
@@ -1468,12 +1477,7 @@ const confirmDeleteAvatar = async () => {
   })
 }
 
-// Watch for agents to be loaded and then load avatars.
-watch(agents, async (newAgents) => {
-  if (newAgents && newAgents.length > 0) {
-    await loadAvatars()
-  }
-}, { immediate: true })
+watch(agents, loadAvatars, { immediate: true })
 
 // Keep the active group tab valid and select the first available tab when necessary.
 watch(groupTabs, (tabs) => {
@@ -1532,6 +1536,7 @@ watch(() => props.requestedAgentId, async id => {
 }, { immediate: true })
 onUnmounted(() => {
   pageDisposed = true
+  avatarLoad?.abort()
   for (const url of Object.values(avatarUrls)) URL.revokeObjectURL(url)
 })
 </script>

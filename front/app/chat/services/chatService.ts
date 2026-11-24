@@ -1,5 +1,5 @@
 import { api, AUTH_TOKEN_CHANGED_EVENT, sessionGeneration } from '@/core/api'
-import { createSessionReadCache, invalidateSessionReads, queuePreview, saveBlobAsResource } from '@/core/util/facade'
+import { createSessionReadCache, invalidateSessionReads, readSessionImage, saveBlobAsResource } from '@/core/util/facade'
 import type { DocumentFocus } from '@/core/util'
 import type { DraftContent, DraftFile, DraftSnapshot, DraftSend } from '../drafts'
 import type { MessengerInteraction } from '../types'
@@ -10,10 +10,6 @@ import type { DeepEvent, DeepRoom } from '../types'
 import type { ActiveCall, ChatCommandCatalog, ChatIdentityMapping, ChatInboxSummary, ChatViewerAgent, ConversationActivityPage, ConversationActivityDetail, ConversationDocumentDetail, ConversationDocumentList, ConversationDocumentReference, ConversationDocumentUpdate, ConversationProcessList, ConversationTaskTree, DictationResult, FrequentEmojiList, MessagePage, MessageResourcePreview, MessageSpeechStatus, MessageTopicChangeScope, MessageTopicUpdateResult, MessengerMessage, MessengerRoom, MessengerStatus, Page, PushConfiguration, PushSubscriptionPayload, PushSubscriptionRead, ReasoningEffort, RecipientCatalog, VoiceCallStatus, WebRtcIceCandidate } from '../types'
 
 const base = '/chat'
-const avatars = createSessionReadCache<Blob>({
-  sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration,
-  group: 'agent-avatar', maxAgeMs: 60_000, maxEntries: 64, maxBytes: 16 * 1024 * 1024, size: blob => blob.size,
-})
 const previewReads = createSessionReadCache<MessageResourcePreview[]>({
   sessionEvent: AUTH_TOKEN_CHANGED_EVENT, sessionKey: sessionGeneration,
   group: 'chat-preview-metadata', maxAgeMs: 30_000, maxEntries: 128,
@@ -86,10 +82,8 @@ export const chatService = {
   async viewerAgents(): Promise<ChatViewerAgent[]> { return (await api.get<ChatViewerAgent[]>(`${base}/viewer-agents`)).data },
   async recipients(search = '', documentId: string | null = null): Promise<RecipientCatalog> { return (await api.get<RecipientCatalog>(`${base}/recipients`, { params: { search, ...(documentId ? { document_id: documentId } : {}) } })).data },
   async recipientPage(page = 1, pageSize = 50): Promise<RecipientCatalog & { total: number }> { return (await api.get<RecipientCatalog & { total: number }>(`${base}/recipients`, { params: { page, page_size: pageSize } })).data },
-  async agentAvatarBlob(agentId: number, signal?: AbortSignal): Promise<Blob> {
-    return avatars.read(String(agentId), sharedSignal => queuePreview(async () => (
-      await api.get<Blob>(`${base}/agents/${agentId}/avatar`, { responseType: 'blob', signal: sharedSignal })
-    ).data, sharedSignal), signal)
+  agentAvatarBlob(agentId: number, signal?: AbortSignal): Promise<Blob | null> {
+    return readSessionImage('agent-avatar', String(agentId), `${base}/agents/${agentId}/avatar`, { signal, endpoint: 'chat' })
   },
   async rooms(page = 1, pageSize = 50, search = '', agentId: number | null = null, includeExternal = false, includeArchived = false, recentDays: number | null = null, documentId: string | null = null, unreadOnly = false): Promise<Page<MessengerRoom>> { return (await api.get<Page<MessengerRoom>>(`${base}/rooms`, { params: { page, page_size: pageSize, search, agent_id: agentId, include_external: includeExternal, include_archived: includeArchived, ...(recentDays === null ? {} : { recent_days: recentDays }), ...(documentId ? { document_id: documentId } : {}), ...(unreadOnly ? { unread_only: true } : {}) } })).data },
   async room(roomId: string, agentId: number | null = null, documentId: string | null = null): Promise<MessengerRoom> { return (await api.get<MessengerRoom>(`${base}/rooms/${roomId}`, { params: { agent_id: agentId, ...(documentId ? { document_id: documentId } : {}) } })).data },
