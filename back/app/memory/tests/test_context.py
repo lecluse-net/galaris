@@ -18,7 +18,7 @@ from app.agent.contracts import (
     AgentContextRequest,
     AgentSnapshot,
 )
-from app.memory import bootstrap, context
+from app.memory import bootstrap, context, indexed_resources
 from app.memory.contracts import MemoryBrief, MemoryContextItem
 
 
@@ -29,6 +29,7 @@ def admit_synthetic_context_pages(monkeypatch):
     async def admit(_agent_id, hits):
         return hits
     monkeypatch.setattr(context, "admit_recall_hits", admit)
+    monkeypatch.setattr(indexed_resources, "resource_search", None)
 
 
 def _request(

@@ -66,6 +66,19 @@ async def test_provider_limits_apply_to_custom_service_codes(db, config, allowed
 
 
 @pytest.mark.asyncio
+async def test_existing_mail_provider_gets_indexing_default_and_keeps_administrator_override(db):
+    tool = Service(code="synthetic-mail-indexing", label="Synthetic Mail", mail_config={})
+    db.add(tool)
+    await db.flush()
+    await _reconcile_standard_params(db)
+    assert to_public(tool).global_params[FILE_INDEXING_PARAM].value == "known_uris"
+
+    await service.update_global_params(tool.id, setting("excluded"))
+    await _reconcile_standard_params(db)
+    assert to_public(tool).global_params[FILE_INDEXING_PARAM].value == "excluded"
+
+
+@pytest.mark.asyncio
 async def test_missing_tool_is_not_created_by_preference(db):
     assert await service.update_global_params(999999999, setting("excluded")) is None
 

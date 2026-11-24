@@ -56,7 +56,9 @@ def _legacy_indexing_defaults(record: Service, schema: dict[str, object]) -> dic
     from .service import default_global_params
 
     defaults: dict[str, object] = dict(default_global_params(schema))
-    if FILE_INDEXING_PARAM in defaults and FILE_INDEXING_PARAM not in (record.global_params or {}):
+    mail_only = record.mail_config is not None and (not record.file_share_config or record.file_share_config.get("service") == "mail")
+    # Mail previously had no indexing preference. Its old column default did not express a user choice.
+    if not mail_only and FILE_INDEXING_PARAM in defaults and FILE_INDEXING_PARAM not in (record.global_params or {}):
         defaults[FILE_INDEXING_PARAM] = {"value": record.file_indexing_mode or "excluded", "forced": False}
     return defaults
 

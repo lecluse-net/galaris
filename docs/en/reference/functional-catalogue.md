@@ -3210,7 +3210,8 @@ Sources: [Samba journey](../user/samba.md), [bridge contracts](../../../back/bri
 **File indexing** selects Disabled, **Known files only** (the compatible-provider default), or
 recursive discovery where supported. Global values, connection overrides and enforced values follow
 ordinary Service parameters. Nextcloud supports discovery; Console and AFFiNE use known URIs;
-Mail is excluded. Messenger attachments enter the catalogue on receipt or history import.
+Mail indexes authorized `INBOX` messages and their attachments after reading, in known-files mode.
+Messenger attachments enter the catalogue on receipt or history import.
 
 Authorised listing and search immediately project observed files/directories as private Memory
 records searchable by name, URI and metadata. Dream discovers one direct directory page per turn,

@@ -44,8 +44,15 @@ def media_kinds(descriptor: dict[str, Any]) -> tuple[AttachmentKind, ...]:
     return (kind,)
 
 
+def enabled_index_kinds(descriptor: dict[str, Any]) -> tuple[str, ...]:
+    if descriptor.get("media_type") == "text/vnd.galaris.mail":
+        return ("plain_text",)
+    return tuple(kind for kind in media_kinds(descriptor)
+                 if getattr(runtime_settings, f"DREAM_ATTACHMENT_{kind.upper()}_ENABLED"))
+
+
 def analysis_identity(source: dict[str, Any], kind: str) -> str:
-    if source.get("file_sha256"):
+    if source.get("file_sha256") and source.get("deduplicate", True):
         return f"{source['agent_id']}:{source['file_sha256']}:{kind}:v2"
     return f"{source['identity']}:{source['version']}:{kind}:v1"
 
@@ -83,15 +90,12 @@ class FileCatalogueMechanism:
             )))
             count += sum(subject not in handled for subject in fingerprint_subjects)
 
-        if not enrichment_enabled():
-            return count
         analysis_subjects = [
             [
                 analysis_identity(source, kind)
-                for kind in media_kinds(source["descriptor"])
-                if getattr(runtime_settings, f"DREAM_ATTACHMENT_{kind.upper()}_ENABLED")
+                for kind in enabled_index_kinds(source["descriptor"])
             ]
-            for source in await port.candidates()
+            for source in await port.candidates(plain_text_only=not enrichment_enabled())
             if source.get("file_sha256")
         ]
         subjects = {subject for candidate in analysis_subjects for subject in candidate}
@@ -138,17 +142,13 @@ class FileCatalogueMechanism:
                     await port.claimed(str(source["identity"]))
                     await get_db().flush()
                     return claim
-            if not enrichment_enabled():
-                return None
-            for source in await port.candidates():
+            for source in await port.candidates(plain_text_only=not enrichment_enabled()):
                 if not source.get("file_sha256"):
                     continue
                 # Unsupported/disabled versions must not monopolize the bounded
                 # candidate window and starve later analysable files.
                 await port.claimed(str(source["identity"]))
-                for kind in media_kinds(source["descriptor"]):
-                    if not getattr(runtime_settings, f"DREAM_ATTACHMENT_{kind.upper()}_ENABLED"):
-                        continue
+                for kind in enabled_index_kinds(source["descriptor"]):
                     subject = analysis_identity(source, kind)
                     if await get_db().scalar(select(DreamReceipt.id).where(DreamReceipt.mechanism_key == self.key, DreamReceipt.subject_id == subject)) is not None:
                         continue
@@ -169,7 +169,9 @@ class FileCatalogueMechanism:
             async with get_db_session():
                 digest = await port.fingerprint(source)
             return DreamPrepared(payload={**source, "sha256": digest})
-        kind: AttachmentKind = source["kind"]
+        kind = str(source["kind"])
+        if kind == "plain_text":
+            return DreamPrepared(payload={key: value for key, value in source.items() if key != "_dream_stage"})
         if port is None or not getattr(runtime_settings, f"DREAM_ATTACHMENT_{kind.upper()}_ENABLED"):
             return DreamPrepared(payload={"skipped": "disabled"})
         with TemporaryDirectory(prefix="dream-file-") as temporary:
@@ -178,7 +180,7 @@ class FileCatalogueMechanism:
                 info = await port.materialize(source, path)
             if info is None:
                 return DreamPrepared(payload={"skipped": "source_changed_or_too_large"})
-            description = await analyze_attachment(kind, path, FileMediaSource(str(info["name"]), str(info["media_type"]), int(info["agent_id"])))
+            description = await analyze_attachment(cast(AttachmentKind, kind), path, FileMediaSource(str(info["name"]), str(info["media_type"]), int(info["agent_id"])))
         return DreamPrepared(payload={"identity": source["identity"], "version": source["version"], "description": description, "kind": kind})
 
     async def apply(self, claim: DreamClaim, payload: dict[str, Any]) -> int:
@@ -209,6 +211,9 @@ class FileCatalogueMechanism:
                 receipt.prepared_payload = {**payload, "discovery_result": count}
                 return count
         kind = payload.get("kind", (claim.prepared_payload or {}).get("kind"))
+        if port is not None and kind == "plain_text":
+            async with get_db_session():
+                return int(await port.index_plain_text(payload))
         if port is None or not payload.get("description") or kind not in {"text", "document", "image", "video"} or not getattr(runtime_settings, f"DREAM_ATTACHMENT_{str(kind).upper()}_ENABLED"):
             return 0
         async with get_db_session():

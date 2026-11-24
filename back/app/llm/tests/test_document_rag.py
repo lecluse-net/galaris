@@ -57,13 +57,14 @@ async def test_small_retrieval_budget_keeps_the_matching_end_of_a_dense_passage(
 
 
 @pytest.mark.asyncio
-async def test_no_matching_text_does_not_claim_absence_or_publish_partial_vectors(monkeypatch):
+@pytest.mark.parametrize('query', ['unfindable-needle-zzyyxx', 'QUARTZ maximum damages amount', 'QUARTZ damages'])
+async def test_no_matching_text_does_not_claim_absence_or_publish_partial_vectors(monkeypatch, query):
     model = ConfiguredEmbeddingModel(key='synthetic-failure', code='vector', model_name='vector', base_url='http://unused.invalid')
     monkeypatch.setattr(document_rag, 'require_configured_embedding_model', AsyncMock(return_value=model))
     monkeypatch.setattr(ConfiguredEmbeddingModel, 'embed', AsyncMock(side_effect=TimeoutError))
     cache = AsyncMock()
     cache.load.return_value = None
-    result = await document_rag.retrieve_prepared_document(report(), 'unfindable-needle-zzyyxx', token_budget=1800, cache=cache)
+    result = await document_rag.retrieve_prepared_document(report(), query, token_budget=1800, cache=cache)
     assert result.mode == 'lexical' and result.selected_passages == 0
     assert 'absence is not proven' in result.text and 'embeddings incomplete' in result.text
     cache.save.assert_not_awaited()

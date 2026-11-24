@@ -109,11 +109,15 @@ def _terms(text: str) -> list[str]:
 
 def _lexical(passages: Sequence[SourcePassage], query: str) -> list[int]:
     terms = set(_terms(query))
+    minimum_matches = min(2, len(terms))
     counts = [Counter(_terms(passage.text)) for passage in passages]
     average = max(1.0, sum(sum(count.values()) for count in counts) / len(counts))
     frequencies = {term: sum(term in count for count in counts) for term in terms}
     scores: dict[int, float] = {}
     for index, count in enumerate(counts):
+        # A shared entity name alone cannot answer a question about an attribute.
+        if len(terms.intersection(count)) < minimum_matches:
+            continue
         length = sum(count.values())
         score = sum(math.log(1 + (len(counts) - frequencies[term] + .5) / (frequencies[term] + .5))
                     * count[term] * 2.2 / (count[term] + 1.2 * (.25 + .75 * length / average))

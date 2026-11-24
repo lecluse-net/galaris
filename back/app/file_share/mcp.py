@@ -191,13 +191,15 @@ async def file_info(
 ) -> str:
     """Show provider-independent resource metadata."""
 
-    return _json_model(
-        await resource_info(
-            await _resource_context(ctx),
-            uri,
-            include_checksum=include_checksum,
-        )
-    )
+    actor = await _resource_context(ctx)
+    resource = await resource_info(actor, uri, include_checksum=include_checksum)
+    if not resource.is_collection:
+        from .resource_index_query import index_details
+
+        details = await index_details(actor, resource.uri)
+        if details:
+            resource.metadata = {**resource.metadata, "resource_index": details}
+    return _json_model(resource)
 
 
 @mcp_tool("file_sharing", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",

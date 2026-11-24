@@ -10,6 +10,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, computed_field
 
 from app.agent.contracts import RuntimeName
+from app.memory import SourceChronology
 from app.services.contracts import FileIndexingMode
 
 from .resource_uri import parse_resource_uri
@@ -149,6 +150,8 @@ class ResourceTransfer(BaseModel):
 
 
 class ResourceSearchHit(BaseModel):
+    chronology: SourceChronology | None = Field(default=None, exclude=True)
+    contact_match: bool = Field(default=False, exclude=True)
     conflicts: list[dict[str, Any]] = Field(default_factory=list[dict[str, Any]])
     resource: ResourceDescriptor
     score: float | None = None
@@ -174,6 +177,7 @@ class ResourceSearchResult(BaseModel):
     ranking_version: str | None = None
     candidate_window_exhausted: bool = False
     index_coverage: dict[str, Any] | None = None
+    date_filter: dict[str, str | None] | None = None
 
 
 class ResourceSchemeDescription(BaseModel):

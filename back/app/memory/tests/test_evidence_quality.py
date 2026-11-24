@@ -1,15 +1,23 @@
 """Durable facts survive near duplicates, delegation and bounded context."""
 
 from datetime import datetime, timezone
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
 
 from app.agent.contracts import ExecutionResult
 from app.dream.mechanisms.task_memory import build_task_extraction_input
-from app.memory import acquisition_service, context, service
-from app.memory.schemas import MemoryAcquisitionCreate, MemoryItemCreate, MemoryPayload, MemorySimilarityCandidate
+from app.memory import acquisition_service, context, indexed_resources, service
+from app.memory.contracts import MemorySearchItem
+from app.memory.schemas import (
+    MemoryAcquisitionCreate,
+    MemoryItemCreate,
+    MemoryItemPublic,
+    MemoryPayload,
+    MemorySearchHit,
+    MemorySearchPage,
+    MemorySimilarityCandidate,
+)
 from app.task.models import Task, TaskStatus
 from app.topic.models import Topic
 
@@ -76,15 +84,15 @@ def test_causal_task_reference_does_not_turn_a_human_continuation_into_ai():
 
 
 @pytest.mark.asyncio
-async def test_ordinary_memory_context_keeps_relevant_facts_in_its_own_budget(monkeypatch):
-    def hit(title, text):
-        return SimpleNamespace(item=SimpleNamespace(id=uuid4(), title=title, temporal=None),
-            excerpt=text, score=0.7, source_refs=[], temporal_match_at=None)
+async def test_combined_memory_context_keeps_relevant_facts_within_its_budget(monkeypatch):
+    fact = MemorySearchHit(
+        item=MemoryItemPublic.model_construct(id=uuid4(), title="Reporting preference", node_kind="memory"),
+        excerpt="Monthly reports must include a cash-flow comparison.",
+        score=0.7,
+    )
 
-    fact = hit("Reporting preference", "Monthly reports must include a cash-flow comparison.")
-
-    async def search(*_args, **_kwargs):
-        return SimpleNamespace(hits=[fact], has_more=False)
+    async def search(query, **_kwargs):
+        return MemorySearchPage(query=query, hits=[fact], total=1, has_more=False)
 
     async def admit(_request, hits):
         return hits
@@ -92,7 +100,13 @@ async def test_ordinary_memory_context_keeps_relevant_facts_in_its_own_budget(mo
     async def record(**_kwargs):
         pass
 
+    async def indexed(_request, *, mode):
+        assert mode == "text"
+        return [MemorySearchItem(id=uuid4(), title="Synthetic accounting guide", node_kind="document",
+            uri=f"document://{uuid4()}", excerpt="Balance historical examples separately." * 200)]
+
     monkeypatch.setattr(context, "search_memory_detailed", search)
+    monkeypatch.setattr(indexed_resources, "resource_search", indexed)
     monkeypatch.setattr(context, "admit_recall_hits", admit)
     monkeypatch.setattr(context, "record_llm_retrieval", record)
     monkeypatch.setattr(context.runtime_settings, "MEMORY_CONTEXT_ENABLED", True)
@@ -100,9 +114,10 @@ async def test_ordinary_memory_context_keeps_relevant_facts_in_its_own_budget(mo
     monkeypatch.setattr(context.runtime_settings, "MEMORY_CONTEXT_MAX_CHARS", 2_000)
     brief = await context.build_memory_brief(agent_id=7, query="monthly reports")
     assert any(item.memory_id == str(fact.item.id) for item in brief.items)
+    assert any(item.resource_uri for item in brief.items)
     assert "cash-flow comparison" in brief.rendered
     assert len(brief.items) <= 4 and len(brief.rendered) <= 2_000
-    assert not brief.truncated
+    assert brief.truncated
 
 
 @pytest.mark.asyncio

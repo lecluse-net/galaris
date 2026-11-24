@@ -324,6 +324,32 @@ commit and `make release-check`; Quality results remain separate and do not gate
 
 ## Capacity-routed document RAG and file deletion
 
+`app/file_share/tests/test_resource_index.py` covers reuse across agents, edited
+summaries, JSON pointers, combined recall, Task and file access, revocation, cleanup,
+and graph expansion across linked sales Documents. `bridge/mail/tests/test_inbound.py`
+exercises admission to the same index through Dream and denial after mailbox access
+is revoked.
+
+`app/file_share/tests/test_resource_search_qualification.py` qualifies federated search
+against a synthetic corpus. The sales scenario requires full recall of judged results,
+the exact invoice ranked first, and nDCG@5 of at least 0.85. Other cases cover lossless
+pagination over mixed access levels, accents, phrases crossing passage boundaries,
+distributed query terms, hybrid ranking, order isolation by issuer, and private result
+exclusion. Controlled vectors separate ranking behavior from provider quality.
+Due date and amount questions require a passage from an authorized source with the
+exact reference, including when the reference and field appear in separate passages.
+Tests cover neighboring references, private documents, and revoked email access.
+Time-based search coverage checks week boundaries, dated evidence across memories
+and resources, ranking and pagination, and the distinction between a writing date
+and the period covered by a report.
+Conversation context and explicit search retrieve relevant shared sources.
+First-person requests distinguish contacts with the same name and separate
+subjects from recipients. Scenarios also cover unknown contacts, conflicting
+evidence, reformulation, and pagination.
+The fusion qualification uses four exact sources and five mentions per reference.
+It requires all four sources at the top and emits nDCG@4 and latency for 36
+lexical queries against the same corpus.
+
 `app/llm/tests/test_document_rag.py` covers local direct/RAG admission against model
 context, conversation, tools and output reserve, tail evidence, bounded citations,
 embedding reuse and incomplete-index rebuilding. Chat and Responses journeys preserve

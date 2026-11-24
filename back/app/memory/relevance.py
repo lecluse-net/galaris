@@ -26,6 +26,20 @@ avant autre before concerning concernant could donne find il je le la new on ple
 regarding remind reprenons retrouve tiens yesterday hier unknown inconnu
 """.split())
 
+_RESOURCE_SEARCH_FILLER = _ENTITY_STOPWORDS | frozenset("""
+est-ce peux-tu pouvez-vous retrouver trouver trouverais affiche afficher montrer montre consulter
+cherche chercher recherche search show fetch get retrieve latest last dernier derniere derniers dernieres
+mes my propre own
+""".split())
+
+
+def resource_query_terms(value: str) -> str:
+    """Remove conversational phrasing while preserving identifiers and explicit search operators."""
+    if re.search(r'"|\bOR\b|(?:^|\s)-', value, re.IGNORECASE):
+        return value
+    tokens = re.findall(r"[^\W_]+(?:[-./][^\W_]+)*", fold(value))
+    return " ".join(dict.fromkeys(token for token in tokens if token not in _RESOURCE_SEARCH_FILLER))
+
 
 def fold(value: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFKD", value.casefold()) if not unicodedata.combining(c))

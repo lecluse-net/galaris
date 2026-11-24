@@ -26,6 +26,14 @@ ordered mechanisms, one at a time
 
 ## Cycle
 
+`resource.index_current_content` extracts and indexes current content from the file
+catalogue, Documents, native storage and completed business Tasks. Admitted email
+uses the same mechanism through the mailbox's private URIs. Matching analyses are
+reused before further content reads or embedding calls. Lexical search is available
+as soon as the source is published. A separate Dream step computes or refreshes
+vectors from the stored passages. The receipt records the source identity and
+fingerprint. Dream can replay it when current content is restored.
+
 `memory.file_thumbnails` prepares previews of SHA-256-identified catalogue files and
 active document attachments: images, videos, PDF, Office, HTML, text and self-contained
 3D models (GLB, glTF, OBJ, STL, PLY). It calls no LLM. Bounded renders are atomically

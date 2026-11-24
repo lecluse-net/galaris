@@ -4,15 +4,91 @@ from datetime import datetime
 from typing import Any, cast
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, CheckConstraint, Index, select
+from sqlalchemy import Boolean, Computed, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, CheckConstraint, Index, select
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.sql.elements import ColumnElement
 
-from app.memory import MemoryURL
+from app.memory import MemoryURL, folded_lexical_sql
 
-from core.database import Base
+from core.database import Base, Vector
+
+
+class ResourceIndexContent(Base):
+    """A disposable analysis shared by compatible observations of identical content."""
+
+    __tablename__ = "resource_index_contents"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    analysis_key: Mapped[str] = mapped_column(String(64), unique=True)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    analysis_version: Mapped[int] = mapped_column(Integer, server_default="1")
+    generated_summary: Mapped[str] = mapped_column(Text, default="")
+    generated_keywords: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    embedding_model_key: Mapped[str | None] = mapped_column(String(64))
+    suggested_topic_id: Mapped[UUID | None] = mapped_column(ForeignKey("topics.id", ondelete="SET NULL"))
+    document_kind: Mapped[str | None] = mapped_column(String(16))
+    contact_evidence: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list, server_default="[]")
+    order_key: Mapped[str | None] = mapped_column(String(64), index=True)
+    order_role: Mapped[str | None] = mapped_column(String(16))
+    order_evidence: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+
+
+class ResourceIndexSource(Base):
+    """One current index pointer per source; the owning domain controls access."""
+
+    __tablename__ = "resource_index_sources"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    source_kind: Mapped[str] = mapped_column(String(24))
+    source_key: Mapped[UUID] = mapped_column()
+    uri: Mapped[str] = mapped_column(Text, index=True)
+    fingerprint: Mapped[str] = mapped_column(String(64))
+    content_id: Mapped[UUID] = mapped_column(ForeignKey("resource_index_contents.id"), index=True)
+    topic_id: Mapped[UUID | None] = mapped_column(ForeignKey("topics.id", ondelete="SET NULL"), index=True)
+
+    __table_args__ = (UniqueConstraint("source_kind", "source_key"),)
+
+
+class ResourceIndexPassage(Base):
+    __tablename__ = "resource_index_passages"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    content_id: Mapped[UUID] = mapped_column(ForeignKey("resource_index_contents.id", ondelete="CASCADE"), index=True)
+    position: Mapped[int] = mapped_column()
+    locator: Mapped[dict[str, Any]] = mapped_column(JSONB)
+    text: Mapped[str] = mapped_column(Text)
+    search_vector: Mapped[str] = mapped_column(TSVECTOR, Computed("to_tsvector('simple'::regconfig, text)", persisted=True))
+    search_vector_folded: Mapped[str] = mapped_column(TSVECTOR, Computed(
+        f"to_tsvector('simple'::regconfig, {folded_lexical_sql('text')})", persisted=True))
+    embedding: Mapped[list[float] | None] = mapped_column(Vector())
+
+    __table_args__ = (
+        UniqueConstraint("content_id", "position"),
+        Index("ix_resource_index_passages_search", "search_vector", postgresql_using="gin"),
+        Index("ix_resource_index_passages_search_folded", "search_vector_folded", postgresql_using="gin"),
+    )
+
+
+class ResourceIndexLink(Base):
+    """A typed, evidence-backed relation between current source observations."""
+
+    __tablename__ = "resource_index_links"
+
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    source_id: Mapped[UUID] = mapped_column(ForeignKey("resource_index_sources.id", ondelete="CASCADE"), index=True)
+    target_id: Mapped[UUID] = mapped_column(ForeignKey("resource_index_sources.id", ondelete="CASCADE"), index=True)
+    relation: Mapped[str] = mapped_column(String(40))
+    state: Mapped[str] = mapped_column(String(16))
+    evidence: Mapped[dict[str, Any]] = mapped_column(JSONB)
+
+    __table_args__ = (
+        UniqueConstraint("source_id", "target_id", "relation"),
+        CheckConstraint("source_id <> target_id", name="ck_resource_index_link_distinct"),
+        CheckConstraint("state IN ('proposed', 'confirmed')", name="ck_resource_index_link_state"),
+    )
 
 
 class ManagedFileOwner(Base):

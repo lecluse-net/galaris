@@ -1,7 +1,6 @@
 """Bounded foreground Dream actions, independent of idle scheduling settings."""
 
 import asyncio
-import hashlib
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -151,14 +150,6 @@ async def _apply(
         info = await port.materialize(source, path)
         if info is None:
             raise MemoryConflictError("File changed or exceeds the analysis limit")
-        if source.get("file_sha256"):
-
-            def digest() -> str:
-                with path.open("rb") as stream:
-                    return hashlib.file_digest(stream, "sha256").hexdigest()
-
-            if await asyncio.to_thread(digest) != source["file_sha256"]:
-                raise MemoryConflictError("File bytes changed during analysis")
         await get_db().commit()
         description = await analyze_attachment(
             kind, path, FileMediaSource(str(info["name"]), str(info["media_type"]), agent_id)

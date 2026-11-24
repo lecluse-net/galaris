@@ -8,10 +8,19 @@ from sqlalchemy import select
 from core.database import get_db
 from core.util import complete_io
 from app.memory import identify_catalogue_file, catalogue_projection_write, MemoryItem
-from .catalogue import descriptor_version, observation_scope, lock_binding, refresh_file_locations
+from .catalogue import descriptor_version, observation_scope, lock_binding, refresh_file_locations, indexed_mail_account
 from .models import FileCatalogEntry
 from .resource_contracts import ResourceContext
 from .resource_observation import suspend_observations
+from .resource_uri import parse_resource_uri
+
+
+async def hash_materialized_file(path: Path) -> str:
+    def digest() -> str:
+        with path.open("rb") as stream:
+            return hashlib.file_digest(stream, "sha256").hexdigest()
+
+    return await complete_io(digest)
 
 
 async def fingerprint(source: dict[str, object]) -> str | None:
@@ -25,10 +34,7 @@ async def fingerprint(source: dict[str, object]) -> str | None:
             path = Path(temporary) / "source"
             # Hash every format, independently of the 32 MiB analysis budget.
             await materialize_resource(ctx, source["uri"], path, max_bytes=before.size or 64 * 1024**3)
-            def digest() -> str:
-                with path.open("rb") as stream:
-                    return hashlib.file_digest(stream, "sha256").hexdigest()
-            result = await complete_io(digest)
+            result = await hash_materialized_file(path)
         after = await resource_info(ctx, source["uri"])
         if descriptor_version(after.model_dump(exclude={"metadata", "capabilities", "indexing_status"})) != source["version"]:
             return None
@@ -54,6 +60,11 @@ async def apply_fingerprint(identity: str, version: str, sha256: str) -> bool:
         current = await resource_info(ResourceContext(agent_id=entry.agent_id, runtime=entry.runtime), entry.uri)
     if descriptor_version(current.model_dump(exclude={"metadata", "capabilities", "indexing_status"})) != version:
         return False
+    if indexed_mail_account(parse_resource_uri(entry.uri)) is not None:
+        # A matching digest never carries a message's subject, notes or grant across sources.
+        entry.file_sha256 = sha256
+        entry.fingerprint_version = version
+        return True
     async with catalogue_projection_write():
         previous = entry.memory_node_id
         canonical = await identify_catalogue_file(previous, entry.agent_id, sha256)

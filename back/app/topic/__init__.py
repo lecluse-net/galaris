@@ -1,6 +1,7 @@
 """Global thematic dossiers, classified by Dream before memory projection."""
 
 from .models import Topic
+from .resource_index import match_indexed_topic as match_indexed_topic
 from .privileges import TOPIC_ACCESS, TOPIC_EDIT
 from .schemas import (
     TopicCandidate,

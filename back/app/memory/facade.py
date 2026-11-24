@@ -10,6 +10,7 @@ from .contracts import MemorySearchItem
 from .agenda import MemoryAgendaOccurrence as MemoryAgendaOccurrence, memory_agenda as memory_agenda
 from .source_access import register_source_evidence_access
 from .retrieval import recall_items
+from .source_chronology import memory_chronology, parse_source_time_query
 from .schemas import (
     MemoryNodeKind,
     MemoryRecallRequest,
@@ -50,6 +51,7 @@ def _search_request(
     strict_contact_scope: bool,
     exclude_agent_projections: bool,
     exclude_source_managed: bool,
+    require_personal_subject: bool = False,
 ) -> MemoryRecallRequest:
     return MemoryRecallRequest(
         agent_id=agent_id,
@@ -69,6 +71,7 @@ def _search_request(
         strict_contact_scope=strict_contact_scope,
         exclude_agent_projections=exclude_agent_projections,
         exclude_source_managed=exclude_source_managed,
+        require_personal_subject=require_personal_subject,
     )
 
 
@@ -118,7 +121,7 @@ async def search_memory(
         exclude_agent_projections=exclude_agent_projections,
         exclude_source_managed=exclude_source_managed,
     )
-    return [
+    items = [
         MemorySearchItem(
             id=hit.item.id,
             title=hit.item.title,
@@ -127,9 +130,34 @@ async def search_memory(
             source_refs=tuple(hit.source_refs),
             uri=f"{'document' if hit.item.node_kind == 'document' else 'memory'}://{hit.item.id}",
             revision=hit.item.revision,
+            chronology=memory_chronology(hit.item.title, getattr(hit.item, "temporal", None)),
         )
         for hit in result.hits
     ]
+    from .indexed_resources import resource_search
+
+    if resource_search is None or not text.strip() or exclude_source_managed:
+        return items
+    indexed = await resource_search(_search_request(text, agent_id=agent_id, target_at=target_at,
+        exclude_temporal=exclude_temporal, keyword=keyword, filter_topic_item_id=filter_topic_item_id,
+        filter_contact_item_id=filter_contact_item_id, semantic_query=semantic_query, limit=limit,
+        node_kinds=node_kinds, memory_role=memory_role, task_id=task_id, topic_item_id=topic_item_id,
+        contact_item_id=contact_item_id, strict_contact_scope=strict_contact_scope,
+        exclude_agent_projections=exclude_agent_projections, exclude_source_managed=exclude_source_managed))
+    from .reference_questions import parse_reference_question
+
+    chronology = parse_source_time_query(text) if target_at is None else None
+    if not indexed and parse_reference_question(text) is None and chronology is None:
+        return items
+    from core.params import runtime_settings
+    from .federated_ranking import FederatedEvidence, rank_federated
+
+    def evidence(item: MemorySearchItem) -> FederatedEvidence:
+        return FederatedEvidence(identity=item.uri, title=item.title, excerpt=item.excerpt,
+            source_document=item.node_kind in {"document", "file", "attachment"}, chronology=item.chronology,
+            contact_match=item.contact_match)
+
+    return rank_federated(text, items, indexed, evidence, chronology=chronology)[:limit or runtime_settings.MEMORY_CONTEXT_MAX_ITEMS]
 
 
 async def search_memory_detailed(
@@ -153,6 +181,7 @@ async def search_memory_detailed(
     exclude_source_managed: bool = False,
     record_llm_access: bool = False,
     telemetry_kind: str | None = None,
+    require_personal_subject: bool = False,
 ) -> MemoryRecallResult:
     """Run the canonical search while retaining diagnostics for internal consumers."""
 
@@ -174,6 +203,7 @@ async def search_memory_detailed(
         strict_contact_scope=strict_contact_scope,
         exclude_agent_projections=exclude_agent_projections,
         exclude_source_managed=exclude_source_managed,
+        require_personal_subject=require_personal_subject,
     )
     return await recall_items(
         request,

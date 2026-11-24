@@ -2,6 +2,45 @@
 
 # Explorer les fichiers d’un agent
 
+## Rechercher dans les ressources indexées
+
+Une recherche d'agent dans `memory://` peut retrouver un souvenir personnel ou un
+passage d'un Document, d'un fichier documentaire, d'un e-mail admis ou d'une tâche
+métier terminée. Chaque résultat suit les droits de sa source. Les e-mails suivent
+les droits du compte et les conditions de traitement du message. Un Document
+partagé devient consultable par ses lecteurs sans une nouvelle analyse par agent.
+Le classement compare les souvenirs et les ressources selon les références exactes,
+le type de pièce demandé et les passages qui répondent à la recherche.
+
+Une question comme « Quelle est l’échéance de la facture FCT-714 ? » retrouve le
+passage sur l’échéance même si la référence se trouve dans le titre ou dans un autre
+passage de la pièce. La recherche de montants et d’échéances vérifie la référence
+exacte et signale l’absence de preuve lorsque les ressources accessibles ne
+contiennent aucun passage correspondant.
+
+« La semaine dernière » filtre la recherche du lundi au dimanche dans le
+fuseau horaire de Galaris. Les résultats indiquent la date de la source ou de
+l’événement et la période effectivement recherchée. Une date explicite dans un
+titre, la date d’un e-mail ou l’ancre complète d’un souvenir peut servir de
+repère. Un titre comme « Bilan 2021 » indique la période couverte. Un ajout ou une
+réindexation en 2026 laisse ce bilan consultable comme source historique.
+Pour « récent », la fenêtre couvre les 30 derniers jours, aujourd’hui compris.
+
+À chaque round texte qui prépare une réponse avec Memory, les souvenirs et les
+extraits de l’index partagé se classent ensemble pour les huit places du rappel
+par défaut. Les documents neutres restent
+utilisables quand l’interlocuteur est inconnu. Pour « ma dernière prise de sang »
+ou « ma facture », la recherche exige un lien explicite entre la personne concernée
+par le document et le contact courant. Un nom seul ou le rôle de destinataire ne
+suffisent pas. L’agent applique les droits de lecture avant de retenir les extraits.
+
+Pour une source indexée, `file_info` indique les mots clés, la synthèse et le topic
+lorsqu'ils sont disponibles. La synthèse éditée d'un Document reste prioritaire.
+Le devis, la facture et le bon de livraison peuvent apparaître comme pièces liées
+si la même référence de commande et le même émetteur sont lisibles dans les
+sources et que l'agent peut consulter chaque pièce. Une recherche exacte dans
+`file_search` peut citer les passages de la version courante.
+
 ## Photos des agents
 
 Un agent peut consulter la photo d'un autre agent accessible dans l'annuaire partagé.
@@ -137,6 +176,11 @@ et ne donne aucune autorisation de traitement à l’agent. Les dossiers Envoyé
 Corbeille sont consultables par l’utilisateur. Les mails HTML sont présentés sous forme de texte,
 sans exécuter leur contenu ni charger leurs images distantes. La recherche dans Mail et les
 mutations IMAP ne sont pas proposées dans ce navigateur.
+
+Les messages `INBOX` dont l'agent est autorisé à traiter le contenu deviennent recherchables
+dans **Memory** après indexation par Dream. Le résultat reste lié au compte Mail d'origine.
+Les noms des pièces jointes sont recherchables dès leur inscription au catalogue. Les réglages
+média de Dream déterminent si leur contenu est aussi analysé.
 
 Le paramètre Mail **Dossiers de messagerie autorisés** (`allowed_mailboxes`) s'applique aussi
 à cette navigation et aux téléchargements : seuls les dossiers listés sont consultables.

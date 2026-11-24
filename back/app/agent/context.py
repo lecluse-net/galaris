@@ -101,6 +101,15 @@ def _candidate_identity(candidate: AgentContextCandidate) -> str:
     return candidate.key
 
 
+def _recall_position(candidate: AgentContextCandidate) -> int | None:
+    value = candidate.metadata.get("recall_position")
+    return value if isinstance(value, int) and not isinstance(value, bool) else None
+
+
+def _context_kind(candidate: AgentContextCandidate) -> str:
+    return "memory" if _recall_position(candidate) is not None else candidate.kind
+
+
 def _merge_candidates(
     current: AgentContextCandidate,
     candidate: AgentContextCandidate,
@@ -111,7 +120,8 @@ def _merge_candidates(
 
     current_score = _candidate_score(current, objective)
     candidate_score = _candidate_score(candidate, objective)
-    preferred = candidate if candidate_score > current_score else current
+    preferred = candidate if ((_recall_position(candidate) is not None, candidate_score)
+        > (_recall_position(current) is not None, current_score)) else current
     other = current if preferred is candidate else candidate
     occurred_at = preferred.occurred_at
     if other.occurred_at is not None and (
@@ -183,6 +193,8 @@ def compose_context_capsule(
     ordered = sorted(
         best_by_key.values(),
         key=lambda item: (
+            (position := _recall_position(item)) is None,
+            position if position is not None else 0,
             -_candidate_score(item, objective),
             -(
                 item.occurred_at.replace(tzinfo=timezone.utc).timestamp()
@@ -205,8 +217,9 @@ def compose_context_capsule(
     truncated = False
     rendered_parts: list[str] = []
     for candidate in ordered:
-        count = counts.get(candidate.kind, 0)
-        if count >= _CAPSULE_KIND_LIMITS[candidate.kind]:
+        kind = _context_kind(candidate)
+        count = counts.get(kind, 0)
+        if count >= _CAPSULE_KIND_LIMITS[kind]:
             truncated = True
             continue
         block = _render_candidate(candidate)
@@ -215,7 +228,7 @@ def compose_context_capsule(
             continue
         selected.append(candidate)
         rendered_parts.append(block)
-        counts[candidate.kind] = count + 1
+        counts[kind] = count + 1
         consumed += len(block) + 2
     rendered = header + "\n\n".join(rendered_parts) + footer
     return AgentContextCapsule(
@@ -293,6 +306,11 @@ async def build_agent_run_context(request: AgentContextRequest) -> AgentRunConte
         metadata.update(dict(contribution.metadata))
         turn_data.update(contribution.turn_data)
     capsule = None
+    personal_record_scope = metadata.get("personal_record_scope") is True
+    if personal_record_scope:
+        contact_id = str(request.contact_memory_item_id) if request.contact_memory_item_id is not None else None
+        candidates = [entry for entry in candidates if entry.kind != "resource"
+            or (contact_id is not None and entry.metadata.get("subject_contact_id") == contact_id)]
     if include_history and request.frozen_capsule is not None:
         try:
             capsule = AgentContextCapsule.model_validate(request.frozen_capsule)
@@ -303,14 +321,16 @@ async def build_agent_run_context(request: AgentContextRequest) -> AgentRunConte
             if capsule.contact_memory_item_id != request.contact_memory_item_id:
                 metadata["interlocutor_context_error"] = "contact_mismatch"
                 capsule = None
-            elif refreshed_kinds:
+            elif refreshed_kinds or personal_record_scope:
                 # A domain can require fresh admission on every consumption.
                 # Its stale entries are removed even when its provider failed.
                 capsule = compose_context_capsule(
                     contact_memory_item_id=capsule.contact_memory_item_id,
                     objective=request.objective,
-                    candidates=[entry for entry in capsule.entries if entry.kind not in refreshed_kinds]
-                    + [entry for entry in candidates if entry.kind in refreshed_kinds],
+                    candidates=[entry for entry in capsule.entries if _context_kind(entry) not in refreshed_kinds
+                                and (not personal_record_scope or entry.kind != "resource")]
+                    + [entry for entry in candidates if _context_kind(entry) in refreshed_kinds
+                       or (personal_record_scope and entry.kind == "resource")],
                 )
     if include_history and capsule is None:
         capsule = compose_context_capsule(
@@ -324,7 +344,7 @@ async def build_agent_run_context(request: AgentContextRequest) -> AgentRunConte
         memory_context = _render_context_group(
             tag="long_term_memory_context",
             contact_memory_item_id=capsule.contact_memory_item_id,
-            entries=[entry for entry in capsule.entries if entry.kind == "memory"],
+            entries=[entry for entry in capsule.entries if _context_kind(entry) == "memory"],
         )
         if memory_context:
             memory_parts.append(memory_context)
@@ -334,7 +354,7 @@ async def build_agent_run_context(request: AgentContextRequest) -> AgentRunConte
             entries=[
                 entry
                 for entry in capsule.entries
-                if entry.kind in {"task", "resource"}
+                if _context_kind(entry) in {"task", "resource"}
             ],
         )
         if continuity_context:
@@ -354,9 +374,10 @@ async def build_agent_run_context(request: AgentContextRequest) -> AgentRunConte
         )
         if "memory_context_enabled" in metadata:
             retrieved_count = metadata.get("memory_context_count")
+            selected_memories = [entry for entry in capsule.entries if _context_kind(entry) == "memory"]
             selected_memory_ids = [
                 entry.reference
-                for entry in capsule.entries
+                for entry in selected_memories
                 if entry.kind == "memory"
             ]
             metadata.update(
@@ -368,13 +389,13 @@ async def build_agent_run_context(request: AgentContextRequest) -> AgentRunConte
                         else 0
                     ),
                     "memory_context_ids": selected_memory_ids,
-                    "memory_context_count": len(selected_memory_ids),
+                    "memory_context_count": len(selected_memories),
                     "memory_context_truncated": bool(
                         metadata.get("memory_context_truncated")
                         or (
                             isinstance(retrieved_count, int)
                             and not isinstance(retrieved_count, bool)
-                            and len(selected_memory_ids) < retrieved_count
+                            and len(selected_memories) < retrieved_count
                         )
                     ),
                 }

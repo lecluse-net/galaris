@@ -7,12 +7,17 @@ from typing import Any
 from uuid import UUID
 
 from sqlalchemy import String, cast, or_, select
+from sqlalchemy.sql.elements import ColumnElement
 
 from core.database import get_db
 
 from .models import Task, TaskAmendment
 from .schemas import Task as TaskSchema
 from .access import agent_task_filter
+
+
+async def task_index_readable(agent_id: int, *, allow_delegation: bool) -> ColumnElement[bool]:
+    return await agent_task_filter(agent_id, allow_delegation=allow_delegation)
 
 
 async def read_task_resource(

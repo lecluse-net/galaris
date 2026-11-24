@@ -352,6 +352,34 @@ Quality sont conservés séparément et ne bloquent pas la publication des sourc
 
 ## RAG documentaire selon la capacité et purge du fichier
 
+`app/file_share/tests/test_resource_index.py` couvre la réutilisation entre agents,
+la synthèse éditée, les pointeurs JSON, le rappel combiné, les droits des tâches
+et fichiers, la révocation, la purge et l'expansion du graphe avec des pièces
+commerciales liées. `bridge/mail/tests/test_inbound.py` exerce l'admission dans le
+même index par Dream et le refus après révocation du compte.
+
+`app/file_share/tests/test_resource_search_qualification.py` qualifie la recherche
+fédérée sur un corpus synthétique. Le scénario commercial demande un rappel complet
+des résultats annotés, la facture exacte en première position et un nDCG@5 d'au moins
+0,85. Les cas complémentaires vérifient la pagination sans perte d'un corpus mixte,
+les accents, les phrases à cheval sur deux passages, les mots dispersés, le classement
+hybride, les rapprochements sans jointure entre émetteurs, et l'absence de résultats
+privés. Les vecteurs contrôlés isolent la qualité du classement de celle du fournisseur.
+Les questions sur une échéance ou un montant exigent la référence exacte dans la
+source autorisée et un passage qui contient le champ demandé. Les cas testés
+couvrent les passages séparés, les références voisines, les pièces privées et les
+e-mails dont l’accès a été révoqué.
+La recherche temporelle vérifie les bornes de la semaine, les preuves datées dans
+les souvenirs et les ressources, le classement et la pagination, ainsi que la
+distinction entre la date de rédaction et la période couverte par un bilan.
+Le contexte conversationnel et la recherche explicite retrouvent des documents
+partagés pertinents. Les demandes personnelles distinguent les homonymes et
+les rôles de sujet et de destinataire. Les scénarios couvrent aussi un contact
+inconnu, les preuves contradictoires, la reformulation et la pagination.
+La qualification de fusion présente quatre pièces exactes et cinq mentions par
+référence. Elle exige les quatre pièces en tête et publie le nDCG@4 et la latence
+de 36 requêtes lexicales sur le même corpus.
+
 `app/llm/tests/test_document_rag.py` couvre le choix local direct/RAG selon le contexte,
 la conversation, les outils et la réserve de sortie, les preuves en fin de fichier,
 les citations bornées, la réutilisation des embeddings et la reconstruction d'un

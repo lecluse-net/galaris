@@ -252,6 +252,7 @@ class MemorySearchRequest(BaseModel):
     topic_item_id: UUID | None = None
     contact_item_id: UUID | None = None
     strict_contact_scope: bool = False
+    require_personal_subject: bool = False
     filter_topic_item_id: UUID | None = None
     filter_contact_item_id: UUID | None = None
     exclude_topic_projections: bool = False
@@ -342,6 +343,8 @@ class MemoryRecallRequest(BaseModel):
     topic_item_id: UUID | None = None
     contact_item_id: UUID | None = None
     strict_contact_scope: bool = False
+    require_personal_subject: bool = False
+    contextual_resources: bool = False
     exclude_agent_projections: bool = False
     exclude_source_managed: bool = False
 

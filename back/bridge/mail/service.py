@@ -1168,12 +1168,18 @@ async def get_attachment(
 
     await ensure_readable(config, message_ref)
     ref = MailMessageRef.decode(message_ref)
+    return await fetch_attachment(config, ref, part_id, max_bytes=max_bytes)
+
+
+async def fetch_attachment(
+    config: MailConnectionConfig, ref: MailMessageRef, part_id: str, *, max_bytes: int | None,
+) -> OutgoingAttachment:
     from core.util import buffered_io_budget
 
     maximum = config.max_total_attachment_bytes + 1_000_000
     if max_bytes is not None:
         maximum = min(maximum, max_bytes * 2 + 1_000_000)
-    async with buffered_io_budget.reserve(maximum * 6, owner=f"mail:{agent_id}"):
+    async with buffered_io_budget.reserve(maximum * 6, owner=f"mail:{config.agent_id}"):
         pending = asyncio.create_task(_thread(lambda: ImapClient(config).get_attachment(ref, part_id, max_bytes=max_bytes)))
         try:
             return await asyncio.shield(pending)

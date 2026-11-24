@@ -57,6 +57,8 @@ from .semantic_index import complete_projection_clause
 from .passages import lexical_excerpt, query_identity, query_reference_ids, query_is_contact_self_reference, query_is_direct_contact_lookup
 from . import relevance
 from .temporal import MemoryTemporalFilter
+from .source_chronology import SourceTimeQuery, memory_chronology, parse_source_time_query
+from .personal_records import personal_record_kind
 
 
 RRF_RANK_CONSTANT = 60
@@ -284,6 +286,7 @@ def _search_request(
         topic_item_id=topic_item_id,
         contact_item_id=contact_item_id,
         strict_contact_scope=request.strict_contact_scope,
+        require_personal_subject=request.require_personal_subject,
         exclude_topic_projections=True,
         exclude_agent_projections=request.exclude_agent_projections,
         exclude_source_managed=request.exclude_source_managed,
@@ -341,6 +344,8 @@ def _item_filters(
         or_(MemoryItem.valid_from.is_(None), MemoryItem.valid_from <= now),
         or_(MemoryItem.valid_until.is_(None), MemoryItem.valid_until > now),
     ]
+    if request.require_personal_subject or personal_record_kind(request.recall_query or request.query) is not None:
+        filters.append(service.personal_memory_subject(request.agent_id, request.contact_item_id))
     filters.extend(service._exact_scope_filters(  # pyright: ignore[reportPrivateUsage]
         agent_id=request.agent_id, topic_item_id=request.filter_topic_item_id,
         contact_item_id=request.filter_contact_item_id,
@@ -919,12 +924,11 @@ async def _weighted_rank(
         lexical_hit = lexical_by_id.get(item_id)
         if semantic_entry is not None:
             item, chunk_text, _similarity, embedding = semantic_entry
-            changed_at = item.updated_at or item.created_at
             text_by_id[item_id] = " ".join((item.title, chunk_text))
             if embedding is not None:
                 embedding_by_id[item_id] = embedding
         elif lexical_hit is not None:
-            changed_at = lexical_hit.item.updated_at or lexical_hit.item.created_at
+            item = lexical_hit.item
             text_by_id[item_id] = " ".join(
                 (
                     lexical_hit.item.title,
@@ -933,6 +937,15 @@ async def _weighted_rank(
             )
         else:
             continue
+        evidence = memory_chronology(item.title, item.temporal)
+        if evidence.source_date or evidence.covered_year or evidence.mentioned_year:
+            # Year-only titles never receive a freshness bonus from their import or edit time.
+            if evidence.source_date is None:
+                continue
+            age_days = max(0, (now.date() - evidence.source_date).days)
+            freshness[item_id] = math.exp(-age_days / 365.0)
+            continue
+        changed_at = item.updated_at or item.created_at
         if changed_at.tzinfo is None:
             changed_at = changed_at.replace(tzinfo=timezone.utc)
         age_days = max(0.0, (now - changed_at).total_seconds() / 86_400)
@@ -1804,6 +1817,29 @@ async def temporal_hits(
     return admitted, has_more
 
 
+async def _recall_source_time(request: MemoryRecallRequest, chronology: SourceTimeQuery) -> MemoryRecallResult:
+    limit = _resolve_parameters(request).limit
+    lookup = request.model_copy(update={
+        "query": chronology.query, "semantic_query": None,
+        "require_personal_subject": request.require_personal_subject or personal_record_kind(request.query) is not None,
+    })
+    global_request, thematic_request = _branch_requests(lookup, limit=limit)
+    global_page = await service.search_items(global_request.model_copy(update={"recall_query": None}),
+        chronology=chronology)
+    thematic_page = await service.search_items(thematic_request.model_copy(update={"recall_query": None}),
+        chronology=chronology) if thematic_request is not None else None
+    matches = {hit.item.id: hit.model_copy(update={"retrieval_sources": ["global_lexical"]}) for hit in global_page.hits}
+    if thematic_page is not None:
+        for hit in thematic_page.hits:
+            matches[hit.item.id] = hit.model_copy(update={"retrieval_sources": ["thematic_lexical"]})
+    dated = [(match, hit) for hit in matches.values()
+             if (match := chronology.rank_date(memory_chronology(hit.item.title, hit.item.temporal))) is not None]
+    dated.sort(key=lambda entry: (entry[0], entry[1].score), reverse=True)
+    return MemoryRecallResult(query=request.query, hits=[hit for _, hit in dated[:limit]], mode="lexical",
+        ranking_version="memory-source-date/v1", global_candidate_count=len(matches),
+        has_more=len(dated) > limit or global_page.has_more or (thematic_page is not None and thematic_page.has_more))
+
+
 async def recall_items(
     request: MemoryRecallRequest,
     *,
@@ -1813,9 +1849,13 @@ async def recall_items(
     """Recall memories and publish content-free operational measurements."""
 
     await prepare_memory_read()
+    if request.contact_item_id is None and (request.require_personal_subject or personal_record_kind(request.query) is not None):
+        return MemoryRecallResult(query=request.query, hits=[], mode="lexical",
+            evidence_status="no_evidence", relevance_status="no_sufficient_evidence")
     started_at = time.perf_counter()
     diagnostics = _RecallDiagnostics()
-    result = await _recall_items(
+    chronology = parse_source_time_query(request.query) if request.target_at is None else None
+    result = await _recall_source_time(request, chronology) if chronology is not None else await _recall_items(
         request,
         record_llm_access=record_llm_access,
         diagnostics=diagnostics,

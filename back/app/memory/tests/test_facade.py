@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
+from typing import Literal
 from uuid import uuid4
 
 import pytest
 
-from app.memory import facade
+from app.memory import facade, indexed_resources
 from app.memory import router
 from app.memory.contracts import MemorySearchItem
 from app.memory.schemas import MemoryRecallRequest
@@ -17,6 +18,12 @@ async def test_simple_search_facade_hides_scores_and_forwards_query_scope(
 ) -> None:
     memory_id = uuid4()
     captured: list[MemoryRecallRequest] = []
+    indexed_requests: list[MemoryRecallRequest] = []
+
+    async def find_indexed(request: MemoryRecallRequest, *, mode: Literal["text", "semantic"] = "semantic") -> list[MemorySearchItem]:
+        assert mode == "semantic"
+        indexed_requests.append(request)
+        return []
 
     async def fake_recall(
         request: MemoryRecallRequest,
@@ -44,6 +51,7 @@ async def test_simple_search_facade_hides_scores_and_forwards_query_scope(
         )
 
     monkeypatch.setattr(facade, "recall_items", fake_recall)
+    monkeypatch.setattr(indexed_resources, "resource_search", find_indexed)
 
     default_items = await facade.search_memory("safe deployment", agent_id=7)
     overridden_items = await facade.search_memory(
@@ -64,6 +72,32 @@ async def test_simple_search_facade_hides_scores_and_forwards_query_scope(
     assert captured[1].semantic_query == (
         "Complete deployment objective and constraints"
     )
+    assert indexed_requests == captured
+
+
+@pytest.mark.asyncio
+async def test_reference_question_keeps_only_memory_evidence_for_the_requested_reference(monkeypatch):
+    wrong_id, right_id, mention_id = uuid4(), uuid4(), uuid4()
+    matches = [
+        (wrong_id, "Facture FCT-6419", "Total TTC : 73 €"),
+        (mention_id, "Facture FCT-641", "Le document arrivera demain."),
+        (right_id, "Facture FCT-641", "Total TTC : 11 €"),
+    ]
+
+    async def fake_recall(request, **kwargs):
+        return SimpleNamespace(hits=[SimpleNamespace(
+            item=SimpleNamespace(id=item_id, title=title, node_kind="memory", revision=1),
+            excerpt=excerpt, source_refs=[],
+        ) for item_id, title, excerpt in matches])
+
+    async def find_indexed(request, *, mode="semantic"):
+        return []
+
+    monkeypatch.setattr(facade, "recall_items", fake_recall)
+    monkeypatch.setattr(indexed_resources, "resource_search", find_indexed)
+
+    results = await facade.search_memory("Quel est le montant de FCT-641 ?", agent_id=7)
+    assert [item.id for item in results] == [right_id]
 
 
 @pytest.mark.asyncio

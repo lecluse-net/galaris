@@ -2,10 +2,12 @@ from tests.protocol_tools import protocol_tool
 """Synthetic receive → common consent → read → canonical Task workflows."""
 
 import asyncio
+from io import BytesIO
 from unittest.mock import AsyncMock, Mock
 
 import pytest
 import pytest_asyncio
+from pypdf import PdfWriter
 from sqlalchemy import func, select
 
 from app.connection import facade as connections
@@ -203,6 +205,148 @@ async def test_unknown_sender_is_logged_but_not_read_until_common_consent(inbox,
             assert await db.scalar(select(func.count()).select_from(Task)) == 0
             assert await db.scalar(select(func.count()).select_from(ActionAuthorization).where(
                 ActionAuthorization.capability_name == "mail_process")) == 1
+
+
+@pytest.mark.asyncio
+async def test_authorized_mail_and_attachments_enter_private_dream_index(inbox, monkeypatch, tmp_path):
+    from app.dream import interface
+    from app.dream.mechanisms import file_catalogue, resource_index
+    from app.dream.service import mark_success
+    from app.file_share import FileCatalogueEnrichmentPort, ResourceContext, materialize_resource
+    from app.file_share import resource_index as shared_index
+    from app.file_share.models import FileCatalogEntry
+    from app.file_share.resource_index_query import search_resource_index
+    from app.memory import service as memory
+    from app.memory import local_source_date
+    from app.memory.schemas import MemorySearchRequest
+    from core.params import runtime_settings
+    from core.user import get_user_record, user_identity_context
+    from bridge.mail import search_index
+    from bridge.mail.contracts import MailAttachment
+
+    config, manager, outsider, read = inbox
+    summary = _summary(141)
+    body = "Synthetic billing record FCT-485 with the keyword amberquartzaudit. Payment due on 9 October."
+    pdf_buffer = BytesIO()
+    pdf = PdfWriter()
+    pdf.add_blank_page(width=200, height=100)
+    pdf.write(pdf_buffer)
+    attachment_bytes = pdf_buffer.getvalue()
+    read.side_effect = None
+    read.return_value = MailMessageDetail(
+        **summary.model_dump(), body=body, body_format="plain", body_start=0,
+        body_end=len(body), body_total=len(body), attachments=[MailAttachment(
+            part_id="part-2", filename="synthetic-invoice.pdf", media_type="application/pdf", size=len(attachment_bytes),
+            uri=f"mail://attachment/{summary.ref}/part-2/synthetic-invoice.pdf",
+        )],
+    )
+    monkeypatch.setattr(search_index, "resolve_connection", AsyncMock(return_value=config))
+    monkeypatch.setattr(interface, "_file_catalogue", FileCatalogueEnrichmentPort())
+    for kind in ("TEXT", "DOCUMENT", "IMAGE", "VIDEO"):
+        monkeypatch.setattr(runtime_settings, f"DREAM_ATTACHMENT_{kind}_ENABLED", False)
+    analyze = AsyncMock()
+    monkeypatch.setattr(file_catalogue, "analyze_attachment", analyze)
+
+    async with get_db_session() as db:
+        await inbound.receive(config, summary)
+        receipt = (await db.scalars(select(MailInboundReceipt))).one()
+        assert await db.scalar(select(func.count()).select_from(FileCatalogEntry)) == 0
+        read.assert_not_called()
+        assert await answer_action(receipt.authorization_id, user_id=manager, approved=True)
+        await inbound._wake(config.agent_id, f"mail-inbound:{receipt.id}")
+        await inbound.receive(config, summary)
+        entries = list(await db.scalars(select(FileCatalogEntry).order_by(FileCatalogEntry.uri)))
+        assert len(entries) == 2
+        assert all(f"/account/{config.connection_id}/" in entry.uri or
+                   f"://account/{config.connection_id}/" in entry.uri for entry in entries)
+        assert entries[1].descriptor["name"] == "synthetic-invoice.pdf"
+        assert entries[1].descriptor["media_type"] == "application/pdf"
+        body_uri, attachment_uri = (entry.uri for entry in entries)
+        read.assert_called_once()
+
+    # Let the real Dream mechanism hash and index the body from its authorized URI.
+    mechanism = file_catalogue.file_catalogue_mechanism
+    # Attachment bytes are fetched separately by the file pipeline.
+    import bridge.mail.file_transport as transport
+    from bridge.mail.contracts import OutgoingAttachment
+
+    fetch_part = AsyncMock(return_value=OutgoingAttachment(
+        filename="synthetic-invoice.pdf", content=attachment_bytes, media_type="application/pdf",
+    ))
+    monkeypatch.setattr(transport, "fetch_attachment", fetch_part)
+    for _ in range(3):
+        claim = await mechanism.claim_one()
+        assert claim is not None
+        prepared = await mechanism.prepare(claim)
+        assert body not in str(prepared.payload)
+        result = await mechanism.apply(claim, prepared.payload)
+        assert result == 1
+        await mark_success(claim, result_count=result)
+    analyze.assert_not_awaited()
+    fetch_part.assert_awaited_once()
+
+    monkeypatch.setattr(runtime_settings, "DREAM_ATTACHMENT_TEXT_ENABLED", True)
+    analyze.return_value = "Synthetic attachment reference violetquartzaudit"
+    attachment_claim = await mechanism.claim_one()
+    assert attachment_claim is not None and attachment_claim.prepared_payload["uri"] == attachment_uri
+    prepared = await mechanism.prepare(attachment_claim)
+    assert await mechanism.apply(attachment_claim, prepared.payload) == 1
+    await mark_success(attachment_claim, result_count=1)
+    analyze.assert_awaited_once()
+
+    from app.connection import Connection
+
+    monkeypatch.setattr(interface, "_file_catalogue", FileCatalogueEnrichmentPort(shared_index=True))
+    monkeypatch.setattr(shared_index, "_embedding_model", AsyncMock(return_value=None))
+    index_mechanism = resource_index.resource_index_mechanism
+    for _ in range(2):
+        index_claim = await index_mechanism.claim_one()
+        assert index_claim is not None
+        prepared = await index_mechanism.prepare(index_claim)
+        assert body not in str(prepared.payload)
+        assert await index_mechanism.apply(index_claim, prepared.payload) == 1
+        await mark_success(index_claim, result_count=1)
+
+    async with get_db_session() as db:
+        request = MemorySearchRequest(agent_id=config.agent_id, query="amberquartzaudit")
+        ctx = ResourceContext(config.agent_id, "internal")
+        indexed = await search_resource_index(ctx, "amberquartzaudit", mode="text", uri=body_uri)
+        assert indexed is not None and indexed.hits[0].passages[0]["section"] == "message"
+        question = "Quelle est l’échéance de la facture FCT-485 ?"
+        answer = await search_resource_index(ctx, question, mode="text", uri=body_uri)
+        assert answer is not None and "9 October" in answer.hits[0].excerpt
+        sent_date = local_source_date(summary.date) if summary.date else None
+        assert sent_date is not None
+        dated_query = f"amberquartzaudit en {sent_date.year}"
+        dated = await search_resource_index(ctx, dated_query, mode="text", uri=body_uri)
+        assert dated is not None and dated.hits[0].resource.metadata["chronology"]["source_date"] == sent_date.isoformat()
+        assert dated.hits[0].resource.metadata["chronology"]["source_date_origin"] == "mail_date"
+        assert (await memory.search_items(request)).hits
+        assert (await memory.search_items(request.model_copy(update={"query": "violetquartzaudit"}))).hits
+        reader = await get_user_record(outsider)
+        assert reader is not None
+        with user_identity_context(reader):
+            hidden = await memory.search_items(request)
+            assert not hidden.hits and hidden.total == 0
+            assert await search_resource_index(ctx, "amberquartzaudit", mode="text", uri=body_uri) is None
+            assert await search_resource_index(ctx, question, mode="text") is None
+            assert await search_resource_index(ctx, dated_query, mode="text") is None
+        connection = await connections.get_connection(config.connection_id)
+        other = Connection(agent_id=config.agent_id, service_id=connection.service_id, singleton_key=None)
+        db.add(other)
+        await db.flush()
+        await inbound.record_receipt(config.model_copy(update={"connection_id": other.id}), summary)
+        wrong_account = body_uri.replace(f"account/{config.connection_id}/", f"account/{other.id}/")
+        with pytest.raises(PermissionError):
+            await materialize_resource(ctx, wrong_account, tmp_path / "other", max_bytes=1024)
+        await connections.set_connection_function_state(config.connection_id, "mail_process", "disabled")
+        hidden = await memory.search_items(request)
+        assert not hidden.hits and hidden.total == 0
+        assert await search_resource_index(ctx, "amberquartzaudit", mode="text", uri=body_uri) is None
+        assert await search_resource_index(ctx, question, mode="text") is None
+        assert not (await memory.search_items(request.model_copy(update={"query": "violetquartzaudit"}))).hits
+        with pytest.raises(PermissionError):
+            await materialize_resource(ctx, body_uri, tmp_path / "body", max_bytes=1024)
 
 
 @pytest.mark.asyncio

@@ -20,6 +20,7 @@ from loguru import logger
 from sqlalchemy import LargeBinary, and_, func, or_, select
 
 from core.database import get_db
+from core.util import complete_io
 
 from .contracts import (
     TopicMaintenancePlan,
@@ -118,47 +119,33 @@ def _confidence(value: float) -> float:
 
 
 async def _indexed_rows(model_key: str) -> list[_RawChunk]:
-    rows = list(
-        (
-            await get_db().execute(
-                select(
-                    MemoryItem.id,
-                    MemoryItem.owner_agent_id,
-                    MemoryItem.semantic_fingerprint,
-                    # Leave vector decoding to the CPU process as well.
-                    func.vector_send(MemoryEmbeddingChunk.embedding, type_=LargeBinary),
-                )
-                .join(
-                    MemoryEmbeddingChunk,
-                    MemoryEmbeddingChunk.item_id == MemoryItem.id,
-                )
-                .where(
-                    MemoryEmbeddingChunk.model_key == model_key,
-                    MemoryEmbeddingChunk.source_fingerprint
-                    == MemoryItem.semantic_fingerprint,
-                    or_(
-                        and_(
-                            MemoryItem.source_managed.is_(True),
-                            MemoryItem.managed_source_kind == "topic",
-                            MemoryItem.visibility == "public",
-                            MemoryItem.owner_agent_id.is_(None),
-                        ),
-                        and_(
-                            MemoryItem.source_managed.is_(False),
-                            MemoryItem.node_kind == "memory",
-                            MemoryItem.owner_agent_id.is_not(None),
-                        ),
-                    ),
-                )
-                .order_by(MemoryItem.id, MemoryEmbeddingChunk.chunk_index)
-                .limit(MAX_INDEXED_CHUNKS + 1)
-            )
-        ).all()
+    statement = (
+        select(MemoryItem.id, MemoryItem.owner_agent_id, MemoryItem.semantic_fingerprint,
+               func.vector_send(MemoryEmbeddingChunk.embedding, type_=LargeBinary))
+        .join(MemoryEmbeddingChunk, MemoryEmbeddingChunk.item_id == MemoryItem.id)
+        .where(
+            MemoryEmbeddingChunk.model_key == model_key,
+            MemoryEmbeddingChunk.source_fingerprint == MemoryItem.semantic_fingerprint,
+            or_(and_(MemoryItem.source_managed.is_(True), MemoryItem.managed_source_kind == "topic",
+                     MemoryItem.visibility == "public", MemoryItem.owner_agent_id.is_(None)),
+                and_(MemoryItem.source_managed.is_(False), MemoryItem.node_kind == "memory",
+                     MemoryItem.owner_agent_id.is_not(None))),
+        )
+        .order_by(MemoryItem.id, MemoryEmbeddingChunk.chunk_index)
+        .limit(MAX_INDEXED_CHUNKS + 1)
+        .execution_options(yield_per=128)
     )
-    return [
-        (item_id, owner_agent_id, str(fingerprint), bytes(vector))
-        for item_id, owner_agent_id, fingerprint, vector in rows
-    ]
+    rows: list[_RawChunk] = []
+    stream = await get_db().stream(statement)
+    try:
+        # Limit main-loop work for each fetch. The CPU process still decodes vectors.
+        async for batch in stream.partitions(128):
+            rows.extend((item_id, owner_agent_id, str(fingerprint), bytes(vector))
+                        for item_id, owner_agent_id, fingerprint, vector in batch)
+            await asyncio.sleep(0)
+    finally:
+        await stream.close()
+    return rows
 
 
 def _indexed_items(rows: list[_RawChunk]) -> tuple[list[_IndexedItem], bool]:
@@ -547,9 +534,10 @@ async def _build_plan_locked(*, include_suggestions: bool) -> TopicMaintenancePl
             initializer=_lower_compute_priority,
         )
     try:
-        return await asyncio.get_running_loop().run_in_executor(
-            _compute_pool, _compute_plan, rows, memberships, model.key, include_suggestions
-        )
+        # The first submission can synchronously start the process. Keep that
+        # startup off the request loop, including during shutdown or preemption.
+        submitted = await complete_io(_compute_pool.submit, _compute_plan, rows, memberships, model.key, include_suggestions)
+        return await asyncio.wrap_future(submitted)
     except (asyncio.CancelledError, BrokenProcessPool):
         stop_topic_maintenance()
         raise

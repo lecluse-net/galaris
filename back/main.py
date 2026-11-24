@@ -182,7 +182,12 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     configure_dream_media()
     from app.dream.interface import register_file_catalogue
     from app.file_share import FileCatalogueEnrichmentPort
-    register_file_catalogue(FileCatalogueEnrichmentPort())
+    register_file_catalogue(FileCatalogueEnrichmentPort(shared_index=True))
+    from app.file_share.resource_index import register_resource_index_embedding, register_resource_index_topics
+    from app.llm.embedding_facade import configured_embedding_model
+    from app.topic import match_indexed_topic
+    register_resource_index_embedding(configured_embedding_model)
+    register_resource_index_topics(match_indexed_topic)
     from app.task import scheduler as task_scheduler
     from app.conversation import deep_running, register_controller, register_runtime, start_deep, stop_deep
     from app.conversation import scheduler as conversation_scheduler
@@ -387,6 +392,9 @@ from app.llm.facade import retrieve_prepared_document
 register_contact_resource_provider(read_contact_resource, list_contact_resources, write_contact_resource)
 # File Sharing owns source access; the LLM domain supplies its document reader.
 register_document_retriever(retrieve_prepared_document)
+from app.memory import register_indexed_resources
+from app.file_share.resource_index_query import memory_index_graph, memory_index_search
+register_indexed_resources(search=memory_index_search, graph=memory_index_graph)
 from core.storage import register_file_derivative_cleanup
 from app.file_share import purge_prepared_files
 register_file_derivative_cleanup(purge_prepared_files)

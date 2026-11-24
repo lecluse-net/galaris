@@ -37,6 +37,7 @@ from .working_set import (
     upsert_working_resource,
 )
 from .resource_facade import (
+    task_index_readable as task_index_readable,
     list_task_amendments_by_source,
     list_task_resources,
     read_task_resource,

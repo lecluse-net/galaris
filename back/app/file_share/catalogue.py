@@ -9,24 +9,26 @@ import json
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import Text, and_, exists, func, or_, select, literal, update
+from sqlalchemy import Text, and_, case, exists, func, or_, select, literal, update
 from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.selectable import CTE
 
-from app.connection import Connection, ConnectionParam
+from app.connection import Connection, ConnectionFunctionState, ConnectionParam, ServiceFunctionState
 from app.connection.facade import effective_param_value_expression
 from app.services import ServiceModel
-from app.services.contracts import FILE_INDEXING_PARAM, FileIndexingMode
+from app.services.contracts import FILE_INDEXING_PARAM, FileIndexingMode, current_tool_execution
 from app.memory import project_catalogue_entry, link_catalogue_entries, catalogue_projection_write, detach_catalogue_parent_links
 from app.memory import update_catalogue_file_locations, associate_memory_url, forget_resource_memories, MemoryURL, MemoryItem
 from core.database import get_db
+from core.authorize import Privileges, privilege_clause
+from core.user import get_current_user_id
 
 from .bridges import get_bridge
 from .file_share_service import resolve_resource_transport_with_service
 from .models import FileCatalogEntry
 from .resource_contracts import ResourceBatchMetadataTransport, ResourceContext, ResourceDescriptor
-from .resource_uri import PROTOCOL_SCHEMES, NATIVE_RESOURCE_SCHEMES, parse_resource_uri
+from .resource_uri import PROTOCOL_SCHEMES, NATIVE_RESOURCE_SCHEMES, ResourceUri, parse_resource_uri
 
 
 def indexing_mode_expression() -> ColumnElement[str | None]:
@@ -54,12 +56,36 @@ def binding_stamp() -> ColumnElement[str]:
     return func.encode(func.sha256(func.convert_to(snapshot, "UTF8")), "hex")
 
 
+def _mail_processing_allowed() -> ColumnElement[bool]:
+    local = select(func.coalesce(ConnectionFunctionState.state, case(
+        (ConnectionFunctionState.enabled.is_(True), "enabled"), else_="disabled",
+    ))).where(ConnectionFunctionState.connection_id == Connection.id,
+              ConnectionFunctionState.capability_kind == "tool",
+              ConnectionFunctionState.function_name == "mail_process").correlate(Connection).scalar_subquery()
+    global_state = select(func.coalesce(ServiceFunctionState.state, case(
+        (ServiceFunctionState.enabled.is_(True), "enabled"), else_="disabled",
+    ))).where(ServiceFunctionState.service_id == ServiceModel.id,
+              ServiceFunctionState.capability_kind == "tool",
+              ServiceFunctionState.function_name == "mail_process").correlate(ServiceModel).scalar_subquery()
+    return func.coalesce(local, global_state, "ask") != "disabled"
+
+
+def _mail_catalogue_access(processing_allowed: ColumnElement[bool]) -> ColumnElement[bool]:
+    indexed = FileCatalogEntry.uri.bool_op("~")(r"^[^:]+://(mail/)?account/[0-9]+/indexed/")
+    user_id = get_current_user_id()
+    if user_id is not None and current_tool_execution() is None:
+        processing_allowed = and_(processing_allowed, or_(privilege_clause(user_id, Privileges.MAIL_ACCESS),
+                                                          privilege_clause(user_id, Privileges.MAIL_EDIT)))
+    return or_(~indexed, processing_allowed)
+
+
 def live_catalogue_binding() -> ColumnElement[bool]:
     return and_(
         Connection.active.is_(True),
         Connection.agent_id == FileCatalogEntry.agent_id,
         indexing_mode_expression().in_(("known_uris", "recursive")),
         FileCatalogEntry.binding_stamp == binding_stamp(),
+        _mail_catalogue_access(_mail_processing_allowed()),
     )
 
 
@@ -69,7 +95,8 @@ def _catalogue_bindings() -> CTE:
     # inherited policy and configuration hashes once per connection per query.
     # Reuse the immutable SQL expression, never a result or authorization value.
     # Independent ACLs can then share one named, top-level materialized CTE.
-    return select(Connection.id, Connection.agent_id, binding_stamp().label("stamp")).join(
+    return select(Connection.id, Connection.agent_id, binding_stamp().label("stamp"),
+                  _mail_processing_allowed().label("mail_allowed")).join(
         ServiceModel, ServiceModel.id == Connection.service_id,
     ).where(Connection.active.is_(True), indexing_mode_expression().in_(("known_uris", "recursive"))).cte(
         "file_catalogue_bindings",
@@ -83,6 +110,7 @@ def catalogue_binding_is_current() -> ColumnElement[bool]:
         bindings.c.id == FileCatalogEntry.connection_id,
         bindings.c.agent_id == FileCatalogEntry.agent_id,
         bindings.c.stamp == FileCatalogEntry.binding_stamp,
+        _mail_catalogue_access(bindings.c.mail_allowed),
     )).correlate(FileCatalogEntry)
 
 
@@ -94,6 +122,7 @@ def catalogue_access_clause(item_id: InstrumentedAttribute[UUID | None]) -> Colu
         FileCatalogEntry.memory_node_id == item_id,
         FileCatalogEntry.present.is_(True), FileCatalogEntry.agent_id == bindings.c.agent_id,
         FileCatalogEntry.binding_stamp == bindings.c.stamp,
+        _mail_catalogue_access(bindings.c.mail_allowed),
     ))
 
 
@@ -115,18 +144,31 @@ def descriptor_version(descriptor: dict[str, object]) -> str:
     return hashlib.sha256(json.dumps(version, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
 
 
+def indexed_mail_account(reference: ResourceUri) -> int | None:
+    segments = reference.segments[1:] if reference.segments[:1] == ("mail",) else reference.segments
+    if len(segments) == 6 and segments[0] == "account" and segments[2] == "indexed":
+        account = segments[1]
+        if account.isascii() and account.isdecimal() and len(account) <= 10 and 0 < int(account) < 2**31:
+            return int(account)
+    return None
+
+
 async def observation_scope(ctx: ResourceContext, uri: object) -> ObservationScope | None:
     reference = parse_resource_uri(uri, allow_empty=True)
-    if reference.scheme in PROTOCOL_SCHEMES or reference.scheme in NATIVE_RESOURCE_SCHEMES - {"console"} or reference.scheme == "mail":
+    if reference.scheme in PROTOCOL_SCHEMES or reference.scheme in NATIVE_RESOURCE_SCHEMES - {"console"}:
+        return None
+    mail_account = indexed_mail_account(reference)
+    if reference.scheme == "mail" and mail_account is None:
         return None
     db = get_db()
-    rows = (await db.execute(select(Connection.id, binding_stamp(), ServiceModel.file_share_config,
+    query = select(Connection.id, binding_stamp(), ServiceModel.file_share_config,
                                   indexing_mode_expression()).join(
         ServiceModel, ServiceModel.id == Connection.service_id,
     ).where(Connection.agent_id == ctx.agent_id, Connection.active.is_(True),
-            ServiceModel.code == reference.scheme))).all()
-    # A provider-wide URI cannot choose an indexing policy between multiple accounts.
-    # Mail resources remain excluded from the file catalogue.
+            ServiceModel.code == reference.scheme)
+    if mail_account is not None:
+        query = query.where(Connection.id == mail_account)
+    rows = (await db.execute(query)).all()
     if len(rows) != 1:
         return None
     row = rows[0]
@@ -138,12 +180,15 @@ async def observation_scope(ctx: ResourceContext, uri: object) -> ObservationSco
     else:
         config = cast(dict[str, object] | None, row[2])
         service = str(config.get("service", "")) if config else ""
-        if service == "mail":
+        if service == "mail" and mail_account is None:
             return None
         _transport, resolved_service = await resolve_resource_transport_with_service(
             ctx.agent_id, reference.scheme, reference.decoded_locator, language=ctx.language,
         )
-        if resolved_service != "messenger" and (not service or service == "mail" or row[3] not in get_bridge(service).indexing_modes):
+        if resolved_service == "mail":
+            if mail_account is None:
+                return None
+        elif resolved_service != "messenger" and (not service or row[3] not in get_bridge(service).indexing_modes):
             return None
     return ObservationScope(int(row[0]), ctx.agent_id, str(row[1]), ctx.runtime,
                             datetime.now(timezone.utc))
@@ -223,7 +268,7 @@ async def project_entry(entry: FileCatalogEntry) -> None:
         await get_db().flush()
         if previous is not None:
             await refresh_file_locations(previous)
-    if entry.file_sha256 and entry.memory_node_id is not None:
+    if entry.file_sha256 and entry.memory_node_id is not None and indexed_mail_account(parse_resource_uri(entry.uri)) is None:
         await refresh_file_locations(entry.memory_node_id)
         await _link_entry_parent(entry, descriptor)
         return

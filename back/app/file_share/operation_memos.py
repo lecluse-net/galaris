@@ -91,10 +91,13 @@ async def conversion_origins(agent_id: int, checksums: dict[str, str]) -> dict[s
 async def search_with_replay(ctx: ResourceContext, uri: str, query: str, *, mode: Literal["name", "text", "semantic"],
                              recursive: bool, max_results: int | None, cursor: str | None,
                              refresh: bool = False) -> ResourceSearchResult:
+    from app.memory import personal_record_for_turn
+
     turn = ctx.conversation_turn
     scope = [str(getattr(turn, "round_id", "")), getattr(turn, "source_request", None), getattr(turn, "messages", None)]
     # Only conversation input collection needs this short-lived loop protection.
-    enabled = bool(turn is not None and any(item.get("kind") == "process_input_preparation"
+    enabled = bool(personal_record_for_turn(query, agent_id=ctx.agent_id, turn=turn) is None and turn is not None
+        and any(item.get("kind") == "process_input_preparation"
         for item in getattr(turn, "pending_interactions", ())))
     key = memo_key(ctx, "search/v1", [scope, uri, query, mode, recursive, max_results, cursor])
     stored = await _read(ctx, key) if enabled and not refresh else None

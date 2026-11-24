@@ -179,8 +179,36 @@ def source_checked_graph(function: Callable[[GraphRequest], Awaitable[MemoryGrap
         denied = endpoints - await readable_source_ids(endpoints, request.agent_id)
         if focus in denied:
             return MemoryGraphPage(nodes=[], edges=[], has_more=False)
-        return page.model_copy(update={
-            "nodes": [node for node in page.nodes if node.id not in denied],
-            "edges": [edge for edge in page.edges if edge.source_item_id not in denied and edge.target_item_id not in denied],
-        })
+        nodes = [node for node in page.nodes if node.id not in denied]
+        edges = [edge for edge in page.edges if edge.source_item_id not in denied and edge.target_item_id not in denied]
+        from .indexed_resources import resource_graph
+
+        if resource_graph is not None and not (isinstance(request, MemoryGraphExpandRequest) and request.children_only):
+            resource_nodes = {node.id for node in nodes if node.node_kind in {"document", "attachment", "file"}}
+            if (resource_nodes or focus is not None) and request.cursor is None:
+                from .service import graph_node, graph_source_items
+
+                related = await resource_graph(request.agent_id, resource_nodes, focus, request.limit)
+                known = {node.id for node in nodes}
+                if focus is not None:
+                    known.add(focus)
+                extra_ids = {identity for edge in related for identity in (edge.source_item_id, edge.target_item_id)} - known
+                extra_by_id = await graph_source_items(request, extra_ids)
+                accepted = known | await readable_source_ids(set(extra_by_id), request.agent_id)
+                related = [edge for edge in related if {edge.source_item_id, edge.target_item_id} <= accepted]
+                counts: dict[UUID, int] = {}
+                for edge in related:
+                    for identity in (edge.source_item_id, edge.target_item_id):
+                        counts[identity] = counts.get(identity, 0) + 1
+                nodes = [node.model_copy(update={"has_relations": True, "relation_count": node.relation_count + counts[node.id]})
+                         if node.id in counts else node for node in nodes]
+                if focus is not None:
+                    capacity = max(0, request.limit - len(nodes))
+                    nodes.extend(graph_node(item, relation_count=counts[item.id]) for item in
+                                 [item for item in extra_by_id.values() if item.id in counts][:capacity])
+                returned = {node.id for node in nodes}
+                if focus is not None:
+                    returned.add(focus)
+                edges.extend(edge for edge in related if {edge.source_item_id, edge.target_item_id} <= returned)
+        return page.model_copy(update={"nodes": nodes, "edges": edges})
     return checked

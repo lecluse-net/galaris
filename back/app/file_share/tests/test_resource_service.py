@@ -2,6 +2,7 @@ from collections.abc import Iterator
 import json
 from pathlib import Path
 from types import SimpleNamespace
+from unittest.mock import AsyncMock
 from uuid import uuid4
 
 import pytest
@@ -917,10 +918,11 @@ async def test_document_collection_lists_canonical_resource_uris(
 
 
 @pytest.mark.asyncio
-async def test_memory_search_uses_canonical_recall_and_configured_limit_by_default(
+async def test_memory_search_uses_canonical_recall_and_defers_usage_until_fusion(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     import app.memory as memory
+    from app.file_share import resource_index_query
 
     captured: dict[str, object] = {}
 
@@ -929,6 +931,7 @@ async def test_memory_search_uses_canonical_recall_and_configured_limit_by_defau
         return {"hits": [], "has_more": False, "next_offset": None}
 
     monkeypatch.setattr(memory, "search_file_resources", search)
+    monkeypatch.setattr(resource_index_query, "search_resource_index", AsyncMock(return_value=None))
 
     result = await resource_service.resource_search(
         ResourceContext(agent_id=1, runtime="internal"),
@@ -939,7 +942,8 @@ async def test_memory_search_uses_canonical_recall_and_configured_limit_by_defau
 
     assert result.hits == []
     assert captured["mode"] == "semantic"
-    assert captured["limit"] is None
+    assert captured["limit"] == memory.federated_candidate_limit(0, 50)
+    assert captured["record_access"] is False
 
     await resource_service.resource_search(
         ResourceContext(agent_id=1, runtime="internal"),
@@ -949,7 +953,7 @@ async def test_memory_search_uses_canonical_recall_and_configured_limit_by_defau
     )
 
     assert captured["mode"] == "text"
-    assert captured["limit"] is None
+    assert captured["limit"] == memory.federated_candidate_limit(0, 50)
 
 
 @pytest.mark.asyncio

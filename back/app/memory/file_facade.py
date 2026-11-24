@@ -10,6 +10,7 @@ from uuid import UUID
 from . import facade, service
 from .schemas import MemorySearchRequest
 from .recall_scope import resolve_recall_scope
+from .source_chronology import memory_chronology
 
 
 
@@ -114,11 +115,14 @@ async def search_file_resources(
     limit: int | None,
     offset: int,
     conversation_turn: object | None = None,
+    record_access: bool = True,
+    recall_scope: tuple[UUID | None, UUID | None] | None = None,
+    require_personal_subject: bool = False,
 ) -> dict[str, object]:
     """Search authorized memories and return stable identifiers and excerpts."""
 
     name_only = expected_kind == "document" and mode == "name"
-    topic_item_id, contact_item_id = (None, None) if name_only else await resolve_recall_scope(
+    topic_item_id, contact_item_id = (None, None) if name_only else recall_scope or await resolve_recall_scope(
         agent_id=agent_id, task_id=task_id, conversation_turn=conversation_turn,
     )
     ranked = bool(query.strip()) and not name_only
@@ -135,6 +139,7 @@ async def search_file_resources(
             contact_item_id=contact_item_id,
             record_llm_access=False,
             telemetry_kind="search",
+            require_personal_subject=require_personal_subject,
         )
         hits = page.hits[offset:offset + page_limit]
         total = len(page.hits)
@@ -149,8 +154,9 @@ async def search_file_resources(
             "candidate_window_exhausted": page.has_more and not has_more,
             "index_coverage": (coverage.model_dump() if (coverage := getattr(page, "index_coverage", None)) is not None else None),
         }
-        await service.record_llm_retrieval(agent_id=agent_id,
-            item_scores=[(hit.item.id, hit.score) for hit in hits], query=query, task_id=task_id)
+        if record_access:
+            await service.record_llm_retrieval(agent_id=agent_id,
+                item_scores=[(hit.item.id, hit.score) for hit in hits], query=query, task_id=task_id)
     else:
         browse_limit = limit if limit is not None else 50
         browse_page = await service.search_items(
@@ -192,13 +198,16 @@ async def search_file_resources(
                 "excerpt": hit.excerpt,
                 "can_write": hit.item.access.can_write,
                 "metadata": {**({} if name_only else hit.item.metadata), "document_format": hit.item.document_format,
-                             "temporal": hit.item.temporal.model_dump(mode="json") if hit.item.temporal else None},
+                             "temporal": hit.item.temporal.model_dump(mode="json") if hit.item.temporal else None,
+                             "chronology": dated.metadata()},
+                "chronology": dated,
                 "retrieval_sources": hit.retrieval_sources,
                 "source_refs": hit.source_refs,
                 "conflicts": [conflict.model_dump(mode="json") for conflict in hit.conflicts],
                 "passages": [] if name_only else [passage.model_dump() for passage in hit.passages],
             }
             for hit in hits
+            for dated in (memory_chronology(hit.item.title, hit.item.temporal),)
         ],
         "total": total,
         "has_more": has_more,

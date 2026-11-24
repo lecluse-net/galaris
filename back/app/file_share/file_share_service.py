@@ -151,7 +151,7 @@ async def list_service_codes(agent_id: int) -> list[str]:
         if not connection.active:
             continue
         tool = await service_catalog.get_service_by_id(connection.service_id)
-        if tool and (tool.file_share is not None or _has_messenger_files(tool)):
+        if tool and (tool.file_share is not None or tool.mail is not None or _has_messenger_files(tool)):
             service_codes.append(tool.code)
     return sorted(set(service_codes))
 
@@ -201,9 +201,8 @@ async def describe_targets(
             continue
         has_messenger = _has_messenger_files(tool)
         bridge = find_bridge(tool.file_share.service) if tool.file_share else None
-        has_file_share = tool.file_share is not None and (
-            bridge is not None or tool.file_share.service == "mail"
-        )
+        mail_only = tool.mail is not None and (tool.file_share is None or tool.file_share.service == "mail")
+        has_file_share = bridge is not None or mail_only
         if not has_file_share and not has_messenger:
             continue
         seen.add(tool.code)
@@ -211,14 +210,15 @@ async def describe_targets(
         indexing_mode = params.get(FILE_INDEXING_PARAM, "excluded")
         targets.append({
             "code": tool.code,
-            "service": tool.file_share.service if has_file_share and tool.file_share else "messenger",
+            "service": "mail" if mail_only else tool.file_share.service if has_file_share and tool.file_share else "messenger",
             "label": tool.label or tool.code,
             "description": tool.description or "",
             "has_file_share": has_file_share,
             "file_share_writable": bridge.writable if bridge is not None else False,
             "file_indexing_mode": (
                 indexing_mode
-                if bridge is not None and indexing_mode in bridge.indexing_modes
+                if (bridge is not None and indexing_mode in bridge.indexing_modes)
+                or (mail_only and indexing_mode == "known_uris")
                 else "excluded"
             ),
             "has_messenger": has_messenger,

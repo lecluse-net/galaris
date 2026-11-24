@@ -15,6 +15,7 @@ from sqlalchemy.sql.elements import ColumnElement
 from loguru import logger
 
 from app.connection import facade as connections
+from app.connection import Connection
 from app.contact.facade import is_known_mail_contact
 from app.messenger import Message, dispatch_incoming, inbound_task_links, register_inbound_contact_authorizer
 from app.services.facade import (
@@ -40,7 +41,7 @@ PROCESS_REASON = "Email processing requires consent unless its sender is already
 _CONTEXT_PREFIX = "mail-inbound"
 
 
-def _require_inbox(message_ref: str) -> None:
+def require_inbox(message_ref: str) -> None:
     if MailMessageRef.decode(message_ref).mailbox.upper() != "INBOX":
         raise PermissionError("Only messages in INBOX can be processed")
 
@@ -49,7 +50,7 @@ async def record_receipt(
     config: MailConnectionConfig, summary: MailMessageSummary, *, dispatch: bool = False,
 ) -> MailInboundReceipt:
     """Deduplicate before the poll cursor advances; receipt does not read the message."""
-    _require_inbox(summary.ref)
+    require_inbox(summary.ref)
     config.require_mailbox(MailMessageRef.decode(summary.ref).mailbox)
     db = get_db()
     await db.execute(insert(MailInboundReceipt).values(
@@ -122,6 +123,16 @@ async def _renew_authorization(row: MailInboundReceipt, config: MailConnectionCo
     await get_db().commit()
 
 
+async def processing_policy(connection: Connection) -> tuple[dict[str, object], dict[str, object]]:
+    policy = await connections.resolve_function(connection, PROCESS_NAME)
+    tool = await get_service_by_id(connection.service_id)
+    if tool is None:
+        raise PermissionError("Mail tool is no longer available")
+    _, params = await connections.get_params_as_dict(connection.id)
+    return policy, {"tool": tool_authorization_configuration(tool), "params": params,
+                    "classification": "ask", "reason": PROCESS_REASON}
+
+
 async def authorize_receipt(
     row: MailInboundReceipt,
     *,
@@ -135,7 +146,7 @@ async def authorize_receipt(
     if locked is None or locked.connection_id is None or locked.agent_id is None:
         raise PermissionError("Mail connection is no longer available")
     row = locked
-    _require_inbox(row.message_ref)
+    require_inbox(row.message_ref)
     agent_id = locked.agent_id
     connection = await connections.get_connection(locked.connection_id)
     if connection is None or not connection.active or connection.agent_id != agent_id:
@@ -144,13 +155,7 @@ async def authorize_receipt(
     config.require_mailbox(MailMessageRef.decode(row.message_ref).mailbox)
     if expected_config is not None and expected_config != config:
         raise ToolCallRejectedError("Mail configuration changed during the call. Retry with the exact message reference.")
-    policy = await connections.resolve_function(connection, PROCESS_NAME)
-    tool = await get_service_by_id(connection.service_id)
-    if tool is None:
-        raise PermissionError("Mail tool is no longer available")
-    _, params = await connections.get_params_as_dict(connection.id)
-    configuration = {"tool": tool_authorization_configuration(tool), "params": params,
-                     "classification": "ask", "reason": PROCESS_REASON}
+    policy, configuration = await processing_policy(connection)
     config_fingerprint = authorization_fingerprint(configuration)
     if policy["effective_state"] == "disabled":
         if row.authorized_at is None:
@@ -221,7 +226,7 @@ async def authorize_receipt(
 async def ensure_readable(
     config: MailConnectionConfig, message_ref: str, *, parent_context: str | None = None,
 ) -> MailInboundReceipt:
-    _require_inbox(message_ref)
+    require_inbox(message_ref)
     config.require_mailbox(MailMessageRef.decode(message_ref).mailbox)
     if parent_context is None and (execution := current_tool_execution()) is not None:
         # Covers generic file_* tools that materialize a Mail attachment.
@@ -247,6 +252,9 @@ async def record_read(row: MailInboundReceipt, detail: MailMessageDetail) -> Non
     previous_end = int(str((row.content or {}).get("body_end", 0)))
     if detail.body_start == 0 and detail.body_end >= previous_end:
         row.content = detail.model_dump(mode="json")
+        from .search_index import observe_mail
+
+        await observe_mail(row, detail)
     row.read_at = datetime.now(timezone.utc)
     await get_db().commit()
 

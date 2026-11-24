@@ -1,5 +1,7 @@
 # Décisions d'architecture
 
+- [0325 — Index partagé des ressources courantes](0325-shared-current-resource-index.md)
+
 - [0324 — One-shot desktop screenshots in Chat](0324-chat-desktop-screenshot.md)
 
 - [0323 — Desktop MCP relay over outbound HTTPS](0323-desktop-mcp-relay.md)

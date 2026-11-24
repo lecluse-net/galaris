@@ -7,7 +7,7 @@
       </q-item-section>
       <q-item-section>
         <q-item-label>{{ relation.other.title }}</q-item-label>
-        <q-item-label caption>{{ relation.edge.relation_type }}</q-item-label>
+        <q-item-label caption>{{ relationLabel(relation.edge.relation_type) }}</q-item-label>
       </q-item-section>
       <q-item-section side><q-icon name="chevron_right" /></q-item-section>
     </q-item>
@@ -15,9 +15,16 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { DocumentIcon } from '@/app/document'
 import type { MemoryGraphRelation } from '../types'
 
 defineProps<{ relations: MemoryGraphRelation[] }>()
 const emit = defineEmits<{ select: [id: string] }>()
+const { t, te } = useI18n()
+
+function relationLabel(relation: string): string {
+  const key = `memory.relationTypes.${relation}`
+  return te(key) ? t(key) : t('memory.otherRelation')
+}
 </script>

@@ -84,6 +84,16 @@ configuration and identity. Processing consent never authorizes SMTP sending. Pr
 Permissions and the Mail journal's Reception tab share common decisions.
 See [0221](../../../../project/decisions/0221-mail-inbound-consent-and-journal.md).
 
+## Indexing authorized messages
+
+The first body page read after authorization and its attachment references enter the agent's
+private catalogue. Dream indexes the available text (up to 50,000 characters) without generative AI.
+Attachment names are searchable as soon as they are catalogued. Attachment content analysis follows
+Dream's media settings. Each entry is tied to the exact Service, IMAP account, message and
+authorization generation. Search checks the current permission and verifies that the message is
+still in `INBOX`. **File indexing** controls this behaviour per connection. Mailbox history is
+not crawled automatically.
+
 The MCP `mail_search` schema exposes `has_attachments=true` to require an attachment,
 and omission or `null` to disable this filter. `false` is rejected before IMAP: the bridge
 does not advertise a search without attachments that it cannot perform within bounds.

@@ -19,7 +19,8 @@ from core.util import complete_io
 from .browser_service import attachment_message, browser_config, read_attachment, read_raw_message
 from .contracts import MailboxInfo, MailMessageRef, MailMessageSummary, MailSearchQuery
 from .imap_client import ImapClient, mailbox_display_name
-from .service import get_attachment, list_mailboxes, parse_attachment_locator, search
+from .search_index import body_bytes, indexed_source
+from .service import fetch_attachment, get_attachment, list_mailboxes, parse_attachment_locator, search
 from app.services import bind_protocol_connection, reset_protocol_connection
 
 
@@ -169,7 +170,15 @@ class MailAttachmentTransport:
         remote = self._path(remote)
         if target:
             raise ValueError("mail:// resources do not accept a target")
-        if remote.startswith("attachment/"):
+        if remote.startswith("indexed/") and self.connection_id is not None:
+            config, message, entry = await indexed_source(
+                self.agent_id, self.connection_id, remote, check_imap=True,
+            )
+            part = entry.path.rsplit("/", 1)[-1]
+            content = (body_bytes(message) if part == "body.txt" else
+                       (await fetch_attachment(config, MailMessageRef.decode(message.ref), part, max_bytes=max_bytes)).content)
+            await indexed_source(self.agent_id, self.connection_id, remote, check_imap=False)
+        elif remote.startswith("attachment/"):
             message_ref, part_id, _filename = parse_attachment_locator(remote)
             if self.browser:
                 attachment = await read_attachment(self.agent_id, message_ref, part_id, max_bytes=max_bytes)
@@ -194,6 +203,9 @@ class MailAttachmentTransport:
         if self.accounts and not path:
             return await self._account_root()
         del include_sha256
+        if path.startswith("indexed/") and self.connection_id is not None:
+            _, _, entry = await indexed_source(self.agent_id, self.connection_id, path, check_imap=True)
+            return entry
         if path.startswith("attachment/"):
             _ref, _part, filename = parse_attachment_locator(path)
             if self.browser:

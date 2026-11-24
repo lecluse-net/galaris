@@ -7,10 +7,12 @@ from core.document import OFFICE_EXTENSIONS
 from .resource_contracts import ResourceContext, ResourceDescriptor, ResourceSearchHit, ResourceSearchResult
 
 
+DOCUMENTARY_EXTENSIONS = OFFICE_EXTENSIONS | {'.pdf', '.md', '.html', '.htm', '.epub', '.txt', '.csv', '.tsv', '.json', '.xml'}
+
+
 def supports_document_search(info: ResourceDescriptor) -> bool:
     return (info.media_type.split(';', 1)[0] == 'application/pdf' or info.media_type.startswith('text/')
-            or Path(info.name).suffix.lower() in OFFICE_EXTENSIONS | {
-                '.pdf', '.md', '.html', '.htm', '.epub', '.txt', '.csv', '.tsv', '.json', '.xml'})
+            or Path(info.name).suffix.lower() in DOCUMENTARY_EXTENSIONS)
 
 
 async def search_document(

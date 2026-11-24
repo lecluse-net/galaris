@@ -16,10 +16,12 @@ def management_scope_parameter(scopes: tuple[str, ...], *, default: str = "usage
                         for scope in scopes]}
 
 
-def file_indexing_modes(code: str, config: dict[str, Any] | None) -> list[FileIndexingMode]:
+def file_indexing_modes(code: str, config: dict[str, Any] | None, *, has_mail: bool = False) -> list[FileIndexingMode]:
     from app.file_share import available_bridges
 
-    if not config or code == "mail" or config.get("service") == "mail":
+    if has_mail and (not config or config.get("service") == "mail"):
+        return ["excluded", "known_uris"]
+    if not config or config.get("service") == "mail":
         return ["excluded"]
     if code == "console" and config.get("service") == "console":
         return ["excluded", "known_uris"]
@@ -31,7 +33,7 @@ def file_indexing_modes(code: str, config: dict[str, Any] | None) -> list[FileIn
 
 def with_standard_params(
     schema: dict[str, Any], *, code: str, file_share_config: dict[str, Any] | None,
-    messenger_config: dict[str, Any] | None = None,
+    messenger_config: dict[str, Any] | None = None, has_mail: bool = False,
 ) -> dict[str, Any]:
     """Supply server-owned indexing and peer communication parameters."""
     params = dict(schema.get("params") or {})
@@ -45,7 +47,7 @@ def with_standard_params(
         }
     elif params.get(MANAGEMENT_SCOPE_PARAM, {}).get("description") == "services.connectionParamDescriptions.peerCommunication":
         params.pop(MANAGEMENT_SCOPE_PARAM)
-    modes = file_indexing_modes(code, file_share_config)
+    modes = file_indexing_modes(code, file_share_config, has_mail=has_mail)
     if len(modes) > 1:
         params[FILE_INDEXING_PARAM] = {
             "type": "string", "required": False,

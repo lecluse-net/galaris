@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from uuid import UUID
+from loguru import logger
 
 from app.agent import (
     register_agent_profile_observer,
@@ -24,6 +25,7 @@ from .context import (
     memory_policy_instructions,
 )
 from .service import projected_topic_item_id
+from .personal_records import personal_record_kind
 
 
 _MAINTENANCE_THRESHOLD_PARAMS = frozenset(
@@ -70,6 +72,7 @@ def _contact_terms(request: AgentContextRequest) -> tuple[str, ...]:
 async def memory_context_provider(
     request: AgentContextRequest,
 ) -> AgentContextContribution:
+    personal_scope = {"personal_record_scope": True} if personal_record_kind(request.objective) is not None else {}
     if not request.include_historical_context:
         return AgentContextContribution(
             metadata={
@@ -77,6 +80,7 @@ async def memory_context_provider(
                 "memory_context_count": 0,
                 "memory_context_truncated": False,
                 "memory_context_skipped": "standalone_objective",
+                **personal_scope,
             }
         )
     if not runtime_settings.MEMORY_CONTEXT_ENABLED:
@@ -85,10 +89,11 @@ async def memory_context_provider(
                 "memory_context_enabled": False,
                 "memory_context_count": 0,
                 "memory_context_truncated": False,
+                **personal_scope,
             }
         )
     query = memory_context_query(
-        label=request.label,
+        label="" if personal_scope else request.label,
         objective=request.objective,
         conversation_history=request.available_history,
         # The exact contact UUID is the identity boundary. Repeating display names,
@@ -104,6 +109,8 @@ async def memory_context_provider(
         objective=request.objective,
         conversation_history=request.available_history,
     )
+    if personal_record_kind(query) is not None:
+        personal_scope = {"personal_record_scope": True}
     human_messenger = bool(request.messenger_connection_id) and not bool(
         request.task_data.get("sender_is_ai")
     )
@@ -116,27 +123,27 @@ async def memory_context_provider(
         if human_messenger
         else await projected_topic_item_id(request.topic_id)
     )
-    brief = await build_memory_brief(
-        agent_id=request.agent.id,
-        query=query,
-        semantic_query=semantic_query,
-        task_id=request.task_id,
-        topic_item_id=topic_item_id,
-        contact_item_id=request.contact_memory_item_id,
-        # Non-strict contact recall means "this contact plus unscoped". It
-        # still excludes every memory owned by another contact. Strict mode
-        # used to discard all of the agent's global memory in conversation
-        # rounds, which made the same ranked search appear almost empty.
-        strict_contact_scope=False,
-        include_relevant=(
-            not human_messenger or request.contact_memory_item_id is not None
-        ),
-        # Outcome learning now produces dedicated app.skill records. Historical
-        # Memory experience nodes remain readable for compatibility but are no
-        # longer injected automatically.
-        include_experience=False,
-        stage=request.stage,
-    )
+    try:
+        brief = await build_memory_brief(
+            agent_id=request.agent.id,
+            query=query,
+            semantic_query=semantic_query,
+            task_id=request.task_id,
+            topic_item_id=topic_item_id,
+            contact_item_id=request.contact_memory_item_id,
+            # Ordinary recall includes this contact and unscoped memories.
+            strict_contact_scope=False,
+            include_relevant=not human_messenger or request.contact_memory_item_id is not None,
+            # Outcome learning now produces dedicated app.skill records.
+            include_experience=False,
+            stage=request.stage,
+        )
+    except Exception as exc:
+        if not personal_scope:
+            raise
+        logger.warning("Personal record context unavailable: {}", type(exc).__name__)
+        return AgentContextContribution(system_instructions=memory_policy_instructions(),
+            metadata={**personal_scope, "long_term_memory_error": type(exc).__name__})
     if not brief.rendered:
         return AgentContextContribution(
             system_instructions=memory_policy_instructions(),
@@ -145,24 +152,28 @@ async def memory_context_provider(
                 "memory_context_query": query,
                 "memory_context_count": 0,
                 "memory_context_truncated": False,
+                **personal_scope,
             },
         )
     candidates = tuple(
         AgentContextCandidate(
-            key=f"memory:{item.memory_id}",
-            kind="memory",
-            reference=item.memory_id,
+            key=f"resource:{item.memory_id}" if item.resource_uri else f"memory:{item.memory_id}",
+            kind="resource" if item.resource_uri else "memory",
+            reference=item.resource_uri or item.memory_id,
             title=item.title,
             excerpt=item.excerpt,
             revision=item.revision,
             base_score=max(0.0, min(1.0, item.score)),
             provenance=item.source_refs,
             metadata={
+                "recall_position": position,
                 "node_kind": item.node_kind,
-                "uri": f"{'document' if item.node_kind == 'document' else 'memory'}://{item.memory_id}",
+                "uri": item.resource_uri or f"{'document' if item.node_kind == 'document' else 'memory'}://{item.memory_id}",
+                **({"subject_contact_id": str(request.contact_memory_item_id)}
+                   if item.contact_match and item.resource_uri and request.contact_memory_item_id is not None else {}),
             },
         )
-        for item in brief.items
+        for position, item in enumerate(brief.items)
     )
     return AgentContextContribution(
         system_instructions=memory_policy_instructions(),
@@ -180,10 +191,11 @@ async def memory_context_provider(
         metadata={
             "memory_context_enabled": True,
             "memory_context_query": query,
-            "memory_context_ids": [item.memory_id for item in brief.items],
+            "memory_context_ids": [item.memory_id for item in brief.items if not item.resource_uri],
             "memory_context_count": len(brief.items),
             "memory_context_truncated": brief.truncated,
             "memory_context_rendered": brief.rendered,
+            **personal_scope,
         },
     )
 

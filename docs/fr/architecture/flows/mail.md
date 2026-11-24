@@ -90,6 +90,17 @@ revérifie connexion, configuration et identité. L'accord de traitement ne vaut
 La notification privée, Permissions et l'onglet Réception du Journal des mails partagent
 les décisions communes. Voir [0221](../../../../project/decisions/0221-mail-inbound-consent-and-journal.md).
 
+## Indexation des messages autorisés
+
+La première page du corps lue après autorisation alimente le catalogue privé de l'agent,
+avec les références des pièces jointes. Dream indexe le texte disponible (jusqu'à
+50 000 caractères) sans LLM génératif. Les noms des pièces sont recherchables dès leur
+projection. L'analyse de leur contenu suit les réglages média de Dream. Chaque projection
+référence le Service et le compte IMAP exacts, le message et sa génération d'autorisation.
+La recherche vérifie le droit courant et l'existence du message dans `INBOX`.
+L'option **Indexation des fichiers** désactive ce traitement par connexion. Il n'y a pas de
+parcours rétroactif de la boîte.
+
 Le schéma MCP de `mail_search` expose `has_attachments=true` pour exiger une pièce jointe,
 et l'omission ou `null` pour ne pas filtrer. `false` est refusé avant IMAP : le bridge
 n'annonce pas une recherche sans pièces jointes qu'il ne sait pas réaliser de façon bornée.

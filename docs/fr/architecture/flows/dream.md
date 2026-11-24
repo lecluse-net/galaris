@@ -27,6 +27,15 @@ mécanismes ordonnés, un par un
 
 ## Cycle
 
+`resource.index_current_content` extrait et indexe les contenus courants détectés par
+le catalogue, les Documents, le stockage natif et les tâches métier terminées.
+Les e-mails admis utilisent le même mécanisme à partir des URI privées du compte.
+Les analyses compatibles sont réutilisées avant toute lecture de contenu ou appel
+d'embedding supplémentaire. La recherche par mots est disponible dès publication.
+Une étape Dream distincte calcule ou renouvelle les vecteurs à partir des passages
+déjà extraits. Le reçu contient l'identité et l'empreinte de la source. Une source
+courante restaurée peut être réindexée en rejouant le reçu.
+
 `memory.file_thumbnails` prépare les aperçus des fichiers du catalogue identifiés par
 SHA-256 et des pièces jointes documentaires actives : images, vidéos, PDF, Office,
 HTML, textes et modèles 3D autonomes (GLB, glTF, OBJ, STL, PLY). Aucun LLM n'est appelé.

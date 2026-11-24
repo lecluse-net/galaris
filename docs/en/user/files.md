@@ -2,6 +2,41 @@
 
 # Browse an agent’s files
 
+## Search indexed resources
+
+An agent searching `memory://` can find a personal memory or a passage from a
+Document, a documentary file, an admitted email or a completed business Task.
+Each result follows the source's current access rules. Email follows the mailbox
+permissions and the message's processing admission. Readers of a shared Document
+can use the same analysis.
+Ranking compares memories and resources using exact references, the requested type
+of document and passages that answer the query.
+
+A question such as “When is invoice FCT-714 due?” finds the due date passage even
+when the reference is in the title or another passage of the source. Searches for
+amounts and due dates verify the exact reference and report insufficient evidence
+when accessible resources contain no matching passage.
+
+“Last week” filters the search from Monday through Sunday in Galaris’s configured
+time zone. Results include the source or event date and the search period. An
+explicit title date, an email date, or a memory’s complete calendar anchor can
+provide the date. A title such as “Annual review 2021” identifies the period
+covered. Adding or reindexing it in 2026 leaves it available as a historical source.
+“Recent” covers the last 30 days, including today.
+
+Each text turn that prepares a response with Memory ranks memories and shared
+index excerpts together for the eight default recall slots. General documents remain available when
+the interlocutor is unknown. For “my latest blood test” or “my invoice,” search
+requires an explicit link between the subject of the document and the current
+contact. A name or the recipient role alone provides insufficient evidence.
+The search enforces read permissions before selecting excerpts.
+
+For an indexed source, `file_info` includes keywords, a summary and a Topic when
+available. A Document's edited summary takes priority. A quote, invoice and delivery
+note can appear as related pieces if the sources provide the same order reference
+and issuer, and the agent can read each piece. Exact `file_search` queries can cite
+passages from the current content.
+
 ## Agent photos
 
 An agent can read another agent's photo when its profile is accessible in the shared directory.
@@ -107,6 +142,11 @@ managed-agent scope. It does not mark messages as read, create a Task or authori
 processing. Users can browse Sent, Archive and Trash folders. HTML emails appear as text,
 without executing their content or loading remote images. Mail search and IMAP mutations
 are not offered in this browser.
+
+`INBOX` messages that the agent is authorized to process become searchable in **Memory** after
+Dream indexes them. Results remain linked to the original Mail account. Attachment names are
+searchable as soon as the catalogue records them. Dream media settings control attachment
+content analysis.
 
 The Mail **Allowed mail folders** (`allowed_mailboxes`) parameter also applies to browsing
 and downloads: only listed folders can be accessed. A parent may appear to reach an allowed

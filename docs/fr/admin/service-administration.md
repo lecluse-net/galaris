@@ -353,7 +353,9 @@ Les réglages existants sont repris lors de la synchronisation et restent conser
 
 Console et AFFiNE proposent actuellement uniquement les fichiers déjà connus ;
 Nextcloud propose aussi la découverte et l'indexation de tous les contenus disponibles.
-Mail reste exclu. Les pièces jointes Messenger, y compris celles d'un Service mixte,
+Mail indexe les messages `INBOX` dont le traitement est autorisé et les pièces jointes annoncées,
+en mode **Uniquement les fichiers déjà connus**. L'historique de la boîte n'est pas parcouru.
+Les pièces jointes Messenger, y compris celles d'un Service mixte,
 rejoignent le catalogue lors de leur réception ou de l'import d'historique. Les listes créent une fiche pour le répertoire consulté et chaque fichier ou
 répertoire retourné ; les recherches créent des fiches pour leurs résultats. Ces observations
 sont journalisées avec les URI canoniques, puis projetées immédiatement en fiches

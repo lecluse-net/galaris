@@ -73,7 +73,7 @@ def connection_schema_for_service(record: ServiceModel) -> Dict[str, Any]:
         params[name] = {**params[name], "type": "password"}
     return with_standard_params(schema, code=record.code,
                                 file_share_config=record.file_share_config,
-                                messenger_config=record.messenger_config)
+                                messenger_config=record.messenger_config, has_mail=record.mail_config is not None)
 
 
 def _connection_param_definitions(record: ServiceModel) -> Dict[str, Dict[str, Any]]:
@@ -436,7 +436,8 @@ async def create_service(data: ServiceCreate, *, commit: bool = True) -> Service
     connection_schema = with_standard_params(with_protocol_params(data.connection_schema.model_dump(),
         mail=data.mail_config, calendar=data.calendar_config), code=data.code,
         file_share_config=data.file_share_config.model_dump() if data.file_share_config else None,
-        messenger_config=data.messenger_config.model_dump() if data.messenger_config else None)
+        messenger_config=data.messenger_config.model_dump() if data.messenger_config else None,
+        has_mail=data.mail_config is not None)
     await _validate_connection_schema(connection_schema)
     _validate_rest_config(data.rest_config, connection_schema)
     messenger_config = (

@@ -1920,6 +1920,7 @@
           "back/app/dream/mechanisms/file_thumbnails.py",
           "back/app/dream/mechanisms/memory_maintenance.py",
           "back/app/dream/mechanisms/process_memory.py",
+          "back/app/dream/mechanisms/resource_index.py",
           "back/app/dream/mechanisms/resource_summaries.py",
           "back/app/dream/mechanisms/resource_topic_classification.py",
           "back/app/dream/mechanisms/sequential_topic_classification.py",
@@ -2064,6 +2065,8 @@
           "back/app/file_share/document_import.py",
           "back/app/file_share/managed_files.py",
           "back/app/file_share/mcp.py",
+          "back/app/file_share/resource_index.py",
+          "back/app/file_share/resource_index_query.py",
           "back/app/file_share/resource_service.py"
         ],
         "source": "app.file_share",
@@ -2102,7 +2105,11 @@
           "back/app/file_share/indexing.py",
           "back/app/file_share/managed_files.py",
           "back/app/file_share/models.py",
+          "back/app/file_share/operation_memos.py",
+          "back/app/file_share/resource_contracts.py",
           "back/app/file_share/resource_description.py",
+          "back/app/file_share/resource_index_content.py",
+          "back/app/file_share/resource_index_query.py",
           "back/app/file_share/resource_observation.py",
           "back/app/file_share/resource_service.py"
         ],
@@ -2158,7 +2165,9 @@
       {
         "files": [
           "back/app/file_share/galaris_provider.py",
-          "back/app/file_share/messenger_transport.py"
+          "back/app/file_share/messenger_transport.py",
+          "back/app/file_share/resource_index.py",
+          "back/app/file_share/resource_index_query.py"
         ],
         "source": "app.file_share",
         "target": "app.task"
@@ -2174,6 +2183,7 @@
         "files": [
           "back/app/file_share/browser_policy.py",
           "back/app/file_share/browser_router.py",
+          "back/app/file_share/catalogue.py",
           "back/app/file_share/document_import.py",
           "back/app/file_share/facade.py",
           "back/app/file_share/media_access.py",
@@ -2200,6 +2210,8 @@
           "back/app/file_share/models.py",
           "back/app/file_share/operation_memos.py",
           "back/app/file_share/resource_description.py",
+          "back/app/file_share/resource_index.py",
+          "back/app/file_share/resource_index_query.py",
           "back/app/file_share/resource_observation.py",
           "back/app/file_share/resource_service.py",
           "back/app/file_share/router.py",
@@ -2221,6 +2233,7 @@
           "back/app/file_share/document_retrieval.py",
           "back/app/file_share/document_search.py",
           "back/app/file_share/mcp.py",
+          "back/app/file_share/resource_index.py",
           "back/app/file_share/thumbnail_service.py"
         ],
         "source": "app.file_share",
@@ -2241,6 +2254,7 @@
           "back/app/file_share/indexing.py",
           "back/app/file_share/managed_files.py",
           "back/app/file_share/resource_delivery.py",
+          "back/app/file_share/resource_index_query.py",
           "back/app/file_share/resource_service.py"
         ],
         "source": "app.file_share",
@@ -2280,6 +2294,8 @@
           "back/app/file_share/document_rag_cache.py",
           "back/app/file_share/managed_files.py",
           "back/app/file_share/operation_memos.py",
+          "back/app/file_share/resource_index.py",
+          "back/app/file_share/resource_index_query.py",
           "back/app/file_share/resource_service.py",
           "back/app/file_share/router.py"
         ],
@@ -2289,6 +2305,7 @@
       {
         "files": [
           "back/app/file_share/browser_router.py",
+          "back/app/file_share/catalogue.py",
           "back/app/file_share/document_folders.py",
           "back/app/file_share/document_import.py",
           "back/app/file_share/facade.py",
@@ -2301,6 +2318,7 @@
         "files": [
           "back/app/file_share/browser_router.py",
           "back/app/file_share/document_facade.py",
+          "back/app/file_share/enrichment.py",
           "back/app/file_share/fingerprinting.py",
           "back/app/file_share/indexing.py",
           "back/app/file_share/managed_files.py",
@@ -2309,6 +2327,8 @@
           "back/app/file_share/messenger_transport.py",
           "back/app/file_share/operation_memos.py",
           "back/app/file_share/process_provider.py",
+          "back/app/file_share/resource_index.py",
+          "back/app/file_share/resource_index_query.py",
           "back/app/file_share/resource_service.py",
           "back/app/file_share/resource_uri.py",
           "back/app/file_share/router.py",
@@ -3518,6 +3538,7 @@
           "back/app/memory/contact_policy.py",
           "back/app/memory/context.py",
           "back/app/memory/deduplication.py",
+          "back/app/memory/facade.py",
           "back/app/memory/maintenance.py",
           "back/app/memory/retrieval.py",
           "back/app/memory/router.py",
@@ -3583,9 +3604,11 @@
           "back/app/memory/passages.py",
           "back/app/memory/router.py",
           "back/app/memory/service.py",
+          "back/app/memory/source_chronology.py",
           "back/app/memory/source_projection.py",
           "back/app/memory/storage_reconciliation.py",
-          "back/app/memory/temporal.py"
+          "back/app/memory/temporal.py",
+          "back/app/memory/topic_maintenance.py"
         ],
         "source": "app.memory",
         "target": "core.util"
@@ -4892,6 +4915,7 @@
       {
         "files": [
           "back/app/topic/models.py",
+          "back/app/topic/resource_index.py",
           "back/app/topic/router.py",
           "back/app/topic/runtime_detection.py",
           "back/app/topic/service.py"
@@ -5746,7 +5770,8 @@
           "back/bridge/mail/dbadmin.py",
           "back/bridge/mail/inbound.py",
           "back/bridge/mail/messenger.py",
-          "back/bridge/mail/router.py"
+          "back/bridge/mail/router.py",
+          "back/bridge/mail/search_index.py"
         ],
         "source": "bridge.mail",
         "target": "app.connection"
@@ -5762,6 +5787,7 @@
         "files": [
           "back/bridge/mail/__init__.py",
           "back/bridge/mail/file_transport.py",
+          "back/bridge/mail/search_index.py",
           "back/bridge/mail/service.py"
         ],
         "source": "bridge.mail",
@@ -5789,6 +5815,7 @@
           "back/bridge/mail/inbound.py",
           "back/bridge/mail/mcp.py",
           "back/bridge/mail/router.py",
+          "back/bridge/mail/search_index.py",
           "back/bridge/mail/service.py"
         ],
         "source": "bridge.mail",
@@ -5812,6 +5839,7 @@
           "back/bridge/mail/messenger.py",
           "back/bridge/mail/models.py",
           "back/bridge/mail/router.py",
+          "back/bridge/mail/search_index.py",
           "back/bridge/mail/service.py"
         ],
         "source": "bridge.mail",
@@ -5838,6 +5866,7 @@
           "back/bridge/mail/browser_service.py",
           "back/bridge/mail/connection_service.py",
           "back/bridge/mail/router.py",
+          "back/bridge/mail/search_index.py",
           "back/bridge/mail/service.py"
         ],
         "source": "bridge.mail",
@@ -9023,7 +9052,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "append_file",
-        "line": 493,
+        "line": 495,
         "module": "app.file_share",
         "name": "file_append",
         "namespace": "file_sharing"
@@ -9031,7 +9060,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "copy_file",
-        "line": 577,
+        "line": 579,
         "module": "app.file_share",
         "name": "file_copy",
         "namespace": "file_sharing"
@@ -9039,7 +9068,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "create_file",
-        "line": 407,
+        "line": 409,
         "module": "app.file_share",
         "name": "file_create",
         "namespace": "file_sharing"
@@ -9047,7 +9076,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "delete_file",
-        "line": 659,
+        "line": 661,
         "module": "app.file_share",
         "name": "file_delete",
         "namespace": "file_sharing"
@@ -9055,7 +9084,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "edit_file",
-        "line": 528,
+        "line": 530,
         "module": "app.file_share",
         "name": "file_edit",
         "namespace": "file_sharing"
@@ -9079,7 +9108,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "move_file",
-        "line": 629,
+        "line": 631,
         "module": "app.file_share",
         "name": "file_move",
         "namespace": "file_sharing"
@@ -9087,7 +9116,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "read_file",
-        "line": 299,
+        "line": 301,
         "module": "app.file_share",
         "name": "file_read",
         "namespace": "file_sharing"
@@ -9095,7 +9124,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "rename_file",
-        "line": 608,
+        "line": 610,
         "module": "app.file_share",
         "name": "file_rename",
         "namespace": "file_sharing"
@@ -9111,7 +9140,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "search_files",
-        "line": 233,
+        "line": 235,
         "module": "app.file_share",
         "name": "file_search",
         "namespace": "file_sharing"
@@ -9119,7 +9148,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "file_to_pdf",
-        "line": 332,
+        "line": 334,
         "module": "app.file_share",
         "name": "file_to_pdf",
         "namespace": "file_sharing"
@@ -9127,7 +9156,7 @@
       {
         "file": "back/app/file_share/mcp.py",
         "handler": "write_file",
-        "line": 458,
+        "line": 460,
         "module": "app.file_share",
         "name": "file_write",
         "namespace": "file_sharing"
@@ -11708,7 +11737,7 @@
           "memory_urls.id"
         ],
         "history_mixin": false,
-        "line": 40,
+        "line": 116,
         "module": "app.file_share",
         "table": "file_catalog_entries"
       },
@@ -11731,7 +11760,7 @@
           "connections.id"
         ],
         "history_mixin": false,
-        "line": 86,
+        "line": 162,
         "module": "app.file_share",
         "table": "file_index_runs"
       },
@@ -11743,7 +11772,7 @@
           "connections.id"
         ],
         "history_mixin": false,
-        "line": 113,
+        "line": 189,
         "module": "app.file_share",
         "table": "file_observation_repairs"
       },
@@ -11754,7 +11783,7 @@
           "agents.id"
         ],
         "history_mixin": false,
-        "line": 28,
+        "line": 104,
         "module": "app.file_share",
         "table": "file_operation_memos"
       },
@@ -11766,7 +11795,7 @@
           "files.id"
         ],
         "history_mixin": false,
-        "line": 18,
+        "line": 94,
         "module": "app.file_share",
         "table": "file_owners"
       },
@@ -12791,6 +12820,51 @@
         "line": 225,
         "module": "app.process",
         "table": "process_start_jobs"
+      },
+      {
+        "class_name": "ResourceIndexContent",
+        "file": "back/app/file_share/models.py",
+        "foreign_keys": [
+          "topics.id"
+        ],
+        "history_mixin": false,
+        "line": 19,
+        "module": "app.file_share",
+        "table": "resource_index_contents"
+      },
+      {
+        "class_name": "ResourceIndexLink",
+        "file": "back/app/file_share/models.py",
+        "foreign_keys": [
+          "resource_index_sources.id"
+        ],
+        "history_mixin": false,
+        "line": 75,
+        "module": "app.file_share",
+        "table": "resource_index_links"
+      },
+      {
+        "class_name": "ResourceIndexPassage",
+        "file": "back/app/file_share/models.py",
+        "foreign_keys": [
+          "resource_index_contents.id"
+        ],
+        "history_mixin": false,
+        "line": 55,
+        "module": "app.file_share",
+        "table": "resource_index_passages"
+      },
+      {
+        "class_name": "ResourceIndexSource",
+        "file": "back/app/file_share/models.py",
+        "foreign_keys": [
+          "resource_index_contents.id",
+          "topics.id"
+        ],
+        "history_mixin": false,
+        "line": 39,
+        "module": "app.file_share",
+        "table": "resource_index_sources"
       },
       {
         "class_name": "RolePrivilege",

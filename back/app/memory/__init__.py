@@ -18,6 +18,18 @@ from .contact_coordinates import ContactCoordinates, ContactPhoneNumber, Contact
 
 from .catalogue_projection import project_catalogue_entry, link_catalogue_entries, catalogue_projection_write, detach_catalogue_parent_links
 from .catalogue_projection import identify_catalogue_file as identify_catalogue_file, update_catalogue_file_locations as update_catalogue_file_locations, catalogue_file_summary as catalogue_file_summary
+from .indexed_resources import register_indexed_resources as register_indexed_resources
+from .federated_ranking import FederatedEvidence, federated_candidate_limit, rank_federated
+from .lexical_normalization import folded_sql as folded_lexical_sql
+from .passages import lexical_excerpt
+from .reference_questions import ReferenceQuestion, parse_reference_question
+from .personal_records import PersonalRecordKind, personal_record_for_turn, personal_record_kind
+from .source_chronology import (
+    SourceChronology, SourceTimeQuery, chronology_from_title, local_source_date,
+    mail_source_date_sql, parse_source_time_query, title_dates_sql,
+)
+from .relevance import fold as fold_lexical
+from .relevance import resource_query_terms as resource_query_terms
 
 
 
@@ -53,6 +65,7 @@ from .contact_directory import (
     lock_messenger_contact,
     create_address_book_contact,
     has_mail_contact,
+    indexed_contact_addresses, indexed_contact_identities,
     create_mail_contact,
     split_messenger_contact,
     forget_messenger_contact,
@@ -70,7 +83,7 @@ from core.storage import get_storage, register_storage
 from .bootstrap import register_memory
 from .acquisition_service import acquire_memory, validate_atomic_fact_references, owned_contact_scope
 from .deduplication import find_similar_memory_candidates
-from .facade import search_memory, search_memory_detailed
+from .facade import resolve_recall_scope as resolve_recall_scope, search_memory, search_memory_detailed
 from .topic_ranking import rank_topic_projections
 from .topic_maintenance import (
     apply_topic_maintenance_plan,
@@ -94,6 +107,7 @@ from .service import (
     list_topics_linked_documents,
     move_topic_memory_links,
     move_topic_contact_memory_scopes,
+    record_llm_retrieval,
     purge_source_managed_item,
     upsert_source_managed_item,
 )
@@ -103,6 +117,7 @@ from .schemas import (
     MemoryAcquisitionCreate,
     MemoryAcquisitionResult,
     MemoryRecallRequest,
+    MemoryGraphEdge as MemoryGraphEdge,
     MemoryRecallResult,
     MemorySearchHit,
     MemorySimilarityCandidate,
@@ -112,6 +127,25 @@ from .file_facade import describe_file_resource, read_file_resource_text, search
 
 
 __all__ = [
+    "FederatedEvidence",
+    "ReferenceQuestion",
+    "PersonalRecordKind",
+    "personal_record_for_turn",
+    "personal_record_kind",
+    "SourceChronology",
+    "SourceTimeQuery",
+    "chronology_from_title",
+    "local_source_date",
+    "mail_source_date_sql",
+    "parse_source_time_query",
+    "title_dates_sql",
+    "federated_candidate_limit",
+    "lexical_excerpt",
+    "parse_reference_question",
+    "rank_federated",
+    "record_llm_retrieval",
+    "fold_lexical",
+    "folded_lexical_sql",
     "forget_resource_memories",
     "project_catalogue_entry", "link_catalogue_entries", "catalogue_projection_write", "register_source_access",
     "detach_catalogue_parent_links",
@@ -185,6 +219,8 @@ __all__ = [
     "ContactPhoneNumber",
     "ContactPostalAddress",
     "has_mail_contact",
+    "indexed_contact_identities",
+    "indexed_contact_addresses",
     "split_messenger_contact",
     "register_storage",
     "register_memory",

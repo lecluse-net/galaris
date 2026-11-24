@@ -13,12 +13,15 @@ import tempfile
 from collections.abc import AsyncGenerator
 from contextlib import aclosing
 from pathlib import Path, PurePosixPath
-from typing import Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 from urllib.parse import quote, unquote, urlsplit
 from uuid import UUID
 
 from fastapi.encoders import jsonable_encoder
 from core.util import complete_io
+
+if TYPE_CHECKING:
+    from app.memory import SourceChronology
 
 from .file_share_service import (
     describe_targets,
@@ -2781,7 +2784,9 @@ async def resource_search(
     cursor: str | None = None,
 ) -> ResourceSearchResult:
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri, allow_empty=True))
+    from app.memory import personal_record_for_turn
     from .document_folders import is_document_folder, folder_list
+    subject_kind = personal_record_for_turn(query, agent_id=ctx.agent_id, turn=ctx.conversation_turn)
     if is_document_folder(reference):
         if mode != "name":
             raise NotImplementedError("Document folder collections support name search")
@@ -2790,6 +2795,22 @@ async def resource_search(
         return ResourceSearchResult(uri=listing.uri, query=query, mode=mode,
             hits=[ResourceSearchHit(resource=entry) for entry in listing.entries],
             truncated=listing.truncated, next_cursor=listing.next_cursor)
+    if ((mode != "name" or subject_kind is not None) and reference.locator and not reference.is_collection and not cursor
+            and reference.scheme not in {"data", "memory", "https", "http"} and query.strip()):
+        from app.memory import resolve_recall_scope
+        from .resource_index_query import search_resource_index
+
+        personal = subject_kind is not None
+        _, contact = (await resolve_recall_scope(agent_id=ctx.agent_id, task_id=ctx.task_id,
+            conversation_turn=ctx.conversation_turn)) if personal else (None, None)
+        indexed = await search_resource_index(ctx, query, mode="semantic" if mode == "semantic" else "text",
+            uri=str(reference), limit=1,
+            contact_item_id=contact, strict_contact_scope=personal, subject_kind=subject_kind)
+        if indexed is not None:
+            return indexed
+        if personal:
+            return ResourceSearchResult(uri=str(reference), query=query, mode=mode,
+                                        relevance_status="no_sufficient_evidence", evidence_status="no_evidence")
     if provider := _resource_provider(reference):
         return await provider.search(ctx, reference, query, mode=mode, recursive=recursive, max_results=max_results, cursor=cursor)
     normalized_query = query.strip()
@@ -2830,21 +2851,32 @@ async def resource_search(
         reference.scheme in {"memory", "document"}
         and _document_attachment_ids(reference) is None
     ):
+        from app.memory import parse_source_time_query
+
         if reference.scheme == "document":
             from app.document.facade import search_file_resources
         else:
             from app.memory import search_file_resources
 
-        data = await search_file_resources(
-            agent_id=ctx.agent_id,
-            task_id=ctx.task_id,
-            conversation_turn=ctx.conversation_turn,
-            expected_kind=cast(Literal["memory", "document"], reference.scheme),
-            query=normalized_query,
-            mode=mode,
-            limit=(max_results if reference.scheme == "memory" else limit),
-            offset=max(0, int(cursor or "0")),
-        )
+        combined = (reference.scheme == "memory" and not reference.locator
+                    and (mode != "name" or parse_source_time_query(normalized_query) is not None
+                         or subject_kind is not None)
+                    and (not cursor or cursor.startswith("index:")))
+        offset = max(0, int((cursor or "0").removeprefix("index:")))
+        recall_scope: tuple[UUID | None, UUID | None] | None = None
+        if combined:
+            from app.memory import federated_candidate_limit, resolve_recall_scope, search_file_resources as search_memories
+
+            recall_scope = await resolve_recall_scope(agent_id=ctx.agent_id, task_id=ctx.task_id,
+                                                       conversation_turn=ctx.conversation_turn)
+            data = await search_memories(agent_id=ctx.agent_id, task_id=ctx.task_id, conversation_turn=ctx.conversation_turn,
+                expected_kind="memory", query=normalized_query, mode=mode,
+                limit=federated_candidate_limit(offset, limit), offset=0, record_access=False, recall_scope=recall_scope,
+                require_personal_subject=subject_kind is not None)
+        else:
+            data = await search_file_resources(agent_id=ctx.agent_id, task_id=ctx.task_id, conversation_turn=ctx.conversation_turn,
+                expected_kind=cast(Literal["memory", "document"], reference.scheme), query=normalized_query, mode=mode,
+                limit=max_results if reference.scheme == "memory" else limit, offset=offset)
         hits = [
             ResourceSearchHit(
                 resource=ResourceDescriptor(
@@ -2864,6 +2896,7 @@ async def resource_search(
                 ),
                 score=_as_float(item["score"]),
                 excerpt=str(item["excerpt"]),
+                chronology=cast("SourceChronology | None", item.get("chronology")),
                 retrieval_sources=cast(list[str], item.get("retrieval_sources", [])),
                 source_refs=cast(list[str], item.get("source_refs", [])),
                 conflicts=cast(list[dict[str, Any]], item.get("conflicts", [])),
@@ -2871,7 +2904,7 @@ async def resource_search(
             )
             for item in cast(list[dict[str, object]], data["hits"])
         ]
-        return ResourceSearchResult(
+        result = ResourceSearchResult(
             uri=str(reference),
             query=normalized_query,
             mode=mode,
@@ -2889,6 +2922,18 @@ async def resource_search(
                 str(data["next_offset"]) if data["next_offset"] is not None else None
             ),
         )
+        if recall_scope is not None:
+            from app.memory import record_llm_retrieval
+            from .resource_index_query import merge_memory_resource_hits
+
+            fused = await merge_memory_resource_hits(ctx, result, offset=offset, limit=limit,
+                contact_item_id=recall_scope[1], subject_kind=subject_kind)
+            by_uri = {str(item["uri"]): UUID(str(item["id"])) for item in cast(list[dict[str, object]], data["hits"])}
+            await record_llm_retrieval(agent_id=ctx.agent_id, task_id=ctx.task_id, query=normalized_query,
+                item_scores=[(identity, hit.score or 0.0) for hit in fused.hits
+                    if "resource-index" not in hit.retrieval_sources and (identity := by_uri.get(hit.resource.uri)) is not None])
+            return fused
+        return result
     if mode == "semantic":
         raise NotImplementedError(
             f"{reference.scheme}:// does not expose semantic file search."

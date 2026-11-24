@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-import gc
 from dataclasses import replace
 from pathlib import Path
+from threading import Event, get_ident
 
 import pytest
 from sqlalchemy import func, select
@@ -122,30 +122,23 @@ async def test_topic_maintenance_suggests_without_mutating_canonical_membership(
         "resolve_embedding_model",
         fake_model,
     )
-    # Collect cycles from fixture preparation and preceding scenarios before
-    # timing this operation; full-suite GC is not topic-planning CPU work.
-    gc.collect()
-    # A populated index must leave the loop available to concurrent HTTP/audio.
-    loop = asyncio.get_running_loop()
-    ticks: list[float] = []
-    running = True
+    if dimensions == 768:
+        loop = asyncio.get_running_loop()
+        loop_thread = get_ident()
+        loop_served_request = Event()
+        submit = topic_maintenance.ProcessPoolExecutor.submit
 
-    async def heartbeat() -> None:
-        while running:
-            ticks.append(loop.time())
-            await asyncio.sleep(0.01)
+        def submit_while_serving_requests(pool, function, *args, **kwargs):
+            assert get_ident() != loop_thread, "Worker startup must run off the request loop"
+            loop.call_soon_threadsafe(loop_served_request.set)
+            assert loop_served_request.wait(timeout=5), "The request loop must be available during worker startup"
+            return submit(pool, function, *args, **kwargs)
 
-    heartbeat_task = asyncio.create_task(heartbeat())
+        monkeypatch.setattr(topic_maintenance.ProcessPoolExecutor, "submit", submit_while_serving_requests)
     try:
         plan = await topic_maintenance.build_topic_maintenance_plan()
     finally:
-        ticks.append(loop.time())
-        running = False
-        await heartbeat_task
         topic_maintenance.stop_topic_maintenance()
-    if dimensions == 768:
-        assert len(ticks) > 2
-        assert max(later - earlier for earlier, later in zip(ticks, ticks[1:])) < 0.25
     assert plan is not None
     relation_types = {item.relation_type for item in plan.suggestions}
     assert relation_types == {

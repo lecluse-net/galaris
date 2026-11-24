@@ -1,6 +1,7 @@
 """Public operations for document-format modules and future plugin contributions."""
 from collections.abc import Mapping
 from uuid import UUID
+from sqlalchemy.sql.elements import ColumnElement
 
 from core.user import HumanActor
 from .formats import (
@@ -28,6 +29,15 @@ def extract_document_content(code: str, content: str) -> str:
     definition = document_format_definition(code)
     definition.validate(content)
     return definition.extract(content)
+
+
+def extract_document_bytes(code: str, content: bytes) -> str:
+    return document_format_definition(code).extract_content(content)
+
+
+def document_index_readable(agent_id: int) -> ColumnElement[bool]:
+    from .access import readable_item_clause
+    return readable_item_clause(agent_id)
 
 
 def remap_document_references(code: str, content: str, mapping: Mapping[str, str]) -> str:

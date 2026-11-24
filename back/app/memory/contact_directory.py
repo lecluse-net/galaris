@@ -12,12 +12,13 @@ from uuid import UUID
 
 from pydantic import EmailStr, TypeAdapter
 
-from sqlalchemy import and_, delete, exists, func, or_, select, tuple_, union_all, update
+from sqlalchemy import String, and_, delete, exists, func, or_, select, tuple_, union_all, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql.elements import ColumnElement
+from sqlalchemy.sql.selectable import Subquery
 
 from core.database import get_db
-from core.user import get_user_record
+from core.user import UserModel, get_user_record
 
 from . import service
 from .contact_coordinates import ContactCoordinates
@@ -325,6 +326,37 @@ async def has_mail_contact(*, owner_agent_id: int, address: str) -> bool:
             func.lower(MemoryContactIdentity.external_id) == normalized,
         ).limit(1)
     ) is not None
+
+
+def _indexed_contact_rows(owner_agent_id: int) -> Subquery:
+    contacts = (MemoryItem.owner_agent_id == owner_agent_id, MemoryItem.deleted_at.is_(None),
+        MemoryItem.managed_source_kind == MESSENGER_CONTACT_SOURCE_KIND, MemoryContactIdentity.owner_agent_id == owner_agent_id)
+    identity = select(MemoryContactIdentity.contact_item_id).join(MemoryItem,
+        MemoryItem.id == MemoryContactIdentity.contact_item_id).where(*contacts)
+    mail = identity.add_columns(func.lower(MemoryContactIdentity.external_id, type_=String()).label("address")).where(
+        MemoryContactIdentity.identity_kind == "messenger", MemoryContactIdentity.namespace == "mail")
+    internal = identity.join(UserModel, UserModel.id == MemoryContactIdentity.galaris_user_id).add_columns(
+        func.lower(UserModel.email, type_=String()).label("address")).where(
+        MemoryContactIdentity.identity_kind == "galaris_user", UserModel.is_active.is_(True))
+    return union_all(mail, internal).subquery()
+
+
+async def indexed_contact_identities(owner_agent_id: int, addresses: set[str]) -> dict[str, UUID]:
+    """Resolve source evidence against the reader's active, canonical contacts."""
+    indexed = _indexed_contact_rows(owner_agent_id)
+    rows = await get_db().execute(select(indexed.c.address, indexed.c.contact_item_id).where(indexed.c.address.in_(addresses)))
+    matches: dict[str, set[UUID]] = {}
+    for address, identity in rows:
+        matches.setdefault(address, set()).add(identity)
+    return {address: next(iter(identities)) for address, identities in matches.items() if len(identities) == 1}
+
+
+async def indexed_contact_addresses(owner_agent_id: int, contact_item_id: UUID) -> tuple[str, ...]:
+    """Resolve only addresses currently bound to the reader's canonical contact."""
+    indexed = _indexed_contact_rows(owner_agent_id)
+    addresses = set(await get_db().scalars(select(indexed.c.address).where(indexed.c.contact_item_id == contact_item_id)))
+    resolved = await indexed_contact_identities(owner_agent_id, addresses) if addresses else {}
+    return tuple(sorted(address for address, identity in resolved.items() if identity == contact_item_id))
 
 
 async def create_address_book_contact(

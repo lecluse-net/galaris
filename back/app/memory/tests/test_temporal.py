@@ -1,14 +1,16 @@
 """Calendar facts survive acquisition and reach context independently of the query."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 
 import pytest
 from pydantic import ValidationError
+from sqlalchemy import literal, select
 
 from app.memory import acquisition_service, context, service
 from app.memory.schemas import MemoryAcquisitionCreate, MemoryItemCreate, MemoryItemUpdate, MemoryPayload, MemoryRecallRequest
 from app.memory.retrieval import temporal_hits
+from app.memory.source_chronology import chronology_from_title, parse_source_time_query, title_dates_sql
 from app.memory.temporal import MemoryTemporalAnchor, MemoryTemporalFilter, next_match
 from app.memory.agenda import memory_agenda
 from app.memory.schemas import MemorySearchRequest
@@ -20,6 +22,39 @@ from core.util.temporal import TemporalAnchor, TemporalFilter, next_match as sha
 @pytest.fixture(autouse=True)
 def global_timezone(monkeypatch):
     monkeypatch.setenv('TZ', 'UTC')
+
+
+@pytest.mark.parametrize(("title", "written", "covered", "mentioned"), [
+    ("2024-02-29 — Inventaire du site", date(2024, 2, 29), None, None),
+    ("2021-02-29 — Inventaire du site", None, None, None),
+    ("Inventaire — rédigé le 15 février 2021", date(2021, 2, 15), None, None),
+    ("Inventaire — re\u0301dige\u0301 le 15 fe\u0301vrier 2021", date(2021, 2, 15), None, None),
+    ("Bilan 2021 — publié le 15/02/2022", date(2022, 2, 15), 2021, None),
+    ("Inventaire 2021", None, None, 2021),
+    ("Facture FCT-2021", None, None, None),
+    ("Budget 2021-2022", None, None, None),
+    ("Rédigé le 15 mai 2021, publié le 16 mai 2022", None, None, None),
+])
+@pytest.mark.asyncio
+async def test_source_dates_have_the_same_evidence_before_and_after_candidate_selection(db, title, written, covered, mentioned):
+    interpreted = chronology_from_title(title)
+    assert (interpreted.source_date, interpreted.covered_year, interpreted.mentioned_year) == (written, covered, mentioned)
+    row = (await db.execute(select(*title_dates_sql(literal(title))))).one()
+    assert row == (written, date(covered, 1, 1) if covered else None, date(mentioned, 1, 1) if mentioned else None)
+
+
+def test_source_time_uses_iso_weeks_and_separates_historical_period_from_written_date():
+    today = date(2027, 1, 4)
+    week = parse_source_time_query("le truc de la semaine dernière", today=today)
+    english = parse_source_time_query("last week", today=today)
+    assert week == english
+    assert week is not None and (week.start, week.end, week.query) == (date(2026, 12, 28), today, "")
+    report = chronology_from_title("Bilan 2021 — publié le 15 janvier 2022")
+    written = parse_source_time_query("rédigés en 2021", today=today)
+    covered = parse_source_time_query("sur 2021", today=today)
+    assert written is not None and written.rank_date(report) is None
+    assert covered is not None and covered.rank_date(report) == date(2021, 1, 1)
+    assert parse_source_time_query("récemment indexé", today=today) is None
 
 
 @pytest.mark.parametrize(('parts', 'start', 'end', 'expected'), [

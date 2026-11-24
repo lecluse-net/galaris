@@ -20,13 +20,17 @@ from .service import get_message
 _T = TypeVar("_T")
 
 
-async def browser_config(agent_id: int) -> MailConnectionConfig:
-    """A browser operation requires a user, Mail rights and this agent's scope."""
+async def require_browser_access(agent_id: int) -> None:
+    """A human reader needs Mail rights and this agent's scope."""
     user = await get_current_user()
     if current_tool_execution() is not None or user is None or not await check_privilege(
         user, [Privileges.MAIL_ACCESS, Privileges.MAIL_EDIT], get_db(),
     ) or not (await current_management_scope()).allows(agent_id):
         raise PermissionError("Mail resource unavailable")
+
+
+async def browser_config(agent_id: int) -> MailConnectionConfig:
+    await require_browser_access(agent_id)
     return await resolve_mail_connection(agent_id)
 
 

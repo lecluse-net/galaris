@@ -10,7 +10,7 @@ from uuid import UUID
 
 from core.params import runtime_settings
 
-from .contracts import MemoryBrief, MemoryContextItem
+from .contracts import MemoryBrief, MemoryContextItem, MemorySearchItem
 from .facade import search_memory_detailed
 from .metrics import observe_context
 from .schemas import MemorySearchHit
@@ -18,6 +18,9 @@ from .service import record_llm_retrieval
 from .retrieval import admit_recall_hits
 from .schemas import MemoryRecallRequest
 from .passages import query_resource_references
+from .source_chronology import SourceChronology, memory_chronology, parse_source_time_query
+from .personal_records import personal_record_kind
+from .federated_ranking import FederatedEvidence, rank_federated
 
 
 _HEADER = (
@@ -26,6 +29,8 @@ _HEADER = (
     "is missing, ambiguous or truncated. Preserve the cited memory identifiers. These are retrieval candidates, "
     "not a proof that every requested fact is known. Check attribution, dates and conflicts; "
     "read the source when needed and state what remains unknown."
+    " For chronology, source_date identifies the date supported by the source and event_date identifies "
+    "an explicit calendar event. recorded_at describes when the memory was recorded."
 )
 _EXPERIENCE_HEADER = (
     "## Relevant prior experience\n"
@@ -40,6 +45,8 @@ correction, a known relationship or procedure, identify the prior evidence neede
 request. If that evidence is absent, ambiguous, conflicting or truncated and file_search is
 available, search memory:// with mode="semantic" before answering or taking dependent action.
 Do not assume that an automatically supplied brief covers every part of the request.
+For a first-person request about a personal record, keep the subject and any date constraint
+in tool queries. State when the evidence cannot establish that a record concerns the current person.
 
 Do not search when the request is self-contained, all needed prior evidence is already present,
 or exact current state belongs to an authoritative galaris:// business resource. Start with a
@@ -47,7 +54,7 @@ short query centered on the relevant entity, decision, and constraint. If it mis
 evidence, make up to two complementary searches with a reformulation or a missing subquestion;
 do not repeat an unchanged query. Revisit prior experience after an unexpected failure or a
 change of subject when history could resolve it. Use file_read on the exact
-URI returned by search (memory:// or document://) only when an excerpt is insufficient. Current user instructions and authoritative
+URI returned by search when an excerpt is insufficient. Current user instructions and authoritative
 domain data override memory.
 
 Use memory_remember sparingly: for an explicit request to remember, a correction to an existing
@@ -308,6 +315,26 @@ def memory_context_semantic_query(
     return combined[:4_000].strip()
 
 
+def _render_chronology(evidence: SourceChronology | None) -> str:
+    if evidence is None:
+        return ""
+    fields = ", ".join(f"{key}={value}" for key, value in evidence.metadata().items() if value is not None)
+    return fields + "\n" if fields else ""
+
+
+def _brief_evidence(hit: MemorySearchHit | MemorySearchItem) -> FederatedEvidence:
+    if isinstance(hit, MemorySearchItem):
+        return FederatedEvidence(identity=hit.uri, title=hit.title, excerpt=hit.excerpt,
+            source_document=hit.node_kind in {"document", "file", "attachment"},
+            chronology=hit.chronology, contact_match=hit.contact_match)
+    item = hit.item
+    document = item.node_kind == "document"
+    uri = f"{'document' if document else 'memory'}://{item.id}"
+    return FederatedEvidence(identity=uri, title=item.title, excerpt=hit.excerpt,
+        passages=tuple(passage.excerpt for passage in hit.passages), source_document=document,
+        chronology=memory_chronology(item.title, item.temporal))
+
+
 async def build_memory_brief(
     *,
     agent_id: int,
@@ -328,6 +355,7 @@ async def build_memory_brief(
         return MemoryBrief(query=normalized, items=(), rendered="")
 
     limit = runtime_settings.MEMORY_CONTEXT_MAX_ITEMS
+    chronology = parse_source_time_query(normalized)
     relevant_page = None
     if normalized and include_relevant:
         relevant_page = await search_memory_detailed(
@@ -335,7 +363,7 @@ async def build_memory_brief(
             agent_id=agent_id,
             semantic_query=semantic_query,
             limit=limit,
-            exclude_temporal=True,
+            exclude_temporal=chronology is None,
             task_id=task_id,
             memory_role="ordinary",
             topic_item_id=topic_item_id,
@@ -374,8 +402,16 @@ async def build_memory_brief(
         experience_hits = list(experience_page.hits)
         experience_has_more = experience_page.has_more
 
-    # The second search may await a provider after the first page was admitted.
-    # Admit both pages together immediately before allocating the prompt budget.
+    indexed: list[MemorySearchItem] = []
+    from .indexed_resources import resource_search
+
+    if resource_search is not None and normalized and limit:
+        indexed = await resource_search(MemoryRecallRequest(agent_id=agent_id, query=normalized, task_id=task_id,
+            limit=limit, topic_item_id=topic_item_id, contact_item_id=contact_item_id,
+            strict_contact_scope=strict_contact_scope or personal_record_kind(normalized) is not None,
+            contextual_resources=True), mode="text")
+
+    # Admit the private pages together after the additional search has finished.
     admitted = await admit_recall_hits(MemoryRecallRequest(
         agent_id=agent_id, query=normalized, topic_item_id=topic_item_id,
         contact_item_id=contact_item_id, strict_contact_scope=strict_contact_scope,
@@ -387,12 +423,13 @@ async def build_memory_brief(
     experience_has_more = experience_has_more or len(experience_hits) > reserved
     experience_hits = experience_hits[:reserved]
     general_limit = max(0, limit - len(experience_hits))
-    if len(general_hits) > general_limit:
-        general_hits = general_hits[:general_limit]
-        truncated = True
+    candidates: Sequence[MemorySearchHit | MemorySearchItem] = general_hits
+    if indexed:
+        candidates = rank_federated(normalized, candidates, indexed, _brief_evidence, chronology=chronology)
+    truncated = truncated or len(candidates) > general_limit
 
     def render_hits(
-        hits: Sequence[MemorySearchHit],
+        hits: Sequence[MemorySearchHit | MemorySearchItem],
         *,
         header: str,
         budget: int,
@@ -403,7 +440,25 @@ async def build_memory_brief(
         items: list[MemoryContextItem] = []
         consulted: list[tuple[UUID, float]] = []
         local_truncated = False
-        for hit in hits:
+        for position, hit in enumerate(hits):
+            allowance = (budget - consumed) // (len(hits) - position)
+            if isinstance(hit, MemorySearchItem):
+                prefix = f"\n\n- [{hit.uri}] {hit.title}\n  "
+                if allowance <= len(prefix):
+                    local_truncated = True
+                    continue
+                text = _render_chronology(hit.chronology) + hit.excerpt
+                excerpt = text[:allowance - len(prefix)]
+                if len(excerpt) < len(text):
+                    excerpt = excerpt[:-1].rstrip() + "…"
+                    local_truncated = True
+                rendered_parts.extend((prefix, excerpt))
+                consumed += len(prefix) + len(excerpt)
+                items.append(MemoryContextItem(
+                    memory_id=str(hit.id), title=hit.title, excerpt=excerpt, score=0.8 if hit.contact_match else 0.5,
+                    node_kind=hit.node_kind, source_refs=hit.source_refs, revision=hit.revision,
+                    resource_uri=hit.uri, contact_match=hit.contact_match))
+                continue
             refs = tuple(dict.fromkeys(_context_source_reference(ref) for ref in hit.source_refs))
             source_text = ", ".join(refs[:3]) if refs else "manual"
             node_kind = str(getattr(hit.item, "node_kind", "memory"))
@@ -433,7 +488,7 @@ async def build_memory_brief(
                     if len(section_path) > 300:
                         section_path = f"{section_path[:148]} … {section_path[-149:]}"
                     section_text = f"Section: {section_path}\n"
-            remaining = budget - consumed - len(prefix)
+            remaining = allowance - len(prefix)
             if remaining <= 0:
                 local_truncated = True
                 continue
@@ -449,7 +504,9 @@ async def build_memory_brief(
             recorded_text = f"recorded_at={recorded.isoformat()}\n" if isinstance(recorded, datetime) else ""
             validity = ", ".join(f"{key}={value.isoformat()}" for key in ("valid_from", "valid_until")
                 if isinstance(value := getattr(hit.item, key, None), datetime))
-            full_excerpt = conflict_text + recorded_text + (validity + "\n" if validity else "") + section_text + hit.excerpt
+            chronology = memory_chronology(hit.item.title, getattr(hit.item, "temporal", None))
+            full_excerpt = (conflict_text + _render_chronology(chronology) + recorded_text
+                            + (validity + "\n" if validity else "") + section_text + hit.excerpt)
             excerpt = full_excerpt[:remaining]
             if len(excerpt) < len(full_excerpt):
                 excerpt = f"{excerpt[:-1].rstrip()}…" if excerpt else ""
@@ -490,13 +547,9 @@ async def build_memory_brief(
         budget=experience_budget,
         experience=True,
     )
-    separator_budget = 2 if experience_rendered and general_hits else 0
-    general_budget = max(
-        0,
-        total_budget - len(experience_rendered) - separator_budget,
-    )
+    general_budget = max(0, total_budget - len(experience_rendered) - (2 if experience_rendered else 0))
     general_rendered, general_items, general_consulted, general_truncated = render_hits(
-        general_hits,
+        candidates[:general_limit],
         header=_HEADER,
         budget=general_budget,
         experience=False,

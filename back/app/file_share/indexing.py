@@ -369,6 +369,8 @@ async def repair_tick() -> None:
 
 async def prune_index_history() -> None:
     """Retain diagnostics for 30 days without retaining file contents."""
+    from .resource_index import prune_retired_index_sources
+
     cutoff = now() - timedelta(days=30)
     await get_db().execute(delete(FileObservationRepair).where(FileObservationRepair.status != "pending", FileObservationRepair.started_at < cutoff))
     newer = aliased(FileIndexRun)
@@ -389,6 +391,7 @@ async def prune_index_history() -> None:
         FileIndexRun.status.not_in(("queued", "running", "retry")), FileIndexRun.updated_at < cutoff,
         or_(superseded, ~current_root),
     ))
+    await prune_retired_index_sources()
     await get_db().commit()
 
 

@@ -2,15 +2,18 @@
 
 from pathlib import Path
 from datetime import datetime, timezone
+from tempfile import TemporaryDirectory
 from uuid import UUID
 from typing import Any
 from sqlalchemy import select, Select, or_, func, update
 from core.database import get_db
-from app.memory import catalogue_projection_write
-from .catalogue import catalogue_binding_is_current, project_entry, descriptor_version
+from core.util import complete_io
+from app.memory import catalogue_projection_write, redact_secrets
+from .catalogue import catalogue_binding_is_current, project_entry, descriptor_version, indexed_mail_account
 from .models import FileCatalogEntry
 from .resource_contracts import ResourceContext
 from .resource_observation import suspend_observations
+from .resource_uri import parse_resource_uri
 
 
 def pending_enrichments() -> Select[tuple[FileCatalogEntry]]:
@@ -56,7 +59,8 @@ async def apply_enrichment(
         return False
     if entry.enrichment_version == version and not force:
         return False
-    if entry.file_sha256 is not None and entry.memory_node_id is not None:
+    if (entry.file_sha256 is not None and entry.memory_node_id is not None
+            and indexed_mail_account(parse_resource_uri(entry.uri)) is None):
         from app.memory import catalogue_file_summary
         async with catalogue_projection_write():
             changed = await catalogue_file_summary(entry.memory_node_id, entry.file_sha256, description, force=force)
@@ -74,6 +78,27 @@ async def apply_enrichment(
 
 
 class FileCatalogueEnrichmentPort:
+    def __init__(self, *, shared_index: bool = False) -> None:
+        self.shared_index = shared_index
+
+    async def resource_index_pending(self, handled: Select[tuple[str]]) -> int:
+        from .resource_index import pending_count, pending_vector_count
+        return await pending_count(handled) + await pending_vector_count(handled)
+
+    async def resource_index_subjects(self, handled: Select[tuple[str]]) -> list[str]:
+        from .resource_index import pending_subjects, pending_vector_subject
+        subjects = [subject.value for subject in await pending_subjects(handled)]
+        if vectors := await pending_vector_subject(handled):
+            subjects.append(vectors)
+        return subjects
+
+    async def index_resource(self, subject: str) -> bool:
+        from .resource_index import IndexSubject, index_subject, refresh_vectors
+        if subject.startswith("vectors:"):
+            _kind, content, model = subject.split(":", 2)
+            return await refresh_vectors(UUID(content), model)
+        return await index_subject(IndexSubject.parse(subject))
+
     async def source_for_item(self, item_id: UUID, agent_id: int) -> dict[str, Any] | None:
         from .catalogue_resources import authorized_resource
         entries = await get_db().scalars(select(FileCatalogEntry).where(
@@ -140,9 +165,17 @@ class FileCatalogueEnrichmentPort:
         from .indexing import discover_directory
         return await discover_directory(subject, attempt=attempt, max_attempts=max_attempts)
 
-    async def candidates(self) -> list[dict[str, object]]:
+    async def candidates(self, *, plain_text_only: bool = False) -> list[dict[str, object]]:
+        pending = pending_enrichments()
+        if self.shared_index:
+            from .resource_index import catalogue_text_supported
+            if plain_text_only:
+                return []
+            pending = pending.where(~catalogue_text_supported())
+        if plain_text_only:
+            pending = pending.where(FileCatalogEntry.descriptor["media_type"].as_string() == "text/vnd.galaris.mail")
         entries = await get_db().execute(
-            pending_enrichments().add_columns(catalogue_binding_is_current())
+            pending.add_columns(catalogue_binding_is_current())
             .order_by(func.coalesce(FileCatalogEntry.enrichment_attempted_at, FileCatalogEntry.last_seen_at), FileCatalogEntry.id)
             .limit(500)
         )
@@ -155,7 +188,8 @@ class FileCatalogueEnrichmentPort:
                 continue
             result.append({"identity": str(entry.id), "uri": entry.uri, "agent_id": entry.agent_id,
                 "runtime": entry.runtime, "version": version, "descriptor": entry.descriptor,
-                "file_sha256": entry.file_sha256, "memory_item_id": str(entry.memory_node_id)})
+                "file_sha256": entry.file_sha256, "memory_item_id": str(entry.memory_node_id),
+                "deduplicate": indexed_mail_account(parse_resource_uri(entry.uri)) is None})
         return result
 
     async def claimed(self, identity: str) -> None:
@@ -164,6 +198,7 @@ class FileCatalogueEnrichmentPort:
             entry.enrichment_attempted_at = datetime.now(timezone.utc)
 
     async def materialize(self, source: dict[str, object], path: "Path") -> dict[str, object] | None:
+        from .fingerprinting import hash_materialized_file
         from .resource_service import resource_info, materialize_resource
         ctx = ResourceContext(agent_id=int(str(source["agent_id"])), runtime=str(source["runtime"]))
         with suspend_observations():
@@ -173,6 +208,9 @@ class FileCatalogueEnrichmentPort:
             if info.size is not None and info.size > 32 * 1024 * 1024:
                 return None
             await materialize_resource(ctx, source["uri"], path, max_bytes=32 * 1024 * 1024)
+            expected_hash = source.get("file_sha256")
+            if expected_hash is not None and await hash_materialized_file(path) != expected_hash:
+                return None
             after = await resource_info(ctx, source["uri"])
             if descriptor_version(after.model_dump(exclude={"metadata", "capabilities", "indexing_status"})) != source["version"]:
                 return None
@@ -180,3 +218,13 @@ class FileCatalogueEnrichmentPort:
 
     async def apply(self, identity: str, version: str, description: str) -> bool:
         return await apply_enrichment(UUID(identity), version, description)
+
+    async def index_plain_text(self, source: dict[str, object]) -> bool:
+        # Keep the source text in its access-controlled projection, not in Dream diagnostics.
+        with TemporaryDirectory(prefix="dream-mail-") as temporary:
+            path = Path(temporary) / "body"
+            info = await self.materialize(source, path)
+            if info is None or info["media_type"] != "text/vnd.galaris.mail":
+                return False
+            text = redact_secrets(await complete_io(path.read_text, encoding="utf-8"))
+        return text is not None and bool(text.strip()) and await self.apply(str(source["identity"]), str(source["version"]), text)

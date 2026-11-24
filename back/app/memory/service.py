@@ -38,6 +38,8 @@ from .access import (
 from .admission import admit_search_hits
 from .source_access import source_checked_graph, source_evidence_admission
 from .query_policy import prepare_memory_read
+from .source_chronology import SourceTimeQuery, anchored_event_date_sql, title_dates_sql
+from .personal_records import personal_record_kind
 from .passages import lexical_excerpt, query_identity, query_reference_ids, query_is_contact_self_reference
 from . import relevance
 from .contracts import (
@@ -369,6 +371,15 @@ def _graph_item_options() -> Load:
     )
 
 
+async def graph_source_items(request: MemoryGraphRootsRequest | MemoryGraphExpandRequest,
+                             identities: set[UUID]) -> dict[UUID, MemoryItem]:
+    if not identities:
+        return {}
+    items = await get_db().scalars(select(MemoryItem).options(_graph_item_options()).where(
+        MemoryItem.id.in_(identities), *graph_item_filters(request, now=datetime.now(timezone.utc))))
+    return {item.id: item for item in items}
+
+
 def _graph_role_rank(item: MemoryItem) -> int:
     if item.managed_source_kind in ("topic", "messenger_contact") or (
         item.node_kind == "directory" and re.fullmatch(r"[a-z][a-z0-9+.-]*:///?", item.primary_url or "", re.IGNORECASE)
@@ -386,7 +397,7 @@ def _graph_role_order() -> ColumnElement[int]:
     )
 
 
-def _graph_node(item: MemoryItem, *, relation_count: int, children_count: int = 0) -> MemoryGraphNode:
+def graph_node(item: MemoryItem, *, relation_count: int, children_count: int = 0) -> MemoryGraphNode:
     entity_kind: Literal["memory", "document", "attachment", "folder", "file", "directory", "topic", "contact"] = "memory"
     if item.node_kind == "document":
         entity_kind = "document"
@@ -2030,6 +2041,20 @@ async def record_llm_retrieval(
     await db.flush()
 
 
+def personal_memory_subject(agent_id: int, contact_item_id: UUID | None) -> ColumnElement[bool]:
+    """Require the subject of an asserted fact rather than its conversation participants."""
+    if contact_item_id is None:
+        return false()
+    contact = aliased(MemoryItem)
+    return and_(MemoryItem.node_kind == "memory", MemoryItem.owner_agent_id == agent_id, exists(
+        select(MemoryLink.id).join(contact, contact.id == MemoryLink.target_item_id).where(
+            MemoryLink.source_item_id == MemoryItem.id, MemoryLink.target_item_id == contact_item_id,
+            MemoryLink.relation_type == "fact_subject", MemoryLink.projection_key == "atomic_fact",
+            MemoryLink.created_by_agent_id == agent_id, MemoryLink.suggested.is_(False),
+            contact.owner_agent_id == agent_id, contact.managed_source_kind == "messenger_contact",
+            contact.deleted_at.is_(None)).correlate(MemoryItem)))
+
+
 def temporal_match_clause(target: datetime) -> ColumnElement[bool]:
     """Match an anchored item at one instant, including partial dates and DST folds."""
     from core.util import local_timezone_name
@@ -2048,6 +2073,7 @@ async def search_items(
     ranked_hits: Sequence[MemorySearchHit] | None = None,
     temporal_union: bool = False,
     name_only: bool = False,
+    chronology: SourceTimeQuery | None = None,
 ) -> MemorySearchPage:
     """Apply ACL/validity first, then deterministic full-text ranking."""
 
@@ -2186,6 +2212,14 @@ async def search_items(
         )
 
     normalized = request.query.strip()
+    if request.require_personal_subject or personal_record_kind(request.recall_query or normalized) is not None:
+        query = query.where(personal_memory_subject(request.agent_id, request.contact_item_id))
+    if chronology is not None:
+        written, coverage, mentioned = title_dates_sql(MemoryItem.title)
+        event_date = anchored_event_date_sql(MemoryItem.temporal["year"].as_integer(),
+            MemoryItem.temporal["month"].as_integer(), MemoryItem.temporal["day"].as_integer())
+        matching_date = chronology.sql_date(written=written, coverage=coverage, mentioned=mentioned, event=event_date)
+        query = query.where(matching_date.is_not(None)).order_by(matching_date.desc())
     identity = query_identity(normalized)
     recalled = {
         (hit.item.id, hit.item.revision, hit.item.lock_version, hit.item.content_hash, hit.item.semantic_fingerprint): hit
@@ -2261,7 +2295,9 @@ async def search_items(
     if temporal_union and temporal_window is not None and request.sort_by is None:
         query = query.order_by(case((MemoryItem.temporal.is_not(None), 0), else_=1))
 
-    if request.sort_by is not None:
+    if chronology is not None:
+        query = query.add_columns(rank_expression.label("rank")).order_by(rank_expression.desc(), MemoryItem.id)
+    elif request.sort_by is not None:
         if request.sort_by == "owner":
             query = query.outerjoin(Agent, Agent.id == MemoryItem.owner_agent_id)
         sort_expression = _memory_sort_expression(request.sort_by)
@@ -2582,7 +2618,7 @@ async def list_graph_roots(request: MemoryGraphRootsRequest) -> MemoryGraphPage:
     return MemoryGraphPage(
         nodes=[
             *[
-                _graph_node(
+                graph_node(
                     item,
                     relation_count=relation_counts.get(item.id, 0),
                     children_count=child_counts.get(item.id, 0),
@@ -2683,7 +2719,7 @@ async def expand_graph_node(request: MemoryGraphExpandRequest) -> MemoryGraphPag
             )
         return MemoryGraphPage(
             nodes=[
-                _graph_node(
+                graph_node(
                     item,
                     relation_count=context_counts.get(item.id, 0),
                 )
@@ -2781,10 +2817,10 @@ async def expand_graph_node(request: MemoryGraphExpandRequest) -> MemoryGraphPag
         )
     return MemoryGraphPage(
         nodes=[
-            *([_graph_node(focus_item, relation_count=relation_counts.get(focus_item.id, 0),
+            *([graph_node(focus_item, relation_count=relation_counts.get(focus_item.id, 0),
                 children_count=child_counts.get(focus_item.id, 0))] if focus_item is not None else []),
             *[
-                _graph_node(
+                graph_node(
                     item,
                     relation_count=relation_counts.get(item.id, 0),
                     children_count=child_counts.get(item.id, 0),

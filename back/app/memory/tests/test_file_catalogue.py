@@ -1280,6 +1280,38 @@ async def test_dream_file_version_is_acquired_once_and_new_version_is_eligible(c
 
 
 @pytest.mark.asyncio
+async def test_dream_enrichment_rejects_changed_bytes_with_unchanged_metadata(console_catalogue, db, monkeypatch):
+    import os
+    from unittest.mock import AsyncMock
+
+    from app.dream import interface
+    from app.dream.mechanisms import file_catalogue as mechanism_module
+    from app.file_share import FileCatalogueEnrichmentPort
+    from core.params import runtime_settings
+
+    ctx, transport, _connection, _peer = console_catalogue
+    monkeypatch.setattr(interface, '_file_catalogue', FileCatalogueEnrichmentPort())
+    monkeypatch.setattr(runtime_settings, 'DREAM_ATTACHMENT_TEXT_ENABLED', True)
+    analyze = AsyncMock(return_value='Synthetic summary of the replacement')
+    monkeypatch.setattr(mechanism_module, 'analyze_attachment', analyze)
+    uri = 'console://dream-same-metadata.txt'
+    await resource_service.resource_write_text(ctx, uri, 'Original bytes')
+    await acquire_fingerprints(db)
+    mechanism = mechanism_module.file_catalogue_mechanism
+    claim = await mechanism.claim_one()
+    assert claim is not None and claim.subject_kind == 'file'
+
+    path = transport.resolve_path('dream-same-metadata.txt')
+    timestamp = path.stat()
+    path.write_text('Replaced bytes')
+    os.utime(path, ns=(timestamp.st_atime_ns, timestamp.st_mtime_ns))
+
+    prepared = await mechanism.prepare(claim)
+    assert await mechanism.apply(claim, prepared.payload) == 0
+    analyze.assert_not_awaited()
+
+
+@pytest.mark.asyncio
 async def test_unsupported_dream_candidates_do_not_starve_later_files(console_catalogue, db, monkeypatch):
     from app.dream import interface
     from app.dream.mechanisms.file_catalogue import file_catalogue_mechanism
@@ -1291,8 +1323,8 @@ async def test_unsupported_dream_candidates_do_not_starve_later_files(console_ca
     port = FileCatalogueEnrichmentPort()
     original = port.candidates
     # Shrink the same bounded window to reproduce starvation with two sources.
-    async def one_candidate():
-        return (await original())[:1]
+    async def one_candidate(*, plain_text_only=False):
+        return (await original(plain_text_only=plain_text_only))[:1]
     monkeypatch.setattr(port, 'candidates', one_candidate)
     monkeypatch.setattr(interface, '_file_catalogue', port)
     monkeypatch.setattr(runtime_settings, 'DREAM_ATTACHMENT_TEXT_ENABLED', True)

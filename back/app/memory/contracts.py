@@ -8,6 +8,7 @@ from typing import Literal, Protocol, runtime_checkable
 from uuid import UUID
 
 from .contact_coordinates import ContactCoordinates
+from .source_chronology import SourceChronology
 
 
 
@@ -39,6 +40,8 @@ class MemoryContextItem:
     node_kind: str = "memory"
     source_refs: tuple[str, ...] = ()
     revision: int | None = None
+    resource_uri: str | None = None
+    contact_match: bool = False
 
 
 @dataclass(frozen=True)
@@ -62,6 +65,8 @@ class MemorySearchItem:
     source_refs: tuple[str, ...] = ()
     uri: str = ""
     revision: int | None = None
+    chronology: SourceChronology | None = None
+    contact_match: bool = False
 
 
 @dataclass(frozen=True, slots=True)
