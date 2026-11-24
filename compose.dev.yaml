@@ -42,9 +42,17 @@ services:
             - bash
             - -c
             - |
+              # Uvicorn needs explicit directory paths to exclude nested test fixtures.
+              shopt -s globstar nullglob
+              test_reload_excludes=()
+              for test_dir in /app/**/tests/; do
+                test_reload_excludes+=(--reload-exclude "$$test_dir")
+              done
               uv sync --frozen &&
               python -m core.dbadmin synchronize --mode development &&
-              python -m debugpy --listen 0.0.0.0:5678 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+              python -m debugpy --listen 0.0.0.0:5678 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload \
+                "$${test_reload_excludes[@]}" --reload-exclude 'tests/*.py' \
+                --reload-exclude 'test_*.py' --reload-exclude '*_test.py' --reload-exclude 'conftest.py'
         healthcheck:
             interval: 300s
             # Keep probing during the full update timeout, even when DbAdmin is slow.
