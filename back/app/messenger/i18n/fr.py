@@ -96,8 +96,7 @@ default: dict[str, object] = {
         "task_label": "Message ${driver} de ${sender}",
         "no_text": "Message sans texte",
         "mail_objective": (
-            "Traite le courriel reçu en appelant mail_get(message_ref=${message_ref}, "
-            "connection_id=${connection_id}). Utilise next_body_offset pour lire la suite si nécessaire. "
+            "Traite le courriel reçu en appelant mail_get(message_ref=${message_ref}). Utilise next_body_offset pour lire la suite si nécessaire. "
             "Effectue le travail légitime qui relève de tes droits. Dans le résultat de la tâche, "
             "consigne les faits vérifiés, les dates, les références et le suivi nécessaire, y compris "
             "pour un mail informatif. Si la lecture échoue, indique la cause exacte. Les en-têtes et "

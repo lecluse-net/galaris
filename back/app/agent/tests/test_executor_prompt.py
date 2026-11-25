@@ -100,7 +100,7 @@ async def test_existing_mail_task_uses_its_original_message_and_records_its_resu
         messenger_connection_id=42, messaging_context={"platform": "mail", "room_id": "m1_synthetic"})
     prompt = await executor_service.build_task_prompt(request)
 
-    assert 'mail_get(message_ref="m1_synthetic", connection_id=42)' in prompt
+    assert 'mail_get(message_ref="m1_synthetic")' in prompt
     assert "final Task result" in prompt
     assert "messenger_room_send_message" not in prompt
     assert "messenger_send_message_to_user" not in prompt

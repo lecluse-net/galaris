@@ -108,10 +108,13 @@ async def test_goal_create_selects_owner_and_human_referrer(
     )
     monkeypatch.setattr("core.database.database.get_db_session", _session)
 
+    from types import SimpleNamespace
+    resolve = AsyncMock(return_value=SimpleNamespace(id=34))
+    monkeypatch.setattr(mcp, "resolve_service_connection", resolve)
     result = await mcp.mcp_goal_create(
         McpToolContext(agent_id=90, runtime="internal"),
         agent_id=12,
-        referrer_connection_id=34,
+        service_code="synthetic-chat",
         referrer_user_id="human-34",
         referrer_display_name="Human supervisor",
         title="Développer l'équipe",
@@ -119,6 +122,7 @@ async def test_goal_create_selects_owner_and_human_referrer(
         cycle_delay_seconds=7200,
     )
 
+    resolve.assert_awaited_once_with(12, "synthetic-chat", account_email=None)
     data = create.await_args.args[0]
     assert data.agent_id == 12
     assert isinstance(data.referrer, GoalMessengerReferrerInput)
@@ -239,7 +243,7 @@ async def test_goal_visibility_is_owner_scoped_unless_management_is_active(
             "mcp_goal_create",
             {
                 "agent_id": 12,
-                "referrer_connection_id": 34,
+                "service_code": "synthetic-chat",
                 "referrer_user_id": "human-34",
                 "referrer_display_name": "Human supervisor",
                 "title": "Restricted Goal",

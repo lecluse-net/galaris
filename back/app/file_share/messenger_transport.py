@@ -187,7 +187,7 @@ class MessengerFileTransport:
                 reference=uri, label=filename, producer_task_id=self._task_id,
                 metadata={"tool": "messenger_resource_upload", "uri": uri,
                           "destination": str(message.room.id),
-                          "connection_id": message.room.connection_id,
+                          "service_code": self._service_code,
                           "message_id": str(message.id), "delivered": True},
             ))
         return f"{room_locator}/{identifier}"

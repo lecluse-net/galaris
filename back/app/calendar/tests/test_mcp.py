@@ -66,6 +66,8 @@ async def test_calendar_scope_governs_live_mcp_reads_and_writes(db, agent, perso
     from app.calendar import service
     from app.connection import Connection
 
+    from app.services import service as providers
+    provider_code = (await providers.get_service_by_id(calendar_connection.service_id)).code
     connection, own = personal
     peer, stranger = [Agent(title_id=agent.title_id, first_name=name, last_name="Synthetic",
         code=f"calendar-scope-{uuid4().hex}") for name in ("Peer", "Stranger")]
@@ -113,7 +115,7 @@ async def test_calendar_scope_governs_live_mcp_reads_and_writes(db, agent, perso
             return {item["id"] for item in values(result) if item["id"] is not None}
 
         assert await visible_calendars() == {own.id}
-        assert await visible_calendars(connection_id=calendar_connection.id) == {own_external.id}
+        assert await visible_calendars(service_code=provider_code) == {own_external.id}
         assert await read_calendar_resource(peer_feed.id, agent.id) is None
         assert (await client.call_tool("calendar_create_event", {**event_data, "calendar_id": peer_feed.id},
             raise_on_error=False)).is_error
@@ -150,7 +152,7 @@ async def test_calendar_scope_governs_live_mcp_reads_and_writes(db, agent, perso
         await client.call_tool("calendar_create_event", {**event_data, "calendar_id": stranger_feed.id})
         assert (await client.call_tool("calendar_create_event", {**event_data, "calendar_id": peer_external.id},
             raise_on_error=False)).is_error
-        assert (await client.call_tool("calendar_event_get", {**target, "connection_id": calendar_connection.id},
+        assert (await client.call_tool("calendar_event_get", {**target, "service_code": provider_code},
             raise_on_error=False)).is_error
         await set_connection_function_state(connection.id, "calendar_update_event", "disabled")
         assert (await client.call_tool("calendar_update_event", {**target, "expected_revision": detail["revision"],

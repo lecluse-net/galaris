@@ -34,7 +34,9 @@ def _bound_connection[**P, T](method: Callable[P, CoroutineType[Any, Any, T]]) -
             result = await method(*args, **kwargs)
             def entry(value: FileEntry) -> FileEntry:
                 return replace(value, path=transport.prefix + value.path,
-                    metadata={"mail_connection_id": transport.connection_id, **value.metadata})
+                    metadata={"service_code": transport.service_code,
+                        **({"mail_connection_id": transport.connection_id} if transport.browser and transport.connection_id is not None else {}),
+                        **value.metadata})
             if isinstance(result, FileEntry):
                 return cast(T, entry(result))
             if isinstance(result, FileListing):
@@ -240,7 +242,8 @@ class MailAttachmentTransport:
             if messages:
                 raise ValueError("Invalid Mail account cursor")
             entries = tuple(FileEntry(path=f"account/{identity}/", name=label, is_dir=True,
-                metadata={"mail_connection_id": identity}) for identity, label in sorted(self.accounts.items()))
+                metadata={"service_code": self.service_code,
+                          **({"mail_connection_id": identity} if self.browser else {})}) for identity, label in sorted(self.accounts.items()))
             more = offset + limit < len(entries)
             return FileListing(path, entries[offset:offset + limit], more,
                 _cursor(path, offset + limit, None, False) if more else None, ancestors=(root,))

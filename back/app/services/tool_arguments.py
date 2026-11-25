@@ -49,6 +49,9 @@ def argument_warning(name: str, ignored: tuple[str, ...], schema: dict[str, Any]
 class ToolArgumentsMiddleware(Middleware):
     """Normalize before validation and authorization; retain the result's contract."""
 
+    def __init__(self, native_names: set[str] | None = None) -> None:
+        self.native_names = native_names
+
     async def on_call_tool(
         self, context: MiddlewareContext[CallToolRequestParams],
         call_next: CallNext[CallToolRequestParams, ToolResult],
@@ -58,6 +61,11 @@ class ToolArgumentsMiddleware(Middleware):
         tool = await context.fastmcp_context.fastmcp.get_tool(context.message.name)
         if tool is None:
             return await call_next(context)
+        if self.native_names is not None and context.message.name in self.native_names:
+            retired = {"connection_id", "connection_ids", "referrer_connection_id", "service_id", "tool_id"}
+            if "service_code" in tool.parameters.get("properties", {}) and retired.intersection(context.message.arguments):
+                # Preserve the unknown selector for strict validation and execution evidence.
+                return await call_next(context)
         arguments, ignored = normalize_tool_arguments(context.message.arguments, tool.parameters)
         if not ignored:
             return await call_next(context)

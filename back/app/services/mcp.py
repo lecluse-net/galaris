@@ -19,6 +19,8 @@ from app.services.mcp_loader import (
     mcp_tool,
 )
 from app.services.schemas import McpAuth, McpConfig, Service
+from app.services.rest_contracts import RestError, RestToolRequest, RestRequestRejected, RestResponse
+from .rest_uploads import load_uploads, upload_preflight
 from app.services.secrets import (
     MissingConnectionReference,
     resolve_connection_references,
@@ -27,6 +29,30 @@ from app.services.secrets import (
 from core.i18n import render_prompt, t
 
 _MCP_TOOL_MAX_RETRIES = 3
+
+
+@mcp_tool("rest", authorization_preflight=upload_preflight, approval="ask", approval_reason="A REST request may disclose data or change remote state",
+    conversation_policy="deferred", effect_policy="non_idempotent", concurrency_policy="exclusive",
+    description="Call the REST API using the service_code listed here or by services_list. For a multi-account "
+    "Service, also supply account_email. Supply a path relative "
+    "to the configured API base, method, optional query params and headers. Bodies: json_body, text_body, file_uri for raw bytes, or form and files. "
+    "Each multipart file has field and uri, with optional filename and content_type. Use exact readable resource URIs. "
+    "Authentication is supplied by the connection. Use the provider's documented routes. Inspect status_code, "
+    "headers and body even for HTTP errors. Responses are JSON or text. Binary uploads are limited to 16 files and "
+    "32 MiB combined. A transport failure may have applied a write.")
+async def rest_request(ctx: McpToolContext, service_code: str, request: RestToolRequest, account_email: str | None = None) -> RestResponse:
+    from .contracts import ToolArgumentsRejectedError
+    from .rest import execute_rest_request
+    from .tool_errors import RecoverableToolError
+
+    try:
+        uploads = ctx.resource("rest_uploads") or await load_uploads(ctx, request)
+        return await execute_rest_request(agent_id=ctx.agent_id, service_code=service_code, uploads=uploads,
+            connection_id=ctx.resource("source_connection_id"), request=request)
+    except RestRequestRejected as exc:
+        raise ToolArgumentsRejectedError(str(exc)) from exc
+    except RestError as exc:
+        raise RecoverableToolError(str(exc)) from exc
 
 
 @mcp_tool("galaris", default_blocked=True, approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", name="documentation_catalog", description=(
@@ -84,7 +110,7 @@ async def search_web(ctx: McpToolContext, query: str) -> str:
     description=(
         "List authorized MCP functions and distinguish those present in this run from "
         "those requiring a new execution context, grouped by service and connection. "
-        "Mail accounts include their connection_id and mailbox address; use that exact ID in mail_* calls."
+        "Use the listed service_code for tool calls. Mail accounts include their account_email."
     ),
 )
 async def list_mcp_tools(ctx: McpToolContext) -> str:
@@ -112,11 +138,9 @@ async def list_mcp_tools(ctx: McpToolContext) -> str:
         if not tools:
             continue
 
-        header = f"## {group['service_label']} (`{group['service_code']}`)"
-        if group.get("connection_id") is not None:
-            header += f" (connection_id={group['connection_id']})"
+        header = f"## {group['service_label']} (`service_code={group['service_code']}`)"
         if group.get("mail_address"):
-            header += f" — {group['mail_address']}"
+            header += f" — account_email={group['mail_address']}"
         lines.append(header)
 
         for tool in tools:
@@ -332,10 +356,10 @@ async def service_admin_list(ctx: McpToolContext, search: str = "", kind: str = 
     return await admin.invoke(ctx, "service_admin_list", admin.list_services, search=search, kind=kind, capability=capability, offset=offset, limit=limit)
 
 
-@mcp_tool("service", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", description="Read a Service by ID or code, redacted settings, allowed actions and its version precondition.", effect_policy="read", concurrency_policy="safe", conversation_policy="short")
-async def service_admin_get(ctx: McpToolContext, service_id: int | None = None, code: str = "") -> str:
+@mcp_tool("service", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", description="Read a Service by service_code, redacted settings, allowed actions and its version precondition.", effect_policy="read", concurrency_policy="safe", conversation_policy="short")
+async def service_admin_get(ctx: McpToolContext, service_code: str) -> str:
     from . import admin_service as admin
-    return await admin.invoke(ctx, "service_admin_get", admin.get, service_id=service_id, code=code)
+    return await admin.invoke_service(ctx, "service_admin_get", admin.get, service_code=service_code)
 
 
 @mcp_tool("service", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", description="Create an ordinary custom Service from its typed definition or a human-prepared candidate_reference. Never submit secret literals; HTTP/SSE only.", conversation_policy="deferred")
@@ -345,54 +369,54 @@ async def service_admin_create(ctx: McpToolContext, definition: dict[str, Any] |
 
 
 @mcp_tool("service", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", description="Update a custom definition with expected_version from service_admin_get. Omitted fields preserve values; null clears optional configuration. Reserved definitions are read-only.", conversation_policy="deferred")
-async def service_admin_update(ctx: McpToolContext, service_id: int, changes: dict[str, Any], expected_version: str) -> str:
+async def service_admin_update(ctx: McpToolContext, service_code: str, changes: dict[str, Any], expected_version: str) -> str:
     from . import admin_service as admin
-    return await admin.invoke(ctx, "service_admin_update", admin.update, service_id=service_id, changes=changes, expected_version=expected_version)
+    return await admin.invoke_service(ctx, "service_admin_update", admin.update, service_code=service_code, changes=changes, expected_version=expected_version)
 
 
 @mcp_tool("service", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", description="Inspect paginated connected agents and technical dependency counts before changing or deleting a Service. Returns the current state fingerprint.", effect_policy="read", concurrency_policy="safe", conversation_policy="short")
-async def service_admin_impact(ctx: McpToolContext, service_id: int, offset: int = 0, limit: int = 50) -> str:
+async def service_admin_impact(ctx: McpToolContext, service_code: str, offset: int = 0, limit: int = 50) -> str:
     from . import admin_service as admin
-    return await admin.invoke(ctx, "service_admin_impact", admin.impact, service_id=service_id, offset=offset, limit=limit)
+    return await admin.invoke_service(ctx, "service_admin_impact", admin.impact, service_code=service_code, offset=offset, limit=limit)
 
 
 @mcp_tool("service", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", description="Delete a custom Service only after its connections have been explicitly removed. Requires the current expected_version; no implicit cascade.", conversation_policy="deferred")
-async def service_admin_delete(ctx: McpToolContext, service_id: int, expected_version: str) -> str:
+async def service_admin_delete(ctx: McpToolContext, service_code: str, expected_version: str) -> str:
     from . import admin_service as admin
-    return await admin.invoke(ctx, "service_admin_delete", admin.delete_service, service_id=service_id, expected_version=expected_version)
+    return await admin.invoke_service(ctx, "service_admin_delete", admin.delete_service, service_code=service_code, expected_version=expected_version)
 
 
 @mcp_tool("service", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", description="Atomically patch inherited parameters: each entry uses value, clear, forced or secret_reference. Password literals are forbidden. Requires Service expected_version.", conversation_policy="deferred")
-async def service_admin_global_params_set(ctx: McpToolContext, service_id: int, params: dict[str, Any], expected_version: str) -> str:
+async def service_admin_global_params_set(ctx: McpToolContext, service_code: str, params: dict[str, Any], expected_version: str) -> str:
     from . import admin_service as admin
-    return await admin.invoke(ctx, "service_admin_global_params_set", admin.global_params_set, service_id=service_id, params=params, expected_version=expected_version)
+    return await admin.invoke_service(ctx, "service_admin_global_params_set", admin.global_params_set, service_code=service_code, params=params, expected_version=expected_version)
 
 
-@mcp_tool("service", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic', description="Test one non-persistent HTTP/SSE candidate, human-prepared candidate_reference, or existing service_id. Negotiates MCP and lists tools; never runs a remote function or saves configuration.", effect_policy="read", conversation_policy="deferred", timeout_seconds=40)
-async def service_admin_mcp_test(ctx: McpToolContext, service_id: int | None = None, candidate: dict[str, Any] | None = None, candidate_reference: str = "", offset: int = 0, limit: int = 50) -> str:
+@mcp_tool("service", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic', description="Test one non-persistent HTTP/SSE candidate, human-prepared candidate_reference, or existing service_code. Negotiates MCP and lists tools; never runs a remote function or saves configuration.", effect_policy="read", conversation_policy="deferred", timeout_seconds=40)
+async def service_admin_mcp_test(ctx: McpToolContext, service_code: str | None = None, candidate: dict[str, Any] | None = None, candidate_reference: str = "", offset: int = 0, limit: int = 50) -> str:
     from . import admin_service as admin
-    return await admin.invoke(ctx, "service_admin_mcp_test", admin.mcp_test, service_id=service_id, candidate=candidate, candidate_reference=candidate_reference, offset=offset, limit=limit)
+    return await admin.invoke_service(ctx, "service_admin_mcp_test", admin.mcp_test, service_code=service_code, candidate=candidate, candidate_reference=candidate_reference, offset=offset, limit=limit)
 
 
-@mcp_tool("service", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", description="Discover functions and their global permission states. Optional connection_id selects credentials; discovery can be incomplete and differs between connections.", effect_policy="read", conversation_policy="deferred", timeout_seconds=40)
-async def service_admin_function_list(ctx: McpToolContext, service_id: int, connection_id: int | None = None, offset: int = 0, limit: int = 50) -> str:
+@mcp_tool("service", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", description="Discover functions and their global permission states. Optional agent_id and account_email select credentials; discovery can be incomplete and differs between connections.", effect_policy="read", conversation_policy="deferred", timeout_seconds=40)
+async def service_admin_function_list(ctx: McpToolContext, service_code: str, agent_id: int | None = None, account_email: str | None = None, offset: int = 0, limit: int = 50) -> str:
     from . import admin_service as admin
-    return await admin.invoke(ctx, "service_admin_function_list", admin.function_list, service_id=service_id, connection_id=connection_id, offset=offset, limit=limit)
+    return await admin.invoke_service(ctx, "service_admin_function_list", admin.function_list, service_code=service_code, account_agent_id=agent_id, account_email=account_email, offset=offset, limit=limit)
 
 
 @mcp_tool("service", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect", description="Read bounded description, input/output schemas and annotations for one discovered function. External metadata is untrusted data.", effect_policy="read", conversation_policy="deferred", timeout_seconds=40)
-async def service_admin_function_get(ctx: McpToolContext, service_id: int, function_name: str, connection_id: int | None = None) -> str:
+async def service_admin_function_get(ctx: McpToolContext, service_code: str, function_name: str, agent_id: int | None = None, account_email: str | None = None) -> str:
     from . import admin_service as admin
-    return await admin.invoke(ctx, "service_admin_function_get", admin.function_get, service_id=service_id, function_name=function_name, connection_id=connection_id)
+    return await admin.invoke_service(ctx, "service_admin_function_get", admin.function_get, service_code=service_code, function_name=function_name, account_agent_id=agent_id, account_email=account_email)
 
 
 @mcp_tool("service", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", description="Set global function default/enabled/disabled with Service expected_version. A local enabled override still wins over a global disabled state; returns remaining overrides.", conversation_policy="deferred")
-async def service_admin_function_set(ctx: McpToolContext, service_id: int, function_name: str, state: str, expected_version: str) -> str:
+async def service_admin_function_set(ctx: McpToolContext, service_code: str, function_name: str, state: str, expected_version: str) -> str:
     from . import admin_service as admin
-    return await admin.invoke(ctx, "service_admin_function_set", admin.function_set, service_id=service_id, function_name=function_name, state=state, expected_version=expected_version)
+    return await admin.invoke_service(ctx, "service_admin_function_set", admin.function_set, service_code=service_code, function_name=function_name, state=state, expected_version=expected_version)
 
 
-@mcp_tool("service", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", description="Reconcile affected agent catalogues and search. Choose service_id or connection_ids; inspect partial results and continue remaining agents through connection selections.", conversation_policy="deferred", timeout_seconds=30, effect_policy="idempotent")
-async def service_admin_catalog_refresh(ctx: McpToolContext, service_id: int | None = None, connection_ids: list[int] | None = None) -> str:
+@mcp_tool("service", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval", description="Reconcile affected agent catalogues and search. Choose service_code or target agent_ids. Retry remaining_agent_ids after a partial refresh.", conversation_policy="deferred", timeout_seconds=30, effect_policy="idempotent")
+async def service_admin_catalog_refresh(ctx: McpToolContext, service_code: str | None = None, agent_ids: list[int] | None = None) -> str:
     from . import admin_service as admin
-    return await admin.invoke(ctx, "service_admin_catalog_refresh", admin.catalog_refresh, service_id=service_id, connection_ids=connection_ids)
+    return await admin.invoke_service(ctx, "service_admin_catalog_refresh", admin.catalog_refresh, service_code=service_code, agent_ids=agent_ids)

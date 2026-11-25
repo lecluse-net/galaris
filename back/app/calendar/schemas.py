@@ -61,6 +61,7 @@ class CalendarFeedRead(BaseModel):
     connection_id: int
     agent_id: int
     label: str
+    service_code: str = ""
     service_label: str = ""
     owner_label: str | None
     source_kind: Literal["internal", "ical", "caldav", "google", "microsoft", "icloud"] = "caldav"

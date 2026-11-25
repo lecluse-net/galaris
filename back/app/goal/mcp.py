@@ -10,7 +10,9 @@ from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
 
 from . import goal_service, retrospective
 from .access import owner_scope, readable_agents
+from app.connection.facade import resolve_service_connection
 from app.services.facade import administration_scope
+from .resource_facade import agent_goal_payload
 from .models import GoalStatus
 from .referrer_wait import ask_human_referrer
 from .schemas import (
@@ -76,12 +78,6 @@ def _goal_id(value: str) -> UUID:
         return UUID(value.strip())
     except (AttributeError, ValueError) as exc:
         raise ValueError(f"Invalid Goal UUID: {value}") from exc
-
-
-def _goal_payload(goal: Any) -> dict[str, Any]:
-    """Return JSON-safe Goal data from a Pydantic response model."""
-
-    return dict(goal.model_dump(mode="json"))
 
 
 async def _has_goal_management_access(ctx: McpToolContext) -> bool:
@@ -154,7 +150,7 @@ async def _goal_management_command(
     result = await method(identifier, command)
     if result is None:
         raise ValueError(f"Goal not found: {goal_id}")
-    return _goal_payload(result)
+    return await agent_goal_payload(result)
 
 
 @mcp_tool("goal", approval="enabled", approval_reason="Ask the current Goal's configured human referrer for clarification without prior approval",
@@ -183,8 +179,23 @@ async def mcp_goal_ask_referrer(ctx: McpToolContext, question: str) -> str:
     )
 
 
-@mcp_tool("goal", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+async def _referrer_preflight(ctx: McpToolContext, arguments: dict[str, Any]) -> dict[str, Any]:
+    if (code := arguments.get("service_code")) is None:
+        return {}
+    await _require_goal_management_access(ctx)
+    owner = arguments.get("agent_id")
+    if goal := arguments.get("goal_id"):
+        previous = await owner_scope(ctx.agent_id, _goal_id(goal), manage=True)
+        owner = previous if owner is None else owner
+    if not isinstance(owner, int):
+        raise ValueError("The Goal owner is required")
+    (await administration_scope(ctx.agent_id, _GOAL_SERVICE_CODE)).require(owner)
+    account = await resolve_service_connection(owner, code, account_email=arguments.get("account_email"))
+    return {"referrer_account": account.id}
 
+
+@mcp_tool("goal", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+    authorization_preflight=_referrer_preflight,
     name="goal_create",
     description=(
         "Assign a new long-running Goal to an agent. The owner agent performs the work and "
@@ -197,7 +208,7 @@ async def mcp_goal_ask_referrer(ctx: McpToolContext, question: str) -> str:
 async def mcp_goal_create(
     ctx: McpToolContext,
     agent_id: int,
-    referrer_connection_id: int,
+    service_code: str,
     referrer_user_id: str,
     referrer_display_name: str,
     title: str,
@@ -207,6 +218,7 @@ async def mcp_goal_create(
     schedule_enabled: bool = False,
     schedule: list[GoalScheduleWindow] | None = None,
     active: bool = True,
+    account_email: str | None = None,
 ) -> dict[str, Any]:
     """Create an agent-owned Goal with an explicit human referrer."""
 
@@ -218,7 +230,7 @@ async def mcp_goal_create(
         agent_id=agent_id,
         referrer=GoalMessengerReferrerInput(
             type="MESSENGER",
-            connection_id=referrer_connection_id,
+            connection_id=(await resolve_service_connection(agent_id, service_code, account_email=account_email)).id,
             user_id=referrer_user_id,
             display_name=referrer_display_name,
         ),
@@ -228,7 +240,7 @@ async def mcp_goal_create(
         schedule=schedule or [],
         active=active,
     )
-    return _goal_payload(await goal_service.create(data))
+    return await agent_goal_payload(await goal_service.create(data))
 
 
 async def mcp_goal_list(
@@ -263,7 +275,7 @@ async def mcp_goal_list(
         status=goal_status,
         search=search,
     )
-    return dict(page.model_dump(mode="json"))
+    return await agent_goal_payload(page)
 
 
 async def mcp_goal_get(
@@ -275,7 +287,7 @@ async def mcp_goal_get(
 
     identifier = _goal_id(goal_id)
     goal = await _goal_visible_to_caller(ctx, identifier)
-    return _goal_payload(goal)
+    return await agent_goal_payload(goal)
 
 
 async def mcp_goal_get_suivi(
@@ -330,11 +342,12 @@ async def mcp_goal_update_suivi(
     )
     if result is None:
         raise ValueError(f"Goal not found: {goal_id}")
-    return _goal_payload(result)
+    return await agent_goal_payload(result)
 
 
 @mcp_tool("goal", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
+    authorization_preflight=_referrer_preflight,
     name="goal_update",
     description=(
         "Update a Goal using the revision read from galaris://goal/<uuid>. Any omitted field is "
@@ -351,7 +364,8 @@ async def mcp_goal_update(
     title: str | None = None,
     description: str | None = None,
     agent_id: int | None = None,
-    referrer_connection_id: int | None = None,
+    service_code: str | None = None,
+    account_email: str | None = None,
     referrer_user_id: str | None = None,
     referrer_display_name: str | None = None,
     cycle_delay_seconds: int | None = None,
@@ -363,7 +377,7 @@ async def mcp_goal_update(
 
 
     await _require_goal_management_access(ctx)
-    await owner_scope(ctx.agent_id, _goal_id(goal_id), manage=True)
+    owner = await owner_scope(ctx.agent_id, _goal_id(goal_id), manage=True)
     if agent_id is not None:
         (await administration_scope(ctx.agent_id, _GOAL_SERVICE_CODE)).require(agent_id)
     values: dict[str, Any] = {"expected_revision": expected_revision}
@@ -379,22 +393,22 @@ async def mcp_goal_update(
         if value is not None:
             values[key] = value
     referrer_values = (
-        referrer_connection_id,
+        service_code,
         referrer_user_id,
         referrer_display_name,
     )
-    if any(value is not None for value in referrer_values):
+    if account_email is not None or any(value is not None for value in referrer_values):
         if not all(value is not None for value in referrer_values):
             raise ValueError(
-                "referrer_connection_id, referrer_user_id and "
+                "service_code, referrer_user_id and "
                 "referrer_display_name must be supplied together"
             )
-        assert referrer_connection_id is not None
+        assert service_code is not None
         assert referrer_user_id is not None
         assert referrer_display_name is not None
         values["referrer"] = GoalMessengerReferrerInput(
             type="MESSENGER",
-            connection_id=referrer_connection_id,
+            connection_id=(await resolve_service_connection(agent_id if agent_id is not None else owner, service_code, account_email=account_email)).id,
             user_id=referrer_user_id,
             display_name=referrer_display_name,
         )
@@ -404,7 +418,7 @@ async def mcp_goal_update(
     result = await goal_service.update(_goal_id(goal_id), data)
     if result is None:
         raise ValueError(f"Goal not found: {goal_id}")
-    return _goal_payload(result)
+    return await agent_goal_payload(result)
 
 
 @mcp_tool("goal", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
@@ -503,7 +517,7 @@ async def mcp_goal_run_now(
     )
     if result is None:
         raise ValueError(f"Goal not found: {goal_id}")
-    return _goal_payload(result)
+    return await agent_goal_payload(result)
 
 
 @mcp_tool("goal", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",

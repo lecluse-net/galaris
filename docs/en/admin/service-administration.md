@@ -297,8 +297,10 @@ One Service can provide both MCP and REST. The **REST** tab configures the base 
 authentication (none, Bearer, header, Basic or query parameter), timeout and maximum response
 size. No operation catalogue or OpenAPI document is required.
 
-Enter the HTTP(S) address directly in the **REST** tab. All connections to the Service
-share this address. REST starts with **No authentication**. If the API requires credentials
+An HTTP(S) address entered directly in the **REST** tab is shared by all connections to
+the Service. Some presets, including GitLab, reference `${connection:url}` as their base.
+Set the `url` parameter to the instance’s full API root in that case.
+REST starts with **No authentication**. If the API requires credentials
 or additional headers, select existing connection parameters or choose **New parameter…**.
 For Basic authentication, select a username parameter and a secret password parameter.
 
@@ -307,12 +309,54 @@ overrides, imposed values, encryption and masking apply. Definitions and YAML ex
 contain only parameter names for these values. Disabled connections and connections belonging to another
 agent cannot be used.
 
-REST endpoint permissions belong exclusively to the token in the third-party service.
-MCP **Enabled / Disabled / Ask** permissions do not filter REST calls. The application
-facade is available to future Code and Process consumers; it introduces neither a generic
-MCP tool nor a public HTTP proxy. Redirects are not followed, HTTP errors retain their
-status, and requests are never retried automatically. Remote job tracking and callbacks
-will be addressed separately.
+Use `service_code` to select the Service in saved instructions and MCP Process activities.
+Replace old numeric selectors before running the activity again. Account administration
+commands also take the managed `agent_id` and, for multiple mailboxes on one Service, `account_email`.
+
+The protocol provides the `rest_request` MCP tool. In **Authorizations**, select the
+Service and set the tool to **Enabled**, **Disabled** or **Ask** (the default). To use it
+directly in conversations, also enable it in the Service's conversation tools. The remote
+API enforces the account's permissions on each endpoint. The agent finds its connection in
+the tool description or in `services_list` during a Task, then supplies its `service_code` with the request. If several mailboxes share the Service, it also supplies `account_email`.
+It receives the HTTP
+status, headers and JSON or text body, including HTTP error responses. Redirects are
+returned to the agent. A write may have taken effect after a transport error, and Galaris
+does not retry it automatically.
+
+<a id="rest-request"></a>
+
+### `rest_request` reference
+
+The call takes `service_code`, `request` and, to select among multiple mailboxes on the same Service, `account_email`. For example, given a ticket API with a configured base URL:
+
+```json
+{
+  "service_code": "support",
+  "request": {
+    "method": "POST",
+    "path": "tickets",
+    "params": {"notify": true},
+    "headers": {"Accept": "application/json"},
+    "json_body": {"title": "Printer offline"}
+  }
+}
+```
+
+| `request` field | Format and behavior |
+|---|---|
+| `method`, `path` | Uppercase GET (default), HEAD, POST, PUT, PATCH, DELETE or OPTIONS. The path is relative to the Service base URL. An empty path calls the base itself. Put the query in `params` and omit the fragment. |
+| `params` | Object with string, number, boolean or string-list values. `{"label":["a","b"]}` produces `label=a&label=b`. If the API expects brackets, use the literal key `label[]`. |
+| `headers` | Object of strings with single-line ASCII values. Configured connection headers and authentication take precedence. The transport reserves `Host`, `Content-Length`, `Transfer-Encoding` and `Connection`. |
+| `json_body` | Any JSON value. Omit the field for a call with no body. Sending `"json_body": null` writes the four bytes of `null`. The default type is `application/json`. |
+| `text_body` | UTF-8 text. Set the media type required by the API in `headers`, for example `{"Content-Type":"application/xml"}`. |
+| `file_uri` | Sends the bytes of a readable resource as the HTTP body. Its default media type comes from the file and falls back to `application/octet-stream`. |
+| `form`, `files` | `form` alone sends `application/x-www-form-urlencoded` fields. Each value is a string or a list of strings to repeat the field. Adding files selects `multipart/form-data`. Each part takes `field` and `uri`, with optional `filename` and `content_type`. Multiple parts can use the same `field`. Let Galaris generate the multipart header and boundary. |
+
+Choose one body mode per call. Query parameters and headers work with every mode. File data is limited to 16 files and 32 MiB combined per call. In **Ask** mode, changing a file’s contents requires fresh consent.
+
+**Response.** Read `status_code`, `headers` and `body`. A provider’s `403` or `429` is an HTTP result with details the agent can inspect. A transport failure is a tool error. An empty body produces `""`. The tool decodes the response as JSON when possible and otherwise as text. It cannot return a downloaded PDF or image byte for byte. The Service sets the HTTP timeout (60 s by default, range 1–300 s) and decoded response size limit (2 MiB by default, range 1 byte–16 MiB).
+
+**Translating an Axios example.** The Service owns the `baseURL`. Put the relative part of `url` in `request.path`, keep `params` and `headers`, and select the body field matching the format of `data`. On the response, `response.status` maps to `status_code` and `response.data` to `body`. Status and redirect handling resemble Axios on Node with `validateStatus: () => true` and `maxRedirects: 0`. [Axios request configuration](https://axios-http.com/docs/req_config) · [Axios response schema](https://axios-http.com/docs/res_schema)
 
 ## Test and create with a secret
 
@@ -582,8 +626,7 @@ After a mutation, `persisted=true` confirms storage even when refresh is partial
 catalogues reconcile without pruning after incomplete discovery. Refresh calls the Python functions
 in `app.services` directly, with a 20-second budget and permission checks before and after each agent.
 Each agent's results are committed separately. Partial results identify `failed_agent_ids` and
-`remaining_agent_ids`; look up their connections and retry `service_admin_catalog_refresh` with those
-`connection_ids`, not the already persisted mutation. No Process is created.
+`remaining_agent_ids`. Pass those agents to `service_admin_catalog_refresh(agent_ids=[...])` to resume the refresh.
 DbAdmin convergence removes obsolete technical `catalog_refresh` definitions and their runs,
 after resolving any waiting Tasks.
 

@@ -1,6 +1,7 @@
 """REST capability configuration and transport-independent invocation contracts."""
 
-from typing import Literal
+from dataclasses import dataclass
+from typing import Annotated, Literal
 from urllib.parse import urlsplit
 import re
 from uuid import UUID
@@ -93,6 +94,42 @@ class RestRequest(BaseModel):
                for name, value in self.headers.items()):
             raise ValueError("Invalid REST request header")
         return self
+
+
+UploadUri = Annotated[str, Field(min_length=1, max_length=8192)]
+FormField = Annotated[str, Field(min_length=1, max_length=256, pattern=r"^[^\x00-\x1f\x7f]+$")]
+UploadName = Annotated[str, Field(min_length=1, max_length=255, pattern=r"^[^/\\\x00-\x1f\x7f]+$")]
+
+
+class RestFilePart(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    field: FormField
+    uri: UploadUri
+    filename: UploadName | None = None
+    content_type: str | None = Field(default=None, max_length=255, pattern=r"^[A-Za-z0-9!#$&^_.+\-]+/[A-Za-z0-9!#$&^_.+\-]+$")
+
+
+class RestToolRequest(RestRequest):
+    """Agent uploads use the resource context of this MCP call."""
+    file_uri: UploadUri | None = None
+    form: dict[FormField, str | list[str]] | None = None
+    files: list[RestFilePart] = Field(default_factory=list[RestFilePart], max_length=16)
+
+    @model_validator(mode="after")
+    def validate_upload(self) -> "RestToolRequest":
+        modes = ("json_body" in self.model_fields_set, self.text_body is not None,
+                 self.file_uri is not None, self.form is not None or bool(self.files))
+        if sum(modes) > 1:
+            raise ValueError("Select one REST body: JSON, text, file_uri, or form with optional files.")
+        return self
+
+
+@dataclass(frozen=True, slots=True, repr=False)
+class RestUpload:
+    field: str
+    filename: str
+    content_type: str
+    content: bytes
 
 
 class RestResponse(BaseModel):

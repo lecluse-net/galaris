@@ -113,7 +113,9 @@ def native_service_codes_for_service(tool: Any) -> frozenset[str]:
     """Return native families exposed by one concrete Service configuration."""
 
     codes = set(native_service_codes_for_connection(str(getattr(tool, "code", "") or "")))
-    codes.difference_update({"messenger", "mail", "calendar"})
+    codes.difference_update({"messenger", "mail", "calendar", "rest"})
+    if getattr(tool, "rest", getattr(tool, "rest_config", None)) is not None:
+        codes.add("rest")
     if getattr(tool, "code", "") == "calendar":
         codes.add("calendar")
     if getattr(tool, "mail", getattr(tool, "mail_config", None)) is not None:
@@ -612,16 +614,17 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
                         key: value for key, value in bound.arguments.items() if key not in {"ctx", "context"}
                     }
                     call_ctx = ctx
-                    if definition.service_code in {"mail", "calendar"}:
-                        protocol = cast(Literal["mail", "calendar"], definition.service_code)
-                        requested = arguments.get("connection_id") or ctx.resource("source_connection_id")
-                        if requested is None and protocol == "mail" and ctx.task_id is not None:
+                    if definition.service_code in {"mail", "calendar", "rest"}:
+                        protocol = cast(Literal["mail", "calendar", "rest"], definition.service_code)
+                        requested = ctx.resource("source_connection_id")
+                        if requested is None and arguments.get("service_code") is None and protocol == "mail" and ctx.task_id is not None:
                             from app.messenger import inbound_task_connection
 
                             requested = await inbound_task_connection(
                                 ctx.task_id, agent_id=ctx.agent_id, platform=protocol,
                             )
                         selected = await resolve_protocol_connection(ctx.agent_id, protocol, requested,
+                            service_code=arguments.get("service_code"), account_email=arguments.get("account_email"),
                             resource_id=arguments.get("calendar_id") if protocol == "calendar" else None)
                         protocol_token = bind_protocol_connection(protocol, ctx.agent_id, selected)
                         call_ctx = replace(ctx, resources={**ctx.resources, "source_connection_id": selected})
@@ -1067,7 +1070,10 @@ async def build_agent_galaris_fastmcp(
     )
     mcp: FastMCP = _MediaFilteredFastMCP(f"Galaris tools — Agent {agent_id}", agent_id=agent_id, runtime=runtime, conversation_only=conversation_only)
     for definition in definitions:
-        mcp.tool()(_wrap_tool(definition, ctx))
+        wrapper = _wrap_tool(definition, ctx)
+        if definition.name == "rest_request":
+            wrapper.__doc__ = f"{definition.description}\n{await _rest_connection_choices(ctx)}"
+        mcp.tool()(wrapper)
         mcp.native_execution_names.add(definition.name)
     # Keep the registrations available for live reconfiguration. list_tools and the
     # call-time guard consult current profile/connection rights on every access.
@@ -1083,6 +1089,26 @@ async def build_agent_galaris_fastmcp(
     return mcp
 
 
+async def _rest_connection_choices(ctx: McpToolContext) -> str:
+    """Advertise only REST accounts eligible for this run, without resolving credentials."""
+    from app.connection import facade as connections
+    from .service import get_services_by_ids
+    active = [row for row in await connections.get_connections_by_agent(ctx.agent_id) if row.active]
+    services = await get_services_by_ids({row.service_id for row in active})
+    candidates = {row.id: tool for row in active if (tool := services.get(row.service_id)) and tool.rest is not None
+                  and (not ctx.conversation_only or "rest_request" in conversation_tool_names(tool, source="native"))}
+    modes = await connections.resolve_function_states_many(candidates.keys(), "rest_request")
+    eligible = [identifier for identifier in candidates if modes.get(identifier) in {"ask", "enabled"}]
+    addresses = await connections.account_emails_for_connections([i for i in eligible if candidates[i].mail is not None])
+    choices: list[str] = []
+    for identifier in eligible:
+        choice = f"service_code={candidates[identifier].code}"
+        if email := addresses.get(identifier):
+            choice += f", account_email={email}"
+        choices.append(choice)
+    return "Available accounts: " + "; ".join(sorted(choices))
+
+
 class _MediaFilteredFastMCP(FastMCP):
     def __init__(self, name: str, *, agent_id: int, runtime: RuntimeName = "internal", conversation_only: bool = False) -> None:
         super().__init__(name)  # pyright: ignore[reportUnknownMemberType]
@@ -1090,7 +1116,7 @@ class _MediaFilteredFastMCP(FastMCP):
         self.runtime = runtime
         self.conversation_only = conversation_only
         self.native_execution_names: set[str] = set()
-        self.add_middleware(ToolArgumentsMiddleware())
+        self.add_middleware(ToolArgumentsMiddleware(self.native_execution_names))
         self.add_middleware(ExecutionEvidenceMiddleware(self.native_execution_names))
 
     async def list_tools(self, *, run_middleware: bool = True) -> Sequence[Tool]:
@@ -1404,6 +1430,8 @@ async def list_agent_mcp_tools(agent_id: int) -> list[dict[str, Any]]:
     groups: list[dict[str, Any]] = []
     record_connections = [(record, connection) for record in records
         for connection in ([row for row in connections if row.service_id == record.id] or [None])]
+    addresses = await connection_service.account_emails_for_connections(
+        [connection.id for record, connection in record_connections if connection and getattr(record, "mail_config", None) is not None])
     for record, connection in record_connections:
         tool = service._to_internal(record)  # pyright: ignore[reportPrivateUsage]
         native_definitions = [
@@ -1453,17 +1481,13 @@ async def list_agent_mcp_tools(agent_id: int) -> list[dict[str, Any]]:
             except Exception:
                 error = t("services.introspection_failed")
 
-        mail_address = ""
-        if connection is not None and tool.mail is not None:
-            _, account_params = await connection_service.get_params_as_dict(connection, decrypt_passwords=False)
-            mail_address = str(account_params.get(tool.mail.param_map.get("email_address", "email_address")) or "")
         groups.append({
             "service_id": record.id,
             "service_code": record.code,
             "service_label": record.label,
             "service_description": record.description or "",
             "connection_id": connection.id if connection is not None else None,
-            "mail_address": mail_address,
+            "mail_address": addresses.get(connection.id, "") if connection else "",
             "active": active,
             "source": (
                 "mixed"

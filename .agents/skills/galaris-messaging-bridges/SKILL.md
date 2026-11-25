@@ -5,6 +5,10 @@ description: Architecture de messagerie Galaris — modèle canonique app.messen
 
 # Maîtriser la messagerie Galaris
 
+Utiliser le `service_code` pour toute sélection explicite de Service par un agent. Le catalogue
+fournit aussi `account_email` pour distinguer les boîtes d'un même fournisseur. Une tâche
+Mail entrante porte déjà son compte source. Réutiliser ses références et URI telles quelles.
+
 ## Lire les contrats avant le protocole
 
 Commencer par `docs/fr/architecture/flows/messaging.md`,

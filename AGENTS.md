@@ -247,6 +247,11 @@ Reserve `galaris` / `Galaris` exclusively for the built-in Galaris Service. No o
 code or label may contain that name, regardless of case or Unicode compatibility forms.
 Use service or domain names, such as `service` / `Services` and `lab` / `Lab`.
 
+Agent-facing tools select a configured Service by its exact `service_code`. Publish the code in
+discovery, examples, prompts and skills. Scope account resolution to the authorized agent and
+use `account_email` to distinguish mailboxes at the same provider. Bind approval and execution
+to the resolved account. Treat returned resource URIs as opaque.
+
 MCP tools, connections, and files use the contracts of `app.services`, `app.mcp`,
 `app.connection`, and `app.file_share`. Business workflows use `app.process`: external
 workflows can execute through the n8n bridge, and the native engine executes BPMN processes. See

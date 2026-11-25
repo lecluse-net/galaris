@@ -16,6 +16,21 @@ from .models import Goal, GoalCycle
 from .schemas import GoalCycleRead
 
 
+async def agent_goal_payload(model: Any) -> dict[str, Any]:
+    """Use Service codes for Messenger referrers in agent-visible goals and pages."""
+    from app.connection.facade import service_codes_for_connections
+
+    payload = dict(model.model_dump(mode="json"))
+    goals = payload.get("items", [payload])
+    referrers = [item["referrer"] for item in goals if item.get("referrer")]
+    codes = await service_codes_for_connections({ref["connection_id"] for ref in referrers if ref.get("connection_id")})
+    for ref in referrers:
+        identifier = ref.pop("connection_id", None)
+        if identifier is not None:
+            ref["service_code"] = codes.get(identifier)
+    return payload
+
+
 async def read_goal_resource(
     goal_id: UUID,
     *,
@@ -31,7 +46,7 @@ async def read_goal_resource(
     )
     if goal is None:
         return None
-    payload = dict(goal.model_dump(mode="json"))
+    payload = await agent_goal_payload(goal)
     payload["resource_uri"] = f"galaris://goal/{goal.id}"
     return payload
 
@@ -50,13 +65,8 @@ async def list_goal_resources(
         agent_ids=await readable_agents(actor_agent_id),
         search=query.strip() or None,
     )
-    return [
-        {
-            **dict(item.model_dump(mode="json")),
-            "resource_uri": f"galaris://goal/{item.id}",
-        }
-        for item in page.items
-    ]
+    payload = await agent_goal_payload(page)
+    return [{**item, "resource_uri": f"galaris://goal/{item['id']}"} for item in payload["items"]]
 
 
 def _cycle_payload(

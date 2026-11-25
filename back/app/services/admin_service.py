@@ -40,6 +40,12 @@ async def invoke(ctx: McpToolContext, name: str, operation: Callable[..., Awaita
     try:
         await actor.require()
         result = await operation(actor, **arguments)
+        if name == "service_admin_list":
+            for item in result["items"]:
+                item["service_code"] = item.pop("code")
+                item.pop("id", None)
+        if name == "service_admin_create" and "tool" in result:
+            result["service_code"] = result["tool"]["code"]
         return json.dumps({"success": True, **result}, ensure_ascii=False, default=str)
     except AdministrationError as exc:
         await get_db().rollback()
@@ -50,6 +56,53 @@ async def invoke(ctx: McpToolContext, name: str, operation: Callable[..., Awaita
     except ValueError:
         await get_db().rollback()
         return json.dumps({"success": False, "error": {"kind": "configuration_invalid", "message": "Invalid administration configuration."}})
+
+
+async def invoke_service(ctx: McpToolContext, name: str, operation: Callable[..., Awaitable[dict[str, Any]]],
+                         service_code: str | None, *, account_agent_id: int | None = None,
+                         account_email: str | None = None, **arguments: Any) -> str:
+    """Resolve a public selector inside the authorized administrative scope."""
+    async def selected(actor: AdministrationContext) -> dict[str, Any]:
+        if service_code is not None:
+            tool = await _record_by_code(service_code)
+            arguments["service_id"] = tool.id
+        if account_agent_id is not None:
+            from app.connection.facade import resolve_service_connection
+            actor.require_agent(account_agent_id)
+            if service_code is None:
+                raise AdministrationError("configuration_invalid", "Account selection requires service_code.")
+            try:
+                connection = await resolve_service_connection(account_agent_id, service_code,
+                    account_email=account_email, active_only=False)
+            except ValueError as exc:
+                raise AdministrationError("configuration_invalid", str(exc)) from exc
+            arguments["connection_id"] = connection.id
+            if operation not in (function_list, function_get):
+                arguments.pop("service_id")
+        elif account_email is not None:
+            raise AdministrationError("configuration_invalid", "Account selection requires agent_id.")
+        result = await operation(actor, **arguments)
+        result.pop("connection_id", None)
+        result.pop("service_id", None)
+        if service_code is not None:
+            result["service_code"] = service_code
+        if account_agent_id is not None:
+            result["agent_id"] = account_agent_id
+        if "source" in result:
+            source = result["source"]
+            source.pop("connection_id", None)
+            source.pop("service_id", None)
+            source.update(service_code=service_code, agent_id=account_agent_id)
+        return result
+
+    return await invoke(ctx, name, selected)
+
+
+async def _record_by_code(code: str) -> Service:
+    tool = await service.get_service_record(code)
+    if tool is None:
+        raise AdministrationError("not_found", "Service not found.")
+    return tool
 
 
 async def record(service_id: int) -> Service:
@@ -571,12 +624,17 @@ async def function_set(actor: AdministrationContext, service_id: int, function_n
     from app.connection.facade import set_service_function_state, administration
 
     _validate_function(function_name, state)
-    await _lock_mutation(actor, service_id, expected_version)
+    tool = await _lock_mutation(actor, service_id, expected_version)
     await set_service_function_state(service_id, function_name, state, commit=False)
     snapshot = await administration.snapshot(service_id)
-    overrides = [{"connection_id": conn, "state": mode} for conn, kind, name, mode in snapshot["local_states"] if kind == "tool" and name == function_name]
+    from app.connection.facade import account_emails_for_connections
+    owners = {item["id"]: item["agent_id"] for item in snapshot["connections"]}
+    states = [(conn, mode) for conn, kind, name, mode in snapshot["local_states"] if kind == "tool" and name == function_name]
+    addresses = await account_emails_for_connections([conn for conn, _ in states[:500]])
+    overrides = [{"service_code": tool.code, "agent_id": owners[conn], "state": mode,
+                  **({"account_email": addresses[conn]} if conn in addresses else {})} for conn, mode in states[:500]]
     return {**await _saved(actor, service_id), "function_name": function_name, "global_state": state,
-            "local_overrides": overrides[:500], "local_override_count": len(overrides), "overrides_truncated": len(overrides) > 500}
+            "local_overrides": overrides, "local_override_count": len(states), "overrides_truncated": len(states) > 500}
 
 
 def _validate_function(name: str, state: FunctionState) -> None:
@@ -608,7 +666,7 @@ async def connection_get(actor: AdministrationContext, connection_id: int | None
         raise AdministrationError("not_found", "Connection not found.")
     data = await administration.projection(connection_id)
     actor.require_agent(data["agent_id"])
-    return {"connection": data, "version": await fingerprint(await record(data["service_id"]), connection_id=connection_id),
+    return {"connection": data, "version": await fingerprint(await _record_by_code(data["service_code"]), connection_id=connection_id),
             "references": await administration.references([connection_id])}
 
 
@@ -670,24 +728,23 @@ async def connection_function_list(actor: AdministrationContext, connection_id: 
 
 
 async def catalog_refresh(actor: AdministrationContext, service_id: int | None = None,
-                          connection_ids: list[int] | None = None) -> dict[str, Any]:
-    from app.connection.facade import get_agent_ids_by_tool, get_connection
+                          agent_ids: list[int] | None = None) -> dict[str, Any]:
+    from app.agent import agent_service
+    from app.connection.facade import get_agent_ids_by_tool
 
     await actor.require()
-    if service_id is None and not connection_ids:
-        raise AdministrationError("configuration_invalid", "Choose a Service or explicit connection IDs.")
+    if (service_id is None) == (not agent_ids):
+        raise AdministrationError("configuration_invalid", "Choose one service_code or a nonempty list of agent_ids.")
     if service_id is not None:
         await record(service_id)
         agents = await get_agent_ids_by_tool(service_id)
         if actor.allowed_agent_ids is not None:
             agents = [agent for agent in agents if agent in actor.allowed_agent_ids]
     else:
-        agents: list[int] = []
-        for connection_id in connection_ids or []:
-            connection = await get_connection(connection_id)
-            if connection is None:
-                raise AdministrationError("not_found", "Connection not found.")
-            actor.require_agent(connection.agent_id)
-            agents.append(connection.agent_id)
+        agents = sorted(set(agent_ids or []))
+        for identifier in agents:
+            actor.require_agent(identifier)
+            if await agent_service.get(identifier) is None:
+                raise AdministrationError("not_found", "Agent not found.")
     await release_db_transaction()
     return {"refresh": await refresh_catalogs(actor, agents)}

@@ -1280,3 +1280,11 @@ async def test_native_domain_not_found_message_selects_lookup_recovery(
 
     assert failure.kind == "not_found"
     assert failure.detail.startswith("Goal not found:")
+
+def test_native_tools_select_services_by_public_code():
+    import inspect
+    from app.services.mcp_loader import load_mcp_tools
+
+    for definition in load_mcp_tools():
+        parameters = inspect.signature(definition.function).parameters
+        assert not {"connection_id", "connection_ids", "referrer_connection_id", "service_id"}.intersection(parameters), definition.name

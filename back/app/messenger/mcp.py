@@ -246,6 +246,14 @@ async def bind_messenger_tool_context(
 
     source_connection = ctx.resource("source_connection_id")
     channel = str(arguments.get("channel") or "").strip()
+    if (service_code := arguments.get("service_code")) is not None:
+        from app.connection.facade import resolve_service_connection
+        selected = await resolve_service_connection(ctx.agent_id, service_code, account_email=arguments.get("account_email"))
+        if source_connection is not None and source_connection != selected.id:
+            raise ValueError("The Service does not match the bound account.")
+        source_connection = selected.id
+    elif arguments.get("account_email") is not None:
+        raise ValueError("Account selection requires service_code.")
     if source_connection is not None:
         messenger = await messenger_for_agent_connection(ctx.agent_id, int(source_connection))
         if channel and normalize_kind(channel) != messenger.kind:
@@ -386,6 +394,8 @@ async def mcp_send_message_to_user(
     message: str,
     channel: str = "",
     wait_for_reply: bool = False,
+    service_code: str | None = None,
+    account_email: str | None = None,
 ) -> str:
     """Send a private message, blocking when the recipient is another AI agent.
 
@@ -552,7 +562,7 @@ async def _resolve_user_delivery(
         messenger = await _resolve_context_messenger(ctx, language)
     if not messenger.supports(capability):
         raise ValueError(
-            f"Messaging connection {getattr(messenger, 'connection_id', '')} "
+            f"Messaging Service {messenger.service_code} "
             f"does not support {capability.value}."
         )
     user_id = await _resolve_task_recipient_id(ctx.task_id, messenger, user, language)
@@ -668,6 +678,8 @@ async def mcp_send_audio_message(
     similarity_boost: Optional[float] = None,
     style: Optional[float] = None,
     use_speaker_boost: Optional[bool] = None,
+    service_code: str | None = None,
+    account_email: str | None = None,
 ) -> dict[str, Any]:
     """Generate an MP3 from ``message`` and post it to the user's latest room."""
     from app.llm.tts_service import TTSNotConfigured
@@ -735,7 +747,7 @@ async def mcp_send_audio_message(
                 size=size,
             ),
             "destination": route.room_id,
-            "connection_id": route.connection_id,
+            "service_code": messenger.service_code,
             "provider": provider,
             "voice": effective_voice,
             "size": size,
@@ -874,7 +886,7 @@ async def mcp_room_history(
         "List or search contacts across every enabled messaging channel. Internal Chat "
         "searches all platform agents and active users, even without prior contact, by "
         "name, agent code or role, email or exact address. Empty query lists the directory. "
-        "Returns human/agent type and exact user and messaging connection IDs. "
+        "Returns human/agent type and exact user identifiers and Service codes. "
         "Discovery does not grant permission to send messages."
     ),
 )
@@ -885,19 +897,21 @@ async def mcp_search_users(ctx: McpToolContext, query: str = "") -> str:
     try:
         from .service import search_agent_users
 
+        from app.services.facade import get_services_by_ids
         users = await search_agent_users(ctx.agent_id, query)
+        services = await get_services_by_ids({service_id for _, service_id, _, _ in users})
     except Exception as exc:
         logger.exception("MCP messenger_search_users failed")
         return _message(language, "generic_failed", error=exc)
     user_lines = [
         (
             f"{user.display_name or user.external_id} (id: {user.id}; "
-            f"external_id: {user.external_id}; connection_id: {connection_id}; "
-            f"service_id: {service_id}; channel: {platform}; "
+            f"external_id: {user.external_id}; "
+            f"service_code: {services[service_id].code}; channel: {platform}; "
             f"type: {'agent' if user.agent_id is not None else 'bot' if user.is_ai else 'human'}"
             f"{'; agent_id: ' + str(user.agent_id) if user.agent_id is not None else ''})"
         )
-        for connection_id, service_id, platform, user in users
+        for _, service_id, platform, user in users if service_id in services
     ]
     return "\n".join(user_lines) or _message(language, "no_users")
 
@@ -974,6 +988,8 @@ async def mcp_send_file_to_user(
     resource_uri: str,
     message: str = "",
     channel: str = "",
+    service_code: str | None = None,
+    account_email: str | None = None,
 ) -> dict[str, object]:
     """Send a resource privately to a user and return its destination URI."""
 

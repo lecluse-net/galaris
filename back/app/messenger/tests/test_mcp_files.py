@@ -272,6 +272,7 @@ async def test_send_audio_message_uses_standard_user_then_message_contract(
     events: list[str] = []
 
     class Messenger(_FakeMessenger):
+        service_code = "synthetic-messenger"
         connection_id = 19
 
         def supports(self, capability: object) -> bool:
@@ -340,7 +341,7 @@ async def test_send_audio_message_uses_standard_user_then_message_contract(
     assert result == {
         "message": "Audio message sent via ElevenLabs, voice alice (9 bytes).",
         "destination": "latest-room",
-        "connection_id": 19,
+        "service_code": "synthetic-messenger",
         "provider": "ElevenLabs",
         "voice": "alice",
         "size": 9,

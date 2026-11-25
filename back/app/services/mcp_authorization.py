@@ -34,11 +34,14 @@ async def bind_native_action(ctx: McpToolContext, definition: McpToolDefinition,
     from .service import get_services_by_ids
 
     candidates: list[tuple[Connection, Service]] = []
-    # Administrative connection_id arguments describe the target being edited,
-    # not the Service connection that grants the administrative capability.
+    # Administrative tools are authorized by their own delegation Service.
     requested_connection = None
-    if definition.service_code in {"messenger", "mail", "calendar"}:
-        requested_connection = ctx.resource("source_connection_id") or arguments.get("connection_id") or ctx.resource("connection_id")
+    if definition.service_code == "rest":
+        requested_connection = ctx.resource("source_connection_id")
+        if requested_connection is None:
+            raise ToolCallRejectedError("The REST Service account must be resolved before authorization")
+    elif definition.service_code in {"messenger", "mail", "calendar"}:
+        requested_connection = ctx.resource("source_connection_id") or ctx.resource("connection_id")
         turn = ctx.resource("conversation_turn")
         if requested_connection is None and turn is not None:
             requested_connection = turn.messaging_context.get("connection_id")
@@ -66,6 +69,9 @@ async def bind_native_action(ctx: McpToolContext, definition: McpToolDefinition,
     resuming = execution is not None and bool(execution.authorization_continuation)
     if definition.authorization_preflight is not None and (resolved["effective_state"] == "ask" or resuming):
         preflight = await definition.authorization_preflight(ctx, arguments)
+    if definition.service_code == "rest":
+        # Preserve absent vs explicit JSON null in the consent fingerprint.
+        arguments = {**arguments, "request": arguments["request"].model_dump(mode="json", exclude_unset=True)}
     action = AuthorizationAction(
         agent_id=ctx.agent_id, runtime=ctx.runtime,
         context_key=authorization_context_key(ctx.task_id, ctx.resources),

@@ -17,7 +17,7 @@ from pydantic import JsonValue, ValidationError
 from . import service
 from . import n8n_receipt
 from .authorization import fingerprint
-from .rest_contracts import (RestConfig, RestEffectIntent, RestError, RestRequest, RestRequestRejected, RestResponse,
+from .rest_contracts import (RestConfig, RestEffectIntent, RestError, RestRequest, RestRequestRejected, RestResponse, RestToolRequest, RestUpload,
                              validate_rest_base_url)
 
 
@@ -39,16 +39,17 @@ def _request_url(base: str, path: str) -> str:
 
 async def execute_rest_request(*, agent_id: int, service_code: str, request: RestRequest,
                                connection_id: int | None = None,
+                               uploads: tuple[RestUpload, ...] = (),
                                admit_effect: Callable[[RestEffectIntent], Awaitable[bool]] | None = None) -> RestResponse:
     """Invoke any endpoint through the agent's active connection, without per-operation grants.
 
-    Callers are responsible for admitting their authenticated execution context. This is a
-    domain facade, not an HTTP proxy or an automatically exposed MCP function. HTTP error
-    statuses are returned as results. RestRequestRejected guarantees that local validation
+    Callers admit their authenticated execution context and supply the Service code. An admitted
+    connection identity pins execution to that exact account. HTTP error statuses
+    are returned as results. RestRequestRejected guarantees that local validation
     failed before sending. Transport failures never retry a potentially applied effect.
     """
     return await _execute_rest_request(agent_id=agent_id, service_code=service_code, request=request,
-        connection_id=connection_id, admit_effect=admit_effect)
+        connection_id=connection_id, admit_effect=admit_effect, uploads=uploads)
 
 
 async def find_rest_effect(*, agent_id: int, service_code: str, request: RestRequest, intent: RestEffectIntent) -> int | None:
@@ -67,16 +68,22 @@ async def find_rest_effect(*, agent_id: int, service_code: str, request: RestReq
 async def _execute_rest_request(*, agent_id: int, service_code: str, request: RestRequest,
                                 connection_id: int | None = None,
                                 admit_effect: Callable[[RestEffectIntent], Awaitable[bool]] | None = None,
+                                uploads: tuple[RestUpload, ...] = (),
                                 expected_effect: tuple[RestEffectIntent, RestRequest] | None = None) -> RestResponse:
-    from app.connection.facade import get_connection_by_agent_service, get_connection, get_params_as_dict
+    from app.connection.facade import get_connection, get_params_as_dict
 
     tool = await service.get_service_record(service_code)
     if tool is None or not tool.rest_config:
         raise RestRequestRejected("REST API is not enabled for this Service")
-    connection = (await get_connection(connection_id) if connection_id is not None
-                  else await get_connection_by_agent_service(tool.id, agent_id))
-    if connection is not None:
-        connection = await get_connection(connection.id)
+    if connection_id is None:
+        from app.connection.facade import resolve_service_connection
+
+        try:
+            connection = await resolve_service_connection(agent_id, service_code)
+        except ValueError as exc:
+            raise PermissionError(str(exc)) from exc
+    else:
+        connection = await get_connection(connection_id)
     if connection is None or connection.service_id != tool.id or connection.agent_id != agent_id or not connection.active:
         raise PermissionError("An active connection belonging to the executing agent is required")
     try:
@@ -169,8 +176,26 @@ async def _execute_rest_request(*, agent_id: int, service_code: str, request: Re
         if "json_body" in request.model_fields_set:
             kwargs["content"] = json.dumps(request.json_body, ensure_ascii=False, allow_nan=False).encode("utf-8")
             headers.setdefault("Content-Type", "application/json")
+        elif isinstance(request, RestToolRequest) and request.file_uri is not None:
+            if len(uploads) != 1:
+                raise RestRequestRejected("The binary REST body is missing.")
+            kwargs["content"] = uploads[0].content
+            headers.setdefault("Content-Type", uploads[0].content_type)
+        elif isinstance(request, RestToolRequest) and (request.files or request.form is not None):
+            if len(uploads) != len(request.files):
+                raise RestRequestRejected("A multipart REST file is missing.")
+            if uploads:
+                if "Content-Type" in headers and headers["Content-Type"].lower() != "multipart/form-data":
+                    raise RestRequestRejected("File parts require multipart/form-data with an automatically generated boundary.")
+                headers.pop("Content-Type", None)
+                kwargs["files"] = [(part.field, (part.filename, part.content, part.content_type)) for part in uploads]
+            else:
+                headers.setdefault("Content-Type", "application/x-www-form-urlencoded")
+            kwargs["data"] = request.form or {}
         elif request.text_body is not None:
             kwargs["content"] = request.text_body.encode("utf-8")
+    except RestRequestRejected:
+        raise
     except ValueError:
         raise RestRequestRejected("REST request body cannot be encoded") from None
     if effect is not None and admit_effect is not None and not await admit_effect(effect):

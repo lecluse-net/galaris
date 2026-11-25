@@ -36,13 +36,27 @@ def current_protocol_connection(protocol: str, agent_id: int) -> int | None:
     return value[2] if value and value[:2] == (protocol, agent_id) else None
 
 
-async def resolve_protocol_connection(agent_id: int, protocol: Literal["mail", "calendar"], requested: int | None = None,
-                                      resource_id: int | None = None, *, native_only: bool = False) -> int:
+async def resolve_protocol_connection(agent_id: int, protocol: Literal["mail", "calendar", "rest"], requested: int | None = None,
+                                      resource_id: int | None = None, *, native_only: bool = False,
+                                      service_code: str | None = None, account_email: str | None = None) -> int:
     from app.connection import connection_service
     from .service import get_service_by_id
 
     candidates: list[int] = []
     native: list[int] = []
+    if service_code is not None:
+        from app.connection.facade import resolve_service_connection
+        from .contracts import ToolCallRejectedError
+
+        try:
+            selected = (await resolve_service_connection(agent_id, service_code, account_email=account_email)).id
+            if requested is not None and selected != requested:
+                raise ValueError("The selected Service does not match the bound account.")
+            requested = selected
+        except ValueError as exc:
+            raise ToolCallRejectedError(str(exc)) from exc
+    elif account_email is not None or protocol == "rest":
+        raise ValueError("Supply the service_code from the tool description or services_list.")
     if resource_id is not None and protocol in _resource_resolvers:
         resource_connection = await _resource_resolvers[protocol](agent_id, resource_id)
         if requested is not None and requested != resource_connection:
@@ -60,7 +74,7 @@ async def resolve_protocol_connection(agent_id: int, protocol: Literal["mail", "
             if tool.code == "calendar" and protocol == "calendar":
                 native.append(connection.id)
             if protocol == "calendar":
-                providers.append(f"connection_id={connection.id} ({tool.code})")
+                providers.append(tool.code)
     if requested is None and len(native) == 1:
         return native[0]
     if len(candidates) != 1:
@@ -68,11 +82,11 @@ async def resolve_protocol_connection(agent_id: int, protocol: Literal["mail", "
             from .contracts import ToolCallRejectedError
 
             raise ToolCallRejectedError(
-                "Select one exact active mail connection using connection_id from services_list. "
-                "For the original email of an incoming Mail task, omit connection_id to use its bound account."
+                "Select one exact active mail connection using service_code from services_list. "
+                "For several accounts of the same Service, also supply account_email."
             )
         choices = "; ".join(providers[:50])
-        raise ValueError(f"Select one exact active {protocol} connection using connection_id" +
+        raise ValueError(f"Select one exact active {protocol} connection using service_code" +
                          (f". Available providers: {choices}" if choices else ""))
     return candidates[0]
 

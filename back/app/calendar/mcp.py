@@ -37,12 +37,12 @@ def _date_or_datetime(value: str, name: str) -> date | datetime:
     name="calendar_list",
     conversation_policy="short",
     description=("List calendars available through your Agenda connection and its delegated scope. "
-        "For another agent's calendar, use its id and omit connection_id when calling other calendar tools. "
-        "Select your own external calendar provider by passing its connection_id."),
+        "For another agent's calendar, use its id and omit service_code when calling other calendar tools. "
+        "Select your own external calendar provider by passing its service_code."),
 )
-async def calendar_list(ctx: McpToolContext, connection_id: int | None = None) -> list[object]:
-    connection = await service.active_connection_for_agent(ctx.agent_id, connection_id)
-    calendars: list[object] = [item.model_dump(mode="json") for item in await service.list_tool_feeds(connection)]
+async def calendar_list(ctx: McpToolContext, service_code: str | None = None, account_email: str | None = None) -> list[object]:
+    connection = await service.active_connection_for_agent(ctx.agent_id, ctx.resource("source_connection_id"))
+    calendars: list[object] = [item.model_dump(mode="json", exclude={"connection_id"}) for item in await service.list_tool_feeds(connection)]
     if await memory_read_enabled(ctx.agent_id):
         calendars.append({"id": None, "code": "memory", "source_kind": "memory", "label": "Memory",
             "writable": False, "actions_enabled": False, "informational": True,
@@ -68,7 +68,7 @@ async def calendar_events(
     start: str | None = None,
     end: str | None = None,
     calendar_ids: list[int] | None = None,
-    connection_id: int | None = None,
+    service_code: str | None = None, account_email: str | None = None,
     include_memory: bool = True,
 ) -> object:
     now = datetime.now(timezone.utc)
@@ -79,7 +79,7 @@ async def calendar_events(
         lower,
         upper,
         calendar_ids=calendar_ids,
-        tool_connection=await service.active_connection_for_agent(ctx.agent_id, connection_id),
+        tool_connection=await service.active_connection_for_agent(ctx.agent_id, ctx.resource("source_connection_id")),
     )
     from app.memory.facade import resolve_recall_scope
     _, contact = await resolve_recall_scope(agent_id=ctx.agent_id, task_id=ctx.task_id,
@@ -103,14 +103,14 @@ async def calendar_is_available(
     start: str,
     end: str,
     calendar_ids: list[int] | None = None,
-    connection_id: int | None = None,
+    service_code: str | None = None, account_email: str | None = None,
 ) -> object:
     result = await service.availability_for_agent(
         ctx.agent_id,
         _datetime(start, "start"),
         _datetime(end, "end"),
         calendar_ids=calendar_ids,
-        tool_connection=await service.active_connection_for_agent(ctx.agent_id, connection_id),
+        tool_connection=await service.active_connection_for_agent(ctx.agent_id, ctx.resource("source_connection_id")),
     )
     return result.model_dump(mode="json")
 
@@ -136,7 +136,7 @@ async def calendar_find_free_slots(
     include_weekends: bool = False,
     calendar_ids: list[int] | None = None,
     limit: int = 10,
-    connection_id: int | None = None,
+    service_code: str | None = None, account_email: str | None = None,
 ) -> list[object]:
     slots = await service.find_free_slots_for_agent(
         ctx.agent_id,
@@ -150,7 +150,7 @@ async def calendar_find_free_slots(
         include_weekends=include_weekends,
         calendar_ids=calendar_ids,
         limit=limit,
-        tool_connection=await service.active_connection_for_agent(ctx.agent_id, connection_id),
+        tool_connection=await service.active_connection_for_agent(ctx.agent_id, ctx.resource("source_connection_id")),
     )
     return [slot.model_dump(mode="json") for slot in slots]
 
@@ -175,12 +175,12 @@ async def calendar_create_event(
     reminder_minutes_before: int | None = None,
     timezone_name: str = "Europe/Paris",
     rrule: str | None = None,
-    connection_id: int | None = None,
+    service_code: str | None = None, account_email: str | None = None,
     contact_id: UUID | None = None,
 ) -> object:
     result = await service.create_calendar_event(
         calendar_id,
-        await service.calendar_tool_owner(ctx.agent_id, calendar_id, connection_id),
+        await service.calendar_tool_owner(ctx.agent_id, calendar_id, ctx.resource("source_connection_id")),
         CalendarEventCreate(
             contact_id=contact_id,
             summary=summary,
@@ -220,7 +220,7 @@ async def calendar_update_event(
     scope: Literal["series", "occurrence", "following"] = "series",
     recurrence_key: str | None = None,
     rrule: str | None = None,
-    connection_id: int | None = None,
+    service_code: str | None = None, account_email: str | None = None,
     contact_id: UUID | None = None,
     clear_contact: bool = False,
 ) -> object:
@@ -228,7 +228,7 @@ async def calendar_update_event(
         raise ValueError("Supply contact_id or clear_contact, not both")
     result = await service.update_calendar_event(
         calendar_id,
-        await service.calendar_tool_owner(ctx.agent_id, calendar_id, connection_id),
+        await service.calendar_tool_owner(ctx.agent_id, calendar_id, ctx.resource("source_connection_id")),
         uid,
         CalendarEventUpdate(
             expected_revision=expected_revision,
@@ -256,8 +256,8 @@ async def calendar_update_event(
 )
 async def calendar_delete_event(ctx: McpToolContext, calendar_id: int, uid: str, expected_revision: int,
     scope: Literal["series", "occurrence", "following"] = "series", recurrence_key: str | None = None,
-    connection_id: int | None = None) -> object:
-    owner = await service.calendar_tool_owner(ctx.agent_id, calendar_id, connection_id)
+    service_code: str | None = None, account_email: str | None = None) -> object:
+    owner = await service.calendar_tool_owner(ctx.agent_id, calendar_id, ctx.resource("source_connection_id"))
     result = await service.delete_calendar_event(calendar_id, owner, uid,
         CalendarEventDelete(expected_revision=expected_revision, scope=scope, recurrence_key=recurrence_key))
     return result.model_dump(mode="json")
@@ -279,16 +279,16 @@ __all__ = [
     conversation_policy="short",
     name="calendar_event_get", description="Read one event and its revision from the local replica, optionally for an original recurrence identity. External synchronization state is separate.")
 async def calendar_event_get(ctx: McpToolContext, calendar_id: int, uid: str, recurrence_key: str | None = None,
-                             connection_id: int | None = None) -> object:
-    await service.calendar_tool_owner(ctx.agent_id, calendar_id, connection_id)
+                             service_code: str | None = None, account_email: str | None = None) -> object:
+    await service.calendar_tool_owner(ctx.agent_id, calendar_id, ctx.resource("source_connection_id"))
     return (await service.event_detail(calendar_id, uid, recurrence_key)).model_dump(mode="json")
 
 
 @mcp_tool("calendar", approval="enabled", approval_reason="Read authorized calendar action definitions",
     conversation_policy="short",
     name="calendar_actions", description="List the locally configured assistant actions for one calendar event.")
-async def calendar_actions(ctx: McpToolContext, calendar_id: int, uid: str, connection_id: int | None = None) -> object:
-    await service.calendar_tool_owner(ctx.agent_id, calendar_id, connection_id)
+async def calendar_actions(ctx: McpToolContext, calendar_id: int, uid: str, service_code: str | None = None, account_email: str | None = None) -> object:
+    await service.calendar_tool_owner(ctx.agent_id, calendar_id, ctx.resource("source_connection_id"))
     return [row.model_dump(mode="json") for row in await service.list_actions(calendar_id, uid)]
 
 
@@ -298,8 +298,8 @@ async def calendar_actions(ctx: McpToolContext, calendar_id: int, uid: str, conn
 async def calendar_action_set(ctx: McpToolContext, calendar_id: int, uid: str, instructions: str,
     offset_minutes: int = 0, anchor: Literal["start", "end"] = "start", recurrence_key: str | None = None,
     active: bool = True, max_lateness_minutes: int = 60, action_id: UUID | None = None,
-    expected_revision: int | None = None, connection_id: int | None = None) -> object:
-    owner = await service.calendar_tool_owner(ctx.agent_id, calendar_id, connection_id)
+    expected_revision: int | None = None, service_code: str | None = None, account_email: str | None = None) -> object:
+    owner = await service.calendar_tool_owner(ctx.agent_id, calendar_id, ctx.resource("source_connection_id"))
     return (await service.write_action(calendar_id, owner, uid, CalendarActionWrite(instructions=instructions,
         offset_minutes=offset_minutes, anchor=anchor, recurrence_key=recurrence_key, active=active,
         max_lateness_minutes=max_lateness_minutes, expected_revision=expected_revision), action_id)).model_dump(mode="json")

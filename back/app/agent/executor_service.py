@@ -483,9 +483,7 @@ async def build_task_prompt(task: Any, extra_context: Optional[dict[str, str]] =
         read_instruction = ""
         reference = getattr(task, "message_group_id", None)
         if reference and getattr(task, "parent_task_id", None) is None:
-            connection_id = getattr(task, "messenger_connection_id", None)
-            connection_arg = f", connection_id={connection_id}" if isinstance(connection_id, int) else ""
-            read_instruction = f"Read the original email with mail_get(message_ref={json.dumps(reference)}{connection_arg}). "
+            read_instruction = f"Read the original email with mail_get(message_ref={json.dumps(reference)}). "
         sections["reply_contract"] = (
             read_instruction
             + "Keep the original Mail connection and use provider-issued message references verbatim. "

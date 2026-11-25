@@ -63,7 +63,7 @@ Task `SUCCESS` marque la relance comme traitée. Les occurrences récurrentes on
 
 Les fonctions MCP conservent leurs noms publics `mail_*` et `calendar_*`. Leur famille est
 résolue à partir du protocole, indépendamment du code du fournisseur. Une sélection explicite
-`connection_id` lie autorisation et exécution à la même connexion active de l'agent ; une
+par `service_code`, complétée par `account_email` pour distinguer plusieurs boîtes, lie autorisation et exécution à la même connexion active de l'agent ; une
 ambiguïté est refusée. Les ressources Mail utilisent le code du Service. Si le Service possède aussi
 un partage de fichiers, le préfixe `mail/` réserve son espace Mail. Les curseurs du polling Mail
 et de la messagerie sont séparés lorsqu'ils partagent une connexion.

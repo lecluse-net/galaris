@@ -289,7 +289,24 @@ async def _list_calls(agent_id: int, language: str | None = None) -> str:
     )
 
 
-@mcp_tool("chat", default_blocked=True, approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+async def _voice_account(ctx: McpToolContext, service_code: str | None, account_email: str | None) -> int:
+    pinned_connection_id = await _task_connection_id(ctx)
+    if service_code is not None:
+        from app.connection.facade import resolve_service_connection
+        selected = await resolve_service_connection(ctx.agent_id, service_code, account_email=account_email)
+        if pinned_connection_id and selected.id != pinned_connection_id:
+            raise ValueError("The selected Service does not match this Task's messaging account.")
+        pinned_connection_id = selected.id
+    elif account_email is not None:
+        raise ValueError("Account selection requires service_code.")
+    return pinned_connection_id
+
+
+async def _voice_preflight(ctx: McpToolContext, arguments: dict[str, Any]) -> dict[str, Any]:
+    return {"voice_account": await _voice_account(ctx, arguments.get("service_code"), arguments.get("account_email"))}
+
+
+@mcp_tool("chat", authorization_preflight=_voice_preflight, default_blocked=True, approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
 
     name="voice_call_start",
     description="Start a voice call in the current room on its exact messaging connection.",
@@ -298,14 +315,15 @@ async def _list_calls(agent_id: int, language: str | None = None) -> str:
 async def mcp_start_voice_call(
     ctx: McpToolContext,
     room_id: str,
-    connection_id: int = 0,
+    service_code: str | None = None,
+    account_email: str | None = None,
 ) -> str:
     """Start a voice call in a room."""
-    pinned_connection_id = await _task_connection_id(ctx)
+    pinned_connection_id = await _voice_account(ctx, service_code, account_email)
     return await _start_call(
         ctx.agent_id,
         room_id,
-        pinned_connection_id or connection_id,
+        pinned_connection_id,
         await _context_language(ctx),
     )
 

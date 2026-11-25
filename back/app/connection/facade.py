@@ -22,6 +22,11 @@ async def clear_service_mcp_authorizations(service_id: int) -> None:
     await clear_authorizations(service_id)
 
 from . import admin_service as administration
+from .service_selection import (
+    account_emails_for_connections as account_emails_for_connections,
+    resolve_service_connection as resolve_service_connection,
+    service_codes_for_connections as service_codes_for_connections,
+)
 from .parameter_resolution import effective_param_value_expression as effective_param_value_expression
 from .schemas import EffectiveFunctionState as EffectiveFunctionState
 

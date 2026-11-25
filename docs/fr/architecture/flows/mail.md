@@ -6,7 +6,7 @@ Le bridge `bridge.mail` adapte une boîte externe aux contrats Service et Messen
 Un Service fournisseur personnalisé sélectionne `imap_smtp.mail` dans `capabilities`, active
 `mail_config` et peut cumuler plusieurs capacités différentes, chacune avec un seul protocole.
 Mail ne fait plus partie des Services internes. L’agent invoque des fonctions MCP bornées sur une
-connexion active de ce fournisseur ; `connection_id` sélectionne explicitement la connexion
+connexion active de ce fournisseur ; `service_code` sélectionne explicitement la connexion
 lorsque plusieurs fournisseurs sont actifs. L'autorisation et l'exécution utilisent cette même
 connexion ; une sélection ambiguë ou étrangère est refusée. Le listener
 canonique interroge aussi l’INBOX, journalise les en-têtes et admet les courriels autorisés
@@ -21,11 +21,11 @@ Les configurations historiques vides conservent les valeurs globales et locales 
 
 Un même agent peut créer plusieurs connexions au même Service Mail : par exemple deux boîtes
 chez un seul fournisseur. Chaque connexion conserve ses paramètres, secrets, restrictions de
-dossiers, autorisations et curseurs propres. Les appels MCP utilisent `connection_id` ; sans
-sélection non ambiguë, ils refusent l'opération et indiquent les connexions disponibles.
+dossiers, autorisations et curseurs propres. Les appels MCP utilisent `service_code` et, si plusieurs boîtes partagent ce code, `account_email`.
+Une sélection ambiguë échoue avant tout appel au fournisseur.
 Les autres Services conservent une seule connexion par agent. Retirer le protocole Mail exige
 de supprimer d'abord les connexions supplémentaires du même agent.
-Le catalogue MCP `services_list` présente chaque compte avec son adresse, son `connection_id`
+Le catalogue MCP `services_list` présente chaque compte avec son adresse, son `service_code`
 et les fonctions autorisées sur cette connexion. Le skill système Galaris et les descriptions
 des paramètres MCP expliquent comment choisir le compte et conserver ses références.
 

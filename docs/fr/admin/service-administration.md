@@ -318,8 +318,10 @@ Dans **Services → Nouveau service** ou l'édition d'un service configurable, c
 configure l'adresse de base, l'authentification (aucune, Bearer, en-tête, Basic ou paramètre de requête), le délai maximum
 et la taille maximale des réponses. Aucun catalogue d'opérations ou document OpenAPI n'est requis.
 
-Saisir directement l'adresse HTTP(S) dans l'onglet **REST**. Elle est commune à toutes les
-connexions du service. Le protocole REST démarre avec **Aucune authentification**. Si l’API exige
+Une adresse HTTP(S) saisie directement dans l’onglet **REST** est commune à toutes les
+connexions du Service. Certaines fiches, dont GitLab, référencent `${connection:url}`
+comme racine. Renseigner alors le paramètre `url` avec la racine API complète de l’instance.
+Le protocole REST démarre avec **Aucune authentification**. Si l’API exige
 des identifiants ou des en-têtes supplémentaires, sélectionner les paramètres de connexion
 existants ou choisir **Nouveau paramètre…**. Pour Basic, sélectionner un paramètre pour
 l’identifiant et un paramètre secret pour le mot de passe.
@@ -329,12 +331,56 @@ L'héritage, les surcharges, les valeurs imposées, le chiffrement et le masquag
 s'appliquent. Pour ces valeurs, la définition et l'export YAML conservent uniquement les noms des paramètres.
 Une connexion désactivée ou appartenant à un autre agent ne peut pas être utilisée.
 
-Les droits sur les endpoints REST sont exclusivement ceux du token dans le service tiers.
-Les permissions MCP **Actif / Bloqué / Sur demande** ne filtrent pas les appels REST.
-La façade applicative est disponible pour les futurs consommateurs Code et Process ;
-elle n'ajoute ni outil MCP générique ni proxy HTTP public. Les redirections ne sont pas
-suivies, les erreurs HTTP sont retournées avec leur statut et aucun appel n'est réessayé
-automatiquement. Le suivi de jobs distants et les callbacks feront l'objet d'une évolution.
+Dans les consignes enregistrées et les activités MCP de Process, utilisez le paramètre
+`service_code` pour sélectionner le Service. Remplacez les anciens sélecteurs numériques
+avant de relancer l’activité. Les commandes d’administration d’un compte prennent aussi
+l’`agent_id` géré et, pour plusieurs boîtes du même Service, son `account_email`.
+
+Le protocole fournit la fonction MCP `rest_request`. Dans **Autorisations**, choisissez le
+Service pour régler cette fonction sur **Actif**, **Bloqué** ou **Sur demande** (valeur par
+défaut). Pour l'utiliser directement dans une conversation, activez-la aussi dans les
+outils de conversation du Service. L'API distante applique les droits du compte sur chaque
+endpoint. L'agent trouve sa connexion dans la description de l'outil ou dans
+`services_list` en tâche, puis fournit son `service_code`
+avec la requête. Si plusieurs comptes Mail partagent ce Service, il précise aussi `account_email`.
+Il reçoit le statut HTTP, les en-têtes et le corps JSON ou texte, y compris
+pour une erreur HTTP. Une redirection est renvoyée à l'agent. Après un échec de transport,
+une écriture peut avoir abouti et Galaris ne la relance pas automatiquement.
+
+<a id="rest-request"></a>
+
+### Référence de `rest_request`
+
+L’appel prend `service_code`, `request` et, pour choisir entre plusieurs boîtes du même Service, `account_email`. Exemple pour une API de tickets dont la racine est déjà configurée :
+
+```json
+{
+  "service_code": "support",
+  "request": {
+    "method": "POST",
+    "path": "tickets",
+    "params": {"notify": true},
+    "headers": {"Accept": "application/json"},
+    "json_body": {"title": "Printer offline"}
+  }
+}
+```
+
+| Champ de `request` | Format et comportement |
+|---|---|
+| `method`, `path` | Méthode en majuscules parmi GET (défaut), HEAD, POST, PUT, PATCH, DELETE et OPTIONS. Le chemin est relatif à la racine du Service. Un chemin vide appelle cette racine. Placer la query dans `params` et omettre le fragment. |
+| `params` | Objet dont les valeurs sont des chaînes, nombres, booléens ou listes de chaînes. `{"label":["a","b"]}` donne `label=a&label=b`. Si l’API exige des crochets, utiliser la clé littérale `label[]`. |
+| `headers` | Objet de chaînes avec des valeurs ASCII sur une seule ligne. La connexion a priorité pour ses en-têtes et son authentification. Le transport réserve `Host`, `Content-Length`, `Transfer-Encoding` et `Connection`. |
+| `json_body` | Toute valeur JSON. Omettre le champ pour un appel sans corps. Fournir `"json_body": null` envoie les quatre octets de `null`. Le type par défaut est `application/json`. |
+| `text_body` | Texte encodé en UTF-8. Préciser le type demandé par l’API dans `headers`, par exemple `{"Content-Type":"application/xml"}`. |
+| `file_uri` | Envoie les octets d’une ressource lisible comme corps HTTP. Le type par défaut vient du fichier, avec repli sur `application/octet-stream`. |
+| `form`, `files` | `form` seul encode des champs en `application/x-www-form-urlencoded`. Chaque valeur est une chaîne ou une liste de chaînes pour répéter le champ. Avec des fichiers, le format est `multipart/form-data`. Chaque pièce prend `field` et `uri`, avec `filename` et `content_type` facultatifs. Plusieurs pièces peuvent partager le même `field`. Laisser Galaris générer l’en-tête multipart et sa frontière. |
+
+Choisir un seul mode de corps par appel. Les paramètres d’URL et les en-têtes peuvent accompagner chacun de ces modes. Les fichiers sont limités à 16 pièces et 32 Mio cumulés par appel. En mode **Sur demande**, une modification du contenu d’un fichier exige un nouvel accord.
+
+**Réponse.** Lire `status_code`, `headers` et `body`. Un `403` ou un `429` du fournisseur est un résultat HTTP dont l’agent peut lire le détail. Un échec de transport est une erreur d’outil. Un corps vide donne `""`. Le corps reçu est décodé en JSON si possible, sinon en texte. Un PDF ou une image reçus ne sont donc pas récupérables à l’identique par cet outil. Le Service règle le délai HTTP (60 s par défaut, de 1 à 300 s) et la taille maximale de réponse décodée (2 Mio par défaut, de 1 octet à 16 Mio).
+
+**Transposer un exemple Axios.** La `baseURL` appartient au Service. Mettre la partie relative de `url` dans `request.path`, garder `params` et `headers`, puis répartir `data` selon son format dans le champ de corps correspondant. En sortie, `response.status` correspond à `status_code` et `response.data` à `body`. Pour les statuts HTTP et les redirections, le comportement se rapproche d’Axios sous Node avec `validateStatus: () => true` et `maxRedirects: 0`. [Configuration Axios](https://axios-http.com/docs/req_config) · [Réponse Axios](https://axios-http.com/docs/res_schema)
 
 ## Tester puis créer avec un secret
 
@@ -619,8 +665,7 @@ est partiel. Les catalogues concernés sont réconciliés sans élagage sur déc
 Le rafraîchissement appelle directement les fonctions Python de `app.services`, avec un budget
 de 20 secondes et une validation des droits avant et après chaque agent. Les résultats de
 chaque agent sont enregistrés séparément. Un résultat partiel précise `failed_agent_ids` et
-`remaining_agent_ids` ; retrouver leurs connexions et relancer `service_admin_catalog_refresh`
-avec ces `connection_ids`, pas la mutation déjà enregistrée. Aucun Process n’est créé.
+`remaining_agent_ids`. Passer ces agents à `service_admin_catalog_refresh(agent_ids=[...])` pour reprendre le rafraîchissement.
 La convergence DbAdmin supprime les anciennes définitions techniques `catalog_refresh`
 et leurs runs, après résolution des éventuelles tâches en attente.
 

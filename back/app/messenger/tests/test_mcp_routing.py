@@ -381,14 +381,16 @@ async def test_search_users_exposes_exact_ids_without_contact_state(
 
     monkeypatch.setattr(database, "get_db_session", session)
 
+    monkeypatch.setattr("app.services.facade.get_services_by_ids",
+        AsyncMock(return_value={3: SimpleNamespace(code="matrix-primary")}))
     result = await mcp.mcp_search_users(
         McpToolContext(agent_id=7, runtime="internal")
     )
 
     assert f"id: {local_user_id}" in result
     assert "external_id: @nicolas:example.test" in result
-    assert "connection_id: 19" in result
-    assert "service_id: 3" in result
+    assert "service_code: matrix-primary" in result
+    assert "connection_id:" not in result
     assert "channel: matrix" in result
     assert f"type: {expected_type}" in result
     assert ("agent_id: 42" in result) == (agent_id is not None)

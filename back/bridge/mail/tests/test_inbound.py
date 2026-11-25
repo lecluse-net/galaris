@@ -558,7 +558,8 @@ async def test_receipt_recovers_an_admission_without_a_task(inbox, monkeypatch):
         assert receipt is not None and receipt.status == "admitted"
         assert receipt.task_uri == f"galaris://task/{task.id}"
         assert task.contact_memory_item_id is not None
-        assert f"connection_id={config.connection_id}" in task.objective
+        from app.messenger import inbound_task_connection
+        assert await inbound_task_connection(task.id, agent_id=config.agent_id, platform="mail") == config.connection_id
         assert summary.ref in task.objective
         page = await inbound.list_receipts(current_user_id=manager, agent_ids=frozenset({config.agent_id}),
             agent_id=None, search="", offset=0, limit=50, include_task=True)
@@ -609,10 +610,14 @@ async def test_inbound_task_defaults_to_its_mail_account_with_multiple_connectio
     monkeypatch.setattr(service, "resolve_mail_connection", resolve)
     async with Client(server) as client:
         assert {tool.name for tool in await client.list_tools()} == {"mail_get"}
+        reads_before = _read.call_count
         unavailable = await client.call_tool("mail_get", {"message_ref": summary.ref, "connection_id": 9999999},
             raise_on_error=False)
         assert unavailable.is_error
-        assert "omit connection_id" in str(unavailable.content)
+        wrong_service = await client.call_tool("mail_get", {"message_ref": summary.ref,
+            "service_code": "synthetic-unavailable"}, raise_on_error=False)
+        assert wrong_service.is_error
+        assert _read.call_count == reads_before
         with monkeypatch.context() as patches:
             patches.setattr(inbound.ImapClient, "get_summary", Mock(side_effect=StaleMailMessageReference("UIDVALIDITY changed")))
             stale = await client.call_tool("mail_get", {"message_ref": _summary(75).ref}, raise_on_error=False)

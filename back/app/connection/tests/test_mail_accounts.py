@@ -8,7 +8,7 @@ from sqlalchemy import select
 from app.agent.models import Agent, Title
 from app.connection import connection_service
 from app.services import service
-from app.services.protocols import ProtocolConfig, bind_protocol_connection, reset_protocol_connection
+from app.services.protocols import ProtocolConfig, resolve_protocol_connection, bind_protocol_connection, reset_protocol_connection
 from app.services.schemas import ServiceCreate, ServiceUpdate, ConnectionSchema
 from app.services.mcp_loader import McpToolContext, get_disabled_internal_function_names, load_mcp_tools, list_agent_mcp_tools
 from app.services.mcp_authorization import bind_native_action
@@ -53,7 +53,11 @@ async def test_same_provider_accounts_are_distinct_and_other_tools_remain_unique
     async with get_db_session():
         with pytest.raises(ValueError, match="exact active mail connection"):
             await resolve_mail_connection(agent_id)
+        with pytest.raises(ValueError, match="account_email"):
+            await resolve_protocol_connection(agent_id, "mail", service_code=f"mail-{suffix}")
         for index, identity in enumerate(accounts):
+            arguments = {"service_code": f"mail-{suffix}", "account_email": f"box-{index}@example.org"}
+            assert await resolve_protocol_connection(agent_id, "mail", **arguments) == identity
             binding = bind_protocol_connection("mail", agent_id, identity)
             try:
                 config = await resolve_mail_connection(agent_id)
@@ -63,7 +67,7 @@ async def test_same_provider_accounts_are_distinct_and_other_tools_remain_unique
                 reset_protocol_connection(binding)
             definition = next(item for item in load_mcp_tools() if item.name == "mail_search")
             action = await bind_native_action(McpToolContext(agent_id=agent_id, runtime="internal",
-                resources={"source_connection_id": identity}), definition, {"connection_id": identity})
+                resources={"source_connection_id": identity}), definition, arguments)
             assert action.connection_id == identity and action.service_id == provider_id
         with pytest.raises(ValueError, match="connection_id"):
             await connection_service.get_connection_by_agent_service(provider_id, agent_id)
@@ -79,7 +83,7 @@ async def test_same_provider_accounts_are_distinct_and_other_tools_remain_unique
         from app.services.mcp import list_mcp_tools
         rendered = await list_mcp_tools(McpToolContext(agent_id=agent_id, runtime="internal"))
         for index, identity in enumerate(accounts):
-            assert f"connection_id={identity}" in rendered and f"box-{index}@example.org" in rendered
+            assert "connection_id=" not in rendered and f"mail-{suffix}" in rendered and f"box-{index}@example.org" in rendered
             assert f"synthetic-secret-{index}" not in rendered
         with pytest.raises(ValueError, match="additional Mail connections"):
             await service.update_service(provider_id, ServiceUpdate(mail_config=None))

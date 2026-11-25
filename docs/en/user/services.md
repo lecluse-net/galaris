@@ -47,6 +47,35 @@ When you add the REST protocol, the editor selects **No authentication**. If the
 credentials, link them to declared connection parameters.
 See [Enable a REST API](../admin/service-administration.md#rest-api).
 
+For example, to ask an agent to list GitLab projects, activate its GitLab Service
+connection and set the token. The agent finds that connection with `services_list`,
+then calls `rest_request` with the displayed `service_code` (for example `gitlab`) and the request
+`{"method":"GET","path":"projects","params":{"membership":true}}` when the configured
+base ends in `/api/v4`. Galaris adds the token and the agent can use the returned projects.
+
+To upload a file, give the agent its Galaris resource URI. It can send the bytes as the
+HTTP body with `request.file_uri` or attach several files in `request.files` alongside
+`request.form` fields. For example, an API that expects a file in the `document` field
+could receive this `rest_request` call.
+
+```json
+{
+  "service_code": "archives",
+  "request": {
+    "method": "POST",
+    "path": "imports",
+    "form": {"category": "invoice"},
+    "files": [{"field": "document", "uri": "file://<uuid>"}]
+  }
+}
+```
+
+Use the connected Service code and the exact URI returned by the file tool.
+If the API expects the PDF itself as the body of a PUT, use
+`{"method":"PUT","path":"imports/invoice.pdf","file_uri":"file://<uuid>"}`.
+This tool returns JSON or text. For repeated fields, limits and Axios equivalents, see
+the [`rest_request` reference](../admin/service-administration.md#rest-request).
+
 The initial catalog includes Qonto, Nextcloud, GitLab, Matrix, n8n, Redmine and Telegram.
 Each preset explains the capabilities it provides. REST access does not promise every
 product feature; provider permissions and limitations still apply. For self-hosted APIs,

@@ -111,7 +111,7 @@ async def test_agent_administration_never_allows_self_mutation(db, admin_fixture
         await agent_mcp.agent_delete(ctx, caller.id)
     tool = await db.scalar(select(Service).where(Service.code == "browser"))
     with pytest.raises(PermissionError):
-        await connections_mcp.agent_connection_create(ctx, caller.id, tool.id)
+        await connections_mcp.agent_connection_create(ctx, caller.id, tool.code)
 
 
 @pytest.mark.asyncio
@@ -211,18 +211,16 @@ async def test_real_connection_target_and_system_or_delegation_protections(db, a
     caller, _, _, outsider, _, _, _ = admin_fixture
     ctx = mcp_loader.McpToolContext(caller.id, "internal")
     catalogue = await connections_mcp.agent_service_list(ctx, admin_subject.id, search="browser", limit=500)
-    assert any(item["code"] == "browser" for item in catalogue["items"])
+    assert any(item["service_code"] == "browser" for item in catalogue["items"])
     with pytest.raises(PermissionError):
         await connections_mcp.agent_service_list(ctx, outsider.id)
     await mandatory_services.sync_integrated_service_connections(outsider.id)
-    outsider_connection = await db.scalar(select(Connection).where(Connection.agent_id == outsider.id))
     await db.commit()
     with pytest.raises(PermissionError):
-        await connections_mcp.agent_connection_get(ctx, outsider_connection.id)
+        await connections_mcp.agent_connection_get(ctx, outsider.id, "browser")
     for code in ("galaris", "agent"):
-        connection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == caller.id, Service.code == code))
         with pytest.raises((ValueError, PermissionError)):
-            await connections_mcp.agent_connection_update(ctx, connection.id, False)
+            await connections_mcp.agent_connection_update(ctx, caller.id, code, False)
 
 
 @pytest.mark.asyncio
@@ -561,27 +559,28 @@ async def test_connection_parameters_are_atomic_encrypted_and_masked(db, admin_f
                 connection_schema={"params": {"token": {"type": "password"}, "count": {"type": "integer", "default": "2"}}})
     db.add(tool)
     await db.commit()
-    created = await connections_mcp.agent_connection_create(ctx, admin_subject.id, tool.id)
-    identifier = created["id"]
+    created = await connections_mcp.agent_connection_create(ctx, admin_subject.id, tool.code)
+    identifier = await db.scalar(select(Connection.id).where(Connection.agent_id == admin_subject.id, Connection.service_id == tool.id))
+    assert created["service_code"] == tool.code
     assert created["active"] is False
     with pytest.raises(ValueError, match="already exists"):
-        await connections_mcp.agent_connection_create(ctx, admin_subject.id, tool.id)
+        await connections_mcp.agent_connection_create(ctx, admin_subject.id, tool.code)
     secret = "synthetic-secret-never-return"
-    updated = await connections_mcp.agent_connection_params_set(ctx, identifier, {"token": secret, "count": "3"})
+    updated = await connections_mcp.agent_connection_params_set(ctx, admin_subject.id, tool.code, {"token": secret, "count": "3"})
     assert secret not in repr(updated)
     saved = await db.scalar(select(ConnectionParam).where(ConnectionParam.connection_id == identifier, ConnectionParam.param_name == "token"))
     assert saved.param_value != secret
     from core.util import get_encryption_service
     assert get_encryption_service().decrypt(saved.param_value) == secret
     with pytest.raises(ValueError):
-        await connections_mcp.agent_connection_params_set(ctx, identifier, {"token": "must-not-persist", "count": "invalid"})
+        await connections_mcp.agent_connection_params_set(ctx, admin_subject.id, tool.code, {"token": "must-not-persist", "count": "invalid"})
     await db.refresh(saved)
     assert get_encryption_service().decrypt(saved.param_value) == secret
-    inherited = await connections_mcp.agent_connection_param_delete(ctx, identifier, "count")
+    inherited = await connections_mcp.agent_connection_param_delete(ctx, admin_subject.id, tool.code, "count")
     assert inherited["effective_params"]["count"]["value"] == "2"
-    await connections_mcp.agent_connection_update(ctx, identifier, True)
-    assert (await connections_mcp.agent_connection_get(ctx, identifier))["active"]
-    await connections_mcp.agent_connection_delete(ctx, identifier)
+    await connections_mcp.agent_connection_update(ctx, admin_subject.id, tool.code, True)
+    assert (await connections_mcp.agent_connection_get(ctx, admin_subject.id, tool.code))["active"]
+    await connections_mcp.agent_connection_delete(ctx, admin_subject.id, tool.code)
     assert await db.get(Connection, identifier) is None
     assert await db.scalar(select(ConnectionParam.id).where(ConnectionParam.connection_id == identifier)) is None
 

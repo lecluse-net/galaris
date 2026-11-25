@@ -754,7 +754,8 @@
           "back/app/connection/mcp.py",
           "back/app/connection/oauth_runtime.py",
           "back/app/connection/oauth_service.py",
-          "back/app/connection/router.py"
+          "back/app/connection/router.py",
+          "back/app/connection/service_selection.py"
         ],
         "source": "app.connection",
         "target": "app.services"
@@ -777,7 +778,8 @@
           "back/app/connection/models.py",
           "back/app/connection/oauth_runtime.py",
           "back/app/connection/oauth_service.py",
-          "back/app/connection/router.py"
+          "back/app/connection/router.py",
+          "back/app/connection/service_selection.py"
         ],
         "source": "app.connection",
         "target": "core.database"
@@ -2356,7 +2358,9 @@
       },
       {
         "files": [
-          "back/app/goal/models.py"
+          "back/app/goal/mcp.py",
+          "back/app/goal/models.py",
+          "back/app/goal/resource_facade.py"
         ],
         "source": "app.goal",
         "target": "app.connection"
@@ -3642,6 +3646,7 @@
           "back/app/messenger/directory.py",
           "back/app/messenger/ingest.py",
           "back/app/messenger/journal.py",
+          "back/app/messenger/mcp.py",
           "back/app/messenger/native_facade.py",
           "back/app/messenger/native_interactions.py",
           "back/app/messenger/service.py",
@@ -4381,6 +4386,7 @@
           "back/app/services/capabilities.py",
           "back/app/services/parameter_definitions.py",
           "back/app/services/resource_effects.py",
+          "back/app/services/rest_uploads.py",
           "back/app/services/router.py",
           "back/app/services/service.py"
         ],
@@ -4541,6 +4547,7 @@
           "back/app/services/catalog.py",
           "back/app/services/desktop_relay.py",
           "back/app/services/mcp_authentication.py",
+          "back/app/services/rest_uploads.py",
           "back/app/services/runtime_authorization.py",
           "back/app/services/secrets.py",
           "back/app/services/service.py"
@@ -8351,7 +8358,7 @@
       {
         "file": "back/app/connection/agent_admin_mcp.py",
         "handler": "agent_connection_create",
-        "line": 35,
+        "line": 53,
         "module": "app.connection",
         "name": "agent_connection_create",
         "namespace": "agent"
@@ -8359,7 +8366,7 @@
       {
         "file": "back/app/connection/agent_admin_mcp.py",
         "handler": "agent_connection_delete",
-        "line": 50,
+        "line": 68,
         "module": "app.connection",
         "name": "agent_connection_delete",
         "namespace": "agent"
@@ -8367,7 +8374,7 @@
       {
         "file": "back/app/connection/agent_admin_mcp.py",
         "handler": "agent_connection_function_list",
-        "line": 74,
+        "line": 92,
         "module": "app.connection",
         "name": "agent_connection_function_list",
         "namespace": "agent"
@@ -8375,7 +8382,7 @@
       {
         "file": "back/app/connection/agent_admin_mcp.py",
         "handler": "agent_connection_function_set",
-        "line": 85,
+        "line": 103,
         "module": "app.connection",
         "name": "agent_connection_function_set",
         "namespace": "agent"
@@ -8383,7 +8390,7 @@
       {
         "file": "back/app/connection/agent_admin_mcp.py",
         "handler": "agent_connection_get",
-        "line": 27,
+        "line": 45,
         "module": "app.connection",
         "name": "agent_connection_get",
         "namespace": "agent"
@@ -8391,7 +8398,7 @@
       {
         "file": "back/app/connection/agent_admin_mcp.py",
         "handler": "agent_connection_list",
-        "line": 19,
+        "line": 36,
         "module": "app.connection",
         "name": "agent_connection_list",
         "namespace": "agent"
@@ -8399,7 +8406,7 @@
       {
         "file": "back/app/connection/agent_admin_mcp.py",
         "handler": "agent_connection_param_delete",
-        "line": 66,
+        "line": 84,
         "module": "app.connection",
         "name": "agent_connection_param_delete",
         "namespace": "agent"
@@ -8407,7 +8414,7 @@
       {
         "file": "back/app/connection/agent_admin_mcp.py",
         "handler": "agent_connection_params_set",
-        "line": 58,
+        "line": 76,
         "module": "app.connection",
         "name": "agent_connection_params_set",
         "namespace": "agent"
@@ -8415,7 +8422,7 @@
       {
         "file": "back/app/connection/agent_admin_mcp.py",
         "handler": "agent_connection_update",
-        "line": 42,
+        "line": 60,
         "module": "app.connection",
         "name": "agent_connection_update",
         "namespace": "agent"
@@ -8551,7 +8558,7 @@
       {
         "file": "back/app/connection/agent_admin_mcp.py",
         "handler": "agent_service_list",
-        "line": 11,
+        "line": 25,
         "module": "app.connection",
         "name": "agent_service_list",
         "namespace": "agent"
@@ -8711,7 +8718,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "search_web",
-        "line": 74,
+        "line": 100,
         "module": "app.services",
         "name": "search_web",
         "namespace": "browser"
@@ -8831,7 +8838,7 @@
       {
         "file": "back/app/voice/mcp.py",
         "handler": "mcp_list_voice_calls",
-        "line": 355,
+        "line": 373,
         "module": "app.voice",
         "name": "voice_call_list",
         "namespace": "chat"
@@ -8839,7 +8846,7 @@
       {
         "file": "back/app/voice/mcp.py",
         "handler": "mcp_start_voice_call",
-        "line": 298,
+        "line": 315,
         "module": "app.voice",
         "name": "voice_call_start",
         "namespace": "chat"
@@ -8847,7 +8854,7 @@
       {
         "file": "back/app/voice/mcp.py",
         "handler": "mcp_stop_voice_call",
-        "line": 323,
+        "line": 341,
         "module": "app.voice",
         "name": "voice_call_stop",
         "namespace": "chat"
@@ -9167,7 +9174,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "documentation_catalog",
-        "line": 37,
+        "line": 63,
         "module": "app.services",
         "name": "documentation_catalog",
         "namespace": "galaris"
@@ -9175,7 +9182,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "documentation_search",
-        "line": 50,
+        "line": 76,
         "module": "app.services",
         "name": "documentation_search",
         "namespace": "galaris"
@@ -9215,7 +9222,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_ask_referrer",
-        "line": 171,
+        "line": 167,
         "module": "app.goal",
         "name": "goal_ask_referrer",
         "namespace": "goal"
@@ -9223,7 +9230,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_complete",
-        "line": 463,
+        "line": 477,
         "module": "app.goal",
         "name": "goal_complete",
         "namespace": "goal"
@@ -9231,7 +9238,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_create",
-        "line": 197,
+        "line": 208,
         "module": "app.goal",
         "name": "goal_create",
         "namespace": "goal"
@@ -9239,7 +9246,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_delete",
-        "line": 517,
+        "line": 531,
         "module": "app.goal",
         "name": "goal_delete",
         "namespace": "goal"
@@ -9247,7 +9254,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_pause",
-        "line": 415,
+        "line": 429,
         "module": "app.goal",
         "name": "goal_pause",
         "namespace": "goal"
@@ -9255,7 +9262,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_resume",
-        "line": 439,
+        "line": 453,
         "module": "app.goal",
         "name": "goal_resume",
         "namespace": "goal"
@@ -9263,7 +9270,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "goal_retrospective_evidence",
-        "line": 38,
+        "line": 40,
         "module": "app.goal",
         "name": "goal_retrospective_evidence",
         "namespace": "goal"
@@ -9271,7 +9278,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "goal_retrospective_learn",
-        "line": 54,
+        "line": 56,
         "module": "app.goal",
         "name": "goal_retrospective_learn",
         "namespace": "goal"
@@ -9279,7 +9286,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "goal_retrospective_record",
-        "line": 65,
+        "line": 67,
         "module": "app.goal",
         "name": "goal_retrospective_record",
         "namespace": "goal"
@@ -9287,7 +9294,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_run_now",
-        "line": 489,
+        "line": 503,
         "module": "app.goal",
         "name": "goal_run_now",
         "namespace": "goal"
@@ -9295,7 +9302,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_update",
-        "line": 347,
+        "line": 360,
         "module": "app.goal",
         "name": "goal_update",
         "namespace": "goal"
@@ -9303,7 +9310,7 @@
       {
         "file": "back/app/goal/mcp.py",
         "handler": "mcp_goal_update_suivi",
-        "line": 312,
+        "line": 324,
         "module": "app.goal",
         "name": "goal_update_suivi",
         "namespace": "goal"
@@ -9751,7 +9758,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_connection_status",
-        "line": 45,
+        "line": 44,
         "module": "bridge.mail",
         "name": "mail_connection_status",
         "namespace": "mail"
@@ -9759,7 +9766,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_forward",
-        "line": 215,
+        "line": 216,
         "module": "bridge.mail",
         "name": "mail_forward",
         "namespace": "mail"
@@ -9767,7 +9774,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_get",
-        "line": 115,
+        "line": 116,
         "module": "bridge.mail",
         "name": "mail_get",
         "namespace": "mail"
@@ -9775,7 +9782,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_list_mailboxes",
-        "line": 54,
+        "line": 55,
         "module": "bridge.mail",
         "name": "mail_list_mailboxes",
         "namespace": "mail"
@@ -9783,7 +9790,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_move",
-        "line": 284,
+        "line": 285,
         "module": "bridge.mail",
         "name": "mail_move",
         "namespace": "mail"
@@ -9791,7 +9798,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_process",
-        "line": 34,
+        "line": 33,
         "module": "bridge.mail",
         "name": "mail_process",
         "namespace": "mail"
@@ -9799,7 +9806,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_reply",
-        "line": 180,
+        "line": 181,
         "module": "bridge.mail",
         "name": "mail_reply",
         "namespace": "mail"
@@ -9807,7 +9814,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_search",
-        "line": 68,
+        "line": 69,
         "module": "bridge.mail",
         "name": "mail_search",
         "namespace": "mail"
@@ -9815,7 +9822,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_send",
-        "line": 141,
+        "line": 142,
         "module": "bridge.mail",
         "name": "mail_send",
         "namespace": "mail"
@@ -9823,7 +9830,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_set_flags",
-        "line": 260,
+        "line": 261,
         "module": "bridge.mail",
         "name": "mail_set_flags",
         "namespace": "mail"
@@ -9831,7 +9838,7 @@
       {
         "file": "back/bridge/mail/mcp.py",
         "handler": "mail_trash",
-        "line": 293,
+        "line": 294,
         "module": "bridge.mail",
         "name": "mail_trash",
         "namespace": "mail"
@@ -9871,7 +9878,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_list_rooms",
-        "line": 768,
+        "line": 780,
         "module": "app.messenger",
         "name": "messenger_list_rooms",
         "namespace": "messenger"
@@ -9879,7 +9886,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_room_history",
-        "line": 806,
+        "line": 818,
         "module": "app.messenger",
         "name": "messenger_room_history",
         "namespace": "messenger"
@@ -9887,7 +9894,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_room_send_file",
-        "line": 1025,
+        "line": 1041,
         "module": "app.messenger",
         "name": "messenger_room_send_file",
         "namespace": "messenger"
@@ -9895,7 +9902,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_room_send_message",
-        "line": 327,
+        "line": 335,
         "module": "app.messenger",
         "name": "messenger_room_send_message",
         "namespace": "messenger"
@@ -9903,7 +9910,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_search_users",
-        "line": 881,
+        "line": 893,
         "module": "app.messenger",
         "name": "messenger_search_users",
         "namespace": "messenger"
@@ -9911,7 +9918,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_send_audio_message",
-        "line": 657,
+        "line": 667,
         "module": "app.messenger",
         "name": "messenger_send_audio_message",
         "namespace": "messenger"
@@ -9919,7 +9926,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_send_file_to_user",
-        "line": 971,
+        "line": 985,
         "module": "app.messenger",
         "name": "messenger_send_file_to_user",
         "namespace": "messenger"
@@ -9927,7 +9934,7 @@
       {
         "file": "back/app/messenger/mcp.py",
         "handler": "mcp_send_message_to_user",
-        "line": 383,
+        "line": 391,
         "module": "app.messenger",
         "name": "messenger_send_message_to_user",
         "namespace": "messenger"
@@ -10366,8 +10373,16 @@
       },
       {
         "file": "back/app/services/mcp.py",
+        "handler": "rest_request",
+        "line": 43,
+        "module": "app.services",
+        "name": "rest_request",
+        "namespace": "rest"
+      },
+      {
+        "file": "back/app/services/mcp.py",
         "handler": "service_admin_catalog_refresh",
-        "line": 396,
+        "line": 420,
         "module": "app.services",
         "name": "service_admin_catalog_refresh",
         "namespace": "service"
@@ -10455,7 +10470,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_create",
-        "line": 342,
+        "line": 366,
         "module": "app.services",
         "name": "service_admin_create",
         "namespace": "service"
@@ -10463,7 +10478,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_delete",
-        "line": 360,
+        "line": 384,
         "module": "app.services",
         "name": "service_admin_delete",
         "namespace": "service"
@@ -10471,7 +10486,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_function_get",
-        "line": 384,
+        "line": 408,
         "module": "app.services",
         "name": "service_admin_function_get",
         "namespace": "service"
@@ -10479,7 +10494,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_function_list",
-        "line": 378,
+        "line": 402,
         "module": "app.services",
         "name": "service_admin_function_list",
         "namespace": "service"
@@ -10487,7 +10502,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_function_set",
-        "line": 390,
+        "line": 414,
         "module": "app.services",
         "name": "service_admin_function_set",
         "namespace": "service"
@@ -10495,7 +10510,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_get",
-        "line": 336,
+        "line": 360,
         "module": "app.services",
         "name": "service_admin_get",
         "namespace": "service"
@@ -10503,7 +10518,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_global_params_set",
-        "line": 366,
+        "line": 390,
         "module": "app.services",
         "name": "service_admin_global_params_set",
         "namespace": "service"
@@ -10511,7 +10526,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_impact",
-        "line": 354,
+        "line": 378,
         "module": "app.services",
         "name": "service_admin_impact",
         "namespace": "service"
@@ -10519,7 +10534,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_list",
-        "line": 330,
+        "line": 354,
         "module": "app.services",
         "name": "service_admin_list",
         "namespace": "service"
@@ -10527,7 +10542,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_mcp_test",
-        "line": 372,
+        "line": 396,
         "module": "app.services",
         "name": "service_admin_mcp_test",
         "namespace": "service"
@@ -10535,7 +10550,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "service_admin_update",
-        "line": 348,
+        "line": 372,
         "module": "app.services",
         "name": "service_admin_update",
         "namespace": "service"
@@ -10543,7 +10558,7 @@
       {
         "file": "back/app/services/mcp.py",
         "handler": "list_mcp_tools",
-        "line": 90,
+        "line": 116,
         "module": "app.services",
         "name": "services_list",
         "namespace": "service"

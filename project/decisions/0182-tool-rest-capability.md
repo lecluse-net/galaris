@@ -23,7 +23,13 @@ Les permissions MCP existantes restent propres à MCP. Le confinement du chemin 
 configurée et l'absence de suivi de redirection protègent la destination des identifiants ;
 ils ne constituent pas une politique d'autorisation métier.
 
-La façade n'expose aucun proxy HTTP ni outil MCP générique. Les futures activités API et
-Code la consommeront ; ce lot ne modifie pas le moteur Process et n'enveloppe pas chaque
-appel dans un Run. Les retries, callbacks et suivi de jobs REST ne sont pas ajoutés.
-Une erreur de transport ne prouve pas l'absence d'effet et ne déclenche aucun rejeu.
+Les activités REST de Process et l'outil MCP natif `rest_request` consomment la façade.
+Chaque Service déclarant REST expose la même fonction sur ses propres connexions.
+L'agent choisit le `service_code` publié par `rest_request` et `services_list`, complété par
+`account_email` lorsque plusieurs comptes Mail utilisent ce Service. L'autorisation MCP
+porte sur cette connexion et la requête précise, avec **Sur demande** par défaut.
+Pour un upload MCP, la façade Fichiers matérialise chaque URI dans le contexte de l’agent.
+Le consentement couvre le contenu, le nom et le type de chaque fichier. Le transport envoie
+les octets bruts ou les parties multipart, accompagnées des champs de formulaire.
+L'exposition conversationnelle suit le réglage du Service. Les appels directs de Process
+conservent leur propre admission. Une erreur de transport laisse l'effet distant incertain.

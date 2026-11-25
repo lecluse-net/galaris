@@ -766,6 +766,9 @@ locale est commune à l'échelle du Service. Ce champ API historique `messaging_
 de route équivalent au `connection_id`; il ne doit pas être confondu avec le
 `messaging_id: str` de l'adresse sociale projetée, qui est le code du bridge.
 
+L’outil MCP `messenger_search_users` présente la route sous son `service_code`, avec
+l’`external_id` du contact et le canal. Les outils d’envoi privé acceptent ce même code.
+
 Une recherche filtrée enrichit le référentiel mais n'en retire jamais de ligne : ses absences sont
 hors scope, pas des suppressions. Une recherche sans filtre ne devient autoritative que si le
 bridge certifie que sa réponse couvre réellement tout son annuaire. La synchronisation ne crée

@@ -27,12 +27,12 @@ for (const mobile of [false, true]) {
       if (path.startsWith('/api/') && response.status() >= 400) errors.push(`${response.status()} ${path}`)
     })
     const tools = await (await request.get('/api/services', { headers })).json()
-    const admin = tools.find(tool => tool.code === 'service_admin')
+    const admin = tools.find(tool => tool.code === 'service')
     const grants = await (await request.get(`/api/connections?service_id=${admin.id}&agent_id=${fixture.agent_id}`, { headers })).json()
     const grant = grants.length ? grants[0] : await (await request.post('/api/connections', {
-      headers, data: { service_id: admin.id, agent_id: fixture.agent_id, active: false },
+      headers, data: { service_id: admin.id, agent_id: fixture.agent_id, active: true },
     })).json()
-    expect(grant.active).toBe(false)
+    expect(grant.id).toBeTruthy()
     expect((await request.patch(`/api/connections/${grant.id}`, { headers, data: { active: true,
       params: { 'services.management_scope': 'all' } } })).ok()).toBeTruthy()
     // This administration scenario starts with explicit human authorization.
@@ -106,34 +106,33 @@ for (const mobile of [false, true]) {
     const created = await allowed('service_admin_create', { candidate_reference: reference })
     expect(created.persisted).toBe(true)
     expect(JSON.stringify(created)).not.toContain(secret)
-    const toolId = created.tool.id
+    const account = { service_code: code, agent_id: fixture.agent_id }
     const connected = await allowed('service_admin_connection_create', {
-      service_id: toolId, agent_id: fixture.agent_id, expected_version: created.version,
+      ...account, expected_version: created.version,
     })
-    const connectionId = connected.connection.id
     expect(connected.connection.active).toBe(false)
     expect(connected.connection.effective_params.token.configured).toBe(true)
-    const connectionTest = await allowed('service_admin_connection_test', { connection_id: connectionId })
+    const connectionTest = await allowed('service_admin_connection_test', { ...account })
     expect(connectionTest.diagnostic.success).toBe(true)
     const active = await allowed('service_admin_connection_update', {
-      connection_id: connectionId, active: true, expected_version: connected.version,
+      ...account, active: true, expected_version: connected.version,
     })
-    const functions = await allowed('service_admin_connection_function_list', { connection_id: connectionId })
+    const functions = await allowed('service_admin_connection_function_list', { ...account })
     expect(functions.items.find(fn => fn.name === 'lookup').available).toBe(true)
     const revoked = await allowed('service_admin_connection_function_set', {
-      connection_id: connectionId, function_name: 'lookup', state: 'disabled', expected_version: active.version,
+      ...account, function_name: 'lookup', state: 'disabled', expected_version: active.version,
     })
     expect(revoked.function.effective).toBe(false)
     await pageErrors.settle()
     await page.reload()
     // Services share one catalogue of cards.
     await expect(page.getByText(code, { exact: true })).toBeVisible()
-    const current = await allowed('service_admin_get', { service_id: toolId })
-    const blocked = await invoke('service_admin_delete', { service_id: toolId, expected_version: current.version })
+    const current = await allowed('service_admin_get', { service_code: code })
+    const blocked = await invoke('service_admin_delete', { service_code: code, expected_version: current.version })
     expect(blocked.error.kind).toBe('dependencies_blocking')
-    await allowed('service_admin_connection_delete', { connection_id: connectionId, expected_version: revoked.version })
-    const detached = await allowed('service_admin_get', { service_id: toolId })
-    await allowed('service_admin_delete', { service_id: toolId, expected_version: detached.version })
+    await allowed('service_admin_connection_delete', { ...account, expected_version: revoked.version })
+    const detached = await allowed('service_admin_get', { service_code: code })
+    await allowed('service_admin_delete', { service_code: code, expected_version: detached.version })
     await pageErrors.settle()
     await page.reload()
     // Services share one catalogue of cards.

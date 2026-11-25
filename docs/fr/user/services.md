@@ -51,6 +51,35 @@ Quand vous ajoutez le protocole REST, l’éditeur sélectionne **Aucune authent
 Si l’API exige un identifiant, associez-le à un paramètre de connexion déclaré.
 Voir [Activer une API REST](../admin/service-administration.md#rest-api).
 
+Pour demander à un agent de lire les projets GitLab, par exemple, activez sa connexion
+au Service GitLab et renseignez le jeton. L’agent retrouve cette connexion avec
+`services_list`, puis appelle `rest_request` avec le `service_code` affiché (par exemple `gitlab`) et la requête
+`{"method":"GET","path":"projects","params":{"membership":true}}` si la base configurée
+se termine par `/api/v4`. Galaris ajoute le jeton et l’agent peut exploiter la liste reçue.
+
+Pour joindre un fichier, donnez à l’agent son URI Galaris. Il peut envoyer les octets
+comme corps HTTP avec `request.file_uri` ou joindre plusieurs fichiers dans `request.files`
+avec les champs de formulaire de `request.form`. Par exemple, pour une API qui attend un fichier
+dans le champ `document`, les arguments de `rest_request` peuvent prendre cette forme.
+
+```json
+{
+  "service_code": "archives",
+  "request": {
+    "method": "POST",
+    "path": "imports",
+    "form": {"category": "invoice"},
+    "files": [{"field": "document", "uri": "file://<uuid>"}]
+  }
+}
+```
+
+Utilisez le code du Service connecté et l’URI exacte retournée par l’outil de fichiers.
+Si l’API attend directement le PDF dans le corps d’un PUT, la requête devient
+`{"method":"PUT","path":"imports/facture.pdf","file_uri":"file://<uuid>"}`.
+Les réponses de cet outil sont du JSON ou du texte. Pour les champs répétés, les limites et
+la correspondance avec Axios, consultez la [référence de `rest_request`](../admin/service-administration.md#rest-request).
+
 Le catalogue initial propose Qonto, Nextcloud, GitLab, Matrix, n8n, Redmine et Telegram.
 Les fiches expliquent les capacités proposées. Une API REST ne garantit pas toutes les
 fonctionnalités du produit ; les droits et limites du fournisseur continuent de s'appliquer.

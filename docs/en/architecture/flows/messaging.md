@@ -729,6 +729,9 @@ the Service level. This historical API field `messaging_id: int` is a route sele
 `connection_id`; it must not be confused with the `messaging_id: str` of the projected social
 address, which is the bridge code.
 
+The MCP tool `messenger_search_users` returns the route's `service_code` alongside the
+contact's `external_id` and channel. Private delivery tools accept that same code.
+
 A filtered search enriches the repository but never removes a row: absences are out of scope, not
 deletions. An unfiltered search becomes authoritative only if the bridge certifies that its
 response actually covers its entire directory. Synchronization creates neither cross-channel

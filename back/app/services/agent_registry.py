@@ -104,12 +104,10 @@ async def build_agent_tool_advertisement(
     if "calendar_update_event" in tool_names:
         lines.append("Use calendar_update_event for an existing event with its current revision.")
     if "mail" in grouped:
-        lines.append("Mail supports multiple accounts, including several connections to the same provider Service. "
-            "When services_list is available, use it to discover each mailbox address, connection_id and authorized functions. "
-            "Pass the selected connection_id to every mail_* call and keep message references and cursors "
-            "with their original account. For the source message of an incoming Mail task, use its "
-            "provided connection_id or omit it to keep the bound account. "
-            "Never guess a connection ID or switch accounts to bypass a denial; ask when the intended mailbox is unclear.")
+        lines.append("Use services_list to discover each mailbox's service_code, account_email and authorized functions. "
+            "Use the same service_code and account_email throughout a mail operation. Keep message references and cursors "
+            "with their original account. An incoming Mail task already identifies the source account for mail_get. "
+            "Ask when the intended mailbox is unclear.")
     if "file_list" in tool_names:
         lines.extend([
             "",
@@ -446,14 +444,10 @@ def build_tool_context_values(task: Any, runtime: RuntimeName) -> dict[str, str]
     if platform == "mail" or not (platform or room_id):
         return None
 
-    connection_id = ""
     data = getattr(task, "data", None)
-    if isinstance(data, dict):
-        connection_id = str(as_dict(data).get("connection_id") or "")
     service_code = str(as_dict(data).get("service_code") or "") if isinstance(data, dict) else ""
-    connection_arg = f", connection_id={connection_id}" if connection_id else ""
     voice_tool = (
-        f"voice_call_start(room_id='{room_id}'{connection_arg})"
+        f"voice_call_start(room_id={room_id!r})"
         if capabilities.voice_calling and room_id
         else "not available in this runtime"
     )

@@ -221,9 +221,9 @@ def _scheduled_sync_at(feed: CalendarFeed) -> datetime | None:
     return max(feed.next_sync_at, anchor + timedelta(hours=feed.sync_interval_hours))
 
 
-def serialize_feed(feed: CalendarFeed, agent_id: int, *, service_label: str = "") -> CalendarFeedRead:
+def serialize_feed(feed: CalendarFeed, agent_id: int, *, service_code: str = "", service_label: str = "") -> CalendarFeedRead:
     return CalendarFeedRead(id=feed.id, connection_id=feed.connection_id, agent_id=agent_id, label=feed.label,
-        service_label=service_label, owner_label=feed.owner_label, source_kind=cast(Literal["internal", "ical", "caldav", "google", "microsoft", "icloud"], feed.source_kind), is_default=feed.is_default and feed.source_kind == "internal",
+        service_code=service_code, service_label=service_label, owner_label=feed.owner_label, source_kind=cast(Literal["internal", "ical", "caldav", "google", "microsoft", "icloud"], feed.source_kind), is_default=feed.is_default and feed.source_kind == "internal",
         origin=urlsplit(decrypt(feed.url_encrypted)).netloc, url_configured=bool(feed.url_encrypted),
         username_configured=bool(feed.username_encrypted), password_configured=bool(feed.password_encrypted),
         active=feed.active, writable=feed.writable, initialized=feed.initialized, actions_enabled=feed.actions_enabled,
@@ -252,7 +252,8 @@ async def _ensure_connection_has_feed(connection_id: int) -> None:
 async def _read_feeds(statement: Select[tuple[CalendarFeed, int, int]]) -> list[CalendarFeedRead]:
     rows = (await get_db().execute(statement.order_by(CalendarFeed.label, CalendarFeed.id))).all()
     tools = await service.get_services_by_ids({service_id for _, _, service_id in rows})
-    return [serialize_feed(feed, owner, service_label=tools[service_id].label if service_id in tools else "")
+    return [serialize_feed(feed, owner, service_code=tools[service_id].code if service_id in tools else "",
+            service_label=tools[service_id].label if service_id in tools else "")
             for feed, owner, service_id in rows]
 
 
@@ -304,7 +305,7 @@ async def update_feed(calendar_id: int, data: CalendarFeedUpdate) -> CalendarFee
     await get_db().commit()
     await get_db().refresh(feed)
     tool = await service.get_service_by_id(connection.service_id)
-    return serialize_feed(feed, connection.agent_id, service_label=tool.label if tool else "")
+    return serialize_feed(feed, connection.agent_id, service_code=tool.code if tool else "", service_label=tool.label if tool else "")
 
 
 async def delete_feed(calendar_id: int) -> bool:

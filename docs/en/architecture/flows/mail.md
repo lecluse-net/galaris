@@ -6,7 +6,7 @@ The `bridge.mail` adapts an external mailbox to Galaris's Service and Messenger 
 A custom provider Service selects `imap_smtp.mail` in `capabilities`, enables `mail_config`,
 and can combine different capabilities, each using a single protocol. Mail is no
 longer a built-in Service. The agent invokes MCP functions scoped to an active provider connection;
-`connection_id` explicitly selects the connection when several providers are active.
+`service_code` explicitly selects the connection when several providers are active.
 Authorization and execution use that same connection; ambiguous or foreign selections are rejected. The
 canonical listener also polls INBOX, journals headers and admits authorized emails as
 dedicated Tasks after the `mail_process` gate.
@@ -19,10 +19,10 @@ Empty legacy configurations retain existing global and local values.
 
 An agent may create several connections to the same Mail Service, for example two mailboxes
 at one provider. Each connection retains its own parameters, secrets, folder restrictions,
-permissions and polling cursors. MCP calls select `connection_id`; an ambiguous selection
-is rejected with the available connections. Other Services retain one connection per agent.
+permissions and polling cursors. MCP calls use `service_code` and, for several mailboxes at one provider, `account_email`.
+An ambiguous selection fails before the provider is called. Other Services retain one connection per agent.
 Removing the Mail protocol requires removing additional connections for the same agent first.
-The MCP `services_list` catalogue presents each account's address, `connection_id` and authorized
+The MCP `services_list` catalogue presents each account's address, `service_code` and authorized
 functions. The Galaris system skill and MCP parameter descriptions explain account selection
 and keeping message references with their source account.
 

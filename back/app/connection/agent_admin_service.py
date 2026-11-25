@@ -1,14 +1,13 @@
 """Connection workflows for the manager-scoped AgentAdmin delegation."""
 
 from typing import Any
-from sqlalchemy import select
 from loguru import logger
 
 from core.database import get_db
 from app.services.facade import HUMAN_ONLY_SERVICE_CODES
 from . import connection_service as service
 from .models import Connection
-from .schemas import Connection as ConnectionRead, FunctionState
+from .schemas import FunctionState
 
 
 async def refresh_after_mutation(agent_id: int) -> None:
@@ -67,7 +66,7 @@ async def delete(connection_id: int) -> dict[str, Any]:
     agent_id = connection.agent_id
     await service.delete_connection(connection_id)
     await refresh_after_mutation(agent_id)
-    return {"connection_id": connection_id, "agent_id": agent_id, "deleted": True}
+    return {"agent_id": agent_id, "deleted": True}
 
 
 async def params_set(connection_id: int, params: dict[str, str | None]) -> dict[str, Any]:
@@ -116,13 +115,18 @@ async def function_set(connection_id: int, name: str, state: FunctionState) -> d
 
 
 async def list_connections(agent_id: int, service_id: int | None, active_only: bool, skip: int, limit: int) -> dict[str, Any]:
-    query = select(Connection).where(Connection.agent_id == agent_id).order_by(Connection.id)
-    if service_id is not None:
-        query = query.where(Connection.service_id == service_id)
-    if active_only:
-        query = query.where(Connection.active.is_(True))
-    connections = (await get_db().scalars(query.offset(skip).limit(limit))).all()
-    return {"items": [ConnectionRead.model_validate(c).model_dump() for c in connections], "skip": skip, "limit": limit}
+    from .admin_service import list_connections as list_managed_connections
+    page = await list_managed_connections(agent_id=agent_id, service_id=service_id,
+        active=True if active_only else None, offset=skip, limit=limit)
+    return {"items": page["items"], "skip": skip, "limit": limit}
+
+
+async def service_identifier(service_code: str) -> int:
+    from app.services import service
+    record = await service.get_service_record(service_code)
+    if record is None:
+        raise LookupError("Service not found")
+    return record.id
 
 
 async def list_tools(search: str, skip: int, limit: int) -> dict[str, Any]:

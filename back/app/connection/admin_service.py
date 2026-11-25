@@ -28,7 +28,17 @@ async def list_connections(*, service_id: int | None = None, agent_id: int | Non
         query = query.where(Connection.active == active)
     total = await get_db().scalar(select(func.count()).select_from(query.subquery()))
     records = (await get_db().scalars(query.order_by(Connection.id).offset(offset).limit(limit))).all()
-    return {"total": total, "offset": offset, "limit": limit, "items": [identity(record) for record in records]}
+    from .service_selection import account_emails_for_connections, service_codes_for_connections
+    ids = [row.id for row in records]
+    addresses = await account_emails_for_connections(ids)
+    codes = await service_codes_for_connections(ids)
+    items: list[dict[str, Any]] = []
+    for row in records:
+        item: dict[str, Any] = {"service_code": codes[row.id], "agent_id": row.agent_id, "active": row.active}
+        if row.id in addresses:
+            item["account_email"] = addresses[row.id]
+        items.append(item)
+    return {"total": total, "offset": offset, "limit": limit, "items": items}
 
 
 def identity(connection: Connection) -> dict[str, Any]:
@@ -100,7 +110,12 @@ async def projection(connection_id: int) -> dict[str, Any]:
         }
     if executable:
         local = {name: None for name in local}
-    return {**identity(connection), "local_params": local, "configured_params": configured, "effective_params": effective}
+    result = {"service_code": tool.code, "agent_id": connection.agent_id, "active": connection.active,
+              "local_params": local, "configured_params": configured, "effective_params": effective}
+    if tool.mail is not None:
+        name = tool.mail.param_map.get("email_address", "email_address")
+        result["account_email"] = effective.get(name, {}).get("value") or ""
+    return result
 
 
 async def require_target(actor: AdministrationContext, connection_id: int) -> Connection:

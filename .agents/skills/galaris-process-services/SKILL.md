@@ -27,6 +27,16 @@ avec ses protocoles, paramètres et connexions. Un **outil MCP** est une fonctio
 Conserver les noms imposés par MCP, FastMCP et Pydantic AI, dont `Tool`, `ToolResult`,
 `tools/list` et les toolsets : ils ne désignent pas l'ancien domaine Galaris.
 
+Les outils destinés aux agents sélectionnent le fournisseur par son `service_code`, publié
+par `services_list`. Plusieurs comptes Mail du même Service se distinguent par `account_email`.
+Pour `rest_request`, transmettre le code et une requête relative à la racine configurée.
+Les uploads REST de l’agent fournissent des URI de ressources : `file_uri` pour le corps
+binaire, `files` et `form` pour le multipart. Lier l’accord aux octets matérialisés.
+Résoudre le compte dans la portée autorisée, puis lier autorisation et exécution à ce même
+compte. Vérifier le schéma MCP monté, les consignes générées et les exemples FR/EN.
+La [référence de `rest_request`](../../../docs/fr/admin/service-administration.md#rest-request)
+décrit les encodages HTTP, le traitement des statuts et la correspondance avec Axios.
+
 Vérifier le rattachement d'une fonction dans son décorateur `mcp_tool` et son activation
 par défaut dans `back/app/services/mandatory_services.py`. Le
 [guide des Services](../../../docs/fr/admin/service-administration.md#services-intégrés-et-portées)
