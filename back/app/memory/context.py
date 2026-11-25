@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from datetime import datetime
+from statistics import median
 from collections.abc import Mapping, Sequence
 from typing import Literal
 from uuid import UUID
 
 from core.params import runtime_settings
+from core.util import search_terms
 
 from .contracts import MemoryBrief, MemoryContextItem, MemorySearchItem
 from .facade import search_memory_detailed
@@ -17,9 +20,11 @@ from .schemas import MemorySearchHit
 from .service import record_llm_retrieval
 from .retrieval import admit_recall_hits
 from .schemas import MemoryRecallRequest
-from .passages import query_resource_references
-from .source_chronology import SourceChronology, memory_chronology, parse_source_time_query
+from .passages import query_is_direct_contact_lookup, query_reference_ids, query_resource_references
+from .relevance import matched_terms, resource_query_terms
+from .source_chronology import SourceChronology, hit_chronology, parse_source_time_query
 from .personal_records import personal_record_kind
+from .question_evidence import parse_question_evidence
 from .federated_ranking import FederatedEvidence, rank_federated
 
 
@@ -30,7 +35,7 @@ _HEADER = (
     "not a proof that every requested fact is known. Check attribution, dates and conflicts; "
     "read the source when needed and state what remains unknown."
     " For chronology, source_date identifies the date supported by the source and event_date identifies "
-    "an explicit calendar event. recorded_at describes when the memory was recorded."
+    "an explicitly dated event. recorded_at describes when the memory was recorded."
 )
 _EXPERIENCE_HEADER = (
     "## Relevant prior experience\n"
@@ -127,7 +132,6 @@ _GENERIC_LABEL_PREFIXES = (
     "conversation —",
     "realtime voice conversation —",
 )
-_SPEAKER_PREFIX_RE = re.compile(r"(?m)^\s*\[[^\]\n]{1,100}\]\s*")
 _MEMORY_QUERY_MAX_WORDS = 18
 _MEMORY_QUERY_MAX_CHARS = 240
 _SEMANTIC_HISTORY_MAX_MESSAGES = 2
@@ -150,6 +154,13 @@ _ACKNOWLEDGEMENT_RE = re.compile(
     r"^\s*(?:oui|non|ok|okay|d['’]accord|merci|parfait|bien|yes|no|thanks|thank you|sure|great)"
     r"[\s.!?,;:…]*$", re.IGNORECASE,
 )
+_RETRY_RE = re.compile(r"\b(?:retry|again|réessayer|réessaie|recommence)\b", re.I)
+
+
+def _needs_history(subject: str) -> bool:
+    return (len(subject.split()) <= _MEMORY_QUERY_MAX_WORDS
+            and not _TOPIC_RESET_RE.search(subject)
+            and bool(_CONVERSATIONAL_REFERENCE_RE.search(subject) or _RETRY_RE.search(subject)))
 
 
 def memory_policy_instructions() -> str:
@@ -205,8 +216,7 @@ def _is_generic_label(value: str) -> bool:
     )
 
 
-def _without_speaker_prefixes(value: str) -> str:
-    return " ".join(_SPEAKER_PREFIX_RE.sub("", value).split()).strip()
+_without_speaker_prefixes = search_terms.without_speaker_prefixes
 
 
 def _recent_history_text(
@@ -240,7 +250,7 @@ def _continuity_subject(
     bounded scan avoids treating old conversations or assistant prose as the
     subject of the current human request.
     """
-    if _TOPIC_RESET_RE.search(subject) or not _CONVERSATIONAL_REFERENCE_RE.search(subject):
+    if not _needs_history(subject):
         return ""
     for message in reversed(conversation_history[-_LEXICAL_HISTORY_SCAN_MESSAGES:]):
         if str(message.get("role") or "").strip().casefold() not in {"user", "human"}:
@@ -275,7 +285,14 @@ def memory_context_query(
             else _bounded_query(_without_speaker_prefixes(objective))
         )
         if not bounded_label or _is_generic_label(bounded_label):
-            prior_subject = _continuity_subject(subject, conversation_history)
+            current = _without_speaker_prefixes(objective)
+            # A spoken preamble can exhaust the lexical budget before the actual
+            # question. Prefer the final explicit question when it stands alone.
+            if len(current.split()) > _MEMORY_QUERY_MAX_WORDS and current.endswith("?"):
+                question = re.split(r"(?<=[.!?])\s+", current)[-1]
+                if len(search_terms.terms(question)) >= 2:
+                    subject = _bounded_query(question)
+            prior_subject = _continuity_subject(current, conversation_history)
             if prior_subject:
                 subject = _bounded_query(f"{subject} {prior_subject}")
     contact = _bounded_query(" ".join(term for term in contact_terms if term))
@@ -305,7 +322,7 @@ def memory_context_semantic_query(
     if generic_label:
         parts = (
             normalized_objective,
-            *(() if _TOPIC_RESET_RE.search(normalized_objective) else _recent_history_text(conversation_history)),
+            *(_recent_history_text(conversation_history) if _needs_history(normalized_objective) else ()),
         )
     else:
         parts = (normalized_label, normalized_objective)
@@ -322,6 +339,15 @@ def _render_chronology(evidence: SourceChronology | None) -> str:
     return fields + "\n" if fields else ""
 
 
+def _cited_passage(hit: MemorySearchHit, excerpt: str) -> MemorySearchHit:
+    item = hit.item
+    # A native title derived from the first characters of the body can
+    # otherwise reintroduce another object's value above the selected quote.
+    if item.node_kind == "memory" and not item.source_managed:
+        item = item.model_copy(update={"title": excerpt[:120]})
+    return hit.model_copy(update={"item": item, "excerpt": excerpt})
+
+
 def _brief_evidence(hit: MemorySearchHit | MemorySearchItem) -> FederatedEvidence:
     if isinstance(hit, MemorySearchItem):
         return FederatedEvidence(identity=hit.uri, title=hit.title, excerpt=hit.excerpt,
@@ -332,7 +358,38 @@ def _brief_evidence(hit: MemorySearchHit | MemorySearchItem) -> FederatedEvidenc
     uri = f"{'document' if document else 'memory'}://{item.id}"
     return FederatedEvidence(identity=uri, title=item.title, excerpt=hit.excerpt,
         passages=tuple(passage.excerpt for passage in hit.passages), source_document=document,
-        chronology=memory_chronology(item.title, item.temporal))
+        chronology=hit_chronology(hit))
+
+
+def _lexical_anchor(hit: MemorySearchHit, subject: frozenset[str], common: frozenset[str]) -> bool:
+    """Keep a distinctive lexical hit across inflections, typos and languages."""
+    if not any(source.endswith("_lexical") for source in hit.retrieval_sources):
+        return False
+    content = " ".join((hit.item.title, *hit.item.keywords, hit.excerpt))
+    matched = matched_terms(content, subject)
+    return (len(matched) >= 2 or any(len(term) >= 4 or term.isdigit() for term in matched - common))
+
+
+_OTHER_AGENT = r"(?:(?:un|l['’])\s*autre agent|(?:another|the other) agent)"
+_PRIVATE_NOTE = r"(?:une? (?:note privee|souvenir prive)|a private (?:note|memory))"
+_SOURCE_TOPIC = r"(?:\s+(?:sur|concernant|au sujet de|about|regarding) [\w '’\-]{1,120})?"
+_FOREIGN_NOTE_REQUEST = re.compile(
+    r"(?:(?:retrouve|montre(?:-moi)?|donne(?:-moi)?|find|show me|give me|retrieve)\s+"
+    r"(?:(?:la note reservee|le souvenir reserve) a (?:un autre|l['’]autre) agent"
+    r"|(?:the )?(?:note|memory) restricted to " + _OTHER_AGENT
+    + r"|(?:the other|another) agent['’]s private (?:note|memory)"
+    r"|(?:la note privee|le souvenir prive) (?:d['’]un autre|de l['’]autre) agent)" + _SOURCE_TOPIC
+    + r"|" + _OTHER_AGENT + r" (?:a|aurait|has) " + _PRIVATE_NOTE + _SOURCE_TOPIC
+    + r"\s*[,;.]\s*(?:peux-tu (?:la|le) retrouver|can you (?:find|retrieve) it))\s*[?.!]*"
+)
+
+
+def _requests_other_agents_private_note(text: str) -> bool:
+    # Only a request for that source alone has no admissible substitute. Keep
+    # policy questions, quoted requests and explicit alternative sources searchable.
+    folded = search_terms.fold(text.strip())
+    return (not re.search(r"\b(?:et|ou|mais|sinon|and|or|but|instead|except|sauf|copie|copy|shared|partagee?)\b", folded)
+            and _FOREIGN_NOTE_REQUEST.fullmatch(folded) is not None)
 
 
 async def build_memory_brief(
@@ -347,11 +404,13 @@ async def build_memory_brief(
     stage: Literal["planning", "execution"] = "execution",
     strict_contact_scope: bool = False,
     include_relevant: bool = True,
+    conversational: bool = False,
 ) -> MemoryBrief:
     """Retrieve, source, and render a deterministic context budget."""
 
     normalized = query.strip()
-    if not runtime_settings.MEMORY_CONTEXT_ENABLED:
+    if (not runtime_settings.MEMORY_CONTEXT_ENABLED
+            or conversational and _requests_other_agents_private_note(semantic_query or normalized)):
         return MemoryBrief(query=normalized, items=(), rendered="")
 
     limit = runtime_settings.MEMORY_CONTEXT_MAX_ITEMS
@@ -418,6 +477,31 @@ async def build_memory_brief(
     ), [*general_hits, *experience_hits])
     admitted_by_id = {hit.item.id: hit for hit in admitted}
     general_hits = [admitted_by_id[hit.item.id] for hit in general_hits if hit.item.id in admitted_by_id]
+    question = (parse_question_evidence(normalized, dated=chronology is not None)
+                if conversational and (chronology is None or chronology.dimension == "event_or_source") else None)
+    semantic_floor = 0.75
+    if conversational and chronology is None:
+        subject = frozenset(search_terms.terms(resource_query_terms(normalized)))
+        references = set(query_reference_ids(normalized))
+        common = search_terms.common_terms(hit.item.title for hit in general_hits)
+        similarities = [hit.semantic_similarity for hit in general_hits if hit.semantic_similarity is not None]
+        # Some models give even unrelated passages high cosine scores. In a
+        # populated neighbourhood a semantic-only hit must also stand out.
+        semantic_floor = max(0.75, median(similarities) + 0.04) if len(similarities) >= 4 else 0.75
+        direct_contact = query_is_direct_contact_lookup(normalized)
+        # Automatic injection can abstain. Explicit search retains the full ranked
+        # page, including weaker neighbours that the caller can inspect.
+        general_hits = [hit for hit in general_hits if (
+            hit.item.id in references
+            or (direct_contact and hit.item.id == contact_item_id)
+            or "resolved_relation" in hit.retrieval_sources
+            or (question is not None and question.source_language is not None)
+            or (question is not None and (question.supports(hit.item.title, hit.excerpt)
+                or any(question.supports(hit.item.title, p.excerpt) for p in hit.passages)))
+            or _lexical_anchor(hit, subject, common)
+            or search_terms.has_turn_evidence(subject, hit.item.title, hit.excerpt, common)
+            or (bool(subject) and (hit.semantic_similarity or 0.0) >= semantic_floor)
+        )]
     experience_hits = [admitted_by_id[hit.item.id] for hit in experience_hits if hit.item.id in admitted_by_id]
     reserved = min(len(experience_hits), runtime_settings.DREAM_EXPERIENCE_MAX_ITEMS, limit)
     experience_has_more = experience_has_more or len(experience_hits) > reserved
@@ -426,6 +510,55 @@ async def build_memory_brief(
     candidates: Sequence[MemorySearchHit | MemorySearchItem] = general_hits
     if indexed:
         candidates = rank_federated(normalized, candidates, indexed, _brief_evidence, chronology=chronology)
+    if question is not None and (question.source_language is not None or question.storage is not None):
+        source = question.source_language
+        answer_hits: list[MemorySearchHit | MemorySearchItem] = []
+        source_hits: list[MemorySearchHit | MemorySearchItem] = []
+        semantic_hits: list[MemorySearchHit] = []
+        for hit in candidates:
+            if isinstance(hit, MemorySearchItem):
+                if excerpt := question.answer_passage(hit.title, hit.excerpt):
+                    answer_hits.append(replace(hit, excerpt=excerpt))
+                elif source and (excerpt := source.passage(hit.title, hit.excerpt)):
+                    source_hits.append(replace(hit, excerpt=excerpt))
+                continue
+            fragments = dict.fromkeys((hit.excerpt, *(part.excerpt for part in hit.passages)))
+            tag = hit.item.metadata.get("language")
+            excerpt = next((part for fragment in fragments if (part := question.answer_passage(
+                hit.item.title, fragment, declared_language=tag))), "")
+            if excerpt:
+                answer_hits.append(_cited_passage(hit, excerpt))
+                continue
+            if source is None:
+                continue
+            if question.storage is not None and (excerpt := next((part for fragment in fragments
+                    if (part := source.passage(hit.item.title, fragment, declared=tag))), "")):
+                source_hits.append(_cited_passage(hit, excerpt))
+            elif ((hit.semantic_similarity or 0.0) >= semantic_floor and hit.item.node_kind == "memory"
+                  and len(hit.passages) == 1 and hit.passages[0].excerpt == hit.excerpt):
+                # Only transfer semantic support to the same monolingual passage.
+                # A cosine for a bilingual chunk cannot identify which half matched.
+                part = source.passage(hit.item.title, hit.excerpt, declared=hit.item.metadata.get("language"), semantic=True)
+                if part and part == hit.excerpt.strip():
+                    semantic_hits.append(hit)
+        if answer_hits or source is not None:
+            candidates = answer_hits or source_hits or semantic_hits
+    elif question is not None and question.single_detail:
+        focused: list[MemorySearchHit | MemorySearchItem] = []
+        for candidate in candidates:
+            evidence = _brief_evidence(candidate)
+            if question.supports(evidence.title, evidence.excerpt):
+                focused.append(candidate)
+            elif isinstance(candidate, MemorySearchHit):
+                passage = next((p for p in candidate.passages if question.supports(evidence.title, p.excerpt)), None)
+                if passage is not None:
+                    focused.append(candidate.model_copy(update={"excerpt": passage.excerpt}))
+                elif (question.attribute is None and not question.require_match
+                      and (candidate.semantic_similarity or 0.0) >= semantic_floor
+                      and question.same_subject(evidence.title + "\n" + evidence.excerpt)):
+                    focused.append(candidate)
+        if focused or question.require_match:
+            candidates = focused
     truncated = truncated or len(candidates) > general_limit
 
     def render_hits(
@@ -504,7 +637,7 @@ async def build_memory_brief(
             recorded_text = f"recorded_at={recorded.isoformat()}\n" if isinstance(recorded, datetime) else ""
             validity = ", ".join(f"{key}={value.isoformat()}" for key in ("valid_from", "valid_until")
                 if isinstance(value := getattr(hit.item, key, None), datetime))
-            chronology = memory_chronology(hit.item.title, getattr(hit.item, "temporal", None))
+            chronology = hit_chronology(hit)
             full_excerpt = (conflict_text + _render_chronology(chronology) + recorded_text
                             + (validity + "\n" if validity else "") + section_text + hit.excerpt)
             excerpt = full_excerpt[:remaining]
@@ -559,7 +692,7 @@ async def build_memory_brief(
         part for part in (general_rendered, experience_rendered) if part
     )
     truncated = truncated or experience_has_more or exp_truncated or general_truncated
-    if truncated:
+    if truncated and items:
         rendered += overflow_note
     await record_llm_retrieval(
         agent_id=agent_id,

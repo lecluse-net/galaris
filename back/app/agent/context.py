@@ -11,6 +11,7 @@ from html import escape
 from uuid import UUID
 
 from loguru import logger
+from core.util import search_terms
 
 from .contracts import (
     AgentContextContribution,
@@ -45,6 +46,37 @@ _CAPSULE_KIND_LIMITS = {
     "memory": 50,
 }
 _TOKEN_RE = re.compile(r"[^\W_]{3,}", flags=re.UNICODE)
+_DOCUMENT_FOLLOWUP = re.compile(
+    r"(?:continue|resume|reopen|open|edit|reprends|reprendre|rouvre|ouvre)\s+"
+    r"(?:our|the|that|this|le|ce|notre)\s+(?:(?:last|previous|dernier)\s+)?document[.!?\s]*"
+)
+
+
+def _turn_documents(candidates: list[AgentContextCandidate], objective: str) -> list[AgentContextCandidate]:
+    """Admit historical document references before they compete for prompt space."""
+    historical = [item for item in candidates if item.kind == "resource"
+                  and item.metadata.get("resource_type") == "memory_document"
+                  and _recall_position(item) is None]
+    if not historical:
+        return candidates
+    # URI components and generated operation labels are not evidence of subject.
+    uri_pattern = r"document://[\w/-]+"
+    references = set(re.findall(uri_pattern, objective))
+    objective = search_terms.without_speaker_prefixes(objective)
+    words = frozenset(search_terms.terms(re.sub(uri_pattern, " ", objective)))
+    common = search_terms.common_terms(f"{item.title} {item.metadata.get('source_task_label', '')}" for item in historical)
+    latest = None
+    if _DOCUMENT_FOLLOWUP.fullmatch(search_terms.fold(objective.strip())):
+        latest = max(historical, key=lambda item: _occurred_timestamp(item.occurred_at)
+                     if item.occurred_at else 0.0).reference
+    selected = {item.reference for item in historical if (
+        item.reference == latest or item.reference in references
+        or (latest is None and search_terms.has_turn_evidence(
+            words, item.title, str(item.metadata.get("source_task_label") or ""), common))
+    )}
+    return [item for item in candidates if item.kind != "resource"
+            or item.metadata.get("resource_type") != "memory_document"
+            or _recall_position(item) is not None or item.reference in selected]
 
 
 def _candidate_score(candidate: AgentContextCandidate, objective: str) -> float:
@@ -333,6 +365,8 @@ async def build_agent_run_context(request: AgentContextRequest) -> AgentRunConte
                        or (personal_record_scope and entry.kind == "resource")],
                 )
     if include_history and capsule is None:
+        if request.task_id is None:
+            candidates = _turn_documents(candidates, request.objective)
         capsule = compose_context_capsule(
             contact_memory_item_id=request.contact_memory_item_id,
             objective=request.objective,

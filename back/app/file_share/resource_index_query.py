@@ -19,7 +19,7 @@ from app.memory import (
     SourceChronology, SourceTimeQuery,
     chronology_from_title, federated_candidate_limit, fold_lexical, folded_lexical_sql, indexed_contact_addresses,
     indexed_contact_identities,
-    lexical_excerpt, local_source_date, mail_source_date_sql, parse_reference_question,
+    lexical_excerpt, local_source_date, mail_source_date_sql, parse_question_evidence, parse_reference_question,
     parse_source_time_query, personal_record_kind, rank_federated, resource_query_terms, title_dates_sql,
 )
 from app.task import Task, task_index_readable
@@ -365,6 +365,21 @@ async def search_resource_index(
         if distributed is not None:
             passage_match = or_(lexical, distributed)
             rank = rank + case((distributed, 0.025), else_=0.0)
+        # Conversational prose often adds an unmatched verb or noun to an
+        # otherwise precise description. Require a majority in one passage.
+        # Literal identifiers, quoted queries and personal records stay exact.
+        words = lookup.split()
+        if (contextual_resources and chronology is None and personal is None
+                and 4 <= len(words) <= 18 and all(word.isalpha() for word in words)
+                and not re.search(r'\bOR\b', lookup, re.I)):
+            vector = ResourceIndexPassage.search_vector_folded
+            matched = [case((vector.bool_op("@@")(func.plainto_tsquery(config, word)), 1), else_=0)
+                       for word in words]
+            count = sum(matched[1:], matched[0])
+            any_term = func.to_tsquery(config, " | ".join(words))
+            partial = and_(vector.bool_op("@@")(any_term), count >= max(3, len(words) // 2 + 1))
+            passage_match = or_(passage_match, partial)
+            rank = rank + case((partial, 0.04 * count / len(words)), else_=0.0)
     date_order: ColumnElement[date] = cast(None, Date())
     dated_candidates = None
     if chronology is not None:
@@ -396,36 +411,82 @@ async def search_resource_index(
                 hybrid = True
         except (ValueError, RuntimeError, OSError, IndexError):
             pass
+    detail = (parse_question_evidence(query)
+              if contextual_resources and uri is None and mode == "text" and question is None
+              and chronology is None and personal is None else None)
+    ordinary_match = or_(passage_match, metadata_match)
+    candidate_match = ordinary_match
+    topic_only = false()
+    if detail is not None and (topic_words := detail.topic_prefix_query):
+        # A passage can answer "how many" without containing those words.
+        # Keep the ordinary matches and verify any added passage before emission.
+        topic_tsquery = func.to_tsquery(config, topic_words)
+        topic_match = ResourceIndexPassage.search_vector_folded.bool_op("@@")(topic_tsquery)
+        if detail.source_language is not None:
+            topic_match = or_(topic_match, and_(ResourceIndexPassage.position == 0,
+                ResourceIndexSource.source_kind == "document", exists(select(Document.id).where(
+                    Document.id == ResourceIndexSource.source_key, title.bool_op("@@")(topic_tsquery)))))
+        candidate_match = or_(ordinary_match, topic_match)
+        topic_only = ordinary_match.is_not(True)
     score_expr = (func.coalesce(rank, 0.0) + case((metadata_match, 0.05), else_=0.0)
                   + case((title_match, 2.0), else_=0.0))
     candidate_query = (select(ResourceIndexSource.id.label("source"), ResourceIndexPassage.id.label("passage"),
         score_expr.label("score"), date_order.label("evidence_date"), contact_match.label("contact_match"),
-        passage_match.label("matched_passage"), func.row_number().over(
+        passage_match.label("matched_passage"), topic_only.label("topic_only"), func.row_number().over(
             partition_by=ResourceIndexSource.uri, order_by=(score_expr.desc(), ResourceIndexSource.id,
             ResourceIndexPassage.position)).label("passage_rank"))
         .join(ResourceIndexContent, ResourceIndexContent.id == ResourceIndexSource.content_id)
         .outerjoin(ResourceIndexPassage, ResourceIndexPassage.content_id == ResourceIndexContent.id)
-        .where(*filters, or_(passage_match, metadata_match)))
+        .where(*filters, candidate_match))
     if dated_candidates is not None:
         candidate_query = candidate_query.join(dated_candidates, dated_candidates.c.id == ResourceIndexSource.id)
     candidates = candidate_query.subquery()
+    priority = (candidates.c.contact_match.desc(), candidates.c.evidence_date.desc().nullslast(),
+                candidates.c.score.desc()) if chronology is not None else (
+                    candidates.c.score.desc(), candidates.c.contact_match.desc())
     rows = (await db.execute(select(ResourceIndexSource, ResourceIndexPassage, ResourceIndexContent,
-        candidates.c.score, candidates.c.matched_passage, candidates.c.contact_match).select_from(candidates)
+        candidates.c.score, candidates.c.matched_passage, candidates.c.contact_match, candidates.c.topic_only).select_from(candidates)
         .join(ResourceIndexSource, ResourceIndexSource.id == candidates.c.source)
         .join(ResourceIndexContent, ResourceIndexContent.id == ResourceIndexSource.content_id)
         .outerjoin(ResourceIndexPassage, ResourceIndexPassage.id == candidates.c.passage)
-        .where(candidates.c.passage_rank <= 3).order_by(candidates.c.contact_match.desc(), candidates.c.evidence_date.desc().nullslast(),
-            candidates.c.score.desc(), candidates.c.source, candidates.c.passage_rank)
+        .where(candidates.c.passage_rank <= 3).order_by(*priority, candidates.c.source, candidates.c.passage_rank)
         .options(load_only(ResourceIndexPassage.id, ResourceIndexPassage.position, ResourceIndexPassage.locator,
             ResourceIndexPassage.text, raiseload=True), load_only(ResourceIndexContent.id, ResourceIndexContent.document_kind,
             ResourceIndexContent.generated_keywords, ResourceIndexContent.generated_summary, raiseload=True))
         .limit(min(1_500, max(24, limit * 9))))).all()
     hits: dict[str, ResourceSearchHit] = {}
     matched_sources: dict[str, ResourceIndexSource] = {}
-    excerpt_query = " ".join(question.fields) if question is not None else None
+    excerpt_query = " ".join(question.fields) if question is not None else lookup
     checked: dict[UUID, ResourceDescriptor | None] = await _current_document_descriptors(ctx, {source.source_key: source for source, *_ in rows
         if source.source_kind == "document" and source.uri.startswith("document://")}) if uri is None else {}
-    for source, passage, content, score, matched_passage, matched_contact in rows:
+    # Two source documents may share indexed bytes and have different titles.
+    proof_excerpts: dict[tuple[UUID, UUID], str] = {}
+    storage_matches: set[tuple[UUID, UUID]] = set()
+    if detail is not None and detail.topic_prefix_query:
+        for source, passage, *_ in rows:
+            if passage is None:
+                continue
+            excerpt = lexical_excerpt(passage.text, excerpt_query)
+            if detail.source_language is not None or detail.storage is not None:
+                descriptor = checked.get(source.id)
+                proof = detail.answer_passage(descriptor.name if descriptor else "", excerpt)
+                if proof and detail.storage is not None:
+                    storage_matches.add((source.id, passage.id))
+                if not proof and detail.source_language is not None:
+                    proof = detail.source_language.passage(descriptor.name if descriptor else "", excerpt)
+            else:
+                proof = excerpt if detail.supports("", excerpt) else ""
+            if proof:
+                proof_excerpts[source.id, passage.id] = proof
+        # Apply the response limit after promoting passages that supply the fact.
+        rows = sorted(rows, key=lambda row: (
+            row[1] is None or (row[0].id, row[1].id) not in storage_matches,
+            row[1] is None or (row[0].id, row[1].id) not in proof_excerpts))
+    for source, passage, content, score, matched_passage, matched_contact, only_topic in rows:
+        proof = proof_excerpts.get((source.id, passage.id)) if passage is not None else None
+        if only_topic and not proof:
+            continue
+        matched_passage = matched_passage or bool(proof)
         if source.uri not in hits:
             if len(hits) >= limit:
                 continue
@@ -443,7 +504,7 @@ async def search_resource_index(
                 "summary": info.metadata.get("summary") or content.generated_summary,
                 "topic_id": info.metadata.get("topic_id") or (str(source.topic_id) if source.topic_id else None)}
             excerpt = passage.text if matched_passage and passage is not None else str(info.metadata.get("summary") or info.name)
-            excerpt = lexical_excerpt(excerpt, excerpt_query) if excerpt_query is not None else excerpt[:800]
+            excerpt = proof or lexical_excerpt(excerpt, excerpt_query)
             hits[source.uri] = ResourceSearchHit(resource=info, score=float(score), excerpt=excerpt, chronology=dated,
                 contact_match=bool(matched_contact),
                 source_refs=[source.uri], retrieval_sources=["resource-index"])
@@ -516,7 +577,7 @@ async def merge_memory_resource_hits(ctx: ResourceContext, result: ResourceSearc
     updates: dict[str, object] = {"hits": hits, "truncated": more, "next_cursor": f"index:{next_offset}" if more else None}
     if resources:
         updates.update({"relevance_status": "matched" if hits else "no_sufficient_evidence", "evidence_status": "unassessed",
-                        "ranking_version": "federated-evidence/v1"})
+                        "ranking_version": "federated-evidence/v2"})
     if question is not None:
         updates.update({"relevance_status": "matched" if hits else "no_sufficient_evidence",
                         "evidence_status": "unassessed" if hits else "no_evidence"})

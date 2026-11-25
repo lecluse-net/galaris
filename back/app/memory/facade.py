@@ -10,7 +10,7 @@ from .contracts import MemorySearchItem
 from .agenda import MemoryAgendaOccurrence as MemoryAgendaOccurrence, memory_agenda as memory_agenda
 from .source_access import register_source_evidence_access
 from .retrieval import recall_items
-from .source_chronology import memory_chronology, parse_source_time_query
+from .source_chronology import hit_chronology, parse_source_time_query
 from .schemas import (
     MemoryNodeKind,
     MemoryRecallRequest,
@@ -130,7 +130,7 @@ async def search_memory(
             source_refs=tuple(hit.source_refs),
             uri=f"{'document' if hit.item.node_kind == 'document' else 'memory'}://{hit.item.id}",
             revision=hit.item.revision,
-            chronology=memory_chronology(hit.item.title, getattr(hit.item, "temporal", None)),
+            chronology=hit_chronology(hit),
         )
         for hit in result.hits
     ]

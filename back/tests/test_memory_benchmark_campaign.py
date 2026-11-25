@@ -92,9 +92,13 @@ def source_fingerprints(reference_sources=None):
                          Path("app/memory/service.py"), Path("app/memory/admission.py"),
                          Path("app/memory/passages.py"), Path("app/memory/semantic_index.py"),
                          Path("app/memory/access.py"), Path("app/memory/source_access.py"),
-                         Path("app/memory/library_queries.py"),
+                         Path("app/memory/library_queries.py"), Path("app/memory/source_chronology.py"),
                          Path("app/memory/bootstrap.py"), Path("app/agent/context.py"),
-                         Path("app/memory/relevance.py"), Path("app/memory/models.py"),
+                         Path("app/memory/relevance.py"), Path("app/memory/question_evidence.py"),
+                         Path("app/memory/identity_attributes.py"), Path("app/memory/source_language.py"),
+                         Path("app/memory/storage_evidence.py"),
+                         Path("core/util/search_terms.py"),
+                         Path("app/memory/federated_ranking.py"), Path("app/memory/models.py"),
                          Path("app/memory/lexical_normalization.py"),
                          Path("app/file_share/catalogue.py"),
                          Path("tests/memory_benchmark_adapter.py"),
@@ -104,7 +108,7 @@ def source_fingerprints(reference_sources=None):
     return {**current, **(reference_fingerprints(reference_sources) if reference_sources else {})}
 
 
-async def run_campaign(corpus, output, variants, workers, monkeypatch, root, reference_sources=None):
+async def run_campaign(corpus, output, variants, workers, monkeypatch, root, reference_sources=None, *, derived_titles=False):
     fingerprints = source_fingerprints(reference_sources)
     validate(corpus)
     if not variants or set(variants) - set(VARIANTS) or len(set(variants)) != len(variants):
@@ -135,7 +139,7 @@ async def run_campaign(corpus, output, variants, workers, monkeypatch, root, ref
     async def prepare(world):
         async with semaphore:
             snapshots[world] = await load_world(tuple(memory_worlds[world]), tuple(by_world[world]), root,
-                                                user_id=user_id, title_id=title_id)
+                                                user_id=user_id, title_id=title_id, derived_titles=derived_titles)
     await asyncio.gather(*(prepare(world) for world in by_world))
     async with get_db_session() as db:
         await db.execute(text("ANALYZE memory_items"))
@@ -219,6 +223,7 @@ async def run_campaign(corpus, output, variants, workers, monkeypatch, root, ref
     manifest = {
         "complete": True, "synthetic": True, "engine": "Galaris actual lexical fallback and agent context capsule",
         "queries": len(corpus.queries), "memories": len(evaluated.memories),
+        "memory_title_projection": "native-content-prefix" if derived_titles else "authored-title",
         "authored_memories": len(corpus.memories),
         "fixture_contact_items": len(evaluated.memories) - len(corpus.memories), "worlds": len(by_world),
         "domains": dict(Counter(q.domain for q in corpus.queries)), "variants": variants, "workers": workers,
@@ -289,7 +294,8 @@ async def test_campaign_on_synthetic_corpus(request, monkeypatch, tmp_path):
     variants = tuple(request.config.getoption("--memory-benchmark-variants").split(","))
     reference = request.config.getoption("--memory-benchmark-reference")
     manifest = await run_campaign(selected, output, variants, request.config.getoption("--memory-benchmark-workers"),
-                                  monkeypatch, tmp_path / "resources", Path(reference) if reference else None)
+                                  monkeypatch, tmp_path / "resources", Path(reference) if reference else None,
+                                  derived_titles=request.config.getoption("--memory-benchmark-derived-titles"))
     manifest["corpus_manifest_sha256"] = hashlib.sha256((Path(corpus_path) / "manifest.json").read_bytes()).hexdigest()
     manifest["shards"] = shards
     manifest["shard"] = shard

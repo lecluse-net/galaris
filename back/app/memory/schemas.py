@@ -5,7 +5,7 @@ from __future__ import annotations
 from .temporal import MemoryTemporalAnchor, MemoryTemporalFilter, MemoryTemporalWindow
 from .facts import AtomicMemoryFact
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 from uuid import UUID
 
@@ -32,6 +32,7 @@ MemoryRetrievalSource = Literal[
     "global_lexical",
     "global_vector",
     "graph_link",
+    "resolved_relation",
     "structural_link",
     "suggested_topic_link",
 ]
@@ -299,6 +300,7 @@ class MemoryConflictReference(BaseModel):
 
 
 class MemorySearchHit(BaseModel):
+    stated_event_date: date | None = Field(default=None, exclude=True)
     conflicts: list[MemoryConflictReference] = Field(default_factory=list[MemoryConflictReference])
     temporal_match_at: datetime | None = None
     item: MemoryItemPublic

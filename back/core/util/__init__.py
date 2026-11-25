@@ -2,6 +2,7 @@
 Shared application utilities.
 """
 
+from . import search_terms
 from .yaml import (
     YAMLProcessor,
     YAMLValidationError,
@@ -79,6 +80,7 @@ from .resource_uri import (
 )
 
 __all__ = [
+    "search_terms",
     "FUTURE_RESOURCE_SCHEMES",
     "NATIVE_RESOURCE_SCHEMES",
     "PROTOCOL_SCHEMES",

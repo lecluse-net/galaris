@@ -753,3 +753,56 @@ async def test_long_document_tail_is_indexed_and_configuration_change_rebuilds(d
     await db.refresh(manifest)
     assert manifest.model_key == "replacement"
     assert calls and set(calls) == {"replacement"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("statement", "distraction", "hidden_statement", "questions"), [
+    ("Alix Doran coordonne la régie du théâtre.", "Alix Doran a signé le registre QUARTZ mardi soir.",
+     "Alix Doran dirige la réserve QUARTZ.", ("Quel est le rôle de Alix Doran ?", "What is Alix Doran's role?")),
+    ("Pour le projet Verrière, contactez Mira Selin.", "Le projet Verrière a rejoint le réseau QUARTZ.",
+     "Lise Doran is the contact for project Verrière.", ("Verrière, je dois en parler à qui ?", "Who should I contact about Verrière?")),
+    ("Les prismes de zircon sont rangés dans la réserve ocre.", "The zircon prisms are in the QUARTZ cabinet.",
+     "Les prismes de zircon sont dans le coffre privé.", ("Find the French report about zircon.",)),
+    ("Les gabarits sont dans le tiroir indigo.", "Les gabarits exigent un visa. Les matrices sont dans le coffre QUARTZ.",
+     "Les gabarits sont dans la remise privée.",
+     ("Où sont rangés les gabarits ?", "Où sont rangés les gabarits selon la note française ?")),
+])
+async def test_hybrid_lookup_resists_a_closer_passage_about_the_same_subject(
+    agents, memory_storage, vectors, statement, distraction, hidden_statement, questions,
+):
+    from app.memory.context import build_memory_brief
+
+    owner, peer = agents
+    profile, _ = await create_document_reference(DocumentItemCreate(owner_agent_id=owner.id,
+        title="Équipe de régie", payload=DocumentPayload(text=f"<p>{statement}</p>")))
+    noise, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id, media_type="text/html",
+        payload=MemoryPayload(text=f"<p>{distraction}</p>")))
+    hidden, _ = await service.create_item(MemoryItemCreate(owner_agent_id=peer.id, media_type="text/html",
+        payload=MemoryPayload(text=f"<p>{hidden_statement}</p>")))
+    for row in (profile, noise, hidden):
+        await semantic_index.process_embedding_job({"item_id": str(row.id)})
+    for query in questions:
+        retrieved = await retrieval.recall_items(MemoryRecallRequest(agent_id=owner.id, query=query, limit=8))
+        by_id = {hit.item.id: hit for hit in retrieved.hits}
+        assert retrieved.mode == "hybrid" and (by_id[noise.id].semantic_similarity or 0) > 0.95
+        brief = await build_memory_brief(agent_id=owner.id, query=query, conversational=True)
+        assert [item.memory_id for item in brief.items] == [str(profile.id)]
+        assert statement in brief.rendered
+
+
+@pytest.mark.asyncio
+async def test_translated_topic_can_use_one_monolingual_semantic_passage(agents, memory_storage, vectors):
+    from app.memory.context import build_memory_brief
+
+    owner, _ = agents
+    rows = []
+    for body in ("Les lentilles QUARTZ sont polies avec une poudre bleue.",
+                 "The QUARTZ lenses are ground with green powder."):
+        item, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id,
+            media_type="text/html", payload=MemoryPayload(text=f"<p>{body}</p>")))
+        await semantic_index.process_embedding_job({"item_id": str(item.id)})
+        rows.append(str(item.id))
+    brief = await build_memory_brief(agent_id=owner.id,
+        query="Find the French note about grinding lenses.", conversational=True)
+    assert [entry.memory_id for entry in brief.items] == rows[:1]
+    assert "poudre bleue" in brief.rendered and "green powder" not in brief.rendered

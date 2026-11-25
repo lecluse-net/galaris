@@ -91,6 +91,7 @@ def _aggregate(rows: list[Result]) -> dict[str, object]:
         "facet_recall_at_k": avg("recall"), "precision_at_k": avg("precision"),
         "mrr_at_k": avg("mrr"), "complete_mrr_at_k": avg("complete_mrr"),
         "ndcg_at_k": avg("ndcg"), "complete_recall_at_k": avg("complete"),
+        "queries_complete_with_precision_one_at_k": sum(r.complete is True and r.precision == 1.0 for r in rows),
         "queries_with_forbidden_ids": sum(bool(r.forbidden_ids) for r in rows),
         "forbidden_id_count_full_list": sum(len(r.forbidden_ids) for r in rows),
         "violation_reasons": dict(violations), "duplicate_id_count": sum(r.duplicate_count for r in rows),

@@ -23,6 +23,7 @@ from .federated_ranking import FederatedEvidence, federated_candidate_limit, ran
 from .lexical_normalization import folded_sql as folded_lexical_sql
 from .passages import lexical_excerpt
 from .reference_questions import ReferenceQuestion, parse_reference_question
+from .question_evidence import parse_question_evidence as parse_question_evidence
 from .personal_records import PersonalRecordKind, personal_record_for_turn, personal_record_kind
 from .source_chronology import (
     SourceChronology, SourceTimeQuery, chronology_from_title, local_source_date,

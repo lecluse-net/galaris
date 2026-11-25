@@ -492,3 +492,56 @@ async def test_busy_calendar_preserves_multiple_complementary_project_facts(agen
     assert all('temporal_match=' not in item.excerpt for item in brief.items)
     assert len(brief.items) <= 8
     assert len(brief.rendered) <= context.runtime_settings.MEMORY_CONTEXT_MAX_CHARS
+
+
+@pytest.mark.asyncio
+async def test_previous_week_uses_the_stated_event_and_named_participant(agents, memory_storage, monkeypatch):
+    from app.memory import source_chronology
+
+    class Monday(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2031, 1, 6, 12, tzinfo=timezone.utc).astimezone(tz)
+
+    monkeypatch.setattr(source_chronology, "datetime", Monday)
+    owner, peer = agents
+    wanted = set()
+    for agent, body, expected in (
+        (owner, "Le 2030-12-31, Nola Prisme a livré la maquette.", True),
+        (owner, "On 2031-01-02, Nola Prisme presented the model.", True),
+        (owner, "Le 1 janvier 2031, Nola Prisme a présenté les dessins.", True),
+        (owner, "On January 3, 2031, Nola Prisme presented the drawings.", True),
+        (owner, "On 2031-01-03, Nola Pommier presented another model.", False),
+        (owner, "On 2031-01-04, Nola Prismeau presented another model.", False),
+        (owner, "On 2031-01-06, Nola Prisme presented the revision.", False),
+        (owner, "Nola Prisme a retrouvé un ticket daté du 2030-12-31.", False),
+        (owner, "Le 2030-12-31, rappel du 2028-11-14 pour Nola Prisme.", False),
+        (owner, "Le 2030-02-31, Nola Prisme a livré un essai.", False),
+        (peer, "On 2031-01-05, Nola Prisme presented the private budget.", False),
+    ):
+        item, _ = await service.create_item(MemoryItemCreate(owner_agent_id=agent.id, title="Journal", media_type="text/html",
+            payload=MemoryPayload(text=f"<p>{body}</p>")))
+        if expected:
+            wanted.add(str(item.id))
+    brief = await context.build_memory_brief(agent_id=owner.id,
+        query="What did Nola Prisme present last week?", conversational=True)
+    assert {item.memory_id for item in brief.items} == wanted
+    assert "event_date=2030-12-31" in brief.rendered and "event_date=2031-01-02" in brief.rendered
+    assert "source_date=203" not in brief.rendered
+    from app.memory.file_facade import search_file_resources
+    files = await search_file_resources(query="What did Nola Prisme present last week?", agent_id=owner.id,
+                                       task_id=None, expected_kind="memory", mode="semantic", limit=8, offset=0)
+    assert {str(hit["id"]) for hit in files["hits"]} == wanted
+    assert all(hit["metadata"]["chronology"]["event_date"] for hit in files["hits"])
+    written = await context.build_memory_brief(agent_id=owner.id, query="Journal rédigé en 2031")
+    assert not written.items
+    written_last_week = await context.build_memory_brief(agent_id=owner.id, query="Notes written last week")
+    assert not written_last_week.items
+
+    for index in range(10):
+        await service.create_item(MemoryItemCreate(owner_agent_id=owner.id, title="Essai", media_type="text/html",
+            payload=MemoryPayload(text=f"<p>Le 2031-01-04, Nola Prisme a terminé la mesure {index}.</p>")))
+    discussion, _ = await service.create_item(MemoryItemCreate(owner_agent_id=owner.id, title="Réunion", media_type="text/html",
+        payload=MemoryPayload(text="<p>Le 2030-12-30, Nola Prisme a discuté du vitrage.</p>")))
+    first = await context.search_memory_detailed("What did Nola Prisme discuss last week?", agent_id=owner.id, limit=1)
+    assert [hit.item.id for hit in first.hits] == [discussion.id]

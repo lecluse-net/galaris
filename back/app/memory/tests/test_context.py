@@ -756,6 +756,7 @@ async def test_memory_context_provider_injects_policy_and_bounded_query(
         contact_item_id: UUID | None,
         strict_contact_scope: bool,
         include_relevant: bool,
+        conversational: bool,
         include_experience: bool,
         stage: str,
     ) -> MemoryBrief:

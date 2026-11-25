@@ -10,7 +10,7 @@ import binascii
 import hashlib
 import re
 from collections.abc import Collection
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Literal, Sequence, cast
 from uuid import UUID, uuid4
 
@@ -38,7 +38,7 @@ from .access import (
 from .admission import admit_search_hits
 from .source_access import source_checked_graph, source_evidence_admission
 from .query_policy import prepare_memory_read
-from .source_chronology import SourceTimeQuery, anchored_event_date_sql, title_dates_sql
+from .source_chronology import SourceTimeQuery, anchored_event_date_sql, stated_event_date_sql, title_dates_sql
 from .personal_records import personal_record_kind
 from .passages import lexical_excerpt, query_identity, query_reference_ids, query_is_contact_self_reference
 from . import relevance
@@ -2214,10 +2214,20 @@ async def search_items(
     normalized = request.query.strip()
     if request.require_personal_subject or personal_record_kind(request.recall_query or normalized) is not None:
         query = query.where(personal_memory_subject(request.agent_id, request.contact_item_id))
+    stated_date: ColumnElement[date] | None = None
     if chronology is not None:
         written, coverage, mentioned = title_dates_sql(MemoryItem.title)
         event_date = anchored_event_date_sql(MemoryItem.temporal["year"].as_integer(),
             MemoryItem.temporal["month"].as_integer(), MemoryItem.temporal["day"].as_integer())
+        if chronology.dimension == "event_or_source" and not name_only:
+            eligible = and_(MemoryItem.node_kind == "memory", MemoryItem.temporal.is_(None),
+                            MemoryItem.source_managed.is_(False))
+            if chronology.event_names:
+                names = " | ".join("(" + " <-> ".join(group) + ")"
+                                   for group in chronology.event_names)
+                eligible = and_(eligible, MemoryItem.search_vector_folded.op("@@")(func.to_tsquery("simple", names)))
+            stated_date = case((eligible, stated_event_date_sql(MemoryItem.search_text)))
+            event_date = func.coalesce(event_date, stated_date)
         matching_date = chronology.sql_date(written=written, coverage=coverage, mentioned=mentioned, event=event_date)
         query = query.where(matching_date.is_not(None)).order_by(matching_date.desc())
     identity = query_identity(normalized)
@@ -2346,11 +2356,15 @@ async def search_items(
         finally:
             await stream.close()
         query = query.where(MemoryItem.id.in_(selected_ids))
+    if stated_date is not None:
+        query = query.add_columns(stated_date)
     result = await db.execute(query.execution_options(populate_existing=True)
                               .offset(0 if scan_calendar else request.offset).limit(request.limit + 1))
     rows = list(result.unique().all())
     has_more = len(rows) > request.limit
     rows = rows[: request.limit]
+    stated_dates = {cast(MemoryItem, row[0]).id: cast(date | None, row[2])
+                    for row in rows} if stated_date is not None else {}
     ranked: list[tuple[MemoryItem, float]] = [
         (cast(MemoryItem, row[0]), float(row[1] or 0.0)) for row in rows
     ]
@@ -2385,6 +2399,7 @@ async def search_items(
         hits.append(
             MemorySearchHit(
                 item=item_to_public(item, access),
+                stated_event_date=recalled_hit.stated_event_date if recalled_hit and not name_only else stated_dates.get(item.id),
                 excerpt=excerpt,
                 score=score,
                 source_refs=sources.get(item.id, []),

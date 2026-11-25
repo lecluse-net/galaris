@@ -9,17 +9,12 @@ from functools import lru_cache
 from collections import Counter
 from collections.abc import Iterable
 
+from core.util import search_terms
 
-STOPWORDS = frozenset("""
-a au aux avec ce ces cet cette dans de des du elle elles en est et eux il ils je la le les leur leurs
-ma mais me mes mon ne nos notre nous on ou par pas pour qu que quel quelle quels quelles qui quoi
-sa se ses son sont sur ta te tes toi ton tu un une vos votre vous y d l s t c n j m
-ai as avons avez ont etre avoir ete etait sont serait fait faire faut peut peux pouvez dois doit
-comment pourquoi quand lors alors aussi tres plus moins bien merci bonjour maintenant encore
-the a an and are as at be been by can could do does for from has have how i in is it its of on or
-our that their there these this to was we were what when where which who why will with would you your
-rappelle rappelez remind remember tell
-""".split())
+STOPWORDS = search_terms.STOPWORDS
+fold = search_terms.fold
+_inflect = search_terms.inflect
+terms = search_terms.terms
 
 _ENTITY_STOPWORDS = STOPWORDS | frozenset("""
 avant autre before concerning concernant could donne find il je le la new on please
@@ -41,21 +36,6 @@ def resource_query_terms(value: str) -> str:
     return " ".join(dict.fromkeys(token for token in tokens if token not in _RESOURCE_SEARCH_FILLER))
 
 
-def fold(value: str) -> str:
-    return "".join(c for c in unicodedata.normalize("NFKD", value.casefold()) if not unicodedata.combining(c))
-
-
-def _inflect(word: str) -> str:
-    if word.isalpha():
-        if len(word) > 3 and word.endswith("s") and not word.endswith(("ss", "us")):
-            word = word[:-1]
-        if word.endswith("er") and len(word) > 5:
-            word = word[:-2]
-        if len(word) > 4:
-            word = word.rstrip("e")
-    return word
-
-
 def stem(value: str) -> str:
     """Conservative inflection matching; never rewrite identifiers or numbers."""
     return _inflect(fold(value))
@@ -67,7 +47,7 @@ def prefix_query(value: str) -> str:
     return " | ".join(f"{word}:*" for word in list(tokens)[:16])
 
 
-def entity_groups(value: str, *, limit: int = 2) -> tuple[tuple[str, ...], ...]:
+def entity_groups(value: str, *, limit: int = 2, inflected: bool = True) -> tuple[tuple[str, ...], ...]:
     """Bounded explicit capitalized phrases, not an identity/alias oracle."""
     groups: list[tuple[str, ...]] = []
     pending: list[str] = []
@@ -75,7 +55,7 @@ def entity_groups(value: str, *, limit: int = 2) -> tuple[tuple[str, ...], ...]:
     value = unicodedata.normalize("NFC", value)
     for match in re.finditer(r"[^\W_]+", value):
         word = match[0]
-        token = stem(word)
+        token = stem(word) if inflected else fold(word)
         capitalized = word[0].isupper() and word.isalpha() and fold(word) not in _ENTITY_STOPWORDS
         adjacent = value[previous_end:match.start()].isspace()
         if pending and (not capitalized or not adjacent or len(pending) == 4):
@@ -256,11 +236,6 @@ def matched_terms(text: str, query_terms: Iterable[str]) -> set[str]:
     present = set(terms(text))
     return {word for word in query_terms if word in present or
             (word.isalpha() and any(candidate.isalpha() and _one_edit(word, candidate) for candidate in present))}
-
-
-def terms(value: str) -> tuple[str, ...]:
-    return tuple(dict.fromkeys(_inflect(m[0]) for m in re.finditer(r"[^\W_]+", fold(value))
-                               if len(m[0]) > 1 and m[0] not in STOPWORDS))
 
 
 def term_weights(query: str, texts: Iterable[str]) -> dict[str, float]:

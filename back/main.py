@@ -431,9 +431,9 @@ async def capture_document_html_thumbnail(
 register_web_thumbnail_capture(
     capture_document_web_thumbnail, html_capture=capture_document_html_thumbnail,
 )
-from app.document.access import working_set_document_access
+from app.document.access import readable_document_labels, working_set_document_access
 from app.task import register_working_set_context
-register_working_set_context(working_set_document_access)
+register_working_set_context(working_set_document_access, readable_document_labels)
 from app.conversation import register_recent_conversation_document_context
 register_recent_conversation_document_context()
 

@@ -734,6 +734,54 @@ Le rapport agrégé donne recall@1, rang réciproque, fuites, p95 et nombre de r
 Ce corpus exige 100 % au premier rang et zéro fuite ; il ne mesure pas la latence réseau ni
 l'infaillibilité sur toute formulation. Les recherches simples de coordonnées déjà identifiées
 vérifient aussi qu'aucun modèle d'embeddings n'est appelé.
+
+`make tests ARGS='app/memory/tests/test_turn_relevance_benchmark.py -q -s'` mesure les
+éléments effectivement transmis au modèle sur 17 tours synthétiques français et anglais.
+Le rapport distingue souvenirs et documents de continuité et donne la précision sur tous les
+éléments émis, le rappel, le rang réciproque moyen et la proportion de demandes sans preuve
+qui produisent une liste vide. PostgreSQL effectue le rappel. Les vecteurs contrôlés simulent
+des voisins faussement proches et une paraphrase pertinente. Les références de continuité
+sont fournies à la capsule par un fournisseur de test.
+`app/memory/tests/test_conversation_recall.py` utilise aussi un annuaire bilingue avec des
+organisations aux noms proches et des notes sans rapport. Il vérifie le passage transmis
+à l’agent, l’abstention pour une personne inconnue et une question composée dont une seule
+partie possède une réponse. `app/file_share/tests/test_resource_search_qualification.py`
+vérifie le classement quand un fichier et un souvenir personnel se disputent la première place.
+
+`app/memory/tests/test_temporal.py` vérifie le rappel à cheval sur deux années avec une
+personne nommée, un nom voisin, une date invalide et plusieurs dates dans une note.
+La campagne appariée accepte également `--memory-benchmark-derived-titles` pour mesurer
+le rappel avec les titres natifs dérivés du contenu visible.
+
+Les tests de pertinence vérifient aussi qu’une quantité ou une durée demandée est
+attribuée au bon sujet. Ils opposent un décompte écrit en toutes lettres à une date,
+à un horaire, à un nombre exprimé dans une autre unité et à un titre qui annonce une
+quantité encore inconnue. Le parcours documentaire indexe un document partagé dont
+le texte donne la quantité, le met en concurrence avec un souvenir personnel, puis
+retire le partage et vérifie le contexte du tour suivant.
+
+Le rappel conversationnel de rôles et de surnoms vérifie à qui le passage attribue
+le fait. Les scénarios couvrent deux homonymes pour deux places disponibles, un nom
+de code de projet, un surnom cité dans une phrase rapportée et un projet ancien.
+Le contrôle hybride fait remonter une visite de la bonne personne avec une similarité
+vectorielle supérieure à celle de son profil, puis vérifie le passage envoyé à l’agent.
+Pour les contacts de projet, une question anglaise doit retrouver l’affectation en
+français dans un document partagé. Le test retire le droit de lecture et repose la
+même question. Les recherches de notes privées distinguent la demande exclusive
+visant un autre agent des demandes portant sur une source partagée ou alternative.
+
+Les recherches mentionnant la langue d’une source opposent deux notices avec des
+valeurs différentes. Les tests vérifient le texte français ou anglais transmis à
+l’agent, un titre comme seule indication du sujet, la révocation du document et
+une paraphrase sémantique sans mot commun. Les demandes de traduction et de
+rédaction dans une langue donnée conservent le parcours conversationnel général.
+
+Pour les questions de rangement, le test vérifie que l’extrait associe le bon
+objet au bon lieu. Une note concurrente parle du même objet et donne un lieu
+pour un autre. Le contrôle porte aussi sur le titre visible, les questions
+françaises et anglaises, les négations et les documents partagés. L’option
+`--memory-benchmark-reference` permet de comparer le contexte rendu par les deux versions.
+
 Le contrôle central `app/chat/tests/test_authorization.py` vérifie aussi les privilèges Documents
 sur la liste et la création dans une conversation, avec l’assertion d’accès à la room conservée.
 

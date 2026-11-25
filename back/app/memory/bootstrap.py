@@ -125,6 +125,7 @@ async def memory_context_provider(
     )
     try:
         brief = await build_memory_brief(
+            conversational=request.task_id is None,
             agent_id=request.agent.id,
             query=query,
             semantic_query=semantic_query,

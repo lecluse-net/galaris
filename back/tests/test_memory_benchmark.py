@@ -90,6 +90,7 @@ def test_calibration_oracle_gets_full_recall_without_leaks(corpus):
     summary = _overall(report)
     assert summary["coverage"] == 1.0
     assert summary["facet_recall_at_k"] == summary["complete_recall_at_k"] == 1.0
+    assert summary["queries_complete_with_precision_one_at_k"] == summary["answerable_queries"]
     assert summary["ndcg_at_k"] == pytest.approx(1.0)
     assert summary["queries_with_forbidden_ids"] == 0
     assert summary["response_mode_accuracy"] == 1.0
@@ -107,6 +108,7 @@ def test_one_relevant_person_does_not_hide_missing_yesterday(corpus):
     assert _overall(report)["observed"] == 1
     assert _overall(report)["coverage"] < 0.01
     assert _overall(report)["complete_recall_at_k"] == 0.0
+    assert _overall(report)["queries_complete_with_precision_one_at_k"] == 0
 
 
 def test_different_stages_locate_loss_between_retrieval_and_injection(corpus):
@@ -149,10 +151,11 @@ def test_unknown_and_cross_world_ids_are_not_silently_accepted(corpus):
     other_world = next(m.id for m in corpus.memories if m.world_id != query.world_id)
     observed = (Observation(query.id, {"injected": (answer.required[0].any_of[0], other_world, "absent-id")},
                             None, None, None),)
-    _, results = score(corpus, observed)
+    report, results = score(corpus, observed)
     row = next(r for r in results if r.query_id == query.id)
     assert row.recall == 1.0
     assert row.precision == pytest.approx(1 / 3)
+    assert _overall(report)["queries_complete_with_precision_one_at_k"] == 0
     assert row.violation_reasons == {"world": 1, "unknown_id": 1}
 
 

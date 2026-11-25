@@ -689,6 +689,53 @@ real; only provider calls are replaced, with deliberately uniform vectors. The a
 includes recall@1, reciprocal rank, leakage, p95 and SQL statement count. The corpus requires
 100% first-rank recall and zero leakage; it measures neither network latency nor infallibility
 for every wording. Simple scoped coordinate lookups also verify that no embedding model runs.
+
+`make tests ARGS='app/memory/tests/test_turn_relevance_benchmark.py -q -s'` measures the items
+actually injected across 17 synthetic French and English turns. The report gives precision
+over all emitted items, recall, mean reciprocal rank and the fraction of unsupported requests
+that yield an empty list, separately for memories and historical documents. PostgreSQL runs
+retrieval. Controlled vectors simulate misleading neighbours and one relevant paraphrase.
+A test provider supplies historical document references to the context capsule.
+
+`app/memory/tests/test_conversation_recall.py` also checks a bilingual directory with
+similar organization names and unrelated notes. The assertions cover the passage delivered
+to the agent, abstention for an unknown subject and a compound request with partial evidence.
+`app/file_share/tests/test_resource_search_qualification.py` tests the same distinction
+when a file and a private memory compete for first place.
+
+`app/memory/tests/test_temporal.py` checks recall across a year boundary with a named
+participant, another person with a similar name, invalid dates and multiple dates in
+one note. The paired campaign also supports `--memory-benchmark-derived-titles` to
+qualify native memory titles derived from visible content.
+
+Relevance tests also check that a count or duration belongs to the requested subject.
+They compare a quantity written in words with dates, times, counts in another unit,
+and a title announcing a quantity that has yet to be determined. The indexed-document
+scenario puts a shared document containing the answer in competition with personal
+memory, revokes the grant, and checks the next conversational context.
+
+Role and nickname lookups check whom a passage attributes the fact to. Scenarios cover
+two people sharing a first name with only two available slots, project codenames,
+reported speech and former projects. The hybrid check retrieves a visit by the right
+person with higher vector similarity than their profile, then checks the passage sent
+to the agent.
+For project contacts, an English question must find the French assignment in a shared
+document. The test revokes read access and asks the same question again. Private-note
+lookups distinguish an exclusive request for another agent's memory from requests
+that allow a shared or alternative source.
+
+Source-language lookups use two records that give different values. Tests check
+the French or English passage sent to the agent, a heading as the only topic
+anchor, document revocation, and a semantic paraphrase with no shared topic word.
+Translation requests and instructions about the language of the answer keep the
+general conversational retrieval path.
+
+Storage questions check that the cited passage assigns the location to the
+requested object. A competing note mentions the object but locates a different
+one. Coverage includes the visible title, French and English questions, negated
+locations and shared documents. The `--memory-benchmark-reference` option
+compares the rendered context against a frozen version.
+
 The central `app/chat/tests/test_authorization.py` check also covers Document privileges on
 conversation listing and creation while preserving the room access assertion.
 

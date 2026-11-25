@@ -4,8 +4,9 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 import re
 
-from .relevance import fold, terms
+from .relevance import fold, resource_query_terms, terms
 from .reference_questions import parse_reference_question
+from .question_evidence import parse_question_evidence
 from .source_chronology import SourceChronology, SourceTimeQuery, chronology_from_title
 from .personal_records import personal_record_kind
 
@@ -51,21 +52,28 @@ def rank_federated[T](query: str, memories: Sequence[T], resources: Sequence[T],
     """Rerank the bounded union, retaining source-local order when evidence ties."""
     phrase = _phrase(query)
     query_refs = _references(query)
-    query_terms = set(terms(query))
+    query_terms = set(terms(resource_query_terms(query)))
     question = parse_reference_question(query)
+    detail = parse_question_evidence(query, dated=chronology is not None)
     prefer_contact = personal_record_kind(query) is None
     requested = {kind for kind, aliases in _DOCUMENT_KINDS.items() if any(f" {alias} " in f" {phrase} " for alias in aliases)}
 
-    def rank(candidate: FederatedEvidence, position: int) -> tuple[bool, int, bool, int, bool, bool, int, int, int]:
+    def rank(candidate: FederatedEvidence, position: int) -> tuple[bool, int, int, bool, bool, int, bool, int, int, bool, int]:
         title = _phrase(candidate.title)
         exact_refs = len(query_refs & _references(candidate.title)) if query_refs else 0
         title_kind = candidate.document_kind or next((kind for kind, aliases in _DOCUMENT_KINDS.items()
             if any(title == alias or title.startswith(f"{alias} ") for alias in aliases)), None)
         fragments = (candidate.excerpt, *candidate.passages)
-        best_passage = max((len(query_terms.intersection(terms(part))) for part in fragments), default=0)
+        title_terms = query_terms.intersection(terms(candidate.title))
+        passage_terms = [query_terms.intersection(terms(part)) for part in fragments]
+        # Grade evidence in the title and one passage together. A contact or
+        # document type alone should not outrank a source covering the subject.
+        coverage = max(len(title_terms | found) for found in passage_terms)
         return (bool(phrase) and phrase == title, exact_refs if candidate.source_document else 0,
-                title_kind in requested, exact_refs, bool(phrase) and f" {phrase} " in f" {title} ",
-                candidate.contact_match, best_passage, len(query_terms.intersection(terms(candidate.title))), -position)
+                exact_refs, bool(phrase) and f" {phrase} " in f" {title} ",
+                detail is not None and any(detail.supports(candidate.title, part) for part in fragments), coverage,
+                title_kind in requested, max(map(len, passage_terms)), len(title_terms),
+                candidate.contact_match, -position)
 
     ranked: list[tuple[T, FederatedEvidence, int]] = []
     seen: set[str] = set()
@@ -84,8 +92,10 @@ def rank_federated[T](query: str, memories: Sequence[T], resources: Sequence[T],
         ranked.extend(sorted(batch.values(), key=lambda entry: rank(entry[1], entry[2]), reverse=True))
         seen.update(batch)
     if chronology is not None:
-        dated = [(prefer_contact and description.contact_match, source_date, hit) for hit, description, _ in ranked
+        dated = [(prefer_contact and description.contact_match,
+                  chronology.dimension == "event_or_source" and detail is not None and detail.supports(description.title, description.excerpt),
+                  source_date, hit) for hit, description, _ in ranked
                  if (source_date := chronology.rank_date(description.chronology or chronology_from_title(description.title))) is not None]
-        dated.sort(key=lambda entry: (entry[0], entry[1]), reverse=True)
-        return [hit for _, _, hit in dated[:_MAX_CANDIDATES]]
+        dated.sort(key=lambda entry: entry[:3], reverse=True)
+        return [hit for _, _, _, hit in dated[:_MAX_CANDIDATES]]
     return [hit for hit, _, _ in ranked[:_MAX_CANDIDATES]]

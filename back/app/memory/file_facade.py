@@ -10,7 +10,7 @@ from uuid import UUID
 from . import facade, service
 from .schemas import MemorySearchRequest
 from .recall_scope import resolve_recall_scope
-from .source_chronology import memory_chronology
+from .source_chronology import hit_chronology
 
 
 
@@ -207,7 +207,7 @@ async def search_file_resources(
                 "passages": [] if name_only else [passage.model_dump() for passage in hit.passages],
             }
             for hit in hits
-            for dated in (memory_chronology(hit.item.title, hit.item.temporal),)
+            for dated in (hit_chronology(hit),)
         ],
         "total": total,
         "has_more": has_more,

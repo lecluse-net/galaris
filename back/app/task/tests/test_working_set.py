@@ -1,4 +1,5 @@
 import asyncio
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
@@ -409,10 +410,12 @@ async def test_delegated_working_set_respects_current_document_shares(db: AsyncS
 
 @pytest.mark.asyncio
 async def test_recent_contact_documents_reach_conversation_and_voice_context(
-    db: AsyncSession,
+    db: AsyncSession, monkeypatch,
 ) -> None:
+    from app.agent import context as agent_context
     from app.agent.models import Agent, Title
-    from app.document.access import working_set_document_access
+    from app.document.access import readable_document_labels, working_set_document_access
+    from app.document.document_service import create_document
     from app.memory import MessengerContactObservation, observe_messenger_contact
 
     title = Title(label=f"Recent documents {uuid4()}", gender="X")
@@ -442,7 +445,9 @@ async def test_recent_contact_documents_reach_conversation_and_voice_context(
     )
     db.add(prior)
     await db.flush()
-    document_id = uuid4()
+    document = await create_document(owner_agent_id=agent.id, title="Atlas des dunes",
+                                     content="<p>Vent dominant du littoral.</p>", task_id=None)
+    document_id = document.id
     await upsert_working_resource(
         prior.id,
         WorkingResource(
@@ -473,23 +478,25 @@ async def test_recent_contact_documents_reach_conversation_and_voice_context(
     ]
     await db.commit()
 
-    contribution = await working_set_context_provider(
-        AgentContextRequest(
-            task_id=None,
-            agent=AgentSnapshot(
-                id=agent.id,
-                code=agent.code,
-                first_name=agent.first_name,
-                last_name=agent.last_name,
-                driver_code="internal",
-            ),
-            objective="Live realtime voice conversation",
-            contact_memory_item_id=contact_id,
-        ),
-        resolve_document_access=working_set_document_access,
-    )
+    request = AgentContextRequest(task_id=None,
+        agent=AgentSnapshot(id=agent.id, code=agent.code, first_name=agent.first_name,
+            last_name=agent.last_name, driver_code="internal"),
+        objective="Rouvre notre atlas des dunes", contact_memory_item_id=contact_id)
 
-    assert [item.reference for item in contribution.candidates] == [
-        f"document://{document_id}"
-    ]
-    assert contribution.metadata["recent_document_count"] == 1
+    async def context_for_turn(turn):
+        return await working_set_context_provider(turn, resolve_document_access=working_set_document_access,
+            resolve_document_labels=readable_document_labels)
+
+    monkeypatch.setattr(agent_context, "_providers", {})
+    agent_context.register_context_provider("working_set", context_for_turn)
+    for objective in (request.objective, "[Mistral] Rouvre notre dernier document", f"Open document://{document_id}"):
+        prepared = await agent_context.build_agent_run_context(replace(request, objective=objective))
+        assert prepared.metadata["recent_document_count"] == 1
+        assert [item.title for item in prepared.context_capsule.entries] == [document.title]
+        assert prepared.context_capsule.entries[0].revision == document.revision
+        assert f"document://{document_id}" in prepared.continuity_context
+    unrelated = await agent_context.build_agent_run_context(replace(request, objective="Parlons de violoncelle"))
+    assert unrelated.continuity_context == ""
+    document.deleted_at = datetime.now(timezone.utc)
+    await db.flush()
+    assert not (await context_for_turn(request)).candidates

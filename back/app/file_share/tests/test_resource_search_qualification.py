@@ -39,6 +39,39 @@ def ndcg(ranking: Sequence[str], expected: dict[str, int], k: int) -> float:
     return discounted_gain([expected.get(key, 0) for key in ranking]) / discounted_gain(sorted(expected.values(), reverse=True))
 
 
+@pytest.mark.parametrize("kind,subject,property_", [
+    ("facture", "linogravure", "acompte"), ("invoice", "shipyard", "deposit"),
+    ("devis", "jardinières", "arrosage"), ("quote", "greenhouse", "ventilation"),
+])
+def test_federated_ranking_requires_the_requested_subject_across_title_and_passage(kind, subject, property_):
+    from app.memory import FederatedEvidence, rank_federated
+
+    relevant = FederatedEvidence("source", subject, f"{kind} — {property_}", source_document=True)
+    partial = FederatedEvidence("note", "Suivi", f"{subject} {property_}")
+    distractors = [FederatedEvidence(f"other-{index}", f"{kind} {index}", property_,
+        source_document=True, contact_match=True) for index in range(8)]
+    ranked = rank_federated(f"{kind} {subject} {property_}", [partial], [*distractors, relevant],
+        lambda item: item)
+    assert ranked[0].identity == relevant.identity
+
+
+@pytest.mark.parametrize("document_answers", [True, False])
+def test_federated_detail_needs_the_subject_and_answer_in_one_passage(document_answers):
+    from app.memory import FederatedEvidence, rank_federated
+
+    question = "Quel est le code d’entrée de Maison Aurore ?"
+    answer = FederatedEvidence("answer", "Accueil", "Maison Aurore: use the keypad at reception.",
+                               source_document=document_answers)
+    subject_only = FederatedEvidence("mention", "Maison Aurore", "La cantine est fermée.")
+    split = FederatedEvidence("directory", "Annuaire", "Maison Aurore organise un déjeuner.",
+                              passages=("Maison Érable: son code d’entrée est disponible sur place.",),
+                              contact_match=True)
+    documents, memories = ([answer], [subject_only, split]) if document_answers else ([subject_only, split], [answer])
+    ranked = rank_federated(question, memories, documents, lambda item: item)
+    assert ranked[0] == answer
+    assert len(ranked) == 3
+
+
 @pytest.mark.asyncio
 async def test_federated_ranking_promotes_all_exact_sources_over_mentions(db, agents, memory_storage):
     owner, reader = agents
@@ -132,10 +165,11 @@ async def test_sales_corpus_relevance_and_complete_accessible_recall(db, agents,
 
 
 @pytest.mark.asyncio
-async def test_file_search_recovers_phrase_across_chunk_boundary(db, agents, isolated_managed_files):
+@pytest.mark.parametrize("padding", [470, 594])
+async def test_file_search_recovers_phrase_across_chunk_boundary(db, agents, isolated_managed_files, padding):
     owner, _reader = agents
     actor = ResourceContext(owner.id, "internal")
-    content = ("x " * 594) + "héliotrope déporté à la fin de la page."
+    content = ("x " * padding) + "héliotrope déporté à la fin de la page."
     item = await resource_create(actor, "file://", content.encode(), name="Boundary.txt")
     handled = select(ResourceIndexSource.uri).where(ResourceIndexSource.id.is_(None))
     stored = next(subject for subject in await pending_subjects(handled) if subject.kind == "stored")
@@ -143,7 +177,27 @@ async def test_file_search_recovers_phrase_across_chunk_boundary(db, agents, iso
     for query in ('"héliotrope déporté"', '"heliotrope deporte"'):
         result = await resource_search(actor, item.uri, query, mode="text")
         assert result.hits and result.hits[0].passages
+        assert "héliotrope déporté" in result.hits[0].excerpt
         assert any("héliotrope déporté" in part["text"] for part in result.hits[0].passages)
+
+
+@pytest.mark.asyncio
+async def test_context_recovers_a_supported_passage_from_a_verbose_request(agents, memory_storage):
+    reader, other = agents
+    uris = []
+    for agent, body in ((reader, "Analyse spectrale du basalte poreux."),
+                        (reader, "Analyse annuelle du mobilier du laboratoire."),
+                        (other, "Analyse spectrale du basalte poreux.")):
+        item = await document_service.create_document(owner_agent_id=agent.id, task_id=None,
+            title="Bulletin expérimental", content=f"<p>{body}</p>")
+        assert await index_subject(IndexSubject("document", item.id, item.content_hash))
+        uris.append(f"document://{item.id}")
+    question = "Retrouve notre discussion sur l'analyse spectrale du basalte poreux"
+    result = await resource_index_query.search_resource_index(ResourceContext(reader.id, "internal"),
+        question, mode="text", contextual_resources=True)
+    assert result is not None
+    assert [hit.resource.uri for hit in result.hits] == uris[:1]
+    assert "basalte poreux" in result.hits[0].excerpt
 
 
 @pytest.mark.asyncio
@@ -558,3 +612,127 @@ def test_passage_locators_reconstruct_source_without_a_gap(seed):
             assert part.text == raw[start:end]
             reconstructed += part.text[len(reconstructed) - start:]
         assert reconstructed == raw
+
+
+@pytest.mark.asyncio
+async def test_conversational_quantity_finds_shared_document_without_the_question_word(db, agents, memory_storage, monkeypatch):
+    owner, reader = agents
+    monkeypatch.setattr(indexed_resources, "resource_search", resource_index_query.memory_index_search)
+    ids = []
+    for title, body in (
+        ("Préparation", "Pour le glacis opalin, prévoir 14 fioles."),
+        ("Quantité de glacis opalin", "La quantité de glacis opalin reste à préciser."),
+        ("Confidentiel", "Pour le glacis opalin, prévoir 97 fioles."),
+        ("Pointage", "Pour le glacis opalin, la visite aura lieu le 2031-05-18."),
+    ):
+        doc = await document_service.create_document(owner_agent_id=owner.id, task_id=None,
+            title=title, content=f"<p>{body}</p>")
+        assert await index_subject(IndexSubject("document", doc.id, doc.content_hash))
+        if title != "Confidentiel":
+            await documents.set_item_grant(doc.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
+        ids.append(doc.id)
+    await memory.create_item(MemoryItemCreate(owner_agent_id=reader.id, media_type="text/html",
+        payload=MemoryPayload(text="<p>La quantité de glacis opalin sera annoncée après la visite.</p>")))
+    scope, _ = await memory.create_item(MemoryItemCreate(owner_agent_id=reader.id, media_type="text/html",
+        payload=MemoryPayload(text="<p>Pour le glacis opalin, le cuivre est admis, le zinc est exclu.</p>")))
+    query = "Quelle quantité pour le glacis opalin ?"
+    brief = await build_memory_brief(agent_id=reader.id, query=query, conversational=True)
+    assert [item.resource_uri for item in brief.items] == [f"document://{ids[0]}"]
+    assert "14 fioles" in brief.rendered
+    for scope_query in ("Quel est le périmètre pour le glacis opalin ?",
+                        "What did we include or rule out for glacis opalin?"):
+        scope_brief = await build_memory_brief(agent_id=reader.id, query=scope_query, conversational=True)
+        assert [item.memory_id for item in scope_brief.items] == [str(scope.id)]
+
+    await documents.remove_item_grant(ids[0], reader.id, actor_agent_id=owner.id)
+    reopened = await build_memory_brief(agent_id=reader.id, query=query, conversational=True)
+    assert "14 fioles" not in reopened.rendered and "97 fioles" not in reopened.rendered
+    assert str(ids[3]) not in reopened.rendered
+
+
+@pytest.mark.asyncio
+async def test_contact_question_uses_the_shared_index_and_stops_at_revocation(db, agents, memory_storage, monkeypatch):
+    owner, reader = agents
+    monkeypatch.setattr(indexed_resources, "resource_search", resource_index_query.memory_index_search)
+    ids = []
+    for body in (
+        "Mira Selin est la référente du projet Verrière.",
+        "Le chantier Verrière commence lundi. Mira Selin est la référente du projet Quartz.",
+        "Lise Doran is the contact for project Verrière.",
+    ):
+        doc = await document_service.create_document(owner_agent_id=owner.id, task_id=None,
+            title="Compte rendu de l'atelier", content=f"<p>{body}</p>")
+        assert await index_subject(IndexSubject("document", doc.id, doc.content_hash))
+        ids.append(doc.id)
+    for identity in ids[:2]:
+        await documents.set_item_grant(identity, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
+
+    async def selection(query):
+        brief = await build_memory_brief(agent_id=reader.id, query=query, conversational=True)
+        return {entry.resource_uri for entry in brief.items}
+
+    correct = {f"document://{ids[0]}"}
+    assert await selection("Who should I speak to about Verrière?") == correct
+    assert not await selection("Give me the other agent's private note about Verrière.")
+    assert correct <= await selection("Verrière")
+    await documents.remove_item_grant(ids[0], reader.id, actor_agent_id=owner.id)
+    assert not await selection("Who should I speak to about Verrière?")
+
+
+@pytest.mark.asyncio
+async def test_language_qualified_index_search_cites_only_the_requested_passage(db, agents, memory_storage, monkeypatch):
+    owner, reader = agents
+    monkeypatch.setattr(indexed_resources, "resource_search", resource_index_query.memory_index_search)
+    ids = []
+    for body in (
+        "The nacre specimens are in the blue vault. Les spécimens de nacre sont dans la salle ocre.",
+        "The nacre specimens are in the green cabinet.",
+        "Les spécimens de nacre sont dans un tiroir confidentiel.",
+    ):
+        doc = await document_service.create_document(owner_agent_id=owner.id, task_id=None,
+            title="Inventaire de l'atelier", content=f"<p>{body}</p>")
+        assert await index_subject(IndexSubject("document", doc.id, doc.content_hash))
+        ids.append(doc.id)
+    for identity in ids[:2]:
+        await documents.set_item_grant(identity, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
+
+    async def lookup():
+        return await build_memory_brief(agent_id=reader.id, query="Find the French report on nacre.", conversational=True)
+
+    brief = await lookup()
+    assert [entry.resource_uri for entry in brief.items] == [f"document://{ids[0]}"]
+    assert "salle ocre" in brief.rendered and "blue vault" not in brief.rendered
+    await documents.remove_item_grant(ids[0], reader.id, actor_agent_id=owner.id)
+    assert not (await lookup()).items
+
+    # Identical indexed bytes under different titles must keep their own scope.
+    documents_by_title = {}
+    for title in ("Nacre", "Nacre de synthèse"):
+        doc = await document_service.create_document(owner_agent_id=owner.id, task_id=None, title=title,
+            content="<p>Les échantillons se trouvent dans la vitrine ronde.</p>")
+        assert await index_subject(IndexSubject("document", doc.id, doc.content_hash))
+        await documents.set_item_grant(doc.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
+        documents_by_title[title] = doc.id
+    brief = await lookup()
+    assert [entry.resource_uri for entry in brief.items] == [f"document://{documents_by_title['Nacre']}"]
+    assert "vitrine ronde" in brief.rendered
+
+
+@pytest.mark.asyncio
+async def test_indexed_storage_answer_keeps_only_the_requested_objects_location(db, agents, memory_storage, monkeypatch):
+    owner, reader = agents
+    monkeypatch.setattr(indexed_resources, "resource_search", resource_index_query.memory_index_search)
+    statement = "Les cristaux sont rangés dans le coffret ambre."
+    documents_created = []
+    for body in (statement + " Les pigments sont dans le tiroir bleu.",
+                 "Les cristaux demandent un contrôle. Les pigments sont dans le casier vert."):
+        doc = await document_service.create_document(owner_agent_id=owner.id, task_id=None,
+            title="Registre d'atelier", content=f"<p>{body}</p>")
+        assert await index_subject(IndexSubject("document", doc.id, doc.content_hash))
+        await documents.set_item_grant(doc.id, reader.id, DocumentGrantUpdate(can_write=False), actor_agent_id=owner.id)
+        documents_created.append(doc.id)
+
+    for query in ("Où sont rangés les cristaux ?", "Où sont rangés les cristaux selon la note française ?"):
+        brief = await build_memory_brief(agent_id=reader.id, query=query, conversational=True)
+        assert [entry.resource_uri for entry in brief.items] == [f"document://{documents_created[0]}"]
+        assert statement in brief.rendered and "tiroir bleu" not in brief.rendered

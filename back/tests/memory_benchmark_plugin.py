@@ -9,6 +9,8 @@ def pytest_addoption(parser):
     group.addoption("--memory-benchmark-worlds", type=int, default=4, help="World limit; 0 means all")
     group.addoption("--memory-benchmark-profile-sample", action="store_true", help="One rotating calendar regime per profile")
     group.addoption("--memory-benchmark-workers", type=int, default=4, help="Isolated concurrent worlds")
+    group.addoption("--memory-benchmark-derived-titles", action="store_true",
+                    help="Use the first 120 visible characters as the native memory search title")
     group.addoption("--memory-benchmark-shards", type=int, default=1, help="Independent database partitions")
     group.addoption("--memory-benchmark-shard", type=int, default=0, help="Zero-based database partition")
     group.addoption("--memory-benchmark-variants", default="baseline,relevance_first,history,entities,time,combined")

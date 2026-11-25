@@ -11,6 +11,7 @@ from typing import Sequence, TypeAlias, cast
 from uuid import UUID
 from .source_access import readable_evidence_ids
 from .query_policy import prepare_memory_read
+from .question_evidence import parse_question_evidence
 from .provenance import source_origin_expression
 
 from loguru import logger
@@ -57,7 +58,7 @@ from .semantic_index import complete_projection_clause
 from .passages import lexical_excerpt, query_identity, query_reference_ids, query_is_contact_self_reference, query_is_direct_contact_lookup
 from . import relevance
 from .temporal import MemoryTemporalFilter
-from .source_chronology import SourceTimeQuery, memory_chronology, parse_source_time_query
+from .source_chronology import SourceTimeQuery, hit_chronology, memory_chronology, parse_source_time_query
 from .personal_records import personal_record_kind
 
 
@@ -65,7 +66,7 @@ RRF_RANK_CONSTANT = 60
 MAX_HYBRID_CANDIDATES = 500
 MIN_GRAPH_LINK_CONFIDENCE = 0.75
 SUGGESTED_TOPIC_RELATION = "topic_membership_candidate"
-RRF_RANKING_VERSION = "memory-query-evidence/v14"
+RRF_RANKING_VERSION = "memory-query-evidence/v21"
 MIN_INFERRED_TOPIC_SIMILARITY = 0.55
 _SOURCE_WEIGHTS: dict[MemoryRetrievalSource, float] = {
     "thematic_lexical": 1.25,
@@ -789,7 +790,10 @@ async def _weighted_rank(
         if any(source.endswith(("_lexical", "_vector")) for source in sources[identity])
     }
     structural = await _structural_candidates(scope_request, seeds=eligible_ids, limit=parameters.candidate_limit, paths=structural_paths)
-    eligible_ids.update(identity for identity, names in target_identities.items() if names)
+    for identity, names in target_identities.items():
+        if names:
+            eligible_ids.add(identity)
+            sources[identity].append("resolved_relation")
     graph_candidates = [*graph_candidates, *structural]
     for item, text, _strength in structural:
         content = f"{item.title} {text}"
@@ -986,6 +990,11 @@ async def _weighted_rank(
                       for identity, tokens in title_terms.items()}
     tiers = {identity: (3 if identity in exact_ids else 2 if lexical_evidence.get(identity, 0.0) >= 0.65 else 1)
              for identity in candidate_ids}
+    question = parse_question_evidence(query)
+    detail_matches = {identity: question.matching_facets(candidate_items[identity].title, body_by_id.get(identity, ""),
+                                                        declared_language=candidate_items[identity].metadata.get("language"))
+                      for identity in candidate_ids} if question is not None else {}
+    covered_details: set[int | str] = set()
     similarity_terms = {identity: {match[0].casefold() for match in _LEXICAL_TERM_RE.finditer(text)}
                         for identity, text in text_by_id.items()}
 
@@ -995,7 +1004,7 @@ async def _weighted_rank(
     while remaining and len(selected) < parameters.limit:
         best_id: UUID | None = None
         best_adjusted = -1.0
-        best_key: tuple[bool, int, int, int, int, bool, bool, int, float, str] | None = None
+        best_key: tuple[bool, int, int, int, bool, int, int, bool, bool, int, float, str] | None = None
         for item_id in remaining:
             maximum_similarity = 0.0
             duplicate = False
@@ -1044,8 +1053,9 @@ async def _weighted_rank(
             # the context outranks another profile repeating the same name.
             novel_fact = bool(selected and entities and matched_query[item_id] - covered_terms - name_terms)
             repeated_fact = bool(selected and fact_keys.get(item_id) in covered_facts and item_id not in exact_ids)
+            details = detail_matches.get(item_id, frozenset[int]())
             selection_key = (
-                item_id in exact_ids, target_priority, bridge_priority,
+                item_id in exact_ids, target_priority, bridge_priority, len(details - covered_details), bool(details),
                 entity_priority, identity_priority, novel_fact, not repeated_fact,
                 tiers[item_id], adjusted, str(item_id),
             )
@@ -1061,6 +1071,7 @@ async def _weighted_rank(
         covered_identities.update(title_entities[best_id])
         covered_targets.update(target_identities.get(best_id, ()))
         covered_relation = covered_relation or best_id in relation_bridges
+        covered_details.update(detail_matches.get(best_id, ()))
         if fact_keys.get(best_id):
             covered_facts.add(fact_keys[best_id])
         remaining.remove(best_id)
@@ -1818,12 +1829,14 @@ async def temporal_hits(
 
 
 async def _recall_source_time(request: MemoryRecallRequest, chronology: SourceTimeQuery) -> MemoryRecallResult:
-    limit = _resolve_parameters(request).limit
+    parameters = _resolve_parameters(request)
+    limit = parameters.limit
+    detail = parse_question_evidence(request.query, dated=True) if chronology.dimension == "event_or_source" else None
     lookup = request.model_copy(update={
         "query": chronology.query, "semantic_query": None,
         "require_personal_subject": request.require_personal_subject or personal_record_kind(request.query) is not None,
     })
-    global_request, thematic_request = _branch_requests(lookup, limit=limit)
+    global_request, thematic_request = _branch_requests(lookup, limit=parameters.candidate_limit if detail else limit)
     global_page = await service.search_items(global_request.model_copy(update={"recall_query": None}),
         chronology=chronology)
     thematic_page = await service.search_items(thematic_request.model_copy(update={"recall_query": None}),
@@ -1833,10 +1846,11 @@ async def _recall_source_time(request: MemoryRecallRequest, chronology: SourceTi
         for hit in thematic_page.hits:
             matches[hit.item.id] = hit.model_copy(update={"retrieval_sources": ["thematic_lexical"]})
     dated = [(match, hit) for hit in matches.values()
-             if (match := chronology.rank_date(memory_chronology(hit.item.title, hit.item.temporal))) is not None]
-    dated.sort(key=lambda entry: (entry[0], entry[1].score), reverse=True)
+             if (match := chronology.rank_date(hit_chronology(hit))) is not None]
+    dated.sort(key=lambda entry: (detail is not None and detail.supports(entry[1].item.title, entry[1].excerpt),
+                                  entry[0], entry[1].score), reverse=True)
     return MemoryRecallResult(query=request.query, hits=[hit for _, hit in dated[:limit]], mode="lexical",
-        ranking_version="memory-source-date/v1", global_candidate_count=len(matches),
+        ranking_version="memory-source-date/v2", global_candidate_count=len(matches),
         has_more=len(dated) > limit or global_page.has_more or (thematic_page is not None and thematic_page.has_more))
 
 

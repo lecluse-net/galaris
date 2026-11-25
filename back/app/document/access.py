@@ -118,6 +118,12 @@ async def working_set_document_access(agent_id: int, document_ids: set[UUID]) ->
     return {document_id: can_write for document_id, can_write in result}
 
 
+async def readable_document_labels(agent_id: int, document_ids: set[UUID]) -> dict[UUID, tuple[str, int]]:
+    rows = await get_db().execute(select(Document.id, Document.title, Document.revision).where(
+        Document.id.in_(document_ids), Document.deleted_at.is_(None), readable_item_clause(agent_id)))
+    return {identity: (title, revision) for identity, title, revision in rows}
+
+
 def readable_item_for_agents_clause(agent_ids: Collection[int] | None) -> ColumnElement[bool]:
     if agent_ids is None:
         granted = exists(select(ShareGrant.id).where(

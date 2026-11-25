@@ -30,6 +30,7 @@ _RECENT_INTERLOCUTOR_TASKS = 5
 _RECENT_INTERLOCUTOR_DOCUMENT_TASKS = 20
 _RECENT_INTERLOCUTOR_RESOURCES = 20
 DocumentAccessResolver = Callable[[int, set[UUID]], Awaitable[dict[UUID, bool]]]
+DocumentLabelResolver = Callable[[int, set[UUID]], Awaitable[dict[UUID, tuple[str, int]]]]
 
 
 def _task_data(task: Task) -> dict[str, Any]:
@@ -201,6 +202,7 @@ async def interlocutor_context_candidates(
                         "role": resource.role,
                         "resource_type": resource.resource_type,
                         "source_task_uri": f"galaris://task/{task.id}",
+                        "source_task_label": task.label,
                     },
                 )
             )
@@ -368,6 +370,7 @@ async def working_set_context_provider(
     request: AgentContextRequest,
     *,
     resolve_document_access: DocumentAccessResolver,
+    resolve_document_labels: DocumentLabelResolver,
 ) -> AgentContextContribution:
     if request.task_id is None and request.contact_memory_item_id is None:
         return AgentContextContribution()
@@ -390,6 +393,19 @@ async def working_set_context_provider(
         and request.frozen_capsule is None
         else ()
     )
+    if request.task_id is None and candidates:
+        # Conversation history can contain stale labels, bare UUIDs or documents
+        # that were deleted or unshared after the task finished.
+        current: list[tuple[AgentContextCandidate, UUID]] = []
+        for item in candidates:
+            try:
+                identity = UUID(item.reference.removeprefix("document://"))
+            except ValueError:
+                continue
+            current.append((item, identity))
+        labels = await resolve_document_labels(request.agent.id, {identity for _, identity in current})
+        candidates = tuple(item.model_copy(update={"title": label[0], "revision": label[1]})
+                           for item, identity in current if (label := labels.get(identity)) is not None)
     rendered = render_working_set(working_set)
     return AgentContextContribution(
         shared_context=rendered,
@@ -406,12 +422,13 @@ async def working_set_context_provider(
     )
 
 
-def register_working_set_context(resolve_document_access: DocumentAccessResolver) -> None:
+def register_working_set_context(resolve_document_access: DocumentAccessResolver, resolve_document_labels: DocumentLabelResolver) -> None:
     from app.agent import register_context_provider
 
     register_context_provider(
         "task_working_set",
-        partial(working_set_context_provider, resolve_document_access=resolve_document_access),
+        partial(working_set_context_provider, resolve_document_access=resolve_document_access,
+                resolve_document_labels=resolve_document_labels),
         priority=15,
     )
 

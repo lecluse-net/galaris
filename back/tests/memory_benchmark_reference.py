@@ -2,6 +2,7 @@
 
 import hashlib
 import importlib.util
+import inspect
 from pathlib import Path
 import sys
 
@@ -10,6 +11,14 @@ def load_reference(root, clock):
     root.resolve().relative_to(Path('/repo/artifacts/memory-benchmark').resolve())
     modules = {}
     names = ('relevance', 'service', 'retrieval', 'facade')
+    if (root / 'question_evidence.py').is_file():
+        names = (*names, 'question_evidence')
+    if (root / 'identity_attributes.py').is_file():
+        names = (*names, 'identity_attributes')
+    if (root / 'source_language.py').is_file():
+        names = (*names, 'source_language')
+    if (root / 'storage_evidence.py').is_file():
+        names = (*names, 'storage_evidence')
     if (root / 'context.py').is_file():
         names = (*names, 'context')
     if (root / 'admission.py').is_file():
@@ -33,6 +42,24 @@ def load_reference(root, clock):
     modules['retrieval'].relevance = modules['relevance']
     modules['retrieval'].service = modules['service']
     modules['facade'].recall_items = modules['retrieval'].recall_items
+    if 'question_evidence' in modules:
+        if 'storage_evidence' in modules:
+            for name in ('source_language', 'question_evidence'):
+                modules[name].storage_lookup = modules['storage_evidence'].storage_lookup
+        if 'source_language' in modules:
+            modules['question_evidence'].source_language_query = modules['source_language'].source_language_query
+        if 'identity_attributes' in modules:
+            modules['question_evidence'].identity_attribute = modules['identity_attributes'].identity_attribute
+        for name in ('retrieval', 'context'):
+            if name in modules:
+                modules[name].parse_question_evidence = modules['question_evidence'].parse_question_evidence
+    if 'context' in modules:
+        builder = modules['context'].build_memory_brief
+        if 'conversational' not in inspect.signature(builder).parameters:
+            async def legacy_brief(*args, **kwargs):
+                kwargs.pop('conversational', None)
+                return await builder(*args, **kwargs)
+            modules['context'].build_memory_brief = legacy_brief
     if 'admission' in modules:
         for name in ('service', 'retrieval'):
             modules[name].admit_search_hits = modules['admission'].admit_search_hits
@@ -45,6 +72,14 @@ def load_reference(root, clock):
 
 def reference_fingerprints(root):
     names = ('relevance', 'service', 'retrieval', 'facade')
+    if (root / 'question_evidence.py').is_file():
+        names = (*names, 'question_evidence')
+    if (root / 'identity_attributes.py').is_file():
+        names = (*names, 'identity_attributes')
+    if (root / 'source_language.py').is_file():
+        names = (*names, 'source_language')
+    if (root / 'storage_evidence.py').is_file():
+        names = (*names, 'storage_evidence')
     if (root / 'context.py').is_file():
         names = (*names, 'context')
     if (root / 'admission.py').is_file():

@@ -23,7 +23,7 @@ from tests.sharing_fixtures import bind_private_shares
 from app.agent import context as agent_context
 from app.agent.contracts import AgentContextRequest, AgentSnapshot
 from app.agent.models import Agent, Title
-from app.memory import access, admission, bootstrap, context as memory_context, library_queries, retrieval, service, source_access
+from app.memory import access, admission, bootstrap, context as memory_context, library_queries, retrieval, service, source_access, source_chronology
 from core.storage import resources as storage
 from app.memory.embedding import MemoryEmbeddingNotConfiguredError
 from app.memory.models import MemoryContactItem, MemoryItem, MemoryRevision, MemorySource
@@ -112,7 +112,7 @@ def _write_resources(root, records):
 
 
 async def load_world(memories: tuple[Memory, ...], queries: tuple[Query, ...], root: Path,
-                     *, user_id: int, title_id: int) -> AgentSnapshot:
+                     *, user_id: int, title_id: int, derived_titles: bool = False) -> AgentSnapshot:
     assert_isolated()
     actor = queries[0].actor_id
     actors = sorted({actor} | {a for m in memories for a in m.allowed_actor_ids})
@@ -147,17 +147,19 @@ async def load_world(memories: tuple[Memory, ...], queries: tuple[Query, ...], r
                 # Source fixture zones describe an event; persisted anchors use Galaris's zone.
                 instant = datetime.fromisoformat(m.event_start).astimezone(ZoneInfo(local_timezone_name()))
                 anchor = {part: getattr(instant, part) for part in ('year', 'month', 'day', 'hour', 'minute')}
-            rows.append(dict(id=identity, owner_agent_id=owner, search_title=m.title,
+            body = visible_text(m.content_html)
+            title = body[:120] if derived_titles else m.title
+            rows.append(dict(id=identity, owner_agent_id=owner, search_title=title,
                              memory_resource_id=m.id, memory_provider_code="native",
                              memory_media_type="text/html", memory_content_profile_version=1, memory_content_hash=digest,
-                             memory_size_bytes=len(content), search_text=visible_text(m.content_html), metadata_=metadata,
+                             memory_size_bytes=len(content), search_text=body, metadata_=metadata,
                              valid_from=datetime.fromisoformat(m.valid_from) if m.valid_from else None,
                              valid_until=datetime.fromisoformat(m.valid_until) if m.valid_until else None,
                              temporal=anchor, created_at=datetime.fromisoformat(m.recorded_at),
                              updated_at=datetime.fromisoformat(m.recorded_at),
                              deleted_at=datetime.fromisoformat(m.recorded_at) if m.state == "forgotten" else None))
             revisions.append(dict(item_id=identity, revision=1, provider_code="native", resource_id=m.id,
-                                  content_hash=digest, content_type="text", media_type="text/html", title=m.title,
+                                  content_hash=digest, content_type="text", media_type="text/html", title=title,
                                   content_profile_version=1, metadata_=metadata, temporal=anchor,
                                   created_at=datetime.fromisoformat(m.recorded_at)))
             sources.append(dict(id=UUID(m.source["id"]), item_id=identity, source_kind="synthetic-benchmark",
@@ -185,7 +187,7 @@ def install_adapter(monkeypatch, root: Path, reference_sources: Path | None = No
     agent_context.register_context_provider("long_term_memory", bootstrap.memory_context_provider, priority=20)
     # Final admission independently rechecks validity. Every read-side clock
     # reached by the fixture must agree with the scenario, not the host date.
-    for module in (retrieval, service, admission, library_queries, agent_context):
+    for module in (retrieval, service, admission, library_queries, agent_context, source_chronology):
         monkeypatch.setattr(module, "datetime", FixedClock)
     real_rank = retrieval._weighted_rank
     real_search = memory_context.search_memory_detailed

@@ -1,5 +1,15 @@
 # Corpus de rappel mémoire conversationnel / Conversational memory recall corpus
 
+## Titres des souvenirs et horloge de la campagne
+
+Le corpus conserve des titres rédigés pour la comparaison historique. L'option
+`--memory-benchmark-derived-titles` utilise les 120 premiers caractères visibles du
+contenu pour le titre de recherche et celui de la révision, comme lors de la création
+d'un souvenir personnel. Elle s'applique aux deux versions comparées et conserve les
+mêmes faits attendus. Le manifeste indique la projection employée dans
+`memory_title_projection`. Les périodes relatives utilisent l'horloge de la question
+pour les deux versions, y compris pour la sélection des dates de source et d'événement.
+
 ## Portée de l'adaptateur courant (15 novembre 2026)
 
 Le brief Memory courant exclut les souvenirs datés : ils sont présentés par le provider
@@ -109,6 +119,20 @@ Pour comparer l'admission finale, ajouter aussi `admission.py` à la référence
 Le chargeur l'utilise pour la recherche, le calendrier et le brief final ; son empreinte
 figure dans le manifeste. Sans ce fichier, les anciennes campagnes conservent leur
 comportement et partagent l'admission courante.
+
+Pour mesurer les rôles, les homonymes et les surnoms, figer également
+`question_evidence.py` et `identity_attributes.py` si la version de référence les
+contient. Le manifeste enregistre leurs empreintes. Examiner le rappel des deux
+personnes sur les prénoms ambigus, ainsi que le nombre de contextes non vides
+parmi les questions sans fait requis.
+
+Pour la famille `cross_language`, conserver aussi `source_language.py` si la
+référence le contient. Les textes français et anglais peuvent donner des valeurs
+différentes pour le même sujet. Examiner le rang de la source demandée, les extraits
+transmis et la présence éventuelle de la version concurrente dans le contexte.
+Le compteur `queries_complete_with_precision_one_at_k` distingue les questions
+pour lesquelles les premiers résultats couvrent tous les faits sans aucun élément
+superflu ni doublon. Le dénominateur correspondant est `answerable_queries`.
 
 Le benchmark d'admission opt-in mesure les lots de 1, 8, 48, 100 et 500 résultats,
 ainsi que les chemins de graphe valides sur des lots de 8 et 48 résultats,

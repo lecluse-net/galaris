@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 import re
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import Date, DateTime, String, and_, case, cast, func, literal_column, type_coerce
@@ -13,8 +13,11 @@ from sqlalchemy.sql.elements import ColumnElement, Grouping
 
 from core.util import local_timezone_name
 
-from .relevance import STOPWORDS, fold
+from .relevance import STOPWORDS, entity_groups, fold
 from .temporal import MemoryTemporalAnchor
+
+if TYPE_CHECKING:
+    from .schemas import MemorySearchHit
 
 
 DateOrigin = Literal["title", "mail_date"]
@@ -70,6 +73,7 @@ class SourceTimeQuery:
     start: date | None
     end: date
     dimension: Literal["source", "event_or_source", "coverage", "historical_year"]
+    event_names: tuple[tuple[str, ...], ...] = ()
 
     def metadata(self) -> dict[str, str | None]:
         return {"start": self.start.isoformat() if self.start else None, "end_exclusive": self.end.isoformat(),
@@ -134,14 +138,34 @@ def chronology_from_title(title: str, *, source_date: date | None = None, origin
     return SourceChronology(written, (origin if source_date else "title") if written else None, covered, mentioned, event_date)
 
 
-def memory_chronology(title: str, anchor: MemoryTemporalAnchor | None) -> SourceChronology:
+def memory_chronology(title: str, anchor: MemoryTemporalAnchor | None, *, stated_event_date: date | None = None) -> SourceChronology:
     event_date = (date(anchor.year, anchor.month, anchor.day) if anchor is not None
                   and anchor.year is not None and anchor.month is not None and anchor.day is not None else None)
-    return chronology_from_title(title, event_date=event_date)
+    return chronology_from_title(title, event_date=event_date or stated_event_date)
+
+
+def hit_chronology(hit: "MemorySearchHit") -> SourceChronology:
+    return memory_chronology(hit.item.title, getattr(hit.item, "temporal", None),
+                             stated_event_date=getattr(hit, "stated_event_date", None))
 
 
 def _date_sql(value: SQLColumnExpression[str]) -> ColumnElement[date]:
     return case((func.pg_input_is_valid(value, "date"), cast(value, Date())))
+
+
+def stated_event_date_sql(body: SQLColumnExpression[str]) -> ColumnElement[date]:
+    """A single short datelined assertion can date an event independently of its source."""
+    prefix = func.left(body, 801, type_=String())
+    text = func.translate(func.lower(func.normalize(prefix, literal_column("NFKC"))), "éû", "eu", type_=String())
+    month_first = rf"({'|'.join(_MONTHS)}) +([0-9]{{1,2}}),? +({_YEAR})"
+    dateline = rf"^(?:le|on) +(?:{_ISO}|{_NAMED}|{month_first}),\s+\S"
+    parts = type_coerce(Grouping(func.regexp_match(text, dateline)), ARRAY(String()))
+    year = func.coalesce(parts[1], parts[6], parts[9], type_=String())
+    named_month = func.coalesce(parts[5], parts[7], type_=String())
+    month = func.coalesce(parts[2], case({key: str(n) for key, n in _MONTHS.items()}, value=named_month), type_=String())
+    day = func.coalesce(parts[3], parts[4], parts[8], type_=String())
+    single_year = func.regexp_count(text, rf"(?<![0-9]){_YEAR}(?![0-9])") == 1
+    return case((and_(func.length(prefix) <= 800, single_year), _date_parts_sql(year, month, day)))
 
 
 def _date_parts_sql(year: SQLColumnExpression[str], month: SQLColumnExpression[str],
@@ -226,11 +250,13 @@ def parse_source_time_query(query: str, *, today: date | None = None) -> SourceT
             dimension = "historical_year"
     elif relative:
         start, end = _relative_period(match[0], today)
-        dimension = "event_or_source"
+        dimension = "source" if re.search(r"\b(?:written|published|sent|redige[es]*|publie[es]*|envoye[es]*)\s*$",
+                                           text[:match.start()]) else "event_or_source"
     else:
         start = None if personal_latest is not None or match[0].startswith(
             ("les plus ", "plus ", "the ", "latest", "newest")) else today - timedelta(days=29)
         end = today + timedelta(days=1)
     remaining = text[:match.start()] + " " + text[match.end():]
     terms = re.findall(r"[^\W_]+(?:[-./][^\W_]+)*", remaining)
-    return SourceTimeQuery(" ".join(term for term in terms if term not in _FILLER), start, end, dimension)
+    names = tuple(group for group in entity_groups(query, inflected=False) if len(group) >= 2) if relative else ()
+    return SourceTimeQuery(" ".join(term for term in terms if term not in _FILLER), start, end, dimension, names)
