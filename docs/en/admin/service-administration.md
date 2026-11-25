@@ -288,19 +288,19 @@ metadata; the authorization-code flow uses PKCE S256. They do not apply to stdio
 HTTPS is required except on localhost. A private server can use OAuth endpoints on its own origin;
 other discovered origins must be public.
 
+<a id="rest-api"></a>
+
 ## Enable a REST API
 
-In **Services → New service**, or when editing a configurable Service, select **Enable API**.
-One Service can provide both MCP and REST. The **REST API** tab configures the base URL,
+In **Services → New service**, or when editing a configurable Service, choose **Add protocol → REST**.
+One Service can provide both MCP and REST. The **REST** tab configures the base URL,
 authentication (none, Bearer, header, Basic or query parameter), timeout and maximum response
 size. No operation catalogue or OpenAPI document is required.
 
-Enter the HTTP(S) address directly in the **REST API** tab, as with MCP:
-it belongs to the Service and is shared by all its connections.
-Enabling the capability proposes the `api_token` (password) parameter. Select connection
-parameter names for authentication and additional headers; never put a token in the URL
-or calling code. For Basic authentication, also declare a username connection parameter
-and select the secret password parameter.
+Enter the HTTP(S) address directly in the **REST** tab. All connections to the Service
+share this address. REST starts with **No authentication**. If the API requires credentials
+or additional headers, select existing connection parameters or choose **New parameter…**.
+For Basic authentication, select a username parameter and a secret password parameter.
 
 Enter credential and header values in **Parameters** or **Connections → Edit**. Existing inheritance,
 overrides, imposed values, encryption and masking apply. Definitions and YAML exports

@@ -43,6 +43,10 @@ Selecting **OAuth 2.0** adds **Connect account** to the agent’s connection.
 If you later change methods, the confirmation explains which credentials will be cleared.
 Follow the [OAuth authorization steps](../admin/service-administration.md#mcp-oauth).
 
+When you add the REST protocol, the editor selects **No authentication**. If the API requires
+credentials, link them to declared connection parameters.
+See [Enable a REST API](../admin/service-administration.md#rest-api).
+
 The initial catalog includes Qonto, Nextcloud, GitLab, Matrix, n8n, Redmine and Telegram.
 Each preset explains the capabilities it provides. REST access does not promise every
 product feature; provider permissions and limitations still apply. For self-hosted APIs,

@@ -4,7 +4,7 @@
     <q-input v-model="config.base_url" outlined dense :label="t('services.restBaseUrl')" :hint="t('services.restBaseUrlHint')" />
     <q-select v-model="config.auth.type" :options="authOptions" emit-value map-options outlined dense :label="t('services.restAuth')" />
     <ConnectionParamSelect v-if="['bearer', 'header', 'query'].includes(config.auth.type)" v-model="config.auth.param"
-      :options="secretParams" :create-parameter="() => createParam('api_token', 'password', t('services.restTokenParam'))"
+      :options="secretParams" :create-parameter="() => createParam('token', 'password', t('services.restTokenParam'))"
       outlined dense :label="t('services.restTokenParam')" />
     <q-input v-if="config.auth.type === 'header'" v-model="config.auth.header_name" outlined dense :label="t('services.headerName')" />
     <q-input v-if="config.auth.type === 'query'" v-model="config.auth.query_name" outlined dense :label="t('services.restQueryName')" />

@@ -7,7 +7,7 @@ from app.agent.models import Agent, Title
 from app.connection import Connection, ConnectionParam, ConnectionFunctionState, ServiceFunctionState, connection_service
 from app.services import service, native_service_codes_for_service
 from app.services.models import Service
-from app.services.protocols import ProtocolConfig, bind_protocol_connection, reset_protocol_connection
+from app.services.protocols import ProtocolConfig, bind_protocol_connection, protocol_parameters, reset_protocol_connection
 from app.services.schemas import ServiceCreate, ServiceUpdate, ServiceGlobalParamsUpdate, ServiceGlobalParamUpdate, FileShareConfig, ConnectionSchema, McpAuth, McpConfig
 from app.services.projections import to_public
 from app.services.protocol_migration import _convert_legacy_tools, _introduces_protocols, _legacy_tools_converted
@@ -67,6 +67,29 @@ async def test_open_mcp_does_not_invent_a_password_parameter(db):
     options = await connection_service.connection_tool_options()
     option = next(item for item in options if item["id"] == provider.id)
     assert "password" not in option["connection_schema"]["params"]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["none", "bearer", "header", "query"])
+async def test_rest_projects_only_declared_connection_parameters(db, mode):
+    declared = {"token": {"type": "password"}} if mode != "none" else {}
+    provider = await service.create_service(ServiceCreate(code=f"synthetic-rest-{mode}", label="Synthetic REST",
+        rest_config=RestConfig(base_url="https://api.example.test", auth=RestAuth(type=mode, param="token")),
+        connection_schema=ConnectionSchema.model_validate({"params": declared})))
+    assert provider.rest_config["auth"]["password_param"] == "password"
+    assert set(to_public(provider).connection_schema.params) == declared.keys()
+
+    # Earlier saves could materialize the unrelated Mail definition in the Service.
+    provider.connection_schema = {"params": {**declared, "password": protocol_parameters("mail")["password"]}}
+    await db.flush()
+    option = next(item for item in await connection_service.connection_tool_options() if item["id"] == provider.id)
+    assert set(option["connection_schema"]["params"]) == declared.keys()
+    updated = await service.update_service(provider.id, ServiceUpdate(label="Renamed REST",
+        connection_schema=ConnectionSchema.model_validate({"params": declared})))
+    assert set(updated.connection_schema["params"]) == declared.keys()
+    with pytest.raises(ValueError, match="declared connection parameters"):
+        await service.update_service(provider.id, ServiceUpdate(
+            rest_config=RestConfig(base_url="https://api.example.test", auth=RestAuth(type="bearer", param="password"))))
 
 
 @pytest.mark.asyncio
@@ -284,5 +307,6 @@ async def test_disabling_mail_preserves_credentials_referenced_by_another_protoc
     schema = service.connection_schema_for_service(tool)["params"]
     assert "imap_host" not in schema
     assert schema["password"]["type"] == "password" and "email_address" in schema
+    assert not to_public(tool).connection_schema.params["password"].builtin
     assert tool.global_params["password"] == retained
     assert to_public(tool).has_api and not to_public(tool).has_mail

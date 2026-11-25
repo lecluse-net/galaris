@@ -791,14 +791,6 @@ watch(dialogOpen, open => {
   }
 })
 
-watch(hasApi, enabled => {
-  if (!enabled || editingTool.value?.rest_config) return
-  const parameter = form.value.rest_config.auth.param
-  if (!connParams.value.some(param => param.name === parameter)) {
-    connParams.value.push({ name: parameter, type: 'password', label: t('services.restTokenParam'), options: [], required: false, description: '', default: '' })
-  }
-})
-
 // Connection parameter names used by authentication selects.
 const connParamNames = computed(() =>
   connParams.value.map(param => param.name).filter(name => name.trim() !== '')
@@ -888,7 +880,7 @@ watch(hasMessenger, (on) => {
 const emptyListenerConfig = (): ListenerConfig => ({ connection_key: '' })
 const emptyRestConfig = (): RestConfig => ({
   base_url: '',
-  auth: { type: 'bearer', param: 'api_token', header_name: 'X-API-Key', query_name: 'api_key', login_param: 'login', password_param: 'password' },
+  auth: { type: 'none', param: '', header_name: 'X-API-Key', query_name: 'api_key', login_param: '', password_param: '' },
   header_params: {}, timeout: 60, max_response_bytes: 2097152,
 })
 const emptyTaskConfig = (): TaskConfig => ({ label: '', objective: '' })

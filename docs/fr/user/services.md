@@ -47,6 +47,10 @@ Service. Le choix **OAuth 2.0** affiche **Connecter le compte** dans la connexio
 Si vous changez ensuite de méthode, la confirmation indique quels identifiants seront effacés.
 Suivez le [parcours d’autorisation OAuth](../admin/service-administration.md#mcp-oauth).
 
+Quand vous ajoutez le protocole REST, l’éditeur sélectionne **Aucune authentification**.
+Si l’API exige un identifiant, associez-le à un paramètre de connexion déclaré.
+Voir [Activer une API REST](../admin/service-administration.md#rest-api).
+
 Le catalogue initial propose Qonto, Nextcloud, GitLab, Matrix, n8n, Redmine et Telegram.
 Les fiches expliquent les capacités proposées. Une API REST ne garantit pas toutes les
 fonctionnalités du produit ; les droits et limites du fournisseur continuent de s'appliquer.

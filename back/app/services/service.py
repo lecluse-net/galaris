@@ -5,6 +5,7 @@ from collections.abc import Collection
 
 from loguru import logger
 import yaml
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import load_only
 
@@ -16,7 +17,7 @@ from .rest_contracts import RestConfig
 from .administration_lock import lock_services, finish_write
 from .deletion import DeletionConflict, ServiceDeletionImpact
 from .parameter_definitions import with_standard_params
-from .protocols import ProtocolConfig, protocol_parameter_bindings, referenced_protocol_params, with_protocol_params
+from .protocols import ProtocolConfig, protocol_parameter_bindings, protocol_parameters, referenced_protocol_params, with_protocol_params
 from .mcp_authentication import mcp_auth_mode, mcp_secret_parameters, replace_mcp_auth
 from .capabilities import CONFIG_FIELDS, configuration_values, effective_capabilities, resolve_selections
 from .secrets import (
@@ -63,12 +64,23 @@ async def get_service_codes(service_ids: set[int]) -> dict[int, str]:
 
 
 def connection_schema_for_service(record: ServiceModel) -> Dict[str, Any]:
-    schema = with_protocol_params(record.connection_schema or {},
+    declared = record.connection_schema or {}
+    rest_params = _rest_parameter_references(record.rest_config) & (declared.get("params") or {}).keys()
+    schema = with_protocol_params(declared,
         mail=ProtocolConfig.model_validate(record.mail_config) if record.mail_config is not None else None,
         calendar=ProtocolConfig.model_validate(record.calendar_config) if record.calendar_config is not None else None,
-        preserve=referenced_protocol_params(record.rest_config, record.messenger_config,
-            record.file_share_config, record.listener_config, mcp_config=record.mcp_config))
+        preserve=rest_params | referenced_protocol_params(record.messenger_config, record.file_share_config,
+            record.listener_config, mcp_config=record.mcp_config))
     params = cast(dict[str, dict[str, Any]], schema.get("params") or {})
+    for name in rest_params & params.keys():
+        definition = params[name]
+        description = definition.get("description") or ""
+        for protocol in ("mail", "calendar"):
+            if (getattr(record, f"{protocol}_config") is None and definition.get("builtin")
+                and description == f"services.connectionParamDescriptions.{protocol}.{name}"):
+                # A retained reference is now an ordinary, editable Service parameter.
+                params[name] = {**definition, "builtin": False, "label": "", "description": ""}
+                break
     for name in mcp_secret_parameters(record.mcp_config) & params.keys():
         params[name] = {**params[name], "type": "password"}
     return with_standard_params(schema, code=record.code,
@@ -356,21 +368,25 @@ def _validate_rest_config(config: RestConfig | None, schema: dict[str, Any]) -> 
     if config is None:
         return
     definitions = cast(dict[str, dict[str, Any]], schema.get("params") or {})
-    names = list(config.header_params.values())
     if config.base_url.startswith("${connection:"):
         name = config.base_url[len("${connection:"):-1]
-        names.append(name)
         if definitions.get(name, {}).get("type") == "password":
             raise ValueError("The REST base URL parameter cannot be secret")
-    auth = config.auth
-    secret_names = ([auth.password_param] if auth.type == "basic" else [auth.param] if auth.type != "none" else [])
-    names.extend(secret_names)
-    if auth.type == "basic":
-        names.append(auth.login_param)
-    if any(not name or name not in definitions for name in names):
+    if any(not name or name not in definitions for name in config.connection_parameters()):
         raise ValueError("REST configuration must reference declared connection parameters")
-    if any(definitions[name].get("type") != "password" for name in secret_names):
+    secret = config.auth.secret_parameter()
+    if secret is not None and definitions[secret].get("type") != "password":
         raise ValueError("REST authentication parameters must use the password type")
+
+
+def _rest_parameter_references(config: object) -> set[str]:
+    if not config:
+        return set()
+    try:
+        return RestConfig.model_validate(config).connection_parameters()
+    except ValidationError:
+        # A malformed saved REST setting cannot add fields to connection forms.
+        return set()
 
 
 def _to_internal(record: ServiceModel) -> Service:
@@ -433,8 +449,10 @@ async def create_service(data: ServiceCreate, *, commit: bool = True) -> Service
     if not service_can_edit(data.code):
         raise ValueError("Integrated Service definitions are software-owned")
     db = get_db()
-    connection_schema = with_standard_params(with_protocol_params(data.connection_schema.model_dump(),
-        mail=data.mail_config, calendar=data.calendar_config), code=data.code,
+    declared = data.connection_schema.model_dump()
+    rest_params: set[str] = data.rest_config.connection_parameters() if data.rest_config else set()
+    connection_schema = with_standard_params(with_protocol_params(declared,
+        mail=data.mail_config, calendar=data.calendar_config, preserve=rest_params & data.connection_schema.params.keys()), code=data.code,
         file_share_config=data.file_share_config.model_dump() if data.file_share_config else None,
         messenger_config=data.messenger_config.model_dump() if data.messenger_config else None,
         has_mail=data.mail_config is not None)
@@ -530,13 +548,7 @@ async def update_service(service_id: int, data: ServiceUpdate, *, commit: bool =
         mail = cast(dict[str, Any] | None, target["mail_config"])
         used = referenced_protocol_params(*(target[name] for name in CONFIG_FIELDS.values()
             if name not in {"mcp_config", "rest_config"}), mcp_config=target_mcp)
-        if rest := target["rest_config"]:
-            config = RestConfig.model_validate(rest)
-            used.update(referenced_protocol_params(config.base_url, config.header_params))
-            if config.auth.type == "basic":
-                used.update((config.auth.login_param, config.auth.password_param))
-            elif config.auth.type != "none":
-                used.add(config.auth.param)
+        used.update(_rest_parameter_references(target["rest_config"]))
         if mail is not None and not mail.get("param_map") and not mail.get("settings"):
             used.update(str(binding["legacy_parameter"]) for binding in protocol_parameter_bindings("mail").values())
         retired_mcp_params.difference_update(used)
@@ -579,21 +591,33 @@ async def update_service(service_id: int, data: ServiceUpdate, *, commit: bool =
                 values.get("mail_config") if "mail_config" in data.model_fields_set else record.mail_config) is not None,
             messenger=target_messenger_config is not None,
         )
-    target_connection_schema = with_protocol_params(target_connection_schema,
+    raw_rest_config = values.get("rest_config") if "rest_config" in data.model_fields_set else record.rest_config
+    rest_config = RestConfig.model_validate(raw_rest_config) if raw_rest_config else None
+    rest_params: set[str] = rest_config.connection_parameters() if rest_config else set()
+    declared: dict[str, dict[str, Any]] = dict(target_connection_schema.get("params") or {})
+    for protocol in ("mail", "calendar"):
+        field = f"{protocol}_config"
+        if getattr(record, field) is None or field not in data.model_fields_set or values.get(field) is not None:
+            continue
+        old_params = cast(dict[str, dict[str, Any]], record.connection_schema.get("params") or {})
+        for name, definition in protocol_parameters(protocol).items():
+            previous = old_params.get(name)
+            if name in rest_params and previous and previous.get("builtin") and previous.get("description") == definition["description"]:
+                declared.setdefault(name, previous)
+    target_connection_schema = with_protocol_params({**target_connection_schema, "params": declared},
         mail=(data.mail_config if "mail_config" in data.model_fields_set else
             ProtocolConfig.model_validate(record.mail_config) if record.mail_config is not None else None),
         calendar=(data.calendar_config if "calendar_config" in data.model_fields_set else
             ProtocolConfig.model_validate(record.calendar_config) if record.calendar_config is not None else None),
-        preserve=referenced_protocol_params(*(values.get(name) if name in data.model_fields_set else getattr(record, name)
-            for name in ("rest_config", "messenger_config", "file_share_config", "listener_config")),
+        preserve=(rest_params & declared.keys()) | referenced_protocol_params(*(values.get(name) if name in data.model_fields_set else getattr(record, name)
+            for name in ("messenger_config", "file_share_config", "listener_config")),
             mcp_config=values.get("mcp_config") if "mcp_config" in data.model_fields_set else record.mcp_config))
     if target_messenger_config is not None:
         await _validate_messenger_config(
             target_messenger_config,
             target_connection_schema,
         )
-    rest_config = values.get("rest_config") if "rest_config" in data.model_fields_set else record.rest_config
-    _validate_rest_config(RestConfig.model_validate(rest_config) if rest_config else None, target_connection_schema)
+    _validate_rest_config(rest_config, target_connection_schema)
     for field in data.model_fields_set:
         if field == "expected_mcp_auth_type":
             continue
@@ -621,6 +645,7 @@ async def update_service(service_id: int, data: ServiceUpdate, *, commit: bool =
         elif field == "connection_schema" and value is not None:
             connection_schema = cast(Dict[str, Any], value)
             await _validate_connection_schema(connection_schema)
+            value = target_connection_schema
         setattr(record, field, value)
     if auth_changed:
         from app.connection.facade import clear_service_mcp_authorizations, clear_service_param_values
@@ -632,7 +657,7 @@ async def update_service(service_id: int, data: ServiceUpdate, *, commit: bool =
             name: definition for name, definition in params.items() if name not in retired_mcp_params}}
         record.global_params = {name: entry for name, entry in (record.global_params or {}).items()
                                 if name not in retired_mcp_params}
-    if {"mcp_config", "connection_schema", "file_share_config", "messenger_config", "mail_config", "calendar_config"} & data.model_fields_set:
+    if {"mcp_config", "rest_config", "connection_schema", "file_share_config", "messenger_config", "mail_config", "calendar_config"} & data.model_fields_set:
         record.connection_schema = connection_schema_for_service(record)
         record.global_params = merge_default_global_params(
             record.global_params,

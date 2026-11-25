@@ -34,17 +34,22 @@ test('REST Service configuration persists with connection credentials kept write
 
   await addServiceProtocol(page, 'REST')
   await expect(editor.getByRole('button', { name: 'Créer', exact: true })).toBeEnabled()
+  const authentication = editor.getByRole('combobox', { name: 'Authentification API', exact: true })
+  await expect(authentication).toHaveValue('Aucune authentification')
+  await expect(editor.getByLabel('Paramètre secret du token API', { exact: true })).toHaveCount(0)
+  await expect(editor.getByRole('group', { name: /^Paramètre / })).toHaveCount(0)
   await expect(editor.getByLabel('Adresse de base de l’API', { exact: true })).toHaveValue('')
   await editor.getByLabel('Adresse de base de l’API', { exact: true }).fill('https://api.example.test/v1')
+  await selectOption(page, authentication, 'Token Bearer')
   await editor.getByLabel('Paramètre secret du token API', { exact: true }).press('ArrowDown')
   await page.getByRole('option', { name: 'Nouveau paramètre…', exact: true }).click()
-  await expect(editor.getByText('api_token_2', { exact: true })).toBeVisible()
-  await editor.getByRole('group', { name: 'Paramètre api_token_2', exact: true }).getByRole('button', { name: 'Supprimer', exact: true }).click()
+  await expect(editor.getByText('token', { exact: true })).toBeVisible()
+  await editor.getByRole('group', { name: 'Paramètre token', exact: true }).getByRole('button', { name: 'Supprimer', exact: true }).click()
   const parameterConfirmation = page.getByRole('dialog').filter({ hasText: 'Supprimer le paramètre' })
   await expect(parameterConfirmation).toContainText('API REST')
   await parameterConfirmation.getByRole('button', { name: 'Annuler', exact: true }).click()
   await expect(parameterConfirmation).toHaveCount(0)
-  await expect(editor.getByText('api_token_2', { exact: true })).toBeVisible()
+  await expect(editor.getByText('token', { exact: true })).toBeVisible()
   const create = page.waitForResponse(response => response.url().endsWith('/api/services') && response.request().method() === 'POST')
   await editor.getByRole('button', { name: 'Créer', exact: true }).click()
   const createdResponse = await create
@@ -54,9 +59,15 @@ test('REST Service configuration persists with connection credentials kept write
   await expect(page.getByRole('article', { name: toolLabel, exact: true })).toBeVisible()
   expect(tool.has_api).toBe(true)
   expect(tool.rest_config.base_url).toBe('https://api.example.test/v1')
-  expect(tool.rest_config.auth.param).toBe('api_token_2')
-  expect(tool.connection_schema.params.api_token_2.type).toBe('password')
-  expect(tool.connection_schema.params).not.toHaveProperty('api_url')
+  expect(tool.rest_config.auth.param).toBe('token')
+  expect(Object.keys(tool.connection_schema.params)).toEqual(['token'])
+  expect(tool.connection_schema.params.token.type).toBe('password')
+  // Older definitions include Basic defaults even when Bearer is selected.
+  const legacy = await request.put(`/api/services/${tool.id}`, { headers, data: {
+    rest_config: { ...tool.rest_config, auth: { type: 'bearer', param: 'token' } },
+  } })
+  expect(legacy.ok(), await legacy.text()).toBe(true)
+  expect(Object.keys((await legacy.json()).connection_schema.params)).toEqual(['token'])
   const token = 'synthetic-rest-connection-token'
   const agent = await (await request.get(`/api/agents/${fixture.agent_id}`, { headers })).json()
   await page.getByRole('tab', { name: 'Connexions', exact: true }).click()
@@ -82,6 +93,7 @@ test('REST Service configuration persists with connection credentials kept write
     await selectOption(page, field, toolLabel)
   }
   await chooseGroupedTool(toolSelect, 'grouped-connection-tools.png')
+  await expect(connectionEditor.locator('input[type="password"]')).toHaveCount(1)
   await connectionEditor.getByLabel('Paramètre secret du token API *', { exact: true }).fill(token)
   const connectionCreated = page.waitForResponse(response => response.url().endsWith('/api/connections') && response.request().method() === 'POST')
   await connectionEditor.getByRole('button', { name: 'Créer', exact: true }).click()
@@ -90,7 +102,7 @@ test('REST Service configuration persists with connection credentials kept write
   const connection = await connectionResponse.json()
   await expect(connectionEditor).toHaveCount(0)
   const globals = await request.put(`/api/services/${tool.id}/global-params`, { headers, data: { params: {
-    api_token_2: { value: token },
+    token: { value: token },
   } } })
   expect(globals.ok(), await globals.text()).toBe(true)
   expect(await globals.text()).not.toContain(token)
@@ -122,7 +134,7 @@ test('REST Service configuration persists with connection credentials kept write
   await row.getByRole('button', { name: "Modifier le service", exact: true }).click()
   await editor.getByRole('tab', { name: 'REST', exact: true }).click()
   await expect(editor.getByLabel('Adresse de base de l’API', { exact: true })).toHaveValue('https://api.example.test/v1')
-  await expect(editor.getByText('api_token_2', { exact: true })).toBeVisible()
+  await expect(editor.getByText('token', { exact: true })).toBeVisible()
   await editor.getByRole('button', { name: 'Supprimer le protocole', exact: true }).click()
   await page.getByRole('dialog').filter({ hasText: 'Supprimer le protocole REST de ce service' }).getByRole('button', { name: 'Supprimer', exact: true }).click()
   const save = page.waitForResponse(response => response.url().endsWith(`/api/services/${tool.id}`) && response.request().method() === 'PUT')

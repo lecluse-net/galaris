@@ -309,19 +309,20 @@ Ces méthodes exigent les métadonnées OAuth MCP ; le parcours par code d’aut
 PKCE S256. Elles ne concernent pas stdio ni les API REST. HTTPS est requis, sauf sur localhost. Un serveur privé peut
 utiliser des endpoints OAuth sur son origine ; les autres origines découvertes doivent être publiques.
 
+<a id="rest-api"></a>
+
 ## Activer une API REST
 
-Dans **Services → Nouveau service** ou l'édition d'un Service configurable, cocher **Activer API**.
-Un même Service peut proposer MCP et REST. L'onglet **API REST** configure l'adresse de base,
-l'authentification (aucune, Bearer, en-tête, Basic ou paramètre de requête), le délai maximum
+Dans **Services → Nouveau service** ou l'édition d'un service configurable, choisir
+**Ajouter un protocole → REST**. Un même service peut proposer MCP et REST. L'onglet **REST**
+configure l'adresse de base, l'authentification (aucune, Bearer, en-tête, Basic ou paramètre de requête), le délai maximum
 et la taille maximale des réponses. Aucun catalogue d'opérations ou document OpenAPI n'est requis.
 
-Saisir directement l'adresse HTTP(S) dans l'onglet **API REST**, comme pour MCP :
-elle appartient à le service et est commune à toutes ses connexions.
-L'activation propose le paramètre `api_token` (mot de passe). Choisir les noms des
-paramètres de connexion pour l'authentification et les en-têtes supplémentaires ; ne jamais
-placer un token dans l'adresse ou le code d'un appel. Pour Basic, déclarer aussi un paramètre
-de connexion pour l'identifiant et sélectionner le paramètre secret du mot de passe.
+Saisir directement l'adresse HTTP(S) dans l'onglet **REST**. Elle est commune à toutes les
+connexions du service. Le protocole REST démarre avec **Aucune authentification**. Si l’API exige
+des identifiants ou des en-têtes supplémentaires, sélectionner les paramètres de connexion
+existants ou choisir **Nouveau paramètre…**. Pour Basic, sélectionner un paramètre pour
+l’identifiant et un paramètre secret pour le mot de passe.
 
 Renseigner ensuite les valeurs des identifiants et des en-têtes dans **Paramètres** ou **Connexions → Modifier**.
 L'héritage, les surcharges, les valeurs imposées, le chiffrement et le masquage existants

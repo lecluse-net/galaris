@@ -17,6 +17,11 @@ class RestAuth(BaseModel):
     login_param: str = "login"
     password_param: str = "password"
 
+    def secret_parameter(self) -> str | None:
+        if self.type == "basic":
+            return self.password_param
+        return self.param if self.type != "none" else None
+
 
 class RestConfig(BaseModel):
     """Credentials are parameter names, never literal tokens in a Service definition."""
@@ -29,6 +34,16 @@ class RestConfig(BaseModel):
     timeout: int = Field(default=60, ge=1, le=300)
     max_response_bytes: int = Field(default=2_097_152, ge=1, le=16_777_216)
     effect_receipt: Literal["n8n_data_table_insert"] | None = None
+
+    def connection_parameters(self) -> set[str]:
+        names = set(self.header_params.values())
+        if self.base_url.startswith("${connection:"):
+            names.add(self.base_url[len("${connection:"):-1])
+        if (secret := self.auth.secret_parameter()) is not None:
+            names.add(secret)
+        if self.auth.type == "basic":
+            names.add(self.auth.login_param)
+        return names
 
     @model_validator(mode="after")
     def validate_configuration(self) -> "RestConfig":
