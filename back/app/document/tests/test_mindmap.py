@@ -8,7 +8,6 @@ from zipfile import ZipFile
 from PIL import Image
 import pytest
 from fastmcp import Client
-from pydantic import TypeAdapter
 from sqlalchemy import select
 
 from app.connection import facade as connections
@@ -16,11 +15,14 @@ from app.connection.models import Connection
 from app.document import mcp, resource_service
 from app.document.file_import import DocumentImportSource, convert_document_import
 from app.document.mindmap import INITIAL_CONTENT, MindMap
-from app.document.mindmap.commands import AddBranch, BranchCommand, MoveBranch, NewBranch, RemoveBranch, apply_commands
+from app.document.mindmap.commands import AddBranch, MoveBranch, RemoveBranch, apply_commands
 from app.document.mindmap.exchange import MEDIA_TYPE, export_source, import_source
+from app.file_share import mcp as files
 from app.services import McpToolContext, build_galaris_fastmcp, sync_integrated_service_connections
 from app.services.contracts import EXECUTION_META_KEY
 from app.services.models import Service
+
+from .revision_helpers import revision_clock as revision_clock
 
 
 FREEPLANE = b"""<?xml version="1.0"?>
@@ -187,52 +189,58 @@ async def test_uploaded_map_uses_normal_revisions_and_authorized_export(client):
 
 
 @pytest.mark.asyncio
-async def test_mcp_batch_rejects_stale_revisions_unauthorized_writes_and_partial_operations(db, document_tool_agents):
+async def test_mcp_batch_rejects_stale_revisions_unauthorized_writes_and_partial_operations(db, document_tool_agents, revision_clock):
     owner, peer = document_tool_agents
     owner_ctx = McpToolContext(agent_id=owner.id, runtime="internal")
     peer_ctx = McpToolContext(agent_id=peer.id, runtime="internal")
-    created = json.loads(await mcp.mindmap_create(owner_ctx, title="Synthetic map"))
+    created = json.loads(await files.create_file(owner_ctx, "document://", INITIAL_CONTENT,
+        name="Synthetic map", document_format="mindmap"))
     uri = created["uri"]
-    assert created["root_id"] == "root"
-    read = json.loads(await mcp.mindmap_read(owner_ctx, uri))
-    root, revision = read["root_id"], read["revision"]
+    read = json.loads(await files.read_file(owner_ctx, uri, selector="/nodes"))
+    root, revision = json.loads(read["content"])["root_id"], read["revision"]
     chart_data = {"version": 1, "type": "bar", "title": "Trial count", "rows": [{"label": "April", "value": 8}]}
     encoded = quote(json.dumps(chart_data), safe="")
     body = (f'<p><strong>Measured result</strong></p><svg data-galaris-chart="{encoded}" height="40" width="60">'
             '<title>Trial count</title><rect height="8" width="15" x="5" y="22"></rect><text x="5" y="38">April 8</text></svg>')
-    commands = TypeAdapter(list[BranchCommand]).validate_python([
+    commands = [
         {"operation": "add", "node_id": "branch", "parent_id": root, "title": "Main branch", "checked": True},
         {"operation": "add", "node_id": "child", "parent_id": "branch", "title": "Child", "checked": False},
         {"operation": "edit", "node_id": "child", "title": "Edited child",
          "icon": "emoji:1F680", "body_html": body},
         {"operation": "edit", "node_id": "branch", "checked": None},
-    ])
+    ]
+
+    async def edit(ctx, revision, commands):
+        return json.loads(await files.edit_file(ctx, uri, content=json.dumps(commands),
+            expected_revision=revision, selector="/nodes"))
+
     with pytest.raises(PermissionError):
-        await mcp.mindmap_edit(peer_ctx, uri, revision, commands)
+        await edit(peer_ctx, revision, commands)
     with pytest.raises(PermissionError):
-        await mcp.mindmap_add(peer_ctx, uri, revision, [
-            NewBranch(node_id="unauthorized", parent_id=root, title="Unauthorized"),
-        ])
-    edited = json.loads(await mcp.mindmap_edit(owner_ctx, uri, revision, commands))
-    assert edited["revision"] == revision + 1 and edited["total"] == 3
-    node = json.loads(await mcp.mindmap_read(owner_ctx, uri, node_id="child"))["node"]
+        await files.write_file(peer_ctx, uri, "<p>Unauthorized</p>", expected_revision=revision,
+            selector="root/body_html")
+    edited = await edit(owner_ctx, revision, commands)
+    assert edited["revision"] == revision + 1
+    await revision_clock.settle()
+    node = json.loads(json.loads(await files.read_file(owner_ctx, uri, selector="child"))["content"])
     assert node["icon"] == "emoji:1F680"
     assert node["body_html"] == body
     assert node["checked"] is False
-    with pytest.raises(resource_service.DocumentConflictError):
-        await mcp.mindmap_edit(owner_ctx, uri, revision, commands)
+    with pytest.raises(files.FileEditRejected, match="revision conflict"):
+        await edit(owner_ctx, revision, commands)
 
-    with pytest.raises(ValueError, match="outside"):
-        await mcp.mindmap_edit(owner_ctx, uri, edited["revision"], [
-            AddBranch(operation="add", node_id="discarded", parent_id=root, title="Never saved"),
-            MoveBranch(operation="move", node_id="branch", parent_id="child"),
+    with pytest.raises(files.FileEditRejected, match="outside"):
+        await edit(owner_ctx, edited["revision"], [
+            {"operation": "add", "node_id": "discarded", "parent_id": root, "title": "Never saved"},
+            {"operation": "move", "node_id": "branch", "parent_id": "child"},
         ])
-    unchanged = json.loads(await mcp.mindmap_read(owner_ctx, uri, offset=1, limit=2))
+    unchanged = json.loads(await files.read_file(owner_ctx, uri, selector="/nodes"))
     assert unchanged["revision"] == edited["revision"]
-    assert [(node["id"], node["title"]) for node in unchanged["nodes"]] == [
+    branches = json.loads(unchanged["content"])["nodes"][1:]
+    assert [(node["id"], node["title"]) for node in branches] == [
         ("branch", "Main branch"), ("child", "Edited child"),
     ]
-    assert unchanged["nodes"][0]["checked"] is None
+    assert branches[0]["checked"] is None
 
     from app.agent.dialogue_service import set_agent_membership
     from core.team import TeamModel
@@ -247,27 +255,55 @@ async def test_mcp_batch_rejects_stale_revisions_unauthorized_writes_and_partial
     ))
     await connections.set_management_scope(connection_id, "team", authorized=True)
     with pytest.raises(resource_service.DocumentPermissionError):
-        await mcp.mindmap_read(peer_ctx, uri)
+        await files.read_file(peer_ctx, uri, selector="/nodes")
     grants = json.loads(await mcp.document_sharing(owner_ctx, uri))
     await mcp.document_share(owner_ctx, uri, agent_id=peer.id, access="edit",
         expected_lock_version=grants["lock_version"])
-    assert json.loads(await mcp.mindmap_read(peer_ctx, uri))["can_write"]
+    assert json.loads(await files.read_file(peer_ctx, uri, selector="/nodes"))["revision"] == edited["revision"]
     delegated = json.loads(await mcp.document_sharing(peer_ctx, uri))
     assert delegated["can_manage"]
     shared = json.loads(await mcp.document_share(peer_ctx, uri, team_id=team.id, access="read",
         expected_lock_version=delegated["lock_version"]))
     assert ("team", team.id) in {(grant["kind"], grant["id"]) for grant in shared["grants"]}
-    revised = json.loads(await mcp.mindmap_add(peer_ctx, uri, edited["revision"], [
-        NewBranch(node_id="delegated", parent_id=root, title="Delegated branch"),
-    ]))
+    revised = await edit(peer_ctx, edited["revision"], [
+        {"operation": "add", "node_id": "delegated", "parent_id": root, "title": "Delegated branch"},
+    ])
     assert revised["revision"] == edited["revision"] + 1
     await set_agent_membership(team.id, owner.id, False)
     with pytest.raises(PermissionError):
-        await mcp.mindmap_read(peer_ctx, uri)
+        await files.read_file(peer_ctx, uri, selector="/nodes")
     with pytest.raises(PermissionError):
         await mcp.document_sharing(peer_ctx, uri)
     await connections.set_management_scope(connection_id, "all", authorized=True)
-    assert json.loads(await mcp.mindmap_read(peer_ctx, uri))["revision"] == revised["revision"]
+    assert json.loads(await files.read_file(peer_ctx, uri, selector="/nodes"))["revision"] == revised["revision"]
+
+    revised_body = "<p>New branch content.</p>"
+    written = json.loads(await files.write_file(peer_ctx, uri, revised_body,
+        expected_revision=revised["revision"], selector="child/body_html"))
+    assert written["revision"] == revised["revision"] + 1
+    first = json.loads(await files.read_file(owner_ctx, uri, max_chars=8, selector="child/body_html"))
+    second = json.loads(await files.read_file(owner_ctx, uri, offset=first["next_offset"],
+        revision=first["revision"], selector=first["selector"]))
+    assert first["content"] + second["content"] == revised_body
+    assert first["media_type"] == "text/html" and first["revision"] == written["revision"]
+    previous = json.loads(await files.read_file(owner_ctx, uri, revision=edited["revision"], selector="child/body_html"))
+    assert previous["content"] == body
+    with pytest.raises(resource_service.DocumentConflictError, match="revision conflict"):
+        await files.write_file(peer_ctx, uri, "<p>Stale content</p>", expected_revision=revised["revision"],
+            selector="child/body_html")
+    with pytest.raises(ValueError, match="does not exist"):
+        await files.write_file(peer_ctx, uri, "<p>Missing branch</p>", expected_revision=written["revision"],
+            selector="absent/body_html")
+    node = json.loads(json.loads(await files.read_file(owner_ctx, uri, selector="child"))["content"])
+    node["title"] = "Renamed child"
+    renamed = json.loads(await files.write_file(owner_ctx, uri, json.dumps(node),
+        expected_revision=written["revision"], selector="child"))
+    assert renamed["revision"] == written["revision"] + 1
+    complete = json.loads(await files.read_file(owner_ctx, uri))
+    assert complete["revision"] == renamed["revision"]
+    assert [(node["id"], node["title"]) for node in json.loads(complete["content"])["nodes"]] == [
+        (root, ""), ("branch", "Main branch"), ("child", "Renamed child"), ("delegated", "Delegated branch"),
+    ]
 
 
 @pytest.mark.asyncio
@@ -275,18 +311,21 @@ async def test_mcp_missing_branch_explains_how_to_add_it(db, agents):
     owner, _ = agents
     await sync_integrated_service_connections(owner.id)
     connection_id = await db.scalar(select(Connection.id).join(Service).where(
-        Connection.agent_id == owner.id, Service.code == "document",
+        Connection.agent_id == owner.id, Service.code == "file_sharing",
     ))
     assert connection_id is not None
-    for name in ("mindmap_add", "mindmap_edit"):
+    for name in ("file_edit", "file_write"):
         await connections.set_connection_function_state(connection_id, name, "enabled")
     owner_ctx = McpToolContext(agent_id=owner.id, runtime="internal")
-    created = json.loads(await mcp.mindmap_create(owner_ctx, title="Synthetic map"))
+    created = json.loads(await files.create_file(owner_ctx, "document://", INITIAL_CONTENT,
+        name="Synthetic map", document_format="mindmap"))
+    root = "root"
     await db.commit()
-    server = build_galaris_fastmcp(owner.id, enabled_service_codes={"document"})
-    arguments = {"document_id": created["uri"], "expected_revision": created["revision"]}
+    server = build_galaris_fastmcp(owner.id, enabled_service_codes={"document", "file_sharing"})
+    arguments = {"uri": created["uri"], "expected_revision": created["revision"], "selector": "/nodes"}
 
     async with Client(server) as client:
+        assert not any(tool.name.startswith("mindmap_") for tool in await client.list_tools())
         compiled = await client.call_tool("document_chart", {"chart_type": "bar",
             "rows": [{"label": "Trial & review", "value": 8}]})
         chart = json.loads(compiled.content[0].text)["html"]
@@ -296,38 +335,38 @@ async def test_mcp_missing_branch_explains_how_to_add_it(db, agents):
         assert invalid.is_error
         assert invalid.meta[EXECUTION_META_KEY]["outcome"] == "rejected"
 
-        result = await client.call_tool("mindmap_edit", {**arguments, "operations": [
+        result = await client.call_tool("file_edit", {**arguments, "content": json.dumps([
             {"operation": "edit", "node_id": "appendix"},
-        ]}, raise_on_error=False)
+        ])}, raise_on_error=False)
         assert result.is_error
         assert result.meta[EXECUTION_META_KEY]["outcome"] == "rejected"
         assert "appendix" in result.content[0].text
-        assert "mindmap_add" in result.content[0].text
+        assert "operation='add'" in result.content[0].text
 
-        empty_edit = await client.call_tool("mindmap_edit", {**arguments, "operations": [
-            {"operation": "edit", "node_id": created["root_id"]},
-        ]}, raise_on_error=False)
+        empty_edit = await client.call_tool("file_edit", {**arguments, "content": json.dumps([
+            {"operation": "edit", "node_id": root},
+        ])}, raise_on_error=False)
         assert empty_edit.is_error
         assert empty_edit.meta[EXECUTION_META_KEY]["outcome"] == "rejected"
         assert "field to change" in empty_edit.content[0].text
 
-        added = await client.call_tool("mindmap_add", {**arguments, "branches": [
-            {"node_id": "appendix", "parent_id": created["root_id"], "title": "Appendix", "body_html": chart},
-            {"node_id": "sources", "parent_id": "appendix", "title": "Sources"},
-        ]})
+        added = await client.call_tool("file_edit", {**arguments, "content": json.dumps([
+            {"operation": "add", "node_id": "appendix", "parent_id": root, "title": "Appendix", "body_html": chart},
+            {"operation": "add", "node_id": "sources", "parent_id": "appendix", "title": "Sources"},
+        ])})
         assert json.loads(added.content[0].text)["revision"] == created["revision"] + 1
-        stale = await client.call_tool("mindmap_add", {**arguments, "branches": [
-            {"node_id": "stale", "parent_id": created["root_id"], "title": "Stale"},
-        ]}, raise_on_error=False)
+        stale = await client.call_tool("file_edit", {**arguments, "content": json.dumps([
+            {"operation": "add", "node_id": "stale", "parent_id": root, "title": "Stale"},
+        ])}, raise_on_error=False)
         assert stale.is_error
         assert "revision conflict" in stale.content[0].text
 
-    saved = json.loads(await mcp.mindmap_read(owner_ctx, created["uri"]))
-    branch = json.loads(await mcp.mindmap_read(owner_ctx, created["uri"], node_id="appendix"))["node"]
+    saved = json.loads(await files.read_file(owner_ctx, created["uri"]))
+    branch = json.loads(json.loads(await files.read_file(owner_ctx, created["uri"], selector="appendix"))["content"])
     assert branch["body_html"] == chart
     assert saved["revision"] == created["revision"] + 1
-    assert [(node["id"], node["parent"]) for node in saved["nodes"]] == [
-        (created["root_id"], None), ("appendix", created["root_id"]), ("sources", "appendix"),
+    assert [(node["id"], node["parent"]) for node in json.loads(saved["content"])["nodes"]] == [
+        (root, None), ("appendix", root), ("sources", "appendix"),
     ]
 
 

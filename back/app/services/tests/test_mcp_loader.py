@@ -202,6 +202,38 @@ async def test_native_mcp_ignores_unknown_arguments_and_informs_the_model(monkey
 
 
 @pytest.mark.asyncio
+async def test_parallel_mounts_of_one_native_definition_keep_the_callers_context(monkeypatch):
+    from fastmcp import Client
+    from app.services import mcp_loader
+
+    callers = [(7, uuid4()), (7, uuid4()), (8, uuid4())]
+    barrier = asyncio.Barrier(len(callers))
+
+    async def schemes(ctx: mcp_loader.McpToolContext) -> str:
+        await barrier.wait()
+        return f"{ctx.agent_id}/{ctx.task_id}/{ctx.resource('marker')}"
+
+    definition = mcp_loader.McpToolDefinition(service_code="file_sharing", name="file_schemes",
+        description="Synthetic file schemes.", required_capabilities=frozenset(), function=schemes)
+    monkeypatch.setattr(mcp_loader, "load_mcp_tools", lambda: (definition,))
+    monkeypatch.setattr(mcp_loader, "list_enabled_native_mcp_definitions", AsyncMock(return_value=(definition,)))
+    monkeypatch.setattr(mcp_loader, "context_language", AsyncMock(return_value="en"))
+    monkeypatch.setattr("app.agent.record_scope_preflight", AsyncMock(return_value=SimpleNamespace(
+        decision="allow", operation_id=uuid4(), scope_revision=1)))
+    monkeypatch.setattr("app.agent.effective_capabilities", AsyncMock(return_value=frozenset({"execute"})))
+    monkeypatch.setattr("app.services.resource_effects.record_tool_resources", AsyncMock())
+
+    async def invoke(index, agent, task):
+        server = mcp_loader.build_galaris_fastmcp(agent, task_id=task, resources={"marker": index})
+        async with Client(server) as client:
+            result = await client.call_tool("file_schemes", {})
+            assert result.content[0].text == f"{agent}/{task}/{index}"
+
+    async with asyncio.timeout(10):
+        await asyncio.gather(*(invoke(index, *caller) for index, caller in enumerate(callers)))
+
+
+@pytest.mark.asyncio
 async def test_native_tool_timeout_is_bounded_and_cancels_the_operation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -393,7 +425,7 @@ async def test_internal_peer_message_without_task_reports_rejection_before_effec
     assert execution.outcome == "rejected"
     message = " ".join(part.text for part in result.content)
     assert mcp._message(language, "peer_task_required") in message
-    assert "conversation_task_submit" in message
+    assert "task_run" in message
     assert journal.await_args.args[0].error_code == "actionable"
     peer_request.assert_not_awaited()
     messenger.send_to_user.assert_not_awaited()
@@ -409,7 +441,7 @@ def test_mcp_loader_discovers_decorated_tools_by_service_code() -> None:
     assert {
         "task_get",
         "task_run",
-        "task_stop",
+        "task_cancel",
     } <= set(names["task"])
     assert {"agent_list", "agent_get", "team_list", "team_members"} <= set(names["agent"])
     assert "services_list" in names["service"]
@@ -482,8 +514,8 @@ def test_mcp_loader_discovers_decorated_tools_by_service_code() -> None:
             "skill_set_authorization", "skill_set_category_authorization", "skill_release_ownership"} == set(names["skills"])
     assert "skill_management" not in names
     assert {
-        "process_list", "process_get", "process_start", "process_list_runs",
-        "process_get_run", "process_analyze_run", "processus_get",
+        "process_start", "process_analyze_run",
+        "process_start_conversation", "process_prepare", "process_pending", "process_respond",
         "process_admin_engines",
         "process_admin_sync",
         "process_admin_list",
@@ -500,12 +532,16 @@ def test_mcp_loader_discovers_decorated_tools_by_service_code() -> None:
         "process_admin_analyze_run",
         "process_admin_delete_run",
     } <= set(names["process"])
+    assert all(name.startswith("process_") for name in names["process"])
+    assert {"process_list", "process_get", "process_list_runs", "process_get_run",
+            "process_definition_read", "process_run_inspect"}.isdisjoint(names["process"])
+    assert all(not name.startswith("service_admin_") for name in names["service"])
+    assert "topic_get" not in names["topic"]
     assert {"llm_call", "llm_calls", "documentation_catalog", "documentation_search", "incidents_list", "incident_get"} <= set(names["galaris"])
-    assert {"conversation_round_get", "voice_turn_get", "voice_call_start", "voice_call_stop", "voice_call_list"} <= set(names["chat"])
+    assert {"chat_round_get", "voice_turn_get", "voice_call_start", "voice_call_stop", "voice_call_list"} <= set(names["chat"])
     assert {"platform_admin", "voice", "audio", "image", "search"}.isdisjoint(names)
     assert {
         "topic_list",
-        "topic_get",
         "topic_items_list",
         "topic_create",
         "topic_update",
@@ -686,34 +722,28 @@ async def test_enabled_native_definition_projection_applies_every_visibility_fil
 ) -> None:
     from app.services import mcp_loader
 
-    async def enabled(_agent_id: int) -> set[str]:
-        return {"galaris", "file_sharing", "process"}
-
-    async def disabled(_agent_id: int) -> set[str]:
-        return {"task_stop"}
-
-    monkeypatch.setattr(mcp_loader, "get_enabled_integrated_service_codes", enabled)
-    monkeypatch.setattr(mcp_loader, "get_disabled_internal_function_names", disabled)
+    _catalog_connections(monkeypatch, {code: {} for code in ("task", "file_sharing", "process")},
+                         disabled={1: {"task_cancel"}})
 
     definitions = await mcp_loader.list_enabled_native_mcp_definitions(
         42,
         runtime="hermes",
         allowed_tool_names={
             "file_list",
-            "process_list",
+            "process_analyze_run",
             "process_start",
-            "task_stop",
+            "task_cancel",
         },
     )
 
     assert [definition.name for definition in definitions] == [
         "file_list",
-        "process_list",
+        "process_analyze_run",
         "process_start",
     ]
 
 
-def _conversation_connections(monkeypatch, configurations, *, disabled=None):
+def _catalog_connections(monkeypatch, configurations, *, disabled=None):
     from app.connection import facade as connections
     from app.services import service
     from app.services.schemas import Service
@@ -721,22 +751,26 @@ def _conversation_connections(monkeypatch, configurations, *, disabled=None):
     services = {index: Service(code=code, label=code, **config)
                 for index, (code, config) in enumerate(configurations.items(), 1)}
     active = [SimpleNamespace(id=index, service_id=index, active=True) for index in services]
-    monkeypatch.setattr(connections, "get_connections_by_agent", AsyncMock(return_value=active))
+    monkeypatch.setattr(connections, "active_connection_refs", AsyncMock(return_value=active))
     monkeypatch.setattr(connections, "get_disabled_function_names_many", AsyncMock(return_value=disabled or {}))
     monkeypatch.setattr(service, "get_services_by_ids", AsyncMock(return_value=services))
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("revoked", [False, True])
+@pytest.mark.parametrize("service_scope", ["usage", "personal"])
 async def test_conversation_projection_intersects_builtin_allowlist_and_function_policy(
     monkeypatch: pytest.MonkeyPatch,
     revoked: bool,
+    service_scope: str,
 ) -> None:
     from app.services import mcp_loader
+    from app.connection import facade as connections
 
-    _conversation_connections(monkeypatch, {
-        code: {} for code in ("galaris", "chat", "memory", "document", "file_sharing", "process", "agent", "task")
+    _catalog_connections(monkeypatch, {
+        code: {} for code in ("galaris", "chat", "memory", "document", "file_sharing", "process", "agent", "task", "skills", "service", "topic")
     }, disabled={4: {"document_sharing"}} if revoked else {})
+    monkeypatch.setattr(connections, "get_management_scope", AsyncMock(return_value=service_scope))
 
     definitions = await mcp_loader.list_enabled_native_mcp_definitions(
         42,
@@ -744,16 +778,39 @@ async def test_conversation_projection_intersects_builtin_allowlist_and_function
         allowed_tool_names={
             "agent_list",
             "agent_get",
-            "conversation_task_status",
-            "conversation_task_submit",
-            "conversation_task_resume",
-            "conversation_task_retry",
+            "task_get",
+            "task_submit",
+            "task_resume",
+            "task_retry",
             "file_search",
             "document_sharing",
             "process_start",
-            "process_list",
+            "process_start_conversation",
             "process_admin_get",
             "task_run",
+            "document_analyze",
+            "document_analysis_get",
+            "document_analysis_cancel",
+            "document_revision_list",
+            "document_revision_compare",
+            "document_chart",
+            "skills_list",
+            "skill_read",
+            "skill_update",
+            "file_schemes",
+            "dataset_query",
+            "file_create",
+            "file_write",
+            "file_append",
+            "file_edit",
+            "file_rename",
+            "file_to_pdf",
+            "services_list",
+            "service_connection_list",
+            "service_connection_create",
+            "topic_list",
+            "topic_items_list",
+            "topic_create",
         },
         conversation_only=True,
     )
@@ -761,32 +818,76 @@ async def test_conversation_projection_intersects_builtin_allowlist_and_function
     assert {definition.name for definition in definitions} == {
         "agent_list",
         "agent_get",
-        "conversation_task_status",
-        "conversation_task_submit",
-        "conversation_task_resume",
-        "conversation_task_retry",
+        "task_get",
+        "task_run",
+        "task_resume",
         "file_search",
-        "process_list",
+        "process_start_conversation",
         "document_sharing",
-    } - ({"document_sharing"} if revoked else set())
+        "skills_list",
+        "skill_read",
+        "file_schemes",
+        "dataset_query",
+        "services_list",
+        "topic_list",
+        "topic_items_list",
+    } - ({"document_sharing"} if revoked else set()) | (
+        {"service_connection_list"} if service_scope == "personal" else set()
+    )
 
 
 @pytest.mark.asyncio
-async def test_conversation_projection_keeps_voice_stop_as_call_control(
+@pytest.mark.parametrize("audio_model_available", [False, True])
+async def test_multimedia_conversation_exposes_readers_with_the_applicable_media_model(
+    monkeypatch: pytest.MonkeyPatch, audio_model_available: bool,
+) -> None:
+    from app.services import mcp_loader
+
+    _catalog_connections(monkeypatch, {"multimedia": {}})
+    available = {"audio_read"} if audio_model_available else set()
+    model_lookup = AsyncMock(return_value=frozenset(available))
+    monkeypatch.setattr("app.llm.available_media_functions", model_lookup)
+
+    definitions = await mcp_loader.list_enabled_native_mcp_definitions(42, runtime="internal", conversation_only=True)
+
+    assert {definition.name for definition in definitions} == {"image_read", "audio_transcribe"} | available
+    model_lookup.assert_awaited_once_with(42, candidates={"audio_read"})
+
+
+@pytest.mark.asyncio
+async def test_chat_exposes_voice_call_controls_but_excludes_inspection_in_conversation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from app.services import mcp_loader
 
-    _conversation_connections(monkeypatch, {"chat": {}})
+    _catalog_connections(monkeypatch, {"chat": {}})
 
     definitions = await mcp_loader.list_enabled_native_mcp_definitions(
         42,
         runtime="internal",
-        allowed_tool_names={"voice_call_stop", "voice_call_start", "voice_call_list", "voice_turn_get"},
+        allowed_tool_names={"voice_call_stop", "voice_call_start", "voice_call_list", "chat_round_get", "voice_turn_get"},
         conversation_only=True,
     )
 
-    assert {definition.name for definition in definitions} == {"voice_call_stop"}
+    assert {definition.name for definition in definitions} == {"voice_call_start", "voice_call_stop", "voice_call_list"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("conversation", [True, False])
+async def test_task_run_shares_its_name_and_preserves_contextual_replay_policy(monkeypatch, conversation):
+    from fastmcp import Client
+    from app.services import mcp_loader
+
+    _catalog_connections(monkeypatch, {"task": {}})
+    server = await mcp_loader.build_agent_galaris_fastmcp(
+        42, conversation_only=conversation, allowed_tool_names={"task_run", "task_submit"},
+    )
+    async with Client(server) as client:
+        (tool,) = await client.list_tools()
+
+    assert tool.name == "task_run"
+    assert tool.input_schema["required"] == ["objective"]
+    assert bool(tool.annotations and tool.annotations.idempotent_hint) == conversation
 
 
 @pytest.mark.asyncio
@@ -795,21 +896,12 @@ async def test_task_projection_excludes_conversation_control_tools(
 ) -> None:
     from app.services import mcp_loader
 
-    monkeypatch.setattr(
-        mcp_loader,
-        "get_enabled_integrated_service_codes",
-        AsyncMock(return_value={"task"}),
-    )
-    monkeypatch.setattr(
-        mcp_loader,
-        "get_disabled_internal_function_names",
-        AsyncMock(return_value=set()),
-    )
+    _catalog_connections(monkeypatch, {"task": {}})
 
     definitions = await mcp_loader.list_enabled_native_mcp_definitions(
         42,
         runtime="internal",
-        allowed_tool_names={"conversation_task_submit", "conversation_task_status"},
+        allowed_tool_names={"task_submit", "task_list", "task_pause", "task_resume", "task_retry"},
     )
 
     assert definitions == ()
@@ -821,7 +913,7 @@ async def test_web_search_is_available_in_conversation_mode(
 ) -> None:
     from app.services import mcp_loader
 
-    _conversation_connections(monkeypatch, {"browser": {}})
+    _catalog_connections(monkeypatch, {"browser": {}})
 
     definitions = await mcp_loader.list_enabled_native_mcp_definitions(
         42,
@@ -843,7 +935,7 @@ async def test_conversation_projection_requires_both_grants_on_the_same_bridge(
     from core.params.runtime_settings import runtime_settings
     monkeypatch.setattr(runtime_settings, "MESSENGER_ENABLED_CHANNELS", '["telegram"]')
 
-    _conversation_connections(monkeypatch, {
+    _catalog_connections(monkeypatch, {
         "opted-in": {"messenger_config": {"service": "telegram"}, "conversation_tools": {"native": ["messenger_room_history"]}},
         "opted-out": {"messenger_config": {"service": "telegram"}, "conversation_tools": {"external": ["messenger_room_history"]}},
     }, disabled={1: {"messenger_room_history"}} if revoked else {})
@@ -883,7 +975,7 @@ async def test_conversation_aggregate_skips_unchecked_external_mcp(
     params = AsyncMock(side_effect=AssertionError("unchecked MCP must not be resolved"))
     monkeypatch.setattr(
         connection_service,
-        "get_connections_by_agent",
+        "active_connection_refs",
         AsyncMock(return_value=[connection]),
     )
     monkeypatch.setattr(connection_service, "get_params_as_dict", params)
@@ -911,6 +1003,7 @@ async def test_conversation_aggregate_skips_unchecked_external_mcp(
         resources=ANY,
         allowed_tool_names=None,
         conversation_only=True,
+        _bindings=ANY,
     )
     # Discovery observes this exact run's server, including tools mounted later.
     run_tool_names = native_builder.await_args.kwargs["resources"]["run_tool_names"]
@@ -985,7 +1078,7 @@ async def test_mcp_loader_filters_by_tool_and_runtime() -> None:
     } <= management_names
     assert "process_admin_create" in management_names
     assert "process_admin_delete_run" in management_names
-    assert {"conversation_round_get", "voice_turn_get"} <= management_names
+    assert {"chat_round_get", "voice_turn_get"} <= management_names
 
 
 @pytest.mark.asyncio

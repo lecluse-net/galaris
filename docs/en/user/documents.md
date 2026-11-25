@@ -243,7 +243,7 @@ the text, hierarchy and charts in nodes.
 In Chat, ask the agent to create a mind map, read its nodes or edit them. It can
 also choose this format for a result that fits a tree, such as a plan grouped by
 workstream. Available functions and the agent's permissions determine what it can
-do. A write may require approval.
+do. The map tools are available under **File Sharing**. A write may require approval.
 You can ask it to insert an editable chart in a node by providing the values or their source.
 
 If you send a message with the map open beside Chat, the context can tell the agent

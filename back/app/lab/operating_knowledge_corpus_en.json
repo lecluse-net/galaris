@@ -547,8 +547,8 @@
             "agent_id": {
               "type": "integer"
             },
-            "referrer_connection_id": {
-              "type": "integer"
+            "service_code": {
+              "type": "string"
             },
             "referrer_user_id": {
               "type": "string"
@@ -622,7 +622,7 @@
           },
           "required": [
             "agent_id",
-            "referrer_connection_id",
+            "service_code",
             "referrer_user_id",
             "referrer_display_name",
             "title",
@@ -752,10 +752,10 @@
               ],
               "default": null
             },
-            "referrer_connection_id": {
+            "service_code": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -2232,7 +2232,7 @@
         "robustness"
       ],
       "input_data": {
-        "variable_value": "Create a Galaris Goal titled “Synthetic inspection” for agent 700. Exact description: <p>Inspect the synthetic device weekly.</p> The confirmed human referrer is demo-referrer (display name Demo Referrer), connection 701. Other defaults are suitable.",
+        "variable_value": "Create a Galaris Goal titled “Synthetic inspection” for agent 700. Exact description: <p>Inspect the synthetic device weekly.</p> The confirmed human referrer is demo-referrer (display name Demo Referrer), on the Matrix Service with code matrix. Other defaults are suitable.",
         "context": {
           "tool_responses": {
             "goal_create": [
@@ -2259,7 +2259,7 @@
             "name": "goal_create",
             "arguments": {
               "agent_id": 700,
-              "referrer_connection_id": 701,
+              "service_code": "matrix",
               "referrer_user_id": "demo-referrer",
               "referrer_display_name": "Demo Referrer",
               "title": "Synthetic inspection",
@@ -2272,7 +2272,7 @@
             "name": "goal_create",
             "arguments": {
               "agent_id": 700,
-              "referrer_connection_id": 701,
+              "service_code": "matrix",
               "referrer_user_id": "demo-referrer",
               "referrer_display_name": "Demo Referrer",
               "title": "Synthetic inspection",
@@ -2298,7 +2298,7 @@
               "tool": "goal_create",
               "arguments": {
                 "agent_id": 700,
-                "referrer_connection_id": 701,
+                "service_code": "matrix",
                 "referrer_user_id": "demo-referrer",
                 "referrer_display_name": "Demo Referrer",
                 "title": "Synthetic inspection",

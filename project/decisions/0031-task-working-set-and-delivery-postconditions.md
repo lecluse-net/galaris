@@ -73,7 +73,7 @@ stricte et produit une erreur d'incompatibilité. Cette négociation est entièr
 contient aucune branche conditionnelle par driver. Le contrôleur de conversation ne planifie pas :
 `@plan` et `@exec` y prouvent seulement qu'une Task durable doit être admise, sans appel LLM de
 routage supplémentaire. Cette admission est exécutée avant le modèle conversationnel par le même
-service idempotent que `conversation_task_submit`; la Task conserve la directive et la négocie
+service idempotent que `task_run` sans `agent_id`. La Task conserve la directive et la négocie
 ensuite avec les capacités déclarées de son driver.
 
 La projection de session Messenger résout enfin une room par UUID local ou identifiant externe,

@@ -93,7 +93,7 @@ def goal_cycle_work_instructions(
         "the missing fact and do not invent it or ask a question that requires it.\n"
         "Otherwise perform the useful work warranted by the remaining criteria. Only when "
         "the next action is an edit, read the current resource revision first. Only when "
-        "the next action is a Process launch, inspect that assigned Process with process_get "
+        "the next action is a Process launch, inspect that assigned Process URI with file_read "
         "before process_start to confirm its contract and inputs. These effect inspections "
         "are not prerequisites for an unrelated referrer question. Preserve "
         "verified facts, revisions and contributions. Explicitly report new evidence, "

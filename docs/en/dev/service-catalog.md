@@ -39,7 +39,7 @@ The `app.services.rename_domain` DbAdmin `BEFORE_EXPAND` action performs the dom
 It runs through `make sync-db` in development and `make update` during deployment. Clients
 must migrate `app.tools` to `app.services`, `/api/tools` to `/api/services`, `tool_id`/`tool_code`
 to `service_id`/`service_code`, `TOOL_ACCESS`/`TOOL_EDIT` to `SERVICE_ACCESS`/`SERVICE_EDIT`,
-`tool_admin_*` to `service_admin_*` and `tools_list` to `services_list`. Protocol-level MCP
+the former `tool_admin_*` and `service_admin_*` names to `service_*` and `tools_list` to `services_list`. Protocol-level MCP
 tools, their calls and indexes retain their terminology. Historical DbAdmin action keys
 remain stable for recovery.
 

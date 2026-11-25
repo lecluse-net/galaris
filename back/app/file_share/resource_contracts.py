@@ -118,6 +118,7 @@ class ResourceRead(BaseModel):
     next_offset: int | None = Field(default=None, ge=0)
     revision: int | None = Field(default=None, ge=1)
     etag: str | None = None
+    selector: str | None = None
 
 
 class EditorialResourceRead(ResourceRead):

@@ -280,15 +280,19 @@ async def test_mcp_run_lists_bound_reads_and_preserve_live_scope(db, workflow, c
     identities = [str(run.id) for run in reversed(runs)]
     actor = workflow.owner.id
     db.expunge_all()
-    operation = mcp.process_admin_list_runs if administrative else mcp.process_list_runs
     async with measured_reads(db, f"process-mcp-list-{administrative}-{count}") as reads:
-        results = await operation(McpToolContext(agent_id=actor, runtime="internal"), limit=count)
-    assert [item["id"] for item in results] == identities
-    assert all(item["output"] == {"result": [False, 0, None]} for item in results)
+        if administrative:
+            results = await mcp.process_admin_list_runs(McpToolContext(agent_id=actor, runtime="internal"), limit=count)
+            assert [item["id"] for item in results] == identities
+            assert all(item["output"] == {"result": [False, 0, None]} for item in results)
+        else:
+            from app.process import list_process_run_resources
+            results = await list_process_run_resources(actor_agent_id=actor, limit=count)
+            assert [item["uri"] for item in results] == [f"galaris://processes/runs/{identity}" for identity in identities]
     assert len(reads) <= 30, "Run list authorization must not issue queries for every row"
     assert "execution_state" not in reads.result_columns
     if connection is not None:
         await db.execute(update(Connection).where(Connection.id == connection.id).values(active=False))
         await db.commit()
         with pytest.raises(PermissionError):
-            await operation(McpToolContext(agent_id=actor, runtime="internal"), limit=count)
+            await mcp.process_admin_list_runs(McpToolContext(agent_id=actor, runtime="internal"), limit=count)

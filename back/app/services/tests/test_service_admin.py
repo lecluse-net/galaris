@@ -146,47 +146,47 @@ async def test_parameter_labels_choices_and_yaml_roundtrip(delegated, db):
 @pytest.mark.asyncio
 async def test_tool_connection_lifecycle_and_conflicts(delegated, db):
     ctx, recipient, _ = delegated
-    created = result(await mcp.service_admin_create(ctx, definition={
+    created = result(await mcp.service_create(ctx, definition={
         "code": f"synthetic_{uuid4().hex}", "label": "Synthetic custom integration",
         "connection_schema": {"params": {"count": {"type": "integer", "default": "2"}, "token": {"type": "password"}}},
     }))
     service_code = created["tool"]["code"]
     service_id, version = created["tool"]["id"], created["version"]
     for capability in ("mcp", "task", "file_share", "messenger", "listener"):
-        filtered = result(await mcp.service_admin_list(ctx, search=created["tool"]["code"], capability=capability))
+        filtered = result(await mcp.service_list(ctx, search=created["tool"]["code"], capability=capability))
         assert filtered["total"] == 0
-    assert result(await mcp.service_admin_list(ctx, search="service", capability="mcp"))["total"] == 1
-    changed = result(await mcp.service_admin_global_params_set(ctx, service_code, {"count": {"value": "3"}}, version))
-    stale = json.loads(await mcp.service_admin_update(ctx, service_code, {"label": "Stale"}, version))
+    assert result(await mcp.service_list(ctx, search="service", capability="mcp"))["total"] == 1
+    changed = result(await mcp.service_global_params_set(ctx, service_code, {"count": {"value": "3"}}, version))
+    stale = json.loads(await mcp.service_update(ctx, service_code, {"label": "Stale"}, version))
     assert stale["error"]["kind"] == "conflict"
-    connected = result(await connection_mcp.service_admin_connection_create(ctx, service_code, recipient, changed["version"]))
+    connected = result(await connection_mcp.service_connection_create(ctx, service_code, recipient, changed["version"]))
     connection_id = (await connection_service.get_connection_by_agent_service(service_id, recipient)).id
     assert connected["connection"]["active"] is False
     assert connected["connection"]["effective_params"]["count"]["value"] == "3"
-    current = result(await mcp.service_admin_get(ctx, service_code))
-    duplicate = json.loads(await connection_mcp.service_admin_connection_create(ctx, service_code, recipient, current["version"]))
+    current = result(await mcp.service_get(ctx, service_code))
+    duplicate = json.loads(await connection_mcp.service_connection_create(ctx, service_code, recipient, current["version"]))
     assert duplicate["error"]["kind"] == "conflict"
-    blocked = json.loads(await mcp.service_admin_delete(ctx, service_code, current["version"]))
+    blocked = json.loads(await mcp.service_delete(ctx, service_code, current["version"]))
     assert blocked["error"]["kind"] == "dependencies_blocking"
-    patched = result(await connection_mcp.service_admin_connection_params_set(ctx, service_code, recipient,
+    patched = result(await connection_mcp.service_connection_params_set(ctx, service_code, recipient,
                      {"count": {"value": "4"}}, connected["version"]))
     assert patched["connection"]["effective_params"]["count"]["origin"] == "local"
-    inherited = result(await connection_mcp.service_admin_connection_param_delete(ctx, service_code, recipient, "count", patched["version"]))
+    inherited = result(await connection_mcp.service_connection_param_delete(ctx, service_code, recipient, "count", patched["version"]))
     assert inherited["connection"]["effective_params"]["count"]["value"] == "3"
-    active = result(await connection_mcp.service_admin_connection_update(ctx, service_code, recipient, True, inherited["version"]))
-    revoked = result(await connection_mcp.service_admin_connection_function_set(ctx, service_code, recipient, "lookup", "disabled", active["version"]))
+    active = result(await connection_mcp.service_connection_update(ctx, service_code, recipient, True, inherited["version"]))
+    revoked = result(await connection_mcp.service_connection_function_set(ctx, service_code, recipient, "lookup", "disabled", active["version"]))
     assert revoked["function"]["effective"] is False
-    global_state = result(await mcp.service_admin_get(ctx, service_code))
-    await mcp.service_admin_function_set(ctx, service_code, "lookup", "disabled", global_state["version"])
-    current_connection = result(await connection_mcp.service_admin_connection_get(ctx, service_code, recipient))
-    overridden = result(await connection_mcp.service_admin_connection_function_set(ctx, service_code, recipient, "lookup", "enabled", current_connection["version"]))
+    global_state = result(await mcp.service_get(ctx, service_code))
+    await mcp.service_function_set(ctx, service_code, "lookup", "disabled", global_state["version"])
+    current_connection = result(await connection_mcp.service_connection_get(ctx, service_code, recipient))
+    overridden = result(await connection_mcp.service_connection_function_set(ctx, service_code, recipient, "lookup", "enabled", current_connection["version"]))
     assert overridden["function"]["global_state"] == "disabled"
     assert overridden["function"]["effective"] is True
-    deleted = result(await connection_mcp.service_admin_connection_delete(ctx, service_code, recipient, overridden["version"]))
+    deleted = result(await connection_mcp.service_connection_delete(ctx, service_code, recipient, overridden["version"]))
     assert deleted["persisted"]
     assert await db.get(Connection, connection_id) is None
-    current = result(await mcp.service_admin_get(ctx, service_code))
-    result(await mcp.service_admin_delete(ctx, service_code, current["version"]))
+    current = result(await mcp.service_get(ctx, service_code))
+    result(await mcp.service_delete(ctx, service_code, current["version"]))
     assert await db.get(Service, service_id) is None
 
 
@@ -196,7 +196,7 @@ async def test_direct_tool_dependencies_are_visible_and_block_deletion(delegated
     from app.messenger.models import MessengerUser
 
     ctx, _, _ = delegated
-    created = result(await mcp.service_admin_create(ctx, definition={
+    created = result(await mcp.service_create(ctx, definition={
         "code": f"referenced_{uuid4().hex}", "label": "Synthetic referenced Service",
     }))
     service_code = created["tool"]["code"]
@@ -206,12 +206,12 @@ async def test_direct_tool_dependencies_are_visible_and_block_deletion(delegated
     db.add_all([workflow, identity])
     await db.commit()
     workflow_id, identity_id = workflow.id, identity.id
-    impact = result(await mcp.service_admin_impact(ctx, service_code))
+    impact = result(await mcp.service_impact(ctx, service_code))
     assert impact["deletion_blocked"]
     assert {row["table"] for row in impact["references"]["items"]} == {"process_definitions", "messenger_users"}
     assert impact["version"] != created["version"]
-    assert json.loads(await mcp.service_admin_delete(ctx, service_code, created["version"]))["error"]["kind"] == "conflict"
-    blocked = json.loads(await mcp.service_admin_delete(ctx, service_code, impact["version"]))
+    assert json.loads(await mcp.service_delete(ctx, service_code, created["version"]))["error"]["kind"] == "conflict"
+    blocked = json.loads(await mcp.service_delete(ctx, service_code, impact["version"]))
     assert blocked["error"]["kind"] == "dependencies_blocking"
     with pytest.raises(ValueError):
         await service.delete_service(service_id)
@@ -327,11 +327,11 @@ async def test_confirmed_tool_deletion_is_atomic_complete_and_keeps_unrelated_da
 @pytest.mark.asyncio
 async def test_batches_are_atomic_and_secret_literals_never_replace_values(delegated, db):
     ctx, recipient, _ = delegated
-    created = result(await mcp.service_admin_create(ctx, definition={"code": f"synthetic_{uuid4().hex}", "label": "Atomic",
+    created = result(await mcp.service_create(ctx, definition={"code": f"synthetic_{uuid4().hex}", "label": "Atomic",
         "connection_schema": {"params": {"first": {"type": "string"}, "count": {"type": "integer"}, "token": {"type": "password"}}}}))
     service_code = created["tool"]["code"]
     service_id = created["tool"]["id"]
-    connected = result(await connection_mcp.service_admin_connection_create(ctx, service_code, recipient, created["version"]))
+    connected = result(await connection_mcp.service_connection_create(ctx, service_code, recipient, created["version"]))
     identifier = (await connection_service.get_connection_by_agent_service(service_id, recipient)).id
     with pytest.raises(ValueError):
         await connection_service.set_params_bulk(identifier, {"first": "must-not-persist", "count": "invalid"})
@@ -340,15 +340,15 @@ async def test_batches_are_atomic_and_secret_literals_never_replace_values(deleg
     from core.util import SECRET_MASK
     await connection_service.set_param(identifier, "token", SECRET_MASK)
     assert await connection_service.get_param(identifier, "token") == "synthetic-secret-rotate-001"
-    current = result(await connection_mcp.service_admin_connection_get(ctx, service_code, recipient))
+    current = result(await connection_mcp.service_connection_get(ctx, service_code, recipient))
     assert "synthetic-secret" not in json.dumps(current)
     assert current["connection"]["effective_params"]["token"]["configured"]
-    rejected = json.loads(await connection_mcp.service_admin_connection_params_set(ctx, service_code, recipient,
+    rejected = json.loads(await connection_mcp.service_connection_params_set(ctx, service_code, recipient,
                         {"token": {"value": "replacement"}}, current["version"]))
     assert rejected["error"]["kind"] == "configuration_invalid"
     assert await connection_service.get_param(identifier, "token") == "synthetic-secret-rotate-001"
-    state = result(await mcp.service_admin_get(ctx, service_code))
-    forced = result(await mcp.service_admin_global_params_set(ctx, service_code, {"count": {"value": "7", "forced": True}}, state["version"]))
+    state = result(await mcp.service_get(ctx, service_code))
+    forced = result(await mcp.service_global_params_set(ctx, service_code, {"count": {"value": "7", "forced": True}}, state["version"]))
     assert forced["tool"]["global_params"]["count"]["forced"]
     with pytest.raises(ValueError):
         await connection_service.set_params_bulk(identifier, {"first": "also-not-persisted", "count": "8"})
@@ -358,8 +358,8 @@ async def test_batches_are_atomic_and_secret_literals_never_replace_values(deleg
 @pytest.mark.asyncio
 async def test_delegation_cannot_be_self_assigned_and_sync_preserves_disable(delegated, db):
     ctx, _, grant_id = delegated
-    await connection_service.set_connection_function_state(grant_id, "service_admin_list", "disabled")
-    denied = json.loads(await mcp.service_admin_list(ctx))
+    await connection_service.set_connection_function_state(grant_id, "service_list", "disabled")
+    denied = json.loads(await mcp.service_list(ctx))
     assert denied["error"]["kind"] == "access_denied"
     await connection_service.set_connection_active(grant_id, False)
     await mandatory_services.sync_integrated_service_connections(ctx.agent_id)
@@ -387,21 +387,21 @@ async def existing_stdio(delegated, db):
 @pytest.mark.parametrize("operation", ["definition", "global_params", "function", "connection", "local_params", "create_connection"])
 async def test_existing_stdio_is_read_only(existing_stdio, operation):
     ctx, service_code, _, recipient = existing_stdio
-    current = result(await mcp.service_admin_get(ctx, service_code))
-    connected = result(await connection_mcp.service_admin_connection_get(ctx, service_code, recipient))
+    current = result(await mcp.service_get(ctx, service_code))
+    connected = result(await connection_mcp.service_connection_get(ctx, service_code, recipient))
     version, local_version = current["version"], connected["version"]
     calls = {
-        "definition": lambda: mcp.service_admin_update(ctx, service_code, {"label": "Changed"}, version),
-        "global_params": lambda: mcp.service_admin_global_params_set(ctx, service_code, {"script": {"value": "Changed"}}, version),
-        "function": lambda: mcp.service_admin_function_set(ctx, service_code, "lookup", "disabled", version),
-        "connection": lambda: connection_mcp.service_admin_connection_update(ctx, service_code, recipient, False, local_version),
-        "local_params": lambda: connection_mcp.service_admin_connection_params_set(ctx, service_code, recipient, {"script": {"value": "Changed"}}, local_version),
-        "create_connection": lambda: connection_mcp.service_admin_connection_create(ctx, service_code, ctx.agent_id, version),
+        "definition": lambda: mcp.service_update(ctx, service_code, {"label": "Changed"}, version),
+        "global_params": lambda: mcp.service_global_params_set(ctx, service_code, {"script": {"value": "Changed"}}, version),
+        "function": lambda: mcp.service_function_set(ctx, service_code, "lookup", "disabled", version),
+        "connection": lambda: connection_mcp.service_connection_update(ctx, service_code, recipient, False, local_version),
+        "local_params": lambda: connection_mcp.service_connection_params_set(ctx, service_code, recipient, {"script": {"value": "Changed"}}, local_version),
+        "create_connection": lambda: connection_mcp.service_connection_create(ctx, service_code, ctx.agent_id, version),
     }
     denied = json.loads(await calls[operation]())
     assert denied["error"]["kind"] == "access_denied"
-    assert result(await mcp.service_admin_get(ctx, service_code))["version"] == version
-    assert result(await connection_mcp.service_admin_connection_get(ctx, service_code, recipient))["version"] == local_version
+    assert result(await mcp.service_get(ctx, service_code))["version"] == version
+    assert result(await connection_mcp.service_connection_get(ctx, service_code, recipient))["version"] == local_version
 
 
 @pytest.mark.asyncio
@@ -409,8 +409,8 @@ async def test_stdio_configuration_is_redacted_and_refresh_never_launches_it(exi
     from app.services import mcp_loader
 
     ctx, service_code, connection_id, recipient = existing_stdio
-    current = result(await mcp.service_admin_get(ctx, service_code))
-    connected = result(await connection_mcp.service_admin_connection_get(ctx, service_code, recipient))
+    current = result(await mcp.service_get(ctx, service_code))
+    connected = result(await connection_mcp.service_connection_get(ctx, service_code, recipient))
     encoded = json.dumps([current, connected])
     for literal in ("synthetic-never-run", "synthetic-args", "synthetic-env", "synthetic-default", "synthetic-global", "synthetic-local"):
         assert literal not in encoded
@@ -426,11 +426,11 @@ async def test_stdio_configuration_is_redacted_and_refresh_never_launches_it(exi
         raise AssertionError("An administrative refresh must not construct an executable transport")
 
     monkeypatch.setattr(mcp_loader, "_external_transport", refuse_transport)
-    refreshed = result(await mcp.service_admin_catalog_refresh(ctx, service_code=service_code))
+    refreshed = result(await mcp.service_catalog_refresh(ctx, service_code=service_code))
     assert not attempts
     assert not refreshed["refresh"]["complete"]
     batch = await admin_service.refresh_batch([recipient], actor=AdministrationContext(
-        agent_id=ctx.agent_id, function_name="service_admin_catalog_refresh"))
+        agent_id=ctx.agent_id, function_name="service_catalog_refresh"))
     assert not attempts
     assert not batch["complete"] and batch["source_failures"] == 1
     assert batch["documents_pruned"] == 0
@@ -514,26 +514,26 @@ async def test_secure_candidate_test_create_and_inactive_connection_test(delegat
     with pytest.raises(AdministrationError):
         resolve_candidate(reference, recipient)
     before = len((await db.scalars(select(Service))).all())
-    tested = result(await mcp.service_admin_mcp_test(ctx, candidate_reference=reference))
+    tested = result(await mcp.service_mcp_test(ctx, candidate_reference=reference))
     assert tested["diagnostic"]["success"], tested
     assert tested["diagnostic"]["tested_at"]
     assert [item["name"] for item in tested["diagnostic"]["tools"]] == ["lookup"]
     assert calls == []
     assert len((await db.scalars(select(Service))).all()) == before
     assert "synthetic-candidate-token" not in json.dumps(tested)
-    created = result(await mcp.service_admin_create(ctx, candidate_reference=reference))
+    created = result(await mcp.service_create(ctx, candidate_reference=reference))
     service_code = created["tool"]["code"]
     service_id = created["tool"]["id"]
     assert "synthetic-candidate-token" not in json.dumps(created)
-    connection = result(await connection_mcp.service_admin_connection_create(ctx, service_code, recipient, created["version"]))
+    connection = result(await connection_mcp.service_connection_create(ctx, service_code, recipient, created["version"]))
     identifier = (await connection_service.get_connection_by_agent_service(service_id, recipient)).id
-    tested = result(await connection_mcp.service_admin_connection_test(ctx, service_code, recipient))
+    tested = result(await connection_mcp.service_connection_test(ctx, service_code, recipient))
     assert tested["diagnostic"]["success"] and calls == []
     assert not (await connection_service.get_connection(identifier)).active
-    detail = result(await mcp.service_admin_function_get(ctx, service_code, "lookup", recipient))
+    detail = result(await mcp.service_function_get(ctx, service_code, "lookup", recipient))
     assert "value" in detail["function"]["input_schema"]["properties"]
     assert "synthetic-candidate-token-001" not in json.dumps(detail)
-    available = result(await connection_mcp.service_admin_connection_function_list(ctx, service_code, recipient))
+    available = result(await connection_mcp.service_connection_function_list(ctx, service_code, recipient))
     assert available["items"][0]["effective"] and not available["items"][0]["available"]
 
 
@@ -552,7 +552,7 @@ async def test_diagnostic_bounds_large_remote_catalogue(delegated, db, synthetic
         "code": f"synthetic_{uuid4().hex}", "label": "Bounded catalogue",
         "mcp_config": {"type": "sse" if url.endswith("/sse") else "http", "url": url},
     }))
-    diagnostic = result(await mcp.service_admin_mcp_test(ctx, candidate_reference=prepared["reference"],
+    diagnostic = result(await mcp.service_mcp_test(ctx, candidate_reference=prepared["reference"],
                         limit=20))["diagnostic"]
     assert diagnostic["success"] and diagnostic["truncated"], diagnostic
     assert diagnostic["total"] == 500 and len(diagnostic["tools"]) == 20
@@ -581,11 +581,11 @@ async def test_native_mounted_admin_revocation(committed_database):
     async with get_db_session():
         server = await build_agent_galaris_fastmcp(agent_id, runtime="internal")
     async with Client(server) as client:
-        response = await client.call_tool("service_admin_list", {})
+        response = await client.call_tool("service_list", {})
         assert not response.is_error and result(response.content[0].text)["total"] > 0
         async with get_db_session():
-            await connection_service.set_connection_function_state(grant_id, "service_admin_list", "disabled")
-        assert (await client.call_tool("service_admin_list", {}, raise_on_error=False)).is_error
+            await connection_service.set_connection_function_state(grant_id, "service_list", "disabled")
+        assert (await client.call_tool("service_list", {}, raise_on_error=False)).is_error
 
 
 @pytest.mark.asyncio
@@ -678,7 +678,7 @@ async def test_mass_refresh_returns_direct_results_and_preserves_business_proces
     await db.commit()
     counts = [await db.scalar(select(func.count()).select_from(model))
               for model in (ProcessDefinition, ProcessRun)]
-    refreshed = result(await mcp.service_admin_catalog_refresh(ctx, service_code=tool.code))["refresh"]
+    refreshed = result(await mcp.service_catalog_refresh(ctx, service_code=tool.code))["refresh"]
     assert "run_id" not in refreshed and "queued" not in refreshed
     assert refreshed["remaining_agent_ids"] == []
     if outcome == "partial":
@@ -687,7 +687,7 @@ async def test_mass_refresh_returns_direct_results_and_preserves_business_proces
         # Use the failed agents from the receipt verbatim.
         agents[0].agent_driver = "internal"
         await db.commit()
-        retried = result(await mcp.service_admin_catalog_refresh(ctx, agent_ids=refreshed["failed_agent_ids"]))["refresh"]
+        retried = result(await mcp.service_catalog_refresh(ctx, agent_ids=refreshed["failed_agent_ids"]))["refresh"]
         assert retried["complete"] and retried["agents_refreshed"] == 1
     else:
         assert refreshed["complete"] and refreshed["agents_refreshed"] == 11
@@ -723,7 +723,7 @@ async def test_direct_refresh_preserves_completed_agents_and_stops_on_interrupti
                 raise asyncio.CancelledError()
             else:
                 await connection_service.set_connection_function_state(
-                    grant_id, "service_admin_catalog_refresh", "disabled")
+                    grant_id, "service_catalog_refresh", "disabled")
         catalog = await build_catalog(agent_id, **kwargs)
         if len(calls) == 1:
             return catalog_from_entries(agent_id=agent_id, runtime=catalog.runtime,
@@ -731,7 +731,7 @@ async def test_direct_refresh_preserves_completed_agents_and_stops_on_interrupti
         return catalog
 
     monkeypatch.setattr(catalog_refresh_service, "build_effective_tool_catalog", interrupted_discovery)
-    actor = AdministrationContext(agent_id=ctx.agent_id, function_name="service_admin_catalog_refresh")
+    actor = AdministrationContext(agent_id=ctx.agent_id, function_name="service_catalog_refresh")
     if interruption == "cancel":
         with pytest.raises(asyncio.CancelledError):
             await admin_service.refresh_catalogs(actor, identifiers)
@@ -768,7 +768,7 @@ async def test_candidate_credentials_stay_out_of_model_messages_and_checkpoints(
     # This scenario verifies secret confinement after an explicit human policy grant.
     # Deferred approval itself is exercised separately without permitting the effect.
     grant = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == ctx.agent_id, Service.code == "service"))
-    for function in ("service_admin_mcp_test", "service_admin_create"):
+    for function in ("service_mcp_test", "service_create"):
         await connection_service.set_connection_function_state(grant.id, function, "enabled")
     reference = prepare_candidate(CandidateRequest(agent_id=ctx.agent_id, definition={
         "code": f"model_{uuid4().hex}", "label": "Synthetic scripted operator",
@@ -781,7 +781,7 @@ async def test_candidate_credentials_stay_out_of_model_messages_and_checkpoints(
         returns = [part for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
         if len(returns) == 2:
             return ModelResponse(parts=[TextPart("The Service was created.")])
-        return ModelResponse(parts=[ToolCallPart("service_admin_mcp_test" if not returns else "service_admin_create",
+        return ModelResponse(parts=[ToolCallPart("service_mcp_test" if not returns else "service_create",
                                 {"candidate_reference": reference})])
     save = AsyncMock()
     journal = HarnessRunCheckpoint(_request(save_checkpoint=save))
@@ -812,18 +812,18 @@ async def test_concurrent_mutations_only_apply_one_examined_version(committed_da
         db.add(grant)
         await db.flush()
         await connection_service.set_param(grant.id, "services.management_scope", "all", scope_edit_authorized=True)
-        await connection_service.set_connection_function_state(grant.id, "service_admin_update", "enabled")
+        await connection_service.set_connection_function_state(grant.id, "service_update", "enabled")
         agent_id, service_code = agent.id, tool.code
     ctx = McpToolContext(agent_id, "internal")
     async with get_db_session():
-        version = result(await mcp.service_admin_get(ctx, service_code))["version"]
+        version = result(await mcp.service_get(ctx, service_code))["version"]
     async def write(label):
         async with get_db_session():
-            return json.loads(await mcp.service_admin_update(ctx, service_code, {"label": label}, version))
+            return json.loads(await mcp.service_update(ctx, service_code, {"label": label}, version))
     outcomes = await asyncio.gather(write("First candidate"), write("Second candidate"))
     assert sum(item["success"] for item in outcomes) == 1
     assert next(item for item in outcomes if not item["success"])["error"]["kind"] == "conflict"
     winner = next(item for item in outcomes if item["success"])
     async with get_db_session():
-        current = result(await mcp.service_admin_get(ctx, service_code))
+        current = result(await mcp.service_get(ctx, service_code))
         assert current["tool"]["label"] == winner["tool"]["label"]

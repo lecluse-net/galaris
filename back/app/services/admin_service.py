@@ -40,11 +40,11 @@ async def invoke(ctx: McpToolContext, name: str, operation: Callable[..., Awaita
     try:
         await actor.require()
         result = await operation(actor, **arguments)
-        if name == "service_admin_list":
+        if name == "service_list":
             for item in result["items"]:
                 item["service_code"] = item.pop("code")
                 item.pop("id", None)
-        if name == "service_admin_create" and "tool" in result:
+        if name == "service_create" and "tool" in result:
             result["service_code"] = result["tool"]["code"]
         return json.dumps({"success": True, **result}, ensure_ascii=False, default=str)
     except AdministrationError as exc:

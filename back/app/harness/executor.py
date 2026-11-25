@@ -25,6 +25,7 @@ from app.services.agent_registry import (
     build_agent_tool_advertisement,
     build_tool_context_instructions,
 )
+from app.services.facade import canonical_service_call
 from app.process import build_agent_process_advertisement
 from .mcp_toolset import build_agent_mcp_toolset
 from .runtime import AgentRuntime, create_agent
@@ -63,11 +64,7 @@ _DELIVERY_TOOLS = frozenset(
 )
 _SCOPED_PROCESS_TOOLS = frozenset(
     {
-        "process_list",
-        "process_get",
         "process_start",
-        "process_list_runs",
-        "process_get_run",
         "process_analyze_run",
     }
 )
@@ -90,6 +87,7 @@ _SCOPED_TOOL_COMPANIONS: dict[str, frozenset[str]] = {
     # A human name is not an SMTP address. Keep the governed Memory lookup
     # functions in every planner-narrowed run that is allowed to send Mail.
     "mail_send": frozenset({"file_search", "file_read"}),
+    "process_start": frozenset({"file_list", "file_read"}),
 }
 
 
@@ -146,6 +144,9 @@ def _scoped_tool_names(task: AgentRunRequest) -> set[str] | None:
 
     if not selected:
         return None
+    legacy_task_tools = selected & {"task_stop", "task_work_update"}
+    selected.difference_update(legacy_task_tools)
+    selected.update(canonical_service_call(name, {})[0] for name in legacy_task_tools)
     # A planned leaf may only publish when its materialized step explicitly permits it.
     # Delivery tools are no longer unconditional support capabilities: adding them behind
     # the planner's back caused intermediate artifacts to be sent and consumed too early.
@@ -168,9 +169,8 @@ def _scoped_tool_names(task: AgentRunRequest) -> set[str] | None:
         return selected
     for tool_name in tuple(selected):
         selected.update(_SCOPED_TOOL_COMPANIONS.get(tool_name, ()))
-    # Personal process discovery is a core executor capability, including inside a planner-
-    # narrowed leaf. This expands only the task scope: connection, per-function, and runtime
-    # authorization are still applied by the shared MCP projection before prompt advertising.
+    # Planned leaves retain Process launch and analysis. File companions follow an
+    # explicit Process launch in the plan and retain their normal resource ACLs.
     return selected | set(_SCOPED_PROCESS_TOOLS)
 
 

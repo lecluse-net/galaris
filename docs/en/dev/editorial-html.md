@@ -94,8 +94,8 @@ and mind map nodes (`body_html`) share this format.
 Generic server-only HTML conversions include the text caption with its values.
 
 `document_chart` validates the values and returns the HTML block to insert. Agents save
-it through file commands or `mindmap_add` and `mindmap_edit`, with their usual access and
-revision checks.
+it through file commands. For a branch's HTML, `file_write` uses the `<id>/body_html`
+selector and the map's expected revision.
 
 ## Documents as the information hub
 

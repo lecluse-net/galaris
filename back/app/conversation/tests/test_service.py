@@ -110,7 +110,7 @@ async def _scope(db: AsyncSession, *, user_id: int | None = None) -> tuple[Agent
 @pytest.mark.asyncio
 @pytest.mark.parametrize("change", ["resource", "checkpoint", "objective", "terminal"])
 async def test_amendment_after_concurrent_update_keeps_one_task(db, monkeypatch, change):
-    from app.conversation.mcp import conversation_task_submit
+    from app.conversation.mcp import task_submit
     from app.conversation import mcp
     from app.conversation.contracts import ConversationTurn
     from app.task.working_set import upsert_working_resource
@@ -147,7 +147,7 @@ async def test_amendment_after_concurrent_update_keeps_one_task(db, monkeypatch,
     monkeypatch.setattr(mcp, "_create_conversation_task", create)
     monkeypatch.setattr("app.task.scheduler.wake", lambda *_: None)
     ctx = McpToolContext(agent_id=agent.id, runtime="internal", resources={"conversation_turn": turn})
-    result = await conversation_task_submit(ctx, objective="Ajouter une version PDF.",
+    result = await task_submit(ctx, objective="Ajouter une version PDF.",
         disposition="AMEND_QUEUED", target_task_id=str(task.id), expected_revision=revision)
 
     create.assert_not_awaited()
@@ -156,7 +156,7 @@ async def test_amendment_after_concurrent_update_keeps_one_task(db, monkeypatch,
         assert result["amended"] is True
         assert "Ajouter une version PDF." in task.objective
         # Redelivery of the same action uses its receipt even with the old revision.
-        again = await conversation_task_submit(ctx, objective="Ajouter une version PDF.",
+        again = await task_submit(ctx, objective="Ajouter une version PDF.",
             disposition="AMEND_QUEUED", target_task_id=str(task.id), expected_revision=revision)
         assert again["amended"] is False
         assert len(list(await db.scalars(select(TaskAmendment).where(TaskAmendment.task_id == task.id)))) == 1
@@ -175,7 +175,7 @@ async def test_amendment_after_concurrent_update_keeps_one_task(db, monkeypatch,
             await upsert_working_resource(task.id, WorkingResource(
                 resource_type="artifact", role="source", reference="https://example.test/reviewed"))
             await db.commit()
-            reconsidered = await conversation_task_submit(ctx, objective="Ajouter une version PDF.",
+            reconsidered = await task_submit(ctx, objective="Ajouter une version PDF.",
                 disposition="AMEND_QUEUED", target_task_id=str(task.id), expected_revision=reviewed_revision)
             assert reconsidered["amended"] is True
             assert "different report" in task.objective
@@ -223,7 +223,7 @@ async def test_failed_amendment_preserves_target_and_explicit_new_work_is_idempo
     monkeypatch.setattr("app.task.runner.go_next", lambda *_: None)
     ctx = McpToolContext(agent_id=agent.id, runtime="internal", resources={"conversation_turn": turn})
 
-    result = await mcp.conversation_task_submit(
+    result = await mcp.task_submit(
         ctx, objective="Ajouter une synthèse.", disposition="AMEND_CURRENT",
         target_task_id=str(uuid4() if blocker == "missing" else original.id),
         expected_revision=None if blocker == "incomplete" else original.revision,
@@ -244,10 +244,10 @@ async def test_failed_amendment_preserves_target_and_explicit_new_work_is_idempo
     assert round_.effect_started is False
     assert len(list(await db.scalars(select(Task).where(Task.agent_id == agent.id)))) == 1
 
-    created = await mcp.conversation_task_submit(
+    created = await mcp.task_submit(
         ctx, objective=request, disposition="CREATE_NEW",
     )
-    repeated = await mcp.conversation_task_submit(
+    repeated = await mcp.task_submit(
         ctx, objective=request, disposition="CREATE_NEW",
     )
     assert created["created"] is True and repeated["created"] is False
@@ -328,7 +328,7 @@ async def test_explicit_replacement_admits_one_waiting_successor_and_keeps_indep
     ctx = McpToolContext(agent_id=agent.id, runtime="internal", resources={"conversation_turn": turn})
     async def submit():
         if transport == "text":
-            return await mcp.conversation_task_submit(ctx, disposition="REPLACE",
+            return await mcp.task_submit(ctx, disposition="REPLACE",
                 objective="Préparer le bilan corrigé.", target_task_id=str(original_id), expected_revision=revision)
         return await submit_realtime_task(agent_id=agent.id, disposition="REPLACE",
             objective="Préparer le bilan corrigé.", label="Bilan", conversation_id=room.external_id,
@@ -2061,7 +2061,7 @@ async def test_worker_restart_preserves_receipts_and_refuses_uncertain_mutations
     round_ = await claim_next_round("original-worker")
     turn = await build_turn(round_.id, lease_token=round_.lease_token)
     assert turn.save_checkpoint is not None
-    effect = {"tool_name": "conversation_task_submit" if state == "preparing_task" else "synthetic_write",
+    effect = {"tool_name": "task_run" if state == "preparing_task" else "synthetic_write",
               "status": "completed" if state == "completed" else "started",
               "effect_policy": "idempotent" if state == "preparing_task" else "non_idempotent",
               "result": "Durable synthetic receipt"}
@@ -2532,7 +2532,7 @@ def test_completed_round_falls_back_to_outcome_text_for_tool_only_trace() -> Non
         messages=[
             AIMessage(
                 type="tool",
-                tool_name="conversation_task_submit",
+                tool_name="task_submit",
                 content="Task admission completed",
             )
         ],
@@ -3138,44 +3138,74 @@ async def test_terminal_task_success_skips_only_an_already_delivered_result(
 
 
 @pytest.mark.asyncio
-async def test_conversation_can_deliberately_retry_a_failed_task(db, monkeypatch):
+@pytest.mark.parametrize(("initial_status", "reasons", "action"), [
+    (TaskStatus.ERROR, None, "retried"),
+    (TaskStatus.DISPATCH, ["user"], "resumed"),
+    (TaskStatus.DISPATCH, ["user", "await"], "resumed"),
+    (TaskStatus.DISPATCH, [], "resumed"),
+    (TaskStatus.DISPATCH, ["await"], "unchanged"),
+    (TaskStatus.SUCCESS, None, "retried"),
+    (TaskStatus.SUCCESS, None, "unchanged"),
+])
+async def test_conversation_task_resume_uses_the_durable_state(db, monkeypatch, initial_status, reasons, action):
     from app.conversation import ConversationTurn
-    from app.conversation.mcp import conversation_task_retry
+    from app.conversation.mcp import task_resume
     from app.services import McpToolContext
 
     agent, connection, room = await _scope(db)
+    original_result = {"prompt": "", "result": "Previous result", "success": initial_status == TaskStatus.SUCCESS}
+    data = {"receipt": "existing-effect"}
+    if initial_status == TaskStatus.SUCCESS and action == "retried":
+        data["objective_blocker"] = "Waiting for a verified source."
+    if reasons:
+        data["pause_reasons"] = reasons
     task = Task(
         label="Report", objective="<p>Prepare the report.</p>",
-        status=TaskStatus.ERROR, agent_id=agent.id,
+        status=initial_status, agent_id=agent.id, paused=reasons is not None,
         messenger_connection_id=connection.id, message_group_id=room.external_id,
-        last_error="Source temporarily unavailable", attempt_count=1,
-        execution_result={"prompt": "", "result": "Source unavailable", "success": False},
-        data={"receipt": "existing-effect"},
+        last_error="Source temporarily unavailable" if initial_status == TaskStatus.ERROR else None,
+        attempt_count=1, execution_result=original_result, data=data,
     )
     db.add(task)
     await db.commit()
     wake = MagicMock()
     monkeypatch.setattr("app.task.runner.go_next", wake)
     ctx = McpToolContext(
-        agent_id=agent.id, runtime="internal",
+        agent_id=agent.id, runtime="internal", conversation_only=True,
         resources={"conversation_turn": ConversationTurn(
             room_id=room.id, round_id=uuid4(), agent_id=agent.id, language="fr",
-            objective="La source est réparée, relance cette tâche.", messages=(),
+            objective="Poursuis cette tâche.", messages=(),
             messaging_context={"connection_id": connection.id, "room_id": room.external_id},
         )},
     )
 
-    result = await conversation_task_retry(ctx, task_id=f"galaris://task/{task.id}")
+    uri = f"galaris://task/{task.id}"
+    original_revision = task.revision
+    result = await task_resume(ctx, task_id=uri)
 
     await db.refresh(task)
-    assert result["resource_uri"] == f"galaris://task/{task.id}"
-    assert task.status == TaskStatus.DISPATCH
+    assert result["resource_uri"] == uri
+    assert result["action"] == action
+    assert task.status == (TaskStatus.DISPATCH if action == "retried" else initial_status)
     assert task.objective == "<p>Prepare the report.</p>"
-    assert task.data == {"receipt": "existing-effect"}
+    assert task.data["receipt"] == "existing-effect"
+    assert "objective_blocker" not in task.data
+    assert task.data.get("pause_reasons", []) == [reason for reason in reasons or [] if reason != "user"]
+    assert task.paused == ("await" in (reasons or []))
     assert task.attempt_count == 1
-    assert task.last_error is None and task.execution_result is None
+    assert task.last_error is None
+    assert task.execution_result == (None if action == "retried" else original_result)
     assert len(list(await db.scalars(select(Task).where(Task.agent_id == agent.id)))) == 1
-    wake.assert_called_once_with(task.id, fast=True)
+    if action == "unchanged":
+        assert result["revision"] == original_revision
+        wake.assert_not_called()
+    else:
+        wake.assert_called_once_with(task.id, fast=True)
+    wake.reset_mock()
+    repeated = await task_resume(ctx, task_id=uri)
+    assert repeated["action"] == "unchanged"
+    assert repeated["revision"] == result["revision"]
+    wake.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -3184,7 +3214,7 @@ async def test_conversation_stop_preserves_terminal_state_on_repeated_request(
     db: AsyncSession, initial_status: TaskStatus,
 ) -> None:
     from app.conversation import ConversationTurn
-    from app.conversation.mcp import conversation_task_stop
+    from app.conversation.mcp import task_cancel
     from app.services import McpToolContext
 
     agent, connection, room = await _scope(db)
@@ -3202,6 +3232,7 @@ async def test_conversation_stop_preserves_terminal_state_on_repeated_request(
     ctx = McpToolContext(
         agent_id=agent.id,
         runtime="internal",
+        conversation_only=True,
         resources={"conversation_turn": ConversationTurn(
             room_id=room.id, round_id=uuid4(), agent_id=agent.id, language="fr",
             objective="Arrête cette tâche", messages=(),
@@ -3209,11 +3240,11 @@ async def test_conversation_stop_preserves_terminal_state_on_repeated_request(
         )},
     )
 
-    first = await conversation_task_stop(ctx, task_id=f"galaris://task/{task.id}")
+    first = await task_cancel(ctx, task_id=f"galaris://task/{task.id}")
     await db.commit()
     await db.refresh(task)
     after_first = (task.revision, task.last_error, task.updated_at)
-    second = await conversation_task_stop(ctx, task_id=f"galaris://task/{task.id}")
+    second = await task_cancel(ctx, task_id=f"galaris://task/{task.id}")
     await db.commit()
     await db.refresh(task)
 
@@ -3230,10 +3261,10 @@ async def test_conversation_stop_preserves_terminal_state_on_repeated_request(
     # A terminal state must not bypass the agent scope check.
     other_agent, _, _ = await _scope(db)
     other_ctx = McpToolContext(
-        agent_id=other_agent.id, runtime="internal", resources=ctx.resources,
+        agent_id=other_agent.id, runtime="internal", resources=ctx.resources, conversation_only=True,
     )
-    with pytest.raises(ValueError, match="Task not found for this agent"):
-        await conversation_task_stop(other_ctx, task_id=f"galaris://task/{task.id}")
+    with pytest.raises(PermissionError, match="current conversation agent"):
+        await task_cancel(other_ctx, task_id=f"galaris://task/{task.id}")
 
 
 @pytest.mark.asyncio

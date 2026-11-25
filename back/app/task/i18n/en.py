@@ -33,7 +33,7 @@ default: dict[str, object] = {
         "selector_required": "task_get requires task_id or uuid",
         "invalid_uuid": "Invalid Task URI or UUID: ${task_id}",
         "ambiguous_uuid_prefix": "Ambiguous UUID prefix: ${task_id}",
-        "root_only": "task_stop can only stop a level-one root task.",
+        "root_only": "task_cancel can only stop a level-one root task.",
         "self_stop": "Self-stop rejected: the target is the current task.",
         "stopped_by": "Task permanently stopped by ${stopper}.",
         "stopped_by_with_reason": "Task permanently stopped by ${stopper}. Reason: ${reason}",

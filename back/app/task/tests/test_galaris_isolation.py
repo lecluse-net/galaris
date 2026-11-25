@@ -73,9 +73,14 @@ async def test_peer_task_admission_rejects_galaris_even_for_an_admin_agent(db, p
 @pytest.mark.asyncio
 async def test_mounted_tool_returns_an_explicit_permission_error(db, peers):
     from fastmcp import Client
+    from app.connection import facade as connections
+    from app.services import ServiceModel
     from app.services.mcp_loader import build_agent_galaris_fastmcp
 
     assistant, peer, _human = peers
+    service_id = await db.scalar(select(ServiceModel.id).where(ServiceModel.code == "task"))
+    connection = await connections.get_or_create_connection(service_id, peer.id)
+    await connections.set_connection_function_state(connection.id, "task_run", "enabled", commit=False)
     await db.commit()
     server = await build_agent_galaris_fastmcp(peer.id, allowed_tool_names={"task_run"})
     async with Client(server) as client:

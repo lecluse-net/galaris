@@ -10,7 +10,7 @@ from uuid import UUID
 import pytest
 from sqlalchemy import func, select
 
-from app.conversation.mcp import conversation_process_prepare, conversation_process_start
+from app.conversation.mcp import process_prepare, process_start_conversation
 from app.conversation.models import ConversationRound
 from app.conversation.tests.test_process_inputs import assessment, context, human, human_turn, inference, workflow
 from app.file_share import ResourceContext, resource_create, resource_delete
@@ -37,19 +37,19 @@ async def test_validation_and_retries_are_deterministic_and_keep_the_final_param
     calls = inference(monkeypatch, [assessment(single=True)], [[{"workflow_id": definition.code,
         "input": {"known": "Synthetic", "answer": correct}}]])
     turn, _ = await human_turn(db, owner, "Launch one synthetic dossier using my known details.", user)
-    first = await conversation_process_prepare(context(turn), workflow_id=definition.code, input={"known": "Synthetic"})
+    first = await process_prepare(context(turn), workflow_id=definition.code, input={"known": "Synthetic"})
     original_revision = (await db.get(ConversationRound, turn.round_id)).process_preparations[definition.code]["revision"]
-    repeated = await conversation_process_prepare(context(turn), workflow_id=definition.code)
+    repeated = await process_prepare(context(turn), workflow_id=definition.code)
     assert repeated["missing"] == ["answer"] and len(calls) == 1
     assert (await db.get(ConversationRound, turn.round_id)).process_preparations[definition.code]["revision"] == original_revision
-    failed = await conversation_process_prepare(context(turn), workflow_id=definition.code, input={"answer": invalid})
+    failed = await process_prepare(context(turn), workflow_id=definition.code, input={"answer": invalid})
     assert failed["status"] == "collecting" and "answer" in failed["issues"]
-    retry = await conversation_process_prepare(context(turn), workflow_id=definition.code)
+    retry = await process_prepare(context(turn), workflow_id=definition.code)
     assert retry["issues"] == failed["issues"] and retry["input"]["known"]["value"] == "Synthetic"
     assert await db.scalar(select(func.count()).select_from(ProcessStartJob)) == 0
-    ready = await conversation_process_prepare(context(turn), workflow_id=definition.code, input={"answer": correct})
+    ready = await process_prepare(context(turn), workflow_id=definition.code, input={"answer": correct})
     assert ready["status"] == "ready" and not ready["issues"] and len(calls) == 1
-    launched = await conversation_process_start(context(turn), workflow_id=definition.code)
+    launched = await process_start_conversation(context(turn), workflow_id=definition.code)
     assert launched["run_id"] == first["run_id"] and launched["started"] and len(calls) == 2
     assert (await db.get(ProcessRun, UUID(launched["run_id"]))).input["answer"] == ready["input"]["answer"]
     assert await db.scalar(select(func.count()).select_from(ProcessStartJob)) == 1
@@ -63,14 +63,14 @@ async def test_a_changed_human_contribution_cannot_reuse_earlier_intent(db, nati
     definition = await workflow(owner, [Variable(name="answer", type="string", nullable=True)])
     calls = inference(monkeypatch, [assessment(single=True), assessment(action="cancel", consent=False)])
     turn, room = await human_turn(db, owner, "Launch one synthetic dossier.", user)
-    first = await conversation_process_prepare(context(turn), workflow_id=definition.code)
+    first = await process_prepare(context(turn), workflow_id=definition.code)
     if change == "new-round":
         changed, _ = await human_turn(db, owner, "Cancel my dossier.", user, room=room)
     elif change == "text":
         changed = replace(turn, source_request="Cancel my dossier.")
     else:
         changed = replace(turn, messages=({"text": "Cancel my dossier.", "files": []},))
-    result = await conversation_process_start(context(changed), workflow_id=definition.code, input={"answer": "Synthetic"})
+    result = await process_start_conversation(context(changed), workflow_id=definition.code, input={"answer": "Synthetic"})
     assert result["status"] == "cancelled" and len(calls) == 2
     assert (await db.get(ProcessRun, UUID(first["run_id"]))).status == "cancelled"
     assert await db.scalar(select(func.count()).select_from(ProcessStartJob)) == 0
@@ -84,13 +84,13 @@ async def test_withdrawing_launch_consent_keeps_complete_data_waiting_until_conf
     calls = inference(monkeypatch, [assessment(single=True), assessment({"name": "Synthetic"}, consent=False),
         assessment(single=True)])
     first, room = await human_turn(db, owner, "Launch one synthetic dossier.", user)
-    waiting = await conversation_process_prepare(context(first), workflow_id=definition.code)
+    waiting = await process_prepare(context(first), workflow_id=definition.code)
     second, _ = await human_turn(db, owner, "My name is Synthetic. Keep the dossier ready, but do not launch yet.", user, room=room)
-    paused = await conversation_process_start(context(second), workflow_id=definition.code)
+    paused = await process_start_conversation(context(second), workflow_id=definition.code)
     assert not paused["missing"] and paused["status"] == "collecting" and not paused["launch_requested"]
     assert await db.scalar(select(func.count()).select_from(ProcessStartJob)) == 0
     third, _ = await human_turn(db, owner, "Yes, launch it now.", user, room=room)
-    started = await conversation_process_start(context(third), workflow_id=definition.code)
+    started = await process_start_conversation(context(third), workflow_id=definition.code)
     assert started["run_id"] == waiting["run_id"] and started["started"] and len(calls) == 3
 
 
@@ -103,12 +103,12 @@ async def test_single_assessed_launch_avoids_duplicate_permission_but_ambiguity_
     plan = [[{"workflow_id": definition.code, "input": {"answer": 0}}]] if not single else []
     calls = inference(monkeypatch, [assessment({"answer": 0}, single=single)], plan)
     turn, _ = await human_turn(db, owner, "Launch the synthetic dossier with answer zero.", user)
-    await conversation_process_prepare(context(turn), workflow_id=definition.code)
-    run = await conversation_process_start(context(turn), workflow_id=definition.code)
+    await process_prepare(context(turn), workflow_id=definition.code)
+    run = await process_start_conversation(context(turn), workflow_id=definition.code)
     assert run["started"] and len(calls) == (1 if single else 2)
     saved = (await db.get(ConversationRound, turn.round_id)).process_launch_admission
     assert ("preparation" in saved) is single
-    assert not (await conversation_process_start(context(turn), workflow_id=definition.code))["started"]
+    assert not (await process_start_conversation(context(turn), workflow_id=definition.code))["started"]
     assert len(calls) == (1 if single else 2)
 
 
@@ -122,9 +122,9 @@ async def test_a_frozen_refusal_cannot_be_overridden_by_prepared_launch_intent(d
     turn, _ = await human_turn(db, owner, "Prepare one synthetic dossier.", user)
     with pytest.raises(RecoverableToolError):
         await admit_process_launch(turn, definition.code, {"name": "Synthetic"})
-    await conversation_process_prepare(context(turn), workflow_id=definition.code)
+    await process_prepare(context(turn), workflow_id=definition.code)
     with pytest.raises(RecoverableToolError):
-        await conversation_process_start(context(turn), workflow_id=definition.code)
+        await process_start_conversation(context(turn), workflow_id=definition.code)
     assert len(calls) == 2 and await db.scalar(select(func.count()).select_from(ProcessStartJob)) == 0
 
 
@@ -137,12 +137,12 @@ async def test_old_attachment_evidence_survives_later_messages_and_still_require
     definition = await workflow(owner, [Variable(name="document", type="File", nullable=True), Variable(name="name", type="string", nullable=True)])
     calls = inference(monkeypatch, [assessment(single=True), assessment({"document": file.uri, "name": "Synthetic"}, single=True)])
     first, room = await human_turn(db, owner, "Launch one dossier; here is the document.", user, files=[file.uri])
-    waiting = await conversation_process_prepare(context(first), workflow_id=definition.code)
+    waiting = await process_prepare(context(first), workflow_id=definition.code)
     second, _ = await human_turn(db, owner, "My name is Synthetic.", user, room=room)
-    ready = await conversation_process_prepare(context(second), workflow_id=definition.code)
+    ready = await process_prepare(context(second), workflow_id=definition.code)
     assert ready["status"] == "ready" and ready["input"]["document"]["value"] == file.uri
     await resource_delete(ctx, file.uri)
-    revoked = await conversation_process_start(context(second), workflow_id=definition.code)
+    revoked = await process_start_conversation(context(second), workflow_id=definition.code)
     assert revoked["status"] == "collecting" and "document" in revoked["missing"]
     assert revoked["run_id"] == waiting["run_id"] and len(calls) == 2
     assert await db.scalar(select(func.count()).select_from(ProcessStartJob)) == 0
@@ -157,10 +157,10 @@ async def test_document_uri_cannot_be_invented_from_a_prefix_or_an_assistant_que
     calls = inference(monkeypatch, [assessment({"document": file.uri}, question=f"Unsupported assistant hint {file.uri}", single=True),
         assessment({"document": file.uri}, single=True)])
     first, room = await human_turn(db, owner, "Launch one synthetic dossier.", user, files=[file.uri + "-different-resource"])
-    rejected = await conversation_process_prepare(context(first), workflow_id=definition.code)
+    rejected = await process_prepare(context(first), workflow_id=definition.code)
     assert "document" in rejected["issues"] and not rejected["input"]
     second, _ = await human_turn(db, owner, "Continue the collection.", user, room=room)
-    again = await conversation_process_prepare(context(second), workflow_id=definition.code)
+    again = await process_prepare(context(second), workflow_id=definition.code)
     assert "document" in again["issues"] and not again["input"] and len(calls) == 2
     assert await db.scalar(select(func.count()).select_from(ProcessStartJob)) == 0
 
@@ -174,7 +174,7 @@ async def test_invalid_occurrences_do_not_spend_a_model_call_or_create_a_waiting
     calls = inference(monkeypatch, [])
     turn, _ = await human_turn(db, owner, "Launch one synthetic dossier.", user)
     with pytest.raises(RecoverableToolError):
-        await conversation_process_start(context(turn), workflow_id=definition.code, occurrence=occurrence)
+        await process_start_conversation(context(turn), workflow_id=definition.code, occurrence=occurrence)
     assert not calls and await db.scalar(select(func.count()).select_from(ProcessRun)) == 0
 
 
@@ -204,7 +204,7 @@ async def test_two_workers_collecting_the_same_input_recover_one_receipt(inferen
     turn, _ = await human_turn(db, owner, "Launch one synthetic dossier.", user)
     async def prepare():
         async with get_db_session():
-            return await conversation_process_prepare(context(turn), workflow_id=definition.code)
+            return await process_prepare(context(turn), workflow_id=definition.code)
     first, second = await asyncio.gather(prepare(), prepare())
     assert first["run_id"] == second["run_id"]
     assert await db.scalar(select(func.count()).select_from(ProcessRun)) == 1
@@ -222,12 +222,12 @@ async def test_nested_typed_null_survives_default_start_and_replay_without_retyp
     turn, _ = await human_turn(db, owner, "Launch one synthetic dossier with these known values.", user)
     nested = {"items": {"type": "array", "value": [{"type": "string", "value": None},
         {"type": "bool", "value": False}, {"type": "int", "value": 0}]}}
-    ready = await conversation_process_prepare(context(turn), workflow_id=definition.code, input=nested, typed_values=True)
-    started = await conversation_process_start(context(turn), workflow_id=definition.code)
+    ready = await process_prepare(context(turn), workflow_id=definition.code, input=nested, typed_values=True)
+    started = await process_start_conversation(context(turn), workflow_id=definition.code)
     assert started["run_id"] == ready["run_id"] and started["started"] and len(calls) == 1
     stored = await db.get(ProcessRun, UUID(started["run_id"]))
     assert stored.input == nested and stored.data == nested
-    assert not (await conversation_process_start(context(turn), workflow_id=definition.code))["started"]
+    assert not (await process_start_conversation(context(turn), workflow_id=definition.code))["started"]
     assert stored.input == nested and len(calls) == 1
 
 
@@ -243,9 +243,9 @@ async def test_a_valid_supplied_file_replaces_a_now_unavailable_default(db, nati
     await resource_delete(ctx, old.uri)
     calls = inference(monkeypatch, [assessment(single=True)])
     turn, _ = await human_turn(db, owner, "Launch one dossier with this replacement.", user, files=[fresh.uri])
-    ready = await conversation_process_prepare(context(turn), workflow_id=definition.code, input={"document": fresh.uri})
+    ready = await process_prepare(context(turn), workflow_id=definition.code, input={"document": fresh.uri})
     assert ready["status"] == "ready" and not ready["issues"]
-    started = await conversation_process_start(context(turn), workflow_id=definition.code)
+    started = await process_start_conversation(context(turn), workflow_id=definition.code)
     assert started["started"] and (await db.get(ProcessRun, UUID(started["run_id"]))).input["document"]["value"] == fresh.uri
     assert len(calls) == 1
 
@@ -260,8 +260,8 @@ async def test_followup_questions_name_only_unresolved_fields_without_another_mo
     calls = inference(monkeypatch, [assessment(single=True)])
     turn, _ = await human_turn(db, owner, "Launch one synthetic dossier.", user)
     turn = replace(turn, language=language)
-    await conversation_process_prepare(context(turn), workflow_id=definition.code)
-    updated = await conversation_process_prepare(context(turn), workflow_id=definition.code, input={"field_done": "Synthetic"})
+    await process_prepare(context(turn), workflow_id=definition.code)
+    updated = await process_prepare(context(turn), workflow_id=definition.code, input={"field_done": "Synthetic"})
     assert updated["question"].startswith(prefix)
     assert "field_left" in updated["question"] and "field_done" not in updated["question"] and len(calls) == 1
 
@@ -273,8 +273,8 @@ async def test_repeating_an_unsupported_null_placeholder_reuses_the_refusal_with
     definition = await workflow(owner, [Variable(name="name", type="string", nullable=True)])
     calls = inference(monkeypatch, [assessment({"name": None}, single=True)])
     turn, _ = await human_turn(db, owner, "Launch one synthetic dossier.", user)
-    first = await conversation_process_prepare(context(turn), workflow_id=definition.code, input={"name": None})
-    again = await conversation_process_prepare(context(turn), workflow_id=definition.code, input={"name": None})
+    first = await process_prepare(context(turn), workflow_id=definition.code, input={"name": None})
+    again = await process_prepare(context(turn), workflow_id=definition.code, input={"name": None})
     assert first["missing"] == again["missing"] == ["name"]
     assert len(calls) == 1 and not again["input"]
 
@@ -289,7 +289,7 @@ async def test_prepared_permission_never_authorizes_changed_parameters_or_scope(
     other = await workflow(owner, [Variable(name="answer", type="int", nullable=False)])
     calls = inference(monkeypatch, [assessment({"answer": 0}, single=True)], [[]])
     turn, _ = await human_turn(db, owner, "Launch one synthetic dossier with zero.", user)
-    await conversation_process_prepare(context(turn), workflow_id=definition.code)
+    await process_prepare(context(turn), workflow_id=definition.code)
     args = {"workflow_id": other.code if change == "workflow" else definition.code,
         "values": {"answer": 1 if change == "value" else 0}, "typed_values": change == "typed-mode"}
     changed = replace(turn, messaging_context={**turn.messaging_context, "participant_id": "synthetic-other"}) if change == "participant" else turn
@@ -306,9 +306,9 @@ async def test_explicit_multiple_runs_keep_the_full_launch_plan_and_distinct_inv
     launch = {"workflow_id": definition.code, "input": {"name": "Synthetic"}}
     calls = inference(monkeypatch, [assessment({"name": "Synthetic"}, single=False)], [[launch, launch]])
     turn, _ = await human_turn(db, owner, "Launch this synthetic dossier twice for Synthetic.", user)
-    ready = await conversation_process_prepare(context(turn), workflow_id=definition.code)
-    first = await conversation_process_start(context(turn), workflow_id=definition.code)
-    second = await conversation_process_start(context(turn), workflow_id=definition.code, occurrence=2)
+    ready = await process_prepare(context(turn), workflow_id=definition.code)
+    first = await process_start_conversation(context(turn), workflow_id=definition.code)
+    second = await process_start_conversation(context(turn), workflow_id=definition.code, occurrence=2)
     assert first["run_id"] == ready["run_id"] and second["run_id"] != first["run_id"]
     assert len(calls) == 2 and await db.scalar(select(func.count()).select_from(ProcessStartJob)) == 2
     saved = (await db.get(ConversationRound, turn.round_id)).process_launch_admission
@@ -337,7 +337,7 @@ async def test_a_superseded_worker_interrupts_its_lock_wait_without_changing_the
     definition = await workflow(owner, [Variable(name="name", type="string", nullable=False)])
     inference(monkeypatch, [assessment(single=True)])
     turn, _ = await human_turn(db, owner, "Launch one synthetic dossier.", user)
-    first = await conversation_process_prepare(context(turn), workflow_id=definition.code)
+    first = await process_prepare(context(turn), workflow_id=definition.code)
     superseded = False
     waiting_for_lock = asyncio.Event()
     connection = await db.connection()
@@ -347,7 +347,7 @@ async def test_a_superseded_worker_interrupts_its_lock_wait_without_changing_the
             waiting_for_lock.set()
     async def update():
         async with get_db_session():
-            return await conversation_process_prepare(context(replace(turn,
+            return await process_prepare(context(replace(turn,
                 should_interrupt=AsyncMock(side_effect=lambda: superseded))), workflow_id=definition.code, input={"name": "Synthetic"})
     async with get_db_session():
         await get_db().scalar(select(ConversationRound).where(ConversationRound.id == turn.round_id).with_for_update())
@@ -384,13 +384,13 @@ async def test_values_added_after_an_assessment_cannot_expand_its_approved_param
     definition = await workflow(owner, [Variable(name="amount", type="int", nullable=False)])
     calls = inference(monkeypatch, [assessment(single=True)], [[{"workflow_id": definition.code, "input": {"amount": 10}}]])
     turn, _ = await human_turn(db, owner, "Launch one synthetic dossier with amount 10.", user)
-    ready = await conversation_process_prepare(context(turn), workflow_id=definition.code, input={"amount": 10})
-    await conversation_process_prepare(context(turn), workflow_id=definition.code, input={"amount": 1000})
+    ready = await process_prepare(context(turn), workflow_id=definition.code, input={"amount": 10})
+    await process_prepare(context(turn), workflow_id=definition.code, input={"amount": 1000})
     with pytest.raises(RecoverableToolError):
-        await conversation_process_start(context(turn), workflow_id=definition.code)
+        await process_start_conversation(context(turn), workflow_id=definition.code)
     assert len(calls) == 2 and await db.scalar(select(func.count()).select_from(ProcessStartJob)) == 0
-    await conversation_process_prepare(context(turn), workflow_id=definition.code, input={"amount": 10})
-    result = await conversation_process_start(context(turn), workflow_id=definition.code)
+    await process_prepare(context(turn), workflow_id=definition.code, input={"amount": 10})
+    result = await process_start_conversation(context(turn), workflow_id=definition.code)
     assert result["run_id"] == ready["run_id"] and result["started"] and len(calls) == 2
     assert (await db.get(ProcessRun, UUID(result["run_id"]))).input["amount"]["value"] == 10
 
@@ -403,9 +403,9 @@ async def test_a_conflict_between_proposed_and_human_values_keeps_the_exact_scop
     calls = inference(monkeypatch, [assessment({"name": "Synthetic Alice"}, single=True)],
         [[{"workflow_id": definition.code, "input": {"name": "Synthetic Alice"}}]])
     turn, _ = await human_turn(db, owner, "Launch one dossier for Synthetic Alice.", user)
-    await conversation_process_prepare(context(turn), workflow_id=definition.code, input={"name": "Synthetic Bob"})
+    await process_prepare(context(turn), workflow_id=definition.code, input={"name": "Synthetic Bob"})
     with pytest.raises(RecoverableToolError):
-        await conversation_process_start(context(turn), workflow_id=definition.code)
+        await process_start_conversation(context(turn), workflow_id=definition.code)
     assert len(calls) == 2 and await db.scalar(select(func.count()).select_from(ProcessStartJob)) == 0
 
 
@@ -426,7 +426,7 @@ async def test_concurrent_partial_updates_report_a_conflict_then_retry_without_l
     definition = await workflow(owner, [Variable(name="first", type="string", nullable=False), Variable(name="last", type="string", nullable=False)])
     calls = inference(monkeypatch, [assessment(single=True)])
     turn, _ = await human_turn(db, owner, "Launch one dossier using my known details.", user)
-    waiting = await conversation_process_prepare(context(turn), workflow_id=definition.code)
+    waiting = await process_prepare(context(turn), workflow_id=definition.code)
     engine = (await db.connection()).sync_connection.engine
     both_waiting = asyncio.Event()
     lock_requests = 0
@@ -439,7 +439,7 @@ async def test_concurrent_partial_updates_report_a_conflict_then_retry_without_l
     patches = [{"first": "Synthetic"}, {"last": "Example"}]
     async def submit(patch):
         async with get_db_session():
-            return await conversation_process_prepare(context(turn), workflow_id=definition.code, input=patch)
+            return await process_prepare(context(turn), workflow_id=definition.code, input=patch)
     tasks = []
     async with get_db_session():
         await get_db().scalar(select(ConversationRound).where(ConversationRound.id == turn.round_id).with_for_update())
@@ -468,9 +468,9 @@ async def test_a_released_run_replays_its_receipt_even_when_its_original_file_wa
     definition = await workflow(owner, [Variable(name="document", type="File", nullable=False)])
     calls = inference(monkeypatch, [assessment(single=True)])
     turn, _ = await human_turn(db, owner, "Launch one synthetic dossier with this file.", user, files=[file.uri])
-    await conversation_process_prepare(context(turn), workflow_id=definition.code, input={"document": file.uri})
-    started = await conversation_process_start(context(turn), workflow_id=definition.code)
+    await process_prepare(context(turn), workflow_id=definition.code, input={"document": file.uri})
+    started = await process_start_conversation(context(turn), workflow_id=definition.code)
     await resource_delete(ctx, file.uri)
-    receipt = await conversation_process_start(context(turn), workflow_id=definition.code, input={"document": file.uri})
+    receipt = await process_start_conversation(context(turn), workflow_id=definition.code, input={"document": file.uri})
     assert receipt["run_id"] == started["run_id"] and not receipt["started"] and len(calls) == 1
     assert await db.scalar(select(func.count()).select_from(ProcessStartJob)) == 1

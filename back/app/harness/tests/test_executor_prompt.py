@@ -64,7 +64,7 @@ def test_harness_system_prompt_includes_only_supplied_rights_filtered_inventory(
             executor_service.common_system_prompt_sections(_agent(), None),
             galaris_tools=(
                 "Only the following functions are available:\n"
-                "- `process`: `process_list`, `process_get`, `process_start`"
+                "- `process`: `process_start`"
             ),
         )
     )

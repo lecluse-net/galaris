@@ -10,8 +10,8 @@
     "weekday": "Thursday",
     "available_tools": [
       "memory_search",
-      "conversation_task_status",
-      "conversation_task_submit"
+      "task_get",
+      "task_run"
     ],
     "tool_responses": {
       "memory_search": [
@@ -25,14 +25,14 @@
           "benchmark": true
         }
       ],
-      "conversation_task_status": [
+      "task_get": [
         {
           "task_uri": "galaris://task/00000000-0000-0000-0000-000000000041",
           "status": "RUNNING",
           "benchmark": true
         }
       ],
-      "conversation_task_submit": [
+      "task_run": [
         {
           "task_uri": "galaris://task/00000000-0000-0000-0000-000000000043",
           "status": "CREATE",
@@ -43,8 +43,8 @@
     },
     "tool_catalog": [
       {
-        "name": "conversation_task_submit",
-        "description": "Admit substantial work after comparing it with the recent Tasks shown in context. A renewed request is not automatically a retry of a failed Task. Prefer CREATE_NEW with the recorded failure, useful partial results and corrections in the framing hints. Use conversation_task_retry only for a deliberate retry of the same work. Choose AMEND_CURRENT or AMEND_QUEUED only when the same primary artifact or target keeps substantially the same success criteria. Choose CREATE_NEW for a different target, repository, resource, deliverable, or independently verifiable outcome, even when it shares the same document or incident. Sharing a destination is not enough to amend: if either outcome can be completed without the other, create a new Task and leave existing work unchanged. Amendments require target_task_id and expected_revision. While delegated children are active, an accepted amendment is queued durably for the leader's next synthesis: the receipt has deferred=true and applied_at=null. Contributions keep running; do not edit source documents or send a peer message as a substitute for this instruction. An unavailable amendment returns without creating another Task: re-read the target and reconsider the amendment; use CREATE_NEW for an independent outcome. Use REPLACE only for an explicit replacement: its successor waits for confirmed stop of target_task_id at expected_revision. Unresolved coordination returns a conflict. The supplied label and objective are framing hints: before creating a new Task, Galaris rebuilds both with the agent's standard model from the complete conversation context, memory, URLs, and resource references. Use mode=plan only when explicitly requested; omitted controls remain the dispatcher's decision. This tool never chooses Task effort; the dispatcher owns that decision. Explicit deterministic chat directives such as @high use the separate direct-admission path. Ask the user when the relationship is ambiguous. Return immediately and never expose the canonical Task URI unless explicitly asked.",
+        "name": "task_run",
+        "description": "Admit substantial work after comparing it with the recent Tasks shown in context. A renewed request is not automatically a retry of a failed Task. Prefer CREATE_NEW with the recorded failure, useful partial results and corrections in the framing hints. Use task_resume to continue the same Task; the server resumes a user pause or retries an eligible failure. Choose AMEND_CURRENT or AMEND_QUEUED only when the same primary artifact or target keeps substantially the same success criteria. Choose CREATE_NEW for a different target, repository, resource, deliverable, or independently verifiable outcome, even when it shares the same document or incident. Sharing a destination is not enough to amend: if either outcome can be completed without the other, create a new Task and leave existing work unchanged. Amendments require target_task_id and expected_revision. While delegated children are active, an accepted amendment is queued durably for the leader's next synthesis: the receipt has deferred=true and applied_at=null. Contributions keep running; do not edit source documents or send a peer message as a substitute for this instruction. An unavailable amendment returns without creating another Task: re-read the target and reconsider the amendment; use CREATE_NEW for an independent outcome. Use REPLACE only for an explicit replacement: its successor waits for confirmed stop of target_task_id at expected_revision. Unresolved coordination returns a conflict. The supplied label and objective are framing hints: before creating a new Task, Galaris rebuilds both with the agent's standard model from the complete conversation context, memory, URLs, and resource references. Use mode=plan only when explicitly requested; omitted controls remain the dispatcher's decision. This tool never chooses Task effort; the dispatcher owns that decision. Explicit deterministic chat directives such as @high use the separate direct-admission path. Ask the user when the relationship is ambiguous. Return immediately and never expose the canonical Task URI unless explicitly asked.",
         "parameters": {
           "additionalProperties": false,
           "properties": {
@@ -115,7 +115,7 @@
         }
       },
       {
-        "name": "conversation_task_status",
+        "name": "task_get",
         "description": "Read one Task's durable phase, plan progress, last error and bounded result. Use this before describing what the agent is currently doing.",
         "parameters": {
           "additionalProperties": false,
@@ -131,8 +131,8 @@
         }
       },
       {
-        "name": "conversation_process_start",
-        "description": "Start an assigned business Process asynchronously, associate it with this conversation, and return its internal tracking ID for later Process tools. Never wait for completion or expose that ID to the user unless explicitly asked. The server freezes the workflows and exact inputs requested by the actual current message before the first new launch. A reply to an activity does not authorize a new run. Retries reuse the same invocation. input uses ordinary JSON values, including a canonical URI string for a File. Use typed_values=true only when every value uses an explicit {type, value} envelope. Use conversation_process_prepare to collect every selected input, searching known facts/files first and asking only for missing ones. An incomplete call returns a preparation dossier and its WAITING run. Complete inputs release that same run. When all inputs are already known or defaulted, call this tool directly; no separate preparation call is needed. For a ready dossier, omit input: the server reuses its typed values without loss or resubmission. Use occurrence=2 only when THIS SAME human message requests two identical executions; a single 'relaunch it' in a new message uses occurrence=1 and resolves its workflow/values from actual history.",
+        "name": "process_start_conversation",
+        "description": "Start an assigned business Process asynchronously, associate it with this conversation, and return its internal tracking ID for later Process tools. Never wait for completion or expose that ID to the user unless explicitly asked. The server freezes the workflows and exact inputs requested by the actual current message before the first new launch. A reply to an activity does not authorize a new run. Retries reuse the same invocation. input uses ordinary JSON values, including a canonical URI string for a File. Use typed_values=true only when every value uses an explicit {type, value} envelope. Use process_prepare to collect every selected input, searching known facts/files first and asking only for missing ones. An incomplete call returns a preparation dossier and its WAITING run. Complete inputs release that same run. When all inputs are already known or defaulted, call this tool directly; no separate preparation call is needed. For a ready dossier, omit input: the server reuses its typed values without loss or resubmission. Use occurrence=2 only when THIS SAME human message requests two identical executions; a single 'relaunch it' in a new message uses occurrence=1 and resolves its workflow/values from actual history.",
         "parameters": {
           "additionalProperties": false,
           "properties": {
@@ -245,7 +245,7 @@
       "expected_output": {
         "action": "read_status",
         "response_requirements": [
-          "Call conversation_task_status for galaris://task/00000000-0000-0000-0000-000000000041; report that work is running, not completed."
+          "Call task_status for galaris://task/00000000-0000-0000-0000-000000000041; report that work is running, not completed."
         ]
       }
     },
@@ -264,7 +264,7 @@
       "expected_output": {
         "action": "start_task",
         "objective_requirements": [
-          "Submit an HTML objective with conversation_task_submit, preserving the three offers, sources, costs and requested report."
+          "Submit an HTML objective with task_run, preserving the three offers, sources, costs and requested report."
         ],
         "response_requirements": [
           "Briefly acknowledge creation after the tool returns; do not claim the report is already complete."
@@ -281,10 +281,10 @@
         "variable_value": "Using archive://samples/00000000-0000-0000-0000-000000000081, generate a 3D scene and deliver the final file. You may start.",
         "context": {
           "available_tools": [
-            "conversation_task_submit"
+            "task_run"
           ],
           "tool_responses": {
-            "conversation_task_submit": [
+            "task_run": [
               {
                 "created": true,
                 "task_uri": "galaris://task/00000000-0000-0000-0000-000000000043",
@@ -307,7 +307,7 @@
         "response": "Task admitted.",
         "tool_calls": [
           {
-            "name": "conversation_task_submit",
+            "name": "task_run",
             "arguments": {
               "objective": "<p>Using archive://samples/00000000-0000-0000-0000-000000000081, generate a 3D scene and deliver the final file. You may start.</p>"
             }
@@ -315,7 +315,7 @@
         ],
         "tool_results": [
           {
-            "name": "conversation_task_submit",
+            "name": "task_run",
             "arguments": {
               "objective": "<p>Using archive://samples/00000000-0000-0000-0000-000000000081, generate a 3D scene and deliver the final file. You may start.</p>"
             },
@@ -330,7 +330,7 @@
         "outcome_checks": {
           "required_calls": [
             {
-              "tool": "conversation_task_submit",
+              "tool": "task_run",
               "argument_values": {
                 "objective": [
                   "archive://samples/00000000-0000-0000-0000-000000000081"
@@ -358,10 +358,10 @@
         "variable_value": "Using the 3D point cloud in archive://samples/00000000-0000-0000-0000-000000000081, reconstruct a closed 3D mesh ready for printing and deliver the STL file. I do not know the method; explore the available means.",
         "context": {
           "available_tools": [
-            "conversation_task_submit"
+            "task_run"
           ],
           "tool_responses": {
-            "conversation_task_submit": [
+            "task_run": [
               {
                 "created": true,
                 "task_uri": "galaris://task/00000000-0000-0000-0000-000000000043",
@@ -378,7 +378,7 @@
         "response": "Task admitted.",
         "tool_calls": [
           {
-            "name": "conversation_task_submit",
+            "name": "task_run",
             "arguments": {
               "objective": "<p>Using the 3D point cloud in archive://samples/00000000-0000-0000-0000-000000000081, reconstruct a closed 3D mesh ready for printing and deliver the STL file. I do not know the method; explore the available means.</p>"
             }
@@ -386,7 +386,7 @@
         ],
         "tool_results": [
           {
-            "name": "conversation_task_submit",
+            "name": "task_run",
             "arguments": {
               "objective": "<p>Using the 3D point cloud in archive://samples/00000000-0000-0000-0000-000000000081, reconstruct a closed 3D mesh ready for printing and deliver the STL file. I do not know the method; explore the available means.</p>"
             },
@@ -401,7 +401,7 @@
         "outcome_checks": {
           "required_calls": [
             {
-              "tool": "conversation_task_submit",
+              "tool": "task_run",
               "argument_values": {
                 "objective": [
                   "archive://samples/00000000-0000-0000-0000-000000000081"
@@ -429,10 +429,10 @@
         "variable_value": "Did the Orbe parcel arrive? Did you check the email?",
         "context": {
           "available_tools": [
-            "conversation_task_submit"
+            "task_run"
           ],
           "tool_responses": {
-            "conversation_task_submit": [
+            "task_run": [
               {
                 "created": true,
                 "task_uri": "galaris://task/00000000-0000-0000-0000-000000000043",
@@ -458,7 +458,7 @@
         "response": "Task admitted.",
         "tool_calls": [
           {
-            "name": "conversation_task_submit",
+            "name": "task_run",
             "arguments": {
               "objective": "<p>Check the authorized mailbox for the Orbe parcel and report the delivery status supported by the relevant email.</p>"
             }
@@ -466,7 +466,7 @@
         ],
         "tool_results": [
           {
-            "name": "conversation_task_submit",
+            "name": "task_run",
             "arguments": {
               "objective": "<p>Check the authorized mailbox for the Orbe parcel and report the delivery status supported by the relevant email.</p>"
             },
@@ -481,7 +481,7 @@
         "outcome_checks": {
           "required_calls": [
             {
-              "tool": "conversation_task_submit",
+              "tool": "task_run",
               "argument_values": {
                 "objective": [
                   "Orbe",
@@ -510,10 +510,10 @@
         "variable_value": "Tell me what 7 × 8 is, then produce the 3D model from archive://samples/00000000-0000-0000-0000-000000000081.",
         "context": {
           "available_tools": [
-            "conversation_task_submit"
+            "task_run"
           ],
           "tool_responses": {
-            "conversation_task_submit": [
+            "task_run": [
               {
                 "created": true,
                 "task_uri": "galaris://task/00000000-0000-0000-0000-000000000043",
@@ -530,7 +530,7 @@
         "response": "Task admitted.",
         "tool_calls": [
           {
-            "name": "conversation_task_submit",
+            "name": "task_run",
             "arguments": {
               "objective": "<p>Tell me what 7 × 8 is, then produce the 3D model from archive://samples/00000000-0000-0000-0000-000000000081.</p>"
             }
@@ -538,7 +538,7 @@
         ],
         "tool_results": [
           {
-            "name": "conversation_task_submit",
+            "name": "task_run",
             "arguments": {
               "objective": "<p>Tell me what 7 × 8 is, then produce the 3D model from archive://samples/00000000-0000-0000-0000-000000000081.</p>"
             },
@@ -553,7 +553,7 @@
         "outcome_checks": {
           "required_calls": [
             {
-              "tool": "conversation_task_submit",
+              "tool": "task_run",
               "argument_values": {
                 "objective": [
                   "archive://samples/00000000-0000-0000-0000-000000000081"
@@ -581,10 +581,10 @@
         "variable_value": "Delete the folder archive://samples/00000000-0000-0000-0000-000000000081. The attached server check confirms that you are forbidden from deleting it in every mode.",
         "context": {
           "available_tools": [
-            "conversation_task_submit"
+            "task_run"
           ],
           "tool_responses": {
-            "conversation_task_submit": [
+            "task_run": [
               {
                 "created": true,
                 "task_uri": "galaris://task/00000000-0000-0000-0000-000000000043",
@@ -609,7 +609,7 @@
         "tool_results": [],
         "outcome_checks": {
           "forbidden_tools": [
-            "conversation_task_submit"
+            "task_run"
           ],
           "max_tool_calls": 0
         },
@@ -628,10 +628,10 @@
         "variable_value": "Archive exactly one of archive://samples/00000000-0000-0000-0000-000000000081/alpha and archive://samples/00000000-0000-0000-0000-000000000081/beta. This depends on my preference, which I have not given you; ask which one.",
         "context": {
           "available_tools": [
-            "conversation_task_submit"
+            "task_run"
           ],
           "tool_responses": {
-            "conversation_task_submit": [
+            "task_run": [
               {
                 "created": true,
                 "task_uri": "galaris://task/00000000-0000-0000-0000-000000000043",
@@ -650,7 +650,7 @@
         "tool_results": [],
         "outcome_checks": {
           "forbidden_tools": [
-            "conversation_task_submit"
+            "task_run"
           ],
           "max_tool_calls": 0
         },
@@ -670,8 +670,8 @@
         "context": {
           "history": [],
           "available_tools": [
-            "conversation_process_start",
-            "conversation_task_submit"
+            "process_start_conversation",
+            "task_run"
           ],
           "task_only_services": [],
           "available_processes": [
@@ -694,7 +694,7 @@
             }
           ],
           "tool_responses": {
-            "conversation_process_start": [
+            "process_start_conversation": [
               {
                 "run_id": "00000000-0000-0000-0000-000000000082",
                 "status": "RUNNING",
@@ -702,7 +702,7 @@
                 "benchmark": true
               }
             ],
-            "conversation_task_submit": [
+            "task_run": [
               {
                 "created": true,
                 "task_uri": "galaris://task/00000000-0000-0000-0000-000000000043",
@@ -718,7 +718,7 @@
         "response": "Process admitted.",
         "tool_calls": [
           {
-            "name": "conversation_process_start",
+            "name": "process_start_conversation",
             "arguments": {
               "workflow_id": "quality-check",
               "input": {
@@ -729,7 +729,7 @@
         ],
         "tool_results": [
           {
-            "name": "conversation_process_start",
+            "name": "process_start_conversation",
             "arguments": {
               "workflow_id": "quality-check",
               "input": {
@@ -747,7 +747,7 @@
         "outcome_checks": {
           "required_calls": [
             {
-              "tool": "conversation_process_start",
+              "tool": "process_start_conversation",
               "arguments": {
                 "workflow_id": "quality-check",
                 "input": {
@@ -757,7 +757,7 @@
             }
           ],
           "forbidden_tools": [
-            "conversation_task_submit"
+            "task_run"
           ],
           "max_tool_calls": 1
         },
@@ -778,7 +778,7 @@
           "history": [],
           "available_tools": [
             "memory_search",
-            "conversation_task_submit"
+            "task_run"
           ],
           "tool_responses": {
             "memory_search": [
@@ -792,7 +792,7 @@
                 "benchmark": true
               }
             ],
-            "conversation_task_submit": [
+            "task_run": [
               {
                 "created": true,
                 "task_uri": "galaris://task/00000000-0000-0000-0000-000000000043",
@@ -840,7 +840,7 @@
             }
           ],
           "forbidden_tools": [
-            "conversation_task_submit"
+            "task_run"
           ],
           "response_values": [
             "17"

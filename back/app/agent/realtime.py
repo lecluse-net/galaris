@@ -112,8 +112,8 @@ async def build_realtime_agent_context(
     )
     process_advertisement = await build_agent_process_advertisement(
         agent_id,
-        {"process_list", "process_get", "conversation_process_start"},
-        launch_tool_name="conversation_process_start",
+        {"file_list", "file_read", "process_start_conversation"},
+        launch_tool_name="process_start_conversation",
         relevance_query=history_context,
         include_execution_guidance=False,
     )
@@ -147,10 +147,10 @@ async def build_realtime_agent_context(
         tool_advertisement=(
             "Only the bounded realtime conversation functions are available: "
             "`voice_call_stop`, `memory_search`, `memory_remember`, "
-            "`conversation_task_list`, "
-            "`conversation_task_submit`, "
-            "`conversation_task_status`, "
-            "`process_list`, `process_get`, and `conversation_process_start`.\n\n"
+            "`task_list`, "
+            "`task_run`, "
+            "`task_get`, "
+            "`file_list` and `file_read` for Processes, and `process_start_conversation`.\n\n"
             + await build_task_capability_context(agent_id)
         ),
         process_advertisement=process_advertisement,

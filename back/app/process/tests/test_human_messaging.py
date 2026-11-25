@@ -12,7 +12,7 @@ from sqlalchemy import select
 from app.agent import AgentManagementScope, TaskMessage
 from app.connection import Connection
 from app.conversation import ConversationTurn, ProcessHumanMessenger
-from app.conversation.mcp import conversation_process_respond
+from app.conversation.mcp import process_respond
 from app.conversation.process_interactions import PROCESS_HUMAN_INTERACTION
 from app.messenger import (Interaction, Message, MessengerUser, Room, File, Attachment,
     list_pending_choices, resolve_from_message)
@@ -142,23 +142,23 @@ async def test_internal_request_is_durable_scoped_and_does_not_consume_unrelated
     ctx = McpToolContext(agent_id=owner.id, runtime="internal", resources={"conversation_turn": turn})
     from app.services import RecoverableToolError
     with pytest.raises(RecoverableToolError, match="null is not allowed"):
-        await conversation_process_respond(ctx, reference=choice.reference, output={"approved": None})
+        await process_respond(ctx, reference=choice.reference, output={"approved": None})
     assert choice.status == "PENDING"
     unlinked = replace(turn, messaging_context={**turn.messaging_context, "requester_user_id": None})
     with pytest.raises(PermissionError, match="authenticated"):
-        await conversation_process_respond(McpToolContext(agent_id=owner.id, runtime="internal",
+        await process_respond(McpToolContext(agent_id=owner.id, runtime="internal",
             resources={"conversation_turn": unlinked}), reference=choice.reference,
             output={"approved": {"type": "bool", "value": True}})
     foreign = replace(turn, messaging_context={**turn.messaging_context, "participant_id": "user:999999"})
     with pytest.raises(PermissionError):
-        await conversation_process_respond(McpToolContext(agent_id=owner.id, runtime="internal",
+        await process_respond(McpToolContext(agent_id=owner.id, runtime="internal",
             resources={"conversation_turn": foreign}), reference=choice.reference,
             output={"approved": {"type": "bool", "value": True}})
     output = {"approved": {"type": "bool", "value": False}}
-    assert (await conversation_process_respond(ctx, reference=choice.reference, output={"approved": False}))["applied"]
-    assert not (await conversation_process_respond(ctx, reference=choice.reference, output=output))["applied"]
+    assert (await process_respond(ctx, reference=choice.reference, output={"approved": False}))["applied"]
+    assert not (await process_respond(ctx, reference=choice.reference, output=output))["applied"]
     with pytest.raises(ValueError, match="different"):
-        await conversation_process_respond(ctx, reference=choice.reference,
+        await process_respond(ctx, reference=choice.reference,
             output={"approved": {"type": "bool", "value": True}})
     assert not await list_pending_choices(**scope)
     await finish_run(db, run_id)
@@ -220,11 +220,11 @@ async def test_file_only_message_reaches_controller_and_process_with_its_origina
     assert turn.pending_interactions[0]["kind"] == PROCESS_HUMAN_INTERACTION
     ctx = McpToolContext(agent_id=owner.id, runtime="internal", resources={"conversation_turn": turn})
     with pytest.raises((PermissionError, LookupError, ValueError)):
-        await conversation_process_respond(ctx, reference=choice.reference,
+        await process_respond(ctx, reference=choice.reference,
             output={"attachment": {"type": "File", "value": f"chat://{room.external_id}/{uuid4()}"}})
     assert choice.status == "PENDING"
     output = {"attachment": {"type": "File", "value": uri}}
-    await conversation_process_respond(ctx, reference=choice.reference, output={"attachment": uri})
+    await process_respond(ctx, reference=choice.reference, output={"attachment": uri})
     await finish_run(db, run_id)
     run = await db.get(ProcessRun, run_id)
     assert run.status == "success" and run.output == output
@@ -260,7 +260,7 @@ async def test_external_route_is_used_and_cancelled_process_refuses_a_late_chat_
             "connection_id": connection.id, "service_id": tool.id, "participant_id": contact.external_user,
             "requester_user_id": user.id})
     with pytest.raises(ValueError, match="no longer"):
-        await conversation_process_respond(McpToolContext(agent_id=owner.id, runtime="internal",
+        await process_respond(McpToolContext(agent_id=owner.id, runtime="internal",
             resources={"conversation_turn": turn}), reference=choice.reference,
             output={"approved": {"type": "bool", "value": True}})
     attempt = await db.get(ProcessNodeAttempt, UUID(choice.metadata_["attempt_id"]))
@@ -286,7 +286,7 @@ async def test_successive_human_steps_send_distinct_requests_and_preserve_their_
             objective="Synthetic answer", messages=({"text": "Synthetic answer"},),
             messaging_context={"connection_id": choice.connection_id, "service_id": choice.service_id,
                 "participant_id": choice.user_id, "requester_user_id": user.id})
-        await conversation_process_respond(McpToolContext(agent_id=owner.id, runtime="internal",
+        await process_respond(McpToolContext(agent_id=owner.id, runtime="internal",
             resources={"conversation_turn": turn}), reference=choice.reference,
             output={"approved": {"type": "bool", "value": approved}})
         for _ in range(6):

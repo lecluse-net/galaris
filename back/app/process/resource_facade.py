@@ -5,25 +5,46 @@ from __future__ import annotations
 
 from typing import Any
 from uuid import UUID
+
+from sqlalchemy import String, and_, cast, false, or_, select, true
+
 from app.agent import AgentManagementScope
+from core.database import get_db
 
 from . import process_service
-from .models import ProcessDefinition
+from .bpmn import Workflow
+from .models import ProcessDefinition, ProcessRun
 
 
-async def read_process_run_resource(identity: UUID, *, actor_agent_id: int, management_scope: AgentManagementScope | None = None) -> dict[str, Any]:
+async def read_process_run_resource(
+    identity: UUID,
+    *,
+    actor_agent_id: int,
+    management_scope: AgentManagementScope | None = None,
+    page: int = 1,
+    after_event: int = 0,
+) -> dict[str, Any]:
     """Observe an authorized run without refreshing or advancing its engine."""
     from . import native_runs
     from app.services import has_process_admin_access
 
     run = await process_service.get_run(identity)
-    if run is None:
+    if run is None or run.deleted_at is not None:
         raise FileNotFoundError("Process run not found")
     if run.engine_code == "galaris":
-        payload = await native_runs.inspect_run(identity, management_scope or actor_agent_id)
+        payload = await native_runs.inspect_run(identity, management_scope or actor_agent_id, page=page, after_event=after_event)
+        payload["next_node_page"] = page + 1 if payload["total"] > page * payload["page_size"] else None
+        payload["next_event_cursor"] = payload["event_cursor"] if len(payload["events"]) == payload["page_size"] else None
+        first_page = ("id", "workflow_id", "label", "status", "operational", "next_node_page", "next_event_cursor")
+        payload = {**{key: payload[key] for key in first_page}, **payload}
     else:
-        if run.launcher_agent_id != actor_agent_id and not await has_process_admin_access(actor_agent_id, target_agent_id=run.launcher_agent_id):
+        allowed = (management_scope.allows(run.launcher_agent_id) if management_scope is not None
+                   else run.launcher_agent_id == actor_agent_id
+                   or await has_process_admin_access(actor_agent_id, target_agent_id=run.launcher_agent_id))
+        if not allowed:
             raise PermissionError("Run not found in this agent's participation scope")
+        if page != 1 or after_event:
+            raise ValueError("Only internal runs support occurrence and event paging")
         detail = await process_service.get_run_detail(identity)
         if detail is None:
             raise FileNotFoundError("Process run not found")
@@ -47,6 +68,8 @@ def _payload(
     updated_at = definition.updated_at
     return {
         "workflow_id": definition.engine_process_id,
+        "definition_id": definition.id,
+        "resource_uri": process_service.process_resource_uri(definition),
         "native_code": definition.code,
         "label": definition.label,
         "description": definition.description,
@@ -68,14 +91,38 @@ async def read_process_resource(
     native: bool = False,
     management_scope: AgentManagementScope | None = None,
 ) -> dict[str, Any] | None:
+    from . import native_definitions
+
+    actor = management_scope or actor_agent_id
     if native:
-        from .native_definitions import get
-        definition, _ = await get(workflow_id, management_scope or actor_agent_id)
+        definition, _ = await native_definitions.get(workflow_id, actor, content=False)
     else:
         definition = await process_service.get_for_agent(actor_agent_id, workflow_id)
     if definition is None:
         return None
-    return _payload(definition, service_codes=await _service_codes())
+    payload = _payload(definition, service_codes=await _service_codes())
+    if definition.code is None:
+        return payload
+    detail = await native_definitions.read(definition.code, actor)
+    graph = Workflow.model_validate(detail["graph"])
+    activities: list[dict[str, Any]] = []
+    bodies = [graph]
+    while bodies:
+        for node in bodies.pop().nodes:
+            if node.kind not in {"start", "end"}:
+                activities.append({"id": node.id, "kind": node.kind, "title": node.title,
+                    "inputs": node.inputs, "outputs": node.outputs})
+            if node.body is not None:
+                bodies.append(node.body)
+    launch_schema = {"variables": detail["graph"]["variables"], "inputs": graph.inputs,
+                     "outputs": graph.outputs} if graph.typed else {}
+    return {
+        **payload,
+        "schema_version": graph.schema_version,
+        "activities": activities,
+        **launch_schema,
+        **detail,
+    }
 
 
 async def list_process_resources(
@@ -99,23 +146,38 @@ async def list_process_resources(
 
 async def list_process_run_resources(*, actor_agent_id: int | AgentManagementScope, query: str = "", offset: int = 0,
     limit: int = 50) -> list[dict[str, Any]]:
-    from sqlalchemy import select
-    from core.database import get_db
-    from .models import ProcessRun
     from . import native_runs
     from .query_policy import prepare_process_read
     from .native_access import administrative_run_clause
 
     await prepare_process_read()
-    statement = select(ProcessRun).join(ProcessDefinition, ProcessDefinition.id == ProcessRun.process_id).where(
-        ProcessRun.engine_code == "galaris", native_runs.readable_run_clause(actor_agent_id,
-            administrative=await administrative_run_clause(actor_agent_id)))
+    administrative = await administrative_run_clause(actor_agent_id)
+    if isinstance(actor_agent_id, int):
+        external = or_(administrative, ProcessRun.launcher_agent_id == actor_agent_id)
+    else:
+        ids = actor_agent_id.agent_ids
+        scope = true() if ids is None else ProcessRun.launcher_agent_id.in_(ids) if ids else false()
+        external = and_(ProcessRun.launcher_agent_id.is_not(None), scope)
+    statement = select(ProcessRun.id, ProcessRun.status, ProcessRun.created_at, ProcessDefinition.label).join(
+        ProcessDefinition, ProcessDefinition.id == ProcessRun.process_id
+    ).where(ProcessRun.deleted_at.is_(None), or_(
+        and_(ProcessRun.engine_code == "galaris", native_runs.readable_run_clause(actor_agent_id, administrative=administrative)),
+        and_(ProcessRun.engine_code != "galaris", external),
+    ))
     if query:
         escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        statement = statement.where(ProcessDefinition.label.ilike(f"%{escaped}%", escape="\\"))
-    runs = await get_db().scalars(statement.order_by(ProcessRun.created_at.desc(), ProcessRun.id).offset(offset).limit(limit))
+        pattern = f"%{escaped}%"
+        statement = statement.where(or_(
+            ProcessDefinition.label.ilike(pattern, escape="\\"),
+            ProcessDefinition.engine_process_id.ilike(pattern, escape="\\"),
+            ProcessRun.status.ilike(pattern, escape="\\"),
+            cast(ProcessRun.id, String).ilike(pattern, escape="\\"),
+        ))
+    runs = (await get_db().execute(
+        statement.order_by(ProcessRun.created_at.desc(), ProcessRun.id).offset(offset).limit(limit)
+    )).all()
     return [{"uri": f"galaris://processes/runs/{run.id}",
-        "name": f"{run.launch_snapshot.get('process_label', '')} · {str(run.id)[:8]}",
+        "name": f"{run.label} · {run.status} · {str(run.id)[:8]}",
         "created_at": run.created_at.isoformat()} for run in runs]
 
 

@@ -19,7 +19,7 @@ tests restent l’autorité sur le comportement.
 - 0 paires frontend directement bidirectionnelles ;
 - 845 handlers HTTP/WebSocket détectés ;
 - 210 tables SQLAlchemy détectées ;
-- 306 outils MCP natifs détectés ;
+- 290 outils MCP natifs détectés ;
 - 59 pages Vue détectées.
 
 ## Modules backend
@@ -330,12 +330,12 @@ tests restent l’autorité sur le comportement.
 | `app.file_share` | `app.connection` | `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/connection_diagnostics.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/indexing.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/thumbnail_service.py` |
 | `app.file_share` | `app.console` | `back/app/file_share/browser.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/resource_service.py` |
 | `app.file_share` | `app.conversation` | `back/app/file_share/galaris_provider.py` |
-| `app.file_share` | `app.document` | `back/app/file_share/__init__.py`, `back/app/file_share/browser.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/document_folders.py`, `back/app/file_share/document_import.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/mcp.py`, `back/app/file_share/resource_index.py`, `back/app/file_share/resource_index_query.py`, `back/app/file_share/resource_service.py` |
+| `app.file_share` | `app.document` | `back/app/file_share/__init__.py`, `back/app/file_share/browser.py`, `back/app/file_share/browser_policy.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/document_folders.py`, `back/app/file_share/document_import.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/mcp.py`, `back/app/file_share/resource_index.py`, `back/app/file_share/resource_index_query.py`, `back/app/file_share/resource_service.py` |
 | `app.file_share` | `app.documentation` | `back/app/file_share/documentation_provider.py` |
-| `app.file_share` | `app.goal` | `back/app/file_share/galaris_provider.py` |
+| `app.file_share` | `app.goal` | `back/app/file_share/browser_policy.py`, `back/app/file_share/galaris_provider.py` |
 | `app.file_share` | `app.image` | `back/app/file_share/file_share_service.py` |
 | `app.file_share` | `app.memory` | `back/app/file_share/__init__.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/models.py`, `back/app/file_share/operation_memos.py`, `back/app/file_share/resource_contracts.py`, `back/app/file_share/resource_description.py`, `back/app/file_share/resource_index_content.py`, `back/app/file_share/resource_index_query.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/resource_service.py` |
-| `app.file_share` | `app.messenger` | `back/app/file_share/catalogue.py`, `back/app/file_share/file_share_service.py` |
+| `app.file_share` | `app.messenger` | `back/app/file_share/browser_policy.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/file_share_service.py` |
 | `app.file_share` | `app.process` | `back/app/file_share/galaris_provider.py`, `back/app/file_share/process_provider.py` |
 | `app.file_share` | `app.services` | `back/app/file_share/__init__.py`, `back/app/file_share/bridges.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/catalogue_resources.py`, `back/app/file_share/connection_diagnostics.py`, `back/app/file_share/documentation_provider.py`, `back/app/file_share/file_share_service.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/indexing.py`, `back/app/file_share/mcp.py`, `back/app/file_share/resource_contracts.py`, `back/app/file_share/resource_observation.py`, `back/app/file_share/thumbnail_service.py`, `back/app/file_share/transport.py` |
 | `app.file_share` | `app.skill` | `back/app/file_share/browser.py`, `back/app/file_share/galaris_provider.py`, `back/app/file_share/mcp.py`, `back/app/file_share/skill_provider.py` |
@@ -351,7 +351,7 @@ tests restent l’autorité sur le comportement.
 | `app.file_share` | `core.secrets` | `back/app/file_share/media_access.py` |
 | `app.file_share` | `core.settings` | `back/app/file_share/media_router.py` |
 | `app.file_share` | `core.storage` | `back/app/file_share/browser.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/document_facade.py`, `back/app/file_share/document_rag_cache.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/operation_memos.py`, `back/app/file_share/resource_index.py`, `back/app/file_share/resource_index_query.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/router.py` |
-| `app.file_share` | `core.user` | `back/app/file_share/browser_router.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/document_folders.py`, `back/app/file_share/document_import.py`, `back/app/file_share/facade.py`, `back/app/file_share/media_access.py` |
+| `app.file_share` | `core.user` | `back/app/file_share/browser_policy.py`, `back/app/file_share/browser_router.py`, `back/app/file_share/catalogue.py`, `back/app/file_share/document_folders.py`, `back/app/file_share/document_import.py`, `back/app/file_share/facade.py`, `back/app/file_share/media_access.py` |
 | `app.file_share` | `core.util` | `back/app/file_share/browser_router.py`, `back/app/file_share/document_facade.py`, `back/app/file_share/enrichment.py`, `back/app/file_share/fingerprinting.py`, `back/app/file_share/indexing.py`, `back/app/file_share/managed_files.py`, `back/app/file_share/mcp.py`, `back/app/file_share/media_router.py`, `back/app/file_share/messenger_transport.py`, `back/app/file_share/operation_memos.py`, `back/app/file_share/process_provider.py`, `back/app/file_share/resource_index.py`, `back/app/file_share/resource_index_query.py`, `back/app/file_share/resource_service.py`, `back/app/file_share/resource_uri.py`, `back/app/file_share/router.py`, `back/app/file_share/transport.py`, `back/app/file_share/web_transport.py` |
 | `app.goal` | `app.agent` | `back/app/goal/__init__.py`, `back/app/goal/context.py`, `back/app/goal/events.py`, `back/app/goal/goal_service.py`, `back/app/goal/hierarchy.py`, `back/app/goal/models.py`, `back/app/goal/retrospective.py`, `back/app/goal/router.py`, `back/app/goal/runner.py` |
 | `app.goal` | `app.connection` | `back/app/goal/mcp.py`, `back/app/goal/models.py`, `back/app/goal/resource_facade.py` |
@@ -378,7 +378,7 @@ tests restent l’autorité sur le comportement.
 | `app.harness` | `app.services` | `back/app/harness/checkpoint.py`, `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/mcp_toolset.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `app.skill` | `back/app/harness/__init__.py`, `back/app/harness/skills.py` |
 | `app.harness` | `core.authorize` | `back/app/harness/router.py` |
-| `app.harness` | `core.database` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/runtime.py` |
+| `app.harness` | `core.database` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/mcp_toolset.py`, `back/app/harness/runtime.py` |
 | `app.harness` | `core.document` | `back/app/harness/media.py` |
 | `app.harness` | `core.failure_journal` | `back/app/harness/runtime.py` |
 | `app.harness` | `core.i18n` | `back/app/harness/conversation.py`, `back/app/harness/executor.py`, `back/app/harness/runtime.py` |
@@ -523,7 +523,7 @@ tests restent l’autorité sur le comportement.
 | `app.process` | `app.share` | `back/app/process/definition_migration.py`, `back/app/process/models.py`, `back/app/process/native_access.py`, `back/app/process/native_router.py`, `back/app/process/native_sharing.py` |
 | `app.process` | `app.task` | `back/app/process/activity_controls.py`, `back/app/process/activity_jobs.py`, `back/app/process/code_broker.py`, `back/app/process/native_engine.py`, `back/app/process/process_service.py`, `back/app/process/retention.py`, `back/app/process/run_observation.py`, `back/app/process/run_resources.py` |
 | `app.process` | `core.authorize` | `back/app/process/dataset_usage.py`, `back/app/process/facade.py`, `back/app/process/native_access.py`, `back/app/process/native_router.py`, `back/app/process/native_sharing.py`, `back/app/process/router.py` |
-| `app.process` | `core.database` | `back/app/process/activity_controls.py`, `back/app/process/activity_jobs.py`, `back/app/process/catalogue.py`, `back/app/process/code_broker.py`, `back/app/process/dataset_usage.py`, `back/app/process/events.py`, `back/app/process/export.py`, `back/app/process/facade.py`, `back/app/process/human_requests.py`, `back/app/process/input_editing.py`, `back/app/process/input_preparation.py`, `back/app/process/input_provenance.py`, `back/app/process/interface.py`, `back/app/process/llm_decisions.py`, `back/app/process/mcp.py`, `back/app/process/models.py`, `back/app/process/native_actors.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/native_runs.py`, `back/app/process/native_sharing.py`, `back/app/process/process_service.py`, `back/app/process/progress.py`, `back/app/process/query_policy.py`, `back/app/process/replacement.py`, `back/app/process/resource_facade.py`, `back/app/process/resource_previews.py`, `back/app/process/retention.py`, `back/app/process/run_data.py`, `back/app/process/run_observation.py`, `back/app/process/run_resources.py`, `back/app/process/wait_events.py`, `back/app/process/workers.py` |
+| `app.process` | `core.database` | `back/app/process/activity_controls.py`, `back/app/process/activity_jobs.py`, `back/app/process/catalogue.py`, `back/app/process/code_broker.py`, `back/app/process/dataset_usage.py`, `back/app/process/events.py`, `back/app/process/export.py`, `back/app/process/facade.py`, `back/app/process/human_requests.py`, `back/app/process/input_editing.py`, `back/app/process/input_preparation.py`, `back/app/process/input_provenance.py`, `back/app/process/interface.py`, `back/app/process/llm_decisions.py`, `back/app/process/models.py`, `back/app/process/native_actors.py`, `back/app/process/native_definitions.py`, `back/app/process/native_engine.py`, `back/app/process/native_runs.py`, `back/app/process/native_sharing.py`, `back/app/process/process_service.py`, `back/app/process/progress.py`, `back/app/process/query_policy.py`, `back/app/process/replacement.py`, `back/app/process/resource_facade.py`, `back/app/process/resource_previews.py`, `back/app/process/retention.py`, `back/app/process/run_data.py`, `back/app/process/run_observation.py`, `back/app/process/run_resources.py`, `back/app/process/wait_events.py`, `back/app/process/workers.py` |
 | `app.process` | `core.dbadmin` | `back/app/process/dbadmin.py`, `back/app/process/definition_migration.py`, `back/app/process/document_format_migration.py` |
 | `app.process` | `core.i18n` | `back/app/process/fake_engine.py`, `back/app/process/mcp.py`, `back/app/process/process_service.py`, `back/app/process/registry.py`, `back/app/process/router.py` |
 | `app.process` | `core.params` | `back/app/process/__init__.py`, `back/app/process/input_editing.py`, `back/app/process/process_service.py`, `back/app/process/retention.py`, `back/app/process/router.py`, `back/app/process/run_data.py`, `back/app/process/workers.py` |
@@ -532,23 +532,23 @@ tests restent l’autorité sur le comportement.
 | `app.process` | `core.storage` | `back/app/process/native_router.py`, `back/app/process/process_service.py`, `back/app/process/run_data.py`, `back/app/process/run_resources.py` |
 | `app.process` | `core.user` | `back/app/process/activity_controls.py`, `back/app/process/dataset_usage.py`, `back/app/process/events.py`, `back/app/process/facade.py`, `back/app/process/native_access.py`, `back/app/process/native_actors.py`, `back/app/process/native_definitions.py`, `back/app/process/process_service.py` |
 | `app.process` | `core.util` | `back/app/process/input_editing.py`, `back/app/process/native_router.py`, `back/app/process/process_service.py`, `back/app/process/run_data.py`, `back/app/process/run_resources.py` |
-| `app.services` | `app.agent` | `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/builtin_merge.py`, `back/app/services/catalog.py`, `back/app/services/catalog_refresh_service.py`, `back/app/services/connection_functions.py`, `back/app/services/conversation_catalog.py`, `back/app/services/dbadmin.py`, `back/app/services/management_scope.py`, `back/app/services/mcp_loader.py`, `back/app/services/permission_catalog.py`, `back/app/services/resource_effects.py`, `back/app/services/router.py`, `back/app/services/runtime_authorization.py`, `back/app/services/runtime_permissions.py` |
+| `app.services` | `app.agent` | `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/builtin_merge.py`, `back/app/services/catalog.py`, `back/app/services/catalog_refresh_service.py`, `back/app/services/connection_functions.py`, `back/app/services/conversation_catalog.py`, `back/app/services/dbadmin.py`, `back/app/services/management_scope.py`, `back/app/services/mcp_loader.py`, `back/app/services/permission_catalog.py`, `back/app/services/resource_effects.py`, `back/app/services/router.py`, `back/app/services/runtime_authorization.py`, `back/app/services/runtime_permissions.py` |
 | `app.services` | `app.connection` | `back/app/services/admin_access.py`, `back/app/services/admin_candidates.py`, `back/app/services/admin_contracts.py`, `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/authorization.py`, `back/app/services/builtin_merge.py`, `back/app/services/connection_diagnostics.py`, `back/app/services/connection_functions.py`, `back/app/services/conversation_catalog.py`, `back/app/services/dbadmin.py`, `back/app/services/documentation_service.py`, `back/app/services/facade.py`, `back/app/services/management_scope.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp.py`, `back/app/services/mcp_authorization.py`, `back/app/services/mcp_loader.py`, `back/app/services/permission_catalog.py`, `back/app/services/protocols.py`, `back/app/services/rest.py`, `back/app/services/router.py`, `back/app/services/service.py`, `back/app/services/tool_inventory.py` |
 | `app.services` | `app.console` | `back/app/services/mcp_loader.py` |
 | `app.services` | `app.documentation` | `back/app/services/documentation_service.py` |
-| `app.services` | `app.file_share` | `back/app/services/capabilities.py`, `back/app/services/parameter_definitions.py`, `back/app/services/resource_effects.py`, `back/app/services/rest_uploads.py`, `back/app/services/router.py`, `back/app/services/service.py` |
+| `app.services` | `app.file_share` | `back/app/services/authorization_presentation.py`, `back/app/services/capabilities.py`, `back/app/services/parameter_definitions.py`, `back/app/services/resource_effects.py`, `back/app/services/rest_uploads.py`, `back/app/services/router.py`, `back/app/services/service.py` |
 | `app.services` | `app.llm` | `back/app/services/documentation_service.py`, `back/app/services/mcp_loader.py`, `back/app/services/tool_search_service.py` |
 | `app.services` | `app.messenger` | `back/app/services/authorization_notifications.py`, `back/app/services/capabilities.py`, `back/app/services/mcp_loader.py`, `back/app/services/service.py` |
 | `app.services` | `app.task` | `back/app/services/mcp_loader.py` |
 | `app.services` | `app.util` | `back/app/services/search_tool.py` |
 | `app.services` | `core.authorize` | `back/app/services/assertions.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/conversation_catalog.py`, `back/app/services/desktop_relay_router.py`, `back/app/services/router.py`, `back/app/services/runtime_authorization_router.py` |
-| `app.services` | `core.database` | `back/app/services/admin_service.py`, `back/app/services/administration_lock.py`, `back/app/services/authorization.py`, `back/app/services/authorization_models.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/authorization_views.py`, `back/app/services/catalog_refresh_service.py`, `back/app/services/conversation_catalog.py`, `back/app/services/deletion.py`, `back/app/services/desktop_relay.py`, `back/app/services/desktop_relay_models.py`, `back/app/services/documentation_service.py`, `back/app/services/facade.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp_loader.py`, `back/app/services/models.py`, `back/app/services/runtime_authorization.py`, `back/app/services/runtime_authorization_router.py`, `back/app/services/runtime_permissions.py`, `back/app/services/service.py`, `back/app/services/tool_inventory.py`, `back/app/services/tool_search_service.py` |
+| `app.services` | `core.database` | `back/app/services/admin_service.py`, `back/app/services/administration_lock.py`, `back/app/services/authorization.py`, `back/app/services/authorization_models.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/authorization_views.py`, `back/app/services/catalog_refresh_service.py`, `back/app/services/conversation_catalog.py`, `back/app/services/deletion.py`, `back/app/services/desktop_relay.py`, `back/app/services/desktop_relay_models.py`, `back/app/services/documentation_service.py`, `back/app/services/facade.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp_loader.py`, `back/app/services/models.py`, `back/app/services/runtime_authorization.py`, `back/app/services/runtime_authorization_router.py`, `back/app/services/runtime_permissions.py`, `back/app/services/service.py`, `back/app/services/tool_inventory.py`, `back/app/services/tool_search_service.py` |
 | `app.services` | `core.dbadmin` | `back/app/services/capability_migration.py`, `back/app/services/dbadmin.py`, `back/app/services/mandatory_services.py`, `back/app/services/naming_migration.py`, `back/app/services/protocol_migration.py` |
 | `app.services` | `core.failure_journal` | `back/app/services/mcp_loader.py` |
 | `app.services` | `core.i18n` | `back/app/services/agent_registry.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/connection_diagnostics.py`, `back/app/services/connection_functions.py`, `back/app/services/mcp.py`, `back/app/services/mcp_diagnostics.py`, `back/app/services/mcp_loader.py`, `back/app/services/router.py`, `back/app/services/search_tool.py`, `back/app/services/service.py`, `back/app/services/tool_errors.py` |
-| `app.services` | `core.params` | `back/app/services/mandatory_services.py`, `back/app/services/mcp_loader.py` |
+| `app.services` | `core.params` | `back/app/services/builtin_merge.py`, `back/app/services/mandatory_services.py`, `back/app/services/mcp_loader.py` |
 | `app.services` | `core.settings` | `back/app/services/router.py` |
-| `app.services` | `core.user` | `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_router.py`, `back/app/services/conversation_catalog.py`, `back/app/services/desktop_relay_router.py`, `back/app/services/router.py` |
+| `app.services` | `core.user` | `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/conversation_catalog.py`, `back/app/services/desktop_relay_router.py`, `back/app/services/router.py` |
 | `app.services` | `core.util` | `back/app/services/admin_candidates.py`, `back/app/services/admin_service.py`, `back/app/services/agent_registry.py`, `back/app/services/assertions.py`, `back/app/services/authorization.py`, `back/app/services/authorization_notifications.py`, `back/app/services/authorization_presentation.py`, `back/app/services/authorization_router.py`, `back/app/services/authorization_views.py`, `back/app/services/catalog.py`, `back/app/services/desktop_relay.py`, `back/app/services/mcp_authentication.py`, `back/app/services/rest_uploads.py`, `back/app/services/runtime_authorization.py`, `back/app/services/secrets.py`, `back/app/services/service.py` |
 | `app.share` | `core.database` | `back/app/share/models.py`, `back/app/share/service.py` |
 | `app.share` | `core.dbadmin` | `back/app/share/dbadmin.py` |
@@ -574,7 +574,7 @@ tests restent l’autorité sur le comportement.
 | `app.task` | `core.user` | `back/app/task/mcp.py`, `back/app/task/run_events.py`, `back/app/task/task_service.py` |
 | `app.task` | `core.util` | `back/app/task/activity_snapshot.py`, `back/app/task/facade.py`, `back/app/task/html_migration.py`, `back/app/task/mcp.py`, `back/app/task/models.py`, `back/app/task/operational_state.py`, `back/app/task/router.py`, `back/app/task/schemas.py` |
 | `app.topic` | `app.agent` | `back/app/topic/evaluation.py`, `back/app/topic/router.py`, `back/app/topic/sequential_detection.py`, `back/app/topic/service.py` |
-| `app.topic` | `app.connection` | `back/app/topic/mcp.py`, `back/app/topic/router.py`, `back/app/topic/service.py` |
+| `app.topic` | `app.connection` | `back/app/topic/resource_facade.py`, `back/app/topic/router.py`, `back/app/topic/service.py` |
 | `app.topic` | `app.conversation` | `back/app/topic/service.py` |
 | `app.topic` | `app.dataset` | `back/app/topic/router.py`, `back/app/topic/service.py` |
 | `app.topic` | `app.document` | `back/app/topic/router.py`, `back/app/topic/service.py` |
@@ -585,7 +585,7 @@ tests restent l’autorité sur le comportement.
 | `app.topic` | `app.services` | `back/app/topic/mcp.py` |
 | `app.topic` | `app.task` | `back/app/topic/service.py` |
 | `app.topic` | `core.authorize` | `back/app/topic/router.py` |
-| `app.topic` | `core.database` | `back/app/topic/models.py`, `back/app/topic/resource_index.py`, `back/app/topic/router.py`, `back/app/topic/runtime_detection.py`, `back/app/topic/service.py` |
+| `app.topic` | `core.database` | `back/app/topic/models.py`, `back/app/topic/resource_facade.py`, `back/app/topic/resource_index.py`, `back/app/topic/router.py`, `back/app/topic/runtime_detection.py`, `back/app/topic/service.py` |
 | `app.topic` | `core.i18n` | `back/app/topic/classifier.py`, `back/app/topic/service.py` |
 | `app.topic` | `core.params` | `back/app/topic/classifier.py`, `back/app/topic/sequential_detection.py` |
 | `app.topic` | `core.user` | `back/app/topic/router.py` |
@@ -2337,14 +2337,13 @@ Aucune composante cyclique détectée.
 
 | Nom | Namespace | Module | Handler | Source |
 |---|---|---|---|---|
-| `topic_create` | `` | `app.topic` | `mcp_topic_create` | `back/app/topic/mcp.py:143` |
-| `topic_get` | `` | `app.topic` | `mcp_topic_get` | `back/app/topic/mcp.py:98` |
-| `topic_item_move` | `` | `app.topic` | `mcp_topic_item_move` | `back/app/topic/mcp.py:198` |
-| `topic_items_list` | `` | `app.topic` | `mcp_topic_items_list` | `back/app/topic/mcp.py:118` |
-| `topic_list` | `` | `app.topic` | `mcp_topic_list` | `back/app/topic/mcp.py:69` |
-| `topic_merge` | `` | `app.topic` | `mcp_topic_merge` | `back/app/topic/mcp.py:227` |
-| `topic_split` | `` | `app.topic` | `mcp_topic_split` | `back/app/topic/mcp.py:248` |
-| `topic_update` | `` | `app.topic` | `mcp_topic_update` | `back/app/topic/mcp.py:168` |
+| `topic_create` | `` | `app.topic` | `mcp_topic_create` | `back/app/topic/mcp.py:127` |
+| `topic_item_move` | `` | `app.topic` | `mcp_topic_item_move` | `back/app/topic/mcp.py:182` |
+| `topic_items_list` | `` | `app.topic` | `mcp_topic_items_list` | `back/app/topic/mcp.py:102` |
+| `topic_list` | `` | `app.topic` | `mcp_topic_list` | `back/app/topic/mcp.py:66` |
+| `topic_merge` | `` | `app.topic` | `mcp_topic_merge` | `back/app/topic/mcp.py:211` |
+| `topic_split` | `` | `app.topic` | `mcp_topic_split` | `back/app/topic/mcp.py:232` |
+| `topic_update` | `` | `app.topic` | `mcp_topic_update` | `back/app/topic/mcp.py:152` |
 | `agent_avatar_delete` | `agent` | `app.agent` | `agent_avatar_delete` | `back/app/agent/mcp.py:165` |
 | `agent_avatar_generate` | `agent` | `app.agent` | `agent_avatar_generate` | `back/app/agent/mcp.py:280` |
 | `agent_avatar_set` | `agent` | `app.agent` | `agent_avatar_set` | `back/app/agent/mcp.py:255` |
@@ -2404,10 +2403,10 @@ Aucune composante cyclique détectée.
 | `calendar_is_available` | `calendar` | `app.calendar` | `calendar_is_available` | `back/app/calendar/mcp.py:101` |
 | `calendar_list` | `calendar` | `app.calendar` | `calendar_list` | `back/app/calendar/mcp.py:43` |
 | `calendar_update_event` | `calendar` | `app.calendar` | `calendar_update_event` | `back/app/calendar/mcp.py:208` |
+| `chat_choice_resolve` | `chat` | `app.conversation` | `chat_choice_resolve` | `back/app/conversation/mcp.py:923` |
+| `chat_repository_show` | `chat` | `app.conversation` | `chat_repository_show` | `back/app/conversation/mcp.py:127` |
+| `chat_round_get` | `chat` | `app.conversation` | `chat_round_get` | `back/app/conversation/mcp.py:252` |
 | `chat_screenshot` | `chat` | `app.chat` | `chat_screenshot` | `back/app/chat/mcp.py:40` |
-| `conversation_choice_resolve` | `chat` | `app.conversation` | `conversation_choice_resolve` | `back/app/conversation/mcp.py:888` |
-| `conversation_round_get` | `chat` | `app.conversation` | `conversation_round_get` | `back/app/conversation/mcp.py:252` |
-| `repository_show` | `chat` | `app.conversation` | `repository_show` | `back/app/conversation/mcp.py:127` |
 | `voice_call_list` | `chat` | `app.voice` | `mcp_list_voice_calls` | `back/app/voice/mcp.py:373` |
 | `voice_call_start` | `chat` | `app.voice` | `mcp_start_voice_call` | `back/app/voice/mcp.py:315` |
 | `voice_call_stop` | `chat` | `app.voice` | `mcp_stop_voice_call` | `back/app/voice/mcp.py:341` |
@@ -2425,31 +2424,27 @@ Aucune composante cyclique détectée.
 | `document_analysis_cancel` | `document` | `app.llm` | `document_analysis_cancel` | `back/app/llm/mcp.py:56` |
 | `document_analysis_get` | `document` | `app.llm` | `document_analysis_get` | `back/app/llm/mcp.py:47` |
 | `document_analyze` | `document` | `app.llm` | `document_analyze` | `back/app/llm/mcp.py:31` |
-| `document_chart` | `document` | `app.document` | `document_chart` | `back/app/document/mcp.py:39` |
-| `document_revision_compare` | `document` | `app.document` | `document_revision_compare` | `back/app/document/mcp.py:88` |
-| `document_revision_list` | `document` | `app.document` | `document_revision_list` | `back/app/document/mcp.py:72` |
-| `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:277` |
-| `document_sharing` | `document` | `app.document` | `document_sharing` | `back/app/document/mcp.py:210` |
+| `document_chart` | `document` | `app.document` | `document_chart` | `back/app/document/mcp.py:35` |
+| `document_revision_compare` | `document` | `app.document` | `document_revision_compare` | `back/app/document/mcp.py:77` |
+| `document_revision_list` | `document` | `app.document` | `document_revision_list` | `back/app/document/mcp.py:61` |
+| `document_share` | `document` | `app.document` | `document_share` | `back/app/document/mcp.py:157` |
+| `document_sharing` | `document` | `app.document` | `document_sharing` | `back/app/document/mcp.py:90` |
 | `document_show` | `document` | `app.conversation` | `document_show` | `back/app/conversation/mcp.py:112` |
-| `mindmap_add` | `document` | `app.document` | `mindmap_add` | `back/app/document/mcp.py:169` |
-| `mindmap_create` | `document` | `app.document` | `mindmap_create` | `back/app/document/mcp.py:102` |
-| `mindmap_edit` | `document` | `app.document` | `mindmap_edit` | `back/app/document/mcp.py:179` |
-| `mindmap_read` | `document` | `app.document` | `mindmap_read` | `back/app/document/mcp.py:123` |
 | `dataset_query` | `file_sharing` | `app.document` | `dataset_query` | `back/app/document/data/mcp.py:23` |
-| `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:495` |
-| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:579` |
-| `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:409` |
-| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:661` |
-| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:530` |
-| `file_info` | `file_sharing` | `app.file_share` | `file_info` | `back/app/file_share/mcp.py:187` |
-| `file_list` | `file_sharing` | `app.file_share` | `list_files` | `back/app/file_share/mcp.py:159` |
-| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:631` |
-| `file_read` | `file_sharing` | `app.file_share` | `read_file` | `back/app/file_share/mcp.py:301` |
-| `file_rename` | `file_sharing` | `app.file_share` | `rename_file` | `back/app/file_share/mcp.py:610` |
-| `file_schemes` | `file_sharing` | `app.file_share` | `file_schemes` | `back/app/file_share/mcp.py:135` |
-| `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:235` |
-| `file_to_pdf` | `file_sharing` | `app.file_share` | `file_to_pdf` | `back/app/file_share/mcp.py:334` |
-| `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:460` |
+| `file_append` | `file_sharing` | `app.file_share` | `append_file` | `back/app/file_share/mcp.py:508` |
+| `file_copy` | `file_sharing` | `app.file_share` | `copy_file` | `back/app/file_share/mcp.py:603` |
+| `file_create` | `file_sharing` | `app.file_share` | `create_file` | `back/app/file_share/mcp.py:418` |
+| `file_delete` | `file_sharing` | `app.file_share` | `delete_file` | `back/app/file_share/mcp.py:685` |
+| `file_edit` | `file_sharing` | `app.file_share` | `edit_file` | `back/app/file_share/mcp.py:546` |
+| `file_info` | `file_sharing` | `app.file_share` | `file_info` | `back/app/file_share/mcp.py:190` |
+| `file_list` | `file_sharing` | `app.file_share` | `list_files` | `back/app/file_share/mcp.py:162` |
+| `file_move` | `file_sharing` | `app.file_share` | `move_file` | `back/app/file_share/mcp.py:655` |
+| `file_read` | `file_sharing` | `app.file_share` | `read_file` | `back/app/file_share/mcp.py:309` |
+| `file_rename` | `file_sharing` | `app.file_share` | `rename_file` | `back/app/file_share/mcp.py:634` |
+| `file_schemes` | `file_sharing` | `app.file_share` | `file_schemes` | `back/app/file_share/mcp.py:137` |
+| `file_search` | `file_sharing` | `app.file_share` | `search_files` | `back/app/file_share/mcp.py:238` |
+| `file_to_pdf` | `file_sharing` | `app.file_share` | `file_to_pdf` | `back/app/file_share/mcp.py:343` |
+| `file_write` | `file_sharing` | `app.file_share` | `write_file` | `back/app/file_share/mcp.py:471` |
 | `documentation_catalog` | `galaris` | `app.services` | `documentation_catalog` | `back/app/services/mcp.py:63` |
 | `documentation_search` | `galaris` | `app.services` | `documentation_search` | `back/app/services/mcp.py:76` |
 | `incident_get` | `galaris` | `app.incident` | `incident_get` | `back/app/incident/mcp.py:76` |
@@ -2556,73 +2551,66 @@ Aucune composante cyclique détectée.
 | `sound_generate` | `multimedia` | `app.multimedia` | `sound_generate` | `back/app/multimedia/mcp.py:36` |
 | `video_generate` | `multimedia` | `app.multimedia` | `video_generate` | `back/app/multimedia/mcp.py:52` |
 | `video_read` | `multimedia` | `app.multimedia` | `video_read` | `back/app/multimedia/mcp.py:19` |
-| `conversation_process_pending` | `process` | `app.conversation` | `conversation_process_pending` | `back/app/conversation/mcp.py:944` |
-| `conversation_process_prepare` | `process` | `app.conversation` | `conversation_process_prepare` | `back/app/conversation/mcp.py:1040` |
-| `conversation_process_respond` | `process` | `app.conversation` | `conversation_process_respond` | `back/app/conversation/mcp.py:935` |
-| `conversation_process_start` | `process` | `app.conversation` | `conversation_process_start` | `back/app/conversation/mcp.py:1068` |
-| `process_activity_complete` | `process` | `app.process` | `process_activity_complete` | `back/app/process/mcp.py:162` |
-| `process_activity_question` | `process` | `app.process` | `process_activity_question` | `back/app/process/mcp.py:177` |
-| `process_admin_analyze_run` | `process` | `app.process` | `process_admin_analyze_run` | `back/app/process/mcp.py:729` |
-| `process_admin_cancel_run` | `process` | `app.process` | `process_admin_cancel_run` | `back/app/process/mcp.py:701` |
-| `process_admin_create` | `process` | `app.process` | `process_admin_create` | `back/app/process/mcp.py:492` |
-| `process_admin_delete` | `process` | `app.process` | `process_admin_delete` | `back/app/process/mcp.py:575` |
-| `process_admin_delete_run` | `process` | `app.process` | `process_admin_delete_run` | `back/app/process/mcp.py:743` |
-| `process_admin_engines` | `process` | `app.process` | `process_admin_engines` | `back/app/process/mcp.py:404` |
-| `process_admin_get` | `process` | `app.process` | `process_admin_get` | `back/app/process/mcp.py:472` |
-| `process_admin_get_run` | `process` | `app.process` | `process_admin_get_run` | `back/app/process/mcp.py:667` |
-| `process_admin_list` | `process` | `app.process` | `process_admin_list` | `back/app/process/mcp.py:441` |
-| `process_admin_list_runs` | `process` | `app.process` | `process_admin_list_runs` | `back/app/process/mcp.py:636` |
-| `process_admin_refresh_run` | `process` | `app.process` | `process_admin_refresh_run` | `back/app/process/mcp.py:687` |
-| `process_admin_retry_run` | `process` | `app.process` | `process_admin_retry_run` | `back/app/process/mcp.py:715` |
-| `process_admin_start` | `process` | `app.process` | `process_admin_start` | `back/app/process/mcp.py:597` |
-| `process_admin_sync` | `process` | `app.process` | `process_admin_sync` | `back/app/process/mcp.py:424` |
-| `process_admin_update` | `process` | `app.process` | `process_admin_update` | `back/app/process/mcp.py:523` |
-| `process_analyze_run` | `process` | `app.process` | `process_analyze_run` | `back/app/process/mcp.py:390` |
-| `process_archive` | `process` | `app.process` | `process_archive` | `back/app/process/mcp.py:229` |
-| `process_create` | `process` | `app.process` | `process_create` | `back/app/process/mcp.py:191` |
-| `process_definition_read` | `process` | `app.process` | `process_definition_read` | `back/app/process/mcp.py:185` |
-| `process_get` | `process` | `app.process` | `process_get` | `back/app/process/mcp.py:121` |
-| `process_get_run` | `process` | `app.process` | `process_get_run` | `back/app/process/mcp.py:377` |
-| `process_history` | `process` | `app.process` | `process_history` | `back/app/process/mcp.py:215` |
-| `process_list` | `process` | `app.process` | `process_list` | `back/app/process/mcp.py:112` |
-| `process_list_runs` | `process` | `app.process` | `process_list_runs` | `back/app/process/mcp.py:360` |
-| `process_restore` | `process` | `app.process` | `process_restore` | `back/app/process/mcp.py:223` |
-| `process_run_cancel` | `process` | `app.process` | `process_run_cancel` | `back/app/process/mcp.py:281` |
-| `process_run_children` | `process` | `app.process` | `process_run_children` | `back/app/process/mcp.py:252` |
-| `process_run_control` | `process` | `app.process` | `process_run_control` | `back/app/process/mcp.py:272` |
-| `process_run_inspect` | `process` | `app.process` | `process_run_inspect` | `back/app/process/mcp.py:244` |
-| `process_run_metrics` | `process` | `app.process` | `process_run_metrics` | `back/app/process/mcp.py:266` |
-| `process_run_occurrence` | `process` | `app.process` | `process_run_occurrence` | `back/app/process/mcp.py:260` |
-| `process_run_retry` | `process` | `app.process` | `process_run_retry` | `back/app/process/mcp.py:298` |
-| `process_run_signal` | `process` | `app.process` | `process_run_signal` | `back/app/process/mcp.py:289` |
-| `process_share` | `process` | `app.process` | `process_share` | `back/app/process/mcp.py:235` |
-| `process_start` | `process` | `app.process` | `process_start` | `back/app/process/mcp.py:322` |
-| `process_update` | `process` | `app.process` | `process_update` | `back/app/process/mcp.py:200` |
-| `process_validate` | `process` | `app.process` | `process_validate` | `back/app/process/mcp.py:208` |
-| `processus_get` | `process` | `app.process` | `processus_get` | `back/app/process/mcp.py:30` |
+| `process_activity_complete` | `process` | `app.process` | `process_activity_complete` | `back/app/process/mcp.py:90` |
+| `process_activity_question` | `process` | `app.process` | `process_activity_question` | `back/app/process/mcp.py:105` |
+| `process_admin_analyze_run` | `process` | `app.process` | `process_admin_analyze_run` | `back/app/process/mcp.py:614` |
+| `process_admin_cancel_run` | `process` | `app.process` | `process_admin_cancel_run` | `back/app/process/mcp.py:586` |
+| `process_admin_create` | `process` | `app.process` | `process_admin_create` | `back/app/process/mcp.py:377` |
+| `process_admin_delete` | `process` | `app.process` | `process_admin_delete` | `back/app/process/mcp.py:460` |
+| `process_admin_delete_run` | `process` | `app.process` | `process_admin_delete_run` | `back/app/process/mcp.py:628` |
+| `process_admin_engines` | `process` | `app.process` | `process_admin_engines` | `back/app/process/mcp.py:289` |
+| `process_admin_get` | `process` | `app.process` | `process_admin_get` | `back/app/process/mcp.py:357` |
+| `process_admin_get_run` | `process` | `app.process` | `process_admin_get_run` | `back/app/process/mcp.py:552` |
+| `process_admin_list` | `process` | `app.process` | `process_admin_list` | `back/app/process/mcp.py:326` |
+| `process_admin_list_runs` | `process` | `app.process` | `process_admin_list_runs` | `back/app/process/mcp.py:521` |
+| `process_admin_refresh_run` | `process` | `app.process` | `process_admin_refresh_run` | `back/app/process/mcp.py:572` |
+| `process_admin_retry_run` | `process` | `app.process` | `process_admin_retry_run` | `back/app/process/mcp.py:600` |
+| `process_admin_start` | `process` | `app.process` | `process_admin_start` | `back/app/process/mcp.py:482` |
+| `process_admin_sync` | `process` | `app.process` | `process_admin_sync` | `back/app/process/mcp.py:309` |
+| `process_admin_update` | `process` | `app.process` | `process_admin_update` | `back/app/process/mcp.py:408` |
+| `process_analyze_run` | `process` | `app.process` | `process_analyze_run` | `back/app/process/mcp.py:275` |
+| `process_archive` | `process` | `app.process` | `process_archive` | `back/app/process/mcp.py:151` |
+| `process_create` | `process` | `app.process` | `process_create` | `back/app/process/mcp.py:113` |
+| `process_history` | `process` | `app.process` | `process_history` | `back/app/process/mcp.py:137` |
+| `process_pending` | `process` | `app.conversation` | `process_pending` | `back/app/conversation/mcp.py:979` |
+| `process_prepare` | `process` | `app.conversation` | `process_prepare` | `back/app/conversation/mcp.py:1067` |
+| `process_respond` | `process` | `app.conversation` | `process_respond` | `back/app/conversation/mcp.py:970` |
+| `process_restore` | `process` | `app.process` | `process_restore` | `back/app/process/mcp.py:145` |
+| `process_run_cancel` | `process` | `app.process` | `process_run_cancel` | `back/app/process/mcp.py:195` |
+| `process_run_children` | `process` | `app.process` | `process_run_children` | `back/app/process/mcp.py:166` |
+| `process_run_control` | `process` | `app.process` | `process_run_control` | `back/app/process/mcp.py:186` |
+| `process_run_metrics` | `process` | `app.process` | `process_run_metrics` | `back/app/process/mcp.py:180` |
+| `process_run_occurrence` | `process` | `app.process` | `process_run_occurrence` | `back/app/process/mcp.py:174` |
+| `process_run_retry` | `process` | `app.process` | `process_run_retry` | `back/app/process/mcp.py:212` |
+| `process_run_signal` | `process` | `app.process` | `process_run_signal` | `back/app/process/mcp.py:203` |
+| `process_share` | `process` | `app.process` | `process_share` | `back/app/process/mcp.py:157` |
+| `process_start` | `process` | `app.process` | `process_start` | `back/app/process/mcp.py:237` |
+| `process_start_conversation` | `process` | `app.conversation` | `process_start_conversation` | `back/app/conversation/mcp.py:1095` |
+| `process_update` | `process` | `app.process` | `process_update` | `back/app/process/mcp.py:122` |
+| `process_validate` | `process` | `app.process` | `process_validate` | `back/app/process/mcp.py:130` |
 | `rest_request` | `rest` | `app.services` | `rest_request` | `back/app/services/mcp.py:43` |
-| `service_admin_catalog_refresh` | `service` | `app.services` | `service_admin_catalog_refresh` | `back/app/services/mcp.py:420` |
-| `service_admin_connection_create` | `service` | `app.connection` | `service_admin_connection_create` | `back/app/connection/mcp.py:20` |
-| `service_admin_connection_delete` | `service` | `app.connection` | `service_admin_connection_delete` | `back/app/connection/mcp.py:30` |
-| `service_admin_connection_function_list` | `service` | `app.connection` | `service_admin_connection_function_list` | `back/app/connection/mcp.py:50` |
-| `service_admin_connection_function_set` | `service` | `app.connection` | `service_admin_connection_function_set` | `back/app/connection/mcp.py:55` |
-| `service_admin_connection_get` | `service` | `app.connection` | `service_admin_connection_get` | `back/app/connection/mcp.py:15` |
-| `service_admin_connection_list` | `service` | `app.connection` | `service_admin_connection_list` | `back/app/connection/mcp.py:10` |
-| `service_admin_connection_param_delete` | `service` | `app.connection` | `service_admin_connection_param_delete` | `back/app/connection/mcp.py:40` |
-| `service_admin_connection_params_set` | `service` | `app.connection` | `service_admin_connection_params_set` | `back/app/connection/mcp.py:35` |
-| `service_admin_connection_test` | `service` | `app.connection` | `service_admin_connection_test` | `back/app/connection/mcp.py:45` |
-| `service_admin_connection_update` | `service` | `app.connection` | `service_admin_connection_update` | `back/app/connection/mcp.py:25` |
-| `service_admin_create` | `service` | `app.services` | `service_admin_create` | `back/app/services/mcp.py:366` |
-| `service_admin_delete` | `service` | `app.services` | `service_admin_delete` | `back/app/services/mcp.py:384` |
-| `service_admin_function_get` | `service` | `app.services` | `service_admin_function_get` | `back/app/services/mcp.py:408` |
-| `service_admin_function_list` | `service` | `app.services` | `service_admin_function_list` | `back/app/services/mcp.py:402` |
-| `service_admin_function_set` | `service` | `app.services` | `service_admin_function_set` | `back/app/services/mcp.py:414` |
-| `service_admin_get` | `service` | `app.services` | `service_admin_get` | `back/app/services/mcp.py:360` |
-| `service_admin_global_params_set` | `service` | `app.services` | `service_admin_global_params_set` | `back/app/services/mcp.py:390` |
-| `service_admin_impact` | `service` | `app.services` | `service_admin_impact` | `back/app/services/mcp.py:378` |
-| `service_admin_list` | `service` | `app.services` | `service_admin_list` | `back/app/services/mcp.py:354` |
-| `service_admin_mcp_test` | `service` | `app.services` | `service_admin_mcp_test` | `back/app/services/mcp.py:396` |
-| `service_admin_update` | `service` | `app.services` | `service_admin_update` | `back/app/services/mcp.py:372` |
+| `service_catalog_refresh` | `service` | `app.services` | `service_catalog_refresh` | `back/app/services/mcp.py:420` |
+| `service_connection_create` | `service` | `app.connection` | `service_connection_create` | `back/app/connection/mcp.py:20` |
+| `service_connection_delete` | `service` | `app.connection` | `service_connection_delete` | `back/app/connection/mcp.py:30` |
+| `service_connection_function_list` | `service` | `app.connection` | `service_connection_function_list` | `back/app/connection/mcp.py:50` |
+| `service_connection_function_set` | `service` | `app.connection` | `service_connection_function_set` | `back/app/connection/mcp.py:55` |
+| `service_connection_get` | `service` | `app.connection` | `service_connection_get` | `back/app/connection/mcp.py:15` |
+| `service_connection_list` | `service` | `app.connection` | `service_connection_list` | `back/app/connection/mcp.py:10` |
+| `service_connection_param_delete` | `service` | `app.connection` | `service_connection_param_delete` | `back/app/connection/mcp.py:40` |
+| `service_connection_params_set` | `service` | `app.connection` | `service_connection_params_set` | `back/app/connection/mcp.py:35` |
+| `service_connection_test` | `service` | `app.connection` | `service_connection_test` | `back/app/connection/mcp.py:45` |
+| `service_connection_update` | `service` | `app.connection` | `service_connection_update` | `back/app/connection/mcp.py:25` |
+| `service_create` | `service` | `app.services` | `service_create` | `back/app/services/mcp.py:366` |
+| `service_delete` | `service` | `app.services` | `service_delete` | `back/app/services/mcp.py:384` |
+| `service_function_get` | `service` | `app.services` | `service_function_get` | `back/app/services/mcp.py:408` |
+| `service_function_list` | `service` | `app.services` | `service_function_list` | `back/app/services/mcp.py:402` |
+| `service_function_set` | `service` | `app.services` | `service_function_set` | `back/app/services/mcp.py:414` |
+| `service_get` | `service` | `app.services` | `service_get` | `back/app/services/mcp.py:360` |
+| `service_global_params_set` | `service` | `app.services` | `service_global_params_set` | `back/app/services/mcp.py:390` |
+| `service_impact` | `service` | `app.services` | `service_impact` | `back/app/services/mcp.py:378` |
+| `service_list` | `service` | `app.services` | `service_list` | `back/app/services/mcp.py:354` |
+| `service_mcp_test` | `service` | `app.services` | `service_mcp_test` | `back/app/services/mcp.py:396` |
+| `service_update` | `service` | `app.services` | `service_update` | `back/app/services/mcp.py:372` |
 | `services_list` | `service` | `app.services` | `list_mcp_tools` | `back/app/services/mcp.py:116` |
 | `skill_delete` | `skills` | `app.skill` | `mcp_skill_delete` | `back/app/skill/mcp.py:62` |
 | `skill_read` | `skills` | `app.skill` | `mcp_skill_read` | `back/app/skill/mcp.py:29` |
@@ -2632,17 +2620,13 @@ Aucune composante cyclique détectée.
 | `skill_set_enabled` | `skills` | `app.skill` | `mcp_skill_set_enabled` | `back/app/skill/mcp.py:54` |
 | `skill_update` | `skills` | `app.skill` | `mcp_skill_update` | `back/app/skill/mcp.py:46` |
 | `skills_list` | `skills` | `app.skill` | `mcp_skills_list` | `back/app/skill/mcp.py:13` |
-| `conversation_task_list` | `task` | `app.conversation` | `conversation_task_list` | `back/app/conversation/mcp.py:826` |
-| `conversation_task_pause` | `task` | `app.conversation` | `conversation_task_pause` | `back/app/conversation/mcp.py:984` |
-| `conversation_task_resume` | `task` | `app.conversation` | `conversation_task_resume` | `back/app/conversation/mcp.py:995` |
-| `conversation_task_retry` | `task` | `app.conversation` | `conversation_task_retry` | `back/app/conversation/mcp.py:1015` |
-| `conversation_task_status` | `task` | `app.conversation` | `conversation_task_status` | `back/app/conversation/mcp.py:868` |
-| `conversation_task_stop` | `task` | `app.conversation` | `conversation_task_stop` | `back/app/conversation/mcp.py:1026` |
-| `conversation_task_submit` | `task` | `app.conversation` | `conversation_task_submit` | `back/app/conversation/mcp.py:578` |
-| `task_get` | `task` | `app.task` | `mcp_get_task` | `back/app/task/mcp.py:95` |
-| `task_run` | `task` | `app.task` | `mcp_run_task` | `back/app/task/mcp.py:223` |
-| `task_stop` | `task` | `app.task` | `mcp_stop_task` | `back/app/task/mcp.py:199` |
-| `task_work_update` | `task` | `app.task` | `mcp_work_update` | `back/app/task/mcp.py:127` |
+| `task_cancel` | `task` | `app.conversation` | `task_cancel` | `back/app/conversation/mcp.py:1052` |
+| `task_get` | `task` | `app.conversation` | `task_get` | `back/app/conversation/mcp.py:901` |
+| `task_list` | `task` | `app.conversation` | `task_list` | `back/app/conversation/mcp.py:856` |
+| `task_pause` | `task` | `app.conversation` | `task_pause` | `back/app/conversation/mcp.py:1009` |
+| `task_resume` | `task` | `app.conversation` | `task_resume` | `back/app/conversation/mcp.py:1027` |
+| `task_run` | `task` | `app.conversation` | `task_run` | `back/app/conversation/mcp.py:577` |
+| `task_update` | `task` | `app.task` | `mcp_work_update` | `back/app/task/mcp.py:111` |
 
 ## Privilèges déclarés
 
@@ -2857,7 +2841,7 @@ Aucune composante cyclique détectée.
 
 ## Configuration
 
-- Settings déclarés : 35.
-- Variables dans `.env.example` : 48.
+- Settings déclarés : 38.
+- Variables dans `.env.example` : 51.
 - Settings sans entrée `.env.example` : —.
 - Entrées `.env.example` sans champ direct dans `Settings` : `BROWSER_EXECUTOR_CPUS`, `BROWSER_EXECUTOR_MEMORY_LIMIT`, `DEV_DEBUGPY_PORT`, `DEV_HOST_USER_ID`, `POSTGRES_MODE`, `SSH_EXECUTOR_CPUS`, `SSH_EXECUTOR_MEMORY_LIMIT`, `TZ`, `WEBRTC_TURN_CPUS`, `WEBRTC_TURN_IMAGE`, `WEBRTC_TURN_MAX_PORT`, `WEBRTC_TURN_MEMORY_LIMIT`, `WEBRTC_TURN_MIN_PORT`.

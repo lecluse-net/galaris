@@ -180,7 +180,7 @@ def realtime_tools(
             "memory_id": str(memory_id) if memory_id is not None else None,
         }
 
-    async def conversation_task_submit(arguments: dict[str, Any]) -> dict[str, Any]:
+    async def task_run(arguments: dict[str, Any]) -> dict[str, Any]:
         from app.agent import submit_realtime_task
 
         objective = str(arguments.get("objective") or "").strip()
@@ -211,7 +211,7 @@ def realtime_tools(
                 reason=str(arguments.get("reason") or "").strip() or None,
             )
 
-    async def conversation_task_list(arguments: dict[str, Any]) -> dict[str, Any]:
+    async def task_list(arguments: dict[str, Any]) -> dict[str, Any]:
         del arguments
         from app.conversation import linked_work_snapshot
 
@@ -223,7 +223,7 @@ def realtime_tools(
             items = await linked_work_snapshot(room_id)
         return {"items": list(items)}
 
-    async def conversation_task_status(arguments: dict[str, Any]) -> dict[str, Any]:
+    async def task_get(arguments: dict[str, Any]) -> dict[str, Any]:
         from app.agent import realtime_task_status
 
         raw_id = str(arguments.get("task_id") or "").strip()
@@ -232,31 +232,24 @@ def realtime_tools(
         async with get_db_session():
             return await realtime_task_status(task_id, agent_id=agent_id)
 
-    async def process_list(_arguments: dict[str, Any]) -> dict[str, Any]:
-        from app.process import process_service
+    async def read_process_file_tool(name: Literal["file_list", "file_read"], **arguments: Any) -> dict[str, Any]:
+        from app.services import McpToolContext, load_mcp_tools
 
+        definition = next((item for item in load_mcp_tools() if item.service_code == "file_sharing" and item.name == name), None)
+        if definition is None:
+            raise PermissionError("The File Sharing tool is unavailable")
+        context = McpToolContext(agent_id=agent_id, runtime="internal", conversation_only=True)
         async with get_db_session():
-            items = await process_service.list_for_agent(agent_id)
-        return {"items": items}
+            result = await definition.function(context, **arguments)
+        return cast(dict[str, Any], json.loads(result))
 
-    async def process_get(arguments: dict[str, Any]) -> dict[str, Any]:
-        from app.process import process_service
+    async def file_list(arguments: dict[str, Any]) -> dict[str, Any]:
+        return await read_process_file_tool("file_list", **arguments, max_entries=20)
 
-        workflow_id = str(arguments.get("workflow_id") or "").strip()
-        if not workflow_id:
-            raise ValueError("workflow_id must not be empty")
-        async with get_db_session():
-            process = await process_service.get_for_agent(agent_id, workflow_id)
-            if process is None:
-                return {"found": False, "workflow_id": workflow_id}
-            return {
-                "found": True,
-                "workflow_id": process.engine_process_id,
-                "label": process.label,
-                "description": process.description,
-            }
+    async def file_read(arguments: dict[str, Any]) -> dict[str, Any]:
+        return await read_process_file_tool("file_read", **arguments, max_chars=6000)
 
-    async def conversation_process_start(arguments: dict[str, Any]) -> dict[str, Any]:
+    async def process_start_conversation(arguments: dict[str, Any]) -> dict[str, Any]:
         from app.process import process_service
 
         workflow_id = str(arguments.get("workflow_id") or "").strip()
@@ -351,7 +344,7 @@ def realtime_tools(
         ),
         RealtimeTool(
             definition=RealtimeToolDefinition(
-                name="conversation_task_list",
+                name="task_list",
                 description=(
                     "List the canonical recent Task candidates for this conversation. Call this before "
                     "submitting background work. Amend only the same primary artifact or target "
@@ -360,14 +353,14 @@ def realtime_tools(
                 ),
                 parameters={"type": "object", "properties": {}, "additionalProperties": False},
             ),
-            execute=conversation_task_list,
+            execute=task_list,
         ),
         RealtimeTool(
             definition=RealtimeToolDefinition(
-                name="conversation_task_submit",
+                name="task_run",
                 description=(
                     "Create or amend a durable Galaris Task after comparing the request with "
-                    "conversation_task_list. Use CREATE_NEW for a different target, repository, "
+                    "task_list. Use CREATE_NEW for a different target, repository, "
                     "resource, deliverable, or independently verifiable outcome, even when the "
                     "same document or incident connects them. If either outcome can be completed "
                     "without the other, leave existing work unchanged. Ask the caller when the relationship is "
@@ -401,11 +394,11 @@ def realtime_tools(
                     "additionalProperties": False,
                 },
             ),
-            execute=conversation_task_submit,
+            execute=task_run,
         ),
         RealtimeTool(
             definition=RealtimeToolDefinition(
-                name="conversation_task_status",
+                name="task_get",
                 description="Read the current status and result of a Galaris task.",
                 parameters={
                     "type": "object",
@@ -419,38 +412,43 @@ def realtime_tools(
                     "additionalProperties": False,
                 },
             ),
-            execute=conversation_task_status,
+            execute=task_get,
         ),
         RealtimeTool(
             definition=RealtimeToolDefinition(
-                name="process_list",
-                description="List the business Processes assigned to this agent.",
-                parameters={
-                    "type": "object",
-                    "properties": {},
-                    "additionalProperties": False,
-                },
-            ),
-            execute=process_list,
-        ),
-        RealtimeTool(
-            definition=RealtimeToolDefinition(
-                name="process_get",
-                description="Read one assigned business Process by workflow ID.",
+                name="file_list",
+                description="List authorized Process definitions or runs. Pass the returned next_cursor to continue.",
                 parameters={
                     "type": "object",
                     "properties": {
-                        "workflow_id": {"type": "string"},
+                        "uri": {"type": "string", "enum": ["galaris://processes/", "galaris://processes/runs/"]},
+                        "cursor": {"type": "string"},
                     },
-                    "required": ["workflow_id"],
+                    "required": ["uri"],
                     "additionalProperties": False,
                 },
             ),
-            execute=process_get,
+            execute=file_list,
         ),
         RealtimeTool(
             definition=RealtimeToolDefinition(
-                name="conversation_process_start",
+                name="file_read",
+                description="Read a Process definition or run by its exact resource URI. Pass next_offset to continue.",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "uri": {"type": "string", "pattern": "^galaris://(?:process|processes)/[^/]+(?:/[^/]+)?$"},
+                        "offset": {"type": "integer", "minimum": 0},
+                    },
+                    "required": ["uri"],
+                    "additionalProperties": False,
+                },
+            ),
+            execute=file_read,
+        ),
+        RealtimeTool(
+            definition=RealtimeToolDefinition(
+                name="process_start_conversation",
                 description=(
                     "Start an assigned business Process asynchronously and return immediately."
                 ),
@@ -464,7 +462,7 @@ def realtime_tools(
                     "additionalProperties": False,
                 },
             ),
-            execute=conversation_process_start,
+            execute=process_start_conversation,
         ),
     )
 

@@ -159,13 +159,9 @@ async def record_tool_resources(
         "file_read",
         "file_info",
         "file_rename",
-        "mindmap_create",
-        "mindmap_read",
-        "mindmap_add",
-        "mindmap_edit",
     }:
         resource_reference = str(payload.get("uri") or "").strip() or _resource_uri(
-            arguments.get("uri") or arguments.get("path") or arguments.get("document_id")
+            arguments.get("uri") or arguments.get("path")
         )
     elif tool_name in {"file_copy", "file_move"}:
         resource_reference = str(payload.get("uri") or "").strip() or _resource_uri(
@@ -196,7 +192,7 @@ async def record_tool_resources(
             )
             if existing is not None:
                 role = existing.role
-            elif tool_name in {"file_create", "mindmap_create"} and not working_set.active(
+            elif tool_name == "file_create" and not working_set.active(
                 "primary_working_document"
             ):
                 role = "primary_working_document"
@@ -225,7 +221,6 @@ async def record_tool_resources(
                         if tool_name
                         in {
                             "file_create",
-                            "mindmap_create",
                             "file_write",
                             "file_append",
                             "file_edit",

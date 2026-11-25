@@ -98,7 +98,7 @@ async def _process_launch_evidence(
         if not isinstance(message, ModelRequest) or message.run_id != ctx.run_id:
             continue
         for part in message.parts:
-            if not isinstance(part, ToolReturnPart) or part.tool_name != "conversation_process_start":
+            if not isinstance(part, ToolReturnPart) or part.tool_name != "process_start_conversation":
                 continue
             result = decode_tool_result(part.content)
             if reported_tool_failure(result) is not None or not isinstance(result, dict):
@@ -123,7 +123,7 @@ async def _process_launch_evidence(
         if launches else
         "No successful Process launch receipt has been observed in this run. "
         "Past assistant messages and previous runs do not prove a new launch. "
-        "If the current user requests a launch or relaunch, call `conversation_process_start` "
+        "If the current user requests a launch or relaunch, call `process_start_conversation` "
         "and obtain its receipt before confirming. A replay of the same call in this turn "
         "is idempotent. Otherwise answer the actual question or clarify an ambiguous target; "
         "do not launch anything solely because this evidence note is present."
@@ -435,19 +435,19 @@ def _pending_interaction_policy(turn: ConversationTurn, tool_names: Collection[s
         "question. If the required operation is unavailable or refused, explain the limit and "
         "leave the interaction pending. Never create a new Task or Process to record a response.",
     ]
-    if "conversation_choice_resolve" in tool_names:
+    if "chat_choice_resolve" in tool_names:
         rules.append(
-            "For a clear choice, call `conversation_choice_resolve` with the exact reference and "
+            "For a clear choice, call `chat_choice_resolve` with the exact reference and "
             "option ID. Never infer consent from an ambiguous message."
         )
-        if "conversation_task_submit" in tool_names:
+        if "task_run" in tool_names:
             rules.append(
                 "When the user redirects the Task behind an approval, deny the obsolete approval before "
-                "amending that same Task with `conversation_task_submit`."
+                "amending that same Task with `task_run`."
             )
-    if "conversation_process_respond" in tool_names:
+    if "process_respond" in tool_names:
         rules.append(
-            "For process_human_activity, use `conversation_process_respond` with the exact "
+            "For process_human_activity, use `process_respond` with the exact "
             "reference and ordinary JSON output values. When outputs is null for a historical "
             "activity, send {text: summary}. File values use the exact canonical URI from the message."
         )
@@ -457,10 +457,10 @@ def _pending_interaction_policy(turn: ConversationTurn, tool_names: Collection[s
             "say explicitly that it was received in the conversation and the Process activity "
             "still awaits a recorded response."
         )
-    if "conversation_process_prepare" in tool_names:
+    if "process_prepare" in tool_names:
         rules.append(
             "For process_input_preparation, the run is WAITING and no business activity has started. "
-            "Use `conversation_process_prepare` with its workflow ID and verified values. Reuse "
+            "Use `process_prepare` with its workflow ID and verified values. Reuse "
             "authorized evidence and file URIs before asking the human. Collect or default every "
             "selected Start input, including nullable inputs. Never invent null or empty placeholders. "
             "Tell the human what is still needed."
@@ -468,8 +468,8 @@ def _pending_interaction_policy(turn: ConversationTurn, tool_names: Collection[s
         conversions = sorted({"file_to_pdf", "image_from_pdf"}.intersection(tool_names))
         if conversions:
             rules.append(f"Convert file formats only if needed with the mounted functions: {', '.join(conversions)}.")
-        if "conversation_process_start" in tool_names:
-            rules.append("When ready, release the same run with `conversation_process_start`.")
+        if "process_start_conversation" in tool_names:
+            rules.append("When ready, release the same run with `process_start_conversation`.")
     return "\n".join(rules)
 
 
@@ -526,7 +526,7 @@ def _system_prompt(
     latest_message = (
         current_message_data(turn.messages[-1]) if turn.messages else {}
     )
-    task_admission_available = "conversation_task_submit" in tool_names
+    task_admission_available = "task_run" in tool_names
     runtime_rules = ""
     if text_round:
         runtime_rules = (
@@ -633,13 +633,14 @@ class HarnessConversationController:
         async with get_db_session():
             stop_task_id = None if turn.force_response else _stop_target(turn)
             if stop_task_id is not None:
-                from app.conversation.mcp import conversation_task_stop
+                from app.conversation.mcp import task_cancel
 
                 started_at = time.monotonic()
-                receipt = await conversation_task_stop(
+                receipt = await task_cancel(
                     McpToolContext(
                         agent_id=turn.agent_id,
                         runtime="internal",
+                        conversation_only=True,
                         resources={"conversation_turn": turn},
                     ),
                     task_id=stop_task_id,
@@ -648,7 +649,7 @@ class HarnessConversationController:
                 return _deterministic_effect_outcome(
                     turn,
                     text=text,
-                    tool_name="conversation_task_stop",
+                    tool_name="task_cancel",
                     arguments={"task_id": stop_task_id},
                     content=f"Task stopped with status={receipt.get('status')}",
                     started_at=started_at,
@@ -704,7 +705,7 @@ class HarnessConversationController:
                 return _deterministic_effect_outcome(
                     turn,
                     text=text,
-                    tool_name="conversation_task_submit",
+                    tool_name="task_run",
                     arguments=arguments,
                     content=(
                         f"Task admission completed: created={receipt.get('created')}, "
@@ -824,7 +825,7 @@ class HarnessConversationController:
                 execution_result.add_message(
                     AIMessage(
                         type="tool",
-                        tool_name="conversation_task_submit",
+                        tool_name="task_run",
                         tool_arguments={"objective": turn.objective},
                         content=(
                             f"Task admission completed: created={receipt.get('created')}, "
@@ -922,7 +923,7 @@ class HarnessConversationController:
                 process_advertisement = await build_agent_process_advertisement(
                     turn.agent_id,
                     tool_advertisement.tool_names,
-                    launch_tool_name="conversation_process_start",
+                    launch_tool_name="process_start_conversation",
                     relevance_query=turn.objective,
                     include_execution_guidance=False,
                 )
@@ -955,7 +956,7 @@ class HarnessConversationController:
             )
             skills = [] if turn.force_response else await build_internal_skill_capabilities(turn.agent_id)
             capabilities = list(skills)
-            if not turn.force_response and "conversation_process_start" in tool_advertisement.tool_names:
+            if not turn.force_response and "process_start_conversation" in tool_advertisement.tool_names:
                 capabilities.append(Hooks(before_model_request=_process_launch_evidence, id="conversation-process-evidence"))
             current_prompt = _current_turn_prompt(turn, context)
             capabilities.append(ConversationTurnProtocol(turn.objective, current_prompt).hooks)
@@ -1266,7 +1267,7 @@ async def stream_voice_conversation(
     process_advertisement = await build_agent_process_advertisement(
         request.agent_id,
         tool_advertisement.tool_names,
-        launch_tool_name="conversation_process_start",
+        launch_tool_name="process_start_conversation",
         relevance_query=request.objective,
         include_execution_guidance=False,
     )

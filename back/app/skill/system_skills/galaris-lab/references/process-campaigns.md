@@ -6,7 +6,7 @@ declared workflow operation. Lab access alone does not grant Process or source-f
 
 ## Prepare a bounded experiment
 
-Read the exact definition with `process_definition_read(process_code=...)`. Check its input
+Read the exact definition with `file_read(uri="galaris://processes/<code>")`. Check its input
 declarations, actors, external operations and expected outputs. Use the canonical definition
 reference returned by Galaris; do not invent a Process code or turn a standalone tool into a
 Process to benchmark it. The campaign agent needs Process launch rights and the `process_start`

@@ -125,14 +125,18 @@ def test_local_history_is_strictly_bounded_for_multi_tool_runs() -> None:
 def test_executor_tool_scope_uses_plan() -> None:
     task = Task(
         label="Scoped", status=TaskStatus.DISPATCH,
-        data={"plan_tools": ["search_web"]},
+        data={"plan_tools": ["search_web", "task_stop", "task_work_update"]},
     )
     names = _scoped_tool_names(task)
     assert names is not None
     assert "search_web" in names
+    assert "task_cancel" in names
+    assert "task_stop" not in names
+    assert "task_update" in names
+    assert "task_work_update" not in names
     assert "file_write" not in names
     assert "messenger_room_send_message" not in names
-    assert {"process_list", "process_get", "process_start"} <= names
+    assert "process_start" in names
 
 
 def test_intermediate_plan_leaf_cannot_access_delivery_tools() -> None:

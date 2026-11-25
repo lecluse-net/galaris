@@ -30,17 +30,16 @@ The [document reference contract](document-references.md) describes available mo
 
 ## Mind maps and agents
 
-The **Document** Service declares the following MCP tools. They can be mounted in Chat and in
-a Task according to the allowed functions, the map's permissions and the runtime rules.
-Read is enabled by default. Creation and editing default to **On request**, subject to
-the effective connection policy.
+The **File Sharing** Service exposes these tools in Chat and Tasks according to allowed
+functions and runtime rules. Operations with a `selector` apply document access rights
+and Documents scope. The format interprets the selector.
 
 | Tool | Contract |
 |---|---|
-| `mindmap_create` | Creates a private document for the agent and returns its `document://` URI, revision and `root` ID. Accepts up to 100 initial branches in parent-first order. |
-| `mindmap_read` | Reads the current saved revision. The list returns stable node IDs, parents and summaries. Follow `next_offset` to read more. With `node_id`, the tool returns the node's HTML body in chunks. Follow `next_body_offset` until the end. |
-| `mindmap_add` | Adds 1 to 50 branches in one revision. Supply `expected_revision` and the `branches` list. |
-| `mindmap_edit` | Applies 1 to 50 `add`, `edit`, `move` or `remove` commands in one revision. Supply `expected_revision` and the `operations` list. |
+| `file_create` | Creates a private document with `path="document://"`, `document_format="mindmap"` and the complete JSON source in `content`. |
+| `file_read` | Reads the full source or selected subpart. `/nodes` returns summaries and IDs. A node ID selects its JSON, and `<id>/body_html` selects its HTML. Follow `next_offset` with the same `selector` and `revision`. |
+| `file_write` | Replaces the full source, the selected node with the same ID and parent, or its HTML via `<id>/body_html`. Supply `expected_revision` for the whole map. |
+| `file_edit` | With `selector="/nodes"`, applies 1 to 50 `add`, `edit`, `move` or `remove` commands in one revision. Supply the JSON array in `content` and pass `expected_revision`. |
 
 Supply a new ID, the parent ID and a title for each addition. Put parents before their
 children in the batch. An `edit` command targets an existing node and supplies at least
@@ -57,7 +56,7 @@ with the intended recipients.
 When a message is sent in internal Chat, its context can carry the open map's URI and
 the displayed revision. The attention contract carries neither the active node ID nor
 the multi-selection. For a request such as “add a child to this branch,” the agent resolves
-the target from the message and `mindmap_read`. If the target remains ambiguous, it asks
+the target from the message and `file_read`. If the target remains ambiguous, it asks
 for the branch title or path before writing. Display context grants no access, and tools
 check both revision and permissions.
 

@@ -3,9 +3,13 @@
 import re
 from html import escape
 from typing import Literal, NotRequired, TypedDict, cast
+from uuid import UUID
 
+from app.agent import management_scope_for
+from core.database import get_db
 from core.i18n import render_prompt, t
-from core.util import RichTextError, normalize_html, visible_text
+from core.user import get_user_record
+from core.util import RichTextError, normalize_html, parse_resource_uri, visible_text
 
 from .authorization import redacted_action_arguments
 from .authorization_models import ActionAuthorization
@@ -48,7 +52,8 @@ _NATIVE_ACTIONS = {
         "task_stop",
     },
     "process": _MOVED_PROCESS_ACTIONS,
-    "task": {"task_run", "task_stop"},
+    "task": {"task_run", "task_stop", "task_stop_conversation", "task_cancel"},
+    "document": {"document_share"},
     "file_sharing": {
         "file_create",
         "file_write",
@@ -107,6 +112,13 @@ _FIELD_LABELS = {
     "workflow_id",
     "run_id",
     "changes",
+    "document_id",
+    "topic_id",
+    "source_topic_id",
+    "target_topic_id",
+    "contact_id",
+    "target_agent_id",
+    "uid",
 }
 _GOAL_FIELD_LABELS = {"agent_id", "active", "weekdays", "start_time", "end_time"}
 _EXPLANATIONS = {
@@ -125,12 +137,31 @@ _RUNTIME_ACTIONS = {
     "edit": "runtime_files", "apply_patch": "runtime_files", "item/filechange/requestapproval": "runtime_files",
     "read_file": "runtime_read", "read": "runtime_read",
 }
+_RESOURCE_FIELDS = {
+    "goal_id": "galaris://goal/",
+    "task_id": "galaris://task/",
+    "document_id": "document://",
+    "topic_id": "galaris://topic/",
+    "source_topic_id": "galaris://topic/",
+    "target_topic_id": "galaris://topic/",
+    "run_id": "galaris://processes/runs/",
+    "room_id": "galaris://room/",
+    "contact_id": "galaris://contact/",
+    "calendar_id": "galaris://calendar/",
+    "agent_id": "galaris://agent/",
+    "target_agent_id": "galaris://agent/",
+    "process_code": "galaris://processes/",
+    "workflow_id": "galaris://process/",
+}
+_URI_FIELDS = {"uri", "path", "source", "destination", "file_uri", "resource_uri"}
+_UUID = re.compile(r"[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}", re.IGNORECASE)
 
 
 class ApprovalField(TypedDict):
     label: str
     value: str
     format: NotRequired[Literal["html"]]
+    resource_uri: NotRequired[str]
 
 
 class ApprovalPresentation(TypedDict):
@@ -211,7 +242,64 @@ def _value(value: object, language: str, *, goal: bool = False) -> str:
         return "\n".join(_value(item, language, goal=goal) for item in cast(list[object], value))
     if isinstance(value, bool):
         return t("approval_preview.yes" if value else "approval_preview.no", language)
+    if isinstance(value, str) and (_UUID.fullmatch(value) or (
+        value.startswith(("galaris://", "document://", "data://", "memory://", "file://")) and _UUID.search(value)
+    )):
+        return t("approval_preview.unavailable_resource", language)
     return str(value) if value is not None else "—"
+
+
+def _review_uri(key: str, value: object) -> str | None:
+    if not isinstance(value, (str, int)) or isinstance(value, bool) or len(str(value)) > 2048:
+        return None
+    text = str(value).strip()
+    prefix = _RESOURCE_FIELDS.get(key)
+    if prefix is None and key not in _URI_FIELDS:
+        return None
+    if "://" not in text:
+        if prefix is None:
+            return None
+        if prefix in {"galaris://agent/", "galaris://calendar/"}:
+            if not text.isascii() or not text.isdecimal() or not 0 < int(text) <= 2_147_483_647:
+                return None
+        elif key in {"workflow_id", "process_code"}:
+            if not re.fullmatch(r"[\w.-]{1,255}", text, re.ASCII):
+                return None
+        else:
+            try:
+                text = str(UUID(text))
+            except ValueError:
+                return None
+        text = prefix + text
+    try:
+        reference = parse_resource_uri(text)
+    except ValueError:
+        return None
+    prefixes = ("galaris://process/", "galaris://processes/") if key == "workflow_id" else (prefix,) if prefix else ()
+    if reference.is_collection or (prefixes and not reference.uri.startswith(prefixes)):
+        return None
+    if reference.scheme in {"document", "data", "file"} and len(reference.segments) == 1:
+        identity = reference.segments[0]
+    elif reference.scheme == "galaris":
+        segments = reference.segments
+        if len(segments) == 2 and segments[0] in {"agent", "calendar"}:
+            identifier = segments[1]
+            if identifier.isascii() and identifier.isdecimal() and 0 < int(identifier) <= 2_147_483_647:
+                return f"galaris://{segments[0]}/{int(identifier)}"
+            return None
+        if len(segments) == 2 and segments[0] in {"process", "processes"} and len(segments[1]) <= 255:
+            return reference.uri
+        if len(segments) == 2 and segments[0] in {"goal", "task", "topic", "room", "contact"}:
+            identity = segments[1]
+        elif len(segments) == 3 and segments[:2] == ("processes", "runs"):
+            identity = segments[2]
+        else:
+            return None
+    else:
+        return None
+    if not _UUID.fullmatch(identity):
+        return None
+    return f"{reference.uri.rsplit('/', 1)[0]}/{identity.lower()}"
 
 
 async def present_authorization(
@@ -219,9 +307,31 @@ async def present_authorization(
 ) -> ApprovalPresentation:
     if service is None and row.service_id is not None:
         service = await get_service_by_id(row.service_id)
+    references: dict[str, tuple[str, str | None]] = {}
+    if _native_action(row.capability_name, row.source, row.capability_kind, service):
+        from app.file_share import review_calendar_event_label, review_resource
+
+        candidates = {key: uri for key, value in arguments.items() if (uri := _review_uri(key, value))}
+        if row.capability_name == "topic_item_move":
+            item_type = arguments.get("item_type")
+            if isinstance(item_type, str) and item_type in {"document", "task"}:
+                if item := _review_uri(f"{item_type}_id", arguments.get("item_id")):
+                    candidates["item_id"] = item
+        if candidates and (reviewer := await get_user_record(row.approver_user_id)):
+            scope = await management_scope_for(reviewer, get_db())
+            for key, uri in candidates.items():
+                detail = await review_resource(uri, agent_id=row.agent_id, reviewer=reviewer, scope=scope)
+                if detail is not None and not _UUID.fullmatch(detail[0]):
+                    references[key] = detail
+            if row.capability_name in {"calendar_update_event", "calendar_delete_event", "calendar_action_set"}:
+                calendar_id, uid = arguments.get("calendar_id"), arguments.get("uid")
+                if "calendar_id" in candidates and type(calendar_id) is int and isinstance(uid, str) and 0 < len(uid) <= 255:
+                    title = await review_calendar_event_label(calendar_id, uid, reviewer=reviewer, scope=scope)
+                    if title and not _UUID.fullmatch(title):
+                        references["uid"] = (title, None)
     return present_action(
         name=row.capability_name, source=row.source, arguments=arguments, language=language,
-        kind=row.capability_kind, service=service, runtime=row.runtime,
+        kind=row.capability_kind, service=service, runtime=row.runtime, references=references,
     )
 
 
@@ -243,6 +353,7 @@ def _codex_review_values(name: str, arguments: dict[str, object]) -> dict[str, o
 def present_action(
     *, name: str, source: str, arguments: dict[str, object], language: str, html_field: str | None = None,
     kind: str = "tool", service: Service | None = None, runtime: str = "",
+    references: dict[str, tuple[str, str | None]] | None = None,
 ) -> ApprovalPresentation:
     arguments = cast(dict[str, object], redacted_action_arguments(arguments))
     fields: list[ApprovalField] = []
@@ -279,6 +390,15 @@ def present_action(
             label = t("approval_preview.target_agent_id", language)
         elif key in html_fields or key in _FIELD_LABELS or (goal and key in _GOAL_FIELD_LABELS) or (agent_profile and key in _AGENT_FIELD_LABELS):
             label = t(f"approval_preview.{key}", language)
+        elif native and key in {"resource_uri", "file_uri"}:
+            label = t("approval_preview.uri", language)
+        if references and (reference := references.get(key)):
+            title, uri = reference
+            field: ApprovalField = {"label": label, "value": title}
+            if uri:
+                field["resource_uri"] = uri
+            fields.append(field)
+            continue
         if empty:
             # Validated models can contribute defaults to the frozen payload.
             fields.append({"label": label, "value": "—" if value is None else repr(value)})
@@ -294,7 +414,9 @@ def present_action(
             if html:
                 fields.append({"label": label, "value": html, "format": "html"})
                 continue
-        fields.append({"label": label, "value": _value(value, language, goal=goal)})
+        unavailable = native and (_review_uri(key, value) is not None or key in {"uid", "room_id"})
+        fields.append({"label": label, "value": t("approval_preview.unavailable_resource", language)
+                       if unavailable else _value(value, language, goal=goal)})
     presentation: ApprovalPresentation = {"title": title, "fields": fields}
     if (native or html_field is not None) and (explanation := _EXPLANATIONS.get(name)):
         presentation["explanation"] = t(f"approval_preview.{explanation}", language)
@@ -334,6 +456,8 @@ def notification_content(
         label, value = escape(field["label"]), field["value"]
         if field.get("format") == "html":
             sections.append(f"<p><strong>{label}</strong></p>{value}")
+        elif uri := field.get("resource_uri"):
+            rows.append(f'<tr><th>{label}</th><td><a href="{escape(uri)}">{escape(value)}</a></td></tr>')
         elif "\n" in value or len(value) > 120:
             formatted = escape(value).replace("\n", "<br>")
             sections.append(f"<p><strong>{label}</strong><br>{formatted}</p>")

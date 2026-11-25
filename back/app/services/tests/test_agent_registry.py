@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from uuid import uuid4
@@ -74,7 +75,19 @@ async def test_internal_mcp_toolset_defers_tools_outside_preselected_scope(
 
     from app.harness import mcp_toolset
     from app.services import metrics
+    from core import settings
+
+    monkeypatch.setattr(settings, "AGENT_MCP_MOUNT_CONCURRENCY", 1)
     mcp = _server("search_web", "nc_delete")
+    discovering, resume = asyncio.Event(), asyncio.Event()
+    list_tools = mcp.list_tools
+
+    async def slow_discovery(**kwargs):
+        discovering.set()
+        await resume.wait()
+        return await list_tools(**kwargs)
+
+    monkeypatch.setattr(mcp, "list_tools", slow_discovery)
     monkeypatch.setattr(
         "app.services.mcp_loader.build_agent_mcp",
         AsyncMock(return_value=mcp),
@@ -88,11 +101,18 @@ async def test_internal_mcp_toolset_defers_tools_outside_preselected_scope(
         ),
     )
 
-    toolset = await mcp_toolset.build_agent_mcp_toolset(
-        12,
-        eager_tool_names={"search_web", "tool_removed_after_planning"},
-        expected_catalog_version="outdated-version",
-    )
+    async with asyncio.timeout(5), asyncio.TaskGroup() as group:
+        planned = group.create_task(mcp_toolset.build_agent_mcp_toolset(
+            12, eager_tool_names={"search_web", "tool_removed_after_planning"},
+            expected_catalog_version="outdated-version",
+        ))
+        await discovering.wait()
+        # A slow external listing for the planned task must leave the sole
+        # local mount slot available to another task.
+        other = await mcp_toolset.build_agent_mcp_toolset(13)
+        assert other.id == "agent-mcp-13"
+        resume.set()
+    toolset = planned.result()
 
     async with toolset:
         definitions = await toolset.get_tools(RunContext(deps=None, model=TestModel(), usage=RunUsage()))
@@ -231,7 +251,7 @@ async def test_conversation_advertisement_lists_only_task_only_application_tools
         AsyncMock(return_value=definitions),
     )
     monkeypatch.setattr(
-        "app.connection.facade.get_connections_by_agent",
+        "app.connection.facade.active_connection_refs",
         AsyncMock(
             return_value=[
                 SimpleNamespace(service_id=1, active=True),
@@ -262,8 +282,8 @@ async def test_conversation_advertisement_lists_only_task_only_application_tools
                 mcp_config=McpConfig(type="http", url="https://tools.example.test/mcp")),
     }
     monkeypatch.setattr(
-        "app.services.service.get_service_by_id",
-        AsyncMock(side_effect=lambda service_id: tools[service_id]),
+        "app.services.service.get_services_by_ids",
+        AsyncMock(return_value=tools),
     )
     disabled = {tool.name for tool in mcp_loader.mcp_tools_by_service_code()["browser"] if tool.name != "search_web"}
     monkeypatch.setattr("app.connection.facade.get_disabled_function_names_many", AsyncMock(return_value={2: disabled}))
@@ -294,8 +314,11 @@ async def test_conversation_advertisement_lists_only_task_only_application_tools
 async def test_task_capability_context_is_shared_even_with_no_known_task_only_service(monkeypatch, task_services):
     from app.services import agent_registry, render_task_capability_context
 
-    projection = AsyncMock(return_value=task_services)
-    monkeypatch.setattr(agent_registry, "_task_only_tools", projection)
+    from app.services import mcp_loader
+    from app.services.schemas import Service
+
+    projection = AsyncMock(return_value=[(SimpleNamespace(id=1), Service(**item)) for item in task_services])
+    monkeypatch.setattr(mcp_loader, "active_service_bindings", projection)
     context = await agent_registry.build_task_capability_context(12)
     projection.assert_awaited_once_with(12)
     assert context == render_task_capability_context(task_services)
@@ -350,7 +373,7 @@ async def test_conversation_toolset_uses_complete_checked_tool_projection(
     from app.services import agent_registry, mcp_loader
 
     server = mcp_loader.MountedAgentMcp("synthetic agent")
-    server.native_server = _server("conversation_task_submit")
+    server.native_server = _server("task_run")
     server.mount(server.native_server)
     server.mount(_server("external_lookup"), namespace="synthetic")
     built = AsyncMock(return_value=server)
@@ -370,11 +393,12 @@ async def test_conversation_toolset_uses_complete_checked_tool_projection(
         resources=resources,
         conversation_only=True,
         allowed_tool_names=None,
+        include_task_context=True,
     )
     projected_again.assert_not_awaited()
-    assert advertisement.tool_names == {"conversation_task_submit"}
+    assert advertisement.tool_names == {"task_run"}
     async with toolset:
-        assert set(await toolset.get_tools(None)) == {"conversation_task_submit", "synthetic_external_lookup"}
+        assert set(await toolset.get_tools(None)) == {"task_run", "synthetic_external_lookup"}
 
 
 @pytest.mark.asyncio
@@ -413,10 +437,10 @@ async def test_native_compatibility_toolsets_keep_short_mcp_names(
         (("file_create", "document_share"), True, False),
         (("file_create", "file_search"), True, False),
         (("document_sharing", "document_share"), False, False),
-        (("document_chart", "file_create", "mindmap_edit"), True, False),
-        (("mindmap_create", "mindmap_read", "mindmap_add", "mindmap_edit"), False, False),
-        (("mindmap_read", "mindmap_edit"), False, False),
-        (("mindmap_read",), False, False),
+        (("document_chart", "file_create", "file_edit"), True, False),
+        (("file_create", "file_read", "file_write", "file_edit"), True, False),
+        (("file_read", "file_edit"), False, False),
+        (("file_read",), False, False),
         ((), False, False),
     ],
 )
@@ -457,12 +481,10 @@ async def test_tool_advertisement_encourages_shared_documents_when_available(
     assert ("file_create(path='document://'" in advertisement.text) is expects_documents
     assert ("document_share(document_id=" in advertisement.text) is expects_sharing
     assert ("call document_chart with the type" in advertisement.text) is ("document_chart" in names)
-    assert ("call mindmap_create to create" in advertisement.text) is ("mindmap_create" in names)
-    assert ("Choose a mind map for durable work" in advertisement.text) is ("mindmap_create" in names)
-    assert ("Read a mind map with mindmap_read" in advertisement.text) is ("mindmap_read" in names)
-    assert ("does not supply the selected node" in advertisement.text) is ("mindmap_read" in names)
-    assert ("mindmap_add(document_id=URI" in advertisement.text) is ({"mindmap_read", "mindmap_add"} <= set(names))
-    assert ("mindmap_edit(document_id=URI" in advertisement.text) is ({"mindmap_read", "mindmap_edit"} <= set(names))
+    assert ("Choose a mind map for durable work" in advertisement.text) is ("file_create" in names)
+    assert ("file_read and selector='/nodes'" in advertisement.text) is ("file_read" in names)
+    assert ("file_edit, selector='/nodes'" in advertisement.text) is ({"file_read", "file_edit"} <= set(names))
+    assert ("file_read and file_write with selector=" in advertisement.text) is ({"file_read", "file_write"} <= set(names))
     if expects_documents:
         assert "prefer document:// over standalone" in advertisement.text.casefold()
         assert "Markdown (.md) or HTML (.html)" in advertisement.text

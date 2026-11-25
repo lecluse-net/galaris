@@ -59,6 +59,7 @@ def test_browser_native_tool_family_is_complete() -> None:
         "browser_scroll",
         "browser_back",
         "browser_close",
+        "search_web",
     }
 
 

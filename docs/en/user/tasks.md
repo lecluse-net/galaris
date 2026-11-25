@@ -161,7 +161,7 @@ former subject from automatic search. Permissions and contact scope still apply;
 from history does not constitute evidence.
 
 Task details show activity, tools and results. The agent can retrieve saved tracking with
-`task_get` and send changes for its active Task to `task_work_update`. It supplies the milestone
+`task_get` and send changes for its active Task to `task_update`. It supplies the milestone
 key and the fields to change. The server keeps the rest of the plan and returns the previous
 active milestone to pending when the agent starts another. The receipt confirms the saved plan
 and explains any omitted changes. Version checking is available for deliberate corrections or
@@ -172,6 +172,8 @@ If execution completes normally with a required milestone blocked, the Task show
 the reason and next action when supplied. An open wait keeps the Task waiting. Plan steps that
 depend on the missing result are skipped.
 **Retry** resumes blocked work and preserves successfully completed steps.
+In conversation, ask the agent to continue the same Task. `task_resume` chooses between
+releasing a user pause and starting another attempt based on the saved state.
 An unavailable optional addition, such as a conditional document note, does not fail the main
 reply. The agent explains its omission in the report; it is excluded from applicable milestones
 in progress without being declared completed. Write permissions are still required.

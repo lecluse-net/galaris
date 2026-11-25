@@ -365,7 +365,7 @@ sous-processus. L'UUID cliquable sur fond transparent se trouve à gauche du con
 consultation dans la barre du graphique. Cliquer l'UUID copie la référence interne
 `galaris://processes/runs/<uuid>`. Le graphique remplace les compteurs et listes d'occurrences ou de
 sous-processus ; la fiche de l'activité appelante permet d'ouvrir le sous-processus lancé.
-Les agents peuvent la lire avec `file_info`, `file_read` ou `processus_get`, selon les droits
+Les agents peuvent la lire avec `file_info` et `file_read`, selon les droits
 du processus ou avec le droit dédié d'administration Process.
 
 Le suivi montre le graphe, les occurrences, les prompts réels, erreurs, données,
@@ -386,7 +386,7 @@ attente ne suffit pas à déclarer un blocage.
 Dans une activité Claude Agent, une fonction MCP **Sur demande** attend l'accord avant
 d'agir. La même activité se poursuit après la décision.
 
-Les agents utilisent `processus_get` pour cette vue. Les droits du processus autorisent
+Les agents utilisent `file_read` sur l’URI de l’exécution pour cette vue. Les droits du processus autorisent
 la lecture de ses runs et de leurs données ; son droit d'écriture autorise les contrôles.
 L'administration dédiée `process` reste disponible. Le partage d'un processus
 s'applique à ses exécutions existantes.

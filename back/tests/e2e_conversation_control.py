@@ -1,6 +1,7 @@
 """Synthetic model boundary; the conversation controller and scheduler stay real."""
 
 import asyncio
+import json
 
 from pydantic_ai.messages import ModelResponse, TextPart, UserPromptPart
 from pydantic_ai.models.function import FunctionModel
@@ -14,8 +15,18 @@ class ControlledModel(FunctionModel):
         return RequestUsage(input_tokens=1)
 
 
-def register(agent_id):
-    states[agent_id] = {"calls": 0, "closed": 0, "reply_now": False, "gate": asyncio.Event()}
+def load_topic_model(purpose):
+    answers = {"dream.topic_continuity": {"same_topic_probability": 1.0},
+               "dream.topic_creation": {"title": "Synthetic load topic"},
+               "dream.topic_reuse": {"topic_id": None, "confidence": 1.0}}
+    if purpose in answers:
+        return ControlledModel(function=lambda *_: ModelResponse(parts=[TextPart(json.dumps(answers[purpose]))]))
+    return None
+
+
+def register(agent_id, *, response_delay=None):
+    states[agent_id] = {"calls": 0, "closed": 0, "reply_now": False, "gate": asyncio.Event(),
+                        "response_delay": response_delay}
 
 
 async def build_model(_llm, *, agent_id, purpose=None, **_kwargs):
@@ -36,7 +47,10 @@ async def build_model(_llm, *, agent_id, purpose=None, **_kwargs):
             return
         try:
             yield "Réponse progressive"
-            await state["gate"].wait()
+            if state["response_delay"] is None:
+                await state["gate"].wait()
+            else:
+                await asyncio.sleep(state["response_delay"])
             yield " terminée."
         finally:
             state["closed"] += 1

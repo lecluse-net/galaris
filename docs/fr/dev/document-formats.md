@@ -32,17 +32,16 @@ Le [contrat des références documentaires](document-references.md) décrit les 
 
 ## Cartes mentales et agents
 
-Le Service **Document** déclare les outils MCP suivants. Ils peuvent être montés dans
-le Chat et dans une Task selon les fonctions autorisées, les droits sur la carte et les
-règles du contexte d’exécution. La lecture est activée par défaut. La création et l’édition
-sont déclarées **Sur demande**, avec la politique effective des connexions.
+Le Service **Partage de fichiers** expose ces outils dans le Chat et dans les tâches selon
+les fonctions autorisées et le contexte d’exécution. Les opérations avec `selector`
+appliquent les droits du document et la portée Documents. Le format interprète le sélecteur.
 
 | Outil | Contrat |
 |---|---|
-| `mindmap_create` | Crée un document privé pour l’agent et renvoie son URI `document://`, sa révision et l’identifiant `root`. Accepte jusqu’à 100 branches initiales, les parents avant leurs enfants. |
-| `mindmap_read` | Lit la révision enregistrée courante. La liste renvoie les identifiants stables, les parents et les résumés des nœuds. Suivre `next_offset` pour lire la suite. Avec `node_id`, l’outil renvoie le corps HTML du nœud par tranches. Suivre `next_body_offset` jusqu’à la fin. |
-| `mindmap_add` | Ajoute 1 à 50 branches en une seule révision. Fournir `expected_revision` et la liste `branches`. |
-| `mindmap_edit` | Applique un lot de 1 à 50 commandes `add`, `edit`, `move` ou `remove` en une seule révision. Fournir `expected_revision` et la liste `operations`. |
+| `file_create` | Crée un document privé avec `path="document://"`, `document_format="mindmap"` et la source JSON complète dans `content`. |
+| `file_read` | Lit toute la source ou la sous-partie sélectionnée. `/nodes` renvoie les résumés et identifiants. Un identifiant sélectionne le nœud JSON, et `<id>/body_html` son HTML. Suivre `next_offset` avec le même `selector` et la même `revision`. |
+| `file_write` | Remplace la source entière, le nœud sélectionné en conservant son identifiant et son parent, ou son HTML via `<id>/body_html`. Fournir `expected_revision` pour la carte entière. |
+| `file_edit` | Avec `selector="/nodes"`, applique 1 à 50 commandes `add`, `edit`, `move` ou `remove` en une seule révision. Fournir le tableau JSON dans `content` et la valeur `expected_revision`. |
 
 Un ajout fournit un nouvel identifiant, l’identifiant du parent et le titre. Placer les
 parents avant leurs enfants dans le lot. Une commande `edit` cible un nœud présent et indique
@@ -59,7 +58,7 @@ ce qu’un partage explicite accorde les droits voulus.
 Au moment de l’envoi dans le Chat interne, le contexte peut transmettre l’URI de la carte
 ouverte et sa révision affichée. Le contrat d’attention ne contient ni l’identifiant du
 nœud actif ni la sélection multiple. Pour une demande comme « ajoute un enfant à cette
-branche », l’agent identifie la cible à partir du message et de `mindmap_read`. Si la cible
+branche », l’agent identifie la cible à partir du message et de `file_read`. Si la cible
 reste ambiguë, il demande son titre ou son chemin avant d’écrire. Le contexte d’affichage
 n’accorde aucun droit et les outils vérifient la révision et les permissions.
 

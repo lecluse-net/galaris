@@ -62,7 +62,7 @@ is returned to the browser.
 
 **Test** and **Deploy code editor** preserve the connection’s saved activation state.
 A new connection stays inactive until saved; these actions do not reactivate an
-intentionally disabled connection. `repository_show` requires an active Console:
+intentionally disabled connection. `chat_repository_show` requires an active Console:
 check this state if access is denied.
 
 The Linux target needs Python 3, Docker with Compose accessible to the SSH account, user
@@ -102,7 +102,7 @@ prevents changing its runtime access; save its buffers and end it before that ch
 repositories retain their URI when their verified identity is unchanged; a replaced checkout
 remains denied.
 
-`repository_show` never installs remote software. For a manually administered deployment,
+`chat_repository_show` never installs remote software. For a manually administered deployment,
 distribute the versioned `code-executor/` directory to the Linux target and use
 [`compose.external.yaml`](../../../code-executor/compose.external.yaml):
 
@@ -123,7 +123,7 @@ Working SSH access to a repository alone does not provide its editor. If the run
 or token is missing from the Console connection, Chat reports that this external Console
 is not configured for the editor. Check both parameters after preparation. Changing the
 Console configuration manually changes the target identity: ask the agent to present the repository
-again with `repository_show` before opening it.
+again with `chat_repository_show` before opening it.
 
 The Console transport key and forge SSH keys have different purposes. Human Git uses
 the latter inside the runtime, with the repository/home’s existing configuration.

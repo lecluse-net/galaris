@@ -148,13 +148,16 @@ async def _legacy_default_connection_rows(session: AsyncSession) -> tuple[dict[s
 
 async def move_galaris_function_policies(session: AsyncSession) -> None:
     """Move policies with the relocated tools and preserve destination overrides."""
+    from .legacy_names import BUILTIN_TOOL_RENAMES
     transfers = {
         "agent": AGENT_DISCOVERY_TOOLS, "service": SERVICE_DISCOVERY_TOOLS,
         "goal": GOAL_SELF_SERVICE_TOOLS, "process": PROCESS_SELF_SERVICE_TOOLS,
-        "contact": CONTACT_TOOLS, "task": TASK_TOOLS, "document": DOCUMENT_ANALYSIS_TOOLS,
+        "contact": CONTACT_TOOLS, "task": (*TASK_TOOLS, "task_stop", "task_work_update"), "document": DOCUMENT_ANALYSIS_TOOLS,
     }
     moves = {"galaris": transfers, "conversation": {
-        "document": ("document_show",), "task": CONVERSATION_TASK_TOOLS, "process": CONVERSATION_PROCESS_TOOLS,
+        "document": ("document_show",),
+        "task": (*CONVERSATION_TASK_TOOLS, "task_retry", "task_submit", "task_status", "task_stop_conversation", *BUILTIN_TOOL_RENAMES["task"]),
+        "process": (*CONVERSATION_PROCESS_TOOLS, *BUILTIN_TOOL_RENAMES["process"]),
     }}
     from .builtin_merge import rebind_action_history
     ids = dict((await session.execute(select(Service.code, Service.id).where(
@@ -383,7 +386,10 @@ DATA_SOURCE = DbAdminDataSource(key="app.services", factory=datasets)
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
-    from .builtin_merge import merge_builtin_services, merge_conversation_into_chat, merge_media_and_search_services
+    from .builtin_merge import (
+        merge_builtin_services, merge_conversation_into_chat, merge_media_and_search_services,
+        rename_chat_tools, rename_domain_tools,
+    )
     from .naming_migration import register_naming_migration
     register_naming_migration(registry)
     from .capability_migration import register_capability_migration
@@ -408,6 +414,14 @@ def register_dbadmin(registry: DbAdminRegistry) -> None:
     registry.register_reconciler(DbAdminReconciler(
         key="app.services.merge_conversation_into_chat", handler=merge_conversation_into_chat,
         depends_on=("app.services.galaris_function_policies", "app.services.merge_builtin_services"),
+    ))
+    registry.register_reconciler(DbAdminReconciler(
+        key="app.services.rename_chat_tools", handler=rename_chat_tools,
+        depends_on=("app.services.merge_conversation_into_chat",),
+    ))
+    registry.register_reconciler(DbAdminReconciler(
+        key="app.services.rename_domain_tools", handler=rename_domain_tools,
+        depends_on=("app.services.rename_chat_tools",),
     ))
     registry.register_reconciler(DbAdminReconciler(
         key="app.services.merge_media_and_search", handler=merge_media_and_search_services,

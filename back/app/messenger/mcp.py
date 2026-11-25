@@ -326,7 +326,7 @@ async def _deliver_agent_file_with_status(
     }, True
 
 
-@mcp_tool("messenger", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("messenger", approval="enabled", approval_reason="Delivers text to the specified conversation on the selected connection",
 
     name="messenger_room_send_message",
     effect_descriptor=EffectDescriptorV1(capability="messenger.send", kind="transport", target_arguments=("room_id",), target_prefix="messenger://room/", visibility="external", receipt="message"),
@@ -367,7 +367,7 @@ async def mcp_room_send_message(ctx: McpToolContext, room_id: str, message: str)
         raise RuntimeError(_message(language, "send_failed", error=exc)) from exc
 
 
-@mcp_tool("messenger", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("messenger", approval="enabled", approval_reason="Delivers text to the resolved recipient on the selected connection",
 
     name="messenger_send_message_to_user",
     description=(
@@ -384,7 +384,7 @@ async def mcp_room_send_message(ctx: McpToolContext, room_id: str, message: str)
         "to continue independent work or contact more colleagues; the Task still awaits peer results before finishing. "
         "Human recipients never suspend the run."
         " Internal colleague requests require a current Task. From a conversation, use "
-        "conversation_task_submit to amend the relevant ongoing Task or admit new work "
+        "task_run to amend the relevant ongoing Task or admit new work "
         "under the conversation policy, preserving the recipient and requested contribution."
     ),
 )
@@ -972,7 +972,7 @@ async def mcp_read_attachment(ctx: McpToolContext, room_id: str, attachment_id: 
         return _message(language, "read_failed", error=exc)
 
 
-@mcp_tool("messenger", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("messenger", approval="enabled", approval_reason="Delivers a readable file to the resolved recipient on the selected connection",
 
     name="messenger_send_file_to_user",
     description=(
@@ -1029,7 +1029,7 @@ async def mcp_send_file_to_user(
         raise
 
 
-@mcp_tool("messenger", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("messenger", approval="enabled", approval_reason="Delivers a readable file to the specified conversation on the selected connection",
 
     name="messenger_room_send_file",
     effect_descriptor=EffectDescriptorV1(capability="messenger.send", kind="transport", target_arguments=("room_id",), target_prefix="messenger://room/", visibility="external", receipt="message"),

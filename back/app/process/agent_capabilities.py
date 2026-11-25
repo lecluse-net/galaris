@@ -17,7 +17,7 @@ async def rank_texts_by_semantic_similarity(query: str, texts: list[str]) -> tup
     return await rank(query, texts)
 
 
-_PROCESS_DISCOVERY_TOOLS = frozenset({"process_list", "process_get"})
+_PROCESS_DISCOVERY_TOOLS = frozenset({"file_list", "file_read"})
 _DESCRIPTION_MAX_CHARS = 500
 _PROCESS_CATALOG_LIMIT = 10
 _RELEVANCE_QUERY_MAX_CHARS = 4_000
@@ -35,6 +35,7 @@ def _compact_text(value: object, *, max_chars: int) -> str:
 def _json_catalog_entry(process: dict[str, Any]) -> str:
     entry = {
         "workflow_id": _compact_text(process.get("workflow_id"), max_chars=255),
+        "resource_uri": str(process.get("resource_uri") or ""),
         "label": _compact_text(process.get("label"), max_chars=255),
         "description": _compact_text(
             process.get("description"),
@@ -158,8 +159,8 @@ def render_agent_process_advertisement(
     if include_execution_guidance:
         lines.extend(
             [
-                "Inspect a possible match with `process_get`, then call "
-                f"`{launch_tool_name}`. Use `process_list` to refresh this catalog after an "
+                "Inspect a possible match with `file_read` on its resource URI, then call "
+                f"`{launch_tool_name}`. List `galaris://processes/` with `file_list` after an "
                 "authorization change or when a matching Process may be outside this projection. "
                 "Never invent a workflow ID.",
                 "",
@@ -213,7 +214,7 @@ async def agent_process_dispatch_candidates(
     Keep the full catalog: the dispatcher must not mistake the ten-item prompt
     advertisement for evidence that no applicable process exists.
     """
-    if not (_PROCESS_DISCOVERY_TOOLS | {"conversation_process_start"}).issubset(available_tool_names):
+    if not (_PROCESS_DISCOVERY_TOOLS | {"process_start_conversation"}).issubset(available_tool_names):
         raise PermissionError("Conversation process discovery and launch are unavailable")
     from . import process_service
 

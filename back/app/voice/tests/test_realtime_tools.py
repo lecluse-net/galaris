@@ -38,12 +38,12 @@ def test_realtime_voice_exposes_only_conversation_control_tools() -> None:
         "voice_call_stop",
         "memory_search",
         "memory_remember",
-        "conversation_task_list",
-        "conversation_task_submit",
-        "conversation_task_status",
-        "process_list",
-        "process_get",
-        "conversation_process_start",
+        "task_list",
+        "task_run",
+        "task_get",
+        "file_list",
+        "file_read",
+        "process_start_conversation",
     }
 
 
@@ -217,7 +217,7 @@ async def test_realtime_voice_starts_process_as_background_work(
 
     output = await realtime_tools_module.execute_realtime_tool(
         tools,
-        name="conversation_process_start",
+        name="process_start_conversation",
         arguments=json.dumps(
             {"workflow_id": "daily-report", "input": {"date": "today"}}
         ),
@@ -261,7 +261,7 @@ async def test_realtime_task_list_reuses_the_canonical_room_projection(
 
     output = await realtime_tools_module.execute_realtime_tool(
         tools,
-        name="conversation_task_list",
+        name="task_list",
         arguments="{}",
     )
 

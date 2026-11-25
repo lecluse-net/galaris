@@ -70,6 +70,9 @@ class DocumentFormatDefinition:
     import_source: Callable[[str, str, bytes], str] | None = None
     export_source: Callable[[str, str], tuple[bytes, str, str]] | None = None
     compare_revisions: Callable[[bytes, bytes, DocumentRevisionRegion | None], dict[str, JsonValue]] | None = None
+    read_selection: Callable[[str, str], tuple[str, str]] | None = None
+    write_selection: Callable[[str, str, str], str] | None = None
+    edit_selection: Callable[[str, str, str], str] | None = None
 
     def validate_content(self, content: bytes) -> None:
         if self.storage_kind == "file":
@@ -207,6 +210,7 @@ def _ensure_native_formats() -> None:
     from .data.content import validate as validate_data, extract as extract_data
     from . import mindmap
     from .mindmap import exchange
+    from .mindmap import selections
 
     registry.register(DocumentFormatDefinition(
         "text", "text/html", "", "description", validate_text, extract_text,
@@ -224,5 +228,6 @@ def _ensure_native_formats() -> None:
         surfaces=frozenset({"editor", "preview", "embed", "pdf", "native_export", "import"}),
         import_extensions=exchange.IMPORT_EXTENSIONS, import_media_types=tuple(exchange.IMPORT_TYPES),
         import_source=exchange.import_source, export_source=exchange.export_source,
+        read_selection=selections.read, write_selection=selections.write, edit_selection=selections.edit,
     ))
     _native_registered = True

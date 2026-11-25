@@ -9,7 +9,6 @@ from uuid import UUID
 from app.services.mcp_loader import McpToolContext, context_language, mcp_tool
 from app.services.facade import AdministrationScope, administration_scope
 from core.i18n import render_prompt, t
-from core.database import get_db
 
 from . import process_service
 from . import native_definitions, native_runs
@@ -21,25 +20,6 @@ from .schemas import (
     ProcessFileInput,
     ProcessToolRead,
 )
-
-
-@mcp_tool("process", name="processus_get", approval="enabled",
-    approval_reason="Read process progress within the participant or active process administrator scope",
-    effect_policy="read", concurrency_policy="safe",
-    description="Inspect an internal run's progress, active activities, human/authorization/Task/child waits, blockers, last activity and available controls. Only participating agents or an agent with an explicit Process service delegation may read it. Omit run_id inside an activity Task to inspect its owning run.")
-async def processus_get(ctx: McpToolContext, run_id: str | None = None) -> dict[str, Any]:
-    if run_id is None:
-        from sqlalchemy import select
-        from .models import ProcessNodeAttempt, ProcessNodeRun
-        identity = await get_db().scalar(select(ProcessNodeRun.run_id)
-            .join(ProcessNodeAttempt, ProcessNodeAttempt.node_run_id == ProcessNodeRun.id)
-            .where(ProcessNodeAttempt.task_id == ctx.task_id)) if ctx.task_id else None
-        if identity is None:
-            raise ValueError("Provide run_id outside an internal process activity Task")
-    else:
-        identity = _run_id(run_id)
-    snapshot = await native_runs.inspect_run(identity, ctx.agent_id, page_size=10)
-    return {key: snapshot[key] for key in ("id", "label", "workflow_id", "status", "can_control", "operational", "definition_revision", "error", "error_code")}
 
 
 def _run_id(value: str) -> UUID:
@@ -104,58 +84,6 @@ async def _require_visible_run(ctx: McpToolContext, identity: UUID) -> None:
         raise PermissionError("Run not found in this agent's participation scope")
 
 
-@mcp_tool("process", approval='enabled', approval_reason='Governed bounded read or polling',
-
-    name="process_list",
-    description="List only the business processes assigned to the current agent.",
-)
-async def process_list(ctx: McpToolContext) -> list[dict[str, Any]]:
-    return await process_service.list_for_agent(ctx.agent_id)
-
-
-@mcp_tool("process", approval='enabled', approval_reason='Governed bounded read or polling',
-
-    name="process_get",
-    description="Describe one workflow assigned to the current agent.",
-)
-async def process_get(ctx: McpToolContext, workflow_id: str) -> dict[str, Any]:
-    allowed = await process_service.get_for_agent(ctx.agent_id, workflow_id)
-    if allowed is None:
-        language = await context_language(ctx)
-        raise PermissionError(
-            render_prompt(t("process.errors.not_allowed", language), process_code=workflow_id)
-        )
-    process = allowed
-    result: dict[str, Any] = {
-        "workflow_id": process.engine_process_id,
-        "label": process.label,
-        "description": process.description,
-        "service_id": process.service_id,
-    }
-    if process.code is not None:
-        definition = await native_definitions.read(workflow_id, ctx.agent_id)
-        graph = Workflow.model_validate(definition["graph"])
-        result["schema_version"] = graph.schema_version
-        # Global inputs/outputs alone say nothing about the executable content.
-        # Supply a compact inventory without copying prompts or script bodies.
-        activities: list[dict[str, Any]] = []
-        def collect(body: Workflow) -> None:
-            for node in body.nodes:
-                if node.kind not in {"start", "end"}:
-                    activities.append({"id": node.id, "kind": node.kind, "title": node.title,
-                        "inputs": node.inputs, "outputs": node.outputs})
-                if node.body is not None:
-                    collect(node.body)
-        collect(graph)
-        result["activities"] = activities
-        result["diagnostics"] = definition["diagnostics"]
-        if graph.typed:
-            result["variables"] = [variable.model_dump(mode="json") for variable in graph.variables]
-            result["inputs"] = graph.inputs
-            result["outputs"] = graph.outputs
-    return result
-
-
 @mcp_tool("process", approval="enabled", approval_reason="Submit the current activity's validated output",
     conversation_policy="forbidden", effect_policy="idempotent", name="process_activity_complete",
     description="For your current native Process activity Task only: submit changes to its process variables as ordinary JSON (for example output={\"age\": 42}). Optionally provide a concise user-facing message. The engine validates and stores typed data; your final prose is not parsed as JSON. Stop after acceptance.")
@@ -178,12 +106,6 @@ async def process_activity_question(ctx: McpToolContext, question: str,
                                     variables: list[str] | None = None, question_key: str | None = None) -> dict[str, Any]:
     from .activity_controls import ask_input
     return await ask_input(ctx.task_id, ctx.agent_id, question, variables, question_key=question_key)
-
-
-@mcp_tool("process", approval="enabled", approval_reason="Resource-authorized process definition read", effect_policy="read",
-    name="process_definition_read", description="Read the current saved BPMN definition, graph, task instructions and actors to audit a process you can read.")
-async def process_definition_read(ctx: McpToolContext, process_code: str) -> dict[str, Any]:
-    return await native_definitions.read(process_code, ctx.agent_id)
 
 
 @mcp_tool("process", approval="ask", approval_reason="Create a governed business process",
@@ -237,14 +159,6 @@ async def process_share(ctx: McpToolContext, process_code: str, target_agent_id:
     from .native_sharing import grant_agent
     return await grant_agent(process_code, ctx.agent_id, target_agent_id,
         can_write=access == "edit", revoke=access == "none")
-
-
-@mcp_tool("process", approval="enabled", approval_reason="Resource-scoped live run read", effect_policy="read",
-    name="process_run_inspect", description="Inspect a readable native run, its frozen graph, occurrences, run data and event cursor.")
-async def process_run_inspect(ctx: McpToolContext, run_id: str, page: int = 1, page_size: int = 50, after_event: int = 0) -> dict[str, Any]:
-    if page < 1 or page_size not in {10, 20, 50, 100, 500} or after_event < 0:
-        raise ValueError("Invalid run pagination")
-    return await native_runs.inspect_run(_run_id(run_id), ctx.agent_id, page=page, page_size=page_size, after_event=after_event)
 
 
 @mcp_tool("process", approval="enabled", approval_reason="Resource-scoped child run read", effect_policy="read",
@@ -316,7 +230,8 @@ async def process_run_retry(ctx: McpToolContext, run_id: str, idempotency_key: s
         "Each files item uses {uri, description}; uri accepts any authorized canonical "
         "file_schemes resource and is transferred transparently when the process downloads it."
         " input uses ordinary JSON values, including a canonical URI string for a File. "
-        "Set typed_values=true only for explicit {type, value} envelopes."
+        "Set typed_values=true only for explicit {type, value} envelopes. "
+        "Read the process URI with file_read."
     ),
 )
 async def process_start(
@@ -350,36 +265,6 @@ async def process_start(
             reason=str(exc),
         )) from exc
     return response.model_dump(mode="json")
-
-
-@mcp_tool("process", approval='enabled', approval_reason='Governed bounded read or polling',
-
-    name="process_list_runs",
-    description="List participating internal runs and the current agent's external runs. An explicit Process service delegation widens visibility to its delegated agents.",
-)
-async def process_list_runs(
-    ctx: McpToolContext,
-    workflow_id: Optional[str] = None,
-    status: Optional[str] = None,
-    limit: int = 20,
-) -> list[dict[str, Any]]:
-    summaries = await process_service.list_runs(
-        participant_agent_id=ctx.agent_id, workflow_id=workflow_id, status=status, limit=limit
-    )
-    return [summary.model_dump(mode="json") for summary in summaries]
-
-
-@mcp_tool("process", approval='enabled', approval_reason='Governed bounded read or polling',
-
-    name="process_get_run",
-    description="Read the persisted run allowed by its Process sharing policy or dedicated Process administration.",
-)
-async def process_get_run(ctx: McpToolContext, run_id: str) -> dict[str, Any]:
-    await _require_visible_run(ctx, _run_id(run_id))
-    detail = await process_service.get_run_detail(_run_id(run_id), refresh_if_stale=True)
-    if detail is None:
-        raise PermissionError(t("process.errors.run_not_visible", await context_language(ctx)))
-    return detail.model_dump(mode="json", exclude={"events"})
 
 
 @mcp_tool("process", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",

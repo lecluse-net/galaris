@@ -135,20 +135,13 @@ def test_native_function_families_have_their_expected_owners():
     names = mcp_tool_names_by_service_code()
     assert {"llm_call", "llm_calls"} <= set(names["galaris"])
     assert {"platform_admin", "voice", "audio", "image", "search"}.isdisjoint(names)
-    assert {"voice_call_start", "voice_call_stop", "voice_call_list", "voice_turn_get"} <= set(names["chat"])
-    conversation_names = {
-        name
-        for group in names.values()
-        for name in group
-        if name.startswith("conversation_")
-    }
-    assert conversation_names <= set(names["chat"] + names["task"] + names["process"])
-    assert {
-        "conversation_choice_resolve", "conversation_task_submit", "conversation_task_list",
-        "conversation_task_status", "conversation_task_pause", "conversation_task_resume",
-        "conversation_task_retry", "conversation_task_stop", "conversation_process_start",
-        "conversation_process_pending", "conversation_process_respond",
-    } <= conversation_names
+    assert {"chat_choice_resolve", "chat_round_get", "voice_call_start", "voice_call_stop",
+            "voice_call_list", "voice_turn_get"} <= set(names["chat"])
+    assert sorted(names["task"]) == sorted((
+        "task_list", "task_get", "task_pause", "task_resume", "task_cancel",
+        "task_run", "task_update",
+    ))
+    assert {"process_start_conversation", "process_pending", "process_respond"} <= set(names["process"])
 
 
 @pytest.mark.asyncio

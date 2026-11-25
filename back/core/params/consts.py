@@ -42,6 +42,7 @@ class Params:
     # Internal, immutable through the administration API.
     AUTH_SECRET_KEY = "AUTH_SECRET_KEY"
     GALARIS_AGENT_ID = "galaris.agent_id"
+    TASK_RUN_POLICIES_MERGED = "services.task_run_policies_merged"
     WEB_PUSH_VAPID_KEYS = "WEB_PUSH_VAPID_KEYS"
     WEB_PUSH_VAPID_SUBJECT = "WEB_PUSH_VAPID_SUBJECT"
     WEB_PUSH_DELAY_SECONDS = "WEB_PUSH_DELAY_SECONDS"
@@ -299,6 +300,7 @@ class Params:
 # their defaults through core.i18n.
 DEFAULT_PARAMS: dict[str, ParamConfig] = {
     Params.GALARIS_AGENT_ID: {"value": None, "kind": "integer"},
+    Params.TASK_RUN_POLICIES_MERGED: {"value": None, "kind": "boolean"},
     Params.ALLOW_USER_REGISTRATION: {"value": "false", "runtime_field": "ALLOW_USER_REGISTRATION", "kind": "boolean"},
     Params.MESSENGER_MAX_INLINE_MB: {"value": "3.814697265625", "runtime_field": "MESSENGER_MAX_INLINE_MB", "kind": "float"},
     Params.PYDANTIC_AI_BINARY_INPUT_MAX_BYTES: {"value": "20000000", "runtime_field": "PYDANTIC_AI_BINARY_INPUT_MAX_BYTES", "kind": "integer"},
@@ -907,6 +909,7 @@ SECRET_PARAMS: set[str] = {
 # These parameters are software-owned and omitted entirely from administration.
 INTERNAL_PARAMS: frozenset[str] = frozenset({
     Params.AUTH_SECRET_KEY, Params.WEB_PUSH_VAPID_KEYS, Params.GALARIS_AGENT_ID,
+    Params.TASK_RUN_POLICIES_MERGED,
     Params.SKILL_LEARNING_MIN_EVIDENCE, Params.SKILL_LEARNING_ACTIVATION_SCORE,
     Params.SKILL_LEARNING_MAX_ACTIVE,
 })

@@ -20,7 +20,6 @@
       "file_read",
       "file_edit",
       "file_create",
-      "process_get",
       "process_start",
       "process_activity_complete",
       "goal_ask_referrer",
@@ -31,7 +30,8 @@
     "available_processes": [
       {
         "workflow_id": "synthetic-intake",
-        "description": "Existing assigned business workflow for validating intake cases."
+        "description": "Existing assigned business workflow for validating intake cases.",
+        "resource_uri": "galaris://processes/synthetic-intake"
       }
     ],
     "tool_catalog": [
@@ -209,22 +209,6 @@
           },
           "required": [
             "path"
-          ],
-          "type": "object"
-        }
-      },
-      {
-        "name": "process_get",
-        "description": "Describe one workflow assigned to the current agent.",
-        "parameters": {
-          "additionalProperties": false,
-          "properties": {
-            "workflow_id": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "workflow_id"
           ],
           "type": "object"
         }

@@ -3,6 +3,7 @@ from importlib import import_module
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from .document_sharing import document_actor as document_actor
     from .folder_tree import read_folder_tree as read_folder_tree
     from .folder_resources import describe_folder as describe_folder_resource, list_folder as list_folder_resources
     from . import resource_service as resource_service
@@ -130,6 +131,7 @@ if TYPE_CHECKING:
     from .document_thumbnail_service import register_web_thumbnail_capture as register_web_thumbnail_capture
 _EXPORTS["register_web_thumbnail_capture"]=("document_thumbnail_service","register_web_thumbnail_capture")
 _EXPORTS["describe_folder_resource"] = ("folder_resources", "describe_folder")
+_EXPORTS["document_actor"] = ("document_sharing", "document_actor")
 _EXPORTS["list_folder_resources"] = ("folder_resources", "list_folder")
 __all__ += ["describe_folder_resource", "list_folder_resources"]
 _EXPORTS["read_folder_tree"] = ("folder_tree", "read_folder_tree")

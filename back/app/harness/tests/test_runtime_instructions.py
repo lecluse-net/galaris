@@ -53,7 +53,7 @@ async def test_process_evidence_reaches_provider_payload_before_and_after_launch
         async def chunks():
             if protocol == "responses":
                 item = ({"id": "fc_synthetic", "type": "function_call", "call_id": "synthetic_call",
-                    "name": "conversation_process_start", "arguments": '{"workflow_id":"synthetic"}', "status": "completed"}
+                    "name": "process_start_conversation", "arguments": '{"workflow_id":"synthetic"}', "status": "completed"}
                     if first else {"id": "msg_synthetic", "type": "message", "role": "assistant", "status": "completed",
                         "content": [{"type": "output_text", "text": "Admitted.", "annotations": []}]})
                 terminal = {"id": f"resp_synthetic_{len(requests)}", "object": "response", "created_at": 1,
@@ -62,7 +62,7 @@ async def test_process_evidence_reaches_provider_payload_before_and_after_launch
                 yield responses_sse(terminal)
                 return
             delta = ({"tool_calls": [{"index": 0, "id": "synthetic_call", "type": "function",
-                "function": {"name": "conversation_process_start", "arguments": '{"workflow_id":"synthetic"}'}}]}
+                "function": {"name": "process_start_conversation", "arguments": '{"workflow_id":"synthetic"}'}}]}
                 if first else {"content": "Admitted."})
             payload = {"id": f"chat_synthetic_{len(requests)}", "object": "chat.completion.chunk", "created": 1,
                 "model": "opaque", "choices": [{"index": 0, "delta": delta,
@@ -87,12 +87,12 @@ async def test_process_evidence_reaches_provider_payload_before_and_after_launch
     monkeypatch.setattr(runtime, "build_model_for_llm", build_model)
     monkeypatch.setattr(runtime, "estimate_cost_from_usage", lambda *_args: 0.0)
 
-    async def conversation_process_start(workflow_id: str) -> dict[str, str]:
+    async def process_start_conversation(workflow_id: str) -> dict[str, str]:
         launched.append(workflow_id)
         return {"run_id": run_id, "status": "queued"}
 
     agent = Agent(llm, system_prompt="Synthetic governed policy.", real_time=True,
-        tools=[conversation_process_start], capabilities=[Hooks(before_model_request=_process_launch_evidence)])
+        tools=[process_start_conversation], capabilities=[Hooks(before_model_request=_process_launch_evidence)])
     await agent.init()
     output = [message async for message in agent.run("Relaunch the synthetic process.", [
         TaskMessage(text="It was launched earlier.", sender_is_ai=True, sender_agent_id=7)])]
@@ -105,7 +105,7 @@ async def test_process_evidence_reaches_provider_payload_before_and_after_launch
         assert "Synthetic governed policy." in instructions
         assert instructions.count("# Current turn execution evidence") == 1
         assert ("No successful Process launch receipt" if index == 0 else run_id) in instructions
-        assert "conversation_process_start" in str(body["tools"])
+        assert "process_start_conversation" in str(body["tools"])
 
 
 def test_reply_now_closes_unexecuted_tools_and_preserves_confirmed_results() -> None:
@@ -261,7 +261,7 @@ async def test_internal_prompt_is_sent_with_existing_message_history(
 
     agent = Agent(
         cast(LLM, SimpleNamespace()),
-        system_prompt="SYSTEM SENTINEL: conversation_task_submit is available.",
+        system_prompt="SYSTEM SENTINEL: task_run is available.",
         response_only=response_only,
         tools=[forbidden_tool] if response_only else [],
     )
@@ -279,7 +279,7 @@ async def test_internal_prompt_is_sent_with_existing_message_history(
 
     instruction_parts = model.last_model_request_parameters.instruction_parts
     assert [part.content for part in instruction_parts] == [
-        "SYSTEM SENTINEL: conversation_task_submit is available."
+        "SYSTEM SENTINEL: task_run is available."
     ]
     assert output
     if response_only:

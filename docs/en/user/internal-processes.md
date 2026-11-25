@@ -316,8 +316,7 @@ The clickable UUID with a transparent background sits to the left of the inspect
 in the diagram toolbar. Clicking the UUID copies the internal
 `galaris://processes/runs/<uuid>` reference. The diagram replaces occurrence counters and lists of
 occurrences or child processes; the calling activity's details open its child process.
-Agents can read the reference through `file_info`, `file_read` or
-`processus_get`, according to the parent Process rights
+Agents can read the reference through `file_info` and `file_read`, according to the parent Process rights
 or with dedicated Process administration access.
 
 The observer shows the graph, occurrences, actual prompts, errors, run data, children
@@ -336,7 +335,7 @@ that a run is blocked.
 In a Claude Agent activity, an **On demand** MCP function waits for approval before
 acting. The same activity continues after the decision.
 
-Agents use `processus_get` for this view. The Process's read policy authorizes its
+Agents use `file_read` on the run URI for this view. The Process's read policy authorizes its
 runs, data and files; its edit policy authorizes controls. Existing dedicated
 `process` access remains available. Sharing a Process also shares its existing runs.
 

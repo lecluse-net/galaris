@@ -31,7 +31,7 @@
 | `data://` | `data://uuid`, `data://uuid/attachments/attachment-uuid` | document Données JSON, droits et historique de `app.document` |
 | `file://` | `file://uuid` | fichier interne indépendant enregistré par `core.storage` |
 | `https://` | URL publique sans credentials ni fragment | source Web en lecture seule |
-| `galaris://` | `galaris://task/<uuid>`, `galaris://text/<uuid>`, `galaris://voice/<uuid>`, `galaris://goal/<uuid>`, `galaris://goal_cycle/<uuid>`, `galaris://process/<workflow-id>`, `galaris://skill/<skill-code>/<path>` | projections métier JSON en lecture seule ; fichiers de skills administrables sous autorisation |
+| `galaris://` | `galaris://task/<uuid>`, `galaris://text/<uuid>`, `galaris://voice/<uuid>`, `galaris://goal/<uuid>`, `galaris://goal_cycle/<uuid>`, `galaris://topic/<uuid>`, `galaris://processes/<code>`, `galaris://processes/runs/<uuid>`, `galaris://skill/<skill-code>/<path>` | projections métier JSON en lecture seule ; fichiers de skills administrables sous autorisation |
 
 Une collection finit par `/` ou n'a pas de locator, par exemple `document://` ou
 `nextcloud://Shared/`. `http://` est parsé afin de produire une erreur explicite, mais son accès
@@ -90,7 +90,8 @@ les documents de la branche ni embarquer les octets de l'icône. Le lien n'accor
 Le document Données possède son contenu, ses droits, son historique et ses pièces jointes.
 Le JSON reste libre et valide après chaque écriture. L'ancien `document_type="dataset"` dans
 `document://` reste un accès de compatibilité limité aux alias vérifiés. Les définitions BPMN
-appartiennent à Processus, dont les définitions affectées se consultent sous `galaris://process/`.
+appartiennent à Processus. `file_list` découvre les définitions lisibles sous `galaris://processes/`
+et les exécutions sous `galaris://processes/runs/`. `file_read` utilise l’URI exacte.
 
 `file_list` borne une page à 500 entrées. Les collections `galaris://` renvoient un
 `next_cursor` lorsqu'une page suivante existe ; le client le repasse sans l'interpréter dans le

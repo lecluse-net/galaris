@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Collection
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Dict, Optional, List, Tuple, cast, Mapping
-from sqlalchemy import CursorResult, Select, delete, exists, func, or_, select
+from sqlalchemy import CursorResult, Select, delete, exists, func, literal, or_, select, union_all
 from sqlalchemy.types import JSON
 from sqlalchemy.orm import joinedload
 
@@ -869,6 +870,19 @@ async def get_tools_by_agent(agent_id: int) -> List[Service]:
     return tools
 
 
+@dataclass(frozen=True)
+class ActiveConnectionRef:
+    id: int
+    service_id: int
+
+
+async def active_connection_refs(agent_id: int) -> tuple[ActiveConnectionRef, ...]:
+    """Read only the identities needed for discovery, in stable account order."""
+    rows = await get_db().execute(select(Connection.id, Connection.service_id).where(
+        Connection.agent_id == agent_id, Connection.active.is_(True)).order_by(Connection.id))
+    return tuple(ActiveConnectionRef(identity, service_id) for identity, service_id in rows)
+
+
 async def get_connections_by_agent(agent_id: int, *, active_only: bool = True) -> List[Connection]:
     db = get_db()
     statement = (
@@ -1014,25 +1028,26 @@ async def _default_blocked_functions(service_ids: set[int]) -> dict[int, set[str
     )}
 
 
-async def get_disabled_function_names_many(connections: Collection[Connection], *,
+async def get_disabled_function_names_many(connections: Collection[Connection | ActiveConnectionRef], *,
                                            capability_kind: CapabilityKind = "tool") -> dict[int, set[str]]:
     """Resolve the same local/global cascade for one freshly loaded page."""
     if not connections:
         return {}
     local: dict[int, dict[str, bool | str]] = {}
     global_states: dict[int, dict[str, bool | str]] = {}
-    rows = await get_db().scalars(select(ConnectionFunctionState).where(
+    local_rows = select(literal(True), ConnectionFunctionState.connection_id, ConnectionFunctionState.function_name,
+        ConnectionFunctionState.state, ConnectionFunctionState.enabled).where(
         ConnectionFunctionState.connection_id.in_([connection.id for connection in connections]),
-    ).execution_options(populate_existing=True))
-    for row in rows:
-        if (row.capability_kind or "tool") == capability_kind:
-            local.setdefault(row.connection_id, {})[row.function_name] = stored_function_state(row)
-    global_rows = await get_db().scalars(select(ServiceFunctionState).where(
+        ConnectionFunctionState.capability_kind == capability_kind,
+    )
+    service_rows = select(literal(False), ServiceFunctionState.service_id, ServiceFunctionState.function_name,
+        ServiceFunctionState.state, ServiceFunctionState.enabled).where(
         ServiceFunctionState.service_id.in_({connection.service_id for connection in connections}),
-    ).execution_options(populate_existing=True))
-    for row in global_rows:
-        if (row.capability_kind or "tool") == capability_kind:
-            global_states.setdefault(row.service_id, {})[row.function_name] = stored_function_state(row)
+        ServiceFunctionState.capability_kind == capability_kind,
+    )
+    for is_local, identity, name, state, enabled in await get_db().execute(union_all(local_rows, service_rows)):
+        states = local if is_local else global_states
+        states.setdefault(identity, {})[name] = state if state is not None else enabled
     defaults = await _default_blocked_functions({connection.service_id for connection in connections}) if capability_kind == "tool" else {}
     result: dict[int, set[str]] = {}
     for connection in connections:

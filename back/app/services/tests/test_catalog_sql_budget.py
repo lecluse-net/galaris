@@ -177,8 +177,47 @@ async def test_native_catalog_batches_configuration_and_reloads_function_overrid
 
 
 @pytest.mark.asyncio
+async def test_task_and_conversation_see_the_current_connection_policy(db, agents):
+    owner, other = agents
+    service_id = await db.scalar(select(Service.id).where(Service.code == "process"))
+    file_service_id = await db.scalar(select(Service.id).where(Service.code == "file_sharing"))
+    own = Connection(agent_id=owner.id, service_id=file_service_id, active=True)
+    db.add_all([own, Connection(agent_id=other.id, service_id=file_service_id, active=True),
+        *(Connection(agent_id=agent.id, service_id=service_id, active=True) for agent in agents)])
+    await db.flush()
+
+    async def visible(agent_id, conversation):
+        if conversation:
+            from app.harness.mcp_toolset import build_conversation_toolset
+            async with measured_reads(db, "conversation-mount-and-guidance") as reads:
+                _, advertisement = await build_conversation_toolset(agent_id, resources={},
+                    allowed_tool_names={"file_list", "process_start"})
+            assert len(reads) <= 8, "Mounting and explaining these two services must share the active inventory"
+            return advertisement.tool_names
+        definitions = await mcp_loader.list_enabled_native_mcp_definitions(agent_id, runtime="internal",
+            conversation_only=conversation, allowed_tool_names={"file_list", "process_start"})
+        return {item.name for item in definitions}
+
+    for actor in agents:
+        assert await visible(actor.id, True) == {"file_list"}
+        assert await visible(actor.id, False) == {"file_list", "process_start"}
+    override = ConnectionFunctionState(connection_id=own.id, function_name="file_list", state="disabled")
+    db.add(override)
+    await db.flush()
+    assert await visible(owner.id, True) == set()
+    assert await visible(owner.id, False) == {"process_start"}
+    assert await visible(other.id, True) == {"file_list"}
+    assert await visible(other.id, False) == {"file_list", "process_start"}
+    await db.delete(override)
+    await db.flush()
+    assert await visible(owner.id, True) == {"file_list"}
+    assert await visible(owner.id, False) == {"file_list", "process_start"}
+
+
+@pytest.mark.asyncio
 async def test_aggregate_catalog_reads_stay_bounded_with_more_active_connections(db, agents):
     from app.services.mcp_authorization import bind_native_action
+    from app.services.agent_registry import build_task_capability_context
 
     owner, _ = agents
     agent_id = owner.id
@@ -188,12 +227,18 @@ async def test_aggregate_catalog_reads_stay_bounded_with_more_active_connections
     db.expunge_all()
     context = mcp_loader.McpToolContext(agent_id=agent_id, runtime="internal")
     definition = next(tool for tool in mcp_loader.mcp_tools_by_service_code()["process"]
-                      if tool.name == "process_list_runs")
+                      if tool.name == "process_analyze_run")
     async with measured_reads(db, "aggregate-mcp-initial") as initial_reads:
         initial = await mcp_loader.build_agent_mcp(agent_id)
-        initial_action = await bind_native_action(context, definition, {"limit": 50})
-    native_names = [tool.name for tool in await initial.list_tools()]
-    assert "process_list_runs" in native_names
+        initial_action = await bind_native_action(context, definition, {"run_id": "00000000-0000-4000-8000-000000000001"})
+    async with measured_reads(db, "aggregate-mcp-discovery") as discovery_reads:
+        native_names = [tool.name for tool in await initial.list_tools()]
+    assert "process_analyze_run" in native_names
+    async with measured_reads(db, "direct-mcp-discovery") as direct_reads:
+        assert await initial.native_tool_names() == frozenset(native_names)
+    assert max(len(direct_reads), len(discovery_reads)) <= 2, "Unconnected dynamic tools need only a live account inventory"
+    async with measured_reads(db, "conversation-task-services-initial") as context_reads:
+        await build_task_capability_context(agent_id)
 
     services = [Service(code=f"synthetic-aggregate-{index}", label="Synthetic non-MCP", connection_schema={})
                 for index in range(50)]
@@ -205,9 +250,15 @@ async def test_aggregate_catalog_reads_stay_bounded_with_more_active_connections
 
     async with measured_reads(db, "aggregate-mcp-many-connections") as expanded_reads:
         expanded = await mcp_loader.build_agent_mcp(agent_id)
-        expanded_action = await bind_native_action(context, definition, {"limit": 50})
+        expanded_action = await bind_native_action(context, definition, {"run_id": "00000000-0000-4000-8000-000000000001"})
 
     assert [tool.name for tool in await expanded.list_tools()] == native_names
     assert expanded_action.connection_id == initial_action.connection_id
     assert expanded_action.configuration == initial_action.configuration
+    assert len(initial_reads) <= 20, "Mounting and binding one Process action must fit the startup query budget"
     assert len(expanded_reads) <= len(initial_reads), "Service reads must not grow with the number of active connections"
+    async with measured_reads(db, "conversation-task-services-expanded") as expanded_context_reads:
+        foreground_context = await build_task_capability_context(agent_id)
+    assert all(service.code in foreground_context for service in services)
+    assert len(expanded_context_reads) == len(context_reads)
+    assert "param_value" not in expanded_context_reads.result_columns

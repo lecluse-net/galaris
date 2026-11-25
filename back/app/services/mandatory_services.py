@@ -23,18 +23,18 @@ from .contracts import CHAT_CHANNEL_PARAM, MANAGEMENT_SCOPE_OPTIONS
 AGENT_DISCOVERY_TOOLS = ("agent_list", "agent_get", "team_list", "team_members")
 SERVICE_DISCOVERY_TOOLS = ("services_list",)
 ADMIN_TOOLS = ("documentation_catalog", "documentation_search", "llm_call", "llm_calls", "incidents_list", "incident_get")
-CONVERSATION_INSPECTION_TOOLS = ("conversation_round_get", "voice_turn_get")
+CONVERSATION_INSPECTION_TOOLS = ("chat_round_get", "voice_turn_get")
 VOICE_TOOLS = ("voice_call_start", "voice_call_stop", "voice_call_list")
-CHAT_TOOLS = (*CONVERSATION_INSPECTION_TOOLS, *VOICE_TOOLS, "repository_show", "conversation_choice_resolve", "chat_screenshot")
+CHAT_TOOLS = (*CONVERSATION_INSPECTION_TOOLS, *VOICE_TOOLS, "chat_repository_show", "chat_choice_resolve", "chat_screenshot")
 CONTACT_TOOLS = ("contact_list", "contact_get", "contact_create", "contact_update")
-TASK_TOOLS = ("task_run", "task_get", "task_work_update", "task_stop")
+TASK_TOOLS = ("task_run", "task_get", "task_update", "task_cancel")
 DOCUMENT_ANALYSIS_TOOLS = ("document_analyze", "document_analysis_get", "document_analysis_cancel")
-CONVERSATION_TASK_TOOLS = (
-    "conversation_task_submit", "conversation_task_list", "conversation_task_status", "conversation_task_pause",
-    "conversation_task_resume", "conversation_task_retry", "conversation_task_stop",
+CONVERSATION_ONLY_TASK_TOOLS = (
+    "task_list", "task_pause", "task_resume",
 )
+CONVERSATION_TASK_TOOLS = (*CONVERSATION_ONLY_TASK_TOOLS, "task_run", "task_get", "task_cancel")
 CONVERSATION_PROCESS_TOOLS = (
-    "conversation_process_start", "conversation_process_prepare", "conversation_process_pending", "conversation_process_respond",
+    "process_start_conversation", "process_prepare", "process_pending", "process_respond",
 )
 IMAGE_TOOLS = ("image_generate", "image_read", "image_from_pdf")
 AUDIO_TOOLS = ("audio_transcribe",)
@@ -47,12 +47,11 @@ GOAL_SELF_SERVICE_TOOLS = (
 )
 
 PROCESS_SELF_SERVICE_TOOLS = (
-    "process_list", "process_get", "process_start", "process_list_runs",
-    "process_get_run", "process_analyze_run", "processus_get",
+    "process_start", "process_analyze_run",
     "process_activity_complete", "process_activity_question",
-    "process_definition_read", "process_create", "process_update", "process_validate",
+    "process_create", "process_update", "process_validate",
     "process_history", "process_restore", "process_archive", "process_share",
-    "process_run_inspect", "process_run_occurrence", "process_run_children", "process_run_metrics", "process_run_control", "process_run_cancel", "process_run_retry", "process_run_signal",
+    "process_run_occurrence", "process_run_children", "process_run_metrics", "process_run_control", "process_run_cancel", "process_run_retry", "process_run_signal",
 )
 
 SYSTEM_SERVICE_CODES = frozenset({"galaris", "chat", "memory", "document", "file_sharing", "calendar", "contact", "task"})
@@ -84,14 +83,14 @@ INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
         code="service", label="Services", description=DESCRIPTIONS["service"],
         mcp_tools=(
             *SERVICE_DISCOVERY_TOOLS,
-            "service_admin_list", "service_admin_get", "service_admin_create", "service_admin_update",
-            "service_admin_impact", "service_admin_delete", "service_admin_global_params_set",
-            "service_admin_mcp_test", "service_admin_function_list",
-            "service_admin_function_get", "service_admin_function_set", "service_admin_connection_list",
-            "service_admin_connection_get", "service_admin_connection_create", "service_admin_connection_update",
-            "service_admin_connection_delete", "service_admin_connection_params_set", "service_admin_connection_param_delete",
-            "service_admin_connection_test", "service_admin_connection_function_list", "service_admin_connection_function_set",
-            "service_admin_catalog_refresh",
+            "service_list", "service_get", "service_create", "service_update",
+            "service_impact", "service_delete", "service_global_params_set",
+            "service_mcp_test", "service_function_list",
+            "service_function_get", "service_function_set", "service_connection_list",
+            "service_connection_get", "service_connection_create", "service_connection_update",
+            "service_connection_delete", "service_connection_params_set", "service_connection_param_delete",
+            "service_connection_test", "service_connection_function_list", "service_connection_function_set",
+            "service_catalog_refresh",
         ),
         default_active=True,
     ),
@@ -208,13 +207,13 @@ INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
     IntegratedServiceSpec(
         code="document", label="Documents", description=DESCRIPTIONS["document"],
         mcp_tools=("document_sharing", "document_share", "document_revision_list", "document_revision_compare",
-                    "document_show", "document_chart", *DOCUMENT_ANALYSIS_TOOLS, "mindmap_create", "mindmap_read", "mindmap_add", "mindmap_edit"),
+                    "document_show", "document_chart", *DOCUMENT_ANALYSIS_TOOLS),
         default_active=True,
     ),
     IntegratedServiceSpec(code="contact", label="Contact", description=DESCRIPTIONS["contact"],
                           mcp_tools=CONTACT_TOOLS, default_active=True),
     IntegratedServiceSpec(code="task", label="Tasks", description=DESCRIPTIONS["task"],
-                          mcp_tools=(*TASK_TOOLS, *CONVERSATION_TASK_TOOLS), default_active=True),
+                          mcp_tools=(*TASK_TOOLS, *CONVERSATION_ONLY_TASK_TOOLS), default_active=True),
     IntegratedServiceSpec(
         code="file_sharing",
         label="File sharing",
@@ -275,7 +274,6 @@ INTEGRATED_SERVICE_SPECS: tuple[IntegratedServiceSpec, ...] = (
         description=DESCRIPTIONS["topic"],
         mcp_tools=(
             "topic_list",
-            "topic_get",
             "topic_items_list",
             "topic_create",
             "topic_update",
@@ -625,7 +623,10 @@ def mandatory_service_rows() -> list[dict[str, Any]]:
 async def sync_mandatory_services() -> list[ServiceModel]:
     """Apply the module DataSource through the DbAdmin merge engine."""
     from core.dbadmin import reconcile_dataset
-    from .builtin_merge import merge_builtin_services, merge_conversation_into_chat, merge_media_and_search_services
+    from .builtin_merge import (
+        merge_builtin_services, merge_conversation_into_chat, merge_media_and_search_services,
+        rename_chat_tools, rename_domain_tools,
+    )
     from .dbadmin import datasets, move_galaris_function_policies
 
     db = get_db()
@@ -634,6 +635,8 @@ async def sync_mandatory_services() -> list[ServiceModel]:
     await move_galaris_function_policies(db)
     await merge_builtin_services(db)
     await merge_conversation_into_chat(db)
+    await rename_chat_tools(db)
+    await rename_domain_tools(db)
     await merge_media_and_search_services(db)
     await db.flush()
     codes = tuple(str(row["code"]) for row in mandatory_service_rows())

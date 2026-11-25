@@ -1199,6 +1199,16 @@ async def resume_tree(task_id: UUID) -> Optional[Task]:
     return await _set_tree_paused(task_id, paused=False)
 
 
+async def resume_or_retry(task: Task) -> tuple[Task | None, Literal["resumed", "retried", "unchanged"]]:
+    """Continue a Task whose row the caller has already locked."""
+    reasons = pause_reasons(task)
+    if task.status not in _TERMINAL_STATUSES and (PAUSE_USER in reasons or (task.paused and not reasons)):
+        return await resume_tree(task.id), "resumed"
+    if task.lease_token is None and (task.status == TaskStatus.ERROR or can_retry_blocked(task)):
+        return await retry(task.id, task.revision), "retried"
+    return task, "unchanged"
+
+
 async def preempt_running_agent_tasks(
     agent_id: Optional[int],
     *,

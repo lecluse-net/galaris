@@ -13,7 +13,7 @@ agents = set()
 
 async def build_model(_llm, **_kwargs):
     def answer(messages, info):
-        if any(isinstance(part, ToolReturnPart) and part.tool_name == "conversation_process_respond"
+        if any(isinstance(part, ToolReturnPart) and part.tool_name == "process_respond"
                for part in messages[-1].parts):
             return ModelResponse(parts=[TextPart("Votre réponse a été enregistrée dans le processus.")])
         prompt = str(info.instructions) + str(messages)
@@ -28,7 +28,7 @@ async def build_model(_llm, **_kwargs):
             output = {"accepted": {"type": "bool", "value": False}}
         else:
             output = {"text": "Approved synthetic note"}
-        return ModelResponse(parts=[ToolCallPart("conversation_process_respond",
+        return ModelResponse(parts=[ToolCallPart("process_respond",
             {"reference": references[0], "output": output})])
     async def stream(messages, info):
         result = answer(messages, info)

@@ -85,7 +85,7 @@ Managed images must be refreshed to consume this signal. See
 
 For a Task, the Dispatcher selects `direct`, `tracked` or `clarify` in its existing routing
 inference. Simple actions stay direct. Long or complex work prepares its method and retains
-milestones through `task_work_update`, including when one executor owns a coherent deliverable.
+milestones through `task_update`, including when one executor owns a coherent deliverable.
 Independent outputs remain coordinated by the Planner; steps pass their organization to leaves.
 
 Ambiguous intent triggers a durable question and suspension. The answer restarts routing with
@@ -108,7 +108,7 @@ label, its reason when supplied, the report and completed effects are retained. 
 closes dependent steps and propagates the blocker to the parent plan. The milestone check is
 deterministic.
 Completion instructions also ask `direct` executors to record such blockers with
-`task_work_update`, preserving the other milestones.
+`task_update`, preserving the other milestones.
 These instructions depend on model compliance; the guard applies to persisted milestones.
 A rejected conditional document note therefore does not block the main reply; the executor
 discloses the omission in its response. Tracking grants no write permission.
@@ -910,10 +910,10 @@ contract: name, gender, position, personality, and job description. It adds the 
 and social context, the authorized native inventory, and the compact catalog of Processes
 assigned to the agent. It separately renders the Services from active connections reserved for Task
 mode, without repeating those authorized in conversation, and prohibits inferring a lack of access
-from this: if the request requires one of them, admission through `conversation_task_submit` is
+from this: if the request requires one of them, admission through `task_run` is
 mandatory. Its rules require an immediate response for short work; long work first launches a
-matching Process with `conversation_process_start`, or otherwise creates a Task with
-`conversation_task_submit`, without ever waiting for completion.
+matching Process with `process_start_conversation`, or otherwise creates a Task with
+`task_run`, without ever waiting for completion.
 
 Text rounds carry live data in a `galaris_turn_context` block in the user message.
 It contains the current agent's active Goals, active Tasks and Processes, pending
@@ -952,7 +952,7 @@ operation creates a Task linked to the round before its confirmation is publishe
 The prompt proactively requires fresh wording in a single pass. For AI peers, the dispatcher
 retains its loop limits and `EXEC`/`END` gate. It performs no validation retry: malformed
 structured output immediately triggers its deterministic `END` fallback.
-Every new root, including one requested by `conversation_task_submit`, nevertheless goes through a
+Every new root, including one requested by `task_run`, nevertheless goes through a
 dedicated structured call at the effective profile's `standard` level. This call directly
 reconstructs the standalone `label` and `objective` from the canonical chronology, frozen turn,
 Memory, continuity, related work, URLs, and attachments. Service arguments are only hints, and
@@ -982,9 +982,9 @@ successful effect is visible.
 Option-based interactions follow the same separation. An exact number or alias is applied without
 an LLM. An unrecognized free-form response continues the conversational flow with the pending
 choices projected into its exact scope. The conversational model may then select only an option
-persisted by `conversation_choice_resolve`; it must request clarification rather than infer
+persisted by `chat_choice_resolve`; it must request clarification rather than infer
 ambiguous consent. When the message redirects the work, it may reject the now-obsolete approval
-and call `conversation_task_submit` with `AMEND_CURRENT` or `AMEND_QUEUED`. `app.task` remains the
+and call `task_run` with `AMEND_CURRENT` or `AMEND_QUEUED`. `app.task` remains the
 sole owner of durable interruption and resumption.
 
 The three executor system prompts—Task, text conversation, and voice—are built as ordered JSON
@@ -1032,9 +1032,9 @@ including when memory is disabled, empty, or not consulted. Technical labels suc
 `Conversation — <agent>` are generic: the recall query uses the bounded user objective so that
 it does not replace the current subject with the runtime name. The initial Task projection
 filters older work by state and bounds each objective, without limiting the number of still-active
-work items. The model may call `conversation_task_list` to find an older Task. This call remains
+work items. The model may call `task_list` to find an older Task. This call remains
 limited to root Tasks in the current conversational context, omits their large results, and
-retains active Working Set references; `conversation_task_status` provides bounded detail by UUID.
+retains active Working Set references; `task_get` provides bounded detail by UUID.
 
 Galaris imposes no output cap or cumulative token budget on Task, conversation, and voice
 executors, or on specialized LLM mechanisms. An already assembled history or prompt must never
@@ -1133,8 +1133,8 @@ confirms the interruption: it cancels the current run and ends the round as
 `INTERRUPTED`, not as `Task.ERROR`. Its effective objective remains pending in the session and
 is prefixed to the next transcript. Only a complete response clears this objective. The shared
 prompt authorizes speech and bounded consultations. Any other action must launch an assigned
-Process asynchronously through `conversation_process_start`, or a self-contained Task through
-`conversation_task_submit`; the conversational runtime never performs this action directly.
+Process asynchronously through `process_start_conversation`, or a self-contained Task through
+`task_run`; the conversational runtime never performs this action directly.
 
 The `realtime` voice mode does not split audio into text executions. `app.agent` composes the
 identity, shared prompt, and context providers once in a `RealtimeAgentContext`. `app.voice` then
@@ -1150,9 +1150,9 @@ after all its results and authorizations have settled.
 
 The session receives only the necessary bounded conversational functions: memory search, listing,
 creation, amendment, and reading of a Task, discovery/reading of assigned Processes, and
-asynchronous launching of a Process. The control names (`conversation_task_list`,
-`conversation_task_submit`, `conversation_task_status`, `conversation_process_start`) and the
-action policy are the same as for the pipeline. `conversation_task_submit` uses
+asynchronous launching of a Process. The control names (`task_list`,
+`task_run`, `task_get`, `process_start_conversation`) and the
+action policy are the same as for the pipeline. `task_run` uses
 `AgentTaskPort`, creates or amends the durable Task before returning its UUID, then wakes the
 scheduler. Process functions go through the `app.process` facade. The provider model therefore
 has no direct access to `app.task`, ORM models, or PostgreSQL.

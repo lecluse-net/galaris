@@ -113,7 +113,7 @@ async def test_task_completion_records_required_blockers_in_both_organizations(o
     request = _request(voice_call=False)
     request.task_data["organization"] = organization
     prompt = await executor_service.build_task_prompt(request)
-    assert "task_work_update" in prompt
+    assert "task_update" in prompt
     assert "required=true milestone in state=blocked" in prompt
     assert "optional additions required=false" in prompt
     if organization == "tracked":

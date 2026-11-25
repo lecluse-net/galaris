@@ -268,30 +268,30 @@ async def test_work_update_recovers_misplaced_next_action_and_stale_revision(sco
     task_id, agent_id = scoped_task
     async with get_db_session() as db:
         (await db.get(Task, task_id)).status = TaskStatus.EXEC
-    server = await _native_creation_server(task_id, agent_id, {"task": ["task_get", "task_work_update"]})
+    server = await _native_creation_server(task_id, agent_id, {"task": ["task_get", "task_update"]})
     plan = {"milestones": [{"key": "write", "label": "Update the synthetic report",
         "acceptance": "The report contains the verified result", "state": "blocked",
         "observation": "The destination has not been authorized"}]}
     action = "Ask the requester for the exact destination"
     async with Client(server) as client:
-        saved = await client.call_tool("task_work_update", {
+        saved = await client.call_tool("task_update", {
             "plan": plan, "next_action": action, "expected_revision": 0,
         }, raise_on_error=False)
         assert not saved.is_error, saved
         receipt = json.loads(saved.content[0].text)
         assert receipt["work_plan_revision"] == 1
         assert receipt["work_plan"]["next_action"] == action
-        replay = await client.call_tool("task_work_update", {
+        replay = await client.call_tool("task_update", {
             "plan": {**plan, "next_action": action}, "expected_revision": 0,
         })
         assert json.loads(replay.content[0].text) == receipt
-        duplicate_alias = await client.call_tool("task_work_update", {
+        duplicate_alias = await client.call_tool("task_update", {
             "plan": {**plan, "next_action": action}, "next_action": "Use another destination",
             "expected_revision": 1,
         }, raise_on_error=False)
         assert not duplicate_alias.is_error
         assert json.loads(duplicate_alias.content[0].text) == receipt
-        conflict = await client.call_tool("task_work_update", {
+        conflict = await client.call_tool("task_update", {
             "plan": {**plan, "next_action": "Inspect the requested destination"}, "expected_revision": 0,
         }, raise_on_error=False)
         assert not conflict.is_error
@@ -301,7 +301,7 @@ async def test_work_update_recovers_misplaced_next_action_and_stale_revision(sco
         assert conflict_receipt["work_plan_revision"] == 1
         assert conflict_receipt["work_plan"] == receipt["work_plan"]
 
-        finished = await client.call_tool("task_work_update", {
+        finished = await client.call_tool("task_update", {
             "plan": {"key": "write", "state": "done"},
         })
         completed = json.loads(finished.content[0].text)
@@ -312,7 +312,7 @@ async def test_work_update_recovers_misplaced_next_action_and_stale_revision(sco
         assert milestone["observation"] == ""
         assert milestone["label"] == plan["milestones"][0]["label"]
         assert milestone["acceptance"] == plan["milestones"][0]["acceptance"]
-        malformed = await client.call_tool("task_work_update", {"plan": ["wrong shape"]}, raise_on_error=False)
+        malformed = await client.call_tool("task_update", {"plan": ["wrong shape"]}, raise_on_error=False)
         assert not malformed.is_error
         assert json.loads(malformed.content[0].text)["status"] == "unchanged"
         inspected = await client.call_tool("task_get", {"task_id": str(task_id)})

@@ -115,7 +115,7 @@ Human interface privileges and resource ACLs apply separately.
 | File sharing (`file_sharing`) | System | Source resource permissions | `file_*` functions and canonical URIs |
 | Agenda (`calendar`) | System | `personal` | Calendars, events, availability and actions |
 | Contact (`contact`) | System | `personal` | Address book search and management |
-| Tasks (`task`) | System | `personal` | Delegation, tracking and `task_*` and `conversation_task_*` commands |
+| Tasks (`task`) | System | `personal` | Delegation, tracking and `task_*` commands |
 | Agent (`agent`) | Active | `usage` | Directory, teams and agent administration |
 | Services (`service`) | Active | `usage` | Inventory, Service administration and scope for execution inspections |
 | Goals (`goal`), Processes (`process`), Skills (`skills`) | Active | `personal` | Commands for their respective domains |
@@ -433,21 +433,21 @@ new derivative. The cache never bypasses permissions or a disabled connection.
 
 ### Create the Service
 
-1. Inspect `service_admin_list` and read any existing definition with `service_admin_get` to avoid duplicates.
+1. Inspect `service_list` and read any existing definition with `service_get` to avoid duplicates.
 2. A human opens **Services → New Service**, enters its code and label, declares a `token` parameter
    of type `password`, and configures HTTP or SSE MCP with Bearer authentication and `auth.param=token`.
 3. Under **Test connection**, enter the temporary secret, select the recipient agent and choose
    **Prepare candidate for this agent**. Send only the resulting reference. It expires after
    15 minutes or a backend restart, is bound to the agent and prepared definition, and is held
    encrypted in bounded process memory.
-4. The agent calls `service_admin_mcp_test(candidate_reference=...)`. This negotiates MCP and
+4. The agent calls `service_mcp_test(candidate_reference=...)`. This negotiates MCP and
    discovers functions without saving or calling business functions. An empty catalogue can
    be successful. Results include the timestamp, duration, stages, failure category and truncation.
-5. After success, `service_admin_create(candidate_reference=...)` explicitly adopts the definition
+5. After success, `service_create(candidate_reference=...)` explicitly adopts the definition
    and credentials server-side. A successful test never implies persistence.
-6. Use `service_admin_connection_create` to create an initially inactive connection. Configure
-   parameters and permissions, test with `service_admin_connection_test`, activate with
-   `service_admin_connection_update`, then inspect effective functions.
+6. Use `service_connection_create` to create an initially inactive connection. Configure
+   parameters and permissions, test with `service_connection_test`, activate with
+   `service_connection_update`, then inspect effective functions.
 
 An agent can create a credential-free definition directly with `definition`. New secrets use
 a human reference; secret literals are refused in agent commands. Responses expose presence,
@@ -529,10 +529,17 @@ the software default is displayed when inherited. `default` remains the API inhe
 value; the UI returns to inheritance by selecting a global rule.
 Successive local choices are saved in order; a failure is reported and triggers a rule reload.
 Saving policies does not wait for remote MCP discovery.
-Sensitive native functions default to Ask;
-third-party MCP capabilities default to Enabled.
+Each native function declares its software default. `chat_round_get`, `voice_turn_get`,
+`chat_screenshot`, `browser_open`, and `browser_navigate` default to **Ask**. Approval for
+`chat_screenshot` comes before choosing what to share and consenting on the originating desktop.
+Stopping a Task (`task_cancel`, formerly `task_stop`) defaults to **Enabled**.
+`task_run` defaults to **Ask**. One setting covers Chat submission and delegation.
+`task_resume` covers both releasing a user pause and retrying settled failures or eligible blocked work.
+On upgrade, DbAdmin retains the more restrictive permission for merged tools, transfers
+tracking settings to `task_update`, and invalidates pending approvals for retired names.
+Third-party MCP capabilities default to **Enabled**.
 A global denial can therefore be overridden by an explicit local enable;
-`service_admin_function_set` reports such overrides. `effective` describes resolved permission;
+`service_function_set` reports such overrides. `effective` describes resolved permission;
 `available` also includes activation, runtime and conversation context. Discovery under one
 connection does not establish another agent's access.
 
@@ -598,20 +605,20 @@ history is retained.
 
 | Need | Functions |
 |---|---|
-| Catalogue and definitions | `service_admin_list`, `service_admin_get`, `service_admin_create`, `service_admin_update` |
-| Dependencies and deletion | `service_admin_impact`, `service_admin_delete` |
-| Shared settings | `service_admin_global_params_set` |
-| Diagnostics and functions | `service_admin_mcp_test`, `service_admin_function_list`, `service_admin_function_get`, `service_admin_function_set` |
-| Connections | `service_admin_connection_list`, `service_admin_connection_get`, `service_admin_connection_create`, `service_admin_connection_update`, `service_admin_connection_delete` |
-| Local parameters and tests | `service_admin_connection_params_set`, `service_admin_connection_param_delete`, `service_admin_connection_test` |
-| Permissions and indexing | `service_admin_connection_function_list`, `service_admin_connection_function_set`, `service_admin_catalog_refresh` |
+| Catalogue and definitions | `service_list`, `service_get`, `service_create`, `service_update` |
+| Dependencies and deletion | `service_impact`, `service_delete` |
+| Shared settings | `service_global_params_set` |
+| Diagnostics and functions | `service_mcp_test`, `service_function_list`, `service_function_get`, `service_function_set` |
+| Connections | `service_connection_list`, `service_connection_get`, `service_connection_create`, `service_connection_update`, `service_connection_delete` |
+| Local parameters and tests | `service_connection_params_set`, `service_connection_param_delete`, `service_connection_test` |
+| Permissions and indexing | `service_connection_function_list`, `service_connection_function_set`, `service_catalog_refresh` |
 
 Impact includes connections and direct Service references, including workflows and messaging
 identities. These dependencies block deletion and contribute to its version; removing a
 Service never implicitly removes their business data.
 
 Lists use `offset` and `limit`: 50 by default, at most 500. Diagnostics also bound remote
-pages, duration, concurrency, bytes and schemas. `service_admin_function_get` returns function details.
+pages, duration, concurrency, bytes and schemas. `service_function_get` returns function details.
 
 ## Conflicts, propagation and recovery
 
@@ -626,7 +633,7 @@ After a mutation, `persisted=true` confirms storage even when refresh is partial
 catalogues reconcile without pruning after incomplete discovery. Refresh calls the Python functions
 in `app.services` directly, with a 20-second budget and permission checks before and after each agent.
 Each agent's results are committed separately. Partial results identify `failed_agent_ids` and
-`remaining_agent_ids`. Pass those agents to `service_admin_catalog_refresh(agent_ids=[...])` to resume the refresh.
+`remaining_agent_ids`. Pass those agents to `service_catalog_refresh(agent_ids=[...])` to resume the refresh.
 DbAdmin convergence removes obsolete technical `catalog_refresh` definitions and their runs,
 after resolving any waiting Tasks.
 

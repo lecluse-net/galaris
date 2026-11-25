@@ -86,8 +86,8 @@ async def test_latency_campaign_uses_native_effect_free_tools_and_separate_measu
 
     corpus = json.loads((Path(__file__).parents[1] / f"latency_corpus_{language}.json").read_text())
     calls = [None, ("memory_search", {"query": "Orbe"}),
-        ("conversation_task_status", {"task_id": "galaris://task/00000000-0000-0000-0000-000000000041"}),
-        ("conversation_task_submit", {"objective": "<p>Compare Orbe, Nacre and Sillage, sources, costs and final report.</p>"})]
+        ("task_get", {"task_id": "galaris://task/00000000-0000-0000-0000-000000000041"}),
+        ("task_run", {"objective": "<p>Compare Orbe, Nacre and Sillage, sources, costs and final report.</p>"})]
     monkeypatch.setattr(structured_service, "UsageLimits", lambda **kw: UsageLimits(**{**kw, "count_tokens_before_request": False}))
     monkeypatch.setattr(structured_service, "estimate_cost_from_usage", lambda *_: 0.01)
     for case, proposed in zip(corpus["cases"][:4], calls, strict=True):
@@ -126,9 +126,9 @@ async def test_latency_campaign_uses_native_effect_free_tools_and_separate_measu
 def test_outcome_references_use_real_galaris_function_signatures_and_hide_oracles(language, family):
     import inspect
     from app.file_share.mcp import read_file, edit_file, create_file
-    from app.process.mcp import process_get, process_start
+    from app.process.mcp import process_start
     from app.goal.mcp import mcp_goal_ask_referrer
-    from app.task.mcp import mcp_get_task
+    from app.conversation.mcp import task_get
     from app.lab.mechanism_registry import get_mechanism
     from app.lab.executor_outcomes import selected_call
     from core.util import validate_schema
@@ -140,11 +140,11 @@ def test_outcome_references_use_real_galaris_function_signatures_and_hide_oracle
     ) if tool.definition.name == "memory_search")
 
     functions = {"file_read": read_file, "file_edit": edit_file, "file_create": create_file,
-                 "process_get": process_get, "process_start": process_start,
-                 "goal_ask_referrer": mcp_goal_ask_referrer, "task_get": mcp_get_task}
+                 "process_start": process_start,
+                 "goal_ask_referrer": mcp_goal_ask_referrer, "task_get": task_get}
     functions.update({definition.name: definition.function for definition in load_mcp_tools()
-                      if definition.name in {"memory_search", "conversation_task_submit",
-                                             "conversation_task_status", "conversation_process_start"}})
+                      if definition.name in {"memory_search", "task_run",
+                                             "process_start_conversation"}})
     corpus = json.loads((Path(__file__).parents[1] / f"{family}_corpus_{language}.json").read_text())
     for case in corpus["cases"]:
         _, native = resolve_input(corpus["mechanism"], case["input_data"], corpus["parameters"])

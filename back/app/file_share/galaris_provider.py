@@ -36,6 +36,7 @@ GalarisResourceKind = Literal[
     "agent",
     "process",
     "calendar",
+    "topic",
     "skill",
 ]
 _KINDS: tuple[GalarisResourceKind, ...] = (
@@ -49,6 +50,7 @@ _KINDS: tuple[GalarisResourceKind, ...] = (
     "agent",
     "process",
     "calendar",
+    "topic",
     "skill",
 )
 _COLLECTION_CAPABILITIES: list[ResourceCapability] = ["info", "list", "search"]
@@ -60,15 +62,34 @@ _contact_lister: Callable[[int, str, int, int], Awaitable[list[dict[str, object]
 _contact_writer: Callable[[UUID, int, bytes, str | None], Awaitable[dict[str, object]]] | None = None
 _calendar_reader: Callable[[int, int], Awaitable[dict[str, object] | None]] | None = None
 _calendar_lister: Callable[[int, str, int, int], Awaitable[list[dict[str, object]]]] | None = None
+_calendar_event_label: Callable[[int, str, frozenset[int] | None], Awaitable[str | None]] | None = None
+_topic_reader: Callable[[UUID, int], Awaitable[dict[str, object] | None]] | None = None
+_topic_lister: Callable[[int, str, int, int], Awaitable[list[dict[str, object]]]] | None = None
+
+
+def register_topic_resource_provider(
+    reader: Callable[[UUID, int], Awaitable[dict[str, object] | None]],
+    lister: Callable[[int, str, int, int], Awaitable[list[dict[str, object]]]],
+) -> None:
+    global _topic_reader, _topic_lister
+    _topic_reader, _topic_lister = reader, lister
 
 
 def register_calendar_resource_provider(
     reader: Callable[[int, int], Awaitable[dict[str, object] | None]],
     lister: Callable[[int, str, int, int], Awaitable[list[dict[str, object]]]],
+    *, event_label: Callable[[int, str, frozenset[int] | None], Awaitable[str | None]] | None = None,
 ) -> None:
     """Bind Calendar-owned, authorized projections without importing the domain."""
-    global _calendar_reader, _calendar_lister
+    global _calendar_reader, _calendar_lister, _calendar_event_label
     _calendar_reader, _calendar_lister = reader, lister
+    _calendar_event_label = event_label
+
+
+async def calendar_event_label(calendar_id: int, uid: str, agent_ids: frozenset[int] | None) -> str | None:
+    if _calendar_event_label is None:
+        return None
+    return await _calendar_event_label(calendar_id, uid, agent_ids)
 
 
 def register_contact_resource_provider(
@@ -113,7 +134,7 @@ def _route(reference: ResourceUri) -> _Route:
         raise PermissionError("Official Galaris documentation is read-only; use documentation_search or file_read.")
     if raw_kind not in _KINDS:
         raise ResourceUriError(
-            "galaris:// supports contact, code, task, voice, text, goal, goal_cycle, agent, process, calendar, and skill."
+            "galaris:// supports contact, code, task, voice, text, goal, goal_cycle, agent, process, calendar, topic, and skill."
         )
     kind = raw_kind
     if len(segments) == 1 and reference.is_collection:
@@ -198,6 +219,8 @@ def _item_name(kind: GalarisResourceKind, payload: dict[str, Any]) -> str:
                 cast(dict[str, Any], round_payload).get("id") or identifier
             )
         return f"{medium} conversation round {identifier}"
+    if kind == "topic":
+        return str(payload.get("title") or f"Topic {identifier}")
     if kind in {"goal", "agent"}:
         return str(payload.get("title") or f"Goal {identifier}")
     if kind == "process":
@@ -210,7 +233,7 @@ def _item_id(kind: GalarisResourceKind, payload: dict[str, Any]) -> str:
     if kind == "contact":
         return str(payload["memory_item_id"])
     if kind == "process":
-        return str(payload.get("workflow_id") or "")
+        return str(payload.get("native_code") or payload.get("workflow_id") or "")
     if kind in {"text", "voice"} and isinstance(payload.get("round"), dict):
         return str(cast(dict[str, Any], payload["round"]).get("id") or "")
     return str(payload.get("id") or "")
@@ -266,7 +289,7 @@ def _descriptor(
             metadata["created_at"] = source["created_at"]
     return ResourceDescriptor(
         uri=f"galaris://{'processes' if kind == 'process' and payload.get('native_code') else kind}/{encoded_identifier}",
-        name=label if kind in {"contact", "goal_cycle", "calendar"} else f"{kind}-{identifier}.json",
+        name=label if kind in {"contact", "goal_cycle", "calendar", "topic"} else f"{kind}-{identifier}.json",
         media_type=f"application/vnd.galaris.{kind}+json",
         size=len(content.encode("utf-8")) if include_size else None,
         modified_at=_item_modified_at(kind, payload),
@@ -293,6 +316,7 @@ def _collection_descriptor(kind: GalarisResourceKind) -> ResourceDescriptor:
         "process": "Processes",
         "code": "Code repositories",
         "calendar": "Calendars",
+        "topic": "Topics",
         "skill": "Skills",
     }
     return ResourceDescriptor(
@@ -371,6 +395,9 @@ async def _read_payload(
 ) -> dict[str, Any] | None:
     if kind == "calendar":
         return await _calendar_reader(int(str(identifier)), ctx.agent_id) if _calendar_reader is not None else None
+    if kind == "topic":
+        assert isinstance(identifier, UUID)
+        return await _topic_reader(identifier, ctx.agent_id) if _topic_reader is not None else None
     if kind == "contact":
         assert isinstance(identifier, UUID)
         return await _contact_reader(identifier, ctx.agent_id) if _contact_reader is not None else None
@@ -428,6 +455,8 @@ async def _list_payloads(
 ) -> list[dict[str, Any]]:
     if kind == "calendar":
         return await _calendar_lister(ctx.agent_id, query, offset, limit) if _calendar_lister is not None else []
+    if kind == "topic":
+        return await _topic_lister(ctx.agent_id, query, offset, limit) if _topic_lister is not None else []
     if kind == "contact":
         return await _contact_lister(ctx.agent_id, query, offset, limit) if _contact_lister is not None else []
     if kind == "code":
@@ -602,7 +631,7 @@ async def galaris_resource_list(
         available = limit - (1 if offset == 0 else 0)
         payloads = await _list_payloads(ctx, "process", offset=max(0, offset - 1), limit=available + 1)
         entries = ([ResourceDescriptor(uri="galaris://processes/runs/", name="Runs", label_code="collection_runs", is_collection=True,
-            capabilities=["info", "list"])] if offset == 0 else [])
+            capabilities=["info", "list", "search"])] if offset == 0 else [])
         entries.extend(_descriptor("process", item) for item in payloads[:available])
         return ResourceListing(uri=str(reference), entries=entries, truncated=len(payloads) > available,
             next_cursor=str(offset + len(entries)) if len(payloads) > available else None)

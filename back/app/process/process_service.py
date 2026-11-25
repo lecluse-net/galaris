@@ -405,12 +405,21 @@ async def list_for_agent(agent_id: int) -> list[dict[str, Any]]:
         {
             "definition_id": process.id,
             "workflow_id": process.engine_process_id,
+            "resource_uri": process_resource_uri(process),
             "label": process.label,
             "description": process.description,
             "service_id": process.service_id,
         }
         for process in rows
     ]
+
+
+def process_resource_uri(definition: ProcessDefinition) -> str:
+    from urllib.parse import quote
+
+    if definition.code is not None:
+        return "galaris://processes/" + quote(definition.code, safe="")
+    return "galaris://process/" + quote(definition.engine_process_id, safe="!$&'()*+,-.;=@_~:")
 
 
 async def list_resource_definitions_for_agent(

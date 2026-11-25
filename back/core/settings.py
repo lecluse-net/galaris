@@ -84,6 +84,9 @@ class Settings(BaseSettings):
     DB_POOL_PRE_PING: bool = Field(default=True)
     DB_STATEMENT_TIMEOUT_MS: int = Field(default=120_000, ge=1_000)
     DB_LOCK_TIMEOUT_MS: int = Field(default=10_000, ge=100)
+    AGENT_MCP_MOUNT_CONCURRENCY: int = Field(default=4, ge=1)
+    AGENT_MCP_CONVERSATION_MOUNT_CONCURRENCY: int = Field(default=4, ge=1)
+    CONVERSATION_WORKER_CONCURRENCY: int = Field(default=4, ge=1)
     DBADMIN_COMMAND_TIMEOUT_SECONDS: float = Field(default=600, ge=1, le=86_400)
 
     ALGORITHM: ClassVar[Literal["HS256"]] = "HS256"

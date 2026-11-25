@@ -67,7 +67,7 @@ son accès chiffré dans Galaris. Aucun jeton n’est retourné au navigateur.
 **Tester** et **Déployer l’éditeur de code** conservent l’état actif déjà enregistré
 de la connexion. Une nouvelle connexion reste inactive jusqu’à son enregistrement ;
 une connexion volontairement désactivée n’est pas réactivée par ces actions.
-`repository_show` exige une Console active : vérifiez cet état si l’accès est refusé.
+`chat_repository_show` exige une Console active : vérifiez cet état si l’accès est refusé.
 
 La cible doit être Linux, disposer de Python 3, de Docker avec Compose accessibles au compte
 SSH et autoriser les namespaces utilisateur et le transfert de port local. Le bouton
@@ -107,7 +107,7 @@ au runtime ; enregistrez ses buffers et terminez-la avant cette modification.
 Les dépôts présentés avant le déploiement conservent leur URI
 si leur identité vérifiée est inchangée ; un checkout remplacé reste refusé.
 
-`repository_show` n’installe rien à distance. Pour une installation administrée manuellement,
+`chat_repository_show` n’installe rien à distance. Pour une installation administrée manuellement,
 distribuez le répertoire versionné `code-executor/` sur la cible Linux, puis utilisez
 [`compose.external.yaml`](../../../code-executor/compose.external.yaml) :
 
@@ -128,7 +128,7 @@ Un accès SSH fonctionnel au dépôt ne suffit pas pour ouvrir l’éditeur. Si 
 jeton du runtime manque dans la connexion Console, le Chat signale que cette Console externe
 n’est pas configurée pour l’éditeur. Vérifiez ces deux paramètres après la préparation.
 Une modification manuelle de la configuration de la Console change l’identité de la cible :
-demandez à l’agent de présenter à nouveau le dépôt avec `repository_show` avant de l’ouvrir.
+demandez à l’agent de présenter à nouveau le dépôt avec `chat_repository_show` avant de l’ouvrir.
 
 La clé SSH de transport Console et les clés SSH de forge sont deux usages différents.
 Le Git humain utilise les secondes depuis le runtime, avec la configuration déjà présente

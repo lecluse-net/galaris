@@ -281,7 +281,7 @@ async def _transcribe_youtube_url(
         return _message(tool_language, "youtube_fetch_failed")
 
 
-@mcp_tool("multimedia", default_blocked=True, approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("multimedia", approval="enabled", approval_reason="Transcribes readable audio through the selected transcription provider",
 
     name="audio_transcribe",
     description=(

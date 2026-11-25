@@ -54,7 +54,7 @@ default: dict[str, object] = {
         "peer_waiting": "消息已发送给其他代理。您的任务正在等待其回复，之后会自动恢复。请简短告知原请求者。",
         "peer_task_required": (
             "请从 Task 中联系内部同事。未发送消息，也未创建协作请求。"
-            "在对话中，请根据对话策略使用 conversation_task_submit 修订相关的进行中任务或提交新工作，"
+            "在对话中，请根据对话策略使用 task_run 修订相关的进行中任务或提交新工作，"
             "并保留收件人及所需贡献。"
         ),
         "peer_request_waiting": "协作请求已受理：${uri}。您的任务正在等待其结果，之后将自动恢复。",

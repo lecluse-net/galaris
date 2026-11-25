@@ -443,14 +443,14 @@ def _preparation_response(origin: UUID, workflow_id: str, dossier: dict[str, Any
     run_id = dossier.get("run_id")
     run_status = dossier.get("run_status", ("cancelled" if status == "cancelled" else "waiting") if run_id else None)
     run_instruction = ("The linked run is waiting for its inputs; no activity has started. Tell the human what it awaits. "
-        "Once status=ready, call conversation_process_start to release this same run with the complete input. "
+        "Once status=ready, call process_start_conversation to release this same run with the complete input. "
         if run_status == "waiting" else
         "This run has already been released. Reuse its receipt; do not claim it is waiting for inputs. " if run_id else
         "No run exists because execution has not been requested. Ask whether the human wants to launch. ")
     instruction = ("This preparation is cancelled. Do not launch it; acknowledge the cancellation."
         if status == "cancelled" else
         "Search authorized Memory/files for unresolved inputs, reuse existing facts, convert file formats if needed. "
-        "Use conversation_process_prepare to add verified values. Ask the human only for what remains missing. "
+        "Use process_prepare to add verified values. Ask the human only for what remains missing. "
         + run_instruction +
         "If all inputs are present but launch_requested=false, ask whether the human wants to launch. "
         "An explicit nullable null is allowed only when actually supplied; never use null as a placeholder.")
@@ -518,7 +518,7 @@ async def pending_process_preparations(turn: ConversationTurn) -> tuple[dict[str
                 if len(json.dumps(view, ensure_ascii=False)) > 12_000:
                     view = {"workflow_id": workflow, "run_id": dossier.get("run_id"), "run_status": "waiting" if dossier.get("run_id") else None,
                         "known_names": list(dossier["values"]),
-                        "instruction": "Read the full dossier with conversation_process_prepare; values omitted from this bounded context."}
+                        "instruction": "Read the full dossier with process_prepare; values omitted from this bounded context."}
                 result.append({"reference": workflow, "kind": "process_input_preparation", "title": dossier["label"],
                     "body": dossier["question"], "process_data": json.dumps({"workflow_id": workflow,
                         **view}, ensure_ascii=False)})

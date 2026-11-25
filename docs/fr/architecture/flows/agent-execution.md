@@ -89,7 +89,7 @@ y compris lorsque le collègue a répondu avant la suspension. Les images manag�
 
 Pour une tâche, le Dispatcher choisit `direct`, `tracked` ou `clarify` dans son inférence
 de routage existante. Une action simple reste directe. Une mission longue ou complexe
-prépare sa méthode et conserve ses jalons via `task_work_update`, même lorsqu'un seul
+prépare sa méthode et conserve ses jalons via `task_update`, même lorsqu'un seul
 exécutant garde la responsabilité du livrable. Les résultats indépendants restent coordonnés
 par le Planner ; les étapes transmettent leur organisation à leurs feuilles.
 
@@ -116,7 +116,7 @@ bloqué, son motif s’il est fourni, le bilan et les effets acquis sont conserv
 clôt les étapes dépendantes et transmet le blocage au plan parent. La vérification des jalons
 est déterministe.
 La consigne de clôture demande aussi aux exécuteurs `direct` d'enregistrer un tel blocage
-avec `task_work_update`, en conservant les autres jalons.
+avec `task_update`, en conservant les autres jalons.
 Cette consigne dépend de son application par le modèle ; la garde porte sur les jalons persistés.
 Une note documentaire conditionnelle refusée ne bloque donc pas la réponse principale ;
 l'exécuteur signale cette omission dans sa réponse. Le suivi n'accorde aucun droit d'écriture.
@@ -953,10 +953,10 @@ d'identité : nom, genre, poste, personnalité et fiche de poste. Il ajoute le c
 social courant, l'inventaire natif autorisé et le catalogue compact des Process affectés à
 l'agent. Il rend séparément les Services des connexions actives réservés au mode tâche, sans répéter
 ceux autorisés dans la conversation, et interdit d'en déduire une absence d'accès : si la demande
-requiert l'un d'eux, l'admission par `conversation_task_submit` est obligatoire. Ses règles
+requiert l'un d'eux, l'admission par `task_run` est obligatoire. Ses règles
 demandent une réponse immédiate pour le travail court ; un travail long lance d'abord un Process
-correspondant avec `conversation_process_start`, ou crée sinon une tâche avec
-`conversation_task_submit`, sans jamais attendre leur fin.
+correspondant avec `process_start_conversation`, ou crée sinon une tâche avec
+`task_run`, sans jamais attendre leur fin.
 
 Pour le texte, les données du tour ont leur propre bloc `galaris_turn_context` côté
 utilisateur. Il reçoit les Goals actifs du seul agent, les tâches et Process en cours,
@@ -996,7 +996,7 @@ canonique crée une tâche liée au round avant que sa confirmation ne soit publ
 Le prompt demande préventivement une formulation nouvelle en une seule passe. Pour les pairs IA,
 le dispatcher conserve ses limites anti-boucle et son choix `EXEC`/`END`. Il n'effectue aucun retry
 de validation : une sortie structurée invalide déclenche immédiatement son fallback `END`.
-Toute nouvelle racine, y compris celle demandée par `conversation_task_submit`, passe néanmoins
+Toute nouvelle racine, y compris celle demandée par `task_run`, passe néanmoins
 par un appel structuré dédié au niveau `standard` du profil effectif. Cet appel reconstruit
 directement le `label` et l'`objective` autonomes depuis la chronologie canonique, le tour gelé,
 Memory, la continuité, les travaux liés, les URL et les pièces jointes. Les arguments du tool ne
@@ -1027,9 +1027,9 @@ après le dernier effet réussi est visible.
 Les interactions à options suivent la même séparation. Un numéro ou alias exact est appliqué sans
 LLM. Une réponse libre non reconnue poursuit le flux conversationnel avec la projection des choix
 en attente dans sa portée exacte. Le modèle conversationnel peut alors sélectionner exclusivement
-une option persistée par `conversation_choice_resolve`; il doit demander une clarification plutôt
+une option persistée par `chat_choice_resolve`; il doit demander une clarification plutôt
 que déduire un consentement ambigu. Lorsque le message réoriente le travail, il peut refuser
-l'approbation devenue obsolète puis appeler `conversation_task_submit` avec `AMEND_CURRENT` ou
+l'approbation devenue obsolète puis appeler `task_run` avec `AMEND_CURRENT` ou
 `AMEND_QUEUED`. `app.task` reste seul propriétaire de l'interruption et de la reprise durable.
 
 Les prompts système des trois exécuteurs — tâche, conversation textuelle et voix — sont construits
@@ -1080,10 +1080,10 @@ y compris lorsque la mémoire est désactivée, vide ou non consultée. Les libe
 que `Conversation — <agent>` sont génériques : la requête de rappel utilise l'objectif utilisateur
 borné, afin de ne pas remplacer le sujet courant par le nom du runtime. La projection initiale des
 Tâches filtre les travaux anciens selon leur état et borne chaque objectif, sans plafonner le nombre
-de travaux encore actifs. Le modèle peut appeler `conversation_task_list` pour retrouver une tâche
+de travaux encore actifs. Le modèle peut appeler `task_list` pour retrouver une tâche
 plus ancienne. Cet appel reste limité aux
 Tâches racines du contexte conversationnel courant, omet leurs résultats volumineux et conserve les
-références actives du Working Set ; `conversation_task_status` fournit le détail borné par UUID.
+références actives du Working Set ; `task_get` fournit le détail borné par UUID.
 
 Galaris n’impose aucun plafond de sortie ni budget cumulé en tokens aux exécuteurs tâche,
 conversation et voix, ni aux mécanismes LLM spécialisés. Un historique ou un prompt déjà
@@ -1186,8 +1186,8 @@ finale non vide confirme la prise de parole : elle annule le run courant et term
 `INTERRUPTED`, pas en `Task.ERROR`. Son objectif effectif reste en attente dans la session et est
 préfixé au transcript suivant. Seule une réponse complète efface cet objectif. Le prompt commun
 autorise la parole et les consultations bornées. Toute autre action doit lancer sans attente un
-Process affecté via `conversation_process_start`, ou une tâche autosuffisante via
-`conversation_task_submit`; le runtime conversationnel ne réalise jamais cette action directement.
+Process affecté via `process_start_conversation`, ou une tâche autosuffisante via
+`task_run`; le runtime conversationnel ne réalise jamais cette action directement.
 
 Le mode vocal `realtime` ne découpe pas l’audio en exécutions textuelles. `app.agent` compose une
 fois l’identité, le prompt commun et les providers de contexte dans un
@@ -1203,9 +1203,9 @@ d'outils ne relance le modèle qu'une fois, après tous ses résultats et autori
 
 La session reçoit uniquement les fonctions conversationnelles bornées nécessaires : recherche
 mémoire, liste, création, amendement et lecture d’une tâche, découverte/lecture des Process affectés
-et lancement asynchrone d’un Process. Les noms de contrôle (`conversation_task_list`,
-`conversation_task_submit`, `conversation_task_status`, `conversation_process_start`) et la politique d’action sont les mêmes
-que pour le pipeline. `conversation_task_submit` utilise `AgentTaskPort`, crée ou amende la tâche
+et lancement asynchrone d’un Process. Les noms de contrôle (`task_list`,
+`task_run`, `task_get`, `process_start_conversation`) et la politique d’action sont les mêmes
+que pour le pipeline. `task_run` utilise `AgentTaskPort`, crée ou amende la tâche
 durable avant de renvoyer son UUID, puis réveille le scheduler. Les fonctions Process passent par
 la façade
 `app.process`. Le modèle fournisseur n’a donc aucun accès direct à `app.task`, aux modèles ORM ni à

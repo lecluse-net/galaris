@@ -89,7 +89,7 @@ async def test_conversation_round_resources_are_scoped_by_connection_owner(
     # mere team membership above continues to confer no administrative power.
     from app.agent.models import AgentTeam
     from app.connection import connection_service
-    from app.conversation.mcp import conversation_round_get
+    from app.conversation.mcp import chat_round_get
     from app.services import McpToolContext
     from core.team import TeamModel
     team = TeamModel(name="Synthetic conversation administration")
@@ -104,12 +104,12 @@ async def test_conversation_round_resources_are_scoped_by_connection_owner(
     await connection_service.set_management_scope(connection.id, "team", authorized=True)
     assert {row["id"] for row in await list_conversation_round_resources(actor_agent_id=owner.id)} == {
         str(own_round.id), str(foreign_round.id)}
-    assert await conversation_round_get(McpToolContext(owner.id, "internal"), round_id=str(foreign_round.id)) is not None
+    assert await chat_round_get(McpToolContext(owner.id, "internal"), round_id=str(foreign_round.id)) is not None
     await db.delete(memberships[1])
     await db.commit()
     assert await read_conversation_round_resource(foreign_round.id, actor_agent_id=owner.id) is None
     with pytest.raises(ValueError, match="not found"):
-        await conversation_round_get(McpToolContext(owner.id, "internal"), round_id=str(foreign_round.id))
+        await chat_round_get(McpToolContext(owner.id, "internal"), round_id=str(foreign_round.id))
 
 
 @pytest.mark.asyncio

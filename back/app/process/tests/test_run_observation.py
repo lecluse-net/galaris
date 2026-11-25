@@ -14,7 +14,8 @@ from app.connection import Connection
 from app.process import process_service
 from app.process.bpmn import Actor
 from app.process.dbadmin import _backfill_run_participants
-from app.process.mcp import processus_get, process_get_run, process_list_runs, process_admin_list_runs
+from app.process.mcp import process_admin_list_runs
+from app.process.resource_facade import read_process_run_resource
 from app.process.native_definitions import create, update
 from app.process.native_runs import inspect_run, list_runs, control_run, inspect_occurrence, run_metrics, children
 from app.process.models import ProcessRun, ProcessNodeRun, ProcessNodeAttempt
@@ -79,7 +80,7 @@ async def test_run_list_exposes_actual_execution_times(db, native, started):
 
 @pytest.mark.asyncio
 async def test_process_sharing_and_revocable_dedicated_admin_apply_to_every_run_read(db, native, tmp_path):
-    from app.file_share import ResourceContext, resource_info, resource_read, resource_write, resource_move, materialize_resource, list_schemes
+    from app.file_share import ResourceContext, resource_info, resource_list, resource_read, resource_write, resource_move, materialize_resource, list_schemes
     owner, participant = native
     observer = Agent(title_id=owner.title_id, code=f"observer-{uuid4().hex}", first_name="Observer", last_name="Example", agent_driver="internal")
     human = UserModel(email=f"synthetic-launcher-{uuid4().hex}@example.invalid", hashed_password="synthetic", is_active=True)
@@ -96,8 +97,8 @@ async def test_process_sharing_and_revocable_dedicated_admin_apply_to_every_run_
         input_data={}, requester_user_id=human.id)).run_id
     run = await db.get(ProcessRun, run_id)
     assert run.launch_snapshot["participant_agents"] == sorted([owner.id, participant.id])
-    ctx = McpToolContext(agent_id=participant.id, runtime="internal")
     uri = f"galaris://processes/runs/{run_id}"
+    runs_uri = "galaris://processes/runs/"
     file_ctx = ResourceContext(agent_id=participant.id, runtime="internal")
     schemes = [scheme.scheme for scheme in await list_schemes(file_ctx)]
     assert "processus" not in schemes and schemes.count("galaris") == 1
@@ -107,7 +108,11 @@ async def test_process_sharing_and_revocable_dedicated_admin_apply_to_every_run_
     assert snapshot["id"] == str(run_id) and snapshot["resource_uri"] == uri and snapshot["status"] == "queued"
     partial = await resource_read(file_ctx, uri, max_chars=20)
     assert partial.next_offset == 20 and partial.total > partial.end
-    assert (await processus_get(ctx, uri))["id"] == str(run_id)
+    first_nodes = json.loads((await resource_read(file_ctx, uri, selector="/nodes/1")).content)
+    assert first_nodes["nodes"] == snapshot["nodes"]
+    later_events = json.loads((await resource_read(file_ctx, uri,
+        selector=f"/events/{snapshot['event_cursor']}")).content)
+    assert all(event["id"] > snapshot["event_cursor"] for event in later_events["events"])
     with pytest.raises(PermissionError, match="read-only"):
         await resource_write(file_ctx, uri, b"{}")
     with pytest.raises(PermissionError, match="cannot be moved"):
@@ -117,10 +122,9 @@ async def test_process_sharing_and_revocable_dedicated_admin_apply_to_every_run_
     with pytest.raises(ValueError, match="byte limit"):
         await materialize_resource(file_ctx, uri, tmp_path / "oversized.json", max_bytes=1)
     assert not (tmp_path / "oversized.json").exists()
-    assert (await processus_get(ctx, str(run_id)))["operational"]["phase"] == "queued"
+    assert snapshot["operational"]["phase"] == "queued"
     assert (await list_runs(participant.id))["total"] == 1
-    assert len(await process_list_runs(ctx)) == 1
-    assert (await process_get_run(ctx, str(run_id)))["id"] == str(run_id)
+    assert [item.uri for item in (await resource_list(file_ctx, runs_uri)).entries] == [uri]
     assert not (await inspect_run(run_id, participant.id))["can_control"]
     with pytest.raises(PermissionError):
         await control_run(run_id, participant.id, "pause")
@@ -132,9 +136,10 @@ async def test_process_sharing_and_revocable_dedicated_admin_apply_to_every_run_
     await db.refresh(run)
     occurrence = await db.scalar(select(ProcessNodeRun).where(ProcessNodeRun.run_id == run_id).order_by(ProcessNodeRun.admission_order.desc()))
     assert (await list_runs(observer.id))["total"] == 0
-    assert await process_list_runs(McpToolContext(agent_id=observer.id, runtime="internal")) == []
     denied_ctx = ResourceContext(agent_id=observer.id, runtime="internal")
-    for operation in (lambda: resource_read(denied_ctx, uri), lambda: resource_info(denied_ctx, uri),
+    assert (await resource_list(denied_ctx, runs_uri)).entries == []
+    for operation in (lambda: resource_read(denied_ctx, uri), lambda: resource_read(denied_ctx, uri, selector="/nodes/1"),
+                      lambda: resource_info(denied_ctx, uri),
                       lambda: inspect_run(run_id, observer.id), lambda: inspect_occurrence(run_id, occurrence.id, observer.id),
                       lambda: run_metrics(run_id, observer.id), lambda: children(run_id, observer.id)):
         with pytest.raises(PermissionError):
@@ -146,7 +151,7 @@ async def test_process_sharing_and_revocable_dedicated_admin_apply_to_every_run_
     from app.connection.facade import set_management_scope
     await set_management_scope(global_connection.id, "all", authorized=True)
     with pytest.raises(PermissionError):
-        await processus_get(McpToolContext(agent_id=observer.id, runtime="internal"), str(run_id))
+        await resource_read(denied_ctx, uri)
     tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "process"))
     connection = Connection(agent_id=observer.id, service_id=tool.id, active=True)
     db.add(connection); await db.commit()
@@ -157,7 +162,7 @@ async def test_process_sharing_and_revocable_dedicated_admin_apply_to_every_run_
     assert (await resource_read(denied_ctx, uri)).uri == uri
     assert (await list_runs(observer.id))["total"] == 1
     admin_ctx = McpToolContext(agent_id=observer.id, runtime="internal")
-    assert [item["id"] for item in await process_list_runs(admin_ctx)] == [str(run_id)]
+    assert [item.uri for item in (await resource_list(denied_ctx, runs_uri)).entries] == [uri]
     assert [item["id"] for item in await process_admin_list_runs(admin_ctx)] == [str(run_id)]
     await control_run(run_id, observer.id, "pause")
     connection.active = False
@@ -166,7 +171,7 @@ async def test_process_sharing_and_revocable_dedicated_admin_apply_to_every_run_
         await inspect_run(run_id, observer.id)
     with pytest.raises(PermissionError):
         await resource_read(denied_ctx, uri)
-    assert await process_list_runs(admin_ctx) == []
+    assert (await resource_list(denied_ctx, runs_uri)).entries == []
     with pytest.raises(PermissionError):
         await process_admin_list_runs(admin_ctx)
     # Legacy runs get the same frozen projection, without altering their graph.
@@ -193,26 +198,28 @@ async def test_operational_progress_explains_human_wait_pause_resume_and_complet
     task = await task_service.get_by_id(attempt.task_id)
     task_service.suspend(task, task_service.PAUSE_APPROVAL)
     await db.commit()
-    authorized_view = await processus_get(McpToolContext(agent_id=owner.id, runtime="internal"), str(run_id))
+    async def read_progress():
+        return await read_process_run_resource(run_id, actor_agent_id=owner.id)
+
+    authorized_view = await read_progress()
     assert authorized_view["operational"]["activities"][0]["kind"] == "authorization"
     task_service.release(task, task_service.PAUSE_APPROVAL)
     occurrence.context = {**occurrence.context, "activity_question": {"status": "pending", "question": "Which invented value?", "user_id": 17}}
     await db.commit()
-    ctx = McpToolContext(agent_id=owner.id, runtime="internal", task_id=attempt.task_id)
-    snapshot = await processus_get(ctx)
+    snapshot = await read_progress()
     assert snapshot["operational"]["phase"] == "waiting"
     assert snapshot["operational"]["activities"][0]["question"] == "Which invented value?"
     assert snapshot["operational"]["progress"]["completed"] >= 1
     key = uuid4()
     paused = await control_run(run_id, owner.id, "pause", command_key=key)
     assert await control_run(run_id, owner.id, "pause", command_key=key) == paused
-    assert (await processus_get(ctx))["operational"]["phase"] == "paused"
+    assert (await read_progress())["operational"]["phase"] == "paused"
     await control_run(run_id, owner.id, "resume")
-    assert (await processus_get(ctx))["operational"]["phase"] == "waiting"
+    assert (await read_progress())["operational"]["phase"] == "waiting"
     await process_service.cancel_run(run_id)
     for _ in range(4):
         await process_service.refresh_run(run_id)
-    stopped = await processus_get(ctx)
+    stopped = await read_progress()
     assert stopped["status"] == "cancelled"
     assert stopped["operational"]["available_actions"] == []
     assert stopped["operational"]["activities"] == []

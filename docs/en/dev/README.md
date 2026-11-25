@@ -392,11 +392,11 @@ references are preserved before conversation budgeting and display annotations; 
 message is escaped as text. Voice uses the admitted request as its source.
 `Task.data._original_demand` retains that source alone. The context resolves earlier references,
 retains applicable constraints, and identifies this Task's scope when the message requests several
-independent outcomes. The values sent to `conversation_task_submit` remain hints and cannot erase a
+independent outcomes. The values sent to `task_run` remain hints and cannot erase a
 source constraint. The backend alone retains the connection, room, interlocutor, Topic,
 contact, and the choices `@exec`, `@plan`, `@standard`, `@high`, or `@effort`. `@approve` grants
 no agreement; permissions are configured per function or action type. In
-native Chat, `conversation_task_submit` exposes no effort choice: the Task dispatcher decides
+native Chat, `task_run` exposes no effort choice: the Task dispatcher decides
 between `standard` and `high`. Explicit directives override this conversational choice and remain
 persisted as creation constraints, notably `@high`. `@plan` implies creation of a planned Task
 and `@effort` implies creation of a Task with additional reasoning overhead; `@task` alone
@@ -414,7 +414,7 @@ and harness remain independent.
 For a numbered interaction, exact responses continue to be handled without a model. Text that
 does not match any option is admitted as a conversational round with only the pending interactions
 within its Messenger scope. The conversational LLM may resolve them through
-`conversation_choice_resolve`, but only to a persisted option. An ambiguous intent
+`chat_choice_resolve`, but only to a persisted option. An ambiguous intent
 causes a question; an instruction such as “don't do that, do this instead” may reject the
 current approval and then amend the Task through the durable path above.
 
@@ -1216,18 +1216,25 @@ Exact `galaris://goal/<uuid>` and `galaris://goal_cycle/<cycle-uuid>` URIs, alon
 legacy `galaris://goal/<uuid>/cycles/` collection, remain usable. The `galaris://goal_cycle/`
 collection is no longer advertised at the Galaris root; its old links remain compatible.
 
-Assigned Process definitions also pass through `galaris://process/`; each resource
-is addressed by the same `workflow_id` as `process_get` and `process_start`. This projection
-remains read-only and its pagination is executed in the SQL query.
+File Sharing lists readable Process definitions under `galaris://processes/` and runs under
+`galaris://processes/runs/`. Pass the returned URI to `file_read`. Definitions provide
+the `workflow_id` expected by the launch tools. SQL queries paginate both collections.
 
 Tasks are fully discovered and read through `galaris://task/`. The Tasks Service
 (`task`) exposes `task_get` as a compact operational view: it projects
 progress, expectations, pause, and amendability without replacing the complete snapshot from
 `file_read`.
 
+`task_run`, `task_get` and `task_cancel` are shared by Task execution and conversation.
+Omit `agent_id` to submit or revise background work from Chat. Pass `agent_id` during
+execution to delegate a child Task.
+`task_list` finds recent work in the current conversation. On upgrade, DbAdmin combines
+the function settings for the former names using the most restrictive effective permission.
+
 Browser (`browser`) and Multimedia (`multimedia`) connections start active. The native list
-admits `search_web` and `image_from_pdf` in conversation subject to function permissions and
-runtime support. The embedded Console is provisioned for the internal harness and becomes
+admits `search_web`, `image_read`, `audio_read` and `audio_transcribe` in conversation
+subject to function permissions and runtime support. Tasks can use `image_from_pdf`.
+The embedded Console is provisioned for the internal harness and becomes
 active after SSH/SFTP verification. Provisioning can be retried from Connections.
 
 `goal`, `skills` and `process` start active with personal scope and preserve existing restrictions.
@@ -1249,9 +1256,9 @@ remains usable for their functions. Optional Services retain
 administrator-owned activation and restrictions. Business ACLs, harness compatibility and
 context restrictions still apply.
 
-Tasks owns `conversation_task_*`. Processes owns `conversation_process_*`, including responses
-to human requests. Documents owns `document_show`. These functions remain restricted to
-conversation context. Clicking a described Service
+Processes expose `process_start_conversation` and `process_respond` in conversation.
+Documents provides `document_show` for internal text Chat. Task executions can launch
+Processes with `process_start`. Clicking a described Service
 opens its description; empty descriptions have no link. The shipped catalog describes every
 native Service and known messaging/file bridge. Synchronization fills empty bridge descriptions
 and upgrades unchanged original short defaults without overwriting custom prose. Descriptions
@@ -1264,7 +1271,7 @@ agent's model. Attributed facts, decisions, commitments and open questions are s
 HTML through Memory acquisition. The ineffective `replace_existing` argument is removed; normal
 deduplication rules apply. Model failures store neither a raw transcript nor a partial memory.
 
-Chat owns `conversation_round_get` and `voice_turn_get`, which read the complete text or
+Chat owns `chat_round_get` and `voice_turn_get`, which read the complete text or
 voice dataset by primary UUID, with execution traces and correlated `LLMCall`s. Galaris owns
 `llm_call` and `llm_calls`. These tools are disabled by default. Each call checks the owning
 connection’s function permission and the live management scope delegated on Services.

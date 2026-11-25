@@ -42,7 +42,7 @@ Le bouton de benchmark ne configure rien : il lance directement le jeu avec le L
 
 Les benchmarks utilisent les vrais noms et contrats utiles d’outils au travers de fonctions
 enregistreuses sans effet. Ils peuvent ainsi mesurer la propension réelle à appeler
-`conversation_task_submit` ou `conversation_process_start` sans créer de Task, de Process, de
+`task_run` sans `agent_id` ou `process_start_conversation` sans créer de Task, de Process, de
 message ou d’autre effet externe.
 
 ## Conséquences

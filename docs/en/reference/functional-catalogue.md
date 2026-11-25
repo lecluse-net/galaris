@@ -1397,7 +1397,7 @@ work can retain a method, up to twenty milestones with acceptance criteria, obse
 URIs, plus its next action. Tracking does not split one coherent deliverable into artificial Tasks;
 independent outputs still use the Planner, which passes organization to leaves.
 
-`task_get` exposes tracking and revision; `task_work_update` records the current Task's milestones
+`task_get` exposes tracking and revision; `task_update` records the current Task's milestones
 only for its executor during an active, unpaused phase. Writes check revision and preserve
 checkpoints. `expected_revision` uses `work_plan_revision` from `task_get` (initially 0), independently
 of the global Task revision. Changing completed milestones requires an explicit reason. Declared progress does
@@ -2042,16 +2042,15 @@ Sources: [format contract and qualification](../dev/document-formats.md),
 #### Agent actions
 
 An agent can choose this format for durable work that is best organised as a hierarchy or reuse
-an appropriate map. The Document service can expose these tools in Chat or a Task, depending
+an appropriate map. The File Sharing service can expose these tools in Chat or a Task, depending
 on access and available tools.
 
-- `mindmap_create` creates a private map with up to 100 initial branches in parent-first order.
-  It returns the URI, revision and root ID.
-- `mindmap_read` reads the latest saved revision. It paginates branches and stable IDs and can
-  page through a node's rich content when given its ID.
-- `mindmap_edit` applies an atomic batch of 1 to 50 additions, edits, moves or removals at the
-  expected revision. Removing a branch removes its descendants. If the revision is stale, the
-  agent rereads the map before reconciling its changes.
+- `file_create` creates a private `mindmap` from its JSON source.
+- `file_read` reads the map or a selection. Use `/nodes` for stable IDs, an ID for the
+  node JSON and `<id>/body_html` for rich content.
+- `file_write` replaces a node or its HTML at the expected revision.
+- `file_edit` with `/nodes` applies an atomic batch of 1 to 50 additions, edits, moves
+  or removals. Removing a branch removes its descendants.
 
 Read is enabled by default. Creation and editing are Ask by default and follow the effective
 connection policy. Sharing is explicit. Internal Chat can send the URI and revision of the open
@@ -2867,9 +2866,9 @@ connections stay protected; humans can configure functions with the same **Activ
 **On request** modes and inheritance as other Services. Historical ignored system restrictions are
 archived during migration. Mandatory activation never bypasses business ACLs or harness/context limits.
 
-Tasks owns `conversation_task_*`, Processes owns `conversation_process_*`, and Documents owns
+Tasks owns `task_*`, Processes owns `process_*`, and Documents owns
 `document_show`. These tools still require conversation context.
-Chat also owns `conversation_round_get` and `voice_turn_get`. Galaris owns `llm_call`
+Chat also owns `chat_round_get` and `voice_turn_get`. Galaris owns `llm_call`
 and `llm_calls`. Each inspection rechecks the function grant and Services scope even if discovery preceded
 revocation. Synchronisation fills missing standard descriptions, updates recognised old defaults
 and preserves custom descriptions.
@@ -3404,7 +3403,7 @@ with `CODE_ACCESS` and repository rights. In Console, a Git checkout/worktree's 
 or the background of its open directory, offers **Open in code editor** without creating a chat.
 Closing and reopening retains unsaved files in the browser.
 
-**Source code**, below Documents in Chat, retrieves repositories presented with `repository_show`
+**Source code**, below Documents in Chat, retrieves repositories presented with `chat_repository_show`
 and discovers SSH-home checkouts for owners of an active Console. Discovery recognises repositories/
 worktrees, ignores symlinks and hidden/technical directories and flags partial results under depth,
 count/time bounds. Clicking rechecks checkout/rights and links it to the discussion. A `console://`
@@ -3736,7 +3735,7 @@ prompts, attempts, tool results, errors and Task/child links. Loops/children exp
 Data, downloadable/renamable attachments, latest activity, waits, duration, tokens and direct/inclusive
 costs remain inspectable; inaccessible children make totals explicitly partial. Billed cost and
 subscription inference value are separate. Copyable `galaris://processes/runs/<uuid>` references
-are readable through File Sharing and `processus_get`.
+are readable through File Sharing with `file_read`.
 
 Open views follow events, reconnection and periodic active-run checks while retaining selection;
 closing stops monitoring. **Pause**, **Resume**, **Step** and breakpoints persist. A step admits one
@@ -4536,30 +4535,26 @@ selects the concrete Service.
 | `agent_get` | `agent` | Read full identity, personality and job description, with a `file_read`-readable URI. |
 | `team_list` | `agent` | Discover teams, including empty teams, with search, pagination and human/agent counts; grants no rights. |
 | `team_members` | `agent` | Read active team members by name and human/agent kind, without private account details. |
-| `task_run` | `task` | Delegate a child Task to an authorised colleague and return its canonical URI; self-targeting is forbidden. |
+| `task_run` | `task` | From Chat, create, amend or replace work without `agent_id`, with scope and revision checks. During execution, pass `agent_id` to delegate to an authorized colleague and receive the child Task URI. |
 | `task_get` | `task` | Read compact operational state, revision, progress, milestones, next action, waits and available result. |
-| `task_work_update` | `task` | Record current Task milestones with owner, phase and revision checks; preserve checkpoints and justify changes to completed milestones. |
-| `task_stop` | `task` | Permanently stop another active root and unfinished descendants; reject current Task, ancestors and child targets. |
-| `conversation_task_submit` | `task` | Create/amend/explicitly replace with scope/revision checks; amendment conflict creates nothing and replacement waits for stop evidence. |
-| `conversation_task_list` | `task` | List recent conversation-scoped Tasks. |
-| `conversation_task_status` | `task` | Read a Task's phase, plan progress, error and bounded result. |
-| `conversation_task_pause` | `task` | Pause Task and unfinished descendants. |
-| `conversation_task_resume` | `task` | Resume user-paused work. |
-| `conversation_task_retry` | `task` | Retry failed work through its state machine. |
-| `conversation_task_stop` | `task` | Cancel unfinished work or return an already terminal state unchanged. |
-| `conversation_choice_resolve` | `chat` | Resolve a pending interaction from an unambiguous human reply. |
-| `conversation_process_start` | `process` | Start an assigned Process linked to the conversation without awaiting completion. |
-| `conversation_process_prepare` | `process` | Prepare verified inputs for an assigned Process in a participant-scoped durable dossier, collecting missing information without starting activities. |
+| `task_update` | `task` | Record current Task milestones with owner, phase and revision checks; preserve checkpoints and justify changes to completed milestones. |
+| `task_cancel` | `task` | Cancel unfinished work in a conversation. During execution, stop another active root and its unfinished descendants. Preserve terminal results. |
+| `task_list` | `task` | List recent conversation-scoped Tasks. |
+| `task_pause` | `task` | Pause Task and unfinished descendants. |
+| `task_resume` | `task` | Resume a user pause or retry eligible failed or blocked work based on the durable Task state. |
+| `chat_choice_resolve` | `chat` | Resolve a pending interaction from an unambiguous human reply. |
+| `process_start_conversation` | `process` | Start an assigned Process linked to the conversation without awaiting completion. |
+| `process_prepare` | `process` | Prepare verified inputs for an assigned Process in a participant-scoped durable dossier, collecting missing information without starting activities. |
 | `document_show` | `document` | Request opening of a readable document in the current internal text room after rights/freshness checks; no sharing or Task invocation. |
-| `conversation_round_get` | `chat` | Full administrative round dossier: messages, attempts, created/amended Tasks, Processes, result and calls. |
+| `chat_round_get` | `chat` | Full administrative round dossier: messages, attempts, created/amended Tasks, Processes, result and calls. |
 
 ### Conversation: code and human activities
 
 | Function | Family | Action/result |
 |---|---|---|
-| `repository_show` | `chat` | Present the Console's Git checkout in Chat, with reference, branch and optional authorised file/diff opening. |
-| `conversation_process_pending` | `process` | Page pending Process questions/activities and contracts within the exact conversation scope. |
-| `conversation_process_respond` | `process` | Submit the selected human reply, validate values/files and record an idempotent receipt without relaunching the Process. |
+| `chat_repository_show` | `chat` | Present the Console's Git checkout in Chat, with reference, branch and optional authorised file/diff opening. |
+| `process_pending` | `process` | Page pending Process questions/activities and contracts within the exact conversation scope. |
+| `process_respond` | `process` | Submit the selected human reply, validate values/files and record an idempotent receipt without relaunching the Process. |
 
 ### Administering agents
 
@@ -4608,28 +4603,28 @@ These 22 functions require Services. Built-in definitions and human delegations 
 
 | Function | Family | Action and result |
 |---|---|---|
-| `service_admin_list` | `service` | List Services in the global catalogue. |
-| `service_admin_get` | `service` | Read a definition, version and redacted settings. |
-| `service_admin_create` | `service` | Create a secret-free definition or adopt a tested human candidate. |
-| `service_admin_update` | `service` | Update a custom definition at the expected version. |
-| `service_admin_impact` | `service` | Inspect direct dependencies before deletion. |
-| `service_admin_delete` | `service` | Delete a dependency-free definition without an implicit cascade. |
-| `service_admin_global_params_set` | `service` | Atomically set global values and enforcement. |
-| `service_admin_mcp_test` | `service` | Test an HTTP/SSE candidate without saving or business calls. |
-| `service_admin_function_list` | `service` | List functions and global state. |
-| `service_admin_function_get` | `service` | Read a function's detailed schema and state. |
-| `service_admin_function_set` | `service` | Set global mode and report local overrides. |
-| `service_admin_connection_list` | `service` | List connections with pagination. |
-| `service_admin_connection_get` | `service` | Read a connection and masked values. |
-| `service_admin_connection_create` | `service` | Create an initially inactive connection. |
-| `service_admin_connection_update` | `service` | Update a connection at the expected version. |
-| `service_admin_connection_delete` | `service` | Delete an authorised optional connection. |
-| `service_admin_connection_params_set` | `service` | Write local parameters atomically in a batch. |
-| `service_admin_connection_param_delete` | `service` | Explicitly remove a local parameter. |
-| `service_admin_connection_test` | `service` | Diagnose a connection, even inactive, without activating it. |
-| `service_admin_connection_function_list` | `service` | List effective permissions and local availability. |
-| `service_admin_connection_function_set` | `service` | Set local mode or restore inheritance. |
-| `service_admin_catalog_refresh` | `service` | Refresh catalogues directly with partial results and targeted retry. |
+| `service_list` | `service` | List Services in the global catalogue. |
+| `service_get` | `service` | Read a definition, version and redacted settings. |
+| `service_create` | `service` | Create a secret-free definition or adopt a tested human candidate. |
+| `service_update` | `service` | Update a custom definition at the expected version. |
+| `service_impact` | `service` | Inspect direct dependencies before deletion. |
+| `service_delete` | `service` | Delete a dependency-free definition without an implicit cascade. |
+| `service_global_params_set` | `service` | Atomically set global values and enforcement. |
+| `service_mcp_test` | `service` | Test an HTTP/SSE candidate without saving or business calls. |
+| `service_function_list` | `service` | List functions and global state. |
+| `service_function_get` | `service` | Read a function's detailed schema and state. |
+| `service_function_set` | `service` | Set global mode and report local overrides. |
+| `service_connection_list` | `service` | List connections with pagination. |
+| `service_connection_get` | `service` | Read a connection and masked values. |
+| `service_connection_create` | `service` | Create an initially inactive connection. |
+| `service_connection_update` | `service` | Update a connection at the expected version. |
+| `service_connection_delete` | `service` | Delete an authorised optional connection. |
+| `service_connection_params_set` | `service` | Write local parameters atomically in a batch. |
+| `service_connection_param_delete` | `service` | Explicitly remove a local parameter. |
+| `service_connection_test` | `service` | Diagnose a connection, even inactive, without activating it. |
+| `service_connection_function_list` | `service` | List effective permissions and local availability. |
+| `service_connection_function_set` | `service` | Set local mode or restore inheritance. |
+| `service_catalog_refresh` | `service` | Refresh catalogues directly with partial results and targeted retry. |
 
 ### Document analysis
 
@@ -4680,9 +4675,6 @@ management needs the specialised connection; ordinary actions stay within the ag
 | `document_share` | `document` | Targeted sharing for owned working documents. |
 | `document_revision_list` | `document` | Paginate saved content revisions for an accessible document, newest first. |
 | `document_revision_compare` | `document` | Compare two saved revisions, including pixel changes in an optional region for supported drawing formats. |
-| `mindmap_create` | `document` | Create a private mind map with optional initial branches and return its URI and revision. |
-| `mindmap_read` | `document` | Read the saved map, node IDs and revision, or page through one branch's HTML. |
-| `mindmap_edit` | `document` | Add, edit, move or remove branches in one atomic operation at the expected revision. |
 | `skills_list` | `skills` | Discover skills within permitted/administrable scope. |
 | `skill_read` | `skills` | Read skill/details; support files use the resource facade. |
 | `skill_update` | `skills` | Update the package label using its expected revision. |
@@ -4697,7 +4689,7 @@ management needs the specialised connection; ordinary actions stay within the ag
 | Function | Family | Action/result |
 |---|---|---|
 | `topic_list` | `topic` | Search/list global Topics. |
-| `topic_get` | `topic` | Read one Topic. |
+| `file_read` | `file_sharing` | Read a Topic at `galaris://topic/<uuid>`. |
 | `topic_items_list` | `topic` | List linked items with exact type/identifier. |
 | `topic_create` | `topic` | Create a Topic. |
 | `topic_update` | `topic` | Revision-controlled metadata edit. |
@@ -4818,19 +4810,19 @@ application–Dataset consent is managed in the human UI, not exposed through MC
 
 | Function | Family | Action/result |
 |---|---|---|
-| `process_list` | `process` | Discover assigned Processes. |
-| `process_get` | `process` | Read definition, parameters and start contract. |
+| `file_list` | `file_sharing` | Discover readable Processes at `galaris://processes/`. |
+| `file_read` | `file_sharing` | Read definition, parameters and start contract. |
 | `process_start` | `process` | Start with structured input/files and durable tracking. |
-| `process_list_runs` | `process` | List agent-scoped executions. |
-| `process_get_run` | `process` | Read status, output, resources and error. |
+| `file_list` | `file_sharing` | List authorized runs at `galaris://processes/runs/`. |
+| `file_read` | `file_sharing` | Read status, output, resources and error. |
 | `process_analyze_run` | `process` | Produce/read analysis of an authorised run dossier. |
 
 ### Native Processes: definitions, activities and debugging
 
 | Function | Family | Action/result |
 |---|---|---|
-| `processus_get` | `process` | Read authorised operational progress, waits, latest activity and available run actions. |
-| `process_definition_read` | `process` | Audit current saved BPMN, graph, instructions and actors of a readable definition. |
+| `file_read` | `file_sharing` | Read authorised operational progress, waits, latest activity and available run actions. |
+| `file_read` | `file_sharing` | Audit current saved BPMN, graph, instructions and actors of a readable definition. |
 | `process_create` | `process` | Create a private BPMN Process from graph/XML with immutable code. |
 | `process_update` | `process` | Update a definition at its expected revision; active runs retain frozen graphs. |
 | `process_validate` | `process` | Validate graph/BPMN without saving or business effects. |
@@ -4840,7 +4832,7 @@ application–Dataset consent is managed in the human UI, not exposed through MC
 | `process_share` | `process` | As owner, grant/remove an agent's read/edit access. |
 | `process_activity_complete` | `process` | Submit validated current Process activity output and optional message from its Task only. |
 | `process_activity_question` | `process` | Ask a correlated question of the human launcher and suspend the current activity until reply. |
-| `process_run_inspect` | `process` | Read frozen graph, paginated occurrences, data and events. |
+| `file_read` | `file_sharing` | Read the frozen graph, data and recent events of a run. |
 | `process_run_children` | `process` | Page authorised immediate children without a business-depth ceiling. |
 | `process_run_occurrence` | `process` | Inspect an exact occurrence's prompts, inputs/outputs, attempts, Tasks and children. |
 | `process_run_metrics` | `process` | Read direct/inclusive costs/tokens, per-Task accounting and partial coverage. |

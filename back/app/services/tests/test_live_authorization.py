@@ -1,5 +1,6 @@
 """A mounted native MCP server never outlives an operator's current authorization."""
 
+import asyncio
 from uuid import uuid4
 
 import httpx
@@ -43,11 +44,30 @@ async def test_mounted_tool_rechecks_rights_and_keeps_other_agents_operational(c
         identifiers = [agent.id for agent in agents]
         for identifier in identifiers:
             await mandatory_services.sync_integrated_service_connections(identifier)
+        # This scenario exercises revocation of an explicit prior grant.
+        browser_connections = list(await db.scalars(select(Connection.id).join(Service).where(
+            Connection.agent_id.in_(identifiers), Service.code == "browser")))
+        db.add_all(ConnectionFunctionState(connection_id=key, function_name="browser_open", state="enabled")
+                   for key in browser_connections)
+        directory_connection = await db.scalar(select(Connection.id).join(Service).where(
+            Connection.agent_id == identifiers[0], Service.code == "agent"))
+        db.add(ConnectionFunctionState(connection_id=directory_connection, function_name="team_list", state="disabled"))
     async with get_db_session():
         servers = [await mcp_loader.build_agent_galaris_fastmcp(identifier, runtime="internal") for identifier in identifiers]
     async with get_db_session() as caller:
         async with Client(servers[0]) as client:
-            assert "team_list" in {tool.name for tool in await client.list_tools()}
+            assert "team_list" not in {tool.name for tool in await client.list_tools()}
+            async with get_db_session() as writer:
+                override = await writer.scalar(select(ConnectionFunctionState).where(
+                    ConnectionFunctionState.connection_id == directory_connection,
+                    ConnectionFunctionState.function_name == "team_list"))
+                await writer.delete(override)
+            first, second, direct = await asyncio.gather(
+                client.list_tools(), client.list_tools(), client.call_tool("team_list", {}),
+            )
+            for listing in (first, second):
+                assert [item.name for item in listing].count("team_list") == 1
+            assert not direct.is_error
             assert not caller.in_transaction(), "Tool discovery must release its database connection before generation"
     async with Client(servers[0]) as client, Client(servers[1]) as other:
         arguments = {"url": "https://example.org/", "output": "content", "unused": "private"}
@@ -59,7 +79,10 @@ async def test_mounted_tool_rechecks_rights_and_keeps_other_agents_operational(c
             if revocation == "connection":
                 connection.active = False
             else:
-                db.add(ConnectionFunctionState(connection_id=connection_id, function_name="browser_open", enabled=False))
+                state = await db.scalar(select(ConnectionFunctionState).where(
+                    ConnectionFunctionState.connection_id == connection_id,
+                    ConnectionFunctionState.function_name == "browser_open"))
+                state.state = "disabled"
         denied = await client.call_tool("browser_open", arguments, raise_on_error=False)
         assert denied.is_error
         assert denied.meta[EXECUTION_META_KEY]["outcome"] == "rejected"
@@ -72,6 +95,6 @@ async def test_mounted_tool_rechecks_rights_and_keeps_other_agents_operational(c
                 state = await db.scalar(select(ConnectionFunctionState).where(
                     ConnectionFunctionState.connection_id == connection_id,
                     ConnectionFunctionState.function_name == "browser_open"))
-                await db.delete(state)
+                state.state = "enabled"
         assert not (await client.call_tool("browser_open", arguments)).is_error
         assert len(requests) == 3

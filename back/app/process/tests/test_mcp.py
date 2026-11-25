@@ -7,7 +7,7 @@ from uuid import uuid4
 
 import pytest
 
-from app.process import mcp
+from app.process import mcp, resource_facade
 from app.services.mcp_loader import McpToolContext
 from app.services.facade import AdministrationScope
 
@@ -18,32 +18,12 @@ async def _db_session() -> AsyncIterator[None]:
 
 
 @pytest.mark.asyncio
-async def test_process_list_is_scoped_to_calling_agent(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    list_for_agent = AsyncMock(return_value=[{"workflow_id": "assigned"}])
-    monkeypatch.setattr(mcp.process_service, "list_for_agent", list_for_agent)
-
-    result = await mcp.process_list(McpToolContext(agent_id=42, runtime="hermes"))
-
-    assert result == [{"workflow_id": "assigned"}]
-    list_for_agent.assert_awaited_once_with(42)
-
-
-@pytest.mark.asyncio
-async def test_process_get_refuses_workflow_not_assigned_to_calling_agent(
+async def test_process_resource_omits_workflow_outside_calling_agent_scope(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     get_for_agent = AsyncMock(return_value=None)
     monkeypatch.setattr(mcp.process_service, "get_for_agent", get_for_agent)
-    monkeypatch.setattr(mcp, "context_language", AsyncMock(return_value="en"))
-
-    with pytest.raises(PermissionError):
-        await mcp.process_get(
-            McpToolContext(agent_id=42, runtime="internal"),
-            "not-assigned",
-        )
-
+    assert await resource_facade.read_process_resource("not-assigned", actor_agent_id=42) is None
     get_for_agent.assert_awaited_once_with(42, "not-assigned")
 
 

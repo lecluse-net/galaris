@@ -1,12 +1,75 @@
 """Functional gates for HTTP transport; source/provider ACLs still apply afterwards."""
 
+from uuid import UUID
+
 from core.authorize import Privileges, BaseAssertion, AssertionContext, check_privilege
 from core.database import get_db
 from fastapi import HTTPException
-from app.agent import current_management_scope
+from app.agent import AgentManagementScope, current_management_scope
+from core.user import UserModel
 from .resource_contracts import ResourceContext
 from .resource_uri import parse_resource_uri
 from .native_providers import resolve_native_alias
+
+
+async def review_calendar_event_label(
+    calendar_id: int, uid: str, *, reviewer: UserModel, scope: AgentManagementScope,
+) -> str | None:
+    from .galaris_provider import calendar_event_label
+
+    if not await check_privilege(reviewer, [Privileges.CALENDAR_ACCESS, Privileges.CALENDAR_EDIT], get_db()):
+        return None
+    return await calendar_event_label(calendar_id, uid, scope.agent_ids)
+
+
+async def review_resource(
+    uri: str, *, agent_id: int, reviewer: UserModel, scope: AgentManagementScope,
+) -> tuple[str, str | None] | None:
+    """Name a local approval target using the reviewer's own read permissions."""
+    from app.document.facade import DocumentError, document_actor, get_item_metadata
+    from app.goal import goal_service
+    from app.messenger import get_chat_room
+    from .resource_observation import suspend_observations
+    from .resource_service import resource_info
+
+    reference = parse_resource_uri(uri)
+    kind = reference.segments[0] if reference.scheme == "galaris" else reference.scheme
+    room = kind == "room"
+    required = (Privileges.CHAT_ACCESS,) if room else resource_privileges(uri)
+    if not await check_privilege(reviewer, list(required), get_db()):
+        return None
+    try:
+        if room:
+            detail = await get_chat_room(scope.user_id, UUID(reference.segments[1]))
+            return (detail.label, uri) if detail and detail.label else None
+        if kind == "goal":
+            goal = await goal_service.get_detail(UUID(reference.segments[1]))
+            if goal is None or not scope.allows(goal.agent_id):
+                return None
+            if goal.referrer and goal.referrer.type == "AGENT" and not scope.allows(goal.referrer.agent_id):
+                return None
+            return goal.title, uri
+        if kind == "document":
+            identity = UUID(reference.locator)
+            item, _ = await get_item_metadata(identity, agent_id=await document_actor(identity, scope))
+            if item.document_format == "process":
+                return None
+            return item.title, f"data://{identity}" if item.document_format == "dataset" else uri
+        if not scope.allows(agent_id) or (kind == "agent" and not scope.allows(int(reference.segments[1]))):
+            return None
+        with suspend_observations():
+            descriptor = await resource_info(ResourceContext(agent_id=agent_id, runtime="internal",
+                browser_navigation=True, management_scope=scope), reference)
+        owner = descriptor.metadata.get("agent_id")
+        if isinstance(owner, int) and not scope.allows(owner):
+            return None
+        label = descriptor.metadata.get("label") or descriptor.name
+        if descriptor.is_collection or not isinstance(label, str) or not label.strip():
+            return None
+        link = descriptor.uri if kind != "file" and not descriptor.uri.startswith("galaris://process/") else None
+        return label, link
+    except (LookupError, FileNotFoundError, PermissionError, ValueError, DocumentError):
+        return None
 
 
 def resource_privileges(uri: str, *, write: bool = False) -> tuple[str, ...]:
@@ -33,6 +96,7 @@ def resource_privileges(uri: str, *, write: bool = False) -> tuple[str, ...]:
             "contact": (Privileges.CONTACT_ACCESS, Privileges.CONTACT_EDIT),
             "code": (Privileges.CODE_ACCESS,),
             "calendar": (Privileges.CALENDAR_ACCESS, Privileges.CALENDAR_EDIT),
+            "topic": (Privileges.TOPIC_ACCESS,),
             "agent": (Privileges.AGENT_ACCESS, Privileges.AGENT_EDIT),
             "process": (Privileges.PROCESS_READ, Privileges.PROCESS_EDIT, Privileges.PROCESS_ADMIN),
             "task": (Privileges.TASK_ACCESS, Privileges.TASK_EDIT),

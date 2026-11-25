@@ -85,7 +85,7 @@ exige `nullable` et n'utilise jamais le défaut. Une mise à jour omise conserve
 False, zéro et vides sont conservés ; les entiers restent dans la plage exacte ±(2^53−1).
 Le codec borne taille/profondeur et refuse les clés JSON dupliquées et les conversions implicites.
 
-En conversation, `conversation_process_prepare` conserve un dossier par processus et participant,
+En conversation, `process_prepare` conserve un dossier par processus et participant,
 avec un run `waiting` dès que le lancement est demandé, sans activité ni job de démarrage.
 Le contrat est figé sur ce run ; la collecte complète puis autorisée démarre ce même identifiant.
 L'état opérationnel et les travaux en cours de l'agent indiquent les entrées encore attendues.
@@ -139,7 +139,7 @@ indisponibles ou révoquées sont masquées ; l'historique borne les vérificati
 distinctes par réponse, avec deux secondes maximum par vérification. Les anciens runs ne
 reçoivent aucune provenance reconstituée arbitrairement.
 
-Les lancements MCP `process_start` et `conversation_process_start` acceptent des entrées JSON
+Les lancements MCP `process_start` et `process_start_conversation` acceptent des entrées JSON
 ordinaires, par exemple `input={"age": 27, "scan": "file://<uuid>"}`. Process les convertit
 selon les variables sélectionnées par Début, avant les défauts et les contrôles de fichiers.
 Les enveloppes historiques scalaires restent acceptées ; `typed_values: true` sélectionne
@@ -184,7 +184,7 @@ ou une réponse identique ne modifie jamais la question suivante. L'historique l
 contrôlent l'identité de la question, en plus de celle de la tentative.
 Le lanceur du processus porte les échanges humains dans sa conversation d'origine, même
 si l'activité est exécutée par un autre agent ; la réponse réveille la tâche de cet exécutant.
-`conversation_process_respond` reçoit des valeurs JSON ordinaires comme `{"age": 27}` ;
+`process_respond` reçoit des valeurs JSON ordinaires comme `{"age": 27}` ;
 Conversation les valide et les convertit en valeurs typées avant de contrôler les fichiers.
 `typed_values: true` permet les enveloppes historiques, notamment pour les objets ; un objet
 JSON ordinaire contenant `type` et `value` reste sinon un objet métier.
@@ -315,7 +315,7 @@ Le nœud peut déclarer jusqu'à seize capacités sous `config.capabilities`.
 
 ```json
 {
-  "lookup": {"kind": "mcp", "operation": "process_definition_read"},
+  "lookup": {"kind": "mcp", "operation": "file_read"},
   "items": {"kind": "rest", "operation": "synthetic_inventory"}
 }
 ```
@@ -477,9 +477,9 @@ la même tentative, tandis qu'un refus connu ferme proprement tâche et tentativ
 Les routes `/api/processes/internal` exposent définitions, validation, histoire,
 restauration, partage, lancement, runs, occurrences, enfants, métriques et debugger.
 PROCESS_READ/EDIT/LAUNCH/ADMIN se combinent avec les ACL. Les MCP personnels `galaris`
-exposent ces opérations, dont `process_definition_read` pour l'audit.
+exposent ces opérations, dont `file_read` pour l'audit.
 Les commandes de debugger acceptent `command_key` (UUID) et `expected_revision`.
-La projection `operational` de l'inspection est partagée avec `processus_get` : phases,
+La projection `operational` de l'inspection est partagée avec `file_read` sur l’URI de l’exécution : phases,
 compteurs d'occurrences, attentes documentées, dernière activité et actions disponibles.
 La lecture n'avance pas le moteur et ne déduit aucun blocage d'un simple délai.
 Les droits de lecture et d'écriture du processus s'appliquent à ses runs, données et
@@ -549,8 +549,8 @@ ce compte. Les routes `/human-work` et son formulaire sont retirés.
 
 La demande `process_human_activity` exige une interprétation : le matcher déterministe ne
 consomme jamais le prochain message arbitrairement. Le contexte conversationnel expose les
-attentes de la portée exacte agent/connexion/Service/room/auteur. `conversation_process_pending`
-fournit les contrats complets et la pagination ; `conversation_process_respond` reçoit la
+attentes de la portée exacte agent/connexion/Service/room/auteur. `process_pending`
+fournit les contrats complets et la pagination ; `process_respond` reçoit la
 référence choisie et les sorties typées. Les pièces jointes seules restent dans l'historique
 avec leur URI source ; les valeurs `File` sont vérifiées par File Sharing, sans téléchargement
 ni copie persistante. Une réponse incomplète ou ambiguë appelle une clarification.

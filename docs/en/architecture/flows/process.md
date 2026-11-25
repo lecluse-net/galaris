@@ -2,7 +2,7 @@
 
 # Service and Process Flow
 
-Native inspection and `processus_get` share persisted operational evidence: activities,
+Native inspection and `file_read` on the run URI share persisted operational evidence: activities,
 waits, last activity and available commands. Runs, variables and attachments inherit the
 parent Process's existing policy, including explicit delegation through the `process` connection.
 Filtering precedes counts and pagination and covers children and metrics.
@@ -58,7 +58,7 @@ Agent runtime
 
 ## Agent Discovery
 
-For native v2 workflows, `conversation_process_prepare` keeps collected inputs in
+For native v2 workflows, `process_prepare` keeps collected inputs in
 `ConversationRound.process_preparations`, scoped to room/agent/participant. A
 `conversation.process_inputs` inference proposes values, searches and questions; the controller
 consults authorized Memory/files before asking for missing information. Types, dates, access
@@ -74,7 +74,7 @@ permission without a second inference; later parameter changes retain the final 
 Later messages receive the pending dossier; cancellation, unrelated messages and late results
 do not launch it. See [decision 0270](../../../../project/decisions/0270-conversation-process-input-dossiers.md).
 
-Before a new launch through `conversation_process_start`, Conversation freezes the requested
+Before a new launch through `process_start_conversation`, Conversation freezes the requested
 invocations in a permission bound to the actual admitted message. The server checks workflows,
 parameters and execution counts; recovery reuses the same run. This check is not invoked for
 an activity reply or a conversation without a launch. It receives the dossier's original
@@ -89,7 +89,7 @@ activity and debugging functions, subject to Process permissions. See the
 projection as the MCP server; it therefore cites no function that is inactive, incompatible with
 the runtime, disabled, or removed from the Task scope.
 
-If `process_list`, `process_get`, and `process_start` are all authorized, the prompt adds the
+If `file_list`, `file_read`, and `process_start` are all authorized, the prompt adds the
 identifiers, labels, and descriptions of only the definitions assigned to the Agent. Up to ten
 definitions, they are all injected without semantic ranking. Beyond that, the current request
 ranks the set with the configured multilingual vector model, and the prompt receives exactly the
@@ -98,30 +98,29 @@ ranking. The `galaris` system Skill then explains the detailed workflow. The pre
 package never constitutes authorization for a definition: `list_for_agent`, `get_for_agent`, and
 `start_process` filter or revalidate the durable assignment.
 
-The same personal projection is available as a read-only tree under
-`galaris://process/`. A definition uses its public `workflow_id` as its locator, for example
-`galaris://process/Kw70xUO8uRWkXvtX`; internal SQL identifiers are not part of the contract.
-`file_list` and `file_search` paginate on the server side and never reveal a definition assigned
-to another Agent. Starting remains exclusively a `process_start` or
-`conversation_process_start` action.
+File Sharing lists definitions under `galaris://processes/` and runs under
+`galaris://processes/runs/`. The collections apply access checks before pagination.
+Pass a returned URI to `file_read`. Native definitions use `galaris://processes/<code>`.
+External workflows use `galaris://process/<workflow-id>`. The definition supplies the
+`workflow_id` for `process_start` in a Task or `process_start_conversation` in Chat.
 
 The conversational controller uses the same projection with its specialized launcher
-`conversation_process_start`. The catalog is therefore injected when `process_list`,
-`process_get`, and this launcher are actually visible. The specialized launcher forces
+`process_start_conversation`. The catalog is therefore injected when `file_list`,
+`file_read`, and this launcher are actually visible. The specialized launcher forces
 asynchronous execution, links the run to the round, and delegates its terminal notification to the
 durable conversation link.
 An assigned Process that matches the requested action has absolute priority over creating or
 amending a Task. When more than ten definitions are assigned and uncertainty remains about the
-projection, the model consults `process_list` and `process_get` before using a Task.
+projection, the model consults `file_list` and `file_read` before using a Task.
 
 In the Chat interface, the executions sidebar does not traverse all historical runs in the room.
 It starts from the oldest currently loaded message, resolves the visible rounds, then
 collects their `ConversationProcessLink` objects and the runs linked to the Task tree derived from
 those rounds.
 
-The reduced scope of a scheduled leaf retains the six personal functions: a tool selection made
-upstream therefore cannot hide the business catalog. The functions selected
-by the planner remain eager; the other authorized functions remain in the internal toolset
+Scheduled leaves retain the launch and analysis operations. When the plan selects
+`process_start`, it also includes `file_list` and `file_read` for Process discovery.
+The functions selected by the planner remain eager and the other authorized functions remain in the internal toolset
 with `defer_loading` and become accessible through `search_tools`. The common MCP projection
 continues to apply function disablements and runtime constraints before this
 discovery.
@@ -159,7 +158,7 @@ The `process` Service starts active for every agent with `personal` scope. Its
 require explicit delegation. Engine discovery and synchronization and external workflow binding
 require `all`.
 
-The Chat tools `conversation_round_get` and `voice_turn_get` require an explicit function
+The Chat tools `chat_round_get` and `voice_turn_get` require an explicit function
 grant and the management scope delegated on Services. They inspect the durable state, execution
 trace and model calls of a complete text or voice turn within that scope.
 

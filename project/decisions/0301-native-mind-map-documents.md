@@ -28,8 +28,8 @@ Exports retain portable links, and the native source remains available for full
 fidelity of Galaris content. A workbook with several XMind sheets is imported
 as one map with the sheet roots below an enclosing branch.
 
-The Documents Service exposes `mindmap_create`, branch reads, and atomic editing
-batches. Every batch needs the previously read revision and the same write access
+The File Sharing Service exposes map creation and format-defined selectors for reads,
+replacements and atomic editing batches. Every batch needs the previously read revision and the same write access
 as the editor. Zoom and pan are view state. Executable application blocks in nodes
 use an inert reader. Additional integration with Text documents and theme authoring
 are tracked in the [mind map plan](../plans/cartes-mentales-documentaires.md).

@@ -268,7 +268,8 @@ graphiques des nœuds.
 Dans le Chat, demandez à l’agent de créer une carte, de lire ses nœuds ou de les
 modifier. Il peut aussi choisir ce format pour un résultat qui se prête à une
 arborescence, comme un plan par chantier. Les fonctions et les droits de l’agent
-déterminent les actions possibles. Une approbation peut être nécessaire pour écrire.
+déterminent les actions possibles. Les outils de carte sont dans **Partage de fichiers**.
+Une approbation peut être nécessaire pour écrire.
 Vous pouvez lui demander d’insérer un graphique modifiable dans un nœud en lui donnant
 les valeurs ou leur source.
 

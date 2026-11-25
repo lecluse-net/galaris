@@ -70,7 +70,7 @@ async def provision(db):
         if definition.service_code == "lab":
             db.add(ConnectionFunctionState(connection_id=connection.id,
                 function_name=definition.name, state="enabled", enabled=True))
-    for code, names in (("galaris", ("llm_call", "llm_calls")), ("chat", ("conversation_round_get", "voice_turn_get"))):
+    for code, names in (("galaris", ("llm_call", "llm_calls")), ("chat", ("chat_round_get", "voice_turn_get"))):
         inspection = await db.scalar(select(Connection).join(Service).where(Connection.agent_id == agent.id, Service.code == code))
         for name in names:
             db.add(ConnectionFunctionState(connection_id=inspection.id, function_name=name, state="enabled", enabled=True))

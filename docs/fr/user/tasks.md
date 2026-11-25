@@ -184,7 +184,7 @@ du contact continuent de s'appliquer ; un sujet d'historique ne constitue pas un
 
 Le détail de tâche permet d’inspecter l’activité, les outils et les résultats. L’agent retrouve
 le suivi enregistré avec `task_get` et envoie les changements de sa tâche active à
-`task_work_update`. Il indique la clé du jalon et les champs à modifier. Le serveur conserve
+`task_update`. Il indique la clé du jalon et les champs à modifier. Le serveur conserve
 le reste du suivi et remet l’ancien jalon actif en attente quand l’agent en active un autre.
 Le reçu confirme le suivi enregistré et explique les changements écartés.
 Le contrôle de révision est disponible pour corriger ou remplacer intentionnellement le plan.
@@ -196,6 +196,8 @@ consultables, ainsi que le motif et la prochaine action lorsque l’agent les a 
 Une attente déjà ouverte conserve la tâche en attente. Les étapes d'un plan
 qui dépendent du résultat manquant sont écartées. **Réessayer** relance le travail bloqué et
 préserve les étapes déjà réussies.
+Dans la conversation, demandez à l’agent de poursuivre la même tâche. `task_resume` choisit
+la reprise d’une pause utilisateur ou une nouvelle tentative selon l’état enregistré.
 Un complément facultatif indisponible, par exemple une note documentaire conditionnelle,
 ne fait pas échouer la réponse principale. L'agent explique son omission dans le bilan ;
 ce complément est exclu des jalons applicables dans la progression, sans être déclaré réalisé.

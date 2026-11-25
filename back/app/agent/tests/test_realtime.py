@@ -323,8 +323,8 @@ async def test_realtime_voice_context_uses_conversation_action_policy(
                 "- Any requested action other than speaking must run in the background.\n"
                 "- Amend only the same primary artifact or target. Create a Task for a "
                 "different target, repository, resource, deliverable that follows from the "
-                "same incident.\n- Use `conversation_process_start` or "
-                "`conversation_task_submit`."
+                "same incident.\n- Use `process_start_conversation` or "
+                "`task_run`."
             )
         ),
     )
@@ -355,8 +355,8 @@ async def test_realtime_voice_context_uses_conversation_action_policy(
     assert "same primary artifact or target" in result.instructions
     assert "different target, repository, resource, deliverable" in result.instructions
     assert "follows from the same incident" in result.instructions
-    assert "`conversation_process_start`" in result.instructions
-    assert "`conversation_task_submit`" in result.instructions
+    assert "`process_start_conversation`" in result.instructions
+    assert "`task_run`" in result.instructions
     assert "Assigned process catalog" in result.instructions
     assert process_advertisement.await_args.kwargs["relevance_query"].startswith(
         "Recent conversation transcript"

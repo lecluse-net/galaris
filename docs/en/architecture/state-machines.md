@@ -229,17 +229,16 @@ available. See [0123](../../../project/decisions/0123-explicit-task-replacement.
 Task and round heartbeats only renew a still-valid lease: an expired owner cannot regain
 authority by sending a late heartbeat.
 
-The `conversation_task_stop` tool reads the Task under a row lock after freshness and scope
+In a conversation, `task_cancel` reads the Task under a row lock after freshness and scope
 checks. If it is already in `SUCCESS` or `ERROR`, it returns its state without another
 transition or changes to its revision, result, or termination cause. An active Task keeps
 the existing `CANCEL` command. This does not change the HTTP expected-revision contract
 or prove that a worker still performing cleanup has physically stopped.
 
-`conversation_task_retry` retains the existing retry command. The decision policy calls for
-assessing the failure first: an explicit retry of the same Task or a corrected cause can justify
-retrying; otherwise prefer `CREATE_NEW` with the known failure and useful corrections. A similar
-request alone does not justify retrying. This rule guides the model; it does not change state
-machine transitions or manual HTTP retry.
+In conversation, `task_resume` chooses under a row lock after freshness and scope checks.
+It releases a user pause, retries a settled failure or an eligible blocked Task, or returns
+the current state. Automatic waits keep their own resumption conditions. The receipt reports
+`resumed`, `retried`, or `unchanged`. HTTP commands use their existing transitions.
 
 Authority: `back/app/task/models.py` and `back/app/task/workflow.py`.
 

@@ -9,12 +9,16 @@ from __future__ import annotations
 import json
 from collections.abc import Collection, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any
+from functools import lru_cache
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from core.util import as_dict, as_list
 from core.i18n import render_prompt
 from app.agent import RuntimeName, resolve_tool_profile
+
+if TYPE_CHECKING:
+    from .mcp_loader import ActiveServiceBindings
 
 
 @dataclass(frozen=True)
@@ -47,7 +51,8 @@ def render_task_capability_context(services: Sequence[Mapping[str, str]] = ()) -
 
 async def build_task_capability_context(agent_id: int) -> str:
     """Use the same local Service projection for text and both voice runtimes."""
-    return render_task_capability_context(await _task_only_tools(agent_id))
+    from .mcp_loader import active_service_bindings
+    return await task_context_from_bindings(await active_service_bindings(agent_id))
 
 
 async def build_agent_tool_advertisement(
@@ -60,6 +65,7 @@ async def build_agent_tool_advertisement(
     resources: dict[str, Any] | None = None,
     task_id: UUID | None = None,
     mounted_native_tool_names: frozenset[str] | None = None,
+    mounted_task_context: str | None = None,
 ) -> AgentToolAdvertisement:
     """Render mounted native tools or resolve the projection for callers without a server."""
     from app.services import mcp_loader
@@ -75,12 +81,23 @@ async def build_agent_tool_advertisement(
             key=lambda item: (item.service_code, item.name),
         ))
 
+    inventory = _render_native_inventory(tuple((item.service_code, item.name) for item in definitions))
+    if not include_task_only_tools:
+        return inventory
+    task_context = mounted_task_context if mounted_task_context is not None else await build_task_capability_context(agent_id)
+    return AgentToolAdvertisement(text=f"{inventory.text}\n\n{task_context}" if inventory.text else f"\n{task_context}",
+                                  tool_names=inventory.tool_names)
+
+
+@lru_cache(maxsize=256)
+def _render_native_inventory(functions: tuple[tuple[str, str], ...]) -> AgentToolAdvertisement:
+    """Reuse prompt text only after selecting the currently authorized native functions."""
     grouped: dict[str, list[str]] = {}
-    for definition in definitions:
-        grouped.setdefault(definition.service_code, []).append(definition.name)
+    for service_code, name in functions:
+        grouped.setdefault(service_code, []).append(name)
 
     lines: list[str] = []
-    if definitions:
+    if functions:
         lines.extend(
             [
                 "Native Galaris functions selected for this run. Use the mounted schemas "
@@ -92,7 +109,7 @@ async def build_agent_tool_advertisement(
             rendered_names = ", ".join(f"`{name}`" for name in names)
             lines.append(f"- `{service_code}`: {rendered_names}")
 
-    tool_names = frozenset(definition.name for definition in definitions)
+    tool_names = frozenset(name for _, name in functions)
     if "calendar_list" in tool_names:
         lines.append("Use calendar_list to verify IDs, writable calendars and actions_enabled for reminders.")
     if "calendar_create_event" in tool_names:
@@ -130,8 +147,8 @@ async def build_agent_tool_advertisement(
             "Use document_show(document=...) to present a relevant working document directly "
             "in this internal Chat. It accepts a document:// URI, UUID or Galaris document URL."
         )
-    if "repository_show" in tool_names:
-        lines.append("Before changing Git source through Console, use repository_show(repository='console://path/', view='changes') to present the actual checkout in Chat. Code is not a Document. Human and agent edits share saved files with standard VS Code behavior; unsaved IDE buffers remain local. Presenting a repository neither commits nor pushes and does not grant access.")
+    if "chat_repository_show" in tool_names:
+        lines.append("Before changing Git source through Console, use chat_repository_show(repository='console://path/', view='changes') to present the actual checkout in Chat. Code is not a Document. Human and agent edits share saved files with standard VS Code behavior; unsaved IDE buffers remain local. Presenting a repository neither commits nor pushes and does not grant access.")
     if "services_list" in tool_names:
         lines.extend(
             [
@@ -140,31 +157,28 @@ async def build_agent_tool_advertisement(
                 "connected external MCP services.",
             ]
         )
-    if "mindmap_create" in tool_names:
+    if "file_create" in tool_names:
         lines.append(
             "Choose a mind map for durable work organized into branches, such as a decision tree or a grouped plan, "
             "when the requested format allows it. Reuse a suitable accessible map. When a new map is needed, "
-            "call mindmap_create to create a private Document and keep its canonical document:// URI. "
-            "Pass root_title and optionally add branches in parent-first order under root."
+            "call file_create with path='document://', document_format='mindmap' and version 1 JSON content. "
+            "Keep its canonical document:// URI."
         )
-    if "mindmap_read" in tool_names:
+    if "file_read" in tool_names:
         lines.append(
-            "Read a mind map with mindmap_read to obtain stable node IDs and the current revision. "
+            "Read a mind map with file_read and selector='/nodes' to obtain stable node IDs and the current revision. "
             "Internal Chat can identify the open map, but does not supply the selected node. "
             "Resolve the branch from the request and map structure; ask for its title or parent path if ambiguous."
         )
-    if {"mindmap_read", "mindmap_add"} <= tool_names:
+    if {"file_read", "file_edit"} <= tool_names:
         lines.append(
-            'Add branches with mindmap_add(document_id=URI, expected_revision=revision, '
-            'branches=[{"node_id":"findings","parent_id":"root","title":"Findings"}]). '
-            "Use a new ID and the actual parent ID from mindmap_read. Put new parents before their children."
+            "Edit a mind map with file_edit, selector='/nodes' and a JSON array of branch operations in content. "
+            "To add a branch, supply a new node_id and an existing parent_id. Put new parents before their children."
         )
-    if {"mindmap_read", "mindmap_edit"} <= tool_names:
+    if {"file_read", "file_write"} <= tool_names:
         lines.append(
-            "Edit it with mindmap_edit(document_id=URI, expected_revision=revision, operations=[...]). "
-            "Use add for a new node. An edit targets an existing node and includes a field to change. "
-            "For rich content use an editorial HTML fragment in body_html with canonical resource links. "
-            "Read a specific node with node_id before replacing its body. On conflict, reread and reconcile."
+            "Use file_read and file_write with selector='<branch-id>/body_html' to read and replace a branch's "
+            "editorial HTML. Pass the map's expected_revision. On conflict, reread and reconcile."
         )
     if "file_create" in tool_names:
         lines.extend(
@@ -220,32 +234,25 @@ async def build_agent_tool_advertisement(
                 "concise clarification before sending.",
             ]
         )
-    if include_task_only_tools:
-        lines.extend(["", await build_task_capability_context(agent_id)])
     return AgentToolAdvertisement(text="\n".join(lines), tool_names=tool_names)
 
 
-async def _task_only_tools(agent_id: int) -> tuple[dict[str, str], ...]:
+async def task_context_from_bindings(bindings: ActiveServiceBindings) -> str:
     """Return connected application Services with capabilities outside conversation mode."""
 
     from app.connection import facade as connection_service
-    from app.services import service
     from . import mcp_loader
 
     inventory: dict[str, dict[str, str]] = {}
     native = mcp_loader.mcp_tools_by_service_code()
-    active = [connection for connection in await connection_service.get_connections_by_agent(agent_id) if connection.active]
     disabled: dict[int, set[str]] | None = None
-    for connection in active:
-        tool = await service.get_service_by_id(connection.service_id)
-        if tool is None:
-            continue
+    for connection, tool in bindings:
         allowed = mcp_loader.conversation_tool_names(tool, source="native")
         if allowed or mcp_loader.conversation_tool_names(tool, source="external"):
             if tool.code not in {"browser", "multimedia"}:
                 continue
             if disabled is None:
-                disabled = await connection_service.get_disabled_function_names_many(active)
+                disabled = await connection_service.get_disabled_function_names_many([ref for ref, _ in bindings])
             blocked = disabled.get(connection.id) or ()
             if not any(definition.task_enabled and definition.name not in allowed and definition.name not in blocked
                        for definition in native.get(tool.code, ())):
@@ -263,7 +270,7 @@ async def _task_only_tools(agent_id: int) -> tuple[dict[str, str], ...]:
             "code": code[:100],
             "label": label[:255],
         }
-    return tuple(inventory[code] for code in sorted(inventory))
+    return render_task_capability_context(tuple(inventory[code] for code in sorted(inventory)))
 
 # Detailed tool instructions injected into each internal-driver request.
 _TOOL_CONTEXT_TEMPLATE = """

@@ -2,6 +2,7 @@
 
 import json
 import base64
+import re
 import shutil
 from pathlib import Path
 from typing import Any, Never, cast
@@ -11,7 +12,7 @@ from urllib.parse import unquote
 from core.util import complete_io
 
 from .resource_contracts import MaterializedResource, ResourceContext, ResourceDescriptor, ResourceRead, ResourceMutation, ResourceListing, ResourceSearchResult, ResourceSearchHit
-from .resource_uri import ResourceUri, ResourceUriError
+from .resource_uri import ResourceUri, ResourceUriError, ResourceValidationError
 
 
 class ProcessRunProvider:
@@ -38,7 +39,8 @@ class ProcessRunProvider:
         identity, _ = self._target(uri)
         return await read_run_data(identity, ctx.agent_id)
 
-    async def _snapshot(self, ctx: ResourceContext, uri: ResourceUri) -> tuple[str, dict[str, Any], str]:
+    async def _snapshot(self, ctx: ResourceContext, uri: ResourceUri, *,
+                        selector: str | None = None) -> tuple[str, dict[str, Any], str]:
         if uri.scheme != "galaris" or uri.is_collection or len(uri.segments) != 3 or uri.segments[:2] != ("processes", "runs"):
             raise ResourceUriError("Expected galaris://processes/runs/<uuid>")
         try:
@@ -47,13 +49,32 @@ class ProcessRunProvider:
             raise ResourceUriError("A process run requires a valid UUID") from error
         from app.process import read_process_run_resource
 
-        payload = await read_process_run_resource(identity, actor_agent_id=ctx.agent_id, management_scope=ctx.management_scope)
+        page, after_event, section = 1, 0, None
+        if selector is not None:
+            match = re.fullmatch(r"/(nodes|events)/([0-9]{1,10})", selector)
+            if match is None:
+                raise ResourceValidationError("Use /nodes/<page> or /events/<cursor> for an internal run.")
+            section, number = match[1], int(match[2])
+            if section == "nodes":
+                if number < 1:
+                    raise ResourceValidationError("Process occurrence pages start at 1.")
+                page = number
+            else:
+                after_event = number
+        payload = await read_process_run_resource(identity, actor_agent_id=ctx.agent_id,
+            management_scope=ctx.management_scope, page=page, after_event=after_event)
+        if section is not None:
+            if section not in payload:
+                raise ResourceValidationError("Only internal runs support occurrence and event paging.")
+            keys = (("nodes", "page", "page_size", "total", "next_node_page") if section == "nodes"
+                    else ("events", "event_cursor", "next_event_cursor"))
+            payload = {key: payload[key] for key in keys}
         canonical = f"galaris://processes/runs/{identity}"
         return canonical, payload, json.dumps(payload, ensure_ascii=False, indent=2, default=str)
 
     async def info(self, ctx: ResourceContext, uri: ResourceUri, **options: Any) -> ResourceDescriptor:
         if self._root(uri):
-            return ResourceDescriptor(uri=str(uri), name="Runs", label_code="collection_runs", is_collection=True, capabilities=["info", "list"])
+            return ResourceDescriptor(uri=str(uri), name="Runs", label_code="collection_runs", is_collection=True, capabilities=["info", "list", "search"])
         identity, suffix = self._target(uri)
         if suffix.startswith("input-provenance/"):
             from app.process.facade import read_input_provenance
@@ -104,7 +125,7 @@ class ProcessRunProvider:
             payload = await self._data(ctx, uri)
             canonical, content, revision = str(uri), json.dumps(payload["data"], ensure_ascii=False, indent=2), payload["revision"]
         else:
-            canonical, _, content = await self._snapshot(ctx, uri)
+            canonical, _, content = await self._snapshot(ctx, uri, selector=options.get("selector"))
         start = max(0, int(options.get("offset", 0)))
         limit = max(1, min(int(options.get("max_chars", 20_000)), 200_000))
         end = min(len(content), start + limit)
@@ -210,7 +231,7 @@ class ProcessRunProvider:
         return ResourceMutation(uri=str(uri), operation="delete", state="deleted")
 
     async def _unsupported(self, ctx: ResourceContext, uri: ResourceUri, *args: object, **options: Any) -> Never:
-        raise PermissionError("Process run resources are read-only. Use the Process tools for discovery and controls.")
+        raise PermissionError("This process run resource is read-only. Use the Process tools for run controls.")
 
     async def search(self, ctx: ResourceContext, uri: ResourceUri, query: str, **options: Any) -> ResourceSearchResult:
         if not self._root(uri) or options.get("mode", "name") != "name":

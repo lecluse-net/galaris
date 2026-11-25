@@ -48,7 +48,7 @@ et les tests du scheduler vérifient la clôture sans retry dans chaque phase co
 
 Le suivi d'un exécutant est un objet `galaris.work-plan/v1` dans les données de sa Task :
 au plus vingt jalons, critères d'acceptation, résultats observés, URI et prochaine action,
-avec un budget de contexte borné. `task_work_update` ne modifie que la Task active de
+avec un budget de contexte borné. `task_update` ne modifie que la Task active de
 l'exécutant ; la commande recharge et verrouille la ligne, contrôle `expected_revision` quand fourni,
 préserve les autres données et refuse les Tasks suspendues ou terminales. Un même contenu
 est idempotent ; modifier un jalon achevé demande une raison explicite. `task_get` fournit
@@ -63,7 +63,7 @@ Un conflit de suivi conserve le plan courant et le rend dans le reçu.
 
 ### Mise à jour courante par jalon
 
-`task_work_update(plan={"key":"recherche","state":"done"})` charge la tâche active de
+`task_update(plan={"key":"recherche","state":"done"})` charge la tâche active de
 l’exécutant sous verrou et applique les champs fournis à la clé du jalon. Un appel peut aussi
 fournir plusieurs changements sous `plan.milestones`. Le serveur conserve les autres jalons
 et remet un ancien jalon actif en attente quand un nouveau démarre. Les critères d’acceptation,

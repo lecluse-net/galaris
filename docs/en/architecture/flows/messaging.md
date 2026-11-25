@@ -458,7 +458,7 @@ intact.
 
 The unique identifier of a text or voice processing is `ConversationRound.id`. The modals display
 this primary UUID and copy it to the clipboard when clicked. Chat exposes
-`conversation_round_get` with an explicit function grant and the management scope delegated on
+`chat_round_get` with an explicit function grant and the management scope delegated on
 Services. The tool returns all data persisted directly for that turn, as well as
 all correlated LLM calls. A voice turn does not contain audio bytes, which are not persisted in
 this conversation dataset.
@@ -507,7 +507,7 @@ interaction remains deterministically resolved before the conversational control
 does not match any option, it is neither lost nor forced into a choice: it becomes a normal round.
 The round then receives the bounded projection of interactions still active for the exact
 connection, Service, room, agent, and sender. The conversational LLM may call
-`conversation_choice_resolve` with the reference and identifier of a persisted option, or ask a
+`chat_choice_resolve` with the reference and identifier of a persisted option, or ask a
 question if the intent remains ambiguous. The command relocks the same scope, refuses any invented
 option, and returns resolution to the original idempotent handler. A redirection can therefore
 refuse an approval that has become obsolete and then amend the relevant Task in the same round.
@@ -827,7 +827,7 @@ An agent configured in `realtime` mode replaces this split with a persistent aud
 VAD commit still creates a `ConversationRound`, without inventing a transcript or textual
 objective: the audio is interpreted directly by the provider model. The room’s recent history is
 projected as an unreliable conversational transcript at the start of each new call. Relevant memory
-is injected at startup, `memory_search` completes context on demand, and `task_submit` creates a
+is injected at startup, `memory_search` completes context on demand, and `task_run` creates a
 durable Task through the agent port.
 
 After the conversation, Dream may progressively extract durable facts from completed turns that

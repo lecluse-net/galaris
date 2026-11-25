@@ -1240,6 +1240,7 @@ async def resource_read(
     offset: int = 0,
     max_chars: int = 20_000,
     revision: int | None = None,
+    selector: str | None = None,
 ) -> ResourceRead:
     """Read UTF-8 text by page, or return a small binary resource as base64."""
 
@@ -1249,9 +1250,18 @@ async def resource_read(
     else:
         _revision_identity(reference, revision)
     from .document_folders import is_document_folder, folder_read
+    process_run = (reference.scheme == "galaris" and reference.segments[:2] == ("processes", "runs")
+                   and len(reference.segments) == 3 and not reference.is_collection)
+    if selector is not None and not process_run and (
+        reference.scheme != "document" or reference.is_collection or is_document_folder(reference)
+        or _document_attachment_ids(reference) is not None
+    ):
+        raise ResourceValidationError("This resource does not support selected reads.")
     if is_document_folder(reference):
         return await folder_read(ctx, reference, offset=offset)
     if provider := _resource_provider(reference):
+        if process_run:
+            return await provider.read(ctx, reference, offset=offset, max_chars=max_chars, selector=selector)
         return await provider.read(ctx, reference, offset=offset, max_chars=max_chars)
     start = max(0, offset)
     limit = max(1, min(max_chars, 2_000_000 if reference.scheme in {"memory", "document"} else _TEXT_READ_LIMIT))
@@ -1300,7 +1310,8 @@ async def resource_read(
         if reference.scheme == "document":
             from app.document.facade import read_file_resource_text
             data = await read_file_resource_text(UUID(reference.locator), agent_id=ctx.agent_id,
-                task_id=ctx.task_id, expected_kind="document", offset=start, max_chars=limit, revision=revision)
+                task_id=ctx.task_id, expected_kind="document", offset=start, max_chars=limit, revision=revision,
+                selector=selector)
         else:
             from app.memory import read_file_resource_text
             data = await read_file_resource_text(UUID(reference.locator), agent_id=ctx.agent_id,
@@ -1312,8 +1323,9 @@ async def resource_read(
             start=_as_int(data.get("start")), end=_as_int(data.get("end")),
             total=_as_int(data.get("total")), next_offset=_as_optional_int(data.get("next_offset")),
             revision=_as_optional_int(data.get("revision")),
+            selector=selector,
         )
-        if data.get("media_type") == "text/html":
+        if selector is None and data.get("media_type") == "text/html":
             return EditorialResourceRead.model_validate({**values, "content_profile": data.get("content_profile", "rich-text"), "blocks": data.get("blocks", [])})
         return ResourceRead.model_validate(values)
 
@@ -1734,16 +1746,18 @@ async def resource_write(
     *,
     expected_revision: int | None = None,
     expected_etag: str | None = None,
+    selector: str | None = None,
 ) -> ResourceMutation:
     """Replace one existing complete resource from bounded bytes."""
     require_complete_content(content)
     return await _write_complete_resource(ctx, uri, content,
-        expected_revision=expected_revision, expected_etag=expected_etag)
+        expected_revision=expected_revision, expected_etag=expected_etag, selector=selector)
 
 
 async def _write_complete_resource(
     ctx: ResourceContext, uri: object, content: bytes, *,
     expected_revision: int | None = None, expected_etag: str | None = None,
+    selector: str | None = None, edit_selection: bool = False,
 ) -> ResourceMutation:
     """Replace from complete bytes while retaining provider and revision checks."""
     if len(content) > _FILE_WRITE_LIMIT:
@@ -1751,6 +1765,8 @@ async def _write_complete_resource(
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
     if reference.is_collection:
         raise ResourceUriError("file_write requires an exact destination file URI.")
+    if selector is not None and (reference.scheme != "document" or len(reference.segments) != 1):
+        raise ResourceValidationError("This resource does not support selected writes.")
     if provider := _resource_provider(reference):
         return await provider.write(ctx, reference, content, expected_revision=expected_revision, expected_etag=expected_etag)
     if reference.scheme == "document":
@@ -1766,6 +1782,8 @@ async def _write_complete_resource(
             task_id=ctx.task_id,
             content=content,
             expected_revision=expected_revision,
+            selector=selector,
+            edit_selection=edit_selection,
         )
         return ResourceMutation(
             uri=str(reference),
@@ -2079,18 +2097,25 @@ async def resource_edit(
     ctx: ResourceContext,
     uri: object,
     *,
-    start_line: int,
-    end_line: int,
+    start_line: int | None = None,
+    end_line: int | None = None,
     content: str,
     expected_revision: int | None = None,
     expected_etag: str | None = None,
+    selector: str | None = None,
 ) -> ResourceMutation:
     """Replace a 1-based inclusive line range in one UTF-8 text resource."""
     require_complete_content(content)
-    if start_line < 1 or end_line < start_line:
-        raise ResourceValidationError("start_line and end_line must define a 1-based inclusive range.")
     if len(content) > _TEXT_WRITE_LIMIT:
         raise ResourceValidationError(f"Text content exceeds {_TEXT_WRITE_LIMIT} characters.")
+    if selector is not None:
+        if start_line is not None or end_line is not None:
+            raise ResourceValidationError("Provide a selector or a line range.")
+        mutation = await _write_complete_resource(ctx, uri, content.encode("utf-8"),
+            expected_revision=expected_revision, expected_etag=expected_etag, selector=selector, edit_selection=True)
+        return mutation.model_copy(update={"operation": "edit", "state": "edited"})
+    if start_line is None or end_line is None or start_line < 1 or end_line < start_line:
+        raise ResourceValidationError("start_line and end_line must define a 1-based inclusive range.")
     reference = await resolve_native_alias(ctx, parse_resource_uri(uri))
     if provider := _resource_provider(reference):
         return await provider.edit(ctx, reference, start_line=start_line, end_line=end_line, content=content, expected_revision=expected_revision, expected_etag=expected_etag)

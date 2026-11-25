@@ -31,6 +31,9 @@ Le Service système Chat (`chat`) porte le canal interne et les outils de choix,
 de dépôt, voix et inspection des tours. `chat.channel_enabled` règle le canal de chaque
 agent. Le réglage d'instance reste dans Préférences → Messagerie. Les bridges externes et
 la réponse automatique aux appels compatibles gardent leurs réglages propres.
+Utiliser `chat_choice_resolve` pour résoudre un choix en attente et `chat_round_get` pour
+inspecter un tour textuel. Les outils `messenger_*` routent leurs appels via la connexion
+sélectionnée, y compris sur un canal externe.
 
 ## Traiter un message entrant
 

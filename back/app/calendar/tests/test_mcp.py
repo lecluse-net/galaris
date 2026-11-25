@@ -12,7 +12,7 @@ from app.agent.models import Agent, AgentTeam
 from app.calendar import mcp
 from app.calendar.crypto import decrypt
 from app.calendar.models import CalendarFeed, CalendarTrigger
-from app.calendar.resources import list_calendar_resources, read_calendar_resource
+from app.calendar.resources import list_calendar_resources, read_calendar_event_label, read_calendar_resource
 from app.calendar.schemas import CalendarAvailability, CalendarFeedRead
 from app.connection.facade import set_connection_function_state, set_management_scope
 from app.services import sync_integrated_service_connections
@@ -129,6 +129,8 @@ async def test_calendar_scope_governs_live_mcp_reads_and_writes(db, agent, perso
         target = {"calendar_id": peer_feed.id, "uid": created["uid"]}
         detail = values(await client.call_tool("calendar_event_get", target))
         assert detail["summary"] == event_data["summary"]
+        assert await read_calendar_event_label(peer_feed.id, created["uid"], frozenset({peer.id})) == event_data["summary"]
+        assert await read_calendar_event_label(peer_feed.id, created["uid"], frozenset({agent.id})) is None
         trigger = (await db.scalars(select(CalendarTrigger).where(CalendarTrigger.calendar_id == peer_feed.id))).one()
         assert json.loads(decrypt(trigger.dispatch_encrypted))["agent_id"] == peer.id
         await client.call_tool("calendar_action_set", {**target, "instructions": "Synthetic reminder"})

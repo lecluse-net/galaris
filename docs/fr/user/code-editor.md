@@ -2,7 +2,7 @@
 
 # Suivre et modifier un dépôt Git dans une discussion
 
-Lorsqu’un agent présente son dépôt avec `repository_show`, le panneau de travail affiche
+Lorsqu’un agent présente son dépôt avec `chat_repository_show`, le panneau de travail affiche
 un éditeur code-server, fondé sur VS Code OSS. Le panneau accueille alternativement un
 Document ou un dépôt ; la discussion reste utilisable. La rubrique **Code source** permet
 de rouvrir les dépôts déjà présentés, même après une reconnexion. Elle se trouve juste
@@ -106,7 +106,7 @@ dans la connexion Console de l’agent et enregistrer cette connexion. Le déplo
 automatiquement. La discussion reste utilisable ; vous pourrez
 rouvrir le dépôt après cette configuration.
 
-Si `repository_show` signale un refus de permission, vérifiez aussi que la connexion
+Si `chat_repository_show` signale un refus de permission, vérifiez aussi que la connexion
 Console de l’agent est active. Tester ou déployer l’éditeur conserve son état enregistré.
 
 Après le déploiement initial, les éditeurs gérés des connexions SSH actives sont vérifiés et

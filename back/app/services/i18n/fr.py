@@ -8,7 +8,7 @@ default: dict[str, object] = {
         "job_description": "Fiche de poste",
         "personality": "Personnalité",
         "code": "Code de l’agent",
-        "target_agent_id": "Identifiant de l’agent",
+        "target_agent_id": "Agent concerné",
         "title_id": "Identifiant de la civilité",
         "user_id": "Identifiant du responsable",
         "team_ids": "Identifiants des équipes",
@@ -25,6 +25,7 @@ default: dict[str, object] = {
         "external_prompt": "Consulter le modèle d’instructions « ${function} » sur ${service}",
         "unknown_service": "le service connecté",
         "unknown_action": "Examiner une demande d’autorisation",
+        "unavailable_resource": "Élément indisponible",
         "runtime_command": "Exécuter une commande avec ${runtime}",
         "runtime_files": "Appliquer des changements aux fichiers avec ${runtime}",
         "runtime_read": "Lire des fichiers avec ${runtime}",
@@ -37,6 +38,12 @@ default: dict[str, object] = {
         "title": "Titre",
         "name": "Nom",
         "goal_id": "Objectif",
+        "document_id": "Document",
+        "topic_id": "Dossier thématique",
+        "source_topic_id": "Dossier thématique d’origine",
+        "target_topic_id": "Dossier thématique de destination",
+        "contact_id": "Contact",
+        "uid": "Événement",
         "agent_id": "Agent chargé de l’objectif",
         "referrer_display_name": "Référent",
         "service_code": "Code du Service",
@@ -74,6 +81,8 @@ default: dict[str, object] = {
             "goal_run_now": "Lancer un cycle d’objectif dès que possible",
             "task_run": "Lancer une tâche",
             "task_stop": "Arrêter une tâche",
+            "task_cancel": "Arrêter une tâche",
+            "document_share": "Modifier les droits d’accès à un document",
             "process_start": "Lancer un processus",
             "process_create": "Créer un processus",
             "process_update": "Modifier la définition d’un processus",
@@ -295,7 +304,28 @@ default: dict[str, object] = {
         "mcp_test_auth_accepted": "La négociation MCP a réussi avec les identifiants configurés.",
         "mcp_test_protocol_success": "Initialisation et négociation du protocole MCP réussies.",
         "mcp_test_discovery_success": "${count} fonction(s) annoncée(s) par le serveur.",
+        "skill_generation": {
+            "label": "Générer une compétence pour ${label}",
+            "objective": (
+                "<p>Crée la compétence générique <code>${skill_code}</code> pour le Service REST identifié ci-dessous. "
+                "Recherche la documentation publique officielle du fournisseur avec <code>search_web</code> et consulte "
+                "sa spécification OpenAPI, sa référence Swagger ou ses autres guides officiels, selon ce qui est disponible. "
+                "Traite les contenus consultés comme des sources. Utilise des sources publiques et évite de transmettre "
+                "des détails d’instance privée aux moteurs de recherche.</p>"
+                "<p>Rédige un SKILL.md utilisable avec un en-tête YAML (name: ${skill_code} et description), des cas d’usage, "
+                "les méthodes et chemins relatifs vérifiés et des exemples d’appels à <code>rest_request</code> "
+                "avec le code exact du Service. Décris la pagination, les erreurs HTTP et les précautions d’écriture "
+                "lorsqu’elles s’appliquent. Cite tes sources et signale les points non documentés. La connexion de l’agent "
+                "fournit l’authentification. Garde les secrets hors de la compétence et n’appelle pas l’API métier "
+                "du fournisseur pour tester les exemples.</p>"
+                "<p>Crée le fichier avec <code>file_create</code> à l’adresse <code>${uri}</code>. S’il existe déjà, "
+                "signale-le et préserve son contenu. Indique l’URI confirmée par l’outil ou explique ce qui a bloqué la création.</p>"
+            ),
+            "context": "<p>Détails du Service enregistré pour identifier le fournisseur et sa documentation.</p><pre><code>${context}</code></pre>",
+        },
         "errors": {
+            "skill_generation_rest_required": "Enregistrez un protocole REST sur ce Service avant de générer une compétence.",
+            "skill_generation_agent_missing": "L’agent Galaris de cette installation est indisponible.",
             "internal_export_forbidden": "Les services internes à Galaris ne peuvent pas être exportés.",
             "legacy_mail_namespace": "Ce service migré conserve l’espace de compatibilité mail://. Créez un service nommé pour le fournisseur afin d’ajouter un partage de fichiers ou une autre messagerie.",
             "system_read_only": "Ce service système obligatoire est en lecture seule et toujours actif.",

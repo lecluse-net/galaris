@@ -62,7 +62,7 @@ default: dict[str, object] = {
         ),
         "peer_task_required": (
             "Contact an internal colleague from a Task. No message was sent and no peer request was created. "
-            "From a conversation, use conversation_task_submit to amend the relevant ongoing Task "
+            "From a conversation, use task_run to amend the relevant ongoing Task "
             "or admit new work under the conversation policy, preserving the recipient and requested contribution."
         ),
         "peer_request_waiting": (

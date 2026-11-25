@@ -142,12 +142,12 @@ async def seed(directory: Path, case_code: str, mode: str, config: dict, *, exec
             for agent in agents:
                 updated = await agent_service.update(agent.id, AgentUpdate(team_ids=[team.id]), actor_user_id=owner.id)
                 assert updated is not None
-            allowed = {"agent_list", "agent_get", "task_get", "task_work_update", "services_list", "document_show",
+            allowed = {"agent_list", "agent_get", "task_get", "task_update", "services_list", "document_show",
                        "file_list", "file_search", "file_read", "file_write", "file_edit", "file_append",
-                       "document_share", "document_sharing", "conversation_task_submit",
-                       "conversation_task_list", "conversation_task_status"}
+                       "document_share", "document_sharing", "task_run",
+                       "task_list"}
             if mode != "solo":
-                allowed.update({"task_run", "messenger_send_message_to_user"})
+                allowed.add("messenger_send_message_to_user")
             specs = {spec.code: spec for spec in INTEGRATED_SERVICE_SPECS}
             definitions = mcp_tools_by_service_code()
             from app.services.models import Service

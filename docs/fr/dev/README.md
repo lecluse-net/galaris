@@ -405,11 +405,11 @@ le HTML éventuel du message est échappé comme texte. Pour la voix, la demande
 `Task.data._original_demand` conserve cette source seule. Le contexte résout les références aux
 échanges antérieurs, conserve les contraintes encore applicables et précise le périmètre de la
 Tâche si le message demande plusieurs résultats indépendants. Les
-valeurs envoyées à `conversation_task_submit` restent des indices et ne peuvent effacer une
+valeurs envoyées à `task_run` restent des indices et ne peuvent effacer une
 contrainte source. Le backend conserve seul la connexion, le salon, l'interlocuteur, le Topic, le
 contact et les choix `@exec`, `@plan`, `@standard`, `@high` ou `@effort`. `@approve` ne donne
 aucun accord ; les autorisations se configurent par fonction ou type d’action. Dans le Chat
-natif, `conversation_task_submit` n'expose aucun choix d'effort : le dispatcher de tâche décide
+natif, `task_run` n'expose aucun choix d'effort : le dispatcher de tâche décide
 entre `standard` et `high`. Les directives explicites contournent ce choix conversationnel et
 restent persistées comme contraintes de création, notamment `@high`. `@plan` implique la création
 d'une tâche planifiée et `@effort` implique la création d'une tâche avec une surcharge de
@@ -427,7 +427,7 @@ Working Set et du harnais restent indépendants.
 Pour une interaction numérotée, les réponses exactes restent traitées sans modèle. Un texte qui ne
 correspond à aucune option est admis comme round conversationnel avec les seules interactions en
 attente de sa portée Messenger. Le LLM conversationnel peut les résoudre par
-`conversation_choice_resolve`, mais uniquement vers une option persistée. Une intention ambiguë
+`chat_choice_resolve`, mais uniquement vers une option persistée. Une intention ambiguë
 provoque une question ; une instruction du type « ne fais pas cela, fais plutôt ceci » peut refuser
 l'approbation courante puis amender la tâche par le chemin durable ci-dessus.
 
@@ -1249,18 +1249,26 @@ Les URI exactes `galaris://goal/<uuid>` et `galaris://goal_cycle/<cycle-uuid>`, 
 l’ancienne collection `galaris://goal/<uuid>/cycles/`, restent utilisables. La collection
 `galaris://goal_cycle/` n’est plus annoncée à la racine Galaris ; ses anciens liens restent compatibles.
 
-Les définitions de Process affectées passent également par `galaris://process/`; chaque ressource
-est adressée par le même `workflow_id` que `process_get` et `process_start`. Cette projection reste
-en lecture seule et sa pagination est exécutée dans la requête SQL.
+Partage de fichiers liste les définitions de processus autorisées sous `galaris://processes/`
+et les exécutions sous `galaris://processes/runs/`. `file_read` prend l’URI retournée par
+le catalogue. La définition fournit le `workflow_id` attendu par les outils de lancement.
+La pagination des collections s’effectue dans la requête SQL.
 
 Les tâches se découvrent et se lisent complètement par `galaris://task/`. Le service Tâches
 (`task`) expose `task_get` comme vue opérationnelle compacte : elle projette la
 progression, les attentes, la pause et l'amendabilité sans remplacer le snapshot complet de
 `file_read`.
 
+`task_run`, `task_get` et `task_cancel` sont communs à l'exécution d'une tâche et à la conversation.
+Sans `agent_id`, `task_run` admet ou modifie le travail de fond du Chat. Avec `agent_id`,
+il délègue une sous-tâche depuis le contexte d'exécution.
+`task_list` retrouve le travail récent de la conversation. Lors de la mise à niveau, DbAdmin
+regroupe les réglages de fonction des anciens noms selon le droit effectif le plus restrictif.
+
 Navigateur (`browser`) et Multimédia (`multimedia`) sont actifs par défaut. La liste native
-admet `search_web` et `image_from_pdf` en conversation, sous réserve des permissions et du
-runtime. La Console interne est provisionnée pour le harnais interne et activée après
+admet `search_web`, `image_read`, `audio_read` et `audio_transcribe` en conversation, sous
+réserve des permissions et du runtime. `image_from_pdf` est accessible en tâche.
+La Console interne est provisionnée pour le harnais interne et activée après
 vérification SSH/SFTP. Le provisionnement peut être relancé depuis les connexions.
 
 `goal`, `skills` et `process` démarrent actifs avec la portée personnelle et conservent les
@@ -1284,9 +1292,9 @@ Autorisations reste utilisable pour leurs fonctions. Les Services optionnels
 conservent leurs activations et restrictions administrées. Les ACL métier, les compatibilités
 de harnais et les restrictions de contexte restent appliquées.
 
-Les fonctions `conversation_task_*` relèvent de Tâches et les `conversation_process_*`, dont les
-réponses aux demandes humaines, relèvent de Processus. Documents porte `document_show`. Ces
-fonctions restent réservées au contexte conversationnel. Le clic sur un Service
+Processus expose `process_start_conversation` et `process_respond` en conversation.
+Documents porte `document_show` pour le Chat texte interne. `process_start` est accessible
+en tâche. Le clic sur un Service
 décrit ouvre sa description ; aucun lien n'est présenté pour une description vide. Le catalogue
 livré décrit tous les Services natifs et les bridges de messagerie et de fichiers connus ; la
 synchronisation complète les descriptions de bridges vides et actualise les anciens textes courts
@@ -1301,7 +1309,7 @@ stockés en HTML éditorial par l'acquisition Memory. L'ancien argument inopéra
 est supprimé ; les règles normales de déduplication s'appliquent. Une erreur du modèle ne stocke
 ni transcription brute ni mémoire partielle.
 
-Chat porte `conversation_round_get` et `voice_turn_get`, deux lectures par UUID primaire
+Chat porte `chat_round_get` et `voice_turn_get`, deux lectures par UUID primaire
 des tours texte et voix qui incluent les traces d’exécution et les `LLMCall` corrélés. Galaris porte
 `llm_call` et `llm_calls`. Ces outils sont désactivés par défaut. Chaque appel vérifie la permission
 de la fonction sur son Service et la portée de gestion déléguée sur Services.

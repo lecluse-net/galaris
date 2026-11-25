@@ -169,7 +169,7 @@ async def admit_process_launch(turn: ConversationTurn, workflow_id: str, values:
 
     Interpreting natural language is model-assisted. Once frozen, the workflow,
     parameters and multiplicity are enforced deterministically by the server.
-    This path is called exclusively by conversation_process_start.
+    This path is called exclusively by process_start_conversation.
     """
     if turn.force_response or turn.sender_is_ai:
         raise RecoverableToolError("This conversation turn cannot authorize a new process launch.")

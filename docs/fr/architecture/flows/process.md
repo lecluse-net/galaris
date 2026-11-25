@@ -2,7 +2,7 @@
 
 # Flux des outils et processus
 
-L'inspection native et `processus_get` partagent l'état opérationnel persisté : activités,
+L'inspection native et `file_read` sur l’URI du run partagent l'état opérationnel persisté : activités,
 attentes, dernière activité et commandes disponibles. Les runs, leurs variables et leurs
 fichiers héritent des droits du processus parent ; la connexion `process`
 conserve l'administration globale. Le filtrage précède comptage/pagination et couvre enfants
@@ -64,7 +64,7 @@ Agent runtime
 
 ## Découverte par l’agent
 
-Pour un processus natif v2, `conversation_process_prepare` conserve les entrées collectées
+Pour un processus natif v2, `process_prepare` conserve les entrées collectées
 dans `ConversationRound.process_preparations`, sous le périmètre room/agent/participant.
 Une inférence `conversation.process_inputs` propose les valeurs, recherches et questions ;
 le contrôleur consulte Memory et les fichiers autorisés avant de demander ce qui manque.
@@ -82,7 +82,7 @@ sont mutualisées dans un lot, puis revérifiées à l'appel suivant. Une intent
 changement de paramètres après cette analyse conserve le contrôle final de périmètre.
 Voir la [décision 0270](../../../../project/decisions/0270-conversation-process-input-dossiers.md).
 
-Avant un nouveau lancement via `conversation_process_start`, Conversation fige les
+Avant un nouveau lancement via `process_start_conversation`, Conversation fige les
 invocations demandées dans une autorisation liée au message réellement admis. Le serveur
 contrôle processus, paramètres et nombre d'exécutions ; une reprise retrouve le même run.
 Cette vérification n'est appelée ni pour une réponse à une activité ni pour une conversation
@@ -98,7 +98,7 @@ Voir le [profil BPMN](../../dev/native-processes.md). L’inventaire du prompt e
 projection que le serveur MCP ; il ne cite donc aucune fonction inactive, incompatible avec le
 runtime, désactivée ou retirée du scope de la tâche.
 
-Si `process_list`, `process_get` et `process_start` sont toutes autorisées, le prompt ajoute les
+Si `file_list`, `file_read` et `process_start` sont toutes autorisées, le prompt ajoute les
 identifiants, libellés et descriptions des seules définitions affectées à l’agent. Jusqu’à dix
 définitions, elles sont toutes injectées sans classement sémantique. Au-delà, la demande courante
 classe l’ensemble avec le modèle vectoriel multilingue configuré et le prompt reçoit exactement les
@@ -107,28 +107,28 @@ lexical déterministe. La compétence système `galaris` explique ensuite le wor
 du package ne vaut jamais autorisation sur une définition : `list_for_agent`, `get_for_agent` et
 `start_process` filtrent ou revalident l’affectation durable.
 
-La même projection personnelle est disponible comme arborescence en lecture seule sous
-`galaris://process/`. Une définition utilise son `workflow_id` public comme locator, par exemple
-`galaris://process/Kw70xUO8uRWkXvtX`; les identifiants SQL internes ne font pas partie du contrat.
-`file_list` et `file_search` paginent côté serveur et ne révèlent jamais une définition affectée à
-un autre agent. Le lancement reste exclusivement une action `process_start` ou
-`conversation_process_start`.
+Partage de fichiers liste les définitions sous `galaris://processes/` et les exécutions sous
+`galaris://processes/runs/`. Les collections filtrent les droits avant de paginer.
+`file_read` prend une URI retournée par le catalogue. Pour une définition native,
+l’URI est `galaris://processes/<code>`. Pour un workflow externe, elle conserve la forme
+`galaris://process/<workflow-id>`. La lecture fournit le `workflow_id` de lancement.
+Le lancement relève de `process_start` en tâche ou de `process_start_conversation` dans le Chat.
 
 Le contrôleur conversationnel utilise la même projection avec son lanceur spécialisé
-`conversation_process_start`. Le catalogue est donc injecté lorsque `process_list`, `process_get`
+`process_start_conversation`. Le catalogue est donc injecté lorsque `file_list`, `file_read`
 et ce lanceur sont effectivement visibles. Le lanceur spécialisé force l’exécution asynchrone,
 lie le run au round et confie sa notification terminale au lien durable de conversation.
 Un Process affecté qui correspond à l’action demandée a une priorité absolue sur la création ou
 l’amendement d’une tâche. Lorsque plus de dix définitions sont affectées et qu’un doute subsiste sur
-la projection, le modèle consulte `process_list` et `process_get` avant d’utiliser une tâche.
+la projection, le modèle consulte `file_list` et `file_read` avant d’utiliser une tâche.
 
 Dans l'interface Chat, la liste latérale des exécutions ne parcourt pas tous les runs historiques
 de la room. Elle part du plus ancien message actuellement chargé, résout les rounds visibles, puis
 réunit leurs `ConversationProcessLink` et les runs liés à l'arbre de tâches issu de ces rounds.
 
-Le scope réduit d’une feuille planifiée conserve les six fonctions personnelles : une sélection
-d’outils faite en amont ne peut donc pas masquer le catalogue métier. Les fonctions sélectionnées
-par le planner restent avides ; les autres fonctions autorisées restent dans le toolset interne
+Les feuilles planifiées gardent les opérations de lancement et d’analyse. Quand le plan
+sélectionne `process_start`, il inclut `file_list` et `file_read` pour retrouver le processus.
+Les fonctions sélectionnées par le planner sont disponibles immédiatement. Les autres fonctions autorisées restent dans le toolset interne
 avec `defer_loading` et deviennent accessibles via `search_tools`. La projection MCP commune
 continue d’appliquer les désactivations de fonctions et les contraintes du runtime avant cette
 découverte.
@@ -167,7 +167,7 @@ Chaque agent reçoit une connexion `process` active avec la portée `personal`. 
 nécessitent une délégation explicite. La découverte et la synchronisation des moteurs, ainsi que
 l’association d’un workflow externe, exigent `all`.
 
-Les outils `conversation_round_get` et `voice_turn_get` du service Chat exigent une autorisation
+Les outils `chat_round_get` et `voice_turn_get` du service Chat exigent une autorisation
 explicite et la portée de gestion déléguée sur Services. Ils inspectent l’état durable, la trace
 d’exécution et les appels LLM d’un tour textuel ou vocal complet dans cette portée.
 

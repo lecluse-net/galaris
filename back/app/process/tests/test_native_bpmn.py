@@ -42,11 +42,11 @@ def test_legacy_service_references_in_saved_bpmn_and_run_snapshots_remain_readab
     assert Workflow.model_validate(snapshot).node("api").config == {"service_code": "synthetic-provider"}
     assert snapshot["nodes"][1]["config"] == {"tool_code": "synthetic-provider"}
     legacy_call = Node(id="read", kind="tool_call", config={"tool": "tool_admin_get", "tool_arguments": {"tool_id": 7}})
-    assert legacy_call.config == {"tool": "service_admin_get", "tool_arguments": {"service_id": 7}}
+    assert legacy_call.config == {"tool": "service_get", "tool_arguments": {"service_id": 7}}
     assert canonical_service_call("agent_connection_create", {"tool_id": 7}) == ("agent_connection_create", {"service_id": 7})
     assert canonical_service_call("external_lookup", {"tool_id": "provider-defined"}) == ("external_lookup", {"tool_id": "provider-defined"})
     with pytest.raises(ValueError, match="Conflicting"):
-        canonical_service_call("service_admin_get", {"tool_id": 7, "service_id": 8})
+        canonical_service_call("service_get", {"tool_id": 7, "service_id": 8})
 
 
 
@@ -265,7 +265,9 @@ async def test_unused_actor_does_not_block_launch_or_grant_execution_access(db, 
     task = await task_service.get_by_id(attempt.task_id)
     assert task.agent_id == owner.id
     assert (await db.get(ProcessRun, response.run_id)).status == "running"
-    summary = await mcp.process_get(McpToolContext(agent_id=owner.id, runtime="internal"), definition.code)
+    from app.file_share import ResourceContext, resource_read
+    summary = json.loads((await resource_read(ResourceContext(agent_id=owner.id, runtime="internal"),
+        f"galaris://processes/{definition.code}", max_chars=200_000)).content)
     assert summary["variables"] == []
     assert summary["inputs"] == summary["outputs"] == []
     assert summary["activities"] == [{"id": "work", "kind": "task", "title": "Prepare synthetic result", "inputs": [], "outputs": []}]
@@ -1051,9 +1053,9 @@ async def test_selected_process_boundaries_and_activity_variables_are_frozen_per
     value.nodes[1].inputs = ["amount"]
     value.nodes[1].outputs = ["accepted"]
     definition = await create(actor_agent_id=owner.id, title="Synthetic selected variables", graph=value)
-    from app.process import mcp
-    from app.services import McpToolContext
-    expected = await mcp.process_get(McpToolContext(agent_id=owner.id, runtime="internal"), definition.code)
+    from app.file_share import ResourceContext, resource_read
+    expected = json.loads((await resource_read(ResourceContext(agent_id=owner.id, runtime="internal"),
+        f"galaris://processes/{definition.code}", max_chars=200_000)).content)
     assert expected["inputs"] == ["amount"]
     assert len(expected["variables"]) == 4
     with pytest.raises(ValueContractError, match="undeclared"):
@@ -1742,10 +1744,10 @@ async def test_python_capability_uses_live_service_scope_and_recovers_lost_reply
         monkeypatch.setattr(code_broker, "execute_workflow_tool", lose_file_acknowledgement)
     elif mcp:
         target = await create(actor_agent_id=owner.id, title="Synthetic target", graph=graph())
-        provider = await db.scalar(select(ServiceModel).where(ServiceModel.code == "process"))
+        provider = await db.scalar(select(ServiceModel).where(ServiceModel.code == "file_sharing"))
         connection = await connection_service.get_or_create_connection(provider.id, owner.id)
-        await set_connection_function_state(connection.id, "process_definition_read", "ask" if approver else "enabled")
-        operation, arguments = "process_definition_read", {"process_code": target.code}
+        await set_connection_function_state(connection.id, "file_info", "ask" if approver else "enabled")
+        operation, arguments = "file_info", {"uri": f"galaris://processes/{target.code}"}
     else:
         provider = await service.create_service(ServiceCreate(code=f"synthetic_api_{uuid4().hex}",
             label="Synthetic API", rest_config={"base_url": base, "auth": {"type": "bearer"}},
@@ -1926,7 +1928,7 @@ return {{"accepted": True}}
             assert "continuation" not in receipt["authorization"] and "arguments" not in receipt
             assert await answer_action(UUID(receipt["authorization"]["request_id"]), user_id=approver.id, approved=True)
             if scenario == "mcp_ask_revoked":
-                await set_connection_function_state(connection.id, "process_definition_read", "disabled")
+                await set_connection_function_state(connection.id, "file_info", "disabled")
     else:
         pytest.fail("The Python capability workflow did not reach a terminal state")
 
@@ -1971,7 +1973,7 @@ return {{"accepted": True}}
         if dedicated and scenario == "rest":
             assert requests[0]["headers"]["authorization"] == "Bearer synthetic-executor-token"
         if mcp and scenario != "mcp_ask_revoked":
-            assert replies[0]["output"]["code"] == target.code
+            assert json.loads(replies[0]["output"]["value"])["metadata"]["native_code"] == target.code
 
 
 @pytest.mark.asyncio
@@ -3214,28 +3216,29 @@ async def test_tool_activity_uses_live_mcp_rights_and_finishes_its_context(infer
         from tests.authorization_fixtures import grant_privileges
         await grant_privileges(db, approver.id, "PERMISSION_DECIDE")
         owner.user_id = approver.id
-    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "process"))
+    tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "file_sharing"))
     connection = Connection(service_id=tool.id, agent_id=owner.id, active=True)
     db.add(connection)
     await db.flush()
     state = "ask" if approver else "enabled" if function_state == "denied_resource" else function_state
-    await set_connection_function_state(connection.id, "process_definition_read", state)
+    await set_connection_function_state(connection.id, "file_info", state)
     target = await create(actor_agent_id=other.id if function_state == "denied_resource" else owner.id,
         title="Synthetic audited process", graph=graph())
+    uri = f"galaris://processes/{target.code}"
     value = Workflow(nodes=[Node(id="start", kind="start"), Node(id="audit", kind="tool_call",
-        config={"tool": "process_definition_read", "input": {"process_code": target.code}}),
-        Node(id="end", kind="end", config={"output": {"code": {"$expr": "results.audit.code"}}})],
+        config={"tool": "file_info", "input": {"uri": uri}}),
+        Node(id="end", kind="end", config={"output": {"resource_info": {"$expr": "results.audit.value"}}})],
         flows=[Flow(id="a", source="start", target="audit"), Flow(id="b", source="audit", target="end")])
     if typed:
         from app.process.values import Variable
         value.schema_version = "galaris.bpmn/v2"
-        value.variables = [Variable(name="code", type="string", nullable=False),
-            Variable(name="process_code", type="string", nullable=False, default={"type": "string", "value": target.code})]
-        value.outputs = ["code", "process_code"]
-        value.nodes[1].inputs = ["process_code"]
-        value.nodes[1].outputs = ["code"]
-        value.nodes[1].config = {"tool": "process_definition_read", "input_mapping": {"process_code": {"$expr": "data.process_code"}},
-            "external_output": {"code": {"$expr": "result.code"}}}
+        value.variables = [Variable(name="resource_info", type="string", nullable=False),
+            Variable(name="process_uri", type="string", nullable=False, default={"type": "string", "value": uri})]
+        value.outputs = ["resource_info", "process_uri"]
+        value.nodes[1].inputs = ["process_uri"]
+        value.nodes[1].outputs = ["resource_info"]
+        value.nodes[1].config = {"tool": "file_info", "input_mapping": {"uri": {"$expr": "data.process_uri"}},
+            "external_output": {"resource_info": {"$expr": "result.value"}}}
     definition = await create(actor_agent_id=owner.id, title="Synthetic declared Tool workflow", graph=value)
     launched = await process_service.start_process(agent_id=owner.id, workflow_id=definition.code, input_data={})
     await process_service.process_start_jobs(engine_code="galaris")
@@ -3269,14 +3272,17 @@ async def test_tool_activity_uses_live_mcp_rights_and_finishes_its_context(infer
         task_service.clear_pauses(task)
         await task_service.save(task)
     run = await finish_run(db, launched.run_id)
-    assert run.status == ("success" if function_state in {"enabled", "ask_allow"} else "error")
+    assert run.status == ("success" if function_state in {"enabled", "ask_allow"} else "error"), run.error_message
     attempt = await db.scalar(select(ProcessNodeAttempt).join(ProcessNodeRun).where(ProcessNodeRun.run_id == run.id))
     if function_state in {"enabled", "ask_allow"}:
         if typed:
-            assert run.output == {"code": {"type": "string", "value": target.code}, "process_code": {"type": "string", "value": target.code}}
-            assert attempt.receipt == {"code": {"type": "string", "value": target.code}}
+            resource_info = run.output["resource_info"]
+            assert run.output["process_uri"] == {"type": "string", "value": uri}
+            assert attempt.receipt == {"resource_info": resource_info}
+            assert resource_info["type"] == "string"
+            assert json.loads(resource_info["value"])["metadata"]["native_code"] == target.code
         else:
-            assert run.output == {} and attempt.receipt["code"] == target.code
+            assert run.output == {} and json.loads(attempt.receipt["value"])["metadata"]["native_code"] == target.code
     task = await task_service.get_by_id(attempt.task_id)
     assert not task.ai and task.status in {TaskStatus.SUCCESS, TaskStatus.ERROR}
     assert task.lease_token is None and not task.paused

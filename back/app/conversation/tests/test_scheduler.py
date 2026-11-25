@@ -165,7 +165,7 @@ async def test_tool_only_effect_persists_its_visible_acknowledgement(
                 messages=[
                     AIMessage(
                         type="tool",
-                        tool_name="conversation_task_submit",
+                        tool_name="task_run",
                         content="Task admission completed",
                     )
                 ],

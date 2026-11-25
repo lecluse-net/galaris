@@ -469,7 +469,7 @@ coûts et sorties partielles intacts.
 
 L’identifiant unique d’un traitement textuel ou vocal est `ConversationRound.id`. Les modales
 affichent cet UUID primaire et le copient dans le presse-papiers au clic.
-Chat expose `conversation_round_get` avec une autorisation explicite et la portée de
+Chat expose `chat_round_get` avec une autorisation explicite et la portée de
 gestion déléguée sur Services. L’outil retourne les données persistées directement pour ce tour
 ainsi que tous ses appels LLM corrélés. Le tour vocal ne
 contient pas les octets audio, qui ne sont pas persistés dans ce jeu de données conversationnel.
@@ -522,7 +522,7 @@ interaction en attente reste résolue déterministiquement avant le contrôleur 
 le texte ne correspond à aucune option, il n'est pas perdu ni forcé dans un choix : il devient un
 round normal. Le round reçoit alors la projection bornée des interactions encore actives pour la
 connexion, le Service, la room, l'agent et l'expéditeur exacts. Le LLM conversationnel peut appeler
-`conversation_choice_resolve` avec la référence et l'identifiant d'une option persistée, ou poser
+`chat_choice_resolve` avec la référence et l'identifiant d'une option persistée, ou poser
 une question si l'intention reste ambiguë. La commande reverrouille la même portée, refuse toute
 option inventée et remet la résolution au handler idempotent d'origine. Une réorientation peut
 ainsi refuser une approbation devenue obsolète puis amender la tâche concernée dans le même round.
@@ -870,7 +870,7 @@ Chaque commit VAD crée encore un `ConversationRound`, sans inventer de transcri
 textuel : l’audio est interprété directement par le modèle fournisseur. L'historique récent de la
 room est projeté comme transcript conversationnel non fiable au démarrage de chaque nouvel appel.
 La mémoire pertinente est injectée au démarrage, `memory_search` complète le contexte à la demande et
-`task_submit` crée une tâche durable par le port agentique.
+`task_run` crée une tâche durable par le port agentique.
 
 Après la conversation, Dream peut extraire progressivement les faits durables des tours terminés
 qui possèdent un `effective_objective` textuel. Cette extraction n'est jamais sur le chemin Voice.

@@ -30,9 +30,13 @@
           <h3 class="text-h6 q-mt-none q-mb-md">{{ selected.presentation?.title ?? displayPreview(selected) }}</h3>
           <p v-if="selected.presentation?.explanation">{{ selected.presentation.explanation }}</p>
           <dl v-if="selected.presentation" class="action-fields">
-            <template v-for="(field, index) in selected.presentation.fields" :key="index">
+            <template v-for="(field, index) in detailFields" :key="index">
               <dt class="text-weight-medium">{{ field.label }}</dt>
               <dd v-if="field.format === 'html'"><RichText :content="field.value" /></dd>
+              <dd v-else-if="field.target">
+                <q-btn outline dense no-caps color="primary" icon="visibility" :label="field.value"
+                  @click="openResource(field.target, $event)" />
+              </dd>
               <dd v-else class="action-field-text">{{ field.value }}</dd>
             </template>
           </dl>
@@ -61,12 +65,13 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+    <ResourceDetailDialog v-if="detailOpen && resourceTarget" :target="resourceTarget" @close="closeResource" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { DialogHeader, RichText } from '@/core/util'
-import { computed, onActivated, onDeactivated, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { DialogHeader, ResourceDetailDialog, RichText, richLinkTarget, type ResourceDetailTarget } from '@/core/util'
+import { computed, nextTick, onActivated, onDeactivated, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { QTableColumn, QTableProps } from 'quasar'
@@ -93,6 +98,12 @@ const detailId = ref<string | null>(null)
 const loading = ref(false)
 const detailLoading = ref(false)
 const detailOpen = ref(false)
+const resourceTarget = ref<ResourceDetailTarget | null>(null)
+let resourceTrigger: HTMLElement | null = null
+const detailFields = computed(() => selected.value?.presentation?.fields.map(field => ({
+  ...field,
+  target: field.resource_uri ? richLinkTarget(field.resource_uri, field.value) : null,
+})) ?? [])
 const error = ref(false)
 const detailError = ref(false)
 const answering = ref(false)
@@ -135,6 +146,18 @@ let detailController: AbortController | undefined
 let generation = 0
 let disposed = false
 let active = true
+function openResource(target: ResourceDetailTarget, event: Event): void {
+  resourceTrigger = event.currentTarget instanceof HTMLElement ? event.currentTarget : null
+  resourceTarget.value = target
+}
+function closeResource(): void {
+  const trigger = resourceTrigger
+  resourceTrigger = null
+  resourceTarget.value = null
+  void nextTick(() => {
+    if (detailOpen.value && !resourceTarget.value && trigger?.isConnected) trigger.focus()
+  })
+}
 async function load() {
   if (disposed || !active) return
   listController?.abort()
@@ -159,6 +182,10 @@ async function load() {
 }
 async function open(id: string, reveal = true) {
   if (disposed || !active || (!reveal && !detailOpen.value)) return
+  if (reveal) {
+    resourceTarget.value = null
+    resourceTrigger = null
+  }
   detailId.value = id
   detailController?.abort()
   const controller = new AbortController()
@@ -209,7 +236,7 @@ const requestPage: NonNullable<QTableProps['onRequest']> = ({ pagination: next }
 }
 watch(() => [agentId, search, state, customizedOnly], () => { pagination.value.page = 1; rows.value = []; selected.value = null; detailOpen.value = false; void load() })
 watch(() => revision, () => { void load() })
-watch(detailOpen, value => { if (!value) { detailController?.abort(); selected.value = null } })
+watch(detailOpen, value => { if (!value) { detailController?.abort(); selected.value = null; closeResource() } })
 watch(() => route.query.request, value => { if (typeof value === 'string') void open(value) })
 onMounted(() => { void load(); if (typeof route.query.request === 'string') void open(route.query.request) })
 onDeactivated(() => { active = false; generation++; detailOpen.value = false; listController?.abort(); detailController?.abort() })

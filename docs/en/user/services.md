@@ -20,10 +20,18 @@ including when creating a connection or setting permissions.
 Every agent has **Contact** and **Tasks** connections. In **Authorizations**, select the Service
 that owns the tool you want to configure. **Multimedia** includes audio, image and video tools.
 **Browser** also includes `search_web`. Find team tools in **Agent**, `document_*` in
-**Documents**, and `conversation_process_*` in **Processes**. **Chat** groups the internal
-channel, calls and pending choices. See the [built-in Services guide](../admin/service-administration.md)
-for permissions and scopes. Conversation tools retain their
-original execution context.
+**Documents**, and `process_*` in **Processes**. **Chat** groups the internal
+channel, calls and pending choices. In Chat, **Calendar** exposes `calendar_list` and
+`calendar_events`. **Agent** exposes `agent_list`, `agent_get`, `team_list`, `team_members` and `agent_team_list`.
+The **Chat** list excludes `chat_round_get` and `voice_turn_get`. **Documents** exposes
+`document_show`, `document_sharing` and `document_share`. **Skills** exposes `skills_list` and
+`skill_read`. **Multimedia** exposes `image_read`, `audio_read` and `audio_transcribe`.
+**File Sharing** exposes `file_schemes`, `file_list`, `file_info`, `file_search`, `file_read` and
+`dataset_query`. Each tool's permissions and execution context still apply. **Services**
+exposes `services_list` and, with a management scope, `service_connection_list`. **Topics** exposes `topic_list`
+and `topic_items_list` with an active Topics connection. Use the URIs returned by the
+catalogs to read a Topic, Process definition or run with `file_read`. See the
+[built-in Services guide](../admin/service-administration.md) for permissions and scopes.
 
 Contact tools access the agent's own address book by default. A global manager can extend
 the scope to agents in its teams or to all agents in **Permissions → Contact**. Each tool has
@@ -32,6 +40,9 @@ its own permission. Use Contact functions to read or edit a delegated address bo
 The **Documents** and **Tasks** connections also have their own scopes. Documents tools
 require the document's permissions as well as the connection scope.
 In **Permissions → Tasks**, select **Team** to let the agent delegate work to teammates.
+In **Authorizations**, `task_get` controls access to Task status and `task_cancel`
+controls cancellation, both in conversation and during Task execution.
+`task_run` covers submission in Chat and delegation to a colleague during execution.
 
 Click **New service** to open the catalog dialog, find a provider and choose
 **Configure a copy**. The standard editor opens: review the name, enter your instance

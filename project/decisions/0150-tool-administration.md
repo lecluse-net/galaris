@@ -87,4 +87,4 @@ Processes are reserved for business workflows, such as n8n workflows. Technical 
 maintenance creates no Process definition or run. This replaces the earlier integrated
 ServiceAdmin engine: DbAdmin removes its exact `service_admin:<agent>:catalog_refresh` definitions,
 runs and jobs, settling approval receipts and waiting Tasks before purging. Other workflows
-are preserved. Unfinished reconciliation is retried through `service_admin_catalog_refresh`.
+are preserved. Unfinished reconciliation is retried through `service_catalog_refresh`.

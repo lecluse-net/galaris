@@ -260,7 +260,7 @@ async def _action(
         return await _message(ctx, "errors.failed", code="internal_error")
 
 
-@mcp_tool("browser", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+@mcp_tool("browser", approval="ask", approval_reason="Opening a URL begins a new browser operation subject to destination policy",
 
     name="browser_open",
     description=(
@@ -300,7 +300,7 @@ async def browser_open(
         return await _message(ctx, "errors.failed", code="internal_error")
 
 
-@mcp_tool("browser", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+@mcp_tool("browser", approval="ask", approval_reason="Navigating changes a live browser session and remains subject to destination policy",
 
     name="browser_navigate",
     authorization_boundary="prepared",

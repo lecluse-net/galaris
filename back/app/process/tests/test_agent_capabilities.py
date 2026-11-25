@@ -22,14 +22,14 @@ async def test_process_advertisement_is_absent_without_all_required_functions(
 
     result = await agent_capabilities.build_agent_process_advertisement(
         7,
-        {"process_list", "process_start"},
+        {"file_list", "process_start"},
     )
 
     assert result == ""
     list_for_agent.assert_not_awaited()
 
     with pytest.raises(PermissionError):
-        await agent_capabilities.agent_process_dispatch_candidates(7, {"process_list", "process_get"})
+        await agent_capabilities.agent_process_dispatch_candidates(7, {"file_list", "file_read"})
     list_for_agent.assert_not_awaited()
 
 
@@ -57,7 +57,7 @@ async def test_process_advertisement_lists_only_assigned_process_metadata(
 
     result = await agent_capabilities.build_agent_process_advertisement(
         7,
-        {"process_list", "process_get", "process_start"},
+        {"file_list", "file_read", "process_start"},
     )
 
     assert '"workflow_id": "invoice-recording"' in result
@@ -77,7 +77,7 @@ async def test_process_advertisement_explicitly_reports_empty_assignment(
 
     result = await agent_capabilities.build_agent_process_advertisement(
         7,
-        {"process_list", "process_get", "process_start"},
+        {"file_list", "file_read", "process_start"},
     )
 
     assert "No business process is currently assigned" in result
@@ -104,12 +104,12 @@ async def test_conversation_process_advertisement_names_its_safe_launcher(
 
     result = await agent_capabilities.build_agent_process_advertisement(
         7,
-        {"process_list", "process_get", "conversation_process_start"},
-        launch_tool_name="conversation_process_start",
+        {"file_list", "file_read", "process_start_conversation"},
+        launch_tool_name="process_start_conversation",
     )
 
     assert '"workflow_id": "daily-weather"' in result
-    assert "`conversation_process_start`" in result
+    assert "`process_start_conversation`" in result
     assert "then call `process_start`" not in result
 
 
@@ -133,14 +133,14 @@ async def test_conversation_process_catalog_leaves_execution_policy_to_prompt_ow
 
     result = await agent_capabilities.build_agent_process_advertisement(
         7,
-        {"process_list", "process_get", "conversation_process_start"},
-        launch_tool_name="conversation_process_start",
+        {"file_list", "file_read", "process_start_conversation"},
+        launch_tool_name="process_start_conversation",
         include_execution_guidance=False,
     )
 
     assert '"workflow_id": "daily-weather"' in result
     assert "Inspect a possible match" not in result
-    assert "conversation_process_start" not in result
+    assert "process_start_conversation" not in result
 
 
 @pytest.mark.asyncio
@@ -162,15 +162,15 @@ async def test_process_advertisement_keeps_every_assigned_process_up_to_ten(
 
     result = await agent_capabilities.build_agent_process_advertisement(
         7,
-        {"process_list", "process_get", "conversation_process_start"},
-        launch_tool_name="conversation_process_start",
+        {"file_list", "file_read", "process_start_conversation"},
+        launch_tool_name="process_start_conversation",
         relevance_query="irrelevant query",
     )
 
     assert result.count('"workflow_id":') == 10
     assert all(process["workflow_id"] in result for process in processes)
     assert "absolute priority" not in result
-    assert "Inspect a possible match with `process_get`" in result
+    assert "Inspect a possible match with `file_read`" in result
     semantic_rank.assert_not_awaited()
 
 
@@ -194,8 +194,8 @@ async def test_process_advertisement_uses_semantic_top_ten_without_threshold(
 
     result = await agent_capabilities.build_agent_process_advertisement(
         7,
-        {"process_list", "process_get", "conversation_process_start"},
-        launch_tool_name="conversation_process_start",
+        {"file_list", "file_read", "process_start_conversation"},
+        launch_tool_name="process_start_conversation",
         relevance_query="préparer une facture",
     )
 

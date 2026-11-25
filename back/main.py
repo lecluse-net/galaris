@@ -387,9 +387,11 @@ register_document()
 from goal_retrospective_composition import register_weekly_retrospective
 register_weekly_retrospective()
 from app.contact.facade import read_contact_resource, list_contact_resources, write_contact_resource
-from app.file_share import register_contact_resource_provider, register_document_retriever
+from app.file_share import register_contact_resource_provider, register_document_retriever, register_topic_resource_provider
 from app.llm.facade import retrieve_prepared_document
+from app.topic.resource_facade import read_topic_resource, list_topic_resources
 register_contact_resource_provider(read_contact_resource, list_contact_resources, write_contact_resource)
+register_topic_resource_provider(read_topic_resource, list_topic_resources)
 # File Sharing owns source access; the LLM domain supplies its document reader.
 register_document_retriever(retrieve_prepared_document)
 from app.memory import register_indexed_resources

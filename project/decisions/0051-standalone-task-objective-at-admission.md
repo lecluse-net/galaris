@@ -8,7 +8,7 @@
 Le texte qui déclenche une Task depuis une conversation n’est pas nécessairement un objectif
 exécutable. Une directive comme « `@task vas-y, fais-le` » ne porte son sens que dans les messages
 précédents, leurs corrections, leurs pièces jointes et les ressources déjà produites. De son côté,
-`conversation_task_submit` reçoit un libellé et un objectif rédigés par le modèle conversationnel,
+`task_run` sans `agent_id` reçoit un libellé et un objectif rédigés par le modèle conversationnel,
 qui peut condenser excessivement la demande ou oublier une contrainte.
 
 Copier l’historique dans la Task ne résout pas cette ambiguïté : le dispatcher et chaque mécanisme
@@ -19,7 +19,7 @@ salon, d’interlocuteur ou des choix de routage explicites.
 ## Décision
 
 Toute création d’une Task racine depuis une conversation, qu’elle provienne d’une directive
-déterministe ou de `conversation_task_submit`, exécute avant le dispatcher de Task un appel LLM
+déterministe ou de `task_run` sans `agent_id`, exécute avant le dispatcher de Task un appel LLM
 spécialisé. Cet appel utilise obligatoirement le niveau texte `standard` du profil effectif de
 l’agent, avec une sortie structurée limitée à deux champs : `label` et `objective`. Il n’existe ni
 objet intermédiaire persistant, ni version de contrat dédiée. Depuis le complément du
@@ -34,7 +34,7 @@ de l’évolution du défaut. Une valeur vide revient au défaut et ne peut pas 
 L’entrée fusionne la chronologie canonique disponible avec le tour gelé effectivement admis. Ce
 dernier reste toujours présent même lorsqu’un provider ne peut pas résoudre le contact Messenger.
 Le rappel Memory gouverné, la continuité, les travaux liés, les URL, les URI canoniques, les pièces
-jointes et les arguments fournis à `conversation_task_submit` sont présentés comme des données non
+jointes et les arguments fournis à `task_run` sont présentés comme des données non
 fiables. Les arguments du tool ne sont que des indices : ils ne peuvent supprimer une exigence
 présente dans le contexte. La correction utilisateur applicable la plus récente prévaut.
 

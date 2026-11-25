@@ -108,8 +108,12 @@ une étape de copie locale uniquement pour rendre le fichier consommable. Il pla
 L'inspection agentique ordinaire des Tasks et des rounds passe par `file_list`, `file_search` et
 `file_read` sur `galaris://task/`, `galaris://text/` et `galaris://voice/`. `task_get` reste la vue
 opérationnelle compacte d'une Task (progression, attentes, pause et amendabilité), tandis que
-`file_read` fournit son snapshot complet. Garder les autres outils métier dédiés aux commandes
-(`task_run`, `task_stop`) et aux surfaces administratives enrichies.
+`file_read` fournit son snapshot complet. `task_update` enregistre les jalons de la tâche
+courante. `task_run` admet du travail en conversation sans `agent_id` et délègue à un
+collègue en cours d'exécution avec `agent_id`. En conversation, `task_resume` choisit sous
+verrou entre lever une pause utilisateur et relancer un échec ou un blocage relançable.
+Son reçu indique `resumed`, `retried` ou `unchanged`. Les attentes automatiques conservent
+leurs conditions de reprise. `task_cancel` applique les contrôles d'arrêt propres au contexte.
 La projection de tâche et ses commandes lisent la portée de la connexion `task`. Les
 inspections enrichies des tours et appels lisent la portée de la connexion `service`
 en plus des permissions de fonction sur Chat ou Galaris.

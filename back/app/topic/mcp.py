@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import cast
 from uuid import UUID
 
-from app.connection.facade import has_active_tool_connection
 from app.services import McpToolContext, mcp_tool
 
 from . import service
+from .resource_facade import require_topic_connection
 from .schemas import (
     TopicCreate,
     TopicItemKind,
@@ -39,10 +39,7 @@ def _uuid(value: str, *, field: str) -> UUID:
 
 
 async def _require_access(ctx: McpToolContext) -> None:
-    if not await has_active_tool_connection(ctx.agent_id, _TOOL_CODE):
-        raise PermissionError(
-            "An active topic connection is required for Topic administration."
-        )
+    await require_topic_connection(ctx.agent_id)
 
 
 def _item_type(value: str | None) -> TopicItemKind | None:
@@ -61,7 +58,7 @@ def _item_type(value: str | None) -> TopicItemKind | None:
     name="topic_list",
     description=(
         "List the instance's Topics with stable UUIDs, revisions, descriptions, keywords, "
-        "usage, and related entities. Use the returned revision before topic_update."
+        "usage, and related entities. Use file_read with the returned resource_uri to read a Topic."
     ),
     effect_policy="read",
     concurrency_policy="safe",
@@ -82,26 +79,13 @@ async def mcp_topic_list(
         limit=limit,
         search=search,
     )
-    return page.model_dump(mode="json")
-
-
-@mcp_tool(_TOOL_CODE, approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
-
-    name="topic_get",
-    description=(
-        "Get one Topic by exact UUID, including its current revision. Use topic_items_list "
-        "to inspect the objects assigned to it."
-    ),
-    effect_policy="read",
-    concurrency_policy="safe",
-)
-async def mcp_topic_get(ctx: McpToolContext, topic_id: str) -> dict[str, object]:
-    await _require_access(ctx)
-    identifier = _uuid(topic_id, field="topic_id")
-    topic = await service.get(identifier)
-    if topic is None:
-        raise ValueError(f"Topic not found: {identifier}")
-    return topic.model_dump(mode="json")
+    return {
+        **page.model_dump(mode="json", exclude={"items"}),
+        "items": [
+            {**topic.model_dump(mode="json"), "resource_uri": f"galaris://topic/{topic.id}"}
+            for topic in page.items
+        ],
+    }
 
 
 @mcp_tool(_TOOL_CODE, approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
@@ -132,7 +116,7 @@ async def mcp_topic_items_list(
     return page.model_dump(mode="json")
 
 
-@mcp_tool(_TOOL_CODE, approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool(_TOOL_CODE, approval="enabled", approval_reason="Creates a Topic within the caller's authorized scope",
 
     name="topic_create",
     description=(
@@ -162,7 +146,7 @@ async def mcp_topic_create(
     name="topic_update",
     description=(
         "Replace a Topic's title, description, and keywords using the exact current revision "
-        "returned by topic_get or topic_list. A stale revision is rejected."
+        "returned by file_read on the Topic URI or by topic_list. A stale revision is rejected."
     ),
 )
 async def mcp_topic_update(
@@ -268,7 +252,6 @@ async def mcp_topic_split(
 
 __all__ = [
     "mcp_topic_create",
-    "mcp_topic_get",
     "mcp_topic_item_move",
     "mcp_topic_items_list",
     "mcp_topic_list",

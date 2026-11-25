@@ -10,7 +10,7 @@ import pytest
 from sqlalchemy import select, func
 
 from app.agent import AgentManagementScope
-from app.conversation.mcp import conversation_process_prepare, conversation_process_start
+from app.conversation.mcp import process_prepare, process_start_conversation
 from app.conversation.process_inputs import pending_process_preparations, prepared_launch_permission
 from app.conversation.tests.test_process_admission import context
 from app.conversation.tests.test_process_inputs import human, human_turn, workflow, inference, assessment
@@ -29,7 +29,7 @@ async def setup(db, native, monkeypatch, variables):
     definition = await workflow(owner, variables)
     turn, _ = await human_turn(db, owner, "Launch the synthetic registration.", user)
     calls = inference(monkeypatch, [assessment(single=True)], [[{"workflow_id": definition.code, "input": {"birth": "2000-02-29"}}]])
-    waiting = await conversation_process_prepare(context(turn), workflow_id=definition.code)
+    waiting = await process_prepare(context(turn), workflow_id=definition.code)
     run = await db.scalar(select(ProcessRun).where(ProcessRun.id == waiting["run_id"]))
     scope = AgentManagementScope(user.id, frozenset({owner.id}))
     return owner, other, definition, turn, run, scope, calls
@@ -55,11 +55,11 @@ async def test_direct_input_is_reused_by_agent_without_extraction_but_keeps_fina
     assert saved["status"] == "waiting" and saved["revision"] > revision
     pending = await pending_process_preparations(turn)
     assert "2000-02-29" in pending[0]["process_data"]
-    ready = await conversation_process_prepare(context(turn), workflow_id=definition.code)
+    ready = await process_prepare(context(turn), workflow_id=definition.code)
     assert ready["input"]["birth"]["value"] == "2000-02-29" and ready["status"] == "ready"
     assert await prepared_launch_permission(turn, definition.code, {"birth": "2000-02-29"}, typed_values=False) is None
     assert len(calls) == 1
-    started = await conversation_process_start(context(turn), workflow_id=definition.code)
+    started = await process_start_conversation(context(turn), workflow_id=definition.code)
     assert str(started["run_id"]) == str(run.id) and len(calls) == 2
     assert await db.scalar(select(func.count()).select_from(ProcessStartJob)) == 1
 
@@ -74,7 +74,7 @@ async def test_direct_start_and_retry_create_one_job_without_any_model_call(db, 
     assert first == again and first["status"] == "queued" and len(calls) == 1
     assert await db.scalar(select(func.count()).select_from(ProcessStartJob)) == 1
     assert await pending_process_preparations(turn) == ()
-    receipt = await conversation_process_prepare(context(turn), workflow_id=definition.code)
+    receipt = await process_prepare(context(turn), workflow_id=definition.code)
     assert receipt["run_status"] == "queued" and receipt["input"]["birth"]["value"] == "2000-02-29"
     with pytest.raises(RunDataConflictError):
         await update_inputs(run.id, scope, {"birth": "2001-01-01"}, expected_revision=revision, start=True)
@@ -154,11 +154,11 @@ async def test_direct_contribution_keeps_progress_when_another_saved_resource_di
 @pytest.mark.asyncio
 async def test_confirming_an_unchanged_value_clears_an_earlier_dossier_validation_issue(db, native, monkeypatch):
     _, _, definition, turn, run, scope, calls = await setup(db, native, monkeypatch, [Variable(name="birth", type="date", nullable=False)])
-    await conversation_process_prepare(context(turn), workflow_id=definition.code, input={"birth": "2000-02-29"})
-    invalid = await conversation_process_prepare(context(turn), workflow_id=definition.code, input={"birth": "2001-02-29"})
+    await process_prepare(context(turn), workflow_id=definition.code, input={"birth": "2000-02-29"})
+    invalid = await process_prepare(context(turn), workflow_id=definition.code, input={"birth": "2001-02-29"})
     assert "birth" in invalid["issues"]
     await update_inputs(run.id, scope, {"birth": "2000-02-29"}, expected_revision=run.data_revision)
-    ready = await conversation_process_prepare(context(turn), workflow_id=definition.code)
+    ready = await process_prepare(context(turn), workflow_id=definition.code)
     assert ready["status"] == "ready" and ready["issues"] == {} and len(calls) == 1
 
 

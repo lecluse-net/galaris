@@ -12,7 +12,7 @@ from pydantic_ai.models.function import FunctionModel
 import pytest
 from sqlalchemy import func, select
 
-from app.conversation.mcp import conversation_process_prepare, conversation_process_start
+from app.conversation.mcp import process_prepare, process_start_conversation
 from app.conversation.tests.test_process_inputs import assessment, context, human, human_turn, workflow
 from app.llm import llm_service, structured_service
 from app.file_share import ResourceContext, resource_create
@@ -46,15 +46,15 @@ async def test_one_human_request_collects_verified_inputs_and_replays_without_re
     turn, _ = await human_turn(db, owner, "Launch one synthetic dossier for Synthetic, born 2000-02-29, with this portrait.", user, files=[file.uri])
     started = time.perf_counter()
     async with measured_reads(db, "input-collection-replay") as reads:
-        first = await conversation_process_prepare(context(turn), workflow_id=definition.code, input={"name": "Synthetic"})
+        first = await process_prepare(context(turn), workflow_id=definition.code, input={"name": "Synthetic"})
         for _ in range(2):
-            again = await conversation_process_prepare(context(turn), workflow_id=definition.code)
+            again = await process_prepare(context(turn), workflow_id=definition.code)
             assert again["run_id"] == first["run_id"]
-        complete = await conversation_process_prepare(context(turn), workflow_id=definition.code,
+        complete = await process_prepare(context(turn), workflow_id=definition.code,
             input={"birth_date": expected["birth_date"], "portrait": file.uri})
         assert complete["status"] == "ready"
-        result = await conversation_process_start(context(turn), workflow_id=definition.code)
-        replay = await conversation_process_start(context(turn), workflow_id=definition.code)
+        result = await process_start_conversation(context(turn), workflow_id=definition.code)
+        replay = await process_start_conversation(context(turn), workflow_id=definition.code)
     assert result["run_id"] == replay["run_id"] == first["run_id"]
     assert result["started"] and not replay["started"]
     assert await db.scalar(select(func.count()).select_from(ProcessRun)) == 1

@@ -51,8 +51,10 @@ async def media_agent(db: AsyncSession):
 
 
 @pytest.mark.asyncio
-async def test_live_mcp_catalog_and_execution_follow_profile_and_connection(db, media_agent, monkeypatch):
+@pytest.mark.parametrize("direct_lookup", [False, True])
+async def test_live_mcp_catalog_and_execution_follow_profile_and_connection(db, media_agent, monkeypatch, direct_lookup):
     from app.multimedia import generation_execution as module
+    from app.services.contracts import EXECUTION_META_KEY
 
     execute = AsyncMock(side_effect=AssertionError("An unavailable tool reached execution"))
     monkeypatch.setattr(module.MediaGenerationExecutor, "submit", execute)
@@ -63,6 +65,11 @@ async def test_live_mcp_catalog_and_execution_follow_profile_and_connection(db, 
     assert await available_media_functions(item.agent.id) == {"music_generate"}
     server = await mcp_loader.build_agent_mcp(item.agent.id, allowed_tool_names={"music_generate"})
     async with Client(server) as client:
+        if direct_lookup:
+            denied = await client.call_tool("music_generate", {"prompt": "Piano", "destination": "console:///tmp/"},
+                                            raise_on_error=False)
+            assert denied.is_error and denied.meta[EXECUTION_META_KEY]["outcome"] == "rejected"
+            execute.assert_not_awaited()
         assert not await client.list_tools()
         item.connection.active = True
         await db.commit()
@@ -85,10 +92,17 @@ async def test_live_mcp_catalog_and_execution_follow_profile_and_connection(db, 
 
 @pytest.mark.asyncio
 async def test_resource_capability_and_provider_are_required(db, media_agent):
+    from tests.sql_reads import measured_reads
+
     item = media_agent
     item.profile.audio_llm_id = item.model.id
     await db.commit()
-    assert "audio_read" not in await available_media_functions(item.agent.id)
+    async with measured_reads(db, "all-specialist-functions") as full_reads:
+        full = await available_media_functions(item.agent.id)
+    async with measured_reads(db, "requested-specialist-function") as targeted_reads:
+        assert await available_media_functions(item.agent.id, candidates={"audio_read"}) == full & {"audio_read"}
+    assert "audio_read" not in full
+    assert len(targeted_reads) < len(full_reads)
     item.provider.is_active = False
     await db.commit()
     assert not await available_media_functions(item.agent.id)

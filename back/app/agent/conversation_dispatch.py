@@ -210,7 +210,7 @@ def conversation_work_analysis_context(analysis: ConversationWorkAnalysis | None
         "catalog and launch a match when required and authorized. An absent recommendation "
         "never means no process is needed. For process_status=none, selection was evaluated over "
         "the supplied complete catalog for this message. For selected, inspect that workflow's "
-        "current contract and collect required inputs. Launch with conversation_process_start if mounted and authorized. "
+        "current contract and collect required inputs. Launch with process_start_conversation if mounted and authorized. "
         "Keep the existing Task admission policy for new work outside a suitable process. "
         "A related work item is not an answered question. A wait-position reference is a locator, "
         "not a messaging interaction reference: resolve its exact live interaction before responding. "

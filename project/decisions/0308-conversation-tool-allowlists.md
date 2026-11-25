@@ -35,18 +35,27 @@ revérifie l'accès à l'outil d'origine et les droits de sa ressource.
 | Service | Outils |
 | --- | --- |
 | Galaris | `documentation_catalog`, `documentation_search` |
-| Agent | `agent_list`, `agent_get`, `team_list`, `team_members` |
+| Agent | `agent_list`, `agent_get`, `team_list`, `team_members`, `agent_team_list` |
 | Contact | `contact_list`, `contact_get` |
-| Tâches | `conversation_task_submit`, `conversation_task_list`, `conversation_task_status`, `conversation_task_pause`, `conversation_task_resume`, `conversation_task_retry`, `conversation_task_stop` |
-| Processus | `process_list`, `process_get`, `process_list_runs`, `process_get_run`, `conversation_process_start`, `conversation_process_prepare`, `conversation_process_pending`, `conversation_process_respond` |
+| Tâches | `task_run`, `task_list`, `task_get`, `task_pause`, `task_resume`, `task_cancel` |
+| Processus | `process_start_conversation`, `process_prepare`, `process_pending`, `process_respond` |
+| Services | `services_list`, `service_connection_list` |
+| Sujets | `topic_list`, `topic_items_list` |
 | Memory | `memory_remember`, `memory_forget`, `memory_summarize`, `memory_upcoming` |
-| Documents | `document_show`, `document_sharing`, `document_share`, `document_revision_list`, `document_revision_compare`, `mindmap_create`, `mindmap_read`, `mindmap_add`, `mindmap_edit` |
-| Partage de fichiers | `file_list`, `file_info`, `file_search`, `file_read`, `file_create`, `file_write`, `file_append`, `file_edit`, `file_rename`, `file_to_pdf` |
-| Agenda | `calendar_list`, `calendar_events`, `calendar_event_get`, `calendar_is_available`, `calendar_find_free_slots`, `calendar_create_event`, `calendar_update_event`, `calendar_delete_event`, `calendar_actions`, `calendar_action_set` |
-| Chat | `repository_show`, `conversation_choice_resolve`, `voice_call_stop`, `messenger_room_send_message`, `messenger_send_message_to_user`, `messenger_list_rooms`, `messenger_room_history`, `messenger_search_users` |
+| Documents | `document_show`, `document_sharing`, `document_share` |
+| Compétences | `skills_list`, `skill_read` |
+| Partage de fichiers | `file_schemes`, `file_list`, `file_info`, `file_search`, `file_read`, `dataset_query` |
+| Agenda | `calendar_list`, `calendar_events` |
+| Chat | `chat_screenshot`, `chat_repository_show`, `chat_choice_resolve`, `voice_call_start`, `voice_call_stop`, `voice_call_list`, `messenger_room_send_message`, `messenger_send_message_to_user`, `messenger_list_rooms`, `messenger_room_history`, `messenger_search_users`, `messenger_send_audio_message`, `messenger_room_send_file`, `messenger_send_file_to_user` |
 | Navigateur | `search_web` |
-| Multimédia | `image_from_pdf` |
+| Multimédia | `image_read`, `audio_read`, `audio_transcribe` |
 
 Les autres outils intégrés sont exclus du catalogue conversationnel. La voix native temps
 réel utilise son propre sous-ensemble d'opérations conversationnelles, avec la vérification
 d'autorisation à l'appel.
+
+`task_run`, `task_get` et `task_cancel` sont partagés avec le catalogue d'exécution. En
+conversation, `task_run` admet le travail de fond sans `agent_id`. En exécution,
+`agent_id` indique le collègue à qui déléguer. Le contexte injecté par le serveur sélectionne
+les contrôles applicables. La fusion des permissions de fonction conserve la plus restrictive
+des décisions effectives historiques par connexion.

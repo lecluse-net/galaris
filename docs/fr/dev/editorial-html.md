@@ -101,8 +101,8 @@ Les conversions génériques de HTML effectuées uniquement côté serveur repre
 légende textuelle avec les valeurs.
 
 L’outil `document_chart` valide les valeurs et renvoie le bloc HTML à insérer. L’agent
-l’enregistre via les commandes de fichiers ou via `mindmap_add` et `mindmap_edit`, avec
-leurs droits et contrôles de révision habituels.
+l’enregistre via les commandes de fichiers. Pour le HTML d’une branche, `file_write` utilise
+le sélecteur `<id>/body_html` et la révision attendue de la carte.
 
 ## Documents comme pivot de l'information
 

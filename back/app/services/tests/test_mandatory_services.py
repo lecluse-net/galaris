@@ -90,7 +90,7 @@ async def test_connection_dataset_is_idempotent_and_preserves_admin_activation(
     if service_code == "chat":
         from app.services.mcp_loader import list_enabled_native_mcp_definitions
         definitions = await list_enabled_native_mcp_definitions(agent.id, runtime="internal", conversation_only=True)
-        assert {"conversation_process_pending", "conversation_process_respond"} <= {item.name for item in definitions}
+        assert {"process_pending", "process_respond"} <= {item.name for item in definitions}
     integrated_connection.active = False
     await db.commit()
 
@@ -107,7 +107,7 @@ def test_tool_defaults_enable_personal_skills_processes_and_goals() -> None:
     specs = {spec.code: spec for spec in mandatory_services.INTEGRATED_SERVICE_SPECS}
 
     assert {"team_list", "team_members"} <= set(specs["agent"].mcp_tools)
-    assert {"task_get", "conversation_task_submit"} <= set(specs["task"].mcp_tools)
+    assert {"task_get", "task_run"} <= set(specs["task"].mcp_tools)
     assert {"contact", "task"} <= mandatory_services.DEFAULT_ACTIVE_INTEGRATED_SERVICE_CODES
     assert {
         "file_schemes",
@@ -165,10 +165,6 @@ async def test_conversation_policy_is_fixed_for_builtin_services(db: AsyncSessio
     services = {tool.code: tool for tool in await db.scalars(select(Service).where(Service.code.in_(codes)))}
     assert services.keys() == codes
 
-    skills = await read_conversation_tools(services["skills"].id)
-    assert skills is not None
-    assert {"skills_list", "skill_read"} <= {entry.name for entry in skills.tools}
-
     definitions = mcp_tools_by_service_code()
     for code, tool in services.items():
         catalog = await read_conversation_tools(tool.id)
@@ -182,13 +178,24 @@ async def test_conversation_policy_is_fixed_for_builtin_services(db: AsyncSessio
         assert {entry.name: entry.enabled for entry in catalog.tools} == {
             name: eligible and name in allowed for name, eligible in native.items()
         }, code
+        expected = {
+            "calendar": {"calendar_list", "calendar_events"},
+            "agent": {"agent_list", "agent_get", "team_list", "team_members", "agent_team_list"},
+            "chat": native.keys() - {"chat_round_get", "voice_turn_get"},
+            "document": {"document_show", "document_sharing", "document_share"},
+            "skills": {"skills_list", "skill_read"},
+            "multimedia": {"image_read", "audio_read", "audio_transcribe"},
+            "file_sharing": {"file_schemes", "file_list", "file_info", "file_search", "file_read", "dataset_query"},
+        }
+        if code in expected:
+            assert {entry.name for entry in catalog.tools if entry.enabled} == expected[code], code
         assert all(entry.source == "native" for entry in catalog.tools)
 
     tool = services["multimedia"]
     with pytest.raises(ValueError):
         await service.set_conversation_tool(tool.id, "image_generate", source="native", enabled=True)
     with pytest.raises(ValueError):
-        await service.set_conversation_tool(tool.id, "image_from_pdf", source="native", enabled=False)
+        await service.set_conversation_tool(tool.id, "image_read", source="native", enabled=False)
 
 
 def test_chat_is_mandatory_and_combines_mcp_and_native_messaging() -> None:
@@ -294,7 +301,7 @@ def test_administration_scopes_are_explicit_local_and_domain_bounded() -> None:
     from app.services.mcp_loader import load_mcp_tools
 
     inspections = {
-        "conversation_round_get": "chat", "voice_turn_get": "chat",
+        "chat_round_get": "chat", "voice_turn_get": "chat",
         "llm_call": "galaris", "llm_calls": "galaris", "incident_get": "galaris", "incidents_list": "galaris",
     }
     definitions = load_mcp_tools()
@@ -343,7 +350,6 @@ def test_topic_tool_is_seeded_without_agent_connections() -> None:
     assert topic.default_active is False
     assert set(topic.mcp_tools) == {
         "topic_list",
-        "topic_get",
         "topic_items_list",
         "topic_create",
         "topic_update",

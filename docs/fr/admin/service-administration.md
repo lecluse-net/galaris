@@ -125,7 +125,7 @@ s'appliquent séparément.
 | Partage de fichiers (`file_sharing`) | Système | Droits de la ressource source | Fonctions `file_*` et URI canoniques |
 | Agenda (`calendar`) | Système | `personal` | Agendas, événements, disponibilité et actions |
 | Contact (`contact`) | Système | `personal` | Recherche et gestion des carnets |
-| Tâches (`task`) | Système | `personal` | Délégation, suivi et commandes `task_*` et `conversation_task_*` |
+| Tâches (`task`) | Système | `personal` | Délégation, suivi et commandes `task_*` |
 | Agent (`agent`) | Active | `usage` | Annuaire, équipes et administration d'agents |
 | Services (`service`) | Active | `usage` | Inventaire, administration des services et portée des inspections d'exécution |
 | Objectifs (`goal`), Processus (`process`), Compétences (`skills`) | Active | `personal` | Commandes propres à chaque domaine |
@@ -463,8 +463,8 @@ ne contourne jamais les droits ni une connexion désactivée.
 
 ### Créer le Service
 
-1. Examiner le catalogue avec `service_admin_list` et lire une éventuelle définition existante
-   avec `service_admin_get` pour éviter un doublon.
+1. Examiner le catalogue avec `service_list` et lire une éventuelle définition existante
+   avec `service_get` pour éviter un doublon.
 2. Un humain ouvre **Services → Nouveau service**, renseigne le code, le libellé, un paramètre
    `token` de type `password`, puis la configuration MCP HTTP ou SSE et l’authentification
    Bearer avec `auth.param=token`.
@@ -472,14 +472,14 @@ ne contourne jamais les droits ni une connexion désactivée.
    puis **Préparer le candidat pour cet agent**. Transmettre uniquement la référence obtenue.
    Elle expire après 15 minutes ou au redémarrage du backend, est liée à l’agent et à la
    définition préparée, et reste conservée chiffrée en mémoire, avec une capacité bornée.
-4. L’agent appelle `service_admin_mcp_test(candidate_reference=...)`. Ce test négocie MCP et
+4. L’agent appelle `service_mcp_test(candidate_reference=...)`. Ce test négocie MCP et
    découvre les fonctions, sans sauvegarder ni appeler de fonction métier. Un catalogue vide
    peut être un succès. Le résultat indique date, durée, étapes, catégorie d’échec et troncature.
-5. Après un succès, `service_admin_create(candidate_reference=...)` adopte explicitement la
+5. Après un succès, `service_create(candidate_reference=...)` adopte explicitement la
    définition et ses credentials côté serveur. Un test réussi n’est jamais une sauvegarde.
-6. Créer une connexion avec `service_admin_connection_create`. Elle est inactive par défaut.
-   Configurer ses paramètres et permissions, tester avec `service_admin_connection_test`, puis
-   l’activer avec `service_admin_connection_update` et examiner ses fonctions effectives.
+6. Créer une connexion avec `service_connection_create`. Elle est inactive par défaut.
+   Configurer ses paramètres et permissions, tester avec `service_connection_test`, puis
+   l’activer avec `service_connection_update` et examiner ses fonctions effectives.
 
 L’agent peut créer directement une définition sans credentials avec `definition`. Les nouveaux
 secrets utilisent une référence humaine ; les chaînes secrètes sont refusées dans les commandes
@@ -564,9 +564,17 @@ est affiché si la connexion en hérite. `default` reste la valeur d’héritage
 l’interface revient à cet héritage en sélectionnant une règle globale.
 Les choix locaux successifs sont enregistrés dans l’ordre ; un échec est signalé et provoque
 une relecture des règles. Leur sauvegarde n’attend pas une découverte MCP distante.
-Les fonctions natives sensibles sont Sur demande par défaut ; les capacités MCP tierces sont
-Actives par défaut. Un refus global peut donc être surchargé par une autorisation locale explicite ;
-`service_admin_function_set` signale ces surcharges. `effective` décrit la permission résolue,
+Chaque fonction native déclare son défaut logiciel. `chat_round_get`, `voice_turn_get`,
+`chat_screenshot`, `browser_open` et `browser_navigate` sont **Sur demande**. L’autorisation
+de `chat_screenshot` précède la sélection et le consentement de partage sur le poste d’origine.
+L’arrêt d’une tâche (`task_cancel`, anciennement `task_stop`) est **Actif** par défaut.
+`task_run` est **Sur demande** par défaut. Le même réglage couvre la soumission dans le
+Chat et la délégation. `task_resume` couvre la reprise après une pause utilisateur et la
+relance des échecs stabilisés ou des blocages relançables. À la mise à niveau, DbAdmin retient l'autorisation
+la plus restrictive pour les outils fusionnés, transfère les réglages de suivi vers
+`task_update` et invalide les confirmations en attente pour les noms retirés.
+Les capacités MCP tierces sont **Actives** par défaut. Un refus global peut donc être surchargé par une autorisation locale explicite ;
+`service_function_set` signale ces surcharges. `effective` décrit la permission résolue,
 tandis que `available` tient aussi compte de l’activation, du runtime et du contexte conversationnel.
 La disponibilité d’une fonction découverte avec une connexion ne prouve pas celle d’un autre agent.
 
@@ -635,13 +643,13 @@ sont invalidés avant exécution ; l’historique des actions terminées reste c
 
 | Besoin | Fonctions |
 |---|---|
-| Catalogue et définition | `service_admin_list`, `service_admin_get`, `service_admin_create`, `service_admin_update` |
-| Dépendances et suppression | `service_admin_impact`, `service_admin_delete` |
-| Réglages partagés | `service_admin_global_params_set` |
-| Diagnostic et fonctions | `service_admin_mcp_test`, `service_admin_function_list`, `service_admin_function_get`, `service_admin_function_set` |
-| Connexions | `service_admin_connection_list`, `service_admin_connection_get`, `service_admin_connection_create`, `service_admin_connection_update`, `service_admin_connection_delete` |
-| Paramètres et test local | `service_admin_connection_params_set`, `service_admin_connection_param_delete`, `service_admin_connection_test` |
-| Permissions et index | `service_admin_connection_function_list`, `service_admin_connection_function_set`, `service_admin_catalog_refresh` |
+| Catalogue et définition | `service_list`, `service_get`, `service_create`, `service_update` |
+| Dépendances et suppression | `service_impact`, `service_delete` |
+| Réglages partagés | `service_global_params_set` |
+| Diagnostic et fonctions | `service_mcp_test`, `service_function_list`, `service_function_get`, `service_function_set` |
+| Connexions | `service_connection_list`, `service_connection_get`, `service_connection_create`, `service_connection_update`, `service_connection_delete` |
+| Paramètres et test local | `service_connection_params_set`, `service_connection_param_delete`, `service_connection_test` |
+| Permissions et index | `service_connection_function_list`, `service_connection_function_set`, `service_catalog_refresh` |
 
 L’analyse d’impact inclut les connexions et les références directes du Service, notamment les
 workflows et les identités de messagerie. Ces dépendances bloquent sa suppression et font
@@ -649,7 +657,7 @@ partie de sa version ; les retirer ne supprime jamais implicitement leurs donné
 
 Les listes utilisent `offset` et `limit` : 50 par défaut, 500 au maximum. Les diagnostics
 bornent également les pages distantes, la durée, la concurrence, les octets et les schémas.
-Le détail d’une fonction est disponible avec `service_admin_function_get`.
+Le détail d’une fonction est disponible avec `service_function_get`.
 
 ## Conflits, propagation et reprise
 
@@ -665,7 +673,7 @@ est partiel. Les catalogues concernés sont réconciliés sans élagage sur déc
 Le rafraîchissement appelle directement les fonctions Python de `app.services`, avec un budget
 de 20 secondes et une validation des droits avant et après chaque agent. Les résultats de
 chaque agent sont enregistrés séparément. Un résultat partiel précise `failed_agent_ids` et
-`remaining_agent_ids`. Passer ces agents à `service_admin_catalog_refresh(agent_ids=[...])` pour reprendre le rafraîchissement.
+`remaining_agent_ids`. Passer ces agents à `service_catalog_refresh(agent_ids=[...])` pour reprendre le rafraîchissement.
 La convergence DbAdmin supprime les anciennes définitions techniques `catalog_refresh`
 et leurs runs, après résolution des éventuelles tâches en attente.
 

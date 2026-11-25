@@ -35,8 +35,9 @@ def test_prompt_defaults_keep_their_english_contracts() -> None:
     assert "fully understandable and executable without access" in objective
     assert "automatically returns the terminal result" in objective
     assert action is not None
-    assert "conversation_task_submit" in action
-    assert "absolute priority" in action
+    assert "task_run" in action
+    assert "has priority over creating or amending a Task" in action
+    assert "without `agent_id`" in action
     assert "Governed conversation effect" in action
     assert "must not create a Task solely" in action
 

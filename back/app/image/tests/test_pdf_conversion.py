@@ -37,7 +37,7 @@ def pdf_bytes() -> bytes:
 async def test_pdf_image_is_a_real_page_and_launches_an_image_constrained_process(db, native, tmp_path, monkeypatch, typed_values, boundary):
     from sqlalchemy import select
     from app.connection import Connection
-    from app.conversation.mcp import conversation_process_start
+    from app.conversation.mcp import process_start_conversation
     from app.conversation.tests.test_process_admission import conversation, context, provider
     from app.services.models import Service
     from app.services.mcp_loader import list_enabled_native_mcp_definitions
@@ -90,9 +90,9 @@ async def test_pdf_image_is_a_real_page_and_launches_an_image_constrained_proces
     submitted = inputs if typed_values else {"scan": uri}
     if boundary == "conversation":
         provider(monkeypatch, [{"workflow_id": definition.code, "input": submitted, "typed_values": typed_values}])
-        launched = await conversation_process_start(context(turn), workflow_id=definition.code,
+        launched = await process_start_conversation(context(turn), workflow_id=definition.code,
             input=submitted, typed_values=typed_values)
-        replay = await conversation_process_start(context(turn), workflow_id=definition.code,
+        replay = await process_start_conversation(context(turn), workflow_id=definition.code,
             input=submitted, typed_values=typed_values)
         assert replay["run_id"] == launched["run_id"] and replay["created"] is False
     else:

@@ -58,8 +58,8 @@ async def mcp_contact_get(ctx: McpToolContext, contact_id: UUID) -> dict[str, ob
     )).model_dump(mode="json")
 
 
-@mcp_tool("contact", name="contact_create", approval="ask",
-    approval_reason="Create an address-book entry within the delegated scope; this can affect the owner's inbound Mail admission",
+@mcp_tool("contact", name="contact_create", approval="enabled",
+    approval_reason="Creates a private contact within the caller's scope",
     description=("Create a Contact in your address book by default, or specify owner_agent_id within your Contact scope. "
                  "Supply a display_name and at least one email, phone or postal address. Search the target address book "
                  "with contact_list first. Creates no user and sends no message. A saved email becomes a known contact "

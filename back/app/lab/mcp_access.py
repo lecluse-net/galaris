@@ -42,7 +42,7 @@ async def authorize(ctx: McpToolContext, action: str, *, sources: bool = False) 
         raise PermissionError("An active lab connection with this function enabled is required.")
     if sources:
         await require_galaris_admin_access(ctx.agent_id)
-        for function in ("conversation_round_get", "voice_turn_get", "llm_call", "llm_calls"):
+        for function in ("chat_round_get", "voice_turn_get", "llm_call", "llm_calls"):
             if not await has_active_native_function(ctx.agent_id, function):
                 raise PermissionError(
                     "Real Lab sources require the execution-inspection functions in Galaris and Chat."

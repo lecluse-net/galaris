@@ -10,6 +10,7 @@ from core.i18n import render_prompt, t
 from core.util import convert_to_html
 from core.database import get_db
 from .access import agent_task_filter as agent_task_filter
+from .mcp import inspect_agent_task as inspect_agent_task, mcp_run_task as _run_task, stop_task as _stop_task
 from .work_projection import (
     TaskWorkSnapshot as TaskWorkSnapshot,
     list_work_snapshots as list_work_snapshots,
@@ -21,6 +22,8 @@ from .input_requests import (
     replace_legacy_input_wait as replace_legacy_input_wait,
 )
 
+stop_agent_task = _stop_task
+delegate_agent_task = _run_task
 
 async def memory_scope_for_task(
     task_id: UUID, *, agent_id: int

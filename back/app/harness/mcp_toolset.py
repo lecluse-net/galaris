@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Collection
+from collections.abc import AsyncGenerator, Collection
+from contextlib import asynccontextmanager
 from typing import Any, cast
 from uuid import UUID
 
 import anyio
+from anyio.lowlevel import RunVar
 from loguru import logger
 from fastmcp import Client
 from mcp.shared.exceptions import MCPError
 from mcp.types import CONNECTION_CLOSED, TextContent
+from core import settings
 
 from app.agent.contracts import normalize_tool_name
 from app.services.contracts import EXECUTION_META_KEY, TOOL_ARGUMENTS_META_KEY, current_tool_execution
@@ -24,6 +27,31 @@ from app.services.agent_registry import (
 
 
 _MCP_TOOL_MAX_RETRIES = 3
+_task_mount_slots = RunVar[anyio.CapacityLimiter]("galaris_task_mcp_mount_slots")
+_conversation_mount_slots = RunVar[anyio.CapacityLimiter]("galaris_conversation_mcp_mount_slots")
+
+
+@asynccontextmanager
+async def _mount_session(limiter: RunVar[anyio.CapacityLimiter], limit: int) -> AsyncGenerator[None, None]:
+    """Admit a local catalog read before opening its SQL transaction."""
+    from core.database import get_db, get_db_session
+
+    try:
+        caller = get_db()
+    except RuntimeError:
+        caller = None
+    if caller is not None and caller.in_transaction():
+        # A transactional caller may need its uncommitted configuration. Do
+        # not queue it while it holds a connection or commit on its behalf.
+        yield
+        return
+
+    slots = limiter.get(None)
+    if slots is None:
+        slots = anyio.CapacityLimiter(limit)
+        limiter.set(slots)
+    async with slots, get_db_session():
+        yield
 
 
 class ExecutionEvidenceClient(Client[Any]):
@@ -154,19 +182,22 @@ async def build_conversation_toolset(
 
     from app.services import mcp_loader
 
-    server = await mcp_loader.build_agent_mcp(
-        agent_id, runtime="internal", task_id=None, resources=resources,
-        conversation_only=True, allowed_tool_names=allowed_tool_names,
-    )
+    async with _mount_session(_conversation_mount_slots, settings.AGENT_MCP_CONVERSATION_MOUNT_CONCURRENCY):
+        server = await mcp_loader.build_agent_mcp(
+            agent_id, runtime="internal", task_id=None, resources=resources,
+            conversation_only=True, allowed_tool_names=allowed_tool_names, include_task_context=True,
+        )
+        names = server.initial_conversation_names
+        advertisement = await build_agent_tool_advertisement(
+            agent_id, runtime="internal", conversation_only=True, include_task_only_tools=True,
+            mounted_native_tool_names=names if names is not None else await server.native_tool_names(),
+            mounted_task_context=server.initial_task_context,
+        )
     toolset = MCPToolset(
         ExecutionEvidenceClient(server),
         id=f"conversation-{agent_id}",
         max_retries=1,
         cache_tools=False,
-    )
-    advertisement = await build_agent_tool_advertisement(
-        agent_id, runtime="internal", conversation_only=True, include_task_only_tools=True,
-        mounted_native_tool_names=await server.native_tool_names(),
     )
     return toolset, advertisement
 
@@ -182,12 +213,13 @@ async def build_agent_mcp_toolset(
     from pydantic_ai.mcp import MCPToolset
     from app.services import mcp_loader
 
-    mcp = await mcp_loader.build_agent_mcp(
-        agent_id,
-        runtime="internal",
-        task_id=task_id,
-        resources=resources,
-    )
+    async with _mount_session(_task_mount_slots, settings.AGENT_MCP_MOUNT_CONCURRENCY):
+        mcp = await mcp_loader.build_agent_mcp(
+            agent_id,
+            runtime="internal",
+            task_id=task_id,
+            resources=resources,
+        )
     toolset = MCPToolset(
         ExecutionEvidenceClient(mcp),
         id=f"agent-mcp-{agent_id}",

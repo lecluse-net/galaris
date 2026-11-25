@@ -70,7 +70,7 @@ async def test_process_evidence_ignores_historical_launch_and_uses_current_tool_
         assert old_run not in instructions
         if requests == 1:
             assert "No successful Process launch receipt" in instructions
-            return ModelResponse(parts=[ToolCallPart("conversation_process_start", {})])
+            return ModelResponse(parts=[ToolCallPart("process_start_conversation", {})])
         if launch_result == "error":
             assert "No successful Process launch receipt" in instructions
             return ModelResponse(parts=[TextPart("The launch failed.")])
@@ -80,7 +80,7 @@ async def test_process_evidence_ignores_historical_launch_and_uses_current_tool_
     server = FastMCP("Synthetic launch receipts")
 
     @server.tool
-    async def conversation_process_start() -> dict[str, object]:
+    async def process_start_conversation() -> dict[str, object]:
         if launch_result == "error":
             return {"success": False, "error": "Synthetic launch rejection", "run_id": new_run}
         receipt: dict[str, object] = {"run_id": new_run, "status": "queued", "created": True}
@@ -90,8 +90,8 @@ async def test_process_evidence_ignores_historical_launch_and_uses_current_tool_
         toolsets=[MCPToolset(ExecutionEvidenceClient(server))],
         capabilities=[Hooks(before_model_request=_process_launch_evidence)])
     history = [ModelRequest(parts=[UserPromptPart("Launch the synthetic process.")], run_id="past"),
-        ModelResponse(parts=[ToolCallPart("conversation_process_start", {}, tool_call_id="past-call")], run_id="past"),
-        ModelRequest(parts=[ToolReturnPart("conversation_process_start", {"run_id": old_run}, tool_call_id="past-call")], run_id="past"),
+        ModelResponse(parts=[ToolCallPart("process_start_conversation", {}, tool_call_id="past-call")], run_id="past"),
+        ModelRequest(parts=[ToolReturnPart("process_start_conversation", {"run_id": old_run}, tool_call_id="past-call")], run_id="past"),
         ModelResponse(parts=[TextPart("The process was admitted.")], run_id="past")]
     result = await agent.run("Relaunch the synthetic process.", message_history=history)
     assert result.output == ("The launch failed." if launch_result == "error" else "The process was admitted.")
@@ -136,6 +136,23 @@ async def test_live_text_buffer_flushes_while_the_provider_stream_is_idle() -> N
 
 
 @pytest.mark.asyncio
+async def test_idle_publication_error_reaches_the_owner_before_stream_completion():
+    attempted = asyncio.Event()
+
+    async def publish(message):
+        if message.content == "second":
+            attempted.set()
+            raise ConnectionError("synthetic closed stream")
+
+    buffer = _LiveTextProgressBuffer(publish, flush_seconds=0.01)
+    await buffer.append("first")
+    await buffer.append("second")
+    await asyncio.wait_for(attempted.wait(), timeout=1)
+    with pytest.raises(ConnectionError, match="closed stream"):
+        await buffer.flush()
+
+
+@pytest.mark.asyncio
 async def test_live_text_buffer_drops_scheduled_text_after_cancellation() -> None:
     published: list[str] = []
 
@@ -163,11 +180,11 @@ async def test_live_text_buffer_never_combines_distinct_ai_messages() -> None:
     async def publish(message: AIMessage) -> None:
         messages.append(message)
 
-    buffer = _LiveTextProgressBuffer(publish, flush_seconds=0.01)
+    buffer = _LiveTextProgressBuffer(publish, flush_seconds=60)
     await buffer.append("Bon", "first")
     await buffer.append("jour", "first")
     await buffer.append("Autre message", "second")
-    await buffer.flush()
+    await asyncio.wait_for(buffer.flush(), timeout=1)
     assert [(m.stream_id, m.content) for m in messages] == [
         ("first", "Bon"), ("first", "jour"), ("second", "Autre message"),
     ]
@@ -297,7 +314,7 @@ async def test_stop_command_bypasses_dispatcher_and_calls_stop_tool(
         linked_work=({"task_id": active_id, "status": "EXEC"},),
     )
     monkeypatch.setattr(conversation_module, "get_db_session", fake_db_session)
-    monkeypatch.setattr("app.conversation.mcp.conversation_task_stop", stop)
+    monkeypatch.setattr("app.conversation.mcp.task_cancel", stop)
     monkeypatch.setattr(conversation_module, "dispatch_conversation", dispatcher)
 
     outcome = await HarnessConversationController().run(turn)
@@ -307,7 +324,7 @@ async def test_stop_command_bypasses_dispatcher_and_calls_stop_tool(
     assert outcome.effect_started is True
     assert outcome.execution_result is not None
     assert outcome.execution_result.messages[0].tool_name == (
-        "conversation_task_stop"
+        "task_cancel"
     )
 
 
@@ -347,7 +364,7 @@ async def test_stop_shortcut_preserves_requests_requiring_interpretation(
     monkeypatch.setattr(conversation_module, "build_conversation_session", AsyncMock(
         return_value=SimpleNamespace(messages=[]),
     ))
-    monkeypatch.setattr("app.conversation.mcp.conversation_task_stop", stop)
+    monkeypatch.setattr("app.conversation.mcp.task_cancel", stop)
     monkeypatch.setattr(conversation_module, "dispatch_conversation", dispatcher)
 
     await HarnessConversationController().run(turn)
@@ -518,7 +535,7 @@ def test_conversation_prompt_preserves_identity_role_and_fast_control_plane() ->
         agent,
         tool_advertisement=(
             "- `search`: `search_web`\n"
-            "- `galaris`: `conversation_process_start`, `conversation_task_submit`\n\n"
+            "- `galaris`: `process_start_conversation`, `task_run`\n\n"
             + render_task_capability_context(
                 ({"code": "gitlab", "label": "GitLab"},),
             )
@@ -527,7 +544,7 @@ def test_conversation_prompt_preserves_identity_role_and_fast_control_plane() ->
             "## Business processes available to you\n"
             '- {"workflow_id": "daily-weather", "label": "Daily weather"}'
         ),
-        tool_names={"conversation_choice_resolve", "conversation_process_respond", "conversation_task_submit"},
+        tool_names={"chat_choice_resolve", "process_respond", "task_run"},
         has_prior_history=True,
         context=context,
         action_policy=_ACTION_POLICY,
@@ -558,10 +575,10 @@ def test_conversation_prompt_preserves_identity_role_and_fast_control_plane() ->
     assert "Governed conversation effect" in prompt
     assert "must not create a Task solely to perform them" in prompt
     assert "Do not execute that Task work inside the foreground conversation" in prompt
-    assert "`conversation_process_start`" in prompt
-    assert "`conversation_task_submit`" in prompt
+    assert "`process_start_conversation`" in prompt
+    assert "`task_run`" in prompt
     assert "Never wait for a Task or Process to finish" in prompt
-    assert prompt.count("absolute priority") == 1
+    assert prompt.count("has priority over creating or amending a Task") == 1
     assert prompt.count("Never wait for a Task or Process to finish") == 1
     assert "task=galaris://task/task-1 revision=3 state=WAITING amendable=true" in data["active_tasks_and_processes"]
     assert "peer=Sophie question=Quels chiffres utiliser ?" in data["active_tasks_and_processes"]
@@ -586,21 +603,21 @@ def test_conversation_prompt_preserves_identity_role_and_fast_control_plane() ->
     assert "reference=#DEC1DE42 kind=hermes_approval" in pending
     assert "reference=#AABBCC11 kind=process_human_activity" in pending
     assert '"name":"report","type":"File"' in pending
-    assert "`conversation_process_respond`" in prompt
+    assert "`process_respond`" in prompt
     assert "once=Approuver une fois, deny=Refuser" in pending
     assert "DEC1DE42" not in prompt and "AABBCC11" not in prompt
-    assert "call `conversation_choice_resolve`" in prompt
+    assert "call `chat_choice_resolve`" in prompt
     assert "deny the obsolete approval before amending" in prompt
     assert "# Response variety" in prompt
     assert "Answer in one pass from a fresh angle" in prompt
     blocked = _system_prompt(turn, agent, tool_advertisement="", process_advertisement="",
-        tool_names={"conversation_task_submit"}, action_policy=_ACTION_POLICY)
+        tool_names={"task_run"}, action_policy=_ACTION_POLICY)
     pending_rules = blocked.split("# Pending interactions\n\n", 1)[1].split("\n\n# ", 1)[0]
     assert "leave the interaction pending" in pending_rules
     assert "Never create a new Task or Process to record a response" in pending_rules
     assert "still awaits a recorded response" in pending_rules
-    assert "conversation_process_respond" not in pending_rules
-    assert "conversation_choice_resolve" not in pending_rules
+    assert "process_respond" not in pending_rules
+    assert "chat_choice_resolve" not in pending_rules
     without_admission = _system_prompt(turn, agent, tool_advertisement="", process_advertisement="",
         action_policy=_ACTION_POLICY)
     assert "This turn cannot admit new background work or amend a Task" in without_admission
@@ -730,6 +747,7 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
         return llm
 
     async def fake_toolset(_agent_id: int, *, resources: dict[str, Any]) -> object:
+        release_transaction.assert_awaited()
         assert resources["conversation_turn"] is turn
         captured["mounted_tools_agent_id"] = _agent_id
         return object(), SimpleNamespace(text="", tool_names=frozenset())
@@ -757,6 +775,8 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
 
     async def fake_create_agent(**kwargs: Any) -> object:
         captured.update(kwargs)
+        # Runtime preparation can perform further reads after the MCP mount.
+        release_transaction.reset_mock()
         if not force_response and skills_assigned:
             # Exercise the real capability catalogue and resource tool, not a stub
             # that would also pass if the conversation silently filtered out skills.
@@ -790,7 +810,7 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
             error = ""
 
             async def run(self, *args: object, **kwargs: object) -> AsyncIterator[object]:
-                assert release_transaction.await_count == 1
+                release_transaction.assert_awaited()
                 captured["runtime_prompt"] = args[0]
                 captured["runtime_current_messages"] = kwargs.get("current_messages")
                 yield AIMessage(
@@ -913,7 +933,7 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
         process_catalog.assert_not_awaited()
         assert '"process_status":"not_evaluated"' in captured["system_prompt"]
         assert "launch a match when required and authorized" in captured["system_prompt"]
-    release_transaction.assert_awaited_once_with()
+    release_transaction.assert_awaited_with()
     if force_response:
         assigned_skills.assert_not_awaited()
         assert [capability.id for capability in captured["capabilities"]] == ["conversation-turn-protocol"]
@@ -940,7 +960,7 @@ async def test_conversation_controller_uses_the_shared_runtime_without_token_set
         assert "No tools are mounted for this response." in outcome.execution_result.system_prompt
     else:
         assert captured["process_advertisement_kwargs"] == {
-            "launch_tool_name": "conversation_process_start",
+            "launch_tool_name": "process_start_conversation",
             "relevance_query": "Quel temps fait-il ?",
             "include_execution_guidance": False,
         }
@@ -1075,7 +1095,7 @@ async def test_conversation_executor_decides_whether_to_admit_work(
                 return
             tool = AIMessage(
                 type="tool",
-                tool_name="conversation_task_submit",
+                tool_name="task_run",
                 content="Task created",
                 tool_arguments={"objective": "Tour Eiffel"},
                 tool_result={"created": True},
@@ -1420,7 +1440,7 @@ async def test_plan_directive_is_admitted_before_foreground_model(
     assert outcome.execution_result is not None
     assert outcome.execution_result.metadata["deterministic_control"] is True
     assert outcome.execution_result.messages[0].tool_name == (
-        "conversation_task_submit"
+        "task_run"
     )
     assert (
         f"task=galaris://task/{task_id}"

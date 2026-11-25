@@ -392,14 +392,14 @@ async def build_task_prompt(task: Any, extra_context: Optional[dict[str, str]] =
     if data.get("organization") == "direct":
         sections["organization_choice"] = (
             "Complete bounded work directly with its completion check; no tracking is required. "
-            "If inspection reveals long or complex work, organize it with task_work_update "
+            "If inspection reveals long or complex work, organize it with task_update "
             "when available. If missing user intent changes the scope or expected depth, ask "
             "the requester through the available question tool before those actions."
         )
     if getattr(task, "task_id", None) is not None:
         sections["completion_check"] = (
             "Before finishing, compare the requested outcome with confirmed tool receipts. "
-            "If a required operation remains blocked, record it with task_work_update as a "
+            "If a required operation remains blocked, record it with task_update as a "
             "required=true milestone in state=blocked, even for organization=direct. "
             "Include the cause in observation when known and check that the receipt records the blocker. "
             "Keep optional additions required=false. If tracking is unavailable, report the unfinished requirement."
@@ -407,7 +407,7 @@ async def build_task_prompt(task: Any, extra_context: Optional[dict[str, str]] =
     if data.get("organization") == "tracked" or isinstance(data.get("work_plan"), dict):
         sections["work_organization"] = (
             "Inspect authorized sources and existing outputs, then record the milestones that help "
-            'you resume the work. Send small updates with task_work_update, for example '
+            'you resume the work. Send small updates with task_update, for example '
             'plan={"key":"research","state":"done"}. Reuse existing keys and send changed fields. '
             "Record verified outcomes or blockers in observation when known. Set next_action when "
             "it helps the next step. Keep one end-to-end owner for a coherent deliverable. "

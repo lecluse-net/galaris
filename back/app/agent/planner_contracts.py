@@ -154,7 +154,7 @@ class PlanStep(BaseModel):
             "Use tracked for a long or complex item needing preparatory investigation and durable "
             "milestones within this executor. Keep its coherent outcome together. Use direct for "
             "bounded work with straightforward checks. When available, tracked leaves include "
-            "task_get and task_work_update among their tools."
+            "task_get and task_update among their tools."
         ),
     )
     effort: Literal["standard", "high"] = Field(

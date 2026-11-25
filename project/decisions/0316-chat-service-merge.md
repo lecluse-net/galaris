@@ -16,3 +16,11 @@ les salons et les URI `chat://`. Il transfère les politiques globales et locale
 de réponse automatique et l’historique des autorisations. Il reporte les anciennes
 désactivations de connexion sur le paramètre du canal avant de retirer le service Conversation.
 Un conflit de configuration ou une autorisation encore en cours interrompt la migration.
+
+Depuis cette fusion, les outils `conversation_choice_resolve` et `conversation_round_get`
+ont pris les noms `chat_choice_resolve` et `chat_round_get`. L’outil `repository_show`
+devient `chat_repository_show`. Les clients MCP utilisent ces noms après la mise à jour.
+DbAdmin reporte les politiques globales et celles des connexions
+sur les nouveaux noms. Des politiques identiques sont dédupliquées et un conflit interrompt
+le renommage. Les autorisations ponctuelles en attente ou approuvées sous les anciens noms
+sont invalidées. Le journal conserve les noms utilisés lors des appels.

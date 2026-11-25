@@ -56,7 +56,7 @@ async def delegate(db, agent, code, level):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(("code", "legacy_code", "label", "blocked", "asked"), [
-    ("process", "process_admin", "Processes", "process_start", "process_get_run"),
+    ("process", "process_admin", "Processes", "process_start", "process_analyze_run"),
     ("goal", "goal_management", "Goals", "goal_run_now", "goal_ask_referrer"),
     ("agent", "agent_admin", "Agent", "agent_list", "agent_get"),
     ("service", "service_admin", "Services", "services_list", "services_list"),
@@ -362,20 +362,20 @@ async def test_native_process_administration_keeps_definition_and_launcher_scope
 async def test_tool_scope_filters_connections_and_protects_global_settings(db, scope_agents):
     (caller, peer, outsider), _ = scope_agents
     grant = await delegate(db, caller, "service", "team")
-    for name in ("service_admin_connection_list", "service_admin_global_params_set"):
+    for name in ("service_connection_list", "service_global_params_set"):
         await connections.set_connection_function_state(grant.id, name, "enabled")
     tool = Service(code=f"synthetic_scope_{uuid4().hex}", label="Synthetic shared tool")
     db.add(tool)
     await db.flush()
     db.add_all([Connection(service_id=tool.id, agent_id=agent.id, active=False) for agent in (caller, peer, outsider)])
     await db.commit()
-    actor = AdministrationContext(agent_id=caller.id, function_name="service_admin_connection_list")
+    actor = AdministrationContext(agent_id=caller.id, function_name="service_connection_list")
     page = await admin_service.connection_list(actor, service_id=tool.id, limit=500)
     assert page["total"] == 2
     assert {item["agent_id"] for item in page["items"]} == {caller.id, peer.id}
     with pytest.raises(AdministrationError):
         await admin_service.connection_list(actor, agent_id=outsider.id)
-    actor = AdministrationContext(agent_id=caller.id, function_name="service_admin_global_params_set")
+    actor = AdministrationContext(agent_id=caller.id, function_name="service_global_params_set")
     with pytest.raises(AdministrationError):
         await admin_service.global_params_set(actor, tool.id, {}, await admin_service.fingerprint(tool))
 
@@ -428,14 +428,13 @@ async def test_conversation_task_commands_use_tasks_delegation(db, scope_agents,
         room_id=uuid4(), round_id=uuid4(), agent_id=caller.id, language="en",
         objective="Manage the Task", messages=(), messaging_context={"connection_id": chat.id, "room_id": room},
     )
-    ctx = McpToolContext(caller.id, "internal", resources={"conversation_turn": turn})
+    ctx = McpToolContext(caller.id, "internal", resources={"conversation_turn": turn}, conversation_only=True)
     uri = f"galaris://task/{task.id}"
-    commands = (conversation.conversation_task_pause, conversation.conversation_task_resume,
-                conversation.conversation_task_stop, conversation.conversation_task_retry)
+    commands = (conversation.task_pause, conversation.task_resume, conversation.task_cancel)
     monkeypatch.setattr("app.task.runner.go_next", lambda *_args, **_kwargs: None)
 
     async def assert_out_of_scope():
-        assert await conversation.conversation_task_list(ctx) == []
+        assert await conversation.task_list(ctx) == []
         for command in commands:
             with pytest.raises(ValueError, match="Task not found"):
                 await command(ctx, task_id=uri)
@@ -443,9 +442,10 @@ async def test_conversation_task_commands_use_tasks_delegation(db, scope_agents,
     await assert_out_of_scope()
     assert task.status == TaskStatus.EXEC
     await connections.set_management_scope(task_grant.id, "team", authorized=True)
-    assert [row["id"] for row in await conversation.conversation_task_list(ctx)] == [str(task.id)]
+    assert [row["id"] for row in await conversation.task_list(ctx)] == [str(task.id)]
     for command in commands:
         assert (await command(ctx, task_id=uri))["id"] == str(task.id)
+    assert (await conversation.task_resume(ctx, task_id=uri))["action"] == "retried"
     await db.execute(delete(AgentTeam).where(AgentTeam.agent_id == peer.id, AgentTeam.team_id == team.id))
     await db.commit()
     await assert_out_of_scope()

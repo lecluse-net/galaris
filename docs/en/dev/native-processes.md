@@ -82,7 +82,7 @@ default. Omitted updates preserve the current value. False, zero and empty value
 are preserved; integers stay in the exact ±(2^53−1) range. The codec bounds size/depth,
 rejects duplicate JSON keys and performs no implicit conversions.
 
-In conversation, `conversation_process_prepare` persists a dossier per workflow and participant,
+In conversation, `process_prepare` persists a dossier per workflow and participant,
 with a `waiting` run once launch is requested, without activities or a start job. The contract
 is frozen on this run; complete, authorized collection starts the same identity. Operational
 inspection and agent active work expose its missing inputs. A structured inference extracts replies and attachments, reuses
@@ -131,7 +131,7 @@ Readers need parent access and the launching agent's own management scope. Unava
 revoked sources are hidden; history checks at most 16 distinct references per response,
 with a two-second deadline per check. Historical runs receive no invented retrospective origin.
 
-MCP launches through `process_start` and `conversation_process_start` accept ordinary JSON
+MCP launches through `process_start` and `process_start_conversation` accept ordinary JSON
 inputs, for example `input={"age": 27, "scan": "file://<uuid>"}`. Process converts them
 against the variables selected by Start, before applying defaults and checking files.
 Historical scalar envelopes remain accepted; `typed_values: true` explicitly selects typed
@@ -172,7 +172,7 @@ reply never changes the next question. Local history is bounded to 2 MB and is n
 to successor activities. Discovery, delivery and withdrawal check the question identity
 as well as the attempt identity. The process launcher owns human exchanges in its originating
 conversation even when another agent executes the activity; the reply wakes that executor's Task.
-`conversation_process_respond` accepts ordinary JSON values such as `{"age": 27}`;
+`process_respond` accepts ordinary JSON values such as `{"age": 27}`;
 Conversation validates and converts them to typed values before checking file access.
 `typed_values: true` accepts historical envelopes, including objects; an ordinary JSON object
 containing `type` and `value` otherwise remains a business object.
@@ -294,7 +294,7 @@ The node can declare up to sixteen capabilities under `config.capabilities`.
 
 ```json
 {
-  "lookup": {"kind": "mcp", "operation": "process_definition_read"},
+  "lookup": {"kind": "mcp", "operation": "file_read"},
   "items": {"kind": "rest", "operation": "synthetic_inventory"}
 }
 ```
@@ -453,8 +453,8 @@ attempt, while a known rejection closes both the Task and its attempt.
 Routes under `/api/processes/internal` expose definitions, validation, history,
 restore, sharing, launch, runs, occurrences, children, metrics and debugger.
 PROCESS_READ/EDIT/LAUNCH/ADMIN combine with ACLs. Personal `galaris` MCP tools expose
-these operations, including `process_definition_read` for audits.
-The inspection's `operational` projection is shared with `processus_get`: phases,
+these operations, including `file_read` for audits.
+The inspection's `operational` projection is shared with `file_read` on the run URI: phases,
 occurrence counts, documented waits, last activity and available actions. Reading it
 does not advance the engine or infer a blockage from elapsed time.
 The Process's existing read/edit policy applies to its runs, data and attachments.
@@ -523,8 +523,8 @@ and their form are removed.
 
 A `process_human_activity` request requires interpretation: the deterministic matcher never
 consumes an arbitrary next message. Conversation context exposes pending requests in the
-exact agent/connection/Service/room/sender scope. `conversation_process_pending` provides full
-contracts and pagination; `conversation_process_respond` accepts the selected reference and
+exact agent/connection/Service/room/sender scope. `process_pending` provides full
+contracts and pagination; `process_respond` accepts the selected reference and
 typed outputs. File-only messages remain in history with their source URI; File Sharing checks
 `File` values without downloading or persistently copying them. Incomplete or ambiguous replies
 require clarification.

@@ -12,21 +12,32 @@ from core.database import get_db
 from sqlalchemy import select, func, or_
 from .models import Document
 from .access import readable_item_clause
+from .formats import document_format_definition
+from .tool_access import require_document_tool_scope
 
 
 async def read_file_resource_text(
     item_id: UUID, *, agent_id: int, task_id: UUID | None,
     expected_kind: str, offset: int, max_chars: int, revision: int | None = None,
+    selector: str | None = None,
 ) -> dict[str, object]:
+    if selector is not None:
+        await require_document_tool_scope(agent_id, item_id)
     item, body, _, content_type, media_type = await service.get_item(item_id, agent_id=agent_id, revision=revision,
         record_llm_access=True, task_id=task_id, include_revisions=False)
     if revision is not None and item.node_kind != "document":
         raise service.DocumentConflictError("The selected resource is not a document.")
     actual_revision = revision if revision is not None else item.revision
-    if media_type == "text/html":
+    if selector is not None:
+        read_selection = document_format_definition(item.document_format).read_selection
+        if read_selection is None:
+            raise ValueError("This document format does not support selected reads.")
+        source, media_type = read_selection(body.decode("utf-8"), selector)
+    elif media_type == "text/html":
         return {**read_html_page(body.decode(), offset=offset, max_chars=max_chars),
             "revision": actual_revision, "content_profile": item.content_profile}
-    source = body if content_type == "binary" else body.decode("utf-8")
+    else:
+        source = body if content_type == "binary" else body.decode("utf-8")
     start = min(max(0, offset), len(source))
     end = min(len(source), start + max_chars)
     fragment = source[start:end]
@@ -245,6 +256,8 @@ async def write_document_resource_text(
     task_id: UUID | None,
     content: str | bytes,
     expected_revision: int | None,
+    selector: str | None = None,
+    edit_selection: bool = False,
 ) -> dict[str, object]:
     """Replace an authorized document with optimistic concurrency."""
 
@@ -252,12 +265,24 @@ async def write_document_resource_text(
         raise service.DocumentConflictError(
             "expected_revision is required to replace a document; call file_read first."
         )
-    item, _content, _access, _content_type, _media_type = await service.get_item(
+    if selector is not None:
+        await require_document_tool_scope(agent_id, item_id)
+    item, original, access, _, _ = await service.get_item(
         item_id,
         agent_id=agent_id,
     )
     if item.node_kind != "document":
         raise service.DocumentConflictError("The selected memory is not a document.")
+    if selector is not None:
+        if not access.can_write:
+            raise service.DocumentPermissionError("Document write access required")
+        if item.revision != expected_revision:
+            raise service.DocumentConflictError("Document revision conflict; call file_read again.")
+        definition = document_format_definition(item.document_format)
+        mutate = definition.edit_selection if edit_selection else definition.write_selection
+        if mutate is None:
+            raise ValueError("This document format does not support the requested selection operation.")
+        content = mutate(original.decode("utf-8"), selector, content.decode("utf-8") if isinstance(content, bytes) else content)
     updated = await service.update_item(
         item_id,
         DocumentUpdate(
@@ -268,6 +293,7 @@ async def write_document_resource_text(
         actor_agent_id=agent_id,
         actor_task_id=task_id,
         document_revision_author_agent_id=agent_id,
+        enforce_tool_scope=selector is not None,
     )
     return {
         "state": "written",

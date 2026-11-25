@@ -119,7 +119,7 @@ request into a request to write a plan. Write a plan only when that is the reque
 
 Choose organization independently of effort and decomposition: tracked for a long or complex
 item needing preparation, durable milestones and recovery; direct for bounded work with simple
-checks. When authorized, tracked leaves include task_get and task_work_update in their tools.
+checks. When authorized, tracked leaves include task_get and task_update in their tools.
 Keep preparation and verification inside the item's complete workflow, never as separate
 coordination leaves. Each collection item's organization follows its collection step.
 

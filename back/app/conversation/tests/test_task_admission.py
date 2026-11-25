@@ -1,4 +1,3 @@
-import inspect
 import asyncio
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
@@ -90,10 +89,26 @@ async def test_superseded_document_presentation_is_control_flow_not_permission_f
     publish.assert_not_awaited()
 
 
-def test_task_submit_does_not_expose_an_effort_control() -> None:
-    parameters = inspect.signature(conversation_mcp.conversation_task_submit).parameters
+@pytest.mark.asyncio
+async def test_task_run_refuses_cross_context_arguments(monkeypatch) -> None:
+    submit = AsyncMock()
+    delegate = AsyncMock()
+    monkeypatch.setattr(conversation_mcp, "task_submit", submit)
+    monkeypatch.setattr(conversation_mcp, "delegate_agent_task", delegate)
+    chat = McpToolContext(agent_id=7, runtime="internal", conversation_only=True)
+    task = McpToolContext(agent_id=7, runtime="internal", task_id=uuid4())
 
-    assert "effort" not in parameters
+    with pytest.raises(PermissionError, match="Omit agent_id in conversation"):
+        await conversation_mcp.task_run(chat, objective="Delegate", label="Synthetic", agent_id=8)
+    with pytest.raises(PermissionError, match="Omit agent_id only"):
+        await conversation_mcp.task_run(task, objective="Submit")
+    with pytest.raises(ValueError, match="only available for delegation"):
+        await conversation_mcp.task_run(chat, objective="Submit", effort="high")
+    with pytest.raises(ValueError, match="only available in conversation"):
+        await conversation_mcp.task_run(task, objective="Amend", label="Synthetic",
+                                        agent_id=8, disposition="AMEND_CURRENT")
+    submit.assert_not_awaited()
+    delegate.assert_not_awaited()
 
 
 def test_dispatch_controls_are_normalized_before_task_creation() -> None:
@@ -113,10 +128,11 @@ async def test_task_submit_leaves_exec_effort_to_the_dispatcher(
     ctx = McpToolContext(
         agent_id=7,
         runtime="internal",
+        conversation_only=True,
         resources={"conversation_turn": turn},
     )
 
-    result = await conversation_mcp.conversation_task_submit(
+    result = await conversation_mcp.task_run(
         ctx,
         objective="Contrôle puis pousse le dépôt.",
         mode="exec",
@@ -143,7 +159,7 @@ async def test_task_submit_forwards_explicit_plan_to_dispatcher(
         resources={"conversation_turn": turn},
     )
 
-    result = await conversation_mcp.conversation_task_submit(
+    result = await conversation_mcp.task_submit(
         ctx,
         objective="Fais-le avec le contexte complet.",
         mode="plan",
@@ -211,7 +227,7 @@ async def test_task_creation_is_cancelled_when_turn_becomes_stale_during_generat
     )
 
     with pytest.raises(asyncio.CancelledError, match="while the Task objective was being built"):
-        await conversation_mcp.conversation_task_submit(
+        await conversation_mcp.task_submit(
             ctx,
             label="Rapport",
             objective="Vas-y.",
@@ -317,7 +333,7 @@ async def test_free_form_choice_resolution_uses_the_exact_turn_scope(
         resources={"conversation_turn": turn},
     )
 
-    result = await conversation_mcp.conversation_choice_resolve(
+    result = await conversation_mcp.chat_choice_resolve(
         ctx,
         reference="#DEC1DE42",
         option_id="deny",
@@ -364,7 +380,7 @@ async def test_attachment_words_do_not_override_task_admission(monkeypatch, dire
             turn, "Corrige le document et joins le fichier existant.",
         )
     else:
-        result = await conversation_mcp.conversation_task_submit(
+        result = await conversation_mcp.task_submit(
             ctx,
             objective="Corrige le document et joins le fichier existant.",
         )
@@ -484,7 +500,7 @@ async def test_created_task_inherits_latest_round_topic(
         resources={"conversation_turn": turn},
     )
 
-    result = await conversation_mcp.conversation_task_submit(
+    result = await conversation_mcp.task_submit(
         ctx,
         label="Rapport",
         objective="Préparer le rapport.",
@@ -567,7 +583,7 @@ async def test_admission_amends_the_same_current_deliverable(
         resources={"conversation_turn": turn},
     )
 
-    result = await conversation_mcp.conversation_task_submit(
+    result = await conversation_mcp.task_submit(
         ctx,
         label="Rapport",
         objective="Ajouter aussi une version PDF.",
@@ -605,7 +621,7 @@ async def test_cross_conversation_amendment_returns_conflict_without_creation(
         resources={"conversation_turn": turn},
     )
 
-    result = await conversation_mcp.conversation_task_submit(
+    result = await conversation_mcp.task_submit(
         ctx,
         label="Rapport",
         objective="Ajouter une version PDF.",
@@ -642,7 +658,7 @@ async def test_incomplete_amendment_returns_conflict_without_creation(
         resources={"conversation_turn": turn},
     )
 
-    result = await conversation_mcp.conversation_task_submit(
+    result = await conversation_mcp.task_submit(
         ctx,
         label="Rapport",
         objective="Changer le modèle.",
@@ -694,7 +710,7 @@ async def test_queued_task_amendment_is_normalized_after_agent_slot_changes(
         resources={"conversation_turn": turn},
     )
 
-    result = await conversation_mcp.conversation_task_submit(
+    result = await conversation_mcp.task_submit(
         ctx,
         objective="Ajouter aussi une version PDF.",
         disposition="AMEND_CURRENT",
@@ -752,7 +768,7 @@ async def test_unavailable_amendment_requires_explicit_creation_for_new_work(
         resources={"conversation_turn": turn},
     )
 
-    result = await conversation_mcp.conversation_task_submit(
+    result = await conversation_mcp.task_submit(
         ctx,
         objective="Produire aussi un autre livrable indépendant.",
         disposition="AMEND_CURRENT",
@@ -765,7 +781,7 @@ async def test_unavailable_amendment_requires_explicit_creation_for_new_work(
     assert result["conflict"] == "amendment_no_longer_safe"
     create.assert_not_awaited()
 
-    result = await conversation_mcp.conversation_task_submit(
+    result = await conversation_mcp.task_submit(
         ctx, objective="Produire un autre livrable indépendant.", disposition="CREATE_NEW",
     )
     assert result["created"] is True
@@ -793,7 +809,7 @@ async def test_scope_change_during_amendment_does_not_leak_the_new_definition(mo
     create = AsyncMock()
     monkeypatch.setattr(conversation_mcp, "_create_conversation_task", create)
     ctx = McpToolContext(agent_id=7, runtime="internal", resources={"conversation_turn": _turn()})
-    result = await conversation_mcp.conversation_task_submit(ctx, objective="Add PDF",
+    result = await conversation_mcp.task_submit(ctx, objective="Add PDF",
         disposition="AMEND_QUEUED", target_task_id=str(task.id), expected_revision=4)
     assert result["conflict"] == "amendment_target_unavailable"
     assert "private" not in str(result)

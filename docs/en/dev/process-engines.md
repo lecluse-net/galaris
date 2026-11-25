@@ -309,9 +309,9 @@ physical termination.
    These numbers are synthetic: use the actual authorized Service and agent.
    CRUD uses `PROCESS_ADMIN` and the management scope; global HTTP discovery
    also requires the global scope.
-6. The agent uses `process_list`, `process_get`, then `process_start` from the
+6. The agent uses `file_list` on `galaris://processes/`, `file_read` on the returned URI, then `process_start` from the
    `process` Service. Those functions and the assignment must be authorized.
-   The conversation controller uses `conversation_process_start`.
+   The conversation controller uses `process_start_conversation`.
    The same Service exposes `process_admin_*` functions. For calls that take an engine,
    supply `service_code="example"` because the default remains `n8n`.
 7. Regenerate and check documentation and architecture. In development,

@@ -3,19 +3,30 @@
 from datetime import datetime, timezone
 from typing import Literal
 
-from sqlalchemy import delete, select
+from sqlalchemy import Select, delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent import Agent
 from app.connection import Connection, ConnectionFunctionState, ConnectionParam, ServiceFunctionState
+from core.params import Param, Params
 
 from .authorization_models import ActionAuthorization
 from .contracts import CHAT_CHANNEL_PARAM, MANAGEMENT_SCOPE_PARAM, VOICE_AUTO_ANSWER_PARAM
+from .legacy_names import BUILTIN_TOOL_RENAMES, MERGED_TASK_TOOLS
 from .mandatory_services import ADMIN_TOOLS, CHAT_TOOLS, CONVERSATION_INSPECTION_TOOLS, VOICE_TOOLS, AUDIO_TOOLS, IMAGE_TOOLS, SEARCH_TOOLS
 from .models import Service
 
+_CHAT_TOOL_RENAMES = {
+    "conversation_choice_resolve": "chat_choice_resolve",
+    "conversation_round_get": "chat_round_get",
+    "repository_show": "chat_repository_show",
+}
+_LEGACY_CHAT_NAMES = {current: previous for previous, current in _CHAT_TOOL_RENAMES.items()}
+_LEGACY_CHAT_TOOLS = tuple(_LEGACY_CHAT_NAMES.get(name, name) for name in CHAT_TOOLS)
 MERGES = {
-    "platform_admin": {"galaris": ADMIN_TOOLS, "conversation": CONVERSATION_INSPECTION_TOOLS},
+    "platform_admin": {"galaris": ADMIN_TOOLS, "conversation": tuple(
+        _LEGACY_CHAT_NAMES.get(name, name) for name in CONVERSATION_INSPECTION_TOOLS
+    )},
     "voice": {"conversation": VOICE_TOOLS},
 }
 FAMILY_MERGES: dict[str, tuple[str, tuple[str, ...]]] = {
@@ -59,12 +70,19 @@ async def merge_builtin_services(session: AsyncSession) -> None:
     if MERGES.keys() & services.keys():
         from .mcp_loader import load_mcp_tools
 
-        approvals: dict[str, Literal["enabled", "ask"]] = {tool.name: tool.approval for tool in load_mcp_tools()}
+        definitions = load_mcp_tools()
+        approvals: dict[str, Literal["enabled", "ask"]] = {
+            _LEGACY_CHAT_NAMES.get(tool.name, tool.name): tool.approval for tool in definitions
+        }
+        # The retired Voice service required consent to initiate calls.
+        approvals["voice_call_start"] = "ask"
+        available_defaults = {_LEGACY_CHAT_NAMES.get(tool.name, tool.name) for tool in definitions
+                              if tool.default_state != "disabled"}
         for code, mapping in MERGES.items():
             if code in services:
                 targets = {name: (services.get("conversation") or services["chat"]) if destination == "conversation" else services[destination]
                            for destination, names in mapping.items() for name in names}
-                await _merge_service(session, services[code], targets, approvals, services["galaris"])
+                await _merge_service(session, services[code], targets, approvals, available_defaults, services["galaris"])
     if {"galaris", "service"} <= services.keys():
         await _move_galaris_management_scope(session, services["galaris"].id, services["service"].id)
 
@@ -125,8 +143,8 @@ async def merge_conversation_into_chat(session: AsyncSession) -> None:
 
     from .dbadmin import move_function_policies
 
-    await move_function_policies(session, source.id, chat.id, "Conversation and Chat", CHAT_TOOLS)
-    await rebind_action_history(session, source.id, dict.fromkeys(CHAT_TOOLS, chat.id),
+    await move_function_policies(session, source.id, chat.id, "Conversation and Chat", _LEGACY_CHAT_TOOLS)
+    await rebind_action_history(session, source.id, dict.fromkeys(_LEGACY_CHAT_TOOLS, chat.id),
                                 {(chat.id, agent_id): row for agent_id, row in targets.items()}, origin_ids=origin_ids)
     # The old service was mandatory. If an old connection was absent or inactive,
     # keep its functions blocked when attaching them to the active Chat connection.
@@ -136,10 +154,10 @@ async def merge_conversation_into_chat(session: AsyncSession) -> None:
         await session.execute(delete(ConnectionFunctionState).where(
             ConnectionFunctionState.connection_id.in_(blocked_ids),
             ConnectionFunctionState.capability_kind == "tool",
-            ConnectionFunctionState.function_name.in_(CHAT_TOOLS),
+            ConnectionFunctionState.function_name.in_(_LEGACY_CHAT_TOOLS),
         ))
         session.add_all(ConnectionFunctionState(connection_id=connection_id, function_name=name,
-                        enabled=False, state="disabled") for connection_id in blocked_ids for name in CHAT_TOOLS)
+                        enabled=False, state="disabled") for connection_id in blocked_ids for name in _LEGACY_CHAT_TOOLS)
     await session.flush()
     if await session.scalar(select(ServiceFunctionState.id).where(ServiceFunctionState.service_id == source.id).limit(1)):
         raise ValueError("Cannot merge Conversation: an unknown global function policy would be lost")
@@ -154,6 +172,138 @@ async def merge_conversation_into_chat(session: AsyncSession) -> None:
     await session.execute(delete(Connection).where(Connection.id.in_(origin_ids)))
     await session.delete(source)
     await session.flush()
+
+
+async def rename_chat_tools(session: AsyncSession) -> None:
+    """Carry Chat function policies forward after the older Service merges."""
+    await _rename_builtin_tools(session, "chat", _CHAT_TOOL_RENAMES)
+
+
+async def rename_domain_tools(session: AsyncSession) -> None:
+    for service_code, names in BUILTIN_TOOL_RENAMES.items():
+        await _rename_builtin_tools(session, service_code, names)
+    await _merge_task_tool_policies(session)
+
+
+async def _rename_builtin_tools(session: AsyncSession, service_code: str, renames: dict[str, str]) -> None:
+    service_id = await session.scalar(select(Service.id).where(Service.code == service_code).with_for_update())
+    if service_id is None:
+        return
+    connection_ids = select(Connection.id).where(Connection.service_id == service_id)
+    names = (*renames, *renames.values())
+    for model, owner in ((ServiceFunctionState, ServiceFunctionState.service_id),
+                         (ConnectionFunctionState, ConnectionFunctionState.connection_id)):
+        scope = owner == service_id if model is ServiceFunctionState else owner.in_(connection_ids)
+        rows = (await session.execute(select(owner, model).where(
+            scope, model.capability_kind == "tool", model.function_name.in_(names),
+        ).order_by(model.id).with_for_update())).all()
+        policies = {(owner_id, row.function_name): row for owner_id, row in rows}
+        for (owner_id, previous_name), previous in policies.items():
+            current_name = renames.get(previous_name)
+            if current_name is None:
+                continue
+            current = policies.get((owner_id, current_name))
+            if current is None:
+                previous.function_name = current_name
+            elif _state(previous) == _state(current):
+                await session.delete(previous)
+            else:
+                raise ValueError(f"Conflicting {model.__tablename__} policies for {previous_name} and {current_name}")
+
+    await _invalidate_renamed_approvals(session, service_id, tuple(renames))
+    await session.flush()
+
+
+async def _invalidate_renamed_approvals(
+    session: AsyncSession, service_id: int, old_names: tuple[str, ...],
+) -> None:
+    # Existing one-action approvals are bound to the original name and fingerprint.
+    connection_ids = select(Connection.id).where(Connection.service_id == service_id)
+    now = datetime.now(timezone.utc)
+    await session.execute(update(ActionAuthorization).where(
+        (ActionAuthorization.service_id == service_id) | ActionAuthorization.connection_id.in_(connection_ids),
+        ActionAuthorization.capability_kind == "tool",
+        ActionAuthorization.capability_name.in_(old_names),
+        ActionAuthorization.status.in_(("pending", "approved")),
+    ).values(status="invalidated", encrypted_arguments=None, notification_due_at=None,
+             wake_due_at=now, finished_at=now))
+
+
+_STATE_RESTRICTION: dict[State, int] = {"enabled": 0, "ask": 1, "disabled": 2}
+
+
+async def _merge_task_tool_policies(session: AsyncSession) -> None:
+    """Keep the most restrictive former effective policy at each connection."""
+    service_id = await session.scalar(select(Service.id).where(Service.code == "task").with_for_update())
+    if service_id is None:
+        return
+    connection_ids = select(Connection.id).where(Connection.service_id == service_id)
+    marker = await session.get(Param, Params.TASK_RUN_POLICIES_MERGED, with_for_update=True)
+    first_run_merge = marker is None or marker.value != "true"
+    await _merge_task_tool_policy(session, service_id, connection_ids, "task_run",
+                                  {"task_run": "enabled", "task_submit": "ask"},
+                                  include_destination_only=first_run_merge)
+    await _merge_task_tool_policy(session, service_id, connection_ids, "task_get",
+                                  {"task_get": "enabled", "task_status": "enabled"})
+    await _merge_task_tool_policy(session, service_id, connection_ids, "task_resume",
+                                  {"task_resume": "enabled", "task_retry": "enabled"})
+    await _merge_task_tool_policy(session, service_id, connection_ids, "task_cancel",
+                                  {"task_stop": "ask", "task_stop_conversation": "ask"})
+    retired = tuple(MERGED_TASK_TOOLS)
+    await _invalidate_renamed_approvals(session, service_id, (*retired, "task_run") if first_run_merge else retired)
+    if marker is None:
+        session.add(Param(name=Params.TASK_RUN_POLICIES_MERGED, value="true"))
+    elif first_run_merge:
+        marker.value = "true"
+    await session.flush()
+
+
+async def _merge_task_tool_policy(
+    session: AsyncSession, service_id: int, connection_ids: Select[tuple[int]], name: str,
+    previous_defaults: dict[str, State], *, include_destination_only: bool = False,
+) -> None:
+    retired = previous_defaults.keys() - {name}
+    names = retired | {name}
+    global_rows = {row.function_name: row for row in await session.scalars(
+        select(ServiceFunctionState).where(ServiceFunctionState.service_id == service_id,
+            ServiceFunctionState.capability_kind == "tool", ServiceFunctionState.function_name.in_(names))
+        .order_by(ServiceFunctionState.id).with_for_update(),
+    )}
+    local_rows: dict[int, dict[str, ConnectionFunctionState]] = {}
+    for row in await session.scalars(
+        select(ConnectionFunctionState).where(ConnectionFunctionState.connection_id.in_(connection_ids),
+            ConnectionFunctionState.capability_kind == "tool", ConnectionFunctionState.function_name.in_(names))
+        .order_by(ConnectionFunctionState.id).with_for_update(),
+    ):
+        local_rows.setdefault(row.connection_id, {})[row.function_name] = row
+
+    old_globals = dict(previous_defaults)
+    old_globals.update((key, _state(row)) for key, row in global_rows.items())
+    global_state = max(old_globals.values(), key=_STATE_RESTRICTION.__getitem__)
+    if retired & global_rows.keys() or (include_destination_only and name in global_rows):
+        current = global_rows.get(name)
+        if current is None:
+            session.add(ServiceFunctionState(service_id=service_id, function_name=name, state=global_state,
+                                             enabled=global_state == "enabled"))
+        else:
+            current.state, current.enabled = global_state, global_state == "enabled"
+        for key in retired & global_rows.keys():
+            await session.delete(global_rows[key])
+
+    for connection_id, rows in local_rows.items():
+        if not include_destination_only and not (retired & (global_rows.keys() | rows.keys())):
+            continue
+        old_effective = dict(old_globals)
+        old_effective.update((key, _state(row)) for key, row in rows.items())
+        state = max(old_effective.values(), key=_STATE_RESTRICTION.__getitem__)
+        current = rows.get(name)
+        if current is None:
+            session.add(ConnectionFunctionState(connection_id=connection_id, function_name=name,
+                                                state=state, enabled=state == "enabled"))
+        else:
+            current.state, current.enabled = state, state == "enabled"
+        for key in retired & rows.keys():
+            await session.delete(rows[key])
 
 
 async def _move_galaris_management_scope(session: AsyncSession, origin: int, destination: int) -> None:
@@ -210,8 +360,11 @@ async def merge_media_and_search_services(session: AsyncSession) -> None:
                    if target == code and old in services]
         if sources:
             definitions = mcp_tools_by_service_code()[code]
-            await _merge_service_families(session, services[code], sources,
-                {tool.name: tool.approval for tool in definitions},
+            original_defaults: dict[str, State] = {tool.name: tool.approval for tool in definitions}
+            if code == "multimedia":
+                # These actions required consent on the retired Audio and Image services.
+                original_defaults.update(audio_transcribe="ask", image_read="ask")
+            await _merge_service_families(session, services[code], sources, original_defaults,
                 {tool.name: tool.default_state for tool in definitions})
 
 
@@ -352,7 +505,7 @@ async def rebind_action_history(
 
 async def _merge_service(
     session: AsyncSession, source: Service, targets: dict[str, Service],
-    approvals: dict[str, Literal["enabled", "ask"]], galaris: Service,
+    approvals: dict[str, Literal["enabled", "ask"]], available_defaults: set[str], galaris: Service,
 ) -> None:
     _require_plain_service(source)
     origins = list(await session.scalars(select(Connection).where(Connection.service_id == source.id).with_for_update()))
@@ -443,20 +596,23 @@ async def _merge_service(
         if not origin.active and any(value != "disabled" for value in overrides.values()):
             raise ValueError(f"Cannot merge {source.code}: an inactive connection retains an enabled function policy")
         for name, service in targets.items():
-            if not origin.active and name not in overrides:
-                continue
             target = destinations.get((service.id, origin.agent_id))
             if target is None:
                 if name in overrides:
                     raise ValueError(f"Cannot merge {source.code}: a configured connection has no destination")
                 continue
-            state = overrides.get(name, inherited.get(name, approvals[name]))
             existing = policies.get((target.id, name))
+            current = destination_globals.get((service.id, name))
+            if not origin.active and name not in overrides:
+                if name not in available_defaults or existing is not None or current is not None:
+                    continue
+                state: State = "disabled"
+            else:
+                state = overrides.get(name, inherited.get(name, approvals[name]))
             if existing is not None:
                 if _state(existing) != state:
                     raise ValueError(f"Cannot merge {source.code}: conflicting policies for {name}")
                 continue
-            current = destination_globals.get((service.id, name))
             if current is not None and inherited.get(name) != _state(current) and _state(current) != state:
                 raise ValueError(f"Cannot merge {source.code}: conflicting global policies for {name}")
             session.add(ConnectionFunctionState(connection_id=target.id, function_name=name,

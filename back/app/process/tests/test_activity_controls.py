@@ -13,7 +13,7 @@ from app.agent.executor_service import _update_task_after_execution
 from app.connection import Connection
 from app.conversation import ProcessHumanMessenger, ConversationTurn
 from app.conversation.models import ConversationRound, ConversationRoundMessage, ConversationProcessLink
-from app.conversation.mcp import conversation_process_respond, conversation_process_start
+from app.conversation.mcp import process_respond, process_start_conversation
 from app.process.run_resources import read_run_data
 from app.messenger import Room, RoomUser, Message, MessengerUser, Interaction
 from app.process import human_directory, process_service
@@ -83,10 +83,10 @@ async def setup_activity(db, native, monkeypatch, *, delegated=False, human_mana
     from app.conversation.tests.test_process_admission import provider
     with monkeypatch.context() as launch_patch:
         provider(launch_patch, [{"workflow_id": definition.code, "input": {}}])
-        launched = await conversation_process_start(launch_ctx, workflow_id=definition.code)
+        launched = await process_start_conversation(launch_ctx, workflow_id=definition.code)
     run_id = UUID(launched["run_id"])
     assert (await db.get(ProcessRun, run_id)).requester_user_id == (user.id if human_manager else None)
-    replay = await conversation_process_start(launch_ctx, workflow_id=definition.code)
+    replay = await process_start_conversation(launch_ctx, workflow_id=definition.code)
     assert replay["run_id"] == str(run_id) and replay["created"] is False
     assert await db.scalar(select(func.count()).select_from(ConversationProcessLink).where(
         ConversationProcessLink.round_id == round_.id)) == 1
@@ -150,14 +150,14 @@ async def test_ai_activity_asks_in_origin_room_resumes_and_passes_data_to_next_t
             "participant_id": choice.user_id, "requester_user_id": user.id})
     reply_ctx = McpToolContext(agent_id=owner.id, runtime="internal", resources={"conversation_turn": turn})
     with pytest.raises(RecoverableToolError, match="expected type int"):
-        await conversation_process_respond(reply_ctx, reference=choice.reference, output={"age": {"type": "string", "value": "37"}})
+        await process_respond(reply_ctx, reference=choice.reference, output={"age": {"type": "string", "value": "37"}})
     for invalid in ({"age": "37"}, {"age": True}, {"age": 37, "unknown": 1}):
         with pytest.raises(RecoverableToolError):
-            await conversation_process_respond(reply_ctx, reference=choice.reference, output=invalid)
+            await process_respond(reply_ctx, reference=choice.reference, output=invalid)
     assert choice.status == "PENDING"
     output = {"age": {"type": "int", "value": 37}}
-    await conversation_process_respond(reply_ctx, reference=choice.reference, output={"age": 37})
-    assert not (await conversation_process_respond(reply_ctx, reference=choice.reference, output=output))["applied"]
+    await process_respond(reply_ctx, reference=choice.reference, output={"age": 37})
+    assert not (await process_respond(reply_ctx, reference=choice.reference, output=output))["applied"]
     if reply_timing == "before":
         await _update_task_after_execution(task, ExecutionResult(prompt="Synthetic driver", result="What is your age?"), base_cost=0)
     await db.refresh(task)
@@ -227,7 +227,7 @@ async def test_delegated_activity_asks_and_receives_input_in_the_launch_conversa
         objective="37", messages=({"text": "37"},), messaging_context={"connection_id": choice.connection_id,
             "service_id": choice.service_id, "participant_id": choice.user_id, "requester_user_id": user.id})
     reply = McpToolContext(agent_id=owner.id, runtime="internal", resources={"conversation_turn": turn})
-    await conversation_process_respond(reply, reference=choice.reference, output={"age": 37})
+    await process_respond(reply, reference=choice.reference, output={"age": 37})
     await db.refresh(task)
     assert task.agent_id == performer.id and not task.paused
     assert "37" in task.data["input_context"]
@@ -602,7 +602,7 @@ async def test_managed_activity_continues_after_human_reply_with_a_new_runtime_r
         objective="37", messages=({"text": "37"},), messaging_context={"connection_id": choice.connection_id,
             "service_id": choice.service_id, "participant_id": choice.user_id, "requester_user_id": user.id})
     reply = McpToolContext(agent_id=owner.id, runtime="internal", resources={"conversation_turn": turn})
-    await conversation_process_respond(reply, reference=choice.reference, output={"age": 37})
+    await process_respond(reply, reference=choice.reference, output={"age": 37})
     if transport_loss:
         # Expediting the persisted timer replaces only the clock boundary. The
         # scheduler must reconcile the existing remote turn before a fresh turn.
@@ -629,10 +629,10 @@ async def test_managed_activity_continues_after_human_reply_with_a_new_runtime_r
         pending = await db.scalar(select(Interaction).where(Interaction.kind == "process_human_activity", Interaction.status == "PENDING"))
         assert pending.id != choice.id
         # A repeated reply to the first question cannot wake the second Task.
-        assert not (await conversation_process_respond(reply, reference=choice.reference, output={"age": 37}))["applied"]
+        assert not (await process_respond(reply, reference=choice.reference, output={"age": 37}))["applied"]
         await db.refresh(second_task)
         assert second_task.paused
-        await conversation_process_respond(reply, reference=pending.reference, output={"occupation": "Synthetic occupation"})
+        await process_respond(reply, reference=pending.reference, output={"occupation": "Synthetic occupation"})
         assert (await execute(second_task)).success
     for _ in range(8): await process_service.refresh_run(run_id)
     run = await db.get(ProcessRun, run_id)

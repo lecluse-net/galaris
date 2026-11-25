@@ -20,9 +20,19 @@ listes de sélection, notamment pour créer une connexion ou régler les autoris
 Chaque agent dispose des connexions **Contact** et **Tâches**. Dans **Autorisations**,
 sélectionner le service qui porte l’outil à régler. **Multimédia** regroupe les outils audio,
 image et vidéo. **Navigateur** contient aussi `search_web`. Les équipes se règlent dans
-**Agent**, les outils `document_*` dans **Documents** et les `conversation_process_*` dans
+**Agent**, les outils `document_*` dans **Documents** et les `process_*` dans
 **Processus**. **Chat** regroupe le canal interne, les appels et les choix en attente.
-Les outils conversationnels restent disponibles dans leur contexte prévu. Le
+Dans le Chat, **Agenda** expose `calendar_list` et `calendar_events`. **Agent** expose
+`agent_list`, `agent_get`, `team_list`, `team_members` et `agent_team_list`. La liste de **Chat** exclut
+`chat_round_get` et `voice_turn_get`. **Documents** expose `document_show`, `document_sharing`
+et `document_share`. **Compétences** expose `skills_list` et `skill_read`. **Multimédia** expose
+`image_read`, `audio_read` et `audio_transcribe`. **Partage de fichiers** expose `file_schemes`,
+`file_list`, `file_info`, `file_search`, `file_read` et `dataset_query`. Les permissions et le
+contexte d’exécution de chaque outil continuent de s’appliquer. **Services** expose
+`services_list` et, selon la portée de gestion, `service_connection_list`. **Sujets** expose `topic_list` et
+`topic_items_list` lorsque la connexion Sujets est active. Utilisez les URI retournées
+par ces outils et par le catalogue des processus pour lire un sujet, une définition ou une
+exécution avec `file_read`. Le
 [guide des services intégrés](../admin/service-administration.md)
 indique où régler les permissions et les portées.
 
@@ -35,6 +45,9 @@ Les connexions **Documents** et **Tâches** disposent elles aussi de leur propre
 Les outils Documents exigent les droits du document en plus du périmètre de la connexion.
 Dans **Permissions → Tâches**, accordez la portée **Équipe** pour que l'agent puisse
 déléguer du travail aux membres de ses équipes.
+Dans **Autorisations**, `task_get` règle la consultation d'une tâche précise et
+`task_cancel` règle son arrêt, en conversation comme pendant l'exécution d'une tâche.
+`task_run` couvre la soumission dans le Chat et la délégation à un collègue pendant l'exécution.
 
 Cliquer sur **Nouveau service** pour ouvrir la modale du catalogue, rechercher le fournisseur puis
 choisir **Configurer une copie**. La fiche s'ouvre dans l'éditeur habituel : vérifier le

@@ -9,7 +9,7 @@ from sqlalchemy import select, func, inspect
 from sqlalchemy.exc import InvalidRequestError
 
 from app.agent import AgentManagementScope
-from app.conversation.mcp import conversation_process_prepare
+from app.conversation.mcp import process_prepare
 from app.conversation.models import ConversationRound
 from app.conversation.tests.test_direct_process_inputs import setup
 from app.conversation.tests.test_process_admission import context
@@ -35,7 +35,7 @@ async def stored(db, run, name):
 @pytest.mark.asyncio
 async def test_provenance_is_deferred_and_absent_from_normal_run_tools_context_and_events(db, native, monkeypatch):
     owner, _, definition, turn, run, _, calls = await setup(db, native, monkeypatch, [Variable(name="birth", type="date", nullable=False)])
-    ready = await conversation_process_prepare(context(turn), workflow_id=definition.code, input={"birth": "2000-02-29"})
+    ready = await process_prepare(context(turn), workflow_id=definition.code, input={"birth": "2000-02-29"})
     origin = await stored(db, run, "birth")
     assert origin["kind"] == "agent" and origin["reference"] == f"galaris://text/{turn.round_id}"
     assert "2000-02-29" not in json.dumps(origin) and len(json.dumps(origin).encode()) < 400
@@ -54,7 +54,7 @@ async def test_provenance_is_deferred_and_absent_from_normal_run_tools_context_a
     assert len(calls) == 1
     # Cache/retries must not add another audit row or model request.
     count = await db.scalar(select(func.count()).select_from(ProcessRunEvent).where(ProcessRunEvent.event_type == PROVENANCE_EVENT))
-    assert await conversation_process_prepare(context(turn), workflow_id=definition.code) == ready
+    assert await process_prepare(context(turn), workflow_id=definition.code) == ready
     assert await db.scalar(select(func.count()).select_from(ProcessRunEvent).where(ProcessRunEvent.event_type == PROVENANCE_EVENT)) == count
 
 

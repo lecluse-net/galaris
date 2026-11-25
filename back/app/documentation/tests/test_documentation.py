@@ -748,7 +748,7 @@ async def test_mcp_documentation_only_search_read_and_live_revocation(committed_
     async with Client(server) as client:
         names = {tool.name for tool in await client.list_tools()}
         assert {"documentation_search", "documentation_catalog", "file_read"} <= names
-        assert not {"llm_call", "llm_calls", "voice_turn_get", "conversation_round_get"} & names
+        assert not {"llm_call", "llm_calls", "voice_turn_get", "chat_round_get"} & names
         result = await client.call_tool("documentation_search", {"query": "Comment partager un document ?", "language": "fr"})
         assert not result.is_error
         payload = json.loads(result.content[0].text)

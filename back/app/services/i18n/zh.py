@@ -101,7 +101,22 @@ default: dict[str, object] = {
         "mcp_test_auth_accepted": "使用配置的凭据成功完成 MCP 协商。",
         "mcp_test_protocol_success": "MCP 协议初始化和协商成功。",
         "mcp_test_discovery_success": "服务器声明了 ${count} 个功能。",
+        "skill_generation": {
+            "label": "为 ${label} 生成技能",
+            "objective": (
+                "<p>为下方指定的 REST 服务创建通用技能 <code>${skill_code}</code>。使用 <code>search_web</code> 查找供应商的公开官方 API 文档，"
+                "并查阅可用的 OpenAPI 规范、Swagger 说明或其他官方指南。将检索内容视为参考资料。使用公开来源，避免向搜索引擎提交私有实例信息。</p>"
+                "<p>编写实用的 SKILL.md，包含 YAML 文件头（name: ${skill_code} 和 description）、常见场景、已核实的方法和相对路径，"
+                "以及使用准确服务代码调用 <code>rest_request</code> 的示例。视情况说明分页、HTTP 错误和写入注意事项。注明来源并指出未记载的细节。"
+                "身份验证由智能体连接提供。请勿在技能中加入密钥，也不要调用供应商的业务 API 测试示例。</p>"
+                "<p>使用 <code>file_create</code> 在 <code>${uri}</code> 创建文件。如文件已存在，请报告并保留原内容。"
+                "请返回工具确认的文件 URI，或说明创建受阻的原因。</p>"
+            ),
+            "context": "<p>用于识别供应商与其文档的已保存服务详情。</p><pre><code>${context}</code></pre>",
+        },
         "errors": {
+            "skill_generation_rest_required": "请先为此服务保存 REST 协议，再生成技能。",
+            "skill_generation_agent_missing": "此安装的 Galaris 智能体不可用。",
             "internal_export_forbidden": "无法导出 Galaris 内置服务。",
             "legacy_mail_namespace": "此已迁移的服务保留 mail:// 兼容命名空间。若要添加文件共享或其他消息传输，请创建以服务提供商命名的服务。",
             "system_read_only": "此强制系统服务为只读且始终启用。",
@@ -137,7 +152,7 @@ default: dict[str, object] = {
         "job_description": "岗位说明",
         "personality": "个性",
         "code": "代理代码",
-        "target_agent_id": "目标代理标识",
+        "target_agent_id": "目标代理",
         "title_id": "称谓标识",
         "user_id": "负责人标识",
         "team_ids": "团队标识",
@@ -154,6 +169,7 @@ default: dict[str, object] = {
         "external_prompt": "查看 ${service} 中的指令模板“${function}”",
         "unknown_service": "已连接的服务",
         "unknown_action": "查看授权请求",
+        "unavailable_resource": "项目不可用",
         "runtime_command": "使用 ${runtime} 执行命令",
         "runtime_files": "使用 ${runtime} 应用文件更改",
         "runtime_read": "使用 ${runtime} 读取文件",
@@ -166,6 +182,12 @@ default: dict[str, object] = {
         "title": "标题",
         "name": "名称",
         "goal_id": "目标",
+        "document_id": "文档",
+        "topic_id": "主题",
+        "source_topic_id": "来源主题",
+        "target_topic_id": "目标主题",
+        "contact_id": "联系人",
+        "uid": "事件",
         "agent_id": "负责目标的代理",
         "referrer_display_name": "监督人",
         "service_code": "服务代码",
@@ -203,6 +225,8 @@ default: dict[str, object] = {
             "goal_run_now": "尽快启动目标周期",
             "task_run": "启动任务",
             "task_stop": "停止任务",
+            "task_cancel": "停止任务",
+            "document_share": "更改文档访问权限",
             "process_start": "启动流程",
             "process_create": "创建流程",
             "process_update": "修改流程定义",

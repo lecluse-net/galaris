@@ -15,7 +15,7 @@ from sqlalchemy import delete, func, select
 
 from app.connection import Connection
 from app.conversation import ConversationTurn
-from app.conversation.mcp import conversation_process_start
+from app.conversation.mcp import process_start_conversation
 from app.conversation.models import ConversationProcessLink, ConversationRound, ConversationRoundMessage
 from app.llm import llm_service, structured_service
 from app.messenger import Message, Room
@@ -79,7 +79,7 @@ async def test_answer_cannot_start_a_process_even_without_a_fake_transcript(db, 
     turn = replace(turn, assert_fresh_before_effect=effect_guard)
     requests = provider(monkeypatch, [])
     with pytest.raises(RecoverableToolError):
-        await conversation_process_start(context(turn), workflow_id=definition.code)
+        await process_start_conversation(context(turn), workflow_id=definition.code)
     assert await db.scalar(select(func.count()).select_from(ProcessRun)) == 0
     assert len(requests) == 1
     effect_guard.assert_not_awaited()
@@ -92,16 +92,16 @@ async def test_frozen_admission_replays_one_run_and_rejects_changed_inputs_or_an
     other = await create(actor_agent_id=owner.id, title="Synthetic unrelated workflow", graph=graph())
     turn, _ = await conversation(db, owner, "Launch the requested workflow for Oslo.")
     requests = provider(monkeypatch, [{"workflow_id": definition.code, "input": {"city": "Oslo"}}])
-    first = await conversation_process_start(context(turn), workflow_id=definition.code, input={"city": "Oslo"})
+    first = await process_start_conversation(context(turn), workflow_id=definition.code, input={"city": "Oslo"})
     # A new controller attempt must reuse the durable permission and invocation.
-    replay = await conversation_process_start(context(replace(turn, attempt=2)),
+    replay = await process_start_conversation(context(replace(turn, attempt=2)),
         workflow_id=definition.code, input={"city": "Oslo"})
     assert replay["run_id"] == first["run_id"] and replay["created"] is False
     for workflow, values in [(definition.code, {"city": "Paris"}), (other.code, {})]:
         with pytest.raises(RecoverableToolError):
-            await conversation_process_start(context(turn), workflow_id=workflow, input=values)
+            await process_start_conversation(context(turn), workflow_id=workflow, input=values)
     with pytest.raises(RecoverableToolError):
-        await conversation_process_start(context(turn), workflow_id=definition.code,
+        await process_start_conversation(context(turn), workflow_id=definition.code,
             input={"city": "Oslo"}, typed_values=True)
     assert len(requests) == 1
     assert await db.scalar(select(func.count()).select_from(ProcessRun)) == 1
@@ -110,13 +110,13 @@ async def test_frozen_admission_replays_one_run_and_rejects_changed_inputs_or_an
     # Simulate an interruption between durable Process admission and lineage.
     await db.execute(delete(ConversationProcessLink))
     await db.commit()
-    recovered = await conversation_process_start(context(replace(turn, attempt=3)),
+    recovered = await process_start_conversation(context(replace(turn, attempt=3)),
         workflow_id=definition.code, input={"city": "Oslo"})
     assert recovered["run_id"] == first["run_id"] and recovered["created"] is False
     assert await db.scalar(select(func.count()).select_from(ProcessRun)) == 1
     assert await db.scalar(select(func.count()).select_from(ConversationProcessLink)) == 1
     with pytest.raises(RecoverableToolError, match="different admitted input"):
-        await conversation_process_start(context(replace(turn, source_request="Launch something else")),
+        await process_start_conversation(context(replace(turn, source_request="Launch something else")),
             workflow_id=definition.code, input={"city": "Oslo"})
     assert len(requests) == 1
 
@@ -143,7 +143,7 @@ async def test_launch_permission_does_not_spend_the_controller_reasoning_budget(
     monkeypatch.setattr(structured_service, "build_model_for_llm", reasoning_provider)
     monkeypatch.setattr(process_admission, "_ADMISSION_TIMEOUT_SECONDS", 0.5)
     with reasoning_effort_scope(parent_effort):
-        result = await conversation_process_start(context(turn), workflow_id=definition.code)
+        result = await process_start_conversation(context(turn), workflow_id=definition.code)
         assert await structured_service.resolve_reasoning_effort(None, None) == parent_effort
     assert result["created"] and len(requests) == 1
     assert await db.scalar(select(func.count()).select_from(ProcessRun)) == 1
@@ -162,20 +162,20 @@ async def test_explicit_multiple_launches_and_a_new_human_request_remain_possibl
     results = []
     for workflow, values, occurrence in [(first.code, {"city": "Oslo"}, 1),
                                         (first.code, {"city": "Oslo"}, 2), (second.code, {}, 1)]:
-        result = await conversation_process_start(context(turn), workflow_id=workflow, input=values, occurrence=occurrence)
+        result = await process_start_conversation(context(turn), workflow_id=workflow, input=values, occurrence=occurrence)
         results.append(result["run_id"])
-        assert (await conversation_process_start(context(turn), workflow_id=workflow,
+        assert (await process_start_conversation(context(turn), workflow_id=workflow,
             input=values, occurrence=occurrence))["run_id"] == result["run_id"]
     assert len(set(results)) == 3 and len(requests) == 1
     with pytest.raises(RecoverableToolError):
-        await conversation_process_start(context(turn), workflow_id=first.code, input={"city": "Oslo"}, occurrence=3)
+        await process_start_conversation(context(turn), workflow_id=first.code, input={"city": "Oslo"}, occurrence=3)
     # The next actual message can deliberately request a fresh run of the same workflow.
     round_ = await db.get(ConversationRound, turn.round_id)
     round_.status = "SUCCEEDED"
     await db.commit()
     new_turn, _ = await conversation(db, owner, "Launch the first workflow again for Oslo.", room=room)
     provider(monkeypatch, [launches[0]])
-    new = await conversation_process_start(context(new_turn), workflow_id=first.code, input={"city": "Oslo"})
+    new = await process_start_conversation(context(new_turn), workflow_id=first.code, input={"city": "Oslo"})
     assert new["created"] and new["run_id"] not in results
     assert await db.scalar(select(func.count()).select_from(ProcessRun)) == 4
 
@@ -195,7 +195,7 @@ async def test_late_permission_and_unavailable_provider_never_start_work(inferen
     requests = provider(monkeypatch, [{"workflow_id": definition.code, "input": {}}])
     stale = replace(turn, should_interrupt=AsyncMock(side_effect=lambda: bool(requests)))
     with pytest.raises(ConversationSuperseded):
-        await conversation_process_start(context(stale), workflow_id=definition.code)
+        await process_start_conversation(context(stale), workflow_id=definition.code)
     assert len(requests) == 1
     assert await db.scalar(select(ConversationRound.process_launch_admission)) is None
 
@@ -213,7 +213,7 @@ async def test_late_permission_and_unavailable_provider_never_start_work(inferen
     monkeypatch.setattr(process_admission, "_ADMISSION_TIMEOUT_SECONDS", 0.000001 if deadline_phase == "preparation" else 0.5)
     monkeypatch.setattr(structured_service, "build_model_for_llm", silent_provider)
     with pytest.raises(RecoverableToolError, match="could not be verified") as failure:
-        await asyncio.wait_for(conversation_process_start(context(turn), workflow_id=workflow_id), 2)
+        await asyncio.wait_for(process_start_conversation(context(turn), workflow_id=workflow_id), 2)
     assert isinstance(failure.value, ToolCallRejectedError)
     if deadline_phase == "provider":
         assert cancelled.is_set()
@@ -221,7 +221,7 @@ async def test_late_permission_and_unavailable_provider_never_start_work(inferen
     assert await db.scalar(select(ConversationRound.process_launch_admission)) is None
     monkeypatch.setattr(structured_service, "build_model_for_llm", AsyncMock(side_effect=RuntimeError("Synthetic outage")))
     with pytest.raises(RecoverableToolError, match="could not be verified"):
-        await conversation_process_start(context(turn), workflow_id=workflow_id)
+        await process_start_conversation(context(turn), workflow_id=workflow_id)
     assert await db.scalar(select(func.count()).select_from(ProcessRun)) == 0
     assert await db.scalar(select(ConversationRound.process_launch_admission)) is None
 
@@ -239,7 +239,7 @@ async def test_permission_inference_reads_real_input_and_sanitized_history_only(
     await db.commit()
     turn, _ = await conversation(db, owner, "Yes, launch it.", room=room)
     requests = provider(monkeypatch, [{"workflow_id": definition.code, "input": {"city": "Oslo"}}])
-    result = await conversation_process_start(context(turn), workflow_id=definition.code, input={"city": "Oslo"})
+    result = await process_start_conversation(context(turn), workflow_id=definition.code, input={"city": "Oslo"})
     assert result["created"]
     prompts = [part.content for message in requests[0] for part in message.parts if part.part_kind == "user-prompt"]
     prompt = json.loads(prompts[-1])
@@ -262,7 +262,7 @@ async def test_concurrent_recovery_creates_one_process_and_one_link(inference_db
 
     async def launch():
         async with get_db_session():
-            return await conversation_process_start(context(turn), workflow_id=definition.code)
+            return await process_start_conversation(context(turn), workflow_id=definition.code)
 
     first, second = await asyncio.gather(launch(), launch())
     assert first["run_id"] == second["run_id"]

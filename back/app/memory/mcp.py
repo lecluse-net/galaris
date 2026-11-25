@@ -178,7 +178,7 @@ def _task_association_payload(
     }
 
 
-@mcp_tool("memory", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("memory", approval="enabled", approval_reason="Stores a memory within the caller's authorized scope",
 
     name="memory_remember",
     description=(
@@ -312,7 +312,7 @@ async def memory_upcoming(ctx: McpToolContext, limit: int = 50, offset: int = 0)
                   "next_offset": offset + limit if has_more else None})
 
 
-@mcp_tool("memory", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("memory", approval="enabled", approval_reason="Forgets a memory within the caller's authorized scope",
 
     name="memory_forget",
     description=(
@@ -333,7 +333,7 @@ async def memory_forget(ctx: McpToolContext, memory_id: str) -> str:
         return _json({"error": str(exc)})
 
 
-@mcp_tool("memory", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("memory", approval="enabled", approval_reason="Summarizes a memory within the caller's authorized scope",
 
     name="memory_summarize",
     description=(

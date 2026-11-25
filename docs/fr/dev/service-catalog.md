@@ -41,7 +41,7 @@ Le renommage du domaine est l'action DbAdmin `app.services.rename_domain` en `BE
 Elle est exécutée par `make sync-db` en développement et par `make update` au déploiement.
 Les clients doivent migrer `app.tools` vers `app.services`, `/api/tools` vers `/api/services`,
 `tool_id`/`tool_code` vers `service_id`/`service_code`, `TOOL_ACCESS`/`TOOL_EDIT` vers
-`SERVICE_ACCESS`/`SERVICE_EDIT`, `tool_admin_*` vers `service_admin_*` et `tools_list` vers
+`SERVICE_ACCESS`/`SERVICE_EDIT`, `tool_admin_*` et `service_admin_*` vers `service_*` et `tools_list` vers
 `services_list`. Les outils MCP au sens du protocole, leurs appels et leurs index gardent
 leur nom. Le journal historique DbAdmin conserve ses anciennes clés de reprise.
 

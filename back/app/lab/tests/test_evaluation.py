@@ -426,7 +426,7 @@ async def test_conversation_executor_import_copies_the_round_into_the_selected_d
                 "messages": [
                     {
                         "type": "tool",
-                        "tool_name": "conversation_task_submit",
+                        "tool_name": "task_submit",
                         "tool_arguments": {"objective": "Préparer le rapport détaillé"},
                     }
                 ]
@@ -476,7 +476,7 @@ async def test_conversation_executor_import_copies_the_round_into_the_selected_d
     assert imported.input_data["variable_value"] == "Prépare un rapport détaillé"
     assert imported.source_capture["input_data"]["language"] == "fr"
     assert imported.expected_output["action"] == "start_task"
-    assert imported.expected_output["tool_calls"][0]["name"] == "conversation_task_submit"
+    assert imported.expected_output["tool_calls"][0]["name"] == "task_submit"
     assert imported.source_capture["source"] == snapshot
     assert imported.reference["source_kind"] == "conversation"
     assert imported.reference["source_id"] == str(source_id)

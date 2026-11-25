@@ -1764,7 +1764,7 @@ observations et URI de ressources, ainsi qu’une prochaine action. Ce suivi ne 
 livrable cohérent en tâches artificielles ; les sorties indépendantes restent coordonnées par le
 Planner, qui transmet l’organisation aux feuilles.
 
-`task_get` restitue le suivi et sa révision ; `task_work_update` enregistre les jalons de la tâche
+`task_get` restitue le suivi et sa révision ; `task_update` enregistre les jalons de la tâche
 courante, uniquement pour son exécuteur et pendant une phase active non suspendue. Les écritures
 contrôlent la révision et préservent les checkpoints. `expected_revision` utilise
 `work_plan_revision` de `task_get` (0 initialement),
@@ -2594,16 +2594,15 @@ Sources : [contrat des formats et qualification](../dev/document-formats.md),
 #### Actions de l’agent
 
 L’agent peut choisir ce format pour un résultat durable qui se prête à une arborescence, ou
-réutiliser une carte pertinente. Le service Document peut exposer ces outils dans le Chat ou
+réutiliser une carte pertinente. Le service Partage de fichiers peut exposer ces outils dans le Chat ou
 dans une tâche, selon les droits et les fonctions autorisées.
 
-- `mindmap_create` crée une carte privée, avec au plus 100 branches initiales fournies dans
-  l’ordre parent-enfant. Il renvoie l’URI, la révision et l’identifiant de la racine.
-- `mindmap_read` lit la dernière révision enregistrée. Il pagine les branches et leurs
-  identifiants stables. Avec un identifiant de nœud, il lit aussi son contenu riche par tranches.
-- `mindmap_edit` applique un lot atomique de 1 à 50 ajouts, modifications, déplacements ou
-  suppressions à la révision attendue. Supprimer une branche emporte ses descendants.
-  Si la révision est devenue obsolète, l’agent relit la carte avant de réconcilier les modifications.
+- `file_create` crée une carte privée au format `mindmap` à partir de sa source JSON.
+- `file_read` lit la carte ou une sélection. Utiliser `/nodes` pour les identifiants,
+  un identifiant pour le nœud JSON et `<id>/body_html` pour le contenu riche.
+- `file_write` remplace le nœud ou son HTML à la révision attendue.
+- `file_edit` avec `/nodes` applique un lot atomique de 1 à 50 ajouts, modifications,
+  déplacements ou suppressions. Supprimer une branche emporte ses descendants.
 
 La lecture est active par défaut. La création et la modification sont Sur demande par défaut et
 suivent la politique effective de la connexion. Le partage est explicite. Le Chat interne peut
@@ -3623,7 +3622,7 @@ différentes sont signalées ; leur adoption reste explicite. Les fiches officie
 ni secrets ni commandes MCP stdio.
 
 Le domaine public utilise désormais `app.services`, `/api/services`, `service_id` et
-`service_code`, ainsi que `SERVICE_ACCESS`/`SERVICE_EDIT` et les fonctions `service_admin_*`.
+`service_code`, ainsi que `SERVICE_ACCESS`/`SERVICE_EDIT` et les fonctions `service_*`.
 Les consommateurs de l’ancienne API `/api/tools` doivent migrer. Le terme « outil MCP » reste
 celui des fonctions du protocole ; la route web historique `/tools` redirige vers Services.
 
@@ -3643,9 +3642,9 @@ modes **Actif**, **Bloqué**, **Sur demande** et héritages que les autres Servi
 un humain. Les anciennes restrictions système ignorées sont archivées pendant la migration ;
 l’activation obligatoire ne lève ni les ACL métier ni les restrictions de harnais ou de contexte.
 
-Les commandes `conversation_task_*` appartiennent à **Tâches**, `conversation_process_*`
+Les commandes `task_*` appartiennent à **Tâches**, `process_*`
 à **Processus** et `document_show` à **Documents**. Elles restent réservées au contexte
-conversationnel. **Chat** porte `conversation_round_get` et `voice_turn_get`.
+conversationnel. **Chat** porte `chat_round_get` et `voice_turn_get`.
 Galaris porte `llm_call` et `llm_calls`. Chaque inspection revérifie sa permission et la portée
 de Services au moment de l’appel,
 même si le catalogue a été construit avant sa révocation.
@@ -4300,7 +4299,7 @@ avec `CODE_ACCESS` et les droits du dépôt. Dans Console, le menu d’un checko
 ou du fond de son répertoire ouvert, propose **Ouvrir dans l’éditeur de code** sans créer de discussion.
 Fermer puis rouvrir conserve les fichiers non enregistrés dans le navigateur.
 
-**Code source**, sous Documents dans le Chat, retrouve les dépôts présentés par `repository_show`
+**Code source**, sous Documents dans le Chat, retrouve les dépôts présentés par `chat_repository_show`
 et recherche les checkouts du home SSH si l’utilisateur possède la Console active. La découverte
 reconnaît dépôts et worktrees, ignore liens symboliques et répertoires techniques/cachés et signale
 les résultats partiels dans ses bornes de profondeur, nombre et délai. Cliquer vérifie à nouveau
@@ -4706,7 +4705,7 @@ objets externes ordinaires ne deviennent pas implicitement des enveloppes typée
 Les définitions historiques v1 gardent leur contrat ; leur conversion vers v2 est explicite.
 
 L’agent recueille les entrées et lance le processus depuis le Chat avec une clé d’idempotence.
-`conversation_process_prepare` conserve les valeurs et fichiers vérifiés dans un dossier
+`process_prepare` conserve les valeurs et fichiers vérifiés dans un dossier
 propre au participant, recherche les informations déjà accessibles et demande seulement les
 éléments manquants. Une demande de lancement incomplète possède un run `waiting`, sans activité
 démarrée ; sa complétude libère ce même run. Annulation et message sans rapport ne lancent rien.
@@ -4734,7 +4733,7 @@ vers les tâches ou enfants. Les boucles et sous-processus s’ouvrent à la dem
 PJ téléchargeables/renommables, dernière activité, attentes, durée, tokens et coûts directs ou
 inclusifs restent consultables ; les totaux partiels sont signalés quand des enfants sont invisibles.
 Le coût facturé est distinct de la valeur d’inférence d’un abonnement. L’URI copiable est
-`galaris://processes/runs/<uuid>`, également lisible par File Sharing et `processus_get`.
+`galaris://processes/runs/<uuid>`, également lisible par Partage de fichiers avec `file_read`.
 
 Les vues ouvertes suivent événements, reconnexion et contrôle périodique pendant le run, sans
 perdre la sélection ; fermer arrête ce suivi. **Pause**, **Reprendre**, **Pas à pas** et points
@@ -5730,30 +5729,26 @@ fonctions explicitement. Pour Messenger, la connexion de transport détermine le
 | `agent_get` | `agent` | Lire l’identité, la personnalité et la fiche de poste complètes d’un agent, avec son URI relisible via `file_read`. |
 | `team_list` | `agent` | Découvrir les équipes, y compris vides, avec recherche, pagination et effectifs humains/agents, sans accorder de droits. |
 | `team_members` | `agent` | Lire les membres actifs d’une équipe, filtrés par nom et nature humaine/agent, sans exposer les détails des comptes humains. |
-| `task_run` | `task` | Créer une tâche enfant déléguée à un collègue autorisé et renvoyer son URI canonique ; l’agent ne peut pas se cibler lui-même. |
+| `task_run` | `task` | Depuis le chat, créer, amender ou remplacer un travail sans `agent_id`, avec contrôle de portée et de révision. En exécution, indiquer `agent_id` pour déléguer à un collègue autorisé et recevoir l’URI de la sous-tâche. |
 | `task_get` | `task` | Lire l’état opérationnel compact, la révision, la progression, les jalons, la prochaine action, les attentes et le résultat disponible. |
-| `task_work_update` | `task` | Enregistrer le suivi par jalons de la tâche courante avec contrôle de propriétaire, phase et révision ; préserver les checkpoints et justifier la révision d’un jalon terminé. |
-| `task_stop` | `task` | Arrêter définitivement une autre tâche racine active et ses descendants inachevés ; refuse la tâche courante, ses ancêtres et une sous-tâche comme cible. |
-| `conversation_task_submit` | `task` | Créer, amender ou remplacer explicitement une tâche avec contrôle de portée et de révision ; un conflit d’amendement ne crée rien et un remplacement attend une preuve d’arrêt. |
-| `conversation_task_list` | `task` | Lister les tâches récentes du périmètre de conversation. |
-| `conversation_task_status` | `task` | Lire phase, progression du plan, erreur et résultat borné d’une tâche précise. |
-| `conversation_task_pause` | `task` | Suspendre une tâche et ses descendants inachevés. |
-| `conversation_task_resume` | `task` | Reprendre une tâche suspendue par l’utilisateur. |
-| `conversation_task_retry` | `task` | Réessayer une tâche en échec par sa machine d’état. |
-| `conversation_task_stop` | `task` | Annuler une tâche inachevée ou restituer sans modification l’état d’une tâche déjà terminée. |
-| `conversation_choice_resolve` | `chat` | Résoudre une interaction en attente à partir d’une réponse humaine comprise sans ambiguïté. |
-| `conversation_process_start` | `process` | Lancer un processus affecté et le rattacher à la conversation sans attendre sa fin. |
-| `conversation_process_prepare` | `process` | Préparer les entrées vérifiées d’un Process affecté dans un dossier durable propre au participant ; recueillir les informations manquantes sans démarrer ses activités. |
+| `task_update` | `task` | Enregistrer le suivi par jalons de la tâche courante avec contrôle de propriétaire, phase et révision ; préserver les checkpoints et justifier la révision d’un jalon terminé. |
+| `task_cancel` | `task` | Annuler un travail en conversation. En exécution, arrêter une autre tâche racine active et ses descendants inachevés. Préserver les résultats terminaux. |
+| `task_list` | `task` | Lister les tâches récentes du périmètre de conversation. |
+| `task_pause` | `task` | Suspendre une tâche et ses descendants inachevés. |
+| `task_resume` | `task` | Reprendre une pause utilisateur ou relancer une tâche en échec ou bloquée et relançable, selon son état enregistré. |
+| `chat_choice_resolve` | `chat` | Résoudre une interaction en attente à partir d’une réponse humaine comprise sans ambiguïté. |
+| `process_start_conversation` | `process` | Lancer un processus affecté et le rattacher à la conversation sans attendre sa fin. |
+| `process_prepare` | `process` | Préparer les entrées vérifiées d’un Process affecté dans un dossier durable propre au participant ; recueillir les informations manquantes sans démarrer ses activités. |
 | `document_show` | `document` | Demander l’ouverture d’un document lisible dans le salon texte interne courant de l’agent, après contrôle des droits et de la fraîcheur ; ne partage rien et ne s’exécute pas dans une tâche. |
-| `conversation_round_get` | `chat` | Inspection administrative complète d’un round : messages, tentatives, tâches créées/amendées, processus, résultat et appels. |
+| `chat_round_get` | `chat` | Inspection administrative complète d’un round : messages, tentatives, tâches créées/amendées, processus, résultat et appels. |
 
 ### Conversation : code et activités humaines
 
 | Fonction | Famille | Action et résultat |
 |---|---|---|
-| `repository_show` | `chat` | Présenter le checkout Git de la Console dans le Chat, avec référence, branche et ouverture facultative de fichier/diff sous droits. |
-| `conversation_process_pending` | `process` | Lister les questions et activités Process en attente dans la portée exacte de la conversation, avec contrats et pagination. |
-| `conversation_process_respond` | `process` | Remettre la réponse humaine choisie, valider ses valeurs/fichiers et enregistrer un reçu idempotent sans relancer le processus. |
+| `chat_repository_show` | `chat` | Présenter le checkout Git de la Console dans le Chat, avec référence, branche et ouverture facultative de fichier/diff sous droits. |
+| `process_pending` | `process` | Lister les questions et activités Process en attente dans la portée exacte de la conversation, avec contrats et pagination. |
+| `process_respond` | `process` | Remettre la réponse humaine choisie, valider ses valeurs/fichiers et enregistrer un reçu idempotent sans relancer le processus. |
 
 ### Administrer les agents
 
@@ -5802,28 +5797,28 @@ Les 22 fonctions exigent Services. Les définitions intégrées et les délégat
 
 | Fonction | Famille | Action et résultat |
 |---|---|---|
-| `service_admin_list` | `service` | Lister les Services du catalogue global. |
-| `service_admin_get` | `service` | Lire une définition, sa version et ses réglages expurgés. |
-| `service_admin_create` | `service` | Créer une définition sans secret ou adopter un candidat humain testé. |
-| `service_admin_update` | `service` | Modifier une définition personnalisée à la version attendue. |
-| `service_admin_impact` | `service` | Examiner les dépendances directes avant suppression. |
-| `service_admin_delete` | `service` | Supprimer une définition sans dépendance, sans cascade implicite. |
-| `service_admin_global_params_set` | `service` | Configurer atomiquement les valeurs globales et leur caractère imposé. |
-| `service_admin_mcp_test` | `service` | Tester un candidat HTTP/SSE sans sauvegarde ni fonction métier. |
-| `service_admin_function_list` | `service` | Lister les fonctions et leur état global. |
-| `service_admin_function_get` | `service` | Lire le schéma détaillé et l’état d’une fonction. |
-| `service_admin_function_set` | `service` | Configurer le mode global et signaler les surcharges locales. |
-| `service_admin_connection_list` | `service` | Lister les connexions avec pagination. |
-| `service_admin_connection_get` | `service` | Lire la connexion et ses valeurs masquées. |
-| `service_admin_connection_create` | `service` | Créer une connexion initialement inactive. |
-| `service_admin_connection_update` | `service` | Modifier la connexion à sa version attendue. |
-| `service_admin_connection_delete` | `service` | Supprimer une connexion optionnelle autorisée. |
-| `service_admin_connection_params_set` | `service` | Écrire les paramètres locaux en lot atomique. |
-| `service_admin_connection_param_delete` | `service` | Retirer explicitement un paramètre local. |
-| `service_admin_connection_test` | `service` | Diagnostiquer la connexion, même inactive, sans l’activer. |
-| `service_admin_connection_function_list` | `service` | Lister les permissions effectives et la disponibilité locale. |
-| `service_admin_connection_function_set` | `service` | Configurer le mode local ou rétablir l’héritage. |
-| `service_admin_catalog_refresh` | `service` | Rafraîchir directement les catalogues, avec résultats partiels et reprise ciblée. |
+| `service_list` | `service` | Lister les Services du catalogue global. |
+| `service_get` | `service` | Lire une définition, sa version et ses réglages expurgés. |
+| `service_create` | `service` | Créer une définition sans secret ou adopter un candidat humain testé. |
+| `service_update` | `service` | Modifier une définition personnalisée à la version attendue. |
+| `service_impact` | `service` | Examiner les dépendances directes avant suppression. |
+| `service_delete` | `service` | Supprimer une définition sans dépendance, sans cascade implicite. |
+| `service_global_params_set` | `service` | Configurer atomiquement les valeurs globales et leur caractère imposé. |
+| `service_mcp_test` | `service` | Tester un candidat HTTP/SSE sans sauvegarde ni fonction métier. |
+| `service_function_list` | `service` | Lister les fonctions et leur état global. |
+| `service_function_get` | `service` | Lire le schéma détaillé et l’état d’une fonction. |
+| `service_function_set` | `service` | Configurer le mode global et signaler les surcharges locales. |
+| `service_connection_list` | `service` | Lister les connexions avec pagination. |
+| `service_connection_get` | `service` | Lire la connexion et ses valeurs masquées. |
+| `service_connection_create` | `service` | Créer une connexion initialement inactive. |
+| `service_connection_update` | `service` | Modifier la connexion à sa version attendue. |
+| `service_connection_delete` | `service` | Supprimer une connexion optionnelle autorisée. |
+| `service_connection_params_set` | `service` | Écrire les paramètres locaux en lot atomique. |
+| `service_connection_param_delete` | `service` | Retirer explicitement un paramètre local. |
+| `service_connection_test` | `service` | Diagnostiquer la connexion, même inactive, sans l’activer. |
+| `service_connection_function_list` | `service` | Lister les permissions effectives et la disponibilité locale. |
+| `service_connection_function_set` | `service` | Configurer le mode local ou rétablir l’héritage. |
+| `service_catalog_refresh` | `service` | Rafraîchir directement les catalogues, avec résultats partiels et reprise ciblée. |
 
 ### Analyse documentaire
 
@@ -5875,9 +5870,6 @@ ordinaires restent dans le périmètre de l’agent.
 | `document_share` | `document` | Partage ciblé pour un document de travail propriétaire. |
 | `document_revision_list` | `document` | Paginer les révisions de contenu enregistrées d’un document accessible, de la plus récente à la plus ancienne. |
 | `document_revision_compare` | `document` | Comparer deux révisions enregistrées et, pour un format de dessin compatible, les changements de pixels dans une région facultative. |
-| `mindmap_create` | `document` | Créer une carte mentale privée, éventuellement avec des branches initiales, et renvoyer son URI et sa révision. |
-| `mindmap_read` | `document` | Lire la carte enregistrée, les identifiants des nœuds et la révision, ou le HTML d’une branche par tranches. |
-| `mindmap_edit` | `document` | Ajouter, modifier, déplacer ou supprimer des branches en une opération atomique avec la révision attendue. |
 | `skills_list` | `skills` | Découvrir les compétences dans le périmètre administrable/autorisé. |
 | `skill_read` | `skills` | Lire une compétence et ses informations ; fichiers auxiliaires accessibles via la façade de ressources. |
 | `skill_update` | `skills` | Modifier le libellé du package avec sa révision attendue. |
@@ -5892,7 +5884,7 @@ ordinaires restent dans le périmètre de l’agent.
 | Fonction | Famille | Action et résultat |
 |---|---|---|
 | `topic_list` | `topic` | Rechercher/lister les sujets globaux. |
-| `topic_get` | `topic` | Lire un sujet précis. |
+| `file_read` | `file_sharing` | Lire un sujet via `galaris://topic/<uuid>`. |
 | `topic_items_list` | `topic` | Lister les éléments rattachés avec leur type et leur identifiant exact. |
 | `topic_create` | `topic` | Créer un dossier thématique. |
 | `topic_update` | `topic` | Modifier ses métadonnées sous contrôle de révision. |
@@ -6014,19 +6006,19 @@ l’interface humaine et ne sont pas exposés comme fonctions MCP.
 
 | Fonction | Famille | Action et résultat |
 |---|---|---|
-| `process_list` | `process` | Découvrir les processus affectés à l’agent. |
-| `process_get` | `process` | Lire une définition, ses paramètres et son contrat de lancement. |
+| `file_list` | `file_sharing` | Découvrir les processus via `galaris://processes/`. |
+| `file_read` | `file_sharing` | Lire une définition, ses paramètres et son contrat de lancement. |
 | `process_start` | `process` | Démarrer un workflow avec entrée, fichiers et suivi durable. |
-| `process_list_runs` | `process` | Lister les exécutions dans le périmètre de l’agent. |
-| `process_get_run` | `process` | Lire statut, sortie, ressources et erreur d’un run. |
+| `file_list` | `file_sharing` | Lister les exécutions autorisées via `galaris://processes/runs/`. |
+| `file_read` | `file_sharing` | Lire statut, sortie, ressources et erreur d’un run. |
 | `process_analyze_run` | `process` | Produire/lire une analyse du dossier de run autorisé. |
 
 ### Processus natifs : définition, activités et débogage
 
 | Fonction | Famille | Action et résultat |
 |---|---|---|
-| `processus_get` | `process` | Lire l’avancement opérationnel, les attentes, dernières activités et actions disponibles d’un run autorisé. |
-| `process_definition_read` | `process` | Lire BPMN courant, graphe, instructions et acteurs pour auditer une définition accessible. |
+| `file_read` | `file_sharing` | Lire l’avancement opérationnel, les attentes, dernières activités et actions disponibles d’un run autorisé. |
+| `file_read` | `file_sharing` | Lire BPMN courant, graphe, instructions et acteurs pour auditer une définition accessible. |
 | `process_create` | `process` | Créer un processus BPMN privé depuis un graphe ou XML, avec code immuable. |
 | `process_update` | `process` | Modifier une définition avec révision attendue ; les runs actifs gardent leur graphe figé. |
 | `process_validate` | `process` | Valider graphe ou BPMN sans sauvegarde ni effet métier. |
@@ -6036,7 +6028,7 @@ l’interface humaine et ne sont pas exposés comme fonctions MCP.
 | `process_share` | `process` | Accorder/retirer à un agent lecture ou édition en tant que propriétaire. |
 | `process_activity_complete` | `process` | Remettre les sorties validées de l’activité Process courante et un message facultatif ; réservé à sa tâche. |
 | `process_activity_question` | `process` | Poser une question corrélée au lanceur humain et suspendre l’activité courante jusqu’à réponse. |
-| `process_run_inspect` | `process` | Lire graphe figé, occurrences paginées, données et événements d’un run. |
+| `file_read` | `file_sharing` | Lire le graphe figé, les données et les événements récents d’un run. |
 | `process_run_children` | `process` | Lister les enfants immédiats autorisés, sans plafond de profondeur métier. |
 | `process_run_occurrence` | `process` | Inspecter une occurrence exacte : prompts, entrées/sorties, tentatives, tâches et enfants. |
 | `process_run_metrics` | `process` | Lire coûts/tokens directs et inclusifs, comptabilité par tâche et couverture partielle. |

@@ -155,7 +155,7 @@ async def calendar_find_free_slots(
     return [slot.model_dump(mode="json") for slot in slots]
 
 
-@mcp_tool("calendar", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("calendar", approval="enabled", approval_reason="Creates an event in the selected writable calendar without inviting the linked contact",
 
     name="calendar_create_event",
     conversation_policy="deferred",

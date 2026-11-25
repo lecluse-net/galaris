@@ -237,17 +237,17 @@ Voir [0123](../../../project/decisions/0123-explicit-task-replacement.md).
 Les heartbeats de tâche et de round renouvellent uniquement un lease encore valide :
 un propriétaire expiré ne peut pas redevenir autoritaire en envoyant un heartbeat tardif.
 
-L'outil `conversation_task_stop` relit la tâche sous verrou après contrôle de fraîcheur et
+En conversation, `task_cancel` relit la tâche sous verrou après contrôle de fraîcheur et
 de portée. Si elle est déjà en `SUCCESS` ou `ERROR`, il restitue son état sans nouvelle
 transition, modification de révision, de résultat ou de cause de fin. Une tâche active
 conserve la commande `CANCEL` existante ; ce comportement ne change pas le contrat HTTP
 de révision attendue ni ne prouve l'arrêt physique d'un worker encore en cours de nettoyage.
 
-`conversation_task_retry` conserve la commande de retry existante. La politique de décision
-demande d'examiner l'échec avant de choisir : relance explicite de la même tâche ou cause corrigée,
-sinon préférence pour `CREATE_NEW` avec le diagnostic et les corrections utiles. Une demande
-similaire ne suffit pas à justifier une relance. Cette règle guide le modèle ; elle ne modifie
-pas les transitions de la machine d'états ni le retry manuel HTTP.
+En conversation, `task_resume` choisit sous verrou après contrôle de fraîcheur et de portée.
+Il lève une pause utilisateur, relance un échec stabilisé ou un blocage relançable, ou rend
+l'état courant. Les attentes automatiques gardent leurs propres conditions de reprise.
+Le reçu indique `resumed`, `retried` ou `unchanged`. Les commandes HTTP réutilisent
+leurs transitions existantes.
 
 Autorité : `back/app/task/models.py` et `back/app/task/workflow.py`.
 

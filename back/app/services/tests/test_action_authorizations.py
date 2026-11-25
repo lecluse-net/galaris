@@ -50,6 +50,62 @@ async def pending(action):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("readable", [True, False])
+async def test_task_approval_resolves_only_targets_the_reviewer_can_read(action, readable):
+    from app.connection import facade as connections
+    from app.messenger import read_internal_interaction
+    from app.messenger.models import Interaction
+    from app.services.authorization_notifications import deliver_authorization_notifications
+    from app.services.authorization_router import get_request
+    from app.services.models import Service
+    from app.task import Task
+    from core.authorize import Assignment, Privilege, Role
+    from core.user import user_identity_context
+
+    title = "Synthetic task <2026>"
+    async with get_db_session() as db:
+        agent = await db.get(Agent, action.agent_id)
+        if readable:
+            privilege = await db.scalar(select(Privilege).where(Privilege.code == "TASK_ACCESS"))
+            role = Role(code=f"synthetic-task-reader-{uuid4().hex}", privileges=[privilege])
+            db.add(role)
+            await db.flush()
+            db.add(Assignment(user_id=agent.user_id, role_id=role.id))
+        target = Task(agent_id=agent.id, label=title, objective="<p>Synthetic work</p>")
+        db.add(target)
+        await db.flush()
+        task_id = str(target.id)
+        chat = await db.scalar(select(Service).where(Service.code == "chat"))
+        service = await db.scalar(select(Service).where(Service.code == "task"))
+        await connections.get_or_create_connection(chat.id, agent.id)
+        connection = await connections.get_or_create_connection(service.id, agent.id)
+        await connections.set_connection_function_state(connection.id, "task_cancel", "ask")
+        request = replace(action, source="mcp", name="task_cancel", arguments={"task_id": task_id},
+                          service_id=service.id, connection_id=connection.id)
+
+    identifier = await pending(request)
+    await deliver_authorization_notifications()
+    async with get_db_session() as db:
+        row = await db.get(ActionAuthorization, identifier)
+        choice = await db.get(Interaction, row.interaction_id)
+        choice_view = await read_internal_interaction(row.approver_user_id, UUID(choice.room_id), choice.id)
+        with user_identity_context(await db.get(UserModel, row.approver_user_id)):
+            review = await get_request(identifier)
+        field, = review["presentation"]["fields"]
+        assert review["arguments"]["task_id"] == task_id
+        assert task_id not in choice_view.body
+        assert choice_view.body_html is not None
+        if readable:
+            assert field["value"] == title
+            assert field["resource_uri"] == f"galaris://task/{task_id}"
+            assert f'href="galaris://task/{task_id}">Synthetic task &lt;2026&gt;</a>' in choice_view.body_html
+        else:
+            assert field["value"] != task_id
+            assert "resource_uri" not in field
+            assert task_id not in choice_view.body_html and "Synthetic task" not in choice_view.body_html
+
+
+@pytest.mark.asyncio
 async def test_streamable_http_mcp_app_captures_and_filters_only_an_enabled_read_tool(action, monkeypatch):
     from contextlib import asynccontextmanager
     import httpx
@@ -182,7 +238,8 @@ async def test_approval_projects_editorial_fields_to_the_recipient_chat(action, 
         await connections.set_connection_function_state(connection.id, name, "ask")
         definition = next(item for item in load_mcp_tools() if item.name == name)
         native_action = await bind_native_action(
-            McpToolContext(agent_id=action.agent_id, runtime="internal"), definition, arguments,
+            McpToolContext(agent_id=action.agent_id, runtime="internal", conversation_only=name == "task_run"),
+            definition, arguments,
         )
     identifier = await pending(native_action)
     await deliver_authorization_notifications()
@@ -975,6 +1032,7 @@ async def test_remembered_approval_enables_only_this_connection_function_and_pre
         connection = Connection(agent_id=action.agent_id, service_id=tool.id, active=True)
         db.add(connection)
         await db.flush()
+        await connections.set_connection_function_state(connection.id, "topic_create", "ask")
         action = replace(action, source="mcp", service_id=tool.id, connection_id=connection.id,
                          name="topic_create", arguments={"title": "Synthetic topic"})
         chat = await db.scalar(select(Service).where(Service.code == "chat"))
@@ -1056,6 +1114,7 @@ async def test_function_permissions_list_only_reusable_grants_and_revoke_to_ask(
         connection = Connection(agent_id=action.agent_id, service_id=tool.id, active=True)
         db.add(connection)
         await db.flush()
+        await connections.set_connection_function_state(connection.id, "topic_create", "ask")
         action = replace(action, source="mcp", service_id=tool.id, connection_id=connection.id,
             name="topic_create", arguments={"title": "Synthetic topic"})
         manager = await db.get(UserModel, (await db.get(Agent, action.agent_id)).user_id)
@@ -1661,6 +1720,24 @@ def test_every_declared_native_function_has_explicit_approval_metadata():
     ]
     assert not unclassified, f"Native functions need explicit approval metadata: {unclassified}"
     assert {definition.name: definition.approval for definition in definitions}["file_create"] == "ask"
+
+
+def test_native_function_software_defaults():
+    from app.services.legacy_names import canonical_service_call
+    from app.services.mcp_loader import load_mcp_tools
+
+    defaults = {definition.name: definition.default_state for definition in load_mcp_tools()}
+    enabled = {
+        "calendar_create_event", "messenger_room_send_file", "messenger_room_send_message",
+        "messenger_send_file_to_user", "messenger_send_message_to_user", "voice_call_list",
+        "voice_call_start", "voice_call_stop", "contact_create", "documentation_catalog",
+        "documentation_search", "memory_forget", "memory_remember", "memory_summarize",
+        "audio_read", "audio_transcribe", "image_read", "video_read", "file_to_pdf",
+        "topic_create", "task_pause", "task_resume", "task_update", "task_cancel",
+    }
+    ask = {"chat_round_get", "chat_screenshot", "voice_turn_get", "browser_navigate", "browser_open", "task_run"}
+    assert {name: defaults[name] for name in enabled | ask} == dict.fromkeys(enabled, "enabled") | dict.fromkeys(ask, "ask")
+    assert canonical_service_call("task_stop", {})[0] == "task_cancel"
 
 
 @pytest.mark.asyncio

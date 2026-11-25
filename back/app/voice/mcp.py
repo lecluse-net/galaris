@@ -39,7 +39,7 @@ def _turn_id(value: str) -> UUID:
         raise ValueError(f"Invalid voice conversation turn UUID: {value}") from exc
 
 
-@mcp_tool("chat", default_blocked=True, approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
+@mcp_tool("chat", approval='ask', approval_reason='Sensitive trace, content disclosure or remote diagnostic',
 
     name="voice_turn_get", execution_inspection=True,
     description=(
@@ -306,7 +306,7 @@ async def _voice_preflight(ctx: McpToolContext, arguments: dict[str, Any]) -> di
     return {"voice_account": await _voice_account(ctx, arguments.get("service_code"), arguments.get("account_email"))}
 
 
-@mcp_tool("chat", authorization_preflight=_voice_preflight, default_blocked=True, approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("chat", authorization_preflight=_voice_preflight, approval="enabled", approval_reason="Starts a call through the authorized voice connection",
 
     name="voice_call_start",
     description="Start a voice call in the current room on its exact messaging connection.",
@@ -328,7 +328,7 @@ async def mcp_start_voice_call(
     )
 
 
-@mcp_tool("chat", default_blocked=True, approval="enabled", approval_reason="Hangup releases an existing call without a new sensitive effect",
+@mcp_tool("chat", approval="enabled", approval_reason="Hangup releases an existing call without a new sensitive effect",
 
     name="voice_call_stop",
     description=(
@@ -364,7 +364,7 @@ async def mcp_stop_voice_call(
     )
 
 
-@mcp_tool("chat", default_blocked=True, approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
+@mcp_tool("chat", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
 
     name="voice_call_list",
     description="List active voice calls for this AI agent.",

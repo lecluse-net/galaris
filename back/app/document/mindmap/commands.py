@@ -13,7 +13,8 @@ class _Command(BaseModel):
     node_id: NodeKey
 
 
-class NewBranch(_Command):
+class AddBranch(_Command):
+    operation: Literal["add"]
     parent_id: NodeKey
     title: NodeTitle
     note: NodeNote = ""
@@ -22,13 +23,6 @@ class NewBranch(_Command):
     icon: NodeIcon = ""
     checked: bool | None = Field(default=None, description="True creates a checked box, false creates an unchecked box.")
     index: int | None = Field(default=None, ge=0, lt=MAX_NODES)
-
-    def as_command(self) -> "AddBranch":
-        return AddBranch(operation="add", **self.model_dump(exclude={"operation"}))
-
-
-class AddBranch(NewBranch):
-    operation: Literal["add"]
 
 
 class EditBranch(_Command):
@@ -84,7 +78,7 @@ def apply_commands(mindmap: MindMap, commands: list[BranchCommand]) -> MindMap:
         if node is None:
             raise BranchCommandError(
                 f"Mind map branch '{command.node_id}' does not exist. Choose an existing node ID, "
-                "or create the branch with mindmap_add or an operation='add' command "
+                "or create the branch with file_edit and an operation='add' command "
                 "that supplies node_id, parent_id and title."
             )
         if isinstance(command, EditBranch):

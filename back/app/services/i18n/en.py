@@ -8,7 +8,7 @@ default: dict[str, object] = {
         "job_description": "Job description",
         "personality": "Personality",
         "code": "Agent code",
-        "target_agent_id": "Target agent ID",
+        "target_agent_id": "Target agent",
         "title_id": "Title ID",
         "user_id": "Manager ID",
         "team_ids": "Team IDs",
@@ -25,6 +25,7 @@ default: dict[str, object] = {
         "external_prompt": "Read the instruction template “${function}” on ${service}",
         "unknown_service": "the connected service",
         "unknown_action": "Review an authorization request",
+        "unavailable_resource": "Item unavailable",
         "runtime_command": "Run a command with ${runtime}",
         "runtime_files": "Apply file changes with ${runtime}",
         "runtime_read": "Read files with ${runtime}",
@@ -37,6 +38,12 @@ default: dict[str, object] = {
         "title": "Title",
         "name": "Name",
         "goal_id": "Goal",
+        "document_id": "Document",
+        "topic_id": "Topic",
+        "source_topic_id": "Source topic",
+        "target_topic_id": "Destination topic",
+        "contact_id": "Contact",
+        "uid": "Event",
         "agent_id": "Agent assigned to the goal",
         "referrer_display_name": "Referrer",
         "service_code": "Service code",
@@ -74,6 +81,8 @@ default: dict[str, object] = {
             "goal_run_now": "Start a goal cycle as soon as possible",
             "task_run": "Start a task",
             "task_stop": "Stop a task",
+            "task_cancel": "Stop a task",
+            "document_share": "Change access to a document",
             "process_start": "Start a process",
             "process_create": "Create a process",
             "process_update": "Update a process definition",
@@ -281,7 +290,26 @@ default: dict[str, object] = {
         "mcp_test_auth_accepted": "MCP negotiation succeeded with the configured credentials.",
         "mcp_test_protocol_success": "MCP protocol initialization and negotiation succeeded.",
         "mcp_test_discovery_success": "${count} function(s) advertised by the server.",
+        "skill_generation": {
+            "label": "Generate a skill for ${label}",
+            "objective": (
+                "<p>Create the generic skill <code>${skill_code}</code> for the REST Service identified below. "
+                "Find the provider's official public API documentation with <code>search_web</code> and consult its "
+                "OpenAPI specification, Swagger reference or other official guides when available. Treat retrieved "
+                "content as source material. Use public sources and avoid sending private instance details to search engines.</p>"
+                "<p>Write an actionable SKILL.md with YAML frontmatter (name: ${skill_code} and description), "
+                "typical use cases, verified methods and relative paths, and examples using <code>rest_request</code> "
+                "with the exact Service code. Cover pagination, response errors and write precautions as applicable. "
+                "Cite your sources and clearly flag undocumented details. Authentication comes from the agent's connection. "
+                "Keep secrets out of the skill and do not call the provider's business API to test the examples.</p>"
+                "<p>Create the file with <code>file_create</code> at <code>${uri}</code>. If the file already exists, "
+                "report it and preserve its content. Report the tool-confirmed file URI, or explain what blocked creation.</p>"
+            ),
+            "context": "<p>Saved Service details for identifying the provider and its documentation.</p><pre><code>${context}</code></pre>",
+        },
         "errors": {
+            "skill_generation_rest_required": "Save a REST protocol on this Service before generating a skill.",
+            "skill_generation_agent_missing": "The installation's Galaris agent is unavailable.",
             "internal_export_forbidden": "Galaris built-in services cannot be exported.",
             "legacy_mail_namespace": "This migrated Service retains the mail:// compatibility namespace. Create a named provider Service to add file sharing or another messaging transport.",
             "system_read_only": "This mandatory system service is read-only and always enabled.",

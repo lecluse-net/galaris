@@ -49,15 +49,19 @@ class TestDisabledFunctionNames:
         await db.flush()
         db.add_all([
             ServiceFunctionState(service_id=chat_id, function_name="voice_call_start", state="disabled", enabled=False),
-            ServiceFunctionState(service_id=chat_id, function_name="repository_show", state="disabled", enabled=False),
+            ServiceFunctionState(service_id=chat_id, function_name="chat_repository_show", state="disabled", enabled=False),
             ConnectionFunctionState(connection_id=connection.id, function_name="voice_call_start", state="enabled", enabled=True),
         ])
         await db.flush()
 
         disabled = await connection_service.get_disabled_function_names(connection)
 
-        assert {"repository_show", "voice_call_stop"} <= disabled
-        assert {"voice_call_start", "conversation_choice_resolve"}.isdisjoint(disabled)
+        assert "chat_repository_show" in disabled
+        assert {"voice_call_start", "voice_call_stop", "chat_round_get", "chat_choice_resolve"}.isdisjoint(disabled)
+        inherited = await connection_service.resolve_function(connection, "chat_round_get")
+        assert (inherited["effective_state"], inherited["policy_source"]) == ("ask", "software")
+        granted = await connection_service.resolve_function(connection, "voice_call_start")
+        assert (granted["effective_state"], granted["policy_source"]) == ("enabled", "connection")
 
 
 class TestAvailableFunctions:

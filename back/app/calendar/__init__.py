@@ -25,9 +25,9 @@ from .contact_links import update_contact_references
 register_contact_reference_handler("calendar", update_contact_references)
 
 from app.file_share import register_calendar_resource_provider
-from .resources import read_calendar_resource, list_calendar_resources
+from .resources import read_calendar_resource, list_calendar_resources, read_calendar_event_label
 
-register_calendar_resource_provider(read_calendar_resource, list_calendar_resources)
+register_calendar_resource_provider(read_calendar_resource, list_calendar_resources, event_label=read_calendar_event_label)
 
 __all__ = ["CalendarFeed", "CalendarTrigger", "CalendarHttpResponse", "register_ical_transport", "sync_calendars",
            "sync_native_calendars", "sync_external_calendars", "connection_for_calendar", "register_caldav_transport",

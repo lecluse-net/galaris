@@ -28,7 +28,7 @@ async def test_text_round_admin_tool_maps_uuid_to_complete_inspection(
     monkeypatch.setattr("app.services.management_scope.administration_scope", authorize)
     monkeypatch.setattr(conversation_mcp, "inspect_round", inspect)
 
-    result = await conversation_mcp.conversation_round_get(
+    result = await conversation_mcp.chat_round_get(
         McpToolContext(agent_id=7, runtime="internal"),
         round_id=str(identifier),
     )
@@ -64,14 +64,14 @@ async def test_admin_tools_reject_non_uuid_identifiers() -> None:
     ctx = McpToolContext(agent_id=7, runtime="internal")
 
     with pytest.raises(ValueError, match="conversation round UUID"):
-        await conversation_mcp.conversation_round_get(ctx, round_id="not-an-id")
+        await conversation_mcp.chat_round_get(ctx, round_id="not-an-id")
     with pytest.raises(ValueError, match="voice conversation turn UUID"):
         await voice_mcp.voice_turn_get(ctx, turn_id="not-an-id")
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(("name", "argument", "key"), [
-    ("conversation_round_get", "round_id", "round"),
+    ("chat_round_get", "round_id", "round"),
     ("voice_turn_get", "turn_id", "turn"),
 ])
 async def test_chat_inspections_recheck_services_scope_and_chat_permission(db, name, argument, key):

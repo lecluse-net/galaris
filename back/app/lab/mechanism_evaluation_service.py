@@ -1636,11 +1636,14 @@ def _executor_tool_calls(
 
 def _executor_action(tool_calls: list[dict[str, Any]]) -> str:
     names = {str(item.get("name") or "") for item in tool_calls}
-    if "conversation_task_submit" in names:
+    if "task_submit" in names or any(
+        item.get("name") == "task_run" and _mapping(item.get("arguments")).get("agent_id") is None
+        for item in tool_calls
+    ):
         return "start_task"
-    if "conversation_process_start" in names:
+    if "process_start_conversation" in names:
         return "start_process"
-    if "conversation_task_status" in names:
+    if names & {"task_get", "task_status"}:
         return "read_status"
     if tool_calls:
         return "use_tool"
@@ -1721,7 +1724,7 @@ def _conversation_executor_case(
             "observed_input": item["arguments"].get("input", {}),
         }
         for item in tool_calls
-        if item["name"] == "conversation_process_start" and item["arguments"].get("workflow_id")
+        if item["name"] == "process_start_conversation" and item["arguments"].get("workflow_id")
     ]
     linked_work = (
         "\n".join(

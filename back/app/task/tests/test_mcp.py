@@ -25,10 +25,12 @@ async def _persist_inspected_task(db, task):
 
 
 def test_task_get_requires_one_canonical_selector_and_is_replay_safe() -> None:
-    parameters = signature(task_mcp.mcp_get_task).parameters
+    from app.conversation.mcp import task_get
+
+    parameters = signature(task_get).parameters
     assert list(parameters) == ["ctx", "task_id"]
     assert parameters["task_id"].default is parameters["task_id"].empty
-    definition = task_mcp.mcp_get_task.__galaris_mcp_tool__
+    definition = task_get.__galaris_mcp_tool__
     assert definition.effect_policy == "read"
     assert definition.concurrency_policy == "safe"
 
@@ -175,6 +177,7 @@ async def test_task_run_returns_canonical_task_uri(
     monkeypatch: pytest.MonkeyPatch,
     db,
 ) -> None:
+    from app.conversation.mcp import task_run
     from core.team import TeamModel
     from app.agent.models import Agent, Title
     from app.agent.dialogue_service import set_agent_membership
@@ -217,7 +220,7 @@ async def test_task_run_returns_canonical_task_uri(
         )
     await set_management_scope(connection.id, "team", authorized=True)
     with tool_execution(execution):
-        result = await task_mcp.mcp_run_task(
+        result = await task_run(
             McpToolContext(agent_id=7, runtime="hermes", task_id=uuid4()),
             agent_id=8,
             label="Subtask",

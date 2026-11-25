@@ -44,8 +44,8 @@ Les souvenirs pertinents sont donc injectés comme pour un run ordinaire. La ses
 fonctions locales bornées :
 
 - `memory_search`, via la façade publique et les ACL de `app.memory` ;
-- `task_submit`, via `AgentTaskPort.create` puis `schedule` ;
-- `task_status`, limité aux Tasks de l’agent courant.
+- `task_run`, via `AgentTaskPort.create` puis `schedule` ;
+- `task_get`, limité aux Tasks de l’agent courant.
 
 Le fournisseur reçoit uniquement la définition de ces fonctions et leurs résultats JSON. Il
 n’accède ni à PostgreSQL, ni aux credentials, ni au scheduler.

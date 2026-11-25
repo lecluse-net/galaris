@@ -14,6 +14,7 @@ from app.llm import llm_call_service
 from app.llm.mcp import inspect_llm_calls, mcp_llm_call, mcp_llm_calls
 from app.llm.models import LLMCall
 from app.task.mcp import inspect_tasks, mcp_task, mcp_tasks
+from app.conversation.mcp import task_cancel, task_get
 from app.task.models import Task, TaskAmendment, TaskAttempt, TaskStatus
 from app.services.mcp_loader import McpToolContext
 
@@ -22,7 +23,6 @@ _CTX = McpToolContext(agent_id=1, runtime="internal")
 
 @pytest.mark.asyncio
 async def test_task_get_exposes_latest_attempt_while_work_is_running(db):
-    from app.task.mcp import mcp_get_task
 
     agent = await _agent(db)
     lease = uuid4()
@@ -34,7 +34,7 @@ async def test_task_get_exposes_latest_attempt_while_work_is_running(db):
                           worker_id="worker", lease_token=lease)
     db.add(attempt)
     await db.flush()
-    response = await mcp_get_task(McpToolContext(agent_id=agent.id, runtime="internal"), str(task.id))
+    response = await task_get(McpToolContext(agent_id=agent.id, runtime="internal"), str(task.id))
     assert response["latest_attempt"]["id"] == str(attempt.id)
     assert response["latest_attempt"]["attempt_number"] == response["attempt_count"] == 2
     assert response["activity"]["operational"]["operational_state"] == "RUNNING"
@@ -46,7 +46,6 @@ async def test_task_access_separates_delegated_reads_from_management_and_live_ad
     from sqlalchemy import select
     from app.connection import Connection
     from app.services import ServiceModel
-    from app.task.mcp import mcp_get_task, mcp_stop_task
     from app.task.resource_facade import list_task_resources, read_task_resource
     from core.team import TeamModel
     from app.agent.dialogue_service import set_agent_membership
@@ -65,17 +64,17 @@ async def test_task_access_separates_delegated_reads_from_management_and_live_ad
     uri = f"galaris://task/{target.id}"
     for selector in (uri, str(target.id)[:8]):
         with pytest.raises(PermissionError):
-            await mcp_get_task(ctx, selector)
+            await task_get(ctx, selector)
         with pytest.raises(PermissionError):
-            await mcp_stop_task(ctx, selector)
+            await task_cancel(ctx, selector)
     assert await read_task_resource(target.id, actor_agent_id=peer.id) is None
     assert await list_task_resources(actor_agent_id=peer.id) == []
 
     target.requester_agent_id = peer.id
     await db.flush()
-    assert (await mcp_get_task(ctx, uri))["id"] == str(target.id)
+    assert (await task_get(ctx, uri))["id"] == str(target.id)
     with pytest.raises(PermissionError):
-        await mcp_stop_task(ctx, uri)
+        await task_cancel(ctx, uri)
     target.requester_agent_id = None
 
     tool = await db.scalar(select(ServiceModel).where(ServiceModel.code == "task"))
@@ -83,41 +82,41 @@ async def test_task_access_separates_delegated_reads_from_management_and_live_ad
     db.add(connection)
     await db.flush()
     with pytest.raises(PermissionError):
-        await mcp_stop_task(ctx, uri)
+        await task_cancel(ctx, uri)
     connection.active = True
     await db.flush()
     from app.connection.facade import set_management_scope
     await set_management_scope(connection.id, "team", authorized=True)
-    assert (await mcp_get_task(ctx, uri))["id"] == str(target.id)
+    assert (await task_get(ctx, uri))["id"] == str(target.id)
     assert await read_task_resource(target.id, actor_agent_id=peer.id) is not None
     assert await read_task_resource(target.id, actor_agent_id=peer.id, allow_delegation=False) is None
     assert [row["id"] for row in await list_task_resources(actor_agent_id=peer.id)] == [str(target.id)]
     from app.conversation import ConversationTurn
-    from app.conversation.mcp import conversation_task_status
 
     turn = ConversationTurn(room_id=uuid4(), round_id=uuid4(), agent_id=peer.id, language="en",
         origin="text", objective="Inspect the Task", messages=())
-    chat = McpToolContext(agent_id=peer.id, runtime="internal", resources={"conversation_turn": turn})
-    assert (await conversation_task_status(chat, task_id=uri))["id"] == str(target.id)
+    chat = McpToolContext(agent_id=peer.id, runtime="internal", conversation_only=True,
+                          resources={"conversation_turn": turn})
+    assert (await task_get(chat, task_id=uri))["id"] == str(target.id)
     connection.active = False
     await db.flush()
     with pytest.raises(PermissionError):
-        await mcp_get_task(ctx, uri)
+        await task_get(ctx, uri)
     with pytest.raises(PermissionError):
-        await mcp_stop_task(ctx, uri)
+        await task_cancel(ctx, uri)
     with pytest.raises(ValueError, match="not found"):
-        await conversation_task_status(chat, task_id=uri)
+        await task_get(chat, task_id=uri)
     assert target.status == TaskStatus.CREATE
     connection.active = True
     await db.flush()
-    assert (await mcp_stop_task(ctx, uri))["stopped"] is True
+    assert (await task_cancel(ctx, uri))["stopped"] is True
     assert target.status == TaskStatus.ERROR
 
     own_task = Task(agent_id=peer.id, label="Own task", objective="Own objective")
     db.add(own_task)
     connection.active = False
     await db.flush()
-    assert (await mcp_stop_task(ctx, str(own_task.id)))["stopped"] is True
+    assert (await task_cancel(ctx, str(own_task.id)))["stopped"] is True
 
 
 async def _agent(db: AsyncSession) -> Agent:

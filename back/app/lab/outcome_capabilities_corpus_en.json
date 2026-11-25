@@ -20,7 +20,6 @@
       "file_read",
       "file_edit",
       "file_create",
-      "process_get",
       "process_start",
       "process_activity_complete",
       "goal_ask_referrer",
@@ -31,7 +30,8 @@
     "available_processes": [
       {
         "workflow_id": "synthetic-intake",
-        "description": "Existing assigned business workflow for validating intake cases."
+        "description": "Existing assigned business workflow for validating intake cases.",
+        "resource_uri": "galaris://processes/synthetic-intake"
       }
     ],
     "tool_catalog": [
@@ -209,22 +209,6 @@
           },
           "required": [
             "path"
-          ],
-          "type": "object"
-        }
-      },
-      {
-        "name": "process_get",
-        "description": "Describe one workflow assigned to the current agent.",
-        "parameters": {
-          "additionalProperties": false,
-          "properties": {
-            "workflow_id": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "workflow_id"
           ],
           "type": "object"
         }
@@ -546,9 +530,9 @@
           "history": [],
           "tool_responses": {
             "services_list": [
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
             ]
           },
           "tool_response_arguments": {
@@ -618,9 +602,9 @@
               }
             ],
             "services_list": [
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
             ]
           },
           "tool_response_arguments": {
@@ -711,9 +695,9 @@
               }
             ],
             "services_list": [
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
             ]
           },
           "tool_response_arguments": {
@@ -835,9 +819,9 @@
               }
             ],
             "services_list": [
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
             ]
           },
           "tool_response_arguments": {
@@ -1004,9 +988,9 @@
               }
             ],
             "services_list": [
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
             ]
           },
           "tool_response_arguments": {
@@ -1146,29 +1130,10 @@
         "context": {
           "history": [
             {
-              "text": "Assigned business workflow synthetic-intake accepts case_reference. The dossier is ready. The requested result is the workflow's intake decision, not a report about how to do it."
+              "text": "Assigned business workflow synthetic-intake accepts case_reference. The dossier is ready. The requested result is the workflow's intake decision, not a report about how to do it. Definition URI: galaris://processes/synthetic-intake."
             }
           ],
           "tool_responses": {
-            "process_get": [
-              {
-                "workflow_id": "synthetic-intake",
-                "assigned": true,
-                "input_schema": {
-                  "type": "object",
-                  "required": [
-                    "case_reference"
-                  ],
-                  "properties": {
-                    "case_reference": {
-                      "type": "string"
-                    }
-                  }
-                },
-                "label": "Synthetic intake",
-                "description": "Validate a ready case from its case_reference; no attached files required."
-              }
-            ],
             "process_start": [
               {
                 "status": "running",
@@ -1176,11 +1141,15 @@
               }
             ],
             "services_list": [
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
             ],
             "file_read": [
+              {
+                "uri": "galaris://processes/synthetic-intake",
+                "content": "{\"workflow_id\":\"synthetic-intake\",\"assigned\":true,\"input_schema\":{\"type\":\"object\",\"required\":[\"case_reference\"],\"properties\":{\"case_reference\":{\"type\":\"string\"}}},\"label\":\"Synthetic intake\",\"description\":\"Validate a ready case from its case_reference; no attached files required.\"}"
+              },
               {
                 "uri": "galaris://processes/runs/00000000-0000-4000-8000-000000000122",
                 "status": "running",
@@ -1202,11 +1171,6 @@
             ]
           },
           "tool_response_arguments": {
-            "process_get": [
-              {
-                "workflow_id": "synthetic-intake"
-              }
-            ],
             "process_start": [
               {
                 "workflow_id": "synthetic-intake"
@@ -1218,6 +1182,9 @@
               {}
             ],
             "file_read": [
+              {
+                "uri": "galaris://processes/synthetic-intake"
+              },
               {
                 "uri": "galaris://processes/runs/00000000-0000-4000-8000-000000000122"
               },
@@ -1236,9 +1203,9 @@
         "response": "The SYN-42 intake workflow has started. Its decision is not yet available.",
         "tool_calls": [
           {
-            "name": "process_get",
+            "name": "file_read",
             "arguments": {
-              "workflow_id": "synthetic-intake"
+              "uri": "galaris://processes/synthetic-intake"
             }
           },
           {
@@ -1253,24 +1220,13 @@
         ],
         "tool_results": [
           {
-            "name": "process_get",
+            "name": "file_read",
             "arguments": {
-              "workflow_id": "synthetic-intake"
+              "uri": "galaris://processes/synthetic-intake"
             },
             "result": {
-              "workflow_id": "synthetic-intake",
-              "assigned": true,
-              "input_schema": {
-                "type": "object",
-                "required": [
-                  "case_reference"
-                ],
-                "properties": {
-                  "case_reference": {
-                    "type": "string"
-                  }
-                }
-              }
+              "uri": "galaris://processes/synthetic-intake",
+              "content": "{\"workflow_id\":\"synthetic-intake\",\"assigned\":true,\"input_schema\":{\"type\":\"object\",\"required\":[\"case_reference\"],\"properties\":{\"case_reference\":{\"type\":\"string\"}}}}"
             }
           },
           {
@@ -1293,9 +1249,9 @@
         "outcome_checks": {
           "required_calls": [
             {
-              "tool": "process_get",
+              "tool": "file_read",
               "arguments": {
-                "workflow_id": "synthetic-intake"
+                "uri": "galaris://processes/synthetic-intake"
               }
             },
             {
@@ -1370,9 +1326,9 @@
               }
             ],
             "services_list": [
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
             ]
           },
           "tool_response_arguments": {
@@ -1475,9 +1431,9 @@
               }
             ],
             "services_list": [
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
             ]
           },
           "tool_response_arguments": {
@@ -1584,9 +1540,9 @@
               }
             ],
             "services_list": [
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
             ]
           },
           "tool_response_arguments": {
@@ -1789,9 +1745,9 @@
               }
             ],
             "services_list": [
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
             ]
           },
           "tool_response_arguments": {
@@ -1934,9 +1890,9 @@
               }
             ],
             "services_list": [
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
             ]
           },
           "tool_response_arguments": {
@@ -2026,9 +1982,9 @@
               }
             ],
             "services_list": [
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
-              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_get, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available.",
+              "Mounted and authorized functions in this run: services_list, file_search, file_read, file_edit, file_create, process_start, process_activity_complete, goal_ask_referrer, task_get, task_run, memory_remember. The synthetic-intake business workflow is assigned. No other functions are available."
             ]
           },
           "tool_response_arguments": {

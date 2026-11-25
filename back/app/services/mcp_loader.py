@@ -8,10 +8,10 @@ import importlib
 import inspect
 import weakref
 from collections.abc import Awaitable, Callable, Collection, Sequence
-from contextvars import Context
+from contextvars import Context, ContextVar
 from dataclasses import dataclass, field, replace
 from functools import lru_cache
-from typing import Any, Literal, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Literal, TypeVar, cast
 from uuid import UUID, uuid4
 
 from fastmcp import FastMCP
@@ -24,9 +24,12 @@ from fastmcp.prompts import Prompt
 from fastmcp.resources.base import Resource
 from fastmcp.resources.template import ResourceTemplate
 from fastmcp.server.providers.proxy import ProxyProvider
+from fastmcp.tools import FunctionTool, ToolResult
 from fastmcp.tools.base import Tool
+from fastmcp.utilities.versions import VersionSpec
 from loguru import logger
-from pydantic import JsonValue
+from mcp.types import ToolAnnotations
+from pydantic import JsonValue, PrivateAttr
 
 from app.agent.contracts import (
     RuntimeName,
@@ -54,13 +57,16 @@ from .management_scope import EXECUTION_INSPECTION_SCOPE_SERVICE
 from .execution_evidence import ExecutionEvidenceMiddleware
 from .mandatory_services import (
     AGENT_DISCOVERY_TOOLS, CONVERSATION_PROCESS_TOOLS, CONVERSATION_TASK_TOOLS,
-    SERVICE_DISCOVERY_TOOLS, SPECIALIST_MEDIA_TOOLS,
+    SERVICE_DISCOVERY_TOOLS, SPECIALIST_MEDIA_TOOLS, VOICE_TOOLS,
 )
 from .mcp_presentation import MCP_APP_EXTENSION, McpPresentation, McpPresentationSink, McpTable, app_tool_visible_to
 from .tool_arguments import ToolArgumentsMiddleware
 from .schemas import ConversationToolSource, McpConfig, Service as ServiceConfiguration
 
 ToolFunc = TypeVar("ToolFunc", bound=Callable[..., Any])
+
+if TYPE_CHECKING:
+    from app.connection.facade import ActiveConnectionRef
 
 
 async def resolve_live_connection(agent_id: int, connection_id: int, service_id: int,
@@ -232,37 +238,31 @@ _CONVERSATION_TOOL_POLICIES: dict[str, Literal["short", "deferred"]] = {
     "team_members": "short",
     # Bounded web search is the direct fast path for current factual information.
     "search_web": "short",
-    # Governed resource reads and bounded document updates remain available in conversation mode.
+    # Classify bounded tool calls independently of the Service's conversation allowlist.
     **{
         name: "short"
         for name in (
             "file_list", "file_info", "file_search", "file_read", "file_create",
             "file_write", "file_append", "file_edit", "file_rename", "memory_remember", "memory_forget",
             "memory_summarize", "memory_upcoming", "document_share", "document_sharing",
-            "mindmap_create", "mindmap_read", "mindmap_add", "mindmap_edit",
         )
     },
     # Personal processes are inspected or started asynchronously.
-    "process_list": "short",
-    "process_get": "short",
-    "conversation_process_start": "deferred",
-    "process_list_runs": "short",
-    "process_get_run": "short",
-    # Messenger operations that stay bounded; media/file transfers remain forbidden.
+    "process_start_conversation": "deferred",
+    # Messenger operations retain their exact destination and action permissions.
     "messenger_room_send_message": "deferred",
     "messenger_send_message_to_user": "deferred",
+    "messenger_send_audio_message": "deferred",
+    "messenger_room_send_file": "deferred",
+    "messenger_send_file_to_user": "deferred",
     "messenger_list_rooms": "short",
     "messenger_room_history": "short",
     "messenger_search_users": "short",
     # Dedicated conversation control-plane functions.
-    "conversation_task_submit": "deferred",
-    "conversation_choice_resolve": "deferred",
-    "conversation_task_list": "short",
-    "conversation_task_status": "short",
-    "conversation_task_pause": "deferred",
-    "conversation_task_resume": "deferred",
-    "conversation_task_retry": "deferred",
-    "conversation_task_stop": "deferred",
+    "chat_choice_resolve": "deferred",
+    "task_list": "short",
+    "task_pause": "deferred",
+    "task_resume": "deferred",
 }
 
 
@@ -271,35 +271,27 @@ BUILTIN_CONVERSATION_TOOLS: dict[str, frozenset[str]] = {
     "galaris": frozenset({
         "documentation_catalog", "documentation_search",
     }),
-    "agent": frozenset(AGENT_DISCOVERY_TOOLS),
+    "agent": frozenset((*AGENT_DISCOVERY_TOOLS, "agent_team_list")),
     "contact": frozenset({"contact_list", "contact_get"}),
     "task": frozenset(CONVERSATION_TASK_TOOLS),
-    "process": frozenset({
-        "process_list", "process_get", "process_list_runs", "process_get_run",
-        *CONVERSATION_PROCESS_TOOLS,
-    }),
+    "process": frozenset(CONVERSATION_PROCESS_TOOLS),
+    "service": frozenset({"services_list", "service_connection_list"}),
+    "topic": frozenset({"topic_list", "topic_items_list"}),
     "memory": frozenset({"memory_remember", "memory_forget", "memory_summarize", "memory_upcoming"}),
-    "document": frozenset({
-        "document_show", "document_sharing", "document_share", "document_revision_list", "document_revision_compare",
-        "document_chart", "mindmap_create", "mindmap_read", "mindmap_add", "mindmap_edit",
-    }),
+    "document": frozenset({"document_show", "document_sharing", "document_share"}),
+    "skills": frozenset({"skills_list", "skill_read"}),
     "file_sharing": frozenset({
-        "file_list", "file_info", "file_search", "file_read", "file_create", "file_write", "file_append",
-        "file_edit", "file_rename", "file_to_pdf",
+        "file_schemes", "file_list", "file_info", "file_search", "file_read", "dataset_query",
     }),
-    "calendar": frozenset({
-        "calendar_list", "calendar_events", "calendar_event_get", "calendar_is_available",
-        "calendar_find_free_slots", "calendar_create_event", "calendar_update_event", "calendar_delete_event",
-        "calendar_actions", "calendar_action_set",
-    }),
+    "calendar": frozenset({"calendar_list", "calendar_events"}),
     "chat": frozenset({
-        "chat_screenshot",
-        "repository_show", "conversation_choice_resolve", "voice_call_stop",
+        "chat_screenshot", "chat_repository_show", "chat_choice_resolve", *VOICE_TOOLS,
         "messenger_room_send_message", "messenger_send_message_to_user", "messenger_list_rooms",
-        "messenger_room_history", "messenger_search_users",
+        "messenger_room_history", "messenger_search_users", "messenger_send_audio_message",
+        "messenger_room_send_file", "messenger_send_file_to_user",
     }),
     "browser": frozenset({"search_web"}),
-    "multimedia": frozenset({"image_from_pdf"}),
+    "multimedia": frozenset({"image_read", "audio_read", "audio_transcribe"}),
 }
 
 
@@ -374,6 +366,10 @@ def execution_policy_for_tool(
     """Return explicit native metadata, denying concurrency for unknown tools."""
 
     normalized = name.strip()
+    if normalized == "task_work_update":
+        from .legacy_names import canonical_service_call
+
+        normalized, _ = canonical_service_call(normalized, {})
     for definition in load_mcp_tools():
         if definition.name == normalized:
             return definition.effect_policy, definition.concurrency_policy
@@ -553,6 +549,7 @@ def mcp_tool_names_by_service_code() -> dict[str, tuple[str, ...]]:
     }
 
 
+@lru_cache(maxsize=512)
 def _public_signature(func: Callable[..., Any]) -> inspect.Signature:
     signature = inspect.signature(func)
     parameters = list(signature.parameters.values())
@@ -561,9 +558,14 @@ def _public_signature(func: Callable[..., Any]) -> inspect.Signature:
     return signature.replace(parameters=parameters)
 
 
-def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[..., Awaitable[Any]]:
+_active_native_context: ContextVar[McpToolContext] = ContextVar("active_native_mcp_context")
+
+
+def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext | None) -> Callable[..., Awaitable[Any]]:
+    bound_context = ctx
     @functools.wraps(definition.function)
     async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        ctx = bound_context if bound_context is not None else _active_native_context.get()
         from dataclasses import replace
         from .protocols import bind_protocol_connection, reset_protocol_connection, resolve_protocol_connection
         protocol_token = None
@@ -789,6 +791,32 @@ def _wrap_tool(definition: McpToolDefinition, ctx: McpToolContext) -> Callable[.
     return wrapper
 
 
+class _NativeFunctionTool(FunctionTool):
+    """Bind each mount to its run while sharing FastMCP's parsed callable."""
+
+    _run_context: McpToolContext = PrivateAttr()
+
+    def bind(self, context: McpToolContext) -> "_NativeFunctionTool":
+        tool = self.model_copy(deep=True)
+        tool._run_context = context
+        if tool.name == "task_run" and context.conversation_only:
+            # Conversation admissions use a durable action key. Delegations create children.
+            tool.annotations = ToolAnnotations.model_validate({"idempotentHint": True})
+        return tool
+
+    async def run(self, arguments: dict[str, Any]) -> ToolResult:
+        token = _active_native_context.set(self._run_context)
+        try:
+            return await super().run(arguments)
+        finally:
+            _active_native_context.reset(token)
+
+
+@lru_cache(maxsize=512)
+def _native_tool_template(definition: McpToolDefinition) -> _NativeFunctionTool:
+    return cast(_NativeFunctionTool, _NativeFunctionTool.from_function(_wrap_tool(definition, None)))
+
+
 def add_galaris_tools(
     mcp: Any,
     agent_id: int,
@@ -816,9 +844,11 @@ def add_galaris_tools(
         # Contextual tools are mounted by the asynchronous, authorized run projection.
         if definition.available_when is not None:
             continue
-        mcp.tool()(_wrap_tool(definition, ctx))
         if isinstance(mcp, _MediaFilteredFastMCP):
+            mcp.add_tool(_native_tool_template(definition).bind(ctx))
             mcp.native_execution_names.add(definition.name)
+        else:
+            mcp.tool()(_wrap_tool(definition, ctx))
 
 
 def build_galaris_fastmcp(
@@ -842,71 +872,82 @@ def build_galaris_fastmcp(
     return mcp
 
 
+type ActiveServiceBindings = tuple[tuple[ActiveConnectionRef, ServiceConfiguration], ...]
+
+
+async def active_service_bindings(agent_id: int) -> ActiveServiceBindings:
+    from app.connection.facade import active_connection_refs
+    from .service import get_services_by_ids
+
+    active = await active_connection_refs(agent_id)
+    services = await get_services_by_ids({ref.service_id for ref in active})
+    return tuple((ref, services[ref.service_id]) for ref in active if ref.service_id in services)
+
+
 async def get_enabled_integrated_service_codes(agent_id: int) -> set[str]:
     """Return native tool codes with an active connection for the agent."""
-    from app.connection import facade as connection_service
-    from app.services import service
-
-    known_codes = set(mcp_tools_by_service_code())
+    known = mcp_tools_by_service_code().keys()
     enabled: set[str] = set()
-    connections = [connection for connection in await connection_service.get_connections_by_agent(agent_id) if connection.active]
-    tools = await service.get_services_by_ids({connection.service_id for connection in connections})
-    for connection in connections:
-        tool = tools.get(connection.service_id)
-        if tool:
-            enabled.update(
-                (await native_service_codes_for_agent_connection(tool, connection.id)) & known_codes
-            )
+    for connection, tool in await active_service_bindings(agent_id):
+        enabled.update(known & await native_service_codes_for_agent_connection(tool, connection.id))
     return enabled
 
 
-async def get_disabled_internal_function_names(agent_id: int) -> set[str]:
-    """Return native functions disabled across the agent's active connections."""
-    from app.connection import facade as connection_service
-    from app.services import service
+@dataclass(frozen=True)
+class _NativePolicy:
+    codes: frozenset[str]
+    blocked: frozenset[str]
+    allowed: frozenset[str] | None
 
-    definitions = mcp_tool_names_by_service_code()
-    offered: set[str] = set()
-    enabled: set[str] = set()
-    connections = [connection for connection in await connection_service.get_connections_by_agent(agent_id) if connection.active]
-    tools = await service.get_services_by_ids({connection.service_id for connection in connections})
-    native_connections = [connection for connection in connections
-        if (tool := tools.get(connection.service_id)) and native_service_codes_for_service(tool) & definitions.keys()]
-    disabled_by_connection = await connection_service.get_disabled_function_names_many(native_connections)
-    for connection in native_connections:
-        codes = await native_service_codes_for_agent_connection(tools[connection.service_id], connection.id)
-        names = {name for code in codes for name in definitions.get(code, ())}
-        offered.update(names)
-        enabled.update(names - disabled_by_connection.get(connection.id, set()))
+
+async def _native_policies(bindings: ActiveServiceBindings, *, conversation_only: bool) -> frozenset[_NativePolicy]:
+    from app.connection.facade import get_disabled_function_names_many
+
+    eligible: list[tuple[ActiveConnectionRef, frozenset[str], frozenset[str] | None]] = []
+    registry = load_mcp_tools()
+    names = frozenset(tool.name for tool in registry)
+    families = frozenset(tool.service_code for tool in registry)
+    for ref, service in bindings:
+        allowed = names.intersection(conversation_tool_names(service, source="native")) if conversation_only else None
+        if allowed is not None and not allowed:
+            continue
+        codes = families & await native_service_codes_for_agent_connection(service, ref.id)
+        if codes:
+            eligible.append((ref, codes, allowed))
+    disabled = await get_disabled_function_names_many([ref for ref, _, _ in eligible])
+    return frozenset(_NativePolicy(codes, names.intersection(disabled.get(ref.id, ())), allowed)
+                     for ref, codes, allowed in eligible)
+
+
+@lru_cache(maxsize=256)
+def _native_catalog(definitions: tuple[McpToolDefinition, ...], policies: frozenset[_NativePolicy],
+                    conversation_only: bool) -> tuple[McpToolDefinition, ...]:
+    """Cache only immutable registry entries. Equal effective inputs can share the base across agents."""
+    policies_by_code: dict[str, list[_NativePolicy]] = {}
+    for policy in policies:
+        for code in policy.codes:
+            policies_by_code.setdefault(code, []).append(policy)
+    candidates = (item for item in definitions if item.conversation_policy != "forbidden") if conversation_only else (
+        item for item in definitions if item.task_enabled)
+    return tuple(item for item in candidates if any(
+        item.name not in policy.blocked and (policy.allowed is None or item.name in policy.allowed)
+        for policy in policies_by_code.get(item.service_code, ())
+    ))
+
+
+async def get_disabled_internal_function_names(agent_id: int) -> set[str]:
+    """All blocked native names, including specialist media without a usable model."""
     from app.llm import available_media_functions
 
+    rules = await _native_policies(await active_service_bindings(agent_id), conversation_only=False)
+    names_by_code = mcp_tool_names_by_service_code()
+    offered: set[str] = set()
+    enabled: set[str] = set()
+    for rule in rules:
+        names = {name for code in rule.codes for name in names_by_code.get(code, ())}
+        offered.update(names)
+        enabled.update(names - rule.blocked)
     return (offered - enabled) | (set(SPECIALIST_MEDIA_TOOLS) - await available_media_functions(agent_id))
-
-
-async def _conversation_native_function_names(agent_id: int) -> set[str]:
-    """Project eligibility and function permissions on the same active connection."""
-    from app.connection import facade as connections
-    from .service import get_services_by_ids
-
-    active = [connection for connection in await connections.get_connections_by_agent(agent_id) if connection.active]
-    services = await get_services_by_ids({connection.service_id for connection in active})
-    disabled = await connections.get_disabled_function_names_many(active)
-    definitions_by_code = mcp_tools_by_service_code()
-    visible: set[str] = set()
-    for connection in active:
-        service = services.get(connection.service_id)
-        allowed = conversation_tool_names(service, source="native") if service is not None else ()
-        if service is None or not allowed:
-            continue
-        blocked = disabled.get(connection.id, ())
-        visible.update(
-            definition.name
-            for code in await native_service_codes_for_agent_connection(service, connection.id)
-            for definition in definitions_by_code.get(code, ())
-            if definition.name in allowed and definition.name not in blocked
-            and definition.conversation_policy != "forbidden"
-        )
-    return visible
 
 
 async def list_enabled_native_mcp_definitions(
@@ -917,6 +958,7 @@ async def list_enabled_native_mcp_definitions(
     conversation_only: bool = False,
     resources: dict[str, Any] | None = None,
     task_id: UUID | None = None,
+    _bindings: ActiveServiceBindings | None = None,
 ) -> tuple[McpToolDefinition, ...]:
     """Return the exact native function definitions visible to an agent.
 
@@ -926,25 +968,31 @@ async def list_enabled_native_mcp_definitions(
     """
     from app.agent import effective_tool_profile
 
-    if conversation_only:
-        available_names = await _conversation_native_function_names(agent_id)
-    else:
-        enabled_service_codes = await get_enabled_integrated_service_codes(agent_id)
-        disabled_names = await get_disabled_internal_function_names(agent_id)
-        available_names = {
-            definition.name for definition in load_mcp_tools()
-            if definition.service_code in enabled_service_codes
-            and definition.name not in disabled_names and definition.task_enabled
-        }
     allowed_names = frozenset(allowed_tool_names) if allowed_tool_names is not None else None
+    registry = load_mcp_tools()
+    bindings = _bindings if _bindings is not None else await active_service_bindings(agent_id)
+    if allowed_names is not None:
+        # A lookup for one family needs no account policies from other families.
+        # Protocol-backed services can supply native tools under a different code.
+        families = {item.service_code for item in registry if item.name in allowed_names}
+        bindings = tuple((ref, service) for ref, service in bindings
+                         if not families.isdisjoint(native_service_codes_for_service(service)))
+    if not bindings:
+        return ()
+    policies = await _native_policies(bindings, conversation_only=conversation_only)
+    base = _native_catalog(registry, policies, conversation_only)
+    if allowed_names is not None:
+        base = tuple(item for item in base if item.name in allowed_names)
+    if not base:
+        return ()
     profile = await effective_tool_profile(agent_id, runtime)
-    definitions = [
-        definition
-        for definition in load_mcp_tools()
-        if definition.name in available_names
-        and profile.supports(definition.required_capabilities)
-        and (allowed_names is None or definition.name in allowed_names)
-    ]
+    definitions = [definition for definition in base if profile.supports(definition.required_capabilities)]
+    media_names = {item.name for item in definitions if item.name in SPECIALIST_MEDIA_TOOLS}
+    if media_names:
+        from app.llm import available_media_functions
+
+        media = await available_media_functions(agent_id, candidates=media_names)
+        definitions = [item for item in definitions if item.name not in SPECIALIST_MEDIA_TOOLS or item.name in media]
     if task_id is not None and any(definition.service_code == "messenger" for definition in definitions):
         from app.messenger import inbound_task_connection
 
@@ -963,6 +1011,10 @@ async def list_enabled_native_mcp_definitions(
         if any(item.service_code == code and item.name not in names for item in definitions)
         and (await administration_scope(agent_id, code)).level == "usage"
     }
+
+    # Several catalog entries require the same delegation. Keep this snapshot
+    # local to discovery; the native call performs its own live authorization.
+    admin_permissions: dict[tuple[tuple[str, ...], bool], bool] = {}
 
     async def permitted(definition: McpToolDefinition) -> bool:
         code = definition.service_code
@@ -983,7 +1035,10 @@ async def list_enabled_native_mcp_definitions(
         if name == "agent_harness_blockers":
             privileges.append("TASK_EDIT")
         global_scope = name in {f"agent_{kind}_{op}" for kind in ("group", "title") for op in ("create", "update", "delete")}
-        return await admin_available(agent_id, *privileges, global_scope=global_scope)
+        permission = (tuple(privileges), global_scope)
+        if permission not in admin_permissions:
+            admin_permissions[permission] = await admin_available(agent_id, *privileges, global_scope=global_scope)
+        return admin_permissions[permission]
 
     visible = [
         definition for definition in definitions
@@ -1043,6 +1098,7 @@ async def build_agent_galaris_fastmcp(
     resources: dict[str, Any] | None = None,
     allowed_tool_names: Collection[str] | None = None,
     conversation_only: bool = False,
+    _bindings: ActiveServiceBindings | None = None,
 ) -> FastMCP:
     """Build native MCP filtered by active connections and disabled functions."""
     resolved_resources = dict(resources or {})
@@ -1053,6 +1109,7 @@ async def build_agent_galaris_fastmcp(
         conversation_only=conversation_only,
         resources=resolved_resources,
         task_id=task_id,
+        _bindings=_bindings,
     )
     if (
         any(definition.service_code == "console" for definition in definitions)
@@ -1068,34 +1125,35 @@ async def build_agent_galaris_fastmcp(
         resources=resolved_resources,
         conversation_only=conversation_only,
     )
-    mcp: FastMCP = _MediaFilteredFastMCP(f"Galaris tools — Agent {agent_id}", agent_id=agent_id, runtime=runtime, conversation_only=conversation_only)
+    mcp = _MediaFilteredFastMCP(f"Galaris tools — Agent {agent_id}", agent_id=agent_id, runtime=runtime, conversation_only=conversation_only)
     for definition in definitions:
-        wrapper = _wrap_tool(definition, ctx)
+        tool = _native_tool_template(definition).bind(ctx)
         if definition.name == "rest_request":
-            wrapper.__doc__ = f"{definition.description}\n{await _rest_connection_choices(ctx)}"
-        mcp.tool()(wrapper)
+            # Conversation runs can expose REST without mounting services_list.
+            tool.description = f"{definition.description}\n{await _rest_connection_choices(ctx, _bindings)}"
+        mcp.add_tool(tool)
         mcp.native_execution_names.add(definition.name)
-    # Keep the registrations available for live reconfiguration. list_tools and the
-    # call-time guard consult current profile/connection rights on every access.
+    # An already mounted task can acquire one of these functions later.
+    # Keep the definition until the first visible listing or explicit lookup.
     from app.agent import resolve_tool_profile
     present = {definition.name for definition in definitions}
+    profile = resolve_tool_profile(runtime)
     for definition in load_mcp_tools():
         if (definition.service_code in {"multimedia", "agent", "service"} and definition.name not in present
-                and resolve_tool_profile(runtime).supports(definition.required_capabilities)
+                and profile.supports(definition.required_capabilities)
                 and (allowed_tool_names is None or definition.name in allowed_tool_names)
                 and not conversation_only):
-            mcp.tool()(_wrap_tool(definition, ctx))
+            mcp.deferred_tools[definition.name] = (definition, ctx)
             mcp.native_execution_names.add(definition.name)
     return mcp
 
 
-async def _rest_connection_choices(ctx: McpToolContext) -> str:
+async def _rest_connection_choices(ctx: McpToolContext, bindings: ActiveServiceBindings | None) -> str:
     """Advertise only REST accounts eligible for this run, without resolving credentials."""
     from app.connection import facade as connections
-    from .service import get_services_by_ids
-    active = [row for row in await connections.get_connections_by_agent(ctx.agent_id) if row.active]
-    services = await get_services_by_ids({row.service_id for row in active})
-    candidates = {row.id: tool for row in active if (tool := services.get(row.service_id)) and tool.rest is not None
+    if bindings is None:
+        bindings = await active_service_bindings(ctx.agent_id)
+    candidates = {row.id: tool for row, tool in bindings if tool.rest
                   and (not ctx.conversation_only or "rest_request" in conversation_tool_names(tool, source="native"))}
     modes = await connections.resolve_function_states_many(candidates.keys(), "rest_request")
     eligible = [identifier for identifier in candidates if modes.get(identifier) in {"ask", "enabled"}]
@@ -1116,17 +1174,38 @@ class _MediaFilteredFastMCP(FastMCP):
         self.runtime = runtime
         self.conversation_only = conversation_only
         self.native_execution_names: set[str] = set()
+        self.deferred_tools: dict[str, tuple[McpToolDefinition, McpToolContext]] = {}
         self.add_middleware(ToolArgumentsMiddleware(self.native_execution_names))
         self.add_middleware(ExecutionEvidenceMiddleware(self.native_execution_names))
 
-    async def list_tools(self, *, run_middleware: bool = True) -> Sequence[Tool]:
-        tools = await super().list_tools(run_middleware=run_middleware)
+    def _mount_deferred_tool(self, name: str) -> None:
+        pending = self.deferred_tools.get(name)
+        if pending is not None:
+            definition, ctx = pending
+            self.add_tool(_native_tool_template(definition).bind(ctx))
+            del self.deferred_tools[name]
+
+    async def _get_tool(self, name: str, version: VersionSpec | None = None) -> Tool | None:
+        self._mount_deferred_tool(name)
+        return await super()._get_tool(name, version)
+
+    async def _get_tool_by_hash(self, tool_hash: str, tool_name: str) -> Tool | None:
+        self._mount_deferred_tool(tool_name)
+        return await super()._get_tool_by_hash(tool_hash, tool_name)
+
+    async def _list_tools(self) -> Sequence[Tool]:
+        # Filter at provider collection, before FastMCP applies transforms and
+        # dispatches the results to middleware. Each listing takes one snapshot.
+        tools = await super()._list_tools()
         from core.database import get_db_session
 
-        dynamic = {definition.name for definition in load_mcp_tools()
-                   if definition.service_code in {"multimedia", "agent", "service"}
-                   or definition.name in {"team_list", "team_members"}}
-        if not any(tool.name in dynamic for tool in tools):
+        mounted = {tool.name for tool in tools}
+        registered = self.native_execution_names | mounted
+        dynamic = {
+            d.name for d in load_mcp_tools() if d.name in registered and (
+                d.service_code in {"multimedia", "agent", "service"} or d.name in {"team_list", "team_members"})
+        }
+        if not dynamic:
             return tools
 
         # In-process MCP discovery can inherit the agent's run session. Keep the
@@ -1134,6 +1213,11 @@ class _MediaFilteredFastMCP(FastMCP):
         async with get_db_session():
             visible = {definition.name for definition in await list_enabled_native_mcp_definitions(
                 self.media_agent_id, runtime=self.runtime, allowed_tool_names=dynamic, conversation_only=self.conversation_only)}
+        newly_visible = visible - mounted
+        if newly_visible:
+            for name in sorted(newly_visible):
+                self._mount_deferred_tool(name)
+            tools = await super()._list_tools()
         return [tool for tool in tools if tool.name not in dynamic or tool.name in visible]
 
 
@@ -1179,6 +1263,8 @@ class MountedAgentMcp(FastMCP):
     """Agent server with access to its local catalog without discovering remote tools."""
 
     native_server: FastMCP
+    initial_conversation_names: frozenset[str] | None = None
+    initial_task_context: str | None = None
 
     async def native_tool_names(self) -> frozenset[str]:
         return frozenset(tool.name for tool in await self.native_server.list_tools())
@@ -1244,11 +1330,9 @@ async def build_agent_mcp(
     conversation_only: bool = False,
     allowed_tool_names: Collection[str] | None = None,
     allow_stdio: bool = True,
+    include_task_context: bool = False,
 ) -> MountedAgentMcp:
     """Build an agent's aggregate native and external MCP server."""
-    from app.connection import facade as connection_service
-    from app.services import service
-
     presentation_sink = cast(McpPresentationSink | None, (resources or {}).get("mcp_presentation_sink"))
 
     mcp = MountedAgentMcp(f"Galaris — Agent {agent_id}")
@@ -1263,6 +1347,10 @@ async def build_agent_mcp(
             raise ToolCallRejectedError("The MCP server for this run is no longer available")
         return frozenset(tool.name for tool in await server.list_tools())
 
+    bindings = await active_service_bindings(agent_id)
+    if include_task_context:
+        from .agent_registry import task_context_from_bindings
+        mcp.initial_task_context = await task_context_from_bindings(bindings)
     mcp.native_server = await build_agent_galaris_fastmcp(
         agent_id,
         runtime=runtime,
@@ -1270,15 +1358,16 @@ async def build_agent_mcp(
         resources={**(resources or {}), "run_tool_names": run_tool_names},
         allowed_tool_names=allowed_tool_names,
         conversation_only=conversation_only,
+        _bindings=bindings,
     )
     mcp.mount(mcp.native_server)
+    if conversation_only and isinstance(mcp.native_server, _MediaFilteredFastMCP):
+        # Conversations mount only the currently enabled definitions. The prompt
+        # can reuse that inventory while subsequent discovery and calls stay live.
+        mcp.initial_conversation_names = frozenset(mcp.native_server.native_execution_names)
 
-    connections = [connection for connection in await connection_service.get_connections_by_agent(agent_id)
-                   if connection.active]
-    services = await service.get_services_by_ids({connection.service_id for connection in connections})
-    for connection in connections:
-        tool = services.get(connection.service_id)
-        if not tool or not tool.mcp:
+    for connection, tool in bindings:
+        if not tool.mcp:
             continue
         if conversation_only and not conversation_tool_names(tool, source="external"):
             continue
@@ -1287,7 +1376,6 @@ async def build_agent_mcp(
                 discovery_failures.add(tool.code)
             continue
         try:
-            disabled_functions = await connection_service.get_disabled_function_names(connection)
             proxy = FastMCP(tool.code)
             proxy.add_middleware(ToolArgumentsMiddleware())
             from .external_authorization import ExternalAuthorizationMiddleware
@@ -1314,7 +1402,6 @@ async def build_agent_mcp(
             mcp_apps = presentation_sink is not None and tool.mcp.type == "http"
             proxy.add_provider(_ResilientProxyProvider(
                 live_factory(agent_id, connection.id, connection.service_id, conversation_only, mcp_apps),
-                disabled_functions=disabled_functions,
                 discovery_source=tool.code,
                 discovery_failures=discovery_failures,
                 live_connection=(agent_id, connection.id, connection.service_id, conversation_only),

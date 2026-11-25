@@ -75,10 +75,10 @@ async def test_unknown_arguments_do_not_bypass_required_type_or_nested_validatio
 ])
 async def test_work_plan_rejection_explains_nested_constraint_and_accepts_correction(defect, location, reason):
     server = FastMCP("work-plan-validation")
-    server.add_middleware(ExecutionEvidenceMiddleware({"task_work_update"}))
+    server.add_middleware(ExecutionEvidenceMiddleware({"task_update"}))
     calls = []
 
-    @server.tool(name="task_work_update")
+    @server.tool(name="task_update")
     def update(plan: WorkPlan, expected_revision: int) -> dict[str, int]:
         calls.append(plan)
         return {"work_plan_revision": expected_revision + 1}
@@ -93,7 +93,7 @@ async def test_work_plan_rejection_explains_nested_constraint_and_accepts_correc
     else:
         milestone["state"] = "synthetic-private-invalid-state"
     async with Client(server) as client:
-        failure = await client.call_tool("task_work_update", {"plan": plan, "expected_revision": 0}, raise_on_error=False)
+        failure = await client.call_tool("task_update", {"plan": plan, "expected_revision": 0}, raise_on_error=False)
         assert failure.is_error
         assert calls == []
         assert failure.meta[EXECUTION_META_KEY]["outcome"] == "rejected"
@@ -105,7 +105,7 @@ async def test_work_plan_rejection_explains_nested_constraint_and_accepts_correc
         milestone.update(state="done", observation="The synthetic input was read")
         plan["milestones"] = [milestone]
         plan["next_action"] = ""
-        corrected = await client.call_tool("task_work_update", {"plan": plan, "expected_revision": 0})
+        corrected = await client.call_tool("task_update", {"plan": plan, "expected_revision": 0})
         assert not corrected.is_error
         assert len(calls) == 1
 

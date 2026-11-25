@@ -11,6 +11,20 @@ from core.database import get_db
 from .models import CalendarFeed
 
 
+async def read_calendar_event_label(calendar_id: int, uid: str, agent_ids: frozenset[int] | None) -> str | None:
+    """Project the event summary within the same managed scope as Calendar reads."""
+    from . import service
+
+    try:
+        _, connection = await service.feed_context(calendar_id)
+        if agent_ids is not None and connection.agent_id not in agent_ids:
+            return None
+        event = await service.event_detail(calendar_id, uid)
+        return event.summary if not event.deleted else None
+    except (LookupError, PermissionError, ValueError):
+        return None
+
+
 def _payload(feed: CalendarFeed, agent_id: int) -> dict[str, object]:
     return {
         "id": feed.id, "uri": f"galaris://calendar/{feed.id}",

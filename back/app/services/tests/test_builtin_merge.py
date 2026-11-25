@@ -8,7 +8,7 @@ from sqlalchemy import delete, select
 from app.agent.models import Agent, Title
 from app.connection import Connection, ConnectionFunctionState, ConnectionParam, ServiceFunctionState, facade as connections
 from app.services.authorization_models import ActionAuthorization
-from app.services.builtin_merge import merge_builtin_services, merge_media_and_search_services
+from app.services.builtin_merge import merge_builtin_services, merge_media_and_search_services, rename_chat_tools
 from app.services.contracts import CHAT_CHANNEL_PARAM, VOICE_AUTO_ANSWER_PARAM
 from app.services.dbadmin import move_galaris_function_policies
 from app.services.facade import administration_scope
@@ -73,6 +73,7 @@ async def test_chat_merge_keeps_transport_and_voice_independent(db):
     db.add_all([
         ConnectionParam(connection_id=origin.id, param_name=VOICE_AUTO_ANSWER_PARAM, param_value="true"),
         ConnectionFunctionState(connection_id=origin.id, function_name="voice_call_stop", state="ask", enabled=False),
+        ConnectionFunctionState(connection_id=origin.id, function_name="conversation_choice_resolve", state="ask", enabled=False),
         ServiceFunctionState(service_id=legacy.id, function_name="conversation_round_get", state="disabled", enabled=False),
         ConnectionParam(connection_id=target.id, param_name="services.management_scope", param_value="none"),
     ])
@@ -84,7 +85,8 @@ async def test_chat_merge_keeps_transport_and_voice_independent(db):
     assert target.active and not (await internal_connection(target.id)).active
     assert agent.id in await voice_auto_answer_agents()
     assert (await connections.resolve_function(target, "voice_call_stop"))["effective_state"] == "ask"
-    assert (await connections.resolve_function(target, "conversation_round_get"))["effective_state"] == "disabled"
+    assert (await connections.resolve_function(target, "chat_choice_resolve"))["effective_state"] == "ask"
+    assert (await connections.resolve_function(target, "chat_round_get"))["effective_state"] == "disabled"
     assert await connections.get_management_scope(agent.id, connection_id=target.id) == "none"
     await db.refresh(action)
     assert (action.service_id, action.connection_id, action.status) == (chat.id, target.id, "completed")
@@ -93,6 +95,154 @@ async def test_chat_merge_keeps_transport_and_voice_independent(db):
 
     await connections.set_params_bulk(target.id, {CHAT_CHANNEL_PARAM: "true"}, commit=False)
     assert (await internal_connection(target.id)).active
+
+
+@pytest.mark.asyncio
+async def test_chat_tool_rename_keeps_global_and_local_policies(db):
+    agents, _ = await _legacy(db)
+    chat_id = await db.scalar(select(Service.id).where(Service.code == "chat"))
+    target = await db.scalar(select(Connection).where(Connection.service_id == chat_id, Connection.agent_id == agents[0].id))
+    db.add_all([
+        ServiceFunctionState(service_id=chat_id, function_name="conversation_round_get", enabled=False),
+        ServiceFunctionState(service_id=chat_id, function_name="repository_show", state="disabled", enabled=False),
+        ConnectionFunctionState(connection_id=target.id, function_name="conversation_choice_resolve", state="ask", enabled=False),
+        ConnectionFunctionState(connection_id=target.id, function_name="chat_choice_resolve", state="ask", enabled=False),
+        ConnectionFunctionState(connection_id=target.id, function_name="repository_show", state="enabled", enabled=True),
+        ServiceFunctionState(service_id=chat_id, function_name="conversation_round_get", capability_kind="resource", enabled=True),
+    ])
+    history = await _completed_action(db, target, "conversation_choice_resolve")
+    pending = await _completed_action(db, target, "conversation_round_get")
+    pending.status = "approved"
+    repository_pending = await _completed_action(db, target, "repository_show")
+    repository_pending.status = "pending"
+    await db.flush()
+
+    for _ in range(2):
+        await rename_chat_tools(db)
+
+    assert (await connections.resolve_function(target, "chat_round_get"))["effective_state"] == "disabled"
+    assert (await connections.resolve_function(target, "chat_choice_resolve"))["effective_state"] == "ask"
+    assert (await connections.resolve_function(target, "chat_repository_show"))["effective_state"] == "enabled"
+    assert set((await db.execute(select(ServiceFunctionState.capability_kind, ServiceFunctionState.function_name)
+        .where(ServiceFunctionState.service_id == chat_id))).all()) == {
+            ("tool", "chat_round_get"), ("resource", "conversation_round_get"), ("tool", "chat_repository_show"),
+        }
+    assert set(await db.scalars(select(ConnectionFunctionState.function_name).where(
+        ConnectionFunctionState.connection_id == target.id,
+    ))) == {"chat_choice_resolve", "chat_repository_show"}
+    assert (history.status, history.capability_name) == ("completed", "conversation_choice_resolve")
+    assert (pending.status, pending.capability_name) == ("invalidated", "conversation_round_get")
+    assert (repository_pending.status, repository_pending.capability_name) == ("invalidated", "repository_show")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("code", "old", "new"), [
+    ("service", "service_admin_connection_list", "service_connection_list"),
+    ("process", "conversation_process_start", "process_start_conversation"),
+    ("task", "conversation_task_submit", "task_run"),
+    ("task", "task_work_update", "task_update"),
+])
+async def test_domain_tool_rename_preserves_policies_and_invalidates_pending_approval(db, code, old, new):
+    agents, _ = await _legacy(db)
+    service_id = await db.scalar(select(Service.id).where(Service.code == code))
+    connection = await db.scalar(select(Connection).where(
+        Connection.service_id == service_id, Connection.agent_id == agents[0].id))
+    db.add_all([
+        ServiceFunctionState(service_id=service_id, function_name=old, state="disabled", enabled=False),
+        ConnectionFunctionState(connection_id=connection.id, function_name=old, state="ask", enabled=False),
+    ])
+    pending = await _completed_action(db, connection, old)
+    pending.status = "pending"
+    await db.flush()
+    for _ in range(2):
+        await sync_mandatory_services()
+    assert list(await db.scalars(select(ServiceFunctionState.function_name).where(
+        ServiceFunctionState.service_id == service_id))) == [new]
+    assert (await connections.resolve_function(connection, new))["effective_state"] == "ask"
+    assert (pending.status, pending.capability_name) == ("invalidated", old)
+
+
+@pytest.mark.asyncio
+async def test_task_run_merge_intersects_permissions_and_respects_new_grants(db):
+    from core.params import Param, Params
+
+    agents, _ = await _legacy(db)
+    service_id = await db.scalar(select(Service.id).where(Service.code == "task"))
+    first, second = (await db.scalars(select(Connection).where(
+        Connection.service_id == service_id, Connection.agent_id.in_([agent.id for agent in agents]),
+    ).order_by(Connection.agent_id))).all()
+    marker = await db.get(Param, Params.TASK_RUN_POLICIES_MERGED)
+    marker.value = None
+    db.add_all([
+        ConnectionFunctionState(connection_id=first.id, function_name="task_run", state="enabled", enabled=True),
+        ConnectionFunctionState(connection_id=second.id, function_name="task_submit", state="disabled", enabled=False),
+    ])
+    old = await _completed_action(db, first, "task_run")
+    old.status = "approved"
+    await db.flush()
+
+    await sync_mandatory_services()
+    assert (await connections.resolve_function(first, "task_run"))["effective_state"] == "ask"
+    assert (await connections.resolve_function(second, "task_run"))["effective_state"] == "disabled"
+    assert old.status == "invalidated"
+    assert marker.value == "true"
+    await connections.set_connection_function_state(first.id, "task_run", "enabled", commit=False)
+    await sync_mandatory_services()
+    assert (await connections.resolve_function(first, "task_run"))["effective_state"] == "enabled"
+    assert (await connections.resolve_function(second, "task_run"))["effective_state"] == "disabled"
+
+
+@pytest.mark.asyncio
+async def test_task_tool_merge_retains_stricter_effective_policies_on_replay(db):
+    agents, _ = await _legacy(db)
+    service_id = await db.scalar(select(Service.id).where(Service.code == "task"))
+    first, second = (await db.scalars(select(Connection).where(
+        Connection.service_id == service_id, Connection.agent_id.in_([agent.id for agent in agents]),
+    ).order_by(Connection.agent_id))).all()
+    db.add_all([
+        ServiceFunctionState(service_id=service_id, function_name="task_status", state="disabled", enabled=False),
+        ServiceFunctionState(service_id=service_id, function_name="task_retry", state="ask", enabled=False),
+        ServiceFunctionState(service_id=service_id, function_name="task_stop", state="enabled", enabled=True),
+        ServiceFunctionState(service_id=service_id, function_name="task_stop_conversation", state="ask", enabled=False),
+        ConnectionFunctionState(connection_id=first.id, function_name="task_get", state="enabled", enabled=True),
+        ConnectionFunctionState(connection_id=first.id, function_name="task_resume", state="disabled", enabled=False),
+        ConnectionFunctionState(connection_id=second.id, function_name="task_get", state="ask", enabled=False),
+        ConnectionFunctionState(connection_id=second.id, function_name="task_status", state="enabled", enabled=True),
+        ConnectionFunctionState(connection_id=second.id, function_name="task_stop_conversation", state="enabled", enabled=True),
+    ])
+    old_stop = await _completed_action(db, first, "task_stop")
+    old_stop.status = "approved"
+    await db.flush()
+
+    for _ in range(2):
+        await sync_mandatory_services()
+        assert (await connections.resolve_function(first, "task_get"))["effective_state"] == "disabled"
+        assert (await connections.resolve_function(second, "task_get"))["effective_state"] == "ask"
+        assert (await connections.resolve_function(first, "task_cancel"))["effective_state"] == "ask"
+        assert (await connections.resolve_function(second, "task_cancel"))["effective_state"] == "enabled"
+        assert (await connections.resolve_function(first, "task_resume"))["effective_state"] == "disabled"
+        assert (await connections.resolve_function(second, "task_resume"))["effective_state"] == "ask"
+    assert set(await db.scalars(select(ServiceFunctionState.function_name).where(
+        ServiceFunctionState.service_id == service_id,
+    ))) == {"task_get", "task_cancel", "task_resume"}
+    assert (old_stop.status, old_stop.capability_name) == ("invalidated", "task_stop")
+
+
+@pytest.mark.asyncio
+async def test_chat_tool_rename_rejects_conflicting_policies(db):
+    chat_id = await db.scalar(select(Service.id).where(Service.code == "chat"))
+    db.add_all([
+        ServiceFunctionState(service_id=chat_id, function_name="conversation_round_get", state="disabled", enabled=False),
+        ServiceFunctionState(service_id=chat_id, function_name="chat_round_get", state="enabled", enabled=True),
+    ])
+    await db.flush()
+    with pytest.raises(ValueError, match="Conflicting .* policies"):
+        async with db.begin_nested():
+            await rename_chat_tools(db)
+    assert set((await db.execute(select(ServiceFunctionState.function_name, ServiceFunctionState.state)
+        .where(ServiceFunctionState.service_id == chat_id))).all()) == {
+            ("conversation_round_get", "disabled"), ("chat_round_get", "enabled"),
+        }
 
 
 @pytest.mark.asyncio
@@ -106,6 +256,7 @@ async def test_merge_preserves_scope_and_exact_effective_policy(db):
     await db.flush()
     for _ in range(2):
         await merge_builtin_services(db)
+        await rename_chat_tools(db)
     remaining = await db.scalars(select(Service.id).where(Service.code.in_(("platform_admin", "voice"))))
     assert not remaining.all()
     assert (await administration_scope(agents[0].id, "service")).is_global
@@ -116,8 +267,9 @@ async def test_merge_preserves_scope_and_exact_effective_policy(db):
     assert await voice_auto_answer_agents() == {agents[0].id}
     for code, name, expected in (
         ("galaris", "documentation_catalog", "enabled"), ("galaris", "llm_call", "disabled"),
-        ("chat", "voice_turn_get", "ask"), ("chat", "conversation_round_get", "ask"),
+        ("chat", "voice_turn_get", "ask"), ("chat", "chat_round_get", "ask"),
         ("chat", "voice_call_stop", "ask"), ("chat", "voice_call_list", "enabled"),
+        ("chat", "voice_call_start", "ask"),
     ):
         tool = await db.scalar(select(Service).where(Service.code == code))
         for index, agent in enumerate(agents):
@@ -191,9 +343,9 @@ async def test_catalogue_merge_preserves_independent_media_and_search_access(db)
     for code, name, expected in (
         ("multimedia", "audio_transcribe", ["enabled", "disabled"]),
         ("multimedia", "image_read", ["disabled", "ask"]),
-        ("multimedia", "audio_read", ["disabled", "ask"]),
+        ("multimedia", "audio_read", ["disabled", "enabled"]),
         ("browser", "search_web", ["ask", "disabled"]),
-        ("browser", "browser_open", ["disabled", "enabled"]),
+        ("browser", "browser_open", ["disabled", "ask"]),
     ):
         for agent, state in zip(agents, expected, strict=True):
             target = await db.scalar(select(Connection).where(Connection.service_id == destinations[code],
@@ -206,7 +358,7 @@ async def test_catalogue_merge_preserves_independent_media_and_search_access(db)
     await sync_integrated_service_connections(new_agent.id)
     target = await db.scalar(select(Connection).where(Connection.service_id == destinations["multimedia"],
                                                      Connection.agent_id == new_agent.id))
-    assert (await connections.resolve_function(target, "audio_transcribe"))["effective_state"] == "disabled"
+    assert (await connections.resolve_function(target, "audio_transcribe"))["effective_state"] == "enabled"
 
 
 @pytest.mark.asyncio
@@ -220,13 +372,13 @@ async def test_split_transfers_function_overrides_without_changing_other_functio
     services = {row.code: row.id for row in await db.scalars(select(Service))}
     targets = [("galaris", "agent", "team_members"), ("galaris", "contact", "contact_update"),
                ("galaris", "document", "document_analysis_get"), ("galaris", "task", "task_run"),
-               ("conversation", "process", "conversation_process_pending"),
-               ("conversation", "task", "conversation_task_list"), ("conversation", "document", "document_show")]
+               ("conversation", "process", "process_pending"),
+               ("conversation", "task", "task_list"), ("conversation", "document", "document_show")]
     for source, _, name in targets:
         origin = await db.scalar(select(Connection).where(Connection.service_id == services[source],
                                                           Connection.agent_id == agents[0].id))
         db.add(ConnectionFunctionState(connection_id=origin.id, function_name=name, state="disabled", enabled=False))
-        if name == "conversation_task_list":
+        if name == "task_list":
             history = await _completed_action(db, origin, name)
     await db.flush()
 

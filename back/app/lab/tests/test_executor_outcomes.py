@@ -26,7 +26,7 @@ def test_tool_receipts_match_bound_defaults_without_accepting_changed_arguments(
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("available", [["conversation_task_status"], []])
+@pytest.mark.parametrize("available", [["task_get"], []])
 async def test_foreground_benchmark_exposes_only_the_declared_capabilities(monkeypatch, available):
     from app.lab import mechanism_registry as registry
 
@@ -42,8 +42,8 @@ async def test_foreground_benchmark_exposes_only_the_declared_capabilities(monke
 
 def test_unavailable_fixture_cannot_grant_a_foreground_capability():
     with pytest.raises(ValueError, match="unavailable"):
-        recording_tools("conversation", {"conversation_task_submit": [{}]}, [],
-                        available_tools=["conversation_task_status"])
+        recording_tools("conversation", {"task_submit": [{}]}, [],
+                        available_tools=["task_get"])
     # Task catalogues retain their exact-inventory validation; only foreground cases
     # select subsets of their shared dataset catalogue.
     with pytest.raises(ValueError, match="match the declared available inventory"):

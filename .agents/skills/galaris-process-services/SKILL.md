@@ -162,7 +162,10 @@ ou un runtime.
 Le Service intégré `file_sharing` possède et expose l'unique surface MCP générique :
 `file_schemes`, `file_list`, `file_info`,
 `file_search`, `file_read`, `file_create`, `file_write`, `file_append`, `file_edit`, `file_copy`,
-`file_move`, `file_rename` et `file_delete`. `file_rename` modifie le titre des Documents et Datasets
+`file_move`, `file_rename`, `file_delete` et `file_to_pdf`. Le service expose aussi `dataset_query`.
+En conversation, la liste native autorise `file_schemes`, `file_list`, `file_info`,
+`file_search`, `file_read` et `dataset_query`. Les droits et la compatibilité du harnais
+s’appliquent ensuite. `file_rename` modifie le titre des Documents et Datasets
 à URI stable, avec `expected_lock_version` issu de `file_info`, sans révision de contenu.
 Ne pas réintroduire un lecteur ou un transfert dédié lorsqu'une URI couvre déjà
 l'intention. Les actions métier qui portent une sémantique supplémentaire restent dans leur
@@ -212,10 +215,10 @@ l’isolation entre agents, la connexion active, les ACL du domaine et l'overwri
 chaque nouveau transport. Un nouveau provider expose ses capacités par protocoles optionnels ; il
 ne prétend pas supporter list, move ou delete sans implémentation réelle.
 
-Les commandes `conversation_task_*` et `conversation_process_*` relèvent de Tâches et de Processus.
-`conversation_choice_resolve` et `repository_show` relèvent de Chat. `repository_show` accepte aussi
+Les commandes `task_*` et `process_*` relèvent de Tâches et de Processus.
+`chat_choice_resolve` et `chat_repository_show` relèvent de Chat. `chat_repository_show` accepte aussi
 les Tasks explicitement liées au Chat interne. `document_show` relève de Documents et exige un tour
-textuel du Chat interne. Les inspections `conversation_round_get` et `voice_turn_get` relèvent de
+textuel du Chat interne. Les inspections `chat_round_get` et `voice_turn_get` relèvent de
 Chat. Les appels LLM et incidents relèvent de Galaris. Leurs permissions de fonction sont relues
 sur leur connexion d'origine, et la portée d'inspection sur la connexion `service`.
 

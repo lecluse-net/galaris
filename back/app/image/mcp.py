@@ -262,7 +262,7 @@ async def generate_image(
         )) from exc
 
 
-@mcp_tool("multimedia", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
+@mcp_tool("multimedia", approval="enabled", approval_reason="Analyzes a readable image through the configured model",
 
     name="image_read",
     description=(

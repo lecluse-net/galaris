@@ -30,8 +30,8 @@ def test_capability_oracles_detect_missing_attempts_and_forbidden_or_unnecessary
             broken["tool_results"] = []
         else:
             arguments = {"objective": "<p>Unrequested work.</p>"}
-            broken["tool_calls"] = [{"name": "conversation_task_submit", "arguments": arguments}]
-            broken["tool_results"] = [{"name": "conversation_task_submit", "arguments": arguments,
+            broken["tool_calls"] = [{"name": "task_submit", "arguments": arguments}]
+            broken["tool_results"] = [{"name": "task_submit", "arguments": arguments,
                                        "result": {"created": True}}]
         assert not all(row["passed"] for row in case_checks(case, broken)), case["name"]
 
@@ -50,7 +50,7 @@ def test_case_inventory_can_inherit_or_explicitly_clear_shared_context(field):
 
 @pytest.mark.parametrize("change", [None, "prompt", "input", "binding", "effort"])
 def test_complete_prompt_comparison_requires_unchanged_frozen_evidence(tmp_path, change):
-    case = {"key": "synthetic", "native": {"message": "Try the work.", "available_tools": ["conversation_task_submit"]}}
+    case = {"key": "synthetic", "native": {"message": "Try the work.", "available_tools": ["task_submit"]}}
     prompts = {"synthetic": {"before": "Old control.", "after": "Original complete production prompt."}}
     manifest = {"cases_sha256": digest([case]), "prompts_sha256": digest(prompts),
                 "model_binding": "synthetic-binding", "reasoning_effort": None, "builder_sha256": "synthetic-builder"}
@@ -152,8 +152,8 @@ def test_task_status_oracle_accepts_both_public_reference_forms_without_changing
     case = next(case for case in load_cases() if case["key"] == "latency_corpus_en.json/3/conversation_executor")
     arguments = {"task_id": identifier}
     actual = {"action": "read_status", "response": "Running.",
-              "tool_calls": [{"name": "conversation_task_status", "arguments": arguments}],
-              "tool_results": [{"name": "conversation_task_status", "arguments": arguments,
+              "tool_calls": [{"name": "task_status", "arguments": arguments}],
+              "tool_results": [{"name": "task_status", "arguments": arguments,
                                 "result": {"status": "RUNNING"}}]}
     before = deepcopy(actual)
     assert all(row["passed"] for row in case_checks(case, actual)) == passed

@@ -6,7 +6,7 @@ From **Files**, the context menu of a `console://` repository also opens the cod
 without linking it to a conversation. The folder must contain a `.git` marker (a checkout
 directory or worktree file). Repository access rights and `CODE_ACCESS` are still required.
 
-When an agent presents its repository with `repository_show`, the work pane displays
+When an agent presents its repository with `chat_repository_show`, the work pane displays
 code-server, based on VS Code OSS. The pane alternates between a Document and a repository,
 while the conversation stays usable. **Source code** lists previously presented
 repositories so that you can reopen them after reconnecting. It sits directly below
@@ -98,7 +98,7 @@ manager can click **Deploy code editor** directly in the agent’s Console conne
 that connection. Deployment checks SSH automatically. The conversation remains usable, and you can reopen the
 repository after configuration.
 
-If `repository_show` reports a permission refusal, also check that the agent’s Console
+If `chat_repository_show` reports a permission refusal, also check that the agent’s Console
 connection is active. Testing or deploying the editor preserves its saved activation state.
 
 After initial deployment, managed editors on active SSH connections are checked and upgraded

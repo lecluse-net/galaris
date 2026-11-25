@@ -76,23 +76,7 @@ def _message(key: str, language: str, **values: Any) -> str:
     return render_prompt(t(f"task_mcp.{key}", language), **values)
 
 
-@mcp_tool("task", approval="enabled", approval_reason="Governed bounded read or control without a new sensitive effect",
-
-    name="task_get",
-    description=(
-        "Return a compact operational view of a task with its canonical resource URI, target "
-        "agent, requester, objective, feedback, business outcome, terminal diagnostics, progress, "
-        "work_plan and work_plan_revision, "
-        "amendment eligibility, and explicit "
-        "waits such as the colleague, question, and deadline. Accept a canonical "
-        "galaris://task/ URI, a full UUID, or a unique UUID prefix. Inspect your own Task "
-        "or a delegation you requested, and Tasks covered by your Task connection scope. For a sibling Task you cannot access, ask its coordinator "
-        "for the contribution your step needs."
-    ),
-    effect_policy="read",
-    concurrency_policy="safe",
-)
-async def mcp_get_task(
+async def inspect_agent_task(
     ctx: McpToolContext,
     task_id: str,
 ) -> dict[str, Any]:
@@ -113,7 +97,7 @@ async def _work_update_preflight(_ctx: McpToolContext, arguments: dict[str, Any]
     return {}
 
 
-@mcp_tool("task", name="task_work_update", approval="enabled",
+@mcp_tool("task", name="task_update", approval="enabled",
     approval_reason="Record bounded progress on the executing agent's own Task",
     authorization_preflight=_work_update_preflight,
     description=(
@@ -187,39 +171,6 @@ async def mcp_list_paused_tasks(
     return await list_paused_tasks(ctx, limit=limit)
 
 
-@mcp_tool("task", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
-
-    name="task_stop",
-    description=(
-        "Permanently stop an active root task and its unfinished descendants. The current task, "
-        "its ancestors, and child-task targets are rejected. Find the exact canonical Task URI "
-        "with file_search on galaris://task/ first."
-    ),
-)
-async def mcp_stop_task(
-    ctx: McpToolContext,
-    task_id: str,
-    reason: str | None = None,
-) -> dict[str, Any]:
-    """Permanently stop another active root task."""
-
-    return await stop_task(ctx, task_id=task_id, reason=reason)
-
-
-@mcp_tool("task", approval="ask", approval_reason="Mutation, disclosure, paid processing or execution requires one-action approval",
-
-    name="task_run",
-    description=(
-        "Create a child task for a peer in your Task connection scope and return its canonical galaris://task/ URI. Never target your own "
-        "agent_id; perform that work directly. Write `objective` as a rich-text HTML fragment with a direct instruction to the "
-        "recipient. Your task waits and resumes automatically with the child result. Use this "
-        "for delegated work; use messenger_send_message_to_user for conversation. `effort` may "
-        "be auto, standard, or high. `mode` may be auto, exec, or plan."
-        " Document references in objective are checked before creation. Set document_access "
-        "to write when the recipient must edit them. Share them first using document_share; "
-        "delegation never grants access."
-    ),
-)
 async def mcp_run_task(
     ctx: McpToolContext,
     agent_id: int,

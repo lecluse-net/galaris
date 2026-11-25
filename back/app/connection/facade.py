@@ -31,6 +31,8 @@ from .parameter_resolution import effective_param_value_expression as effective_
 from .schemas import EffectiveFunctionState as EffectiveFunctionState
 
 from .connection_service import (
+    ActiveConnectionRef as ActiveConnectionRef,
+    active_connection_refs as active_connection_refs,
     clear_service_param_values as clear_service_param_values,
     services_with_mcp_oauth_grants as services_with_mcp_oauth_grants,
     count_connections_by_service,
@@ -75,6 +77,7 @@ from .calendar_oauth import calendar_access_token, invalidate_calendar_token
 from .oauth_service import register_oauth_observer
 
 __all__ = [
+    "active_connection_refs", "ActiveConnectionRef",
     "count_connections_by_service",
     "register_oauth_observer",
     "calendar_access_token", "invalidate_calendar_token",

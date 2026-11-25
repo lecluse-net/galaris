@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
 import asyncio
@@ -58,9 +59,11 @@ async def resolve_media_resource(
     return SelectedMediaResource(resource.id, resource.llm_name, connection, provider)
 
 
-async def available_media_functions(agent_id: int) -> frozenset[str]:
+async def available_media_functions(agent_id: int, *, candidates: Collection[str] | None = None) -> frozenset[str]:
     available: set[str] = set()
     for operation in MEDIA_USAGES:
+        if candidates is not None and operation not in candidates:
+            continue
         try:
             await resolve_media_resource(agent_id, operation)
         except ValueError:

@@ -39,6 +39,8 @@ from .resource_service import (
     materialize_resource,
 )
 
+ResourceSelector = Annotated[str, Field(min_length=1, max_length=1024)]
+
 
 async def _context_language(ctx: McpToolContext) -> str:
     return await context_language(ctx)
@@ -146,7 +148,8 @@ async def file_schemes(ctx: McpToolContext) -> str:
     description=(
         "List a resource collection by URI, for example console://reports/, "
         "document://<uuid>/attachments/, nextcloud://Shared/, telegram://<room-id>/, or "
-        "galaris://task/ or galaris://calendar/. Calendar objects expose stable references and safe metadata; "
+        "galaris://task/, galaris://calendar/, galaris://topic/, galaris://processes/ or galaris://processes/runs/. "
+        "Calendar objects expose stable references and safe metadata; "
         "use calendar tools for events. With Gestion des compétences access, galaris://skill/ lists managed "
         "skill packages and galaris://skill/<code>/ lists their files. "
         "When uri is omitted, console:// is listed if the run owns a console; otherwise "
@@ -293,7 +296,12 @@ async def search_files(
         "HTML Memory/document pages contain complete numbered blocks, format, profile and revision. "
         "Their offsets count blocks. Start with the default max_chars=20000. If a block requires "
         "more, retry with the same offset and revision and the reported max_chars (up to 2 MB)."
-        " For a document:// URI, pass revision to read that exact saved revision."
+        " For a document:// URI, pass revision to read that exact saved revision. "
+        "Optional selector reads a format-defined subpart, with offsets within that selection. "
+        "For galaris://processes/runs/<uuid>, /nodes/<page> and /events/<cursor> page through native "
+        "run occurrences and events using next_node_page and next_event_cursor. "
+        "For a mind map, selector='/nodes' lists branches, a branch ID selects its JSON, "
+        "and '<branch-id>/body_html' reads its rich content."
     ),
     effect_policy="read",
     concurrency_policy="safe",
@@ -304,17 +312,18 @@ async def read_file(
     offset: int = 0,
     max_chars: int = 20_000,
     revision: Annotated[int, Field(ge=1)] | None = None,
+    selector: ResourceSelector | None = None,
 ) -> str:
     """Read automatically detected text or binary content."""
 
     return _json_model(
         await resource_read(
-            await _resource_context(ctx), uri, offset=offset, max_chars=max_chars, revision=revision
+            await _resource_context(ctx), uri, offset=offset, max_chars=max_chars, revision=revision, selector=selector
         )
     )
 
 
-@mcp_tool("file_sharing", approval="ask", approval_reason="Creates a PDF in the selected authorized resource destination",
+@mcp_tool("file_sharing", approval="enabled", approval_reason="Creates a PDF in the selected authorized resource destination",
     name="file_to_pdf", conversation_policy="deferred", timeout_seconds=300,
     authorization_preflight=_file_preflight,
     description=(
@@ -382,7 +391,7 @@ async def file_to_pdf(ctx: McpToolContext, source: str, destination: str) -> str
         "Document formats include text (HTML), data (JSON), and mindmap (structured JSON); document_format remains immutable. "
         "For document_format='mindmap', use a version 1 source with a nodes array; for example "
         "'{\"version\":1,\"nodes\":[{\"id\":\"root\",\"parent\":null,\"title\":\"Project\"}]}'. "
-        "Use mindmap_read, mindmap_add and mindmap_edit for structured branch operations. "
+        "Use selectors with file_read, file_write and file_edit for structured branch operations. "
         "The data format at document:// returns data://. file_schemes lists the available formats. "
         "For an HTML document, content must be an editorial HTML fragment "
         "with encoding='utf-8', for example '<h1>Report</h1><p>Findings.</p>', not Markdown "
@@ -443,7 +452,9 @@ async def create_file(
     effect_descriptor=EffectDescriptorV1(capability="file.write", kind="mutate", target_arguments=("uri",), reversible=True, receipt="resource"),
     authorization_preflight=_file_preflight,
     description=(
-        "Replace one existing complete file. Pass text with encoding='utf-8' or binary bytes "
+        "Replace an existing file or a format-defined subpart identified by optional selector. "
+        "For a mind map, a branch ID replaces its JSON with the same ID and parent, or "
+        "'<branch-id>/body_html' replaces only the branch HTML. Pass text with encoding='utf-8' or binary bytes "
         "as base64. document://, data:// and galaris://skill/ files accept expected_revision from "
         "file_read (mandatory for Documents and Datasets); Dataset replacements must remain valid JSON. "
         "For prose documents, read all content needed for a complete replacement first; "
@@ -464,6 +475,7 @@ async def write_file(
     encoding: Literal["utf-8", "base64"] = "utf-8",
     expected_revision: int | None = None,
     expected_etag: str | None = None,
+    selector: ResourceSelector | None = None,
 ) -> str:
     """Write a complete text or binary file through a provider adapter."""
 
@@ -474,6 +486,7 @@ async def write_file(
             _decode_content(content, encoding),
             expected_revision=expected_revision,
             expected_etag=expected_etag,
+            selector=selector,
         )
     )
 
@@ -506,7 +519,10 @@ async def append_file(ctx: McpToolContext, uri: str, content: str, expected_revi
     effect_descriptor=EffectDescriptorV1(capability="file.write", kind="mutate", target_arguments=("uri",), reversible=True, receipt="resource"),
     authorization_preflight=_file_preflight,
     description=(
-        "Replace a 1-based inclusive range in an existing UTF-8 resource. Use the exact URI "
+        "Replace a 1-based inclusive range in an existing UTF-8 resource, or pass selector "
+        "for a format-defined edit with no line range. For a mind map, selector='/nodes' "
+        "accepts content containing a JSON array of 1 to 50 add, edit, move or remove operations. "
+        "Each operation supplies node_id, and add requires parent_id and title. Use the exact URI "
         "returned by file_read. Task edits require write authorization for that target. "
         "For HTML documents, "
         "start_line/end_line identify complete blocks returned by file_read, content is valid HTML, "
@@ -530,16 +546,19 @@ async def append_file(ctx: McpToolContext, uri: str, content: str, expected_revi
 async def edit_file(
     ctx: McpToolContext,
     uri: str,
-    start_line: int,
-    end_line: int,
-    content: str,
+    start_line: int | None = None,
+    end_line: int | None = None,
+    content: str | None = None,
     expected_revision: int | None = None,
     expected_etag: str | None = None,
+    selector: ResourceSelector | None = None,
 ) -> str:
-    """Edit one explicit inclusive line range."""
+    """Edit a line range or a format-defined selection."""
 
     from app.document import DocumentConflictError
 
+    if content is None:
+        raise ToolArgumentsRejectedError("content is required for file_edit.")
     try:
         edited = await resource_edit(
             await _resource_context(ctx),
@@ -549,6 +568,7 @@ async def edit_file(
             content=content,
             expected_revision=expected_revision,
             expected_etag=expected_etag,
+            selector=selector,
         )
     except IncompleteResourceContent as exc:
         raise ToolArgumentsRejectedError(str(exc)) from exc
@@ -558,6 +578,10 @@ async def edit_file(
         raise FileEditRejected(
             f"{exc} Use file_read to locate the range in the current content before retrying."
         ) from exc
+    except ValueError as exc:
+        if selector is None:
+            raise
+        raise FileEditRejected(str(exc)) from exc
     return _json_model(edited)
 
 

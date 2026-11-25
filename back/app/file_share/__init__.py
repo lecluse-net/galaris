@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
 from . import file_share_service
 from .browser_policy import resource_privileges as resource_privileges
+from .browser_policy import review_resource as review_resource
+from .browser_policy import review_calendar_event_label as review_calendar_event_label
 from .native_providers import register_native_provider, register_resource_aliases
 from .models import FileCatalogEntry, FileIndexRun, FileObservationRepair
 from .indexing import indexing_tick, repair_tick, start_index_run, cancel_index_run, prune_index_history, refresh_known_tick
@@ -121,6 +123,8 @@ register_document_import_reader(read_document_import_source)
 
 __all__ = [
     "resource_privileges",
+    "review_resource",
+    "review_calendar_event_label",
     "register_native_provider", "register_resource_aliases",
     "FileCatalogEntry", "annotate_catalogue_entry", "reconcile_catalogue_root_titles",
     "record_resource_description",
@@ -199,12 +203,18 @@ from .web_preview import document_web_image
 from .document_facade import prepared_resource, purge_prepared_files
 from .document_rag_cache import document_rag_cache
 from .document_retrieval import register_document_retriever
-from .galaris_provider import register_code_resource_provider, register_contact_resource_provider, register_calendar_resource_provider
+from .galaris_provider import (
+    register_calendar_resource_provider,
+    register_code_resource_provider,
+    register_contact_resource_provider,
+    register_topic_resource_provider,
+)
 __all__ += ["prepared_resource"]
 __all__ += ["purge_prepared_files"]
 __all__ += ["document_rag_cache"]
 __all__ += ["register_document_retriever"]
-__all__ += ["register_code_resource_provider", "register_contact_resource_provider", "register_calendar_resource_provider"]
+__all__ += ["register_code_resource_provider", "register_contact_resource_provider",
+            "register_calendar_resource_provider", "register_topic_resource_provider"]
 from core.preview import register_web_image_provider
 
 register_web_image_provider(document_web_image)

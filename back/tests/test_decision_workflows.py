@@ -80,7 +80,7 @@ async def test_conversation_dispatch_uses_personal_decision_profile_and_persists
         history="Assistant: Which fictional code?", active_work=(),
         pending_interactions=({"reference": "SYNTH123", "body": "Which fictional code?"},),
         load_processes=lambda: agent_process_dispatch_candidates(task.agent_id,
-            {"process_list", "process_get", "conversation_process_start"}))
+            {"file_list", "file_read", "process_start_conversation"}))
 
     assert text_calls == []
     assert len(native_calls) == (0 if outcome == "absent" else 1)

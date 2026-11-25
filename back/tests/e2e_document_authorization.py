@@ -28,7 +28,7 @@ async def seed(agent_id):
     assert len(rows) == 2
     for connection, code in rows:
         for name, mode in ({"file_create": "ask", "file_write": "ask", "file_read": "enabled"}
-                           if code == "file_sharing" else {"conversation_task_submit": "enabled"}).items():
+                           if code == "file_sharing" else {"task_run": "enabled"}).items():
             await connections.set_connection_function_state(connection.id, name, mode)
     states[agent_id] = {"calls": [], "uri": None}
 
@@ -67,7 +67,7 @@ async def build_model(_llm, *, agent_id, purpose=None, **_kwargs):
             return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, fields)])
         returns = [part for message in messages for part in message.parts if isinstance(part, ToolReturnPart)]
         relevant = [part for part in returns if part.tool_name in {
-            "file_create", "file_read", "file_write", "conversation_task_submit"}]
+            "file_create", "file_read", "file_write", "task_run"}]
         latest = relevant[-1] if relevant else None
         if latest is not None and latest.outcome != "success":
             return ModelResponse(parts=[TextPart("Action interdite : aucun changement effectué après le refus.")])
@@ -76,12 +76,12 @@ async def build_model(_llm, *, agent_id, purpose=None, **_kwargs):
                 "file_create", {"path": "document://", "name": "Synthetic authorization report", "content": INITIAL})
         elif latest.tool_name == "file_create":
             state["uri"] = next(item["uri"] for item in objects(latest.content) if "uri" in item)
-            name, args = "conversation_task_submit", {
+            name, args = "task_run", {
                 "label": "Synthetic document continuation",
                 "objective": f"<p>Compléter le document {state['uri']} en conservant son contenu initial.</p>",
                 "mode": "exec",
             }
-        elif latest.tool_name == "conversation_task_submit":
+        elif latest.tool_name == "task_run":
             receipt = list(objects(latest.content))
             assert any(item.get("created") for item in receipt), receipt
             return ModelResponse(parts=[TextPart("Document créé ; modification confiée à une tâche de fond.")])

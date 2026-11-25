@@ -56,10 +56,10 @@ def load_cases() -> list[dict[str, Any]]:
                 oracles: list[dict[str, Any]] = [
                     {"max_tool_calls": 0},
                     {"required_calls": [{"tool": "memory_search"}], "response_values": ["17"], "max_tool_calls": 2},
-                    {"required_calls": [{"tool": "conversation_task_status", "arguments": {
+                    {"required_calls": [{"tool": "task_get", "arguments": {
                         "task_id": "galaris://task/00000000-0000-0000-0000-000000000041"}}],
-                     "forbidden_tools": ["conversation_task_submit"], "max_tool_calls": 1},
-                    {"required_calls": [{"tool": "conversation_task_submit", "argument_values": {
+                     "forbidden_tools": ["task_run"], "max_tool_calls": 1},
+                    {"required_calls": [{"tool": "task_run", "argument_values": {
                         "objective": ["Orbe", "Nacre", "Sillage"]}}], "max_tool_calls": 1},
                 ]
                 # Foreground references have no transcript; only actual outputs are scored.
@@ -77,10 +77,15 @@ def load_cases() -> list[dict[str, Any]]:
 def case_checks(case: dict[str, Any], actual: dict[str, Any]) -> list[dict[str, Any]]:
     from app.lab.objective_checks import check_output
     checked = actual
-    # task_status accepts both a UUID and its canonical URI. Keep raw evidence intact.
+    # Normalize historical foreground names and Task UUIDs without editing recorded evidence.
     for field in ("tool_calls", "tool_results"):
         for index, call in enumerate(actual.get(field, [])):
-            if call.get("name") != "conversation_task_status":
+            if case["mechanism"] != "task_executor" and call.get("name") == "task_submit":
+                if checked is actual:
+                    checked = deepcopy(actual)
+                checked[field][index]["name"] = "task_run"
+                continue
+            if call.get("name") not in {"task_get", "task_status"}:
                 continue
             value = call.get("arguments", {}).get("task_id")
             if not isinstance(value, str):
@@ -91,6 +96,7 @@ def case_checks(case: dict[str, Any], actual: dict[str, Any]) -> list[dict[str, 
                 continue
             if checked is actual:
                 checked = deepcopy(actual)
+            checked[field][index]["name"] = "task_get"
             checked[field][index]["arguments"]["task_id"] = reference
     facts = case["expected"].get("outcome_checks", {}).get("response_values", [])
     if any(re.fullmatch(r"\d{1,2}:\d{2}", value) for value in facts):

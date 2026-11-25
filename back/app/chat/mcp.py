@@ -34,7 +34,7 @@ async def _available(ctx: McpToolContext) -> bool:
     task_enabled=False,
     timeout_seconds=100,
     available_when=_available,
-    approval="enabled",
+    approval="ask",
     approval_reason="Screen capture requires a new, one-use local desktop consent for each call.",
 )
 async def chat_screenshot(

@@ -19,7 +19,7 @@ def _context() -> ExecutorPromptContext:
         personality="Rigorous",
         job_description="Help the user.",
         language="fr",
-        tool_advertisement="`conversation_task_submit` is available.",
+        tool_advertisement="`task_run` is available.",
         conversation_action_policy=(
             prompt_default(Params.AI_CONVERSATION_ACTION_POLICY) or ""
         ),

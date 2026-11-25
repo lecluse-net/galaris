@@ -468,7 +468,7 @@ async def memory_search(query: str, limit: int = 5) -> dict[str, Any]:
     return {"query": query, "limit": limit, "items": [], "benchmark": True}
 
 
-async def conversation_task_submit(
+async def task_run(
     objective: str,
     label: str = "",
 ) -> dict[str, Any]:
@@ -484,26 +484,31 @@ async def conversation_task_submit(
     }
 
 
-async def conversation_task_status(task_id: str) -> dict[str, Any]:
+async def task_submit(objective: str, label: str = "") -> dict[str, Any]:
+    """Replay the historic admission tool for a saved benchmark."""
+    return await task_run(objective, label)
+
+
+async def task_get(task_id: str) -> dict[str, Any]:
     """Return a deterministic effect-free Task status."""
 
     task_uri = task_id if task_id.startswith("galaris://task/") else f"galaris://task/{task_id}"
     return {"task_uri": task_uri, "status": "RUNNING", "benchmark": True}
 
 
-async def process_list() -> dict[str, Any]:
-    """Return a deterministic empty Process catalog."""
+async def file_list(uri: str) -> dict[str, Any]:
+    """Return an empty resource collection for the conversation benchmark."""
 
-    return {"items": [], "benchmark": True}
-
-
-async def process_get(workflow_id: str) -> dict[str, Any]:
-    """Record Process discovery without accessing production state."""
-
-    return {"found": True, "workflow_id": workflow_id, "benchmark": True}
+    return {"uri": uri, "entries": [], "benchmark": True}
 
 
-async def conversation_process_start(
+async def file_read(uri: str) -> dict[str, Any]:
+    """Record resource reads without accessing production state."""
+
+    return {"uri": uri, "content": "", "benchmark": True}
+
+
+async def process_start_conversation(
     workflow_id: str,
     input: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -532,16 +537,23 @@ async def executor_tool_call(
     }
 
 
-def _executor_tools(executor: ExecutorKind) -> list[Any]:
+async def task_status(task_id: str) -> dict[str, Any]:
+    """Replay the historic status tool for a saved benchmark."""
+    return await task_get(task_id)
+
+
+def _executor_tools(
+    executor: ExecutorKind, *, legacy_status: bool = False, legacy_submit: bool = False,
+) -> list[Any]:
     if executor == "task":
         return [executor_tool_call]
     return [
         memory_search,
-        conversation_task_submit,
-        conversation_task_status,
-        process_list,
-        process_get,
-        conversation_process_start,
+        task_submit if legacy_submit else task_run,
+        task_status if legacy_status else task_get,
+        file_list,
+        file_read,
+        process_start_conversation,
     ]
 
 
@@ -570,7 +582,9 @@ def recording_tools(
         return _catalog_recording_tools(selected, available_tools or [], responses, transcript, response_arguments or {})
     if response_arguments:
         raise ValueError("Argument-scoped fixtures require native tool contracts")
-    tools = _executor_tools(executor)
+    requested = available_tools or responses
+    tools = _executor_tools(executor, legacy_status="task_status" in requested,
+                            legacy_submit="task_submit" in requested)
     if executor != "task" and available_tools is not None:
         tools = [tool for tool in tools if tool.__name__ in available_tools]
     fixture_names = {tool.__name__ for tool in tools}
@@ -639,12 +653,15 @@ def _catalog_recording_tools(catalog: list[dict[str, Any]], available: list[str]
 def _executor_action(tool_calls: list[dict[str, Any]]) -> str:
     if not tool_calls:
         return "reply"
-    names = [str(item.get("name") or "") for item in tool_calls]
-    if "conversation_task_submit" in names:
+    names = {str(item.get("name") or "") for item in tool_calls}
+    if "task_submit" in names or any(
+        item.get("name") == "task_run" and cast(dict[str, Any], item.get("arguments") or {}).get("agent_id") is None
+        for item in tool_calls
+    ):
         return "start_task"
-    if "conversation_process_start" in names:
+    if "process_start_conversation" in names:
         return "start_process"
-    if "conversation_task_status" in names:
+    if names & {"task_get", "task_status"}:
         return "read_status"
     return "use_tool"
 

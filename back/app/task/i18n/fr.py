@@ -33,7 +33,7 @@ default: dict[str, object] = {
         "selector_required": "task_get nécessite task_id ou uuid",
         "invalid_uuid": "URI ou UUID de tâche invalide : ${task_id}",
         "ambiguous_uuid_prefix": "Préfixe d’UUID ambigu : ${task_id}",
-        "root_only": "task_stop ne peut arrêter qu’une tâche racine de niveau 1.",
+        "root_only": "task_cancel ne peut arrêter qu’une tâche racine de niveau 1.",
         "self_stop": "Auto-arrêt refusé : la cible est la tâche courante.",
         "stopped_by": "Tâche arrêtée définitivement par ${stopper}.",
         "stopped_by_with_reason": "Tâche arrêtée définitivement par ${stopper}. Motif : ${reason}",
