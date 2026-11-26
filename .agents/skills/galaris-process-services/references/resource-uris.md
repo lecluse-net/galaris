@@ -86,6 +86,13 @@ Pour citer le répertoire, transmettre son URI en conversation ou enregistrer un
 dans `blockquote.galaris-link-card` dans un Document. Le rendu fournit l'icône ; ne pas copier
 les documents de la branche ni embarquer les octets de l'icône. Le lien n'accorde aucun droit.
 `file_edit` remplace une plage inclusive de lignes UTF-8 (blocs pour les documents HTML).
+`file_read`, `file_write` et `file_edit` acceptent aussi un `selector` facultatif quand le
+format prend en charge l’opération. Le format résout le sélecteur et valide le résultat.
+Les offsets de lecture s’appliquent à la sous-partie. Pour un Document, la révision protège
+le contenu entier et les opérations sélectionnées appliquent aussi la portée Documents.
+Dans une carte mentale, lire `/nodes` pour découvrir les identifiants, sélectionner un
+identifiant pour lire ou remplacer un nœud, ou `<id>/body_html` pour cibler son HTML.
+`file_edit` avec `/nodes` applique un lot de commandes de branches fourni en JSON dans `content`.
 `file_create(path="data://", name=..., content=...)` crée un Dataset JSON indépendant.
 Le document Données possède son contenu, ses droits, son historique et ses pièces jointes.
 Le JSON reste libre et valide après chaque écriture. L'ancien `document_type="dataset"` dans

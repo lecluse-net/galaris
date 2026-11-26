@@ -17,7 +17,7 @@ The `CodeRuntime` port carries typed target and connection references: `app.code
 no Console or Agent implementation dependency. The adapter resolves those domains'
 public contracts. The UI is a Chat feature under `front/app/chat/code`; no second
 frontend domain is introduced solely to embed this editor.
-Conversation owns `repository_show`, including the scope of explicitly linked live Tasks;
+Conversation owns `chat_repository_show`, including the scope of explicitly linked live Tasks;
 Chat publishes requests to its resource-authorized sockets. Existing Document permissions
 and `document_show` exposure do not change.
 
@@ -42,7 +42,7 @@ uploads an immutable bundle over pinned SFTP, builds a private Docker service pe
 verifies its Linux namespaces and authenticated SSH tunnel, then atomically stores its access.
 Only that account's home is mounted. Duplicate deployment reuses its service and credential;
 an existing version is not replaced implicitly. Docker and forwarding remain administrator
-prerequisites, and deployment is never an agent tool or an effect of `repository_show`.
+prerequisites, and deployment is never an agent tool or an effect of `chat_repository_show`.
 Code revalidates existing checkout identities before and after runtime configuration, preserving
 their URIs only when the target is unchanged. Concurrent connection changes prevent publication;
 an existing live IDE prevents changing its runtime so that unsaved buffers remain recoverable. This technical operation stays
@@ -56,7 +56,7 @@ can be checked with live sessions, while replacement keeps the existing session 
 port, credential, profiles and rollback. Maintenance never changes configured access or installs
 an unconfigured target. Manually administered brokers are reported without modification.
 Independent targets continue after a failure, but the update command fails until all managed
-targets pass. No remote software is installed by `repository_show` or by an agent tool.
+targets pass. No remote software is installed by `chat_repository_show` or by an agent tool.
 
 As amended on 2026-10-12 at the user's request, the gateway uses the application's single
 public origin under `/api/code/gateway/`. Vite forwards HTTP and WebSockets in development;
@@ -94,7 +94,7 @@ layout controls and hiding action. File/Git toolbar commands, branch/mode badges
 sharing controls and explicit session deletion are removed along with their dedicated
 client state and sharing/deletion APIs. Git repositories appear below Documents in
 the right sidebar. Ordinary opening and reopening preserve native IDE navigation;
-explicit `repository_show` file/diff requests remain supported. Initial runtime launches
+explicit `chat_repository_show` file/diff requests remain supported. Initial runtime launches
 drop old navigation requests instead of forcing Git changes. Existing repository grants,
 read-only confinement, session leases and automatic reconciliation remain enforced.
 Retained profiles require administrator maintenance when their quotas are reached;

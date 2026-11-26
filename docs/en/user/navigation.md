@@ -241,16 +241,16 @@ agent's record from the list to edit it. Tabs in that record differ from page ta
 they include general settings, models and MCP according to permissions. Choose the Task
 engine in the agent's record. The form appears as soon as it opens; selectors load afterward.
 In **General**, the Harness selection follows the identity fields.
+**Pydantic AI (embedded)** is selected by default when creating an agent. **Claude Agent
+(embedded)** is offered when enabled. Both run in the Galaris backend. On an existing record,
+wait for open Tasks to finish before switching Harnesses. **Claude Agent (managed)** uses the
+instance supervised from the agent card.
 To create or replace a portrait, click **Generate avatar**, enter instructions in the
 dialog (appearance, style, framing), then submit generation. You can request a realistic
 human portrait. A failure preserves the current avatar and the instructions for a retry.
 This button requires an image model configured in the default LLM profile and a saved record.
 Profiles and voices refresh when **Models** opens. Administer harnesses under
 **Administer → Preferences → Harnesses** (`/params/harnesses`). Harness entries depend
-**Pydantic AI (embedded)** is selected by default when creating an agent. **Claude Agent
-(embedded)** is offered when enabled. Both run in the Galaris backend. On an existing record,
-wait for open Tasks to finish before switching Harnesses. **Claude Agent (managed)** uses the
-instance supervised from the agent card.
 on the server catalog: use the displayed link without inventing an identifier.
 
 To apply the Harness version shipped with Galaris, open its supervision view and select

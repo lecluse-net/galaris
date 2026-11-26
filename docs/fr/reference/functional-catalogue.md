@@ -3999,6 +3999,8 @@ pas la sémantique de recherche des collections ni les droits du provider.
 
 ### Convertir une ressource en PDF ou une page en image
 
+Une demande de conversion dans le Chat passe par une tâche disposant de l’outil approprié.
+
 `file_to_pdf` produit un vrai PDF à partir d’images matricielles, de documents Office ou
 OpenDocument, de RTF, HTML, SVG, Markdown et de textes ou données textuelles pris en charge.
 Un PDF existant est validé puis copié sans réencodage. La conversion n’exige ni modèle IA ni
@@ -4733,7 +4735,7 @@ vers les tâches ou enfants. Les boucles et sous-processus s’ouvrent à la dem
 PJ téléchargeables/renommables, dernière activité, attentes, durée, tokens et coûts directs ou
 inclusifs restent consultables ; les totaux partiels sont signalés quand des enfants sont invisibles.
 Le coût facturé est distinct de la valeur d’inférence d’un abonnement. L’URI copiable est
-`galaris://processes/runs/<uuid>`, également lisible par Partage de fichiers avec `file_read`.
+`galaris://processes/runs/<uuid>`, également lisible par `file_read` dans Partage de fichiers.
 
 Les vues ouvertes suivent événements, reconnexion et contrôle périodique pendant le run, sans
 perdre la sélection ; fermer arrête ce suivi. **Pause**, **Reprendre**, **Pas à pas** et points

@@ -3,7 +3,7 @@ import test from 'node:test'
 import axios from 'axios'
 import { deferred, loadTypescript } from '../test-support/load-typescript.mjs'
 import * as thumbnailEvents from './util/resourceThumbnailEvents.ts'
-import { sessionReadCache } from '../test-support/session-read-cache.mjs'
+import { sessionReadCache, sessionResources } from '../test-support/session-read-cache.mjs'
 import * as documentFormatRegistry from '../app/document/formatRegistry.ts'
 
 function setup() {
@@ -42,9 +42,7 @@ function setup() {
   // if that boundary is accidentally invoked rather than hiding it with a no-op.
   const unexpectedPreview = () => assert.fail('Resource preview invoked during an HTTP-wait scenario')
   const cacheHelpers = sessionReadCache()
-  const resources = loadTypescript(new URL('./util/sessionResources.ts', import.meta.url), {
-    '@/core/api': loaded, './sessionReadCache': cacheHelpers, './previewQueue': cacheHelpers,
-  })
+  const resources = sessionResources(loaded, cacheHelpers)
   const dependencies = {
     '../formatRegistry': documentFormatRegistry,
     axios: { isAxiosError: axios.isAxiosError },

@@ -1,14 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { loadTypescript } from '../../test-support/load-typescript.mjs'
-import { sessionReadCache } from '../../test-support/session-read-cache.mjs'
+import { sessionReadCache, sessionResources } from '../../test-support/session-read-cache.mjs'
 
 function setup() {
   const cache = sessionReadCache(), reads = []
-  const resources = loadTypescript(new URL('../../core/util/sessionResources.ts', import.meta.url), {
-    '@/core/api': { AUTH_TOKEN_CHANGED_EVENT: 'auth', sessionGeneration: () => 'synthetic-session' },
-    './sessionReadCache': cache, './previewQueue': cache,
-  })
+  const resources = sessionResources({ AUTH_TOKEN_CHANGED_EVENT: 'auth', sessionGeneration: () => 'synthetic-session' }, cache)
   const { topicService } = loadTypescript(new URL('./services/topicService.ts', import.meta.url), {
     '@/core/util/facade': { ...resources, invalidateSessionReads: cache.invalidateSessionReads },
     '@/core/api': { api: {

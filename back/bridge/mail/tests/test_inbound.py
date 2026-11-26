@@ -583,12 +583,13 @@ async def test_inbound_task_defaults_to_its_mail_account_with_multiple_connectio
 
     config, _manager, _outsider, _read = inbox
     summary = _summary(74)
-    enabled_codes = mcp_loader.get_enabled_integrated_service_codes
+    enabled_codes = mcp_loader.native_service_codes_for_agent_connection
 
-    async def enabled_with_messenger(agent_id):
-        return (await enabled_codes(agent_id)) | {"messenger"}
+    async def enabled_with_messenger(service, connection_id):
+        codes = await enabled_codes(service, connection_id)
+        return codes | {"messenger"} if connection_id == config.connection_id else codes
 
-    monkeypatch.setattr(mcp_loader, "get_enabled_integrated_service_codes", enabled_with_messenger)
+    monkeypatch.setattr(mcp_loader, "native_service_codes_for_agent_connection", enabled_with_messenger)
     allowed_names = {"mail_get", "messenger_room_send_message"}
     async with get_db_session() as db:
         connection = await connections.get_connection(config.connection_id)

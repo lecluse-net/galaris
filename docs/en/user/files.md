@@ -54,9 +54,9 @@ deleted, the resource is unavailable. These reads do not create Documents.
 
 Ask the agent to convert a readable file to PDF. Its `file_to_pdf` tool accepts PNG/JPEG/WebP/
 GIF/TIFF/BMP images, Word/Excel/PowerPoint, OpenDocument, RTF, HTML, SVG, Markdown and text
-content, including CSV, JSON and XML. It works in conversations and Tasks without a generation
-model or console, creating a new file with its own URI. The original stays intact and existing
-destinations are never overwritten.
+content, including CSV, JSON and XML. From Chat, a conversion request runs in a Task with
+access to `file_to_pdf`. The tool creates a file with its own URI without a generation model
+or console. The original stays intact and existing destinations are never overwritten.
 
 Multipage images retain all frames, up to 100. Office files follow printable layout; hidden
 or non-printing cells may therefore be absent. HTML is rendered without scripts or external
@@ -78,9 +78,8 @@ Unknown model capacity uses a conservative 32,000-token fallback.
 
 Retrieval combines words and embeddings when an embedding model is configured.
 If embeddings are unavailable, lexical retrieval remains available with an explicit
-notice. Selected passages are not an exhaustive reading: request full analysis with
-`document_analyze` for all pages or their figures. Pages without extractable text
-are reported.
+notice. For full coverage of the pages or their figures, request analysis in a Task with
+access to `document_analyze`. The analysis reports pages without extractable text.
 
 The agent can ask further questions about the same file with
 `file_search(uri="file://…", query="specific question", mode="semantic")`, or use the

@@ -1,4 +1,11 @@
 import { loadTypescript } from './load-typescript.mjs'
+import * as imageStorage from '../core/util/sessionImageStorage.ts'
+
+export function sessionResources(api, cache, window) {
+  return loadTypescript(new URL('../core/util/sessionResources.ts', import.meta.url), {
+    '@/core/api': api, './sessionReadCache': cache, './previewQueue': cache, './sessionImageStorage': imageStorage,
+  }, { window })
+}
 
 export function sessionReadCache(window = new EventTarget()) {
   const cache = loadTypescript(new URL('../core/util/sessionReadCache.ts', import.meta.url), {}, { window })

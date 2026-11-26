@@ -4,7 +4,7 @@ cd "$(dirname "$0")/.."
 project="galaris-front-tests-${GITHUB_RUN_ID:-local}-$$"
 export GALARIS_FRONT_TEST_ARTIFACT_DIR="$PWD/artifacts/front-components/$project"
 export GALARIS_FRONT_TEST_SOURCE_DIR
-GALARIS_FRONT_TEST_SOURCE_DIR=$(mktemp -d "/tmp/$project.XXXXXX")
+GALARIS_FRONT_TEST_SOURCE_DIR=$(mktemp -d "${TMPDIR:-/tmp}/$project.XXXXXX")
 # The frontend image runs as node, whose UID may differ from the CI checkout owner.
 chmod 755 "$GALARIS_FRONT_TEST_SOURCE_DIR"
 compose=(docker compose -p "$project" -f compose.front-tests.yaml)

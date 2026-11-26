@@ -223,11 +223,11 @@ by time, memory and output size, then creates the image through `resource_create
 destination. The whole page is retained at up to 144 dpi, with a 3000-pixel longest side.
 The result includes source and derivative URIs, page, page count, dimensions and MIME.
 The source is unchanged and existing destinations are never overwritten. Cancellation kills
-and drains the worker before removing temporaries. The Multimedia function and both resources' permissions
-remain applicable, including in conversations. A Process requiring `image/*` receives the PNG URI,
+and drains the worker before removing temporaries. The tool runs in a Task and checks the
+Multimedia function grant and both resources' permissions. A Process requiring `image/*` receives the PNG URI,
 never a renamed PDF.
 
-File sharing also exposes `file_to_pdf` in Tasks and conversations: raster images (all frames,
+In Tasks, File Sharing also exposes `file_to_pdf` for raster images (all frames,
 up to 100), Office/OpenDocument and RTF, HTML/SVG/Markdown or UTF-8/UTF-16 text, CSV/TSV and
 JSON/XML/YAML. Existing PDFs are validated and copied without reencoding. Native conversions
 run in a bounded child-process group; Office exports reuse document preparation's converter

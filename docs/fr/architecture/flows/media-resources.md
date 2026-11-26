@@ -264,11 +264,11 @@ borné (temps, mémoire, taille de sortie), puis crée l’image via `resource_c
 destination explicite. Le rendu conserve la page entière à 144 dpi au plus, avec 3000 pixels
 sur le plus grand côté. Le résultat expose URI source et dérivée, page, nombre de pages,
 dimensions et MIME. L’original reste inchangé et aucune destination existante n’est remplacée.
-L’annulation tue et attend le worker avant de supprimer les temporaires. Le service Multimédia et
-les droits des deux ressources restent applicables, y compris en conversation. Un processus
+L’annulation tue et attend le worker avant de supprimer les temporaires. L’outil s’exécute en tâche
+avec les autorisations du service Multimédia et les droits des deux ressources. Un processus
 exigeant `image/*` reçoit l’URI PNG, jamais le PDF renommé.
 
-Le service Fichiers expose aussi `file_to_pdf` en tâche et en conversation : images matricielles
+En tâche, le service Partage de fichiers expose aussi `file_to_pdf` pour les images matricielles
 (toutes les frames, au plus 100), Office/OpenDocument et RTF, HTML/SVG/Markdown ou texte UTF-8/UTF-16,
 CSV/TSV, JSON/XML/YAML. Un PDF existant est validé puis copié sans réencodage. Les conversions
 natives s’exécutent dans un groupe de sous-processus borné ; les exports Office réutilisent le

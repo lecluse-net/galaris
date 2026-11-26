@@ -89,8 +89,9 @@ de la Task à l’échéance sans extension de ses droits. Le scénario de créa
 
 `app/calendar/tests/test_context.py` protège le résumé automatique borné des agendas et
 l’accès aux fonctions de l’agenda personnel depuis les tâches et les conversations, avec
-application des permissions courantes. Le scénario échoue si le fournisseur personnel ou
-les politiques de conversation retirent les fonctions `calendar_*` du catalogue.
+application des permissions courantes. La projection conversationnelle expose seulement
+`calendar_list` et `calendar_events`. Les tests vérifient aussi l’effet d’une révocation sur
+un serveur MCP déjà monté et la disponibilité des écritures Agenda en tâche.
 
 `app/calendar/tests/test_providers.py` exerce Google Calendar et Microsoft Graph sur une
 frontière HTTP synthétique : découverte et lecture seule, allers-retours en base, création
@@ -1789,6 +1790,12 @@ révocation, avec un fournisseur synthétique.
 vérifie qu'elle ne retire pas le portrait chargé par le catalogue courant et que son
 URL temporaire est libérée.
 
+`front/browser-tests/agents.spec.mjs` exerce aussi la fiche Agent lors d’une bascule de
+harnais. Une tâche active bloque toute écriture, même si d’autres tâches sont en pause.
+Fermer le dialogue conserve les tâches en pause. Dans le cas où elles sont seules à
+bloquer, la confirmation les termine avant l’enregistrement. Le parcours couvre aussi
+la bascule sans tâche bloquante et le refus d’enregistrer si la vérification échoue.
+
 ## Organisation des tâches et planification
 
 `back/app/agent/tests/test_conversation_dispatch.py` protège la préanalyse réservée au mode
@@ -2191,6 +2198,11 @@ exercé par l'inférence durable et par l'appel texte direct.
 Les propriétaires Process, source serveur, agent, demandeur restauré et utilisateur
 authentifié exercent le même scénario. Les traces conservent le demandeur des appels
 hors abonnement ; une source serveur issue d'un round reste du fond.
+
+`back/tests/test_embedded_claude_lineage.py` traverse l’API agent compatible OpenAI en
+JSON et en SSE avec chacun des deux harnais embarqués. Le scénario vérifie le résultat,
+la session rattachée au demandeur, la fin unique du flux et la correspondance entre les
+reçus fournisseur et les tentatives de dispatch et d’exécution de la tâche.
 
 La stabilisation du journal et du streaming est couverte par
 `back/app/agent/tests/test_reasoning_guard.py` (fragments irréguliers, snapshots rejoués,
@@ -2651,7 +2663,7 @@ explicite. Les fichiers `*.spec.mjs` se trouvent sous `front/browser-tests/`.
 | Consommation et crédits fournisseurs | Lire fenêtres, budgets et soldes avec les droits fournisseur, sans exposer les identifiants ; afficher les crédits supplémentaires ChatGPT à côté des fenêtres sans jauge de solde ; préserver unités, portée compte/clé, zéro et dépassement ; ne pas fabriquer de jauge sans plafond ; ne pas afficher de panneau de solde ou de consommation Fireworks ; actualiser et ignorer les réponses obsolètes ; masquer les clés enregistrées, conserver une clé omise et supprimer explicitement chaque clé après confirmation ; désactiver le fournisseur si la clé supprimée est obligatoire ; préserver les saisies après une erreur ; chiffrer, remplacer et supprimer la clé de gestion OpenRouter sans changer la clé d’inférence | `back/bridge/openai/tests/test_quota.py`, `back/app/llm/tests/test_provider_quotas.py`, `front/browser-tests/provider-quota.spec.mjs`, `front/browser-tests/provider-autosave.spec.mjs`, `e2e/specs/provider-usage.spec.mjs` |
 | `audio` | Lire/transcrire un média canonique et livrer son résultat sans perte ni fuite de fichier | `test_audio_mcp.py`, `test_audio_service.py`, `test_summary_service.py` |
 | `image` | Générer/lire des images et conserver ressources et traçabilité de l’appel ; rendre une page PDF en PNG fidèle, préserver source et droits, puis lancer un processus exigeant une image ; refus des PDF invalides, pages inexistantes, accès refusés et destinations existantes, limites de taille/rendu et annulation drainée | `test_image_mcp.py`, `test_image_service_trace.py`, `test_pdf_conversion.py` |
-| Export PDF | Convertir les images et leurs frames, les documents Office/OpenDocument et les textes/HTML via le renderer statique ; valider les PDF existants, préserver source et droits, exposer la fonction en conversation et alimenter un processus exigeant un PDF ; refuser les formats non pris en charge et drainer l’annulation du groupe de conversion | `app/file_share/tests/test_pdf_export.py`, `tests/test_document_pipeline.py`, `app/document/tests/test_document_thumbnails.py` |
+| Export PDF | Convertir en tâche les images et leurs frames, les documents Office/OpenDocument et les textes/HTML via le renderer statique ; valider les PDF existants, préserver la source et les droits, et alimenter un processus exigeant un PDF ; refuser les formats non pris en charge et arrêter le groupe de conversion à l’annulation | `app/file_share/tests/test_pdf_export.py`, `tests/test_document_pipeline.py`, `app/document/tests/test_document_thumbnails.py`, `app/services/tests/test_mcp_loader.py` |
 | Entrées multimodales natives | Fournir images, audio, vidéo et PDF uploadés ou joints par référence interne au modèle compatible ; sinon fournir une analyse/transcription textuelle spécialisée, y compris les pages visuelles des PDF ; conserver provenance, droits, budget et médias à la reprise ; valider la source vidéo avec FFprobe réel | `app/harness/tests/test_native_media.py`, `test_media_resource_policy.py`, `app/llm/tests/test_input_video.py`, `tests/test_pydantic_ai_internal_model.py`, `app/messenger/tests/test_ingest.py` |
 | `multimedia` | Lancer et suivre les générations par les tools MCP, suivre les générations longues, authentifier les callbacks et publier les médias ; analyser une vidéo avec priorité aux sous-titres fournis/intégrés puis STT, préserver provenance, droits, limites, erreurs et nettoyage après annulation | `test_multimedia.py`, `test_callback_security.py`, `test_providers.py`, `test_video_read.py` |
 | `lab` | Isoler les jeux/items, conserver les paramètres, appliquer droits et deux passes ; reprendre les répétitions sans doublon, arrêter au budget et conserver les revues indépendantes avant révélation du juge ; générer des jeux synthétiques complets, propres à chaque contrat et à relire, sans écraser un jeu ni une saisie en cours ; afficher les aperçus sans HTML en conservant les entrées originales, les pourcentages par résultat et la moyenne indépendante du filtre, en excluant les notes absentes et en comptant les zéros | `test_authorization.py`, `test_contracts_and_passes.py`, `test_run_publication.py`, `test_stability_and_review.py`, `test_synthetic_datasets.py`, `lab.spec.mjs`, `lab-access.spec.mjs`, `lab-insights.spec.mjs`, `lab-synthetic.spec.mjs` |
@@ -2866,12 +2878,6 @@ locaux ; ils ne prouvent pas la réception sur un compte distant réel.
 
 Les autres providers déclarés sont `openrouter`, `mammouth`, `anthropic`, `deepseek`,
 `fireworks`, `groq`, `mistral`, `models_dev`, `together`, `cerebras`, `google`, `xai`, `nvidia`,
-`front/browser-tests/agents.spec.mjs` exerce aussi la fiche Agent lors d’une bascule de
-harnais. Une tâche active bloque toute écriture, même si d’autres tâches sont en pause.
-Fermer le dialogue conserve les tâches en pause. Dans le cas où elles sont seules à
-bloquer, la confirmation les termine avant l’enregistrement. Le parcours couvre aussi
-la bascule sans tâche bloquante et le refus d’enregistrer si la vérification échoue.
-
 `huggingface`, `cohere`, `perplexity`, `elevenlabs`, `sunoapi`, `byteplus`, `azure_speech`,
 `ollama`. La suite partagée ne qualifie pas exhaustivement toutes leurs opérations. Ajouter
 un cas spécifique lorsqu’une différence de protocole le justifie, pas une copie du workflow
@@ -3275,11 +3281,6 @@ la grille qui ignorait les relations.
 enfants non chargés et le plafond de quatre fois le diamètre. Les parcours `memory.spec.mjs`
 vérifient le masquage/réaffichage en 3D sur mobile et desktop ; `memory-3d.spec.mjs` vérifie
 les compteurs d'enfants différés et d'items hors cadrage, la taille réelle des pixels de dossiers
-`back/tests/test_embedded_claude_lineage.py` traverse l’API agent compatible OpenAI en
-JSON et en SSE avec chacun des deux harnais embarqués. Le scénario vérifie le résultat,
-la session rattachée au demandeur, la fin unique du flux et la correspondance entre les
-reçus fournisseur et les tentatives de dispatch et d’exécution de la tâche.
-
 avec 84 enfants non chargés et le maintien de tous leurs textes malgré le budget ordinaire et les chevauchements.
 Les scénarios ECharts de simulation, de caméra et de repli 2D sont retirés avec ce moteur.
 La navigation, le contenu, la pagination, les filtres et la réouverture restent couverts par

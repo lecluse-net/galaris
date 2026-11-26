@@ -133,7 +133,7 @@ _EXPORTS["register_web_thumbnail_capture"]=("document_thumbnail_service","regist
 _EXPORTS["describe_folder_resource"] = ("folder_resources", "describe_folder")
 _EXPORTS["document_actor"] = ("document_sharing", "document_actor")
 _EXPORTS["list_folder_resources"] = ("folder_resources", "list_folder")
-__all__ += ["describe_folder_resource", "list_folder_resources"]
+__all__ += ["describe_folder_resource", "list_folder_resources", "document_actor"]
 _EXPORTS["read_folder_tree"] = ("folder_tree", "read_folder_tree")
 __all__.append("read_folder_tree")
 

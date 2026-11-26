@@ -225,6 +225,8 @@ remains limited to its connection or action type and does not automatically auth
 agents receiving delegated work.
 Conversation progress displays **Waiting for authorization** while approval is pending,
 without presenting this suspension as an execution failure.
+With the default policy, a screenshot requested in Chat needs tool approval first.
+Then choose the screen or window to share on the desktop that sent the message.
 
 From the list, click a Task to open its details. There you will find the current phase, subtasks, Service calls, related Processes, known LLM costs, and final response. The pause and resume buttons act on the work tree. **Force finish** is an administrative recovery action for a genuinely blocked execution: it marks the Task as failed and releases its lease; it is not an ordinary cancellation of the external work.
 
@@ -717,14 +719,14 @@ message replaces the listening bubble.
 
 The **Phone Calls** tab shows active or completed calls, their turns, interruptions, responses, LLM calls, and errors. A voice turn can also create a background Task; it then appears in the **Tasks** tab and continues after the call ends.
 
+When Claude Agent answers in a compatible OpenAI voice, the turn detail shows Claude's reply
+and the model calls that produced it.
 
 In a turn's detail in **Phone Calls**, agent managers with Task edit permission can
 **Force hangup** audio processing. Confirmation retains history; pending teardown
 remains explicit. Deleting a turn retains its content until audio cleanup completes.
 Reopening follows the persisted request through temporary service interruptions.
 
-When Claude Agent answers in a compatible OpenAI voice, the turn detail shows Claude's reply
-and the model calls that produced it.
 ### Composing a Track with Eleven Music
 
 With an Eleven Music model in the agent's Multimedia profile, ask for a track and provide the
@@ -822,6 +824,19 @@ repeating the configuration change that was already saved.
 A local cancellation does not always guarantee that the external engine will stop immediately. When the interface indicates that the remote execution may continue, check the target service before relaunching the Process.
 
 ## Memory, Documents, and Topics
+
+During a conversation, the agent can answer without adding memories when the evidence is
+weak. A specific question or a document title helps retrieve the relevant passage. To return
+to the most recently used document, ask “Reopen our last document”. You can also give its
+exact URI.
+
+When you ask where an organization meets, memory favors passages connecting the
+organization to the venue, including passages in French. For a question such as
+“Who is Inès Castor?”, a group note that does not mention her can stay out of the context.
+
+When you ask how to resume a job, the agent can retrieve the steps and a prerequisite
+recorded in a separate memory. For a question about last week, a date at the start
+of a short memory can identify when the event took place, even if it was recorded later.
 
 Each agent-produced memory contains one structured fact: for example, a contact link,
 the property `preferred_language` and the value `en`. Author and source evidence stay separate.

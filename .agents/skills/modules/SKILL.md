@@ -40,6 +40,13 @@ Ne pas importer arbitrairement le service interne ou les modèles ORM d’un aut
 composition dans `back/modules.py` ou le bootstrap n’autorise pas le même couplage dans le
 métier.
 
+Quand plusieurs entrées portent la même opération (HTTP, MCP ou bridge), identifier le
+domaine qui possède l'état modifié. Suivre chaque entrée concernée jusqu'à la décision
+métier et réutiliser la façade de ce domaine pour appliquer la règle commune. Conserver
+les contrôles propres au canal et transmettre l'identité et la portée de l'appelant.
+Vérifier l'effet durable partagé au niveau du domaine et les différences de droits ou de
+contexte au niveau des entrées concernées.
+
 ## Composer un module backend
 
 Les fichiers sont ajoutés selon le besoin, et non comme une checklist obligatoire :

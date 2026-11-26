@@ -85,9 +85,9 @@ for (const mobile of [false, true]) {
     await expect(referenceInput).toBeVisible()
     const reference = await referenceInput.inputValue()
     expect(reference).not.toContain(secret)
-    const before = await allowed('service_admin_list', { search: code })
+    const before = await allowed('service_list', { search: code })
     expect(before.total).toBe(0)
-    const tested = await allowed('service_admin_mcp_test', { candidate_reference: reference })
+    const tested = await allowed('service_mcp_test', { candidate_reference: reference })
     expect(tested.diagnostic.success, JSON.stringify(tested)).toBe(true)
     expect(tested.diagnostic.tools.map(tool => tool.name)).toContain('lookup')
     expect(JSON.stringify(tested)).not.toContain(secret)
@@ -103,23 +103,23 @@ for (const mobile of [false, true]) {
     await expect(page.getByRole('dialog')).toHaveCount(1)
     await editor.getByRole('button', { name: 'Fermer', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    const created = await allowed('service_admin_create', { candidate_reference: reference })
+    const created = await allowed('service_create', { candidate_reference: reference })
     expect(created.persisted).toBe(true)
     expect(JSON.stringify(created)).not.toContain(secret)
     const account = { service_code: code, agent_id: fixture.agent_id }
-    const connected = await allowed('service_admin_connection_create', {
+    const connected = await allowed('service_connection_create', {
       ...account, expected_version: created.version,
     })
     expect(connected.connection.active).toBe(false)
     expect(connected.connection.effective_params.token.configured).toBe(true)
-    const connectionTest = await allowed('service_admin_connection_test', { ...account })
+    const connectionTest = await allowed('service_connection_test', { ...account })
     expect(connectionTest.diagnostic.success).toBe(true)
-    const active = await allowed('service_admin_connection_update', {
+    const active = await allowed('service_connection_update', {
       ...account, active: true, expected_version: connected.version,
     })
-    const functions = await allowed('service_admin_connection_function_list', { ...account })
+    const functions = await allowed('service_connection_function_list', { ...account })
     expect(functions.items.find(fn => fn.name === 'lookup').available).toBe(true)
-    const revoked = await allowed('service_admin_connection_function_set', {
+    const revoked = await allowed('service_connection_function_set', {
       ...account, function_name: 'lookup', state: 'disabled', expected_version: active.version,
     })
     expect(revoked.function.effective).toBe(false)
@@ -127,12 +127,12 @@ for (const mobile of [false, true]) {
     await page.reload()
     // Services share one catalogue of cards.
     await expect(page.getByText(code, { exact: true })).toBeVisible()
-    const current = await allowed('service_admin_get', { service_code: code })
-    const blocked = await invoke('service_admin_delete', { service_code: code, expected_version: current.version })
+    const current = await allowed('service_get', { service_code: code })
+    const blocked = await invoke('service_delete', { service_code: code, expected_version: current.version })
     expect(blocked.error.kind).toBe('dependencies_blocking')
-    await allowed('service_admin_connection_delete', { ...account, expected_version: revoked.version })
-    const detached = await allowed('service_admin_get', { service_code: code })
-    await allowed('service_admin_delete', { service_code: code, expected_version: detached.version })
+    await allowed('service_connection_delete', { ...account, expected_version: revoked.version })
+    const detached = await allowed('service_get', { service_code: code })
+    await allowed('service_delete', { service_code: code, expected_version: detached.version })
     await pageErrors.settle()
     await page.reload()
     // Services share one catalogue of cards.

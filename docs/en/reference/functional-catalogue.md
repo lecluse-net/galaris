@@ -3164,6 +3164,8 @@ in text and semantic modes. Collection-search semantics and provider permissions
 
 ### Convert a resource to PDF or a page to an image
 
+A conversion request in Chat runs in a Task with access to the relevant tool.
+
 `file_to_pdf` converts supported images, Office/OpenDocument, RTF, HTML, SVG, Markdown and
 text resources into a validated PDF. Existing PDFs are validated and copied without
 re-encoding. It uses an authorized source URI and explicit writable destination without
@@ -3735,7 +3737,7 @@ prompts, attempts, tool results, errors and Task/child links. Loops/children exp
 Data, downloadable/renamable attachments, latest activity, waits, duration, tokens and direct/inclusive
 costs remain inspectable; inaccessible children make totals explicitly partial. Billed cost and
 subscription inference value are separate. Copyable `galaris://processes/runs/<uuid>` references
-are readable through File Sharing with `file_read`.
+are readable with `file_read` through File Sharing.
 
 Open views follow events, reconnection and periodic active-run checks while retaining selection;
 closing stops monitoring. **Pause**, **Resume**, **Step** and breakpoints persist. A step admits one

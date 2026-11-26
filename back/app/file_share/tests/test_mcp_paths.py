@@ -223,6 +223,7 @@ async def test_file_write_decodes_complete_base64_binary_content(
         *,
         expected_revision: int | None,
         expected_etag: str | None,
+        selector: str | None,
     ) -> ResourceMutation:
         captured.update(
             ctx=ctx,
@@ -230,6 +231,7 @@ async def test_file_write_decodes_complete_base64_binary_content(
             content=content,
             expected_revision=expected_revision,
             expected_etag=expected_etag,
+            selector=selector,
         )
         return ResourceMutation(
             uri="console://image.bin",
@@ -255,6 +257,7 @@ async def test_file_write_decodes_complete_base64_binary_content(
         "content": b"\x00\xff\x10",
         "expected_revision": 4,
         "expected_etag": None,
+        "selector": None,
     }
     assert '"size": 3' in result
 

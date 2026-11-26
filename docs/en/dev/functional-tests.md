@@ -86,8 +86,8 @@ selected contact after a save failure.
 
 `app/calendar/tests/test_context.py` protects bounded automatic agenda context and access to
 personal agenda functions from Tasks and conversations, with live function permissions.
-The scenario fails if the personal provider or conversation policies remove `calendar_*`
-functions from the catalogue.
+The conversation projection exposes only `calendar_list` and `calendar_events`. The tests
+also check revocation on an already mounted MCP server and calendar writes in Tasks.
 
 `app/calendar/tests/test_providers.py` exercises Google Calendar and Microsoft Graph on
 a synthetic HTTP boundary: discovery/read-only access, DB round trips, creation retries
@@ -1692,6 +1692,12 @@ using a synthetic provider.
 `front/browser-tests/agents.spec.mjs` delays an older catalogue response, then verifies
 that it cannot remove the current catalogue's portrait and that its temporary URL is released.
 
+`front/browser-tests/agents.spec.mjs` also exercises the agent form during a harness
+switch. An active task prevents any write, including when other tasks are paused.
+Closing the dialog preserves paused tasks. When paused tasks are the only blockers,
+confirmation terminates them before saving. The journey also covers switching with
+no blocking tasks and preventing a save when the blocker check fails.
+
 The synthetic `back/app/lab/planner_boundaries_corpus.json` contains 24 granularity cases:
 ordered collections, partial recovery, unknown sizes, small batches, complex coherent tasks,
 forced PLAN, explicitly requested written plans and clarification. Import it with
@@ -2080,6 +2086,11 @@ inference and direct text calls.
 Process, server-owned source, agent, restored requester and authenticated user
 ownership use the same scenario. Traces preserve the requester for non-subscription
 calls; a server-owned source derived from a round remains background work.
+
+`back/tests/test_embedded_claude_lineage.py` uses the OpenAI-compatible agent API in
+JSON and SSE modes with both embedded harnesses. The scenario checks the result,
+the requester-scoped session, a single stream ending, and the match between provider
+receipts and the Task’s dispatch and execution attempts.
 
 The journal and streaming checks include
 `back/app/agent/tests/test_reasoning_guard.py` (irregular fragments, replayed snapshots,
@@ -2527,7 +2538,7 @@ are in `front/browser-tests/`.
 | `llm` | Provider/model resolution, functional parameter preservation, budgets and access policy, traces and costs; pause/resume, readback and rejection of late writes | `test_subscription_policy.py`, `test_structured_service.py`, `test_call_lineage.py`, `back/tests/test_provider_catalog.py`, `back/tests/test_provider_parameters.py`, `back/tests/test_inference_lifecycle.py`, `back/tests/test_protocol_inference.py`, `back/tests/test_structured_inference.py`, `back/tests/test_dispatcher_inference.py`, `execution.spec.mjs` |
 | `audio` | Canonical media transcription and result delivery | `test_audio_mcp.py`, `test_audio_service.py`, `test_summary_service.py` |
 | `image` | Image generation/reading, resource identity and call trace; render a PDF page as a faithful PNG, preserve source and permissions, then launch an image-constrained Process; reject invalid PDFs, missing pages, access denials and existing destinations, enforce source/render budgets and drain cancellation | `test_image_mcp.py`, `test_image_service_trace.py`, `test_pdf_conversion.py` |
-| PDF export | Convert images and all frames, Office/OpenDocument files and text/HTML through the static renderer; validate existing PDFs, preserve source and permissions, expose conversion in conversations and feed a PDF-constrained Process; reject unsupported formats and drain converter process groups on cancellation | `app/file_share/tests/test_pdf_export.py`, `tests/test_document_pipeline.py`, `app/document/tests/test_document_thumbnails.py` |
+| PDF export | Convert images and all frames, Office/OpenDocument files and text/HTML in a Task through the static renderer; validate existing PDFs, preserve the source and its permissions, and supply a Process that requires a PDF; reject unsupported formats and drain converter process groups on cancellation | `app/file_share/tests/test_pdf_export.py`, `tests/test_document_pipeline.py`, `app/document/tests/test_document_thumbnails.py`, `app/services/tests/test_mcp_loader.py` |
 | Native multimodal inputs | Supply uploaded and internally referenced images, audio, video and PDFs to compatible models; otherwise supply specialist text analysis/transcription, including visual PDF pages; retain provenance, access checks, byte budgets and media on resume; validate video sources with real FFprobe | `app/harness/tests/test_native_media.py`, `test_media_resource_policy.py`, `app/llm/tests/test_input_video.py`, `tests/test_pydantic_ai_internal_model.py`, `app/messenger/tests/test_ingest.py` |
 | `multimedia` | MCP tool launch and domain-owned tracking, long-running generations, authenticated callbacks and publication; video analysis prioritizes supplied/embedded subtitles then STT, preserving provenance, permissions, limits, errors and cancellation cleanup | `test_multimedia.py`, `test_callback_security.py`, `test_providers.py`, `test_video_read.py` |
 | `lab` | Dataset/item isolation, parameters, rights and two passes; resume repetitions without duplicates, stop at budget and preserve independent reviews before judge disclosure; generate complete synthetic datasets for each contract without overwriting saved data or drafts; retain original inputs while showing plain previews, per-result percentages and a filter-independent mean that excludes absent scores and counts zero | `test_authorization.py`, `test_contracts_and_passes.py`, `test_run_publication.py`, `test_stability_and_review.py`, `test_synthetic_datasets.py`, `lab.spec.mjs`, `lab-access.spec.mjs`, `lab-insights.spec.mjs`, `lab-synthetic.spec.mjs` |
@@ -2625,12 +2636,6 @@ reassignment, assignment editors for tasks and text/voice conversations, and mer
 The `+` button requires `TOPIC_EDIT` and `AGENT_MANAGE_ALL`, matching the global-topic creation
 API. Readonly and disabled fields cannot create topics. Task and text/voice history filters
 keep `allow-create=false` while remaining selectable.
-
-`front/browser-tests/agents.spec.mjs` also exercises the agent form during a harness
-switch. An active task prevents any write, including when other tasks are paused.
-Closing the dialog preserves paused tasks. When paused tasks are the only blockers,
-confirmation terminates them before saving. The journey also covers switching with
-no blocking tasks and preventing a save when the blocker check fails.
 
 The Memory filter is separate: its values are IDs of `MemoryItem` projections of topics,
 authorized for the selected agent. It retains its Memory catalogue and never offers creation;
@@ -3021,11 +3026,6 @@ mutation controls after privilege revocation.
 
 `back/app/memory/tests/test_memory_urls.py` checks the sole URL association table,
 text and binary byte SHA-256 on the node, the nullable primary URL column, stability,
-`back/tests/test_embedded_claude_lineage.py` uses the OpenAI-compatible agent API in
-JSON and SSE modes with both embedded harnesses. The scenario checks the result,
-the requester-scoped session, a single stream ending, and the match between provider
-receipts and the Task’s dispatch and execution attempts.
-
 moves and deletions. Its PostgreSQL transition covers rollback, replay and removal
 of the legacy catalogue column.
 Losing the last resource erases its Memory item, content and vector index; other URIs,

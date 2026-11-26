@@ -3,7 +3,7 @@ import { isAxiosError } from 'axios'
 import test from 'node:test'
 import { loadTypescript, deferred } from '../../test-support/load-typescript.mjs'
 import * as documentFormatRegistry from '../document/formatRegistry.ts'
-import { sessionReadCache } from '../../test-support/session-read-cache.mjs'
+import { sessionReadCache, sessionResources } from '../../test-support/session-read-cache.mjs'
 
 function setup() {
   const window = new EventTarget(), helpers = sessionReadCache(window)
@@ -17,10 +17,9 @@ function setup() {
     return { data: url.startsWith('/documents') ? { agents: [], users: [person] }
       : url.endsWith('/owner') ? { owner: person, options: [person], current_user_id: 1 } : [person] }
   } }
-  const apiModule = { api, __esModule: true, default: api, AUTH_TOKEN_CHANGED_EVENT: 'auth', sessionGeneration: () => generation }
-  const resources = loadTypescript(new URL('../../core/util/sessionResources.ts', import.meta.url), {
-    '@/core/api': apiModule, './sessionReadCache': helpers, './previewQueue': helpers,
-  }, { window })
+  const apiModule = { api, __esModule: true, default: api, AUTH_TOKEN_CHANGED_EVENT: 'auth',
+    getStoredAccessToken: () => 'synthetic-token', sessionGeneration: () => generation }
+  const resources = sessionResources(apiModule, helpers, window)
   const shared = loadTypescript(new URL('./ownerCache.ts', import.meta.url), {
     '@/core/util/facade': { ...helpers, ...resources },
   })

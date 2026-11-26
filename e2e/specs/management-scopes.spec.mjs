@@ -55,7 +55,7 @@ test('administrative Services retain local scopes and execution inspection uses 
   } }))
   const domains = [
     { code: 'agent', label: 'Agent', function: 'agent_update', args: { agent_id: peer.id, changes: { job_title: 'Synthetic scoped update' } } },
-    { code: 'service', label: 'Services', function: 'service_admin_connection_list', args: { agent_id: peer.id } },
+    { code: 'service', label: 'Services', function: 'service_connection_list', args: { agent_id: peer.id } },
     { code: 'process', label: 'Processus', function: 'process_admin_get', args: { process_id: process.id } },
     { code: 'goal', label: 'Objectifs', function: 'goal_update', args: { goal_id: goal.id, expected_revision: goal.revision, title: 'Synthetic updated Goal' } },
   ]

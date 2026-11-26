@@ -112,9 +112,9 @@ branches, pour la recherche et les résumés. Exclure DOM de rendu, scripts exé
 contenu de ressources liées : une référence n'est pas une copie à indexer.
 Qualifier les consommateurs de résumé/rappel selon les contrats Document/Memory actuels.
 
-Les agents créent le format natif avec `file_create` et lisent ou modifient les branches
-avec `mindmap_read` et `mindmap_edit`. Les contenus éditoriaux riches devront étendre
-ces contrats et leurs tests de droits et de révision.
+Les agents créent le format natif avec `file_create` et ciblent les branches ou leur HTML
+avec `file_read` et `file_write`. `file_edit` applique les lots de commandes de branches.
+Les sélecteurs sont interprétés par le format et gardent les contrôles de portée et de révision.
 
 ## 4. Édition des branches et disposition automatique
 

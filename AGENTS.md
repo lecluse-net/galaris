@@ -84,8 +84,10 @@ a small change does not require a separate planning document.
 - Start from business behavior: first state an observable guarantee, then choose the most direct
   verification. Add automated coverage for durable contracts, not every UI adjustment. Consult
   the catalog in `docs/fr/dev/functional-tests.md`.
-- For a significant change, identify acceptance criteria and how each will be verified before
-  coding. Include the existing behavior that must remain valid.
+- For a significant change, organize the work around independently verifiable user or operator
+  journeys. Before coding, identify the outcome, the domain that owns it, and how to verify
+  both the change and the existing behavior that consumers rely on. Follow each journey
+  through its normal entry point to the observable result.
 - Distinguish facts supported by code or observations from hypotheses and unknowns. Check the
   assumption most likely to invalidate the proposed solution before building on it.
 - For a bug, reproduce the defect before fixing it, then verify the same scenario after the
@@ -94,6 +96,12 @@ a small change does not require a separate planning document.
 
 ### Bound the change and preserve consumers
 
+- When a new request can be accepted independently of work already in progress, start it
+  in a separate Git worktree from the appropriate committed base. Continue a follow-up
+  that depends on pending edits in the worktree that contains them.
+- When several outcomes are in scope, finish the next verifiable one before starting an
+  optional extension. If it is blocked, record the next observable outcome and the specific
+  missing evidence in the existing plan, PR, or handoff so another session can resume it.
 - For an optimization or cross-cutting fix (API, lazy loading, cache, session, shared component),
   inventory its consumers and write down the guarantees to preserve before generalizing the
   change. Verify one complete user journey first, then expand by groups of consumers. Cover
@@ -114,6 +122,9 @@ a small change does not require a separate planning document.
 
 ### Check failure behavior and performance
 
+- Before comparing candidate changes in an experiment, state the decision the result will
+  inform, the improvement sought over the baseline, and the behavior to preserve. Identify
+  what evidence would justify adopting the candidate, revising it, or ending the trial.
 - For asynchronous work, consider duplicate calls, concurrent updates, out-of-order or late
   responses, cancellation, interruption, and recovery. Verify applicable guarantees for tasks,
   streams, callbacks, and caches, including idempotency and immutable terminal states.
@@ -217,7 +228,7 @@ persistence and API tests whenever resource creation, storage or listing changes
 
 - `app.agent` is the single facade and contract: drivers, registry, dispatcher, planner,
   model resolution, streaming, and result application.
-- `app.harness` is the concrete Pydantic AI implementation.
+- `app.harness` implements the embedded Pydantic AI harness and the Claude Agent driver under qualification.
 - `app.task` owns persistence, transitions, leases, attempts, and the scheduler. It provides
   a port to `app.agent`; `app.agent` never imports `app.task`.
 - `bridge.hermes` adapts Hermes to the `AgentDriver` contract; a bridge must not bypass the
@@ -367,8 +378,9 @@ immutable. Consult the `galaris-process-services` skill.
 
 ### Validation scope
 
-- Run targeted tests and relevant static checks proportionate to the risk. Do not repeatedly
-  rerun broad suites during stabilization.
+- Select targeted checks by the contract affected, including journeys in consuming domains.
+  Use the `general` skill to locate existing coverage. Check which relevant jobs actually ran
+  when using CI as evidence. Do not repeatedly rerun broad suites during stabilization.
 - `make validate` is reserved exclusively for the user. Agents must never invoke it, invoke
   its scripts directly, or reproduce its full-suite orchestration through other commands.
   When the user runs it, it tests an isolated snapshot including uncommitted changes. Any
@@ -425,6 +437,10 @@ immutable. Consult the `galaris-process-services` skill.
 
 ### Evidence in the handoff
 
+- For changes to permissions, migrations, or external effects, replay the original request
+  from the affected consumer's perspective on synthetic data. When an independent review
+  is available, give the reviewer the expected outcome and the revision or working-tree
+  snapshot exercised. Identify who performed the check and what they observed.
 - Distinguish what was implemented, what automated checks verified, and what was exercised in
   the application. Support important claims with the relevant result or measurement; do not
   equate a passing targeted test with complete system validation.

@@ -1,4 +1,4 @@
-# Run explicitly on the prepared Linux SSH target. Never deployed by repository_show.
+# Run explicitly on the prepared Linux SSH target. Never deployed by chat_repository_show.
 name: galaris-code
 services:
   secrets:

@@ -258,6 +258,9 @@ mode global d'auto-approbation. Un accord reste limité à sa connexion ou son t
 et ne donne pas automatiquement les mêmes droits aux agents délégataires.
 Le suivi d’une conversation affiche **En attente d’autorisation** pendant la demande
 d’accord, sans présenter cette suspension comme une erreur d’exécution.
+Avec le réglage par défaut, une capture d’écran demandée dans Chat exige d’abord une
+autorisation de l’outil. Choisissez ensuite l’écran ou la fenêtre à partager sur le poste
+qui a envoyé le message.
 
 Depuis la liste, cliquez sur une tâche pour ouvrir son détail. Vous y retrouvez la phase
 courante, les sous-tâches, les appels d’outils, les processus liés, les coûts LLM connus et le
@@ -829,6 +832,9 @@ L’onglet **Appels téléphoniques** montre les appels actifs ou terminés, leu
 réponses, appels LLM et erreurs. Un tour vocal peut aussi créer une tâche de fond ; celle-ci apparaît
 alors dans l’onglet **tâches** et continue après la fin de l’appel.
 
+Quand Claude Agent répond avec une voix OpenAI compatible, le détail du tour affiche la réponse
+de Claude et les appels modèle qui l’ont produite.
+
 ### Composer un morceau avec Eleven Music
 
 Avec un modèle Eleven Music configuré dans le profil Multimédia de l'agent, demandez un morceau
@@ -836,9 +842,6 @@ en indiquant les sections, leurs durées et les paroles à reprendre, puis une d
 L'agent suit la génération jusqu'à ce que le fichier soit enregistré à cette destination.
 Un incident temporaire de suivi laisse la génération en attente pendant la reprise automatique.
 Voir le [guide Multimédia](../components/multimedia.md).
-Quand Claude Agent répond avec une voix OpenAI compatible, le détail du tour affiche la réponse
-de Claude et les appels modèle qui l’ont produite.
-
 
 ### Générer une vidéo à partir d'images avec Seedance
 
@@ -965,6 +968,21 @@ l’interface indique que l’exécution distante peut continuer, vérifiez le s
 relancer le processus.
 
 ## Mémoire, documents et dossiers thématiques
+
+Pendant une conversation, l’agent peut répondre sans ajouter de souvenir si les résultats
+sont trop faibles. Une question précise ou le titre d’un document aide à retrouver le bon
+passage. Pour reprendre le dernier document utilisé ensemble, demandez « Rouvre notre
+dernier document ». Vous pouvez aussi donner son URI exacte.
+
+Si vous demandez le lieu de rencontre d'une organisation, la mémoire privilégie le
+passage qui relie cette organisation au lieu, même si le passage est en anglais.
+Pour une question comme « Qui est Inès Castor ? », une note sur le groupe qui ne
+mentionne pas cette personne peut ainsi rester hors du contexte.
+
+Pour reprendre un travail, vous pouvez demander la marche à suivre. L’agent peut
+retrouver les étapes et un prérequis consigné dans un autre souvenir. Pour retrouver
+un échange « la semaine dernière », une date explicite en tête d’un souvenir court
+peut situer l’événement, même si le souvenir a été enregistré plus tard.
 
 Les souvenirs produits par les agents contiennent chacun un fait structuré : par exemple,
 un lien vers le contact, la propriété `langue_preferee` et la valeur `fr`. Les indications

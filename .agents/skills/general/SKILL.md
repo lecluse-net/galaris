@@ -13,6 +13,18 @@ description: Principes de travail transversaux du dépôt Galaris — environnem
 4. Consulter `AGENTS.md`, `docs/fr/dev/README.md` et la cartographie générée du projet.
 5. Limiter le diff à la demande ; ne pas profiter d’un changement pour réécrire un domaine.
 
+Pour situer une demande parmi les travaux ouverts, consulter `git worktree list` et
+vérifier où se trouvent ses prérequis. Réutiliser le checkout qui porte les changements
+dont elle dépend. Pour un chantier indépendant, choisir une base qui permet de le
+livrer seul et un répertoire distinct. Préserver en place les modifications déjà engagées.
+
+Avant de tester depuis un autre checkout, vérifier quel code la cible Make monte ou
+construit. `make tests` attribue un projet Compose propre à son exécution dans
+`bin/test-back.sh`. La pile de développement, elle, dérive ses noms de conteneurs de
+`APP_NAME` et publie des ports. Pour une vérification dans le navigateur, identifier
+l’instance qui sert le checkout à qualifier. Si une deuxième instance est nécessaire,
+vérifier ses noms, ports et volumes avant son démarrage.
+
 ## Utiliser Docker et Make
 
 La machine hôte ne fournit pas la toolchain du projet. Exécuter Python, uv, Node, npm, Atlas
@@ -106,6 +118,34 @@ applicables après tout accord. Le contrat complet est dans
 la section « Documents comme pivot de l'information » de `docs/fr/dev/editorial-html.md`.
 
 ## Valider proportionnellement
+
+Lorsqu'il faut choisir entre plusieurs travaux de fiabilité, chercher la garantie touchée
+dans `project/regressions.json`, puis lire l'audit et le test référencés. Comparer l'effet
+sur l'utilisateur et la cause démontrée des incidents. Des symptômes similaires justifient
+une recherche de cause commune ; proposer une correction transverse quand cette cause est
+confirmée dans plusieurs parcours. Le registre recense des cas documentés et ne mesure
+pas leur fréquence en production.
+
+Pour arbitrer une variante, utiliser le plan ou l'audit en cours. Par exemple, si une
+recherche doit gagner en précision tout en conservant son rappel, comparer les deux mesures
+sur les mêmes questions et examiner les cas perdus. Si la comparaison est indécise, préciser
+quelle observation supplémentaire pourrait faire changer la décision avant de relancer un essai.
+
+Pour un changement qui traverse plusieurs domaines, partir du parcours décrit dans
+`docs/fr/dev/functional-tests.md`. Retrouver avec `rg` la façade appelée, ses consommateurs
+et les scénarios qui exercent la garantie. Lire leurs assertions avant de choisir les tests.
+Un changement de partage documentaire, par exemple, peut demander de vérifier la prochaine
+lecture par le bénéficiaire après révocation, même si le diff touche uniquement le partage.
+
+Pour une régression de reprise ou de compatibilité, enrichir le scénario existant avec un
+état initial synthétique reproductible, l'interruption ou la transition en cause et l'effet
+durable attendu. Pour une tâche relancée après un effet externe, vérifier à la fois le nombre
+d'effets produits et le résultat finalement accessible à l'utilisateur.
+
+Lors d'une qualification de livraison, rattacher les résultats au bundle effectivement testé.
+Dans les sorties du workflow `.github/workflows/release-artifact.yml`, consulter
+`QUALIFICATION.json` et `UPGRADE_QUALIFICATION.json` pour identifier les images et la mise
+à niveau exercées. Préciser séparément les parcours fonctionnels exécutés sur ces images.
 
 Exécuter les tests ciblés, puis les contrôles du domaine. Pour une livraison complète, lancer
 `make typecheck`, `make architecture-check`, les tests pertinents et `git diff --check`.

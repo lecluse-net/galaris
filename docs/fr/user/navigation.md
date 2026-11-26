@@ -264,16 +264,16 @@ Les onglets de cette fiche ne sont pas les onglets de la page : ils regroupent n
 le général, les modèles et le MCP selon les droits. Le choix du moteur des tâches appartient
 à la fiche de l’agent. Elle s’affiche dès l’ouverture ; les sélecteurs se chargent ensuite.
 Dans **Général**, le choix du harnais suit les champs d’identité.
+À la création, **Pydantic AI (embarqué)** est présélectionné. **Claude Agent (embarqué)**
+est proposé lorsque ce harnais est activé. Ces deux choix utilisent le backend Galaris.
+Sur une fiche existante, attendez la fin des tâches ouvertes pour changer de harnais.
+**Claude Agent (managé)** correspond à l’instance qui se supervise depuis la carte de l’agent.
 Pour créer ou remplacer le portrait, cliquez sur **Générer un avatar**, saisissez les
 consignes souhaitées dans la modale (apparence, style, cadrage), puis validez la génération.
 Un portrait humain réaliste peut être demandé. L’avatar actuel est conservé en cas d’échec ;
 les consignes restent disponibles pour réessayer. Ce bouton exige un modèle image configuré
 dans le profil LLM par défaut et une fiche enregistrée.
 Les profils et les voix sont actualisés à l’ouverture de **Modèles**. L’administration des harnais se trouve dans
-À la création, **Pydantic AI (embarqué)** est présélectionné. **Claude Agent (embarqué)**
-est proposé lorsque ce harnais est activé. Ces deux choix utilisent le backend Galaris.
-Sur une fiche existante, attendez la fin des tâches ouvertes pour changer de harnais.
-**Claude Agent (managé)** correspond à l’instance qui se supervise depuis la carte de l’agent.
 **Administrer → Préférences → Harnais** (`/params/harnesses`). Les entrées de harnais
 dépendent du catalogue serveur : utilisez le lien affiché, sans inventer leur identifiant.
 

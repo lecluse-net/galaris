@@ -58,8 +58,9 @@ suppression de l'agent, la ressource est indisponible. Ces lectures ne créent a
 
 Demandez à l’agent de convertir un fichier lisible en PDF. Son outil `file_to_pdf` accepte
 les images PNG/JPEG/WebP/GIF/TIFF/BMP, Word/Excel/PowerPoint, OpenDocument, RTF, HTML,
-SVG, Markdown et les contenus textuels (dont CSV, JSON et XML). Il fonctionne en conversation
-ou en tâche, sans modèle génératif ni console, et crée un nouveau fichier avec sa propre URI.
+SVG, Markdown et les contenus textuels (dont CSV, JSON et XML). Depuis le Chat, la demande
+de conversion passe par une tâche autorisée à utiliser `file_to_pdf`. L’outil crée un nouveau
+fichier avec sa propre URI, sans modèle génératif ni console.
 L’original reste intact et une destination existante n’est jamais remplacée.
 
 Les images multipages conservent toutes leurs frames, jusqu’à 100. Les documents bureautiques
@@ -85,8 +86,8 @@ est inconnue, une limite prudente de 32 000 tokens est utilisée.
 La recherche combine mots et embeddings quand le modèle d'embedding est configuré.
 Sans embeddings disponibles, elle fonctionne par mots et indique cette limite.
 Les passages sélectionnés ne constituent pas une lecture exhaustive : pour analyser
-toutes les pages ou leurs figures, demandez une analyse complète avec
-`document_analyze`. Les pages sans texte extractible sont signalées.
+toutes les pages ou leurs figures, demandez une analyse complète. Elle s’exécute dans une
+tâche disposant de `document_analyze`. Les pages sans texte extractible sont signalées.
 
 L'agent peut ensuite poser d'autres questions sur le même fichier avec
 `file_search(uri="file://…", query="question précise", mode="semantic")`, ou utiliser

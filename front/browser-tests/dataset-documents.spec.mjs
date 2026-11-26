@@ -113,6 +113,11 @@ test('internal insertion preserves citations and existing files without creating
   const uri = 'data://00000000-0000-4000-8000-000000000003'
   const existingFile = 'file://00000000-0000-4000-8000-000000000004'
   const item = { uri, name: 'Synthetic budget', is_collection: false, media_type: 'application/json', size: 20, capabilities: ['read', 'info'] }
+  await jsonRoute(page, '**/api/datasets/00000000-0000-4000-8000-000000000003', {
+    id: '00000000-0000-4000-8000-000000000003', uri, title: item.name, content: '{"budget":12}',
+    revision: 1, lock_version: 1, can_write: false, can_manage: false, can_delete: false,
+    read_only: true, global_access: 0, group_access: 0, keywords: [],
+  })
   await jsonRoute(page, '**/api/file-share/browser/schemes?*', [
     { scheme: 'data', label: 'Galaris Datasets', capabilities: ['list'], native: true },
     { scheme: 'file', label: 'Existing files', capabilities: ['list'], native: true },
@@ -141,8 +146,8 @@ test('internal insertion preserves citations and existing files without creating
     await expect(dialog).toHaveCount(0)
   }
   await choose('Galaris Datasets', 'Synthetic budget')
-  await expect(editor.getByRole('link', { name: 'Synthetic document', exact: true })).toHaveAttribute('data-rich-reference', uri)
-  await expect(editor.locator('a strong')).toHaveText('Synthetic document')
+  await expect(editor.getByRole('link', { name: 'Synthetic budget', exact: true })).toHaveAttribute('data-rich-reference', uri)
+  await expect(editor.locator('a strong')).toHaveText('Synthetic budget')
   await editor.click(); await page.keyboard.press('Control+End'); await page.keyboard.press('Enter')
   await choose('Existing files', 'Existing notes.txt')
   const href = await editor.getByRole('link', { name: 'Existing notes.txt', exact: true }).getAttribute('href')

@@ -236,6 +236,16 @@ async def test_real_connection_target_and_system_or_delegation_protections(db, a
 @pytest.mark.asyncio
 async def test_catalogue_respects_scope_privileges_and_live_revocation(db, admin_fixture, admin_subject):
     caller, owner, _, _, _, role, connection = admin_fixture
+    conversation = await mcp_loader.list_enabled_native_mcp_definitions(caller.id, runtime="internal", conversation_only=True)
+    assert {item.name for item in conversation if item.service_code == "agent"} == {
+        "agent_list", "agent_get", "team_list", "team_members", "agent_team_list",
+    }
+    await connection_service.set_param(connection.id, "services.management_scope", "usage", scope_edit_authorized=True)
+    limited = await mcp_loader.list_enabled_native_mcp_definitions(caller.id, runtime="internal", conversation_only=True)
+    assert {item.name for item in limited if item.service_code == "agent"} == {
+        "agent_list", "agent_get", "team_list", "team_members",
+    }
+    await connection_service.set_param(connection.id, "services.management_scope", "all", scope_edit_authorized=True)
     definitions = await mcp_loader.list_enabled_native_mcp_definitions(caller.id, runtime="internal")
     names = {d.name for d in definitions}
     assert "agent_create" in names
@@ -640,6 +650,7 @@ async def test_harness_mcp_selection_blockers_supervision_and_cleanup(db, admin_
     from app.harnesses.models import Harness
     from app.harnesses.registry import get_provider
     from app.task.models import Task, TaskStatus
+    from core.params import runtime_settings
     from core.util import get_encryption_service
 
     caller, owner, _, _, title, _, _ = admin_fixture
@@ -650,7 +661,6 @@ async def test_harness_mcp_selection_blockers_supervision_and_cleanup(db, admin_
     db.add_all([target, harness])
     await db.flush()
     task = Task(label="Synthetic pending work", agent_id=target.id, status=TaskStatus.CREATE)
-    from core.params import runtime_settings
     db.add(task)
     await db.commit()
     ctx = mcp_loader.McpToolContext(caller.id, "internal")
@@ -660,6 +670,9 @@ async def test_harness_mcp_selection_blockers_supervision_and_cleanup(db, admin_
     assert blockers["active_tasks"] == [{"uri": f"galaris://task/{task.id}", "label": task.label}]
     with pytest.raises(harness_service.HarnessConflictError):
         await harness_mcp.agent_harness_set(ctx, target.id, harness.id)
+    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
+    with pytest.raises(harness_service.HarnessConflictError, match="non-terminal Tasks"):
+        await harness_mcp.agent_harness_reset(ctx, target.id, driver_code="claude_embedded")
     assert (await harness_mcp.agent_harness_get(ctx, target.id))["internal"]
     task.status = TaskStatus.SUCCESS
     await db.commit()
@@ -670,9 +683,6 @@ async def test_harness_mcp_selection_blockers_supervision_and_cleanup(db, admin_
     state = await harness_mcp.agent_harness_status(ctx, target.id)
     assert state["status"] == "ready" and state["available_actions"] == []
     with pytest.raises(harness_service.HarnessConflictError):
-    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
-    with pytest.raises(harness_service.HarnessConflictError, match="non-terminal Tasks"):
-        await harness_mcp.agent_harness_reset(ctx, target.id, driver_code="claude_embedded")
         await harness_mcp.agent_harness_action(ctx, target.id, "stop")
     with pytest.raises(harness_service.HarnessConflictError):
         await harness_mcp.agent_harness_logs(ctx, target.id)

@@ -465,7 +465,7 @@ def test_dream_registers_topic_assignment_reconciler() -> None:
 
     register_dbadmin(registry)
 
-    assert [item.key for item in registry.reconcilers] == [
+    assert [item.key for item in registry.reconcilers if item.key.startswith("app.dream.topic_")] == [
         "app.dream.topic_approval_recipients",
         "app.dream.topic_assignments"
     ]

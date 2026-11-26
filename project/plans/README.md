@@ -9,6 +9,21 @@ Cette revue ne rejoue ni les parcours applicatifs ni les benchmarks.
 
 Un plan ne vaut ni ordre d'implémentation ni nouvelle priorité produit.
 
+## Essai sur deux chantiers indépendants
+
+À l’ouverture de chacune des deux prochaines demandes pouvant être livrées séparément,
+inscrire ici son intitulé et le résultat attendu. À la réception, relier son compte rendu
+habituel et y répondre brièvement à trois questions.
+
+- A-t-on pu accepter ce résultat alors que l’autre chantier restait ouvert ? En cas
+  de blocage, quelle dépendance a imposé d’attendre ?
+- Quelle vérification a changé la décision de livrer ou levé une incertitude précise ?
+- Quelle étape a demandé de refaire du travail, et pour quelle raison ?
+
+Après la seconde réception, comparer les deux retours. Conserver les pratiques qui ont
+aidé à décider, alléger les doublons et choisir en priorité une difficulté qui s’est
+répétée. Consigner la décision dans le second compte rendu, puis retirer ce suivi temporaire.
+
 ## Campagne engagée le 15 novembre 2026
 
 Les cinq chantiers demandés sont repris dans les suivis existants :
@@ -19,7 +34,7 @@ Les cinq chantiers demandés sont repris dans les suivis existants :
 | Arrêt et reprise | Fiabilisation conversationnelle | Contrats durables puis qualification des runtimes isolés, sans arrêter de travaux utilisateurs. |
 | Précision mémoire | Amélioration globale de la mémoire | Pièces jointes, droits vivants et recherche dans des PDF synthétiques, dont les pages scannées. |
 | Performance | [Travaux ouverts de l’audit d’optimisation](../audits/optimisation-generalisee/README.md#travaux-ouverts) | Lectures SQL Process/MCP jusqu'à 500 résultats, permissions Services ciblées et annuaires canoniques de 501/1 001 destinataires ; contenu, droits et fraîcheur préservés. |
-| Première mission | Frictions du parcours conversationnel | Accueil, édition, partage et réouverture dans l'application assemblée ; observation de nouveaux utilisateurs encore à organiser. |
+| Première mission | [Observation de la première mission](#observation-de-la-première-mission) | Accueil, édition, partage et réouverture dans l'application assemblée. Prochaine étape ouverte : observer une personne qui découvre Galaris. |
 
 L'autorisation porte sur les qualifications, les corrections démontrées et les
 simplifications des mécanismes existants. **Tout nouveau mécanisme applicatif exige
@@ -28,6 +43,21 @@ dérive présentes dans les plans ne sont pas autorisées par cette reprise. Ré
 les outils et tests existants ; ne pas ajouter de dispositif de supervision automatique.
 Les qualifications ciblées ne clôturent ni les plans entiers ni les essais de charge,
 les comptes distants réels ou la réserve indépendante encore manquants.
+
+### Observation de la première mission
+
+Sur une instance de développement avec un compte de démonstration, proposer à la personne
+une consigne avec un résultat reconnaissable : « Demandez à un agent de préparer une liste
+pour un pique-nique. Quittez la conversation, puis retrouvez sa réponse. » La laisser choisir
+son chemin. Si elle hésite, lui demander ce qu’elle pense que l’application est en train de
+faire. Noter à quelle étape une aide a été nécessaire, le cas échéant.
+
+Critère de réussite de cette séance : la personne retrouve la réponse à sa demande initiale
+sans guidage. Consigner ici le résultat, la première difficulté observable et le moyen de
+vérifier sa cause, sous forme anonymisée. En cas de relance, par exemple, relever l’état
+affiché avant le second envoi et tenter de le reproduire avec la même demande synthétique.
+Si le parcours aboutit directement, consigner la réussite. La fréquence d’une difficulté
+se vérifie lors d’autres séances.
 
 ## Statuts
 
@@ -55,6 +85,7 @@ les comptes distants réels ou la réserve indépendante encore manquants.
 
 | Plan | Statut | Portée |
 |---|---|---|
+| [deux-harnais-internes.md](deux-harnais-internes.md) | `in-progress` | Chaque harnais embarqué gère sa conversation. DSH et Codex confient leurs rounds à Claude. Filiation exacte des appels LLM, parité et benchmark pour décider du maintien de Pydantic AI, indépendamment du portage Rust. |
 | [fluidite-droits-et-montee-en-charge.md](fluidite-droits-et-montee-en-charge.md) | `in-progress` | Montage MCP, streaming et contrôle des droits de dialogue. Admission Chat testée avec une seule connexion SQL, charge mixte à 30 et 50 comptes avec mesure dans Chromium. Restauration des ressources et endurance à qualifier. |
 | [travaux-et-fusion-des-objectifs.md](travaux-et-fusion-des-objectifs.md) | `design` | Pilotage des Travaux, orientation des entrées, reprise des attentes, articulation avec Process, coûts et fusion des Objectifs. |
 | [declencheurs-evenementiels-et-dream.md](declencheurs-evenementiels-et-dream.md) | `design` | Dream comme gestionnaire d’événements, catalogue, graphe de branchement, tableau de bord et historique. Pilote Mail et Fichier avant l’automatisation des Travaux. |
@@ -76,4 +107,3 @@ canoniques, sans journal d'implémentation.
 Supprimer un plan réalisé/absorbé et corriger ses liens entrants.
 Regrouper les mesures communes ; une recette usuelle avant publication ne suffit pas
 à maintenir un ancien plan. Préserver intentions non réalisées et blocages explicites.
-| [deux-harnais-internes.md](deux-harnais-internes.md) | `in-progress` | Chaque harnais embarqué gère sa conversation. DSH et Codex confient leurs rounds à Claude. Filiation exacte des appels LLM, parité et benchmark pour décider du maintien de Pydantic AI, indépendamment du portage Rust. |
