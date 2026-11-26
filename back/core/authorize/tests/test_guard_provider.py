@@ -216,14 +216,16 @@ class TestGuardProvider:
 
     def test_scan_app_rejects_unclassified_route(self):
         app = FastAPI()
+        router = APIRouter(prefix="/nested")
 
-        @app.get("/forgotten")
+        @router.get("/forgotten")
         async def forgotten():
             return {"ok": True}
 
+        app.include_router(router, prefix="/api")
         with pytest.raises(
             RuntimeError,
-            match=r"unclassified routes: GET /forgotten",
+            match=r"unclassified routes: GET /api/nested/forgotten",
         ):
             GuardProvider().scan_app(app)
 

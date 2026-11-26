@@ -29,6 +29,8 @@ class Permit:
     released: bool = False
     used: bool = False
     call_id: UUID | None = None
+    requester: int | None = None
+    mission: UUID | None = None
 
     def release(self) -> None:
         if not self.released:
@@ -45,6 +47,8 @@ class Ticket:
     owner: str | None
     future: asyncio.Future[Permit]
     queued_at: float
+    requester: int | None = None
+    mission: UUID | None = None
 
 
 @dataclass
@@ -52,6 +56,21 @@ class _ProviderQueue:
     limit: int
     waiting: list[Ticket] = field(default_factory=list[Ticket])
     active: set[Permit] = field(default_factory=set[Permit])
+    user_turn: dict[int | str | UUID | None, int] = field(default_factory=dict[int | str | UUID | None, int])
+    mission_turn: dict[UUID | str | None, int] = field(default_factory=dict[UUID | str | None, int])
+    turn: int = 0
+
+
+def provider_has_capacity(limit: int, priority: int, total: int, background: int, same_priority: int) -> bool:
+    if limit == 0:
+        return True
+    if total >= limit:
+        return False
+    if limit == 1:
+        return True
+    if priority == 2:
+        return background < max(1, limit - 2)
+    return limit == 2 or same_priority + background < limit - 1
 
 
 class ProviderScheduler:
@@ -71,17 +90,19 @@ class ProviderScheduler:
             queue.limit = limit
         self._schedule()
 
-    def enqueue(self, provider_id: int, limit: int, priority: int, *, owner: str | None = None) -> Ticket:
+    def enqueue(self, provider_id: int, limit: int, priority: int, *, owner: str | None = None,
+                requester: int | None = None, mission: UUID | None = None) -> Ticket:
         if provider_id not in self._providers:
             self.configure(provider_id, limit)
         loop = asyncio.get_running_loop()
-        ticket = Ticket(provider_id, priority, owner, loop.create_future(), loop.time())
+        ticket = Ticket(provider_id, priority, owner, loop.create_future(), loop.time(), requester, mission)
         self._providers[provider_id].waiting.append(ticket)
         self._schedule()
         return ticket
 
-    async def acquire(self, provider_id: int, limit: int, priority: int, *, owner: str | None = None) -> Permit:
-        ticket = self.enqueue(provider_id, limit, priority, owner=owner)
+    async def acquire(self, provider_id: int, limit: int, priority: int, *, owner: str | None = None,
+                      requester: int | None = None, mission: UUID | None = None) -> Permit:
+        ticket = self.enqueue(provider_id, limit, priority, owner=owner, requester=requester, mission=mission)
         try:
             return await asyncio.shield(ticket.future)
         except BaseException:
@@ -99,7 +120,12 @@ class ProviderScheduler:
         self._schedule()
 
     def release(self, permit: Permit) -> None:
-        self._providers[permit.provider_id].active.discard(permit)
+        queue = self._providers[permit.provider_id]
+        queue.active.discard(permit)
+        if not queue.active and not queue.waiting:
+            queue.user_turn.clear()
+            queue.mission_turn.clear()
+            queue.turn = 0
         self._schedule()
 
     def _schedule(self) -> None:
@@ -109,22 +135,12 @@ class ProviderScheduler:
 
     @staticmethod
     def _eligible(queue: _ProviderQueue, priority: int) -> bool:
-        if queue.limit == 0:
-            return True
-        if len(queue.active) >= queue.limit:
-            return False
         # One shared place remains usable by background work even at limit 2.
         # At >=3, voice and text each retain a protected place. Background
         # calls cannot borrow these; neither dialogue class borrows the other.
-        if queue.limit == 1:
-            return True
         background = sum(permit.priority == 2 for permit in queue.active)
-        if priority == 2:
-            return background < max(1, queue.limit - 2)
-        if queue.limit == 2:
-            return True
         own = sum(permit.priority == priority for permit in queue.active)
-        return own + background < queue.limit - 1
+        return provider_has_capacity(queue.limit, priority, len(queue.active), background, own)
 
     def _drain(self) -> None:
         self._scheduled = False
@@ -134,22 +150,40 @@ class ProviderScheduler:
                 continue
             # A drain does not yield: only grants below can change these counts.
             owners = Counter(permit.owner for permit in queue.active if permit.owner)
+            users = Counter(p.requester or p.mission or p.owner for p in queue.active)
+            missions = Counter(p.mission or p.owner for p in queue.active)
+            # Only contenders in this drain need a remembered turn.
+            user_keys = {t.requester or t.mission or t.owner for t in queue.waiting}
+            mission_keys = {t.mission or t.owner for t in queue.waiting}
+            queue.user_turn = {k: v for k, v in queue.user_turn.items() if k in user_keys or k in users}
+            queue.mission_turn = {k: v for k, v in queue.mission_turn.items() if k in mission_keys or k in missions}
             priorities = {ticket.priority for ticket in queue.waiting}
             while queue.waiting:
                 allowed = {priority for priority in priorities if self._eligible(queue, priority)}
                 eligible = [ticket for ticket in queue.waiting if ticket.priority in allowed]
                 if not eligible:
                     break
-                def rank(ticket: Ticket, owners: Counter[str] = owners) -> tuple[int, int, float]:
+                def rank(ticket: Ticket) -> tuple[int, int, int, int, int, int, float]:
                     age = int((now - ticket.queued_at) / 30)
                     concurrent = owners[ticket.owner] if ticket.owner else 0
-                    return max(0, ticket.priority - age), concurrent, ticket.queued_at
+                    mission = ticket.mission or ticket.owner
+                    user = ticket.requester or mission
+                    return (max(0, ticket.priority - age), users[user], queue.user_turn.get(user, 0),
+                            missions[mission], queue.mission_turn.get(mission, 0),
+                            concurrent, ticket.queued_at)
                 ticket = min(eligible, key=rank)
                 queue.waiting.remove(ticket)
                 if ticket.future.cancelled():
                     continue
-                permit = Permit(self, provider_id, ticket.priority, ticket.owner)
+                permit = Permit(self, provider_id, ticket.priority, ticket.owner,
+                                requester=ticket.requester, mission=ticket.mission)
                 queue.active.add(permit)
+                mission = ticket.mission or ticket.owner
+                user = ticket.requester or mission
+                queue.turn += 1
+                queue.user_turn[user] = queue.mission_turn[mission] = queue.turn
+                users[user] += 1
+                missions[mission] += 1
                 if ticket.owner:
                     owners[ticket.owner] += 1
                 ticket.future.set_result(permit)
@@ -186,12 +220,14 @@ def reserved(permit: Permit | None) -> Generator[None]:
         _reserved.reset(token)
 
 
-async def acquire_call(provider_id: int, limit: int, priority: int, *, owner: str | None) -> Permit:
+async def acquire_call(provider_id: int, limit: int, priority: int, *, owner: str | None,
+                       requester: int | None = None, mission: UUID | None = None) -> Permit:
     permit = _reserved.get()
     if permit is not None and permit.provider_id != provider_id and not permit.used:
         permit.release()
     if permit is None or permit.provider_id != provider_id or permit.used or permit.released:
-        permit = await get_scheduler().acquire(provider_id, limit, priority, owner=owner)
+        permit = await get_scheduler().acquire(provider_id, limit, priority, owner=owner,
+                                               requester=requester, mission=mission)
         owned = _owned.get()
         if owned is not None:
             owned.append(permit)

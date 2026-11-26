@@ -139,71 +139,35 @@ async def enqueue_message_push(message: Message) -> None:
     ):
         return
     async with get_db_session():
-        persisted = await get_db().get(Message, message.id)
-        if (
-            persisted is None
-            or persisted.messenger_room_id is None
-            or not persisted.counts_as_unread
-        ):
-            return
-        recipient_filters = [
-            RoomUser.room_id == persisted.messenger_room_id,
-            RoomUser.muted.is_(False),
-            MessengerUser.galaris_user_id.is_not(None),
-        ]
-        if persisted.sender_messenger_user_id is not None:
-            recipient_filters.append(
-                RoomUser.user_id != persisted.sender_messenger_user_id
-            )
-        user_ids = list(
-            (
-                await get_db().scalars(
-                    select(MessengerUser.galaris_user_id)
-                    .join(RoomUser, RoomUser.user_id == MessengerUser.id)
-                    .where(*recipient_filters)
-                    .distinct()
-                )
-            ).all()
-        )
-        room_name = f"ChatRoom:{persisted.messenger_room_id}"
-        user_ids = [
-            user_id for user_id in user_ids
-            if user_id is not None and not websocket.is_room_displayed_by_user(user_id, room_name)
-        ]
-        if not user_ids:
-            return
         now = datetime.now(timezone.utc)
-        subscriptions = list(
-            (
-                await get_db().scalars(
-                    select(ChatPushSubscription).where(
-                        ChatPushSubscription.user_id.in_(user_ids),
-                        ChatPushSubscription.enabled.is_(True),
-                        or_(
-                            ChatPushSubscription.expiration_time.is_(None),
-                            ChatPushSubscription.expiration_time > now,
-                        ),
-                    )
-                )
-            ).all()
+        recipients = await get_db().execute(
+            select(ChatPushSubscription.id, ChatPushSubscription.user_id, RoomUser.room_id)
+            .select_from(Message)
+            .join(RoomUser, RoomUser.room_id == Message.messenger_room_id)
+            .join(MessengerUser, MessengerUser.id == RoomUser.user_id)
+            .join(ChatPushSubscription, ChatPushSubscription.user_id == MessengerUser.galaris_user_id)
+            .where(
+                Message.id == message.id,
+                Message.counts_as_unread.is_(True),
+                RoomUser.muted.is_(False),
+                RoomUser.user_id.is_distinct_from(Message.sender_messenger_user_id),
+                ChatPushSubscription.enabled.is_(True),
+                or_(ChatPushSubscription.expiration_time.is_(None), ChatPushSubscription.expiration_time > now),
+            )
+            .distinct()
         )
-        if not subscriptions:
-            return
         available_at = now + timedelta(seconds=runtime_settings.WEB_PUSH_DELAY_SECONDS)
+        deliveries = [
+            {"subscription_id": subscription_id, "user_id": user_id, "message_id": message.id,
+             "room_id": room_id, "available_at": available_at}
+            for subscription_id, user_id, room_id in recipients
+            if not websocket.is_room_displayed_by_user(user_id, f"ChatRoom:{room_id}")
+        ]
+        if not deliveries:
+            return
         await get_db().execute(
             pg_insert(ChatPushDelivery)
-            .values(
-                [
-                    {
-                        "subscription_id": subscription.id,
-                        "user_id": subscription.user_id,
-                        "message_id": persisted.id,
-                        "room_id": persisted.messenger_room_id,
-                        "available_at": available_at,
-                    }
-                    for subscription in subscriptions
-                ]
-            )
+            .values(deliveries)
             .on_conflict_do_nothing(
                 index_elements=[
                     ChatPushDelivery.subscription_id,

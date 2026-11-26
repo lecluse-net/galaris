@@ -228,6 +228,7 @@ def _install_messenger(
             *,
             publish_event: bool = True,
             journal_metadata: dict[str, object] | None = None,
+            release_dispatch_transaction: bool = False,
         ) -> Message:
             del publish_event
             assert room_id == room.id

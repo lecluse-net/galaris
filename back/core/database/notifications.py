@@ -32,11 +32,14 @@ def after_commit(
 
 def watch_committed_changes(
     models: Mapping[type[Base], Collection[str]], callback: Callable[[], None],
+    *, when: Callable[[Base], bool] | None = None,
 ) -> None:
     """Wake a domain after ORM insert/delete or relevant column changes.
 
     Register once during domain bootstrap. Heartbeats and trace-only updates
     stay silent when their columns are absent from the domain's field list.
+    An optional predicate narrows the wake to candidate states and must only
+    inspect already-loaded values because it runs during the producer's flush.
     Bulk SQL writers must explicitly schedule their own post-commit wakeup.
     """
     def flushed(session: Session, _context: UOWTransaction) -> None:
@@ -50,6 +53,8 @@ def watch_committed_changes(
             if entity in session.new or entity in session.deleted or any(
                 state.attrs[field].history.has_changes() for field in fields
             ):
+                if when is not None and not when(entity):
+                    continue
                 after_commit(callback, key=callback, session=session)
                 return
 

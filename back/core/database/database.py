@@ -82,6 +82,14 @@ def get_db() -> AsyncSession:
         )
 
 
+async def lock_resource_sharing(session: AsyncSession | None = None, *, shared: bool = False) -> None:
+    """Independent new identities may read policies together; policy writers take the exclusive lock."""
+    db = get_db() if session is None else session
+    statement = ("SELECT pg_advisory_xact_lock_shared(1195656264, 0)" if shared
+                 else "SELECT pg_advisory_xact_lock(1195656264, 0)")
+    await db.execute(text(statement))
+
+
 async def release_db_transaction() -> bool:
     """Commit the contextual transaction when one exists.
 

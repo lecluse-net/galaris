@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+from collections import deque
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from dataclasses import replace
 import os
 import socket
@@ -11,14 +14,14 @@ from uuid import UUID, uuid4
 from loguru import logger
 
 from app.agent import AIMessage
-from core.database import get_db_session, watch_committed_changes
+from core import settings
+from core.database import Base, get_db_session, watch_committed_changes
 from core.failure_journal import mark_failure_run_recovered
 from .contracts import ConversationLeaseLostError
 
 
 _POLL_SECONDS = 30.0  # Recovery only; committed changes wake the scheduler immediately.
 _ERROR_RETRY_SECONDS = 1.0
-_MAX_CONCURRENCY = 4
 # Reasoning models can spend five minutes before their first tool call. Leave room
 # for search results and the final answer while keeping the entire attempt bounded.
 _ACTION_TIMEOUT_SECONDS = 900.0
@@ -30,7 +33,12 @@ _scheduler_task: asyncio.Task[None] | None = None
 _wake_event: asyncio.Event | None = None
 _loop: asyncio.AbstractEventLoop | None = None
 _watching_changes = False
-_running: dict[UUID, asyncio.Task[None]] = {}
+_running: dict[asyncio.Task[None], UUID] = {}
+# Only round fallback deliveries belong to the round cancellation scope.
+_notifications: dict[asyncio.Task[None], UUID | None] = {}
+_round_generation = 0
+_delivery_generation = 0
+_contact_generation = 0
 
 ClaimedRound = tuple[UUID, UUID]
 
@@ -43,7 +51,7 @@ def start() -> None:
     _loop = asyncio.get_running_loop()
     _wake_event = asyncio.Event()
     if not _watching_changes:
-        from app.task import Task
+        from app.task import Task, TaskStatus
         from app.process import ProcessRun
         from app.messenger import PermissionDecision
         from app.agent import Agent
@@ -51,8 +59,10 @@ def start() -> None:
         from .models import ConversationRound, ConversationRoundMessage, ConversationTaskLink, ConversationProcessLink
 
         watch_committed_changes({
-            ConversationRound: ("status", "delivery_state", "lease_token"),
+            ConversationRound: ("status", "lease_token"),
             ConversationRoundMessage: (),
+        }, wake)
+        watch_committed_changes({
             ConversationTaskLink: ("notification_state", "notification_task_attempt_count"),
             ConversationProcessLink: ("notification_state",),
             Task: ("status", "lease_token", "attempt_count", "deleted_at"),
@@ -60,7 +70,32 @@ def start() -> None:
             PermissionDecision: ("allowed", "deleted_at", "approver_user_id"),
             Agent: ("user_id",),
             Connection: ("active", "agent_id"),
-        }, wake)
+        }, _signal)
+
+        def delivery_may_be_ready(entity: Base) -> bool:
+            # An unloaded field is ambiguous. Wake conservatively without
+            # loading an ORM object during the producer's flush.
+            if "status" not in vars(entity):
+                return True
+            if isinstance(entity, ConversationRound):
+                return entity.status == "ERROR_RESOLVED"
+            if isinstance(entity, Task):
+                return entity.status in (TaskStatus.SUCCESS, TaskStatus.ERROR)
+            if isinstance(entity, ProcessRun):
+                return entity.status in {"success", "error", "cancelled"}
+            return True
+
+        watch_committed_changes({
+            ConversationRound: ("status", "delivery_state"),
+            ConversationTaskLink: ("notification_state", "notification_task_attempt_count"),
+            ConversationProcessLink: ("notification_state",),
+            Task: ("status", "lease_token", "attempt_count", "deleted_at"),
+            ProcessRun: ("status",),
+        }, _wake_deliveries, when=delivery_may_be_ready)
+        watch_committed_changes(
+            {ConversationRound: ("status", "contact_authorization_pending")},
+            _wake_contacts, when=lambda entity: vars(entity).get("contact_authorization_pending") is not False,
+        )
         _watching_changes = True
     _scheduler_task = asyncio.create_task(_run_loop(), name="conversation-scheduler")
     logger.info("Conversation scheduler started")
@@ -76,7 +111,7 @@ async def stop() -> None:
     if root is not None:
         root.cancel()
         await asyncio.gather(root, return_exceptions=True)
-    running = tuple(_running.values())
+    running = (*_running, *_notifications)
     if running:
         # Preparation/model calls stop promptly. A tool already running may
         # finish and persist its receipt before we cancel the remaining work.
@@ -85,6 +120,7 @@ async def stop() -> None:
             task.cancel()
         await asyncio.gather(*running, return_exceptions=True)
     _running.clear()
+    _notifications.clear()
     logger.info("Conversation scheduler stopped")
 
 
@@ -93,6 +129,13 @@ def is_running() -> bool:
 
 
 def wake() -> None:
+    """Recheck durable dialogue admissions after a relevant commit or explicit wake."""
+    global _round_generation
+    _round_generation += 1
+    _signal()
+
+
+def _signal() -> None:
     loop = _loop
     event = _wake_event
     if loop is None or event is None or loop.is_closed():
@@ -100,15 +143,31 @@ def wake() -> None:
     loop.call_soon_threadsafe(event.set)
 
 
+def _wake_deliveries() -> None:
+    global _delivery_generation
+    _delivery_generation += 1
+    _signal()
+
+
+def _wake_contacts() -> None:
+    global _contact_generation
+    _contact_generation += 1
+    _signal()
+
+
 async def cancel_round(round_id: UUID) -> bool:
     """Cancel a locally running round without making administrative deletion wait forever."""
 
-    worker = _running.get(round_id)
-    if worker is None or worker.done():
+    workers = {
+        worker for worker, owner in (*_running.items(), *_notifications.items())
+        if owner == round_id and not worker.done()
+    }
+    if not workers:
         return False
-    worker.cancel()
-    done, _pending = await asyncio.wait({worker}, timeout=_CANCEL_WAIT_SECONDS)
-    if worker not in done:
+    for worker in workers:
+        worker.cancel()
+    _, pending = await asyncio.wait(workers, timeout=_CANCEL_WAIT_SECONDS)
+    if pending:
         logger.warning(
             "Conversation worker {} did not stop within {} second(s) after cancellation",
             round_id,
@@ -119,7 +178,6 @@ async def cancel_round(round_id: UUID) -> bool:
 
 async def _claim() -> ClaimedRound | None:
     from .service import claim_next_round
-    from .facade import publish_round_activity
 
     async with get_db_session():
         round_ = await claim_next_round(_WORKER_ID)
@@ -127,9 +185,7 @@ async def _claim() -> ClaimedRound | None:
             return None
         if round_.lease_token is None:
             raise RuntimeError(f"Claimed conversation round {round_.id} has no lease token.")
-        claimed = (round_.id, round_.lease_token)
-    await publish_round_activity(claimed[0])
-    return claimed
+        return round_.id, round_.lease_token
 
 
 async def _claim_round_notification() -> UUID | None:
@@ -153,6 +209,31 @@ async def _claim_task_notification() -> UUID | None:
         return await claim_next_task_notification()
 
 
+@asynccontextmanager
+async def _execution_activity(round_id: UUID) -> AsyncGenerator[asyncio.Event]:
+    """Send ordered refresh hints alongside preparation and model execution."""
+    from .facade import publish_round_activity
+
+    running = asyncio.Event()
+
+    async def announce() -> None:
+        try:
+            await publish_round_activity(round_id)
+            await running.wait()
+            await publish_round_activity(round_id)
+        except Exception:
+            logger.exception("Conversation execution refresh failed for round {}", round_id)
+
+    publisher = asyncio.create_task(announce(), name=f"conversation-activity-{round_id}")
+    try:
+        yield running
+    finally:
+        # The next durable transition publishes its own refresh. An obsolete
+        # hint must not outlive this attempt or accumulate behind a slow client.
+        publisher.cancel()
+        await asyncio.gather(publisher, return_exceptions=True)
+
+
 async def _execute_action(round_id: UUID, lease_token: UUID) -> None:
     from . import controller
     from .contracts import (
@@ -168,27 +249,26 @@ async def _execute_action(round_id: UUID, lease_token: UUID) -> None:
     progress: ConversationRuntimeStream | None = None
     terminal_result = None
     try:
-        async with get_db_session():
-            turn = await build_turn(round_id, lease_token=lease_token, should_suspend=lambda: _shutdown_requested)
-        progress = ConversationRuntimeStream(
-            room_id=turn.room_id, round_id=round_id,
-            topic_id=turn.topic_id, attempt=turn.attempt,
-        )
-        turn = replace(
-            turn,
-            publish_progress=progress.append,
-            reset_progress=progress.reset,
-            should_suspend=lambda: _shutdown_requested,
-        )
-        await progress.start()
-        await publish_round_activity(round_id)
-        with watch_room_control(turn.room_id) as wait_for_interrupt:
-            outcome = await controller.run(replace(turn, wait_for_interrupt=wait_for_interrupt))
-        terminal_result = outcome.execution_result
-        if terminal_result is None:
-            terminal_result = progress.snapshot()
-            terminal_result.result = outcome.text
-        normalized_result = progress.snapshot(terminal_result)
+        async with _execution_activity(round_id) as running:
+            async with get_db_session():
+                turn = await build_turn(round_id, lease_token=lease_token, should_suspend=lambda: _shutdown_requested)
+            progress = ConversationRuntimeStream(
+                room_id=turn.room_id, round_id=round_id,
+                topic_id=turn.topic_id, attempt=turn.attempt,
+            )
+            turn = replace(
+                turn,
+                publish_progress=progress.append,
+                reset_progress=progress.reset,
+                should_suspend=lambda: _shutdown_requested,
+            )
+            await progress.start()
+            running.set()
+            with watch_room_control(turn.room_id) as wait_for_interrupt:
+                outcome = await controller.run(replace(turn, wait_for_interrupt=wait_for_interrupt))
+        normalized_result = progress.snapshot(outcome.execution_result)
+        if outcome.execution_result is None:
+            normalized_result.result = outcome.text
         has_visible_text = any(
             message.type == "text" and message.content.strip()
             for message in normalized_result.messages
@@ -241,7 +321,7 @@ async def _execute_action(round_id: UUID, lease_token: UUID) -> None:
         await publish_round_activity(round_id)
     finally:
         if progress is not None:
-            await progress.finish(success=completed_successfully, result=terminal_result)
+            await progress.finish(success=completed_successfully, result=terminal_result, reconciled=True)
 
 
 async def _heartbeat_round(round_id: UUID, lease_token: UUID) -> None:
@@ -322,7 +402,13 @@ async def _execute(round_id: UUID, lease_token: UUID) -> None:
                 await interrupt_round(round_id, lease_token=lease_token)
         from .facade import publish_round_activity
 
-        await publish_round_activity(round_id)
+        # The release is already durable. A stuck observer must not keep the
+        # worker alive after its last opportunity to announce the transition.
+        try:
+            async with asyncio.timeout(_CANCEL_WAIT_SECONDS):
+                await publish_round_activity(round_id)
+        except TimeoutError:
+            logger.warning("Conversation cancellation refresh timed out for round {}", round_id)
         raise
     finally:
         heartbeat.cancel()
@@ -374,15 +460,16 @@ async def _execute_task_notification(link_id: UUID) -> None:
         )
 
 
-def _done(round_id: UUID, task: asyncio.Task[None]) -> None:
-    _running.pop(round_id, None)
+def _done(task: asyncio.Task[None]) -> None:
+    _running.pop(task, None)
+    _notifications.pop(task, None)
     try:
         task.result()
     except asyncio.CancelledError:
         pass
     except Exception:
-        logger.exception("Conversation worker {} terminated unexpectedly", round_id)
-    wake()
+        logger.exception("Conversation worker {} terminated unexpectedly", task.get_name())
+    _signal()
 
 
 async def _run_loop() -> None:
@@ -400,17 +487,42 @@ async def _run_loop() -> None:
     except Exception:
         logger.exception("Conversation LLM-call startup reconciliation failed")
 
+    deliveries = deque((
+        ("round", _claim_round_notification, _execute_round_notification),
+        ("task", _claim_task_notification, _execute_task_notification),
+        ("process", _claim_process_notification, _execute_process_notification),
+    ))
+    loop = asyncio.get_running_loop()
+    empty_round_generation = empty_delivery_generation = empty_contact_generation = -1
+    recovery_at = loop.time() + _POLL_SECONDS
     while True:
         try:
+            slots = settings.CONVERSATION_WORKER_CONCURRENCY
             event = _wake_event
             if event is not None:
                 event.clear()
-            from .contact_authorization import reconcile_contact_authorizations
-            await reconcile_contact_authorizations()
+            if loop.time() >= recovery_at:
+                empty_round_generation = empty_delivery_generation = empty_contact_generation = -1
+                recovery_at = loop.time() + _POLL_SECONDS
+            if empty_contact_generation != _contact_generation:
+                from .contact_authorization import reconcile_contact_authorizations
+                contact_generation = _contact_generation
+                if not await reconcile_contact_authorizations():
+                    empty_contact_generation = contact_generation
             claimed_any = False
-            while len(_running) < _MAX_CONCURRENCY:
+            # Keep one place for each kind of work when the other is saturated.
+            # Idle capacity is shared, within a total bound of slots + 1.
+            while (
+                empty_round_generation != _round_generation
+                and len(_running) < slots
+                and len(_running) + len(_notifications) < slots + 1
+            ):
+                round_generation = _round_generation
                 claimed = await _claim()
                 if claimed is None:
+                    # A concurrent commit (or a cancellation inside the claim)
+                    # can make the next round eligible during this scan.
+                    empty_round_generation = round_generation
                     break
                 round_id, lease_token = claimed
                 claimed_any = True
@@ -418,49 +530,30 @@ async def _run_loop() -> None:
                     _execute(round_id, lease_token),
                     name=f"conversation-round-{round_id}",
                 )
-                _running[round_id] = worker
-                worker.add_done_callback(
-                    lambda task, claimed_id=round_id: _done(claimed_id, task)
-                )
-            while len(_running) < _MAX_CONCURRENCY:
-                round_id = await _claim_round_notification()
-                if round_id is None:
+                _running[worker] = round_id
+                worker.add_done_callback(_done)
+            while (
+                empty_delivery_generation != _delivery_generation
+                and len(_notifications) < slots
+                and len(_running) + len(_notifications) < slots + 1
+            ):
+                delivery_generation = _delivery_generation
+                for _ in range(len(deliveries)):
+                    kind, claim, deliver = deliveries[0]
+                    deliveries.rotate(-1)
+                    identifier = await claim()
+                    if identifier is not None:
+                        worker = asyncio.create_task(
+                            deliver(identifier), name=f"conversation-{kind}-notification-{identifier}",
+                        )
+                        _notifications[worker] = identifier if kind == "round" else None
+                        worker.add_done_callback(_done)
+                        claimed_any = True
+                        break
+                else:
+                    # Preserve a commit that arrived while the claims were awaiting SQL.
+                    empty_delivery_generation = delivery_generation
                     break
-                claimed_any = True
-                worker = asyncio.create_task(
-                    _execute_round_notification(round_id),
-                    name=f"conversation-round-notification-{round_id}",
-                )
-                _running[round_id] = worker
-                worker.add_done_callback(
-                    lambda task, claimed_id=round_id: _done(claimed_id, task)
-                )
-            while len(_running) < _MAX_CONCURRENCY:
-                link_id = await _claim_task_notification()
-                if link_id is None:
-                    break
-                claimed_any = True
-                worker = asyncio.create_task(
-                    _execute_task_notification(link_id),
-                    name=f"conversation-task-notification-{link_id}",
-                )
-                _running[link_id] = worker
-                worker.add_done_callback(
-                    lambda task, claimed_id=link_id: _done(claimed_id, task)
-                )
-            while len(_running) < _MAX_CONCURRENCY:
-                link_id = await _claim_process_notification()
-                if link_id is None:
-                    break
-                claimed_any = True
-                worker = asyncio.create_task(
-                    _execute_process_notification(link_id),
-                    name=f"conversation-process-notification-{link_id}",
-                )
-                _running[link_id] = worker
-                worker.add_done_callback(
-                    lambda task, claimed_id=link_id: _done(claimed_id, task)
-                )
             if claimed_any:
                 await asyncio.sleep(0)
                 continue
@@ -469,7 +562,7 @@ async def _run_loop() -> None:
                 await asyncio.sleep(_POLL_SECONDS)
                 continue
             try:
-                await asyncio.wait_for(event.wait(), timeout=_POLL_SECONDS)
+                await asyncio.wait_for(event.wait(), timeout=max(0.0, recovery_at - loop.time()))
             except TimeoutError:
                 pass
         except asyncio.CancelledError:

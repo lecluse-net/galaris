@@ -25,6 +25,7 @@ from app.services.agent_registry import (
     build_agent_tool_advertisement,
     build_tool_context_instructions,
 )
+from core.database import release_db_transaction
 from app.services.facade import canonical_service_call
 from app.process import build_agent_process_advertisement
 from .mcp_toolset import build_agent_mcp_toolset
@@ -508,6 +509,9 @@ async def _stream(
 
         lifecycle.add_cleanup("console", cleanup_console)
     try:
+        # The task's prompt, messaging and console inputs are resolved. Give
+        # back their SQL connection before waiting for local catalog capacity.
+        await release_db_transaction()
         agent_executor = await _build_agent_executor(
             task.agent,
             task=task,
@@ -577,8 +581,6 @@ async def _stream(
     # Driver setup legitimately uses the sequential scheduler session. Release its
     # transaction before Pydantic AI starts parallel branches; native tools and durable
     # callbacks then shadow it with their own short sessions.
-    from core.database import release_db_transaction
-
     await release_db_transaction()
     runtime_agent = agent_executor.agent
     if runtime_agent is None:

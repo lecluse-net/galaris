@@ -1,17 +1,45 @@
 """Exercise the public access matrix across independent resources and owners."""
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.agent import Agent, AgentManagementScope, AgentTeamModel
 from app.dataset.models import Dataset
 from app.dataset import access as dataset_access
 from app.process.models import ProcessDefinition
 from app.process import native_access as process_access
-from app.share import ShareGrant
+from app.share import ShareConfig, ShareEffectiveAccess, ShareGrant
 from app.services import ServiceModel
 from core.team import TeamModel, TeamUserModel
 from core.user import HumanActor, UserModel
+
+
+@pytest.mark.asyncio
+async def test_effective_rights_follow_physical_deletions_without_removing_other_beneficiaries(db, agents):
+    agent, _ = agents
+    human = UserModel(email="cascade@example.test", hashed_password="unused", is_active=True)
+    first, second = (ShareConfig(resource_kind="document") for _ in range(2))
+    db.add_all([human, first, second])
+    await db.flush()
+    for policy in (first, second):
+        db.add_all([
+            ShareEffectiveAccess(share_id=policy.id, agent_id=agent.id, can_write=True),
+            ShareEffectiveAccess(share_id=policy.id, user_id=human.id, can_write=False),
+        ])
+    await db.flush()
+
+    async def beneficiaries():
+        return set((await db.execute(select(ShareEffectiveAccess.share_id,
+            ShareEffectiveAccess.agent_id, ShareEffectiveAccess.user_id)
+            .where(ShareEffectiveAccess.share_id.in_((first.id, second.id))))).tuples())
+
+    await db.execute(delete(ShareConfig).where(ShareConfig.id == first.id))
+    assert await beneficiaries() == {(second.id, agent.id, None), (second.id, None, human.id)}
+    await db.execute(delete(UserModel).where(UserModel.id == human.id))
+    assert await beneficiaries() == {(second.id, agent.id, None)}
+    await db.execute(delete(Agent).where(Agent.id == agent.id))
+    assert await beneficiaries() == set()
+    assert await db.scalar(select(ShareConfig.id).where(ShareConfig.id == second.id)) == second.id
 
 
 @pytest.mark.asyncio

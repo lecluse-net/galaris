@@ -1,9 +1,12 @@
 """Document integration is composed independently of the personal memory backend."""
-from app.agent import register_scope_collection_resolver
+from app.agent import register_agent_access_projection, register_scope_collection_resolver
 from app.conversation import (register_document_read_authorizer, register_conversation_document_metadata_resolver,
     register_conversation_room_document_creator, register_conversation_room_document_resolver)
 from app.goal import goal_service
-from core.team import register_team_access_observer
+from core.team import register_team_access_observer, register_team_access_projection
+from core.user import register_user_activation_projection
+from .effective_sharing import project_user_document_access
+from .sharing_inheritance import refresh_agent_document_access, refresh_team_document_access
 from .conversation_document_adapter import (authorize_conversation_document_read, create_conversation_room_document,
     resolve_conversation_document_metadata, resolve_conversation_room_documents)
 from .goal_document_adapter import register_goal_document_adapter
@@ -24,3 +27,6 @@ def register_document() -> None:
     register_goal_document_adapter()
     register_document_observer("goal_documents", goal_service.handle_goal_document_change)
     register_team_access_observer("document_views",invalidate_document_views)
+    register_team_access_projection("document", refresh_team_document_access)
+    register_user_activation_projection("document", project_user_document_access)
+    register_agent_access_projection("document", refresh_agent_document_access)

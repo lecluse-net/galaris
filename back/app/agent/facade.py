@@ -22,6 +22,7 @@ from .contracts import (
     AgentUsage,
     AgentContextRequest,
     AgentRunCheckpoint,
+    CheckpointIndex,
     AgentRunControl,
     AgentRunEventKind,
     AgentRunEventV1,
@@ -792,9 +793,19 @@ async def build_run_request(task: AgentTask) -> AgentRunRequest:
         if attempt_id is not None:
             await task_port.record_agent_run_activity(task.id, attempt_id, request_run_id)
 
+    previous_checkpoint: CheckpointIndex | None = None
+    checkpoint_revision: int | None = None
+
     async def save_checkpoint(checkpoint: AgentRunCheckpoint) -> None:
         """Persist resumable driver state without exposing the task implementation."""
 
+        nonlocal previous_checkpoint, checkpoint_revision
+        index = await asyncio.to_thread(checkpoint.checkpoint_index)
+        base = None
+        if previous_checkpoint is not None and checkpoint_revision is not None:
+            prefixes = index.unchanged_prefixes(previous_checkpoint)
+            if prefixes:
+                base = (checkpoint_revision, prefixes)
         checkpoint_data = dict(checkpoint.data)
         checkpoint_data[_CHECKPOINT_OBJECTIVE_FINGERPRINT_KEY] = (
             objective_fingerprint
@@ -812,18 +823,20 @@ async def build_run_request(task: AgentTask) -> AgentRunRequest:
             ),
             "data": checkpoint_data,
         }
-        await task_port.persist_agent_run_state(
+        revision = await task_port.persist_agent_run_state(
             task.id,
             expected_objective=objective,
             expected_attempt_id=attempt_id,
             data_patch={RUN_CHECKPOINT_DATA_KEY: checkpoint_payload},
             execution_result=checkpoint.result,
+            checkpoint_base=base,
         )
+        previous_checkpoint, checkpoint_revision = index, revision
 
     async def publish_event(event: AgentRunEventV1) -> None:
         """Persist only semantic events; streamed token deltas remain ephemeral."""
 
-        await task_port.append_agent_run_event(task, event)
+        await task_port.append_agent_run_event(event)
 
     from core.params import runtime_settings
 

@@ -1,8 +1,10 @@
 """Library-page query and memory budgets across a growing revision corpus."""
 
+import asyncio
 import gc
 import hashlib
 import json
+from math import ceil
 from pathlib import Path
 import time
 import tracemalloc
@@ -10,7 +12,7 @@ from statistics import median
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import event, func, literal, select, text
+from sqlalchemy import event, func, literal, select, text, update
 
 from app.document import resource_service as service
 from app.document import Document, DocumentNesting, DocumentRevision, DocumentTag, DocumentTagAssignment
@@ -18,6 +20,195 @@ from app.document.schemas import DocumentLibraryRequest
 from core.storage import get_storage
 from core.user import UserModel
 from tests.sharing_fixtures import bind_private_shares
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("document_count", [1000, 10000])
+@pytest.mark.parametrize("change", ["membership", "activation"])
+async def test_team_membership_projection_matches_full_repair(db, agents, document_count, change):
+    from app.agent import Agent, AgentTeamModel
+    from app.document.effective_sharing import project_document_access, project_user_document_access
+    from app.document.sharing_inheritance import refresh_team_document_access
+    from app.share import ShareEffectiveAccess, ShareGrant
+    from core.team import TeamModel, TeamUserModel
+
+    owner, _ = agents
+    team = TeamModel(name="Projection benchmark team")
+    reader = UserModel(email="new-team-reader@example.test", hashed_password="unused", is_active=change == "membership")
+    members = [Agent(code=f"projection-member-{i}", title_id=owner.title_id, first_name="Team", last_name=str(i),
+                     agent_driver="internal") for i in range(50)]
+    db.add_all([team, reader, *members])
+    await db.flush()
+    db.add_all(AgentTeamModel(team_id=team.id, agent_id=agent.id) for agent in members)
+    if change == "activation":
+        db.add(TeamUserModel(team_id=team.id, user_id=reader.id))
+    rows = [{"id": uuid4(), "owner_agent_id": owner.id, "provider_code": "native", "resource_id": str(i),
+             "title": f"Projection document {i}", "content_hash": "0" * 64} for i in range(document_count)]
+    await bind_private_shares(db, rows, kind="document")
+    await db.execute(Document.__table__.insert(), rows)
+    expected = {row["share_id"]: bool(i % 2) for i, row in enumerate(rows[:50])}
+    db.add_all(ShareGrant(share_id=share_id, team_id=team.id, can_write=write) for share_id, write in expected.items())
+    await project_document_access(db)
+    await db.execute(text("ANALYZE documents, share_configs, share_grants, share_effective_access, agent_teams, team_users"))
+    team_id, user_id = team.id, reader.id
+    projected = select(ShareEffectiveAccess.share_id, ShareEffectiveAccess.can_write).where(ShareEffectiveAccess.user_id == user_id)
+    timings = {"full": [], "member": []}
+    for wave in range(4):
+        for mode in (("full", "member") if wave % 2 == 0 else ("member", "full")):
+            savepoint = await db.begin_nested()
+            if change == "activation":
+                await db.execute(update(UserModel).where(UserModel.id == user_id).values(is_active=True))
+            else:
+                await db.execute(TeamUserModel.__table__.insert().values(team_id=team_id, user_id=user_id))
+            started = time.perf_counter()
+            if mode == "full":
+                await project_document_access(db)
+            elif change == "activation":
+                await project_user_document_access(user_id, True)
+            else:
+                await refresh_team_document_access(team_id, ("user", user_id))
+            timings[mode].append((time.perf_counter() - started) * 1000)
+            assert dict((await db.execute(projected)).tuples().all()) == expected
+            await savepoint.rollback()
+            assert not (await db.execute(projected)).all()
+    print(f"TEAM_PERF change={change} documents={document_count} shared=50 existing_members=50 waves=4 "
+          f"full_median_ms={median(timings['full']):.1f} member_median_ms={median(timings['member']):.1f}")
+
+
+@pytest.mark.asyncio
+async def test_32_personal_libraries_remain_readable_during_agent_archival(committed_database):
+    from app.agent import Agent, agent_service
+    from app.agent.models import Title
+    from app.document.effective_sharing import project_document_access
+    from app.share import ShareConfig, ShareEffectiveAccess
+    from core.database import get_db_session, lock_resource_sharing
+
+    async with get_db_session() as db:
+        readers = [UserModel(email=f"reader-{i}@example.test", hashed_password="unused", is_active=True)
+                   for i in range(32)]
+        title = Title(label="Synthetic load", gender="X")
+        manager = UserModel(email="owner@example.test", hashed_password="unused", is_active=True)
+        agent = Agent(title=title, user=manager, code="load-agent", first_name="Archive", last_name="Test")
+        db.add_all([agent, *readers])
+        await db.flush()
+        agent_id = agent.id
+        rows = [{"id": uuid4(), "owner_user_id": manager.id, "title": f"Library {i}", "provider_code": "native",
+                 "resource_id": str(i), "content_hash": "0" * 64} for i in range(1000)]
+        public = rows[:49]
+        personal = {}
+        for reader, row in zip(readers, rows[49:81], strict=True):
+            row["owner_user_id"] = reader.id
+            personal[reader.id] = row["id"]
+        await bind_private_shares(db, rows, kind="document")
+        await db.execute(Document.__table__.insert(), rows)
+        await db.execute(update(ShareConfig).where(ShareConfig.id.in_(
+            [row["share_id"] for row in public])).values(global_access=1))
+        await project_document_access(db)
+        agent_rows = select(func.count()).select_from(ShareEffectiveAccess).where(ShareEffectiveAccess.agent_id == agent_id)
+        assert await db.scalar(agent_rows) == len(public)
+        await db.execute(text("ANALYZE documents, share_configs, share_effective_access"))
+
+    class InterruptedArchive(Exception):
+        pass
+
+    def interrupt_commit(session):
+        if not session.in_nested_transaction():
+            assert session.scalar(agent_rows) == 0
+            raise InterruptedArchive
+
+    with pytest.raises(InterruptedArchive):
+        async with get_db_session() as writer:
+            event.listen(writer.sync_session, "before_commit", interrupt_commit)
+            assert await agent_service.delete(agent_id)
+    async with get_db_session() as reopened:
+        assert await reopened.scalar(select(Agent.code).where(Agent.id == agent_id)) == "load-agent"
+        assert await reopened.scalar(agent_rows) == len(public)
+
+    ready = asyncio.get_running_loop().create_future()
+    async def archive():
+        async with get_db_session() as writer:
+            ready.set_result(await writer.scalar(text("SELECT pg_backend_pid()")))
+            assert await agent_service.delete(agent_id)
+
+    public_ids = {row["id"] for row in public}
+    async def read(user_id, private_id):
+        started = time.perf_counter()
+        async with get_db_session():
+            page = await service.browse_document_library(DocumentLibraryRequest(), managed_agent_ids=set(), user_id=user_id)
+        elapsed = time.perf_counter() - started
+        assert page.total == 50
+        assert {entry.item.id for entry in page.entries} == public_ids | {private_id}
+        assert {entry.item.id for entry in page.entries if entry.user_access.can_write} == {private_id}
+        return elapsed
+
+    async with asyncio.timeout(30), asyncio.TaskGroup() as group:
+        async with get_db_session() as holder:
+            await lock_resource_sharing()
+            group.create_task(archive())
+            pid = await ready
+            while not await holder.scalar(text("SELECT pg_backend_pid() = ANY(pg_blocking_pids(:pid))"), {"pid": pid}):
+                await asyncio.sleep(0.01)
+            for wave in range(3):
+                times = await asyncio.gather(*(read(uid, doc) for uid, doc in personal.items()))
+                p95 = sorted(times)[ceil(len(times) * 0.95) - 1]
+                print(f"LIBRARY_PERF users={len(times)} documents={len(rows)} wave={wave + 1} "
+                      f"median_ms={1000 * median(times):.1f} p95_ms={1000 * p95:.1f}")
+    async with get_db_session() as db:
+        assert await db.scalar(agent_rows) == 0
+
+
+@pytest.mark.asyncio
+async def test_library_page_in_a_large_team(db, agents):
+    from app.agent import Agent, AgentTeamModel
+    from app.share import ShareGrant
+    from core.team import TeamModel, TeamUserModel
+
+    owner, peer = agents
+    others = [Agent(code=f"library-peer-{i}", first_name="Library", last_name=str(i),
+                    title_id=owner.title_id, agent_driver="internal") for i in range(48)]
+    reader = UserModel(email="library-team@example.test", hashed_password="unused", is_active=True)
+    team = TeamModel(name="Library readers")
+    db.add_all([reader, team, *others])
+    await db.flush()
+    members = [owner.id, peer.id, *(agent.id for agent in others)]
+    db.add_all(AgentTeamModel(team_id=team.id, agent_id=aid) for aid in members)
+    db.add(TeamUserModel(team_id=team.id, user_id=reader.id))
+    documents = [Document(owner_agent_id=owner.id, title=f"Team item {i:02d}", provider_code="native",
+                          resource_id=f"team-{i}", read_only=i == 0, content_hash="0" * 64) for i in range(50)]
+    db.add_all(documents)
+    await db.flush()
+    for item in documents:
+        db.add_all([ShareGrant(share_id=item.share_id, team_id=team.id, can_write=False),
+                    ShareGrant(share_id=item.share_id, agent_id=peer.id, can_write=True)])
+    await db.flush()
+
+    connection = await db.connection()
+    request = DocumentLibraryRequest(limit=50)
+    for label, scope in (("human", set()), ("one_agent", {peer.id}), ("all_agents", None)):
+        counts = []
+
+        def count_rows(_conn, cursor, statement, _parameters, _context, _many):
+            if statement.lstrip().upper().startswith(("WITH", "SELECT")):
+                counts.append(cursor.rowcount)
+
+        event.listen(connection.sync_connection, "after_cursor_execute", count_rows)
+        started = time.perf_counter()
+        try:
+            page = await service.browse_document_library(request, managed_agent_ids=scope, user_id=reader.id)
+        finally:
+            event.remove(connection.sync_connection, "after_cursor_execute", count_rows)
+        print(f"TEAM_PAGE scope={label} reads={len(counts)} rows={sum(counts)} "
+              f"elapsed_ms={(time.perf_counter() - started) * 1000:.1f}")
+        assert page.total == len(page.entries) == 50
+        assert len(counts) == 1 and sum(counts) == len(page.entries), (
+            "A shared page must return each document and its live beneficiary flags in one snapshot"
+        )
+        expected = sorted(members if scope is None else scope)
+        for entry in page.entries:
+            assert entry.user_access.can_read and not entry.user_access.can_write
+            assert entry.agent_ids == expected
+            assert entry.writable_agent_ids == ([] if entry.item.read_only else sorted({owner.id, peer.id}.intersection(expected)))
+            assert [(g.agent_id, g.can_write) for g in entry.item.grants] == [(peer.id, True)]
 
 
 @pytest.mark.asyncio
@@ -259,12 +450,18 @@ async def test_library_page_cost_does_not_materialize_the_revision_corpus(db, ag
         gc.collect()
         connection = await db.connection()
         statements = []
+        payload_columns = {"content", "summary_content", "search_text", "search_vector", "summary_source_text"}
+        returned_payloads = set()
 
         def capture(_connection, _cursor, statement, _parameters, _context, _many):
             if statement.lstrip().upper().startswith(("SELECT", "WITH")):
                 statements.append(statement)
 
+        def capture_payloads(_connection, cursor, _statement, _parameters, _context, _many):
+            returned_payloads.update(column[0] for column in cursor.description or () if column[0] in payload_columns)
+
         event.listen(connection.sync_connection, "before_cursor_execute", capture)
+        event.listen(connection.sync_connection, "after_cursor_execute", capture_payloads)
         tracemalloc.start()
         started = time.perf_counter()
         try:
@@ -274,9 +471,11 @@ async def test_library_page_cost_does_not_materialize_the_revision_corpus(db, ag
             elapsed = time.perf_counter() - started
             tracemalloc.stop()
             event.remove(connection.sync_connection, "before_cursor_execute", capture)
+            event.remove(connection.sync_connection, "after_cursor_execute", capture_payloads)
         assert page.total == stop // 2 and len(page.entries) == 50
         assert page.keywords == ["visible"]
         assert all(entry.item.owner_agent_id == owner_id for entry in page.entries)
+        assert not returned_payloads, f"Navigation returned document bodies or search data: {returned_payloads}"
         assert len(statements) <= 3, "Page, count, grants and facets must stay batched"
         assert not any("memory_revisions" in statement for statement in statements)
         assert not any(isinstance(value, DocumentRevision) for value in db.identity_map.values())

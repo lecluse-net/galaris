@@ -15,7 +15,7 @@ from typing import Literal, cast
 from uuid import UUID, uuid4
 
 from loguru import logger
-from sqlalchemy import and_, case, func, or_, select, tuple_, true, update
+from sqlalchemy import Select, and_, case, func, or_, select, tuple_, true, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from core.database import get_db, get_db_session
@@ -29,6 +29,7 @@ from app.services import ServiceModel as Service
 from app.services.contracts import MCP_PRESENTATIONS_KEY, read_presentations
 
 from . import journal
+from .events import notify_personal_scope_change
 from .document_focus import DocumentFocus
 from ._observations import (
     ObservedMessengerFile,
@@ -409,6 +410,7 @@ async def set_chat_identity_mapping(
         target = await get_db().get(MessengerUser, identity_id)
     elif target.galaris_user_id != user_id:
         target.galaris_user_id = user_id
+    notify_personal_scope_change(user_id)
     await get_db().commit()
     if target is None:
         return None
@@ -432,6 +434,8 @@ async def clear_chat_identity_mapping(user_id: int, service_id: int) -> bool:
         .values(galaris_user_id=None)
         .returning(MessengerUser.id)
     )
+    if cleared_id is not None:
+        notify_personal_scope_change(user_id)
     await get_db().commit()
     return cleared_id is not None
 
@@ -512,18 +516,6 @@ def _next_internal_room_label(
         suffix_number += 1
 
 
-async def _human_identity(user_id: int) -> tuple[Service, MessengerUser] | None:
-    tool = await _internal_tool()
-    if tool is None:
-        return None
-    user = await get_db().scalar(select(User).where(User.id == user_id, User.is_active.is_(True)))
-    if user is None:
-        return None
-    identity_id = await _ensure_human(tool.id, user)
-    identity = await get_db().get(MessengerUser, identity_id)
-    return (tool, identity) if identity is not None else None
-
-
 async def create_internal_room(
     *,
     actor_user_id: int,
@@ -532,10 +524,12 @@ async def create_internal_room(
     topic_id: UUID | None = None,
     show_last_message: bool = True,
 ) -> NativeMessengerRoom | None:
-    identity = await _human_identity(actor_user_id)
-    if identity is None:
+    tool = await _internal_tool()
+    if tool is None:
         return None
-    tool, _actor = identity
+    actor = await get_db().scalar(select(User).where(User.id == actor_user_id, User.is_active.is_(True)))
+    if actor is None:
+        return None
     row = (
         await get_db().execute(
             select(Connection, Agent)
@@ -546,12 +540,17 @@ async def create_internal_room(
                 Connection.agent_id == agent_id,
                 messenger_connection_active(),
             )
-            .with_for_update()
+            # Serialize labels while allowing a concurrent journal write to
+            # take the key-share locks needed to reference these rows.
+            .with_for_update(key_share=True)
         )
     ).one_or_none()
     if row is None:
         return None
     connection, agent = row
+    # The journal resolves identities in external-ID order: agent, then human.
+    agent_identity_id = await _ensure_agent(tool.id, agent)
+    actor_identity_id = await _ensure_human(tool.id, actor)
     agent_label = (
         " ".join(
             part for part in (agent.first_name, agent.last_name) if part
@@ -574,14 +573,13 @@ async def create_internal_room(
     )
     get_db().add(room)
     await get_db().flush()
-    agent_identity_id = await _ensure_agent(tool.id, agent)
     await _upsert_membership(room.id, agent_identity_id, role="member")
-    await _upsert_membership(room.id, _actor.id, role="owner")
+    await _upsert_membership(room.id, actor_identity_id, role="owner")
     await get_db().execute(
         update(RoomUser)
         .where(
             RoomUser.room_id == room.id,
-            RoomUser.user_id == _actor.id,
+            RoomUser.user_id == actor_identity_id,
         )
         .values(show_last_message=show_last_message)
     )
@@ -600,13 +598,8 @@ async def _upsert_membership(room_id: UUID, user_id: UUID, *, role: str) -> None
     )
 
 
-async def room_membership(
-    user_id: int,
-    room_id: UUID,
-    *,
-    lock: bool = False,
-) -> tuple[Room, RoomUser, MessengerUser, Connection] | None:
-    statement = (
+def _internal_membership_query(user_id: int, room_id: UUID) -> Select[tuple[Room, RoomUser, MessengerUser, Connection]]:
+    return (
         select(Room, RoomUser, MessengerUser, Connection)
         .join(Connection, Connection.id == Room.connection_id)
         .join(Service, Service.id == Connection.service_id)
@@ -620,6 +613,12 @@ async def room_membership(
             RoomUser.role == "owner",
         )
     )
+
+
+async def room_membership(
+    user_id: int, room_id: UUID, *, lock: bool = False,
+) -> tuple[Room, RoomUser, MessengerUser, Connection] | None:
+    statement = _internal_membership_query(user_id, room_id)
     if lock:
         statement = statement.with_for_update(of=RoomUser)
     row = (await get_db().execute(statement)).one_or_none()
@@ -630,13 +629,14 @@ async def has_room_access(user_id: int, room_id: UUID) -> bool:
     return await room_membership(user_id, room_id) is not None
 
 
-async def chat_room_membership(
-    user_id: int,
-    room_id: UUID,
-    *,
-    lock: bool = False,
-) -> tuple[Room, RoomUser, MessengerUser, Connection, Service] | None:
-    statement = (
+async def can_view_internal_room(user_id: int, room_id: UUID) -> bool:
+    """Match the native owner view, including the availability of its agent."""
+    query = _internal_membership_query(user_id, room_id).join(Agent, Agent.id == Connection.agent_id)
+    return await get_db().scalar(query.with_only_columns(Room.id)) is not None
+
+
+def _chat_membership_query(user_id: int, room_id: UUID) -> Select[tuple[Room, RoomUser, MessengerUser, Connection, Service]]:
+    return (
         select(Room, RoomUser, MessengerUser, Connection, Service)
         .join(Connection, Connection.id == Room.connection_id)
         .join(Service, Service.id == Connection.service_id)
@@ -654,6 +654,12 @@ async def chat_room_membership(
             ),
         )
     )
+
+
+async def chat_room_membership(
+    user_id: int, room_id: UUID, *, lock: bool = False,
+) -> tuple[Room, RoomUser, MessengerUser, Connection, Service] | None:
+    statement = _chat_membership_query(user_id, room_id)
     if lock:
         statement = statement.with_for_update(of=RoomUser)
     row = (await get_db().execute(statement)).one_or_none()
@@ -663,10 +669,33 @@ async def chat_room_membership(
     )
 
 
+async def chat_member_agent_id(user_id: int, room_id: UUID) -> int | None:
+    """Return the owning connection's agent for an existing personal text membership."""
+    query = _chat_membership_query(user_id, room_id).with_only_columns(Connection.agent_id)
+    return (await get_db().execute(query.select_from(Room))).scalar_one_or_none()
+
+
+async def chat_member_candidates(room_id: UUID, users: set[int]) -> set[int]:
+    """Identify possible personal recipients with one read, including native identities."""
+    native = {human_external_id(user_id): user_id for user_id in users}
+    rows = await get_db().execute(select(MessengerUser.galaris_user_id, MessengerUser.external_id, Service.code)
+        .select_from(RoomUser).join(MessengerUser, MessengerUser.id == RoomUser.user_id)
+        .join(Room, Room.id == RoomUser.room_id).join(Connection, Connection.id == Room.connection_id)
+        .join(Service, Service.id == Connection.service_id)
+        .where(Room.id == room_id, Room.conversation_type == "text"))
+    members: set[int] = set()
+    for linked_id, external_id, service_code in rows:
+        if linked_id is not None and linked_id in users:
+            members.add(linked_id)
+        if service_code == CHAT_TOOL_CODE and external_id in native:
+            members.add(native[external_id])
+    return members
+
+
 async def has_chat_room_access(user_id: int, room_id: UUID) -> bool:
     """Authorize Chat only through a linked canonical Messenger identity."""
 
-    return await chat_room_membership(user_id, room_id) is not None
+    return await chat_member_agent_id(user_id, room_id) is not None
 
 
 async def has_agent_chat_room_access(agent_id: int, room_id: UUID) -> bool:
@@ -686,21 +715,25 @@ async def has_agent_chat_room_access(agent_id: int, room_id: UUID) -> bool:
     )
 
 
-async def has_ai_chat_room_access(room_id: UUID) -> bool:
-    return (
-        await get_db().scalar(
-            select(RoomUser.room_id)
-            .join(Room, Room.id == RoomUser.room_id)
-            .join(MessengerUser, MessengerUser.id == RoomUser.user_id)
-            .where(
-                RoomUser.room_id == room_id,
-                Room.conversation_type == "text",
-                MessengerUser.agent_id.is_not(None),
-                MessengerUser.is_ai.is_(True),
-            )
+async def has_ai_chat_room_access(room_id: UUID, *, agent_ids: Collection[int] | None = None) -> bool:
+    query = (
+        select(RoomUser.room_id)
+        .join(Room, Room.id == RoomUser.room_id)
+        .join(MessengerUser, MessengerUser.id == RoomUser.user_id)
+        .where(
+            RoomUser.room_id == room_id,
+            Room.conversation_type == "text",
+            MessengerUser.agent_id.is_not(None),
+            MessengerUser.is_ai.is_(True),
         )
-        is not None
     )
+    if agent_ids is not None:
+        if not agent_ids:
+            return False
+        query = (query.join(Connection, Connection.id == Room.connection_id)
+                 .join(Agent, Agent.id == Connection.agent_id)
+                 .where(MessengerUser.agent_id.in_(agent_ids)))
+    return await get_db().scalar(query.limit(1)) is not None
 
 
 async def _room_has_expected_agent(room_id: UUID, agent_id: int) -> bool:
@@ -1980,6 +2013,7 @@ async def publish_internal_message(
     document_focus: DocumentFocus | None = None,
     language: str | None = None,
     desktop_screen_session: UUID | None = None,
+    release_request_transaction: bool = False,
 ) -> NativeMessengerMessage | None:
     # Admission runs in its own durable database session and locks the canonical
     # room while attaching the message to a ConversationRound. Keeping a lock in
@@ -2075,21 +2109,25 @@ async def publish_internal_message(
         metadata[TASK_REQUESTED_METADATA_KEY] = True
     if reasoning_effort_override is not None:
         metadata[TASK_REASONING_EFFORT_METADATA_KEY] = reasoning_effort_override
+    connection_id, sender_external_id = connection.id, human.external_id
+    if release_request_transaction:
+        # The HTTP caller owns this preparation transaction. The journal and each
+        # receiver need independent commits and must be able to acquire a connection.
+        await get_db().commit()
     if not metadata:
         await dispatch_incoming(observation)
     else:
         await dispatch_incoming(observation, metadata=metadata)
     stored = await journal.stored_message(
-        connection_id=connection.id,
+        connection_id=connection_id,
         remote_message_id=str(client_message_id),
         direction="inbound",
     )
     if stored is None:
         raise RuntimeError("The native message was not persisted.")
-    hydrated = await journal.hydrate_messages([stored])
     return await _message_dto(
-        hydrated[0],
-        human_external_id=human.external_id,
+        stored,
+        human_external_id=sender_external_id,
         viewer_galaris_user_id=user_id,
     )
 

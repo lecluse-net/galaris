@@ -318,18 +318,14 @@ def _project_recent_messages(
 async def _finish_attempt(
     round_: ConversationRound, status: str, error: str | None = None
 ) -> None:
-    attempt = await get_db().scalar(
-        select(ConversationRoundAttempt)
+    await get_db().execute(
+        update(ConversationRoundAttempt)
         .where(
             ConversationRoundAttempt.round_id == round_.id,
             ConversationRoundAttempt.attempt_number == round_.attempt_count,
         )
-        .with_for_update()
+        .values(status=status, error=error, finished_at=_now())
     )
-    if attempt is not None:
-        attempt.status = status
-        attempt.error = error
-        attempt.finished_at = _now()
 
 
 async def _mark_round_inputs_consumed(
@@ -435,16 +431,16 @@ async def _claim_round(round_: ConversationRound, worker_id: str) -> Conversatio
         )
     )
     await get_db().commit()
-    await get_db().refresh(round_)
+    # Return the token this attempt owns, even after a concurrent revocation.
     return round_
 
 
-def _read_round_checkpoint(round_: ConversationRound) -> AgentRunCheckpoint | None:
-    from core.util import get_encryption_service
+async def _read_round_checkpoint(round_: ConversationRound) -> AgentRunCheckpoint | None:
+    from .checkpoint_journal import read_checkpoint_payload
 
     if not round_.encrypted_checkpoint:
         return None
-    payload = json.loads(get_encryption_service().decrypt(round_.encrypted_checkpoint))
+    payload = await asyncio.to_thread(read_checkpoint_payload, round_.encrypted_checkpoint)
     checkpoint = AgentRunCheckpoint(
         driver_code=payload["driver_code"], runtime_run_id=payload["runtime_run_id"],
         status=payload["status"], data=payload["data"],
@@ -497,11 +493,9 @@ async def _interrupt_round(round_: ConversationRound) -> bool:
         error = "Conversation worker stopped during response delivery; delivery must be reconciled."
     else:
         try:
-            checkpoint = _read_round_checkpoint(round_)
+            checkpoint = await _read_round_checkpoint(round_)
             if checkpoint is not None:
                 assessment = assess_checkpoint(checkpoint)
-                # This controller has no Console reconciler. Only a safe history
-                # may resume; uncertain external effects must never be replayed.
                 if assessment.state != "safe":
                     error = f"Conversation checkpoint cannot safely resume: {assessment.reason}"
             elif round_.effect_started:
@@ -579,8 +573,12 @@ async def claim_next_round(worker_id: str) -> ConversationRound | None:
     # skipping that unrelated lock would consume the wakeup and postpone ready
     # work until recovery. The unique FROZEN row and its lock serialize claims
     # with admission; the processing predicate keeps its successor queued.
-    pending = await get_db().scalar(
-        select(ConversationRound)
+    input_exists = exists().where(
+        ConversationRoundMessage.round_id == ConversationRound.id,
+        ConversationRoundMessage.role == "input",
+    )
+    candidate = (await get_db().execute(
+        select(ConversationRound, input_exists)
         .where(
             ConversationRound.status == "FROZEN",
             ~exists(
@@ -593,16 +591,19 @@ async def claim_next_round(worker_id: str) -> ConversationRound | None:
         .order_by(ConversationRound.created_at.asc(), ConversationRound.id.asc())
         .limit(1)
         .with_for_update(skip_locked=True)
-    )
-    if pending is None:
+        .execution_options(populate_existing=True)
+    )).one_or_none()
+    if candidate is None:
         return None
-    has_input = await get_db().scalar(
-        select(ConversationRoundMessage.message_id).where(
+    pending, has_input = candidate
+    if not has_input:
+        # The selection snapshot precedes the row lock. Confirm an empty round
+        # under that lock in case admission attached its first input meanwhile.
+        has_input = await get_db().scalar(select(exists().where(
             ConversationRoundMessage.round_id == pending.id,
             ConversationRoundMessage.role == "input",
-        )
-    )
-    if has_input is None:
+        )))
+    if not has_input:
         pending.status = "CANCELLED"
         pending.finished_at = now
         await get_db().commit()
@@ -817,17 +818,10 @@ async def build_turn(
     from .process_interactions import PROCESS_HUMAN_INTERACTION, process_interaction_context, live_process_choices
     pending_choices = await live_process_choices(pending_choices, requester_user_id=hydrated[-1].requester_user_id)
     explicit_reference = await explicit_reply_reference(hydrated[-1], pending_choices)
-    from core.util import get_encryption_service
-    resume_checkpoint = _read_round_checkpoint(round_)
+    resume_checkpoint = await _read_round_checkpoint(round_)
     from .facade import active_work_snapshot
-
-    async def save_checkpoint(checkpoint: AgentRunCheckpoint) -> None:
-        from app.services.facade import canonical_authorization_snapshot
-        async with get_db_session():
-            owned = await _locked_owned_round(round_id, lease_token)
-            owned.encrypted_checkpoint = get_encryption_service().encrypt(canonical_authorization_snapshot(checkpoint))
-            await get_db().commit()
-
+    from .checkpoint_journal import RoundCheckpointWriter
+    save_checkpoint = RoundCheckpointWriter(round_id, lease_token).save
     source = hydrated[-1].metadata_.get(CHAT_SCREEN_SOURCE_KEY)
     desktop_screen_session: UUID | None = None
     if (round_.requester_user_id is not None and isinstance(source, str)
@@ -980,7 +974,7 @@ async def linked_work_snapshot(room_id: UUID) -> tuple[Mapping[str, object], ...
 
     from app.task.facade import TaskWorkSnapshot, list_work_snapshots
 
-    linked_task_ids = tuple(await get_db().scalars(
+    linked_task_ids = (
         select(ConversationTaskLink.task_id)
         .join(
             ConversationRound,
@@ -989,7 +983,7 @@ async def linked_work_snapshot(room_id: UUID) -> tuple[Mapping[str, object], ...
         .where(
             ConversationRound.room_id == room_id,
         )
-    ))
+    )
     processing_at = _aware_utc(_now())
     rows = await list_work_snapshots(
         task_ids=linked_task_ids, message_group_id=str(room_id),
@@ -1104,6 +1098,7 @@ async def complete_round(
                 room.id,
                 text,
                 publish_event=False,
+                release_dispatch_transaction=True,
                 journal_metadata={
                     CONVERSATION_OUTPUT_PENDING_METADATA_KEY: True,
                     CONVERSATION_ROUND_METADATA_KEY: str(round_id),
@@ -1114,6 +1109,9 @@ async def complete_round(
         except ConversationLeaseLostError:
             raise
         except Exception as exc:
+            # SENDING is already committed. Even a failed SQL transaction in
+            # the provider must allow this owner to record an uncertain send.
+            await get_db().rollback()
             round_ = await _locked_owned_round(round_id, lease_token)
             round_.status = "ERROR_RESOLVED"
             round_.delivery_state = "UNKNOWN"
@@ -1138,7 +1136,6 @@ async def complete_round(
         # Publish a fully loaded, detached snapshot. Some test and integration
         # sessions expire ORM instances on commit; signal receivers must never
         # trigger an implicit asynchronous reload while rendering the handoff.
-        await get_db().refresh(publish_message)
         get_db().expunge(publish_message)
     round_.status = "COMPLETED" if round_.voice_session_id else "SUCCEEDED"
     round_.encrypted_checkpoint = None
@@ -1157,11 +1154,9 @@ async def complete_round(
 
 
 async def _link_output(round_id: UUID, message_id: UUID) -> None:
-    contact_memory_item_id = await get_db().scalar(
-        select(ConversationRound.contact_memory_item_id).where(
-            ConversationRound.id == round_id
-        )
-    )
+    contact_memory_item_id = select(ConversationRound.contact_memory_item_id).where(
+        ConversationRound.id == round_id
+    ).scalar_subquery()
     await get_db().execute(
         update(Message)
         .where(Message.id == message_id)
@@ -1172,15 +1167,11 @@ async def _link_output(round_id: UUID, message_id: UUID) -> None:
             ),
         )
     )
-    next_sequence = int(
-        await get_db().scalar(
-            select(func.coalesce(func.max(ConversationRoundMessage.sequence), 0)).where(
-                ConversationRoundMessage.round_id == round_id,
-                ConversationRoundMessage.role == "output",
-            )
-        )
-        or 0
-    ) + 1
+    # The caller owns the round lock, including during receipt recovery.
+    next_sequence = select(func.coalesce(func.max(ConversationRoundMessage.sequence), 0) + 1).where(
+        ConversationRoundMessage.round_id == round_id,
+        ConversationRoundMessage.role == "output",
+    ).scalar_subquery()
     await get_db().execute(
         pg_insert(ConversationRoundMessage)
         .values(
@@ -1484,7 +1475,7 @@ async def deliver_round_notification(round_id: UUID) -> None:
         from app.messenger import get_messenger
 
         messenger = await get_messenger(connection_id)
-        sent = await messenger.send_to_room(room_id, text)
+        sent = await messenger.send_to_room(room_id, text, release_dispatch_transaction=True)
     except Exception as exc:
         await get_db().rollback()
         current = await get_db().scalar(
@@ -1884,7 +1875,7 @@ async def deliver_task_notification(link_id: UUID) -> None:
             )
         sent_message_id = None
         if not text_already_delivered:
-            sent_message_id = (await messenger.send_to_room(room_id, text)).id
+            sent_message_id = (await messenger.send_to_room(room_id, text, release_dispatch_transaction=True)).id
     except Exception as exc:
         await get_db().rollback()
         current = await get_db().scalar(
@@ -1980,10 +1971,10 @@ async def deliver_process_notification(link_id: UUID) -> None:
         if output_text:
             text = f"{text}\n\n{output_text}"
         await get_db().commit()
-        if attachments:
-            sent = await messenger.send_to_room(room_id, text, journal_metadata={"resource_uris": attachments})
-        else:
-            sent = await messenger.send_to_room(room_id, text)
+        sent = await messenger.send_to_room(
+            room_id, text, release_dispatch_transaction=True,
+            journal_metadata={"resource_uris": attachments} if attachments else None,
+        )
     except Exception as exc:
         await get_db().rollback()
         current = await get_db().scalar(
@@ -2093,14 +2084,15 @@ __all__ = [
 ]
 
 
-def _ensure_safe_checkpoint(round_: ConversationRound) -> None:
+async def _ensure_safe_checkpoint(round_: ConversationRound) -> AgentRunCheckpoint | None:
     try:
-        checkpoint = _read_round_checkpoint(round_)
+        checkpoint = await _read_round_checkpoint(round_)
         if checkpoint is not None:
             if assess_checkpoint(checkpoint).state != "safe":
                 raise ValueError("Uncertain tool effects")
         elif round_.effect_started:
             raise ValueError("Missing effect receipts")
+        return checkpoint
     except Exception as exc:
         raise ConversationControlConflict(
             "The saved execution cannot safely resume; verify the previous tool effects first.",
@@ -2134,7 +2126,7 @@ async def apply_requested_control(round_: ConversationRound) -> bool:
             round_.encrypted_checkpoint = None
         if action == "respond" and await _pending_successor(round_) is None:
             try:
-                _ensure_safe_checkpoint(round_)
+                await _ensure_safe_checkpoint(round_)
             except ConversationControlConflict as exc:
                 round_.last_error = str(exc)
             else:
@@ -2175,8 +2167,7 @@ async def control_round(
     if action in {"resume", "restart", "respond"} and other_work_pending:
         raise ConversationControlConflict("A newer message is waiting; control its response instead.", code="newer_input")
     if action == "restart":
-        _ensure_safe_checkpoint(round_)
-        checkpoint = _read_round_checkpoint(round_)
+        checkpoint = await _ensure_safe_checkpoint(round_)
         successor = ConversationRound(
             id=uuid4(), room_id=room_id, source_round_id=round_.id, status="FROZEN",
             language=round_.language, topic_id=round_.topic_id,
@@ -2201,7 +2192,7 @@ async def control_round(
         round_.resolved_by_round_id = successor.id
         round_ = successor
     elif action == "resume" or action == "respond" and round_.status == "PAUSED":
-        _ensure_safe_checkpoint(round_)
+        await _ensure_safe_checkpoint(round_)
         round_.status = "FROZEN"
         round_.control_action = None
         round_.response_only = round_.response_only or action == "respond"

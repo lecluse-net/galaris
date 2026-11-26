@@ -1,8 +1,8 @@
 """Live document ACLs, independent of personal memory and its indexes."""
 from __future__ import annotations
-from collections.abc import Collection
+from collections.abc import Collection, Iterable
 from uuid import UUID
-from sqlalchemy import and_, exists, false, or_, select, true, union_all
+from sqlalchemy import Select, and_, exists, false, func, or_, select, true, union_all
 from sqlalchemy.orm import aliased, InstrumentedAttribute
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.selectable import Subquery
@@ -30,7 +30,7 @@ def owner_team_clause(
         )),
     )
 
-def document_team_permissions(item_ids: Collection[UUID] | None = None) -> Subquery:
+def document_team_permissions(item_ids: Collection[UUID] | Select[tuple[UUID]] | None = None) -> Subquery:
     """Explicit teams plus live teams of the document's Agent or human owner."""
     explicit = select(Document.id.label("item_id"), ShareGrant.team_id, ShareGrant.can_write).join(ShareGrant, ShareGrant.share_id == Document.share_id).join(
         TeamModel, TeamModel.id == ShareGrant.team_id,
@@ -83,15 +83,24 @@ def _direct_human_item_clause(user_id: int, *, write: bool = False) -> ColumnEle
         ~Document.source_managed if write else true(),
     )
 
-async def document_team_agent_access(item_ids: Collection[UUID]) -> dict[UUID, dict[int, bool]]:
+def team_agent_rights(
+    item_ids: Collection[UUID] | Select[tuple[UUID]], agent_ids: Collection[int] | None = None,
+) -> Select[tuple[UUID, int, bool]]:
     permissions = document_team_permissions(item_ids)
-    rows = await get_db().execute(select(permissions.c.item_id, Agent.id, permissions.c.can_write).join(
+    query = select(permissions.c.item_id, Agent.id.label("agent_id"),
+                   func.bool_or(permissions.c.can_write).label("can_write")).join(
         AgentTeamModel, AgentTeamModel.team_id == permissions.c.team_id,
-    ).join(Agent, Agent.id == AgentTeamModel.agent_id).where(Agent.deleted_at.is_(None)))
+    ).join(Agent, Agent.id == AgentTeamModel.agent_id).where(Agent.deleted_at.is_(None))
+    if agent_ids is not None:
+        query = query.where(Agent.id.in_(agent_ids))
+    return query.group_by(permissions.c.item_id, Agent.id)
+
+
+async def document_team_agent_access(item_ids: Collection[UUID]) -> dict[UUID, dict[int, bool]]:
+    rows = await get_db().execute(team_agent_rights(item_ids))
     result: dict[UUID, dict[int, bool]] = {}
     for item_id, agent_id, can_write in rows:
-        current = result.setdefault(item_id, {})
-        current[agent_id] = current.get(agent_id, False) or can_write
+        result.setdefault(item_id, {})[agent_id] = can_write
     return result
 
 def readable_item_clause(agent_id: int | InstrumentedAttribute[int]) -> ColumnElement[bool]:
@@ -162,25 +171,27 @@ async def human_item_access(item: Document, user_id: int) -> DocumentAccess:
 human_document_access=human_item_access
 
 
+def page_agent_access(
+    item: Document, candidates: frozenset[int], grants: Iterable[tuple[int, bool]],
+) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    readable = set(candidates) if item.global_access >= 1 else set[int]()
+    writable = set(candidates) if item.global_access == 2 else set[int]()
+    if item.owner_agent_id is not None and item.owner_agent_id in candidates:
+        readable.add(item.owner_agent_id)
+        writable.add(item.owner_agent_id)
+    for agent_id, can_write in grants:
+        if agent_id in candidates:
+            readable.add(agent_id)
+            if can_write:
+                writable.add(agent_id)
+    return tuple(sorted(readable)), () if item.read_only else tuple(sorted(writable))
+
+
 async def managed_item_agent_ids(item: Document, agent_ids: Collection[int] | None, *, team_access: dict[int,bool] | None = None) -> tuple[tuple[int,...],tuple[int,...]]:
     if team_access is not None and agent_ids is not None:
-        candidates = set(agent_ids)
-        readable = candidates.copy() if item.global_access >= 1 else set[int]()
-        writable = candidates.copy() if item.global_access == 2 else set[int]()
-        if item.owner_agent_id is not None and item.owner_agent_id in candidates:
-            readable.add(item.owner_agent_id)
-            writable.add(item.owner_agent_id)
-        for grant in item.grants:
-            if grant.agent_id is not None and grant.agent_id in candidates:
-                readable.add(grant.agent_id)
-                if grant.can_write:
-                    writable.add(grant.agent_id)
-        for identity, can_write in team_access.items():
-            if identity in candidates:
-                readable.add(identity)
-                if can_write:
-                    writable.add(identity)
-        return tuple(sorted(readable)), () if item.read_only else tuple(sorted(writable))
+        from itertools import chain
+        direct = ((g.agent_id, g.can_write) for g in item.grants if g.agent_id is not None)
+        return page_agent_access(item, frozenset(agent_ids), chain(direct, team_access.items()))
     # One correlated statement preserves live memberships and avoids per-agent reads.
     candidates=select(Agent.id, readable_item_clause(Agent.id), writable_item_clause(Agent.id)).select_from(Agent).join(Document, Document.id == item.id)
     if agent_ids is not None:

@@ -28,7 +28,7 @@ async def scope(db):
 async def parked_schedulers(committed_database, monkeypatch):
     # Isolate notification delivery from execution; the real ORM transactions,
     # post-commit observers and scheduler wake functions remain in the workflow.
-    async def parked():
+    async def parked(*, maintenance_only=False):
         await asyncio.Event().wait()
 
     monkeypatch.setattr(tasks, "_run_loop", parked)
@@ -160,6 +160,25 @@ async def test_idle_schedulers_do_not_query_and_maintenance_does_not_rescan_task
         await asyncio.sleep(1.2)
         assert maintained.is_set(), "Periodic maintenance must keep running"
         assert queries == [], f"{len(queries)} queries while both queues were idle"
+        conversations.wake()
+        async with asyncio.timeout(2):
+            while not queries:
+                await asyncio.sleep(.01)
+        # Let the scheduler finish checking for new rounds after the explicit wake.
+        await asyncio.sleep(.1)
+        scanned = " ".join(queries).lower()
+        assert "conversation_rounds" in scanned
+        assert "permission_decisions" not in scanned
+        assert "conversation_task_links" not in scanned
+        assert "conversation_process_links" not in scanned
+
+        round_scans = set(queries)
+        queries.clear()
+        conversations._wake_deliveries()
+        async with asyncio.timeout(2):
+            while not any("conversation_process_links" in q.lower() for q in queries):
+                await asyncio.sleep(.01)
+        assert round_scans.isdisjoint(queries), "A delivery retried the empty dialogue queue"
     finally:
         event.remove(engine, "before_cursor_execute", record)
         await conversations.stop()
@@ -167,39 +186,101 @@ async def test_idle_schedulers_do_not_query_and_maintenance_does_not_rescan_task
 
 
 @pytest.mark.asyncio
+async def test_fresh_round_claim_bounds_sql_reads(committed_database):
+    from app.conversation.service import admit_message, claim_next_round
+
+    async with get_db_session() as db:
+        agent, connection, room = await scope(db)
+        message = await _message(db, connection, room, 1, "Synthetic question")
+        await admit_message(message, agent_id=agent.id, connection_id=connection.id)
+        engine = db.bind.sync_engine
+
+    reads = []
+
+    def capture(_conn, _cursor, statement, _params, _context, _many):
+        if statement.lstrip().upper().startswith("SELECT"):
+            reads.append(statement)
+
+    event.listen(engine, "before_cursor_execute", capture)
+    try:
+        async with get_db_session():
+            round_ = await claim_next_round("synthetic-worker")
+            assert round_ is not None and round_.lease_token is not None
+            assert round_.room_id == room.id
+    finally:
+        event.remove(engine, "before_cursor_execute", capture)
+    assert len(reads) <= 2, f"{len(reads)} SQL reads for one fresh claim"
+
+
+@pytest.mark.asyncio
 async def test_conversation_admission_starts_while_chat_updates_the_room(
     committed_database, monkeypatch,
 ):
+    from app.conversation import controller, facade
     from app.conversation.service import admit_message
     from app.messenger import touch_chat_room
 
     await conversations.stop()
     async with get_db_session() as db:
-        agent, connection, room = await scope(db)
-        message = await _message(db, connection, room, 1, "Synthetic question")
-        await admit_message(message, agent_id=agent.id, connection_id=connection.id)
+        rooms = []
+        _, _, empty_room = await scope(db)
+        empty = ConversationRound(room_id=empty_room.id, status="FROZEN",
+                                  created_at=datetime(2000, 1, 1, tzinfo=timezone.utc))
+        db.add(empty)
+        for _ in range(2):
+            agent, connection, room = await scope(db)
+            message = await _message(db, connection, room, 1, "Synthetic question")
+            await admit_message(message, agent_id=agent.id, connection_id=connection.id)
+            rooms.append(room.id)
 
     claimed = asyncio.Event()
-    claims = []
+    claims = set()
+    active_observers = set()
+    executing = set()
+    both_executing = asyncio.Event()
 
-    async def execute(round_id, lease_token):
-        claims.append((round_id, lease_token))
-        claimed.set()
+    async def slow_observer(round_id):
+        active_observers.add(asyncio.current_task())
+        claims.add(round_id)
+        if len(claims) == 2:
+            claimed.set()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            active_observers.discard(asyncio.current_task())
+
+    async def run(turn):
+        executing.add(turn.round_id)
+        if len(executing) == 2:
+            both_executing.set()
         await asyncio.Event().wait()
 
-    # Keep the real scheduler and claim transaction; replace only execution after
-    # admission. A missed notification cannot pass through a periodic recovery.
-    monkeypatch.setattr(conversations, "_execute", execute)
+    # A slow observer in one room must leave the other room's claim and lease free to start.
+    monkeypatch.setattr(facade, "publish_round_activity", slow_observer)
+    monkeypatch.setattr(controller, "run", run)
+    monkeypatch.setattr(conversations.settings, "CONVERSATION_WORKER_CONCURRENCY", 2)
+    monkeypatch.setattr(conversations, "_SHUTDOWN_DRAIN_SECONDS", .01)
+    monkeypatch.setattr(conversations, "_CANCEL_WAIT_SECONDS", .05)
     monkeypatch.setattr(conversations, "_POLL_SECONDS", 3600.0)
     try:
         async with get_db_session():
-            await touch_chat_room(room.id)
+            await touch_chat_room(rooms[0])
             conversations.start()
             await asyncio.wait_for(claimed.wait(), 2)
-            assert len(claims) == 1
+            assert len(claims) == 2
             assert await conversations._claim() is None
+        await asyncio.wait_for(both_executing.wait(), 3)
+        assert executing == claims
+        assert len(active_observers) == 2
     finally:
-        await conversations.stop()
+        await asyncio.wait_for(conversations.stop(), 3)
+    assert not active_observers
+    async with get_db_session() as db:
+        assert (await db.get(ConversationRound, empty.id)).status == "CANCELLED"
+        for round_id in claims:
+            released = await db.get(ConversationRound, round_id)
+            assert released.status == "FROZEN"
+            assert released.lease_token is None
 
 
 @pytest.mark.asyncio

@@ -63,6 +63,15 @@ async def verify_historical_transfer(session: AsyncSession, delta: SchemaTransit
 
 
 def register_dbadmin(registry: DbAdminRegistry) -> None:
+    # The standalone DbAdmin process seeds agents without starting the HTTP app.
+    from app.agent import register_agent_access_projection
+    from .sharing_inheritance import refresh_agent_document_access
+    from .effective_sharing import project_document_access
+    register_agent_access_projection("document", refresh_agent_document_access)
+    registry.register_reconciler(DbAdminReconciler(
+        key="app.document.effective_access", handler=project_document_access,
+        depends_on=("app.document.sharing_inheritance",),
+    ))
     from .format_migration import register as register_format_migration
     register_format_migration(registry)
     from .unification import register as register_typed_documents

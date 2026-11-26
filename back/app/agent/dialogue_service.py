@@ -1,5 +1,5 @@
 """Human contact access and connection-scoped peer dialogue decisions."""
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,7 +7,7 @@ from core.authorize import check_privilege, role_id_ctx
 from core.database import get_db
 from core.i18n import tr
 from core.params import Param, Params
-from core.team import TeamModel, audit, human_memberships, require_team
+from core.team import TeamModel, TeamUserModel, audit, human_memberships, lock_team_sharing, refresh_team_access, require_team
 from core.user import UserModel, user_service
 
 from .models import Agent, AgentTeam
@@ -42,12 +42,20 @@ async def policy_snapshot(db: AsyncSession | None = None) -> DialoguePolicy:
     return policy
 
 
-async def dialogue_scope_for(user: UserModel, db: AsyncSession) -> AgentManagementScope:
-    policy = await policy_snapshot(db)
-    global_access = await check_privilege(user, "AGENT_MANAGE_ALL", db)
-    return AgentManagementScope(user_id=user.id, agent_ids=frozenset(
-        aid for aid in policy.agents if policy.human(user.id, aid, active=user.is_active, global_access=global_access).allowed
-    ))
+async def dialogue_scope_for(user: UserModel, db: AsyncSession, *, agent_id: int | None = None) -> AgentManagementScope:
+    """Read the current human dialogue grants, optionally for just one agent."""
+    if not user.is_active:
+        return AgentManagementScope(user_id=user.id, agent_ids=frozenset())
+    allowed = select(Agent.id).where(Agent.deleted_at.is_(None))
+    if agent_id is not None:
+        allowed = allowed.where(Agent.id == agent_id)
+    if not await check_privilege(user, "AGENT_MANAGE_ALL", db):
+        team_agents = (select(AgentTeam.agent_id)
+            .join(TeamModel, TeamModel.id == AgentTeam.team_id)
+            .join(TeamUserModel, TeamUserModel.team_id == TeamModel.id)
+            .where(TeamUserModel.user_id == user.id, TeamModel.deleted_at.is_(None)))
+        allowed = allowed.where(or_(Agent.user_id == user.id, Agent.id.in_(team_agents)))
+    return AgentManagementScope(user_id=user.id, agent_ids=frozenset(await db.scalars(allowed)))
 
 
 async def current_dialogue_scope() -> AgentManagementScope:
@@ -72,9 +80,9 @@ async def require_agent_contact(
 ) -> None:
     if peer_agent_id is not None:
         await require_peer_interaction(agent_id, peer_agent_id)
-    policy = await policy_snapshot()
     decision = DialogueDecision(allowed=False, source="default")
     if peer_agent_id is not None:
+        policy = await policy_snapshot()
         if peer_scope == "team":
             decision = policy.peers(agent_id, peer_agent_id)
         elif peer_scope == "all":
@@ -87,23 +95,25 @@ async def require_agent_contact(
         if user is not None:
             token = role_id_ctx.set(None)
             try:
-                global_access = await check_privilege(user, "AGENT_MANAGE_ALL", get_db())
+                if (await dialogue_scope_for(user, get_db(), agent_id=agent_id)).allows(agent_id):
+                    return
             finally:
                 role_id_ctx.reset(token)
-            decision = policy.human(user.id, agent_id, active=user.is_active, global_access=global_access)
     if not decision.allowed:
         raise AgentScopeDeniedError("Contact is not authorized by the dialogue policy")
 
 
 async def set_agent_membership(team_id: int, agent_id: int, present: bool) -> None:
+    await lock_team_sharing()
     await require_team(team_id)
-    agent = await get_db().scalar(select(Agent).where(Agent.id == agent_id).with_for_update())
+    agent = await get_db().scalar(select(Agent.id).where(Agent.id == agent_id).with_for_update())
     if agent is None:
         raise LookupError("Agent not found")
-    previous = await get_db().scalar(select(AgentTeam.id).where(AgentTeam.agent_id == agent_id, AgentTeam.team_id == team_id))
-    before = previous is not None
     if present:
-        await get_db().execute(insert(AgentTeam).values(agent_id=agent_id, team_id=team_id).on_conflict_do_nothing())
+        command = insert(AgentTeam).values(agent_id=agent_id, team_id=team_id).on_conflict_do_nothing()
     else:
-        await get_db().execute(delete(AgentTeam).where(AgentTeam.agent_id == agent_id, AgentTeam.team_id == team_id))
-    audit("team.agent", {"team": team_id, "agent": agent_id, "before": before, "after": present})
+        command = delete(AgentTeam).where(AgentTeam.agent_id == agent_id, AgentTeam.team_id == team_id)
+    changed = await get_db().scalar(command.returning(AgentTeam.id)) is not None
+    if changed:
+        await refresh_team_access(team_id, ("agent", agent_id))
+    audit("team.agent", {"team": team_id, "agent": agent_id, "before": not present if changed else present, "after": present})

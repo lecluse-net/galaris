@@ -130,7 +130,7 @@ async def test_populated_legacy_upgrade_keeps_exact_rights_sources_and_restarts_
                 )
             )
         await db.execute(text("ALTER TABLE document_sharing_intents DROP CONSTRAINT document_sharing_intents_share_id_fkey"))
-        await db.execute(text("DROP TABLE share_grants, share_configs"))
+        await db.execute(text("DROP TABLE share_effective_access, share_grants, share_configs"))
         await db.commit()
     registry = DbAdminRegistry()
     register_dbadmin(registry)

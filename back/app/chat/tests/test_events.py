@@ -54,12 +54,12 @@ async def test_publish_releases_room_touch_before_the_next_signal_receiver(
 
     await events._publish(message)
 
-    assert order == ["session-enter", "touch", "session-exit", "emit"]
-    assert len(emitted) == 1
+    assert order == ["session-enter", "touch", "session-exit", "emit", "emit"]
+    assert [args[1] for args, _kwargs in emitted] == ["personal_message", "message"]
     args, kwargs = emitted[0]
     assert args == (
         "chat",
-        "message",
+        "personal_message",
         {
             "room_id": str(room_id),
             "message_id": str(message.id),

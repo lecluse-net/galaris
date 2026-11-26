@@ -107,8 +107,8 @@ async def _request(round_: ConversationRound) -> None:
     await request_permission(connection.agent_id, key, question)
 
 
-async def reconcile_contact_authorizations() -> None:
-    """Recover notifications and resume approved rounds after commits or a restart."""
+async def reconcile_contact_authorizations() -> bool:
+    """Reconcile this batch; keep scanning on wake while candidates may remain."""
     async with get_db_session() as db:
         now = datetime.now(timezone.utc)
         identifiers = list(await db.scalars(select(ConversationRound.id)
@@ -130,6 +130,12 @@ async def reconcile_contact_authorizations() -> None:
                     PermissionDecision.notification_after.is_(None), PermissionDecision.notification_after <= now,
                 ))),
         ).order_by(ConversationRound.created_at).limit(50)))
+        if not identifiers:
+            # A paused contact can become eligible on a timer or after another
+            # round completes. Suppress unrelated wakeups only for an empty queue.
+            return await db.scalar(select(ConversationRound.id).where(
+                ConversationRound.status == "PAUSED", ConversationRound.contact_authorization_pending.is_(True),
+            ).limit(1)) is not None
     for identifier in identifiers:
         try:
             async with get_db_session() as db:
@@ -165,6 +171,7 @@ async def reconcile_contact_authorizations() -> None:
             await publish_round_activity(identifier)
         except Exception:
             logger.exception("Contact authorization reconciliation failed round={}", identifier)
+    return True
 
 
 async def contact_authorization_details(round_: ConversationRound) -> ContactAuthorizationDetails | None:

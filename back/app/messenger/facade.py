@@ -578,10 +578,19 @@ class MessengerFacade:
         *,
         publish_event: bool = True,
         journal_metadata: dict[str, Any] | None = None,
+        release_dispatch_transaction: bool = False,
     ) -> Message:
-        await self.require_room_contact(room_id)
-        external_room_id = await self._external_room_id(room_id)
+        """Release SQL connections between send stages only for a worker that owns its transaction."""
+        from core.database import get_db
+
+        external_room_id = await self._authorized_external_room_id(room_id)
+        if release_dispatch_transaction:
+            await get_db().commit()
         message = await self._delegate.send_to_room(external_room_id, text, reply_to)
+        if release_dispatch_transaction and get_db().in_transaction():
+            # A provider can read local data to construct its receipt. Return
+            # that connection before the independent Messenger journal opens.
+            await get_db().commit()
         return await self._record(
             message,
             room_id=external_room_id,
@@ -615,8 +624,7 @@ class MessengerFacade:
         path_or_bytes: Union[str, bytes],
         name: str | None = None,
     ) -> Message:
-        await self.require_room_contact(room_id)
-        external_room_id = await self._external_room_id(room_id)
+        external_room_id = await self._authorized_external_room_id(room_id)
         message = await self._delegate.upload_file(
             external_room_id, path_or_bytes, name
         )
@@ -625,8 +633,7 @@ class MessengerFacade:
     async def upload_file_path(
         self, room_id: UUID | str, path: Path, name: str | None = None
     ) -> Message:
-        await self.require_room_contact(room_id)
-        external_room_id = await self._external_room_id(room_id)
+        external_room_id = await self._authorized_external_room_id(room_id)
         message = await self._delegate.upload_file_path(external_room_id, path, name)
         return await self._record(message, room_id=external_room_id)
 
@@ -663,19 +670,31 @@ class MessengerFacade:
         caption: str | None = None,
         reply_to: str | None = None,
     ) -> Message:
-        await self.require_room_contact(room_id)
-        external_room_id = await self._external_room_id(room_id)
+        external_room_id = await self._authorized_external_room_id(room_id)
         message = await self._delegate.send_voice_note(
             external_room_id, path, caption=caption, reply_to=reply_to
         )
         return await self._record(message, room_id=external_room_id)
 
     async def require_room_contact(self, room_id: UUID | str) -> None:
+        await self._authorized_external_room_id(room_id)
+
+    async def _authorized_external_room_id(self, room_id: UUID | str) -> str:
         from sqlalchemy import select
         from core.database import get_db
         from .contact_access import require_outgoing_room
-        external_id = await self._external_room_id(room_id)
-        room = await get_db().scalar(select(Room).where(Room.connection_id == self._connection_id, Room.external_id == external_id))
+
+        try:
+            local_id = room_id if isinstance(room_id, UUID) else UUID(room_id)
+        except ValueError:
+            local_id = None
+        lookup = Room.id == local_id if local_id is not None else Room.external_id == str(room_id)
+        room = (await get_db().execute(select(Room.id, Room.external_id).where(
+            Room.connection_id == self._connection_id, lookup,
+        ))).one_or_none()
         if room is None:
+            if local_id is not None:
+                raise ValueError(f"Messenger room {local_id} is unknown for this connection.")
             raise PermissionError("Room not found")
         await require_outgoing_room(self._connection_id, room.id, self_external_id=getattr(self._delegate, "self_id", ""))
+        return room.external_id

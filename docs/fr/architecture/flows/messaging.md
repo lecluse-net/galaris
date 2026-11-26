@@ -97,7 +97,7 @@ sensibles ainsi que les formes usuelles de credentials avant émission ; prompts
 ne la franchissent jamais. La réponse confirmée reste le seul message Messenger durable. Une
 projection HTTP rattachée au message de sortie permet ensuite de déplier dans sa bulle le même
 AIResult nettoyé (réflexions, outils, paramètres et résultats bornés, réponse finale, durée, coût
-et erreur). Le prompt système reste absent. Le signal `chat.message` de cette réponse n'est publié
+et erreur). Le prompt système reste absent. Le signal de cette réponse n'est publié
 qu'après le commit du lien entre le round et le message. Jusqu'à ce commit, un marqueur de journal
 empêche aussi les lectures HTTP concurrentes d'exposer ce message. Le frontend conserve
 l'`AIResult` live jusqu'à ce que cette projection durable complète soit rendue, puis effectue un
@@ -109,10 +109,18 @@ vide ne les sépare.
 ChatGPT personnel n’est utilisable que lorsque cet identifiant correspond à son titulaire ; une
 identité non associée dans « Mon profil » reste refusée, y compris en mode mono-utilisateur. Une
 modification ultérieure de l’annuaire ne change pas l’autorité des messages historiques.
-L’événement `chat.message` porte `is_new=true` pour une nouvelle entrée durable et `is_new=false`
+Les événements de message portent `is_new=true` pour une nouvelle entrée durable et `is_new=false`
 pour une simple mise à jour, telle qu’une correction de Topic. L’interface ne joue son carillon
 que pour un nouveau message qui n’est ni personnel, ni rattaché à une room muette, ni observé en
 mode impersonation.
+
+La boîte de réception et le Chat personnel écoutent `chat.personal_message`. Le serveur lit les
+membres du salon en une requête, puis vérifie la session, le rôle et le droit de dialogue des
+destinataires potentiels. La vue déléguée écoute `chat.message` pendant son ouverture. Le champ
+`personal_room` indique si le destinataire est aussi membre à titre personnel. Après une
+modification de son identité Messenger ou le retrait d’une appartenance, le compte concerné reçoit
+`chat.scope_changed` après le commit. Le client relit les compteurs et revérifie les notifications
+en attente. La reconnexion relit également les données durables.
 
 Le non-lu est un état Messenger durable et ordonné. Chaque entrée du journal porte une position
 monotone, son auteur canonique et un indicateur distinguant les événements live des imports

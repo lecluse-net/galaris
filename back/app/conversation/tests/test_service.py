@@ -531,6 +531,7 @@ def _install_messenger(
             *,
             publish_event: bool = True,
             journal_metadata: dict[str, object] | None = None,
+            release_dispatch_transaction: bool = False,
         ) -> Message:
             if transaction_states is not None:
                 transaction_states.append(db.in_transaction())
@@ -1242,9 +1243,11 @@ async def test_linked_work_filters_and_orders_tasks_by_operational_recency(
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("old_missions", [0, 100, 1000])
 async def test_linked_work_keeps_every_non_terminal_task_beyond_legacy_limit(
-    db: AsyncSession,
+    db: AsyncSession, old_missions: int,
 ) -> None:
+    from tests.sql_reads import measured_reads
     agent, _connection, room = await _scope(db)
     historical_round = ConversationRound(
         room_id=room.id,
@@ -1260,7 +1263,10 @@ async def test_linked_work_keeps_every_non_terminal_task_beyond_legacy_limit(
         )
         for index in range(12)
     ]
-    db.add_all([historical_round, *tasks])
+    past = datetime.now(timezone.utc) - timedelta(days=7)
+    history = [Task(label="Old mission", status=TaskStatus.SUCCESS, agent_id=agent.id,
+                    created_at=past, updated_at=past) for _ in range(old_missions)]
+    db.add_all([historical_round, *tasks, *history])
     await db.flush()
     db.add_all(
         [
@@ -1269,17 +1275,19 @@ async def test_linked_work_keeps_every_non_terminal_task_beyond_legacy_limit(
                 task_id=task.id,
                 action_key=f"task-{task.id}",
             )
-            for task in tasks
+            for task in [*tasks, *history]
         ]
     )
     await db.flush()
 
-    snapshots = await conversation_service.linked_work_snapshot(room.id)
+    async with measured_reads(db, f"linked work {old_missions} old missions") as reads:
+        snapshots = await conversation_service.linked_work_snapshot(room.id)
 
     assert len(snapshots) == 12
     assert {snapshot["task_id"] for snapshot in snapshots} == {
         str(task.id) for task in tasks
     }
+    assert len(reads) <= 3
 
 
 @pytest.mark.asyncio
@@ -1802,7 +1810,7 @@ async def test_preparation_interruption_preserves_inputs_and_starts_successor(co
     try:
         await asyncio.wait_for(entered.wait(), 3)
         if cause == "shutdown":
-            scheduler._running[round_id] = work
+            scheduler._running[work] = round_id
             await asyncio.wait_for(scheduler.stop(), 3)
             assert work.cancelled()
         else:
@@ -2052,6 +2060,7 @@ async def test_reply_only_mode_survives_pause_and_resume(db):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("state", ["completed", "preparing_task", "unknown", "missing", "corrupt"])
 async def test_worker_restart_preserves_receipts_and_refuses_uncertain_mutations(db, state):
+    from dataclasses import replace
     from app.agent import AgentRunCheckpoint
     from app.conversation.contracts import ConversationLeaseLostError
 
@@ -2061,14 +2070,26 @@ async def test_worker_restart_preserves_receipts_and_refuses_uncertain_mutations
     round_ = await claim_next_round("original-worker")
     turn = await build_turn(round_.id, lease_token=round_.lease_token)
     assert turn.save_checkpoint is not None
-    effect = {"tool_name": "task_run" if state == "preparing_task" else "synthetic_write",
+    effect = {"tool_name": "task_submit" if state == "preparing_task" else "synthetic_write",
               "status": "completed" if state == "completed" else "started",
               "effect_policy": "idempotent" if state == "preparing_task" else "non_idempotent",
               "result": "Durable synthetic receipt"}
     checkpoint = AgentRunCheckpoint(driver_code="internal", runtime_run_id=str(round_.id),
-        status="interrupted", data={"version": 5, "resume_safe": state != "unknown", "effects": [effect]})
+        status="interrupted", data={"version": 5, "resume_safe": state != "unknown", "effects": [effect],
+                                    "message_history": [{"synthetic": "x" * 16000}]})
     if state not in {"missing", "corrupt"}:
+        # Reusing a driver's mutable list must not change the comparison base
+        # after commit. The second entry changes type while preserving equality in Python.
+        history = checkpoint.data["message_history"]
+        history.append({"synthetic": True})
+        await turn.save_checkpoint(replace(checkpoint, data={**checkpoint.data, "effects": []}))
+        history[1]["synthetic"] = 1
         await turn.save_checkpoint(checkpoint)
+        await db.refresh(round_)
+        first, delta = round_.encrypted_checkpoint.split("\n")
+        assert len(delta) < len(first) // 4
+        from app.conversation.checkpoint_journal import read_checkpoint_payload
+        assert type(read_checkpoint_payload(round_.encrypted_checkpoint)["data"]["message_history"][1]["synthetic"]) is int
     await db.refresh(round_)
     if state != "preparing_task":
         assert await turn.assert_fresh_before_effect()
@@ -2164,7 +2185,7 @@ async def test_scheduler_shutdown_releases_the_round_after_checkpoint_cleanup(db
     worker = asyncio.create_task(scheduler._execute(round_.id, old_token))
     await asyncio.wait_for(entered.wait(), 2)
     if phase == "effect":
-        scheduler._running[round_.id] = worker
+        scheduler._running[worker] = round_.id
         stopping = asyncio.create_task(scheduler.stop())
         await asyncio.sleep(0)
         assert not worker.done() and not stopping.done()
@@ -2246,6 +2267,29 @@ async def test_response_delivery_recovery_never_sends_twice(db, monkeypatch, rec
     outputs = list(await db.scalars(select(ConversationRoundMessage).where(
         ConversationRoundMessage.round_id == round_.id, ConversationRoundMessage.role == "output")))
     assert len(outputs) == int(receipt_saved)
+
+
+@pytest.mark.asyncio
+async def test_failed_dispatch_transaction_records_uncertain_delivery(db, monkeypatch):
+    agent, connection, room = await _scope(db)
+    message = await _message(db, connection, room, 1, "Synthetic question")
+    await admit_message(message, agent_id=agent.id, connection_id=connection.id)
+    turn = await claim_next_round("synthetic-worker")
+    round_id, token = turn.id, turn.lease_token
+    sends = []
+
+    async def send(room_id, text, **_options):
+        sends.append(text)
+        # The transport accepted the response, then a local SQL operation failed.
+        await db.execute(sql_text("SELECT 1 / 0"))
+
+    monkeypatch.setattr("app.messenger.get_messenger", AsyncMock(return_value=SimpleNamespace(send_to_room=send)))
+    assert await complete_round(round_id, ConversationOutcome(text="Synthetic reply"), lease_token=token) == "DELIVERY_UNKNOWN"
+    assert await claim_next_round("replacement-worker") is None
+    assert await claim_next_round_notification() is None
+    await db.refresh(turn)
+    assert (turn.status, turn.delivery_state, turn.lease_token) == ("ERROR_RESOLVED", "UNKNOWN", None)
+    assert sends == ["Synthetic reply"]
 
 
 @pytest.mark.asyncio
@@ -2433,6 +2477,8 @@ async def test_completed_round_links_persisted_outgoing_message(
     monkeypatch: pytest.MonkeyPatch,
     topic_mode: str,
 ) -> None:
+    from tests.sql_reads import measured_reads
+
     agent, connection, room = await _scope(db)
     topic = Topic(title="Sujet explicite", description="", keywords=[])
     db.add(topic)
@@ -2462,6 +2508,10 @@ async def test_completed_round_links_persisted_outgoing_message(
 
     async def observe_committed_output(message: Message) -> None:
         assert not db.in_transaction()
+        assert message.text == "salut"
+        assert message.topic_id == expected_topic_id
+        assert message.topic_overridden is expected_override
+        assert CONVERSATION_OUTPUT_PENDING_METADATA_KEY not in message.metadata_
         link = await db.scalar(
             select(ConversationRoundMessage).where(
                 ConversationRoundMessage.round_id == round_.id,
@@ -2476,13 +2526,15 @@ async def test_completed_round_links_persisted_outgoing_message(
     message_sent.connect(observe_committed_output)
 
     try:
-        assert await complete_round(
-            round_.id,
-            ConversationOutcome(text="salut"),
-            lease_token=round_.lease_token,
-        ) == "SUCCEEDED"
+        async with measured_reads(db, "complete conversation and observe published link") as reads:
+            assert await complete_round(
+                round_.id,
+                ConversationOutcome(text="salut"),
+                lease_token=round_.lease_token,
+            ) == "SUCCEEDED"
     finally:
         message_sent.disconnect(observe_committed_output)
+    assert len(reads) <= 9
     assert sent == [(room.id, "salut")]
     assert publish_events == [False]
     output = await db.scalar(
@@ -3505,7 +3557,7 @@ async def test_remote_success_before_local_commit_recovers_unknown_without_resen
     link_id = link.id
     sent = []
 
-    async def remote_send(destination, text):
+    async def remote_send(destination, text, **_dispatch_options):
         sent.append((destination, text))
         return SimpleNamespace(id="remote-receipt")
 

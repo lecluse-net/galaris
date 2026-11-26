@@ -119,6 +119,16 @@ class LLMCallEvent(Base):
     )
 
 
+class LLMProviderPermit(Base):
+    """One recoverable reservation per physical call across workers sharing PostgreSQL."""
+
+    __tablename__ = "llm_provider_permits"
+    call_id: Mapped[UUID] = mapped_column(ForeignKey("llm_calls.id", ondelete="CASCADE"), primary_key=True)
+    provider_id: Mapped[int] = mapped_column(ForeignKey("llm_providers.id", ondelete="CASCADE"), index=True)
+    priority: Mapped[int] = mapped_column(Integer)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), index=True)
+
+
 class LLMCall(HistoryMixin, Base):
     """A provider LLM call with an inspectable trace."""
 

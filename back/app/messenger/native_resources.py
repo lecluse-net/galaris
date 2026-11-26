@@ -27,7 +27,7 @@ async def prepare_resource_attachments(uris: list[str], *, agent_id: int) -> lis
         # Resolve in the receiving agent's context as well as checking the human's
         # functional privileges. Selecting a link never grants source access.
         context = ResourceContext(agent_id=agent_id, runtime="internal")
-        if not await resource_accessible(context, uri, "read") and not await resource_accessible(context, uri, "list"):
+        if not await resource_accessible(context, uri, "read", "list"):
             raise PermissionError("Resource unavailable")
         result.append(str(reference))
     return result

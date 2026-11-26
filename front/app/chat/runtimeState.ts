@@ -62,7 +62,9 @@ export function applyConversationRuntimeEvent(
     ? current
     : startLiveConversationRound(null, roomId, roundId, -1, data.topic_id ?? null)
   if (sequence < baseline.last_sequence || (sequence === baseline.last_sequence && kind !== 'snapshot')) return null
-  if ((kind === 'message' || kind === 'reset') && sequence > baseline.last_sequence + 1) {
+  const coversGap = kind === 'message' && data.message?.stream_mode === 'snapshot'
+    && data.message.stream_id && data.base_sequence != null && data.base_sequence <= baseline.last_sequence
+  if ((kind === 'message' || kind === 'reset') && sequence > baseline.last_sequence + 1 && !coversGap) {
     return { round: baseline, finished: false, needsSnapshot: true }
   }
 

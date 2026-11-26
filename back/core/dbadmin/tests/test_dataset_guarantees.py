@@ -5,12 +5,26 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock
 
 import pytest
-from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table
+from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, select, text
 
-from core.dbadmin import DbAdminDataSource, DbAdminDataset, DbAdminRegistry
+from core.dbadmin import DbAdminDataSource, DbAdminDataset, DbAdminDatasetResult, DbAdminRegistry
 from core.dbadmin.dataset import reconcile_dataset
 from core.dbadmin.registry import DbAdminAction, DbAdminEnumMapping, DbAdminReconciler
 from core.dbadmin.contracts import DbAdminPhase
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("delete_missing", [False, True])
+async def test_empty_dataset_preserves_removal_policy_and_runs_callback(db, delete_missing):
+    await db.execute(text("CREATE TEMP TABLE empty_dataset_test (id integer PRIMARY KEY) ON COMMIT DROP"))
+    table = Table("empty_dataset_test", MetaData(), Column("id", Integer, primary_key=True))
+    await db.execute(table.insert().values(id=1))
+    after = AsyncMock()
+    dataset = DbAdminDataset("empty", table, ("id",), (), delete_missing=delete_missing, after_merge=after)
+    result = await reconcile_dataset(db, dataset)
+    assert result == DbAdminDatasetResult(removed=int(delete_missing))
+    after.assert_awaited_once_with(db, result)
+    assert (await db.scalars(select(table.c.id))).all() == ([] if delete_missing else [1])
 
 
 @pytest.mark.asyncio

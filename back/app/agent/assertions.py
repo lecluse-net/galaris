@@ -66,7 +66,7 @@ class AgentDialogueAssertion(BaseAssertion):
             agent_id = int(raw)
         except ValueError:
             return False
-        return (await dialogue_scope_for(context.user, context.db)).allows(agent_id)
+        return (await dialogue_scope_for(context.user, context.db, agent_id=agent_id)).allows(agent_id)
 
 
 __all__ = ["AgentManagerAssertion", "AgentOwnerAssertion", "AgentDialogueAssertion"]

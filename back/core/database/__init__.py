@@ -8,6 +8,7 @@ from .database import (
     Base,
     get_db,
     get_db_session,
+    lock_resource_sharing,
     release_db_transaction,
     wait_for_db,
 )
@@ -23,6 +24,7 @@ __all__ = [
     "Base",
     "get_db",
     "get_db_session",
+    "lock_resource_sharing",
     "release_db_transaction",
     "wait_for_db",
     "HistoryMixin",

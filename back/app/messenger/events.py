@@ -6,7 +6,9 @@ failure cannot prevent other subscribers from receiving an event.
 
 from __future__ import annotations
 
+import asyncio
 import inspect
+from contextvars import Context
 from typing import Any, Callable, List
 
 from loguru import logger
@@ -90,3 +92,25 @@ message_journaled = Signal("message_journaled")
 
 # A persisted choice was attached to a prompt, captured, or applied.
 interaction_changed = Signal("interaction_changed")
+
+# Advisory only. HTTP and reconnect read durable membership from PostgreSQL.
+personal_scope_changed = Signal("personal_scope_changed")
+_pending_scope_users: set[int] = set()
+_scope_worker: asyncio.Task[None] | None = None
+
+
+def notify_personal_scope_change(user_id: int) -> None:
+    from core.database import after_commit
+
+    def wake() -> None:
+        global _scope_worker
+        _pending_scope_users.add(user_id)
+        if _scope_worker is None or _scope_worker.done():
+            _scope_worker = asyncio.create_task(_publish_scopes(), context=Context())
+
+    after_commit(wake, key=("messenger-personal-scope", user_id))
+
+
+async def _publish_scopes() -> None:
+    while _pending_scope_users:
+        await personal_scope_changed.send_async(_pending_scope_users.pop())

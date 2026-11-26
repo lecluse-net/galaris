@@ -149,8 +149,7 @@ class LegacyDatasetAdapter:
 
     async def remove(self, identity: UUID, actor: int | HumanActor) -> None:
         with legacy_errors():
-            dataset = await service.record(identity, actor, manage=True, lock=True)
-            await service.remove(identity, actor, expected_lock_version=dataset.lock_version)
+            await service.remove(identity, actor, expected_lock_version=None)
 
     async def application(self, operation: str, actor: AgentManagementScope, context: dict[str, Any]) -> dict[str, Any]:
         from .apps import application

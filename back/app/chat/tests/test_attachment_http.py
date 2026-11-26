@@ -57,6 +57,40 @@ async def attachment_context(committed_database, monkeypatch, tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_chat_admission_and_reply_share_one_sql_connection(attachment_context, committed_database, monkeypatch):
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+    from core.database import database, middleware
+    from app.conversation import ConversationOutcome
+    from app.conversation.service import claim_next_round, complete_round
+
+    ctx = attachment_context
+    engine = create_async_engine(committed_database.kw["bind"].url, pool_size=1, max_overflow=0, pool_timeout=2)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    monkeypatch.setattr(database, "AsyncSessionLocal", factory)
+    monkeypatch.setattr(middleware, "AsyncSessionLocal", factory)
+    path = f"/api/chat/rooms/{ctx['room_id']}/messages"
+    body = {"client_message_id": str(uuid4()), "text": "Synthetic single-connection admission"}
+    try:
+        first = await ctx["client"].post(path, headers=ctx["headers"], json=body)
+        assert first.status_code == 201, first.text
+        retry = await ctx["client"].post(path, headers=ctx["headers"], json=body)
+        assert retry.status_code == 201 and retry.json()["id"] == first.json()["id"]
+        assert retry.json()["status"] == "admitted"
+        async with get_db_session():
+            turn = await claim_next_round("single-connection-worker")
+            assert turn is not None and turn.room_id == ctx["room_id"]
+            status = await complete_round(turn.id, ConversationOutcome(text="Synthetic reply"), lease_token=turn.lease_token)
+            assert status == "SUCCEEDED", turn.last_error
+        async with get_db_session() as db:
+            replies = (await db.scalars(select(Message).where(
+                Message.messenger_room_id == ctx["room_id"], Message.direction == "outbound",
+            ))).all()
+            assert [reply.text for reply in replies] == ["Synthetic reply"]
+    finally:
+        await engine.dispose()
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("references", ["omitted", "empty", "mixed"])
 @pytest.mark.parametrize("file_count", [1, 3])
 async def test_multipart_upload_preserves_internal_references_and_uploaded_bytes(attachment_context, references, file_count):

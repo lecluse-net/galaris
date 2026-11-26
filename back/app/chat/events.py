@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import UUID
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, Literal
 
 from app.conversation import (
     register_deep_listener,
@@ -21,13 +21,13 @@ from app.messenger import (
     interaction_changed,
     Message,
     has_ai_chat_room_access,
-    has_chat_room_access,
-    get_chat_room,
-    get_internal_room,
-    get_agent_chat_room,
+    can_view_internal_room,
+    chat_member_agent_id,
+    chat_member_candidates,
     message_journaled,
     message_received,
     message_sent,
+    personal_scope_changed,
     touch_chat_room,
 )
 from app.voice import (
@@ -70,16 +70,14 @@ async def _publish(message: Message) -> None:
     # admission session and locks the same room, producing a self-deadlock.
     async with get_db_session():
         await touch_chat_room(message.messenger_room_id)
-    await websocket.emit(
-        "chat",
-        "message",
-        {
-            "room_id": str(message.messenger_room_id),
-            "message_id": str(message.id),
-            "is_new": True,
-        },
-        room=ChatRoom(message.messenger_room_id),
-    )
+    await _message_changed(message.messenger_room_id, str(message.id), is_new=True)
+
+
+async def _message_changed(room_id: UUID, message_id: str, *, is_new: bool) -> None:
+    data = {"room_id": str(room_id), "message_id": message_id, "is_new": is_new}
+    room = ChatRoom(room_id)
+    for action in ("personal_message", "message"):
+        await websocket.emit("chat", action, data, room=room)
 
 
 async def _publish_interaction(interaction: Interaction) -> None:
@@ -89,11 +87,7 @@ async def _publish_interaction(interaction: Interaction) -> None:
         room_id = UUID(interaction.room_id)
     except ValueError:
         return
-    await websocket.emit(
-        "chat", "message",
-        {"room_id": str(room_id), "message_id": interaction.prompt_message_id, "is_new": False},
-        room=ChatRoom(room_id),
-    )
+    await _message_changed(room_id, interaction.prompt_message_id, is_new=False)
 
 
 async def _publish_activity(round_id: UUID, room_id: UUID) -> None:
@@ -156,6 +150,7 @@ async def _publish_deep(room_id: UUID) -> None:
 
 
 def register_events() -> None:
+    personal_scope_changed.connect(_publish_personal_scope, required=False)
     register_deep_listener(_publish_deep)
     register_deep_workspace_access(deep_workspace_context)
     register_repository_display_publisher(_publish_repository_display)
@@ -172,6 +167,8 @@ def register_events() -> None:
     register_voice_call_ended_listener(_publish_call_ended)
     register_voice_transcription_listener(_publish_voice_transcription)
     websocket.register_event_authorization("chat", _can_receive_event)
+    websocket.register_candidate_filter("chat", "personal_message", _personal_candidates)
+    websocket.register_candidate_filter("chat", "scope_changed", _scope_candidates)
     websocket.register_resource_room(
         "chat",
         ChatRoom,
@@ -185,36 +182,58 @@ async def _can_access_room(user_id: int, resource_id: str) -> bool:
     return await can_access_live_room(user_id, resource_id, voice=True)
 
 
-async def _can_receive_event(user: User, action: str, data: Mapping[str, Any]) -> bool:
-    return await can_access_live_room(
+async def _personal_candidates(data: Mapping[str, Any], users: set[int]) -> set[int]:
+    return await chat_member_candidates(UUID(str(data["room_id"])), users)
+
+
+async def _publish_personal_scope(user_id: int) -> None:
+    await websocket.emit("chat", "scope_changed", {"user_id": user_id})
+
+
+async def _scope_candidates(data: Mapping[str, Any], users: set[int]) -> set[int]:
+    return users.intersection((data["user_id"],))
+
+
+async def _can_receive_event(user: User, action: str, data: Mapping[str, Any]) -> bool | websocket.AuthorizedEvent:
+    if action == "scope_changed":
+        return websocket.AuthorizedEvent({}) if user.id == data.get("user_id") else False
+    access = await _live_room_access(
         user.id, str(data.get("room_id", "")),
-        voice=action in {"call", "voice_transcription"},
+        voice=action in {"call", "voice_transcription"}, personal_only=action == "personal_message",
     )
+    if access is None:
+        return False
+    if action in {"message", "personal_message"}:
+        return websocket.AuthorizedEvent({**data, "personal_room": access == "personal"})
+    return True
 
 
 async def can_access_live_room(user_id: int, resource_id: str, *, voice: bool = False) -> bool:
+    return await _live_room_access(user_id, resource_id, voice=voice) is not None
+
+
+async def _live_room_access(
+    user_id: int, resource_id: str, *, voice: bool = False, personal_only: bool = False,
+) -> Literal["personal", "impersonated"] | None:
     try:
         room_id = UUID(resource_id)
     except ValueError:
-        return False
+        return None
     user = await get_db().get(User, user_id)
     if user is None:
-        return False
+        return None
     if voice and await check_privilege(user, "CHAT_CALL", get_db()):
-        if await get_internal_room(user_id, room_id) is not None:
-            return True
-    if await has_chat_room_access(user_id, room_id):
-        room = await get_chat_room(user_id, room_id)
-        return room is not None and (await dialogue_scope_for(user, get_db())).allows(room.agent_id)
-    if not await check_privilege(user, "CHAT_IMPERSONATE", get_db()):
-        return False
+        if await can_view_internal_room(user_id, room_id):
+            return "personal"
+    member_agent_id = await chat_member_agent_id(user_id, room_id)
+    if member_agent_id is not None:
+        if (await dialogue_scope_for(user, get_db(), agent_id=member_agent_id)).allows(member_agent_id):
+            return "personal"
+        return None
+    if personal_only or not await check_privilege(user, "CHAT_IMPERSONATE", get_db()):
+        return None
     scope = await management_scope_for(user, get_db())
-    if scope.is_global:
-        return await has_ai_chat_room_access(room_id)
-    for agent_id in scope.agent_ids or ():
-        if await get_agent_chat_room(agent_id, room_id) is not None:
-            return True
-    return False
+    return "impersonated" if await has_ai_chat_room_access(room_id, agent_ids=scope.agent_ids) else None
 
 
 __all__ = ["ChatRoom", "register_events", "can_access_live_room"]

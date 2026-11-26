@@ -72,6 +72,8 @@ from .context import (
     unregister_context_provider,
 )
 from .observers import (
+    AgentAccessChange as AgentAccessChange,
+    register_agent_access_projection as register_agent_access_projection,
     notify_agent_profile,
     register_agent_creation_initializer as register_agent_creation_initializer,
     register_agent_profile_observer,

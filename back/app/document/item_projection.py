@@ -3,10 +3,11 @@ from copy import deepcopy
 from collections.abc import Sequence
 from .models import Document
 from .contracts import DocumentAccess
-from .schemas import DocumentPublic, DocumentAccessPublic
+from .schemas import DocumentPublic, DocumentAccessPublic, DocumentGrantPublic
 
 
-def item_to_public(item: Document, access: DocumentAccess, *, memory_content: bool = False, urls: Sequence[str] | None = None) -> DocumentPublic:
+def item_to_public(item: Document, access: DocumentAccess, *, memory_content: bool = False,
+                   urls: Sequence[str] | None = None, grants: list[DocumentGrantPublic] | None = None) -> DocumentPublic:
     return DocumentPublic.model_validate(dict(
         id=item.id, topic_id=item.topic_id, document_id=item.id, thumbnail_id=item.thumbnail_id,
         document_revision=item.revision,
@@ -26,5 +27,7 @@ def item_to_public(item: Document, access: DocumentAccess, *, memory_content: bo
         valid_from=item.valid_from, valid_until=item.valid_until, temporal=item.temporal,
         old_at=None, old_reason=None, created_at=item.created_at, updated_at=item.updated_at,
         access=DocumentAccessPublic(can_read=access.can_read, can_write=access.can_write),
-        grants=[{"agent_id": grant.agent_id,"can_write":grant.can_write} for grant in item.grants if grant.agent_id is not None],
+        grants=grants if grants is not None else [
+            {"agent_id": grant.agent_id, "can_write": grant.can_write} for grant in item.grants if grant.agent_id is not None
+        ],
     ))

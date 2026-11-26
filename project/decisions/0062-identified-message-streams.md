@@ -45,8 +45,9 @@ la reconnexion et lorsqu'une séquence de deltas manque. Il remplace les contenu
 cumulatifs par identité ; un ancien snapshot ne rouvre pas un résultat terminé.
 
 La publication ne bloque pas la génération : lorsqu'un listener prend du retard,
-le runtime conserve un indicateur de modification et publie ensuite le dernier
-snapshot cumulatif. Il n'accumule pas une file de fragments. Chaque listener possède
+le runtime retient le bloc modifié et publie son contenu cumulatif avec la séquence du
+dernier envoi. Si plusieurs blocs ou des données de comptabilité ont changé, il publie le
+snapshot complet. L’état en attente reste borné. Chaque listener possède
 un délai maximal de deux secondes ; une perte de notification se répare par HTTP.
 La fin attend la publication en cours avant son événement terminal.
 

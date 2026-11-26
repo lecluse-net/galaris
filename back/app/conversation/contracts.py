@@ -92,6 +92,7 @@ class ConversationRuntimeEvent(BaseModel):
     round_id: UUID
     kind: Literal["started", "message", "reset", "snapshot", "finished"]
     sequence: int = Field(ge=0)
+    base_sequence: int | None = Field(default=None, ge=0, exclude_if=lambda value: value is None)
     attempt: int = Field(default=1, ge=1)
     topic_id: UUID | None = None
     message: AIMessage | None = None
@@ -100,6 +101,11 @@ class ConversationRuntimeEvent(BaseModel):
 
     @model_validator(mode="after")
     def canonical_payload_matches_kind(self) -> "ConversationRuntimeEvent":
+        if self.base_sequence is not None and (
+            self.base_sequence >= self.sequence or self.kind != "message" or self.message is None
+            or not self.message.stream_id or self.message.stream_mode != "snapshot"
+        ):
+            raise ValueError("A sequence range requires a replacement of one identified message.")
         if self.kind == "message" and self.message is None:
             raise ValueError("A conversation message event must contain an AIMessage.")
         if self.kind != "message" and self.message is not None:

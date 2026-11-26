@@ -36,6 +36,8 @@ class AdmissionContext:
     source: AdmissionSource
     priority: AdmissionClass
     owner: str | None
+    requester: int | None = None
+    mission: UUID | None = None
 
 
 def admission_context(
@@ -49,6 +51,7 @@ def admission_context(
     authority: LLMExecutionAuthority | None = None,
     agent_id: int | None = None,
     requester_user_id: int | None = None,
+    task_root: tuple[UUID, int | None] | None = None,
     round_is_voice: bool = False,
     voice_dialogue: bool = False,
 ) -> AdmissionContext:
@@ -59,8 +62,10 @@ def admission_context(
     then the agent or requester. Source ancestry and caller-provided correlation
     labels never promote an operation to dialogue capacity or grant rights.
     """
+    requester = requester_user_id or (authority.requester_user_id if authority else None)
     if task_id is not None:
-        return AdmissionContext(AdmissionSource.TASK, AdmissionClass.BACKGROUND, str(task_id))
+        mission, root_requester = task_root or (task_id, None)
+        return AdmissionContext(AdmissionSource.TASK, AdmissionClass.BACKGROUND, str(task_id), root_requester or requester, mission)
     owner = str(conversation_round_id or agent_run_id) if conversation_round_id or agent_run_id else None
     if owner is None:
         if media_generation_id is not None:
@@ -71,21 +76,19 @@ def admission_context(
             owner = "source:" + json.dumps((authority.source_kind, authority.source_id), separators=(",", ":"))
         elif agent_id is not None:
             owner = f"agent:{agent_id}"
-        else:
-            requester = requester_user_id or (authority.requester_user_id if authority else None)
-            if requester is not None:
-                owner = f"user:{requester}"
+        elif requester is not None:
+            owner = f"user:{requester}"
     if voice_dialogue or (conversation_round_id is not None and round_is_voice):
-        return AdmissionContext(AdmissionSource.VOICE_DIALOGUE, AdmissionClass.VOICE, owner)
+        return AdmissionContext(AdmissionSource.VOICE_DIALOGUE, AdmissionClass.VOICE, owner, requester)
     if conversation_round_id is not None:
-        return AdmissionContext(AdmissionSource.TEXT_DIALOGUE, AdmissionClass.TEXT, owner)
+        return AdmissionContext(AdmissionSource.TEXT_DIALOGUE, AdmissionClass.TEXT, owner, requester)
     if purpose == LLMCallPurpose.CONVERSATION_AUDIO:
-        return AdmissionContext(AdmissionSource.VOICE_DIALOGUE, AdmissionClass.VOICE, owner)
+        return AdmissionContext(AdmissionSource.VOICE_DIALOGUE, AdmissionClass.VOICE, owner, requester)
     if purpose in {
         LLMCallPurpose.CONVERSATION_TEXT,
         LLMCallPurpose.CONVERSATION_TASK_OBJECTIVE,
         LLMCallPurpose.CONVERSATION_PROCESS_ADMISSION,
         LLMCallPurpose.CONVERSATION_PROCESS_INPUTS,
     }:
-        return AdmissionContext(AdmissionSource.TEXT_DIALOGUE, AdmissionClass.TEXT, owner)
-    return AdmissionContext(AdmissionSource.BACKGROUND, AdmissionClass.BACKGROUND, owner)
+        return AdmissionContext(AdmissionSource.TEXT_DIALOGUE, AdmissionClass.TEXT, owner, requester)
+    return AdmissionContext(AdmissionSource.BACKGROUND, AdmissionClass.BACKGROUND, owner, requester)

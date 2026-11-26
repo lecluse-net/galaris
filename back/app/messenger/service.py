@@ -396,39 +396,27 @@ async def _process_incoming(message: Message) -> UUID | None:
     bridge_spec = facade.get_spec(actual_kind)
     if actual_kind == "internal" and not message.is_ai:
         from app.conversation import admit_deep_input
+        from core.database import release_db_transaction
 
+        # The mode check locks the room in its own transaction. Return the
+        # connection used for sender and bridge validation before acquiring it.
+        await release_db_transaction()
         if await admit_deep_input(message, agent_id=connection.agent_id, connection_id=connection.id):
             return
-    # Human contact projection is private to the receiving agent and fail-open.
-    contact_memory_item_id = await contact_memory.observe_incoming_contact(
-        message,
-        owner_agent_id=int(connection.agent_id),
-        messaging_id=actual_kind,
-    )
-    if contact_memory_item_id is not None and message.id:
-        try:
-            async with get_db_session() as db:
-                # The observer normally returns a durable Memory item. Recheck the
-                # public identifier before writing the journal FK so a degraded or
-                # mocked projection cannot prevent admission of the message.
-                if await db.get(MemoryItem, contact_memory_item_id) is not None:
-                    # Keep the hydrated canonical object coherent with the journal
-                    # update. ``app.conversation`` consumes this same instance next.
-                    message.contact_memory_item_id = contact_memory_item_id
-                    await db.execute(
-                        update(Message)
-                        .where(
-                            Message.id == message.id,
-                        )
-                        .values(contact_memory_item_id=contact_memory_item_id)
-                    )
-                    await db.commit()
-        except Exception:
-            logger.exception(
-                "Failed to attach contact memory {} to inbound message {}",
-                contact_memory_item_id,
-                message.id,
+    # Contact projection can roll back and retry on a concurrent first observation.
+    # Keep its transaction independent of the authenticated admission context.
+    owner_agent_id = int(connection.agent_id)
+    try:
+        async with get_db_session() as db:
+            contact_id = await contact_memory.observe_incoming_contact(
+                message, owner_agent_id=owner_agent_id, messaging_id=actual_kind,
             )
+            if contact_id is not None and message.id and await db.get(MemoryItem, contact_id) is not None:
+                await db.execute(update(Message).where(Message.id == message.id).values(contact_memory_item_id=contact_id))
+                await db.commit()
+                message.contact_memory_item_id = contact_id
+    except Exception:
+        logger.exception("Failed to project contact memory for inbound message {}", message.id)
 
     from app.messenger import interactions
     from .events import message_admitting

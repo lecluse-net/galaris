@@ -37,6 +37,7 @@ services:
       PYTHONPATH: /repo/back
       PYTHONFAULTHANDLER: '1'
       LOGFIRE_SEND_TO_LOGFIRE: 'false'
+      CONVERSATION_WORKER_CONCURRENCY: ${CONVERSATION_WORKER_CONCURRENCY:-4}
     volumes:
       - ./back:/repo/back:ro
       - ./e2e/fixtures/browser-token:/run/galaris-browser/token:ro

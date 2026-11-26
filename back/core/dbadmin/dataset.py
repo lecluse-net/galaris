@@ -126,13 +126,11 @@ async def reconcile_dataset(
         else dataset.rows
     )
     _validate(dataset, resolved_rows)
-    existing_rows = [
-        dict(row)
-        for row in (await session.execute(select(dataset.table))).mappings().all()
-    ]
-    existing_by_key = {
-        _row_key(row, dataset.natural_key): row for row in existing_rows
-    }
+    existing_by_key: dict[tuple[Hashable, ...], dict[str, object]] = {}
+    if resolved_rows or dataset.delete_missing:
+        for row in (await session.execute(select(dataset.table))).mappings():
+            existing = dict(row)
+            existing_by_key[_row_key(existing, dataset.natural_key)] = existing
     desired_by_key = {
         _row_key(row, dataset.natural_key): row for row in resolved_rows
     }

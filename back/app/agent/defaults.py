@@ -8,14 +8,14 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.authorize import Assignment, Role
-from core.database import get_db
+from core.database import get_db, lock_resource_sharing
 from core.dbadmin import DbAdminDataset, DbAdminDatasetResult, reconcile_dataset
 from core.params import Param, Params
 from core.user import UserModel, register_user_access_observer
 
 from .avatars import normalize_avatar
 from .models import Agent, Title
-from .observers import initialize_agent_creation, notify_agent_profile
+from .observers import initialize_agent_creation, notify_agent_profile, project_agent_access
 
 
 async def _rows(session: AsyncSession) -> tuple[dict[str, object], ...]:
@@ -34,6 +34,7 @@ async def _rows(session: AsyncSession) -> tuple[dict[str, object], ...]:
     title_id = await session.scalar(select(Title.id).order_by(Title.id).limit(1))
     if manager_id is None or title_id is None:
         return ()
+    await lock_resource_sharing(session)
     occupied = set((await session.scalars(
         select(Agent.code).execution_options(include_historized=True)
     )).all())
@@ -73,6 +74,7 @@ async def _after_merge(session: AsyncSession, result: DbAdminDatasetResult) -> N
     agent_id = int(stored_id)
     await initialize_admin_agent_connections(agent_id)
     await initialize_galaris_agent_skills(agent_id)
+    await project_agent_access(agent_id, "create")
 
 
 def default_agent_dataset() -> DbAdminDataset:

@@ -106,13 +106,31 @@ test('inbox signal bursts bound background requests and preserve the latest unre
   }, listeners)
   await store.start()
   slow = true
-  listeners.get('chat.message')({ data: {} })
+  assert.equal(listeners.has('chat.message'), false)
+  await setImmediate()
+  assert.equal(requests, 0)
+  listeners.get('chat.personal_message')({ data: {} })
   unread = 9
-  for (let index = 0; index < 30; index++) listeners.get('chat.message')({ data: {} })
+  for (let index = 0; index < 30; index++) listeners.get('chat.personal_message')({ data: {} })
   first.resolve()
   await setImmediate()
   assert.equal(requests, 2)
   assert.equal(store.unreadCount, 9)
+  store.stop()
+  store.$dispose()
+})
+
+test('a membership change reconciles a previous badge without waiting for a message', async t => {
+  const listeners = new Map()
+  let requests = 0
+  const { store } = setup(t, undefined, null, async () => ({
+    unread_count: ++requests === 1 ? 3 : 0,
+  }), listeners)
+  await store.start()
+  listeners.get('chat.scope_changed')()
+  await setImmediate()
+  assert.equal(requests, 2)
+  assert.equal(store.unreadCount, 0)
   store.stop()
   store.$dispose()
 })
@@ -126,7 +144,7 @@ test('reconnection refreshes the inbox without waiting on an obsolete HTTP reque
     return { unread_count: 9 }
   }, listeners)
   await store.start()
-  listeners.get('chat.message')({ data: {} })
+  listeners.get('chat.personal_message')({ data: {} })
   listeners.get('connect')()
   await setImmediate()
   assert.equal(store.unreadCount, 9)
@@ -137,7 +155,7 @@ test('reconnection refreshes the inbox without waiting on an obsolete HTTP reque
   store.$dispose()
 })
 
-for (const stage of ['arrival', 'timer', 'request', 'unseen']) test(`notification fallback respects a conversation viewed at ${stage}`, async t => {
+for (const stage of ['arrival', 'timer', 'request', 'revoked', 'unseen']) test(`notification fallback checks room visibility and membership at ${stage}`, async t => {
   t.mock.timers.enable({ apis: ['setTimeout'] })
   const pendingRoom = deferred()
   let requests = 0
@@ -145,16 +163,21 @@ for (const stage of ['arrival', 'timer', 'request', 'unseen']) test(`notificatio
     last_message: { id: 'message-a', text: 'Synthetic message', is_mine: false } }
   const { store, listeners } = setup(t, undefined, null, undefined, undefined, async () => {
     requests++
-    return stage === 'request' ? pendingRoom.promise : room
+    return ['request', 'revoked'].includes(stage) ? pendingRoom.promise : room
   })
   await store.start()
   if (stage === 'arrival') store.setDisplayedRoom('room-a')
-  listeners.get('chat.message')({ data: { room_id: 'room-a', message_id: 'message-a', is_new: true } })
+  listeners.get('chat.personal_message')({ data: { room_id: 'room-a', message_id: 'message-a', is_new: true } })
   if (stage === 'timer') store.setDisplayedRoom('room-a')
   if (stage !== 'request') store.setDisplayedRoom(null)
   t.mock.timers.tick(3200)
   await setImmediate()
-  if (stage === 'request') {
+  if (stage === 'revoked') {
+    assert.equal(requests, 1)
+    listeners.get('chat.scope_changed')()
+    pendingRoom.resolve(room)
+    await setImmediate()
+  } else if (stage === 'request') {
     assert.equal(requests, 1)
     store.setDisplayedRoom('room-a')
     store.setDisplayedRoom(null)

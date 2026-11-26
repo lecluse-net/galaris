@@ -3,23 +3,25 @@
 from .models import Document
 from collections.abc import Collection
 from datetime import datetime, timezone
+from itertools import chain
 from typing import cast
 from uuid import UUID
 from pydantic import TypeAdapter
 from sqlalchemy import BigInteger, Select, Text, case, false, func, literal, or_, select, true, union_all
 from sqlalchemy.dialects.postgresql import aggregate_order_by
-from sqlalchemy.orm import defer, joinedload, load_only, raiseload, selectinload
+from sqlalchemy.orm import defer, joinedload, load_only, raiseload
 from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.sql.selectable import ScalarSelect
 from core.database import get_db
 from core.user import UserModel, get_user_record
 from app.agent import Agent
-from .access import human_document_clause, document_team_agent_access
-from .access import readable_item_for_agents_clause, readable_item_clause, managed_item_agent_ids
+from app.share import ShareGrant
+from .access import human_document_clause, page_agent_access, readable_item_for_agents_clause, readable_item_clause, team_agent_rights
 from .contracts import DocumentAccess
 from .models import DocumentListPosition, DocumentNesting, DocumentTag, DocumentTagAssignment, DocumentURL
 from .document_library_filters import library_filters
 from .schemas import (
+    DocumentGrantPublic,
     DocumentLibraryRequest,
     DocumentLibraryPage,
     DocumentLibraryEntry,
@@ -30,6 +32,14 @@ from .schemas import (
 )
 from .item_projection import item_to_public
 from .query_policy import prepare_document_read
+
+_string_list = TypeAdapter(list[str])
+_agent_ids = TypeAdapter(list[int])
+_owner_options = TypeAdapter(list[DocumentOwnerOption])
+_tag_list = TypeAdapter(list[DocumentTagPublic])
+_tree_ranges = TypeAdapter(list[DocumentLibraryRange])
+_grant_list = TypeAdapter(list[DocumentGrantPublic])
+_team_rights = TypeAdapter(dict[int, bool])
 
 
 async def list_document_keywords(agent_id: int) -> list[str]:
@@ -152,15 +162,14 @@ async def browse_document_library(
         .cte("library_visible_documents").prefix_with("MATERIALIZED")
     )
     visible_ids = select(visible_documents.c.id)
-    base_filters = [Document.id.in_(visible_ids)]
-    base_filters.extend(await library_filters(request, user_id, visible_ids))
+    filters = await library_filters(request, user_id, visible_ids)
     keyword = request.keyword.strip() if request.keyword is not None else ""
     if keyword:
-        base_filters.append(Document.keywords.contains([keyword]))
+        filters.append(Document.keywords.contains([keyword]))
     normalized = request.query.strip()
     if normalized:
         ts_query = func.websearch_to_tsquery("simple", normalized)
-        base_filters.append(
+        filters.append(
             or_(
                 Document.search_vector.op("@@")(ts_query),
                 Document.title.ilike(f"%{normalized}%"),
@@ -168,7 +177,10 @@ async def browse_document_library(
             )
         )
 
-    filtered_documents = select(Document.id).where(*base_filters).cte("library_filtered_documents").prefix_with("MATERIALIZED")
+    filtered_documents = visible_documents
+    if filters:
+        filtered_documents = (select(Document.id).where(Document.id.in_(visible_ids), *filters)
+                              .cte("library_filtered_documents").prefix_with("MATERIALIZED"))
     summary = select(
         select(func.count()).select_from(filtered_documents).scalar_subquery().label("total"),
         (_library_owner_query(visible_ids, user_id) if request.include_owners else literal(None, Text)).label("owners"),
@@ -248,15 +260,38 @@ async def browse_document_library(
     ).correlate(Document).scalar_subquery()
     # Evaluate these once per page document, before URL/tag joins can multiply
     # rows. Never load content or revisions to build the navigation list.
-    details = select(
+    direct_grants = select(func.jsonb_agg(aggregate_order_by(func.jsonb_build_object(
+        "agent_id", ShareGrant.agent_id, "can_write", ShareGrant.can_write,
+    ), ShareGrant.agent_id)).cast(Text)).where(
+        ShareGrant.share_id == Document.share_id, ShareGrant.agent_id.is_not(None),
+    ).correlate(Document).scalar_subquery()
+    has_agent_scope = managed_agent_ids is None or bool(managed_agent_ids)
+    human_readable = false()
+    if user_id is not None:
+        # With only a human scope, the visibility scan already proved this
+        # exact permission in the same PostgreSQL snapshot.
+        human_readable = human_document_clause(user_id) if has_agent_scope else true()
+    detail_query = select(
         page,
+        direct_grants.label("direct_grants"),
         parent.label("parent_document_id"), children.label("children_count"),
         (_library_tag_query(user_id) if user_id is not None else literal(None, Text)).label("tags"),
-        (human_document_clause(user_id) if user_id is not None else false()).label("human_readable"),
+        human_readable.label("human_readable"),
         (human_document_clause(user_id, write=True) if user_id is not None else false()).label("human_writable"),
-    ).join(Document, Document.id == page.c.id).cte("library_page_details").prefix_with("MATERIALIZED")
+    ).join(Document, Document.id == page.c.id)
+    if has_agent_scope:
+        rights = team_agent_rights(select(page.c.id), managed_agent_ids).subquery()
+        by_document = select(rights.c.item_id, func.jsonb_object_agg(
+            rights.c.agent_id, rights.c.can_write,
+        ).cast(Text).label("team_rights")).group_by(rights.c.item_id).subquery()
+        detail_query = detail_query.outerjoin(by_document, by_document.c.item_id == Document.id)
+        team_rights = by_document.c.team_rights
+    else:
+        team_rights = literal(None, Text)
+    details = detail_query.add_columns(team_rights.label("team_rights")).cte("library_page_details").prefix_with("MATERIALIZED")
+    available_agents = (select(func.jsonb_agg(Agent.id).cast(Text)).where(Agent.deleted_at.is_(None))
+                        .correlate(None).scalar_subquery() if managed_agent_ids is None else literal(None, Text))
     first_row = func.row_number().over() == 1
-    first_document_row = func.row_number().over(partition_by=Document.id) == 1
     result = await db.execute(
         select(
             Document,
@@ -268,9 +303,9 @@ async def browse_document_library(
             case((first_row, summary.c.owners)).label("owners"),
             case((first_row, summary.c.keywords)).label("keywords"),
             case((first_row, tree_range_query if tree_range_query is not None else literal(None, Text))).label("tree_ranges"),
-            case((first_document_row, details.c.tags)).label("tags"),
+            details.c.tags, details.c.direct_grants, details.c.team_rights,
             select(func.jsonb_agg(DocumentURL.url).cast(Text)).where(DocumentURL.document_id == Document.id).correlate(Document).scalar_subquery().label("urls"),
-            case((first_row, select(func.jsonb_agg(Agent.id).cast(Text)).where(Agent.deleted_at.is_(None)).correlate(None).scalar_subquery())).label("available_agents"),
+            case((first_row, available_agents)).label("available_agents"),
             case(
                 (
                     Document.owner_agent_id.is_not(None),
@@ -293,11 +328,14 @@ async def browse_document_library(
         .options(
             # The summary must survive even when there is no page document.
             joinedload(Document.share, innerjoin=False),
-            selectinload(Document.grants),
+            raiseload(Document.grants),
             raiseload(Document.url_relations),
             raiseload(Document.revisions),
             defer(Document.content),
             defer(Document.summary_content),
+            defer(Document.search_text),
+            defer(Document.search_vector),
+            defer(Document.summary_source_text),
         )
         .order_by(
             details.c.sort_value.desc() if request.sort_desc else details.c.sort_value.asc(),
@@ -305,72 +343,49 @@ async def browse_document_library(
         )
         .execution_options(populate_existing=True)
     )
-    rows = result.unique().all()
+    rows = result.all()
     summary_row = next(row for row in rows if row.is_summary)
-    available_agents = TypeAdapter(list[int]).validate_json(cast(str | None, summary_row.available_agents) or "[]")
-    page_agent_ids = tuple(available_agents) if managed_agent_ids is None else tuple(managed_agent_ids)
+    page_agent_ids = frozenset(_agent_ids.validate_json(cast(str | None, summary_row.available_agents) or "[]")
+                               if managed_agent_ids is None else managed_agent_ids)
     total = cast(int, summary_row.total)
-    owner_options = TypeAdapter(list[DocumentOwnerOption]).validate_json(cast(str | None, summary_row.owners) or "[]")
+    owner_options = _owner_options.validate_json(cast(str | None, summary_row.owners) or "[]")
     for option in owner_options:
         option.is_current_user = option.kind == "user" and option.id == user_id
     owner_options.sort(key=lambda option: (option.label.casefold(), option.kind, option.id))
-    keywords = TypeAdapter(list[str]).validate_json(cast(str | None, summary_row.keywords) or "[]")
+    keywords = _string_list.validate_json(cast(str | None, summary_row.keywords) or "[]")
     keywords.sort(key=str.casefold)
-    items: dict[UUID, Document] = {}
-    owner_labels: dict[UUID, str] = {}
-    positions: dict[UUID, int] = {}
-    personal_tags: dict[UUID, list[DocumentTagPublic]] = {}
-    document_urls: dict[UUID, list[str]] = {}
-    parents: dict[UUID, UUID] = {}
-    child_counts: dict[UUID, int] = {}
-    human_readable: set[UUID] = set()
-    human_writable: set[UUID] = set()
-    tag_adapter = TypeAdapter(list[DocumentTagPublic])
+    page_size = 0
+    entries: list[DocumentLibraryEntry] = []
     for row in rows:
         item = cast(Document | None, row[0])
         if item is None:
             continue
-        items[item.id] = item
-        document_urls[item.id] = TypeAdapter(list[str]).validate_json(cast(str | None, row.urls) or "[]")
-        owner_labels[item.id] = cast(str, row.owner_label)
-        positions[item.id] = cast(int, row.position)
-        if row.parent_document_id is not None:
-            parents[item.id] = cast(UUID, row.parent_document_id)
-        child_counts[item.id] = cast(int, row.children_count)
-        if row.human_readable:
-            human_readable.add(item.id)
-        if row.human_writable:
-            human_writable.add(item.id)
-        if row.tags is not None:
-            personal_tags[item.id] = tag_adapter.validate_json(cast(str, row.tags))
-    has_more = request.offset + len(items) < total
-    team_access = await document_team_agent_access(list(items)) if items else {}
-    entries: list[DocumentLibraryEntry] = []
-    for item in items.values():
-        readable_agent_ids, writable_agent_ids = await managed_item_agent_ids(
-            item,
-            page_agent_ids,
-            team_access=team_access.get(item.id, {}),
+        page_size += 1
+        grants = _grant_list.validate_json(cast(str | None, row.direct_grants) or "[]")
+        team = _team_rights.validate_json(cast(str | None, row.team_rights) or "{}")
+        readable_agent_ids, writable_agent_ids = page_agent_access(
+            item, page_agent_ids, chain(((g.agent_id, g.can_write) for g in grants), team.items()),
         )
         human_access = DocumentAccess(
-            can_read=item.id in human_readable, can_write=item.id in human_writable
+            can_read=bool(row.human_readable), can_write=bool(row.human_writable),
         )
         if not readable_agent_ids and not human_access.can_read:
             continue
         entries.append(
             DocumentLibraryEntry(
-                parent_document_id=parents.get(item.id),
-                children_count=child_counts.get(item.id, 0),
-                position=positions.get(item.id, 0),
-                tags=personal_tags.get(item.id, []),
-                owner_label=owner_labels.get(item.id, ""),
+                parent_document_id=cast(UUID | None, row.parent_document_id),
+                children_count=cast(int, row.children_count),
+                position=cast(int, row.position),
+                tags=_tag_list.validate_json(cast(str | None, row.tags) or "[]"),
+                owner_label=cast(str, row.owner_label),
                 item=item_to_public(
                     item,
                     DocumentAccess(
                         can_read=True,
                         can_write=bool(writable_agent_ids) or human_access.can_write,
                     ),
-                    urls=document_urls[item.id],
+                    urls=_string_list.validate_json(cast(str | None, row.urls) or "[]"),
+                    grants=grants,
                 ),
                 user_access=human_access,
                 agent_ids=list(readable_agent_ids),
@@ -378,7 +393,7 @@ async def browse_document_library(
             )
         )
 
-    tree_ranges = TypeAdapter(list[DocumentLibraryRange]).validate_json(cast(str | None, summary_row.tree_ranges) or "[]")
+    tree_ranges = _tree_ranges.validate_json(cast(str | None, summary_row.tree_ranges) or "[]")
 
     return DocumentLibraryPage(
         owners=owner_options,
@@ -386,7 +401,7 @@ async def browse_document_library(
         entries=entries,
         keywords=keywords,
         total=total,
-        has_more=has_more,
+        has_more=request.offset + page_size < total,
         tree_ranges=tree_ranges,
     )
 

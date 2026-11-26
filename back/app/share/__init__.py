@@ -10,7 +10,7 @@ from .contracts import (
     SharingUpdate,
     SingleGrantUpdate,
 )
-from .models import ShareConfig, ShareGrant, Shareable, ShareReference
+from .models import ShareConfig, ShareEffectiveAccess, ShareGrant, Shareable, ShareReference
 from .directory import directory as sharing_directory, register_sharing_directory
 from .service import (
     grants as sharing_grants,
@@ -31,6 +31,7 @@ __all__ = [
     "SharingUpdate",
     "SingleGrantUpdate",
     "ShareConfig",
+    "ShareEffectiveAccess",
     "ShareGrant",
     "Shareable",
     "ShareReference",

@@ -447,7 +447,7 @@ for (const surface of ['documents', 'chat']) for (const mobile of surface === 'c
   await page.clock.install()
   async function receive(roomId, messageId, text) {
     state.receive(roomId, messageId, text)
-    await page.evaluate(data => window.testApp.emitSocket('chat.message', { data }), { room_id: roomId, message_id: messageId, is_new: true })
+    await page.evaluate(data => window.testApp.emitSocket('chat.personal_message', { data }), { room_id: roomId, message_id: messageId, is_new: true })
     await page.clock.runFor(4000)
   }
   await receive('room-a', 'visible-message', 'Message already on screen')

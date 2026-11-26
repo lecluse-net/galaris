@@ -14,6 +14,7 @@ from app.llm.models import LLMCall
 from app.process.facade import find_dataset_run_usages
 from app.process.models import ProcessDefinition, ProcessRun
 from app.services import ServiceModel
+from app.share import ShareEffectiveAccess
 from core.team import TeamModel, TeamUserModel
 from core.user import HumanActor, UserModel
 from core.authorize import Assignment, Privilege
@@ -30,6 +31,9 @@ async def test_document_sharing_contract_is_atomic_and_does_not_give_editors_own
     db.add_all([reader, member, team]); await db.flush()
     db.add(TeamUserModel(team_id=team.id, user_id=member.id)); await db.flush()
     dataset = await service.create(owner.id, title="Synthetic shared data", content='{"kept":false}')
+    beneficiaries = select(ShareEffectiveAccess.agent_id, ShareEffectiveAccess.user_id,
+                           ShareEffectiveAccess.can_write).where(ShareEffectiveAccess.share_id == dataset.share_id)
+    assert set((await db.execute(beneficiaries)).tuples()) == {(owner.id, None, True)}
     initial = await sharing.read(dataset.id, scope)
     assert initial.owner.kind == "agent" and initial.owner.id == owner.id
     assert initial.level == "private" and initial.can_manage
@@ -39,6 +43,9 @@ async def test_document_sharing_contract_is_atomic_and_does_not_give_editors_own
                 {"kind": "user", "id": reader.id, "can_write": False}])
     changed = await sharing.update(dataset.id, scope, update)
     assert changed.level == "groups" and changed.lock_version == initial.lock_version + 1
+    assert set((await db.execute(beneficiaries)).tuples()) == {
+        (owner.id, None, True), (other.id, None, True), (None, reader.id, False), (None, member.id, False),
+    }
     assert dataset.content == '{"kept":false}' and dataset.revision == 1
     assert (await service.record(dataset.id, other.id, write=True)).id == dataset.id
     human_state = await sharing.read(dataset.id, HumanActor(reader.id))
@@ -68,7 +75,16 @@ async def test_document_sharing_contract_is_atomic_and_does_not_give_editors_own
     with pytest.raises(service.DatasetNotFoundError):
         await sharing.update(dataset.id, scope, DocumentSharingLevelUpdate(level="public", grants=[], expected_lock_version=private.lock_version))
     dataset.read_only = False; await db.flush()
-    await service.remove(dataset.id, scope, expected_lock_version=dataset.lock_version)
+    identity, version = dataset.id, dataset.lock_version
+    with pytest.raises(RuntimeError, match="interrupted delete"):
+        async with db.begin_nested():
+            await service.remove(identity, scope, expected_lock_version=version)
+            assert not (await db.execute(beneficiaries)).all()
+            raise RuntimeError("interrupted delete")
+    assert (await service.record(identity, scope)).lock_version == version
+    assert set((await db.execute(beneficiaries)).tuples()) == {(owner.id, None, True)}
+    await service.remove(identity, scope, expected_lock_version=version)
+    assert not (await db.execute(beneficiaries)).all()
     with pytest.raises(service.DatasetNotFoundError):
         await service.record(dataset.id, scope)
     assert await db.scalar(select(DatasetRevision.content).where(DatasetRevision.dataset_id == dataset.id)) == '{"kept":false}'

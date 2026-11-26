@@ -117,6 +117,8 @@ async def test_agent_administration_never_allows_self_mutation(db, admin_fixture
 @pytest.mark.asyncio
 async def test_team_management_creates_in_scope_and_rechecks_membership(db, admin_fixture, admin_subject):
     from app.agent.models import AgentTeam
+    from app.document import Document
+    from app.share import ShareEffectiveAccess, ShareGrant
     from app.connection import connection_service
     from core.team import TeamModel
     caller, owner, _, outsider, title, _, connection = admin_fixture
@@ -131,9 +133,17 @@ async def test_team_management_creates_in_scope_and_rechecks_membership(db, admi
     await agent_mcp.agent_update(ctx, admin_subject.id, AdminAgentUpdate(job_title="Team observer"))
     with pytest.raises(PermissionError):
         await agent_mcp.agent_update(ctx, outsider.id, AdminAgentUpdate(job_title="Forbidden"))
+    shared = Document(owner_user_id=owner.id, global_access=1, title="Public reading, team editing",
+                      resource_id="team-created", provider_code="native", content_hash="0" * 64)
+    db.add(shared)
+    await db.flush()
+    db.add(ShareGrant(share_id=shared.share_id, team_id=team.id, can_write=True))
+    await db.flush()
     created = await agent_mcp.agent_create(ctx, AdminAgentCreate(user_id=owner.id, title_id=title.id,
         team_ids=[team.id], code=f"team-created-{uuid4().hex}", first_name="Synthetic colleague"))
     assert created["team_ids"] == [team.id]
+    assert await db.scalar(select(ShareEffectiveAccess.can_write).where(
+        ShareEffectiveAccess.share_id == shared.share_id, ShareEffectiveAccess.agent_id == created["id"])) is True
     other_team = TeamModel(name="Synthetic unrelated team")
     db.add(other_team)
     await db.flush()

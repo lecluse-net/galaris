@@ -8,21 +8,69 @@ from collections import deque
 from dataclasses import dataclass, field
 from uuid import UUID
 
-from sqlalchemy import func, select, literal, union_all
+from sqlalchemy import delete, or_, select, literal, union_all
 
-from app.agent import Agent, AgentTeamModel
-from app.share import GrantUpdate, ShareConfig, ShareGrant, SharingState, SharingUpdate
+from app.agent import Agent, AgentAccessChange, AgentTeamModel
+from app.share import GrantUpdate, ShareConfig, ShareEffectiveAccess, ShareGrant, SharingState, SharingUpdate
 from core.database import get_db
-from core.team import TeamModel, TeamUserModel
+from core.team import TeamMember, TeamModel, TeamUserModel, lock_team_sharing as lock_sharing
 from core.user import UserModel
 
 from .models import DocumentNesting, DocumentSharingIntent, DocumentTag, DocumentTagAssignment, Document
+from .effective_sharing import initialize_agent_document_access, project_document_access, project_team_access
 
 Principal = tuple[str, int]
 
 
-async def lock_sharing() -> None:
-    await get_db().execute(select(func.pg_advisory_xact_lock(1195656264, 0)))
+async def refresh_agent_document_access(agent_id: int, change: AgentAccessChange) -> None:
+    if change == "create":
+        await initialize_agent_document_access(agent_id)
+        return
+    db = get_db()
+    if change == "archive":
+        await db.execute(delete(ShareEffectiveAccess).where(
+            ShareEffectiveAccess.agent_id == agent_id, ShareEffectiveAccess.share_id.in_(
+                select(ShareConfig.id).where(ShareConfig.resource_kind == "document")
+                .execution_options(include_historized=True)
+            )
+        ).execution_options(include_historized=True, synchronize_session=False))
+    # The agent's manager determines which personal placements can transmit rights.
+    # A change can affect both this agent's documents and their descendants.
+    placed = select(Document.id).where(Document.owner_agent_id == agent_id, or_(
+        select(DocumentTagAssignment.id).where(DocumentTagAssignment.document_id == Document.id).exists(),
+        select(DocumentNesting.id).where(DocumentNesting.document_id == Document.id).exists(),
+        select(DocumentNesting.id).where(DocumentNesting.parent_document_id == Document.id).exists(),
+    )).exists()
+    if await db.scalar(select(placed)):
+        await reconcile_sharing()
+
+
+async def refresh_team_document_access(team_id: int, member: TeamMember | None) -> None:
+    """An owner's legacy group rule can also affect recipients on descendants."""
+    db = get_db()
+    if member is not None:
+        kind, identity = member
+        owner = Document.owner_agent_id if kind == "agent" else Document.owner_user_id
+        docs = select(Document.share_id).where(owner == identity, Document.group_access > 0)
+        owned = docs.union_all(select(DocumentTag.share_id).where(
+            DocumentTag.user_id == identity, DocumentTag.group_access > 0,
+        )) if kind == "user" else docs
+        legacy_shares = tuple(await db.scalars(owned))
+        if legacy_shares:
+            await reconcile_sharing(refresh_share_ids=legacy_shares)
+    await project_team_access(db, team_id, member)
+
+
+async def reconcile_deleted_document(item: Document) -> None:
+    """Revoke a deleted document's rights under the caller's sharing lock."""
+    db = get_db()
+    await db.flush()
+    has_children = select(DocumentNesting.id).where(DocumentNesting.parent_document_id == item.id).exists()
+    if await db.scalar(select(has_children)):
+        await reconcile_sharing(refresh_share_ids=(item.share_id,))
+    else:
+        # A leaf cannot contribute permissions to another placement.
+        await db.execute(delete(ShareEffectiveAccess).where(ShareEffectiveAccess.share_id == item.share_id))
 
 
 async def _grants(share_id: UUID) -> dict[Principal, bool]:
@@ -122,7 +170,7 @@ async def _principal_keys() -> set[Principal]:
 
 async def finish_own_sharing(item: Document | DocumentTag) -> None:
     await capture_intent(item.share_id)
-    await reconcile_sharing()
+    await reconcile_sharing(refresh_share_ids=(item.share_id,))
     await get_db().refresh(item, attribute_names=["grants", "share"])
 
 
@@ -166,7 +214,7 @@ class Policy:
         return changed
 
 
-async def reconcile_sharing() -> int:
+async def reconcile_sharing(*, refresh_share_ids: tuple[UUID, ...] = ()) -> int:
     """Rebuild solely from own ACLs and current, owner-authorized placements."""
     await lock_sharing()
     db = get_db()
@@ -272,6 +320,7 @@ async def reconcile_sharing() -> int:
                 pending.append(child)
                 queued.add(child)
     changed = 0
+    affected_shares = set(refresh_share_ids)
     for identity, policy in policies.items():
         grants = own_grants(intents[policy.share_id])
         for key, write in policy.inherited.items():
@@ -288,7 +337,9 @@ async def reconcile_sharing() -> int:
             if isinstance(item, Document) and identity in visibility:
                 item.visibility = expected_visibility
             changed += 1
+            affected_shares.add(policy.share_id)
     await db.flush()
+    await project_document_access(db, affected_shares)
     if changed:
         db.info["document_sharing_changed"] = True
     return changed

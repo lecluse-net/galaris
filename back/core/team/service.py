@@ -6,15 +6,16 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import load_only
 
-from core.database import get_db
+from core.database import get_db, lock_resource_sharing
 from core.authorize import check_privilege
 from core.user import UserModel, get_current_user
 
-from .contracts import HumanInfo, HumanSelection, SelectionTeam, TeamInfo, TeamWrite
+from .contracts import HumanInfo, HumanSelection, SelectionTeam, TeamInfo, TeamMember, TeamWrite
 from .models import Team, TeamAudit, TeamUser
 
 
 _access_observers: dict[str, Callable[[], Awaitable[None]]] = {}
+_access_projections: dict[str, Callable[[int, TeamMember | None], Awaitable[None]]] = {}
 _HUMAN_FIELDS = (UserModel.id, UserModel.display_name, UserModel.email,
                  UserModel.is_active, UserModel.avatar_key, UserModel.avatar_mime_type)
 
@@ -22,6 +23,17 @@ _HUMAN_FIELDS = (UserModel.id, UserModel.display_name, UserModel.email,
 def register_team_access_observer(key: str, callback: Callable[[], Awaitable[None]]) -> None:
     """Subscribe at bootstrap to committed changes affecting team-based access."""
     _access_observers[key] = callback
+
+
+def register_team_access_projection(key: str, callback: Callable[[int, TeamMember | None], Awaitable[None]]) -> None:
+    """Refresh derived permissions inside the membership writer's transaction."""
+    _access_projections[key] = callback
+
+
+async def refresh_team_access(team_id: int, member: TeamMember | None) -> None:
+    """A specific member changed, or the team itself was archived."""
+    for callback in tuple(_access_projections.values()):
+        await callback(team_id, member)
 
 
 async def notify_team_access_changed() -> None:
@@ -97,9 +109,11 @@ async def save_team(data: TeamWrite, team_id: int | None = None) -> TeamInfo:
 
 
 async def delete_team(team_id: int) -> None:
+    await lock_resource_sharing()
     team = await require_team(team_id)
     audit("team.delete", {"before": TeamInfo.model_validate(team).model_dump()})
     team.soft_delete()
+    await refresh_team_access(team_id, None)
 
 
 async def move_team(team_id: int, target_team_id: int, *, after: bool) -> None:
@@ -172,12 +186,15 @@ async def team_humans(team_id: int) -> list[HumanInfo]:
 
 
 async def set_human_membership(team_id: int, user_id: int, present: bool) -> None:
+    await lock_resource_sharing()
     await require_team(team_id)
     if await get_db().scalar(select(UserModel.id).where(UserModel.id == user_id)) is None:
         raise LookupError("User not found")
-    before = await get_db().scalar(select(TeamUser.id).where(TeamUser.team_id == team_id, TeamUser.user_id == user_id))
     if present:
-        await get_db().execute(insert(TeamUser).values(team_id=team_id, user_id=user_id).on_conflict_do_nothing())
+        command = insert(TeamUser).values(team_id=team_id, user_id=user_id).on_conflict_do_nothing()
     else:
-        await get_db().execute(delete(TeamUser).where(TeamUser.team_id == team_id, TeamUser.user_id == user_id))
-    audit("team.human", {"team": team_id, "user": user_id, "before": before is not None, "after": present})
+        command = delete(TeamUser).where(TeamUser.team_id == team_id, TeamUser.user_id == user_id)
+    changed = await get_db().scalar(command.returning(TeamUser.id)) is not None
+    if changed:
+        await refresh_team_access(team_id, ("user", user_id))
+    audit("team.human", {"team": team_id, "user": user_id, "before": not present if changed else present, "after": present})

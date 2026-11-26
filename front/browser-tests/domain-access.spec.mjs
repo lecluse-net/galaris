@@ -43,7 +43,7 @@ test('shell notifications wait for Chat access and stop when the role loses it',
   await expect.poll(() => summaries).toBeGreaterThan(0)
   await setPrivileges(page, ['CONTACT_EDIT'])
   const stopped = summaries
-  await page.evaluate(() => window.testApp.emitSocket('chat.message', { data: {} }))
+  await page.evaluate(() => window.testApp.emitSocket('chat.personal_message', { data: {} }))
   expect(summaries).toBe(stopped)
 })
 

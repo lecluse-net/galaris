@@ -34,6 +34,7 @@ from .content_validation import validate_document_content
 from .agent_html_layout import require_agent_html_layout
 from .lifecycle import notify_document
 from .item_projection import item_to_public
+from .effective_sharing import project_document_access
 from .safety import assert_safe_text, assert_safe_value
 
 class DocumentError(RuntimeError):
@@ -1408,8 +1409,8 @@ async def create_item(data: DocumentItemCreate, *, actor_task_id: UUID | None = 
         if data.source is not None:
             task_target, round_target = await _source_targets(data.source.source_kind, data.source.source_ref)
             db.add(DocumentSource(document_id=item.id, source_kind=data.source.source_kind, source_ref=data.source.source_ref, excerpt=data.source.excerpt, content_hash=item.content_hash, metadata_=dict(data.source.metadata), task_id=task_target, conversation_round_id=round_target))
+        await project_document_access(db, (item.share_id,))
         if defer_commit:
-            await db.flush()
             return item, True
         await db.commit()
     except BaseException:
@@ -1559,7 +1560,7 @@ async def forget_deleted_dataset_projection(identity: UUID) -> None:
 
 async def forget_item_record(item: Document, *, forget_kind: str) -> DocumentDeletionResult:
     from .models import DocumentAttachment, DocumentAutomationJob
-    from .sharing_inheritance import lock_sharing, reconcile_sharing
+    from .sharing_inheritance import lock_sharing, reconcile_deleted_document
     from core.storage import retire_file_references
     await lock_sharing()
     db = get_db()
@@ -1588,7 +1589,7 @@ async def forget_item_record(item: Document, *, forget_kind: str) -> DocumentDel
         if await db.scalar(select(DocumentAutomationJob.id).where(DocumentAutomationJob.idempotency_key == key)) is None:
             db.add(DocumentAutomationJob(kind="resource_cleanup", idempotency_key=key,
                 payload={"provider": provider, "pointer": pointer}))
-    await reconcile_sharing()
+    await reconcile_deleted_document(item)
     await db.commit()
     from .document_thumbnail_service import cleanup_current_document_thumbnail
     await cleanup_current_document_thumbnail(item.id)

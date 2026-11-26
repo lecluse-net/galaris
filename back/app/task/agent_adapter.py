@@ -28,6 +28,7 @@ from app.agent import EffectDescriptorV1, ScopePreflightV1
 from sqlalchemy import Text, cast as sql_cast, func, or_, select, update as sql_update
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm.attributes import get_history, set_committed_value
+from sqlalchemy.orm import defer
 
 from . import collab, task_service
 from .models import Task, TaskAttempt, TaskStatus
@@ -402,7 +403,8 @@ class SqlAlchemyAgentTaskAdapter:
         expected_attempt_id: UUID | None = None,
         data_patch: Mapping[str, Any] | None = None,
         execution_result: ExecutionResult | None = None,
-    ) -> None:
+        checkpoint_base: tuple[int, dict[str, int]] | None = None,
+    ) -> int | None:
         """Persist one run snapshot in its own serialized transaction.
 
         Parallel tool tasks must never refresh, mutate, or commit the scheduler's ambient
@@ -414,20 +416,25 @@ class SqlAlchemyAgentTaskAdapter:
 
         from core.database import get_db_session
 
+        checkpoint = data_patch.get("_agent_run_checkpoint") if data_patch and len(data_patch) == 1 else None
+        checkpoint_write = isinstance(checkpoint, dict)
+        revision: int | None = None
         async with get_db_session() as db:
-            task: Task | None = await db.scalar(
-                Task.histo_filter(
-                    select(Task).where(Task.id == task_id).with_for_update(key_share=True)
-                )
-            )
+            task_query = select(Task).where(Task.id == task_id).with_for_update(key_share=True)
+            if checkpoint_write:
+                task_query = task_query.options(defer(Task.data), defer(Task.execution_result))
+            task: Task | None = await db.scalar(Task.histo_filter(task_query))
             if task is None:
                 raise LookupError(f"Task {task_id} no longer exists.")
             attempt: TaskAttempt | None = None
             if expected_attempt_id is not None:
-                attempt = await db.scalar(select(TaskAttempt).where(
+                attempt_query = select(TaskAttempt).where(
                     TaskAttempt.id == expected_attempt_id,
                     TaskAttempt.task_id == task_id,
-                ).with_for_update(key_share=True))
+                ).with_for_update(key_share=True)
+                if checkpoint_write:
+                    attempt_query = attempt_query.options(defer(TaskAttempt.data))
+                attempt = await db.scalar(attempt_query)
                 if (attempt is None or attempt.status != "CLAIMED"
                         or task.lease_token != attempt.lease_token
                         or (task.lease_expires_at is not None
@@ -439,7 +446,15 @@ class SqlAlchemyAgentTaskAdapter:
                     "The Task objective changed while this agent run was active; "
                     "discarding the stale run so the amended objective can execute."
                 )
-            if data_patch:
+            if checkpoint_write and task.paused and task.lease_token is None:
+                # The lifecycle hook reads pause reasons from the Python mapping
+                # for an unleased pause. Preserve that path for legacy callers.
+                await db.refresh(task, attribute_names=["data", "execution_result"])
+                checkpoint_write = False
+            if checkpoint_write:
+                from .checkpoint_storage import store_checkpoint
+                revision = await store_checkpoint(task, attempt, cast(dict[str, Any], checkpoint), execution_result, checkpoint_base)
+            elif data_patch:
                 delivery = data_patch.get("_delivery_receipt")
                 if isinstance(delivery, Mapping) and cast(Mapping[str, Any], delivery).get("status") == "started" and task.data and task.data.get("_delivery_receipt"):
                     raise StaleAgentRunError("A prior delivery receipt already exists; the send was not dispatched again.")
@@ -451,7 +466,7 @@ class SqlAlchemyAgentTaskAdapter:
                     }
                 if attempt is not None and delivery is not None:
                     attempt.data = {**(attempt.data or {}), "delivery_receipt": delivery}
-            if execution_result is not None:
+            if execution_result is not None and not checkpoint_write:
                 task.set_execution_result(execution_result)
                 if attempt is not None:
                     task_data = cast(Mapping[str, object], task.data or {})
@@ -476,11 +491,13 @@ class SqlAlchemyAgentTaskAdapter:
                         attempt.data = {**(attempt.data or {}), "runtime_activity": {
                             "run_id": identity.get("request_run_id"), "at": now.isoformat(),
                         }}
-            await task_service.save(task)
+            if not checkpoint_write:
+                await task_service.save(task)
 
         from . import scheduler
 
         scheduler.notify_task_activity(task_id)
+        return revision
 
     async def record_agent_run_activity(self, task_id: UUID, attempt_id: UUID, run_id: UUID) -> None:
         """Refresh the watchdog from model data without rewriting the Task result."""
@@ -513,22 +530,21 @@ class SqlAlchemyAgentTaskAdapter:
 
         scheduler.notify_task_activity(task_id)
 
-    async def append_agent_run_event(
-        self, task: Any, event: AgentRunEventV1
-    ) -> None:
+    async def append_agent_run_event(self, event: AgentRunEventV1) -> None:
         """Append one bounded semantic event to the active attempt timeline."""
 
-        lease_token = getattr(task, "lease_token", None)
-        if not isinstance(lease_token, UUID):
+        task_id, attempt_id = event.identity.task_id, event.identity.attempt_id
+        if task_id is None or attempt_id is None:
             return
         from core.database import get_db_session
 
+        owns_lease = select(Task.id).where(Task.id == task_id, Task.lease_token == TaskAttempt.lease_token).exists()
         # The timeline is a non-authoritative projection. Persist it independently so
-        # its commit cannot close a savepoint owned by a tool or by the task workflow.
+        # it also works when the caller's rollback expired its ORM objects.
         async with get_db_session() as db:
             attempt = await db.scalar(
                 select(TaskAttempt)
-                .where(TaskAttempt.lease_token == lease_token)
+                .where(TaskAttempt.id == attempt_id, TaskAttempt.task_id == task_id, owns_lease)
                 .with_for_update(key_share=True)
             )
             if attempt is None:
@@ -551,7 +567,7 @@ class SqlAlchemyAgentTaskAdapter:
 
         from . import scheduler
 
-        scheduler.notify_task_activity(task.id)
+        scheduler.notify_task_activity(task_id)
 
     async def get_working_set(self, task_id: UUID) -> WorkingSet:
         from core.database import get_db_session

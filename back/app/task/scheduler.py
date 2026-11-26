@@ -434,9 +434,6 @@ async def _fill_slots() -> bool:
         if next_task is None:
             break
         task_id, status, priority, agent_id, lease_token = next_task
-        if _must_keep_interactive_slot(priority):
-            await _release_unstarted_claim(task_id, lease_token)
-            break
         _schedule_action(task_id, status, priority, agent_id, lease_token)
         scheduled = True
     return scheduled
@@ -444,15 +441,6 @@ async def _fill_slots() -> bool:
 
 def _max_concurrency() -> int:
     return max(1, int(runtime_settings.TASK_SCHEDULER_MAX_CONCURRENCY or 1))
-
-
-def _must_keep_interactive_slot(priority: int) -> bool:
-    if priority < 2:
-        return False
-    max_concurrency = _max_concurrency()
-    if max_concurrency <= 1:
-        return False
-    return len(_running) >= max_concurrency - 1
 
 
 def _schedule_action(
@@ -633,6 +621,8 @@ async def _next_task(
             else_=priority,
         )
         blocked_agents: set[int] = set()
+        capacity = _max_concurrency()
+        interactive_only = capacity > 1 and len(running_ids) >= capacity - 1
         while True:
             query = (
                 select(
@@ -659,6 +649,8 @@ async def _next_task(
                 .limit(1)
                 .with_for_update(skip_locked=True)
             )
+            if interactive_only:
+                query = query.where(priority < 2)
             if running_ids:
                 query = query.where(Task.id.not_in(list(running_ids)))
             if blocked_agents:
@@ -960,21 +952,6 @@ async def _attempt_for_token(db: AsyncSession, lease_token: UUID) -> TaskAttempt
     return await db.scalar(
         select(TaskAttempt).where(TaskAttempt.lease_token == lease_token).limit(1)
     )
-
-
-async def _release_unstarted_claim(task_id: UUID, lease_token: UUID) -> None:
-    async with get_db_session() as db:
-        task = await db.scalar(
-            select(Task).where(Task.id == task_id).with_for_update(skip_locked=True)
-        )
-        if task is None or task.lease_token != lease_token:
-            return
-        attempt = await _attempt_for_token(db, lease_token)
-        if attempt is not None:
-            attempt.status = TaskAttemptStatus.CANCELLED.value
-            attempt.finished_at = datetime.now(timezone.utc)
-            attempt.error = _task_message(task, "interactive_slot_reserved")
-        _clear_lease(task)
 
 
 async def _heartbeat_lease(task_id: UUID, lease_token: UUID) -> None:

@@ -6,13 +6,13 @@ from datetime import datetime, timezone
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import any_, bindparam, or_, select
+from sqlalchemy import Select, any_, bindparam, func, or_, select
 from sqlalchemy.dialects.postgresql import ARRAY, UUID as PGUUID
 
 from core.database import get_db
 from .amendment_service import amendment_basis
 from .models import Task, TaskStatus
-from .operational_state import TaskOperationalSnapshot, inspect_operational_state
+from .operational_state import operational_snapshot
 from .working_set import parse_working_set
 
 
@@ -27,7 +27,7 @@ class TaskWorkSnapshot:
 
 async def list_work_snapshots(
     *,
-    task_ids: Sequence[UUID] = (),
+    task_ids: Sequence[UUID] | Select[tuple[UUID]] = (),
     message_group_id: str = "",
     paused_since: datetime | None = None,
     terminal_since: datetime | None = None,
@@ -41,23 +41,43 @@ async def list_work_snapshots(
     including automatic waits of any age and excluding manual holds/cancellation.
     It deliberately excludes historized Tasks.
     """
-    scope = (Task.agent_id == active_agent_id) if active_agent_id is not None else or_(
-        Task.id == any_(bindparam("linked_task_ids", list(task_ids), type_=ARRAY(PGUUID(as_uuid=True)))),
-        Task.message_group_id == message_group_id,
-    )
-    query = select(Task).where(scope)
+    terminal = (TaskStatus.SUCCESS, TaskStatus.ERROR)
     if active_agent_id is not None:
-        query = query.where(Task.status.in_((TaskStatus.CREATE, TaskStatus.DISPATCH, TaskStatus.PLAN, TaskStatus.EXEC)),
-            Task.cancel_requested.is_(False))
-    rows = await get_db().scalars(
-        Task.histo_filter(
-            query
-            .order_by(Task.created_at.desc(), Task.id.desc())
+        query = select(Task).where(
+            Task.agent_id == active_agent_id,
+            Task.status.in_((TaskStatus.CREATE, TaskStatus.DISPATCH, TaskStatus.PLAN, TaskStatus.EXEC)),
+            Task.cancel_requested.is_(False),
         )
-    )
-    candidates: list[tuple[Task, TaskOperationalSnapshot, datetime]] = []
+    else:
+        linked = Task.id.in_(task_ids) if isinstance(task_ids, Select) else Task.id == any_(
+            bindparam("linked_task_ids", list(task_ids), type_=ARRAY(PGUUID(as_uuid=True)))
+        )
+        scope = or_(linked, Task.message_group_id == message_group_id)
+        eligible = Task.status.not_in(terminal)
+        if terminal_limit > 0:
+            activity = func.coalesce(Task.updated_at, Task.created_at)
+            recent = select(Task.id).where(scope, Task.status.in_(terminal), Task.deleted_at.is_(None))
+            if terminal_since is not None:
+                recent = recent.where(activity > terminal_since)
+            eligible = or_(eligible, Task.id.in_(
+                recent.order_by(activity.desc(), Task.id.asc()).limit(terminal_limit).correlate(None)
+            ))
+        query = select(Task).where(scope, eligible)
+    db = get_db()
+    rows = (await db.scalars(Task.histo_filter(query.order_by(Task.created_at.desc(), Task.id.desc())))).all()
+    if not rows:
+        return ()
+    parent_ids = bindparam("parent_ids", [row.id for row in rows], type_=ARRAY(PGUUID(as_uuid=True)))
+    children = await db.scalars(Task.histo_filter(select(Task).where(
+        Task.parent_id == any_(parent_ids), Task.status.not_in(terminal),
+    ).order_by(Task.created_at.asc(), Task.id.asc())))
+    by_parent: dict[UUID, list[Task]] = {}
+    for child in children:
+        if child.parent_id is not None:
+            by_parent.setdefault(child.parent_id, []).append(child)
+    snapshots: list[TaskWorkSnapshot] = []
     for task in rows:
-        operational = await inspect_operational_state(task)
+        operational = operational_snapshot(task, by_parent.get(task.id, ()))
         state = operational["operational_state"]
         if active_agent_id is not None and (state == "PAUSED" or "user" in operational["pause_reasons"]):
             continue
@@ -70,19 +90,6 @@ async def list_work_snapshots(
         # Apply the caller's context window before interpreting historical results
         # or working sets. Old work must not poison an otherwise current context.
         if state == "PAUSED" and paused_since is not None and activity_at < paused_since:
-            continue
-        if state == "TERMINAL" and terminal_since is not None and activity_at <= terminal_since:
-            continue
-        candidates.append((task, operational, activity_at))
-    ordered_terminals = sorted(
-        (entry for entry in candidates if entry[1]["operational_state"] == "TERMINAL"),
-        key=lambda entry: (-entry[2].timestamp(), str(entry[0].id)),
-    )
-    terminal_ids = {task.id for task, _, _ in ordered_terminals[:terminal_limit]}
-    snapshots: list[TaskWorkSnapshot] = []
-    for task, operational, activity_at in candidates:
-        state = operational["operational_state"]
-        if state == "TERMINAL" and task.id not in terminal_ids:
             continue
         snapshots.append(
             TaskWorkSnapshot(

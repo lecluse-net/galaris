@@ -3,7 +3,7 @@ from sqlalchemy import delete as sql_delete, select
 from loguru import logger
 
 from core.database import get_db
-from core.team import audit
+from core.team import audit, lock_team_sharing, refresh_team_access
 
 from .models import AgentGroup, AgentTeam
 from .observers import notify_agent_profile
@@ -67,9 +67,10 @@ async def update(id: int, group_update: AgentGroupUpdate) -> Optional[AgentGroup
 
 
 async def delete(id: int) -> bool:
-    """Soft delete an agent group. Detaches its agents first. Returns True if deleted."""
+    """Archive the group, refresh affected rights, and detach its agents atomically."""
     db = get_db()
-    result = await db.execute(select(AgentGroup).where(AgentGroup.id == id))
+    await lock_team_sharing()
+    result = await db.execute(select(AgentGroup).where(AgentGroup.id == id).with_for_update())
     group = result.scalar_one_or_none()
     if group is None:
         return False
@@ -77,13 +78,14 @@ async def delete(id: int) -> bool:
     agent_ids = list(
         (await db.scalars(select(AgentTeam.agent_id).where(AgentTeam.team_id == id))).all()
     )
-    # Detach agents from the group being deleted
+    audit("team.delete", {"before": {"id": group.id, "name": group.name, "order": group.order}})
+    group.soft_delete()
+    # Legacy owner-group rules still need the former member identities here.
+    await refresh_team_access(id, None)
     await db.execute(
         sql_delete(AgentTeam).where(AgentTeam.team_id == id)
     )
 
-    audit("team.delete", {"before": {"id": group.id, "name": group.name, "order": group.order}})
-    group.soft_delete()
     await db.commit()
     logger.info(f"Agent group deleted: {id}")
     for agent_id in agent_ids:

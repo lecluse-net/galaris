@@ -8,7 +8,7 @@ from core.team.service import set_human_membership
 from core.user import UserModel
 from app.agent.dialogue_contracts import DialogueAgent, DialoguePolicy
 from app.agent.models import AgentTeam
-from app.agent.dialogue_service import policy_snapshot, set_agent_membership
+from app.agent.dialogue_service import dialogue_scope_for, policy_snapshot, set_agent_membership
 from app.agent.models import Agent, Title
 
 
@@ -107,6 +107,9 @@ def test_only_manager_and_global_access_bypass_team_membership():
 
 @pytest.mark.asyncio
 async def test_membership_persists_and_revokes_without_stale_scope(db):
+    from datetime import datetime, timezone
+    from tests.sql_reads import measured_reads
+
     manager = UserModel(email=f"manager-{uuid4()}@example.test", hashed_password="unused", is_active=True)
     human = UserModel(email=f"human-{uuid4()}@example.test", hashed_password="unused", is_active=True)
     team = TeamModel(name="Mixed")
@@ -122,10 +125,25 @@ async def test_membership_persists_and_revokes_without_stale_scope(db):
     await set_human_membership(team.id, human.id, True)
     await db.flush()
     assert (await policy_snapshot()).human(human.id, agent.id).source == "same_team"
+    async with measured_reads(db, "dialogue-scope-for-member") as reads:
+        assert (await dialogue_scope_for(human, db)).allows(agent.id)
+    assert len(reads) <= 2
+    assert "first_name" not in reads.result_columns
+    assert (await dialogue_scope_for(human, db, agent_id=agent.id)).allows(agent.id)
+    assert (await dialogue_scope_for(manager, db)).allows(agent.id)
     assert len((await db.scalars(select(AgentTeam).where(AgentTeam.agent_id == agent.id))).all()) == 1
     await set_human_membership(team.id, human.id, False)
     assert human.id not in await human_memberships()
+    assert not (await dialogue_scope_for(human, db)).allows(agent.id)
     assert not (await policy_snapshot()).human(human.id, agent.id).allowed
     await set_human_membership(team.id, human.id, True)
+    team.deleted_at = datetime.now(timezone.utc)
+    await db.flush()
+    assert not (await dialogue_scope_for(human, db, agent_id=agent.id)).allows(agent.id)
+    team.deleted_at = None
+    await db.flush()
     await set_agent_membership(team.id, agent.id, False)
     assert not (await policy_snapshot()).human(human.id, agent.id).allowed
+    assert not (await dialogue_scope_for(human, db, agent_id=agent.id)).allows(agent.id)
+    manager.is_active = False
+    assert not (await dialogue_scope_for(manager, db)).allows(agent.id)

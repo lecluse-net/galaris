@@ -106,6 +106,27 @@ async def test_equal_priority_owners_share_capacity_and_keep_fifo_within_each_ow
         ticket.future.result().release()
 
 
+@pytest.mark.asyncio
+async def test_single_slot_rotates_requesters_and_missions_before_their_children():
+    from uuid import uuid4
+
+    queue = ProviderScheduler()
+    mission, other_mission, other_user = uuid4(), uuid4(), uuid4()
+    active = await queue.acquire(1, 1, 2, requester=1, mission=mission)
+    children = [queue.enqueue(1, 1, 2, requester=1, mission=mission, owner=str(uuid4())) for _ in range(20)]
+    independent = queue.enqueue(1, 1, 2, requester=1, mission=other_mission)
+    second_user = queue.enqueue(1, 1, 2, requester=2, mission=other_user)
+    active.release()
+    await asyncio.sleep(0)
+    assert second_user.future.done() and not independent.future.done()
+    second_user.future.result().release()
+    await asyncio.sleep(0)
+    assert independent.future.done() and not any(t.future.done() for t in children)
+    independent.future.result().release()
+    for child in children:
+        (await child.future).release()
+
+
 def test_defaults_and_audio_files_do_not_receive_voice_priority():
     assert default_concurrency("openai_compatible", "openrouter") == 10
     assert default_concurrency("ollama", None) == 1

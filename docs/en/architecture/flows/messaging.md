@@ -91,7 +91,7 @@ forms before emission; system prompts and secrets never cross it. The confirmed 
 the only durable Messenger message. An HTTP projection attached to the output message then allows
 the same cleaned `AIResult` (reflections, tools, bounded parameters and results, final response,
 duration, cost, and error) to be expanded in its bubble. The system prompt remains absent. The
-`chat.message` signal for this response is published only after the link between the round and the
+message signal for this response is published only after the link between the round and the
 message is committed. Until that commit, a journal marker also prevents concurrent HTTP reads from
 exposing this message. The frontend retains the live `AIResult` until this complete durable
 projection has been rendered, then performs an atomic replacement: the two representations are
@@ -101,10 +101,17 @@ When ingesting a human conversation message, Messenger also freezes the `request
 `MessengerUser.galaris_user_id`. Admitted rounds and Tasks propagate this snapshot. A personal
 ChatGPT subscription can be used only when this identifier matches its owner; an identity not
 associated in “My Profile” remains refused, including in single-user mode. A later directory
-change does not alter the authority of historical messages. The `chat.message` event carries
+change does not alter the authority of historical messages. Message events carry
 `is_new=true` for a new durable entry and `is_new=false` for a simple update, such as a Topic
 correction. The interface rings its chime only for a new message that is neither personal, nor
 attached to a muted room, nor observed in impersonation mode.
+
+The inbox and personal Chat subscribe to `chat.personal_message`. The server reads room members
+in one query, then checks each candidate's session, role and dialogue access. The delegated view
+subscribes to `chat.message` while open. The `personal_room` field indicates whether the recipient
+also has personal membership. After a Messenger identity change or membership removal, the
+affected account receives `chat.scope_changed` after commit. The client reloads counters and
+rechecks pending notifications. Reconnecting also reloads durable state.
 
 Unread status is a durable, ordered Messenger state. Each journal entry carries a monotonic
 position, its canonical author, and an indicator distinguishing live events from passive history

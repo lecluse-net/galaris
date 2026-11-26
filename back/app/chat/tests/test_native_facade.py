@@ -168,6 +168,132 @@ async def _scope(db: AsyncSession) -> tuple[Agent, User, User]:
 
 
 @pytest.mark.asyncio
+async def test_concurrent_first_rooms_share_the_canonical_human_identity(committed_database):
+    async with get_db_session() as db:
+        agent, owner, _ = await _scope(db)
+        agent_id, owner_id = agent.id, owner.id
+
+    barrier = asyncio.Barrier(4)
+
+    async def create(index: int):
+        async with get_db_session():
+            await barrier.wait()
+            return await create_internal_room(actor_user_id=owner_id, agent_id=agent_id, label=f"Room {index}")
+
+    async with asyncio.timeout(15):
+        rooms = await asyncio.gather(*(create(index) for index in range(4)))
+    assert all(room is not None for room in rooms)
+    assert len({room.id for room in rooms if room is not None}) == 4
+    human_ids = {person.id for room in rooms if room is not None for person in room.members
+                 if person.external_id == f"user:{owner_id}"}
+    assert len(human_ids) == 1
+    assert all(any(person.id in human_ids for person in room.members) for room in rooms if room is not None)
+
+
+@pytest.mark.asyncio
+async def test_concurrent_first_messages_admit_both_rounds_through_contact_race(committed_database, monkeypatch):
+    from app.memory import MemoryItem
+    from app.messenger.events import Signal
+    from app.messenger.service import handle_incoming
+
+    signal = Signal("synthetic-first-messages")
+    signal.connect(handle_incoming)
+    monkeypatch.setattr(inbound, "message_received", signal)
+    async with get_db_session() as db:
+        agent, owner, _ = await _scope(db)
+        agent_id, owner_id = agent.id, owner.id
+        rooms = [await create_internal_room(actor_user_id=owner_id, agent_id=agent_id) for _ in range(2)]
+        assert all(room is not None for room in rooms)
+
+    # Put both PostgreSQL transactions at the first insert of the same contact.
+    # A uniqueness violation must be recovered without expiring admission's state.
+    first_insert = asyncio.Barrier(2)
+    flush = AsyncSession.flush
+
+    async def race_contact_insert(session, *args, **kwargs):
+        if any(isinstance(row, MemoryItem) and row.owner_agent_id == agent_id
+               and row.managed_source_kind == "messenger_contact" for row in session.new):
+            await first_insert.wait()
+        return await flush(session, *args, **kwargs)
+
+    monkeypatch.setattr(AsyncSession, "flush", race_contact_insert)
+
+    async def send(index, room_id):
+        async with get_db_session():
+            return await native_facade.publish_internal_message(user_id=owner_id, room_id=room_id,
+                client_message_id=uuid4(), text=f"Synthetic first contact {index}", release_request_transaction=True)
+
+    async with asyncio.timeout(15):
+        messages = await asyncio.gather(*(send(index, room.id) for index, room in enumerate(rooms)))
+    assert all(message is not None for message in messages)
+    ids = {message.id for message in messages}
+    async with get_db_session() as db:
+        owners = (await db.scalars(select(ConversationRoundMessage).where(ConversationRoundMessage.message_id.in_(ids)))).all()
+        assert {link.message_id for link in owners} == ids
+        assert len({link.round_id for link in owners}) == 2
+        contacts = (await db.scalars(select(MemoryItem.id).where(MemoryItem.owner_agent_id == agent_id,
+            MemoryItem.managed_source_kind == "messenger_contact"))).all()
+        assert len(contacts) == 1
+        linked = (await db.scalars(select(Message.contact_memory_item_id).where(Message.id.in_(ids)))).all()
+        assert linked == contacts * 2
+
+
+@pytest.mark.asyncio
+async def test_creating_a_room_while_journaling_a_message_uses_the_same_identity_order(committed_database, monkeypatch):
+    from app.messenger._observations import ObservedMessengerRoom, ObservedMessengerUser
+
+    async with get_db_session() as db:
+        agent, owner, _ = await _scope(db)
+        original = await create_internal_room(actor_user_id=owner.id, agent_id=agent.id)
+        assert original is not None
+        agent_id, owner_id = agent.id, owner.id
+        service_id = await db.scalar(select(Connection.service_id).where(Connection.id == original.connection_id))
+
+    message = ObservedMessengerMessage(
+        id=str(uuid4()), service_id=service_id, platform="internal", text="Synthetic concurrent message",
+        room=ObservedMessengerRoom(id=original.external_id, label=original.label, kind="direct"),
+        sender=ObservedMessengerUser(id=f"user:{owner_id}", display_name="Owner"),
+        recipient=ObservedMessengerUser(id=f"agent:{agent_id}", display_name="Native Agent", agent_id=agent_id),
+    )
+    journal_has_agent = asyncio.Event()
+    creation_reaches_agent = asyncio.Event()
+    resolve_observed_user = journal.resolve_observed_user
+    ensure_agent = native_facade._ensure_agent
+
+    async def hold_after_agent(*, service_id, user):
+        identity = await resolve_observed_user(service_id=service_id, user=user)
+        if user.id == message.recipient.id:
+            journal_has_agent.set()
+            await creation_reaches_agent.wait()
+        return identity
+
+    async def announce_agent(service_id, agent):
+        creation_reaches_agent.set()
+        return await ensure_agent(service_id, agent)
+
+    monkeypatch.setattr(journal, "resolve_observed_user", hold_after_agent)
+    monkeypatch.setattr(native_facade, "_ensure_agent", announce_agent)
+
+    async def create():
+        await journal_has_agent.wait()
+        async with get_db_session():
+            return await create_internal_room(actor_user_id=owner_id, agent_id=agent_id, label="Concurrent room")
+
+    async def record():
+        async with get_db_session():
+            return await journal.record(message, connection_id=original.connection_id,
+                                        platform="internal", direction="inbound", status="received")
+
+    async with asyncio.timeout(15):
+        room, inserted = await asyncio.gather(create(), record())
+    assert inserted and room is not None and room.id != original.id
+    async with get_db_session():
+        stored = await journal.stored_message(connection_id=original.connection_id,
+            remote_message_id=message.id, direction="inbound")
+        assert stored is not None and stored.messenger_room_id == original.id
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("task_pinned", [False, True])
 async def test_file_tool_delivers_to_user_with_independent_journal_transactions(
     committed_database, monkeypatch, tmp_path, task_pinned,
@@ -581,6 +707,15 @@ async def test_room_creation_creates_distinct_threads_with_numbered_labels(
         f"user:{owner_id}",
     }
     assert await get_internal_room(member_id, room_id) is None
+    assert await native_facade.can_view_internal_room(owner_id, room_id)
+    assert not await native_facade.can_view_internal_room(member_id, room_id)
+    assert await native_facade.chat_member_agent_id(member_id, room_id) == agent_id
+    assert await native_facade.has_ai_chat_room_access(room_id, agent_ids={agent_id})
+    assert not await native_facade.has_ai_chat_room_access(room_id, agent_ids={agent_id + 1})
+    agent.soft_delete()
+    await db.flush()
+    assert not await native_facade.can_view_internal_room(owner_id, room_id)
+    assert not await native_facade.has_ai_chat_room_access(room_id, agent_ids={agent_id})
 
 
 @pytest.mark.asyncio

@@ -42,6 +42,7 @@ export const useTaskStore = defineStore('task', () => {
     errors: 0,
   })
   let   recentTimer: ReturnType<typeof setTimeout> | null = null
+  let recentRefreshPending = false
   // Filter by agent.
   const selectedAgentFilter = ref<number | null>(null)
   // WebSocket subscription state
@@ -245,13 +246,18 @@ export const useTaskStore = defineStore('task', () => {
         recentTotal.value = result.total
         recentSummary.value = result.summary
         recentHasMore.value = (recentPage.value + 1) < recentPageCount.value
+        const previous = new Map(recentTasks.value.map(task => [task.id, task]))
         recentTasks.value = result.items.map((task) => {
+          const row = mergeTaskSnapshot(previous.get(task.id) ?? null, task)
           const live = latestTaskUpdate.value?.id === task.id ? latestTaskUpdate.value : null
-          return live ? mergeTaskSnapshot(task, live) : task
+          return live ? mergeTaskSnapshot(row, live) : row
         })
       }
     } finally {
-      if (request === recentRequest) recentLoading.value = false
+      if (request === recentRequest) {
+        recentLoading.value = false
+        if (recentRefreshPending) scheduleRecentRefresh()
+      }
     }
   }
 
@@ -304,8 +310,14 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   function scheduleRecentRefresh(): void {
-    if (recentTimer) clearTimeout(recentTimer)
-    recentTimer = setTimeout(() => { void fetchRecentTasks() }, 300)
+    recentRefreshPending = true
+    if (recentTimer || recentLoading.value) return
+    recentTimer = setTimeout(() => {
+      recentTimer = null
+      if (recentLoading.value) return
+      recentRefreshPending = false
+      void fetchRecentTasks()
+    }, 300)
   }
 
   function reconcileAfterConnect(): void {
@@ -324,9 +336,18 @@ export const useTaskStore = defineStore('task', () => {
   const onTaskUpdate = (response: { data: Task }) => {
     const updatedData = response.data
     applyTaskSnapshot(updatedData)
-    recentTasks.value = recentTasks.value.map((task) => (
-      task.id === updatedData.id ? mergeTaskSnapshot(task, updatedData) : task
-    ))
+    const index = recentTasks.value.findIndex(task => task.id === updatedData.id)
+    const previous = recentTasks.value[index]
+    if (previous) {
+      const next = mergeTaskSnapshot(previous, updatedData)
+      recentTasks.value[index] = next
+      // Page order is creation time then id. Search also examines result JSON,
+      // so a filtered search always needs a server-side membership check.
+      if (!recentSearchQuery.value.trim() && previous.status === next.status
+        && previous.paused === next.paused && previous.agent_id === next.agent_id
+        && previous.created_at === next.created_at && previous.deleted_at === next.deleted_at
+        && previous.topic_id === next.topic_id && previous.data?.plan_skipped === next.data?.plan_skipped) return
+    }
     scheduleRecentRefresh()
   }
   const onTaskDelete = (response: { data: { id: string } }) => {
@@ -389,6 +410,7 @@ export const useTaskStore = defineStore('task', () => {
   function unsubscribeFromTasks() {
     if (recentTimer) clearTimeout(recentTimer)
     recentTimer = null
+    recentRefreshPending = false
     recentRequest++
     currentTaskRequest++
     recentLoading.value = false

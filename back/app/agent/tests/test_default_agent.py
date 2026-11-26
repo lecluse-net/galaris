@@ -40,6 +40,45 @@ async def _proposal(db):
 
 
 @pytest.mark.asyncio
+async def test_replaying_initial_agent_does_not_load_unrelated_profiles(db):
+    from sqlalchemy import event
+    from app.document import Document
+    from app.share import ShareEffectiveAccess
+
+    manager = await _admin(db)
+    public = Document(owner_user_id=manager.id, provider_code="native", resource_id="seed-public",
+                      title="Already shared", global_access=2, content_hash="0" * 64)
+    db.add(public)
+    await db.flush()
+    dataset = default_agent_dataset()
+    assert (await reconcile_dataset(db, dataset)).inserted == 1
+    proposed = await _proposal(db)
+    assert await db.scalar(select(ShareEffectiveAccess.can_write).where(
+        ShareEffectiveAccess.agent_id == proposed.id, ShareEffectiveAccess.share_id == public.share_id)) is True
+    connection = (await db.connection()).sync_connection
+
+    async def rows_read():
+        rows = []
+        def count(_conn, cursor, _sql, _params, context, _many):
+            if context.compiled and cursor.description:
+                rows.append(cursor.rowcount)
+        event.listen(connection, "after_cursor_execute", count)
+        try:
+            assert await reconcile_dataset(db, dataset) == DbAdminDatasetResult()
+        finally:
+            event.remove(connection, "after_cursor_execute", count)
+        return sum(rows)
+
+    before = await rows_read()
+    db.add_all(Agent(code=f"synthetic-extra-{i}", first_name="Extra", last_name=str(i),
+                     user_id=manager.id, title_id=proposed.title_id) for i in range(50))
+    await db.flush()
+    after = await rows_read()
+    print(f"SEED_PERF agents=1 rows={before} agents=51 rows={after}")
+    assert after == before, (before, after)
+
+
+@pytest.mark.asyncio
 async def test_new_galaris_has_all_internal_tools_and_function_permissions(db):
     from app.connection.facade import resolve_function, set_connection_function_state
     from app.services import load_mcp_tools, native_service_codes_for_service

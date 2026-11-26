@@ -10,8 +10,9 @@ from app.messenger import native_resources as resource_attachments
 @pytest.mark.parametrize("allowed,managed", [(True, True), (False, True), (True, False)])
 async def test_internal_attachment_requires_human_and_receiving_agent_access(monkeypatch, allowed, managed):
     uri = "file://00000000-0000-4000-8000-000000000001"
-    info = AsyncMock(return_value=True)
-    monkeypatch.setattr(resource_attachments, "resource_accessible", info)
+    from app.file_share import resource_service
+    info = AsyncMock(return_value=SimpleNamespace(capabilities=["list"]))
+    monkeypatch.setattr(resource_service, "resource_info", info)
     monkeypatch.setattr(resource_attachments, "check_privilege", AsyncMock(return_value=allowed))
     monkeypatch.setattr(resource_attachments, "get_db", Mock())
     monkeypatch.setattr(resource_attachments.user_service, "get_current_user", AsyncMock(return_value=Mock()))
@@ -20,7 +21,7 @@ async def test_internal_attachment_requires_human_and_receiving_agent_access(mon
         assert await resource_attachments.prepare_resource_attachments([uri, uri], agent_id=7) == [uri]
         info.assert_awaited_once()
         assert info.await_args.args[0].agent_id == 7
-        info.return_value = False
+        info.return_value = SimpleNamespace(capabilities=[])
         with pytest.raises(PermissionError):
             await resource_attachments.prepare_resource_attachments([uri], agent_id=7)
     else:

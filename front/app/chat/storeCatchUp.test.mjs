@@ -23,7 +23,7 @@ async function setup(t, service, canCall = false, listeners = new Map()) {
     '@/core/websocket': { BaseRoom: class {}, websocket: {
       createWebsocket() {},
       onEvent(subject, action, callback) { listeners.set(`${subject}.${action}`, callback) },
-      offEvent() {}, onConnect(callback) { listeners.set('connect', callback) }, offConnect() {}, joinRoom() {}, leaveRoom() {},
+      offEvent(subject, action) { listeners.delete(`${subject}.${action}`) }, onConnect(callback) { listeners.set('connect', callback) }, offConnect() {}, joinRoom() {}, leaveRoom() {},
     } },
     '../services/chatService': { chatService: { status: async () => ({ enabled: false }), ...service } },
     '../liveState': liveState, '../runtimeState': { applyConversationRuntimeEvent }, '../voiceCall': { reconcileRealtimeCall },
@@ -291,6 +291,7 @@ test('call controls wait for the current call while messages are already readabl
 
 test('overlapping optional controls share pending reads while every room projection stays fresh', async t => {
   const pending = deferred()
+  const listeners = new Map()
   let denied = false
   const counts = { room: 0, messages: 0, activity: 0, commands: 0, activeCall: 0, callStatus: 0 }
   const room = { id: 'room', writable: true, kind: 'direct', source: null }
@@ -309,7 +310,7 @@ test('overlapping optional controls share pending reads while every room project
     },
     activeCall: async () => { counts.activeCall++; await pending.promise; return { call_id: 'call' } },
     callStatus: async () => { counts.callStatus++; await pending.promise; return { available: true } },
-  }, true)
+  }, true, listeners)
   try {
     await store.selectRoom(room)
     for (let index = 0; index < 9; index++) await store.refreshSelected()
@@ -325,7 +326,7 @@ test('overlapping optional controls share pending reads while every room project
   assert.equal(counts.activeCall, 2)
   assert.equal(counts.callStatus, 2)
   denied = true
-  await store.refreshSelected()
+  listeners.get('chat.scope_changed')()
   await setImmediate()
   assert.equal(store.selectedRoom, null, 'a current denial still purges protected content')
   assert.deepEqual(store.messages, [])
@@ -508,11 +509,12 @@ test('message invalidations arriving during activity still refresh the room list
   }, false, listeners)
   store.liveRound = null
   listeners.get('chat.activity')({ data: { room_id: 'other-room' } })
+  assert.equal(listeners.has('chat.message'), false)
   await setImmediate()
   assert.equal(roomLists, 0)
   listeners.get('chat.activity')({ data: { room_id: 'room' } })
   await setImmediate()
-  listeners.get('chat.message')({ data: { room_id: 'room' } })
+  listeners.get('chat.personal_message')({ data: { room_id: 'room' } })
   first.resolve()
   await setImmediate()
   await setImmediate()
@@ -521,6 +523,14 @@ test('message invalidations arriving during activity still refresh the room list
   listeners.get('connect')()
   await setImmediate()
   assert.equal(roomLists, 2)
+  await store.setViewerAgent(7)
+  const beforeManagedMessage = roomLists
+  listeners.get('chat.message')({ data: { room_id: 'managed-room', personal_room: false } })
+  await setImmediate()
+  assert.equal(roomLists, beforeManagedMessage + 1)
+  await store.setViewerAgent(null)
+  assert.equal(listeners.has('chat.message'), false)
+  assert.equal(listeners.has('chat.personal_message'), true)
 })
 
 test('signal refresh retries an invalidation after a failed read', async t => {

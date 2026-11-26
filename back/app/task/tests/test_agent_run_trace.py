@@ -283,7 +283,7 @@ async def test_run_writes_do_not_wait_for_uncommitted_llm_trace(
                         execution_result=ExecutionResult(prompt="run", result="partial")
                         if operation == "progress" else None)
                 elif operation == "event":
-                    await adapter.append_agent_run_event(current, AgentRunEventV1(
+                    await adapter.append_agent_run_event(AgentRunEventV1(
                         identity=AgentRunIdentityV1(task_id=task_id,
                             attempt_id=attempt_id, run_id=run_id),
                         sequence=1, kind="run.started"))
@@ -342,6 +342,12 @@ async def test_run_writes_do_not_wait_for_uncommitted_llm_trace(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("superseded", ["lease", "expired", "terminal", "force_terminated"])
 async def test_checkpoint_is_archived_and_late_attempt_cannot_overwrite_it(db, monkeypatch, superseded):
+    from core import websocket
+    from unittest.mock import AsyncMock
+    updates = AsyncMock()
+    if superseded == "terminal":
+        monkeypatch.setattr(websocket, "has_event_interest", lambda *_: True)
+        monkeypatch.setattr(websocket, "emit", updates)
     token = uuid4()
     task = Task(id=uuid4(), label="Fenced checkpoint", objective="<p>Once</p>",
                 status=TaskStatus.EXEC, lease_token=token,
@@ -351,12 +357,44 @@ async def test_checkpoint_is_archived_and_late_attempt_cannot_overwrite_it(db, m
     db.add_all([task, attempt])
     await db.commit()
     adapter = SqlAlchemyAgentTaskAdapter()
-    checkpoint = {"data": {"effects": [{"operation_id": str(uuid4()), "status": "started"}]}}
-    await adapter.persist_agent_run_state(task.id, expected_objective="<p>Once</p>",
-        expected_attempt_id=attempt.id, data_patch={"_agent_run_checkpoint": checkpoint})
+    large_receipt = "synthetic-receipt" * 1024
+    checkpoint = {"data": {"effects": [{"operation_id": str(uuid4()), "receipt": large_receipt}]}}
+    full_payloads = []
+
+    def inspect_update(_conn, _cursor, statement, parameters, _context, _many):
+        if statement.startswith("UPDATE tasks SET"):
+            full_payloads.append(large_receipt in repr(parameters))
+
+    engine = db.bind.sync_engine
+    event.listen(engine, "before_cursor_execute", inspect_update)
+    try:
+        revision = await adapter.persist_agent_run_state(task.id, expected_objective="<p>Once</p>",
+            expected_attempt_id=attempt.id, data_patch={"_agent_run_checkpoint": checkpoint})
+        checkpoint = {"data": {"effects": [*checkpoint["data"]["effects"], {"status": "completed"}]}}
+        assert revision is not None
+        revision = await adapter.persist_agent_run_state(task.id, expected_objective="<p>Once</p>",
+            expected_attempt_id=attempt.id, data_patch={"_agent_run_checkpoint": checkpoint},
+            checkpoint_base=(revision, {"effects": 1}))
+        assert full_payloads == [True, False]
+        # A different writer replaces the stored checkpoint and another Task field.
+        # The previous revision must not be used to splice into the new journal.
+        await db.refresh(task)
+        task.data = {"sibling": "retained", "_agent_run_checkpoint": {"data": {"effects": []}}}
+        await db.commit()
+        assert revision is not None
+        await adapter.persist_agent_run_state(task.id, expected_objective="<p>Once</p>",
+            expected_attempt_id=attempt.id, data_patch={"_agent_run_checkpoint": checkpoint},
+            checkpoint_base=(revision, {"effects": 1}))
+        assert full_payloads[-1]
+    finally:
+        event.remove(engine, "before_cursor_execute", inspect_update)
     await db.refresh(task)
     await db.refresh(attempt)
     assert attempt.data["agent_checkpoint"] == checkpoint
+    assert task.data["_agent_run_checkpoint"] == checkpoint
+    assert task.data["sibling"] == "retained"
+    if superseded == "terminal":
+        assert updates.await_args.args[2]["data"]["_agent_run_checkpoint"] == checkpoint
     if superseded == "lease":
         task.lease_token = uuid4()
     elif superseded == "expired":
@@ -421,7 +459,6 @@ async def test_agent_run_identity_and_semantic_events_are_bound_to_attempt(db) -
     assert task.data is not None
     assert task.data["_agent_run_identity"]["attempt_id"] == str(attempt.id)
     await adapter.append_agent_run_event(
-        task,
         AgentRunEventV1(
             identity=AgentRunIdentityV1(
                 task_id=task.id,
@@ -449,7 +486,8 @@ async def test_agent_run_identity_and_semantic_events_are_bound_to_attempt(db) -
 
 
 @pytest.mark.asyncio
-async def test_semantic_event_does_not_close_caller_savepoint(db) -> None:
+@pytest.mark.parametrize("caller_rolled_back", [False, True], ids=["savepoint", "rolled-back-caller"])
+async def test_semantic_event_is_persisted_independently(db, caller_rolled_back) -> None:
     task_id = uuid4()
     lease_token = uuid4()
     attempt = TaskAttempt(
@@ -473,34 +511,46 @@ async def test_semantic_event_does_not_close_caller_savepoint(db) -> None:
     db.add_all([task, attempt])
     await db.commit()
     adapter = SqlAlchemyAgentTaskAdapter()
+    attempt_id = attempt.id
+    failure = AgentRunEventV1(
+        identity=AgentRunIdentityV1(task_id=task_id, attempt_id=attempt_id, run_id=uuid4()),
+        sequence=1,
+        kind="run.failed",
+        result=ExecutionResult(prompt="Synthetic", result="Synthetic synchronization failure", success=False),
+    )
 
-    async with db.begin_nested() as savepoint:
-        await adapter.append_agent_run_event(
-            task,
-            AgentRunEventV1(
-                identity=AgentRunIdentityV1(
-                    task_id=task.id,
-                    attempt_id=attempt.id,
-                    run_id=uuid4(),
-                ),
-                sequence=1,
-                kind="tool.completed",
-            ),
-        )
+    if caller_rolled_back:
+        # Managed skill synchronization can roll back after run.started, expiring
+        # the caller's Task object before the driver publishes run.failed.
+        await db.refresh(task)
+        await db.rollback()
+        await adapter.append_agent_run_event(failure)
+    else:
+        async with db.begin_nested() as savepoint:
+            await adapter.append_agent_run_event(failure)
+            assert savepoint.is_active
+            assert await db.scalar(select(Task.id).where(Task.id == task_id)) == task_id
 
-        assert savepoint.is_active
-        assert await db.scalar(select(Task.id).where(Task.id == task.id)) == task.id
+    async with get_db_session() as reader:
+        persisted = await reader.get(TaskAttempt, attempt_id)
+        assert persisted is not None
+        [event] = persisted.data["agent_events"]
+        assert event["identity"]["attempt_id"] == str(attempt_id)
+        assert event["kind"] == "run.failed"
+        assert event["result"]["result"] == "Synthetic synchronization failure"
 
 
 @pytest.mark.asyncio
-async def test_run_checkpoint_does_not_close_caller_savepoint(db) -> None:
+@pytest.mark.parametrize("paused", [False, True])
+async def test_run_checkpoint_does_not_close_caller_savepoint(db, paused) -> None:
     task = Task(
         id=uuid4(),
         label="checkpoint",
         objective="Keep parallel work durable",
         status=TaskStatus.EXEC,
         effort="high",
-        data={"working_set": {"version": 1, "resources": []}},
+        paused=paused,
+        data={"working_set": {"version": 1, "resources": []}, "pause_reasons": ["user"] if paused else []},
     )
     db.add(task)
     await db.commit()
@@ -526,6 +576,8 @@ async def test_run_checkpoint_does_not_close_caller_savepoint(db) -> None:
     await db.refresh(task)
     assert task.data is not None
     assert task.data["working_set"]["version"] == 1
+    if paused:
+        assert task.paused and task.lifecycle_timing["state"] == "user_pause"
     assert task.data["_agent_run_checkpoint"]["status"] == "running"
     assert task.get_execution_result() is not None
     assert task.get_execution_result().tools_used == ["search_web"]

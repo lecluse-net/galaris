@@ -1,4 +1,4 @@
-"""Public notifications of committed user and effective-access changes."""
+"""Transactional account projections and notifications of committed access changes."""
 
 from collections.abc import Awaitable, Callable
 
@@ -7,6 +7,17 @@ from loguru import logger
 
 UserAccessObserver = Callable[[int | None], Awaitable[None]]
 _observers: dict[str, UserAccessObserver] = {}
+_projections: dict[str, Callable[[int, bool], Awaitable[None]]] = {}
+
+
+def register_user_activation_projection(name: str, projection: Callable[[int, bool], Awaitable[None]]) -> None:
+    _projections[name] = projection
+
+
+async def project_user_activation(user_id: int, active: bool) -> None:
+    """Run under the writer's sharing lock. A failed projection aborts the transaction."""
+    for projection in tuple(_projections.values()):
+        await projection(user_id, active)
 
 
 def register_user_access_observer(name: str, observer: UserAccessObserver) -> None:

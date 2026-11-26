@@ -22,6 +22,25 @@ and identities, before asking the model for another decision. Completed results 
 acknowledged; a non-idempotent effect without a receipt blocks recovery. Native
 authorization and freshness checks still apply.
 
+## Preparation and recovery under load
+
+By default each worker runs up to four conversation rounds at once. It can
+deliver a mission result even while all four rounds are busy. The combined
+limit is five active rounds and deliveries. The worker takes turns serving
+round, task and process notifications.
+The worker wakes after a commit makes a delivery eligible. It checks the
+database on startup and every thirty seconds to recover missed signals.
+
+Text rounds encrypt an initial snapshot followed by up to 31 incremental records.
+Each record authenticates its predecessor. A fresh process reconstructs the history
+and can also read older single snapshots. For Tasks, PostgreSQL reuses journal
+prefixes when the revision matches and archives the complete checkpoint with the
+attempt. A concurrent change triggers a full write under the current lease.
+
+Conversations and Tasks have independent MCP preparation queues. The database
+coordinates provider capacity. The scheduler reserves interactive capacity before
+claiming background work. [LLM admission](../../../../project/decisions/0181-provider-llm-admission.md)
+
 ## Contact coordinate detection in the Dispatcher
 
 Every Dispatcher result adds `contact_infos` alongside its existing fields. The list contains
@@ -881,14 +900,21 @@ is ordered by round, attempt, and sequence; the client retains observed reasonin
 events from older attempts. The stream remains ephemeral; the final trace and Messenger
 messages provide persistence.
 During a run, the activity API provides the current snapshot to recover from a reconnection
-or a missing sequence. Slow publication coalesces subsequent fragments into a cumulative
-snapshot without blocking generation. Every critical write checks the lease token,
+or a missing sequence. During slow publication, plain fragments of one identified block
+are coalesced into a replacement with its starting cursor (`base_sequence`). Mixed bursts
+retain the full snapshot. Every critical write checks the lease token,
 including finalization after transport.
 See [ADR 0062](../../../../project/decisions/0062-identified-message-streams.md).
 
 A human Messenger message is linked directly to a round in its `Room` by `app.conversation`.
-Its scheduler claims neither a Task nor an agent slot and launches a short round with the internal
-Pydantic AI harness and the effective agent profile's `low` text level. An empty column is a
+Its scheduler claims only the round and uses the effective agent profile's `low` text level.
+Admission fixes the round's engine. `internal` selects Pydantic AI. When the embedded Claude
+rollout is enabled, the Claude selection and the Codex and DSH assignments use the Claude SDK
+for new text rounds. The MCP relay checks the call identity, active attempt and Service
+permissions before forwarding a read or action available in the conversation catalog.
+An invented dialogue turn invalidates that response's tool calls and is removed from the
+assistant history sent back to the provider.
+An empty column is a
 configuration error and does not fall back to the executor or current profile when the agent has a
 personal profile. The Hermes driver is never used as a fallback. The toolset is a dedicated
 projection: active connection, a tool on its Service's allowlist, effective permissions, and

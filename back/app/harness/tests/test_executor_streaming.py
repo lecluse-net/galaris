@@ -90,8 +90,10 @@ def test_task_correlation_preserves_both_task_and_run() -> None:
 @pytest.mark.parametrize("deep, read_loop", [
     (False, False), (True, False), (False, True),
 ], ids=["standard", "deep", "document-read-loop"])
-async def test_internal_turn_uses_the_prompt_for_its_mode(monkeypatch, deep, read_loop):
+async def test_internal_turn_uses_the_prompt_for_its_mode(monkeypatch, committed_database, deep, read_loop):
     from app import console, messenger
+    from core.database import get_db, get_db_session
+    from sqlalchemy import select
 
     request = replace(_request(taskless=deep), deep_session_id=uuid4() if deep else None,
                       system_instructions="Synthetic profile")
@@ -106,7 +108,12 @@ async def test_internal_turn_uses_the_prompt_for_its_mode(monkeypatch, deep, rea
             yield AIMessage(type="text", content=self.error or "Synthetic answer", success=not read_loop)
 
     mcp_tools, skills = object(), [object()]
-    monkeypatch.setattr(executor, "build_agent_mcp_toolset", AsyncMock(return_value=mcp_tools))
+    async def mount_tools(*args, **kwargs):
+        # A task waiting to mount must have returned its setup connection.
+        assert not get_db().in_transaction()
+        return mcp_tools
+
+    monkeypatch.setattr(executor, "build_agent_mcp_toolset", mount_tools)
     monkeypatch.setattr(executor, "build_internal_skill_capabilities", AsyncMock(return_value=skills))
     monkeypatch.setattr(executor.llm_service, "get_llm", AsyncMock(return_value=object()))
     monkeypatch.setattr(console, "resolve_ssh_connection", AsyncMock(return_value=None))
@@ -120,7 +127,9 @@ async def test_internal_turn_uses_the_prompt_for_its_mode(monkeypatch, deep, rea
     boundary = AsyncMock(return_value=ModelBoundary())
     monkeypatch.setattr(executor, "create_agent", boundary)
 
-    result = await executor.run(request)
+    async with get_db_session() as db:
+        await db.scalar(select(1))
+        result = await executor.run(request)
 
     assert result.success is not read_loop
     if read_loop:

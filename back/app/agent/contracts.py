@@ -39,6 +39,7 @@ from pydantic import (
 from core.i18n import is_supported
 from core.util import DetectedContactInfo
 from .scope_contracts import ExecutionScopeV1
+from .checkpoint_delta import CheckpointIndex as CheckpointIndex
 
 
 ExecutionEffort = Literal["standard", "high"]
@@ -561,15 +562,19 @@ class AIResult(BaseModel):
     def normalize_trace_tools_used(cls, value: list[str]) -> list[str]:
         return [normalize_tool_name(name) for name in value]
 
-    def add_message(self, ai_message: AIMessage) -> None:
+    def add_message(
+        self, ai_message: AIMessage, *, stream_positions: dict[str, int] | None = None,
+    ) -> AIMessage | None:
+        """Accumulate a fragment and return the affected message, if visible."""
         if ai_message.tool_name:
             ai_message.tool_name = normalize_tool_name(ai_message.tool_name)
 
-        existing = next(
-            (message for message in self.messages if ai_message.stream_id
-             and message.stream_id == ai_message.stream_id),
-            None,
-        )
+        position = None
+        if ai_message.stream_id:
+            position = stream_positions.get(ai_message.stream_id) if stream_positions is not None else next(
+                (i for i, message in enumerate(self.messages) if message.stream_id == ai_message.stream_id), None
+            )
+        existing = self.messages[position] if position is not None else None
         same_tool_call = (
             ai_message.stream_mode == "snapshot"
             and ai_message.tool_call_external_id is not None
@@ -583,7 +588,7 @@ class AIResult(BaseModel):
         ):
             raise ValueError("A streamed AIMessage cannot change its type or tool.")
 
-        if existing is not None and ai_message.stream_mode == "snapshot":
+        if existing is not None and position is not None and ai_message.stream_mode == "snapshot":
             if existing.tool_name != ai_message.tool_name and ai_message.tool_name:
                 self.tools_used = [ai_message.tool_name if name == existing.tool_name else name
                                    for name in self.tools_used]
@@ -596,10 +601,11 @@ class AIResult(BaseModel):
                     if isinstance(value, (int, float)):
                         counters[name] = max(0, counters[name] - value)
                 self.usage = AgentUsage.model_validate(counters)
-            self.messages[self.messages.index(existing)] = ai_message.model_copy(deep=True)
+            replacement = ai_message.model_copy(deep=True)
+            self.messages[position] = replacement
             if ai_message.type == "text":
                 self.result = "".join(m.content for m in self.messages if m.type == "text")
-            return
+            return replacement
 
         self.cost += ai_message.cost
         if ai_message.usage is not None:
@@ -616,7 +622,7 @@ class AIResult(BaseModel):
             and ai_message.tool_call_external_id is not None
         )
         if not ai_message.has_visible_content() and existing is None and not empty_tool_start:
-            return
+            return None
         if existing is not None or (
             ai_message.type == "text" and ai_message.stream_id is None
             and self.messages and self.messages[-1].type == "text"
@@ -630,8 +636,11 @@ class AIResult(BaseModel):
                 last.stream_complete = ai_message.stream_complete
             if not ai_message.success:
                 last.success = False
-            return
+            return last
+        if stream_positions is not None and ai_message.stream_id:
+            stream_positions[ai_message.stream_id] = len(self.messages)
         self.messages.append(ai_message)
+        return ai_message
 
     def detach_trailing_text(self) -> tuple[float, float]:
         elapsed = 0.0
@@ -1269,6 +1278,9 @@ class AgentRunCheckpoint:
     status: str
     result: ExecutionResult | None = None
     data: Mapping[str, Any] = field(default_factory=dict[str, Any])
+
+    def checkpoint_index(self) -> CheckpointIndex:
+        return CheckpointIndex.capture(self.driver_code, self.runtime_run_id, self.data)
 
 
 class CheckpointAssessment(BaseModel):

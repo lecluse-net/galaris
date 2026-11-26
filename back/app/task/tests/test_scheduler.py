@@ -487,11 +487,14 @@ async def test_discussion_work_precedes_scheduled_background_even_after_aging(
         scheduler._queue_fast_path(background.id)
     first = await scheduler._next_task(set(), set())
     assert first is not None and first[0] == discussion.id
-    second = await scheduler._next_task({discussion.id}, set())
-    assert second is not None and second[0] == background.id
     monkeypatch.setattr(scheduler, "_max_concurrency", lambda: 2)
     monkeypatch.setattr(scheduler, "_running", {discussion.id: None})
-    assert scheduler._must_keep_interactive_slot(second[2])
+    assert not await scheduler._fill_slots()
+    assert await db.scalar(select(TaskAttempt.id).where(TaskAttempt.task_id == background.id)) is None
+    await db.refresh(background)
+    assert background.attempt_count == 0 and background.lease_token is None
+    second = await scheduler._next_task(set(), set())
+    assert second is not None and second[0] == background.id
 
 
 @pytest.mark.asyncio

@@ -17,8 +17,9 @@ historique NULL expose le défaut effectif : 10 pour le catalogue, dont OpenRout
 1 pour les connexions personnalisées, dont Ollama. Les écritures partielles préservent
 la valeur, y compris 0. Aucun compteur ne dépend du profil ou du modèle.
 
-`app.llm.provider_scheduler` possède l'admission du worker unique imposé par
-`back/entrypoint.sh`. Les inférences durables sont représentées par des tickets avant
+`app.llm.provider_scheduler` ordonne les demandes de chaque worker. PostgreSQL
+sérialise les admissions physiques sur la ligne du fournisseur. La réservation
+et la trace d'appel deviennent visibles dans la même transaction. Les inférences durables sont représentées par des tickets avant
 claim ; seuls les tickets admis créent une racine d'exécution et son heartbeat. Chaque
 appel physique consomme une place jusqu'à sa finalisation ; les outils ne la retiennent
 pas. Un permis réservé avant claim est consommé par le premier appel, sans deuxième
@@ -67,5 +68,12 @@ des fournisseurs. Le navigateur isolé vérifie sauvegarde, valeur 0, réouvertu
 Le regroupement du journal se compare sur un même stream synthétique avant et après
 correction : cinq commits de fragments de transport deviennent un commit, à réponse
 identique. Cette mesure de transactions ne démontre pas un gain de latence en production.
-Plusieurs backends indépendants nécessiteraient une réservation distribuée ; cette décision
-préserve l'architecture mono-worker actuelle.
+
+Depuis le 25 novembre 2026, les tickets d'une même classe tournent entre demandeurs,
+puis entre missions racines, y compris lorsque la capacité vaut un. Une sous-tâche
+et une délégation partagent la mission du parent. La rotation est locale à la file
+du worker. Tous les workers consultant la même base observent le plafond fournisseur.
+Un heartbeat renouvelle les réservations des appels en cours. La finalisation restitue
+la place dans sa transaction. Après perte du worker, la récupération attend l'expiration
+du bail et la clôture durable de la trace. L'API HTTP/WebSocket continue à tourner avec
+un seul worker. [Test de perte d'un processus](../../back/tests/test_inference_lifecycle.py)

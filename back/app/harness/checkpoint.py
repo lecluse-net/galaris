@@ -765,6 +765,7 @@ class HarnessRunCheckpoint:
 
             response_index = next((index for index in range(len(messages) - 1, -1, -1)
                 if isinstance(messages[index], model_messages.ModelResponse)), None)
+            current_ref = _response_ref(messages[response_index]) if response_index is not None else None
             returns = [
                 model_messages.ToolReturnPart(
                     tool_name=str(effect.get("tool_name") or "?"),
@@ -781,7 +782,8 @@ class HarnessRunCheckpoint:
                 for effect in self.effects
                 if effect.get("status") in {"completed", "failed", "error_reported"}
                 and response_index is not None
-                and _effect_response_index(effect, messages) == response_index
+                and (effect["response_ref"] == current_ref if effect.get("response_ref") is not None
+                     else _effect_response_index(effect, messages) == response_index)
             ]
             if not returns:
                 returns = [

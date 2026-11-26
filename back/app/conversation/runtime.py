@@ -37,11 +37,13 @@ class ConversationRuntimeStream:
         self._lock = asyncio.Lock()
         self._publication: asyncio.Task[None] | None = None
         self._dirty = False
+        self._dirty_block: AIMessage | None = None
+        self._positions: dict[str, int] = {}
 
     def current_event(self) -> ConversationRuntimeEvent:
         return ConversationRuntimeEvent(
             round_id=self.round_id, topic_id=self.topic_id, attempt=self.attempt,
-            sequence=self._sequence, kind="snapshot", result=public_ai_result(self.snapshot()),
+            sequence=self._sequence, kind="snapshot", result=public_ai_result(self.result).model_copy(deep=True),
         )
 
     async def _publish(
@@ -70,11 +72,22 @@ class ConversationRuntimeStream:
         async with self._lock:
             if self._finished:
                 return
-            self.result.add_message(message.model_copy(deep=True))
+            block = self.result.add_message(message.model_copy(deep=True), stream_positions=self._positions)
             self._sequence += 1
             if self._publication is not None and not self._publication.done():
-                # A slow listener needs only the latest cumulative state, never an
-                # unbounded queue of fragments. Generation remains independent.
+                # Plain fragments of one identified block have no independent
+                # accounting or tool updates. A replacement of that block spans
+                # the whole gap; mixed/legacy bursts still use the full snapshot.
+                simple = (
+                    block is not None and bool(message.stream_id)
+                    and (message.type == "text" or (message.type == "tool" and message.tool_name == "thinking"))
+                    and message.stream_mode == "delta" and message.usage is None
+                    and not message.cost and not message.execution_time
+                )
+                if not self._dirty:
+                    self._dirty_block = block if simple else None
+                elif not simple or self._dirty_block is not block:
+                    self._dirty_block = None
                 self._dirty = True
             else:
                 event = ConversationRuntimeEvent(
@@ -93,7 +106,17 @@ class ConversationRuntimeStream:
             if not self._dirty:
                 return
             self._dirty = False
-            event = self.current_event()
+            block = self._dirty_block
+            self._dirty_block = None
+            if block is None:
+                event = self.current_event()
+            else:
+                event = ConversationRuntimeEvent(
+                    round_id=self.round_id, topic_id=self.topic_id, attempt=self.attempt,
+                    sequence=self._sequence, base_sequence=event.sequence, kind="message",
+                    message=public_ai_message(block).model_copy(update={"stream_mode": "snapshot"}),
+                    success=block.success,
+                )
 
     async def reset(self) -> None:
         async with self._lock:
@@ -117,6 +140,29 @@ class ConversationRuntimeStream:
         if not result.messages:
             result.messages = self.result.model_copy(deep=True).messages
             return result
+        # Drivers with identified blocks can reconcile the trace in two passes.
+        # Legacy traces can also match anonymous blocks by content below.
+        positions = {item.stream_id: i for i, item in enumerate(result.messages) if item.stream_id}
+        if len(positions) == len(result.messages) and len(self._positions) == len(self.result.messages):
+            omitted: dict[int, list[AIMessage]] = {}
+            anchor = -1
+            for message in self.result.messages:
+                index = positions.get(message.stream_id) if message.stream_id else None
+                if index is None:
+                    if message.type != "text":
+                        omitted.setdefault(anchor, []).append(message.model_copy(deep=True))
+                else:
+                    anchor = index
+                    match = result.messages[index]
+                    if match.type == message.type and message.content.startswith(match.content):
+                        match.content = message.content
+            if omitted:
+                merged = omitted.get(-1, [])
+                for index, message in enumerate(result.messages):
+                    merged.append(message)
+                    merged.extend(omitted.get(index, ()))
+                result.messages = merged
+            return result
         insertion = 0
         for message in self.result.messages:
             match = next((item for item in result.messages if (
@@ -135,7 +181,7 @@ class ConversationRuntimeStream:
         return result
 
     async def finish(
-        self, *, success: bool, result: AIResult | None = None,
+        self, *, success: bool, result: AIResult | None = None, reconciled: bool = False,
     ) -> None:
         async with self._lock:
             if self._finished:
@@ -145,6 +191,11 @@ class ConversationRuntimeStream:
                 del _active_streams[self.room_id]
             if self._publication is not None:
                 await self._publication
-            terminal = self.snapshot(result)
-            terminal.success = success
-            await self._publish("finished", result=public_ai_result(terminal), success=success)
+            # The scheduler persists the reconciled snapshot before it releases
+            # the lease. Reuse that trace when publishing the same terminal state.
+            if result is None or reconciled:
+                public = public_ai_result(self.result if result is None else result).model_copy(deep=True)
+            else:
+                public = public_ai_result(self.snapshot(result))
+            public.success = success
+            await self._publish("finished", result=public, success=success)

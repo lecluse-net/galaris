@@ -8,6 +8,7 @@ from .dependencies import require_web_session
 from .lifecycle import (
     notify_user_access_changed,
     register_user_access_observer,
+    register_user_activation_projection,
     unregister_user_access_observer,
 )
 from .schemas import UserCreate, UserUpdate, User, Token
@@ -47,6 +48,7 @@ async def list_user_records(
 __all__ = [
     "notify_user_access_changed",
     "register_user_access_observer",
+    "register_user_activation_projection",
     "unregister_user_access_observer",
     "User",
     "UserModel",

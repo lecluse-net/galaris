@@ -197,11 +197,16 @@ async def test_socket_token_rejects_expired_token(db: AsyncSession) -> None:
     assert identity is None
 
 
-@pytest.mark.parametrize("revocation", ["session", "account", "password", "expiry"])
+@pytest.mark.parametrize("revocation", ["session", "account", "password", "expiry", "role"])
 async def test_socket_authenticates_once_but_revocation_blocks_the_next_event(
     db: AsyncSession, monkeypatch: pytest.MonkeyPatch, revocation: str,
 ) -> None:
     from core.user import refresh_session_service
+    from core.authorize import Assignment
+    from core.database import get_db
+    from sqlalchemy import select
+    from tests.authorization_fixtures import grant_privileges
+    from tests.sql_reads import measured_reads
     user = User(email=f"socket-revocation-{revocation}@example.com", hashed_password="unused", is_active=True)
     db.add(user)
     await db.commit()
@@ -212,16 +217,28 @@ async def test_socket_authenticates_once_but_revocation_blocks_the_next_event(
     monkeypatch.setattr(websocket, "authenticate_from_jwt_token", authenticate)
     server = FakeSocketServer()
     monkeypatch.setattr(websocket, "_sio", server)
-    monkeypatch.setattr(websocket, "check_privilege", AsyncMock(return_value=True))
-    monkeypatch.setitem(websocket._event_authorizations, "task", AsyncMock(return_value=True))
+    if revocation == "role":
+        await grant_privileges(db, user.id, "TASK_ACCESS", "TASK_EDIT")
+        await db.commit()
+
+        async def audience(viewer, _action, _data):
+            return await websocket.check_privilege(viewer, "TASK_EDIT", get_db())
+
+        monkeypatch.setitem(websocket._event_authorizations, "task", audience)
+    else:
+        monkeypatch.setattr(websocket, "check_privilege", AsyncMock(return_value=True))
+        monkeypatch.setitem(websocket._event_authorizations, "task", AsyncMock(return_value=True))
     assert await websocket._handle_connect("first", {}, {"token": token})
     assert await websocket._handle_connect("second", {}, {"token": token})
     assert authenticate.await_count == 2
     decode = Mock(wraps=websocket.jwt.decode)
     monkeypatch.setattr(websocket.jwt, "decode", decode)
     server.events.clear()
-    for _ in range(30):
-        await websocket.emit("task", "update", {"id": "task-1"})
+    async with measured_reads(db, "WebSocket role reads") as reads:
+        for _ in range(30):
+            await websocket.emit("task", "update", {"id": "task-1"})
+    if revocation == "role":
+        assert sum("role_privileges" in statement for statement in reads) == 30
     assert len(server.events) == 60
     assert authenticate.await_count == 2
     decode.assert_not_called()
@@ -233,6 +250,10 @@ async def test_socket_authenticates_once_but_revocation_blocks_the_next_event(
     elif revocation == "password":
         user.auth_version += 1
         await db.commit()
+    elif revocation == "role":
+        assignment = (await db.scalars(select(Assignment).where(Assignment.user_id == user.id))).one()
+        await db.delete(assignment)
+        await db.commit()
     else:
         identity = websocket._connected_identities["first"]
         assert identity.access_claims is not None
@@ -240,7 +261,7 @@ async def test_socket_authenticates_once_but_revocation_blocks_the_next_event(
     server.events.clear()
     await websocket.emit("task", "update", {"id": "task-1"})
     assert server.events == []
-    assert set(server.disconnected) == {"first", "second"}
+    assert set(server.disconnected) == (set() if revocation == "role" else {"first", "second"})
 
 
 async def test_emit_only_targets_users_with_subject_privilege(
@@ -280,24 +301,33 @@ async def test_emit_only_targets_users_with_subject_privilege(
         assert role_id in (7, 8)
         return user is not None and user.id == 41
 
+    async def project(_user, _action, data):
+        return websocket.AuthorizedEvent({**data, "viewer_role": websocket.role_id_ctx.get()})
+
     fake_server = FakeSocketServer()
     monkeypatch.setattr(websocket, "_sio", fake_server)
     monkeypatch.setattr(websocket, "get_db_session", fake_db_session)
     monkeypatch.setattr(websocket, "get_db", lambda: fake_db)
     monkeypatch.setattr(websocket, "check_privilege", privilege_check)
     monkeypatch.setattr(websocket, "_identity_is_valid", AsyncMock(return_value=True))
-    monkeypatch.setitem(websocket._event_authorizations, "task", AsyncMock(return_value=True))
+    monkeypatch.setitem(websocket._event_authorizations, "task", project)
     websocket._connected_identities.update(  # pyright: ignore[reportPrivateUsage]
         {
             "sid-allowed": websocket._SocketIdentity(41, 7),  # pyright: ignore[reportPrivateUsage]
+            "sid-second-tab": websocket._SocketIdentity(41, 7),
+            "sid-other-role": websocket._SocketIdentity(41, 8),
             "sid-denied": websocket._SocketIdentity(42, 8),  # pyright: ignore[reportPrivateUsage]
         }
     )
 
-    await websocket.emit("task", "update", {"id": "task-1"})
+    data = {"id": "task-1"}
+    await websocket.emit("task", "update", data)
 
+    assert data == {"id": "task-1"}
     assert fake_server.events == [
-        ("task.update", {"data": {"id": "task-1"}}, "sid-allowed")
+        ("task.update", {"data": {"id": "task-1", "viewer_role": 7}}, "sid-allowed"),
+        ("task.update", {"data": {"id": "task-1", "viewer_role": 7}}, "sid-second-tab"),
+        ("task.update", {"data": {"id": "task-1", "viewer_role": 8}}, "sid-other-role"),
     ]
 
 

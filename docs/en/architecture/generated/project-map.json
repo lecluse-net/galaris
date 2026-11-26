@@ -996,6 +996,7 @@
       {
         "files": [
           "back/app/conversation/artifact_delivery.py",
+          "back/app/conversation/checkpoint_journal.py",
           "back/app/conversation/contact_authorization.py",
           "back/app/conversation/context.py",
           "back/app/conversation/contracts.py",
@@ -1112,6 +1113,7 @@
       },
       {
         "files": [
+          "back/app/conversation/checkpoint_journal.py",
           "back/app/conversation/contracts.py",
           "back/app/conversation/deep.py",
           "back/app/conversation/facade.py",
@@ -1154,6 +1156,7 @@
       {
         "files": [
           "back/app/conversation/activity_facade.py",
+          "back/app/conversation/checkpoint_journal.py",
           "back/app/conversation/contact_authorization.py",
           "back/app/conversation/context.py",
           "back/app/conversation/deep.py",
@@ -1226,6 +1229,7 @@
       },
       {
         "files": [
+          "back/app/conversation/checkpoint_journal.py",
           "back/app/conversation/deep.py",
           "back/app/conversation/service.py",
           "back/app/conversation/task_objective.py"
@@ -1333,6 +1337,7 @@
           "back/app/document/dataset_port.py",
           "back/app/document/dataset_references.py",
           "back/app/document/dataset_usage.py",
+          "back/app/document/dbadmin.py",
           "back/app/document/document_app_service.py",
           "back/app/document/document_icons.py",
           "back/app/document/document_nesting.py",
@@ -1444,6 +1449,7 @@
           "back/app/document/folder_sharing.py",
           "back/app/document/goal_document_adapter.py",
           "back/app/document/item_sharing.py",
+          "back/app/document/library_queries.py",
           "back/app/document/models.py",
           "back/app/document/process_migration.py",
           "back/app/document/resource_service.py",
@@ -1521,6 +1527,7 @@
           "back/app/document/document_structure.py",
           "back/app/document/document_tags.py",
           "back/app/document/document_thumbnail_service.py",
+          "back/app/document/effective_sharing.py",
           "back/app/document/events.py",
           "back/app/document/file_facade.py",
           "back/app/document/folder_resources.py",
@@ -1641,6 +1648,7 @@
           "back/app/document/access.py",
           "back/app/document/bootstrap.py",
           "back/app/document/data/service.py",
+          "back/app/document/effective_sharing.py",
           "back/app/document/sharing_inheritance.py"
         ],
         "source": "app.document",
@@ -1649,6 +1657,7 @@
       {
         "files": [
           "back/app/document/access.py",
+          "back/app/document/bootstrap.py",
           "back/app/document/bulk_moves.py",
           "back/app/document/data/access.py",
           "back/app/document/data/bootstrap.py",
@@ -1729,7 +1738,8 @@
           "back/app/dream/events.py",
           "back/app/dream/manual.py",
           "back/app/dream/monitoring_service.py",
-          "back/app/dream/router.py"
+          "back/app/dream/router.py",
+          "back/app/dream/scheduler.py"
         ],
         "source": "app.dream",
         "target": "app.agent"
@@ -3137,6 +3147,7 @@
       {
         "files": [
           "back/app/llm/events.py",
+          "back/app/llm/inference_store.py",
           "back/app/llm/llm_call_service.py",
           "back/app/llm/mcp.py",
           "back/app/llm/proxy_service.py",
@@ -3187,6 +3198,7 @@
           "back/app/llm/profile_service.py",
           "back/app/llm/protocol_inference.py",
           "back/app/llm/provider_models.py",
+          "back/app/llm/provider_permits.py",
           "back/app/llm/proxy_service.py",
           "back/app/llm/retention.py",
           "back/app/llm/structured_service.py",
@@ -3741,6 +3753,7 @@
           "back/app/messenger/configuration.py",
           "back/app/messenger/contact_access.py",
           "back/app/messenger/contact_memory.py",
+          "back/app/messenger/events.py",
           "back/app/messenger/facade.py",
           "back/app/messenger/inbound.py",
           "back/app/messenger/ingest.py",
@@ -4674,6 +4687,7 @@
           "back/app/task/amendment_service.py",
           "back/app/task/budget.py",
           "back/app/task/call_recovery.py",
+          "back/app/task/checkpoint_storage.py",
           "back/app/task/collab.py",
           "back/app/task/execution_scope.py",
           "back/app/task/facade.py",
@@ -4753,6 +4767,7 @@
           "back/app/task/agent_adapter.py",
           "back/app/task/amendment_service.py",
           "back/app/task/call_recovery.py",
+          "back/app/task/checkpoint_storage.py",
           "back/app/task/collab.py",
           "back/app/task/conversation.py",
           "back/app/task/cost_report.py",
@@ -6809,6 +6824,7 @@
       },
       {
         "files": [
+          "back/core/team/__init__.py",
           "back/core/team/models.py",
           "back/core/team/router.py",
           "back/core/team/service.py"
@@ -12044,7 +12060,7 @@
           "users.id"
         ],
         "history_mixin": true,
-        "line": 122,
+        "line": 132,
         "module": "app.llm",
         "table": "llm_calls"
       },
@@ -12105,6 +12121,18 @@
         "line": 19,
         "module": "app.llm",
         "table": "llm_profiles"
+      },
+      {
+        "class_name": "LLMProviderPermit",
+        "file": "back/app/llm/models.py",
+        "foreign_keys": [
+          "llm_calls.id",
+          "llm_providers.id"
+        ],
+        "history_mixin": false,
+        "line": 122,
+        "module": "app.llm",
+        "table": "llm_provider_permits"
       },
       {
         "class_name": "LLMProvider",
@@ -12856,6 +12884,19 @@
         "line": 23,
         "module": "app.share",
         "table": "share_configs"
+      },
+      {
+        "class_name": "ShareEffectiveAccess",
+        "file": "back/app/share/models.py",
+        "foreign_keys": [
+          "agents.id",
+          "share_configs.id",
+          "users.id"
+        ],
+        "history_mixin": false,
+        "line": 72,
+        "module": "app.share",
+        "table": "share_effective_access"
       },
       {
         "class_name": "ShareGrant",
@@ -16519,7 +16560,7 @@
         "declared_path": "/chat/rooms/{room_id}/attachments",
         "file": "back/app/chat/router.py",
         "handler": "create_attachment_message",
-        "line": 1402,
+        "line": 1403,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16528,7 +16569,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls",
         "file": "back/app/chat/router.py",
         "handler": "start_call",
-        "line": 1605,
+        "line": 1607,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16537,7 +16578,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/active",
         "file": "back/app/chat/router.py",
         "handler": "read_active_call",
-        "line": 1664,
+        "line": 1666,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16546,7 +16587,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/status",
         "file": "back/app/chat/router.py",
         "handler": "read_voice_call_status",
-        "line": 1578,
+        "line": 1580,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16555,7 +16596,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/{call_id}",
         "file": "back/app/chat/router.py",
         "handler": "stop_call",
-        "line": 1723,
+        "line": 1725,
         "method": "DELETE",
         "module": "app.chat"
       },
@@ -16564,7 +16605,7 @@
         "declared_path": "/chat/rooms/{room_id}/calls/{call_id}/candidates",
         "file": "back/app/chat/router.py",
         "handler": "add_call_candidate",
-        "line": 1688,
+        "line": 1690,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16609,7 +16650,7 @@
         "declared_path": "/chat/rooms/{room_id}/dictation",
         "file": "back/app/chat/router.py",
         "handler": "transcribe_dictation",
-        "line": 1351,
+        "line": 1352,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16636,7 +16677,7 @@
         "declared_path": "/chat/rooms/{room_id}/draft",
         "file": "back/app/chat/router.py",
         "handler": "get_private_draft",
-        "line": 1755,
+        "line": 1757,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16645,7 +16686,7 @@
         "declared_path": "/chat/rooms/{room_id}/draft",
         "file": "back/app/chat/router.py",
         "handler": "save_private_draft",
-        "line": 1762,
+        "line": 1764,
         "method": "PUT",
         "module": "app.chat"
       },
@@ -16654,7 +16695,7 @@
         "declared_path": "/chat/rooms/{room_id}/draft/files/{key}",
         "file": "back/app/chat/router.py",
         "handler": "discard_private_draft_file",
-        "line": 1784,
+        "line": 1786,
         "method": "DELETE",
         "module": "app.chat"
       },
@@ -16663,7 +16704,7 @@
         "declared_path": "/chat/rooms/{room_id}/draft/files/{key}",
         "file": "back/app/chat/router.py",
         "handler": "upload_private_draft_file",
-        "line": 1772,
+        "line": 1774,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16672,7 +16713,7 @@
         "declared_path": "/chat/rooms/{room_id}/files/{file_id}",
         "file": "back/app/chat/router.py",
         "handler": "download_file",
-        "line": 1533,
+        "line": 1535,
         "method": "GET",
         "module": "app.chat"
       },
@@ -16681,7 +16722,7 @@
         "declared_path": "/chat/rooms/{room_id}/files/{file_id}",
         "file": "back/app/chat/router.py",
         "handler": "rename_chat_attachment",
-        "line": 1523,
+        "line": 1525,
         "method": "PATCH",
         "module": "app.chat"
       },
@@ -16798,7 +16839,7 @@
         "declared_path": "/chat/rooms/{room_id}/mute",
         "file": "back/app/chat/router.py",
         "handler": "set_muted",
-        "line": 1515,
+        "line": 1517,
         "method": "POST",
         "module": "app.chat"
       },
@@ -16816,7 +16857,7 @@
         "declared_path": "/chat/rooms/{room_id}/read",
         "file": "back/app/chat/router.py",
         "handler": "mark_read",
-        "line": 1507,
+        "line": 1509,
         "method": "POST",
         "module": "app.chat"
       },

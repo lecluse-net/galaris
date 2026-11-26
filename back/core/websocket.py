@@ -12,7 +12,7 @@ from jwt import PyJWTError as JWTError
 from loguru import logger
 from sqlalchemy import select
 
-from .authorize import Privileges, role_id_ctx
+from .authorize import Privileges, request_privilege_cache, role_id_ctx
 from .authorize.logic import check_privilege
 from .database import get_db_session
 from .database.database import get_db
@@ -72,7 +72,16 @@ class BaseRoom:
 
 
 ResourceRoomAuthorization = Callable[[int, str], Awaitable[bool]]
-EventAuthorization = Callable[[User, str, Mapping[str, Any]], Awaitable[bool]]
+
+
+@dataclass(frozen=True)
+class AuthorizedEvent:
+    """Payload authorized specifically for this recipient and active role."""
+
+    data: dict[str, Any]
+
+
+EventAuthorization = Callable[[User, str, Mapping[str, Any]], Awaitable[bool | AuthorizedEvent]]
 
 
 @dataclass(frozen=True)
@@ -97,6 +106,7 @@ _room_display_requests: dict[str, object] = {}
 # were supported. Updated clients declare even an empty list in their handshake.
 _event_subscriptions: dict[str, frozenset[str]] = {}
 _event_authorizations: dict[str, EventAuthorization] = {}
+_candidate_filters: dict[str, Callable[[Mapping[str, Any], set[int]], Awaitable[set[int]]]] = {}
 _session_monitor: asyncio.Task[None] | None = None
 _event_relay: Callable[[str, str, dict[str, Any], BaseRoom | None], Awaitable[None]] | None = None
 
@@ -124,6 +134,13 @@ async def receive_worker_event(
 def register_event_authorization(subject: str, authorize: EventAuthorization) -> None:
     """Add the owning domain's resource policy to its existing privilege check."""
     _event_authorizations[subject] = authorize
+
+
+def register_candidate_filter(
+    subject: str, action: str, select_candidates: Callable[[Mapping[str, Any], set[int]], Awaitable[set[int]]],
+) -> None:
+    """Narrow an opt-in event's audience before the individual authorization checks."""
+    _candidate_filters[f"{subject}.{action}"] = select_candidates
 
 
 async def _identity_is_valid(identity: _SocketIdentity, user: User | None = None) -> bool:
@@ -323,12 +340,17 @@ async def emit(
         async with get_db_session():
             db = get_db()
             user_ids = {identity.user_id for _, identity in identities}
+            if candidate_filter := _candidate_filters.get(event_name):
+                user_ids &= await candidate_filter(data, user_ids)
+                identities = tuple((sid, identity) for sid, identity in identities if identity.user_id in user_ids)
+                if not identities:
+                    return
             result = await db.execute(select(User).where(User.id.in_(user_ids)))
             users = {user.id: user for user in result.scalars().all()}
 
-            recipients: list[str] = []
+            recipients: list[tuple[str, _SocketIdentity, dict[str, Any]]] = []
             valid_tokens: dict[str, bool] = {}
-            permissions: dict[tuple[int, int | None], bool] = {}
+            payloads: dict[tuple[int, int | None], dict[str, Any] | None] = {}
             for sid, identity in identities:
                 user = users.get(identity.user_id)
                 if identity.token not in valid_tokens:
@@ -337,24 +359,33 @@ async def emit(
                     await _disconnect_invalid(sid)
                     continue
                 permission_key = (identity.user_id, identity.role_id)
-                if permission_key in permissions:
-                    if permissions[permission_key]:
-                        recipients.append(sid)
+                if permission_key in payloads:
+                    payload = payloads[permission_key]
+                    if payload is not None:
+                        recipients.append((sid, identity, payload))
                     continue
                 role_token = role_id_ctx.set(identity.role_id)
                 try:
-                    allowed = user is not None and await check_privilege(
-                        user, list(required_privileges), db, role_id=identity.role_id,
-                    )
-                    if allowed and user is not None and subject in _event_authorizations:
-                        allowed = await _event_authorizations[subject](user, action, data)
-                    if allowed and room is not None and room_policy is not None:
-                        allowed = await room_policy.authorize(identity.user_id, str(room.resource_id))
+                    # Subject, audience and room checks share one role lookup for
+                    # this recipient. Each new event starts with fresh privileges.
+                    with request_privilege_cache():
+                        payload = data
+                        allowed = user is not None and await check_privilege(
+                            user, list(required_privileges), db, role_id=identity.role_id,
+                        )
+                        if allowed and user is not None and subject in _event_authorizations:
+                            decision = await _event_authorizations[subject](user, action, data)
+                            if isinstance(decision, AuthorizedEvent):
+                                payload = decision.data
+                            else:
+                                allowed = decision
+                        if allowed and room is not None and room_policy is not None:
+                            allowed = await room_policy.authorize(identity.user_id, str(room.resource_id))
                 finally:
                     role_id_ctx.reset(role_token)
-                permissions[permission_key] = bool(allowed)
+                payloads[permission_key] = payload if allowed else None
                 if allowed:
-                    recipients.append(sid)
+                    recipients.append((sid, identity, payload))
 
         logger.info(
             "📡 Emitting {}.{} to {} authorized WebSocket client(s)",
@@ -362,8 +393,8 @@ async def emit(
             action,
             len(recipients),
         )
-        for sid in recipients:
-            if sid not in _connected_identities or not _event_is_requested(sid, event_name):
+        for sid, identity, payload in recipients:
+            if _connected_identities.get(sid) is not identity or not _event_is_requested(sid, event_name):
                 continue
             # The page may have closed while authorization was awaiting the DB.
             if displayed_room is not None and _displayed_resource_rooms.get(sid) != displayed_room:
@@ -372,7 +403,7 @@ async def emit(
                 continue
             await _sio.emit(  # type: ignore
                 event_name,
-                {"data": data},
+                {"data": payload},
                 room=sid,
             )
 
@@ -407,7 +438,7 @@ def _parse_event_subscriptions(raw: object) -> frozenset[str] | None:
 
 def _event_is_requested(sid: str, event_name: str) -> bool:
     subscriptions = _event_subscriptions.get(sid)
-    return subscriptions is None or event_name in subscriptions
+    return event_name not in _candidate_filters if subscriptions is None else event_name in subscriptions
 
 
 def has_event_interest(subject: str, action: str, *, room: BaseRoom | None = None) -> bool:

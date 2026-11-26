@@ -33,7 +33,7 @@ from core import websocket
 from core.database import get_db
 from core.i18n import current_language, is_supported, render_prompt, tr
 from app.agent.contracts import ReasoningEffort
-from app.agent import prepare_run_retry
+from app.agent import AgentManagementScope, prepare_run_retry
 from .models import Task, TaskAttempt, TaskAttemptStatus, TaskStatus
 from .schemas import TaskChildSummary, TaskUpdate, TaskCreate, Task as TaskSchema, TaskOverview
 from .workflow import TaskEvent, can_retry_blocked, transition
@@ -230,11 +230,16 @@ async def get_by_id(task_id: UUID, *, for_update: bool = False) -> Optional[Task
     return result.scalar_one_or_none()
 
 
-async def _get_by_id_for_update(task_id: UUID, *, refresh: bool = False) -> Optional[Task]:
+async def _get_by_id_for_update(
+    task_id: UUID, *, refresh: bool = False, scope: AgentManagementScope | None = None,
+) -> Optional[Task]:
     """Load and lock a task for a transactional HTTP command."""
 
     db = get_db()
     query = select(Task).where(Task.id == task_id).with_for_update()
+    if scope is not None:
+        agent_ids = scope.agent_ids
+        query = query.where(Task.agent_id.is_not(None) if agent_ids is None else Task.agent_id.in_(agent_ids))
     if refresh:
         query = query.execution_options(populate_existing=True)
     return await db.scalar(Task.histo_filter(query))
@@ -576,7 +581,9 @@ async def _persist_internal(task: Task) -> Task:
 
 async def publish_updated(task: Task) -> None:
     """Publish a change already committed by a domain operation."""
-    await get_db().refresh(task)
+    # A checkpoint writer may have deferred the large JSON columns. Load the
+    # public event in one async read before serializing it for subscribers.
+    await get_db().refresh(task, attribute_names=list(Task.__mapper__.column_attrs.keys()))
     await websocket.emit(
         "task", "update", TaskSchema.model_validate(task).model_dump(mode="json"), None
     )
@@ -862,10 +869,10 @@ async def retry(task_id: UUID, expected_revision: int) -> Optional[Task]:
     return await save(task)
 
 
-async def cancel(task_id: UUID, expected_revision: int) -> Optional[Task]:
+async def cancel(task_id: UUID, expected_revision: int, *, scope: AgentManagementScope | None = None) -> Optional[Task]:
     """Explicit terminal cancellation command, represented as a domain error."""
 
-    task = await _get_by_id_for_update(task_id)
+    task = await _get_by_id_for_update(task_id, refresh=True, scope=scope)
     if task is None:
         return None
     if task.revision != expected_revision:

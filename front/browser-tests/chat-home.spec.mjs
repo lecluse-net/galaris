@@ -142,7 +142,7 @@ test('home finds unread internal conversations and excludes external messaging',
   expect(requests.at(-1)).toMatchObject({ include_external: 'false', include_archived: 'true', page: '1' })
   await page.screenshot({ path: testInfo.outputPath('unread-conversations-mobile.png'), fullPage: true })
   rooms[0].unread_count = 0
-  await page.evaluate(() => window.testApp.emitSocket('chat.message', { data: {} }))
+  await page.evaluate(() => window.testApp.emitSocket('chat.personal_message', { data: {} }))
   await expect(page.locator('.room-item--card')).toHaveCount(1)
   await unread.click()
   await expect(page.getByText('Project outline', { exact: true })).toBeVisible()
@@ -232,11 +232,11 @@ test('home and the conversation panel show outstanding questions even in a read 
   await page.screenshot({ path: testInfo.outputPath('pending-question-sidebar-dark.png'), animations: 'disabled' })
 
   waitingRoom.pending_question_until = null
-  await page.evaluate(() => window.testApp.emitSocket('chat.message', { data: { room_id: 'room-a', message_id: 'message-a', is_new: false } }))
+  await page.evaluate(() => window.testApp.emitSocket('chat.personal_message', { data: { room_id: 'room-a', message_id: 'message-a', is_new: false } }))
   await expect(sidebar.getByText('Reply needed', { exact: true })).toHaveCount(0)
 
   waitingRoom.pending_question_until = '2026-10-02T12:10:00Z'
-  await page.evaluate(() => window.testApp.emitSocket('chat.message', { data: { room_id: 'room-a', message_id: 'message-a', is_new: false } }))
+  await page.evaluate(() => window.testApp.emitSocket('chat.personal_message', { data: { room_id: 'room-a', message_id: 'message-a', is_new: false } }))
   await expect(sidebar.getByText('Reply needed', { exact: true })).toBeVisible()
   await page.clock.fastForward('10:00')
   await expect(sidebar.getByText('Reply needed', { exact: true })).toHaveCount(0)

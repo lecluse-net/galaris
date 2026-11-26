@@ -205,14 +205,15 @@ class DatasetProvider:
         return result.model_copy(update={"operation": "edit"})
 
     async def delete(self, ctx: ResourceContext, uri: ResourceUri, **options: Any) -> ResourceMutation:
-        dataset = await service.record(UUID(uri.segments[0]), ctx.agent_id, manage=True, lock=True)
-        if len(uri.segments) == 3:
+        identity = UUID(uri.segments[0])
+        if len(uri.segments) == 1:
+            await service.remove(identity, ctx.agent_id, expected_lock_version=None)
+        elif len(uri.segments) == 3:
+            await service.record(identity, ctx.agent_id, manage=True, lock=True)
             attachment = await self._attachment(uri, ctx)
             attachment.soft_delete()
             from app.memory import forget_resource_memories
             await forget_resource_memories([str(uri)])
-        elif len(uri.segments) == 1:
-            await service.remove(dataset.id, ctx.agent_id, expected_lock_version=dataset.lock_version)
         else:
             raise ValueError("Delete an exact Dataset or attachment")
         await get_db().commit()

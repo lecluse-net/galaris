@@ -644,12 +644,15 @@ async def list_schemes(ctx: ResourceContext) -> list[ResourceSchemeDescription]:
     return [unique[scheme] for scheme in sorted(unique)]
 
 
-async def resource_accessible(ctx: ResourceContext, uri: object, capability: ResourceCapability) -> bool:
-    """Check a native resource capability without leaking provider-specific ACL errors."""
+async def resource_accessible(
+    ctx: ResourceContext, uri: object, capability: ResourceCapability, *alternatives: ResourceCapability,
+) -> bool:
+    """Check whether the current descriptor offers any requested capability."""
     from app.memory import MemoryNotFoundError, MemoryPermissionError
     from app.document import DocumentNotFoundError, DocumentPermissionError
     try:
-        return capability in (await resource_info(ctx, uri)).capabilities
+        available = (await resource_info(ctx, uri)).capabilities
+        return capability in available or any(other in available for other in alternatives)
     except (PermissionError, FileNotFoundError, MemoryNotFoundError, MemoryPermissionError, DocumentNotFoundError, DocumentPermissionError):
         return False
 

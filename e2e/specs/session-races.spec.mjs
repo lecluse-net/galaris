@@ -45,7 +45,7 @@ test('page subscriptions stop on navigation while global message notifications r
   await signIn(page, fixture)
   await expect.poll(subscriptions.ready).toBe(true)
   await page.locator('a[href="/params"]').first().click()
-  await expect.poll(subscriptions).toEqual(['chat.message'])
+  await expect.poll(subscriptions).toEqual(['chat.personal_message', 'chat.scope_changed'])
   const consumers = [
     { path: '/goal', event: 'goal.update' },
     { path: '/documents', event: 'document.invalidate' },
@@ -60,7 +60,7 @@ test('page subscriptions stop on navigation while global message notifications r
       if (tab) await page.getByRole('tab', { name: tab, exact: true }).click()
       await expect.poll(subscriptions).toContain(event)
       await page.locator('a[href="/params"]').first().click()
-      await expect.poll(subscriptions).toEqual(['chat.message'])
+      await expect.poll(subscriptions).toEqual(['chat.personal_message', 'chat.scope_changed'])
     }
   }
 })
@@ -71,7 +71,7 @@ test('leaving goals during its initial load does not leave an orphan live subscr
   await signIn(page, fixture)
   await expect.poll(subscriptions.ready).toBe(true)
   await page.locator('a[href="/params"]').first().click()
-  await expect.poll(subscriptions).toEqual(['chat.message'])
+  await expect.poll(subscriptions).toEqual(['chat.personal_message', 'chat.scope_changed'])
   let release
   const gate = new Promise(resolve => { release = resolve })
   let intercepted
@@ -92,7 +92,7 @@ test('leaving goals during its initial load does not leave an orphan live subscr
     await page.locator('a[href="/params"]').first().click()
     release()
     await fulfilled
-    await expect.poll(subscriptions).toEqual(['chat.message'])
+    await expect.poll(subscriptions).toEqual(['chat.personal_message', 'chat.scope_changed'])
   } finally { release() }
 })
 
@@ -129,7 +129,7 @@ test('leaving a loading document editor does not restore its subscription after 
     // Let the resolved document load and Vue's next render complete before
     // inspecting the absence of an unwanted late subscription.
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(resolve)))
-    await expect.poll(subscriptions).toEqual(['chat.message'])
+    await expect.poll(subscriptions).toEqual(['chat.personal_message', 'chat.scope_changed'])
   } finally { release() }
 })
 

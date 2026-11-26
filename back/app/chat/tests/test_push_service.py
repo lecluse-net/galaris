@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock
 from uuid import uuid4
@@ -116,6 +117,63 @@ async def _message_scope(
     from app.chat.events import can_access_live_room
     assert await can_access_live_room(recipient.id, str(room.id))
     return recipient, recipient_membership, message
+
+
+@pytest.mark.asyncio
+async def test_message_audience_follows_personal_membership_and_impersonation_grant(db):
+    from app.chat.events import _can_receive_event, _personal_candidates
+    from app.messenger import personal_scope_changed
+    from app.messenger.user_service import reconcile_room_users
+    from core.authorize import Assignment
+    from core.websocket import AuthorizedEvent
+    from tests.authorization_fixtures import grant_privileges
+    from tests.sql_reads import measured_reads
+
+    user, membership, message = await _message_scope(db)
+    data = {"room_id": str(message.messenger_room_id), "message_id": str(message.id)}
+    await grant_privileges(db, user.id, "CHAT_IMPERSONATE")
+    candidates = {user.id, *range(10000, 10049)}
+    async with measured_reads(db, "50 connected Chat accounts") as audience_reads:
+        assert await _personal_candidates(data, candidates) == {user.id}
+    assert len(audience_reads) == 1
+    async with measured_reads(db, "personal chat message audience") as reads:
+        assert await _can_receive_event(user, "message", data) == AuthorizedEvent({**data, "personal_room": True})
+    assert all("messenger_messages" not in query for query in reads)
+    assert len(reads) <= 4
+    room_id = membership.room_id
+    sender_ids = list(await db.scalars(select(RoomUser.user_id).where(
+        RoomUser.room_id == room_id, RoomUser.user_id != membership.user_id,
+    )))
+    revoked = asyncio.Event()
+    observed = []
+
+    async def scope_changed(user_id):
+        observed.append(user_id)
+        revoked.set()
+
+    personal_scope_changed.connect(scope_changed)
+    try:
+        nested = await db.begin_nested()
+        await reconcile_room_users(room_id=room_id, user_ids=sender_ids, authoritative=True)
+        await nested.rollback()
+        await db.commit()
+        await asyncio.sleep(0)
+        assert not observed
+        assert await _personal_candidates(data, candidates) == {user.id}
+        await reconcile_room_users(room_id=room_id, user_ids=sender_ids, authoritative=True)
+        assert not observed
+        await db.commit()
+        await asyncio.wait_for(revoked.wait(), 1)
+        assert observed == [user.id]
+    finally:
+        personal_scope_changed.disconnect(scope_changed)
+    assert await _can_receive_event(user, "message", data) == AuthorizedEvent({**data, "personal_room": False})
+    assert await _personal_candidates(data, candidates) == set()
+    assert await _can_receive_event(user, "personal_message", data) is False
+    assignment = (await db.scalars(select(Assignment).where(Assignment.user_id == user.id))).one()
+    await db.delete(assignment)
+    await db.flush()
+    assert await _can_receive_event(user, "message", data) is False
 
 
 @pytest.mark.asyncio

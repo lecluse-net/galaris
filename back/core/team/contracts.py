@@ -1,4 +1,8 @@
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field
+
+type TeamMember = tuple[Literal["agent", "user"], int]
 
 
 class TeamWrite(BaseModel):

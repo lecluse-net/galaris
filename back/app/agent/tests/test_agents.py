@@ -441,6 +441,8 @@ async def test_create_internal_harness_materializes_skill_assignments(
     initialize_agent_creation = AsyncMock()
 
     monkeypatch.setattr(agent_service, "get_db", lambda: db)
+    monkeypatch.setattr(agent_service, "lock_team_sharing", AsyncMock())
+    monkeypatch.setattr(agent_service, "project_agent_access", AsyncMock())
     monkeypatch.setattr(agent_service, "initialize_agent_creation", initialize_agent_creation)
     monkeypatch.setattr(
         agent_service.profile_service,

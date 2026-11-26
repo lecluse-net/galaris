@@ -248,21 +248,28 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
     }
   }
 
+  function clearRoomNotifications(roomId: string): boolean {
+    let changed = false
+    for (const [messageId, pending] of fallbackTimers) {
+      if (pending.roomId !== roomId) continue
+      pending.cancelled = true
+      window.clearTimeout(pending.timer)
+      fallbackTimers.delete(messageId)
+      changed = true
+    }
+    if (inAppNotification.value?.roomId === roomId) {
+      inAppNotification.value = null
+      changed = true
+    }
+    return changed
+  }
+
   function setDisplayedRoom(roomId: string | null): void {
     displayedRoomId.value = roomId
     if (roomId !== null) {
-      // Once observed, a delayed fallback must not reappear after leaving the conversation.
-      for (const [messageId, pending] of fallbackTimers) {
-        if (pending.roomId !== roomId) continue
-        pending.cancelled = true
-        window.clearTimeout(pending.timer)
-        fallbackTimers.delete(messageId)
-      }
+      clearRoomNotifications(roomId)
+      void dismissDisplayedPush(roomId).catch(() => undefined)
     }
-    if (roomId !== null && inAppNotification.value?.roomId === roomId) {
-      inAppNotification.value = null
-    }
-    if (roomId !== null) void dismissDisplayedPush(roomId).catch(() => undefined)
   }
 
   async function dismissDisplayedPush(roomId: string): Promise<void> {
@@ -318,6 +325,21 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
     // A lost HTTP request from the previous connection must not own recovery.
     summaryRequest++
     summaryRefresh = null
+    onPersonalScopeChanged()
+  }
+
+  function onPersonalScopeChanged(): void {
+    // A response already in flight may have read the old membership. Restart
+    // pending previews through the personal room endpoint under current rights.
+    for (const [messageId, pending] of [...fallbackTimers]) {
+      onMessage({ data: { room_id: pending.roomId, message_id: messageId, is_new: true } })
+    }
+    const preview = inAppNotification.value
+    if (preview) {
+      void chatService.room(preview.roomId).catch(() => {
+        if (inAppNotification.value === preview) inAppNotification.value = null
+      })
+    }
     void refreshSummary().catch(() => undefined)
   }
 
@@ -331,7 +353,8 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
     started.value = true
     const lifecycle = ++lifecycleGeneration
     websocket.createWebsocket()
-    websocket.onEvent('chat', 'message', onMessage)
+    websocket.onEvent('chat', 'personal_message', onMessage)
+    websocket.onEvent('chat', 'scope_changed', onPersonalScopeChanged)
     websocket.onConnect(onConnect)
     window.addEventListener(AUTH_TOKEN_CHANGED_EVENT, onAuthChanged)
     if ('serviceWorker' in navigator) {
@@ -358,7 +381,8 @@ export const useChatInboxStore = defineStore('chatInbox', () => {
     questionExpiryTimer = undefined
     pendingQuestionCount.value = 0
     if (!started.value) return
-    websocket.offEvent('chat', 'message', onMessage)
+    websocket.offEvent('chat', 'personal_message', onMessage)
+    websocket.offEvent('chat', 'scope_changed', onPersonalScopeChanged)
     websocket.offConnect(onConnect)
     window.removeEventListener(AUTH_TOKEN_CHANGED_EVENT, onAuthChanged)
     if ('serviceWorker' in navigator) {

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Awaitable, Callable
+from typing import Literal
 
 from loguru import logger
 
@@ -17,9 +18,22 @@ from .contracts import AgentTask
 TerminalTaskObserver = Callable[[AgentTask], None | Awaitable[None]]
 AgentProfileObserver = Callable[[int, str], None | Awaitable[None]]
 AgentCreationInitializer = Callable[[int], Awaitable[None]]
+type AgentAccessChange = Literal["create", "archive", "manager"]
+type AgentAccessProjection = Callable[[int, AgentAccessChange], Awaitable[None]]
+_access_projections: dict[str, AgentAccessProjection] = {}
 _terminal_observers: dict[str, TerminalTaskObserver] = {}
 _profile_observers: dict[str, AgentProfileObserver] = {}
 _creation_initializers: dict[str, AgentCreationInitializer] = {}
+
+
+def register_agent_access_projection(name: str, project: AgentAccessProjection) -> None:
+    _access_projections[name] = project
+
+
+async def project_agent_access(agent_id: int, change: AgentAccessChange) -> None:
+    """Update access before commit. A projection failure aborts the mutation."""
+    for project in _access_projections.values():
+        await project(agent_id, change)
 
 
 def register_agent_creation_initializer(name: str, initializer: AgentCreationInitializer) -> None:

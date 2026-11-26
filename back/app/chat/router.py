@@ -1320,6 +1320,7 @@ async def create_message(room_id: UUID, data: MessageCreate,
                               if data.displayed_repository_id is not None else None)
         result = await publish_internal_message(
             user_id=await _user_id(),
+            release_request_transaction=True,
             room_id=room_id,
             client_message_id=data.client_message_id,
             attachments=attachments,
@@ -1473,6 +1474,7 @@ async def create_attachment_message(
     try:
         result = await publish_internal_message(
             user_id=await _user_id(),
+            release_request_transaction=True,
             room_id=room_id,
             client_message_id=client_message_id,
             text=text,

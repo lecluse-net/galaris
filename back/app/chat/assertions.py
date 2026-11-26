@@ -81,7 +81,7 @@ class InternalRoomAccessAssertion(BaseAssertion):
         room = await get_internal_room(context.user.id, room_id)
         return bool(
             room is not None
-            and (await dialogue_scope_for(context.user, context.db)).allows(
+            and (await dialogue_scope_for(context.user, context.db, agent_id=room.agent_id)).allows(
                 room.agent_id
             )
         )
@@ -101,7 +101,7 @@ class InternalFileAccessAssertion(BaseAssertion):
         room = await get_internal_room(context.user.id, room_id)
         return bool(
             room is not None
-            and (await dialogue_scope_for(context.user, context.db)).allows(
+            and (await dialogue_scope_for(context.user, context.db, agent_id=room.agent_id)).allows(
                 room.agent_id
             )
             and await internal_file_access(

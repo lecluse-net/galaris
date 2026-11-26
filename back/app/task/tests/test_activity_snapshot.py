@@ -179,8 +179,13 @@ async def test_reconnect_recovers_current_attempt_without_leaking_payloads_or_re
     assert attempt.data["effect_checkpoint"] == {"receipt": "delivered"}
     # Duplicate and old sequences cannot concatenate a second copy.
     assert await live_checkpoint.checkpoint_live_event(first) is None
+    backlog = first.model_copy(update={"sequence": 4, "message": AIMessage(type="text", stream_id="text", content="x" * 5000)})
+    assert await live_checkpoint.checkpoint_live_event(backlog, track_fragments=False) is None
+    observed = backlog.model_copy(update={"sequence": 5, "message": AIMessage(type="text", stream_id="text", content="END")})
+    resumed = await live_checkpoint.checkpoint_live_event(observed, track_fragments=True)
+    assert resumed.result.messages[-1].content == "x" * 3997 + "END"
     await live_checkpoint.checkpoint_live_event(AgentLiveEvent(
-        task_id=task.id, run_id=run_id, sequence=4, kind="result",
+        task_id=task.id, run_id=run_id, sequence=6, kind="result",
         result=ExecutionResult(prompt="private prompt", system_prompt="private system", result="Done")))
     await db.refresh(attempt)
     assert attempt.data["live_activity"]["result"]["prompt"] == ""

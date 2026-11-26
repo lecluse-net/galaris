@@ -3,7 +3,7 @@
 from uuid import UUID
 from collections.abc import Sequence
 from typing import Any
-from sqlalchemy import Select, or_, select
+from sqlalchemy import Select, func, or_, select
 
 from app.agent import get_agent_record
 from core.i18n import render_prompt, t
@@ -24,6 +24,23 @@ from .input_requests import (
 
 stop_agent_task = _stop_task
 delegate_agent_task = _run_task
+
+
+async def task_admission_roots(task_ids: set[UUID]) -> dict[UUID, tuple[UUID, int | None]]:
+    """Batch root missions and human owners for scheduling. UNION terminates historical cycles."""
+    if not task_ids:
+        return {}
+    from .models import Task
+
+    parent = func.coalesce(Task.parent_id, Task.source_task_id)
+    lineage = select(Task.id.label("leaf"), Task.id, parent.label("parent"),
+                     Task.requester_user_id).where(Task.id.in_(task_ids)).cte(recursive=True)
+    lineage = lineage.union(select(lineage.c.leaf, Task.id, parent, Task.requester_user_id)
+                            .join(Task, Task.id == lineage.c.parent))
+    rows = await get_db().execute(select(lineage.c.leaf, lineage.c.id, lineage.c.requester_user_id)
+                                  .where(lineage.c.parent.is_(None)))
+    return {leaf: (root, user) for leaf, root, user in rows.tuples()}
+
 
 async def memory_scope_for_task(
     task_id: UUID, *, agent_id: int

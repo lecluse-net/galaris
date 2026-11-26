@@ -43,7 +43,7 @@ test('the Chat menu updates the question and unread totals independently', async
   await page.screenshot({ path: testInfo.outputPath('chat-menu-counters-dark-mobile.png'), animations: 'disabled' })
 
   summary = { ...summary, unread_count: 0, pending_question_count: 1 }
-  await page.evaluate(() => window.testApp.emitSocket('chat.message', { data: { is_new: false } }))
+  await page.evaluate(() => window.testApp.emitSocket('chat.personal_message', { data: { is_new: false } }))
   await expect(counters).toHaveText(['1'])
   await expect(counters.first()).toHaveAccessibleName('Une question attend votre réponse')
 

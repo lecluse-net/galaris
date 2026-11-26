@@ -1,4 +1,5 @@
 import asyncio
+import json
 import threading
 from datetime import datetime, timedelta, timezone
 from uuid import uuid4
@@ -46,6 +47,93 @@ async def state(key, expected):
             if snapshot.status == "failed":
                 pytest.fail(str(snapshot.attempts[-1].result))
             await asyncio.sleep(0.02)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("notifications", [True, False], ids=["listen", "missed-notification"])
+async def test_provider_capacity_survives_worker_loss_until_reconciliation(runtime, monkeypatch, notifications):
+    import os
+    import sys
+    from contextlib import ExitStack, nullcontext
+    from textwrap import dedent
+    from uuid import UUID
+    from app.llm.models import LLMProviderPermit
+    from app.llm.provider_models import LLMProvider
+    from app.llm import provider_permits
+
+    if notifications:
+        # Admission within five seconds must use the database notification.
+        monkeypatch.setattr(provider_permits, "uniform", lambda *_: 60)
+    else:
+        monkeypatch.setattr(provider_permits, "subscribe", lambda *_: nullcontext(asyncio.Event()))
+
+    db, llm, _, _ = runtime
+    provider = await db.get(LLMProvider, llm.llm_provider_id)
+    provider.max_concurrent_calls = 1
+    await db.commit()
+    database = db.bind.url.database
+    assert database.startswith("test_concurrency_")
+    worker = await asyncio.create_subprocess_exec(sys.executable, "-B", "-c", dedent("""
+        import asyncio, sys
+        from core.database import get_db_session
+        from core.database.model_loader import load_models
+        from app.llm.llm_call_service import create_running_call
+        load_models()
+        async def hold():
+            async with get_db_session():
+                call = await create_running_call(purpose=None, task_id=None, agent_run_id=None, agent_id=None,
+                    llm_id=int(sys.argv[1]), provider_name="synthetic", provider_code=None,
+                    requested_model="synthetic", effective_model="synthetic", stream=True, request_body={})
+                print(call.id, flush=True)
+            await asyncio.Event().wait()
+        asyncio.run(hold())
+    """), str(llm.id), env={**os.environ, "POSTGRES_DB": database}, stdout=asyncio.subprocess.PIPE)
+
+    async def contend():
+        async with get_db_session():
+            return await llm_call_service.create_running_call(purpose=None, task_id=None, agent_run_id=None,
+                agent_id=None, llm_id=llm.id, provider_name="synthetic", provider_code=None,
+                requested_model="synthetic", effective_model="synthetic", stream=True, request_body={})
+
+    contender = None
+    monitor = ExitStack()
+    try:
+        async with asyncio.timeout(60):
+            original = UUID((await worker.stdout.readline()).decode().strip())
+        worker.kill()
+        await worker.wait()
+        past = datetime.now(timezone.utc) - timedelta(minutes=10)
+        await db.execute(update(LLMCall).where(LLMCall.id == original).values(updated_at=past))
+        await db.commit()
+        released = monitor.enter_context(provider_permits.subscribe(db.get_bind().engine, provider.id))
+        if notifications:
+            await asyncio.wait_for(released.wait(), 5)  # LISTEN is installed on its dedicated connection.
+            released.clear()
+        contender = asyncio.create_task(contend())
+        assert await llm_call_service.reconcile_stale_running_calls(stale_after=timedelta(seconds=1)) == 0
+        with pytest.raises(asyncio.TimeoutError):
+            await asyncio.wait_for(asyncio.shield(contender), 0.15)
+        await db.execute(update(LLMProviderPermit).where(LLMProviderPermit.call_id == original).values(expires_at=past))
+        await db.commit()
+        assert await llm_call_service.reconcile_stale_running_calls(stale_after=timedelta(seconds=1)) == 1
+        if notifications:
+            await asyncio.wait_for(released.wait(), 5)
+            released.clear()
+        following = await asyncio.wait_for(contender, timeout=5)
+        assert (await db.get(LLMCall, original)).status == "cancelled"
+        assert await db.get(LLMProviderPermit, original) is None
+        await llm_call_service.finalize_call(following.id, trace={})
+        if notifications:
+            await asyncio.wait_for(released.wait(), 5)
+        assert await db.get(LLMProviderPermit, following.id) is None
+    finally:
+        monitor.close()
+        if worker.returncode is None:
+            worker.kill()
+            await worker.wait()
+        if contender is not None:
+            contender.cancel()
+            await asyncio.gather(contender, return_exceptions=True)
 
 
 @pytest.mark.asyncio

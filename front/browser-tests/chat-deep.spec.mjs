@@ -129,7 +129,7 @@ test(`Deep follows and restores the direct stream at ${width}px`, async ({ page 
     direction: 'outbound', text: 'Synthetic response.', created_at: new Date().toISOString(),
     sender: { display_name: 'Alice', agent_id: 7, is_ai: true }, deep_submission_id: submission.id,
     files: [], is_mine: false, status: 'accepted' })
-  await socket('chat.message', { room_id: room.id, is_new: true })
+  await socket('chat.personal_message', { room_id: room.id, is_new: true })
   await expect(reply).toHaveAttribute('data-message-id', 'final-deep')
   await expect(page.getByText('Synthetic response.', { exact: true })).toHaveCount(1)
   submission.state = 'completed'

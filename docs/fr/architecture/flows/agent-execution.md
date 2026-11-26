@@ -22,6 +22,27 @@ et identités d'origine, avant une nouvelle décision du modèle. Les résultats
 restent acquis ; un effet non idempotent sans reçu bloque la reprise. Les contrôles
 natifs d'autorisation et de fraîcheur restent appliqués.
 
+## Préparation et reprise sous charge
+
+Par défaut, chaque worker exécute au plus quatre tours de conversation simultanés.
+Même lorsque ces quatre places sont occupées, il peut livrer le résultat d'une
+mission. Le total des tours et livraisons en cours est limité à cinq. Les
+notifications de tour, de tâche et de processus sont servies à tour de rôle.
+Une livraison devenue possible réveille le worker après le commit. Une
+vérification en base au démarrage puis toutes les trente secondes récupère les
+changements dont le signal a été perdu.
+
+La sauvegarde d'un tour texte chiffre un instantané initial puis jusqu'à 31
+modifications successives. Chaque modification authentifie son prédécesseur. Le
+lecteur reconstruit le même historique après redémarrage et accepte les anciens
+instantanés. Pour une Task, PostgreSQL réutilise les préfixes du journal lorsque
+la révision correspond et conserve le checkpoint complet dans la tentative. Une
+modification concurrente déclenche une écriture complète sous le bail courant.
+
+Les discussions et les tâches disposent de files de préparation MCP indépendantes.
+La limite fournisseur est partagée en base. Le scheduler réserve la capacité
+interactive avant la prise d'une tâche de fond. [Admission LLM](../../../../project/decisions/0181-provider-llm-admission.md)
+
 ## Détection de coordonnées dans le Dispatcher
 
 Chaque résultat du Dispatcher ajoute `contact_infos` à ses champs existants. Ce tableau
@@ -924,14 +945,21 @@ la fin de la synthèse vocale. Chaque événement est ordonné par round, tentat
 le client conserve les réflexions reçues et rejette les événements des anciennes tentatives.
 Le flux reste éphémère ; la trace finale et les messages Messenger assurent la persistance.
 Pendant le run, l'API d'activité fournit le snapshot courant pour réparer une reconnexion
-ou une séquence manquante. Une publication lente regroupe les fragments suivants en un
-snapshot cumulatif sans bloquer la génération. Le jeton de lease est vérifié à chaque
+ou une séquence manquante. Pendant une publication lente, les fragments simples d'un même bloc
+identifié sont regroupés. Le serveur envoie le bloc cumulatif et sa séquence de départ
+(`base_sequence`). Une rafale mixte conserve le snapshot complet. Le jeton de lease est vérifié à chaque
 écriture critique, y compris lors de la finalisation après transport.
 Voir [ADR 0062](../../../../project/decisions/0062-identified-message-streams.md).
 
 Un message humain Messenger est relié directement à un round de sa `Room` par `app.conversation`.
-Son scheduler ne réclame ni tâche, ni slot d’agent et lance un round court avec le harnais interne
-Pydantic AI et le niveau texte `low` du profil effectif de l’agent. Une colonne vide est
+Son scheduler réclame le round seul et utilise le niveau texte `low` du profil effectif de
+l’agent. L’admission fixe le moteur du round. `internal` sélectionne Pydantic AI.
+Lorsque le déploiement de Claude embarqué est activé, la sélection Claude et les affectations
+Codex et DSH utilisent le SDK Claude pour les nouveaux rounds texte. Le relais MCP contrôle
+l’identifiant de l’appel, la tentative active et les droits du Service avant de transmettre une
+lecture ou une action affichée dans le catalogue conversationnel. Un tour inventé dans la
+réponse du modèle invalide ses appels d’outils et est retiré de l’historique renvoyé au fournisseur.
+Une colonne vide est
 une erreur de configuration et ne reprend ni l’exécuteur ni le profil courant lorsque l’agent a un
 profil personnel. Le driver Hermès n’est jamais repris. Le toolset est une
 projection dédiée : connexion active, fonction présente dans la liste de son Service, droits

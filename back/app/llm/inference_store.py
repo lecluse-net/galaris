@@ -516,9 +516,12 @@ async def pending_admissions(*, exclude: Collection[UUID] = ()) -> list[PendingA
         .where(LLMInference.status == "queued", LLMInference.id.not_in(exclude))
         .order_by(LLMInference.created_at).limit(PENDING_BATCH_SIZE)
     )
+    from app.task.facade import task_admission_roots
+    pending_rows = rows.all()
+    roots = await task_admission_roots({UUID(row[3]) for row in pending_rows if row[3]})
     result: list[PendingAdmission] = []
     for (key, purpose, round_id, task_id, run_id, expiry, raw_provider, voice_session_id,
-         process_run_id, agent_id, requester_user_id, authority) in rows:
+         process_run_id, agent_id, requester_user_id, authority) in pending_rows:
         # SQLAlchemy's selected entity type does not encode outer-join nulls.
         provider = cast(LLMProvider | None, raw_provider)
         result.append(PendingAdmission(
@@ -526,6 +529,7 @@ async def pending_admissions(*, exclude: Collection[UUID] = ()) -> list[PendingA
             limit=provider.effective_max_concurrent_calls if provider is not None else 0,
             context=admission_context(
                 purpose, task_id=UUID(task_id) if task_id else None,
+                task_root=roots.get(UUID(task_id)) if task_id else None,
                 conversation_round_id=UUID(round_id) if round_id else None,
                 agent_run_id=UUID(run_id) if run_id else None,
                 process_run_id=UUID(process_run_id) if process_run_id else None,

@@ -79,12 +79,14 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
         peer_teams = [{'id': other_team.id, 'name': other_team.name, 'order': 10},
                       {'id': team.id, 'name': team.name, 'order': 20}]
         tasks = [Task(agent_id=agent.id, label='Managed task') for agent in (own, peer, outside)]
-        db.add_all(tasks)
+        unassigned = Task(label='Unassigned task')
+        db.add_all([*tasks, unassigned])
         await db.flush()
         from app.goal.tests.factories import make_goal
         goal = await make_goal(title='Foreign goal', description='Private', agent_id=outside.id)
         ids = [own.id, peer.id, outside.id]
         task_ids = [str(task.id) for task in tasks]
+        unassigned_id = str(unassigned.id)
         goal_id = str(goal.id)
         team_id = team.id
     # Keep the two actors in independent browser sessions, including with HTTP cookies.
@@ -97,7 +99,8 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
         assert {item['id'] for item in response.json()} == set(expected)
         ordered_ids = [item['id'] for item in response.json() if item['id'] in ids]
         assert ordered_ids == [agent_id for agent_id in reversed(ids) if agent_id in expected]
-        assert all(set(item) == {'id', 'label', 'has_avatar', 'updated_at', 'driver', 'teams'} for item in response.json())
+        assert all(set(item) == {'id', 'agent_id', 'label', 'has_avatar', 'updated_at', 'driver', 'teams'}
+                   and item['agent_id'] == item['id'] for item in response.json())
         by_id = {item['id']: item for item in response.json()}
         if scope == 'management':
             own_version = by_id[ids[0]]['updated_at']
@@ -134,6 +137,8 @@ async def test_selection_scopes_and_task_management_follow_authenticated_authori
         assert response.status_code == 404
     response = await client.post('/api/tasks', headers=human, json={'agent_id': ids[0], 'label': 'Allowed', 'parent_id': task_ids[0]})
     assert response.status_code == 201
+    assert (await client.post(f'/api/tasks/{unassigned_id}/cancel', headers=admin, json={'expected_revision': 1})).status_code == 404
+    assert (await client.post(f'/api/tasks/{task_ids[0]}/cancel', headers=human, json={'expected_revision': 99})).status_code == 409
     assert (await client.post(f'/api/tasks/{task_ids[0]}/cancel', headers=human, json={'expected_revision': 1})).status_code == 200
     assert (await client.post(f'/api/tasks/{task_ids[2]}/cancel', headers=admin, json={'expected_revision': 1})).status_code == 200
     async with get_db_session():

@@ -325,7 +325,7 @@ test(`a canonical receipt recovers a lost POST response (${receipt}, ${nextDraft
   } }))
   try {
     if (receipt === 'socket') {
-      await page.evaluate(() => window.testApp.emitSocket('chat.message', { data: { room_id: 'room-a', message_id: 'saved-message', is_new: true } }))
+      await page.evaluate(() => window.testApp.emitSocket('chat.personal_message', { data: { room_id: 'room-a', message_id: 'saved-message', is_new: true } }))
       await expect.poll(() => page.evaluate(async () => {
         const { useChatStore } = await import('/app/chat/stores/chat.ts')
         return useChatStore(window.testApp.pinia).messages.some(message => message.id === 'saved-message')

@@ -18,7 +18,8 @@ et le réseau même lorsqu'aucun consommateur du navigateur ne les utilise.
 | `process_run.*` | Suivi des processus et panneau des processus du chat |
 | `voice_conversation.*` | Historique des appels téléphoniques |
 | `agent_run.event` | Consommateurs du suivi d'activité d'une tâche |
-| `chat.message` | Inbox du shell et conversation ouverte |
+| `chat.personal_message`, `chat.scope_changed` | Boîte de réception du shell et Chat personnel |
+| `chat.message` | Consultation déléguée ouverte et compatibilité avec les anciens clients |
 | `chat.activity`, `chat.runtime`, `chat.call`, `chat.voice_transcription` | Store de la page Chat, libéré à sa sortie |
 | `dream.update` | Page Dream, déjà soumise au filtre de page affichée |
 
@@ -35,8 +36,9 @@ la session DB. Il revérifie l'abonnement avant l'envoi après les contrôles as
 Une déclaration d'intérêt ne confère aucun droit : session, rôle et accès à la ressource
 restent vérifiés sur les destinataires. Le filtre de page Dream reste complémentaire.
 
-L'inbox authentifiée conserve `chat.message` hors de la page Chat, pour les non-lus et
-les notifications. Les événements de streaming ne restent demandés que tant que leurs
+La boîte de réception conserve son abonnement personnel hors de la page Chat, pour les non-lus
+et les notifications. Un retrait d’appartenance déclenche une relecture HTTP pour le compte
+concerné après le commit. Les événements de streaming ne restent demandés que tant que leurs
 consommateurs sont montés. Les composants encore montés dans un onglet en arrière-plan
 conservent leurs abonnements : cette décision ne change pas la politique de visibilité.
 

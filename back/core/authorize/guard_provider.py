@@ -11,7 +11,6 @@ authorization checks for all routes marked with @authorize().
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from collections.abc import Iterator
 from typing import Any, Callable, Dict, List, Optional, Type, Union, cast
 
 from fastapi import FastAPI, Depends, HTTPException, Request, status
@@ -100,25 +99,19 @@ class GuardProvider:
         the handler verifies a capability or service identity. Missing
         classifications abort application startup.
         """
-        from fastapi.routing import APIRoute
-
-        def iter_routes(routes: list[Any]) -> Iterator[APIRoute]:
-            """Expand routers lazily included by FastAPI >= 0.139."""
-            for candidate in routes:
-                if isinstance(candidate, APIRoute):
-                    yield candidate
-                    continue
-                original_router = getattr(candidate, "original_router", None)
-                nested = getattr(original_router, "routes", None)
-                if isinstance(nested, list):
-                    yield from iter_routes(cast(list[Any], nested))
+        from fastapi.routing import APIRoute, iter_route_contexts
 
         count = 0
         public_count = 0
         independent_auth_count = 0
         unclassified: list[str] = []
         guarded_route_names: dict[str, tuple[str, GuardConfig]] = {}
-        for route in iter_routes(cast(list[Any], app.routes)):
+        # Resolve each inclusion once at startup. FastAPI then reuses its
+        # dependency graph when the first request reaches that branch.
+        for context in iter_route_contexts(app.routes):
+            route = context.original_route
+            if not isinstance(route, APIRoute):
+                continue
             endpoint = route.endpoint
             meta = getattr(endpoint, "_authorize_meta", None)
             public_reason = getattr(endpoint, "_public_route_reason", None)
@@ -146,12 +139,12 @@ class GuardProvider:
                     independent_auth_count += 1
                     continue
                 methods = ",".join(sorted(route.methods or []))
-                unclassified.append(f"{methods} {route.path}")
+                unclassified.append(f"{methods} {context.path}")
                 continue
 
             route_name = route.name or route.path
             methods = ",".join(sorted(route.methods or []))
-            route_description = f"{methods} {route.path}"
+            route_description = f"{methods} {context.path}"
             guard = GuardConfig(
                 route_name=route_name,
                 privileges=meta.get("privileges", []),

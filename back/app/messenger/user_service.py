@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from uuid import UUID, uuid4
 
-from sqlalchemy import delete, func, select, update
-from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy import any_, bindparam, delete, func, select, update
+from sqlalchemy.dialects.postgresql import ARRAY, UUID as PGUUID, insert as pg_insert
 from sqlalchemy.orm.attributes import set_committed_value
 
 from core.database import get_db
@@ -14,6 +15,7 @@ from core.database import get_db
 from app.services import ServiceModel
 
 from . import directory
+from .events import notify_personal_scope_change
 from ._observations import ObservedMessengerUser
 from .models import (
     RoomUser,
@@ -65,7 +67,9 @@ async def resolve_messenger_user(
             display_name=normalized_display_name,
             is_ai=effective_is_ai,
         )
-        .on_conflict_do_nothing(constraint="uq_messenger_user_tool_external")
+        # A linked user has two unique keys. Concurrent inserts of the same
+        # identity can meet either constraint before the winning row is visible.
+        .on_conflict_do_nothing()
         .returning(MessengerUser.id)
     )
     if inserted_id is not None:
@@ -80,7 +84,7 @@ async def resolve_messenger_user(
         .execution_options(include_historized=True)
     )
     if existing is None:
-        raise RuntimeError("The Messenger user disappeared while being resolved.")
+        raise RuntimeError("The Messenger identity conflicts with another identity or was removed.")
     # Partial observations (notably live-call membership) often expose only an
     # external identifier. They must not downgrade a name learned earlier from the
     # provider directory to that opaque identifier.
@@ -97,6 +101,8 @@ async def resolve_messenger_user(
         values["is_ai"] = True
     if galaris_user_id is not None:
         values["galaris_user_id"] = galaris_user_id
+        if existing.galaris_user_id is not None and existing.galaris_user_id != galaris_user_id:
+            notify_personal_scope_change(existing.galaris_user_id)
     await get_db().execute(
         update(MessengerUser).where(MessengerUser.id == existing.id).values(**values)
     )
@@ -246,7 +252,8 @@ async def synchronize_users(
         )
         if current_ids:
             stale = stale.where(MessengerUser.id.not_in(current_ids))
-        await get_db().execute(stale.values(deleted_at=func.now(), deleted_by=None))
+        retired = await get_db().scalars(stale.values(deleted_at=func.now(), deleted_by=None).returning(MessengerUser.id))
+        await _notify_removed_identities(retired.all())
 
     rows = list(
         (
@@ -282,7 +289,30 @@ async def reconcile_room_users(
         stale = delete(RoomUser).where(RoomUser.room_id == room_id)
         if unique_ids:
             stale = stale.where(RoomUser.user_id.not_in(unique_ids))
-        await get_db().execute(stale)
+        removed = (await get_db().scalars(stale.returning(RoomUser.user_id))).all()
+        await _notify_removed_identities(removed)
+
+
+async def _notify_removed_identities(identities: Sequence[UUID]) -> None:
+    if not identities:
+        return
+    from .native_facade import CHAT_TOOL_CODE, human_external_id
+
+    removed = bindparam("removed", list(identities), type_=ARRAY(PGUUID(as_uuid=True)))
+    query = (
+        select(MessengerUser.galaris_user_id, MessengerUser.external_id, ServiceModel.code)
+        .join(ServiceModel, ServiceModel.id == MessengerUser.service_id)
+        .where(MessengerUser.id == any_(removed))
+        .execution_options(include_historized=True)
+    )
+    for linked_id, external, service in await get_db().execute(query):
+        if linked_id is not None:
+            notify_personal_scope_change(linked_id)
+        suffix = external.removeprefix("user:")
+        if service == CHAT_TOOL_CODE and suffix.isascii() and suffix.isdecimal() and len(suffix) <= 19:
+            user_id = int(suffix)
+            if external == human_external_id(user_id):
+                notify_personal_scope_change(user_id)
 
 
 __all__ = [

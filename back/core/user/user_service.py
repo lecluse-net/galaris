@@ -21,10 +21,11 @@ from pwdlib.hashers.bcrypt import BcryptHasher
 from starlette.concurrency import run_in_threadpool
 from loguru import logger
 
-from core.database import get_db
+from core.database import get_db, lock_resource_sharing
 from core.i18n import render_prompt, tr
 from core.params import runtime_settings
 from .models import User
+from .lifecycle import project_user_activation
 from .schemas import UserCreate, UserRegistration, UserUpdate
 
 
@@ -273,8 +274,7 @@ async def register_public_user(user_data: UserRegistration) -> User:
         language=user_data.language,
         is_active=True,
     )
-    db.add(new_user)
-    await db.flush()
+    await _insert_user(new_user)
     db.add(
         Assignment(
             user_id=new_user.id,
@@ -317,7 +317,7 @@ async def create(user_data: UserCreate) -> User:
         language=user_data.language,
     )
 
-    db.add(new_user)
+    await _insert_user(new_user)
     await db.commit()
     await db.refresh(new_user)
 
@@ -326,15 +326,32 @@ async def create(user_data: UserCreate) -> User:
     return new_user
 
 
+async def _insert_user(user: User) -> None:
+    db = get_db()
+    if user.is_active:
+        await lock_resource_sharing()
+    db.add(user)
+    await db.flush()
+    if user.is_active:
+        await project_user_activation(user.id, True)
+
+
 async def update(user_id: int, user_update: UserUpdate) -> Optional[User]:
     """Update an existing user."""
     db = get_db()
+    # Password hashing can take hundreds of milliseconds. Keep it outside
+    # the shared lock when the admin form also supplies the activation state.
+    hashed_password = await run_in_threadpool(encrypt_password, user_update.password) if user_update.password else None
     if user_update.is_active is False:
         from core.authorize import preserve_administrator
 
         await preserve_administrator(user_id=user_id)
 
-    result = await db.execute(select(User).where(User.id == user_id))
+    query = select(User).where(User.id == user_id)
+    if user_update.is_active is not None:
+        await lock_resource_sharing()
+        query = query.with_for_update().execution_options(populate_existing=True)
+    result = await db.execute(query)
     user = result.scalar_one_or_none()
     if not user:
         return None
@@ -355,12 +372,13 @@ async def update(user_id: int, user_update: UserUpdate) -> Optional[User]:
 
     revoke_persistent_sessions = bool(user_update.password) or user_update.is_active is False
 
-    if user_update.password:
-        user.hashed_password = await run_in_threadpool(encrypt_password, user_update.password)
+    if hashed_password is not None:
+        user.hashed_password = hashed_password
 
     if revoke_persistent_sessions:
         user.auth_version += 1
 
+    activation_changed = user_update.is_active is not None and user_update.is_active != user.is_active
     if user_update.is_active is not None:
         user.is_active = user_update.is_active
 
@@ -371,6 +389,10 @@ async def update(user_id: int, user_update: UserUpdate) -> Optional[User]:
         user.document_open_mode = user_update.document_open_mode
     if user_update.document_library_mode is not None:
         user.document_library_mode = user_update.document_library_mode
+
+    if activation_changed:
+        await db.flush()
+        await project_user_activation(user.id, user.is_active)
 
     if revoke_persistent_sessions:
         from .refresh_session_service import revoke_all_user_sessions

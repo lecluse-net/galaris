@@ -25,7 +25,7 @@ from .models import (
     kind_from_mime,
 )
 from .interface import HistoryPage, BridgeSpec, ParamDef, NotSupported
-from .events import Signal, message_journaled, message_received, message_sent, interaction_changed, message_admitting
+from .events import Signal, message_journaled, message_received, message_sent, interaction_changed, message_admitting, personal_scope_changed
 from .native_interactions import read_internal_interaction, answer_internal_interaction
 from .inbound import (
     on_message, dispatch_incoming,
@@ -170,6 +170,9 @@ from .native_facade import (
     get_chat_room,
     get_internal_room,
     human_external_id,
+    can_view_internal_room,
+    chat_member_agent_id,
+    chat_member_candidates,
     has_chat_room_access,
     has_agent_chat_room_access,
     has_ai_chat_room_access,
@@ -253,6 +256,7 @@ __all__ = [
     # Signals and inbound routing.
     "Signal",
     "message_journaled",
+    "personal_scope_changed",
     "message_received",
     "message_admitting",
     "message_sent",
@@ -360,6 +364,9 @@ __all__ = [
     "get_chat_room",
     "get_internal_room",
     "human_external_id",
+    "can_view_internal_room",
+    "chat_member_agent_id",
+    "chat_member_candidates",
     "has_chat_room_access",
     "has_agent_chat_room_access",
     "has_ai_chat_room_access",

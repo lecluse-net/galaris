@@ -65,11 +65,10 @@ class AgentTaskPort(Protocol):
         expected_attempt_id: UUID | None = None,
         data_patch: Mapping[str, Any] | None = None,
         execution_result: ExecutionResult | None = None,
-    ) -> None: ...
+        checkpoint_base: tuple[int, dict[str, int]] | None = None,
+    ) -> int | None: ...
     async def record_agent_run_activity(self, task_id: UUID, attempt_id: UUID, run_id: UUID) -> None: ...
-    async def append_agent_run_event(
-        self, task: AgentTask, event: AgentRunEventV1
-    ) -> None: ...
+    async def append_agent_run_event(self, event: AgentRunEventV1) -> None: ...
     async def get_working_set(self, task_id: UUID) -> WorkingSet: ...
     async def get_context_capsule(
         self, task: AgentTask
@@ -194,22 +193,22 @@ class _TaskPortProxy:
         expected_attempt_id: UUID | None = None,
         data_patch: Mapping[str, Any] | None = None,
         execution_result: ExecutionResult | None = None,
-    ) -> None:
-        await self._require().persist_agent_run_state(
+        checkpoint_base: tuple[int, dict[str, int]] | None = None,
+    ) -> int | None:
+        return await self._require().persist_agent_run_state(
             task_id,
             expected_objective=expected_objective,
             expected_attempt_id=expected_attempt_id,
             data_patch=data_patch,
             execution_result=execution_result,
+            checkpoint_base=checkpoint_base,
         )
 
     async def record_agent_run_activity(self, task_id: UUID, attempt_id: UUID, run_id: UUID) -> None:
         await self._require().record_agent_run_activity(task_id, attempt_id, run_id)
 
-    async def append_agent_run_event(
-        self, task: AgentTask, event: AgentRunEventV1
-    ) -> None:
-        await self._require().append_agent_run_event(task, event)
+    async def append_agent_run_event(self, event: AgentRunEventV1) -> None:
+        await self._require().append_agent_run_event(event)
 
     async def get_working_set(self, task_id: UUID) -> WorkingSet:
         return await self._require().get_working_set(task_id)

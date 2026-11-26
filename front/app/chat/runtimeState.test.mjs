@@ -10,6 +10,19 @@ function apply(round, event) {
   })?.round ?? round
 }
 
+test('one cumulative block covers only its own range of fragments', () => {
+  const started = apply(null, { kind: 'started', sequence: 0 })
+  const round = apply(started, { kind: 'message', sequence: 1,
+    message: { type: 'text', stream_id: 'answer', content: 'Bon' } })
+  const event = { room_id: 'room-1', round_id: 'round-stream', kind: 'message', sequence: 12,
+    base_sequence: 1, message: { type: 'text', stream_id: 'answer', stream_mode: 'snapshot', content: 'Bonjour' } }
+  assert.equal(applyConversationRuntimeEvent(started, event).needsSnapshot, true)
+  const next = applyConversationRuntimeEvent(round, event)
+  assert.equal(next.round.last_sequence, 12)
+  assert.equal(currentAIResponse(next.round.ai_result), 'Bonjour')
+  assert.equal(applyConversationRuntimeEvent(next.round, event), null)
+})
+
 test('an authorization wait ends on resume without masking the next failure', () => {
   let round = apply(null, { kind: 'started', sequence: 0 })
   round = apply(round, { kind: 'finished', sequence: 1, success: false,

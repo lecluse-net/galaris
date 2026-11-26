@@ -43,6 +43,26 @@ la livraison devient `UNKNOWN`. Les notifications de fallback ne prennent jamais
 d'une exécution active. Les erreurs de récupération expliquent l'incertitude effective,
 sans attribuer systématiquement toute expiration à un effet potentiellement commencé.
 
+Chaque worker limite séparément les tours et les livraisons à
+`CONVERSATION_WORKER_CONCURRENCY` (quatre par défaut). Leur total peut dépasser ce
+réglage d'une seule place. Quatre tours longs laissent ainsi une place de livraison,
+et quatre livraisons laissent une place pour admettre un tour. Les livraisons de
+tour, de Task et de Process alternent lorsque plusieurs files sont alimentées.
+Un seul publicateur par tentative envoie dans l'ordre les avis de prise en charge
+et de démarrage pendant que le worker prépare et exécute le tour. Ces avis invitent
+à relire l'état durable du salon. Chaque observateur dispose de deux secondes pour
+traiter un avis. À la sortie du contrôleur, le worker libère le
+publicateur avant d'annoncer la transition suivante. Le flux de réponse conserve
+son propre ordre, du démarrage au résultat terminal.
+Une file de dialogues constatée vide est réexaminée lorsqu'un tour ou ses messages
+changent, ainsi que sur un réveil explicite. Une livraison seule peut donc avancer
+sans relancer la recherche des dialogues.
+Une file de livraison vide est revérifiée dès le commit d'un résultat éligible
+ou d'un changement de lien. Les contrôles de contact continuent tant qu'une
+demande reste en attente. Le démarrage et une échéance de trente secondes
+relisent les files en base, même si d'autres salons réveillent continuellement
+le worker. Les générations de réveil sont locales au processus.
+
 ## Limites et vérification
 
 Une opération externe non idempotente sans reçu ne permet pas de garantir exactement un effet

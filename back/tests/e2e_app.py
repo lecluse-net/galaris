@@ -75,7 +75,7 @@ quota_fixture = {"used": 2500, "status": 200, "codex_credits": 125.5}
 
 class ScriptedController:
     async def run(self, turn: ConversationTurn) -> ConversationOutcome:
-        if turn.agent_id in first_mission_agents or modes.get(turn.room_id) in {"conversation-control", "process-human", "document-authorization"}:
+        if turn.agent_id in first_mission_agents or modes.get(turn.room_id) in {"conversation-control", "load-dialogue", "process-human", "document-authorization"}:
             from app.harness.conversation import HarnessConversationController
             return await HarnessConversationController().run(turn)
         assert turn.publish_progress is not None
@@ -171,6 +171,10 @@ async def task_stream(request):
 
 
 async def harness_model(llm, **kwargs):
+    if "load-dialogue" in modes.values():
+        topic_model = e2e_conversation_control.load_topic_model(str(kwargs.get("purpose")))
+        if topic_model is not None:
+            return topic_model
     if kwargs.get("agent_id") in e2e_document_authorization.states:
         return await e2e_document_authorization.build_model(llm, **kwargs)
     if kwargs.get("agent_id") in e2e_process_conversations.agents:
@@ -344,6 +348,24 @@ async def openrouter_models(authorization: str = Header()):
     return {"data": []}
 
 
+@app.post("/api/__test/openrouter/v1/embeddings")
+async def load_embeddings(payload: dict, authorization: str = Header()):
+    from hashlib import sha256
+
+    if "load-dialogue" not in modes.values():
+        raise HTTPException(404)
+    if authorization != "Bearer synthetic-e2e-inference-key":
+        raise HTTPException(401)
+    dimensions = payload.get("dimensions", 32)
+    if not isinstance(dimensions, int) or not 1 <= dimensions <= 4096:
+        raise HTTPException(422)
+    data = []
+    for index, text in enumerate(payload["input"]):
+        digest = sha256(text.encode()).digest()
+        data.append({"index": index, "embedding": [(digest[i % len(digest)] - 127) / 128 for i in range(dimensions)]})
+    return {"model": payload["model"], "data": data}
+
+
 @app.get("/api/__test/elevenlabs/v1/models")
 async def elevenlabs_models():
     return []
@@ -356,7 +378,7 @@ async def elevenlabs_voices():
 
 @app.post("/api/__test/seed")
 async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = True):
-    if mode not in {"normal", "tools", "error", "task", "task-tools", "call-recovery", "conversation-control", "process-human", "document-authorization", "first-mission", "missing-terminal", "interruptible", "mail", "mail-common", "mail-inbound", "file-catalogue", "personal-skills", "lab-repeatability", "contact-authorization"}:
+    if mode not in {"normal", "tools", "error", "task", "task-tools", "call-recovery", "conversation-control", "load-dialogue", "process-human", "document-authorization", "first-mission", "missing-terminal", "interruptible", "mail", "mail-common", "mail-inbound", "file-catalogue", "personal-skills", "lab-repeatability", "contact-authorization"}:
         raise HTTPException(400, "Unknown scenario")
     suffix = uuid4().hex[:12]
     async with get_db_session() as db:
@@ -449,7 +471,7 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
             tool_trace_gates[agent.id] = asyncio.Event()
         if mode == "call-recovery":
             e2e_call_recovery.register(agent.id)
-        if mode in {"conversation-control", "process-human", "document-authorization"}:
+        if mode in {"conversation-control", "load-dialogue", "process-human", "document-authorization"}:
             # Other journeys can select an image-only installation profile.
             # This real-harness scenario owns its text configuration.
             from app.llm import LLM, LlmProfile
@@ -459,11 +481,13 @@ async def seed(mode: str = "normal", mfa: bool = False, llm_configured: bool = T
             await db.flush()
             control_profile = LlmProfile(code=f"control-{suffix}", label="Synthetic conversation control",
                                          text_low_llm_id=model.id, text_standard_llm_id=model.id)
+            if "load-dialogue" in modes.values():
+                control_profile.text_ultra_low_llm_id = model.id
             db.add(control_profile)
             await db.flush()
             agent.profile_id = control_profile.id
             await db.commit()
-            e2e_conversation_control.register(agent.id)
+            e2e_conversation_control.register(agent.id, response_delay=1.2 if mode == "load-dialogue" else None)
             if mode == "process-human":
                 e2e_process_conversations.agents.add(agent.id)
             if mode == "document-authorization":
@@ -608,7 +632,8 @@ async def release(room_id: UUID):
 @app.get("/api/__test/rounds/{room_id}")
 async def rounds(room_id: UUID):
     async with get_db_session() as db:
-        rows = list(await db.scalars(select(ConversationRound).where(ConversationRound.room_id == room_id)))
+        rows = await db.execute(select(ConversationRound.id, ConversationRound.status,
+            ConversationRound.delivery_state).where(ConversationRound.room_id == room_id))
         return [{"id": str(row.id), "status": row.status, "delivery_state": row.delivery_state} for row in rows]
 
 
@@ -625,6 +650,63 @@ async def pending_tasks():
         for task in asyncio.all_tasks()
         if "conversation" in task.get_name() or task.get_name().startswith("task-")
     ]
+
+
+@app.post("/api/__test/load/counts")
+async def load_counts(agent_ids: list[int], room_ids: list[UUID]):
+    from app.conversation.models import ConversationTaskLink
+    from app.task.models import Task
+    from sqlalchemy import func
+
+    async with get_db_session() as db:
+        tasks = await db.execute(select(Task.status, func.count()).where(
+            Task.agent_id.in_(agent_ids)).group_by(Task.status))
+        rounds = await db.execute(select(ConversationRound.status, func.count()).where(
+            ConversationRound.room_id.in_(room_ids)).group_by(ConversationRound.status))
+        notifications = await db.execute(select(ConversationTaskLink.notification_state, func.count())
+            .join(Task, Task.id == ConversationTaskLink.task_id).where(Task.agent_id.in_(agent_ids))
+            .group_by(ConversationTaskLink.notification_state))
+        return {"worker_slots": settings.CONVERSATION_WORKER_CONCURRENCY,
+                "notifications": dict(notifications.all()),
+                "tasks": {status.value: count for status, count in tasks},
+                "rounds": {status: count for status, count in rounds}}
+
+
+@app.post("/api/__test/load/timings")
+async def load_timings(agent_ids: list[int], browser_room_ids: list[UUID], room_ids: list[UUID]):
+    from app.conversation.models import ConversationRoundAttempt, ConversationTaskLink
+    from app.messenger import Message
+    from app.task.models import Task, TaskAttempt
+
+    async with get_db_session() as db:
+        rounds = await db.execute(select(
+            ConversationRound.room_id, ConversationRoundAttempt.attempt_number,
+            ConversationRoundAttempt.started_at - ConversationRound.created_at,
+            ConversationRound.finished_at - ConversationRoundAttempt.started_at,
+            ConversationRoundAttempt.finished_at - ConversationRoundAttempt.started_at,
+        ).join_from(ConversationRound, ConversationRoundAttempt)
+            .where(ConversationRound.room_id.in_(room_ids)))
+        missions = await db.execute(select(
+            TaskAttempt.started_at - Task.created_at, Message.created_at - TaskAttempt.finished_at,
+        ).join_from(Task, TaskAttempt).join(ConversationTaskLink, ConversationTaskLink.task_id == Task.id)
+            .outerjoin(Message, Message.id == ConversationTaskLink.notification_message_id)
+            .where(Task.agent_id.in_(agent_ids), TaskAttempt.attempt_number == 1))
+        round_rows, mission_rows = rounds.all(), missions.all()
+
+    timings = {key: [round(row[column].total_seconds() * 1000) for row in mission_rows if row[column] is not None]
+               for key, column in (("mission_queue", 0), ("notification", 1))}
+    timings.update(browser_queue=[], browser_execution=[])
+    attempts = {"dialogue": [], "mission": [], "stop": []}
+    roles = {"load-dialogue": "dialogue", "task": "mission", "conversation-control": "stop"}
+    for room_id, number, queued, execution, elapsed in round_rows:
+        if room_id in browser_room_ids and number == 1:
+            timings["browser_queue"].append(round(queued.total_seconds() * 1000))
+            if execution is not None:
+                timings["browser_execution"].append(round(execution.total_seconds() * 1000))
+        role = roles.get(modes.get(room_id))
+        if role is not None and elapsed is not None:
+            attempts[role].append(round(elapsed.total_seconds() * 1000))
+    return {"timings": timings, "attempts_ms": attempts}
 
 
 @app.get("/api/__test/call-recovery/{agent_id}")
@@ -652,6 +734,10 @@ async def subscription(room_id: UUID):
     server = websocket._sio
     return {
         "joined": bool(server and list(server.manager.get_participants("/", f"ChatRoom:{room_id}"))),
+        "personal_users": len({identity.user_id for sid, identity in websocket._connected_identities.items()
+            if "chat.personal_message" in websocket._event_subscriptions.get(sid, ())}),
+        "delegated_users": len({identity.user_id for sid, identity in websocket._connected_identities.items()
+            if "chat.message" in websocket._event_subscriptions.get(sid, ())}),
         "rooms": [key for key in server.manager.rooms.get("/", {}) if key and key.startswith("ChatRoom:")] if server else [],
     }
 

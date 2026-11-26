@@ -165,7 +165,7 @@ async def test_tool_only_effect_persists_its_visible_acknowledgement(
                 messages=[
                     AIMessage(
                         type="tool",
-                        tool_name="task_run",
+                        tool_name="task_submit",
                         content="Task admission completed",
                     )
                 ],
@@ -215,7 +215,8 @@ def test_conversation_live_contract_rejects_parallel_message_payloads() -> None:
 
 
 @pytest.mark.asyncio
-async def test_cancel_round_cancels_a_local_worker_and_waits_for_cleanup() -> None:
+@pytest.mark.parametrize("fallback", [False, True])
+async def test_cancel_round_cancels_a_local_worker_and_waits_for_cleanup(fallback: bool) -> None:
     round_id = uuid4()
     started = asyncio.Event()
     cancelled = asyncio.Event()
@@ -228,7 +229,8 @@ async def test_cancel_round_cancels_a_local_worker_and_waits_for_cleanup() -> No
             cancelled.set()
 
     worker = asyncio.create_task(blocked_worker())
-    scheduler._running[round_id] = worker  # pyright: ignore[reportPrivateUsage]
+    workers = scheduler._notifications if fallback else scheduler._running
+    workers[worker] = round_id
     try:
         await started.wait()
 
@@ -237,9 +239,86 @@ async def test_cancel_round_cancels_a_local_worker_and_waits_for_cleanup() -> No
         assert worker.cancelled()
         assert cancelled.is_set()
     finally:
-        scheduler._running.pop(round_id, None)  # pyright: ignore[reportPrivateUsage]
+        workers.pop(worker, None)
         worker.cancel()
         await asyncio.gather(worker, return_exceptions=True)
+
+
+@pytest.mark.asyncio
+async def test_long_rounds_leave_capacity_for_all_three_notification_kinds(monkeypatch):
+    from app.conversation import contact_authorization
+
+    release = asyncio.Event()
+    first_delivery = asyncio.Event()
+    deliveries = []
+    two_rounds = asyncio.Event()
+    notifications_ready = False
+    scanned_empty = asyncio.Event()
+    active_rounds = []
+    claims = [(uuid4(), uuid4()) for _ in range(2)]
+
+    async def claim():
+        return claims.pop() if claims else None
+
+    async def run_round(round_id, _token):
+        active_rounds.append(round_id)
+        if len(active_rounds) == 2:
+            two_rounds.set()
+        await release.wait()
+
+    def install_notifications(kind):
+        ids = [uuid4() for _ in range(2)]
+
+        async def next_id():
+            if not notifications_ready:
+                scanned_empty.set()
+                return None
+            return ids.pop() if ids else None
+
+        async def deliver(_id):
+            deliveries.append(kind)
+            await first_delivery.wait()
+
+        monkeypatch.setattr(scheduler, f"_claim_{kind}_notification", next_id)
+        monkeypatch.setattr(scheduler, f"_execute_{kind}_notification", deliver)
+
+    @asynccontextmanager
+    async def session():
+        yield
+
+    monkeypatch.setattr(scheduler, "get_db_session", session)
+    monkeypatch.setattr(service, "reconcile_terminal_round_llm_calls", AsyncMock(return_value=0))
+    monkeypatch.setattr(contact_authorization, "reconcile_contact_authorizations", AsyncMock(return_value=False))
+    monkeypatch.setattr(scheduler, "_POLL_SECONDS", .1)
+    monkeypatch.setattr(scheduler.settings, "CONVERSATION_WORKER_CONCURRENCY", 2)
+    monkeypatch.setattr(scheduler, "_claim", claim)
+    monkeypatch.setattr(scheduler, "_execute", run_round)
+    for kind in ("round", "task", "process"):
+        install_notifications(kind)
+    monkeypatch.setattr(scheduler, "_running", {})
+    monkeypatch.setattr(scheduler, "_notifications", {})
+    monkeypatch.setattr(scheduler, "_loop", asyncio.get_running_loop())
+    monkeypatch.setattr(scheduler, "_wake_event", asyncio.Event())
+    root = asyncio.create_task(scheduler._run_loop())
+    try:
+        async with asyncio.timeout(1):
+            await two_rounds.wait()
+            await scanned_empty.wait()
+            # Simulate a remote commit whose wake never reached this process.
+            notifications_ready = True
+            while not deliveries:
+                scheduler.wake()  # Ordinary traffic must not postpone periodic recovery.
+                await asyncio.sleep(.01)
+            assert len(deliveries) == 1
+            first_delivery.set()
+            while len(deliveries) < 6:
+                await asyncio.sleep(.01)
+            assert len(set(deliveries[:3])) == 3
+    finally:
+        first_delivery.set()
+        release.set()
+        root.cancel()
+        await asyncio.gather(root, *scheduler._running, *scheduler._notifications, return_exceptions=True)
 
 
 @pytest.mark.asyncio

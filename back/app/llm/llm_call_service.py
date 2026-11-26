@@ -726,6 +726,8 @@ async def reconcile_stale_running_calls(
 
     from app.task.models import Task, TaskStatus
     from .provider_scheduler import active_call_ids
+    from .models import LLMProviderPermit
+    from .provider_permits import discard_expired_permits
 
     current_time = now or datetime.now(timezone.utc)
     idle_limit = stale_after or _default_stale_after()
@@ -746,7 +748,9 @@ async def reconcile_stale_running_calls(
                         LLMCall.purpose == LLMCallPurpose.AGENT_EXEC,
                         Task.status.in_((TaskStatus.SUCCESS, TaskStatus.ERROR)),
                     ),
-                    and_(LLMCall.updated_at <= stale_before, LLMCall.id.not_in(active_calls)),
+                    and_(LLMCall.updated_at <= stale_before, LLMCall.id.not_in(active_calls),
+                         ~select(LLMProviderPermit.call_id).where(LLMProviderPermit.call_id == LLMCall.id,
+                             LLMProviderPermit.expires_at > func.clock_timestamp()).exists()),
                 ),
             )
             .order_by(LLMCall.updated_at.asc(), LLMCall.id.asc())
@@ -756,6 +760,7 @@ async def reconcile_stale_running_calls(
         )
     ).all()
     if not rows:
+        await discard_expired_permits()
         return 0
 
     calls: list[LLMCall] = []
@@ -779,6 +784,8 @@ async def reconcile_stale_running_calls(
                 )
             )
         calls.append(call)
+    await get_db().flush()
+    await discard_expired_permits()
     await get_db().commit()
     for call in calls:
         await websocket.emit("llm_call", "update", _public(call), None)
@@ -1224,6 +1231,8 @@ async def create_running_call(
     )
     from .admission import admission_context
 
+    from app.task.facade import task_admission_roots
+    roots = await task_admission_roots({task_id}) if task_id is not None else {}
     context = admission_context(
         call.purpose, task_id=call.task_id, conversation_round_id=call.conversation_round_id,
         agent_run_id=call.agent_run_id,
@@ -1231,6 +1240,7 @@ async def create_running_call(
         authority=authority, agent_id=call.agent_id, requester_user_id=call.requester_user_id,
         round_is_voice=round_ is not None and round_.voice_session_id is not None,
         voice_dialogue=voice_dialogue,
+        task_root=roots.get(task_id) if task_id is not None else None,
     )
     return await _admit_running_call(call, capture, context=context)
 
@@ -1254,35 +1264,38 @@ async def _admit_running_call(
     provider_id, limit = provider.id, provider.effective_max_concurrent_calls
     await release_db_transaction()
     permit = await provider_scheduler.acquire_call(
-        provider_id, limit, context.priority, owner=context.owner,
+        provider_id, limit, context.priority, owner=context.owner, requester=context.requester, mission=context.mission,
     )
     persisted = False
     try:
         # A queued caller must not start after provider deactivation or after a
         # subscription authority has been revoked while it waited.
-        await db.refresh(provider)
-        if not provider.is_active or provider.deleted_at is not None:
-            raise LookupError("LLM provider is unavailable.")
+        from .provider_permits import lock_capacity
+        provider = await lock_capacity(provider_id, context.priority)
         await enforce_subscription_access(
             provider, task_id=call.task_id, conversation_round_id=call.conversation_round_id,
             process_run_id=call.process_run_id,
         )
-        await _persist_running_call(call, capture)
+        await _persist_running_call(call, capture, provider_id=provider_id, priority=context.priority)
         persisted = True
         provider_scheduler.bind_call(call.id, permit)
+        from .provider_permits import start_renewal
+        start_renewal()
         await websocket.emit("llm_call", "create", _public(call), None)
         return call
     except BaseException:
-        if persisted:
-            with anyio.CancelScope(shield=True):
+        with anyio.CancelScope(shield=True):
+            if persisted:
                 await finalize_call(call.id, trace={}, status="cancelled")
+            else:
+                await db.rollback()
         raise
     finally:
         if not persisted:
             permit.release()
 
 
-async def _persist_running_call(call: LLMCall, capture: TextCallCapture | None) -> None:
+async def _persist_running_call(call: LLMCall, capture: TextCallCapture | None, *, provider_id: int, priority: int) -> None:
     db = get_db()
     from .call_capture import inference_owner
 
@@ -1294,6 +1307,8 @@ async def _persist_running_call(call: LLMCall, capture: TextCallCapture | None) 
         call.inference_attempt_id = owner.attempt_id
     db.add(call)
     await db.flush()
+    from .provider_permits import insert_permit
+    await insert_permit(call.id, provider_id, priority)
     if capture is not None:
         from .models import LLMCallEvent
 
@@ -1462,62 +1477,70 @@ async def finalize_call(
     """Finalize from an independent session, including after a streaming response."""
     from .provider_scheduler import release_call
 
-    release_call(call_id)
-    # Trace preparation may wait on the thread pool or process large payloads.
-    # Do not hold the call lock: journal writers need it while owning the
-    # inference lock, which would also stall heartbeats and lifecycle commands.
-    response_text, reasoning, current_tools = await asyncio.to_thread(
-        _compact_trace_output, trace
-    )
-    stored_error = await asyncio.to_thread(compact_trace_images, error)
-    async with AsyncSessionLocal() as db:
-        call = await db.scalar(select(LLMCall).where(LLMCall.id == call_id).with_for_update()
-                               .execution_options(include_historized=True))
-        if call is None:
-            return
-        if preserve_completed and call.status == "completed" and status != "completed":
-            return
-        usage = as_dict(trace.get("usage"))
-        if call.status != "running":
-            if not usage or not _update_call_cost(
-                call, usage, input_rate, cached_input_rate, output_rate, terminal=True,
-            ):
+    try:
+        # Trace preparation may wait on the thread pool or process large payloads.
+        # Do not hold the call lock: journal writers need it while owning the
+        # inference lock, which would also stall heartbeats and lifecycle commands.
+        response_text, reasoning, current_tools = await asyncio.to_thread(
+            _compact_trace_output, trace
+        )
+        stored_error = await asyncio.to_thread(compact_trace_images, error)
+        async with AsyncSessionLocal() as db:
+            from .provider_permits import release_permit
+            call = await db.scalar(select(LLMCall).where(LLMCall.id == call_id).with_for_update()
+                                   .execution_options(include_historized=True))
+            # The reconciler locks the call before removing its expired reservation.
+            await release_permit(db, call_id)
+            if call is None:
+                await db.commit()
                 return
-        else:
-            if effective_model is not None:
-                call.effective_model = effective_model
-            now = datetime.now(timezone.utc)
-            call.status = status
-            if response_text or not call.response_text:
-                call.response_text = response_text
-            if reasoning or not call.reasoning:
-                call.reasoning = reasoning
-            if raw_response is not None:
-                call.raw_response = raw_response
-            if current_tools:
-                call.tool_calls = _merge_tool_results(
-                    call.tool_calls or [],
-                    current_tools,
-                    started_at=call.started_at,
+            if preserve_completed and call.status == "completed" and status != "completed":
+                await db.commit()
+                return
+            usage = as_dict(trace.get("usage"))
+            if call.status != "running":
+                if not usage or not _update_call_cost(
+                    call, usage, input_rate, cached_input_rate, output_rate, terminal=True,
+                ):
+                    await db.commit()
+                    return
+            else:
+                if effective_model is not None:
+                    call.effective_model = effective_model
+                now = datetime.now(timezone.utc)
+                call.status = status
+                if response_text or not call.response_text:
+                    call.response_text = response_text
+                if reasoning or not call.reasoning:
+                    call.reasoning = reasoning
+                if raw_response is not None:
+                    call.raw_response = raw_response
+                if current_tools:
+                    call.tool_calls = _merge_tool_results(
+                        call.tool_calls or [],
+                        current_tools,
+                        started_at=call.started_at,
+                    )
+                call.finish_reason = trace.get("finish_reason") or call.finish_reason
+                if usage:
+                    _update_call_cost(call, usage, input_rate, cached_input_rate, output_rate)
+                call.upstream_request_id = (
+                    trace.get("upstream_request_id") or call.upstream_request_id
                 )
-            call.finish_reason = trace.get("finish_reason") or call.finish_reason
-            if usage:
-                _update_call_cost(call, usage, input_rate, cached_input_rate, output_rate)
-            call.upstream_request_id = (
-                trace.get("upstream_request_id") or call.upstream_request_id
-            )
-            call.error = stored_error if isinstance(stored_error, str) else None
-            call.first_token_at = first_token_at or call.first_token_at
-            call.completed_at = now
-            call.duration = max(0.0, (now - call.started_at).total_seconds())
-            if status not in {"running", "completed", "cancelled"}:
-                await _record_failure_incident(db, call)
+                call.error = stored_error if isinstance(stored_error, str) else None
+                call.first_token_at = first_token_at or call.first_token_at
+                call.completed_at = now
+                call.duration = max(0.0, (now - call.started_at).total_seconds())
+                if status not in {"running", "completed", "cancelled"}:
+                    await _record_failure_incident(db, call)
 
-        await db.commit()
-        record_persisted_call_cost(call.id, call.cost, inference_cost=call.inference_cost,
-            cost_estimated=call.cost_estimated, is_subscription=call.is_subscription,
-            status=call.status, usage=call.usage, purpose=call.purpose)
-        payload = _public(call) if call.deleted_at is None else None
+            await db.commit()
+            record_persisted_call_cost(call.id, call.cost, inference_cost=call.inference_cost,
+                cost_estimated=call.cost_estimated, is_subscription=call.is_subscription,
+                status=call.status, usage=call.usage, purpose=call.purpose)
+            payload = _public(call) if call.deleted_at is None else None
+    finally:
+        release_call(call_id)
     if payload is not None:
         await websocket.emit("llm_call", "update", payload, None)
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 from app.llm import LLMCallPurpose, model_usages
 
 import asyncio
+from contextlib import suppress
 import re
 import time
 from datetime import datetime
@@ -165,6 +166,8 @@ class _LiveTextProgressBuffer:
         self._stream_id: str | None = None
         self._last_flush = 0.0
         self._scheduled_flush: asyncio.Task[None] | None = None
+        self._publish_error: Exception | None = None
+        self._flush_requested = asyncio.Event()
         self._lock = asyncio.Lock()
 
     async def append(self, content: str, stream_id: str | None = None) -> None:
@@ -173,6 +176,8 @@ class _LiveTextProgressBuffer:
         if not content:
             return
         async with self._lock:
+            if self._publish_error is not None:
+                raise self._publish_error
             if self._buffer and self._stream_id != stream_id:
                 await self._flush_locked(time.monotonic())
             self._stream_id = stream_id
@@ -187,6 +192,7 @@ class _LiveTextProgressBuffer:
                 return
             if self._scheduled_flush is None:
                 delay = max(0.0, self._flush_seconds - (now - self._last_flush))
+                self._flush_requested.clear()
                 self._scheduled_flush = asyncio.create_task(
                     self._flush_after(delay),
                     name="conversation-live-text-flush",
@@ -197,8 +203,11 @@ class _LiveTextProgressBuffer:
 
         scheduled = self._scheduled_flush
         if scheduled is not None and scheduled is not asyncio.current_task():
+            self._flush_requested.set()
             await scheduled
         async with self._lock:
+            if self._publish_error is not None:
+                raise self._publish_error
             await self._flush_locked(time.monotonic())
 
     async def reset(self) -> None:
@@ -225,9 +234,15 @@ class _LiveTextProgressBuffer:
     async def _flush_after(self, delay: float) -> None:
         current_task = asyncio.current_task()
         try:
-            await asyncio.sleep(delay)
+            with suppress(TimeoutError):
+                async with asyncio.timeout(delay):
+                    await self._flush_requested.wait()
             async with self._lock:
                 await self._flush_locked(time.monotonic())
+        except Exception as exc:
+            # Deliver the timer's failure to the owning stream at its next
+            # append or final flush, including after this task has finished.
+            self._publish_error = exc
         finally:
             if self._scheduled_flush is current_task:
                 self._scheduled_flush = None
@@ -912,6 +927,8 @@ class HarnessConversationController:
             tool_advertisement = AgentToolAdvertisement("No tools are mounted for this response.", frozenset())
             process_advertisement = ""
             if not turn.force_response:
+                # Release memory usage writes before waiting for a catalog slot.
+                await release_db_transaction()
                 toolset, tool_advertisement = await build_conversation_toolset(
                     turn.agent_id,
                     resources={
@@ -1260,6 +1277,7 @@ async def stream_voice_conversation(
     )
     checkpoint = HarnessRunCheckpoint(request)
     turn = replace(turn, produced_document_references=checkpoint.produced_document_references)
+    await release_db_transaction()
     toolset, tool_advertisement = await build_conversation_toolset(
         request.agent_id,
         resources={"conversation_turn": turn},

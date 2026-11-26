@@ -485,6 +485,49 @@ test('reconnection catches up when completion happened offline', async ({ page, 
   await final(page)
 })
 
+test('delegated chat delivers another account’s messages only while its view is open', async ({ page, request }) => {
+  const other = await (await request.post('/api/__test/seed?mode=load-dialogue')).json()
+  const received = new Map()
+  page.on('websocket', socket => socket.on('framereceived', ({ payload }) => {
+    const frame = String(payload)
+    if (!frame.startsWith('42[')) return
+    const [name, event] = JSON.parse(frame.slice(2))
+    if (name === 'chat.message' || name === 'chat.personal_message') received.set(event.data.message_id, name)
+  }))
+  const own = await prepare(page, request, 'load-dialogue')
+  const selfToken = await page.evaluate(() => localStorage.getItem('access_token'))
+  const agents = await (await request.get('/api/chat/viewer-agents', { headers: { Authorization: 'Bearer ' + selfToken } })).json()
+  const label = agents.find(agent => agent.agent_id === other.agent_id).display_name
+  const { access_token: otherToken } = await (await request.post('/api/auth/login-json', {
+    data: { email: other.email, password: other.password },
+  })).json()
+  async function post(room, token) {
+    const response = await request.post('/api/chat/rooms/' + room + '/messages', {
+      headers: { Authorization: 'Bearer ' + token },
+      data: { client_message_id: crypto.randomUUID(), text: 'Message synthétique de vérification.' },
+    })
+    expect(response.ok()).toBe(true)
+    return (await response.json()).id
+  }
+  async function view(person) {
+    const viewer = page.locator('.viewer-select')
+    if (!await viewer.isVisible()) await page.getByRole('button', { name: 'Options d’affichage des conversations', exact: true }).click()
+    await viewer.getByRole('combobox').click()
+    await page.getByRole('option').filter({ has: page.getByText(person, { exact: true }) }).click()
+    await expect(viewer).toContainText(person)
+    await expect.poll(async () => (await (await request.get('/api/__test/subscription/' + own.rooms[0])).json()).delegated_users)
+      .toBe(person === 'Moi' ? 0 : 1)
+  }
+  await view(label)
+  const delegated = await post(other.rooms[0], otherToken)
+  await expect.poll(() => received.get(delegated)).toBe('chat.message')
+  await view('Moi')
+  const unrelated = await post(other.rooms[0], otherToken)
+  const personal = await post(own.rooms[0], selfToken)
+  await expect.poll(() => received.get(personal)).toBe('chat.personal_message')
+  expect(received.has(unrelated)).toBe(false)
+})
+
 test('leaving chat stops live stream packets but retains the final message notification', async ({ page, request }) => {
   let subscriptions = []
   const received = []
@@ -503,10 +546,10 @@ test('leaving chat stops live stream packets but retains the final message notif
   const fixture = await prepare(page, request)
   await send(page)
   await page.locator('a[href="/params"]').first().click()
-  await expect.poll(() => subscriptions).toEqual(['chat.message'])
+  await expect.poll(() => subscriptions).toEqual(['chat.personal_message', 'chat.scope_changed'])
   received.length = 0
   await release(request, fixture.rooms[0])
-  await expect.poll(() => received).toContain('chat.message')
+  await expect.poll(() => received).toContain('chat.personal_message')
   expect(received).not.toContain('chat.runtime')
   expect(received).not.toContain('chat.activity')
   await page.goto(`/chat?room=${fixture.rooms[0]}`)

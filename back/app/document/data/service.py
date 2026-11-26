@@ -22,6 +22,7 @@ from .access import accessible_clause, access, is_administrator
 from .contracts import DataActor, DatasetAccess, DatasetConflictError, DatasetNotFoundError, DatasetPermissionError, DatasetWriteLimitError
 from .models import Dataset, DatasetRevision, DatasetWriteBudget
 from .library import LibraryFilters
+from ..effective_sharing import project_document_access
 
 MAX_BYTES = 2_000_000
 MAX_WRITES = 30
@@ -117,7 +118,7 @@ async def create(actor: DataActor, *, title: str, content: str = "[]", owner_age
     from .resource_summaries import refresh_pending
     refresh_pending(dataset)
     get_db().add(DatasetRevision(dataset_id=dataset.id, revision=1, content=content, **actor_keys(actor)))
-    await get_db().flush()
+    await project_document_access(get_db(), (dataset.share_id,))
     from .projection import changed
     await changed(dataset)
     return dataset
@@ -346,11 +347,14 @@ async def sharing(identity: UUID, actor: DataActor) -> dict[str, Any]:
             "team_id": entry.team_id, "can_write": entry.can_write} for entry in grants]}
 
 
-async def remove(identity: UUID, actor: DataActor, *, expected_lock_version: int) -> None:
+async def remove(identity: UUID, actor: DataActor, *, expected_lock_version: int | None) -> None:
+    """Delete the authorized row under the tree lock, checking a caller's revision when supplied."""
+    from ..sharing_inheritance import lock_sharing, reconcile_deleted_document
+    await lock_sharing()
     dataset = await record(identity, actor, manage=True, lock=True)
     if dataset.deletion_protected:
         raise DatasetPermissionError("A managed Document cannot be deleted")
-    if dataset.lock_version != expected_lock_version:
+    if expected_lock_version is not None and dataset.lock_version != expected_lock_version:
         raise DatasetConflictError("Dataset changed; reload before deleting")
     dataset.soft_delete()
     # Dataset owns its copied history; release migration pointers before Memory
@@ -359,6 +363,6 @@ async def remove(identity: UUID, actor: DataActor, *, expected_lock_version: int
         .values(document_source_revision_id=None))
     from app.memory import forget_resource_memories
     await forget_resource_memories([f"data://{identity}"], descendants=True)
-    await get_db().flush()
+    await reconcile_deleted_document(dataset)
     from .projection import changed
     await changed(dataset)

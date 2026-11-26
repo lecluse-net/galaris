@@ -192,7 +192,7 @@ async def _require_completion_access(agent_id: int, user_id: int | None, role_id
             user = await db.scalar(select(UserModel).where(UserModel.id == user_id))
             if user is None or not await check_privilege(user, "AGENT_API_ACCESS", db):
                 raise PermissionError("Agent API access was revoked")
-            scope = await dialogue_scope_for(user, db)
+            scope = await dialogue_scope_for(user, db, agent_id=agent_id)
             scope.require(agent_id)
     finally:
         role_id_ctx.reset(token)

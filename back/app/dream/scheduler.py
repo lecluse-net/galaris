@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 from loguru import logger
 
+from app.agent import register_terminal_task_observer, unregister_terminal_task_observer
 from app.llm import llm_correlation_scope, llm_execution_scope
 from app.llm.facade import llm_call_accounting
 from app.task import has_active_task_work
@@ -177,6 +178,11 @@ def _on_voice_activity(active: bool) -> None:
     event = _wake_event
     if event is not None:
         event.set()
+
+
+def _wake_after_task(_task: object) -> None:
+    if _wake_event is not None:
+        _wake_event.set()
 
 
 async def run_cycle() -> int:
@@ -459,13 +465,23 @@ async def _worker() -> None:
     started = _worker_started_event
     if started is not None:
         started.set()
+    empty_cycles = 0
     try:
         while True:
             try:
+                if _wake_event is not None:
+                    _wake_event.clear()
                 completed = await run_cycle()
-                await _wait_for_next_cycle(
-                    full_operation_delay=completed > 0,
-                )
+                if completed or _runtime_reason not in ("no_eligible_subject", "mechanism_unavailable"):
+                    empty_cycles = 0
+                    await _wait_for_next_cycle(full_operation_delay=completed > 0)
+                else:
+                    base = runtime_settings.DREAM_POLL_SECONDS
+                    # Preserve the configured delay after actual work. Empty scans
+                    # back off to at most 15s (or the administrator's longer base).
+                    delay = min(base * 2 ** empty_cycles, max(base, 15.0))
+                    empty_cycles = min(4, empty_cycles + 1)
+                    await _wait_for_next_cycle(full_operation_delay=False, delay=delay)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
@@ -487,10 +503,9 @@ async def _worker() -> None:
             )
 
 
-async def _wait_for_next_cycle(*, full_operation_delay: bool) -> None:
-    deadline = datetime.now(timezone.utc) + timedelta(
-        seconds=runtime_settings.DREAM_POLL_SECONDS
-    )
+async def _wait_for_next_cycle(*, full_operation_delay: bool, delay: float | None = None) -> None:
+    interval = runtime_settings.DREAM_POLL_SECONDS if delay is None else delay
+    deadline = datetime.now(timezone.utc) + timedelta(seconds=interval)
     _set_runtime_state(
         status=_runtime_status,
         phase="waiting",
@@ -499,17 +514,16 @@ async def _wait_for_next_cycle(*, full_operation_delay: bool) -> None:
         last_error_type=_last_error_type,
     )
     if full_operation_delay:
-        await asyncio.sleep(runtime_settings.DREAM_POLL_SECONDS)
+        await asyncio.sleep(interval)
         return
     event = _wake_event
     if event is None:
-        await asyncio.sleep(runtime_settings.DREAM_POLL_SECONDS)
+        await asyncio.sleep(interval)
         return
-    event.clear()
     try:
         await asyncio.wait_for(
             event.wait(),
-            timeout=runtime_settings.DREAM_POLL_SECONDS,
+            timeout=interval,
         )
     except asyncio.TimeoutError:
         pass
@@ -530,10 +544,13 @@ async def start() -> None:
         reason="startup",
     )
     register_voice_activity_listener(_on_voice_activity)
+    register_terminal_task_observer("dream-wakeup", _wake_after_task)
     _worker_task = asyncio.create_task(_worker(), name="dream-scheduler")
     try:
         await asyncio.wait_for(_worker_started_event.wait(), timeout=1.0)
     except TimeoutError:
+        unregister_terminal_task_observer("dream-wakeup")
+        unregister_voice_activity_listener(_on_voice_activity)
         _worker_task.cancel()
         await asyncio.gather(_worker_task, return_exceptions=True)
         _worker_task = None
@@ -563,6 +580,7 @@ async def stop() -> None:
         reason="stopping",
     )
     unregister_voice_activity_listener(_on_voice_activity)
+    unregister_terminal_task_observer("dream-wakeup")
     current = _current_work
     if current is not None and not current.done():
         current.cancel()

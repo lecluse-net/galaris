@@ -678,6 +678,14 @@ export function useChatState(documentId: () => string | null = () => null) {
     const roomId = event.data?.room_id
     const messageId = event.data?.message_id
     const refreshRoom = roomId === selectedRoom.value?.id
+    if (event.data?.personal_room === false && viewerAgentId.value === null) {
+      // A previously visible room can lose its personal membership while this
+      // account still has permission to inspect it on behalf of an agent.
+      if (refreshRoom || rooms.value.some(room => room.id === roomId)) {
+        await refreshFromSignal(refreshRoom)
+      }
+      return
+    }
     if (!roomId || !messageId) {
       await refreshFromSignal(refreshRoom)
       return
@@ -852,12 +860,28 @@ export function useChatState(documentId: () => string | null = () => null) {
     void refreshFromSignal(true)
   }
   function onAuthChanged(): void { controlsEpoch += 1; pendingControls = null; readAcknowledgement = null; if (!getStoredAccessToken()) { disconnect(); purge(); status.value = null } }
+  function messageAction(agentId: number | null): string {
+    return agentId === null ? 'personal_message' : 'message'
+  }
+  function changeMessageScope(agentId: number | null): void {
+    const previous = messageAction(viewerAgentId.value)
+    const next = messageAction(agentId)
+    if (connected && previous !== next) {
+      websocket.offEvent('chat', previous, onRealtimeMessage)
+      websocket.onEvent('chat', next, onRealtimeMessage)
+    }
+    viewerAgentId.value = agentId
+  }
+  function onPersonalScopeChanged(): void {
+    if (viewerAgentId.value === null) void refreshFromSignal(Boolean(selectedRoom.value))
+  }
   function connect(): void {
     if (connected) return
     connected = true
     scheduleCatchUp()
     websocket.createWebsocket()
-    websocket.onEvent('chat', 'message', onRealtimeMessage)
+    websocket.onEvent('chat', messageAction(viewerAgentId.value), onRealtimeMessage)
+    websocket.onEvent('chat', 'scope_changed', onPersonalScopeChanged)
     websocket.onEvent('chat', 'activity', onRealtime)
     websocket.onEvent('chat', 'runtime', onRuntime)
     websocket.onEvent('chat', 'call', onCall)
@@ -875,7 +899,8 @@ export function useChatState(documentId: () => string | null = () => null) {
     if (subscribedRoom) websocket.leaveRoom(subscribedRoom)
     subscribedRoom = null
     if (!connected) return
-    websocket.offEvent('chat', 'message', onRealtimeMessage)
+    websocket.offEvent('chat', messageAction(viewerAgentId.value), onRealtimeMessage)
+    websocket.offEvent('chat', 'scope_changed', onPersonalScopeChanged)
     websocket.offEvent('chat', 'activity', onRealtime)
     websocket.offEvent('chat', 'runtime', onRuntime)
     websocket.offEvent('chat', 'call', onCall)
@@ -908,7 +933,8 @@ export function useChatState(documentId: () => string | null = () => null) {
     unconfirmedSend = null
     selectedRoomGeneration += 1
     roomsRequestSequence += 1
-    viewerAgentId.value = null; rooms.value = []; roomsTotal.value = 0; roomsPage.value = 1; loadingMoreRooms.value = false; includeExternalRooms.value = false; includeArchivedRooms.value = false; selectedRoom.value = null; loadingRoomId.value = null; messages.value = []; messagesTotal.value = 0; resetProviderHistory(); activity.value = []; activityTotal.value = 0; commands.value = []; activeCall.value = null; stoppingCallId.value = null; endedCallId.value = null; callAvailable.value = false; liveRound.value = null; pendingVoiceTranscriptions.value = []; incomingMessageNotification.value = null; observedRealtimeMessageIds.clear()
+    changeMessageScope(null)
+    rooms.value = []; roomsTotal.value = 0; roomsPage.value = 1; loadingMoreRooms.value = false; includeExternalRooms.value = false; includeArchivedRooms.value = false; selectedRoom.value = null; loadingRoomId.value = null; messages.value = []; messagesTotal.value = 0; resetProviderHistory(); activity.value = []; activityTotal.value = 0; commands.value = []; activeCall.value = null; stoppingCallId.value = null; endedCallId.value = null; callAvailable.value = false; liveRound.value = null; pendingVoiceTranscriptions.value = []; incomingMessageNotification.value = null; observedRealtimeMessageIds.clear()
   }
   async function loadOlderMessages(): Promise<void> {
     const roomId = selectedRoom.value?.id
@@ -948,7 +974,7 @@ export function useChatState(documentId: () => string | null = () => null) {
     selectedRoomGeneration += 1
     if (subscribedRoom) websocket.leaveRoom(subscribedRoom)
     subscribedRoom = null
-    viewerAgentId.value = agentId
+    changeMessageScope(agentId)
     selectedRoom.value = null
     loadingRoomId.value = null
     messages.value = []

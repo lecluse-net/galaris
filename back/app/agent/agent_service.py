@@ -9,11 +9,12 @@ from loguru import logger
 
 from core.database import get_db
 from core.i18n import render_prompt, tr
+from core.team import lock_team_sharing
 from core.user import user_service
 from app.llm import llm_service, profile_service
 
 from .models import Title, Agent, AgentGroup, AgentTeam
-from .observers import initialize_agent_creation, notify_agent_profile
+from .observers import initialize_agent_creation, notify_agent_profile, project_agent_access
 from .schemas import AgentCreate, AgentUpdate
 from .voice import parse_voice_selection
 from .facade import validate_agent_driver, resolve_driver
@@ -271,6 +272,9 @@ async def create(agent_data: AgentCreate, *, actor_user_id: int | None = None) -
                 )
             )
     await _validate_voice_selection(agent_data.voice)
+    # Without initial memberships we only read existing policies and write
+    # rights on the new identity. Otherwise take the writer lock up front.
+    await lock_team_sharing(shared=not agent_data.team_ids)
     await _ensure_code_available(code)
 
     # Create the agent
@@ -286,6 +290,7 @@ async def create(agent_data: AgentCreate, *, actor_user_id: int | None = None) -
             await _replace_teams(new_agent.id, agent_data.team_ids)
         await _ensure_skill_assignment_matrix(new_agent.id)
         await initialize_agent_creation(new_agent.id)
+        await project_agent_access(new_agent.id, "create")
         await db.commit()
     except IntegrityError as e:
         await db.rollback()
@@ -319,6 +324,8 @@ async def create(agent_data: AgentCreate, *, actor_user_id: int | None = None) -
 async def update(id: int, agent_update: AgentUpdate, *, actor_user_id: int | None = None) -> Optional[Agent]:
     """Update an existing agent."""
     db = get_db()
+    if {"team_ids", "user_id"} & agent_update.model_fields_set:
+        await lock_team_sharing()
     result = await db.execute(select(Agent).where(Agent.id == id).with_for_update().execution_options(populate_existing=True))
     agent = result.scalar_one_or_none()
     if agent is None:
@@ -339,9 +346,11 @@ async def update(id: int, agent_update: AgentUpdate, *, actor_user_id: int | Non
                 "/harnesses/agents/{id} so the previous runtime is destroyed first."
             )
         agent_update.agent_driver = requested_driver
+    manager_changed = False
     if "user_id" in fields_set:
         agent_update.user_id = await _validate_manager(agent_update.user_id)
-        if agent_update.user_id != agent.user_id:
+        manager_changed = agent_update.user_id != agent.user_id
+        if manager_changed:
             agent.authorization_version += 1
 
     # Verify title exists if provided
@@ -374,6 +383,9 @@ async def update(id: int, agent_update: AgentUpdate, *, actor_user_id: int | Non
     try:
         if "team_ids" in fields_set:
             await _replace_teams(agent.id, agent_update.team_ids)
+        if manager_changed:
+            await db.flush()
+            await project_agent_access(agent.id, "manager")
         await _ensure_skill_assignment_matrix(agent.id)
         await db.commit()
     except IntegrityError as e:
@@ -400,6 +412,7 @@ async def update(id: int, agent_update: AgentUpdate, *, actor_user_id: int | Non
 async def delete(id: int) -> bool:
     """Soft delete an agent. Returns True if deleted, False if not found."""
     db = get_db()
+    await lock_team_sharing()
     result = await db.execute(select(Agent).where(Agent.id == id).with_for_update())
     agent = result.scalar_one_or_none()
     if agent is None:
@@ -409,6 +422,8 @@ async def delete(id: int) -> bool:
     from app.skill.interface import deactivate_agent_skills
     await deactivate_agent_skills(id)
     agent.soft_delete()
+    await db.flush()
+    await project_agent_access(id, "archive")
     await db.commit()
     logger.info(f"Agent deleted: {id}")
     await notify_agent_profile(id, "delete")

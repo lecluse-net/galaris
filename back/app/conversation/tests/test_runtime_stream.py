@@ -94,32 +94,48 @@ def test_same_message_id_cannot_change_kind():
 
 
 @pytest.mark.asyncio
-async def test_slow_publication_coalesces_progress_without_blocking_generation(monkeypatch):
+@pytest.mark.parametrize("mixed", [False, True])
+async def test_slow_publication_coalesces_progress_without_blocking_generation(monkeypatch, mixed):
     blocked = asyncio.Event()
     release = asyncio.Event()
     events = []
 
     async def publish(room_id, event):
         events.append(event)
-        if event.kind == "message":
+        if event.kind == "message" and event.message.stream_id == "t":
             blocked.set()
             await release.wait()
 
     monkeypatch.setattr(facade, "publish_runtime_event", publish)
     stream = ConversationRuntimeStream(room_id=uuid4(), round_id=uuid4())
     await stream.start()
+    for index in range(50):
+        await stream.append(AIMessage(type="tool", tool_name="thinking", stream_id=f"r{index}", content="x" * 512))
     try:
         async with asyncio.timeout(1):
             await stream.append(AIMessage(type="text", stream_id="t", content="A"))
             await blocked.wait()
             for _ in range(100):
                 await stream.append(AIMessage(type="text", stream_id="t", content="B"))
-        assert len(events) == 2
-        assert room_runtime_snapshot(stream.room_id).result.messages[0].content == "A" + "B" * 100
+            if mixed:
+                await stream.append(AIMessage(type="tool", tool_name="thinking", stream_id="r0", content="!"))
+        assert len(events) == 52
+        reconnect = room_runtime_snapshot(stream.room_id)
+        assert reconnect.result.messages[-1].content == "A" + "B" * 100
     finally:
         release.set()
         await stream.finish(success=True)
-    assert [event.kind for event in events] == ["started", "message", "snapshot", "finished"]
-    assert events[2].sequence == 101
-    assert events[2].result.messages[0].content == "A" + "B" * 100
-    assert events[-1].sequence == 102
+    compact, terminal = events[-2:]
+    assert terminal.kind == "finished" and terminal.result.messages == reconnect.result.messages
+    if mixed:
+        assert compact.kind == "snapshot" and compact.sequence == 152
+        assert compact.result.messages[0].content.endswith("!")
+        assert compact.result.messages == reconnect.result.messages
+        return
+    assert compact.kind == "message" and compact.message.stream_mode == "snapshot"
+    assert (compact.base_sequence, compact.sequence) == (51, 151)
+    assert compact.message.content == "A" + "B" * 100
+    assert terminal.sequence == 152
+    compact_size, snapshot_size = (len(item.model_dump_json().encode()) for item in (compact, reconnect))
+    assert compact_size * 10 < snapshot_size
+    print(f"Runtime catch-up: {compact_size} bytes for one block, {snapshot_size} bytes for the full trace")

@@ -32,6 +32,30 @@ commun. Les droits hérités restent modifiables localement ; une suppression lo
 immédiatement si une source l'accorde encore. Réenregistrer un droit effectif inchangé ne
 l'acquiert pas comme droit propre. Les Dataset et Process restent hors de cet héritage.
 
+Pour les documents, une entrée ou une sortie d’équipe met à jour les lignes de
+`share_effective_access` du bénéficiaire dans la transaction d’adhésion. Les mutations
+d’équipe prennent le verrou documentaire avant les verrous de lignes. La projection
+recalcule le meilleur droit restant à partir des règles en vigueur et écrit les différences.
+Si une ancienne règle accorde un accès aux équipes du propriétaire, changer l’équipe de
+ce propriétaire peut aussi modifier les droits de tiers sur ses descendants. Dans ce cas,
+Documents recalcule d’abord l’héritage. L’archivage d’une équipe traite tous les bénéficiaires
+des partages concernés. Une annulation de transaction annule ensemble l’adhésion et les
+droits dérivés. Les notifications des vues ouvertes restent postérieures au commit.
+
+La création ou le changement d’état d’un compte humain utilise le même verrou.
+La création d’un compte actif et sa réactivation projettent ses droits documentaires
+depuis les règles en vigueur. La désactivation retire les lignes de ce bénéficiaire.
+Ces écritures précèdent le commit du service de comptes, y compris lorsqu’il révoque
+les sessions de connexion. Une erreur annule ensemble le changement d’état et la projection.
+
+Un agent nouvellement créé reçoit les documents publics en conservant les droits plus
+forts de ses équipes et de ses propres documents. Les créations sans équipe peuvent lire
+les politiques simultanément sous un verrou partagé. Une modification de ces politiques
+prend le verrou exclusif. Archiver un agent retire ses droits documentaires dans la
+transaction qui libère son code. Un autre agent réutilisant ce code reçoit ses propres droits.
+Un changement de responsable ou un archivage recalcule aussi les contributions des
+classements lorsque des documents de cet agent participent à une arborescence personnelle.
+
 ## Vérification
 
 Des scénarios PostgreSQL synthétiques vérifient le cumul des sources, les sous-documents,

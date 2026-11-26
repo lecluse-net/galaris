@@ -262,9 +262,9 @@ async def retry_task(task_id: UUID, command: TaskCommand):
 @authorize(privileges=Privileges.TASK_EDIT)
 async def cancel_task(task_id: UUID, command: TaskCommand):
     """Explicitly cancel an active task and its in-flight action."""
-    await _task_scope_or_404(task_id)
+    scope = await current_management_scope()
     try:
-        task = await task_service.cancel(task_id, command.expected_revision)
+        task = await task_service.cancel(task_id, command.expected_revision, scope=scope)
     except (task_service.TaskConflictError, ValueError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     if task is None:

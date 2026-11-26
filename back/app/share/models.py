@@ -69,6 +69,22 @@ class ShareGrant(Base):
     )
 
 
+class ShareEffectiveAccess(Base):
+    """Rebuildable beneficiary projection. Policy and ownership stay with their sources."""
+
+    __tablename__ = "share_effective_access"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    share_id: Mapped[UUID] = mapped_column(ForeignKey("share_configs.id", ondelete="CASCADE"), index=True)
+    agent_id: Mapped[int | None] = mapped_column(ForeignKey("agents.id", ondelete="CASCADE"))
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    can_write: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    __table_args__ = (
+        CheckConstraint("num_nonnulls(agent_id,user_id) = 1", name="ck_share_effective_beneficiary"),
+        UniqueConstraint("agent_id", "share_id"),
+        UniqueConstraint("user_id", "share_id"),
+    )
+
+
 class ShareReference:
     """Typed, exclusive policy reference; business ownership stays in its domain."""
 

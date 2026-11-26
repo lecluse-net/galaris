@@ -55,6 +55,7 @@ les comptes distants réels ou la réserve indépendante encore manquants.
 
 | Plan | Statut | Portée |
 |---|---|---|
+| [fluidite-droits-et-montee-en-charge.md](fluidite-droits-et-montee-en-charge.md) | `in-progress` | Montage MCP, streaming et contrôle des droits de dialogue. Admission Chat testée avec une seule connexion SQL, charge mixte à 30 et 50 comptes avec mesure dans Chromium. Restauration des ressources et endurance à qualifier. |
 | [travaux-et-fusion-des-objectifs.md](travaux-et-fusion-des-objectifs.md) | `design` | Pilotage des Travaux, orientation des entrées, reprise des attentes, articulation avec Process, coûts et fusion des Objectifs. |
 | [declencheurs-evenementiels-et-dream.md](declencheurs-evenementiels-et-dream.md) | `design` | Dream comme gestionnaire d’événements, catalogue, graphe de branchement, tableau de bord et historique. Pilote Mail et Fichier avant l’automatisation des Travaux. |
 | [conversations-deep.md](conversations-deep.md) | `partial` | Basculement, reprise du flux, rattachement LLM et redirection Codex implémentés. Intégration du terminal natif sur le checkout Code et attachement à un terminal existant à compléter. |

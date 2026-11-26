@@ -237,15 +237,19 @@ async def publish_round_activity(round_id: UUID) -> None:
 
     from .models import ConversationRound
 
+    listeners = tuple(_activity_listeners)
+    if not listeners:
+        return
     async with get_db_session():
         room_id = await get_db().scalar(
             select(ConversationRound.room_id).where(ConversationRound.id == round_id)
         )
     if room_id is None:
         return
-    for listener in tuple(_activity_listeners):
+    for listener in listeners:
         try:
-            await listener(round_id, room_id)
+            async with asyncio.timeout(2.0):
+                await listener(round_id, room_id)
         except Exception:
             logger.exception(
                 "Conversation activity listener failed round={} room={}",

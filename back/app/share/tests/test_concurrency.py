@@ -101,6 +101,197 @@ async def wait_for_locks(session, pids):
 
 
 @pytest.mark.asyncio
+async def test_account_activation_after_an_interruption_uses_last_committed_policy(committed_database):
+    from sqlalchemy import event
+    from app.share import ShareEffectiveAccess
+    from core.database import lock_resource_sharing
+    from core.user import HumanActor, UserUpdate, user_service
+
+    scope, resources = await seed_resources("dataset")
+    identity, share_id, version, key = resources[0]
+    async with get_db_session() as db:
+        reader = UserModel(email="account-race@example.test", hashed_password="unused", is_active=True)
+        db.add(reader)
+        await db.flush()
+        user_id = reader.id
+        state = await write("dataset", key, scope, SharingUpdate(level="public", can_write=True,
+            grants=[], expected_lock_version=version))
+    rights = select(ShareEffectiveAccess.can_write).where(
+        ShareEffectiveAccess.share_id == share_id, ShareEffectiveAccess.user_id == user_id)
+
+    def interrupt(session):
+        assert session.scalar(rights) is None
+        assert session.scalar(select(UserModel.is_active).where(UserModel.id == user_id)) is False
+        raise RuntimeError("interrupted before commit")
+
+    with pytest.raises(RuntimeError, match="interrupted before commit"):
+        async with get_db_session() as db:
+            event.listen(db.sync_session, "before_commit", interrupt, once=True)
+            await user_service.update(user_id, UserUpdate(is_active=False))
+    async with get_db_session() as db:
+        assert await db.scalar(rights) is True
+        assert (await datasets.record(identity, HumanActor(user_id), write=True)).id == identity
+
+    ready = asyncio.get_running_loop().create_future()
+    resume = asyncio.Event()
+
+    async def reactivate():
+        async with get_db_session() as session:
+            # Authentication may already have loaded this account in the request.
+            cached = await session.get(UserModel, user_id)
+            assert cached.is_active
+            ready.set_result(await session.scalar(text("SELECT pg_backend_pid()")))
+            await resume.wait()
+            await user_service.update(user_id, UserUpdate(is_active=True))
+
+    async with asyncio.timeout(15), asyncio.TaskGroup() as group:
+        group.create_task(reactivate())
+        pid = await ready
+        async with get_db_session() as db:
+            await user_service.update(user_id, UserUpdate(is_active=False))
+            assert await db.scalar(rights) is None
+        async with get_db_session() as db:
+            await lock_resource_sharing()
+            resume.set()
+            while not await db.scalar(text("SELECT pg_backend_pid() = ANY(pg_blocking_pids(:pid))"), {"pid": pid}):
+                await asyncio.sleep(0.02)
+            await write("dataset", key, scope, SharingUpdate(level="public", can_write=False,
+                grants=[], expected_lock_version=state.lock_version))
+    async with get_db_session() as db:
+        assert await db.scalar(rights) is False
+        assert (await datasets.record(identity, HumanActor(user_id))).id == identity
+        with pytest.raises(datasets.DatasetNotFoundError):
+            await datasets.record(identity, HumanActor(user_id), write=True)
+
+
+@pytest.mark.asyncio
+async def test_deactivation_includes_concurrently_created_private_document(committed_database):
+    from app.share import ShareEffectiveAccess
+    from core.user import HumanActor, UserUpdate, user_service
+
+    async with get_db_session() as db:
+        user = UserModel(email="concurrent-owner@example.test", hashed_password="unused", is_active=True)
+        db.add(user)
+        await db.flush()
+        owner = user.id
+    ready = asyncio.get_running_loop().create_future()
+
+    async def deactivate():
+        async with get_db_session() as session:
+            ready.set_result(await session.scalar(text("SELECT pg_backend_pid()")))
+            await user_service.update(owner, UserUpdate(is_active=False))
+
+    async with asyncio.timeout(15), asyncio.TaskGroup() as group:
+        async with get_db_session() as db:
+            doc = await datasets.create(HumanActor(owner), title="New private data")
+            rights = select(ShareEffectiveAccess.can_write).where(
+                ShareEffectiveAccess.share_id == doc.share_id, ShareEffectiveAccess.user_id == owner)
+            assert await db.scalar(rights) is True
+            group.create_task(deactivate())
+            pid = await ready
+            while not await db.scalar(text("SELECT pg_backend_pid() = ANY(pg_blocking_pids(:pid))"), {"pid": pid}):
+                await asyncio.sleep(0.02)
+    async with get_db_session() as db:
+        assert await db.scalar(rights) is None
+        await user_service.update(owner, UserUpdate(is_active=True))
+        assert await db.scalar(rights) is True
+
+
+@pytest.mark.asyncio
+async def test_membership_removal_observes_the_last_committed_document_rules(committed_database):
+    from app.share import ShareEffectiveAccess
+    from core.team import TeamModel, lock_team_sharing
+    from core.team.service import set_human_membership
+    from core.user import HumanActor
+
+    scope, resources = await seed_resources("dataset")
+    identity, share_id, version, key = resources[0]
+    async with get_db_session() as db:
+        team = TeamModel(name="Concurrent documentary sharing")
+        reader = UserModel(email="team-reader@example.test", hashed_password="unused", is_active=True)
+        db.add_all([team, reader])
+        await db.flush()
+        team_id, reader_id = team.id, reader.id
+        await set_human_membership(team_id, reader_id, True)
+        state = await write("dataset", key, scope, SharingUpdate(level="groups", expected_lock_version=version,
+            grants=[{"kind": "team", "id": team_id, "can_write": True}]))
+
+    member_access = select(ShareEffectiveAccess.can_write).where(
+        ShareEffectiveAccess.share_id == share_id, ShareEffectiveAccess.user_id == reader_id)
+    async with get_db_session() as interrupted:
+        await set_human_membership(team_id, reader_id, False)
+        assert await interrupted.scalar(member_access) is None
+        # Drop this connection with both writes pending. PostgreSQL must
+        # release the transaction lock and discard the membership and ACL edits.
+        await interrupted.invalidate()
+    async with get_db_session() as reopened:
+        assert await reopened.scalar(member_access) is True
+        assert (await datasets.record(identity, HumanActor(reader_id), write=True)).id == identity
+
+    ready = asyncio.get_running_loop().create_future()
+
+    async def leave():
+        async with get_db_session() as session:
+            ready.set_result(await session.scalar(text("SELECT pg_backend_pid()")))
+            await set_human_membership(team_id, reader_id, False)
+
+    async with asyncio.timeout(15), asyncio.TaskGroup() as group:
+        async with get_db_session() as db:
+            await lock_team_sharing()
+            group.create_task(leave())
+            pid = await ready
+            while not await db.scalar(text("SELECT pg_backend_pid() = ANY(pg_blocking_pids(:pid))"), {"pid": pid}):
+                await asyncio.sleep(0.02)
+            await write("dataset", key, scope, SharingUpdate(level="groups", expected_lock_version=state.lock_version,
+                grants=[{"kind": "team", "id": team_id, "can_write": True},
+                        {"kind": "user", "id": reader_id, "can_write": False}]))
+    async with get_db_session() as db:
+        assert await db.scalar(member_access) is False
+        assert (await datasets.record(identity, HumanActor(reader_id))).id == identity
+        with pytest.raises(datasets.DatasetNotFoundError):
+            await datasets.record(identity, HumanActor(reader_id), write=True)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("entry", ["data_uri", "legacy"])
+async def test_data_deletion_waits_for_a_sharing_edit_without_locking_its_row(committed_database, entry):
+    from app.dataset.compatibility import LegacyDatasetAdapter
+    from app.dataset.provider import DatasetProvider
+    from app.document.sharing_inheritance import lock_sharing
+    from app.file_share import ResourceContext, parse_resource_uri
+    from app.share import ShareEffectiveAccess
+
+    scope, resources = await seed_resources("dataset")
+    identity, share_id, version, _ = resources[0]
+    owner = next(iter(scope.agent_ids))
+    ready = asyncio.get_running_loop().create_future()
+
+    async def delete_current():
+        async with get_db_session() as db:
+            ready.set_result(await db.scalar(text("SELECT pg_backend_pid()")))
+            if entry == "data_uri":
+                await DatasetProvider().delete(ResourceContext(owner, "internal"), parse_resource_uri(f"data://{identity}"))
+            else:
+                await LegacyDatasetAdapter().remove(identity, owner)
+
+    async with asyncio.timeout(15), asyncio.TaskGroup() as group:
+        async with get_db_session() as db:
+            await lock_sharing()
+            group.create_task(delete_current())
+            pid = await ready
+            while not await db.scalar(text("SELECT pg_backend_pid() = ANY(pg_blocking_pids(:pid))"), {"pid": pid}):
+                await asyncio.sleep(0.02)
+            # The edit must be able to lock and publish the new revision even
+            # when a file operation is already waiting to delete this document.
+            await write("dataset", identity, scope, SharingUpdate(level="public", can_write=False,
+                        grants=[], expected_lock_version=version))
+    async with get_db_session() as db:
+        assert await db.get(Dataset, identity) is None
+        assert await db.scalar(select(ShareEffectiveAccess.id).where(ShareEffectiveAccess.share_id == share_id)) is None
+        assert await db.get(Dataset, resources[1][0]) is not None
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("domain", ["dataset", "document", "process"])
 async def test_concurrent_replacements_have_one_winner_and_stale_writes_cannot_restore_revoked_access(
     committed_database,
