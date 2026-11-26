@@ -4,9 +4,11 @@
 
 ## Claude Agent embarqué
 
-Le backend installe le SDK Python et lance son exécutable local. Activez le paramètre
-`harness.claude-embedded.enabled`, puis sélectionnez **Claude Agent embarqué** dans la fiche Agent. Cette affectation
-fonctionne sans conteneur Claude dédié. Pydantic AI reste sélectionnable dans la même fiche.
+Le backend installe le SDK Python et lance son exécutable local. Dans **Administrer →
+Préférences → Harnais → Harnais interne**, activez **Claude Agent**. Sélectionnez
+ensuite **Claude Agent** dans **Fiche Agent → Général → Harnais**. Cette
+affectation fonctionne sans conteneur Claude dédié. Pydantic AI reste sélectionnable dans
+la même fiche.
 
 Les appels passent par la passerelle locale de Galaris. Le journal LLM permet de retrouver
 la tentative de tâche, le round Chat ou vocal, ou la soumission précise en mode `@deep`.
@@ -16,9 +18,9 @@ conversation ou en tâche. Les demandes d’accord se traitent dans l’interfac
 
 ### Retour au routage conversationnel précédent
 
-Pour rétablir Pydantic AI pour les nouveaux rounds de Chat et de voix par tours, passez
-`harness.claude-embedded.conversations.enabled` à `false` via `PUT /api/params/{name}`
-avec le droit de modifier les paramètres des harnais. Le réglage vaut `true` par défaut.
+Pour rétablir Pydantic AI pour les nouveaux rounds de Chat et de voix par tours, désactivez
+**Utiliser Claude Agent en conversation** sur le même écran. Le réglage
+`harness.claude-embedded.conversations.enabled` vaut `true` par défaut.
 Conservez `harness.claude-embedded.enabled` à `true` pendant la transition. Les rounds déjà
 admis terminent ou reprennent avec leur harnais d’origine. Les affectations de tâches et le
 mode `@deep` continuent d’utiliser leur propre harnais. Remettez le réglage conversationnel
@@ -52,7 +54,7 @@ La livraison lance aussi cette sonde sur l’image exacte du bundle. La sonde ut
 PostgreSQL isolé et simule le fournisseur de modèles. Elle vérifie les appels LLM
 de deux rounds simultanés, le retour des nouveaux rounds sur Pydantic AI et une tâche
 qui continue à utiliser Claude. Pendant l’activation de Claude, un agent Pydantic garde
-son moteur dans Chat et Tâches. Un agent affecté à Codex ou DeepSeek Harness répond
+son moteur dans Chat et Tâches. Un agent affecté à Codex ou DeepSeek Agent répond
 dans Chat via Claude et envoie ses tâches au harnais affecté.
 Par défaut, la sonde simule les endpoints des harnais managés. Le journal inclut l’identité de
 l’image, les versions SDK et CLI, les appels rapprochés des reçus du fournisseur et les
@@ -66,7 +68,7 @@ l’appel à `task_run`, son reçu, le dispatch et l’exécution de la tâche, 
 Chat. Elle teste l’accord et le refus dans les deux boucles embarquées en vérifiant les
 tentatives de reprise et les effets de la décision.
 
-Pour exercer Codex et DeepSeek Harness, fournissez leurs identifiants d’images Docker
+Pour exercer Codex et DeepSeek Agent, fournissez leurs identifiants d’images Docker
 locales dans `EMBEDDED_HARNESS_CODEX_IMAGE` et `EMBEDDED_HARNESS_DSH_IMAGE`. La sonde démarre
 leurs véritables conteneurs sur le réseau de test, appelle la passerelle Galaris et conserve
 les identifiants des trois images. Les appels des tâches managées sont alors rapprochés
@@ -79,64 +81,10 @@ celui des workers de conversation et rester inférieur ou égal à 24. Le journa
 durée de chaque rafale et rapproche les appels de toutes les salles. En cas d’échec, la
 sonde conserve aussi le journal PostgreSQL de l’instance de test.
 
-## Claude Agent managé
+## Transition depuis un ancien conteneur Claude
 
-Ce bridge provisionne une instance isolée du Claude Agent SDK par agent avec le gestionnaire
-générique `bridge.harness`. Galaris l'exécute par le client Chat Completions commun de
-`app.harnesses`; ni le SDK Claude ni son protocole interne ne remontent dans `app.agent`.
-
-Le conteneur expose :
-
-- `GET /health` pour la santé Compose ;
-- `GET /v1/models` pour le probe du provider ;
-- `POST /v1/chat/completions`, en JSON ou en SSE.
-
-Le modèle demandé est le modèle d'exécution déjà résolu par `app.agent`. Le SDK pointe
-obligatoirement vers `/api/llm/anthropic` avec un token système tournant : les modèles internes
-Galaris restent donc disponibles, et chaque appel LLM est corrélé à la tâche et au run. Le même
-token donne accès au seul endpoint MCP de l'agent. Aucun credential Anthropic direct n'entre dans
-le conteneur.
-
-Les compétences autorisées sont projetées sous `data/skills/.claude/skills`, le workspace sous
-`data/workspace` et l'état Claude sous `data/claude`. Le conteneur est non privilégié, en lecture
-seule hors du volume `data`, sans capabilities Linux et avec des limites de processus, CPU et
-mémoire.
-
-## Télémétrie
-
-Le transport reste compatible avec un serveur Chat Completions ordinaire. Pour ce provider,
-Galaris active en plus deux événements SSE nommés et versionnés :
-
-- `galaris.agent-message/v1` transporte les fins d'appels d'outils et les blocs de raisonnement
-  publics normalisés en `AIMessage` ;
-- `galaris.agent-result/v1` transporte la réponse finale autoritaire, l'usage, le coût, la session
-  SDK, le statut terminal et les refus de permission destinés à l'unique `ExecutionResult`.
-
-Les deltas de texte restent des chunks OpenAI standards et peuvent contenir du progrès provisoire
-avant un outil. À la fermeture, `ResultMessage.result` remplace ce texte dans le résultat durable ;
-l'IHM reçoit donc le progrès en direct puis la réponse finale exacte. En parallèle, les appels au
-gateway Anthropic alimentent les `LLMCall` corrélés au `run_id` au fil de l'exécution. À la
-terminaison, le client commun agrège ces traces persistantes et les utilise comme source prioritaire
-des tokens et du coût. L'usage du SDK reste un repli `partial` lorsque le gateway n'a produit aucune
-trace ; il ne peut donc pas masquer un coût fournisseur exact ni une estimation tarifaire
-explicitement qualifiée par Galaris.
-
-Le SDK utilise `permission_mode="dontAsk"`. Claude découvre et lit les compétences par
-`skills_list` et `skill_read`. Le serveur MCP applique les droits, la portée et le mode configuré
-pour chaque fonction. La recherche d'outils et les lectures dans l'espace de travail sont
-admises par le harnais après validation du contexte. Pour une action locale soumise à accord,
-le hook vérifie l'autorisation Galaris de l'action exacte.
-Le serveur MCP gère la demande d'accord et sa continuation sur le même appel. Les accords
-mémorisés pour les outils locaux restent liés à l'agent, au harnais et à sa configuration.
-Lorsqu’un outil local attend un accord, Claude managé sauvegarde le point de reprise
-dans son volume de données et ferme le processus SDK. La décision réveille la même tâche.
-Le harnais reprend l’appel différé avec la même autorisation à usage unique et vérifie
-de nouveau le contexte et les données de l’action avant de l’exécuter.
-Le nombre de tours et d'outils suit les limites figées dans `AgentRunEnvelopeV1`.
-Le SDK gère l'historique de ses requêtes et la compaction dans la fenêtre de contexte du modèle.
-Si le point de reprise du harnais atteint sa limite de taille, il conserve le résultat terminal,
-le curseur et les résultats d'outils récents, avec des aperçus pour les entrées plus anciennes.
-
-`start`, `restart` et `update` construisent ou recréent l'image épinglée par
-`requirements.txt`. `refresh` reprojette configuration, token MCP et compétences avant de redémarrer.
-La suppression du Harness détruit l'instance et révoque ses tokens système.
+L’ancien harnais Claude conteneurisé est retiré du catalogue. Pour un agent qui
+l’utilise encore, terminez les tâches ouvertes puis sélectionnez **Claude Agent**
+dans sa fiche. Le changement déclenche la procédure habituelle de suppression
+du conteneur et de révocation de son jeton. Sauvegardez les fichiers de son
+espace de travail avant de confirmer ce changement.

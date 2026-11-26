@@ -14,7 +14,7 @@ from .service import embedded_driver_specs
 async def _backfill_selected_harnesses(session: AsyncSession) -> None:
     """Keep bridge selections out of the reusable OpenAI Messages table."""
 
-    providers = {provider.code: provider for provider in all_providers()}
+    providers = {provider.code: provider for provider in all_providers(include_retired=True)}
     embedded_codes = set(embedded_driver_specs())
     assignments = list((await session.scalars(select(AgentHarness))).all())
     assigned_agents = {assignment.agent_id for assignment in assignments}

@@ -17,7 +17,7 @@ Codex uses `openai-codex==0.170.0` and Claude Agent uses `claude-agent-sdk==0.2.
 <a id="enable-multitasking"></a>
 ## Enable multitasking
 
-Current Codex, Claude Agent and DeepSeek Harness instances advertise run-scoped LLM
+Current Codex and DeepSeek Harness instances advertise run-scoped LLM
 attribution when provisioned. Galaris can allocate several slots to the same agent
 within scheduler capacity and an optional harness cap.
 
@@ -121,7 +121,7 @@ Galaris derives injected API URLs from `HARNESS_MANAGER_GALARIS_API_URL`, fallin
 when empty. On a local isolated network, `http://backend:8000/api` avoids public DNS and reverse
 proxy dependencies. Remote managers require a URL reachable from their containers. Configure networks
 explicitly in the shared Compose section of **Preferences → Harnesses → Managed harnesses** (`harness.default.compose`). These overrides
-are shared by Hermes, Codex, Claude Agent and DeepSeek Harness; `services.agent` targets their main
+are shared by Hermes, Codex, and DeepSeek Harness; `services.agent` targets their main
 service. No network is appended from backend environment settings. The historical
 `HARNESS_MANAGER_DOCKER_NETWORK` variable no longer attaches a network. The backend still calls
 runtimes through stable container names: the operator topology must provide this route, without

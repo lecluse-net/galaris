@@ -241,10 +241,9 @@ agent's record from the list to edit it. Tabs in that record differ from page ta
 they include general settings, models and MCP according to permissions. Choose the Task
 engine in the agent's record. The form appears as soon as it opens; selectors load afterward.
 In **General**, the Harness selection follows the identity fields.
-**Pydantic AI (embedded)** is selected by default when creating an agent. **Claude Agent
-(embedded)** is offered when enabled. Both run in the Galaris backend. On an existing record,
-wait for open Tasks to finish before switching Harnesses. **Claude Agent (managed)** uses the
-instance supervised from the agent card.
+**Pydantic AI** is selected by default when creating an agent. **Claude Agent** is offered after you enable it under **Administer → Preferences → Harnesses →
+Internal harness**. Both run in the Galaris backend. On an existing record,
+wait for open Tasks to finish before switching Harnesses.
 To create or replace a portrait, click **Generate avatar**, enter instructions in the
 dialog (appearance, style, framing), then submit generation. You can request a realistic
 human portrait. A failure preserves the current avatar and the instructions for a retry.
@@ -257,7 +256,7 @@ To apply the Harness version shipped with Galaris, open its supervision view and
 **Update** after the agent's Tasks have finished. This action recreates the Harness instance
 and clears its local data.
 
-An instance of Codex, Claude Agent or DeepSeek Harness provisioned with the new
+An instance of Codex or DeepSeek Agent provisioned with the new
 version can run multiple Tasks for the same agent concurrently. Set **Maximum
 concurrent tasks** on the harness to limit the number per agent. When left blank,
 available scheduler capacity applies. In **Monitor → Activity →
@@ -382,8 +381,7 @@ option label retain the wording of the original request. Once an answer is recor
 authorization card in **Chat** and the request details in **Permissions** show only the
 chosen button.
 
-For a local action of any managed external Harness (Hermes, DeepSeek Harness, Codex,
-Claude Agent or a configured OpenAI Messages Harness), choose
+For a local action of any managed external Harness (Hermes, DeepSeek Agent, Codex or a configured OpenAI Messages Harness), choose
 **Always allow this action type** or **Always deny this action type**. The decision applies to this agent, Harness and exact action
 name, with any arguments, including future tasks. For example, allowing `write_file` does not
 allow command execution. Other pending requests still require a decision; a permanent denial also

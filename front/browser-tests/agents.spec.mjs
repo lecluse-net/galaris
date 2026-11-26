@@ -374,7 +374,7 @@ test('models load on demand without losing the saved profile, voice or identity 
   } finally { release() }
 })
 
-test('embedded harnesses save and reopen independently of managed Claude', async ({ page }, testInfo) => {
+test('four harness names are unambiguous and Claude saves and reopens', async ({ page }, testInfo) => {
   await agentFixtures(page)
   await page.setViewportSize({ width: 1440, height: 1000 })
   const saved = { ...agent, agent_driver: 'internal', is_owner: true }
@@ -384,9 +384,10 @@ test('embedded harnesses save and reopen independently of managed Claude', async
   await page.route('**/api/agents/drivers', route => route.fulfill({ json: embeddedDrivers(claudeAvailable) }))
   await jsonRoute(page, '**/api/agents/managers', [agent.user])
   await jsonRoute(page, '**/api/agents/titles?*', [{ id: agent.title_id, label: 'agent_titles.ms', gender: 'F' }])
-  await jsonRoute(page, '**/api/harnesses/catalog?*', [{
-    id: '98b34442-5102-4392-b348-428c75c7b544', provider_code: 'claude_agent', name: 'Claude Agent', containerized: true,
-  }])
+  await jsonRoute(page, '**/api/harnesses/catalog?*', [
+    { id: '98b34442-5102-4392-b348-428c75c7b544', provider_code: 'codex', name: 'Codex', containerized: true },
+    { id: 'ae7472cd-7001-488b-b899-d2bcd06d2fa3', provider_code: 'deepseek_harness', name: 'DeepSeek Agent', containerized: true },
+  ])
   await jsonRoute(page, '**/api/harnesses/agents/7/status', {
     status: 'internal', managed: false, lifecycle_status: 'internal', capabilities: [], available_actions: [],
   })
@@ -411,14 +412,17 @@ test('embedded harnesses save and reopen independently of managed Claude', async
     await expect(selection).toHaveValue(label)
   }
 
-  await open('Pydantic AI (embedded)')
+  await open('Pydantic AI')
   await selection.click()
-  await expect(page.getByRole('option', { name: 'Claude Agent (managed)', exact: true })).toBeVisible()
-  await page.getByRole('option', { name: 'Claude Agent (embedded)', exact: true }).click()
+  await expect(page.getByRole('option')).toHaveCount(4)
+  for (const name of ['Pydantic AI', 'Claude Agent', 'DeepSeek Agent', 'Codex']) {
+    await expect(page.getByRole('option', { name, exact: true })).toBeVisible()
+  }
+  await page.getByRole('option', { name: 'Claude Agent', exact: true }).click()
   await dialog.getByRole('button', { name: 'Edit', exact: true }).click()
   await expect(dialog).toHaveCount(0)
   expect(writes).toEqual([{ driver_code: 'claude_embedded' }])
-  await open('Claude Agent (embedded)')
+  await open('Claude Agent')
   await dialog.screenshot({ path: testInfo.outputPath('embedded-claude-desktop.png'), animations: 'disabled' })
   await page.keyboard.press('Escape')
   await expect(dialog).toHaveCount(0)
@@ -426,10 +430,10 @@ test('embedded harnesses save and reopen independently of managed Claude', async
   claudeAvailable = false
   await page.setViewportSize({ width: 390, height: 844 })
   await page.evaluate(() => window.testApp.dark(true))
-  await open('Claude Agent (embedded) (unavailable)')
+  await open('Claude Agent (unavailable)')
   await dialog.screenshot({ path: testInfo.outputPath('embedded-claude-mobile.png'), animations: 'disabled' })
   await selection.click()
-  await page.getByRole('option', { name: 'Pydantic AI (embedded)', exact: true }).click()
+  await page.getByRole('option', { name: 'Pydantic AI', exact: true }).click()
   await dialog.getByRole('button', { name: 'Edit', exact: true }).click()
   await expect(dialog).toHaveCount(0)
   expect(writes).toEqual([{ driver_code: 'claude_embedded' }, { driver_code: 'internal' }])
@@ -479,9 +483,9 @@ async function requestEmbeddedHarnessSwitch(page, { active = [], paused = [], in
   await page.getByRole('button', { name: 'Edit agent', exact: true }).click()
   const editor = page.getByRole('dialog').filter({ has: page.getByLabel('First name *', { exact: true }) })
   const harness = editor.getByLabel('Harness', { exact: true })
-  await expect(harness).toHaveValue('Pydantic AI (embedded)')
+  await expect(harness).toHaveValue('Pydantic AI')
   await harness.click()
-  await page.getByRole('option', { name: 'Claude Agent (embedded)', exact: true }).click()
+  await page.getByRole('option', { name: 'Claude Agent', exact: true }).click()
   await editor.getByRole('button', { name: 'Edit', exact: true }).click()
   const confirmation = page.getByRole('dialog').filter({ hasText: 'Tasks are blocking the harness change' })
   const terminate = confirmation.getByRole('button', { name: 'Terminate tasks and continue', exact: true })
@@ -586,7 +590,7 @@ test('agent creation requires a first name but accepts an empty last name', asyn
   const selection = dialog.getByLabel('Harness', { exact: true })
   await expect(selection).toBeEnabled()
   await selection.click()
-  await page.getByRole('option', { name: 'Claude Agent (embedded)', exact: true }).click()
+  await page.getByRole('option', { name: 'Claude Agent', exact: true }).click()
   await dialog.getByLabel('Agent code', { exact: true }).fill('lyra')
   await dialog.getByLabel('Title *', { exact: true }).click()
   await expect(page.getByRole('option').first()).toBeVisible()
@@ -601,7 +605,7 @@ test('agent creation requires a first name but accepts an empty last name', asyn
   await expect(page.getByText('This code is already used by another agent. Please choose a different code.', { exact: true })).toBeVisible()
   await expect(dialog).toBeVisible()
   await expect(dialog.getByLabel('First name *', { exact: true })).toHaveValue('Lyra')
-  await expect(selection).toHaveValue('Claude Agent (embedded)')
+  await expect(selection).toHaveValue('Claude Agent')
   await dialog.getByLabel('Agent code', { exact: true }).fill('lyra-available')
   await dialog.getByRole('button', { name: 'Create', exact: true }).click()
   await expect(dialog).toHaveCount(0)

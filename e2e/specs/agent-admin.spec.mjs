@@ -70,7 +70,7 @@ test('the agent form creates and reopens an embedded Claude selection', async ({
     await dialog.getByLabel('Prénom *', { exact: true }).fill(name)
     await dialog.getByRole('combobox', { name: 'Civilité *', exact: true }).click()
     await page.getByRole('option', { name: `${original.title.label} (M)`, exact: true }).click()
-    await chooseHarness('Claude Agent (embarqué)')
+    await chooseHarness('Claude Agent')
     const creation = page.waitForResponse(response => new URL(response.url()).pathname === '/api/agents' && response.request().method() === 'POST')
     await dialog.getByRole('button', { name: 'Créer', exact: true }).click()
     const created = await creation
@@ -82,8 +82,8 @@ test('the agent form creates and reopens an embedded Claude selection', async ({
     const card = page.locator('.agent-card').filter({ has: page.getByText(name, { exact: true }) })
     const open = card.getByRole('button', { name: /Modifier l.agent/ })
     await open.click()
-    await expect(harness).toHaveValue('Claude Agent (embarqué)')
-    await chooseHarness('Pydantic AI (embarqué)')
+    await expect(harness).toHaveValue('Claude Agent')
+    await chooseHarness('Pydantic AI')
     const assignment = page.waitForResponse(response => new URL(response.url()).pathname === `/api/harnesses/agents/${saved.id}` && response.request().method() === 'PUT')
     await dialog.getByRole('button', { name: 'Modifier', exact: true }).click()
     const switched = await assignment
@@ -91,7 +91,7 @@ test('the agent form creates and reopens an embedded Claude selection', async ({
     expect(await switched.json()).toMatchObject({ driver_code: 'internal', internal: true, containerized: false })
     await expect(dialog).toHaveCount(0)
     await open.click()
-    await expect(harness).toHaveValue('Pydantic AI (embarqué)')
+    await expect(harness).toHaveValue('Pydantic AI')
     expect(await (await request.get(`/api/agents/${saved.id}`, { headers })).json()).toMatchObject({ agent_driver: 'internal' })
     expect(pageErrors()).toEqual([])
   } finally {

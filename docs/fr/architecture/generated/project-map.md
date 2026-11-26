@@ -11,9 +11,9 @@ tests restent l’autorité sur le comportement.
 
 - 80 modules backend déclarés ;
 - 41 modules frontend déclarés ;
-- 657 arêtes de dépendance backend ;
+- 656 arêtes de dépendance backend ;
 - 231 arêtes de dépendance frontend ;
-- 310 arêtes entre domaines `app`/`bridge` ;
+- 309 arêtes entre domaines `app`/`bridge` ;
 - 30 paires de domaines directement bidirectionnelles ;
 - 1 composantes fortement connexes ;
 - 0 paires frontend directement bidirectionnelles ;
@@ -627,7 +627,6 @@ tests restent l’autorité sur le comportement.
 | `bridge.claude_agent` | `app.agent` | `back/bridge/claude_agent/harness_provider.py` |
 | `bridge.claude_agent` | `app.harnesses` | `back/bridge/claude_agent/harness_provider.py` |
 | `bridge.claude_agent` | `app.mcp` | `back/bridge/claude_agent/harness_provider.py` |
-| `bridge.claude_agent` | `app.skill` | `back/bridge/claude_agent/harness_provider.py` |
 | `bridge.claude_agent` | `bridge.harness` | `back/bridge/claude_agent/harness_provider.py` |
 | `bridge.claude_agent` | `core.params` | `back/bridge/claude_agent/harness_provider.py` |
 | `bridge.code_server` | `app.agent` | `back/bridge/code_server/adapter.py` |
@@ -1087,11 +1086,11 @@ tests restent l’autorité sur le comportement.
 | `bridge.nextcloud` | 6 | `app.agent`, `app.connection`, `app.file_share`, `app.messenger`, `app.services`, `app.voice` |
 | `app.multimedia` | 5 | `app.agent`, `app.audio`, `app.file_share`, `app.llm`, `app.services` |
 | `app.task` | 5 | `app.agent`, `app.goal`, `app.llm`, `app.messenger`, `app.services` |
-| `bridge.claude_agent` | 5 | `app.agent`, `app.harnesses`, `app.mcp`, `app.skill`, `bridge.harness` |
 | `bridge.matrix` | 5 | `app.agent`, `app.connection`, `app.messenger`, `app.services`, `app.voice` |
 | `app.browser` | 4 | `app.connection`, `app.file_share`, `app.messenger`, `app.services` |
 | `app.console` | 4 | `app.agent`, `app.connection`, `app.file_share`, `app.services` |
 | `app.webhook` | 4 | `app.agent`, `app.connection`, `app.services`, `app.task` |
+| `bridge.claude_agent` | 4 | `app.agent`, `app.harnesses`, `app.mcp`, `bridge.harness` |
 | `bridge.code_server` | 4 | `app.agent`, `app.code`, `app.console`, `app.file_share` |
 | `app.dashboard` | 3 | `app.agent`, `app.llm`, `app.task` |
 | `app.image` | 3 | `app.file_share`, `app.llm`, `app.services` |
@@ -1145,7 +1144,7 @@ tests restent l’autorité sur le comportement.
 | `app.process` | 14 | `app.agent`, `app.conversation`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.onboarding`, `app.topic`, `app.voice`, `bridge.hermes`, `bridge.n8n` |
 | `app.conversation` | 12 | `app.chat`, `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.harness`, `app.lab`, `app.llm`, `app.memory`, `app.messenger`, `app.topic`, `app.voice` |
 | `app.memory` | 11 | `app.calendar`, `app.contact`, `app.document`, `app.dream`, `app.file_share`, `app.lab`, `app.messenger`, `app.process`, `app.topic`, `app.voice`, `bridge.hermes` |
-| `app.skill` | 9 | `app.agent`, `app.file_share`, `app.harness`, `app.lab`, `app.onboarding`, `bridge.claude_agent`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
+| `app.skill` | 8 | `app.agent`, `app.file_share`, `app.harness`, `app.lab`, `app.onboarding`, `bridge.codex`, `bridge.deepseek_harness`, `bridge.hermes` |
 | `app.document` | 7 | `app.chat`, `app.dataset`, `app.dream`, `app.file_share`, `app.memory`, `app.process`, `app.topic` |
 | `app.goal` | 6 | `app.document`, `app.dream`, `app.file_share`, `app.lab`, `app.memory`, `app.task` |
 | `app.voice` | 6 | `app.chat`, `app.dream`, `app.lab`, `app.memory`, `bridge.matrix`, `bridge.nextcloud` |

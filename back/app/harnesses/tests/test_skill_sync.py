@@ -60,7 +60,7 @@ async def runtime(db, tmp_path, monkeypatch, request):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("runtime", ["codex", "claude_agent", "deepseek_harness", "hermes"], indirect=True)
+@pytest.mark.parametrize("runtime", ["codex", "deepseek_harness", "hermes"], indirect=True)
 async def test_skill_refresh_accepts_the_selected_network_harness(runtime, db):
     """The compatibility endpoint must not depend on the legacy supervisor registry."""
     # Only queue the request: a running task must never be restarted by this API.
@@ -74,7 +74,7 @@ async def test_skill_refresh_accepts_the_selected_network_harness(runtime, db):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("runtime", ["codex", "claude_agent", "deepseek_harness", "hermes"], indirect=True)
+@pytest.mark.parametrize("runtime", ["codex", "deepseek_harness", "hermes"], indirect=True)
 async def test_next_execution_receives_changes_without_any_frontend_refresh(runtime, db):
     assert (await skill_sync.skill_sync_status(runtime.agent.id))[0] == "pending"
     await skill_sync.prepare_skill_execution(runtime.run)
@@ -100,7 +100,7 @@ async def test_next_execution_receives_changes_without_any_frontend_refresh(runt
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("runtime", ["codex", "claude_agent", "deepseek_harness", "hermes"], indirect=True)
+@pytest.mark.parametrize("runtime", ["codex", "deepseek_harness", "hermes"], indirect=True)
 async def test_deep_execution_projects_skills_without_changing_the_session_target(runtime, db):
     _, target = await deep_harness_target(runtime.agent.id)
     run = replace(runtime.run, task_id=None, deep_session_id=uuid4(), target=target)

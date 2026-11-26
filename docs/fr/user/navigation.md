@@ -264,10 +264,10 @@ Les onglets de cette fiche ne sont pas les onglets de la page : ils regroupent n
 le général, les modèles et le MCP selon les droits. Le choix du moteur des tâches appartient
 à la fiche de l’agent. Elle s’affiche dès l’ouverture ; les sélecteurs se chargent ensuite.
 Dans **Général**, le choix du harnais suit les champs d’identité.
-À la création, **Pydantic AI (embarqué)** est présélectionné. **Claude Agent (embarqué)**
-est proposé lorsque ce harnais est activé. Ces deux choix utilisent le backend Galaris.
+À la création, **Pydantic AI** est présélectionné. **Claude Agent**
+est proposé après activation dans **Administrer → Préférences → Harnais → Harnais interne**.
+Ces deux choix utilisent le backend Galaris.
 Sur une fiche existante, attendez la fin des tâches ouvertes pour changer de harnais.
-**Claude Agent (managé)** correspond à l’instance qui se supervise depuis la carte de l’agent.
 Pour créer ou remplacer le portrait, cliquez sur **Générer un avatar**, saisissez les
 consignes souhaitées dans la modale (apparence, style, cadrage), puis validez la génération.
 Un portrait humain réaliste peut être demandé. L’avatar actuel est conservé en cas d’échec ;
@@ -281,7 +281,7 @@ Pour appliquer la version de harnais livrée par Galaris, ouvrez sa supervision 
 **Mettre à jour** une fois les tâches de l’agent terminées. Cette action recrée l’instance
 du harnais et efface ses données locales.
 
-Une instance Codex, Claude Agent ou DeepSeek Harness provisionnée avec la nouvelle
+Une instance Codex ou DeepSeek Agent provisionnée avec la nouvelle
 version peut exécuter plusieurs tâches du même agent en parallèle. Le réglage **Nombre
 maximal de tâches simultanées** du harnais permet de limiter le nombre par agent. Quand
 il est vide, la capacité disponible du scheduler s’applique. Dans **Superviser →
@@ -413,8 +413,8 @@ et le libellé du choix restent ceux de la demande d’origine. Après enregistr
 réponse, la carte d’autorisation du **Chat** et la demande examinée dans **Permissions**
 affichent uniquement le bouton choisi.
 
-Pour une action locale de tout harnais externe géré (Hermès, DeepSeek Harness, Codex,
-Claude Agent ou un harnais OpenAI Messages configuré), choisissez
+Pour une action locale d’un harnais comme Hermès, DeepSeek Agent, Codex
+ou un harnais OpenAI Messages configuré, choisissez
 **Toujours autoriser ce type d’action** ou **Toujours interdire ce type d’action**.
 La décision concerne cet agent, ce harnais et le nom exact
 de l’action, quels que soient ses paramètres, y compris dans les tâches suivantes. Par exemple,

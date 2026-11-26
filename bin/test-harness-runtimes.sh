@@ -6,7 +6,7 @@ source_root=$PWD
 temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT
 report_dir="$source_root/artifacts/harness-runtimes"
-runtimes=(codex claude_agent hermes deepseek_harness)
+runtimes=(codex hermes deepseek_harness)
 probe_args=()
 if [[ "${1:-}" == --process ]]; then
   report_dir="$source_root/artifacts/process-harness-qualification"

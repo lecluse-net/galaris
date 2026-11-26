@@ -11,6 +11,7 @@ from app.harnesses import service
 from app.harnesses.contracts import HarnessProvisioningResult
 from app.harnesses.dbadmin import _backfill_selected_harnesses
 from app.harnesses.models import AgentHarness, Harness
+from app.harnesses.registry import get_provider
 from app.harnesses.schemas import (
     HarnessCatalogCreate,
     HarnessCatalogUpdate,
@@ -18,9 +19,42 @@ from app.harnesses.schemas import (
     HarnessSelectionUpdate,
 )
 from app.task import Task, TaskStatus
-from core.params import runtime_settings
+from core.params import Params, params_service, runtime_settings
 from core.user.models import User
 from sqlalchemy import select
+
+
+@pytest.mark.asyncio
+async def test_retired_claude_is_absent_from_catalogue_and_existing_agent_can_switch(db, monkeypatch):
+    monkeypatch.setattr(runtime_settings, "HARNESS_CLAUDE_EMBEDDED_ENABLED", True)
+    assert await params_service.set(Params.HARNESS_CLAUDE_AGENT_ENABLED, "true")
+    retired = get_provider("claude_agent")
+    cleanup_runtime = AsyncMock()
+    monkeypatch.setattr(retired, "deprovision", cleanup_runtime)
+    agent = Agent(
+        code=f"retired-claude-{uuid4().hex}", first_name="Synthetic", last_name="Agent",
+        agent_driver="openai_messages",
+        title_id=await db.scalar(select(Title.id).limit(1)),
+    )
+    db.add(agent)
+    await db.flush()
+    db.add(AgentHarness(agent_id=agent.id, provider_code=retired.code, lifecycle_status="ready"))
+    await db.commit()
+
+    await _backfill_selected_harnesses(db)
+    await db.commit()
+    old_selection = await service.get_for_agent(agent.id)
+    assert old_selection.provider_code == "claude_agent" and old_selection.harness_id is not None
+    assert "claude_agent" not in {entry.provider_code for entry in await service.list_catalogue()}
+    with pytest.raises(LookupError, match="Harness not found"):
+        await service.install(agent.id, HarnessSelectionUpdate(harness_id=old_selection.harness_id))
+
+    selection, cleanup = await service.select_internal(agent.id, "claude_embedded")
+    assert selection.driver_code == "claude_embedded" and cleanup is not None
+    await service.cleanup_previous_runtime(cleanup)
+    cleanup_runtime.assert_awaited_once()
+    assert (await service.get_for_agent(agent.id)).driver_code == "claude_embedded"
+    assert await db.scalar(select(AgentHarness.id).where(AgentHarness.agent_id == agent.id)) is None
 
 
 @pytest.mark.asyncio

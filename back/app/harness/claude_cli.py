@@ -1,4 +1,4 @@
-#!/usr/bin/python3 -I
+#!/usr/bin/env -S python3 -I
 """Start the bundled Claude CLI with an explicit, run-local environment."""
 
 import os

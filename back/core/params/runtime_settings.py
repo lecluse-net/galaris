@@ -339,7 +339,7 @@ class RuntimeSettings(BaseModel):
     HARNESS_CLAUDE_EMBEDDED_CONVERSATIONS_ENABLED: bool = True
     HARNESS_CODEX_ENABLED: bool = True
     HARNESS_DEEPSEEK_ENABLED: bool = True
-    HARNESS_HERMES_ENABLED: bool = True
+    HARNESS_HERMES_ENABLED: bool = False
 
     # Search client settings.
     SEARCH_DEFAULT_LANGUAGE: str = "en"

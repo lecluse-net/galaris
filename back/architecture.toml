@@ -194,8 +194,8 @@ allowed_dependencies = []
 max_domain_fan_out = 0
 
 [module."bridge.claude_agent"]
-allowed_dependencies = ["app.agent", "app.harnesses", "app.mcp", "app.skill", "bridge.harness"]
-max_domain_fan_out = 5
+allowed_dependencies = ["app.agent", "app.harnesses", "app.mcp", "bridge.harness"]
+max_domain_fan_out = 4
 
 [module."bridge.codex"]
 allowed_dependencies = ["app.agent", "app.harnesses", "app.llm", "app.mcp", "app.skill", "bridge.harness"]

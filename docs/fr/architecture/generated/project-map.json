@@ -5356,13 +5356,6 @@
           "back/bridge/claude_agent/harness_provider.py"
         ],
         "source": "bridge.claude_agent",
-        "target": "app.skill"
-      },
-      {
-        "files": [
-          "back/bridge/claude_agent/harness_provider.py"
-        ],
-        "source": "bridge.claude_agent",
         "target": "bridge.harness"
       },
       {
@@ -7087,7 +7080,7 @@
           "app.task"
         ]
       ],
-      "domain_edges": 310,
+      "domain_edges": 309,
       "fan_in": [
         {
           "count": 45,
@@ -7386,7 +7379,7 @@
           ]
         },
         {
-          "count": 9,
+          "count": 8,
           "module": "app.skill",
           "modules": [
             "app.agent",
@@ -7394,7 +7387,6 @@
             "app.harness",
             "app.lab",
             "app.onboarding",
-            "bridge.claude_agent",
             "bridge.codex",
             "bridge.deepseek_harness",
             "bridge.hermes"
@@ -7991,17 +7983,6 @@
         },
         {
           "count": 5,
-          "module": "bridge.claude_agent",
-          "modules": [
-            "app.agent",
-            "app.harnesses",
-            "app.mcp",
-            "app.skill",
-            "bridge.harness"
-          ]
-        },
-        {
-          "count": 5,
           "module": "bridge.matrix",
           "modules": [
             "app.agent",
@@ -8039,6 +8020,16 @@
             "app.connection",
             "app.services",
             "app.task"
+          ]
+        },
+        {
+          "count": 4,
+          "module": "bridge.claude_agent",
+          "modules": [
+            "app.agent",
+            "app.harnesses",
+            "app.mcp",
+            "bridge.harness"
           ]
         },
         {

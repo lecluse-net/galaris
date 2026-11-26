@@ -9,7 +9,7 @@ function entry(id, name, containerized = true, enabled = false) {
 async function fixtures(page) {
   await jsonRoute(page, '**/api/harness-manager/release', { version: '1.1.0', update_url: 'https://galaris.test/api/harness-manager/updates', sha256: 'test', size: 100 })
   const entries = [entry('hermes', 'Hermes'), entry('codex', 'Codex', true, true),
-    entry('claude_agent', 'Claude Agent'), entry('deepseek_harness', 'DeepSeek'), entry('external', 'Independent API', false, true)]
+    entry('deepseek_harness', 'DeepSeek'), entry('external', 'Independent API', false, true)]
   const writes = []
   const state = { failLoad: false, failSave: false }
   await page.route('**/api/harnesses/catalog?*', route => route.fulfill(state.failLoad
@@ -74,7 +74,7 @@ for (const [scenario, internalPlanner, externalPlanner] of [
     await expect(planner).toHaveCount(Number(internalPlanner || externalPlanner))
     if (internalPlanner || externalPlanner) {
       await expect(planner.getByRole('listitem')).toHaveText([
-        ...(internalPlanner ? ['Internal harness (Galaris)'] : []), ...(externalPlanner ? ['Future runtime'] : []),
+        ...(internalPlanner ? ['Pydantic AI'] : []), ...(externalPlanner ? ['Future runtime'] : []),
       ])
     }
     await setPrivileges(page, ['TASK_CONFIG_ACCESS'])

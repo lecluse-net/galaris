@@ -672,6 +672,14 @@ export const parameterAccess: Record<string, readonly string[]> = {
     "HARNESS_CONFIG_ACCESS",
     "HARNESS_CONFIG_EDIT"
   ],
+  "harness.claude-embedded.conversations.enabled": [
+    "HARNESS_CONFIG_ACCESS",
+    "HARNESS_CONFIG_EDIT"
+  ],
+  "harness.claude-embedded.enabled": [
+    "HARNESS_CONFIG_ACCESS",
+    "HARNESS_CONFIG_EDIT"
+  ],
   "harness.codex.enabled": [
     "HARNESS_CONFIG_ACCESS",
     "HARNESS_CONFIG_EDIT"

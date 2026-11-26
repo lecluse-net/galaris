@@ -455,7 +455,7 @@ Task PostgreSQL ── app.task scheduler/agent_adapter ──► AgentTaskPort
 | Adaptation au runtime Pydantic AI | `app.harness` |
 | Adaptation aux Harness réseau | client commun `app.harnesses` |
 | Provisionnement DeepSeek Harness | `bridge.deepseek_harness` via `bridge.harness` |
-| Provisionnement Claude Agent SDK | `bridge.claude_agent` via `bridge.harness` |
+| Claude Agent | SDK embarqué dans `app.harness` |
 | Provisionnement OpenAI Codex SDK | `bridge.codex` via `bridge.harness` |
 | Adaptation historique au runtime Hermès | `bridge.hermes` |
 | Validation du stream et application du résultat | façade `app.agent` |
@@ -469,7 +469,7 @@ Le proxy LLM applique le même invariant aux requêtes authentifiées d'un runti
 MCP reste autorisé avant une tâche, car le client Hermès s'initialise au démarrage du conteneur ; la
 Tâche active est injectée dans le contexte des requêtes d'outils. Les jetons MCP créés explicitement
 par un utilisateur conservent leur contrat générique.
-Les affectations Codex, Claude Agent et DeepSeek Harness provisionnées avec la capacité
+Les affectations Codex et DeepSeek Harness provisionnées avec la capacité
 `run_scoped_llm` peuvent exécuter plusieurs tâches du même agent selon la capacité du
 scheduler et le plafond facultatif de l'opérateur pour le harnais. Le runtime attache
 le justificatif Galaris de l'exécution à chaque appel LLM. La passerelle valide l'agent,

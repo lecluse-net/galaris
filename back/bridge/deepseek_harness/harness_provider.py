@@ -178,7 +178,7 @@ class DeepSeekHarnessProvider:
     )
     code = "deepseek_harness"
     driver_code = "openai_messages"
-    label = "DeepSeek Harness"
+    label = "DeepSeek Agent"
     containerized = True
     enabled_param: str | None = Params.HARNESS_DEEPSEEK_ENABLED
     max_parallel_tasks = None

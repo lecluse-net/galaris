@@ -267,7 +267,7 @@ class CodexHarnessProvider:
     )
     code = "codex"
     driver_code = "openai_messages"
-    label = "OpenAI Codex"
+    label = "Codex"
     containerized = True
     enabled_param: str | None = Params.HARNESS_CODEX_ENABLED
     max_parallel_tasks = None

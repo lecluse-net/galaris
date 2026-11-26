@@ -888,7 +888,7 @@ DEFAULT_PARAMS: dict[str, ParamConfig] = {
         "value": "true", "runtime_field": "HARNESS_DEEPSEEK_ENABLED", "kind": "boolean"
     },
     Params.HARNESS_HERMES_ENABLED: {
-        "value": "true", "runtime_field": "HARNESS_HERMES_ENABLED", "kind": "boolean"
+        "value": "false", "runtime_field": "HARNESS_HERMES_ENABLED", "kind": "boolean"
     },
     Params.SEARCH_DEFAULT_LANGUAGE: {
         "value": "en", "runtime_field": "SEARCH_DEFAULT_LANGUAGE", "kind": "string"

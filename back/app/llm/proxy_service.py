@@ -56,6 +56,7 @@ from .stream_updates import StreamUpdates
 
 
 PROXY_TIMEOUT = httpx.Timeout(connect=10.0, read=600.0, write=60.0, pool=10.0)
+_EMPTY_EMBEDDED_ANSWER = "The provider ended the turn without an answer or a tool call."
 
 
 async def require_managed_runtime_context(managed_runtime_request: bool, task_id: UUID | None) -> None:
@@ -579,6 +580,8 @@ async def proxy_chat_completion(
 
     capture = text_call_capture.get()
     before_retry = restart_call if capture is not None and capture.embedded_origin is not None else None
+    embedded_origin = capture.embedded_origin if capture is not None else None
+    expects_embedded_output = embedded_origin is not None and purpose == embedded_origin.purpose
 
     forwarded["model"] = llm.llm_name
     forwarded.pop("galaris_task_id", None)
@@ -738,13 +741,18 @@ async def proxy_chat_completion(
                 if provider_success
                 else {}
             )
-            error_detail = payload.get("error") or payload
+            empty_answer = (expects_embedded_output and trace.get("finish_reason") == "stop"
+                            and not trace.get("tool_calls") and not str(trace.get("response_text") or "").strip())
+            provider_success = provider_success and not empty_answer
+            if empty_answer:
+                payload = {"error": {"message": _EMPTY_EMBEDDED_ANSWER}}
+            error_detail = _EMPTY_EMBEDDED_ANSWER if empty_answer else str(payload.get("error") or payload)
             await llm_call_service.finalize_call(
                 call.id,
                 trace=trace,
                 raw_response=raw_response,
                 status="completed" if provider_success else "error",
-                error=None if provider_success else str(error_detail),
+                error=None if provider_success else error_detail,
                 input_rate=llm.cost_per_input_token,
                 cached_input_rate=llm.cost_per_cached_input_token,
                 output_rate=llm.cost_per_output_token,
@@ -817,6 +825,11 @@ async def proxy_chat_completion(
             if changed:
                 updates.changed()
 
+        def check_terminal_output() -> None:
+            if (expects_embedded_output and trace.finish_reason == "stop" and not trace.tools
+                    and not any(part.strip() for part in trace.response_parts)):
+                raise ProviderUnavailableError(_EMPTY_EMBEDDED_ANSWER)
+
         try:
             if stream_adapter is not None:
                 async for line in deadline.iterate(upstream.aiter_lines(), completed=lambda: bool(stream_adapter and stream_adapter.terminal)):
@@ -846,12 +859,14 @@ async def proxy_chat_completion(
                     raise RuntimeError(
                         "the provider stream ended before its terminal response"
                     )
+                check_terminal_output()
                 stream_completed = True
                 yield b"data: [DONE]\n\n"
             else:
                 received_done = False
                 async for line in deadline.iterate(upstream.aiter_lines(), completed=lambda: bool(trace.finish_reason)):
                     if line.startswith("data:") and line[5:].strip() == "[DONE]":
+                        check_terminal_output()
                         received_done = True
                         stream_completed = True
                     if line.startswith("data:") and line[5:].strip() != "[DONE]":
@@ -864,8 +879,10 @@ async def proxy_chat_completion(
                         except json.JSONDecodeError:
                             pass
                     yield (line + "\n").encode("utf-8")
-                if not received_done and not trace.finish_reason:
-                    raise RuntimeError("the provider stream ended before its terminal response")
+                if not received_done:
+                    if not trace.finish_reason:
+                        raise RuntimeError("the provider stream ended before its terminal response")
+                    check_terminal_output()
                 stream_completed = True
         except asyncio.CancelledError:
             # Some clients disconnect after the terminal chunk without waiting for SSE [DONE].

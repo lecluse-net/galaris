@@ -60,7 +60,7 @@ class ActionAuthorization(Base):
         CheckConstraint("source IN ('mcp','runtime','domain')", name="ck_action_authorization_source"),
         Index("ix_action_authorization_agent_status", "agent_id", "status"),
         Index("ix_action_authorization_pending_review", "authority_checked_at", "created_at", "id",
-            postgresql_where=text("status IN ('pending','approved')")),
+            postgresql_where=text("(status)::text = ANY ((ARRAY['pending'::character varying, 'approved'::character varying])::text[])")),
     )
 
     @classmethod

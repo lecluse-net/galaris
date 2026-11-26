@@ -301,7 +301,7 @@ def internal_read(agent_id: int, driver_code: str = "internal") -> HarnessRead:
     return HarnessRead(
         agent_id=agent_id,
         internal=True,
-        name="Internal Pydantic AI" if driver_code == "internal" else spec.label_key,
+        name="Pydantic AI" if driver_code == "internal" else spec.label_key,
         provider_code=spec.code,
         driver_code=spec.code,
         lifecycle_status="ready" if status.available else "error",

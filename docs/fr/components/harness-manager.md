@@ -18,7 +18,7 @@ Codex utilise `openai-codex==0.170.0` et Claude Agent `claude-agent-sdk==0.2.185
 <a id="enable-multitasking"></a>
 ## Activer le multitâche
 
-Les instances récentes de Codex, Claude Agent et DeepSeek Harness annoncent la corrélation
+Les instances récentes de Codex et DeepSeek Harness annoncent la corrélation
 des appels LLM par exécution lors du provisionnement. Galaris peut alors attribuer plusieurs
 créneaux au même agent, selon le scheduler et le plafond facultatif du harnais.
 
@@ -124,8 +124,7 @@ Galaris dérive les URL d'API injectées de `HARNESS_MANAGER_GALARIS_API_URL`, a
 si cette valeur est vide. Sur un réseau local isolé, utiliser `http://backend:8000/api` évite de
 dépendre du DNS public et du reverse proxy. Pour un manager distant, choisir une URL joignable
 depuis ses conteneurs. Les réseaux sont définis explicitement dans l’onglet **Harnais managés**
-de **Préférences → Harnais**, dans le Compose commun (`harness.default.compose`). La surcharge est commune à Hermès, Codex, Claude
-Agent et DeepSeek Harness ; `services.agent` cible leur service principal. Aucun réseau n'est
+de **Préférences → Harnais**, dans le Compose commun (`harness.default.compose`). La surcharge est commune à Hermès, Codex et DeepSeek Harness ; `services.agent` cible leur service principal. Aucun réseau n'est
 ajouté depuis l'environnement du backend. La variable historique `HARNESS_MANAGER_DOCKER_NETWORK`
 n'attache plus de réseau. Le backend appelle encore chaque runtime par son nom de conteneur
 stable : la topologie opérateur doit fournir cette route, sans présumer un hôte commun.

@@ -83,8 +83,13 @@ def sse(delta, finish=None):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("driver", ["internal", "claude_embedded"], ids=["pydantic", "claude"])
-@pytest.mark.parametrize("status", [429, 422], ids=["eligible", "ineligible"])
+@pytest.mark.parametrize(("driver", "status"), [
+    pytest.param("internal", 429, id="pydantic-eligible"),
+    pytest.param("internal", 422, id="pydantic-ineligible"),
+    pytest.param("claude_embedded", 429, id="claude-eligible"),
+    pytest.param("claude_embedded", 422, id="claude-ineligible"),
+    pytest.param("claude_embedded", "empty", id="claude-reasoning-only"),
+])
 async def test_chat_preserves_call_origin_when_a_profile_can_fail_over(
     attachment_context, runtime, monkeypatch, tmp_path, driver, status,
 ):
@@ -115,7 +120,9 @@ async def test_chat_preserves_call_origin_when_a_profile_can_fail_over(
     provider_receipts = []
     mode.update(concurrent=True, chat_response_ids=provider_receipts)
     rejection = (status, {"message": f"Synthetic rejection {status}"})
-    if status == 429:
+    if status == "empty":
+        mode.update(outputs=["", "Bonjour !"], chat_json="Bonjour !")
+    elif status == 429:
         mode["first_error"] = rejection
     else:
         # An invalid request continues to fail even if the SDK tries another transport.
@@ -141,7 +148,8 @@ async def test_chat_preserves_call_origin_when_a_profile_can_fail_over(
         LLMCall.conversation_round_id == round_id, LLMCall.purpose == "conversation.text",
     ).order_by(LLMCall.started_at)))
     assert 1 <= len(requests) <= 2
-    expected_models = [primary, secondary] if status == 429 else [primary] * len(requests)
+    can_fail_over = status in {429, "empty"}
+    expected_models = [primary, secondary] if can_fail_over else [primary] * len(requests)
     assert [request["model"] for request in requests] == [model.llm_name for model in expected_models]
     assert [call.llm_id for call in calls] == [model.id for model in expected_models]
     assert all(call.agent_id == agent.id and call.agent_run_id == round_id and call.task_id is None for call in calls)
@@ -150,10 +158,14 @@ async def test_chat_preserves_call_origin_when_a_profile_can_fail_over(
     if driver == "claude_embedded":
         assert {call.correlation_ref for call in calls} == {f"round:{round_id}:attempt:{attempt.id}"}
     assert calls[0].status == "error"
-    if status == 429:
+    if can_fail_over:
         assert record["status"] == "SUCCEEDED" and record["response_text"] == "Bonjour !"
         assert record["execution_result"]["metadata"]["driver_code"] == driver
-        [receipt] = provider_receipts
+        if status == "empty":
+            assert calls[0].finish_reason == "stop" and calls[0].reasoning and not calls[0].response_text
+            assert [call.upstream_request_id for call in calls] == provider_receipts
+            assert calls[1].fallback_reason and "without an answer" in calls[1].fallback_reason
+        receipt = provider_receipts[-1]
         fallback = calls[1]
         assert fallback.status == "completed" and fallback.upstream_request_id == receipt
         assert fallback.fallback_from_llm_id == primary.id and fallback.fallback_profile_id == profiles[1].id

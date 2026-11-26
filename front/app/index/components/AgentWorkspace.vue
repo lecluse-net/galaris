@@ -841,10 +841,7 @@ const harnessSelectionOptions = computed(() => {
     })
   }
   for (const harness of harnessCatalog.value) {
-    let label = harness.name
-    if (harness.provider_code === 'claude_agent') label = t('harnesses.managedOption', { name: label })
-    if (harness.provider_code === 'openai_messages') label = `${label} · API`
-    options.push({ label, value: harness.id, disable: false })
+    options.push({ label: harness.name, value: harness.id, disable: false })
   }
   if (initialHarness.value && !options.some(option => option.value === initialHarnessValue.value)) {
     options.push({

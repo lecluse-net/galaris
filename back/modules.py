@@ -29,10 +29,13 @@ AGENT_DRIVER_MODULES = [
 ]
 
 HARNESS_PROVIDER_MODULES = [
-    "bridge.claude_agent.harness_provider",
     "bridge.codex.harness_provider",
     "bridge.deepseek_harness.harness_provider",
     "bridge.hermes.harness_provider",
+]
+
+RETIRED_HARNESS_PROVIDER_MODULES = [
+    "bridge.claude_agent.harness_provider",
 ]
 
 HARNESS_SUPERVISOR_MODULES = [

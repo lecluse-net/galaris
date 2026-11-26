@@ -280,7 +280,6 @@ const bridgeProviderCode = computed(() => (
 const persistedHarnessId = computed(() => entry.value?.id ?? harnessId.value)
 const isOpenAi = computed(() => isNew.value || entry.value?.provider_code === 'openai_messages')
 const galarisModelProviders = new Set([
-  'claude_agent',
   'codex',
   'deepseek_harness',
 ])
